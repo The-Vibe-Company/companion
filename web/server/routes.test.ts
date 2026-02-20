@@ -939,6 +939,45 @@ describe("POST /api/sessions/create", () => {
     expect(removeSpy).toHaveBeenCalled();
     expect(launcher.launch).not.toHaveBeenCalled();
   });
+
+  it("passes resumeSessionAt and forkSession to launcher when provided", async () => {
+    const res = await app.request("/api/sessions/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cwd: "/test",
+        resumeSessionAt: "existing-session-id",
+        forkSession: true,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(launcher.launch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resumeSessionAt: "existing-session-id",
+        forkSession: true,
+      }),
+    );
+  });
+
+  it("passes resumeSessionAt without forkSession when only resumeSessionAt is provided", async () => {
+    const res = await app.request("/api/sessions/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cwd: "/test",
+        resumeSessionAt: "existing-session-id",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(launcher.launch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resumeSessionAt: "existing-session-id",
+        forkSession: false,
+      }),
+    );
+  });
 });
 
 describe("GET /api/sessions", () => {

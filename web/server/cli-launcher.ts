@@ -494,6 +494,7 @@ export class CliLauncher {
     if (options.resumeSessionId) {
       args.push("--resume", options.resumeSessionId);
     }
+
     args.push("-p", "");
 
     let spawnCmd: string[];
