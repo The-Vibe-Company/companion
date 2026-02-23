@@ -126,8 +126,15 @@ export function registerFsRoutes(api: Hono): void {
           if (revParseResult.exitCode !== 0) throw new Error("not a git repo");
           const repoRoot = revParseResult.stdout.toString().trim();
           assertWithinHome(repoRoot); // Ensure git repo root is also within home directory
+          // Resolve basePath symlinks before passing to git to prevent following links outside home
+          let resolvedBasePath: string;
+          try {
+            resolvedBasePath = realpathSync(basePath);
+          } catch {
+            resolvedBasePath = basePath;
+          }
           const lsFilesResult = Bun.spawnSync(
-            ["git", "-C", repoRoot, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", basePath + "/"],
+            ["git", "-C", repoRoot, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", resolvedBasePath + "/"],
             { stdout: "pipe", stderr: "pipe" },
           );
           const gitIgnored = (lsFilesResult.stdout?.toString() || "").trim();
@@ -225,12 +232,10 @@ export function registerFsRoutes(api: Hono): void {
     try {
       const info = await stat(absPath);
       if (!info.isDirectory()) return c.json({ error: "Not a directory" }, 400);
-      const dirName = basename(absPath) || "archive";
-      // Defense-in-depth: basename() should never return a string with path separators,
-      // but verify to prevent archive path injection via --prefix
-      if (/[/\\]/.test(dirName)) {
-        return c.json({ error: "Invalid directory name" }, 400);
-      }
+      const rawDirName = basename(absPath) || "archive";
+      // Sanitize dirName for git archive --prefix: strip path separators, null bytes,
+      // and other characters that could cause path injection or shell issues.
+      const safeDirName = rawDirName.replace(/[/\\<>:"|?*\0]/g, "_") || "archive";
 
       let zipBuffer: Buffer;
       try {
@@ -250,7 +255,7 @@ export function registerFsRoutes(api: Hono): void {
             "git",
             "archive",
             "--format=zip",
-            `--prefix=${dirName}/`,
+            `--prefix=${safeDirName}/`,
             "HEAD",
             relPath,
           ],
@@ -278,7 +283,7 @@ export function registerFsRoutes(api: Hono): void {
       return new Response(new Uint8Array(zipBuffer), {
         headers: {
           "Content-Type": "application/zip",
-          "Content-Disposition": contentDisposition(`${dirName}.zip`),
+          "Content-Disposition": contentDisposition(`${safeDirName}.zip`),
           "Content-Length": String(zipBuffer.length),
         },
       });
