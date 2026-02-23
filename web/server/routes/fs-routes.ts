@@ -75,6 +75,176 @@ export function registerFsRoutes(api: Hono): void {
     }
   });
 
+  // List files AND directories (unlike /fs/list which only lists directories)
+  api.get("/fs/list-entries", async (c) => {
+    const rawPath = c.req.query("path");
+    if (!rawPath) return c.json({ error: "path required" }, 400);
+    const basePath = resolve(rawPath);
+    const showHidden = c.req.query("showHidden") === "true";
+    const showIgnored = c.req.query("showIgnored") === "true";
+
+    try {
+      const dirEntries = await readdir(basePath, { withFileTypes: true });
+
+      // Build set of git-ignored files if in a git repo and showIgnored is false
+      const ignoredFiles = new Set<string>();
+      if (!showIgnored) {
+        try {
+          const repoRoot = execSync("git rev-parse --show-toplevel", {
+            cwd: basePath,
+            encoding: "utf-8",
+            timeout: 3000,
+          }).trim();
+          const gitIgnored = execSync(
+            `git -C ${shellEscapeArg(repoRoot)} ls-files --others --ignored --exclude-standard --directory ${shellEscapeArg(basePath + "/")}`,
+            { encoding: "utf-8", timeout: 5000 },
+          ).trim();
+          for (const line of gitIgnored.split("\n")) {
+            if (line.trim()) {
+              const name = line.trim().replace(/\/$/, "").split("/").pop();
+              if (name) ignoredFiles.add(name);
+            }
+          }
+        } catch {
+          // Not a git repo — skip ignore filtering
+        }
+      }
+
+      interface DirEntry {
+        name: string;
+        type: "file" | "directory";
+        size?: number;
+        mtime?: string;
+      }
+      const entries: DirEntry[] = [];
+
+      for (const entry of dirEntries) {
+        if (entry.name === ".git") continue;
+        if (!showHidden && entry.name.startsWith(".")) continue;
+        if (ignoredFiles.has(entry.name)) continue;
+
+        if (entry.isDirectory()) {
+          entries.push({ name: entry.name, type: "directory" });
+        } else if (entry.isFile()) {
+          try {
+            const info = await stat(join(basePath, entry.name));
+            entries.push({
+              name: entry.name,
+              type: "file",
+              size: info.size,
+              mtime: info.mtime.toISOString(),
+            });
+          } catch {
+            entries.push({ name: entry.name, type: "file" });
+          }
+        }
+      }
+
+      entries.sort((a, b) => {
+        if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      return c.json({ path: basePath, entries });
+    } catch {
+      return c.json(
+        { error: "Cannot read directory", path: basePath, entries: [] },
+        400,
+      );
+    }
+  });
+
+  // Download a single file
+  api.get("/fs/download", async (c) => {
+    const filePath = c.req.query("path");
+    if (!filePath) return c.json({ error: "path required" }, 400);
+    const absPath = resolve(filePath);
+    try {
+      const info = await stat(absPath);
+      if (!info.isFile()) return c.json({ error: "Not a file" }, 400);
+      const file = Bun.file(absPath);
+      const fileName = absPath.split("/").pop() || "download";
+      return new Response(file.stream(), {
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "Content-Disposition": `attachment; filename="${fileName}"`,
+          "Content-Length": String(info.size),
+        },
+      });
+    } catch (e: unknown) {
+      return c.json(
+        { error: e instanceof Error ? e.message : "Cannot download file" },
+        404,
+      );
+    }
+  });
+
+  // Download a directory as a zip archive
+  api.get("/fs/download-zip", async (c) => {
+    const dirPath = c.req.query("path");
+    if (!dirPath) return c.json({ error: "path required" }, 400);
+    const absPath = resolve(dirPath);
+    try {
+      const info = await stat(absPath);
+      if (!info.isDirectory()) return c.json({ error: "Not a directory" }, 400);
+      const dirName = absPath.split("/").pop() || "archive";
+
+      let zipBuffer: Buffer;
+      try {
+        const repoRoot = execSync("git rev-parse --show-toplevel", {
+          cwd: absPath,
+          encoding: "utf-8",
+          timeout: 3000,
+        }).trim();
+        const relPath =
+          absPath.startsWith(repoRoot)
+            ? absPath.slice(repoRoot.length + 1) || "."
+            : ".";
+        const result = Bun.spawnSync(
+          [
+            "git",
+            "archive",
+            "--format=zip",
+            `--prefix=${dirName}/`,
+            "HEAD",
+            relPath,
+          ],
+          { cwd: repoRoot, stdout: "pipe", stderr: "pipe" },
+        );
+        if (result.exitCode === 0 && result.stdout.length > 0) {
+          zipBuffer = Buffer.from(result.stdout);
+        } else {
+          throw new Error("git archive failed");
+        }
+      } catch {
+        const result = Bun.spawnSync(
+          ["zip", "-r", "-", ".", "-x", ".git/*", "-x", "node_modules/*"],
+          { cwd: absPath, stdout: "pipe", stderr: "pipe" },
+        );
+        if (result.exitCode !== 0)
+          return c.json({ error: "Failed to create zip archive" }, 500);
+        zipBuffer = Buffer.from(result.stdout);
+      }
+
+      if (zipBuffer.length > 100 * 1024 * 1024) {
+        return c.json({ error: "Archive too large (>100MB)" }, 413);
+      }
+
+      return new Response(new Uint8Array(zipBuffer), {
+        headers: {
+          "Content-Type": "application/zip",
+          "Content-Disposition": `attachment; filename="${dirName}.zip"`,
+          "Content-Length": String(zipBuffer.length),
+        },
+      });
+    } catch (e: unknown) {
+      return c.json(
+        { error: e instanceof Error ? e.message : "Cannot create archive" },
+        500,
+      );
+    }
+  });
+
   api.get("/fs/home", (c) => {
     const home = homedir();
     const cwd = process.cwd();

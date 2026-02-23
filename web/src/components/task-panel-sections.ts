@@ -61,6 +61,12 @@ export const SECTION_DEFINITIONS: TaskPanelSectionDef[] = [
     description: "Agent task list and progress",
     backends: ["claude"],
   },
+  {
+    id: "workspace",
+    label: "Workspace",
+    description: "Browse project files and preview Markdown",
+    backends: null,
+  },
 ];
 
 export const DEFAULT_SECTION_ORDER: string[] = SECTION_DEFINITIONS.map((s) => s.id);

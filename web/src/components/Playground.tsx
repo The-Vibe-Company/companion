@@ -1514,6 +1514,117 @@ export function Playground() {
             </Card>
           </div>
         </Section>
+        {/* ─── Workspace File Tree ──────────────────────────────── */}
+        <Section title="Workspace File Tree" description="File tree browser in TaskPanel sidebar — shows project files with lazy directory expansion, download, and Markdown preview">
+          <div className="space-y-4">
+            <Card label="File tree view — root listing">
+              <div className="w-[280px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+                {/* Section header */}
+                <div className="flex items-center justify-between px-3 py-2 border-b border-cc-border">
+                  <span className="text-[11px] text-cc-muted uppercase tracking-wider">Files</span>
+                  <div className="flex items-center gap-1">
+                    <button className="text-[10px] px-1.5 py-0.5 rounded text-cc-muted hover:text-cc-fg cursor-pointer">.*</button>
+                    <button className="text-cc-muted hover:text-cc-fg transition-colors cursor-pointer" title="Refresh file tree">
+                      <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+                        <path d="M11.534 7h3.932a.25.25 0 01.192.41l-1.966 2.36a.25.25 0 01-.384 0l-1.966-2.36a.25.25 0 01.192-.41zm-7.068 2H.534a.25.25 0 00-.192.41l1.966 2.36a.25.25 0 00.384 0l1.966-2.36A.25.25 0 004.466 9z" />
+                        <path fillRule="evenodd" d="M8 3a5 5 0 11-4.546 2.914.5.5 0 00-.908-.418A6 6 0 108 2v1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                {/* Mock file tree */}
+                <div className="px-1 py-1 space-y-0.5">
+                  {[
+                    { name: "src", isDir: true, isOpen: true },
+                    { name: "components", isDir: true, isOpen: false, indent: 1 },
+                    { name: "utils", isDir: true, isOpen: false, indent: 1 },
+                    { name: "App.tsx", isDir: false, size: "2.4 K", indent: 1 },
+                    { name: "store.ts", isDir: false, size: "8.1 K", indent: 1 },
+                    { name: "README.md", isDir: false, size: "1.0 K", isMd: true },
+                    { name: "package.json", isDir: false, size: "256 B" },
+                    { name: "tsconfig.json", isDir: false, size: "512 B" },
+                  ].map((f, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-1 px-1 rounded text-[12px] leading-tight hover:bg-cc-hover/50 cursor-pointer"
+                      style={{ paddingLeft: `${(f.indent || 0) * 16 + 4}px`, height: 28 }}
+                    >
+                      <span className="shrink-0 w-4 h-4 flex items-center justify-center text-cc-muted">
+                        {f.isDir ? (
+                          <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 transition-transform ${f.isOpen ? "rotate-90" : ""}`}>
+                            <path d="M6 4l4 4-4 4z" />
+                          </svg>
+                        ) : (
+                          <span className="block w-1 h-1 rounded-full bg-cc-muted/40" />
+                        )}
+                      </span>
+                      <span className="shrink-0 text-[13px]">{f.isDir ? (f.isOpen ? "\uD83D\uDCC2" : "\uD83D\uDCC1") : f.isMd ? "\uD83D\uDCDD" : "\uD83D\uDCC4"}</span>
+                      <span className="truncate flex-1 text-cc-fg">{f.name}</span>
+                      {!f.isDir && f.size && (
+                        <span className="shrink-0 text-[10px] text-cc-muted tabular-nums">{f.size}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+
+            <Card label="Markdown preview — README.md">
+              <div className="w-[280px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+                {/* Preview header with back button */}
+                <div className="flex items-center gap-1.5 px-3 py-2 border-b border-cc-border">
+                  <button className="shrink-0 flex items-center gap-1 text-[11px] text-cc-muted hover:text-cc-fg transition-colors cursor-pointer">
+                    <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
+                      <path fillRule="evenodd" d="M11.354 1.646a.5.5 0 010 .708L5.707 8l5.647 5.646a.5.5 0 01-.708.708l-6-6a.5.5 0 010-.708l6-6a.5.5 0 01.708 0z" clipRule="evenodd" />
+                    </svg>
+                    Back
+                  </button>
+                  <span className="text-[11px] text-cc-muted truncate flex-1">README.md</span>
+                </div>
+                {/* Preview content */}
+                <div className="px-3 py-2 overflow-y-auto" style={{ maxHeight: 300 }}>
+                  <div className="text-[12px] text-cc-fg leading-relaxed space-y-2">
+                    <h1 className="text-base font-bold text-cc-fg mt-1 mb-1.5">The Companion</h1>
+                    <p className="mb-2">A web UI for Claude Code &amp; Codex. Browser-based interface for running multiple Claude Code sessions.</p>
+                    <h2 className="text-sm font-bold text-cc-fg mt-2.5 mb-1">Quick Start</h2>
+                    <div className="my-1.5 rounded-lg overflow-hidden border border-cc-border">
+                      <div className="px-2 py-1 bg-cc-code-bg/80 border-b border-cc-border text-[9px] text-cc-muted font-mono-code uppercase tracking-wider">bash</div>
+                      <pre className="px-2 py-1.5 bg-cc-code-bg text-cc-code-fg text-[11px] font-mono-code leading-relaxed">
+                        <code>bun install{"\n"}bun run dev</code>
+                      </pre>
+                    </div>
+                    <h2 className="text-sm font-bold text-cc-fg mt-2.5 mb-1">Features</h2>
+                    <ul className="list-disc pl-4 mb-2 space-y-0.5">
+                      <li className="text-cc-fg">Multi-session management</li>
+                      <li className="text-cc-fg">Tool call visibility</li>
+                      <li className="text-cc-fg">Permission control</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card label="No workspace — empty state">
+              <div className="w-[280px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+                <div className="shrink-0 px-4 py-3">
+                  <p className="text-xs text-cc-muted text-center py-4">No workspace directory available</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card label="Error state">
+              <div className="w-[280px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-cc-border">
+                  <span className="text-[11px] text-cc-muted uppercase tracking-wider">Files</span>
+                </div>
+                <div className="px-1 py-1">
+                  <p className="text-xs text-cc-error text-center py-4">Permission denied: /root/project</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </Section>
+
         {/* ─── Session Items ──────────────────────────────────── */}
         <Section title="Session Items" description="Sidebar session rows — status dot, backend badge, Docker indicator, archive on hover">
           <PlaygroundSessionItems />
