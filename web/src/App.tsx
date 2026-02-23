@@ -25,6 +25,7 @@ const PromptsPage = lazy(() => import("./components/PromptsPage.js").then((m) =>
 const EnvManager = lazy(() => import("./components/EnvManager.js").then((m) => ({ default: m.EnvManager })));
 const CronManager = lazy(() => import("./components/CronManager.js").then((m) => ({ default: m.CronManager })));
 const TerminalPage = lazy(() => import("./components/TerminalPage.js").then((m) => ({ default: m.TerminalPage })));
+const WorkspaceFullscreen = lazy(() => import("./components/WorkspaceFullscreen.js").then((m) => ({ default: m.WorkspaceFullscreen })));
 
 function LazyFallback() {
   return (
@@ -65,6 +66,7 @@ export default function App() {
   const isTerminalPage = route.page === "terminal";
   const isEnvironmentsPage = route.page === "environments";
   const isScheduledPage = route.page === "scheduled";
+  const isPreviewPage = route.page === "preview";
   const isSessionView = route.page === "session" || route.page === "home";
 
   useEffect(() => {
@@ -221,6 +223,19 @@ export default function App() {
           {isScheduledPage && (
             <div className="absolute inset-0">
               <Suspense fallback={<LazyFallback />}><CronManager embedded /></Suspense>
+            </div>
+          )}
+
+          {isPreviewPage && route.filePath && (
+            <div className="absolute inset-0">
+              <Suspense fallback={<LazyFallback />}>
+                <WorkspaceFullscreen
+                  sessionId=""
+                  initialFile={route.filePath}
+                  cwd={route.filePath.substring(0, route.filePath.lastIndexOf("/")) || "/"}
+                  onClose={() => { window.location.hash = "#/"; }}
+                />
+              </Suspense>
             </div>
           )}
 

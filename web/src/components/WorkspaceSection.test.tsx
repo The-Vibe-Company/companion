@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
@@ -12,6 +13,34 @@ vi.mock("react-markdown", () => ({
 }));
 vi.mock("remark-gfm", () => ({
   default: () => {},
+}));
+
+// Mock createPortal to render inline instead of to document.body
+// This is necessary because createPortal renders outside the test container,
+// making it invisible to testing-library queries.
+vi.mock("react-dom", async () => {
+  const actual = await vi.importActual("react-dom");
+  return {
+    ...actual,
+    createPortal: (children: React.ReactNode) => children,
+  };
+});
+
+// Mock WorkspaceFullscreen component with a minimal testable stand-in
+// that exposes the initialFile prop and provides a close button for interaction tests.
+vi.mock("./WorkspaceFullscreen.js", () => ({
+  WorkspaceFullscreen: ({
+    initialFile,
+    onClose,
+  }: {
+    initialFile?: string | null;
+    onClose: () => void;
+    sessionId: string;
+  }) => (
+    <div data-testid="workspace-fullscreen" data-file={initialFile}>
+      <button onClick={onClose}>Close Fullscreen</button>
+    </div>
+  ),
 }));
 
 // Mock react-arborist — provides a minimal tree component that renders nodes
@@ -178,16 +207,15 @@ describe("WorkspaceSection file tree loading", () => {
   });
 });
 
-// ─── Markdown preview ───────────────────────────────────────────────────────
+// ─── Fullscreen preview on .md click ────────────────────────────────────────
 
 describe("WorkspaceSection markdown preview", () => {
   /**
-   * Clicking a .md file should call api.readFile with the file's full path
-   * and then render the markdown content in a preview pane.
+   * Clicking a .md file should open the fullscreen workspace overlay
+   * with the file path passed as initialFile. The component now uses
+   * createPortal + WorkspaceFullscreen instead of inline MarkdownPreview.
    */
-  it("opens markdown preview when clicking a .md file", async () => {
-    mockReadFile.mockResolvedValue({ content: "# Hello World\n\nSome content" });
-
+  it("opens fullscreen when clicking a .md file", async () => {
     render(<WorkspaceSection sessionId="test-session" />);
 
     // Wait for tree to load
@@ -195,53 +223,43 @@ describe("WorkspaceSection markdown preview", () => {
       expect(screen.getByTestId("tree-node-README.md")).toBeTruthy();
     });
 
-    // Click the .md file to trigger preview
+    // Click the .md file to trigger fullscreen overlay
     fireEvent.click(screen.getByTestId("tree-node-README.md"));
 
-    // api.readFile should be called with the full path
+    // WorkspaceFullscreen should be rendered with the file path
     await waitFor(() => {
-      expect(mockReadFile).toHaveBeenCalledWith("/test/project/README.md");
-    });
-
-    // Markdown content should be rendered via the mock react-markdown
-    await waitFor(() => {
-      expect(screen.getByTestId("markdown-preview")).toBeTruthy();
-      expect(screen.getByTestId("markdown-preview").textContent).toBe(
-        "# Hello World\n\nSome content",
-      );
+      expect(screen.getByTestId("workspace-fullscreen")).toBeTruthy();
     });
   });
 });
 
-// ─── Back navigation ────────────────────────────────────────────────────────
+// ─── Close fullscreen ────────────────────────────────────────────────────────
 
-describe("WorkspaceSection back navigation", () => {
+describe("WorkspaceSection close fullscreen", () => {
   /**
-   * From the markdown preview, clicking the "Back" button should
-   * return to the file tree view.
+   * From the fullscreen overlay, clicking "Close Fullscreen" should
+   * dismiss the overlay and return to the file tree view.
    */
-  it("navigates back to file tree from markdown preview", async () => {
-    mockReadFile.mockResolvedValue({ content: "# Test" });
-
+  it("closes fullscreen and returns to file tree", async () => {
     render(<WorkspaceSection sessionId="test-session" />);
 
-    // Wait for tree, then open preview
+    // Wait for tree, then open fullscreen via .md click
     await waitFor(() => {
       expect(screen.getByTestId("tree-node-README.md")).toBeTruthy();
     });
     fireEvent.click(screen.getByTestId("tree-node-README.md"));
 
-    // Wait for preview to appear
+    // Wait for fullscreen overlay to appear
     await waitFor(() => {
-      expect(screen.getByText("Back")).toBeTruthy();
+      expect(screen.getByTestId("workspace-fullscreen")).toBeTruthy();
     });
 
-    // Click back button
-    fireEvent.click(screen.getByText("Back"));
+    // Click close button on the fullscreen overlay
+    fireEvent.click(screen.getByText("Close Fullscreen"));
 
-    // File tree should be visible again
+    // Fullscreen should be dismissed
     await waitFor(() => {
-      expect(screen.getByTestId("file-tree")).toBeTruthy();
+      expect(screen.queryByTestId("workspace-fullscreen")).toBeNull();
     });
   });
 });
@@ -289,6 +307,31 @@ describe("WorkspaceSection refresh", () => {
     // listEntries should be called again
     await waitFor(() => {
       expect(mockListEntries).toHaveBeenCalledTimes(2);
+    });
+  });
+});
+
+// ─── Fullscreen expand button ────────────────────────────────────────────────
+
+describe("WorkspaceSection fullscreen button", () => {
+  /**
+   * The header bar includes an expand button (title="Open fullscreen workspace")
+   * that opens the fullscreen overlay without requiring a file click first.
+   */
+  it("renders an expand button that opens fullscreen", async () => {
+    render(<WorkspaceSection sessionId="test-session" />);
+
+    // Wait for the expand button to be available in the header
+    await waitFor(() => {
+      expect(screen.getByTitle("Open fullscreen workspace")).toBeTruthy();
+    });
+
+    // Click the expand button to open fullscreen
+    fireEvent.click(screen.getByTitle("Open fullscreen workspace"));
+
+    // WorkspaceFullscreen overlay should appear
+    await waitFor(() => {
+      expect(screen.getByTestId("workspace-fullscreen")).toBeTruthy();
     });
   });
 });
