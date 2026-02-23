@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { readdir, readFile, stat, writeFile, mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -57,10 +58,18 @@ function contentDisposition(fileName: string): string {
   return `attachment; filename="${encoded}"; filename*=UTF-8''${encoded}`;
 }
 
-/** Ensure the resolved path is within the user's home directory to prevent path traversal. */
+/** Ensure the resolved path is within the user's home directory to prevent path traversal.
+ *  Uses realpathSync to resolve symlinks before checking, preventing symlink-based bypass. */
 function assertWithinHome(absPath: string): void {
   const home = homedir();
-  if (!absPath.startsWith(home + "/") && absPath !== home) {
+  let realPath: string;
+  try {
+    realPath = realpathSync(absPath);
+  } catch {
+    // Path doesn't exist yet — use the original path (subsequent file operations will fail naturally)
+    realPath = absPath;
+  }
+  if (!realPath.startsWith(home + "/") && realPath !== home) {
     throw new Error("Path outside home directory");
   }
 }
@@ -116,6 +125,7 @@ export function registerFsRoutes(api: Hono): void {
           );
           if (revParseResult.exitCode !== 0) throw new Error("not a git repo");
           const repoRoot = revParseResult.stdout.toString().trim();
+          assertWithinHome(repoRoot); // Ensure git repo root is also within home directory
           const lsFilesResult = Bun.spawnSync(
             ["git", "-C", repoRoot, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", basePath + "/"],
             { stdout: "pipe", stderr: "pipe" },
@@ -216,6 +226,11 @@ export function registerFsRoutes(api: Hono): void {
       const info = await stat(absPath);
       if (!info.isDirectory()) return c.json({ error: "Not a directory" }, 400);
       const dirName = basename(absPath) || "archive";
+      // Defense-in-depth: basename() should never return a string with path separators,
+      // but verify to prevent archive path injection via --prefix
+      if (/[/\\]/.test(dirName)) {
+        return c.json({ error: "Invalid directory name" }, 400);
+      }
 
       let zipBuffer: Buffer;
       try {
@@ -225,6 +240,7 @@ export function registerFsRoutes(api: Hono): void {
         );
         if (revParseResult.exitCode !== 0) throw new Error("not a git repo");
         const repoRoot = revParseResult.stdout.toString().trim();
+        assertWithinHome(repoRoot); // Ensure git repo root is also within home directory
         const relPath =
           absPath.startsWith(repoRoot)
             ? absPath.slice(repoRoot.length + 1) || "."
@@ -290,6 +306,9 @@ export function registerFsRoutes(api: Hono): void {
     const rawPath = c.req.query("path");
     if (!rawPath) return c.json({ error: "path required" }, 400);
     const basePath = resolve(rawPath);
+    try { assertWithinHome(basePath); } catch {
+      return c.json({ error: "Path outside home directory" }, 403);
+    }
 
     interface TreeNode {
       name: string;
@@ -336,6 +355,9 @@ export function registerFsRoutes(api: Hono): void {
     const filePath = c.req.query("path");
     if (!filePath) return c.json({ error: "path required" }, 400);
     const absPath = resolve(filePath);
+    try { assertWithinHome(absPath); } catch {
+      return c.json({ error: "Path outside home directory" }, 403);
+    }
     try {
       const info = await stat(absPath);
       if (info.size > 2 * 1024 * 1024) {
@@ -358,6 +380,9 @@ export function registerFsRoutes(api: Hono): void {
       return c.json({ error: "path and content required" }, 400);
     }
     const absPath = resolve(filePath);
+    try { assertWithinHome(absPath); } catch {
+      return c.json({ error: "Path outside home directory" }, 403);
+    }
     try {
       await writeFile(absPath, content, "utf-8");
       return c.json({ ok: true, path: absPath });
