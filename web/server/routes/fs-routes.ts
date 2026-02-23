@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { readdir, readFile, stat, writeFile, mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import type { Hono } from "hono";
 
 function shellEscapeArg(value: string): string {
@@ -48,6 +48,23 @@ function resolveBranchDiffBases(repoRoot: string): string[] {
   return ["main"];
 }
 
+/** Build a Content-Disposition header value safe for non-ASCII filenames (RFC 5987). */
+function contentDisposition(fileName: string): string {
+  // ASCII-only: use simple filename; otherwise add RFC 5987 filename* with UTF-8 encoding
+  const isAscii = /^[\x20-\x7E]+$/.test(fileName);
+  if (isAscii) return `attachment; filename="${fileName}"`;
+  const encoded = encodeURIComponent(fileName).replace(/'/g, "%27");
+  return `attachment; filename="${encoded}"; filename*=UTF-8''${encoded}`;
+}
+
+/** Ensure the resolved path is within the user's home directory to prevent path traversal. */
+function assertWithinHome(absPath: string): void {
+  const home = homedir();
+  if (!absPath.startsWith(home + "/") && absPath !== home) {
+    throw new Error("Path outside home directory");
+  }
+}
+
 export function registerFsRoutes(api: Hono): void {
   api.get("/fs/list", async (c) => {
     const rawPath = c.req.query("path") || homedir();
@@ -80,6 +97,9 @@ export function registerFsRoutes(api: Hono): void {
     const rawPath = c.req.query("path");
     if (!rawPath) return c.json({ error: "path required" }, 400);
     const basePath = resolve(rawPath);
+    try { assertWithinHome(basePath); } catch {
+      return c.json({ error: "Path outside home directory" }, 403);
+    }
     const showHidden = c.req.query("showHidden") === "true";
     const showIgnored = c.req.query("showIgnored") === "true";
 
@@ -90,15 +110,17 @@ export function registerFsRoutes(api: Hono): void {
       const ignoredFiles = new Set<string>();
       if (!showIgnored) {
         try {
-          const repoRoot = execSync("git rev-parse --show-toplevel", {
-            cwd: basePath,
-            encoding: "utf-8",
-            timeout: 3000,
-          }).trim();
-          const gitIgnored = execSync(
-            `git -C ${shellEscapeArg(repoRoot)} ls-files --others --ignored --exclude-standard --directory ${shellEscapeArg(basePath + "/")}`,
-            { encoding: "utf-8", timeout: 5000 },
-          ).trim();
+          const revParseResult = Bun.spawnSync(
+            ["git", "rev-parse", "--show-toplevel"],
+            { cwd: basePath, stdout: "pipe", stderr: "pipe" },
+          );
+          if (revParseResult.exitCode !== 0) throw new Error("not a git repo");
+          const repoRoot = revParseResult.stdout.toString().trim();
+          const lsFilesResult = Bun.spawnSync(
+            ["git", "-C", repoRoot, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", basePath + "/"],
+            { stdout: "pipe", stderr: "pipe" },
+          );
+          const gitIgnored = (lsFilesResult.stdout?.toString() || "").trim();
           for (const line of gitIgnored.split("\n")) {
             if (line.trim()) {
               const name = line.trim().replace(/\/$/, "").split("/").pop();
@@ -159,15 +181,18 @@ export function registerFsRoutes(api: Hono): void {
     const filePath = c.req.query("path");
     if (!filePath) return c.json({ error: "path required" }, 400);
     const absPath = resolve(filePath);
+    try { assertWithinHome(absPath); } catch {
+      return c.json({ error: "Path outside home directory" }, 403);
+    }
     try {
       const info = await stat(absPath);
       if (!info.isFile()) return c.json({ error: "Not a file" }, 400);
       const file = Bun.file(absPath);
-      const fileName = absPath.split("/").pop() || "download";
+      const fileName = basename(absPath) || "download";
       return new Response(file.stream(), {
         headers: {
           "Content-Type": file.type || "application/octet-stream",
-          "Content-Disposition": `attachment; filename="${fileName}"`,
+          "Content-Disposition": contentDisposition(fileName),
           "Content-Length": String(info.size),
         },
       });
@@ -184,18 +209,22 @@ export function registerFsRoutes(api: Hono): void {
     const dirPath = c.req.query("path");
     if (!dirPath) return c.json({ error: "path required" }, 400);
     const absPath = resolve(dirPath);
+    try { assertWithinHome(absPath); } catch {
+      return c.json({ error: "Path outside home directory" }, 403);
+    }
     try {
       const info = await stat(absPath);
       if (!info.isDirectory()) return c.json({ error: "Not a directory" }, 400);
-      const dirName = absPath.split("/").pop() || "archive";
+      const dirName = basename(absPath) || "archive";
 
       let zipBuffer: Buffer;
       try {
-        const repoRoot = execSync("git rev-parse --show-toplevel", {
-          cwd: absPath,
-          encoding: "utf-8",
-          timeout: 3000,
-        }).trim();
+        const revParseResult = Bun.spawnSync(
+          ["git", "rev-parse", "--show-toplevel"],
+          { cwd: absPath, stdout: "pipe", stderr: "pipe" },
+        );
+        if (revParseResult.exitCode !== 0) throw new Error("not a git repo");
+        const repoRoot = revParseResult.stdout.toString().trim();
         const relPath =
           absPath.startsWith(repoRoot)
             ? absPath.slice(repoRoot.length + 1) || "."
@@ -233,7 +262,7 @@ export function registerFsRoutes(api: Hono): void {
       return new Response(new Uint8Array(zipBuffer), {
         headers: {
           "Content-Type": "application/zip",
-          "Content-Disposition": `attachment; filename="${dirName}.zip"`,
+          "Content-Disposition": contentDisposition(`${dirName}.zip`),
           "Content-Length": String(zipBuffer.length),
         },
       });
