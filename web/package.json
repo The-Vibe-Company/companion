@@ -36,7 +36,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:a11y": "vitest run --testNamePattern='axe accessibility|accessible names|aria-expanded'",
-    "test:codex-contract": "vitest run server/codex-protocol-*.test.ts"
+    "test:codex-contract": "vitest run server/codex-protocol-*.test.ts",
+    "generate-token": "bun bin/generate-token.ts"
   },
   "dependencies": {
     "@codemirror/view": "^6.39.15",
@@ -44,7 +45,8 @@
     "croner": "^10.0.1",
     "diff": "^8.0.3",
     "hono": "^4.7.0",
-    "posthog-js": "^1.347.2"
+    "posthog-js": "^1.347.2",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
@@ -53,6 +55,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/bun": "^1.2.5",
     "@types/diff": "^8.0.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.4.0",

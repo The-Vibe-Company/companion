@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { setCookie } from "hono/cookie";
 import { streamSSE, type SSEStreamingApi } from "hono/streaming";
 import { execSync } from "node:child_process";
 import { resolveBinary } from "./path-resolver.js";
@@ -29,6 +30,8 @@ import { registerSettingsRoutes } from "./routes/settings-routes.js";
 import { registerGitRoutes } from "./routes/git-routes.js";
 import { registerSystemRoutes } from "./routes/system-routes.js";
 import { registerLinearRoutes } from "./routes/linear-routes.js";
+import { verifyToken, getToken, regenerateToken, getAllAddresses } from "./auth-manager.js";
+import QRCode from "qrcode";
 import { discoverClaudeSessions } from "./claude-session-discovery.js";
 import { getClaudeSessionHistoryPage } from "./claude-session-history.js";
 
@@ -53,6 +56,108 @@ export function createRoutes(
   cronScheduler?: import("./cron-scheduler.js").CronScheduler,
 ) {
   const api = new Hono();
+
+  // ─── Auth endpoints (exempt from auth middleware) ──────────────────
+
+  api.post("/auth/verify", async (c) => {
+    const body = await c.req.json().catch(() => ({} as { token?: string }));
+    if (verifyToken(body.token)) {
+      // Set cookie so the dynamic manifest can embed the token in start_url.
+      // This bridges auth from Safari to standalone PWA on iOS (isolated storage).
+      setCookie(c, "companion_auth", body.token!, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "Strict",
+        maxAge: 365 * 24 * 60 * 60,
+      });
+      return c.json({ ok: true });
+    }
+    return c.json({ error: "Invalid token" }, 401);
+  });
+
+  api.get("/auth/qr", async (c) => {
+    // QR endpoint requires auth — only authenticated users can generate QR for mobile
+    const authHeader = c.req.header("Authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!isLocalhostRequest(c) && !verifyToken(token)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+
+    const port = Number(process.env.PORT) || (process.env.NODE_ENV === "production" ? 3456 : 3457);
+    const authToken = getToken();
+
+    // Build QR codes for each remote address (skip localhost — it auto-auths).
+    // Each QR encodes the full login URL so the native iPhone Camera app can
+    // open it directly: scan → tap popup → Safari opens → auto-authenticated.
+    const addresses = getAllAddresses().filter((a) => a.ip !== "localhost");
+    const qrCodes = await Promise.all(
+      addresses.map(async (a) => {
+        const loginUrl = `http://${a.ip}:${port}/?token=${authToken}`;
+        const qrDataUrl = await QRCode.toDataURL(loginUrl, { width: 256, margin: 2 });
+        return { label: a.label, url: `http://${a.ip}:${port}`, qrDataUrl };
+      }),
+    );
+
+    return c.json({ qrCodes });
+  });
+
+  // ─── Localhost auto-auth (exempt from auth middleware) ────────────
+  // Localhost users are on the same machine as the server, so they can
+  // auto-authenticate without a token. This makes first-launch seamless.
+
+  // Check if the request comes from localhost (same machine as the server).
+  function isLocalhostRequest(c: { env: unknown; req: { raw: Request } }): boolean {
+    const bunServer = c.env as { requestIP?: (req: Request) => { address: string } | null };
+    const ip = bunServer?.requestIP?.(c.req.raw);
+    const addr = ip?.address ?? "";
+    return addr === "127.0.0.1" || addr === "::1" || addr === "::ffff:127.0.0.1";
+  }
+
+  api.get("/auth/auto", (c) => {
+    if (isLocalhostRequest(c)) {
+      const token = getToken();
+      setCookie(c, "companion_auth", token, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "Strict",
+        maxAge: 365 * 24 * 60 * 60,
+      });
+      return c.json({ ok: true, token });
+    }
+    return c.json({ ok: false });
+  });
+
+  // ─── Auth middleware (protects all routes below) ───────────────────
+
+  api.use("/*", async (c, next) => {
+    // Skip auth for the verify endpoint (handled above)
+    if (c.req.path === "/auth/verify") {
+      return next();
+    }
+
+    // Localhost bypass — same machine as the server, always trusted
+    if (isLocalhostRequest(c)) {
+      return next();
+    }
+
+    const authHeader = c.req.header("Authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!verifyToken(token)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    return next();
+  });
+
+  // ─── Auth management (protected) ──────────────────────────────────
+
+  api.get("/auth/token", (c) => {
+    return c.json({ token: getToken() });
+  });
+
+  api.post("/auth/regenerate", (c) => {
+    const token = regenerateToken();
+    return c.json({ token });
+  });
 
   // ─── SDK Sessions (--sdk-url) ─────────────────────────────────────
 

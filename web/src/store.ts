@@ -3,6 +3,8 @@ import type { SessionState, PermissionRequest, ChatMessage, SdkSessionInfo, Task
 import type { UpdateInfo, PRStatusResponse, CreationProgressEvent, LinearIssue } from "./api.js";
 import { type TaskPanelConfig, getInitialTaskPanelConfig, getDefaultConfig, persistTaskPanelConfig, SECTION_DEFINITIONS } from "./components/task-panel-sections.js";
 
+const AUTH_STORAGE_KEY = "cc-auth-token";
+
 /** Delete a key from a Map, returning the same reference if the key wasn't present. */
 function deleteFromMap<K, V>(map: Map<K, V>, key: K): Map<K, V> {
   if (!map.has(key)) return map;
@@ -87,6 +89,10 @@ interface AppState {
 
   // Sidebar project grouping
   collapsedProjects: Set<string>;
+
+  // Auth
+  authToken: string | null;
+  isAuthenticated: boolean;
 
   // Update info
   updateInfo: UpdateInfo | null;
@@ -188,6 +194,10 @@ interface AppState {
   setConnectionStatus: (sessionId: string, status: "connecting" | "connected" | "disconnected") => void;
   setCliConnected: (sessionId: string, connected: boolean) => void;
   setSessionStatus: (sessionId: string, status: "idle" | "running" | "compacting" | null) => void;
+
+  // Auth actions
+  setAuthToken: (token: string) => void;
+  logout: () => void;
 
   // Update actions
   setUpdateInfo: (info: UpdateInfo | null) => void;
@@ -299,6 +309,11 @@ function getInitialDiffBase(): DiffBase {
   return "last-commit";
 }
 
+function getInitialAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(AUTH_STORAGE_KEY) || null;
+}
+
 export const useStore = create<AppState>((set) => ({
   sessions: new Map(),
   sdkSessions: [],
@@ -322,6 +337,8 @@ export const useStore = create<AppState>((set) => ({
   mcpServers: new Map(),
   toolProgress: new Map(),
   collapsedProjects: getInitialCollapsedProjects(),
+  authToken: getInitialAuthToken(),
+  isAuthenticated: getInitialAuthToken() !== null,
   creationProgress: null,
   creationError: null,
   sessionCreating: false,
@@ -732,6 +749,15 @@ export const useStore = create<AppState>((set) => ({
       sessionStatus.set(sessionId, status);
       return { sessionStatus };
     }),
+
+  setAuthToken: (token) => {
+    localStorage.setItem(AUTH_STORAGE_KEY, token);
+    set({ authToken: token, isAuthenticated: true });
+  },
+  logout: () => {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    set({ authToken: null, isAuthenticated: false });
+  },
 
   setUpdateInfo: (info) => set({ updateInfo: info }),
   dismissUpdate: (version) => {

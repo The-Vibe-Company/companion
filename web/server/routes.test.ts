@@ -49,6 +49,18 @@ vi.mock("./git-utils.js", () => ({
   isWorktreeDirty: vi.fn(() => false),
 }));
 
+// Auth: always verify tokens as valid in tests, bypass auth middleware
+vi.mock("./auth-manager.js", () => ({
+  verifyToken: vi.fn(() => true),
+  getToken: vi.fn(() => "test-token"),
+  regenerateToken: vi.fn(() => "new-test-token"),
+  getAllAddresses: vi.fn(() => []),
+}));
+
+vi.mock("qrcode", () => ({
+  default: { toDataURL: vi.fn(() => Promise.resolve("data:image/png;base64,mock")) },
+}));
+
 vi.mock("./session-names.js", () => ({
   getName: vi.fn(() => undefined),
   setName: vi.fn(),

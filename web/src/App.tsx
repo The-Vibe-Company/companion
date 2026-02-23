@@ -4,6 +4,7 @@ import { connectSession } from "./ws.js";
 import { api } from "./api.js";
 import { capturePageView } from "./analytics.js";
 import { parseHash, navigateToSession } from "./utils/routing.js";
+import { LoginPage } from "./components/LoginPage.js";
 import { Sidebar } from "./components/Sidebar.js";
 import { ChatView } from "./components/ChatView.js";
 import { TopBar } from "./components/TopBar.js";
@@ -43,6 +44,7 @@ function useHash() {
 
 export default function App() {
   const darkMode = useStore((s) => s.darkMode);
+  const isAuthenticated = useStore((s) => s.isAuthenticated);
   const currentSessionId = useStore((s) => s.currentSessionId);
   const sidebarOpen = useStore((s) => s.sidebarOpen);
   const taskPanelOpen = useStore((s) => s.taskPanelOpen);
@@ -153,6 +155,11 @@ export default function App() {
 
   if (route.page === "playground") {
     return <Suspense fallback={<LazyFallback />}><Playground /></Suspense>;
+  }
+
+  // Auth gate: show login page when not authenticated
+  if (!isAuthenticated) {
+    return <LoginPage />;
   }
 
   return (

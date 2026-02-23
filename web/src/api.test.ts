@@ -104,7 +104,8 @@ describe("listSessions", () => {
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toBe("/api/sessions");
-    expect(opts).toBeUndefined();
+    // GET requests now include auth headers (empty when no token is set)
+    expect(opts).toEqual({ headers: {} });
     expect(result).toEqual(sessions);
   });
 });
@@ -130,7 +131,7 @@ describe("discoverClaudeSessions", () => {
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toBe("/api/claude/sessions/discover?limit=250");
-    expect(opts).toBeUndefined();
+    expect(opts).toEqual({ headers: {} });
     expect(result).toEqual(payload);
   });
 });
@@ -151,7 +152,7 @@ describe("getClaudeSessionHistory", () => {
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toBe("/api/claude/sessions/session-1/history?cursor=20&limit=20");
-    expect(opts).toBeUndefined();
+    expect(opts).toEqual({ headers: {} });
     expect(result).toEqual(payload);
   });
 });
