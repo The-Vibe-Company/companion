@@ -317,6 +317,13 @@ export interface TreeNode {
   children?: TreeNode[];
 }
 
+export interface FileEntry {
+  name: string;
+  type: "file" | "directory";
+  size?: number;
+  mtime?: string;
+}
+
 export interface UpdateInfo {
   currentVersion: string;
   latestVersion: string | null;
@@ -627,6 +634,32 @@ export const api = {
     get<DirListResult>(
       `/fs/list${path ? `?path=${encodeURIComponent(path)}` : ""}`,
     ),
+
+  listEntries: (
+    path: string,
+    opts?: { showHidden?: boolean; showIgnored?: boolean },
+  ) => {
+    const params = new URLSearchParams({ path });
+    if (opts?.showHidden) params.set("showHidden", "true");
+    if (opts?.showIgnored) params.set("showIgnored", "true");
+    return get<{ path: string; entries: FileEntry[] }>(
+      `/fs/list-entries?${params}`,
+    );
+  },
+
+  downloadFile: (path: string) => {
+    window.open(
+      `${BASE}/fs/download?path=${encodeURIComponent(path)}`,
+      "_blank",
+    );
+  },
+
+  downloadZip: (path: string) => {
+    window.open(
+      `${BASE}/fs/download-zip?path=${encodeURIComponent(path)}`,
+      "_blank",
+    );
+  },
 
   getHome: () => get<{ home: string; cwd: string }>("/fs/home"),
 

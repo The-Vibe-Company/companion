@@ -32,7 +32,7 @@ describe("getInitialTaskPanelConfig", () => {
   it("restores a valid saved config from localStorage", () => {
     // Save a config with a custom order and one section disabled
     const saved = {
-      order: ["tasks", "git-branch", "usage-limits", "github-pr", "linear-issue", "mcp-servers"],
+      order: ["tasks", "git-branch", "usage-limits", "github-pr", "linear-issue", "mcp-servers", "workspace"],
       enabled: {
         "usage-limits": true,
         "git-branch": true,
@@ -40,6 +40,7 @@ describe("getInitialTaskPanelConfig", () => {
         "linear-issue": true,
         "mcp-servers": true,
         "tasks": true,
+        "workspace": true,
       },
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
@@ -66,10 +67,10 @@ describe("getInitialTaskPanelConfig", () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
 
     const config = getInitialTaskPanelConfig();
-    // The two missing sections should be appended at the end
+    // The missing sections should be appended at the end
     expect(config.order).toEqual([
       "usage-limits", "git-branch", "github-pr", "linear-issue",
-      "mcp-servers", "tasks",
+      "mcp-servers", "tasks", "workspace",
     ]);
     // New sections should be enabled by default
     expect(config.enabled["mcp-servers"]).toBe(true);
@@ -97,9 +98,9 @@ describe("getInitialTaskPanelConfig", () => {
     const config = getInitialTaskPanelConfig();
     // "old-removed-section" should be filtered out
     expect(config.order).not.toContain("old-removed-section");
-    // All valid sections should remain in their saved order
+    // All valid sections should remain in their saved order (workspace appended as new)
     expect(config.order).toEqual([
-      "usage-limits", "git-branch", "github-pr", "linear-issue", "mcp-servers", "tasks",
+      "usage-limits", "git-branch", "github-pr", "linear-issue", "mcp-servers", "tasks", "workspace",
     ]);
   });
 
@@ -125,7 +126,8 @@ describe("getInitialTaskPanelConfig", () => {
     expect(config.order).toContain("linear-issue");
     expect(config.order).toContain("mcp-servers");
     expect(config.order).toContain("tasks");
-    expect(config.order.length).toBe(6);
+    expect(config.order).toContain("workspace");
+    expect(config.order.length).toBe(7);
   });
 
   it("returns defaults when localStorage contains corrupted JSON", () => {

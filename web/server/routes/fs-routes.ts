@@ -1,7 +1,8 @@
 import { execSync } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { readdir, readFile, stat, writeFile, mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import type { Hono } from "hono";
 
 function shellEscapeArg(value: string): string {
@@ -48,6 +49,31 @@ function resolveBranchDiffBases(repoRoot: string): string[] {
   return ["main"];
 }
 
+/** Build a Content-Disposition header value safe for non-ASCII filenames (RFC 5987). */
+function contentDisposition(fileName: string): string {
+  // ASCII-only: use simple filename; otherwise add RFC 5987 filename* with UTF-8 encoding
+  const isAscii = /^[\x20-\x7E]+$/.test(fileName);
+  if (isAscii) return `attachment; filename="${fileName}"`;
+  const encoded = encodeURIComponent(fileName).replace(/'/g, "%27");
+  return `attachment; filename="${encoded}"; filename*=UTF-8''${encoded}`;
+}
+
+/** Ensure the resolved path is within the user's home directory to prevent path traversal.
+ *  Uses realpathSync to resolve symlinks before checking, preventing symlink-based bypass. */
+function assertWithinHome(absPath: string): void {
+  const home = homedir();
+  let realPath: string;
+  try {
+    realPath = realpathSync(absPath);
+  } catch {
+    // Path doesn't exist yet — use the original path (subsequent file operations will fail naturally)
+    realPath = absPath;
+  }
+  if (!realPath.startsWith(home + "/") && realPath !== home) {
+    throw new Error("Path outside home directory");
+  }
+}
+
 export function registerFsRoutes(api: Hono): void {
   api.get("/fs/list", async (c) => {
     const rawPath = c.req.query("path") || homedir();
@@ -75,6 +101,200 @@ export function registerFsRoutes(api: Hono): void {
     }
   });
 
+  // List files AND directories (unlike /fs/list which only lists directories)
+  api.get("/fs/list-entries", async (c) => {
+    const rawPath = c.req.query("path");
+    if (!rawPath) return c.json({ error: "path required" }, 400);
+    const basePath = resolve(rawPath);
+    try { assertWithinHome(basePath); } catch {
+      return c.json({ error: "Path outside home directory" }, 403);
+    }
+    const showHidden = c.req.query("showHidden") === "true";
+    const showIgnored = c.req.query("showIgnored") === "true";
+
+    try {
+      const dirEntries = await readdir(basePath, { withFileTypes: true });
+
+      // Build set of git-ignored files if in a git repo and showIgnored is false
+      const ignoredFiles = new Set<string>();
+      if (!showIgnored) {
+        try {
+          const revParseResult = Bun.spawnSync(
+            ["git", "rev-parse", "--show-toplevel"],
+            { cwd: basePath, stdout: "pipe", stderr: "pipe" },
+          );
+          if (revParseResult.exitCode !== 0) throw new Error("not a git repo");
+          const repoRoot = revParseResult.stdout.toString().trim();
+          assertWithinHome(repoRoot); // Ensure git repo root is also within home directory
+          // Resolve basePath symlinks before passing to git to prevent following links outside home
+          let resolvedBasePath: string;
+          try {
+            resolvedBasePath = realpathSync(basePath);
+          } catch {
+            resolvedBasePath = basePath;
+          }
+          const lsFilesResult = Bun.spawnSync(
+            ["git", "-C", repoRoot, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", resolvedBasePath + "/"],
+            { stdout: "pipe", stderr: "pipe" },
+          );
+          const gitIgnored = (lsFilesResult.stdout?.toString() || "").trim();
+          for (const line of gitIgnored.split("\n")) {
+            if (line.trim()) {
+              const name = line.trim().replace(/\/$/, "").split("/").pop();
+              if (name) ignoredFiles.add(name);
+            }
+          }
+        } catch {
+          // Not a git repo — skip ignore filtering
+        }
+      }
+
+      interface DirEntry {
+        name: string;
+        type: "file" | "directory";
+        size?: number;
+        mtime?: string;
+      }
+      const entries: DirEntry[] = [];
+
+      for (const entry of dirEntries) {
+        if (entry.name === ".git") continue;
+        if (!showHidden && entry.name.startsWith(".")) continue;
+        if (ignoredFiles.has(entry.name)) continue;
+
+        if (entry.isDirectory()) {
+          entries.push({ name: entry.name, type: "directory" });
+        } else if (entry.isFile()) {
+          try {
+            const info = await stat(join(basePath, entry.name));
+            entries.push({
+              name: entry.name,
+              type: "file",
+              size: info.size,
+              mtime: info.mtime.toISOString(),
+            });
+          } catch {
+            entries.push({ name: entry.name, type: "file" });
+          }
+        }
+      }
+
+      entries.sort((a, b) => {
+        if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      return c.json({ path: basePath, entries });
+    } catch {
+      return c.json(
+        { error: "Cannot read directory", path: basePath, entries: [] },
+        400,
+      );
+    }
+  });
+
+  // Download a single file
+  api.get("/fs/download", async (c) => {
+    const filePath = c.req.query("path");
+    if (!filePath) return c.json({ error: "path required" }, 400);
+    const absPath = resolve(filePath);
+    try { assertWithinHome(absPath); } catch {
+      return c.json({ error: "Path outside home directory" }, 403);
+    }
+    try {
+      const info = await stat(absPath);
+      if (!info.isFile()) return c.json({ error: "Not a file" }, 400);
+      const file = Bun.file(absPath);
+      const fileName = basename(absPath) || "download";
+      return new Response(file.stream(), {
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "Content-Disposition": contentDisposition(fileName),
+          "Content-Length": String(info.size),
+        },
+      });
+    } catch (e: unknown) {
+      return c.json(
+        { error: e instanceof Error ? e.message : "Cannot download file" },
+        404,
+      );
+    }
+  });
+
+  // Download a directory as a zip archive
+  api.get("/fs/download-zip", async (c) => {
+    const dirPath = c.req.query("path");
+    if (!dirPath) return c.json({ error: "path required" }, 400);
+    const absPath = resolve(dirPath);
+    try { assertWithinHome(absPath); } catch {
+      return c.json({ error: "Path outside home directory" }, 403);
+    }
+    try {
+      const info = await stat(absPath);
+      if (!info.isDirectory()) return c.json({ error: "Not a directory" }, 400);
+      const rawDirName = basename(absPath) || "archive";
+      // Sanitize dirName for git archive --prefix: strip path separators, null bytes,
+      // and other characters that could cause path injection or shell issues.
+      const safeDirName = rawDirName.replace(/[/\\<>:"|?*\0]/g, "_") || "archive";
+
+      let zipBuffer: Buffer;
+      try {
+        const revParseResult = Bun.spawnSync(
+          ["git", "rev-parse", "--show-toplevel"],
+          { cwd: absPath, stdout: "pipe", stderr: "pipe" },
+        );
+        if (revParseResult.exitCode !== 0) throw new Error("not a git repo");
+        const repoRoot = revParseResult.stdout.toString().trim();
+        assertWithinHome(repoRoot); // Ensure git repo root is also within home directory
+        const relPath =
+          absPath.startsWith(repoRoot)
+            ? absPath.slice(repoRoot.length + 1) || "."
+            : ".";
+        const result = Bun.spawnSync(
+          [
+            "git",
+            "archive",
+            "--format=zip",
+            `--prefix=${safeDirName}/`,
+            "HEAD",
+            relPath,
+          ],
+          { cwd: repoRoot, stdout: "pipe", stderr: "pipe" },
+        );
+        if (result.exitCode === 0 && result.stdout.length > 0) {
+          zipBuffer = Buffer.from(result.stdout);
+        } else {
+          throw new Error("git archive failed");
+        }
+      } catch {
+        const result = Bun.spawnSync(
+          ["zip", "-r", "-", ".", "-x", ".git/*", "-x", "node_modules/*"],
+          { cwd: absPath, stdout: "pipe", stderr: "pipe" },
+        );
+        if (result.exitCode !== 0)
+          return c.json({ error: "Failed to create zip archive" }, 500);
+        zipBuffer = Buffer.from(result.stdout);
+      }
+
+      if (zipBuffer.length > 100 * 1024 * 1024) {
+        return c.json({ error: "Archive too large (>100MB)" }, 413);
+      }
+
+      return new Response(new Uint8Array(zipBuffer), {
+        headers: {
+          "Content-Type": "application/zip",
+          "Content-Disposition": contentDisposition(`${safeDirName}.zip`),
+          "Content-Length": String(zipBuffer.length),
+        },
+      });
+    } catch (e: unknown) {
+      return c.json(
+        { error: e instanceof Error ? e.message : "Cannot create archive" },
+        500,
+      );
+    }
+  });
+
   api.get("/fs/home", (c) => {
     const home = homedir();
     const cwd = process.cwd();
@@ -91,6 +311,9 @@ export function registerFsRoutes(api: Hono): void {
     const rawPath = c.req.query("path");
     if (!rawPath) return c.json({ error: "path required" }, 400);
     const basePath = resolve(rawPath);
+    try { assertWithinHome(basePath); } catch {
+      return c.json({ error: "Path outside home directory" }, 403);
+    }
 
     interface TreeNode {
       name: string;
@@ -137,6 +360,9 @@ export function registerFsRoutes(api: Hono): void {
     const filePath = c.req.query("path");
     if (!filePath) return c.json({ error: "path required" }, 400);
     const absPath = resolve(filePath);
+    try { assertWithinHome(absPath); } catch {
+      return c.json({ error: "Path outside home directory" }, 403);
+    }
     try {
       const info = await stat(absPath);
       if (info.size > 2 * 1024 * 1024) {
@@ -159,6 +385,9 @@ export function registerFsRoutes(api: Hono): void {
       return c.json({ error: "path and content required" }, 400);
     }
     const absPath = resolve(filePath);
+    try { assertWithinHome(absPath); } catch {
+      return c.json({ error: "Path outside home directory" }, 403);
+    }
     try {
       await writeFile(absPath, content, "utf-8");
       return c.json({ ok: true, path: absPath });

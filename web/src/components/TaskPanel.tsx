@@ -10,6 +10,7 @@ import { formatResetTime, formatCodexResetTime, formatWindowDuration, formatToke
 import { timeAgo } from "../utils/time-ago.js";
 import { captureException } from "../analytics.js";
 import { SectionErrorBoundary } from "./SectionErrorBoundary.js";
+import { WorkspaceSection } from "./WorkspaceSection.js";
 
 const EMPTY_TASKS: TaskItem[] = [];
 const COUNTDOWN_REFRESH_MS = 30_000;
@@ -877,6 +878,7 @@ const SECTION_COMPONENTS: Record<string, ComponentType<{ sessionId: string }>> =
   "linear-issue": LinearIssueSection,
   "mcp-servers": McpSection,
   "tasks": TasksSection,
+  "workspace": WorkspaceSection,
 };
 
 // ─── Panel Config View ───────────────────────────────────────────────────────

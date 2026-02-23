@@ -8,9 +8,11 @@ export type Route =
   | { page: "terminal" }
   | { page: "environments" }
   | { page: "scheduled" }
-  | { page: "playground" };
+  | { page: "playground" }
+  | { page: "preview"; filePath: string };
 
 const SESSION_PREFIX = "#/session/";
+const PREVIEW_PREFIX = "#/preview";
 
 /**
  * Parse a window.location.hash string into a typed Route.
@@ -24,6 +26,16 @@ export function parseHash(hash: string): Route {
   if (hash === "#/environments") return { page: "environments" };
   if (hash === "#/scheduled") return { page: "scheduled" };
   if (hash === "#/playground") return { page: "playground" };
+
+  // #/preview?path=/some/file.md
+  if (hash.startsWith(PREVIEW_PREFIX)) {
+    const qIndex = hash.indexOf("?");
+    if (qIndex !== -1) {
+      const params = new URLSearchParams(hash.slice(qIndex + 1));
+      const filePath = params.get("path");
+      if (filePath) return { page: "preview", filePath };
+    }
+  }
 
   if (hash.startsWith(SESSION_PREFIX)) {
     const sessionId = hash.slice(SESSION_PREFIX.length);
