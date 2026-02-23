@@ -623,10 +623,16 @@ export const api = {
       { name },
     ),
 
-  listDirs: (path?: string) =>
-    get<DirListResult>(
-      `/fs/list${path ? `?path=${encodeURIComponent(path)}` : ""}`,
-    ),
+  listDirs: (path?: string, opts?: { showHidden?: boolean }) => {
+    const params = new URLSearchParams();
+    if (path) params.set("path", path);
+    if (opts?.showHidden) params.set("showHidden", "1");
+    const qs = params.toString();
+    return get<DirListResult>(`/fs/list${qs ? `?${qs}` : ""}`);
+  },
+
+  createDir: (path: string) =>
+    post<{ ok: boolean; path: string }>("/fs/mkdir", { path }),
 
   getHome: () => get<{ home: string; cwd: string }>("/fs/home"),
 

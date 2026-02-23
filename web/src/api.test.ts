@@ -260,6 +260,16 @@ describe("listDirs", () => {
     const [url] = mockFetch.mock.calls[0];
     expect(url).toBe("/api/fs/list");
   });
+
+  it("includes showHidden param when requested", async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ path: "/home", dirs: [], home: "/home" }));
+
+    await api.listDirs("/home/user", { showHidden: true });
+
+    const [url] = mockFetch.mock.calls[0];
+    expect(url).toContain("showHidden=1");
+    expect(url).toContain(`path=${encodeURIComponent("/home/user")}`);
+  });
 });
 
 // ===========================================================================

@@ -51,12 +51,13 @@ function resolveBranchDiffBases(repoRoot: string): string[] {
 export function registerFsRoutes(api: Hono): void {
   api.get("/fs/list", async (c) => {
     const rawPath = c.req.query("path") || homedir();
+    const showHidden = c.req.query("showHidden") === "1";
     const basePath = resolve(rawPath);
     try {
       const entries = await readdir(basePath, { withFileTypes: true });
       const dirs: { name: string; path: string }[] = [];
       for (const entry of entries) {
-        if (entry.isDirectory() && !entry.name.startsWith(".")) {
+        if (entry.isDirectory() && (showHidden || !entry.name.startsWith("."))) {
           dirs.push({ name: entry.name, path: join(basePath, entry.name) });
         }
       }
@@ -71,6 +72,22 @@ export function registerFsRoutes(api: Hono): void {
           home: homedir(),
         },
         400,
+      );
+    }
+  });
+
+  api.post("/fs/mkdir", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const { path: dirPath } = body;
+    if (!dirPath) return c.json({ error: "path required" }, 400);
+    const absPath = resolve(dirPath);
+    try {
+      await mkdir(absPath, { recursive: true });
+      return c.json({ ok: true, path: absPath });
+    } catch (e: unknown) {
+      return c.json(
+        { error: e instanceof Error ? e.message : "Cannot create directory" },
+        500,
       );
     }
   });

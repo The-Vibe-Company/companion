@@ -15,12 +15,14 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
   const [browseLoading, setBrowseLoading] = useState(false);
   const [dirInput, setDirInput] = useState("");
   const [showDirInput, setShowDirInput] = useState(false);
+  const [showHidden, setShowHidden] = useState(() => localStorage.getItem("cc-show-hidden") === "1");
   const [recentDirs] = useState<string[]>(() => getRecentDirs());
 
-  const loadDirs = useCallback(async (path?: string) => {
+  const loadDirs = useCallback(async (path?: string, hidden?: boolean) => {
     setBrowseLoading(true);
+    const useHidden = hidden ?? showHidden;
     try {
-      const result = await api.listDirs(path);
+      const result = await api.listDirs(path, { showHidden: useHidden });
       setBrowsePath(result.path);
       setBrowseDirs(result.dirs);
     } catch {
@@ -28,7 +30,7 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
     } finally {
       setBrowseLoading(false);
     }
-  }, []);
+  }, [showHidden]);
 
   useEffect(() => {
     loadDirs(initialPath || undefined);
@@ -138,6 +140,40 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
               </button>
             </>
           )}
+        </div>
+
+        {/* Options bar: show hidden + new folder */}
+        <div className="px-4 py-1.5 border-b border-cc-border flex items-center gap-3 shrink-0">
+          <label className="flex items-center gap-1.5 text-[11px] text-cc-muted cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showHidden}
+              onChange={(e) => {
+                const val = e.target.checked;
+                setShowHidden(val);
+                localStorage.setItem("cc-show-hidden", val ? "1" : "0");
+                loadDirs(browsePath, val);
+              }}
+              className="accent-cc-primary w-3 h-3"
+            />
+            Show hidden
+          </label>
+          <button
+            onClick={async () => {
+              const name = prompt("New folder name:");
+              if (!name?.trim()) return;
+              const newPath = `${browsePath}/${name.trim()}`;
+              try {
+                await api.createDir(newPath);
+                loadDirs(newPath);
+              } catch {
+                loadDirs(browsePath);
+              }
+            }}
+            className="ml-auto text-[11px] text-cc-primary hover:text-cc-fg transition-colors cursor-pointer"
+          >
+            + New Folder
+          </button>
         </div>
 
         {/* Directory browser */}
