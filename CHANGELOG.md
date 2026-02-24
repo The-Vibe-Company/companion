@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.60.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.60.0...the-companion-v0.60.1) (2026-02-24)
+
+
+### Bug Fixes
+
+* **agents:** add resilient webhook copy URL behavior ([#400](https://github.com/The-Vibe-Company/companion/issues/400)) ([07bbf9b](https://github.com/The-Vibe-Company/companion/commit/07bbf9b8e63ec9e20f0bb4ac52fd6d0d18614f71))
+
 ## [0.60.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.59.0...the-companion-v0.60.0) (2026-02-24)
 
 
