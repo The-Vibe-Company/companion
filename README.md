@@ -96,6 +96,32 @@ bun run typecheck
 bun run test
 ```
 
+## Voice Input (Speech-to-Text)
+
+The chat input bar includes a 🎤 microphone button for offline speech-to-text powered by [Transformers.js v3](https://huggingface.co/docs/transformers.js) (via Transformers.js ONNX/WASM). No server, no Python, no native binaries — everything runs in the browser.
+
+- **First use**: the model is downloaded from HuggingFace (~40 MB for the default) and cached in IndexedDB. Subsequent uses are fully offline.
+- **Push-to-talk**: click the mic to start recording, click again to transcribe. Transcribed text is appended to the input field.
+
+### Model configuration
+
+Override the default model via the `VITE_STT_MODEL` environment variable:
+
+| Model | Size | Speed (CPU/WASM) | Accuracy |
+|---|---|---|---|
+| `onnx-community/whisper-tiny` *(default)* | ~38 MB | Fast (~3–5s) | Good — multilingual |
+| `onnx-community/whisper-tiny.en` | ~38 MB | Fast (~3–5s) | Good — English only |
+| `onnx-community/whisper-base` | ~74 MB | Medium (~8s) | Better — multilingual |
+| `onnx-community/whisper-base.en` | ~74 MB | Medium (~8s) | Better — English only |
+| `onnx-community/whisper-small` | ~240 MB | Slow (~20s+) | Best — multilingual |
+
+```bash
+# Example: use base model
+VITE_STT_MODEL=onnx-community/whisper-base.en bun run dev
+```
+
+> **Note:** The server sets `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` headers to enable `SharedArrayBuffer` for WASM threading. If these headers conflict with other resources in your deployment, you can remove them — Transformers.js will fall back to single-threaded WASM (slower but functional).
+
 ## Docs
 - Protocol reverse engineering: [`WEBSOCKET_PROTOCOL_REVERSED.md`](WEBSOCKET_PROTOCOL_REVERSED.md)
 - Contributor and architecture guide: [`CLAUDE.md`](CLAUDE.md)

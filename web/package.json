@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@codemirror/view": "^6.39.15",
+    "@huggingface/transformers": "^3.8.1",
     "@uiw/react-codemirror": "^4.25.4",
     "croner": "^10.0.1",
     "diff": "^8.0.3",

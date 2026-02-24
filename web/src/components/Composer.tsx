@@ -6,6 +6,7 @@ import { api, type SavedPrompt } from "../api.js";
 import type { ModeOption } from "../utils/backends.js";
 
 import { readFileAsBase64, type ImageAttachment } from "../utils/image.js";
+import { useSTT } from "../hooks/useSTT.js";
 
 let idCounter = 0;
 
@@ -389,6 +390,25 @@ export function Composer({ sessionId }: { sessionId: string }) {
   const isRunning = sessionStatus.get(sessionId) === "running";
   const canSend = text.trim().length > 0 && isConnected;
 
+  const stt = useSTT();
+
+  // Append transcribed text to the input when a new transcript arrives
+  useEffect(() => {
+    if (!stt.transcript) return;
+    setText((prev) => (prev ? `${prev} ${stt.transcript}` : stt.transcript));
+    // Resize textarea to fit new content
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height =
+          Math.min(textareaRef.current.scrollHeight, 200) + "px";
+        const end = textareaRef.current.value.length;
+        textareaRef.current.setSelectionRange(end, end);
+        textareaRef.current.focus();
+      }
+    });
+  }, [stt.transcript]);
+
   return (
     <div className="shrink-0 px-0 sm:px-6 pt-0 sm:pt-3 pb-safe bg-cc-input-bg sm:bg-transparent">
       <div className="max-w-3xl mx-auto">
@@ -670,7 +690,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
               style={{ minHeight: "42px", maxHeight: "200px" }}
             />
 
-            {/* Desktop secondary buttons + send/stop */}
+              {/* Right: image + mic + send/stop */}
             <div className="mb-0.5 flex items-center gap-1.5 shrink-0">
               {/* Bookmark + image: desktop only */}
               <button
@@ -708,6 +728,54 @@ export function Composer({ sessionId }: { sessionId: string }) {
                   <circle cx="5.5" cy="5.5" r="1" fill="currentColor" stroke="none" />
                   <path d="M2 11l3-3 2 2 3-4 4 5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
+              </button>
+
+              {/* Mic / STT button */}
+              <button
+                onClick={() => {
+                  if (stt.status === "recording") {
+                    stt.stopRecording();
+                  } else if (stt.status === "idle" || stt.status === "ready") {
+                    void stt.startRecording();
+                  }
+                }}
+                disabled={stt.status === "loading-model" || stt.status === "transcribing" || stt.status === "error"}
+                title={
+                  stt.status === "loading-model"
+                    ? "Loading model…"
+                    : stt.status === "recording"
+                      ? "Recording… click to stop"
+                      : stt.status === "transcribing"
+                        ? "Transcribing…"
+                        : stt.error
+                          ? stt.error
+                          : "Voice input"
+                }
+                className={`relative flex items-center justify-center w-9 h-9 rounded-lg border transition-colors ${
+                  stt.status === "recording"
+                    ? "text-cc-error border-cc-error/40 bg-cc-error/10 cursor-pointer"
+                    : stt.status === "loading-model" || stt.status === "transcribing" || stt.status === "error"
+                      ? "text-cc-muted border-cc-border opacity-60 cursor-not-allowed"
+                      : "text-cc-muted border-cc-border hover:text-cc-fg hover:bg-cc-hover cursor-pointer"
+                }`}
+              >
+                {(stt.status === "loading-model" || stt.status === "transcribing") ? (
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28" strokeDashoffset="10" />
+                  </svg>
+                ) : (
+                  <>
+                    {stt.status === "recording" && (
+                      <span className="absolute inset-0 rounded-lg animate-ping bg-cc-error/20" />
+                    )}
+                    <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 relative">
+                      <rect x="5.5" y="1" width="5" height="8" rx="2.5" />
+                      <path d="M3 7.5A5 5 0 0013 7.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                      <line x1="8" y1="12.5" x2="8" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      <line x1="5.5" y1="15" x2="10.5" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </>
+                )}
               </button>
 
               {/* Send/stop: always visible */}

@@ -47,6 +47,25 @@ if (typeof window !== "undefined") {
       configurable: true,
     });
   }
+
+  // jsdom does not implement Web Workers. Provide a no-op stub so that
+  // components using useSTT (which creates a Worker on mount) render without
+  // throwing "Worker is not defined".
+  if (typeof globalThis.Worker === "undefined") {
+    class WorkerStub {
+      onmessage: ((e: MessageEvent) => void) | null = null;
+      postMessage() {}
+      terminate() {}
+      addEventListener() {}
+      removeEventListener() {}
+      dispatchEvent() { return false; }
+    }
+    Object.defineProperty(globalThis, "Worker", {
+      value: WorkerStub,
+      writable: true,
+      configurable: true,
+    });
+  }
 }
 
 export {};

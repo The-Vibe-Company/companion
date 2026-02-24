@@ -23,6 +23,7 @@ import { FolderPicker } from "./FolderPicker.js";
 import { readFileAsBase64, type ImageAttachment } from "../utils/image.js";
 import { LinearSection } from "./home/LinearSection.js";
 import { BranchPicker } from "./home/BranchPicker.js";
+import { useSTT } from "../hooks/useSTT.js";
 import type { SdkSessionInfo } from "../types.js";
 
 let idCounter = 0;
@@ -155,6 +156,24 @@ export function HomePage() {
   const envDropdownRef = useRef<HTMLDivElement>(null);
 
   const currentSessionId = useStore((s) => s.currentSessionId);
+
+  const stt = useSTT();
+
+  // Append transcribed text to the prompt textarea when a new transcript arrives
+  useEffect(() => {
+    if (!stt.transcript) return;
+    setText((prev) => (prev ? `${prev} ${stt.transcript}` : stt.transcript));
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height =
+          Math.min(textareaRef.current.scrollHeight, 200) + "px";
+        const end = textareaRef.current.value.length;
+        textareaRef.current.setSelectionRange(end, end);
+        textareaRef.current.focus();
+      }
+    });
+  }, [stt.transcript]);
 
   // Auto-focus textarea (desktop only — on mobile it triggers the keyboard immediately)
   useEffect(() => {
@@ -857,6 +876,58 @@ export function HomePage() {
                       <circle cx="5.5" cy="5.5" r="1" fill="currentColor" stroke="none" />
                       <path d="M2 11l3-3 2 2 3-4 4 5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
+                  </button>
+
+                  {/* Mic / STT button */}
+                  <button
+                    onClick={() => {
+                      if (stt.status === "recording") {
+                        stt.stopRecording();
+                      } else if (stt.status === "idle" || stt.status === "ready") {
+                        void stt.startRecording();
+                      }
+                    }}
+                    disabled={
+                      stt.status === "loading-model" ||
+                      stt.status === "transcribing" ||
+                      stt.status === "error"
+                    }
+                    title={
+                      stt.status === "loading-model"
+                        ? "Loading model…"
+                        : stt.status === "recording"
+                          ? "Recording… click to stop"
+                          : stt.status === "transcribing"
+                            ? "Transcribing…"
+                            : stt.error
+                              ? stt.error
+                              : "Voice input"
+                    }
+                    className={`relative flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+                      stt.status === "recording"
+                        ? "text-cc-error bg-cc-error/10 cursor-pointer"
+                        : stt.status === "loading-model" || stt.status === "transcribing" || stt.status === "error"
+                          ? "text-cc-muted opacity-60 cursor-not-allowed"
+                          : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover cursor-pointer"
+                    }`}
+                  >
+                    {(stt.status === "loading-model" || stt.status === "transcribing") ? (
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28" strokeDashoffset="10" />
+                      </svg>
+                    ) : (
+                      <>
+                        {stt.status === "recording" && (
+                          <span className="absolute inset-0 rounded-lg animate-ping bg-cc-error/20" />
+                        )}
+                        <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 relative">
+                          <rect x="5.5" y="1" width="5" height="8" rx="2.5" />
+                          <path d="M3 7.5A5 5 0 0013 7.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                          <line x1="8" y1="12.5" x2="8" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          <line x1="5.5" y1="15" x2="10.5" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                      </>
+                    )}
                   </button>
 
                   {/* Send button */}

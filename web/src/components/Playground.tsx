@@ -1099,7 +1099,7 @@ export function Playground() {
         </Section>
 
         {/* ─── Composer ──────────────────────────────── */}
-        <Section title="Composer" description="Message input bar with mode toggle, image upload, saved prompts (@), and send/stop buttons">
+        <Section title="Composer" description="Message input bar with mode toggle, image upload, voice input (STT), saved prompts (@), and send/stop buttons">
           <div className="max-w-3xl">
             <Card label="Connected — code mode">
               <div className="border-t border-cc-border bg-cc-card px-4 py-3">
@@ -1120,11 +1120,21 @@ export function Playground() {
                       style={{ minHeight: "36px" }}
                     />
                     <div className="mb-0.5 flex items-center gap-1.5">
+                      {/* Image upload button */}
                       <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-cc-border text-cc-muted">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
                           <rect x="2" y="2" width="12" height="12" rx="2" />
                           <circle cx="5.5" cy="5.5" r="1" fill="currentColor" stroke="none" />
                           <path d="M2 11l3-3 2 2 3-4 4 5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                      {/* Mic button — idle/ready state */}
+                      <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-cc-border text-cc-muted" title="Voice input (idle)">
+                        <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
+                          <rect x="5.5" y="1" width="5" height="8" rx="2.5" />
+                          <path d="M3 7.5A5 5 0 0013 7.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                          <line x1="8" y1="12.5" x2="8" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          <line x1="5.5" y1="15" x2="10.5" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
                       </div>
                       <div className="flex items-center justify-center w-9 h-9 rounded-full bg-cc-primary text-white shadow-[0_6px_20px_rgba(0,0,0,0.18)]">
@@ -1137,6 +1147,57 @@ export function Playground() {
                 </div>
               </div>
             </Card>
+
+            {/* Mic button state variations */}
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Card label="Mic — loading model">
+                <div className="border-t border-cc-border bg-cc-card px-4 py-3 flex items-center gap-2">
+                  <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-cc-border text-cc-muted opacity-60 cursor-not-allowed" title="Loading model…">
+                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 16 16" fill="none">
+                      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28" strokeDashoffset="10" />
+                    </svg>
+                  </div>
+                  <span className="text-[12px] text-cc-muted">Loading model… (first use only)</span>
+                </div>
+              </Card>
+              <Card label="Mic — recording">
+                <div className="border-t border-cc-border bg-cc-card px-4 py-3 flex items-center gap-2">
+                  <div className="relative flex items-center justify-center w-9 h-9 rounded-lg border border-cc-error/40 bg-cc-error/10 text-cc-error cursor-pointer" title="Recording… click to stop">
+                    <span className="absolute inset-0 rounded-lg animate-ping bg-cc-error/20" />
+                    <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 relative">
+                      <rect x="5.5" y="1" width="5" height="8" rx="2.5" />
+                      <path d="M3 7.5A5 5 0 0013 7.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                      <line x1="8" y1="12.5" x2="8" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      <line x1="5.5" y1="15" x2="10.5" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                  <span className="text-[12px] text-cc-muted">Recording… (click to stop)</span>
+                </div>
+              </Card>
+              <Card label="Mic — transcribing">
+                <div className="border-t border-cc-border bg-cc-card px-4 py-3 flex items-center gap-2">
+                  <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-cc-border text-cc-muted opacity-60 cursor-not-allowed" title="Transcribing…">
+                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 16 16" fill="none">
+                      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28" strokeDashoffset="10" />
+                    </svg>
+                  </div>
+                  <span className="text-[12px] text-cc-muted">Transcribing audio…</span>
+                </div>
+              </Card>
+              <Card label="Mic — error">
+                <div className="border-t border-cc-border bg-cc-card px-4 py-3 flex items-center gap-2">
+                  <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-cc-border text-cc-muted cursor-pointer" title="Microphone access denied">
+                    <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
+                      <rect x="5.5" y="1" width="5" height="8" rx="2.5" />
+                      <path d="M3 7.5A5 5 0 0013 7.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                      <line x1="8" y1="12.5" x2="8" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      <line x1="5.5" y1="15" x2="10.5" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                  <span className="text-[12px] text-cc-error">Microphone access denied — resets after 3s</span>
+                </div>
+              </Card>
+            </div>
             <div className="mt-4" />
             <Card label="@ prompt insertion">
               <div className="border-t border-cc-border bg-cc-card px-4 py-3">

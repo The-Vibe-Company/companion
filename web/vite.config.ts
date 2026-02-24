@@ -7,6 +7,11 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5174,
+    // Required for SharedArrayBuffer support (Whisper WASM threading)
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
     proxy: {
       "/api": "http://localhost:3457",
       "/ws": {

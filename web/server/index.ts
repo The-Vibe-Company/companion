@@ -122,6 +122,14 @@ if (recorder.isGloballyEnabled()) {
 
 const app = new Hono();
 
+// Cross-origin isolation headers required for SharedArrayBuffer (WASM threading).
+// Set before calling next() so they are present on every response including static files.
+app.use("/*", async (c, next) => {
+  c.header("Cross-Origin-Opener-Policy", "same-origin");
+  c.header("Cross-Origin-Embedder-Policy", "require-corp");
+  await next();
+});
+
 app.use("/api/*", cors());
 app.route("/api", createRoutes(launcher, wsBridge, sessionStore, worktreeTracker, terminalManager, prPoller, recorder, cronScheduler, agentExecutor));
 
