@@ -1,6 +1,6 @@
 {
   "name": "the-companion",
-  "version": "0.61.0",
+  "version": "0.61.1",
   "private": true,
   "description": "Web UI for Claude Code agents",
   "scripts": {

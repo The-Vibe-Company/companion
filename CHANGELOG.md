@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.61.0...the-companion-v0.61.1) (2026-02-24)
+
+
+### Bug Fixes
+
+* **agents:** replace emoji icons with SVG icon system ([#406](https://github.com/The-Vibe-Company/companion/issues/406)) ([d2ed31b](https://github.com/The-Vibe-Company/companion/commit/d2ed31b477e07d7f8d17e2a19c01599b45e05f69))
+
 ## [0.61.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.60.1...the-companion-v0.61.0) (2026-02-24)
 
 
