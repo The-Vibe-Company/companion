@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.60.1...the-companion-v0.61.0) (2026-02-24)
+
+
+### Features
+
+* **web:** add auth, PWA, process panel, editor/files, page redesigns, and theme polish ([#396](https://github.com/The-Vibe-Company/companion/issues/396)) ([cb2f101](https://github.com/The-Vibe-Company/companion/commit/cb2f101d7c2764fbaa0d582ed1022763706c9283))
+
 ## [0.60.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.60.0...the-companion-v0.60.1) (2026-02-24)
 
 
