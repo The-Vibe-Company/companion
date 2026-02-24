@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.60.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.59.0...the-companion-v0.60.0) (2026-02-24)
+
+
+### Features
+
+* **agents:** add reusable agent system with triggers, MCP, and scheduling ([#397](https://github.com/The-Vibe-Company/companion/issues/397)) ([1849d5d](https://github.com/The-Vibe-Company/companion/commit/1849d5d7c2a2b3d4036f8b2aebd1adc84f14258e))
+
+
+### Bug Fixes
+
+* **ci:** rewrite coverage gate to enforce 80% on new/changed files ([#399](https://github.com/The-Vibe-Company/companion/issues/399)) ([e257897](https://github.com/The-Vibe-Company/companion/commit/e257897674024a5cad12f3468c73a7e2f9d7c799))
+
 ## [0.59.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.58.2...the-companion-v0.59.0) (2026-02-22)
 
 
