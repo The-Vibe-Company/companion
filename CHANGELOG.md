@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.2](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.61.1...the-companion-v0.61.2) (2026-02-25)
+
+
+### Bug Fixes
+
+* **web:** add auth header to UpdateOverlay server poll ([#410](https://github.com/The-Vibe-Company/companion/issues/410)) ([86e26cb](https://github.com/The-Vibe-Company/companion/commit/86e26cb0a3983b5c5c39aa3a60276bdedf17629a))
+
 ## [0.61.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.61.0...the-companion-v0.61.1) (2026-02-24)
 
 
