@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.64.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.64.0...the-companion-v0.64.1) (2026-02-26)
+
+
+### Bug Fixes
+
+* **web:** fix Codex session reconnection Transport closed errors ([#431](https://github.com/The-Vibe-Company/companion/issues/431)) ([c559f79](https://github.com/The-Vibe-Company/companion/commit/c559f7910c4d18b83b343af99ef7c932e66cce66))
+
 ## [0.64.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.63.0...the-companion-v0.64.0) (2026-02-26)
 
 
