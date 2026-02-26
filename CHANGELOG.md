@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.64.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.63.0...the-companion-v0.64.0) (2026-02-26)
+
+
+### Features
+
+* **web:** increase recorder max lines from 100k to 1M ([#426](https://github.com/The-Vibe-Company/companion/issues/426)) ([cf7a70b](https://github.com/The-Vibe-Company/companion/commit/cf7a70bf107722c48c784d8ca829196171ef27e3))
+* **web:** make AI validation configurable per session ([#428](https://github.com/The-Vibe-Company/companion/issues/428)) ([bfec31a](https://github.com/The-Vibe-Company/companion/commit/bfec31a29e15441e1e3c251752d4570b6950692f))
+
+
+### Bug Fixes
+
+* **web:** broadcast session name update on manual rename ([#427](https://github.com/The-Vibe-Company/companion/issues/427)) ([e3479b8](https://github.com/The-Vibe-Company/companion/commit/e3479b8ca0018014f6bd3121246d047ee292125e))
+* **web:** handle Codex ExitPlanMode as dedicated permission request ([#430](https://github.com/The-Vibe-Company/companion/issues/430)) ([bde2d11](https://github.com/The-Vibe-Company/companion/commit/bde2d11b5234faa9f6889d78133ef3dc2ae182ad))
+
 ## [0.63.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.62.0...the-companion-v0.63.0) (2026-02-26)
 
 
