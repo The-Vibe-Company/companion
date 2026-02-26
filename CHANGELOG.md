@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.62.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.61.2...the-companion-v0.62.0) (2026-02-26)
+
+
+### Features
+
+* **web:** add @ mention prompt support to home page input ([#419](https://github.com/The-Vibe-Company/companion/issues/419)) ([94dbb4e](https://github.com/The-Vibe-Company/companion/commit/94dbb4e4d44317aa823125678b6210f5c6adee96))
+* **web:** implement AI validation mode for permission requests ([#420](https://github.com/The-Vibe-Company/companion/issues/420)) ([3436175](https://github.com/The-Vibe-Company/companion/commit/3436175dfb66810584ef168ad943f0e47086623d))
+
+
+### Bug Fixes
+
+* **web:** fix plan display colors broken in light mode ([#417](https://github.com/The-Vibe-Company/companion/issues/417)) ([90f6e81](https://github.com/The-Vibe-Company/companion/commit/90f6e8182af098027610bc89481bb7c87c0038f3))
+
 ## [0.61.2](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.61.1...the-companion-v0.61.2) (2026-02-25)
 
 
