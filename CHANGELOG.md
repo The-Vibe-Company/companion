@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.63.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.62.0...the-companion-v0.63.0) (2026-02-26)
+
+
+### Features
+
+* **web:** add create Linear issue button in context section ([#421](https://github.com/The-Vibe-Company/companion/issues/421)) ([22e658c](https://github.com/The-Vibe-Company/companion/commit/22e658c1c0c533a058887d12ebefbbee68e10d3c))
+* **web:** move git fetch/checkout/pull inside Docker container ([#422](https://github.com/The-Vibe-Company/companion/issues/422)) ([02b22fa](https://github.com/The-Vibe-Company/companion/commit/02b22fa57dab59d95bf3a812c6800a1cdd121975))
+* **web:** move git fetch/checkout/pull inside Docker container ([#424](https://github.com/The-Vibe-Company/companion/issues/424)) ([8559dcf](https://github.com/The-Vibe-Company/companion/commit/8559dcf49a23d1969b17907f33c4ffcf91205f63))
+
 ## [0.62.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.61.2...the-companion-v0.62.0) (2026-02-26)
 
 
