@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.65.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.64.3...the-companion-v0.65.0) (2026-02-27)
+
+
+### Features
+
+* **web:** replace OpenRouter by Anthropic for AI features ([#439](https://github.com/The-Vibe-Company/companion/issues/439)) ([40d794c](https://github.com/The-Vibe-Company/companion/commit/40d794c24f90cd31628a362c960ad135877326e9))
+
 ## [0.64.3](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.64.2...the-companion-v0.64.3) (2026-02-27)
 
 
