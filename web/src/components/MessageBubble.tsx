@@ -9,7 +9,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
     return (
       <div className="flex items-center gap-3 py-1 min-w-0">
         <div className="shrink-0 flex-1 h-px bg-cc-border" />
-        <span className="text-[11px] text-cc-muted italic font-mono-code px-1 truncate min-w-0">
+        <span className="text-[11px] text-cc-muted italic font-mono-code px-1 min-w-0 break-words text-center">
           {message.content}
         </span>
         <div className="shrink-0 flex-1 h-px bg-cc-border" />
