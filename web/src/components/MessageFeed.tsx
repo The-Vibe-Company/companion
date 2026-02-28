@@ -640,7 +640,7 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto overscroll-y-contain px-4 sm:px-6 py-5 sm:py-8"
+        className="h-full overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 sm:px-6 py-5 sm:py-8"
       >
         <div className="max-w-3xl mx-auto space-y-5 sm:space-y-7">
           {canLoadResumeHistory && !resumeHistoryLoaded && (

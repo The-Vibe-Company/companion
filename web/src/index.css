@@ -142,24 +142,29 @@
   --color-cc-separator: rgba(222,220,209,0.08);
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+/* Scrollbar styling — desktop only.
+   On mobile/touch devices, custom ::-webkit-scrollbar overrides switch
+   from native overlay scrollbars to classic always-visible ones, which
+   causes a persistent horizontal scrollbar. */
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-cc-muted);
-  border-radius: 3px;
-  opacity: 0.4;
-}
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-cc-muted);
+    border-radius: 3px;
+    opacity: 0.4;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  opacity: 0.6;
+  ::-webkit-scrollbar-thumb:hover {
+    opacity: 0.6;
+  }
 }
 
 /* Typography families */
