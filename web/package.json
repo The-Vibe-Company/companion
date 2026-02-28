@@ -1,6 +1,6 @@
 {
   "name": "the-companion",
-  "version": "0.67.0",
+  "version": "0.68.0",
   "type": "module",
   "description": "Web UI for launching and interacting with Claude Code agents",
   "license": "MIT",

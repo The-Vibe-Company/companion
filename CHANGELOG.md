@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.68.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.67.0...the-companion-v0.68.0) (2026-02-28)
+
+
+### Features
+
+* **web:** add Docker Builder page and refactor Environment UI ([#454](https://github.com/The-Vibe-Company/companion/issues/454)) ([c97dc9e](https://github.com/The-Vibe-Company/companion/commit/c97dc9e52a49528b5e7a64bbf518c33f630d2853))
+
+
+### Bug Fixes
+
+* **docs:** update mintlify docs.json schema ([265c89e](https://github.com/The-Vibe-Company/companion/commit/265c89eb3480974458dc7e0ad135a1fbb5b306b3))
+
 ## [0.67.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.66.0...the-companion-v0.67.0) (2026-02-28)
 
 
