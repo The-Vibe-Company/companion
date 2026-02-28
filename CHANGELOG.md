@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.66.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.65.0...the-companion-v0.66.0) (2026-02-28)
+
+
+### Features
+
+* **web:** prompt to transition Linear issue status on session archive ([#441](https://github.com/The-Vibe-Company/companion/issues/441)) ([e8ed5bd](https://github.com/The-Vibe-Company/companion/commit/e8ed5bd4a3b30f20dcd7e10d64f834752bed8b37))
+
 ## [0.65.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.64.3...the-companion-v0.65.0) (2026-02-27)
 
 
