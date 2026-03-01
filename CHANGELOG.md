@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.68.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.68.0...the-companion-v0.68.1) (2026-03-01)
+
+
+### Bug Fixes
+
+* **ci:** use patch-core bump for preview npm versions (THE-216) ([#456](https://github.com/The-Vibe-Company/companion/issues/456)) ([c3c1115](https://github.com/The-Vibe-Company/companion/commit/c3c11156b33e2a5549293365d32107ccf93c8d51))
+
 ## [0.68.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.67.0...the-companion-v0.68.0) (2026-02-28)
 
 
