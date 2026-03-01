@@ -15,6 +15,8 @@ const mockApi = {
   exportAgent: vi.fn(),
   importAgent: vi.fn(),
   regenerateAgentWebhookSecret: vi.fn(),
+  regenerateAgentTriggerSecret: vi.fn(),
+  regenerateAgentTriggerToken: vi.fn(),
   listSkills: vi.fn(),
   listEnvs: vi.fn(),
 };
@@ -31,6 +33,10 @@ vi.mock("../api.js", () => ({
     importAgent: (...args: unknown[]) => mockApi.importAgent(...args),
     regenerateAgentWebhookSecret: (...args: unknown[]) =>
       mockApi.regenerateAgentWebhookSecret(...args),
+    regenerateAgentTriggerSecret: (...args: unknown[]) =>
+      mockApi.regenerateAgentTriggerSecret(...args),
+    regenerateAgentTriggerToken: (...args: unknown[]) =>
+      mockApi.regenerateAgentTriggerToken(...args),
     listSkills: (...args: unknown[]) => mockApi.listSkills(...args),
     listEnvs: (...args: unknown[]) => mockApi.listEnvs(...args),
   },
@@ -257,6 +263,21 @@ describe("AgentsPage", () => {
     expect(screen.getByText("Create")).toBeInTheDocument();
   });
 
+  it("quick setup 'Public Webhook' opens prefilled editor", async () => {
+    mockApi.listAgents.mockResolvedValue([]);
+    render(<AgentsPage route={defaultRoute} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("2. Public Webhook"));
+
+    expect(screen.getByText("New Agent")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("New Webhook Agent")).toBeInTheDocument();
+    expect(screen.getByDisplayValue(/You are an autonomous agent\./)).toBeInTheDocument();
+  });
+
   it("clicking Cancel in editor returns to list view", async () => {
     // After opening the editor, clicking Cancel should navigate back to
     // the agent list without saving.
@@ -367,16 +388,16 @@ describe("AgentsPage", () => {
     });
   });
 
-  it("header shows 'Agents' title and description", async () => {
+  it("header shows 'Agency' title and description", async () => {
     // The page header displays the title and a short description of what agents are.
     render(<AgentsPage route={defaultRoute} />);
     await waitFor(() => {
       expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
     });
-    expect(screen.getByText("Agents")).toBeInTheDocument();
+    expect(screen.getByText("Agency")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Reusable autonomous session configs. Run manually, via webhook, or on a schedule.",
+        "Create autonomous companions with manual runs, public webhooks, and optional event-source adapters.",
       ),
     ).toBeInTheDocument();
   });

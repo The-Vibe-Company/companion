@@ -569,6 +569,28 @@ export interface AgentInfo {
     webhook?: {
       enabled: boolean;
       secret: string;
+      authMode?: "url_secret" | "header_token" | "either";
+      token?: string;
+      requireHmac?: boolean;
+    };
+    linear?: {
+      enabled: boolean;
+      secret: string;
+      authMode?: "url_secret" | "header_token" | "either";
+      token?: string;
+      requireHmac?: boolean;
+      requireMention?: boolean;
+      mention?: string;
+    };
+    github?: {
+      enabled: boolean;
+      secret: string;
+      authMode?: "url_secret" | "header_token" | "either";
+      token?: string;
+      requireHmac?: boolean;
+      requireMention?: boolean;
+      mention?: string;
+      events?: Array<"pull_request" | "issue_comment" | "pull_request_review_comment">;
     };
     schedule?: {
       enabled: boolean;
@@ -589,7 +611,7 @@ export interface AgentInfo {
 export interface AgentExecution {
   sessionId: string;
   agentId: string;
-  triggerType: "manual" | "webhook" | "schedule";
+  triggerType: "manual" | "webhook" | "schedule" | "linear" | "github";
   startedAt: number;
   completedAt?: number;
   success?: boolean;
@@ -1088,6 +1110,10 @@ export const api = {
   exportAgent: (id: string) => get<AgentExport>(`/agents/${encodeURIComponent(id)}/export`),
   regenerateAgentWebhookSecret: (id: string) =>
     post<AgentInfo>(`/agents/${encodeURIComponent(id)}/regenerate-secret`),
+  regenerateAgentTriggerSecret: (id: string, provider: "webhook" | "linear" | "github") =>
+    post<AgentInfo>(`/agents/${encodeURIComponent(id)}/regenerate-secret/${provider}`),
+  regenerateAgentTriggerToken: (id: string, provider: "webhook" | "linear" | "github") =>
+    post<AgentInfo>(`/agents/${encodeURIComponent(id)}/regenerate-token/${provider}`),
 
   // Skills
   listSkills: () =>

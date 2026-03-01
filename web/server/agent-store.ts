@@ -11,6 +11,40 @@ import { homedir } from "node:os";
 import { randomBytes } from "node:crypto";
 import type { AgentConfig, AgentConfigCreateInput } from "./agent-types.js";
 
+type TriggerAuthMode = "url_secret" | "header_token" | "either";
+type ExtendedWebhookTrigger = {
+  enabled: boolean;
+  secret: string;
+  authMode?: TriggerAuthMode;
+  token?: string;
+  requireHmac?: boolean;
+};
+type ExtendedLinearTrigger = {
+  enabled: boolean;
+  secret: string;
+  authMode?: TriggerAuthMode;
+  token?: string;
+  requireHmac?: boolean;
+  requireMention?: boolean;
+  mention?: string;
+};
+type ExtendedGithubTrigger = {
+  enabled: boolean;
+  secret: string;
+  authMode?: TriggerAuthMode;
+  token?: string;
+  requireHmac?: boolean;
+  requireMention?: boolean;
+  mention?: string;
+  events?: Array<"pull_request" | "issue_comment" | "pull_request_review_comment">;
+};
+type ExtendedTriggers = {
+  webhook?: ExtendedWebhookTrigger;
+  linear?: ExtendedLinearTrigger;
+  github?: ExtendedGithubTrigger;
+  schedule?: { enabled: boolean; expression: string; recurring: boolean };
+};
+
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
 const COMPANION_DIR = join(homedir(), ".companion");
@@ -37,6 +71,51 @@ function slugify(name: string): string {
 
 function generateWebhookSecret(): string {
   return randomBytes(24).toString("hex");
+}
+
+function generateTriggerToken(): string {
+  return randomBytes(24).toString("base64url");
+}
+
+function ensureTriggerSecrets(
+  triggers: AgentConfig["triggers"] | undefined,
+): AgentConfig["triggers"] | undefined {
+  if (!triggers) return triggers;
+  const next: ExtendedTriggers = { ...(triggers as unknown as ExtendedTriggers) };
+  if (next.webhook) {
+    const authMode = next.webhook.authMode ?? "url_secret";
+    const needsToken = authMode === "header_token" || authMode === "either";
+    next.webhook = {
+      ...next.webhook,
+      authMode,
+      requireHmac: next.webhook.requireHmac ?? false,
+      secret: next.webhook.secret || generateWebhookSecret(),
+      token: needsToken ? (next.webhook.token || generateTriggerToken()) : next.webhook.token,
+    };
+  }
+  if (next.linear) {
+    const authMode = next.linear.authMode ?? "url_secret";
+    const needsToken = authMode === "header_token" || authMode === "either";
+    next.linear = {
+      ...next.linear,
+      authMode,
+      requireHmac: next.linear.requireHmac ?? false,
+      secret: next.linear.secret || generateWebhookSecret(),
+      token: needsToken ? (next.linear.token || generateTriggerToken()) : next.linear.token,
+    };
+  }
+  if (next.github) {
+    const authMode = next.github.authMode ?? "url_secret";
+    const needsToken = authMode === "header_token" || authMode === "either";
+    next.github = {
+      ...next.github,
+      authMode,
+      requireHmac: next.github.requireHmac ?? false,
+      secret: next.github.secret || generateWebhookSecret(),
+      token: needsToken ? (next.github.token || generateTriggerToken()) : next.github.token,
+    };
+  }
+  return next as unknown as AgentConfig["triggers"];
 }
 
 // ─── CRUD ───────────────────────────────────────────────────────────────────
@@ -83,11 +162,8 @@ export function createAgent(data: AgentConfigCreateInput): AgentConfig {
     throw new Error(`An agent with a similar name already exists ("${id}")`);
   }
 
-  // Auto-generate webhook secret if webhook trigger is enabled but has no secret
-  const triggers = data.triggers ? { ...data.triggers } : undefined;
-  if (triggers?.webhook && !triggers.webhook.secret) {
-    triggers.webhook = { ...triggers.webhook, secret: generateWebhookSecret() };
-  }
+  // Auto-generate trigger secrets when enabled without a secret.
+  const triggers = ensureTriggerSecrets(data.triggers ? { ...data.triggers } : undefined);
 
   const now = Date.now();
   const agent: AgentConfig = {
@@ -132,6 +208,11 @@ export function updateAgent(
     updatedAt: Date.now(),
     // Preserve immutable fields
     createdAt: existing.createdAt,
+    triggers: ensureTriggerSecrets(
+      updates.triggers
+        ? { ...existing.triggers, ...updates.triggers }
+        : existing.triggers,
+    ),
   };
 
   // If id changed, delete old file
@@ -160,14 +241,91 @@ export function deleteAgent(id: string): boolean {
 
 /** Generate a new webhook secret for an agent */
 export function regenerateWebhookSecret(id: string): AgentConfig | null {
+  return regenerateTriggerSecret(id, "webhook");
+}
+
+/** Generate a new trigger secret for an agent */
+export function regenerateTriggerSecret(
+  id: string,
+  provider: "webhook" | "linear" | "github",
+): AgentConfig | null {
   const agent = getAgent(id);
   if (!agent) return null;
 
-  const triggers = agent.triggers || {};
-  triggers.webhook = {
-    enabled: triggers.webhook?.enabled ?? false,
-    secret: generateWebhookSecret(),
-  };
+  const triggers: ExtendedTriggers = (agent.triggers || {}) as unknown as ExtendedTriggers;
+  if (provider === "webhook") {
+    triggers.webhook = {
+      enabled: triggers.webhook?.enabled ?? false,
+      secret: generateWebhookSecret(),
+      authMode: triggers.webhook?.authMode ?? "url_secret",
+      token: triggers.webhook?.token,
+      requireHmac: triggers.webhook?.requireHmac ?? false,
+    };
+  } else if (provider === "linear") {
+    triggers.linear = {
+      enabled: triggers.linear?.enabled ?? false,
+      requireMention: triggers.linear?.requireMention ?? true,
+      mention: triggers.linear?.mention,
+      secret: generateWebhookSecret(),
+      authMode: triggers.linear?.authMode ?? "url_secret",
+      token: triggers.linear?.token,
+      requireHmac: triggers.linear?.requireHmac ?? false,
+    };
+  } else {
+    triggers.github = {
+      enabled: triggers.github?.enabled ?? false,
+      requireMention: triggers.github?.requireMention ?? true,
+      mention: triggers.github?.mention,
+      events: triggers.github?.events ?? ["pull_request", "issue_comment", "pull_request_review_comment"],
+      secret: generateWebhookSecret(),
+      authMode: triggers.github?.authMode ?? "url_secret",
+      token: triggers.github?.token,
+      requireHmac: triggers.github?.requireHmac ?? false,
+    };
+  }
+
+  return updateAgent(id, { triggers });
+}
+
+/** Generate a new header token for a provider */
+export function regenerateTriggerToken(
+  id: string,
+  provider: "webhook" | "linear" | "github",
+): AgentConfig | null {
+  const agent = getAgent(id);
+  if (!agent) return null;
+
+  const triggers: ExtendedTriggers = (agent.triggers || {}) as unknown as ExtendedTriggers;
+  if (provider === "webhook") {
+    triggers.webhook = {
+      enabled: triggers.webhook?.enabled ?? false,
+      secret: triggers.webhook?.secret || generateWebhookSecret(),
+      authMode: triggers.webhook?.authMode ?? "header_token",
+      token: generateTriggerToken(),
+      requireHmac: triggers.webhook?.requireHmac ?? false,
+    };
+  } else if (provider === "linear") {
+    triggers.linear = {
+      enabled: triggers.linear?.enabled ?? false,
+      requireMention: triggers.linear?.requireMention ?? true,
+      mention: triggers.linear?.mention,
+      secret: triggers.linear?.secret || generateWebhookSecret(),
+      authMode: triggers.linear?.authMode ?? "header_token",
+      token: generateTriggerToken(),
+      requireHmac: triggers.linear?.requireHmac ?? false,
+    };
+  } else {
+    triggers.github = {
+      enabled: triggers.github?.enabled ?? false,
+      requireMention: triggers.github?.requireMention ?? true,
+      mention: triggers.github?.mention,
+      events: triggers.github?.events ?? ["pull_request", "issue_comment", "pull_request_review_comment"],
+      secret: triggers.github?.secret || generateWebhookSecret(),
+      authMode: triggers.github?.authMode ?? "header_token",
+      token: generateTriggerToken(),
+      requireHmac: triggers.github?.requireHmac ?? false,
+    };
+  }
 
   return updateAgent(id, { triggers });
 }

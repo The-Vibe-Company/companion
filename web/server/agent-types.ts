@@ -71,6 +71,40 @@ export interface AgentConfig {
       enabled: boolean;
       /** Auto-generated secret token for URL auth */
       secret: string;
+      /** Auth mode for external calls */
+      authMode?: "url_secret" | "header_token" | "either";
+      /** Optional bearer token for header auth mode */
+      token?: string;
+      /** Require HMAC signature over request payload */
+      requireHmac?: boolean;
+    };
+    /** Linear webhook trigger config */
+    linear?: {
+      enabled: boolean;
+      /** Auto-generated secret token for URL auth */
+      secret: string;
+      authMode?: "url_secret" | "header_token" | "either";
+      token?: string;
+      requireHmac?: boolean;
+      /** If true, only trigger when payload text includes @mention */
+      requireMention?: boolean;
+      /** Mention alias without @ (defaults to agent id) */
+      mention?: string;
+    };
+    /** GitHub webhook trigger config */
+    github?: {
+      enabled: boolean;
+      /** Auto-generated secret token for URL auth */
+      secret: string;
+      authMode?: "url_secret" | "header_token" | "either";
+      token?: string;
+      requireHmac?: boolean;
+      /** If true, only trigger when payload text includes @mention */
+      requireMention?: boolean;
+      /** Mention alias without @ (defaults to agent id) */
+      mention?: string;
+      /** Allowed GitHub event types */
+      events?: Array<"pull_request" | "issue_comment" | "pull_request_review_comment">;
     };
     /** Cron/schedule trigger config */
     schedule?: {
@@ -110,7 +144,7 @@ export interface AgentExecution {
   /** The agent ID that triggered this */
   agentId: string;
   /** Trigger type that initiated this execution */
-  triggerType: "manual" | "webhook" | "schedule";
+  triggerType: "manual" | "webhook" | "schedule" | "linear" | "github";
   /** When the execution started */
   startedAt: number;
   /** When the execution completed */

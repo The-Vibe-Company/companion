@@ -22,6 +22,15 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
+    id: "agents",
+    label: "Agency",
+    shortLabel: "Agency",
+    hash: "#/agents",
+    activePages: ["agents", "agent-detail"],
+    viewBox: "0 0 16 16",
+    iconPath: "M8 1.5a2.5 2.5 0 00-2.5 2.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5S9.38 1.5 8 1.5zM4 8a4 4 0 00-4 4v1.5a.5.5 0 00.5.5h15a.5.5 0 00.5-.5V12a4 4 0 00-4-4H4z",
+  },
+  {
     id: "prompts",
     label: "Prompts",
     shortLabel: "Prompts",
@@ -54,14 +63,6 @@ const NAV_ITEMS: NavItem[] = [
     viewBox: "0 0 16 16",
     iconPath: "M8 1a2 2 0 012 2v1h2a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h2V3a2 2 0 012-2zm0 1.5a.5.5 0 00-.5.5v1h1V3a.5.5 0 00-.5-.5zM4 5.5a.5.5 0 00-.5.5v6a.5.5 0 00.5.5h8a.5.5 0 00.5-.5V6a.5.5 0 00-.5-.5H4z",
     activePages: ["environments", "docker-builder"],
-  },
-  {
-    id: "agents",
-    label: "Agents",
-    shortLabel: "Agents",
-    hash: "#/agents",
-    viewBox: "0 0 16 16",
-    iconPath: "M8 1.5a2.5 2.5 0 00-2.5 2.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5S9.38 1.5 8 1.5zM4 8a4 4 0 00-4 4v1.5a.5.5 0 00.5.5h15a.5.5 0 00.5-.5V12a4 4 0 00-4-4H4z",
   },
   {
     id: "settings",

@@ -107,7 +107,7 @@ export class AgentExecutor {
   async executeAgent(
     agentId: string,
     input?: string,
-    opts?: { force?: boolean; triggerType?: "manual" | "webhook" | "schedule" },
+    opts?: { force?: boolean; triggerType?: "manual" | "webhook" | "schedule" | "linear" | "github" },
   ): Promise<SdkSessionInfo | undefined> {
     const agent = agentStore.getAgent(agentId);
     if (!agent) return;

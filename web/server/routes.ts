@@ -141,6 +141,17 @@ export function createRoutes(
       return next();
     }
 
+    // Public agent trigger endpoints are authenticated by per-agent secrets.
+    // Keep these paths tokenless so external systems (Linear/GitHub/webhooks)
+    // can trigger agents without a companion auth token.
+    if (
+      /^\/agents\/[^/]+\/webhook\/[^/]+$/.test(c.req.path)
+      || /^\/agent-hooks\/linear\/[^/]+\/[^/]+$/.test(c.req.path)
+      || /^\/agent-hooks\/github\/[^/]+\/[^/]+$/.test(c.req.path)
+    ) {
+      return next();
+    }
+
     // Localhost bypass — same machine as the server, always trusted
     if (isLocalhostRequest(c)) {
       return next();

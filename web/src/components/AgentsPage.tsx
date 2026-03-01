@@ -45,10 +45,21 @@ interface AgentFormData {
   allowedTools: string[];
   // Triggers
   webhookEnabled: boolean;
+  linearEnabled: boolean;
+  linearRequireMention: boolean;
+  linearMention: string;
+  githubEnabled: boolean;
+  githubRequireMention: boolean;
+  githubMention: string;
+  githubOnPullRequest: boolean;
+  githubOnComment: boolean;
+  triggerSecurityMode: "simple" | "recommended" | "flexible";
   scheduleEnabled: boolean;
   scheduleExpression: string;
   scheduleRecurring: boolean;
 }
+
+type QuickTemplate = "manual" | "webhook" | "event-adapter";
 
 const EMPTY_FORM: AgentFormData = {
   name: "",
@@ -69,6 +80,15 @@ const EMPTY_FORM: AgentFormData = {
   skills: [],
   allowedTools: [],
   webhookEnabled: false,
+  linearEnabled: false,
+  linearRequireMention: true,
+  linearMention: "",
+  githubEnabled: false,
+  githubRequireMention: true,
+  githubMention: "",
+  githubOnPullRequest: true,
+  githubOnComment: true,
+  triggerSecurityMode: "recommended",
   scheduleEnabled: false,
   scheduleExpression: "0 8 * * *",
   scheduleRecurring: true,
@@ -176,6 +196,44 @@ function getWebhookUrl(agent: AgentInfo): string {
   return `${base}/api/agents/${encodeURIComponent(agent.id)}/webhook/${agent.triggers?.webhook?.secret || ""}`;
 }
 
+function getLinearHookUrl(agent: AgentInfo): string {
+  const base = window.location.origin;
+  return `${base}/api/agent-hooks/linear/${encodeURIComponent(agent.id)}/${agent.triggers?.linear?.secret || ""}`;
+}
+
+function getGithubHookUrl(agent: AgentInfo): string {
+  const base = window.location.origin;
+  return `${base}/api/agent-hooks/github/${encodeURIComponent(agent.id)}/${agent.triggers?.github?.secret || ""}`;
+}
+
+function getTriggerSecurityLabel(agent: AgentInfo): string {
+  const mode = agent.triggers?.webhook?.authMode ?? "url_secret";
+  const hmac = agent.triggers?.webhook?.requireHmac ?? false;
+  if (mode === "url_secret" && !hmac) return "Simple";
+  if (mode === "header_token" && hmac) return "Recommended";
+  if (mode === "either" && hmac) return "Flexible";
+  return "Custom";
+}
+
+function inferSecurityMode(agent: AgentInfo): "simple" | "recommended" | "flexible" {
+  const webhook = agent.triggers?.webhook;
+  if (!webhook) return "recommended";
+  const authMode = webhook.authMode ?? "url_secret";
+  const hmac = webhook.requireHmac ?? false;
+  if (authMode === "url_secret" && !hmac) return "simple";
+  if (authMode === "header_token" && hmac) return "recommended";
+  return "flexible";
+}
+
+function securityFromMode(mode: "simple" | "recommended" | "flexible"): {
+  authMode: "url_secret" | "header_token" | "either";
+  requireHmac: boolean;
+} {
+  if (mode === "simple") return { authMode: "url_secret", requireHmac: false };
+  if (mode === "recommended") return { authMode: "header_token", requireHmac: true };
+  return { authMode: "either", requireHmac: true };
+}
+
 /** Count how many advanced features are configured */
 function countAdvancedFeatures(form: AgentFormData): number {
   let count = 0;
@@ -198,7 +256,7 @@ export function AgentsPage({ route }: Props) {
   const [error, setError] = useState("");
   const [runInputAgent, setRunInputAgent] = useState<AgentInfo | null>(null);
   const [runInput, setRunInput] = useState("");
-  const [copiedWebhook, setCopiedWebhook] = useState<string | null>(null);
+  const [copiedTriggerValue, setCopiedTriggerValue] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load agents
@@ -236,6 +294,37 @@ export function AgentsPage({ route }: Props) {
     setView("edit");
   }
 
+  function startCreateFromTemplate(template: QuickTemplate) {
+    setEditingId(null);
+    if (template === "manual") {
+      setForm({
+        ...EMPTY_FORM,
+        name: "New Manual Agent",
+        triggerSecurityMode: "recommended",
+      });
+    } else if (template === "webhook") {
+      setForm({
+        ...EMPTY_FORM,
+        name: "New Webhook Agent",
+        webhookEnabled: true,
+        triggerSecurityMode: "recommended",
+        prompt: "You are an autonomous agent.\n\nTask:\n{{input}}",
+      });
+    } else {
+      setForm({
+        ...EMPTY_FORM,
+        name: "New Event Agent",
+        webhookEnabled: true,
+        linearEnabled: true,
+        githubEnabled: true,
+        triggerSecurityMode: "recommended",
+        prompt: "You are an autonomous agent reacting to events.\n\nEvent context:\n{{input}}",
+      });
+    }
+    setError("");
+    setView("edit");
+  }
+
   function startEdit(agent: AgentInfo) {
     setEditingId(agent.id);
     setForm({
@@ -259,6 +348,17 @@ export function AgentsPage({ route }: Props) {
       skills: agent.skills || [],
       allowedTools: agent.allowedTools || [],
       webhookEnabled: agent.triggers?.webhook?.enabled ?? false,
+      linearEnabled: agent.triggers?.linear?.enabled ?? false,
+      linearRequireMention: agent.triggers?.linear?.requireMention ?? true,
+      linearMention: agent.triggers?.linear?.mention || "",
+      githubEnabled: agent.triggers?.github?.enabled ?? false,
+      githubRequireMention: agent.triggers?.github?.requireMention ?? true,
+      githubMention: agent.triggers?.github?.mention || "",
+      githubOnPullRequest: (agent.triggers?.github?.events ?? ["pull_request", "issue_comment", "pull_request_review_comment"])
+        .includes("pull_request"),
+      githubOnComment: (agent.triggers?.github?.events ?? ["pull_request", "issue_comment", "pull_request_review_comment"])
+        .includes("issue_comment"),
+      triggerSecurityMode: inferSecurityMode(agent),
       scheduleEnabled: agent.triggers?.schedule?.enabled ?? false,
       scheduleExpression: agent.triggers?.schedule?.expression || "0 8 * * *",
       scheduleRecurring: agent.triggers?.schedule?.recurring ?? true,
@@ -284,6 +384,7 @@ export function AgentsPage({ route }: Props) {
         if (key.trim()) envRecord[key.trim()] = value;
       }
 
+      const security = securityFromMode(form.triggerSecurityMode);
       const data: Partial<AgentInfo> = {
         version: 1,
         name: form.name,
@@ -305,7 +406,33 @@ export function AgentsPage({ route }: Props) {
         allowedTools: form.allowedTools.length > 0 ? form.allowedTools : undefined,
         enabled: true,
         triggers: {
-          webhook: { enabled: form.webhookEnabled, secret: "" },
+          webhook: {
+            enabled: form.webhookEnabled,
+            secret: "",
+            authMode: security.authMode,
+            requireHmac: security.requireHmac,
+          },
+          linear: {
+            enabled: form.linearEnabled,
+            secret: "",
+            authMode: security.authMode,
+            requireHmac: security.requireHmac,
+            requireMention: form.linearRequireMention,
+            mention: form.linearMention.trim() || undefined,
+          },
+          github: {
+            enabled: form.githubEnabled,
+            secret: "",
+            authMode: security.authMode,
+            requireHmac: security.requireHmac,
+            requireMention: form.githubRequireMention,
+            mention: form.githubMention.trim() || undefined,
+            events: [
+              form.githubOnPullRequest ? "pull_request" : null,
+              form.githubOnComment ? "issue_comment" : null,
+              form.githubOnComment ? "pull_request_review_comment" : null,
+            ].filter(Boolean) as Array<"pull_request" | "issue_comment" | "pull_request_review_comment">,
+          },
           schedule: {
             enabled: form.scheduleEnabled,
             expression: form.scheduleExpression,
@@ -400,18 +527,56 @@ export function AgentsPage({ route }: Props) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  function copyWebhookUrl(agent: AgentInfo) {
-    const url = getWebhookUrl(agent);
+  function copyTriggerUrl(agent: AgentInfo, provider: "webhook" | "linear" | "github") {
+    const url = provider === "webhook"
+      ? getWebhookUrl(agent)
+      : provider === "linear"
+        ? getLinearHookUrl(agent)
+        : getGithubHookUrl(agent);
     navigator.clipboard.writeText(url).then(() => {
-      setCopiedWebhook(agent.id);
-      setTimeout(() => setCopiedWebhook(null), 2000);
+      setCopiedTriggerValue(`${agent.id}:${provider}:url`);
+      setTimeout(() => setCopiedTriggerValue(null), 2000);
+    });
+  }
+
+  function copyTriggerHeader(agent: AgentInfo, provider: "webhook" | "linear" | "github") {
+    const token = provider === "webhook"
+      ? agent.triggers?.webhook?.token
+      : provider === "linear"
+        ? agent.triggers?.linear?.token
+        : agent.triggers?.github?.token;
+    if (!token) return;
+    navigator.clipboard.writeText(`Authorization: Bearer ${token}`).then(() => {
+      setCopiedTriggerValue(`${agent.id}:${provider}:header`);
+      setTimeout(() => setCopiedTriggerValue(null), 2000);
     });
   }
 
   async function handleRegenerateSecret(id: string) {
-    if (!confirm("Regenerate webhook secret? The old URL will stop working.")) return;
+    if (!confirm("Regenerate trigger secret(s)? Existing webhook URLs will stop working.")) return;
     try {
-      await api.regenerateAgentWebhookSecret(id);
+      const agent = agents.find((a) => a.id === id);
+      if (!agent) return;
+      const providers: Array<"webhook" | "linear" | "github"> = [];
+      if (agent.triggers?.webhook?.enabled) providers.push("webhook");
+      if (agent.triggers?.linear?.enabled) providers.push("linear");
+      if (agent.triggers?.github?.enabled) providers.push("github");
+
+      if (providers.length === 0) {
+        await api.regenerateAgentWebhookSecret(id);
+      } else {
+        for (const provider of providers) {
+          await api.regenerateAgentTriggerSecret(id, provider);
+          const authMode = provider === "webhook"
+            ? agent.triggers?.webhook?.authMode
+            : provider === "linear"
+              ? agent.triggers?.linear?.authMode
+              : agent.triggers?.github?.authMode;
+          if (authMode === "header_token" || authMode === "either") {
+            await api.regenerateAgentTriggerToken(id, provider);
+          }
+        }
+      }
       await loadAgents();
     } catch {
       // ignore
@@ -438,8 +603,8 @@ export function AgentsPage({ route }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-lg font-semibold text-cc-fg">Agents</h1>
-            <p className="text-xs text-cc-muted mt-0.5">Reusable autonomous session configs. Run manually, via webhook, or on a schedule.</p>
+            <h1 className="text-lg font-semibold text-cc-fg">Agency</h1>
+            <p className="text-xs text-cc-muted mt-0.5">Create autonomous companions with manual runs, public webhooks, and optional event-source adapters.</p>
           </div>
           <div className="flex gap-2">
             <input
@@ -460,6 +625,33 @@ export function AgentsPage({ route }: Props) {
               className="px-3 py-1.5 text-xs rounded-lg bg-cc-primary text-white hover:bg-cc-primary-hover transition-colors cursor-pointer"
             >
               + New Agent
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-cc-border bg-cc-card p-4">
+          <p className="text-xs text-cc-muted mb-3">Quick Setup</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button
+              onClick={() => startCreateFromTemplate("manual")}
+              className="text-left rounded-lg border border-cc-border px-3 py-2 hover:border-cc-primary/50 hover:bg-cc-hover transition-colors cursor-pointer"
+            >
+              <p className="text-xs text-cc-fg">1. Manual Agent</p>
+              <p className="text-[10px] text-cc-muted mt-0.5">Run from UI only</p>
+            </button>
+            <button
+              onClick={() => startCreateFromTemplate("webhook")}
+              className="text-left rounded-lg border border-cc-border px-3 py-2 hover:border-cc-primary/50 hover:bg-cc-hover transition-colors cursor-pointer"
+            >
+              <p className="text-xs text-cc-fg">2. Public Webhook</p>
+              <p className="text-[10px] text-cc-muted mt-0.5">Bearer + HMAC preset</p>
+            </button>
+            <button
+              onClick={() => startCreateFromTemplate("event-adapter")}
+              className="text-left rounded-lg border border-cc-border px-3 py-2 hover:border-cc-primary/50 hover:bg-cc-hover transition-colors cursor-pointer"
+            >
+              <p className="text-xs text-cc-fg">3. Event Adapter</p>
+              <p className="text-[10px] text-cc-muted mt-0.5">Linear/GitHub examples on</p>
             </button>
           </div>
         </div>
@@ -492,9 +684,19 @@ export function AgentsPage({ route }: Props) {
                 onToggle={() => handleToggle(agent.id)}
                 onRun={() => handleRunClick(agent)}
                 onExport={() => handleExport(agent)}
-                onCopyWebhook={() => copyWebhookUrl(agent)}
+                onCopyWebhook={() => copyTriggerUrl(agent, "webhook")}
+                onCopyLinear={() => copyTriggerUrl(agent, "linear")}
+                onCopyGithub={() => copyTriggerUrl(agent, "github")}
+                onCopyWebhookHeader={() => copyTriggerHeader(agent, "webhook")}
+                onCopyLinearHeader={() => copyTriggerHeader(agent, "linear")}
+                onCopyGithubHeader={() => copyTriggerHeader(agent, "github")}
                 onRegenerateSecret={() => handleRegenerateSecret(agent.id)}
-                copiedWebhook={copiedWebhook === agent.id}
+                copiedWebhook={copiedTriggerValue === `${agent.id}:webhook:url`}
+                copiedLinear={copiedTriggerValue === `${agent.id}:linear:url`}
+                copiedGithub={copiedTriggerValue === `${agent.id}:github:url`}
+                copiedWebhookHeader={copiedTriggerValue === `${agent.id}:webhook:header`}
+                copiedLinearHeader={copiedTriggerValue === `${agent.id}:linear:header`}
+                copiedGithubHeader={copiedTriggerValue === `${agent.id}:github:header`}
               />
             ))}
           </div>
@@ -551,8 +753,18 @@ function AgentCard({
   onRun,
   onExport,
   onCopyWebhook,
+  onCopyLinear,
+  onCopyGithub,
+  onCopyWebhookHeader,
+  onCopyLinearHeader,
+  onCopyGithubHeader,
   onRegenerateSecret,
   copiedWebhook,
+  copiedLinear,
+  copiedGithub,
+  copiedWebhookHeader,
+  copiedLinearHeader,
+  copiedGithubHeader,
 }: {
   agent: AgentInfo;
   onEdit: () => void;
@@ -561,11 +773,23 @@ function AgentCard({
   onRun: () => void;
   onExport: () => void;
   onCopyWebhook: () => void;
+  onCopyLinear: () => void;
+  onCopyGithub: () => void;
+  onCopyWebhookHeader: () => void;
+  onCopyLinearHeader: () => void;
+  onCopyGithubHeader: () => void;
   onRegenerateSecret: () => void;
   copiedWebhook: boolean;
+  copiedLinear: boolean;
+  copiedGithub: boolean;
+  copiedWebhookHeader: boolean;
+  copiedLinearHeader: boolean;
+  copiedGithubHeader: boolean;
 }) {
   const triggers: string[] = ["Manual"];
   if (agent.triggers?.webhook?.enabled) triggers.push("Webhook");
+  if (agent.triggers?.linear?.enabled) triggers.push("Linear");
+  if (agent.triggers?.github?.enabled) triggers.push("GitHub");
   if (agent.triggers?.schedule?.enabled) {
     triggers.push(humanizeSchedule(
       agent.triggers.schedule.expression,
@@ -664,6 +888,63 @@ function AgentCard({
               {copiedWebhook ? "Copied!" : "Copy URL"}
             </button>
           )}
+          {!!agent.triggers?.webhook?.token && (
+            <button
+              onClick={onCopyWebhookHeader}
+              className="px-2 py-0.5 text-[10px] rounded-full bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors cursor-pointer"
+              title="Copy webhook auth header"
+            >
+              {copiedWebhookHeader ? "Copied!" : "Auth Header"}
+            </button>
+          )}
+          {agent.triggers?.linear?.enabled && (
+            <button
+              onClick={onCopyLinear}
+              className="px-2 py-0.5 text-[10px] rounded-full bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors cursor-pointer"
+              title="Copy Linear hook URL"
+            >
+              {copiedLinear ? "Copied!" : "Linear URL"}
+            </button>
+          )}
+          {!!agent.triggers?.linear?.token && (
+            <button
+              onClick={onCopyLinearHeader}
+              className="px-2 py-0.5 text-[10px] rounded-full bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors cursor-pointer"
+              title="Copy Linear auth header"
+            >
+              {copiedLinearHeader ? "Copied!" : "Linear Auth"}
+            </button>
+          )}
+          {agent.triggers?.github?.enabled && (
+            <button
+              onClick={onCopyGithub}
+              className="px-2 py-0.5 text-[10px] rounded-full bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 transition-colors cursor-pointer"
+              title="Copy GitHub hook URL"
+            >
+              {copiedGithub ? "Copied!" : "GitHub URL"}
+            </button>
+          )}
+          {!!agent.triggers?.github?.token && (
+            <button
+              onClick={onCopyGithubHeader}
+              className="px-2 py-0.5 text-[10px] rounded-full bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 transition-colors cursor-pointer"
+              title="Copy GitHub auth header"
+            >
+              {copiedGithubHeader ? "Copied!" : "GitHub Auth"}
+            </button>
+          )}
+          {(agent.triggers?.webhook?.enabled || agent.triggers?.linear?.enabled || agent.triggers?.github?.enabled) && (
+            <button
+              onClick={onRegenerateSecret}
+              className="px-2 py-0.5 text-[10px] rounded-full bg-cc-hover text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
+              title="Regenerate trigger secret"
+            >
+              Rotate secret
+            </button>
+          )}
+          <span className="px-2 py-0.5 text-[10px] rounded-full bg-cc-hover text-cc-muted">
+            Security: {getTriggerSecurityLabel(agent)}
+          </span>
         </div>
         <div className="flex items-center gap-3 text-[10px] text-cc-muted">
           {agent.totalRuns > 0 && <span>{agent.totalRuns} run{agent.totalRuns !== 1 ? "s" : ""}</span>}
@@ -1170,6 +1451,59 @@ function AgentEditor({
                 </svg>
                 Schedule
               </button>
+
+              <button
+                onClick={() => updateField("linearEnabled", !form.linearEnabled)}
+                className={form.linearEnabled ? pillActive : pillDefault}
+              >
+                Linear (adapter)
+              </button>
+
+              <button
+                onClick={() => updateField("githubEnabled", !form.githubEnabled)}
+                className={form.githubEnabled ? pillActive : pillDefault}
+              >
+                GitHub (adapter)
+              </button>
+            </div>
+
+            <div className="mt-3 rounded-lg border border-cc-border/70 bg-cc-card p-3">
+              <p className="text-[11px] font-medium text-cc-fg mb-2">Trigger Security</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  onClick={() => updateField("triggerSecurityMode", "simple")}
+                  className={`text-left px-2.5 py-2 rounded-lg border transition-colors cursor-pointer ${
+                    form.triggerSecurityMode === "simple"
+                      ? "border-cc-primary bg-cc-primary/10"
+                      : "border-cc-border hover:border-cc-primary/40"
+                  }`}
+                >
+                  <p className="text-xs text-cc-fg">Simple</p>
+                  <p className="text-[10px] text-cc-muted mt-0.5">URL secret only</p>
+                </button>
+                <button
+                  onClick={() => updateField("triggerSecurityMode", "recommended")}
+                  className={`text-left px-2.5 py-2 rounded-lg border transition-colors cursor-pointer ${
+                    form.triggerSecurityMode === "recommended"
+                      ? "border-cc-primary bg-cc-primary/10"
+                      : "border-cc-border hover:border-cc-primary/40"
+                  }`}
+                >
+                  <p className="text-xs text-cc-fg">Recommended</p>
+                  <p className="text-[10px] text-cc-muted mt-0.5">Bearer token + HMAC</p>
+                </button>
+                <button
+                  onClick={() => updateField("triggerSecurityMode", "flexible")}
+                  className={`text-left px-2.5 py-2 rounded-lg border transition-colors cursor-pointer ${
+                    form.triggerSecurityMode === "flexible"
+                      ? "border-cc-primary bg-cc-primary/10"
+                      : "border-cc-border hover:border-cc-primary/40"
+                  }`}
+                >
+                  <p className="text-xs text-cc-fg">Flexible</p>
+                  <p className="text-[10px] text-cc-muted mt-0.5">URL or Bearer + HMAC</p>
+                </button>
+              </div>
             </div>
 
             {/* Webhook helper */}
@@ -1177,6 +1511,72 @@ function AgentEditor({
               <p className="text-[10px] text-cc-muted mt-2">
                 A unique URL will be generated after saving. POST to it with <code className="px-1 py-0.5 rounded bg-cc-hover">{`{"input": "..."}`}</code>.
               </p>
+            )}
+
+            {form.linearEnabled && (
+              <div className="mt-3 rounded-lg border border-cc-border/70 bg-cc-card p-3 space-y-2">
+                <p className="text-[11px] text-cc-muted">
+                  Event-source adapter example: Linear webhook. Useful for "@agent" in comments.
+                </p>
+                <label className="flex items-center gap-2 text-xs text-cc-muted cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.linearRequireMention}
+                    onChange={(e) => updateField("linearRequireMention", e.target.checked)}
+                    className="rounded w-3 h-3"
+                  />
+                  Trigger only on mention
+                </label>
+                <input
+                  value={form.linearMention}
+                  onChange={(e) => updateField("linearMention", e.target.value)}
+                  placeholder="Mention alias (optional, default: agent id)"
+                  className="w-full px-3 py-1.5 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-xs focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                />
+              </div>
+            )}
+
+            {form.githubEnabled && (
+              <div className="mt-3 rounded-lg border border-cc-border/70 bg-cc-card p-3 space-y-2">
+                <p className="text-[11px] text-cc-muted">
+                  Event-source adapter example: GitHub webhook (PR + comments).
+                </p>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-xs text-cc-muted cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.githubOnPullRequest}
+                      onChange={(e) => updateField("githubOnPullRequest", e.target.checked)}
+                      className="rounded w-3 h-3"
+                    />
+                    PR events
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-cc-muted cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.githubOnComment}
+                      onChange={(e) => updateField("githubOnComment", e.target.checked)}
+                      className="rounded w-3 h-3"
+                    />
+                    Comment events
+                  </label>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-cc-muted cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.githubRequireMention}
+                    onChange={(e) => updateField("githubRequireMention", e.target.checked)}
+                    className="rounded w-3 h-3"
+                  />
+                  Trigger only on mention
+                </label>
+                <input
+                  value={form.githubMention}
+                  onChange={(e) => updateField("githubMention", e.target.value)}
+                  placeholder="Mention alias (optional, default: agent id)"
+                  className="w-full px-3 py-1.5 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-xs focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                />
+              </div>
             )}
 
             {/* Schedule config */}

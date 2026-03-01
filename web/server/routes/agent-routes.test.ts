@@ -9,6 +9,8 @@ vi.mock("../agent-store.js", () => ({
   updateAgent: vi.fn(),
   deleteAgent: vi.fn(() => false),
   regenerateWebhookSecret: vi.fn(() => null),
+  regenerateTriggerSecret: vi.fn(() => null),
+  regenerateTriggerToken: vi.fn(() => null),
 }));
 
 import { Hono } from "hono";
@@ -19,7 +21,7 @@ import { registerAgentRoutes } from "./agent-routes.js";
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /** Minimal agent fixture with sensible defaults. Override fields as needed. */
-function makeAgent(overrides: Partial<AgentConfig> = {}): AgentConfig {
+function makeAgent(overrides: Record<string, unknown> = {}): AgentConfig {
   return {
     id: "test-agent",
     version: 1,
@@ -35,8 +37,8 @@ function makeAgent(overrides: Partial<AgentConfig> = {}): AgentConfig {
     updatedAt: 2000,
     totalRuns: 0,
     consecutiveFailures: 0,
-    ...overrides,
-  };
+    ...(overrides as Partial<AgentConfig>),
+  } as AgentConfig;
 }
 
 /** Build a mock AgentExecutor with vi.fn() stubs for every method the routes use. */
@@ -45,6 +47,7 @@ function createMockExecutor() {
     getNextRunTime: vi.fn(() => null as Date | null),
     scheduleAgent: vi.fn(),
     stopAgent: vi.fn(),
+    executeAgent: vi.fn(() => Promise.resolve(undefined)),
     executeAgentManually: vi.fn(),
     getExecutions: vi.fn(() => []),
   };
@@ -376,7 +379,11 @@ describe("POST /api/agents/:id/run", () => {
     const json = await res.json();
     expect(json.ok).toBe(true);
     expect(json.message).toBe("Agent triggered");
-    expect(executor.executeAgentManually).toHaveBeenCalledWith("runner", undefined);
+    expect(executor.executeAgent).toHaveBeenCalledWith(
+      "runner",
+      undefined,
+      expect.objectContaining({ force: true, triggerType: "manual" }),
+    );
   });
 
   it("passes an input string to the executor when provided", async () => {
@@ -389,7 +396,11 @@ describe("POST /api/agents/:id/run", () => {
       body: JSON.stringify({ input: "custom input" }),
     });
 
-    expect(executor.executeAgentManually).toHaveBeenCalledWith("runner", "custom input");
+    expect(executor.executeAgent).toHaveBeenCalledWith(
+      "runner",
+      "custom input",
+      expect.objectContaining({ force: true, triggerType: "manual" }),
+    );
   });
 
   it("returns 404 when agent does not exist", async () => {
@@ -515,7 +526,11 @@ describe("POST /api/agents/:id/webhook/:secret", () => {
     const json = await res.json();
     expect(json.ok).toBe(true);
     expect(json.message).toBe("Agent triggered via webhook");
-    expect(executor.executeAgentManually).toHaveBeenCalledWith("webhook-agent", "webhook payload");
+    expect(executor.executeAgent).toHaveBeenCalledWith(
+      "webhook-agent",
+      "webhook payload",
+      expect.objectContaining({ force: true, triggerType: "webhook" }),
+    );
   });
 
   it("returns 401 when the webhook secret is invalid", async () => {
@@ -535,9 +550,9 @@ describe("POST /api/agents/:id/webhook/:secret", () => {
 
     expect(res.status).toBe(401);
     const json = await res.json();
-    expect(json.error).toBe("Invalid webhook secret");
+    expect(json.error).toBe("Invalid trigger credentials");
     // Should NOT trigger the agent
-    expect(executor.executeAgentManually).not.toHaveBeenCalled();
+    expect(executor.executeAgent).not.toHaveBeenCalled();
   });
 
   it("returns 403 when the webhook trigger is disabled", async () => {
@@ -558,7 +573,7 @@ describe("POST /api/agents/:id/webhook/:secret", () => {
     expect(res.status).toBe(403);
     const json = await res.json();
     expect(json.error).toBe("Webhook not enabled for this agent");
-    expect(executor.executeAgentManually).not.toHaveBeenCalled();
+    expect(executor.executeAgent).not.toHaveBeenCalled();
   });
 
   it("returns 404 when agent does not exist", async () => {
@@ -590,6 +605,245 @@ describe("POST /api/agents/:id/webhook/:secret", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(executor.executeAgentManually).toHaveBeenCalledWith("webhook-agent", "plain text input");
+    expect(executor.executeAgent).toHaveBeenCalledWith(
+      "webhook-agent",
+      "plain text input",
+      expect.objectContaining({ force: true, triggerType: "webhook" }),
+    );
+  });
+
+  it("accepts header token auth mode without URL secret match", async () => {
+    const agent = makeAgent({
+      id: "webhook-agent",
+      triggers: {
+        webhook: {
+          enabled: true,
+          secret: "server-secret",
+          authMode: "header_token",
+          token: "token-123",
+        },
+      },
+    });
+    vi.mocked(agentStore.getAgent).mockReturnValue(agent);
+
+    const res = await app.request("/api/agents/webhook-agent/webhook/wrong-url-secret", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer token-123",
+      },
+      body: JSON.stringify({ input: "from header auth" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(executor.executeAgent).toHaveBeenCalled();
+  });
+
+  it("rejects invalid HMAC signature when required", async () => {
+    const agent = makeAgent({
+      id: "webhook-agent",
+      triggers: {
+        webhook: {
+          enabled: true,
+          secret: "hmac-secret",
+          authMode: "url_secret",
+          requireHmac: true,
+        },
+      },
+    });
+    vi.mocked(agentStore.getAgent).mockReturnValue(agent);
+
+    const res = await app.request("/api/agents/webhook-agent/webhook/hmac-secret", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-companion-timestamp": String(Math.floor(Date.now() / 1000)),
+        "x-companion-signature": "bad-signature",
+      },
+      body: JSON.stringify({ input: "hello" }),
+    });
+
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json.error).toBe("Invalid HMAC signature");
+  });
+
+  it("returns 400 for malformed JSON body", async () => {
+    const agent = makeAgent({
+      id: "webhook-agent",
+      triggers: {
+        webhook: { enabled: true, secret: "valid-secret" },
+      },
+    });
+    vi.mocked(agentStore.getAgent).mockReturnValue(agent);
+
+    const res = await app.request("/api/agents/webhook-agent/webhook/valid-secret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{invalid-json",
+    });
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("Invalid JSON body");
+  });
+});
+
+// ─── POST /api/agents/:id/regenerate-secret/:provider ───────────────────────
+
+describe("POST /api/agents/:id/regenerate-secret/:provider", () => {
+  it("regenerates linear secret", async () => {
+    const updated = makeAgent({
+      id: "a1",
+      triggers: { linear: { enabled: true, secret: "new-linear-secret" } },
+    });
+    vi.mocked(agentStore.regenerateTriggerSecret).mockReturnValue(updated);
+
+    const res = await app.request("/api/agents/a1/regenerate-secret/linear", { method: "POST" });
+    expect(res.status).toBe(200);
+    expect(agentStore.regenerateTriggerSecret).toHaveBeenCalledWith("a1", "linear");
+  });
+
+  it("returns 400 for unknown provider", async () => {
+    const res = await app.request("/api/agents/a1/regenerate-secret/nope", { method: "POST" });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/agents/:id/regenerate-token/:provider", () => {
+  it("regenerates webhook token", async () => {
+    const updated = makeAgent({
+      id: "a1",
+      triggers: { webhook: { enabled: true, secret: "s", token: "new-token" } },
+    });
+    vi.mocked(agentStore.regenerateTriggerToken).mockReturnValue(updated);
+
+    const res = await app.request("/api/agents/a1/regenerate-token/webhook", { method: "POST" });
+    expect(res.status).toBe(200);
+    expect(agentStore.regenerateTriggerToken).toHaveBeenCalledWith("a1", "webhook");
+  });
+});
+
+// ─── POST /api/agent-hooks/linear/:id/:secret ──────────────────────────────
+
+describe("POST /api/agent-hooks/linear/:id/:secret", () => {
+  it("triggers when mention is found", async () => {
+    const agent = makeAgent({
+      id: "qa-agent",
+      triggers: {
+        linear: { enabled: true, secret: "lin-secret", requireMention: true, mention: "qa-agent" },
+      },
+    });
+    vi.mocked(agentStore.getAgent).mockReturnValue(agent);
+
+    const res = await app.request("/api/agent-hooks/linear/qa-agent/lin-secret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "comment",
+        data: { body: "Please check this @qa-agent" },
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(executor.executeAgent).toHaveBeenCalledWith(
+      "qa-agent",
+      expect.any(String),
+      expect.objectContaining({ triggerType: "linear" }),
+    );
+  });
+
+  it("skips when mention is required but missing", async () => {
+    const agent = makeAgent({
+      id: "qa-agent",
+      triggers: {
+        linear: { enabled: true, secret: "lin-secret", requireMention: true, mention: "qa-agent" },
+      },
+    });
+    vi.mocked(agentStore.getAgent).mockReturnValue(agent);
+
+    const res = await app.request("/api/agent-hooks/linear/qa-agent/lin-secret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "comment",
+        data: { body: "No mention here" },
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.skipped).toBe(true);
+    expect(executor.executeAgent).not.toHaveBeenCalled();
+  });
+});
+
+// ─── POST /api/agent-hooks/github/:id/:secret ──────────────────────────────
+
+describe("POST /api/agent-hooks/github/:id/:secret", () => {
+  it("triggers on allowed event with mention", async () => {
+    const agent = makeAgent({
+      id: "review-agent",
+      triggers: {
+        github: {
+          enabled: true,
+          secret: "gh-secret",
+          requireMention: true,
+          mention: "review-agent",
+          events: ["pull_request", "issue_comment"],
+        },
+      },
+    });
+    vi.mocked(agentStore.getAgent).mockReturnValue(agent);
+
+    const res = await app.request("/api/agent-hooks/github/review-agent/gh-secret", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-github-event": "issue_comment",
+      },
+      body: JSON.stringify({
+        action: "created",
+        repository: { full_name: "org/repo" },
+        issue: { number: 42, title: "PR title" },
+        comment: { body: "@review-agent please handle this" },
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(executor.executeAgent).toHaveBeenCalledWith(
+      "review-agent",
+      expect.any(String),
+      expect.objectContaining({ triggerType: "github" }),
+    );
+  });
+
+  it("skips when event is not enabled", async () => {
+    const agent = makeAgent({
+      id: "review-agent",
+      triggers: {
+        github: {
+          enabled: true,
+          secret: "gh-secret",
+          events: ["pull_request"],
+        },
+      },
+    });
+    vi.mocked(agentStore.getAgent).mockReturnValue(agent);
+
+    const res = await app.request("/api/agent-hooks/github/review-agent/gh-secret", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-github-event": "issue_comment",
+      },
+      body: JSON.stringify({ action: "created" }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.skipped).toBe(true);
+    expect(json.reason).toBe("event_not_enabled");
+    expect(executor.executeAgent).not.toHaveBeenCalled();
   });
 });
