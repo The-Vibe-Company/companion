@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.69.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.68.1...the-companion-v0.69.0) (2026-03-01)
+
+
+### Features
+
+* **ai-validator:** add actionable error reasons for AI validation failures ([#457](https://github.com/The-Vibe-Company/companion/issues/457)) ([ab5455e](https://github.com/The-Vibe-Company/companion/commit/ab5455e33d7c148a62e8abb81c31306b4ed3d50f))
+
+
+### Bug Fixes
+
+* **session:** fetch remote refs before worktree branch creation (THE-218) ([#460](https://github.com/The-Vibe-Company/companion/issues/460)) ([0050884](https://github.com/The-Vibe-Company/companion/commit/0050884dc07c3ec04a373be388e85f1ca28c2b97))
+
 ## [0.68.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.68.0...the-companion-v0.68.1) (2026-03-01)
 
 
