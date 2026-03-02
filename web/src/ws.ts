@@ -1,5 +1,15 @@
 import { useStore } from "./store.js";
-import type { BrowserIncomingMessage, BrowserOutgoingMessage, ContentBlock, ChatMessage, TaskItem, ProcessItem, ProcessStatus, SdkSessionInfo, McpServerConfig } from "./types.js";
+import type {
+  BrowserIncomingMessage,
+  BrowserOutgoingMessage,
+  ContentBlock,
+  ChatMessage,
+  TaskItem,
+  ProcessItem,
+  ProcessStatus,
+  SdkSessionInfo,
+  McpServerConfig,
+} from "./types.js";
 import { generateUniqueSessionName } from "./utils/names.js";
 import { playNotificationSound } from "./utils/notification-sound.js";
 
@@ -65,7 +75,9 @@ function extractTasksFromBlocks(sessionId: string, blocks: ContentBlock[]) {
 
     // TodoWrite: full replacement — { todos: [{ content, status, activeForm }] }
     if (name === "TodoWrite") {
-      const todos = input.todos as { content?: string; status?: string; activeForm?: string }[] | undefined;
+      const todos = input.todos as
+        | { content?: string; status?: string; activeForm?: string }[]
+        | undefined;
       if (Array.isArray(todos)) {
         const tasks: TaskItem[] = todos.map((t, i) => ({
           id: String(i + 1),
@@ -102,15 +114,20 @@ function extractTasksFromBlocks(sessionId: string, blocks: ContentBlock[]) {
         const updates: Partial<TaskItem> = {};
         if (input.status) updates.status = input.status as TaskItem["status"];
         if (input.owner) updates.owner = input.owner as string;
-        if (input.activeForm !== undefined) updates.activeForm = input.activeForm as string;
-        if (input.addBlockedBy) updates.blockedBy = input.addBlockedBy as string[];
+        if (input.activeForm !== undefined)
+          updates.activeForm = input.activeForm as string;
+        if (input.addBlockedBy)
+          updates.blockedBy = input.addBlockedBy as string[];
         store.updateTask(sessionId, taskId, updates);
       }
     }
   }
 }
 
-function extractChangedFilesFromBlocks(sessionId: string, blocks: ContentBlock[]) {
+function extractChangedFilesFromBlocks(
+  sessionId: string,
+  blocks: ContentBlock[],
+) {
   const store = useStore.getState();
   const sessionCwd =
     store.sessions.get(sessionId)?.cwd ||
@@ -119,7 +136,10 @@ function extractChangedFilesFromBlocks(sessionId: string, blocks: ContentBlock[]
   for (const block of blocks) {
     if (block.type !== "tool_use") continue;
     const { name, input } = block;
-    if ((name === "Edit" || name === "Write") && typeof input.file_path === "string") {
+    if (
+      (name === "Edit" || name === "Write") &&
+      typeof input.file_path === "string"
+    ) {
       const resolvedPath = resolveSessionFilePath(input.file_path, sessionCwd);
       if (isPathInSessionScope(resolvedPath, sessionCwd)) {
         dirty = true;
@@ -130,9 +150,13 @@ function extractChangedFilesFromBlocks(sessionId: string, blocks: ContentBlock[]
 }
 
 /** Pending background Bash calls awaiting their tool_result (keyed by sessionId → toolUseId) */
-const pendingBackgroundBash = new Map<string, Map<string, { command: string; description: string; startedAt: number }>>();
+const pendingBackgroundBash = new Map<
+  string,
+  Map<string, { command: string; description: string; startedAt: number }>
+>();
 
-const BG_RESULT_REGEX = /Command running in background with ID:\s*(\S+)\.\s*Output is being written to:\s*(\S+)/;
+const BG_RESULT_REGEX =
+  /Command running in background with ID:\s*(\S+)\.\s*Output is being written to:\s*(\S+)/;
 
 function extractProcessesFromBlocks(sessionId: string, blocks: ContentBlock[]) {
   const store = useStore.getState();
@@ -161,11 +185,14 @@ function extractProcessesFromBlocks(sessionId: string, blocks: ContentBlock[]) {
       const sessionPending = pendingBackgroundBash.get(sessionId);
       const pending = sessionPending?.get(toolUseId);
       if (sessionPending && pending) {
-        const content = typeof block.content === "string"
-          ? block.content
-          : Array.isArray(block.content)
-            ? block.content.map((b) => ("text" in b ? (b as { text: string }).text : "")).join("")
-            : "";
+        const content =
+          typeof block.content === "string"
+            ? block.content
+            : Array.isArray(block.content)
+              ? block.content
+                  .map((b) => ("text" in b ? (b as { text: string }).text : ""))
+                  .join("")
+              : "";
 
         const match = content.match(BG_RESULT_REGEX);
         if (match) {
@@ -222,7 +249,8 @@ function summarizeSystemEvent(
   }
 
   if (event.subtype === "hook_response") {
-    const exitCode = typeof event.exit_code === "number" ? ` (exit ${event.exit_code})` : "";
+    const exitCode =
+      typeof event.exit_code === "number" ? ` (exit ${event.exit_code})` : "";
     return `Hook ${event.outcome}: ${event.hook_name} (${event.hook_event})${exitCode}.`;
   }
 
@@ -273,7 +301,10 @@ function setStreamingDraftMessage(sessionId: string, content: string) {
   store.setMessages(sessionId, messages);
 }
 
-function finalizeStreamingDraftMessage(sessionId: string, finalMessage: ChatMessage): boolean {
+function finalizeStreamingDraftMessage(
+  sessionId: string,
+  finalMessage: ChatMessage,
+): boolean {
   const draftId = streamingDraftMessageIdBySession.get(sessionId);
   if (!draftId) return false;
 
@@ -339,7 +370,9 @@ function getLastSeq(sessionId: string): number {
   try {
     const raw = localStorage.getItem(getLastSeqStorageKey(sessionId));
     const parsed = raw ? Number(raw) : 0;
-    const normalized = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0;
+    const normalized = Number.isFinite(parsed)
+      ? Math.max(0, Math.floor(parsed))
+      : 0;
     lastSeqBySession.set(sessionId, normalized);
     return normalized;
   } catch {
@@ -372,7 +405,10 @@ function extractTextFromBlocks(blocks: ContentBlock[]): string {
     .join("\n");
 }
 
-function mergeContentBlocks(prev?: ContentBlock[], next?: ContentBlock[]): ContentBlock[] | undefined {
+function mergeContentBlocks(
+  prev?: ContentBlock[],
+  next?: ContentBlock[],
+): ContentBlock[] | undefined {
   const prevBlocks = prev || [];
   const nextBlocks = next || [];
   if (prevBlocks.length === 0 && nextBlocks.length === 0) return undefined;
@@ -392,11 +428,18 @@ function mergeContentBlocks(prev?: ContentBlock[], next?: ContentBlock[]): Conte
   return merged;
 }
 
-function mergeAssistantMessage(previous: ChatMessage, incoming: ChatMessage): ChatMessage {
-  const mergedBlocks = mergeContentBlocks(previous.contentBlocks, incoming.contentBlocks);
-  const mergedContent = mergedBlocks && mergedBlocks.length > 0
-    ? extractTextFromBlocks(mergedBlocks)
-    : (incoming.content || previous.content);
+function mergeAssistantMessage(
+  previous: ChatMessage,
+  incoming: ChatMessage,
+): ChatMessage {
+  const mergedBlocks = mergeContentBlocks(
+    previous.contentBlocks,
+    incoming.contentBlocks,
+  );
+  const mergedContent =
+    mergedBlocks && mergedBlocks.length > 0
+      ? extractTextFromBlocks(mergedBlocks)
+      : incoming.content || previous.content;
 
   return {
     ...previous,
@@ -413,7 +456,9 @@ function mergeAssistantMessage(previous: ChatMessage, incoming: ChatMessage): Ch
 function upsertAssistantMessage(sessionId: string, incoming: ChatMessage) {
   const store = useStore.getState();
   const existing = store.messages.get(sessionId) || [];
-  const index = existing.findIndex((m) => m.role === "assistant" && m.id === incoming.id);
+  const index = existing.findIndex(
+    (m) => m.role === "assistant" && m.id === incoming.id,
+  );
   if (index === -1) {
     store.appendMessage(sessionId, incoming);
     return;
@@ -509,6 +554,39 @@ function handleParsedMessage(
       }
       store.setSessionStatus(sessionId, "running");
 
+      // Track per-turn token usage for accurate context % (Claude Code)
+      const usage = msg.usage;
+      if (usage) {
+        const inputTokens = usage.input_tokens ?? 0;
+        const cacheRead = usage.cache_read_input_tokens ?? 0;
+        const cacheCreation = usage.cache_creation_input_tokens ?? 0;
+        const outputTokens = usage.output_tokens ?? 0;
+        const prev = store.sessions.get(sessionId)?.claude_token_details;
+        const details = {
+          inputTokens,
+          outputTokens,
+          cacheReadInputTokens: cacheRead,
+          cacheCreationInputTokens: cacheCreation,
+          contextWindow: prev?.contextWindow ?? 0,
+          maxOutputTokens: prev?.maxOutputTokens ?? 0,
+        };
+        const updates: Partial<{
+          claude_token_details: typeof details;
+          context_used_percent: number;
+        }> = {
+          claude_token_details: details,
+        };
+        if (details.contextWindow > 0) {
+          const pct = Math.round(
+            ((inputTokens + cacheRead + cacheCreation) /
+              details.contextWindow) *
+              100,
+          );
+          updates.context_used_percent = Math.max(0, Math.min(pct, 100));
+        }
+        store.updateSession(sessionId, updates);
+      }
+
       // Start timer if not already started (for non-streaming tool calls)
       if (!store.streamingStartedAt.has(sessionId)) {
         store.setStreamingStats(sessionId, { startedAt: Date.now() });
@@ -532,7 +610,10 @@ function handleParsedMessage(
           streamingPhaseBySession.delete(sessionId);
           clearStreamingDraftMessage(sessionId);
           if (!store.streamingStartedAt.has(sessionId)) {
-            store.setStreamingStats(sessionId, { startedAt: Date.now(), outputTokens: 0 });
+            store.setStreamingStats(sessionId, {
+              startedAt: Date.now(),
+              outputTokens: 0,
+            });
           }
         }
 
@@ -543,7 +624,10 @@ function handleParsedMessage(
             let current = store.streaming.get(sessionId) || "";
             const thinkingPrefix = "Thinking:\n";
             const responsePrefix = "\n\nResponse:\n";
-            if (streamingPhaseBySession.get(sessionId) === "thinking" && !current.includes(responsePrefix)) {
+            if (
+              streamingPhaseBySession.get(sessionId) === "thinking" &&
+              !current.includes(responsePrefix)
+            ) {
               current += responsePrefix;
             }
             streamingPhaseBySession.set(sessionId, "text");
@@ -551,13 +635,19 @@ function handleParsedMessage(
             store.setStreaming(sessionId, nextText);
             setStreamingDraftMessage(sessionId, nextText);
           }
-          if (delta?.type === "thinking_delta" && typeof delta.thinking === "string") {
+          if (
+            delta?.type === "thinking_delta" &&
+            typeof delta.thinking === "string"
+          ) {
             const current = store.streaming.get(sessionId) || "";
             const prefix = "Thinking:\n";
             const phase = streamingPhaseBySession.get(sessionId);
-            const base = phase === "thinking"
-              ? (current.startsWith(prefix) ? current : prefix)
-              : prefix;
+            const base =
+              phase === "thinking"
+                ? current.startsWith(prefix)
+                  ? current
+                  : prefix
+                : prefix;
             streamingPhaseBySession.set(sessionId, "thinking");
             const nextText = base + delta.thinking;
             store.setStreaming(sessionId, nextText);
@@ -569,7 +659,9 @@ function handleParsedMessage(
         if (evt.type === "message_delta") {
           const usage = (evt as { usage?: { output_tokens?: number } }).usage;
           if (usage?.output_tokens) {
-            store.setStreamingStats(sessionId, { outputTokens: usage.output_tokens });
+            store.setStreamingStats(sessionId, {
+              outputTokens: usage.output_tokens,
+            });
           }
         }
       }
@@ -582,7 +674,13 @@ function handleParsedMessage(
       processedToolUseIds.delete(sessionId);
 
       const r = data.data;
-      const sessionUpdates: Partial<{ total_cost_usd: number; num_turns: number; context_used_percent: number; total_lines_added: number; total_lines_removed: number }> = {
+      const sessionUpdates: Partial<{
+        total_cost_usd: number;
+        num_turns: number;
+        context_used_percent: number;
+        total_lines_added: number;
+        total_lines_removed: number;
+      }> = {
         total_cost_usd: r.total_cost_usd,
         num_turns: r.num_turns,
       };
@@ -593,14 +691,37 @@ function handleParsedMessage(
       if (typeof r.total_lines_removed === "number") {
         sessionUpdates.total_lines_removed = r.total_lines_removed;
       }
-      // Compute context % from modelUsage if available
+      // Store contextWindow from modelUsage, recompute context % using per-turn data
       if (r.modelUsage) {
         for (const usage of Object.values(r.modelUsage)) {
           if (usage.contextWindow > 0) {
-            const pct = Math.round(
-              ((usage.inputTokens + usage.outputTokens) / usage.contextWindow) * 100
-            );
-            sessionUpdates.context_used_percent = Math.max(0, Math.min(pct, 100));
+            const prev = store.sessions.get(sessionId)?.claude_token_details;
+            if (prev) {
+              prev.contextWindow = usage.contextWindow;
+              prev.maxOutputTokens = usage.maxOutputTokens;
+              const pct = Math.round(
+                ((prev.inputTokens +
+                  prev.cacheReadInputTokens +
+                  prev.cacheCreationInputTokens) /
+                  usage.contextWindow) *
+                  100,
+              );
+              sessionUpdates.context_used_percent = Math.max(
+                0,
+                Math.min(pct, 100),
+              );
+            } else {
+              // No per-turn data yet — fall back to cumulative formula
+              const pct = Math.round(
+                ((usage.inputTokens + usage.outputTokens) /
+                  usage.contextWindow) *
+                  100,
+              );
+              sessionUpdates.context_used_percent = Math.max(
+                0,
+                Math.min(pct, 100),
+              );
+            }
           }
         }
       }
@@ -616,7 +737,11 @@ function handleParsedMessage(
         playNotificationSound();
       }
       if (!document.hasFocus() && store.notificationDesktop) {
-        sendBrowserNotification("Session completed", "Claude finished the task", sessionId);
+        sendBrowserNotification(
+          "Session completed",
+          "Claude finished the task",
+          sessionId,
+        );
       }
       if (r.is_error && r.errors?.length) {
         store.appendMessage(sessionId, {
@@ -642,12 +767,14 @@ function handleParsedMessage(
       // Also extract tasks and changed files from permission requests
       const req = data.request;
       if (req.tool_name && req.input) {
-        const permBlocks = [{
-          type: "tool_use" as const,
-          id: req.tool_use_id,
-          name: req.tool_name,
-          input: req.input,
-        }];
+        const permBlocks = [
+          {
+            type: "tool_use" as const,
+            id: req.tool_use_id,
+            name: req.tool_name,
+            input: req.input,
+          },
+        ];
         extractTasksFromBlocks(sessionId, permBlocks);
         extractChangedFilesFromBlocks(sessionId, permBlocks);
         extractProcessesFromBlocks(sessionId, permBlocks);
@@ -757,7 +884,8 @@ function handleParsedMessage(
     case "session_name_update": {
       // Only apply auto-name if user hasn't manually renamed (still has random Adj+Noun name)
       const currentName = store.sessionNames.get(sessionId);
-      const isRandomName = currentName && /^[A-Z][a-z]+ [A-Z][a-z]+$/.test(currentName);
+      const isRandomName =
+        currentName && /^[A-Z][a-z]+ [A-Z][a-z]+$/.test(currentName);
       if (!currentName || isRandomName) {
         store.setSessionName(sessionId, data.name);
         store.markRecentlyRenamed(sessionId);
@@ -799,11 +927,16 @@ function handleParsedMessage(
             model: msg.model,
             stopReason: msg.stop_reason,
           };
-          const existingIndex = chatMessages.findIndex((m) => m.role === "assistant" && m.id === assistantMsg.id);
+          const existingIndex = chatMessages.findIndex(
+            (m) => m.role === "assistant" && m.id === assistantMsg.id,
+          );
           if (existingIndex === -1) {
             chatMessages.push(assistantMsg);
           } else {
-            chatMessages[existingIndex] = mergeAssistantMessage(chatMessages[existingIndex], assistantMsg);
+            chatMessages[existingIndex] = mergeAssistantMessage(
+              chatMessages[existingIndex],
+              assistantMsg,
+            );
           }
           // Also extract tasks, changed files, and background processes from history
           if (msg.content?.length) {
@@ -822,7 +955,13 @@ function handleParsedMessage(
             });
           }
           // Track cost/turns from history result, same as the live result handler
-          const resultUpdates: Partial<{ total_cost_usd: number; num_turns: number; context_used_percent: number; total_lines_added: number; total_lines_removed: number }> = {
+          const resultUpdates: Partial<{
+            total_cost_usd: number;
+            num_turns: number;
+            context_used_percent: number;
+            total_lines_added: number;
+            total_lines_removed: number;
+          }> = {
             total_cost_usd: r.total_cost_usd,
             num_turns: r.num_turns,
           };
@@ -834,10 +973,27 @@ function handleParsedMessage(
           }
           if (r.modelUsage) {
             for (const usage of Object.values(r.modelUsage)) {
-              if ((usage as { contextWindow: number; inputTokens: number; outputTokens: number }).contextWindow > 0) {
-                const u = usage as { contextWindow: number; inputTokens: number; outputTokens: number };
-                const pct = Math.round(((u.inputTokens + u.outputTokens) / u.contextWindow) * 100);
-                resultUpdates.context_used_percent = Math.max(0, Math.min(pct, 100));
+              if (
+                (
+                  usage as {
+                    contextWindow: number;
+                    inputTokens: number;
+                    outputTokens: number;
+                  }
+                ).contextWindow > 0
+              ) {
+                const u = usage as {
+                  contextWindow: number;
+                  inputTokens: number;
+                  outputTokens: number;
+                };
+                const pct = Math.round(
+                  ((u.inputTokens + u.outputTokens) / u.contextWindow) * 100,
+                );
+                resultUpdates.context_used_percent = Math.max(
+                  0,
+                  Math.min(pct, 100),
+                );
               }
             }
           }
@@ -900,11 +1056,10 @@ function handleParsedMessage(
         if (evt.seq <= previous) continue;
         setLastSeq(sessionId, evt.seq);
         latestProcessed = evt.seq;
-        handleParsedMessage(
-          sessionId,
-          evt.message as BrowserIncomingMessage,
-          { processSeq: false, ackSeqMessage: false },
-        );
+        handleParsedMessage(sessionId, evt.message as BrowserIncomingMessage, {
+          processSeq: false,
+          ackSeqMessage: false,
+        });
       }
       if (typeof latestProcessed === "number") {
         ackSeq(sessionId, latestProcessed);
@@ -1043,7 +1198,11 @@ export function sendMcpGetStatus(sessionId: string) {
   sendToSession(sessionId, { type: "mcp_get_status" });
 }
 
-export function sendMcpToggle(sessionId: string, serverName: string, enabled: boolean) {
+export function sendMcpToggle(
+  sessionId: string,
+  serverName: string,
+  enabled: boolean,
+) {
   sendToSession(sessionId, { type: "mcp_toggle", serverName, enabled });
 }
 
@@ -1051,7 +1210,10 @@ export function sendMcpReconnect(sessionId: string, serverName: string) {
   sendToSession(sessionId, { type: "mcp_reconnect", serverName });
 }
 
-export function sendMcpSetServers(sessionId: string, servers: Record<string, McpServerConfig>) {
+export function sendMcpSetServers(
+  sessionId: string,
+  servers: Record<string, McpServerConfig>,
+) {
   sendToSession(sessionId, { type: "mcp_set_servers", servers });
 }
 
