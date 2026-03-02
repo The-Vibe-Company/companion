@@ -1,16 +1,31 @@
 // @vitest-environment jsdom
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { getDefaultConfig, type TaskPanelConfig } from "./task-panel-sections.js";
+import {
+  getDefaultConfig,
+  type TaskPanelConfig,
+} from "./task-panel-sections.js";
 
 vi.mock("../api.js", () => ({
   api: {
     getSessionUsageLimits: vi.fn().mockRejectedValue(new Error("skip")),
     getPRStatus: vi.fn().mockRejectedValue(new Error("skip")),
     getLinkedLinearIssue: vi.fn().mockResolvedValue({ issue: null }),
-    gitPull: vi.fn().mockResolvedValue({ success: true, git_ahead: 0, git_behind: 0, output: "" }),
+    gitPull: vi.fn().mockResolvedValue({
+      success: true,
+      git_ahead: 0,
+      git_behind: 0,
+      output: "",
+    }),
     searchLinearIssues: vi.fn().mockResolvedValue({ issues: [] }),
-    addLinearComment: vi.fn().mockResolvedValue({ comment: { id: "c1", body: "test", createdAt: new Date().toISOString(), userName: "User" } }),
+    addLinearComment: vi.fn().mockResolvedValue({
+      comment: {
+        id: "c1",
+        body: "test",
+        createdAt: new Date().toISOString(),
+        userName: "User",
+      },
+    }),
     unlinkLinearIssue: vi.fn().mockResolvedValue({}),
     linkLinearIssue: vi.fn().mockResolvedValue({}),
     archiveSession: vi.fn().mockResolvedValue({}),
@@ -22,12 +37,16 @@ vi.mock("./McpPanel.js", () => ({
 }));
 
 vi.mock("./ClaudeConfigBrowser.js", () => ({
-  ClaudeConfigBrowser: () => <div data-testid="claude-config-browser">Config</div>,
+  ClaudeConfigBrowser: () => (
+    <div data-testid="claude-config-browser">Config</div>
+  ),
 }));
 
 vi.mock("./LinearLogo.js", () => ({
   LinearLogo: ({ className }: { className?: string }) => (
-    <span data-testid="linear-logo" className={className}>L</span>
+    <span data-testid="linear-logo" className={className}>
+      L
+    </span>
   ),
 }));
 
@@ -44,8 +63,16 @@ interface CodexTokenDetails {
 }
 
 interface CodexRateLimits {
-  primary: { usedPercent: number; windowDurationMins: number; resetsAt: number } | null;
-  secondary: { usedPercent: number; windowDurationMins: number; resetsAt: number } | null;
+  primary: {
+    usedPercent: number;
+    windowDurationMins: number;
+    resetsAt: number;
+  } | null;
+  secondary: {
+    usedPercent: number;
+    windowDurationMins: number;
+    resetsAt: number;
+  } | null;
 }
 
 interface TaskItemMock {
@@ -58,21 +85,37 @@ interface TaskItemMock {
 
 interface MockStoreState {
   sessionTasks: Map<string, TaskItemMock[]>;
-  sessions: Map<string, {
-    backend_type?: string;
+  sessions: Map<
+    string,
+    {
+      backend_type?: string;
+      cwd?: string;
+      git_branch?: string;
+      git_ahead?: number;
+      git_behind?: number;
+      total_lines_added?: number;
+      total_lines_removed?: number;
+      repo_root?: string;
+      is_containerized?: boolean;
+      codex_token_details?: CodexTokenDetails;
+      codex_rate_limits?: CodexRateLimits;
+      context_used_percent?: number;
+      claude_token_details?: {
+        contextWindow: number;
+        inputTokens: number;
+        cacheReadInputTokens: number;
+        cacheCreationInputTokens: number;
+      };
+      total_cost_usd?: number;
+      num_turns?: number;
+    }
+  >;
+  sdkSessions: {
+    sessionId: string;
+    backendType?: string;
     cwd?: string;
-    git_branch?: string;
-    git_ahead?: number;
-    git_behind?: number;
-    total_lines_added?: number;
-    total_lines_removed?: number;
-    repo_root?: string;
-    is_containerized?: boolean;
-    codex_token_details?: CodexTokenDetails;
-    codex_rate_limits?: CodexRateLimits;
-    context_used_percent?: number;
-  }>;
-  sdkSessions: { sessionId: string; backendType?: string; cwd?: string; gitBranch?: string }[];
+    gitBranch?: string;
+  }[];
   taskPanelOpen: boolean;
   setTaskPanelOpen: ReturnType<typeof vi.fn>;
   taskPanelConfig: TaskPanelConfig;
@@ -123,7 +166,13 @@ vi.mock("../store.js", () => ({
   ),
 }));
 
-import { TaskPanel, GitHubPRDisplay, CodexRateLimitsSection, CodexTokenDetailsSection } from "./TaskPanel.js";
+import {
+  TaskPanel,
+  GitHubPRDisplay,
+  ClaudeContextSection,
+  CodexRateLimitsSection,
+  CodexTokenDetailsSection,
+} from "./TaskPanel.js";
 import { api } from "../api.js";
 import type { GitHubPRInfo } from "../api.js";
 
@@ -148,7 +197,9 @@ describe("TaskPanel", () => {
     const { container } = render(<TaskPanel sessionId="s1" />);
 
     expect(screen.getByTestId("mcp-section")).toBeInTheDocument();
-    expect(screen.getByTestId("task-panel-content")).toHaveClass("overflow-y-auto");
+    expect(screen.getByTestId("task-panel-content")).toHaveClass(
+      "overflow-y-auto",
+    );
     expect(container.querySelectorAll(".overflow-y-auto")).toHaveLength(1);
   });
 
@@ -175,9 +226,13 @@ describe("TaskPanel", () => {
     });
     render(<TaskPanel sessionId="s1" />);
     // Tasks section config row should not exist for Codex
-    expect(screen.queryByTestId("config-section-tasks")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("config-section-tasks"),
+    ).not.toBeInTheDocument();
     // Other sections should still be present
-    expect(screen.getByTestId("config-section-usage-limits")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("config-section-usage-limits"),
+    ).toBeInTheDocument();
   });
 
   it("shows tasks section config for Claude sessions", () => {
@@ -246,14 +301,27 @@ describe("TaskPanel", () => {
   it("renders sections in the configured order", () => {
     // When config order is changed, sections should render in that order
     const config = getDefaultConfig();
-    config.order = ["mcp-servers", "usage-limits", "git-branch", "github-pr", "linear-issue", "tasks"];
+    config.order = [
+      "mcp-servers",
+      "usage-limits",
+      "git-branch",
+      "github-pr",
+      "linear-issue",
+      "tasks",
+    ];
     resetStore({ taskPanelConfig: config, taskPanelConfigMode: true });
     render(<TaskPanel sessionId="s1" />);
 
     // Verify the first config row is MCP servers (since we reordered)
     const rows = screen.getAllByTestId(/^config-section-/);
-    expect(rows[0]).toHaveAttribute("data-testid", "config-section-mcp-servers");
-    expect(rows[1]).toHaveAttribute("data-testid", "config-section-usage-limits");
+    expect(rows[0]).toHaveAttribute(
+      "data-testid",
+      "config-section-mcp-servers",
+    );
+    expect(rows[1]).toHaveAttribute(
+      "data-testid",
+      "config-section-usage-limits",
+    );
   });
 });
 
@@ -267,10 +335,15 @@ describe("CodexRateLimitsSection", () => {
 
   it("renders nothing when both primary and secondary are null", () => {
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "codex",
-        codex_rate_limits: { primary: null, secondary: null },
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "codex",
+            codex_rate_limits: { primary: null, secondary: null },
+          },
+        ],
+      ]),
     });
     const { container } = render(<CodexRateLimitsSection sessionId="s1" />);
     expect(container.firstChild).toBeNull();
@@ -278,13 +351,22 @@ describe("CodexRateLimitsSection", () => {
 
   it("renders primary rate limit bar with percentage and window label", () => {
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "codex",
-        codex_rate_limits: {
-          primary: { usedPercent: 62, windowDurationMins: 300, resetsAt: Date.now() + 7_200_000 },
-          secondary: null,
-        },
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "codex",
+            codex_rate_limits: {
+              primary: {
+                usedPercent: 62,
+                windowDurationMins: 300,
+                resetsAt: Date.now() + 7_200_000,
+              },
+              secondary: null,
+            },
+          },
+        ],
+      ]),
     });
     render(<CodexRateLimitsSection sessionId="s1" />);
     // 300 mins = 5h
@@ -294,13 +376,26 @@ describe("CodexRateLimitsSection", () => {
 
   it("renders both primary and secondary limits", () => {
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "codex",
-        codex_rate_limits: {
-          primary: { usedPercent: 30, windowDurationMins: 300, resetsAt: Date.now() + 3_600_000 },
-          secondary: { usedPercent: 10, windowDurationMins: 10080, resetsAt: Date.now() + 86_400_000 },
-        },
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "codex",
+            codex_rate_limits: {
+              primary: {
+                usedPercent: 30,
+                windowDurationMins: 300,
+                resetsAt: Date.now() + 3_600_000,
+              },
+              secondary: {
+                usedPercent: 10,
+                windowDurationMins: 10080,
+                resetsAt: Date.now() + 86_400_000,
+              },
+            },
+          },
+        ],
+      ]),
     });
     render(<CodexRateLimitsSection sessionId="s1" />);
     // 300 mins = 5h, 10080 mins = 7d
@@ -320,17 +415,22 @@ describe("CodexTokenDetailsSection", () => {
 
   it("renders input and output token counts", () => {
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "codex",
-        context_used_percent: 42,
-        codex_token_details: {
-          inputTokens: 84_230,
-          outputTokens: 12_450,
-          cachedInputTokens: 0,
-          reasoningOutputTokens: 0,
-          modelContextWindow: 200_000,
-        },
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "codex",
+            context_used_percent: 42,
+            codex_token_details: {
+              inputTokens: 84_230,
+              outputTokens: 12_450,
+              cachedInputTokens: 0,
+              reasoningOutputTokens: 0,
+              modelContextWindow: 200_000,
+            },
+          },
+        ],
+      ]),
     });
     render(<CodexTokenDetailsSection sessionId="s1" />);
     expect(screen.getByText("Tokens")).toBeInTheDocument();
@@ -340,17 +440,22 @@ describe("CodexTokenDetailsSection", () => {
 
   it("shows cached and reasoning rows only when non-zero", () => {
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "codex",
-        context_used_percent: 55,
-        codex_token_details: {
-          inputTokens: 100_000,
-          outputTokens: 5_000,
-          cachedInputTokens: 41_200,
-          reasoningOutputTokens: 8_900,
-          modelContextWindow: 200_000,
-        },
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "codex",
+            context_used_percent: 55,
+            codex_token_details: {
+              inputTokens: 100_000,
+              outputTokens: 5_000,
+              cachedInputTokens: 41_200,
+              reasoningOutputTokens: 8_900,
+              modelContextWindow: 200_000,
+            },
+          },
+        ],
+      ]),
     });
     render(<CodexTokenDetailsSection sessionId="s1" />);
     // Cached and reasoning should be visible
@@ -362,17 +467,22 @@ describe("CodexTokenDetailsSection", () => {
 
   it("hides cached and reasoning rows when zero", () => {
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "codex",
-        context_used_percent: 20,
-        codex_token_details: {
-          inputTokens: 10_000,
-          outputTokens: 1_000,
-          cachedInputTokens: 0,
-          reasoningOutputTokens: 0,
-          modelContextWindow: 200_000,
-        },
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "codex",
+            context_used_percent: 20,
+            codex_token_details: {
+              inputTokens: 10_000,
+              outputTokens: 1_000,
+              cachedInputTokens: 0,
+              reasoningOutputTokens: 0,
+              modelContextWindow: 200_000,
+            },
+          },
+        ],
+      ]),
     });
     render(<CodexTokenDetailsSection sessionId="s1" />);
     expect(screen.queryByText("Cached")).not.toBeInTheDocument();
@@ -384,17 +494,22 @@ describe("CodexTokenDetailsSection", () => {
     // Naive local calc would give 112%, but server caps at 100
     // This verifies the UI uses the session's context_used_percent (capped at 100)
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "codex",
-        context_used_percent: 100,
-        codex_token_details: {
-          inputTokens: 289_500,
-          outputTokens: 2_100,
-          cachedInputTokens: 210_300,
-          reasoningOutputTokens: 741,
-          modelContextWindow: 258_400,
-        },
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "codex",
+            context_used_percent: 100,
+            codex_token_details: {
+              inputTokens: 289_500,
+              outputTokens: 2_100,
+              cachedInputTokens: 210_300,
+              reasoningOutputTokens: 741,
+              modelContextWindow: 258_400,
+            },
+          },
+        ],
+      ]),
     });
     render(<CodexTokenDetailsSection sessionId="s1" />);
     // Should show 100%, not 112%
@@ -404,20 +519,117 @@ describe("CodexTokenDetailsSection", () => {
 
   it("hides context bar when modelContextWindow is 0", () => {
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "codex",
-        context_used_percent: 0,
-        codex_token_details: {
-          inputTokens: 1_000,
-          outputTokens: 500,
-          cachedInputTokens: 0,
-          reasoningOutputTokens: 0,
-          modelContextWindow: 0,
-        },
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "codex",
+            context_used_percent: 0,
+            codex_token_details: {
+              inputTokens: 1_000,
+              outputTokens: 500,
+              cachedInputTokens: 0,
+              reasoningOutputTokens: 0,
+              modelContextWindow: 0,
+            },
+          },
+        ],
+      ]),
     });
     render(<CodexTokenDetailsSection sessionId="s1" />);
     expect(screen.queryByText("Context")).not.toBeInTheDocument();
+  });
+});
+
+describe("ClaudeContextSection", () => {
+  it("renders nothing when no claude_token_details", () => {
+    // Session exists but has no claude_token_details — component must return null
+    resetStore({ sessions: new Map([["s1", { backend_type: "claude" }]]) });
+    const { container } = render(<ClaudeContextSection sessionId="s1" />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("renders context bar with correct percentage and token counts", () => {
+    // When contextWindow > 0, the bar and used/total token counts must appear.
+    // usedTokens = inputTokens + cacheReadInputTokens + cacheCreationInputTokens
+    // = 80_000 + 30_000 + 10_000 = 120_000 → formatTokenCount → "120k"
+    resetStore({
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "claude",
+            context_used_percent: 60,
+            claude_token_details: {
+              contextWindow: 200_000,
+              inputTokens: 80_000,
+              cacheReadInputTokens: 30_000,
+              cacheCreationInputTokens: 10_000,
+            },
+          },
+        ],
+      ]),
+    });
+    render(<ClaudeContextSection sessionId="s1" />);
+    expect(screen.getByText("Context")).toBeInTheDocument();
+    // used tokens = 120k, context window = 200k
+    expect(screen.getByText("120.0k / 200.0k")).toBeInTheDocument();
+    expect(screen.getByText("60%")).toBeInTheDocument();
+  });
+
+  it("renders cost and turn count", () => {
+    // When total_cost_usd > 0 and num_turns > 0, both Cost and Turns rows appear
+    resetStore({
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "claude",
+            context_used_percent: 10,
+            total_cost_usd: 0.0123,
+            num_turns: 7,
+            claude_token_details: {
+              contextWindow: 200_000,
+              inputTokens: 20_000,
+              cacheReadInputTokens: 0,
+              cacheCreationInputTokens: 0,
+            },
+          },
+        ],
+      ]),
+    });
+    render(<ClaudeContextSection sessionId="s1" />);
+    expect(screen.getByText("Cost")).toBeInTheDocument();
+    expect(screen.getByText("$0.0123")).toBeInTheDocument();
+    expect(screen.getByText("Turns")).toBeInTheDocument();
+    expect(screen.getByText("7")).toBeInTheDocument();
+  });
+
+  it("does not render context bar when contextWindow is 0", () => {
+    // When contextWindow === 0, the bar and token counts must not appear,
+    // but the "Context" header should still render (component does not return null)
+    resetStore({
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "claude",
+            context_used_percent: 0,
+            claude_token_details: {
+              contextWindow: 0,
+              inputTokens: 1_000,
+              cacheReadInputTokens: 0,
+              cacheCreationInputTokens: 0,
+            },
+          },
+        ],
+      ]),
+    });
+    render(<ClaudeContextSection sessionId="s1" />);
+    // The header is still present
+    expect(screen.getByText("Context")).toBeInTheDocument();
+    // But the progress bar area (percentage) should not appear
+    expect(screen.queryByText("0%")).not.toBeInTheDocument();
   });
 });
 
@@ -512,11 +724,14 @@ describe("TasksSection (Claude Code sessions)", () => {
     resetStore({
       sessions: new Map([["s1", { backend_type: "claude" }]]),
       sessionTasks: new Map([
-        ["s1", [
-          { id: "t1", status: "completed", subject: "Setup project" },
-          { id: "t2", status: "in_progress", subject: "Write tests" },
-          { id: "t3", status: "pending", subject: "Deploy app" },
-        ]],
+        [
+          "s1",
+          [
+            { id: "t1", status: "completed", subject: "Setup project" },
+            { id: "t2", status: "in_progress", subject: "Write tests" },
+            { id: "t3", status: "pending", subject: "Deploy app" },
+          ],
+        ],
       ]),
     });
     render(<TaskPanel sessionId="s1" />);
@@ -530,10 +745,13 @@ describe("TasksSection (Claude Code sessions)", () => {
     resetStore({
       sessions: new Map([["s1", { backend_type: "claude" }]]),
       sessionTasks: new Map([
-        ["s1", [
-          { id: "t1", status: "pending", subject: "First task" },
-          { id: "t2", status: "completed", subject: "Second task" },
-        ]],
+        [
+          "s1",
+          [
+            { id: "t1", status: "pending", subject: "First task" },
+            { id: "t2", status: "completed", subject: "Second task" },
+          ],
+        ],
       ]),
     });
     render(<TaskPanel sessionId="s1" />);
@@ -546,9 +764,17 @@ describe("TasksSection (Claude Code sessions)", () => {
     resetStore({
       sessions: new Map([["s1", { backend_type: "claude" }]]),
       sessionTasks: new Map([
-        ["s1", [
-          { id: "t1", status: "in_progress", subject: "Running tests", activeForm: "Executing test suite" },
-        ]],
+        [
+          "s1",
+          [
+            {
+              id: "t1",
+              status: "in_progress",
+              subject: "Running tests",
+              activeForm: "Executing test suite",
+            },
+          ],
+        ],
       ]),
     });
     render(<TaskPanel sessionId="s1" />);
@@ -561,9 +787,17 @@ describe("TasksSection (Claude Code sessions)", () => {
     resetStore({
       sessions: new Map([["s1", { backend_type: "claude" }]]),
       sessionTasks: new Map([
-        ["s1", [
-          { id: "t1", status: "pending", subject: "Blocked task", blockedBy: ["t2", "t3"] },
-        ]],
+        [
+          "s1",
+          [
+            {
+              id: "t1",
+              status: "pending",
+              subject: "Blocked task",
+              blockedBy: ["t2", "t3"],
+            },
+          ],
+        ],
       ]),
     });
     render(<TaskPanel sessionId="s1" />);
@@ -575,9 +809,7 @@ describe("TasksSection (Claude Code sessions)", () => {
     resetStore({
       sessions: new Map([["s1", { backend_type: "claude" }]]),
       sessionTasks: new Map([
-        ["s1", [
-          { id: "t1", status: "completed", subject: "Done task" },
-        ]],
+        ["s1", [{ id: "t1", status: "completed", subject: "Done task" }]],
       ]),
     });
     render(<TaskPanel sessionId="s1" />);
@@ -603,7 +835,9 @@ describe("GitBranchSection", () => {
   it("renders branch name when session has git_branch", () => {
     // A Claude session with a git branch should show the branch section
     resetStore({
-      sessions: new Map([["s1", { backend_type: "claude", git_branch: "feat/my-feature" }]]),
+      sessions: new Map([
+        ["s1", { backend_type: "claude", git_branch: "feat/my-feature" }],
+      ]),
     });
     render(<TaskPanel sessionId="s1" />);
     expect(screen.getByText("Branch")).toBeInTheDocument();
@@ -622,12 +856,17 @@ describe("GitBranchSection", () => {
   it("shows ahead and behind counts", () => {
     // When there are commits ahead/behind, they should be displayed
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "claude",
-        git_branch: "main",
-        git_ahead: 3,
-        git_behind: 2,
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "claude",
+            git_branch: "main",
+            git_ahead: 3,
+            git_behind: 2,
+          },
+        ],
+      ]),
     });
     render(<TaskPanel sessionId="s1" />);
     // The up arrow character is &#8593; and down is &#8595;
@@ -638,12 +877,17 @@ describe("GitBranchSection", () => {
   it("shows line additions and removals", () => {
     // Line change statistics should be rendered when present
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "claude",
-        git_branch: "main",
-        total_lines_added: 150,
-        total_lines_removed: 30,
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "claude",
+            git_branch: "main",
+            total_lines_added: 150,
+            total_lines_removed: 30,
+          },
+        ],
+      ]),
     });
     render(<TaskPanel sessionId="s1" />);
     expect(screen.getByText("+150")).toBeInTheDocument();
@@ -653,11 +897,16 @@ describe("GitBranchSection", () => {
   it("shows container badge when session is containerized", () => {
     // Containerized sessions should display a "container" badge
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "claude",
-        git_branch: "main",
-        is_containerized: true,
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "claude",
+            git_branch: "main",
+            is_containerized: true,
+          },
+        ],
+      ]),
     });
     render(<TaskPanel sessionId="s1" />);
     expect(screen.getByText("container")).toBeInTheDocument();
@@ -666,12 +915,17 @@ describe("GitBranchSection", () => {
   it("shows Pull button when behind and cwd is available", () => {
     // When behind on commits and a cwd is known, a Pull button should appear
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "claude",
-        git_branch: "main",
-        git_behind: 5,
-        cwd: "/home/user/project",
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "claude",
+            git_branch: "main",
+            git_behind: 5,
+            cwd: "/home/user/project",
+          },
+        ],
+      ]),
     });
     render(<TaskPanel sessionId="s1" />);
     expect(screen.getByText("Pull")).toBeInTheDocument();
@@ -680,13 +934,18 @@ describe("GitBranchSection", () => {
   it("does not show Pull button when not behind", () => {
     // If there are no commits behind, Pull should not appear
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "claude",
-        git_branch: "main",
-        git_behind: 0,
-        git_ahead: 1,
-        cwd: "/home/user/project",
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "claude",
+            git_branch: "main",
+            git_behind: 0,
+            git_ahead: 1,
+            cwd: "/home/user/project",
+          },
+        ],
+      ]),
     });
     render(<TaskPanel sessionId="s1" />);
     expect(screen.queryByText("Pull")).not.toBeInTheDocument();
@@ -731,7 +990,11 @@ describe("GitHubPRDisplay", () => {
 
   it("shows diff stats with additions, deletions, and file count", () => {
     // The diff stats row should show +additions, -deletions, and changed file count
-    render(<GitHubPRDisplay pr={makePR({ additions: 200, deletions: 50, changedFiles: 12 })} />);
+    render(
+      <GitHubPRDisplay
+        pr={makePR({ additions: 200, deletions: 50, changedFiles: 12 })}
+      />,
+    );
     expect(screen.getByText("+200")).toBeInTheDocument();
     expect(screen.getByText("-50")).toBeInTheDocument();
     expect(screen.getByText(/12 files/)).toBeInTheDocument();
@@ -761,37 +1024,53 @@ describe("GitHubPRDisplay", () => {
 
   it("shows failing CI checks count", () => {
     // When there are failing checks, the failure count should be displayed
-    render(<GitHubPRDisplay pr={makePR({
-      checksSummary: { total: 5, success: 3, failure: 2, pending: 0 },
-    })} />);
+    render(
+      <GitHubPRDisplay
+        pr={makePR({
+          checksSummary: { total: 5, success: 3, failure: 2, pending: 0 },
+        })}
+      />,
+    );
     expect(screen.getByText("2 failing")).toBeInTheDocument();
     expect(screen.getByText("3 passed")).toBeInTheDocument();
   });
 
   it("shows pending CI checks count", () => {
     // When there are pending checks (but no failures), the pending count is shown
-    render(<GitHubPRDisplay pr={makePR({
-      checksSummary: { total: 4, success: 1, failure: 0, pending: 3 },
-    })} />);
+    render(
+      <GitHubPRDisplay
+        pr={makePR({
+          checksSummary: { total: 4, success: 1, failure: 0, pending: 3 },
+        })}
+      />,
+    );
     expect(screen.getByText("3 pending")).toBeInTheDocument();
     expect(screen.getByText("1 passed")).toBeInTheDocument();
   });
 
   it("shows all checks passed when all succeed", () => {
     // When all checks pass, it shows a summary like "5/5 checks passed"
-    render(<GitHubPRDisplay pr={makePR({
-      checksSummary: { total: 5, success: 5, failure: 0, pending: 0 },
-    })} />);
+    render(
+      <GitHubPRDisplay
+        pr={makePR({
+          checksSummary: { total: 5, success: 5, failure: 0, pending: 0 },
+        })}
+      />,
+    );
     expect(screen.getByText("5/5 checks passed")).toBeInTheDocument();
   });
 
   it("does not show CI checks section when total is 0", () => {
     // No checks at all means no CI section displayed.
     // Use a non-OPEN state to avoid "Review pending" text interfering.
-    render(<GitHubPRDisplay pr={makePR({
-      state: "MERGED",
-      checksSummary: { total: 0, success: 0, failure: 0, pending: 0 },
-    })} />);
+    render(
+      <GitHubPRDisplay
+        pr={makePR({
+          state: "MERGED",
+          checksSummary: { total: 0, success: 0, failure: 0, pending: 0 },
+        })}
+      />,
+    );
     expect(screen.queryByText(/failing/)).not.toBeInTheDocument();
     expect(screen.queryByText(/\d+ pending/)).not.toBeInTheDocument();
     expect(screen.queryByText(/passed/)).not.toBeInTheDocument();
@@ -803,48 +1082,70 @@ describe("GitHubPRDisplay", () => {
   });
 
   it("shows 'Changes requested' review decision", () => {
-    render(<GitHubPRDisplay pr={makePR({ reviewDecision: "CHANGES_REQUESTED" })} />);
+    render(
+      <GitHubPRDisplay pr={makePR({ reviewDecision: "CHANGES_REQUESTED" })} />,
+    );
     expect(screen.getByText("Changes requested")).toBeInTheDocument();
   });
 
   it("shows 'Review pending' for open PRs with REVIEW_REQUIRED", () => {
-    render(<GitHubPRDisplay pr={makePR({
-      state: "OPEN",
-      reviewDecision: "REVIEW_REQUIRED",
-    })} />);
+    render(
+      <GitHubPRDisplay
+        pr={makePR({
+          state: "OPEN",
+          reviewDecision: "REVIEW_REQUIRED",
+        })}
+      />,
+    );
     expect(screen.getByText("Review pending")).toBeInTheDocument();
   });
 
   it("shows 'Review pending' for open PRs with null review decision", () => {
     // When reviewDecision is null and state is OPEN, review pending is shown
-    render(<GitHubPRDisplay pr={makePR({
-      state: "OPEN",
-      reviewDecision: null,
-    })} />);
+    render(
+      <GitHubPRDisplay
+        pr={makePR({
+          state: "OPEN",
+          reviewDecision: null,
+        })}
+      />,
+    );
     expect(screen.getByText("Review pending")).toBeInTheDocument();
   });
 
   it("does not show 'Review pending' for merged PRs with null review decision", () => {
     // Merged PRs should not show "Review pending"
-    render(<GitHubPRDisplay pr={makePR({
-      state: "MERGED",
-      reviewDecision: null,
-    })} />);
+    render(
+      <GitHubPRDisplay
+        pr={makePR({
+          state: "MERGED",
+          reviewDecision: null,
+        })}
+      />,
+    );
     expect(screen.queryByText("Review pending")).not.toBeInTheDocument();
   });
 
   it("shows unresolved comment count", () => {
     // When there are unresolved review threads, the count should be displayed
-    render(<GitHubPRDisplay pr={makePR({
-      reviewThreads: { total: 5, resolved: 3, unresolved: 2 },
-    })} />);
+    render(
+      <GitHubPRDisplay
+        pr={makePR({
+          reviewThreads: { total: 5, resolved: 3, unresolved: 2 },
+        })}
+      />,
+    );
     expect(screen.getByText("2 unresolved")).toBeInTheDocument();
   });
 
   it("does not show unresolved count when zero", () => {
-    render(<GitHubPRDisplay pr={makePR({
-      reviewThreads: { total: 3, resolved: 3, unresolved: 0 },
-    })} />);
+    render(
+      <GitHubPRDisplay
+        pr={makePR({
+          reviewThreads: { total: 3, resolved: 3, unresolved: 0 },
+        })}
+      />,
+    );
     expect(screen.queryByText(/unresolved/)).not.toBeInTheDocument();
   });
 
@@ -868,7 +1169,9 @@ describe("TaskPanel — backend detection via sdkSessions", () => {
     });
     render(<TaskPanel sessionId="s1" />);
     // Tasks section is claude-only, so it should not appear for Codex
-    expect(screen.queryByTestId("config-section-tasks")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("config-section-tasks"),
+    ).not.toBeInTheDocument();
   });
 
   it("treats unknown backend as claude (shows tasks section)", () => {
@@ -888,13 +1191,22 @@ describe("TaskPanel — barColor visual behavior via progress bars", () => {
   it("applies error color class for usage above 80%", () => {
     // Usage > 80% should render bars with bg-cc-error class
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "codex",
-        codex_rate_limits: {
-          primary: { usedPercent: 90, windowDurationMins: 300, resetsAt: Date.now() + 3_600_000 },
-          secondary: null,
-        },
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "codex",
+            codex_rate_limits: {
+              primary: {
+                usedPercent: 90,
+                windowDurationMins: 300,
+                resetsAt: Date.now() + 3_600_000,
+              },
+              secondary: null,
+            },
+          },
+        ],
+      ]),
     });
     const { container } = render(<CodexRateLimitsSection sessionId="s1" />);
     // Find the inner progress bar div (the one with width style)
@@ -905,13 +1217,22 @@ describe("TaskPanel — barColor visual behavior via progress bars", () => {
   it("applies warning color class for usage between 50% and 80%", () => {
     // Usage 51-80% should render bars with bg-cc-warning class
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "codex",
-        codex_rate_limits: {
-          primary: { usedPercent: 65, windowDurationMins: 300, resetsAt: Date.now() + 3_600_000 },
-          secondary: null,
-        },
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "codex",
+            codex_rate_limits: {
+              primary: {
+                usedPercent: 65,
+                windowDurationMins: 300,
+                resetsAt: Date.now() + 3_600_000,
+              },
+              secondary: null,
+            },
+          },
+        ],
+      ]),
     });
     const { container } = render(<CodexRateLimitsSection sessionId="s1" />);
     const bar = container.querySelector("[style]");
@@ -921,13 +1242,22 @@ describe("TaskPanel — barColor visual behavior via progress bars", () => {
   it("applies primary color class for usage at or below 50%", () => {
     // Usage <= 50% should render bars with bg-cc-primary class
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "codex",
-        codex_rate_limits: {
-          primary: { usedPercent: 25, windowDurationMins: 300, resetsAt: Date.now() + 3_600_000 },
-          secondary: null,
-        },
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "codex",
+            codex_rate_limits: {
+              primary: {
+                usedPercent: 25,
+                windowDurationMins: 300,
+                resetsAt: Date.now() + 3_600_000,
+              },
+              secondary: null,
+            },
+          },
+        ],
+      ]),
     });
     const { container } = render(<CodexRateLimitsSection sessionId="s1" />);
     const bar = container.querySelector("[style]");
@@ -940,7 +1270,10 @@ describe("UsageLimitsSection (Claude Code sessions)", () => {
     // For Claude sessions, UsageLimitsSection fetches from api.getSessionUsageLimits.
     // When five_hour data is present, it should render the 5h limit bar.
     mockApi.getSessionUsageLimits.mockResolvedValueOnce({
-      five_hour: { utilization: 45, resets_at: new Date(Date.now() + 3_600_000).toISOString() },
+      five_hour: {
+        utilization: 45,
+        resets_at: new Date(Date.now() + 3_600_000).toISOString(),
+      },
       seven_day: null,
       extra_usage: null,
     });
@@ -957,7 +1290,10 @@ describe("UsageLimitsSection (Claude Code sessions)", () => {
     // When seven_day data is present, it should render the 7d limit bar
     mockApi.getSessionUsageLimits.mockResolvedValueOnce({
       five_hour: null,
-      seven_day: { utilization: 72, resets_at: new Date(Date.now() + 86_400_000).toISOString() },
+      seven_day: {
+        utilization: 72,
+        resets_at: new Date(Date.now() + 86_400_000).toISOString(),
+      },
       extra_usage: null,
     });
     resetStore({
@@ -1202,7 +1538,11 @@ describe("LinearIssueSection", () => {
 
   it("renders correct state pill for different state types", () => {
     // Verify linearStatePill produces correct labels for various state types
-    const completedIssue = { ...mockLinearIssue, stateType: "completed", stateName: "Done" };
+    const completedIssue = {
+      ...mockLinearIssue,
+      stateType: "completed",
+      stateName: "Done",
+    };
     mockApi.getLinkedLinearIssue.mockResolvedValue({
       issue: completedIssue,
       comments: [],
@@ -1218,7 +1558,11 @@ describe("LinearIssueSection", () => {
   });
 
   it("renders cancelled state pill", () => {
-    const cancelledIssue = { ...mockLinearIssue, stateType: "cancelled", stateName: "Cancelled" };
+    const cancelledIssue = {
+      ...mockLinearIssue,
+      stateType: "cancelled",
+      stateName: "Cancelled",
+    };
     mockApi.getLinkedLinearIssue.mockResolvedValue({
       issue: cancelledIssue,
       comments: [],
@@ -1234,7 +1578,11 @@ describe("LinearIssueSection", () => {
   });
 
   it("renders unstarted state pill with correct label", () => {
-    const unstartedIssue = { ...mockLinearIssue, stateType: "unstarted", stateName: "Todo" };
+    const unstartedIssue = {
+      ...mockLinearIssue,
+      stateType: "unstarted",
+      stateName: "Todo",
+    };
     mockApi.getLinkedLinearIssue.mockResolvedValue({
       issue: unstartedIssue,
       comments: [],
@@ -1250,7 +1598,11 @@ describe("LinearIssueSection", () => {
   });
 
   it("renders backlog state pill", () => {
-    const backlogIssue = { ...mockLinearIssue, stateType: "backlog", stateName: "Backlog" };
+    const backlogIssue = {
+      ...mockLinearIssue,
+      stateType: "backlog",
+      stateName: "Backlog",
+    };
     mockApi.getLinkedLinearIssue.mockResolvedValue({
       issue: backlogIssue,
       comments: [],
@@ -1288,12 +1640,17 @@ describe("GitBranchSection — pull button behavior", () => {
   it("calls api.gitPull when the Pull button is clicked", async () => {
     // Clicking Pull should invoke the gitPull API with the cwd
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "claude",
-        git_branch: "main",
-        git_behind: 3,
-        cwd: "/home/user/project",
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "claude",
+            git_branch: "main",
+            git_behind: 3,
+            cwd: "/home/user/project",
+          },
+        ],
+      ]),
     });
     render(<TaskPanel sessionId="s1" />);
     fireEvent.click(screen.getByText("Pull"));
@@ -1303,13 +1660,18 @@ describe("GitBranchSection — pull button behavior", () => {
   it("uses repo_root when available for pull", async () => {
     // The pull button should prefer repo_root over cwd
     resetStore({
-      sessions: new Map([["s1", {
-        backend_type: "claude",
-        git_branch: "main",
-        git_behind: 2,
-        cwd: "/home/user/project/subdir",
-        repo_root: "/home/user/project",
-      }]]),
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "claude",
+            git_branch: "main",
+            git_behind: 2,
+            cwd: "/home/user/project/subdir",
+            repo_root: "/home/user/project",
+          },
+        ],
+      ]),
     });
     render(<TaskPanel sessionId="s1" />);
     fireEvent.click(screen.getByText("Pull"));
@@ -1341,11 +1703,19 @@ describe("TaskPanel accessibility", () => {
     resetStore({
       sessions: new Map([["s1", { backend_type: "claude" }]]),
       sessionTasks: new Map([
-        ["s1", [
-          { id: "t1", status: "completed", subject: "Done task" },
-          { id: "t2", status: "in_progress", subject: "Active task", activeForm: "Working on it" },
-          { id: "t3", status: "pending", subject: "Upcoming task" },
-        ]],
+        [
+          "s1",
+          [
+            { id: "t1", status: "completed", subject: "Done task" },
+            {
+              id: "t2",
+              status: "in_progress",
+              subject: "Active task",
+              activeForm: "Working on it",
+            },
+            { id: "t3", status: "pending", subject: "Upcoming task" },
+          ],
+        ],
       ]),
     });
     const { container } = render(<TaskPanel sessionId="s1" />);
