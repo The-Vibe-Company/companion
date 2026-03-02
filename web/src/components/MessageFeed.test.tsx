@@ -14,7 +14,9 @@ const { getClaudeSessionHistoryMock } = vi.hoisted(() => ({
 
 // Mock react-markdown to avoid ESM issues in tests
 vi.mock("react-markdown", () => ({
-  default: ({ children }: { children: string }) => <div data-testid="markdown">{children}</div>,
+  default: ({ children }: { children: string }) => (
+    <div data-testid="markdown">{children}</div>
+  ),
 }));
 
 vi.mock("remark-gfm", () => ({
@@ -39,7 +41,8 @@ vi.mock("../store.js", () => ({
       streamingOutputTokens: mockStoreValues.streamingOutputTokens ?? new Map(),
       sessionStatus: mockStoreValues.sessionStatus ?? new Map(),
       toolProgress: mockStoreValues.toolProgress ?? new Map(),
-      chatTabReentryTickBySession: mockStoreValues.chatTabReentryTickBySession ?? new Map(),
+      chatTabReentryTickBySession:
+        mockStoreValues.chatTabReentryTickBySession ?? new Map(),
       sdkSessions: mockStoreValues.sdkSessions ?? [],
     };
     return selector(state);
@@ -48,7 +51,9 @@ vi.mock("../store.js", () => ({
 
 import { MessageFeed } from "./MessageFeed.js";
 
-function makeMessage(overrides: Partial<ChatMessage> & { role: ChatMessage["role"] }): ChatMessage {
+function makeMessage(
+  overrides: Partial<ChatMessage> & { role: ChatMessage["role"] },
+): ChatMessage {
   return {
     id: `msg-${Math.random().toString(36).slice(2, 8)}`,
     content: "",
@@ -75,13 +80,19 @@ function setStoreStatus(sessionId: string, status: string | null) {
   mockStoreValues.sessionStatus = statusMap;
 }
 
-function setStoreStreamingStartedAt(sessionId: string, startedAt: number | undefined) {
+function setStoreStreamingStartedAt(
+  sessionId: string,
+  startedAt: number | undefined,
+) {
   const map = new Map();
   if (startedAt !== undefined) map.set(sessionId, startedAt);
   mockStoreValues.streamingStartedAt = map;
 }
 
-function setStoreStreamingOutputTokens(sessionId: string, tokens: number | undefined) {
+function setStoreStreamingOutputTokens(
+  sessionId: string,
+  tokens: number | undefined,
+) {
   const map = new Map();
   if (tokens !== undefined) map.set(sessionId, tokens);
   mockStoreValues.streamingOutputTokens = map;
@@ -184,9 +195,7 @@ describe("MessageFeed - empty state", () => {
 
   it("does not show empty state when there are messages", () => {
     const sid = "test-not-empty";
-    setStoreMessages(sid, [
-      makeMessage({ role: "user", content: "Hello" }),
-    ]);
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "Hello" })]);
 
     render(<MessageFeed sessionId={sid} />);
 
@@ -232,7 +241,12 @@ describe("MessageFeed - streaming assistant bubble", () => {
     const sid = "test-streaming";
     setStoreMessages(sid, [
       makeMessage({ id: "u1", role: "user", content: "Hello" }),
-      makeMessage({ id: "a1", role: "assistant", content: "I am currently thinking about", isStreaming: true }),
+      makeMessage({
+        id: "a1",
+        role: "assistant",
+        content: "I am currently thinking about",
+        isStreaming: true,
+      }),
     ]);
 
     render(<MessageFeed sessionId={sid} />);
@@ -331,13 +345,18 @@ describe("MessageFeed - lazy resume transcript", () => {
 
     render(<MessageFeed sessionId={sid} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /load previous history/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /load previous history/i }),
+    );
 
     await waitFor(() => {
-      expect(getClaudeSessionHistoryMock).toHaveBeenCalledWith("prior-session-123", {
-        cursor: 0,
-        limit: 40,
-      });
+      expect(getClaudeSessionHistoryMock).toHaveBeenCalledWith(
+        "prior-session-123",
+        {
+          cursor: 0,
+          limit: 40,
+        },
+      );
     });
     expect(await screen.findByText("Earlier question")).toBeTruthy();
     expect(await screen.findByText("Earlier answer")).toBeTruthy();
@@ -345,7 +364,9 @@ describe("MessageFeed - lazy resume transcript", () => {
 
   it("shows inline resume banner for active chats and updates loaded transcript status", async () => {
     const sid = "test-resume-inline";
-    setStoreMessages(sid, [makeMessage({ id: "u1", role: "user", content: "Continue from here" })]);
+    setStoreMessages(sid, [
+      makeMessage({ id: "u1", role: "user", content: "Continue from here" }),
+    ]);
     setSdkSessions([
       {
         sessionId: sid,
@@ -376,28 +397,75 @@ describe("MessageFeed - lazy resume transcript", () => {
 
     expect(screen.getByText("Forked from existing Claude thread")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /load previous history/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /load previous history/i }),
+    );
 
     await waitFor(() => {
-      expect(getClaudeSessionHistoryMock).toHaveBeenCalledWith("prior-inline-456", {
-        cursor: 0,
-        limit: 40,
-      });
+      expect(getClaudeSessionHistoryMock).toHaveBeenCalledWith(
+        "prior-inline-456",
+        {
+          cursor: 0,
+          limit: 40,
+        },
+      );
     });
 
-    expect(await screen.findByText("Loaded all available prior transcript")).toBeTruthy();
+    expect(
+      await screen.findByText("Loaded all available prior transcript"),
+    ).toBeTruthy();
+  });
+});
+
+// ─── Compacting context indicator ─────────────────────────────────────────────
+
+describe("MessageFeed - compacting indicator", () => {
+  it("renders compacting spinner when session status is 'compacting'", () => {
+    const sid = "test-compacting";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "compacting");
+
+    render(<MessageFeed sessionId={sid} />);
+
+    expect(screen.getByText("Compacting context...")).toBeTruthy();
+  });
+
+  it("does not render compacting spinner when session is running", () => {
+    const sid = "test-not-compacting";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "running");
+    setStoreStreamingStartedAt(sid, Date.now() - 3000);
+
+    render(<MessageFeed sessionId={sid} />);
+
+    expect(screen.queryByText("Compacting context...")).toBeNull();
+  });
+
+  it("does not render compacting spinner when session is idle", () => {
+    const sid = "test-idle-no-compact";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "idle");
+
+    render(<MessageFeed sessionId={sid} />);
+
+    expect(screen.queryByText("Compacting context...")).toBeNull();
   });
 });
 
 describe("MessageFeed - tool progress indicator", () => {
   it("renders tool progress while tools are running", () => {
     const sid = "test-tool-progress";
-    setStoreMessages(sid, [makeMessage({ role: "user", content: "run checks" })]);
+    setStoreMessages(sid, [
+      makeMessage({ role: "user", content: "run checks" }),
+    ]);
     const progressBySession = new Map();
-    progressBySession.set(sid, new Map([
-      ["bash-1", { toolName: "Bash", elapsedSeconds: 7 }],
-      ["read-1", { toolName: "Read", elapsedSeconds: 2 }],
-    ]));
+    progressBySession.set(
+      sid,
+      new Map([
+        ["bash-1", { toolName: "Bash", elapsedSeconds: 7 }],
+        ["read-1", { toolName: "Read", elapsedSeconds: 2 }],
+      ]),
+    );
     mockStoreValues.toolProgress = progressBySession;
 
     render(<MessageFeed sessionId={sid} />);
@@ -420,7 +488,12 @@ describe("MessageFeed - tool-only message detection", () => {
         role: "assistant",
         content: "",
         contentBlocks: [
-          { type: "tool_use", id: "tu-1", name: "Read", input: { file_path: "/a.ts" } },
+          {
+            type: "tool_use",
+            id: "tu-1",
+            name: "Read",
+            input: { file_path: "/a.ts" },
+          },
         ],
       }),
       makeMessage({
@@ -428,7 +501,12 @@ describe("MessageFeed - tool-only message detection", () => {
         role: "assistant",
         content: "",
         contentBlocks: [
-          { type: "tool_use", id: "tu-2", name: "Read", input: { file_path: "/b.ts" } },
+          {
+            type: "tool_use",
+            id: "tu-2",
+            name: "Read",
+            input: { file_path: "/b.ts" },
+          },
         ],
       }),
     ]);
@@ -450,7 +528,12 @@ describe("MessageFeed - tool-only message detection", () => {
         role: "assistant",
         content: "",
         contentBlocks: [
-          { type: "tool_use", id: "tu-1", name: "Read", input: { file_path: "/a.ts" } },
+          {
+            type: "tool_use",
+            id: "tu-1",
+            name: "Read",
+            input: { file_path: "/a.ts" },
+          },
         ],
       }),
       makeMessage({
@@ -458,7 +541,12 @@ describe("MessageFeed - tool-only message detection", () => {
         role: "assistant",
         content: "",
         contentBlocks: [
-          { type: "tool_use", id: "tu-2", name: "Bash", input: { command: "ls" } },
+          {
+            type: "tool_use",
+            id: "tu-2",
+            name: "Bash",
+            input: { command: "ls" },
+          },
         ],
       }),
     ]);
@@ -478,7 +566,12 @@ describe("MessageFeed - tool-only message detection", () => {
         content: "",
         contentBlocks: [
           { type: "text", text: "Let me check something" },
-          { type: "tool_use", id: "tu-1", name: "Read", input: { file_path: "/a.ts" } },
+          {
+            type: "tool_use",
+            id: "tu-1",
+            name: "Read",
+            input: { file_path: "/a.ts" },
+          },
         ],
       }),
     ]);
@@ -506,7 +599,10 @@ describe("MessageFeed - subagent grouping", () => {
             type: "tool_use",
             id: "task-1",
             name: "Task",
-            input: { description: "Research the problem", subagent_type: "researcher" },
+            input: {
+              description: "Research the problem",
+              subagent_type: "researcher",
+            },
           },
         ],
       }),
@@ -521,7 +617,9 @@ describe("MessageFeed - subagent grouping", () => {
     render(<MessageFeed sessionId={sid} />);
 
     // The description appears in both the tool preview and the subagent container label
-    expect(screen.getAllByText("Research the problem").length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("Research the problem").length,
+    ).toBeGreaterThanOrEqual(1);
     // The agent type badge should be shown
     expect(screen.getByText("researcher")).toBeTruthy();
   });
