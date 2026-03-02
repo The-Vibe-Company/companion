@@ -1670,7 +1670,7 @@ export function Playground() {
           description="Context window usage display for Claude Code sessions — uses per-turn token data from assistant messages"
         >
           <div className="space-y-4">
-            <Card label="Context usage with cost and turns">
+            <Card label="Context usage bar">
               <ClaudeContextPlaygroundDemo />
             </Card>
           </div>

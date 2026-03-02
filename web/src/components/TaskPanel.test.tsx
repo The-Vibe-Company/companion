@@ -549,10 +549,32 @@ describe("ClaudeContextSection", () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it("renders nothing when contextWindow is 0", () => {
+    // When contextWindow === 0, there's nothing useful to show — return null
+    resetStore({
+      sessions: new Map([
+        [
+          "s1",
+          {
+            backend_type: "claude",
+            context_used_percent: 0,
+            claude_token_details: {
+              contextWindow: 0,
+              inputTokens: 1_000,
+              cacheReadInputTokens: 0,
+              cacheCreationInputTokens: 0,
+            },
+          },
+        ],
+      ]),
+    });
+    const { container } = render(<ClaudeContextSection sessionId="s1" />);
+    expect(container.firstChild).toBeNull();
+  });
+
   it("renders context bar with correct percentage and token counts", () => {
-    // When contextWindow > 0, the bar and used/total token counts must appear.
-    // usedTokens = inputTokens + cacheReadInputTokens + cacheCreationInputTokens
-    // = 80_000 + 30_000 + 10_000 = 120_000 → formatTokenCount → "120k"
+    // When contextWindow > 0, the bar and token summary must appear.
+    // usedTokens = 80_000 + 30_000 + 10_000 = 120_000
     resetStore({
       sessions: new Map([
         [
@@ -572,25 +594,24 @@ describe("ClaudeContextSection", () => {
     });
     render(<ClaudeContextSection sessionId="s1" />);
     expect(screen.getByText("Context")).toBeInTheDocument();
-    // used tokens = 120k, context window = 200k
-    expect(screen.getByText("120.0k / 200.0k")).toBeInTheDocument();
-    expect(screen.getByText("60%")).toBeInTheDocument();
+    // Token summary: "120.0k / 200.0k (60%)" — may be split across elements
+    expect(screen.getByText(/120\.0k/)).toBeInTheDocument();
+    expect(screen.getByText(/200\.0k/)).toBeInTheDocument();
+    expect(screen.getByText(/60%/)).toBeInTheDocument();
   });
 
-  it("renders cost and turn count", () => {
-    // When total_cost_usd > 0 and num_turns > 0, both Cost and Turns rows appear
+  it("renders progress bar with correct width", () => {
+    // The progress bar width should match the context percentage
     resetStore({
       sessions: new Map([
         [
           "s1",
           {
             backend_type: "claude",
-            context_used_percent: 10,
-            total_cost_usd: 0.0123,
-            num_turns: 7,
+            context_used_percent: 45,
             claude_token_details: {
               contextWindow: 200_000,
-              inputTokens: 20_000,
+              inputTokens: 90_000,
               cacheReadInputTokens: 0,
               cacheCreationInputTokens: 0,
             },
@@ -598,38 +619,9 @@ describe("ClaudeContextSection", () => {
         ],
       ]),
     });
-    render(<ClaudeContextSection sessionId="s1" />);
-    expect(screen.getByText("Cost")).toBeInTheDocument();
-    expect(screen.getByText("$0.0123")).toBeInTheDocument();
-    expect(screen.getByText("Turns")).toBeInTheDocument();
-    expect(screen.getByText("7")).toBeInTheDocument();
-  });
-
-  it("does not render context bar when contextWindow is 0", () => {
-    // When contextWindow === 0, the bar and token counts must not appear,
-    // but the "Context" header should still render (component does not return null)
-    resetStore({
-      sessions: new Map([
-        [
-          "s1",
-          {
-            backend_type: "claude",
-            context_used_percent: 0,
-            claude_token_details: {
-              contextWindow: 0,
-              inputTokens: 1_000,
-              cacheReadInputTokens: 0,
-              cacheCreationInputTokens: 0,
-            },
-          },
-        ],
-      ]),
-    });
-    render(<ClaudeContextSection sessionId="s1" />);
-    // The header is still present
-    expect(screen.getByText("Context")).toBeInTheDocument();
-    // But the progress bar area (percentage) should not appear
-    expect(screen.queryByText("0%")).not.toBeInTheDocument();
+    const { container } = render(<ClaudeContextSection sessionId="s1" />);
+    const bar = container.querySelector("[style*='width: 45%']");
+    expect(bar).toBeTruthy();
   });
 });
 
@@ -1633,6 +1625,93 @@ describe("LinearIssueSection", () => {
     const link = screen.getByText("ENG-123").closest("a");
     expect(link).toHaveAttribute("href", "https://linear.app/team/ENG-123");
     expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("renders default state pill for unknown stateType", () => {
+    // The linearStatePill default branch should render the stateName as-is
+    const customIssue = {
+      ...mockLinearIssue,
+      stateType: "custom_state",
+      stateName: "Reviewing",
+    };
+    mockApi.getLinkedLinearIssue.mockResolvedValue({
+      issue: customIssue,
+      comments: [],
+      assignee: null,
+      labels: [],
+    });
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      linkedLinearIssues: new Map([["s1", customIssue]]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    expect(screen.getByText("Reviewing")).toBeInTheDocument();
+  });
+
+  it("calls unlinkLinearIssue when unlink button is clicked", async () => {
+    // Clicking the unlink button should call the API and clear the linked issue
+    mockApi.getLinkedLinearIssue.mockResolvedValue({
+      issue: mockLinearIssue,
+      comments: [],
+      assignee: null,
+      labels: [],
+    });
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      linkedLinearIssues: new Map([["s1", mockLinearIssue]]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    fireEvent.click(screen.getByTitle("Unlink issue"));
+    await vi.waitFor(() => {
+      expect(mockApi.unlinkLinearIssue).toHaveBeenCalledWith("s1");
+    });
+  });
+
+  it("sends a comment when the Send button is clicked", async () => {
+    // Typing a comment and clicking Send should call addLinearComment
+    mockApi.getLinkedLinearIssue.mockResolvedValue({
+      issue: mockLinearIssue,
+      comments: [],
+      assignee: null,
+      labels: [],
+    });
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      linkedLinearIssues: new Map([["s1", mockLinearIssue]]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    const input = screen.getByLabelText("Add a comment");
+    fireEvent.change(input, { target: { value: "Hello" } });
+    fireEvent.click(screen.getByTitle("Send comment"));
+    await vi.waitFor(() => {
+      expect(mockApi.addLinearComment).toHaveBeenCalledWith("issue-1", "Hello");
+    });
+  });
+
+  it("renders comments when present", async () => {
+    // Comments returned by the API should be rendered in the section
+    mockApi.getLinkedLinearIssue.mockResolvedValue({
+      issue: mockLinearIssue,
+      comments: [
+        {
+          id: "c1",
+          body: "Looks good to me",
+          createdAt: new Date().toISOString(),
+          userName: "Alice",
+        },
+      ],
+      assignee: null,
+      labels: [],
+    });
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      linkedLinearIssues: new Map([["s1", mockLinearIssue]]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    await vi.waitFor(() => {
+      expect(screen.getByText("Alice")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Looks good to me")).toBeInTheDocument();
   });
 });
 

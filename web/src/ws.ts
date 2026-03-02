@@ -674,13 +674,7 @@ function handleParsedMessage(
       processedToolUseIds.delete(sessionId);
 
       const r = data.data;
-      const sessionUpdates: Partial<{
-        total_cost_usd: number;
-        num_turns: number;
-        context_used_percent: number;
-        total_lines_added: number;
-        total_lines_removed: number;
-      }> = {
+      const sessionUpdates: Record<string, unknown> = {
         total_cost_usd: r.total_cost_usd,
         num_turns: r.num_turns,
       };
@@ -697,8 +691,12 @@ function handleParsedMessage(
           if (usage.contextWindow > 0) {
             const prev = store.sessions.get(sessionId)?.claude_token_details;
             if (prev) {
-              prev.contextWindow = usage.contextWindow;
-              prev.maxOutputTokens = usage.maxOutputTokens;
+              // Create a new object instead of mutating the Zustand state directly
+              sessionUpdates.claude_token_details = {
+                ...prev,
+                contextWindow: usage.contextWindow,
+                maxOutputTokens: usage.maxOutputTokens,
+              };
               const pct = Math.round(
                 ((prev.inputTokens +
                   prev.cacheReadInputTokens +

@@ -836,6 +836,16 @@ export class WsBridge {
     };
     session.messageHistory.push(browserMsg);
     this.broadcastToBrowsers(session, browserMsg);
+    // Broadcast token details so the frontend can display the context bar
+    if (usage) {
+      this.broadcastToBrowsers(session, {
+        type: "session_update",
+        session: {
+          claude_token_details: session.state.claude_token_details,
+          context_used_percent: session.state.context_used_percent,
+        },
+      });
+    }
     this.persistSession(session);
   }
 
@@ -886,6 +896,17 @@ export class WsBridge {
           }
         }
       }
+    }
+
+    // Broadcast updated token details + context % after contextWindow is known
+    if (session.state.claude_token_details) {
+      this.broadcastToBrowsers(session, {
+        type: "session_update",
+        session: {
+          claude_token_details: session.state.claude_token_details,
+          context_used_percent: session.state.context_used_percent,
+        },
+      });
     }
 
     // Re-check git state after each turn in case branch moved during the session.

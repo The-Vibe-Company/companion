@@ -237,59 +237,30 @@ function ClaudeContextSection({ sessionId }: { sessionId: string }) {
   const contextPct = useStore(
     (s) => s.sessions.get(sessionId)?.context_used_percent ?? 0,
   );
-  const totalCost = useStore(
-    (s) => s.sessions.get(sessionId)?.total_cost_usd ?? 0,
-  );
-  const numTurns = useStore((s) => s.sessions.get(sessionId)?.num_turns ?? 0);
 
-  if (!details) return null;
+  if (!details || details.contextWindow <= 0) return null;
 
-  const contextWindow = details.contextWindow;
   const usedTokens =
     details.inputTokens +
     details.cacheReadInputTokens +
     details.cacheCreationInputTokens;
 
   return (
-    <div className="shrink-0 px-4 py-3 space-y-2">
-      <span className="text-[11px] text-cc-muted uppercase tracking-wider">
-        Context
-      </span>
-      {contextWindow > 0 && (
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-cc-muted">
-              {formatTokenCount(usedTokens)} / {formatTokenCount(contextWindow)}
-            </span>
-            <span className="text-[11px] text-cc-muted tabular-nums">
-              {contextPct}%
-            </span>
-          </div>
-          <div className="w-full h-1.5 rounded-full bg-cc-hover overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${barColor(contextPct)}`}
-              style={{ width: `${Math.min(contextPct, 100)}%` }}
-            />
-          </div>
-        </div>
-      )}
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-        {totalCost > 0 && (
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-cc-muted">Cost</span>
-            <span className="text-[11px] text-cc-fg tabular-nums font-medium">
-              ${totalCost.toFixed(4)}
-            </span>
-          </div>
-        )}
-        {numTurns > 0 && (
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-cc-muted">Turns</span>
-            <span className="text-[11px] text-cc-fg tabular-nums font-medium">
-              {numTurns}
-            </span>
-          </div>
-        )}
+    <div className="shrink-0 px-4 py-3 space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-cc-muted uppercase tracking-wider">
+          Context
+        </span>
+        <span className="text-[11px] text-cc-muted tabular-nums">
+          {formatTokenCount(usedTokens)} /{" "}
+          {formatTokenCount(details.contextWindow)} ({contextPct}%)
+        </span>
+      </div>
+      <div className="w-full h-1.5 rounded-full bg-cc-hover overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${barColor(contextPct)}`}
+          style={{ width: `${Math.min(contextPct, 100)}%` }}
+        />
       </div>
     </div>
   );
