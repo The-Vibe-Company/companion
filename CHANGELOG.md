@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.70.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.69.0...the-companion-v0.70.0) (2026-03-03)
+
+
+### Features
+
+* **ui:** add compacting context indicator in message feed ([#462](https://github.com/The-Vibe-Company/companion/issues/462)) ([9bfab3c](https://github.com/The-Vibe-Company/companion/commit/9bfab3c8786d0273da0bb247c3f6bcd71028608c))
+
+
+### Bug Fixes
+
+* **tests:** stabilize SessionEditorPane refresh assertion ([#466](https://github.com/The-Vibe-Company/companion/issues/466)) ([c244ed8](https://github.com/The-Vibe-Company/companion/commit/c244ed86b5144a8ab1b3729be208fe5ba6278b9f))
+
 ## [0.69.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.68.1...the-companion-v0.69.0) (2026-03-01)
 
 
