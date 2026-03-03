@@ -77,12 +77,18 @@ export class WsBridge {
   private sessions = new Map<string, Session>();
   private store: SessionStore | null = null;
   private recorder: RecorderManager | null = null;
-  private onCLISessionId: ((sessionId: string, cliSessionId: string) => void) | null = null;
+  private onCLISessionId:
+    | ((sessionId: string, cliSessionId: string) => void)
+    | null = null;
   private onCLIRelaunchNeeded: ((sessionId: string) => void) | null = null;
-  private onFirstTurnCompleted: ((sessionId: string, firstUserMessage: string) => void) | null = null;
+  private onFirstTurnCompleted:
+    | ((sessionId: string, firstUserMessage: string) => void)
+    | null = null;
   private autoNamingAttempted = new Set<string>();
   private userMsgCounter = 0;
-  private onGitInfoReady: ((sessionId: string, cwd: string, branch: string) => void) | null = null;
+  private onGitInfoReady:
+    | ((sessionId: string, cwd: string, branch: string) => void)
+    | null = null;
   private static readonly GIT_SESSION_KEYS: GitSessionKey[] = [
     "git_branch",
     "is_worktree",
@@ -93,7 +99,9 @@ export class WsBridge {
   ];
 
   /** Register a callback for when we learn the CLI's internal session ID. */
-  onCLISessionIdReceived(cb: (sessionId: string, cliSessionId: string) => void): void {
+  onCLISessionIdReceived(
+    cb: (sessionId: string, cliSessionId: string) => void,
+  ): void {
     this.onCLISessionId = cb;
   }
 
@@ -103,12 +111,16 @@ export class WsBridge {
   }
 
   /** Register a callback for when a session completes its first turn. */
-  onFirstTurnCompletedCallback(cb: (sessionId: string, firstUserMessage: string) => void): void {
+  onFirstTurnCompletedCallback(
+    cb: (sessionId: string, firstUserMessage: string) => void,
+  ): void {
     this.onFirstTurnCompleted = cb;
   }
 
   /** Register a callback for when git info is resolved and branch is known. */
-  onSessionGitInfoReadyCallback(cb: (sessionId: string, cwd: string, branch: string) => void): void {
+  onSessionGitInfoReadyCallback(
+    cb: (sessionId: string, cwd: string, branch: string) => void,
+  ): void {
     this.onGitInfoReady = cb;
   }
 
@@ -161,9 +173,13 @@ export class WsBridge {
         nextEventSeq: p.nextEventSeq && p.nextEventSeq > 0 ? p.nextEventSeq : 1,
         eventBuffer: Array.isArray(p.eventBuffer) ? p.eventBuffer : [],
         lastAckSeq: typeof p.lastAckSeq === "number" ? p.lastAckSeq : 0,
-        processedClientMessageIds: Array.isArray(p.processedClientMessageIds) ? p.processedClientMessageIds : [],
+        processedClientMessageIds: Array.isArray(p.processedClientMessageIds)
+          ? p.processedClientMessageIds
+          : [],
         processedClientMessageIdSet: new Set(
-          Array.isArray(p.processedClientMessageIds) ? p.processedClientMessageIds : [],
+          Array.isArray(p.processedClientMessageIds)
+            ? p.processedClientMessageIds
+            : [],
         ),
       };
       session.state.backend_type = session.backendType;
@@ -238,8 +254,17 @@ export class WsBridge {
       this.persistSession(session);
     }
 
-    if (options.notifyPoller && session.state.git_branch && session.state.cwd && this.onGitInfoReady) {
-      this.onGitInfoReady(session.id, session.state.cwd, session.state.git_branch);
+    if (
+      options.notifyPoller &&
+      session.state.git_branch &&
+      session.state.cwd &&
+      this.onGitInfoReady
+    ) {
+      this.onGitInfoReady(
+        session.id,
+        session.state.cwd,
+        session.state.git_branch,
+      );
     }
   }
 
@@ -313,7 +338,9 @@ export class WsBridge {
 
     // Close CLI socket (Claude)
     if (session.cliSocket) {
-      try { session.cliSocket.close(); } catch {}
+      try {
+        session.cliSocket.close();
+      } catch {}
       session.cliSocket = null;
     }
 
@@ -325,7 +352,9 @@ export class WsBridge {
 
     // Close all browser sockets
     for (const ws of session.browserSockets) {
-      try { ws.close(); } catch {}
+      try {
+        ws.close();
+      } catch {}
     }
     session.browserSockets.clear();
 
@@ -370,7 +399,9 @@ export class WsBridge {
     // system.init (which would create a deadlock for slow-starting sessions
     // like Docker containers where the user message arrives before CLI connects).
     if (session.pendingMessages.length > 0) {
-      console.log(`[ws-bridge] Flushing ${session.pendingMessages.length} queued message(s) on CLI connect for session ${sessionId}`);
+      console.log(
+        `[ws-bridge] Flushing ${session.pendingMessages.length} queued message(s) on CLI connect for session ${sessionId}`,
+      );
       const queued = session.pendingMessages.splice(0);
       for (const ndjson of queued) {
         this.sendToCLI(session, ndjson);
@@ -385,7 +416,14 @@ export class WsBridge {
     if (!session) return;
 
     // Record raw incoming CLI message before any parsing
-    this.recorder?.record(sessionId, "in", data, "cli", session.backendType, session.state.cwd);
+    this.recorder?.record(
+      sessionId,
+      "in",
+      data,
+      "cli",
+      session.backendType,
+      session.state.cwd,
+    );
 
     // NDJSON: split on newlines, parse each line
     const lines = data.split("\n").filter((l) => l.trim());
@@ -394,7 +432,9 @@ export class WsBridge {
       try {
         msg = JSON.parse(line);
       } catch {
-        console.warn(`[ws-bridge] Failed to parse CLI message: ${line.substring(0, 200)}`);
+        console.warn(
+          `[ws-bridge] Failed to parse CLI message: ${line.substring(0, 200)}`,
+        );
         continue;
       }
       this.routeCLIMessage(session, msg);
@@ -412,7 +452,10 @@ export class WsBridge {
 
     // Cancel any pending permission requests
     for (const [reqId] of session.pendingPermissions) {
-      this.broadcastToBrowsers(session, { type: "permission_cancelled", request_id: reqId });
+      this.broadcastToBrowsers(session, {
+        type: "permission_cancelled",
+        request_id: reqId,
+      });
     }
     session.pendingPermissions.clear();
   }
@@ -425,7 +468,9 @@ export class WsBridge {
     browserData.subscribed = false;
     browserData.lastAckSeq = 0;
     session.browserSockets.add(ws);
-    console.log(`[ws-bridge] Browser connected for session ${sessionId} (${session.browserSockets.size} browsers)`);
+    console.log(
+      `[ws-bridge] Browser connected for session ${sessionId} (${session.browserSockets.size} browsers)`,
+    );
 
     // Refresh git state on browser connect so branch changes made mid-session are reflected.
     this.refreshGitInfo(session, { notifyPoller: true });
@@ -451,17 +496,20 @@ export class WsBridge {
     }
 
     // Notify if backend is not connected and request relaunch
-    const backendConnected = session.backendType === "codex"
-      // Treat an attached adapter as "alive" during init.
-      // `isConnected()` flips true only after initialize/thread start, and
-      // relaunching during that window can kill a healthy startup.
-      ? !!session.codexAdapter
-      : !!session.cliSocket;
+    const backendConnected =
+      session.backendType === "codex"
+        ? // Treat an attached adapter as "alive" during init.
+          // `isConnected()` flips true only after initialize/thread start, and
+          // relaunching during that window can kill a healthy startup.
+          !!session.codexAdapter
+        : !!session.cliSocket;
 
     if (!backendConnected) {
       this.sendToBrowser(ws, { type: "cli_disconnected" });
       if (this.onCLIRelaunchNeeded) {
-        console.log(`[ws-bridge] Browser connected but backend is dead for session ${sessionId}, requesting relaunch`);
+        console.log(
+          `[ws-bridge] Browser connected but backend is dead for session ${sessionId}, requesting relaunch`,
+        );
         this.onCLIRelaunchNeeded(sessionId);
       }
     }
@@ -474,13 +522,22 @@ export class WsBridge {
     if (!session) return;
 
     // Record raw incoming browser message
-    this.recorder?.record(sessionId, "in", data, "browser", session.backendType, session.state.cwd);
+    this.recorder?.record(
+      sessionId,
+      "in",
+      data,
+      "browser",
+      session.backendType,
+      session.state.cwd,
+    );
 
     let msg: BrowserOutgoingMessage;
     try {
       msg = JSON.parse(data);
     } catch {
-      console.warn(`[ws-bridge] Failed to parse browser message: ${data.substring(0, 200)}`);
+      console.warn(
+        `[ws-bridge] Failed to parse browser message: ${data.substring(0, 200)}`,
+      );
       return;
     }
 
@@ -492,7 +549,9 @@ export class WsBridge {
   injectUserMessage(sessionId: string, content: string): void {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      console.error(`[ws-bridge] Cannot inject message: session ${sessionId} not found`);
+      console.error(
+        `[ws-bridge] Cannot inject message: session ${sessionId} not found`,
+      );
       return;
     }
     this.routeBrowserMessage(session, { type: "user_message", content });
@@ -500,10 +559,15 @@ export class WsBridge {
 
   /** Configure MCP servers on a session programmatically (no browser required).
    *  Used by the agent executor to set up MCP servers after CLI connects. */
-  injectMcpSetServers(sessionId: string, servers: Record<string, McpServerConfig>): void {
+  injectMcpSetServers(
+    sessionId: string,
+    servers: Record<string, McpServerConfig>,
+  ): void {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      console.error(`[ws-bridge] Cannot inject MCP servers: session ${sessionId} not found`);
+      console.error(
+        `[ws-bridge] Cannot inject MCP servers: session ${sessionId} not found`,
+      );
       return;
     }
     this.routeBrowserMessage(session, { type: "mcp_set_servers", servers });
@@ -515,7 +579,9 @@ export class WsBridge {
     if (!session) return;
 
     session.browserSockets.delete(ws);
-    console.log(`[ws-bridge] Browser disconnected for session ${sessionId} (${session.browserSockets.size} browsers)`);
+    console.log(
+      `[ws-bridge] Browser disconnected for session ${sessionId} (${session.browserSockets.size} browsers)`,
+    );
   }
 
   // ── CLI message routing ─────────────────────────────────────────────────
@@ -605,7 +671,9 @@ export class WsBridge {
       // Flush any messages queued before CLI was initialized (e.g. user sent
       // a message while the container was still starting up).
       if (session.pendingMessages.length > 0) {
-        console.log(`[ws-bridge] Flushing ${session.pendingMessages.length} queued message(s) after init for session ${session.id}`);
+        console.log(
+          `[ws-bridge] Flushing ${session.pendingMessages.length} queued message(s) after init for session ${session.id}`,
+        );
         const queued = session.pendingMessages.splice(0);
         for (const ndjson of queued) {
           this.sendToCLI(session, ndjson);
@@ -676,17 +744,21 @@ export class WsBridge {
     }
 
     if (msg.subtype === "hook_progress") {
-      this.forwardSystemEvent(session, {
-        subtype: "hook_progress",
-        hook_id: msg.hook_id,
-        hook_name: msg.hook_name,
-        hook_event: msg.hook_event,
-        stdout: msg.stdout,
-        stderr: msg.stderr,
-        output: msg.output,
-        uuid: msg.uuid,
-        session_id: msg.session_id,
-      }, { persistInHistory: false });
+      this.forwardSystemEvent(
+        session,
+        {
+          subtype: "hook_progress",
+          hook_id: msg.hook_id,
+          hook_name: msg.hook_name,
+          hook_event: msg.hook_event,
+          stdout: msg.stdout,
+          stderr: msg.stderr,
+          output: msg.output,
+          uuid: msg.uuid,
+          session_id: msg.session_id,
+        },
+        { persistInHistory: false },
+      );
       return;
     }
 
@@ -730,6 +802,32 @@ export class WsBridge {
   }
 
   private handleAssistantMessage(session: Session, msg: CLIAssistantMessage) {
+    // Track per-turn token usage from assistant message for accurate context %
+    const usage = msg.message?.usage;
+    if (usage) {
+      const inputTokens = usage.input_tokens ?? 0;
+      const cacheRead = usage.cache_read_input_tokens ?? 0;
+      const cacheCreation = usage.cache_creation_input_tokens ?? 0;
+      const outputTokens = usage.output_tokens ?? 0;
+      const prev = session.state.claude_token_details;
+      session.state.claude_token_details = {
+        inputTokens,
+        outputTokens,
+        cacheReadInputTokens: cacheRead,
+        cacheCreationInputTokens: cacheCreation,
+        contextWindow: prev?.contextWindow ?? 0,
+        maxOutputTokens: prev?.maxOutputTokens ?? 0,
+      };
+      // Recompute context % if we already know contextWindow
+      const ctxWindow = session.state.claude_token_details.contextWindow;
+      if (ctxWindow > 0) {
+        const pct = Math.round(
+          ((inputTokens + cacheRead + cacheCreation) / ctxWindow) * 100,
+        );
+        session.state.context_used_percent = Math.max(0, Math.min(pct, 100));
+      }
+    }
+
     const browserMsg: BrowserIncomingMessage = {
       type: "assistant",
       message: msg.message,
@@ -738,6 +836,16 @@ export class WsBridge {
     };
     session.messageHistory.push(browserMsg);
     this.broadcastToBrowsers(session, browserMsg);
+    // Broadcast token details so the frontend can display the context bar
+    if (usage) {
+      this.broadcastToBrowsers(session, {
+        type: "session_update",
+        session: {
+          claude_token_details: session.state.claude_token_details,
+          context_used_percent: session.state.context_used_percent,
+        },
+      });
+    }
     this.persistSession(session);
   }
 
@@ -754,16 +862,51 @@ export class WsBridge {
       session.state.total_lines_removed = msg.total_lines_removed;
     }
 
-    // Compute context usage from modelUsage
+    // Store contextWindow/maxOutputTokens from modelUsage, then recompute
+    // context % using per-turn data from the assistant message (more accurate).
     if (msg.modelUsage) {
       for (const usage of Object.values(msg.modelUsage)) {
         if (usage.contextWindow > 0) {
-          const pct = Math.round(
-            ((usage.inputTokens + usage.outputTokens) / usage.contextWindow) * 100
-          );
-          session.state.context_used_percent = Math.max(0, Math.min(pct, 100));
+          const prev = session.state.claude_token_details;
+          if (prev) {
+            prev.contextWindow = usage.contextWindow;
+            prev.maxOutputTokens = usage.maxOutputTokens;
+            // Recompute using per-turn tokens (input + cache_read + cache_creation)
+            const pct = Math.round(
+              ((prev.inputTokens +
+                prev.cacheReadInputTokens +
+                prev.cacheCreationInputTokens) /
+                usage.contextWindow) *
+                100,
+            );
+            session.state.context_used_percent = Math.max(
+              0,
+              Math.min(pct, 100),
+            );
+          } else {
+            // No per-turn data yet — fall back to cumulative formula
+            const pct = Math.round(
+              ((usage.inputTokens + usage.outputTokens) / usage.contextWindow) *
+                100,
+            );
+            session.state.context_used_percent = Math.max(
+              0,
+              Math.min(pct, 100),
+            );
+          }
         }
       }
+    }
+
+    // Broadcast updated token details + context % after contextWindow is known
+    if (session.state.claude_token_details) {
+      this.broadcastToBrowsers(session, {
+        type: "session_update",
+        session: {
+          claude_token_details: session.state.claude_token_details,
+          context_used_percent: session.state.context_used_percent,
+        },
+      });
     }
 
     // Re-check git state after each turn in case branch moved during the session.
@@ -803,7 +946,10 @@ export class WsBridge {
     });
   }
 
-  private async handleControlRequest(session: Session, msg: CLIControlRequestMessage) {
+  private async handleControlRequest(
+    session: Session,
+    msg: CLIControlRequestMessage,
+  ) {
     if (msg.request.subtype === "can_use_tool") {
       const perm: PermissionRequest = {
         request_id: msg.request_id,
@@ -819,10 +965,10 @@ export class WsBridge {
       // AI Validation Mode: evaluate the tool call before showing to user
       const aiSettings = getEffectiveAiValidation(session.state);
       if (
-        aiSettings.enabled
-        && aiSettings.anthropicApiKey
-        && msg.request.tool_name !== "AskUserQuestion"
-        && msg.request.tool_name !== "ExitPlanMode"
+        aiSettings.enabled &&
+        aiSettings.anthropicApiKey &&
+        msg.request.tool_name !== "AskUserQuestion" &&
+        msg.request.tool_name !== "ExitPlanMode"
       ) {
         try {
           const result = await validatePermission(
@@ -838,17 +984,32 @@ export class WsBridge {
 
           // Auto-approve safe tools
           if (result.verdict === "safe" && aiSettings.autoApprove) {
-            this.autoRespondPermission(session, msg.request_id, perm, "allow", result.reason);
+            this.autoRespondPermission(
+              session,
+              msg.request_id,
+              perm,
+              "allow",
+              result.reason,
+            );
             return;
           }
 
           // Auto-deny dangerous tools
           if (result.verdict === "dangerous" && aiSettings.autoDeny) {
-            this.autoRespondPermission(session, msg.request_id, perm, "deny", result.reason);
+            this.autoRespondPermission(
+              session,
+              msg.request_id,
+              perm,
+              "deny",
+              result.reason,
+            );
             return;
           }
         } catch (err) {
-          console.warn(`[ws-bridge] AI validation error for tool=${msg.request.tool_name} request_id=${msg.request_id} session=${session.id}, falling through to manual:`, err);
+          console.warn(
+            `[ws-bridge] AI validation error for tool=${msg.request.tool_name} request_id=${msg.request_id} session=${session.id}, falling through to manual:`,
+            err,
+          );
         }
       }
 
@@ -899,7 +1060,10 @@ export class WsBridge {
     });
   }
 
-  private handleToolUseSummary(session: Session, msg: CLIToolUseSummaryMessage) {
+  private handleToolUseSummary(
+    session: Session,
+    msg: CLIToolUseSummaryMessage,
+  ) {
     this.broadcastToBrowsers(session, {
       type: "tool_use_summary",
       summary: msg.summary,
@@ -935,14 +1099,19 @@ export class WsBridge {
     }
 
     if (msg.type === "session_ack") {
-      handleSessionAck(session, ws, msg.last_seq, this.persistSession.bind(this));
+      handleSessionAck(
+        session,
+        ws,
+        msg.last_seq,
+        this.persistSession.bind(this),
+      );
       return;
     }
 
     if (
-      WsBridge.IDEMPOTENT_BROWSER_MESSAGE_TYPES.has(msg.type)
-      && "client_msg_id" in msg
-      && msg.client_msg_id
+      WsBridge.IDEMPOTENT_BROWSER_MESSAGE_TYPES.has(msg.type) &&
+      "client_msg_id" in msg &&
+      msg.client_msg_id
     ) {
       if (isDuplicateClientMessage(session, msg.client_msg_id)) {
         return;
@@ -979,7 +1148,9 @@ export class WsBridge {
         // Adapter not yet attached — queue for when it's ready.
         // The adapter itself also queues during init, but this covers
         // the window between session creation and adapter attachment.
-        console.log(`[ws-bridge] Codex adapter not yet attached for session ${session.id}, queuing ${msg.type}`);
+        console.log(
+          `[ws-bridge] Codex adapter not yet attached for session ${session.id}, queuing ${msg.type}`,
+        );
         session.pendingMessages.push(JSON.stringify(msg));
       }
       return;
@@ -1023,20 +1194,33 @@ export class WsBridge {
       case "mcp_get_status":
         handleMcpGetStatus(
           session,
-          (request, onResponse) => sendControlRequest(session, request, this.sendToCLI.bind(this), onResponse),
+          (request, onResponse) =>
+            sendControlRequest(
+              session,
+              request,
+              this.sendToCLI.bind(this),
+              onResponse,
+            ),
           this.broadcastToBrowsers.bind(this),
         );
         break;
 
       case "mcp_toggle":
         handleMcpToggle(
-          (request) => sendControlRequest(session, request, this.sendToCLI.bind(this)),
+          (request) =>
+            sendControlRequest(session, request, this.sendToCLI.bind(this)),
           msg.serverName,
           msg.enabled,
           () =>
             handleMcpGetStatus(
               session,
-              (request, onResponse) => sendControlRequest(session, request, this.sendToCLI.bind(this), onResponse),
+              (request, onResponse) =>
+                sendControlRequest(
+                  session,
+                  request,
+                  this.sendToCLI.bind(this),
+                  onResponse,
+                ),
               this.broadcastToBrowsers.bind(this),
             ),
         );
@@ -1044,12 +1228,19 @@ export class WsBridge {
 
       case "mcp_reconnect":
         handleMcpReconnect(
-          (request) => sendControlRequest(session, request, this.sendToCLI.bind(this)),
+          (request) =>
+            sendControlRequest(session, request, this.sendToCLI.bind(this)),
           msg.serverName,
           () =>
             handleMcpGetStatus(
               session,
-              (request, onResponse) => sendControlRequest(session, request, this.sendToCLI.bind(this), onResponse),
+              (request, onResponse) =>
+                sendControlRequest(
+                  session,
+                  request,
+                  this.sendToCLI.bind(this),
+                  onResponse,
+                ),
               this.broadcastToBrowsers.bind(this),
             ),
         );
@@ -1057,12 +1248,19 @@ export class WsBridge {
 
       case "mcp_set_servers":
         handleMcpSetServers(
-          (request) => sendControlRequest(session, request, this.sendToCLI.bind(this)),
+          (request) =>
+            sendControlRequest(session, request, this.sendToCLI.bind(this)),
           msg.servers,
           () =>
             handleMcpGetStatus(
               session,
-              (request, onResponse) => sendControlRequest(session, request, this.sendToCLI.bind(this), onResponse),
+              (request, onResponse) =>
+                sendControlRequest(
+                  session,
+                  request,
+                  this.sendToCLI.bind(this),
+                  onResponse,
+                ),
               this.broadcastToBrowsers.bind(this),
             ),
         );
@@ -1072,7 +1270,12 @@ export class WsBridge {
 
   private handleUserMessage(
     session: Session,
-    msg: { type: "user_message"; content: string; session_id?: string; images?: { media_type: string; data: string }[] }
+    msg: {
+      type: "user_message";
+      content: string;
+      session_id?: string;
+      images?: { media_type: string; data: string }[];
+    },
   ) {
     // Store user message in history for replay with stable ID for dedup on reconnect
     const ts = Date.now();
@@ -1090,7 +1293,11 @@ export class WsBridge {
       for (const img of msg.images) {
         blocks.push({
           type: "image",
-          source: { type: "base64", media_type: img.media_type, data: img.data },
+          source: {
+            type: "base64",
+            media_type: img.media_type,
+            data: img.data,
+          },
         });
       }
       blocks.push({ type: "text", text: msg.content });
@@ -1115,17 +1322,29 @@ export class WsBridge {
     if (!session.cliSocket) {
       // Queue the message — CLI might still be starting up.
       // Don't record here; the message will be recorded when flushed.
-      console.log(`[ws-bridge] CLI not yet connected for session ${session.id}, queuing message`);
+      console.log(
+        `[ws-bridge] CLI not yet connected for session ${session.id}, queuing message`,
+      );
       session.pendingMessages.push(ndjson);
       return;
     }
     // Record raw outgoing CLI message (only when actually sending, not when queuing)
-    this.recorder?.record(session.id, "out", ndjson, "cli", session.backendType, session.state.cwd);
+    this.recorder?.record(
+      session.id,
+      "out",
+      ndjson,
+      "cli",
+      session.backendType,
+      session.state.cwd,
+    );
     try {
       // NDJSON requires a newline delimiter
       session.cliSocket.send(ndjson + "\n");
     } catch (err) {
-      console.error(`[ws-bridge] Failed to send to CLI for session ${session.id}:`, err);
+      console.error(
+        `[ws-bridge] Failed to send to CLI for session ${session.id}:`,
+        err,
+      );
     }
   }
 
@@ -1138,8 +1357,15 @@ export class WsBridge {
 
   private broadcastToBrowsers(session: Session, msg: BrowserIncomingMessage) {
     // Debug: warn when assistant messages are broadcast to 0 browsers (they may be lost)
-    if (session.browserSockets.size === 0 && (msg.type === "assistant" || msg.type === "stream_event" || msg.type === "result")) {
-      console.log(`[ws-bridge] ⚠ Broadcasting ${msg.type} to 0 browsers for session ${session.id} (stored in history: ${msg.type === "assistant" || msg.type === "result"})`);
+    if (
+      session.browserSockets.size === 0 &&
+      (msg.type === "assistant" ||
+        msg.type === "stream_event" ||
+        msg.type === "result")
+    ) {
+      console.log(
+        `[ws-bridge] ⚠ Broadcasting ${msg.type} to 0 browsers for session ${session.id} (stored in history: ${msg.type === "assistant" || msg.type === "result"})`,
+      );
     }
     const json = JSON.stringify(
       sequenceEvent(
@@ -1151,7 +1377,14 @@ export class WsBridge {
     );
 
     // Record raw outgoing browser message
-    this.recorder?.record(session.id, "out", json, "browser", session.backendType, session.state.cwd);
+    this.recorder?.record(
+      session.id,
+      "out",
+      json,
+      "browser",
+      session.backendType,
+      session.state.cwd,
+    );
 
     for (const ws of session.browserSockets) {
       try {
@@ -1162,7 +1395,10 @@ export class WsBridge {
     }
   }
 
-  private sendToBrowser(ws: ServerWebSocket<SocketData>, msg: BrowserIncomingMessage) {
+  private sendToBrowser(
+    ws: ServerWebSocket<SocketData>,
+    msg: BrowserIncomingMessage,
+  ) {
     try {
       ws.send(JSON.stringify(msg));
     } catch {

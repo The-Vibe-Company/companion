@@ -33,6 +33,7 @@ import type {
 } from "../api.js";
 import {
   GitHubPRDisplay,
+  ClaudeContextSection,
   CodexRateLimitsSection,
   CodexTokenDetailsSection,
 } from "./TaskPanel.js";
@@ -1663,6 +1664,18 @@ export function Playground() {
           </div>
         </Section>
 
+        {/* ─── Claude Context Window ──────────────────────── */}
+        <Section
+          title="Claude Context Window"
+          description="Context window usage display for Claude Code sessions — uses per-turn token data from assistant messages"
+        >
+          <div className="space-y-4">
+            <Card label="Context usage bar">
+              <ClaudeContextPlaygroundDemo />
+            </Card>
+          </div>
+        </Section>
+
         {/* ─── Codex Session Details ──────────────────────── */}
         <Section
           title="Codex Session Details"
@@ -3110,6 +3123,66 @@ function PlaygroundSubagentGroup({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Claude Context Demo (injects mock Claude data into a temp session) ──────
+
+const CLAUDE_DEMO_SESSION = "claude-playground-demo";
+
+function ClaudeContextPlaygroundDemo() {
+  useEffect(() => {
+    const store = useStore.getState();
+    const prev = store.sessions.get(CLAUDE_DEMO_SESSION);
+
+    store.addSession({
+      session_id: CLAUDE_DEMO_SESSION,
+      backend_type: "claude",
+      model: "claude-sonnet-4-6",
+      cwd: "/Users/demo/project",
+      tools: ["Bash", "Read", "Edit"],
+      permissionMode: "default",
+      claude_code_version: "1.2.0",
+      mcp_servers: [],
+      agents: [],
+      slash_commands: [],
+      skills: [],
+      total_cost_usd: 0.1842,
+      num_turns: 12,
+      context_used_percent: 73,
+      is_compacting: false,
+      git_branch: "feat/new-feature",
+      is_worktree: false,
+      is_containerized: false,
+      repo_root: "/Users/demo/project",
+      git_ahead: 0,
+      git_behind: 0,
+      total_lines_added: 0,
+      total_lines_removed: 0,
+      claude_token_details: {
+        inputTokens: 120_000,
+        outputTokens: 8_500,
+        cacheReadInputTokens: 25_000,
+        cacheCreationInputTokens: 1_200,
+        contextWindow: 200_000,
+        maxOutputTokens: 16384,
+      },
+    });
+
+    return () => {
+      useStore.setState((s) => {
+        const sessions = new Map(s.sessions);
+        if (prev) sessions.set(CLAUDE_DEMO_SESSION, prev);
+        else sessions.delete(CLAUDE_DEMO_SESSION);
+        return { sessions };
+      });
+    };
+  }, []);
+
+  return (
+    <div className="w-[280px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+      <ClaudeContextSection sessionId={CLAUDE_DEMO_SESSION} />
     </div>
   );
 }

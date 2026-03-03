@@ -224,9 +224,14 @@ describe("handleMessage: session_update", () => {
     wsModule.connectSession("s1");
     fireMessage({ type: "session_init", session: makeSession("s1") });
 
-    fireMessage({ type: "session_update", session: { model: "claude-sonnet-4-20250514" } });
+    fireMessage({
+      type: "session_update",
+      session: { model: "claude-sonnet-4-20250514" },
+    });
 
-    expect(useStore.getState().sessions.get("s1")!.model).toBe("claude-sonnet-4-20250514");
+    expect(useStore.getState().sessions.get("s1")!.model).toBe(
+      "claude-sonnet-4-20250514",
+    );
   });
 });
 
@@ -242,7 +247,10 @@ describe("handleMessage: event_replay", () => {
           seq: 1,
           message: {
             type: "stream_event",
-            event: { type: "content_block_delta", delta: { type: "text_delta", text: "Hello" } },
+            event: {
+              type: "content_block_delta",
+              delta: { type: "text_delta", text: "Hello" },
+            },
             parent_tool_use_id: null,
           },
         },
@@ -268,7 +276,10 @@ describe("handleMessage: event_replay", () => {
           seq: 1,
           message: {
             type: "stream_event",
-            event: { type: "content_block_delta", delta: { type: "text_delta", text: "A" } },
+            event: {
+              type: "content_block_delta",
+              delta: { type: "text_delta", text: "A" },
+            },
             parent_tool_use_id: null,
           },
         },
@@ -276,7 +287,10 @@ describe("handleMessage: event_replay", () => {
           seq: 2,
           message: {
             type: "stream_event",
-            event: { type: "content_block_delta", delta: { type: "text_delta", text: "B" } },
+            event: {
+              type: "content_block_delta",
+              delta: { type: "text_delta", text: "B" },
+            },
             parent_tool_use_id: null,
           },
         },
@@ -311,7 +325,12 @@ describe("handleMessage: assistant", () => {
         model: "claude-opus-4-20250514",
         content: [{ type: "text", text: "Hello world" }],
         stop_reason: "end_turn",
-        usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 5,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
     });
@@ -332,7 +351,10 @@ describe("handleMessage: assistant", () => {
 
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "text_delta", text: "Partial answer" } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "text_delta", text: "Partial answer" },
+      },
       parent_tool_use_id: null,
     });
 
@@ -351,7 +373,12 @@ describe("handleMessage: assistant", () => {
         model: "claude-opus-4-20250514",
         content: [{ type: "text", text: "Final answer" }],
         stop_reason: "end_turn",
-        usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 5,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
     });
@@ -376,7 +403,12 @@ describe("handleMessage: assistant", () => {
         model: "claude-opus-4-20250514",
         content: [{ type: "thinking", thinking: "Thinking step" }],
         stop_reason: null,
-        usage: { input_tokens: 10, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 1,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
     });
@@ -390,7 +422,12 @@ describe("handleMessage: assistant", () => {
         model: "claude-opus-4-20250514",
         content: [{ type: "text", text: "Final answer text" }],
         stop_reason: "end_turn",
-        usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 5,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
     });
@@ -398,7 +435,10 @@ describe("handleMessage: assistant", () => {
     const msgs = useStore.getState().messages.get("s1")!;
     expect(msgs).toHaveLength(1);
     expect(msgs[0].id).toBe("msg-shared-1");
-    expect(msgs[0].contentBlocks?.map((b) => b.type)).toEqual(["thinking", "text"]);
+    expect(msgs[0].contentBlocks?.map((b) => b.type)).toEqual([
+      "thinking",
+      "text",
+    ]);
     expect(msgs[0].content).toContain("Final answer text");
   });
 
@@ -422,7 +462,12 @@ describe("handleMessage: assistant", () => {
           },
         ],
         stop_reason: "tool_use",
-        usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 5,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
     });
@@ -450,7 +495,12 @@ describe("handleMessage: assistant", () => {
           },
         ],
         stop_reason: "tool_use",
-        usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 5,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
     });
@@ -478,7 +528,12 @@ describe("handleMessage: assistant", () => {
           },
         ],
         stop_reason: "tool_use",
-        usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 5,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
     });
@@ -497,13 +552,19 @@ describe("handleMessage: stream_event content_block_delta", () => {
 
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "text_delta", text: "Hello " } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "text_delta", text: "Hello " },
+      },
       parent_tool_use_id: null,
     });
 
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "text_delta", text: "world" } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "text_delta", text: "world" },
+      },
       parent_tool_use_id: null,
     });
 
@@ -516,17 +577,25 @@ describe("handleMessage: stream_event content_block_delta", () => {
 
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "thinking_delta", thinking: "Analyzing " } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "thinking_delta", thinking: "Analyzing " },
+      },
       parent_tool_use_id: null,
     });
 
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "thinking_delta", thinking: "context" } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "thinking_delta", thinking: "context" },
+      },
       parent_tool_use_id: null,
     });
 
-    expect(useStore.getState().streaming.get("s1")).toBe("Thinking:\nAnalyzing context");
+    expect(useStore.getState().streaming.get("s1")).toBe(
+      "Thinking:\nAnalyzing context",
+    );
   });
 
   it("separates thinking and response text when both delta types stream", () => {
@@ -535,17 +604,25 @@ describe("handleMessage: stream_event content_block_delta", () => {
 
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "thinking_delta", thinking: "Planning..." } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "thinking_delta", thinking: "Planning..." },
+      },
       parent_tool_use_id: null,
     });
 
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "text_delta", text: "Final answer" } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "text_delta", text: "Final answer" },
+      },
       parent_tool_use_id: null,
     });
 
-    expect(useStore.getState().streaming.get("s1")).toBe("Thinking:\nPlanning...\n\nResponse:\nFinal answer");
+    expect(useStore.getState().streaming.get("s1")).toBe(
+      "Thinking:\nPlanning...\n\nResponse:\nFinal answer",
+    );
   });
 
   it("does not wedge prior text into thinking section when thinking arrives after text", () => {
@@ -554,13 +631,19 @@ describe("handleMessage: stream_event content_block_delta", () => {
 
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "text_delta", text: "Hello" } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "text_delta", text: "Hello" },
+      },
       parent_tool_use_id: null,
     });
 
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "thinking_delta", thinking: "Plan" } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "thinking_delta", thinking: "Plan" },
+      },
       parent_tool_use_id: null,
     });
 
@@ -573,17 +656,26 @@ describe("handleMessage: stream_event content_block_delta", () => {
 
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "thinking_delta", thinking: "A" } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "thinking_delta", thinking: "A" },
+      },
       parent_tool_use_id: null,
     });
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "text_delta", text: "B" } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "text_delta", text: "B" },
+      },
       parent_tool_use_id: null,
     });
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "thinking_delta", thinking: "C" } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "thinking_delta", thinking: "C" },
+      },
       parent_tool_use_id: null,
     });
 
@@ -606,7 +698,9 @@ describe("handleMessage: stream_event message_start", () => {
       parent_tool_use_id: null,
     });
 
-    expect(useStore.getState().streamingStartedAt.get("s1")).toBe(1700000000000);
+    expect(useStore.getState().streamingStartedAt.get("s1")).toBe(
+      1700000000000,
+    );
   });
 });
 
@@ -631,7 +725,12 @@ describe("handleMessage: result", () => {
         num_turns: 3,
         total_cost_usd: 0.05,
         stop_reason: "end_turn",
-        usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 100,
+          output_tokens: 50,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
         uuid: "u1",
         session_id: "s1",
       },
@@ -651,7 +750,10 @@ describe("handleMessage: result", () => {
 
     fireMessage({
       type: "stream_event",
-      event: { type: "content_block_delta", delta: { type: "text_delta", text: "Partial output" } },
+      event: {
+        type: "content_block_delta",
+        delta: { type: "text_delta", text: "Partial output" },
+      },
       parent_tool_use_id: null,
     });
     expect(useStore.getState().messages.get("s1")).toHaveLength(1);
@@ -667,7 +769,12 @@ describe("handleMessage: result", () => {
         num_turns: 1,
         total_cost_usd: 0.05,
         stop_reason: "end_turn",
-        usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 100,
+          output_tokens: 50,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
         uuid: "u1",
         session_id: "s1",
       },
@@ -692,7 +799,12 @@ describe("handleMessage: result", () => {
         num_turns: 1,
         total_cost_usd: 0.01,
         stop_reason: null,
-        usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 5,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
         uuid: "u2",
         session_id: "s1",
       },
@@ -702,6 +814,162 @@ describe("handleMessage: result", () => {
     expect(msgs).toHaveLength(1);
     expect(msgs[0].role).toBe("system");
     expect(msgs[0].content).toBe("Error: Something went wrong, Another error");
+  });
+});
+
+// ===========================================================================
+// Per-turn token tracking
+// ===========================================================================
+describe("per-turn token tracking", () => {
+  it("assistant message with usage stores claude_token_details via updateSession", () => {
+    // Verifies that when an assistant message carries usage data, the handler
+    // calls updateSession with a fully-populated claude_token_details object.
+    // contextWindow starts at 0 because no result with modelUsage has arrived yet,
+    // so context_used_percent must NOT be set in this call.
+    wsModule.connectSession("s1");
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+
+    fireMessage({
+      type: "assistant",
+      message: {
+        id: "msg-tok-1",
+        type: "message",
+        role: "assistant",
+        model: "claude-opus-4-20250514",
+        content: [{ type: "text", text: "Token test" }],
+        stop_reason: "end_turn",
+        usage: {
+          input_tokens: 1000,
+          output_tokens: 200,
+          cache_creation_input_tokens: 50,
+          cache_read_input_tokens: 300,
+        },
+      },
+      parent_tool_use_id: null,
+    });
+
+    const session = useStore.getState().sessions.get("s1")!;
+    // claude_token_details must reflect the exact values from msg.usage
+    expect(session.claude_token_details).toBeDefined();
+    expect(session.claude_token_details!.inputTokens).toBe(1000);
+    expect(session.claude_token_details!.outputTokens).toBe(200);
+    expect(session.claude_token_details!.cacheCreationInputTokens).toBe(50);
+    expect(session.claude_token_details!.cacheReadInputTokens).toBe(300);
+    // contextWindow/maxOutputTokens default to 0 before a result with modelUsage arrives
+    expect(session.claude_token_details!.contextWindow).toBe(0);
+    // context_used_percent must not be updated when contextWindow is 0
+    expect(session.context_used_percent).toBe(0);
+  });
+
+  it("assistant message with a known contextWindow computes context_used_percent immediately", () => {
+    // If a previous result already set contextWindow on claude_token_details,
+    // the assistant handler should recompute context_used_percent using
+    // the per-turn formula: (inputTokens + cacheRead + cacheCreation) / contextWindow.
+    wsModule.connectSession("s1");
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+
+    // Seed the session with a pre-existing contextWindow (simulating a prior result message)
+    useStore.getState().updateSession("s1", {
+      claude_token_details: {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadInputTokens: 0,
+        cacheCreationInputTokens: 0,
+        contextWindow: 200000,
+        maxOutputTokens: 8192,
+      },
+    });
+
+    fireMessage({
+      type: "assistant",
+      message: {
+        id: "msg-tok-2",
+        type: "message",
+        role: "assistant",
+        model: "claude-opus-4-20250514",
+        content: [{ type: "text", text: "Context pct test" }],
+        stop_reason: "end_turn",
+        usage: {
+          input_tokens: 80000,
+          output_tokens: 1000,
+          cache_creation_input_tokens: 10000,
+          cache_read_input_tokens: 10000,
+        },
+      },
+      parent_tool_use_id: null,
+    });
+
+    const session = useStore.getState().sessions.get("s1")!;
+    // Expected: (80000 + 10000 + 10000) / 200000 = 0.5 → 50%
+    expect(session.context_used_percent).toBe(50);
+  });
+
+  it("result message with modelUsage and existing per-turn data uses per-turn formula for context %", () => {
+    // When a result message carries modelUsage AND claude_token_details already
+    // exists from a prior assistant message, the handler must use the per-turn
+    // input tokens (not modelUsage.inputTokens) so the percentage reflects
+    // actual context consumption rather than the cumulative session total.
+    wsModule.connectSession("s1");
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+
+    // Simulate an assistant message that populated per-turn data
+    fireMessage({
+      type: "assistant",
+      message: {
+        id: "msg-tok-3",
+        type: "message",
+        role: "assistant",
+        model: "claude-opus-4-20250514",
+        content: [{ type: "text", text: "Result pct test" }],
+        stop_reason: "end_turn",
+        usage: {
+          input_tokens: 50000,
+          output_tokens: 500,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
+      },
+      parent_tool_use_id: null,
+    });
+
+    // Now fire a result with modelUsage containing a large cumulative inputTokens
+    // and a concrete contextWindow. The per-turn formula should win.
+    fireMessage({
+      type: "result",
+      data: {
+        type: "result",
+        subtype: "success",
+        is_error: false,
+        duration_ms: 500,
+        duration_api_ms: 400,
+        num_turns: 1,
+        total_cost_usd: 0.1,
+        stop_reason: "end_turn",
+        usage: {
+          input_tokens: 0,
+          output_tokens: 0,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
+        uuid: "u-tok",
+        session_id: "s1",
+        modelUsage: {
+          "claude-opus-4-20250514": {
+            // Cumulative totals deliberately higher than per-turn to detect which formula runs
+            inputTokens: 999999,
+            outputTokens: 999999,
+            contextWindow: 200000,
+            maxOutputTokens: 8192,
+          },
+        },
+      },
+    });
+
+    const session = useStore.getState().sessions.get("s1")!;
+    // Per-turn formula: (50000 + 0 + 0) / 200000 = 25%
+    // Cumulative fallback would give: (999999 + 999999) / 200000 = 999% → capped at 100%
+    // So 25% proves the per-turn path was taken.
+    expect(session.context_used_percent).toBe(25);
   });
 });
 
@@ -868,7 +1136,12 @@ describe("handleMessage: message_history", () => {
             model: "claude-opus-4-20250514",
             content: [{ type: "text", text: "4" }],
             stop_reason: "end_turn",
-            usage: { input_tokens: 5, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+            usage: {
+              input_tokens: 5,
+              output_tokens: 1,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+            },
           },
           parent_tool_use_id: null,
         },
@@ -883,7 +1156,12 @@ describe("handleMessage: message_history", () => {
             num_turns: 1,
             total_cost_usd: 0.01,
             stop_reason: "end_turn",
-            usage: { input_tokens: 5, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+            usage: {
+              input_tokens: 5,
+              output_tokens: 1,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+            },
             uuid: "u1",
             session_id: "s1",
           },
@@ -918,7 +1196,12 @@ describe("handleMessage: message_history", () => {
             num_turns: 1,
             total_cost_usd: 0,
             stop_reason: null,
-            usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+            usage: {
+              input_tokens: 0,
+              output_tokens: 0,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+            },
             uuid: "u1",
             session_id: "s1",
           },
@@ -952,7 +1235,12 @@ describe("handleMessage: message_history", () => {
             num_turns: 1,
             total_cost_usd: 0,
             stop_reason: null,
-            usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+            usage: {
+              input_tokens: 0,
+              output_tokens: 0,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+            },
             uuid: "u1",
             session_id: "s1",
           },
@@ -972,7 +1260,12 @@ describe("handleMessage: message_history", () => {
     const history = {
       type: "message_history",
       messages: [
-        { type: "user_message", id: "user-1", content: "hello", timestamp: 1000 },
+        {
+          type: "user_message",
+          id: "user-1",
+          content: "hello",
+          timestamp: 1000,
+        },
         {
           type: "assistant",
           message: {
@@ -982,7 +1275,12 @@ describe("handleMessage: message_history", () => {
             model: "claude-opus-4-20250514",
             content: [{ type: "text", text: "hi" }],
             stop_reason: "end_turn",
-            usage: { input_tokens: 5, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+            usage: {
+              input_tokens: 5,
+              output_tokens: 1,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+            },
           },
           parent_tool_use_id: null,
           timestamp: 2000,
@@ -1015,7 +1313,12 @@ describe("handleMessage: message_history", () => {
             model: "claude-opus-4-20250514",
             content: [{ type: "thinking", thinking: "Planning..." }],
             stop_reason: null,
-            usage: { input_tokens: 10, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+            usage: {
+              input_tokens: 10,
+              output_tokens: 1,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+            },
           },
           parent_tool_use_id: null,
           timestamp: 1000,
@@ -1029,7 +1332,12 @@ describe("handleMessage: message_history", () => {
             model: "claude-opus-4-20250514",
             content: [{ type: "text", text: "Final from history" }],
             stop_reason: "end_turn",
-            usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+            usage: {
+              input_tokens: 10,
+              output_tokens: 5,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+            },
           },
           parent_tool_use_id: null,
           timestamp: 1001,
@@ -1040,7 +1348,10 @@ describe("handleMessage: message_history", () => {
     const msgs = useStore.getState().messages.get("s1")!;
     expect(msgs).toHaveLength(1);
     expect(msgs[0].id).toBe("msg-shared-history-1");
-    expect(msgs[0].contentBlocks?.map((b) => b.type)).toEqual(["thinking", "text"]);
+    expect(msgs[0].contentBlocks?.map((b) => b.type)).toEqual([
+      "thinking",
+      "text",
+    ]);
     expect(msgs[0].content).toContain("Final from history");
   });
 
@@ -1061,7 +1372,12 @@ describe("handleMessage: message_history", () => {
             model: "claude-opus-4-20250514",
             content: [{ type: "text", text: "hi" }],
             stop_reason: "end_turn",
-            usage: { input_tokens: 5, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+            usage: {
+              input_tokens: 5,
+              output_tokens: 1,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+            },
           },
           parent_tool_use_id: null,
           timestamp: 43000,
@@ -1178,14 +1494,27 @@ describe("task extraction: TodoWrite", () => {
             name: "TodoWrite",
             input: {
               todos: [
-                { content: "Fix bug", status: "in_progress", activeForm: "Fixing bug" },
-                { content: "Write tests", status: "pending", activeForm: "Writing tests" },
+                {
+                  content: "Fix bug",
+                  status: "in_progress",
+                  activeForm: "Fixing bug",
+                },
+                {
+                  content: "Write tests",
+                  status: "pending",
+                  activeForm: "Writing tests",
+                },
               ],
             },
           },
         ],
         stop_reason: "tool_use",
-        usage: { input_tokens: 10, output_tokens: 20, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 20,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
     });
@@ -1220,11 +1549,20 @@ describe("task extraction: TaskCreate", () => {
             type: "tool_use",
             id: "tu-tc-1",
             name: "TaskCreate",
-            input: { subject: "Deploy service", description: "Deploy to prod", activeForm: "Deploying service" },
+            input: {
+              subject: "Deploy service",
+              description: "Deploy to prod",
+              activeForm: "Deploying service",
+            },
           },
         ],
         stop_reason: "tool_use",
-        usage: { input_tokens: 10, output_tokens: 20, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 20,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
     });
@@ -1262,7 +1600,12 @@ describe("task extraction: TaskUpdate", () => {
           },
         ],
         stop_reason: "tool_use",
-        usage: { input_tokens: 10, output_tokens: 20, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 20,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
     });
@@ -1287,7 +1630,12 @@ describe("task extraction: TaskUpdate", () => {
           },
         ],
         stop_reason: "tool_use",
-        usage: { input_tokens: 10, output_tokens: 10, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 10,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
     });
@@ -1308,9 +1656,14 @@ describe("handleMessage: session_name_update", () => {
     // Current name is "Test Session" from the mock — set a random-style name
     useStore.getState().setSessionName("s1", "Swift Falcon");
 
-    fireMessage({ type: "session_name_update", name: "Fix Authentication Bug" });
+    fireMessage({
+      type: "session_name_update",
+      name: "Fix Authentication Bug",
+    });
 
-    expect(useStore.getState().sessionNames.get("s1")).toBe("Fix Authentication Bug");
+    expect(useStore.getState().sessionNames.get("s1")).toBe(
+      "Fix Authentication Bug",
+    );
   });
 
   it("marks session as recently renamed for animation", () => {
@@ -1334,7 +1687,9 @@ describe("handleMessage: session_name_update", () => {
 
     fireMessage({ type: "session_name_update", name: "Auto Generated Title" });
 
-    expect(useStore.getState().sessionNames.get("s1")).toBe("My Custom Project");
+    expect(useStore.getState().sessionNames.get("s1")).toBe(
+      "My Custom Project",
+    );
   });
 
   it("does not mark as recently renamed when name is not updated", () => {
@@ -1539,7 +1894,10 @@ describe("handleMessage: tool_use_summary", () => {
 
     const msgs = useStore.getState().messages.get("s1");
     expect(msgs).toBeDefined();
-    const systemMsg = msgs!.find((m) => m.role === "system" && m.content === "Ran 3 tools: Bash, Read, Grep");
+    const systemMsg = msgs!.find(
+      (m) =>
+        m.role === "system" && m.content === "Ran 3 tools: Bash, Read, Grep",
+    );
     expect(systemMsg).toBeDefined();
   });
 });
@@ -1553,8 +1911,12 @@ describe("handleMessage: assistant clears only completed tool progress", () => {
     fireMessage({ type: "session_init", session: makeSession("s1") });
 
     // Set up progress for two concurrent tools
-    useStore.getState().setToolProgress("s1", "tu-a", { toolName: "Grep", elapsedSeconds: 3 });
-    useStore.getState().setToolProgress("s1", "tu-b", { toolName: "Glob", elapsedSeconds: 2 });
+    useStore
+      .getState()
+      .setToolProgress("s1", "tu-a", { toolName: "Grep", elapsedSeconds: 3 });
+    useStore
+      .getState()
+      .setToolProgress("s1", "tu-b", { toolName: "Glob", elapsedSeconds: 2 });
 
     // Simulate assistant message with tool_result for only tu-a
     fireMessage({
@@ -1568,7 +1930,12 @@ describe("handleMessage: assistant clears only completed tool progress", () => {
           { type: "tool_result", tool_use_id: "tu-a", content: "3 matches" },
         ] as ContentBlock[],
         stop_reason: null,
-        usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        usage: {
+          input_tokens: 0,
+          output_tokens: 0,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
     });
@@ -1577,6 +1944,9 @@ describe("handleMessage: assistant clears only completed tool progress", () => {
     // tu-a should be cleared (its result arrived)
     expect(progress?.has("tu-a")).toBeFalsy();
     // tu-b should still be present (still running)
-    expect(progress?.get("tu-b")).toEqual({ toolName: "Glob", elapsedSeconds: 2 });
+    expect(progress?.get("tu-b")).toEqual({
+      toolName: "Glob",
+      elapsedSeconds: 2,
+    });
   });
 });
