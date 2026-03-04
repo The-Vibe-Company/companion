@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.72.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.71.0...the-companion-v0.72.0) (2026-03-04)
+
+
+### Features
+
+* **agents:** add conversational chat SDK, cloud relay, and runs view ([#471](https://github.com/The-Vibe-Company/companion/issues/471)) ([e8420c8](https://github.com/The-Vibe-Company/companion/commit/e8420c824cc07b8bb374ec15b6b01653e94daef6))
+* Development environment setup ([#472](https://github.com/The-Vibe-Company/companion/issues/472)) ([99fed7c](https://github.com/The-Vibe-Company/companion/commit/99fed7c1e35315e9bcec79ebd937010019796e20))
+* Menu esthétique ergonomie ([#474](https://github.com/The-Vibe-Company/companion/issues/474)) ([033a854](https://github.com/The-Vibe-Company/companion/commit/033a8547d18bee4fd12b71fadb9322a1f445ef9c))
+
 ## [0.71.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.70.0...the-companion-v0.71.0) (2026-03-04)
 
 
