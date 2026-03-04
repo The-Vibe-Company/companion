@@ -13,6 +13,7 @@ import type { SessionStore } from "./session-store.js";
 import type { BackendType } from "./session-types.js";
 import type { RecorderManager } from "./recorder.js";
 import { CodexAdapter } from "./codex-adapter.js";
+import { CopilotAdapter } from "./copilot-adapter.js";
 import { resolveBinary, getEnrichedPath } from "./path-resolver.js";
 import { containerManager } from "./container-manager.js";
 import {
@@ -135,6 +136,8 @@ export interface LaunchOptions {
   cwd?: string;
   claudeBinary?: string;
   codexBinary?: string;
+  /** Override binary name for copilot CLI (defaults to "copilot"). */
+  copilotBinary?: string;
   allowedTools?: string[];
   env?: Record<string, string>;
   backendType?: BackendType;
@@ -144,6 +147,8 @@ export interface LaunchOptions {
   codexInternetAccess?: boolean;
   /** Optional override for CODEX_HOME used by Codex sessions. */
   codexHome?: string;
+  /** ACP session ID for resuming a Copilot session. */
+  acpSessionId?: string;
   /** Docker container ID — when set, CLI runs inside container via docker exec */
   containerId?: string;
   /** Docker container name */
@@ -173,6 +178,7 @@ export class CliLauncher {
   private store: SessionStore | null = null;
   private recorder: RecorderManager | null = null;
   private onCodexAdapter: ((sessionId: string, adapter: CodexAdapter) => void) | null = null;
+  private onCopilotAdapterCb: ((sessionId: string, adapter: CopilotAdapter) => void) | null = null;
   private exitHandlers: ((sessionId: string, exitCode: number | null) => void)[] = [];
 
   constructor(port: number) {
@@ -182,6 +188,11 @@ export class CliLauncher {
   /** Register a callback for when a CodexAdapter is created (WsBridge needs to attach it). */
   onCodexAdapterCreated(cb: (sessionId: string, adapter: CodexAdapter) => void): void {
     this.onCodexAdapter = cb;
+  }
+
+  /** Register a callback for when a CopilotAdapter is created (WsBridge needs to attach it). */
+  onCopilotAdapterCreated(cb: (sessionId: string, adapter: CopilotAdapter) => void): void {
+    this.onCopilotAdapterCb = cb;
   }
 
   /** Register a callback for when a CLI/Codex process exits. */
@@ -303,6 +314,8 @@ export class CliLauncher {
 
     if (backendType === "codex") {
       this.spawnCodex(sessionId, info, options);
+    } else if (backendType === "copilot") {
+      this.spawnCopilot(sessionId, info, options);
     } else {
       this.spawnCLI(sessionId, info, options);
     }
@@ -408,6 +421,13 @@ export class CliLauncher {
         containerImage: info.containerImage,
         containerCwd: info.containerCwd,
         env: runtimeEnv,
+      });
+    } else if (info.backendType === "copilot") {
+      this.spawnCopilot(sessionId, info, {
+        model: info.model,
+        cwd: info.cwd,
+        env: runtimeEnv,
+        acpSessionId: info.cliSessionId,
       });
     } else {
       this.spawnCLI(sessionId, info, {
@@ -1068,7 +1088,111 @@ export class CliLauncher {
   }
 
   /**
-   * Mark a session as connected (called when CLI establishes WS connection).
+   * Spawn a Copilot ACP subprocess for a session.
+   * Copilot uses --acp which starts a JSON-RPC server over stdio.
+   */
+  private spawnCopilot(sessionId: string, info: SdkSessionInfo, options: LaunchOptions): void {
+    let binary = options.copilotBinary || "copilot";
+    const resolved = resolveBinary(binary);
+    if (resolved) {
+      binary = resolved;
+    } else {
+      console.error(`[cli-launcher] Binary "${binary}" not found in PATH`);
+      info.state = "exited";
+      info.exitCode = 127;
+      this.persistState();
+      return;
+    }
+
+    const args: string[] = [
+      "--acp",
+      "--allow-all-tools",
+      "--allow-all-paths",
+      "--allow-all-urls",
+      "--no-color",
+      "--no-auto-update",
+    ];
+
+    if (options.cwd) {
+      args.push("--add-dir", options.cwd);
+    }
+    const copilotModel = options.model || process.env.COPILOT_MODEL;
+    if (copilotModel) {
+      args.push("--model", copilotModel);
+    }
+
+    const spawnEnv: Record<string, string | undefined> = {
+      ...process.env,
+      ...options.env,
+      PATH: getEnrichedPath(),
+    };
+
+    // Pass through GitHub token for authentication if set in environment
+    if (process.env.GH_TOKEN) spawnEnv.GH_TOKEN = process.env.GH_TOKEN;
+    if (process.env.GITHUB_TOKEN) spawnEnv.GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+
+    console.log(`[cli-launcher] Spawning Copilot session ${sessionId}: ${sanitizeSpawnArgsForLog([binary, ...args])}`);
+
+    const proc = Bun.spawn([binary, ...args], {
+      cwd: info.cwd,
+      env: spawnEnv,
+      stdin: "pipe",
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+    info.pid = proc.pid;
+    this.processes.set(sessionId, proc);
+
+    // Pipe stderr for debugging
+    const stderr = proc.stderr;
+    if (stderr && typeof stderr !== "number") {
+      this.pipeStream(sessionId, stderr, "stderr");
+    }
+
+    const adapter = new CopilotAdapter(proc, sessionId, {
+      model: copilotModel,
+      cwd: info.cwd,
+      acpSessionId: options.acpSessionId,
+      recorder: this.recorder ?? undefined,
+    });
+
+    adapter.onInitError((error) => {
+      console.error(`[cli-launcher] Copilot session ${sessionId} init failed: ${error}`);
+      const session = this.sessions.get(sessionId);
+      if (session) {
+        session.state = "exited";
+        session.exitCode = 1;
+        session.cliSessionId = undefined;
+      }
+      this.persistState();
+    });
+
+    if (this.onCopilotAdapterCb) {
+      this.onCopilotAdapterCb(sessionId, adapter);
+    }
+
+    info.state = "connected";
+
+    proc.exited.then((exitCode) => {
+      console.log(`[cli-launcher] Copilot session ${sessionId} exited (code=${exitCode})`);
+      const session = this.sessions.get(sessionId);
+      if (session) {
+        session.state = "exited";
+        session.exitCode = exitCode;
+      }
+      this.processes.delete(sessionId);
+      this.persistState();
+      for (const handler of this.exitHandlers) {
+        try { handler(sessionId, exitCode); } catch {}
+      }
+    });
+
+    this.persistState();
+  }
+
+
+  /**
    */
   markConnected(sessionId: string): void {
     const session = this.sessions.get(sessionId);

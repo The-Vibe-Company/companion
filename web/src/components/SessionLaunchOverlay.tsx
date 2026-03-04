@@ -3,7 +3,7 @@ import type { CreationProgressEvent } from "../api.js";
 interface Props {
   steps: CreationProgressEvent[];
   error?: string | null;
-  backend?: "claude" | "codex";
+  backend?: "claude" | "codex" | "copilot";
   onCancel?: () => void;
 }
 
@@ -13,7 +13,7 @@ interface Props {
  * centered, animated launch screen.
  */
 export function SessionLaunchOverlay({ steps, error, backend, onCancel }: Props) {
-  const logoSrc = backend === "codex" ? "/logo-codex.svg" : "/logo.svg";
+  const logoSrc = backend === "codex" ? "/logo-codex.svg" : backend === "copilot" ? "/logo-copilot.svg" : "/logo.svg";
   const isAnyInProgress = steps.some((s) => s.status === "in_progress");
   const allDone = steps.length > 0 && steps.every((s) => s.status === "done");
   const hasError = steps.some((s) => s.status === "error") || !!error;

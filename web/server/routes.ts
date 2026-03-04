@@ -175,7 +175,7 @@ export function createRoutes(
         : undefined;
       const forkSession = body.forkSession === true;
       const backend = body.backend ?? "claude";
-      if (backend !== "claude" && backend !== "codex") {
+      if (backend !== "claude" && backend !== "codex" && backend !== "copilot") {
         return c.json({ error: `Invalid backend: ${String(backend)}` }, 400);
       }
 
@@ -466,7 +466,7 @@ export function createRoutes(
           : undefined;
         const forkSession = body.forkSession === true;
         const backend = body.backend ?? "claude";
-        if (backend !== "claude" && backend !== "codex") {
+        if (backend !== "claude" && backend !== "codex" && backend !== "copilot") {
           await stream.writeSSE({
             event: "error",
             data: JSON.stringify({ error: `Invalid backend: ${String(backend)}` }),
@@ -766,7 +766,8 @@ export function createRoutes(
         }
 
         // --- Step: Launch CLI ---
-        await emitProgress(stream, "launching_cli", "Launching Claude Code...", "in_progress");
+        const launchLabel = backend === "copilot" ? "Launching GitHub Copilot..." : backend === "codex" ? "Launching Codex..." : "Launching Claude Code...";
+        await emitProgress(stream, "launching_cli", launchLabel, "in_progress");
 
         const session = launcher.launch({
           model: body.model,
@@ -1529,11 +1530,12 @@ export function createRoutes(
 
     backends.push({ id: "claude", name: "Claude Code", available: resolveBinary("claude") !== null });
     backends.push({ id: "codex", name: "Codex", available: resolveBinary("codex") !== null });
+    backends.push({ id: "copilot", name: "GitHub Copilot", available: resolveBinary("copilot") !== null });
 
     return c.json(backends);
   });
 
-  api.get("/backends/:id/models", (c) => {
+  api.get("/backends/:id/models", async (c) => {
     const backendId = c.req.param("id");
 
     if (backendId === "codex") {
@@ -1565,6 +1567,79 @@ export function createRoutes(
         return c.json(models);
       } catch (e) {
         return c.json({ error: "Failed to parse Codex models cache" }, 500);
+      }
+    }
+
+    if (backendId === "copilot") {
+      // Fetch available models from the Copilot ACP initialize response
+      const copilotBin = resolveBinary("copilot");
+      if (!copilotBin) {
+        return c.json({ error: "Copilot CLI not installed" }, 404);
+      }
+      try {
+        const proc = Bun.spawn([copilotBin, "--acp", "--no-color", "--no-auto-update"], {
+          stdin: "pipe",
+          stdout: "pipe",
+          stderr: "ignore",
+        });
+
+        const initMsg = JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: { protocolVersion: 1, clientInfo: { name: "thecompanion", version: "1.0.0" }, capabilities: {} },
+        }) + "\n";
+        (proc.stdin as { write(d: Uint8Array): number }).write(new TextEncoder().encode(initMsg));
+
+        const newSessionMsg = JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "session/new",
+          params: { mcpServers: [], cwd: process.cwd() },
+        }) + "\n";
+        (proc.stdin as { write(d: Uint8Array): number }).write(new TextEncoder().encode(newSessionMsg));
+
+        // Read stdout until we get the session/new response (id:2)
+        const reader = (proc.stdout as ReadableStream<Uint8Array>).getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let models: Array<{ value: string; label: string; description: string }> | null = null;
+
+        const timeout = new Promise<null>((r) => setTimeout(() => r(null), 5000));
+        const readLoop = (async () => {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              try {
+                const msg = JSON.parse(line) as { id?: number; result?: { models?: { availableModels?: Array<{ modelId: string; name: string; description?: string }> } } };
+                if (msg.id === 2 && msg.result?.models?.availableModels) {
+                  models = msg.result.models.availableModels.map((m) => ({
+                    value: m.modelId,
+                    label: m.name || m.modelId,
+                    description: m.description || "",
+                  }));
+                  return models;
+                }
+              } catch {}
+            }
+          }
+          return null;
+        })();
+
+        await Promise.race([readLoop, timeout]);
+        proc.kill("SIGTERM");
+
+        if (models) {
+          return c.json(models);
+        }
+        return c.json({ error: "Could not retrieve Copilot models" }, 500);
+      } catch (e) {
+        return c.json({ error: "Failed to query Copilot models" }, 500);
       }
     }
 

@@ -63,6 +63,18 @@ export const CODEX_MODES: ModeOption[] = [
   { value: "plan", label: "Plan" },
 ];
 
+export const COPILOT_MODELS: ModelOption[] = [
+  { value: "claude-sonnet-4.6", label: "Claude Sonnet 4.6", icon: "\u25D5" },
+  { value: "claude-opus-4.6", label: "Claude Opus 4.6", icon: "\u2733" },
+  { value: "claude-haiku-4.5", label: "Claude Haiku 4.5", icon: "\u26A1" },
+  { value: "gpt-5.2", label: "GPT-5.2", icon: "\u25CF" },
+  { value: "gpt-5.1-codex", label: "GPT-5.1 Codex", icon: "\u2726" },
+];
+
+export const COPILOT_MODES: ModeOption[] = [
+  { value: "bypassPermissions", label: "Auto" },
+];
+
 // Agent-specific modes: "plan" is excluded because agents are autonomous
 // and cannot wait for human plan approval.
 export const CLAUDE_AGENT_MODES: ModeOption[] = [
@@ -79,11 +91,15 @@ export const CODEX_AGENT_MODES: ModeOption[] = [
 // ─── Getters ─────────────────────────────────────────────────────────────────
 
 export function getModelsForBackend(backend: BackendType): ModelOption[] {
-  return backend === "codex" ? CODEX_MODELS : CLAUDE_MODELS;
+  if (backend === "codex") return CODEX_MODELS;
+  if (backend === "copilot") return COPILOT_MODELS;
+  return CLAUDE_MODELS;
 }
 
 export function getModesForBackend(backend: BackendType): ModeOption[] {
-  return backend === "codex" ? CODEX_MODES : CLAUDE_MODES;
+  if (backend === "codex") return CODEX_MODES;
+  if (backend === "copilot") return COPILOT_MODES;
+  return CLAUDE_MODES;
 }
 
 export function getAgentModesForBackend(backend: BackendType): ModeOption[] {
@@ -91,11 +107,15 @@ export function getAgentModesForBackend(backend: BackendType): ModeOption[] {
 }
 
 export function getDefaultModel(backend: BackendType): string {
-  return backend === "codex" ? CODEX_MODELS[0].value : CLAUDE_MODELS[0].value;
+  if (backend === "codex") return CODEX_MODELS[0].value;
+  if (backend === "copilot") return COPILOT_MODELS[0].value;
+  return CLAUDE_MODELS[0].value;
 }
 
 export function getDefaultMode(backend: BackendType): string {
-  return backend === "codex" ? CODEX_MODES[0].value : CLAUDE_MODES[0].value;
+  if (backend === "codex") return CODEX_MODES[0].value;
+  if (backend === "copilot") return COPILOT_MODES[0].value;
+  return CLAUDE_MODES[0].value;
 }
 
 export function getDefaultAgentMode(backend: BackendType): string {

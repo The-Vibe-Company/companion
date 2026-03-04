@@ -79,7 +79,7 @@ interface JobFormData {
   recurring: boolean;
   schedule: string;
   oneTimeDate: string;
-  backendType: "claude" | "codex";
+  backendType: "claude" | "codex" | "copilot";
   model: string;
   cwd: string;
 }
@@ -835,7 +835,7 @@ function JobForm({
             onClick={() => setShowBackendDropdown(!showBackendDropdown)}
             className="flex items-center gap-1.5 px-2.5 py-2 min-h-[44px] text-xs font-medium text-cc-fg rounded-lg hover:bg-cc-hover transition-colors cursor-pointer"
           >
-            <span>{form.backendType === "codex" ? "Codex" : "Claude Code"}</span>
+            <span>{form.backendType === "codex" ? "Codex" : form.backendType === "copilot" ? "Copilot" : "Claude Code"}</span>
             <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
               <path d="M4 6l4 4 4-4" />
             </svg>
@@ -846,6 +846,7 @@ function JobForm({
                 [
                   { value: "claude", label: "Claude Code" },
                   { value: "codex", label: "Codex" },
+                  { value: "copilot", label: "Copilot" },
                 ] as const
               ).map((opt) => (
                 <button

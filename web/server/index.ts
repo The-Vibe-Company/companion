@@ -76,6 +76,11 @@ launcher.onCodexAdapterCreated((sessionId, adapter) => {
   wsBridge.attachCodexAdapter(sessionId, adapter);
 });
 
+// When a Copilot adapter is created, attach it to the WsBridge
+launcher.onCopilotAdapterCreated((sessionId, adapter) => {
+  wsBridge.attachCopilotAdapter(sessionId, adapter);
+});
+
 // Start watching PRs when git info is resolved for a session
 wsBridge.onSessionGitInfoReadyCallback((sessionId, cwd, branch) => {
   prPoller.watch(sessionId, cwd, branch);

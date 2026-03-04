@@ -114,10 +114,10 @@ interface AppState {
   creationProgress: CreationProgressEvent[] | null;
   creationError: string | null;
   sessionCreating: boolean;
-  sessionCreatingBackend: "claude" | "codex" | null;
+  sessionCreatingBackend: "claude" | "codex" | "copilot" | null;
   addCreationProgress: (step: CreationProgressEvent) => void;
   clearCreation: () => void;
-  setSessionCreating: (creating: boolean, backend?: "claude" | "codex") => void;
+  setSessionCreating: (creating: boolean, backend?: "claude" | "codex" | "copilot") => void;
   setCreationError: (error: string | null) => void;
 
   // UI

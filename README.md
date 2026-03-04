@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">The Companion</h1>
-<p align="center"><strong>Web UI for Claude Code and Codex sessions.</strong></p>
+<p align="center"><strong>Web UI for Claude Code, Codex, and GitHub Copilot sessions.</strong></p>
 <p align="center">Run multiple agents, inspect every tool call, and gate risky actions with explicit approvals.</p>
 
 <p align="center">
@@ -14,7 +14,7 @@
 
 ## Quick start
 
-**Requirements:** [Bun](https://bun.sh) + [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and/or [Codex](https://github.com/openai/codex) CLI.
+**Requirements:** [Bun](https://bun.sh) + at least one supported backend CLI (see [Backends](#backends)).
 
 ### Try it instantly
 
@@ -59,12 +59,59 @@ Open [http://localhost:3456](http://localhost:3456). The server runs in the back
 - **Full visibility**: see streaming output, tool calls, and tool results in one timeline.
 - **Permission control**: approve/deny sensitive operations from the UI.
 - **Session recovery**: restore work after process/server restarts.
-- **Dual-engine support**: designed for both Claude Code and Codex-backed flows.
+- **Multi-backend**: switch between Claude Code, Codex, and GitHub Copilot from the same UI.
 
 ## Screenshots
 | Chat + tool timeline | Permission flow |
 |---|---|
 | <img src="screenshot.png" alt="Main workspace" width="100%" /> | <img src="web/docs/screenshots/notification-section.png" alt="Permission and notifications" width="100%" /> |
+
+## Backends
+
+The Companion auto-detects which CLIs are installed and enables only the available backends in the UI.
+
+### Claude Code
+
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) by Anthropic.
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+Auth: `claude /login` or `ANTHROPIC_API_KEY` env var.
+
+---
+
+### Codex
+
+[Codex](https://github.com/openai/codex) by OpenAI.
+
+```bash
+npm install -g @openai/codex
+```
+
+Auth: `OPENAI_API_KEY` env var.
+
+---
+
+### GitHub Copilot
+
+[GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli) — requires Node.js 22+ and an active Copilot subscription.
+
+```bash
+npm install -g @github/copilot
+```
+
+**Authentication**
+- First use: run `copilot /login` interactively.
+- Or set `GH_TOKEN` / `GITHUB_TOKEN` to a fine-grained PAT with the "Copilot Requests" permission.
+
+**Environment variables**
+
+| Variable | Description |
+|---|---|
+| `GH_TOKEN` / `GITHUB_TOKEN` | GitHub token for authentication |
+| `COPILOT_MODEL` | Pre-select a model (e.g. `gpt-4.1`) — overridden by the session model picker |
 
 ## Architecture (simple)
 ```text
@@ -72,10 +119,13 @@ Browser (React)
   <-> ws://localhost:3456/ws/browser/:session
 Companion server (Bun + Hono)
   <-> ws://localhost:3456/ws/cli/:session
-Claude Code / Codex CLI
+Claude Code / Codex / GitHub Copilot CLI
 ```
 
-The bridge uses the CLI `--sdk-url` websocket path and NDJSON events.
+The bridge speaks each CLI's native protocol:
+- **Claude Code** — `--sdk-url` WebSocket + NDJSON events
+- **Codex** — `--full-auto` stdio JSON-RPC
+- **GitHub Copilot** — `--acp` stdio JSON-RPC 2.0 (Agent Communication Protocol)
 
 ## Authentication
 

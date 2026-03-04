@@ -18,6 +18,7 @@ import type {
 } from "./session-types.js";
 import type { SessionStore } from "./session-store.js";
 import type { CodexAdapter } from "./codex-adapter.js";
+import type { CopilotAdapter } from "./copilot-adapter.js";
 import type { RecorderManager } from "./recorder.js";
 import { resolveSessionGitInfo } from "./session-git-info.js";
 import type {
@@ -152,6 +153,7 @@ export class WsBridge {
         backendType: p.state.backend_type || "claude",
         cliSocket: null,
         codexAdapter: null,
+        copilotAdapter: null,
         browserSockets: new Set(),
         state: p.state,
         pendingPermissions: new Map(p.pendingPermissions || []),
@@ -254,6 +256,7 @@ export class WsBridge {
         backendType: type,
         cliSocket: null,
         codexAdapter: null,
+        copilotAdapter: null,
         browserSockets: new Set(),
         state: makeDefaultState(sessionId, type),
         pendingPermissions: new Map(),
@@ -295,6 +298,9 @@ export class WsBridge {
     if (session.backendType === "codex") {
       return !!session.codexAdapter?.isConnected();
     }
+    if (session.backendType === "copilot") {
+      return !!session.copilotAdapter?.isConnected();
+    }
     return !!session.cliSocket;
   }
 
@@ -321,6 +327,12 @@ export class WsBridge {
     if (session.codexAdapter) {
       session.codexAdapter.disconnect().catch(() => {});
       session.codexAdapter = null;
+    }
+
+    // Disconnect Copilot adapter
+    if (session.copilotAdapter) {
+      session.copilotAdapter.disconnect().catch(() => {});
+      session.copilotAdapter = null;
     }
 
     // Close all browser sockets
@@ -356,7 +368,87 @@ export class WsBridge {
     });
   }
 
-  // ── CLI WebSocket handlers ──────────────────────────────────────────────
+  /**
+   * Attach a CopilotAdapter to a session. The adapter handles all message
+   * translation between the Copilot ACP (stdio JSON-RPC) and the
+   * browser WebSocket protocol.
+   */
+  attachCopilotAdapter(sessionId: string, adapter: CopilotAdapter): void {
+    const session = this.getOrCreateSession(sessionId, "copilot");
+    session.backendType = "copilot";
+    session.state.backend_type = "copilot";
+    session.copilotAdapter = adapter;
+
+    adapter.onBrowserMessage((msg) => {
+      if (msg.type === "session_init") {
+        session.state = { ...session.state, ...msg.session, backend_type: "copilot" };
+        this.refreshGitInfo(session, { notifyPoller: true });
+        this.persistSession(session);
+      } else if (msg.type === "session_update") {
+        session.state = { ...session.state, ...msg.session, backend_type: "copilot" };
+        this.refreshGitInfo(session, { notifyPoller: true });
+        this.persistSession(session);
+      }
+
+      if (msg.type === "assistant") {
+        session.messageHistory.push({ ...msg, timestamp: msg.timestamp || Date.now() });
+        this.persistSession(session);
+      } else if (msg.type === "result") {
+        session.messageHistory.push(msg);
+        this.persistSession(session);
+      }
+
+      this.broadcastToBrowsers(session, msg);
+
+      if (
+        msg.type === "result" &&
+        !(msg.data as { is_error?: boolean }).is_error &&
+        this.onFirstTurnCompleted &&
+        !this.autoNamingAttempted.has(session.id)
+      ) {
+        this.autoNamingAttempted.add(session.id);
+        const firstUserMsg = session.messageHistory.find((m) => m.type === "user_message");
+        if (firstUserMsg && firstUserMsg.type === "user_message") {
+          this.onFirstTurnCompleted(session.id, firstUserMsg.content);
+        }
+      }
+    });
+
+    adapter.onSessionMeta((meta) => {
+      if (meta.cliSessionId && this.onCLISessionId) {
+        this.onCLISessionId(session.id, meta.cliSessionId);
+      }
+      if (meta.model) session.state.model = meta.model;
+      if (meta.cwd) session.state.cwd = meta.cwd;
+      session.state.backend_type = "copilot";
+      this.refreshGitInfo(session, { broadcastUpdate: true, notifyPoller: true });
+      this.persistSession(session);
+    });
+
+    adapter.onDisconnect(() => {
+      session.copilotAdapter = null;
+      this.persistSession(session);
+      console.log(`[ws-bridge] Copilot adapter disconnected for session ${sessionId}`);
+      this.broadcastToBrowsers(session, { type: "cli_disconnected" });
+    });
+
+    // Flush any messages queued while waiting for the adapter
+    if (session.pendingMessages.length > 0) {
+      console.log(`[ws-bridge] Flushing ${session.pendingMessages.length} queued message(s) to Copilot adapter for session ${sessionId}`);
+      const queued = session.pendingMessages.splice(0);
+      for (const raw of queued) {
+        try {
+          const msg = JSON.parse(raw) as BrowserOutgoingMessage;
+          adapter.sendBrowserMessage(msg);
+        } catch {
+          console.warn(`[ws-bridge] Failed to parse queued message for Copilot: ${raw.substring(0, 100)}`);
+        }
+      }
+    }
+
+    this.broadcastToBrowsers(session, { type: "cli_connected" });
+    console.log(`[ws-bridge] Copilot adapter attached for session ${sessionId}`);
+  }
 
   handleCLIOpen(ws: ServerWebSocket<SocketData>, sessionId: string) {
     const session = this.getOrCreateSession(sessionId);
@@ -980,6 +1072,28 @@ export class WsBridge {
         // The adapter itself also queues during init, but this covers
         // the window between session creation and adapter attachment.
         console.log(`[ws-bridge] Codex adapter not yet attached for session ${session.id}, queuing ${msg.type}`);
+        session.pendingMessages.push(JSON.stringify(msg));
+      }
+      return;
+    }
+
+    // For Copilot sessions, delegate entirely to the adapter
+    if (session.backendType === "copilot") {
+      if (msg.type === "user_message") {
+        const ts = Date.now();
+        session.messageHistory.push({
+          type: "user_message",
+          content: msg.content,
+          timestamp: ts,
+          id: `user-${ts}-${this.userMsgCounter++}`,
+        });
+        this.persistSession(session);
+      }
+
+      if (session.copilotAdapter) {
+        session.copilotAdapter.sendBrowserMessage(msg);
+      } else {
+        console.log(`[ws-bridge] Copilot adapter not yet attached for session ${session.id}, queuing ${msg.type}`);
         session.pendingMessages.push(JSON.stringify(msg));
       }
       return;

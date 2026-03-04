@@ -27,6 +27,7 @@ function createMockSession(overrides = {}): Session {
     backendType: "codex",
     cliSocket: null,
     codexAdapter: null,
+    copilotAdapter: null,
     browserSockets: new Set(),
     state: {
       session_id: "test-session",

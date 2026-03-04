@@ -15,7 +15,7 @@ export interface SessionItem {
   sdkState: "starting" | "connected" | "running" | "exited" | null;
   createdAt: number;
   archived: boolean;
-  backendType: "claude" | "codex";
+  backendType: "claude" | "codex" | "copilot";
   repoRoot: string;
   permCount: number;
   cronJobId?: string;

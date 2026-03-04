@@ -309,7 +309,7 @@ export interface BufferedBrowserEvent {
 
 // ─── Session State ────────────────────────────────────────────────────────────
 
-export type BackendType = "claude" | "codex";
+export type BackendType = "claude" | "codex" | "copilot";
 
 export interface SessionState {
   session_id: string;

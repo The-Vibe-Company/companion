@@ -2716,6 +2716,20 @@ function PlaygroundSessionItems() {
           />
         </div>
       </Card>
+
+      {/* Copilot session */}
+      <Card label="GitHub Copilot session">
+        <div className="bg-cc-sidebar rounded-lg p-1">
+          <SessionItem
+            session={mockSession({ isConnected: true, status: "running", backendType: "copilot" })}
+            isActive={false}
+            sessionName="Refactor auth module"
+            permCount={0}
+            isRecentlyRenamed={false}
+            {...noopSessionItemProps}
+          />
+        </div>
+      </Card>
     </div>
   );
 }

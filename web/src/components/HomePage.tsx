@@ -219,7 +219,7 @@ export function HomePage() {
 
   // Fetch dynamic models for the selected backend
   useEffect(() => {
-    if (backend !== "codex") {
+    if (backend !== "codex" && backend !== "copilot") {
       setDynamicModels(null);
       return;
     }
@@ -318,7 +318,7 @@ export function HomePage() {
 
   const selectedModel = MODELS.find((m) => m.value === model) || MODELS[0];
   const selectedMode = MODES.find((m) => m.value === mode) || MODES[0];
-  const logoSrc = backend === "codex" ? "/logo-codex.svg" : "/logo.svg";
+  const logoSrc = backend === "codex" ? "/logo-codex.svg" : backend === "copilot" ? "/logo-copilot.svg" : "/logo.svg";
   const dirLabel = cwd ? cwd.split("/").pop() || cwd : "Select folder";
   const trimmedResumeSessionAt = useMemo(() => resumeSessionAt.trim(), [resumeSessionAt]);
   const branchFromSessionEnabled = backend === "claude"
@@ -591,7 +591,7 @@ export function HomePage() {
   ) {
     const store = useStore.getState();
     store.clearCreation();
-    store.setSessionCreating(true, backend as "claude" | "codex");
+    store.setSessionCreating(true, backend as "claude" | "codex" | "copilot");
 
     try {
       // Disconnect current session if any
@@ -1131,7 +1131,7 @@ export function HomePage() {
               </svg>
             </button>
             {showModelDropdown && (
-              <div className="absolute left-0 bottom-full mb-1 w-48 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1">
+              <div className="absolute left-0 bottom-full mb-1 w-48 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1 max-h-64 overflow-y-auto">
                 {MODELS.map((m) => (
                   <button
                     key={m.value}
