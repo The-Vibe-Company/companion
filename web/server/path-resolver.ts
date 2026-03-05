@@ -96,7 +96,8 @@ export function buildFallbackPath(): string {
     } catch { /* ignore */ }
   }
 
-  return [...new Set(candidates.filter((dir) => existsSync(dir)))].join(":");
+  const pathSep = process.platform === "win32" ? ";" : ":";
+  return [...new Set(candidates.filter((dir) => existsSync(dir)))].join(pathSep);
 }
 
 // ─── Enriched PATH (cached) ───────────────────────────────────────────────────
@@ -113,9 +114,10 @@ export function getEnrichedPath(): string {
 
   const currentPath = process.env.PATH || "";
   const userPath = captureUserShellPath();
+  const pathSep = process.platform === "win32" ? ";" : ":";
 
   // Merge: user shell PATH first (takes precedence), then current process PATH
-  const allDirs = [...userPath.split(":"), ...currentPath.split(":")];
+  const allDirs = [...userPath.split(pathSep), ...currentPath.split(pathSep)];
   const seen = new Set<string>();
   const deduped: string[] = [];
   for (const dir of allDirs) {
@@ -125,7 +127,7 @@ export function getEnrichedPath(): string {
     }
   }
 
-  _cachedPath = deduped.join(":");
+  _cachedPath = deduped.join(pathSep);
   return _cachedPath;
 }
 
@@ -144,19 +146,34 @@ export function resolveBinary(name: string): string | null {
   if (name.startsWith("/")) {
     return existsSync(name) ? name : null;
   }
-
-  const enrichedPath = getEnrichedPath();
-  try {
-    const resolved = execSync(`which ${name.replace(/[^a-zA-Z0-9._@/-]/g, "")}`, {
-
-      encoding: "utf-8",
-      timeout: 5_000,
-      env: { ...process.env, PATH: enrichedPath },
-    }).trim();
-    return resolved || null;
-  } catch {
-    return null;
+  // On Windows, also accept absolute paths like C:\... or D:\...
+  if (process.platform === "win32" && /^[a-zA-Z]:[/\\]/.test(name)) {
+    return existsSync(name) ? name : null;
   }
+
+  const sanitized = name.replace(/[^a-zA-Z0-9._@/-]/g, "");
+  const enrichedPath = getEnrichedPath();
+
+  // Try `which` (Unix/Git Bash), then `where` (Windows CMD/PowerShell)
+  for (const cmd of ["which", "where"]) {
+    try {
+      const result = execSync(`${cmd} ${sanitized}`, {
+        encoding: "utf-8",
+        timeout: 5_000,
+        env: { ...process.env, PATH: enrichedPath },
+      }).trim();
+      if (!result) continue;
+      // `where` on Windows may return multiple lines; prefer .cmd for Node/Bun spawn compatibility
+      if (cmd === "where") {
+        const lines = result.split(/\r?\n/).filter(Boolean);
+        return lines.find(l => l.endsWith(".cmd")) || lines[0];
+      }
+      return result;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 /**
