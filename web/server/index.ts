@@ -200,7 +200,6 @@ if (process.env.NODE_ENV === "production") {
 
 const server = Bun.serve<SocketData>({
   port,
-  idleTimeout: idleTimeoutSeconds,
   async fetch(req, server) {
     const url = new URL(req.url);
 
@@ -254,6 +253,7 @@ const server = Bun.serve<SocketData>({
     return app.fetch(req, server);
   },
   websocket: {
+    idleTimeout: idleTimeoutSeconds,
     open(ws: ServerWebSocket<SocketData>) {
       const data = ws.data;
       if (data.kind === "cli") {
