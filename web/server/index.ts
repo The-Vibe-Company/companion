@@ -48,7 +48,6 @@ import { DEFAULT_PORT_DEV, DEFAULT_PORT_PROD } from "./constants.js";
 
 const defaultPort = process.env.NODE_ENV === "production" ? DEFAULT_PORT_PROD : DEFAULT_PORT_DEV;
 const port = Number(process.env.PORT) || defaultPort;
-const idleTimeoutSeconds = Number(process.env.COMPANION_IDLE_TIMEOUT_SECONDS || "120");
 const sessionStore = new SessionStore(process.env.COMPANION_SESSION_DIR);
 const wsBridge = new WsBridge();
 const launcher = new CliLauncher(port);
@@ -220,7 +219,13 @@ if (process.env.NODE_ENV === "production") {
 
 const server = Bun.serve<SocketData>({
   port,
-  idleTimeout: idleTimeoutSeconds,
+  // Disable Bun's WebSocket idle timeout and automatic pings.
+  // Bun's internal ping timeout (4s default, 16s max) causes abnormal closures
+  // (code 1006) when backends don't respond to pings fast enough, especially
+  // on macOS (kqueue). CLI backends already send application-level keep_alive
+  // messages, so we don't need transport-level pings.
+  // See: https://github.com/oven-sh/bun/issues/26554
+  idleTimeout: 0,
   async fetch(req, server) {
     const url = new URL(req.url);
 
@@ -274,6 +279,7 @@ const server = Bun.serve<SocketData>({
     return app.fetch(req, server);
   },
   websocket: {
+    sendPings: false,
     open(ws: ServerWebSocket<SocketData>) {
       const data = ws.data;
       if (data.kind === "cli") {
