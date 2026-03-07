@@ -97,10 +97,27 @@ describe("getRepoInfo", () => {
     expect(result!.isWorktree).toBe(true);
   });
 
-  it("falls back to 'HEAD' when branch detection fails", () => {
+  it("falls back to symbolic-ref for unborn branches (empty repo)", () => {
+    mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes("rev-parse --show-toplevel")) return "/repo";
+      if (cmd.includes("rev-parse --abbrev-ref HEAD")) throw new Error("HEAD does not point to a branch");
+      if (cmd.includes("symbolic-ref --short HEAD")) return "master";
+      if (cmd.includes("rev-parse --git-dir")) return ".git";
+      if (cmd.includes("symbolic-ref refs/remotes/origin/HEAD")) throw new Error("not found");
+      if (cmd.includes("branch --list main master")) return ""; // no branches in empty repo
+      throw new Error(`Unmocked: ${cmd}`);
+    });
+
+    const result = gitUtils.getRepoInfo("/repo");
+    expect(result).not.toBeNull();
+    expect(result!.currentBranch).toBe("master");
+  });
+
+  it("falls back to 'HEAD' when both rev-parse and symbolic-ref fail", () => {
     mockExecSync.mockImplementation((cmd: string) => {
       if (cmd.includes("rev-parse --show-toplevel")) return "/repo";
       if (cmd.includes("rev-parse --abbrev-ref HEAD")) throw new Error("detached HEAD");
+      if (cmd.includes("symbolic-ref --short HEAD")) throw new Error("not symbolic");
       if (cmd.includes("rev-parse --git-dir")) return ".git";
       if (cmd.includes("symbolic-ref refs/remotes/origin/HEAD")) return "refs/remotes/origin/main";
       throw new Error(`Unmocked: ${cmd}`);
@@ -869,7 +886,11 @@ describe("getBranchStatus", () => {
 
 describe("checkoutOrCreateBranch", () => {
   it("checks out an existing branch without creating", () => {
-    mockGitCommand("checkout feat/existing", "Switched to branch 'feat/existing'");
+    mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes("rev-parse HEAD")) return "abc123";
+      if (cmd.includes("checkout feat/existing")) return "Switched to branch 'feat/existing'";
+      throw new Error(`Unmocked: ${cmd}`);
+    });
 
     const result = gitUtils.checkoutOrCreateBranch("/repo", "feat/existing");
     expect(result.created).toBe(false);
@@ -878,6 +899,7 @@ describe("checkoutOrCreateBranch", () => {
   it("creates branch from origin/defaultBranch when checkout fails and createBranch=true", () => {
     // Checkout fails (branch doesn't exist), but origin/main is available
     mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes("rev-parse HEAD")) return "abc123";
       if (cmd.includes("checkout feat/new") && !cmd.includes("-b"))
         throw new Error("error: pathspec 'feat/new' did not match any file(s) known to git");
       if (cmd.includes("rev-parse --verify refs/remotes/origin/main")) return "abc123";
@@ -902,6 +924,7 @@ describe("checkoutOrCreateBranch", () => {
   it("falls back to local defaultBranch when origin ref does not exist", () => {
     // Checkout fails, and origin/main is not available either
     mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes("rev-parse HEAD")) return "abc123";
       if (cmd.includes("checkout feat/new") && !cmd.includes("-b"))
         throw new Error("error: pathspec 'feat/new' did not match any file(s) known to git");
       if (cmd.includes("rev-parse --verify refs/remotes/origin/main"))
@@ -926,6 +949,7 @@ describe("checkoutOrCreateBranch", () => {
 
   it("throws when branch does not exist and createBranch is not set", () => {
     mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes("rev-parse HEAD")) return "abc123"; // has commits
       if (cmd.includes("checkout feat/missing"))
         throw new Error("error: pathspec 'feat/missing' did not match any file(s) known to git");
       throw new Error(`Unmocked: ${cmd}`);
@@ -934,5 +958,36 @@ describe("checkoutOrCreateBranch", () => {
     expect(() =>
       gitUtils.checkoutOrCreateBranch("/repo", "feat/missing"),
     ).toThrow('Branch "feat/missing" does not exist');
+  });
+
+  it("returns success when empty repo is already on the requested unborn branch", () => {
+    mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes("rev-parse HEAD"))
+        throw new Error("HEAD does not point to a valid object");
+      if (cmd.includes("symbolic-ref --short HEAD")) return "master";
+      throw new Error(`Unmocked: ${cmd}`);
+    });
+
+    const result = gitUtils.checkoutOrCreateBranch("/repo", "master");
+    expect(result.created).toBe(false);
+  });
+
+  it("creates orphan branch when empty repo targets a different branch", () => {
+    mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes("rev-parse HEAD"))
+        throw new Error("HEAD does not point to a valid object");
+      if (cmd.includes("symbolic-ref --short HEAD")) return "master";
+      if (cmd.includes("checkout --orphan main")) return "";
+      throw new Error(`Unmocked: ${cmd}`);
+    });
+
+    const result = gitUtils.checkoutOrCreateBranch("/repo", "main");
+    expect(result.created).toBe(true);
+
+    const orphanCall = mockExecSync.mock.calls.find((c: unknown[]) =>
+      (c[0] as string).includes("checkout --orphan"),
+    );
+    expect(orphanCall).toBeDefined();
+    expect((orphanCall![0] as string)).toContain("main");
   });
 });

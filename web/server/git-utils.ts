@@ -76,7 +76,12 @@ export function getRepoInfo(cwd: string): GitRepoInfo | null {
   const repoRoot = gitSafe("rev-parse --show-toplevel", cwd);
   if (!repoRoot) return null;
 
-  const currentBranch = gitSafe("rev-parse --abbrev-ref HEAD", cwd) || "HEAD";
+  // rev-parse --abbrev-ref HEAD fails on unborn branches (git init with no commits),
+  // so fall back to symbolic-ref --short HEAD which works for unborn branches too.
+  const currentBranch =
+    gitSafe("rev-parse --abbrev-ref HEAD", cwd) ??
+    gitSafe("symbolic-ref --short HEAD", cwd) ??
+    "HEAD";
   const gitDir = gitSafe("rev-parse --git-dir", cwd) || "";
   // A linked worktree's .git dir is inside the main repo's .git/worktrees/
   const isWorktree = gitDir.includes("/worktrees/");
@@ -385,6 +390,21 @@ export function checkoutOrCreateBranch(
   branchName: string,
   options?: { createBranch?: boolean; defaultBranch?: string },
 ): { created: boolean } {
+  // Handle empty repos (git init with no commits): HEAD exists as a symbolic ref
+  // but points to a branch with no commits, so regular checkout always fails.
+  const hasCommits = gitSafe("rev-parse HEAD", cwd) !== null;
+  if (!hasCommits) {
+    // Detect the current unborn branch name
+    const unbornBranch = gitSafe("symbolic-ref --short HEAD", cwd);
+    if (unbornBranch === branchName) {
+      // Already on the requested unborn branch — nothing to do
+      return { created: false };
+    }
+    // Switch to a different orphan branch on the empty repo
+    git(`checkout --orphan ${branchName}`, cwd);
+    return { created: true };
+  }
+
   // Try regular checkout first (works for existing local and remote-tracking branches)
   const checkoutResult = gitSafe(`checkout ${branchName}`, cwd);
   if (checkoutResult !== null) {
