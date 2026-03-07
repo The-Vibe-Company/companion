@@ -108,8 +108,13 @@ wsBridge.onSessionGitInfoReadyCallback((sessionId, cwd, branch) => {
 const relaunchingSet = new Set<string>();
 wsBridge.onCLIRelaunchNeededCallback(async (sessionId) => {
   if (relaunchingSet.has(sessionId)) return;
+  // Grace period: CLI does normal code-1000 WS reconnection cycles.
+  // Wait 10s, then check if CLI process is still alive or WS reconnected.
+  await new Promise((r) => setTimeout(r, 10_000));
+  if (wsBridge.isCliConnected(sessionId)) return;
   const info = launcher.getSession(sessionId);
   if (info?.archived) return;
+  if (info?.state === "connected" || info?.state === "running") return;
   if (info && info.state !== "starting") {
     relaunchingSet.add(sessionId);
     console.log(`[server] Auto-relaunching CLI for session ${sessionId}`);
@@ -259,6 +264,7 @@ const server = Bun.serve<SocketData>({
     return app.fetch(req, server);
   },
   websocket: {
+    idleTimeout: 0,
     sendPings: false,
     open(ws: ServerWebSocket<SocketData>) {
       const data = ws.data;
