@@ -108,15 +108,20 @@ wsBridge.onSessionGitInfoReadyCallback((sessionId, cwd, branch) => {
 const relaunchingSet = new Set<string>();
 wsBridge.onCLIRelaunchNeededCallback(async (sessionId) => {
   if (relaunchingSet.has(sessionId)) return;
+  // Block concurrent relaunch attempts (e.g. multiple browser tabs) immediately.
+  relaunchingSet.add(sessionId);
   // Grace period: CLI does normal code-1000 WS reconnection cycles.
   // Wait 10s, then check if CLI process is still alive or WS reconnected.
   await new Promise((r) => setTimeout(r, 10_000));
-  if (wsBridge.isCliConnected(sessionId)) return;
+  if (wsBridge.isCliConnected(sessionId)) { relaunchingSet.delete(sessionId); return; }
   const info = launcher.getSession(sessionId);
-  if (info?.archived) return;
-  if (info?.state === "connected" || info?.state === "running") return;
+  if (info?.archived) { relaunchingSet.delete(sessionId); return; }
+  if (info?.state === "connected" || info?.state === "running") { relaunchingSet.delete(sessionId); return; }
+  // Check if CLI OS process is still alive (definitive, unlike WS/session state).
+  if (info?.pid) {
+    try { process.kill(info.pid, 0); relaunchingSet.delete(sessionId); return; } catch {}
+  }
   if (info && info.state !== "starting") {
-    relaunchingSet.add(sessionId);
     console.log(`[server] Auto-relaunching CLI for session ${sessionId}`);
     try {
       const result = await launcher.relaunch(sessionId);

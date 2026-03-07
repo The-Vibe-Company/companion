@@ -432,6 +432,12 @@ export class WsBridge {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
+    // Only null cliSocket if the closing WS is the current one.
+    // When CLI opens a new WS before the old one closes, the stale close
+    // would clobber the new socket reference, making browsers see
+    // "backend is dead" and triggering spurious relaunches.
+    if (session.cliSocket !== ws) return;
+
     session.cliSocket = null;
     console.log(`[ws-bridge] CLI disconnected for session ${sessionId}`);
     this.broadcastToBrowsers(session, { type: "cli_disconnected" });
