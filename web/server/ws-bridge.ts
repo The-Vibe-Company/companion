@@ -387,7 +387,19 @@ export class WsBridge {
   handleCLIOpen(ws: ServerWebSocket<SocketData>, sessionId: string) {
     const session = this.getOrCreateSession(sessionId);
     session.cliSocket = ws;
-    console.log(`[ws-bridge] CLI connected for session ${sessionId}`);
+
+    // Cancel any pending disconnect debounce timer — CLI reconnected in time
+    const _dt2: Map<string, ReturnType<typeof setTimeout>> =
+      (globalThis as any).__wsDisconnectTimers || new Map();
+    if (_dt2.has(sessionId)) {
+      clearTimeout(_dt2.get(sessionId)!);
+      _dt2.delete(sessionId);
+      console.log(
+        `[ws-bridge] CLI reconnected for ${sessionId} (disconnect debounce cancelled)`,
+      );
+    } else {
+      console.log(`[ws-bridge] CLI connected for session ${sessionId}`);
+    }
     this.broadcastToBrowsers(session, { type: "cli_connected" });
 
     // Flush any messages queued while waiting for the CLI WebSocket.
@@ -432,21 +444,38 @@ export class WsBridge {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
-    // Only null cliSocket if the closing WS is the current one.
-    // When CLI opens a new WS before the old one closes, the stale close
-    // would clobber the new socket reference, making browsers see
-    // "backend is dead" and triggering spurious relaunches.
+    // Guard: ignore close events from stale sockets (new WS opened before old closed)
     if (session.cliSocket !== ws) return;
-
     session.cliSocket = null;
-    console.log(`[ws-bridge] CLI disconnected for session ${sessionId}`);
-    this.broadcastToBrowsers(session, { type: "cli_disconnected" });
 
-    // Cancel any pending permission requests
-    for (const [reqId] of session.pendingPermissions) {
-      this.broadcastToBrowsers(session, { type: "permission_cancelled", request_id: reqId });
-    }
-    session.pendingPermissions.clear();
+    // Debounce: delay disconnect notification by 5s.
+    // CLI cycles its WebSocket every ~30s (close code 1000). If we broadcast
+    // cli_disconnected immediately, browsers see flapping and handleBrowserOpen
+    // triggers relaunch attempts during the brief cliSocket=null window.
+    if (!(globalThis as any).__wsDisconnectTimers)
+      (globalThis as any).__wsDisconnectTimers = new Map();
+    const _dt: Map<string, ReturnType<typeof setTimeout>> =
+      (globalThis as any).__wsDisconnectTimers;
+    const _existing = _dt.get(sessionId);
+    if (_existing) clearTimeout(_existing);
+    _dt.set(
+      sessionId,
+      setTimeout(() => {
+        _dt.delete(sessionId);
+        if (session.cliSocket) return; // CLI reconnected during grace period
+        console.log(
+          `[ws-bridge] CLI disconnect confirmed for ${sessionId}`,
+        );
+        this.broadcastToBrowsers(session, { type: "cli_disconnected" });
+        for (const [reqId] of session.pendingPermissions) {
+          this.broadcastToBrowsers(session, {
+            type: "permission_cancelled",
+            request_id: reqId,
+          });
+        }
+        session.pendingPermissions.clear();
+      }, 5000),
+    );
   }
 
   // ── Browser WebSocket handlers ──────────────────────────────────────────
