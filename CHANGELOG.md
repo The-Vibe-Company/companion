@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.74.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.73.0...the-companion-v0.74.0) (2026-03-10)
+
+
+### Features
+
+* **composer:** pre-populate slash commands and skills on session creation ([#500](https://github.com/The-Vibe-Company/companion/issues/500)) ([79b4664](https://github.com/The-Vibe-Company/companion/commit/79b466417631ab9f345e05d6d3d55d1786cdf398))
+
+
+### Bug Fixes
+
+* prevent WebSocket connection cycling and output replay ([#494](https://github.com/The-Vibe-Company/companion/issues/494)) ([91e2a22](https://github.com/The-Vibe-Company/companion/commit/91e2a22c039973e63031ebc8dcbdd92323254d8a))
+* **settings:** correct Anthropic model ID from claude-sonnet-4.6 to claude-sonnet-4-6 ([#503](https://github.com/The-Vibe-Company/companion/issues/503)) ([186aa77](https://github.com/The-Vibe-Company/companion/commit/186aa77c631a5d0c96ce96d41b7342e28b3b7024))
+* **ui:** limit auto-approve notifications to one with dismiss button ([#504](https://github.com/The-Vibe-Company/companion/issues/504)) ([6fb15a0](https://github.com/The-Vibe-Company/companion/commit/6fb15a0ebe1790cef1368dc80af0a9eb0da6c7d1))
+
 ## [0.73.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.72.0...the-companion-v0.73.0) (2026-03-10)
 
 
