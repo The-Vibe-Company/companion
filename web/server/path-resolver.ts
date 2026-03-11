@@ -96,7 +96,8 @@ export function buildFallbackPath(): string {
     } catch { /* ignore */ }
   }
 
-  return [...new Set(candidates.filter((dir) => existsSync(dir)))].join(":");
+  const separator = process.platform === "win32" ? ";" : ":";
+  return [...new Set(candidates.filter((dir) => existsSync(dir)))].join(separator);
 }
 
 // ─── Enriched PATH (cached) ───────────────────────────────────────────────────
@@ -113,9 +114,10 @@ export function getEnrichedPath(): string {
 
   const currentPath = process.env.PATH || "";
   const userPath = captureUserShellPath();
+  const separator = process.platform === "win32" ? ";" : ":";
 
   // Merge: user shell PATH first (takes precedence), then current process PATH
-  const allDirs = [...userPath.split(":"), ...currentPath.split(":")];
+  const allDirs = [...userPath.split(separator), ...currentPath.split(separator)];
   const seen = new Set<string>();
   const deduped: string[] = [];
   for (const dir of allDirs) {
@@ -125,7 +127,7 @@ export function getEnrichedPath(): string {
     }
   }
 
-  _cachedPath = deduped.join(":");
+  _cachedPath = deduped.join(separator);
   return _cachedPath;
 }
 
@@ -146,8 +148,11 @@ export function resolveBinary(name: string): string | null {
   }
 
   const enrichedPath = getEnrichedPath();
+  const isWindows = process.platform === "win32";
+  const cmd = isWindows ? "where" : "which";
+
   try {
-    const resolved = execSync(`which ${name.replace(/[^a-zA-Z0-9._@/-]/g, "")}`, {
+    const resolved = execSync(`${cmd} ${name.replace(/[^a-zA-Z0-9._@/-]/g, "")}`, {
 
       encoding: "utf-8",
       timeout: 5_000,

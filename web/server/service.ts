@@ -155,7 +155,8 @@ WantedBy=default.target
 
 function resolveBinPath(): string {
   try {
-    const binPath = execSync("which the-companion", { encoding: "utf-8" }).trim();
+    const cmd = process.platform === "win32" ? "where" : "which";
+    const binPath = execSync(`${cmd} the-companion`, { encoding: "utf-8" }).trim();
     if (binPath) return binPath;
   } catch {
     // not found globally
