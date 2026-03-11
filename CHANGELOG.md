@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.75.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.74.0...the-companion-v0.75.0) (2026-03-11)
+
+
+### Features
+
+* **browser:** add browser preview for containerized sessions ([#505](https://github.com/The-Vibe-Company/companion/issues/505)) ([2e61e76](https://github.com/The-Vibe-Company/companion/commit/2e61e768ec3a99dea37212fe39bff3681ededdc9))
+
 ## [0.74.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.73.0...the-companion-v0.74.0) (2026-03-10)
 
 
