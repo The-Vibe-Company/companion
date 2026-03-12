@@ -47,6 +47,19 @@ vi.mock("../store.js", () => {
   return { useStore };
 });
 
+const mockSpeechToggle = vi.fn();
+const mockSpeechStop = vi.fn();
+vi.mock("../utils/use-speech-to-text.js", () => ({
+  useSpeechToText: () => ({
+    isListening: false,
+    isSupported: true,
+    interimText: "",
+    startListening: vi.fn(),
+    stopListening: mockSpeechStop,
+    toggleListening: mockSpeechToggle,
+  }),
+}));
+
 import { Composer } from "./Composer.js";
 
 function makeSession(overrides: Partial<SessionState> = {}): SessionState {
@@ -686,6 +699,23 @@ describe("Composer save prompt", () => {
     const { container } = render(<Composer sessionId="s1" />);
     const results = await axe(container);
     expect(results).toHaveNoViolations();
+  });
+
+  describe("voice input", () => {
+    it("renders microphone button when connected", () => {
+      setupMockStore({ isConnected: true });
+      render(<Composer sessionId="s1" />);
+      // MicButton renders on both mobile and desktop toolbars
+      const buttons = screen.getAllByRole("button", { name: /toggle voice input/i });
+      expect(buttons.length).toBeGreaterThan(0);
+    });
+
+    it("microphone button has keyboard shortcut in title", () => {
+      setupMockStore({ isConnected: true });
+      render(<Composer sessionId="s1" />);
+      const buttons = screen.getAllByRole("button", { name: /toggle voice input/i });
+      expect(buttons[0].getAttribute("title")).toBe("Voice input (Ctrl+Shift+M)");
+    });
   });
 });
 

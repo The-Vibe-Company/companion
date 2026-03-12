@@ -25,6 +25,8 @@ import { LinearSection } from "./home/LinearSection.js";
 import { BranchPicker } from "./home/BranchPicker.js";
 import { MentionMenu } from "./MentionMenu.js";
 import { useMentionMenu } from "../utils/use-mention-menu.js";
+import { useSpeechToText } from "../utils/use-speech-to-text.js";
+import { MicButton } from "./MicButton.js";
 import type { SavedPrompt } from "../api.js";
 import type { SdkSessionInfo } from "../types.js";
 
@@ -168,6 +170,19 @@ export function HomePage() {
     text,
     caretPos,
     cwd: cwd || undefined,
+  });
+
+  const speech = useSpeechToText({
+    onTranscript: useCallback((transcript: string) => {
+      setText((prev) => {
+        const separator = prev.length > 0 && !prev.endsWith(" ") ? " " : "";
+        return prev + separator + transcript;
+      });
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + "px";
+      }
+    }, []),
   });
 
   // Restore cursor position after prompt insertion
@@ -531,6 +546,11 @@ export function HomePage() {
       return;
     }
 
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "m") {
+      e.preventDefault();
+      speech.toggleListening();
+      return;
+    }
     if (e.key === "Tab" && e.shiftKey) {
       e.preventDefault();
       const currentModes = getModesForBackend(backend);
@@ -904,6 +924,14 @@ export function HomePage() {
                 style={{ minHeight: "100px", maxHeight: "200px" }}
               />
 
+              {/* Voice input indicator */}
+              {speech.isListening && (
+                <div className="px-4 pb-1 text-xs text-cc-muted flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cc-error animate-pulse" />
+                  <span>Listening{speech.interimText ? `: "${speech.interimText}"` : "..."}</span>
+                </div>
+              )}
+
               {/* Bottom toolbar */}
               <div className="flex items-center justify-between px-3 pb-3">
                 {/* Left: mode dropdown */}
@@ -938,8 +966,15 @@ export function HomePage() {
                   )}
                 </div>
 
-                {/* Right: image placeholder + send */}
+                {/* Right: mic + image + send */}
                 <div className="flex items-center gap-1.5">
+                  {/* Voice input */}
+                  <MicButton
+                    isListening={speech.isListening}
+                    isSupported={speech.isSupported}
+                    onClick={speech.toggleListening}
+                  />
+
                   {/* Image upload */}
                   <button
                     onClick={() => fileInputRef.current?.click()}

@@ -41,6 +41,7 @@ import { SessionCreationProgress } from "./SessionCreationProgress.js";
 import { SessionLaunchOverlay } from "./SessionLaunchOverlay.js";
 import { PlaygroundUpdateOverlay } from "./UpdateOverlay.js";
 import { SessionItem } from "./SessionItem.js";
+import { MicButton } from "./MicButton.js";
 import type { CreationProgressEvent } from "../types.js";
 import type { SessionItem as SessionItemType } from "../utils/project-grouping.js";
 
@@ -1016,6 +1017,36 @@ export function Playground() {
             </Card>
             <Card label="System message">
               <MessageBubble message={MSG_SYSTEM} />
+            </Card>
+          </div>
+        </Section>
+
+        {/* ─── Voice Input ──────────────────────────────────── */}
+        <Section title="Voice Input" description="Microphone button states for speech-to-text dictation (Ctrl+Shift+M)">
+          <div className="flex flex-wrap gap-6">
+            <Card label="Idle (supported)">
+              <div className="flex items-center gap-3">
+                <MicButton isListening={false} isSupported={true} onClick={() => {}} />
+                <span className="text-xs text-cc-muted">Click to start</span>
+              </div>
+            </Card>
+            <Card label="Listening (active)">
+              <div className="flex items-center gap-3">
+                <MicButton isListening={true} isSupported={true} onClick={() => {}} />
+                <span className="text-xs text-cc-muted">Recording...</span>
+              </div>
+            </Card>
+            <Card label="Not supported">
+              <div className="flex items-center gap-3">
+                <MicButton isListening={false} isSupported={false} onClick={() => {}} />
+                <span className="text-xs text-cc-muted">(button hidden)</span>
+              </div>
+            </Card>
+            <Card label="Disabled">
+              <div className="flex items-center gap-3">
+                <MicButton isListening={false} isSupported={true} onClick={() => {}} disabled />
+                <span className="text-xs text-cc-muted">Disconnected</span>
+              </div>
             </Card>
           </div>
         </Section>

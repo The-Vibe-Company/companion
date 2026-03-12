@@ -7,6 +7,8 @@ import type { ModeOption } from "../utils/backends.js";
 import { ModelSwitcher } from "./ModelSwitcher.js";
 import { MentionMenu } from "./MentionMenu.js";
 import { useMentionMenu } from "../utils/use-mention-menu.js";
+import { useSpeechToText } from "../utils/use-speech-to-text.js";
+import { MicButton } from "./MicButton.js";
 
 import { readFileAsBase64, type ImageAttachment } from "../utils/image.js";
 
@@ -47,6 +49,19 @@ export function Composer({ sessionId }: { sessionId: string }) {
     caretPos,
     cwd: sessionData?.cwd,
     enabled: !slashMenuOpen,
+  });
+
+  const speech = useSpeechToText({
+    onTranscript: useCallback((transcript: string) => {
+      setText((prev) => {
+        const separator = prev.length > 0 && !prev.endsWith(" ") ? " " : "";
+        return prev + separator + transcript;
+      });
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + "px";
+      }
+    }, []),
   });
 
   // Build command list from session data
@@ -154,6 +169,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
     setImages([]);
     setSlashMenuOpen(false);
     mention.setMentionMenuOpen(false);
+    if (speech.isListening) speech.stopListening();
 
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -226,6 +242,11 @@ export function Composer({ sessionId }: { sessionId: string }) {
       return;
     }
 
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "m") {
+      e.preventDefault();
+      speech.toggleListening();
+      return;
+    }
     if (e.key === "Tab" && e.shiftKey) {
       e.preventDefault();
       toggleMode();
@@ -532,6 +553,13 @@ export function Composer({ sessionId }: { sessionId: string }) {
 
             <div className="flex-1" />
 
+            <MicButton
+              isListening={speech.isListening}
+              isSupported={speech.isSupported}
+              onClick={speech.toggleListening}
+              disabled={!isConnected}
+            />
+
             <button
               onClick={() => {
                 const defaultName = text.trim().slice(0, 32);
@@ -591,6 +619,14 @@ export function Composer({ sessionId }: { sessionId: string }) {
             />
           </div>
 
+          {/* Voice input indicator */}
+          {speech.isListening && (
+            <div className="px-4 pb-1 text-xs text-cc-muted flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-cc-error animate-pulse" />
+              <span>Listening{speech.interimText ? `: "${speech.interimText}"` : "..."}</span>
+            </div>
+          )}
+
           {/* Mobile action row (hidden on sm+) */}
           <div className="flex items-center justify-end gap-1 px-3 pb-1 sm:hidden">
             {/* Send/stop */}
@@ -639,6 +675,14 @@ export function Composer({ sessionId }: { sessionId: string }) {
                 <path d="M8 3v10M3 8h10" strokeLinecap="round" />
               </svg>
             </button>
+
+            {/* Voice input */}
+            <MicButton
+              isListening={speech.isListening}
+              isSupported={speech.isSupported}
+              onClick={speech.toggleListening}
+              disabled={!isConnected}
+            />
 
             {/* Save prompt (bookmark) */}
             <button

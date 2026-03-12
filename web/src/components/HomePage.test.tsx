@@ -78,6 +78,18 @@ vi.mock("../utils/routing.js", () => ({
   navigateToSession: vi.fn(),
 }));
 
+const mockSpeechToggle = vi.fn();
+vi.mock("../utils/use-speech-to-text.js", () => ({
+  useSpeechToText: () => ({
+    isListening: false,
+    isSupported: true,
+    interimText: "",
+    startListening: vi.fn(),
+    stopListening: vi.fn(),
+    toggleListening: mockSpeechToggle,
+  }),
+}));
+
 import { HomePage } from "./HomePage.js";
 
 /** Helper to build a default store mock with overridable fields. */
@@ -1294,6 +1306,23 @@ describe("HomePage", () => {
 
       // Should replace @rev with the prompt content, keeping the prefix
       expect(textarea.value).toBe("Please Please review this code ");
+    });
+  });
+
+  describe("voice input", () => {
+    it("renders microphone button on home page", async () => {
+      render(<HomePage />);
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /toggle voice input/i })).toBeInTheDocument();
+      });
+    });
+
+    it("microphone button has keyboard shortcut in title", async () => {
+      render(<HomePage />);
+      await waitFor(() => {
+        const btn = screen.getByRole("button", { name: /toggle voice input/i });
+        expect(btn).toHaveAttribute("title", "Voice input (Ctrl+Shift+M)");
+      });
     });
   });
 });
