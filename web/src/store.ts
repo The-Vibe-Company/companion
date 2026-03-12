@@ -103,6 +103,7 @@ interface AppState {
   toolProgress: Map<string, Map<string, { toolName: string; elapsedSeconds: number }>>;
 
   // Sidebar project grouping
+  sidebarGroupByProject: boolean;
   collapsedProjects: Set<string>;
 
   // Update info
@@ -210,6 +211,7 @@ interface AppState {
   clearToolProgress: (sessionId: string, toolUseId?: string) => void;
 
   // Sidebar project grouping actions
+  setSidebarGroupByProject: (v: boolean) => void;
   toggleProjectCollapse: (projectKey: string) => void;
 
   // Plan mode actions
@@ -307,6 +309,13 @@ function getInitialDismissedVersion(): string | null {
   return localStorage.getItem("cc-update-dismissed") || null;
 }
 
+function getInitialSidebarGroupByProject(): boolean {
+  if (typeof window === "undefined") return false;
+  const stored = localStorage.getItem("cc-sidebar-group-by-project");
+  if (stored !== null) return stored === "true";
+  return false;
+}
+
 function getInitialCollapsedProjects(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
@@ -361,6 +370,7 @@ export const useStore = create<AppState>((set) => ({
   linkedLinearIssues: new Map(),
   mcpServers: new Map(),
   toolProgress: new Map(),
+  sidebarGroupByProject: getInitialSidebarGroupByProject(),
   collapsedProjects: getInitialCollapsedProjects(),
   creationProgress: null,
   creationError: null,
@@ -806,6 +816,10 @@ export const useStore = create<AppState>((set) => ({
       return { toolProgress };
     }),
 
+  setSidebarGroupByProject: (v) => {
+    localStorage.setItem("cc-sidebar-group-by-project", String(v));
+    set({ sidebarGroupByProject: v });
+  },
   toggleProjectCollapse: (projectKey) =>
     set((s) => {
       const collapsedProjects = new Set(s.collapsedProjects);

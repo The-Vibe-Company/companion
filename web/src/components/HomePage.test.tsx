@@ -152,6 +152,8 @@ describe("HomePage", () => {
     // Regression guard: selecting an issue from the mapped project list must
     // update the branch picker to Linear's recommended branch.
     render(<HomePage />);
+    await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
 
     const issueTitle = await screen.findByText(/THE-147/i);
     const issueButton = issueTitle.closest("button");
@@ -197,6 +199,7 @@ describe("HomePage", () => {
     render(<HomePage />);
 
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
     fireEvent.click(screen.getByRole("button", { name: /branch from session/i }));
     fireEvent.click(await screen.findByRole("button", { name: /continue and open prior-session/i }));
 
@@ -235,6 +238,7 @@ describe("HomePage", () => {
     render(<HomePage />);
 
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
     fireEvent.click(screen.getByRole("button", { name: /branch from session/i }));
     fireEvent.click(await screen.findByRole("button", { name: /fork and open snazzy-baking-tarjan/i }));
 
@@ -279,6 +283,7 @@ describe("HomePage", () => {
     render(<HomePage />);
 
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
     fireEvent.click(screen.getByRole("button", { name: /branch from session/i }));
 
     await screen.findByText(/showing 1 of 1 recent claude session/i);
@@ -320,6 +325,7 @@ describe("HomePage", () => {
 
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
     fireEvent.click(screen.getByRole("button", { name: /branch from session/i }));
 
     const search = await screen.findByPlaceholderText("Search sessions, branch, folder, or ID");
@@ -332,12 +338,10 @@ describe("HomePage", () => {
 
   // ─── Basic rendering tests ──────────────────────────────────────────────────
 
-  it("renders the title, logo, textarea, and send button", async () => {
+  it("renders the logo, textarea, and send button", async () => {
     // Verifies the core UI elements appear after initial load.
+    // Note: the "The Companion" title text was removed for a cleaner look.
     render(<HomePage />);
-
-    // Title
-    expect(screen.getByText("The Companion")).toBeInTheDocument();
 
     // Logo image (the claude logo is the default)
     const logo = screen.getByAltText("The Companion");
@@ -378,8 +382,10 @@ describe("HomePage", () => {
 
   it("opens and selects from the model dropdown", async () => {
     // Verifies users can open the model picker and change the selected model.
+    // Model selector is in the Advanced panel.
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
 
     // The default model label for claude backend is "Opus 4.6"
     const modelButton = screen.getByText("Opus 4.6");
@@ -499,7 +505,7 @@ describe("HomePage", () => {
 
   it("shows backend toggle when multiple backends are available", async () => {
     // When both Claude and Codex backends are available, the toggle should appear
-    // and switching should reset model/mode to defaults for the new backend.
+    // in the Advanced panel and switching should reset model/mode to defaults.
     mockApi.getBackends.mockResolvedValue([
       { id: "claude", name: "Claude", available: true },
       { id: "codex", name: "Codex", available: true },
@@ -508,6 +514,7 @@ describe("HomePage", () => {
 
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
 
     // Both backends should be visible
     const claudeButton = screen.getByRole("button", { name: "Claude" });
@@ -529,7 +536,7 @@ describe("HomePage", () => {
   });
 
   it("disables unavailable backends in the toggle", async () => {
-    // An unavailable backend should be rendered as a disabled button.
+    // An unavailable backend should be rendered as a disabled button (in Advanced panel).
     mockApi.getBackends.mockResolvedValue([
       { id: "claude", name: "Claude", available: true },
       { id: "codex", name: "Codex", available: false },
@@ -538,6 +545,7 @@ describe("HomePage", () => {
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
 
+
     const codexButton = await screen.findByTitle("Codex CLI not found in PATH");
     expect(codexButton).toBeDisabled();
   });
@@ -545,7 +553,8 @@ describe("HomePage", () => {
   // ─── Environment dropdown ───────────────────────────────────────────────────
 
   it("opens environment dropdown and selects an environment", async () => {
-    // The env dropdown should list available environments and allow selection.
+    // The env dropdown should list available environments and allow selection
+    // (environment selector is in the Advanced panel).
     const testEnvs = [
       { slug: "dev", name: "Development", variables: { API_KEY: "xxx" }, baseImage: "", imageTag: "" },
       { slug: "prod", name: "Production", variables: { A: "1", B: "2" }, baseImage: "", imageTag: "" },
@@ -554,6 +563,7 @@ describe("HomePage", () => {
 
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
 
     // Click env selector (shows "No env" by default)
     const envButton = screen.getByText("No env").closest("button")!;
@@ -583,6 +593,7 @@ describe("HomePage", () => {
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
 
+
     // Open env dropdown
     const envButton = screen.getByText("No env").closest("button")!;
     fireEvent.click(envButton);
@@ -611,6 +622,7 @@ describe("HomePage", () => {
 
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
 
     // Open env dropdown and select an env first
     const envButton = screen.getByText("No env").closest("button")!;
@@ -884,8 +896,10 @@ describe("HomePage", () => {
 
   it("closes model dropdown on outside click", async () => {
     // Clicking outside an open dropdown should close it.
+    // Model selector is in the Advanced panel.
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
 
     // Open model dropdown
     const modelButton = screen.getByText("Opus 4.6");
@@ -952,7 +966,8 @@ describe("HomePage", () => {
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
 
-    // The dynamically fetched model should appear
+
+    // The dynamically fetched model should appear in the Advanced panel
     await waitFor(() => {
       expect(screen.getByText("GPT Custom")).toBeInTheDocument();
     });
@@ -967,6 +982,7 @@ describe("HomePage", () => {
 
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
 
     // Open branching controls
     fireEvent.click(screen.getByRole("button", { name: /branch from session/i }));
@@ -1006,6 +1022,7 @@ describe("HomePage", () => {
 
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
     fireEvent.click(screen.getByRole("button", { name: /branch from session/i }));
 
     // Should show recent only
@@ -1056,6 +1073,7 @@ describe("HomePage", () => {
 
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
     fireEvent.click(screen.getByRole("button", { name: /branch from session/i }));
 
     await waitFor(() => {
@@ -1080,6 +1098,7 @@ describe("HomePage", () => {
 
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
     fireEvent.click(screen.getByRole("button", { name: /branch from session/i }));
     await screen.findByRole("button", { name: /fork and open slug-1/i });
 
@@ -1103,6 +1122,7 @@ describe("HomePage", () => {
 
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
 
     // Open the branching controls panel
     await act(async () => {
@@ -1143,7 +1163,7 @@ describe("HomePage", () => {
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
 
     // Component should still render without errors
-    expect(screen.getByText("The Companion")).toBeInTheDocument();
+    expect(screen.getByAltText("The Companion")).toBeInTheDocument();
   });
 
   // ─── getHome fallback ──────────────────────────────────────────────────────
@@ -1167,6 +1187,27 @@ describe("HomePage", () => {
     await waitFor(() => {
       expect(screen.getByText("project")).toBeInTheDocument();
     });
+  });
+
+  // ─── Session options always visible ──────────────────────────────────────
+
+  it("renders backend, model, and environment controls on initial render", async () => {
+    // All session creation options (backend toggle, environment selector,
+    // model selector) are always visible — no toggle needed.
+    mockApi.getBackends.mockResolvedValue([
+      { id: "claude", name: "Claude", available: true },
+      { id: "codex", name: "Codex", available: true },
+    ]);
+    mockApi.getBackendModels.mockResolvedValue([]);
+
+    render(<HomePage />);
+    await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
+    // Backend toggle, environment, and model should be visible immediately
+    expect(screen.getByText("No env")).toBeInTheDocument();
+    expect(screen.getByText("Opus 4.6")).toBeInTheDocument();
+    expect(screen.getByText("Claude")).toBeInTheDocument();
+    expect(screen.getByText("Codex")).toBeInTheDocument();
   });
 
   describe("@ mention prompts", () => {

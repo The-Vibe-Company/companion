@@ -817,12 +817,9 @@ export function HomePage() {
   return (
     <div className="flex-1 h-full flex items-start justify-center px-3 sm:px-4 pt-6 sm:pt-8 pb-6 pb-safe overflow-y-auto overscroll-y-contain">
       <div className="w-full max-w-2xl">
-        {/* Logo + Title */}
+        {/* Logo (compact — title removed for cleaner look) */}
         <div className="flex flex-col items-center justify-center mb-3 sm:mb-4">
-          <img src={logoSrc} alt="The Companion" className="w-16 h-16 sm:w-20 sm:h-20 mb-2.5" />
-          <h1 className="text-2xl sm:text-[2rem] font-semibold tracking-tight text-cc-fg">
-            The Companion
-          </h1>
+          <img src={logoSrc} alt="The Companion" className="w-10 h-10 sm:w-12 sm:h-12" />
         </div>
 
         {/* Image thumbnails */}
@@ -972,37 +969,8 @@ export function HomePage() {
               </div>
             </div>
 
-            {/* Below-card selectors */}
+            {/* Below-card selectors — essential controls always visible */}
           <div className="flex items-center gap-1 sm:gap-2 mt-2 sm:mt-3 px-1 flex-wrap">
-          {/* Backend toggle */}
-          {backends.length > 1 && (
-            <div className="flex items-center bg-cc-hover/50 rounded-lg p-0.5">
-              {backends.map((b) => (
-                <button
-                  key={b.id}
-                  onClick={() => b.available && switchBackend(b.id as BackendType)}
-                  disabled={!b.available}
-                  title={b.available ? b.name : `${b.name} CLI not found in PATH`}
-                  className={`flex items-center gap-1 px-2.5 py-2 text-xs rounded-md transition-colors ${
-                    !b.available
-                      ? "text-cc-muted/40 cursor-not-allowed"
-                      : backend === b.id
-                        ? "bg-cc-card text-cc-fg font-medium shadow-sm cursor-pointer"
-                        : "text-cc-muted hover:text-cc-fg cursor-pointer"
-                  }`}
-                >
-                  {b.name}
-                  {!b.available && (
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3 text-cc-error/60">
-                      <circle cx="8" cy="8" r="6" />
-                      <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" />
-                    </svg>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-
           {/* Folder selector */}
           <div>
             <button
@@ -1038,146 +1006,179 @@ export function HomePage() {
             onBranchesLoaded={handleBranchesLoaded}
           />
 
-          {/* Environment selector */}
-          <div className="relative" ref={envDropdownRef}>
-            <button
-              onClick={() => {
-                if (!showEnvDropdown) {
-                  api.listEnvs().then(setEnvs).catch(() => {});
-                }
-                setShowEnvDropdown(!showEnvDropdown);
-              }}
-              aria-expanded={showEnvDropdown}
-              className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-cc-muted hover:text-cc-fg rounded-md hover:bg-cc-hover transition-colors cursor-pointer"
-            >
-              <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 opacity-60">
-                <path d="M8 1a2 2 0 012 2v1h2a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h2V3a2 2 0 012-2zm0 1.5a.5.5 0 00-.5.5v1h1V3a.5.5 0 00-.5-.5zM4 5.5a.5.5 0 00-.5.5v6a.5.5 0 00.5.5h8a.5.5 0 00.5-.5V6a.5.5 0 00-.5-.5H4z" />
-              </svg>
-              <span className="max-w-[120px] truncate">
-                {selectedEnv ? envs.find((e) => e.slug === selectedEnv)?.name || "Env" : "No env"}
-              </span>
-              {/* Image readiness dot */}
-              {selectedEnv && envImageState && envImageState.status !== "idle" && (
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    envImageState.status === "ready"
-                      ? "bg-green-500"
-                      : envImageState.status === "pulling"
-                        ? "bg-amber-500 animate-pulse"
-                        : "bg-cc-error"
-                  }`}
-                  title={
-                    envImageState.status === "ready"
-                      ? "Docker image ready"
-                      : envImageState.status === "pulling"
-                        ? "Pulling Docker image..."
-                        : `Image error: ${envImageState.error || "unknown"}`
-                  }
-                />
-              )}
-              <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
-                <path d="M4 6l4 4 4-4" />
-              </svg>
-            </button>
-            {showEnvDropdown && (
-              <div className="absolute left-0 bottom-full mb-1 w-56 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1 overflow-hidden">
-                <button
-                  onClick={() => {
-                    setSelectedEnv("");
-                    localStorage.setItem("cc-selected-env", "");
-                    setShowEnvDropdown(false);
-                  }}
-                  className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer ${
-                    !selectedEnv ? "text-cc-primary font-medium" : "text-cc-fg"
-                  }`}
-                >
-                  No environment
-                </button>
-                {envs.map((env) => (
-                  <button
-                    key={env.slug}
-                    onClick={() => {
-                      setSelectedEnv(env.slug);
-                      localStorage.setItem("cc-selected-env", env.slug);
-                      setShowEnvDropdown(false);
-                    }}
-                    className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer flex items-center gap-1 ${
-                      env.slug === selectedEnv ? "text-cc-primary font-medium" : "text-cc-fg"
-                    }`}
-                  >
-                    <span className="truncate">{env.name}</span>
-                    <span className="text-cc-muted ml-auto shrink-0">
-                      {Object.keys(env.variables).length} var{Object.keys(env.variables).length !== 1 ? "s" : ""}
-                    </span>
-                  </button>
-                ))}
-                <div className="border-t border-cc-border mt-1 pt-1">
-                  <button
-                    onClick={() => {
-                      setShowEnvManager(true);
-                      setShowEnvDropdown(false);
-                    }}
-                    className="w-full px-3 py-2 text-xs text-left text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
-                  >
-                    Manage environments...
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Model selector */}
-          <div className="relative" ref={modelDropdownRef}>
-            <button
-              onClick={() => setShowModelDropdown(!showModelDropdown)}
-              aria-expanded={showModelDropdown}
-              className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-cc-muted hover:text-cc-fg rounded-md hover:bg-cc-hover transition-colors cursor-pointer"
-            >
-              <span>{selectedModel.icon}</span>
-              <span>{selectedModel.label}</span>
-              <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
-                <path d="M4 6l4 4 4-4" />
-              </svg>
-            </button>
-            {showModelDropdown && (
-              <div className="absolute left-0 bottom-full mb-1 w-48 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1">
-                {MODELS.map((m) => (
-                  <button
-                    key={m.value}
-                    onClick={() => { setModel(m.value); setShowModelDropdown(false); }}
-                    className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer flex items-center gap-2 ${
-                      m.value === model ? "text-cc-primary font-medium" : "text-cc-fg"
-                    }`}
-                  >
-                    <span>{m.icon}</span>
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Branch from prior session (Claude only) */}
-          {backend === "claude" && (
-            <button
-              type="button"
-              onClick={() => setShowBranchingControls((v) => !v)}
-              className={`flex items-center gap-1.5 px-2.5 py-2 text-xs rounded-md transition-colors cursor-pointer ${
-                showBranchingControls
-                  ? "text-cc-primary bg-cc-primary/10 hover:bg-cc-primary/15"
-                  : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
-              }`}
-              aria-expanded={showBranchingControls}
-              aria-controls="branch-from-session-panel"
-            >
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5 opacity-70">
-                <path d="M5 3.5a2 2 0 110 4 2 2 0 010-4zm6 5a2 2 0 110 4 2 2 0 010-4z" />
-                <path d="M7 5.5h2.5A1.5 1.5 0 0111 7v1" strokeLinecap="round" />
-              </svg>
-              Branch from session
-            </button>
-          )}
             </div>
+
+              <div className="mt-2 px-1 flex flex-col gap-2">
+                <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                  {/* Backend toggle */}
+                  {backends.length > 1 && (
+                    <div className="flex items-center bg-cc-hover/50 rounded-lg p-0.5">
+                      {backends.map((b) => (
+                        <button
+                          key={b.id}
+                          onClick={() => b.available && switchBackend(b.id as BackendType)}
+                          disabled={!b.available}
+                          title={b.available ? b.name : `${b.name} CLI not found in PATH`}
+                          className={`flex items-center gap-1 px-2.5 py-2 text-xs rounded-md transition-colors ${
+                            !b.available
+                              ? "text-cc-muted/40 cursor-not-allowed"
+                              : backend === b.id
+                                ? "bg-cc-card text-cc-fg font-medium shadow-sm cursor-pointer"
+                                : "text-cc-muted hover:text-cc-fg cursor-pointer"
+                          }`}
+                        >
+                          {b.name}
+                          {!b.available && (
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3 text-cc-error/60">
+                              <circle cx="8" cy="8" r="6" />
+                              <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Environment selector */}
+                  <div className="relative" ref={envDropdownRef}>
+                    <button
+                      onClick={() => {
+                        if (!showEnvDropdown) {
+                          api.listEnvs().then(setEnvs).catch(() => {});
+                        }
+                        setShowEnvDropdown(!showEnvDropdown);
+                      }}
+                      aria-expanded={showEnvDropdown}
+                      className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-cc-muted hover:text-cc-fg rounded-md hover:bg-cc-hover transition-colors cursor-pointer"
+                    >
+                      <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 opacity-60">
+                        <path d="M8 1a2 2 0 012 2v1h2a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h2V3a2 2 0 012-2zm0 1.5a.5.5 0 00-.5.5v1h1V3a.5.5 0 00-.5-.5zM4 5.5a.5.5 0 00-.5.5v6a.5.5 0 00.5.5h8a.5.5 0 00.5-.5V6a.5.5 0 00-.5-.5H4z" />
+                      </svg>
+                      <span className="max-w-[120px] truncate">
+                        {selectedEnv ? envs.find((e) => e.slug === selectedEnv)?.name || "Env" : "No env"}
+                      </span>
+                      {/* Image readiness dot */}
+                      {selectedEnv && envImageState && envImageState.status !== "idle" && (
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            envImageState.status === "ready"
+                              ? "bg-green-500"
+                              : envImageState.status === "pulling"
+                                ? "bg-amber-500 animate-pulse"
+                                : "bg-cc-error"
+                          }`}
+                          title={
+                            envImageState.status === "ready"
+                              ? "Docker image ready"
+                              : envImageState.status === "pulling"
+                                ? "Pulling Docker image..."
+                                : `Image error: ${envImageState.error || "unknown"}`
+                          }
+                        />
+                      )}
+                      <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
+                        <path d="M4 6l4 4 4-4" />
+                      </svg>
+                    </button>
+                    {showEnvDropdown && (
+                      <div className="absolute left-0 bottom-full mb-1 w-56 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1 overflow-hidden">
+                        <button
+                          onClick={() => {
+                            setSelectedEnv("");
+                            localStorage.setItem("cc-selected-env", "");
+                            setShowEnvDropdown(false);
+                          }}
+                          className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer ${
+                            !selectedEnv ? "text-cc-primary font-medium" : "text-cc-fg"
+                          }`}
+                        >
+                          No environment
+                        </button>
+                        {envs.map((env) => (
+                          <button
+                            key={env.slug}
+                            onClick={() => {
+                              setSelectedEnv(env.slug);
+                              localStorage.setItem("cc-selected-env", env.slug);
+                              setShowEnvDropdown(false);
+                            }}
+                            className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer flex items-center gap-1 ${
+                              env.slug === selectedEnv ? "text-cc-primary font-medium" : "text-cc-fg"
+                            }`}
+                          >
+                            <span className="truncate">{env.name}</span>
+                            <span className="text-cc-muted ml-auto shrink-0">
+                              {Object.keys(env.variables).length} var{Object.keys(env.variables).length !== 1 ? "s" : ""}
+                            </span>
+                          </button>
+                        ))}
+                        <div className="border-t border-cc-border mt-1 pt-1">
+                          <button
+                            onClick={() => {
+                              setShowEnvManager(true);
+                              setShowEnvDropdown(false);
+                            }}
+                            className="w-full px-3 py-2 text-xs text-left text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+                          >
+                            Manage environments...
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Model selector */}
+                  <div className="relative" ref={modelDropdownRef}>
+                    <button
+                      onClick={() => setShowModelDropdown(!showModelDropdown)}
+                      aria-expanded={showModelDropdown}
+                      className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-cc-muted hover:text-cc-fg rounded-md hover:bg-cc-hover transition-colors cursor-pointer"
+                    >
+                      <span>{selectedModel.icon}</span>
+                      <span>{selectedModel.label}</span>
+                      <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
+                        <path d="M4 6l4 4 4-4" />
+                      </svg>
+                    </button>
+                    {showModelDropdown && (
+                      <div className="absolute left-0 bottom-full mb-1 w-48 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1">
+                        {MODELS.map((m) => (
+                          <button
+                            key={m.value}
+                            onClick={() => { setModel(m.value); setShowModelDropdown(false); }}
+                            className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer flex items-center gap-2 ${
+                              m.value === model ? "text-cc-primary font-medium" : "text-cc-fg"
+                            }`}
+                          >
+                            <span>{m.icon}</span>
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Branch from prior session (Claude only) */}
+                  {backend === "claude" && (
+                    <button
+                      type="button"
+                      onClick={() => setShowBranchingControls((v) => !v)}
+                      className={`flex items-center gap-1.5 px-2.5 py-2 text-xs rounded-md transition-colors cursor-pointer ${
+                        showBranchingControls
+                          ? "text-cc-primary bg-cc-primary/10 hover:bg-cc-primary/15"
+                          : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+                      }`}
+                      aria-expanded={showBranchingControls}
+                      aria-controls="branch-from-session-panel"
+                    >
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5 opacity-70">
+                        <path d="M5 3.5a2 2 0 110 4 2 2 0 010-4zm6 5a2 2 0 110 4 2 2 0 010-4z" />
+                        <path d="M7 5.5h2.5A1.5 1.5 0 0111 7v1" strokeLinecap="round" />
+                      </svg>
+                      Branch from session
+                    </button>
+                  )}
+                </div>
 
             {backend === "claude" && showBranchingControls && (
               <div
@@ -1377,6 +1378,7 @@ export function HomePage() {
             onBranchFromIssue={handleBranchFromIssue}
             onConnectionSelect={setSelectedLinearConnectionId}
           />
+          </div>
         </div>
 
         {/* Branch behind remote warning */}
