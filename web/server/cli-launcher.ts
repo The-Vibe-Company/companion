@@ -466,7 +466,7 @@ export class CliLauncher {
     // Claude Code rejects bypassPermissions when running with root/sudo. Most
     // container images run as root by default, so downgrade to acceptEdits unless
     // explicitly forced.
-    let effectivePermissionMode = options.permissionMode;
+    let effectivePermissionMode = options.permissionMode || "bypassPermissions";
     if (
       isContainerized
       && options.permissionMode === "bypassPermissions"
