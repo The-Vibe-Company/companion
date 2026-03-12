@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.75.2](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.75.1...the-companion-v0.75.2) (2026-03-12)
+
+
+### Bug Fixes
+
+* **codex:** increase WS timeouts and auto-relaunch on RPC timeout ([#514](https://github.com/The-Vibe-Company/companion/issues/514)) ([2fcccf3](https://github.com/The-Vibe-Company/companion/commit/2fcccf39d72a59bc674b41e7d912297c3afce4eb))
+* **settings:** disable auto-deny dangerous tools by default ([#513](https://github.com/The-Vibe-Company/companion/issues/513)) ([4c9be30](https://github.com/The-Vibe-Company/companion/commit/4c9be30104dea84462daca03f52d079d697e2859))
+
 ## [0.75.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.75.0...the-companion-v0.75.1) (2026-03-12)
 
 
