@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.75.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.75.0...the-companion-v0.75.1) (2026-03-12)
+
+
+### Bug Fixes
+
+* add Windows compatibility for binary resolution and process spawning ([#510](https://github.com/The-Vibe-Company/companion/issues/510)) ([79573af](https://github.com/The-Vibe-Company/companion/commit/79573af1243a74586f56b1cc5fd4558f76c2c69e))
+* **windows:** add platform guards and prefer where over which ([#512](https://github.com/The-Vibe-Company/companion/issues/512)) ([08464f5](https://github.com/The-Vibe-Company/companion/commit/08464f5e2b82153a4218ebbad10f4efdf3f0c81a))
+
 ## [0.75.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.74.0...the-companion-v0.75.0) (2026-03-11)
 
 
