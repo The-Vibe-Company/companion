@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.76.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.75.2...the-companion-v0.76.0) (2026-03-13)
+
+
+### Features
+
+* **platform:** add Companion Cloud managed platform foundation ([#401](https://github.com/The-Vibe-Company/companion/issues/401)) ([cdd6a0c](https://github.com/The-Vibe-Company/companion/commit/cdd6a0c1df616ffd16439339b0be745c812ad16a))
+* **sandbox:** separate sandbox from environment management ([#516](https://github.com/The-Vibe-Company/companion/issues/516)) ([d38dcc3](https://github.com/The-Vibe-Company/companion/commit/d38dcc34623048fdf881584691f9dabfad025d0d))
+
 ## [0.75.2](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.75.1...the-companion-v0.75.2) (2026-03-12)
 
 
