@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.77.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.76.0...the-companion-v0.77.0) (2026-03-13)
+
+
+### Features
+
+* **browser:** add browser preview tab with dual-mode support (container VNC + host proxy) ([#508](https://github.com/The-Vibe-Company/companion/issues/508)) ([4a30f96](https://github.com/The-Vibe-Company/companion/commit/4a30f9699d7ccfa749a1c0cf0477dbc2b433b21f))
+* **platform:** non-blocking instance creation with SSE streaming ([#518](https://github.com/The-Vibe-Company/companion/issues/518)) ([5972d60](https://github.com/The-Vibe-Company/companion/commit/5972d60954e1f34b010811e2d47caafa02557d84))
+* **sandbox:** enable sandbox system for Codex backend ([#521](https://github.com/The-Vibe-Company/companion/issues/521)) ([ea856b1](https://github.com/The-Vibe-Company/companion/commit/ea856b1668e4132e2aacbcf30e3ef43b61011f61))
+
 ## [0.76.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.75.2...the-companion-v0.76.0) (2026-03-13)
 
 
