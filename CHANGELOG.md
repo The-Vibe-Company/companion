@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.78.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.77.0...the-companion-v0.78.0) (2026-03-13)
+
+
+### Features
+
+* **sandbox:** add init script testing and remove Dockerfile support ([#520](https://github.com/The-Vibe-Company/companion/issues/520)) ([39dc238](https://github.com/The-Vibe-Company/companion/commit/39dc238da6a4922e39bce5f1c71064f37c1c5a08))
+
+
+### Bug Fixes
+
+* **codex:** fall back to thread/start when thread/resume fails on session restart ([#524](https://github.com/The-Vibe-Company/companion/issues/524)) ([36e4179](https://github.com/The-Vibe-Company/companion/commit/36e41794e8aef968786021a03e688802710c5e51))
+
 ## [0.77.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.76.0...the-companion-v0.77.0) (2026-03-13)
 
 
