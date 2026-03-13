@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.79.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.78.0...the-companion-v0.79.0) (2026-03-13)
+
+
+### Features
+
+* **update:** add Docker image update dialog after app update ([#526](https://github.com/The-Vibe-Company/companion/issues/526)) ([7b18479](https://github.com/The-Vibe-Company/companion/commit/7b184796a2b33113fa0fe159e1a96e6de36673f0))
+
 ## [0.78.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.77.0...the-companion-v0.78.0) (2026-03-13)
 
 
