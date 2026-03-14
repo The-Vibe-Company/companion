@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.81.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.80.1...the-companion-v0.81.0) (2026-03-14)
+
+
+### Features
+
+* **server:** implement typed internal event bus ([#536](https://github.com/The-Vibe-Company/companion/issues/536)) ([d8fa90b](https://github.com/The-Vibe-Company/companion/commit/d8fa90b7a38892267f1676187dece78ee272d308))
+* **skills:** add new skills for design enhancement and adaptation ([a1643c4](https://github.com/The-Vibe-Company/companion/commit/a1643c4d4713168375c4dc4360be91d3903766ad))
+
 ## [0.80.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.80.0...the-companion-v0.80.1) (2026-03-14)
 
 
