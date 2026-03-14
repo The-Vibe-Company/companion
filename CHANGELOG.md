@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.82.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.81.1...the-companion-v0.82.0) (2026-03-14)
+
+
+### Features
+
+* **server:** formalize session state machine and transitions ([#541](https://github.com/The-Vibe-Company/companion/issues/541)) ([0cc85c1](https://github.com/The-Vibe-Company/companion/commit/0cc85c1703220d949ce0ca6f8f56d876ed59387d))
+
 ## [0.81.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.81.0...the-companion-v0.81.1) (2026-03-14)
 
 
