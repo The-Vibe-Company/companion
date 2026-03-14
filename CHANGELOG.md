@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.80.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.80.0...the-companion-v0.80.1) (2026-03-14)
+
+
+### Code Refactoring
+
+* **server:** decompose ws-bridge into event pipeline ([#535](https://github.com/The-Vibe-Company/companion/issues/535)) ([5059845](https://github.com/The-Vibe-Company/companion/commit/5059845e73f9c2bff63ac9c4c8358fbccc5be06e))
+* **server:** extract SessionOrchestrator for unified session lifecycle ([#533](https://github.com/The-Vibe-Company/companion/issues/533)) ([945b596](https://github.com/The-Vibe-Company/companion/commit/945b596423695c13e15d9fd0ff117a25d43a69a1))
+* **store:** migrate frontend store to domain-based slice architecture ([#534](https://github.com/The-Vibe-Company/companion/issues/534)) ([08739a8](https://github.com/The-Vibe-Company/companion/commit/08739a8df1593c553ae958727d81a7df92acd43e))
+
 ## [0.80.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.79.0...the-companion-v0.80.0) (2026-03-14)
 
 
