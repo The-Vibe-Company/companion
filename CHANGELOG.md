@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.81.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.81.0...the-companion-v0.81.1) (2026-03-14)
+
+
+### Bug Fixes
+
+* **server:** support usage limits on Linux and Docker ([#540](https://github.com/The-Vibe-Company/companion/issues/540)) ([70e5d4e](https://github.com/The-Vibe-Company/companion/commit/70e5d4e51ad699a45cae89c1288d7f6101889b17))
+
+
+### Code Refactoring
+
+* **ui:** redesign sidebar session list for better visual hierarchy ([#539](https://github.com/The-Vibe-Company/companion/issues/539)) ([728702e](https://github.com/The-Vibe-Company/companion/commit/728702ec791aa3ff0d0b14879a3b68c8c952144d))
+
 ## [0.81.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.80.1...the-companion-v0.81.0) (2026-03-14)
 
 
