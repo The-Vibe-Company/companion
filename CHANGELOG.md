@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.80.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.79.0...the-companion-v0.80.0) (2026-03-14)
+
+
+### Features
+
+* **linear:** add guided Linear Agent setup wizard ([#522](https://github.com/The-Vibe-Company/companion/issues/522)) ([0bf218d](https://github.com/The-Vibe-Company/companion/commit/0bf218de9fd078c5fc190224b0f620392fe71759))
+* **platform:** add hetzner provider and instance scaling ([#525](https://github.com/The-Vibe-Company/companion/issues/525)) ([4618efa](https://github.com/The-Vibe-Company/companion/commit/4618efad9fe4cf4dae634773784fe76460aa639a))
+
+
+### Bug Fixes
+
+* **codex:** handle WS reconnection and idle kill for Codex sessions ([#530](https://github.com/The-Vibe-Company/companion/issues/530)) ([f26a6b8](https://github.com/The-Vibe-Company/companion/commit/f26a6b809d4671ec1dd2716e312a007ec0da83cd))
+
 ## [0.79.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.78.0...the-companion-v0.79.0) (2026-03-13)
 
 
