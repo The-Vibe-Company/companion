@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.83.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.82.2...the-companion-v0.83.0) (2026-03-15)
+
+
+### Features
+
+* **server:** add runtime observability and reliability metrics ([#550](https://github.com/The-Vibe-Company/companion/issues/550)) ([4fdadd3](https://github.com/The-Vibe-Company/companion/commit/4fdadd3013503a882482c0c16e7f82008201cf0b))
+
 ## [0.82.2](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.82.1...the-companion-v0.82.2) (2026-03-15)
 
 
