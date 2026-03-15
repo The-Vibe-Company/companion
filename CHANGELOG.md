@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.89.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.89.0...the-companion-v0.89.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* **home:** eliminate layout shifts on homepage input ([#577](https://github.com/The-Vibe-Company/companion/issues/577)) ([0a5832a](https://github.com/The-Vibe-Company/companion/commit/0a5832a591930b4b78f718c501d30c25e8555811))
+
 ## [0.89.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.88.0...the-companion-v0.89.0) (2026-03-15)
 
 
