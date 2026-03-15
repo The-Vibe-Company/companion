@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.89.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.88.0...the-companion-v0.89.0) (2026-03-15)
+
+
+### Features
+
+* **home:** pro ChatGPT/Cursor-style homepage redesign ([#570](https://github.com/The-Vibe-Company/companion/issues/570)) ([d698ebb](https://github.com/The-Vibe-Company/companion/commit/d698ebb4f80a73f11c2ee947ccb0206f2b9e23b8))
+
 ## [0.88.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.87.0...the-companion-v0.88.0) (2026-03-15)
 
 
