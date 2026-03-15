@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.84.3](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.84.2...the-companion-v0.84.3) (2026-03-15)
+
+
+### Bug Fixes
+
+* **protocol:** surface backend protocol drift early ([#559](https://github.com/The-Vibe-Company/companion/issues/559)) ([dc43fb9](https://github.com/The-Vibe-Company/companion/commit/dc43fb9ad285dba8a1e13f1f56566d32690a5f96))
+
 ## [0.84.2](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.84.1...the-companion-v0.84.2) (2026-03-15)
 
 
