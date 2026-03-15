@@ -62,6 +62,24 @@ function safeKind(kind: unknown): string {
   return "modify";
 }
 
+/** Normalize a reasoning summary/content field into a displayable string.
+ * Codex payloads may (regressively) send arrays or objects instead of plain strings.
+ */
+function normalizeReasoningText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    return value.map((entry) => normalizeReasoningText(entry)).join("");
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.text === "string") return record.text;
+    if (typeof record.content === "string") return record.content;
+    if (typeof record.summary === "string") return record.summary;
+  }
+  return "";
+}
+
 interface CodexAgentMessageItem extends CodexItem {
   type: "agentMessage";
   text?: string;
@@ -100,8 +118,8 @@ interface CodexWebSearchItem extends CodexItem {
 
 interface CodexReasoningItem extends CodexItem {
   type: "reasoning";
-  summary?: string;
-  content?: string;
+  summary?: unknown;
+  content?: unknown;
 }
 
 interface CodexContextCompactionItem extends CodexItem {
@@ -1812,15 +1830,16 @@ export class CodexAdapter implements IBackendAdapter {
 
       case "reasoning": {
         const r = item as CodexReasoningItem;
-        this.reasoningTextByItemId.set(item.id, r.summary || r.content || "");
+        const initialReasoningText = normalizeReasoningText(r.summary) || normalizeReasoningText(r.content);
+        this.reasoningTextByItemId.set(item.id, initialReasoningText);
         // Emit as thinking content block
-        if (r.summary || r.content) {
+        if (initialReasoningText) {
           this.emit({
             type: "stream_event",
             event: {
               type: "content_block_start",
               index: 0,
-              content_block: { type: "thinking", thinking: r.summary || r.content || "" },
+              content_block: { type: "thinking", thinking: initialReasoningText },
             },
             parent_tool_use_id: null,
           });
@@ -2182,10 +2201,9 @@ export class CodexAdapter implements IBackendAdapter {
 
       case "reasoning": {
         const r = item as CodexReasoningItem;
+        const accumulatedText = this.reasoningTextByItemId.get(item.id);
         const thinkingText = (
-          this.reasoningTextByItemId.get(item.id)
-          || r.summary
-          || r.content
+          (accumulatedText ? accumulatedText : (normalizeReasoningText(r.summary) || normalizeReasoningText(r.content)))
           || ""
         ).trim();
 
