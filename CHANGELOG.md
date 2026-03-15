@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.84.2](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.84.1...the-companion-v0.84.2) (2026-03-15)
+
+
+### Bug Fixes
+
+* **codex:** harden reconnect message delivery and ws port allocation ([#557](https://github.com/The-Vibe-Company/companion/issues/557)) ([de9d3f5](https://github.com/The-Vibe-Company/companion/commit/de9d3f5f4a3a17f02cd8eb3d6969d706de50933c))
+
 ## [0.84.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.84.0...the-companion-v0.84.1) (2026-03-15)
 
 
