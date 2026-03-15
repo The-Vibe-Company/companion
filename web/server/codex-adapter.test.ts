@@ -3774,6 +3774,118 @@ describe("CodexAdapter with ICodexTransport", () => {
     expect(errors[0].message).toBe("something went wrong");
   });
 
+  it("handles codex/event/token_count without protocol drift and updates token usage", async () => {
+    const { mock, messages } = await initAdapter();
+    const warnSpy = vi.spyOn(log, "warn").mockImplementation(() => {});
+
+    mock.pushNotification("codex/event/token_count", {
+      id: "turn-1",
+      msg: {
+        type: "token_count",
+        info: {
+          total_token_usage: {
+            input_tokens: 100,
+            cached_input_tokens: 40,
+            output_tokens: 20,
+            reasoning_output_tokens: 5,
+            total_tokens: 120,
+          },
+          last_token_usage: {
+            input_tokens: 80,
+            cached_input_tokens: 40,
+            output_tokens: 20,
+            reasoning_output_tokens: 5,
+            total_tokens: 100,
+          },
+          model_context_window: 1000,
+        },
+        rate_limits: null,
+      },
+      conversationId: "thr_init",
+    });
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    const updates = messages.filter((m) => m.type === "session_update") as Array<{
+      session: { context_used_percent?: number; codex_token_details?: { inputTokens?: number; outputTokens?: number } };
+    }>;
+    expect(updates.some((u) => u.session.context_used_percent === 10)).toBe(true);
+    expect(updates.some((u) => u.session.codex_token_details?.inputTokens === 100)).toBe(true);
+    expect(updates.some((u) => u.session.codex_token_details?.outputTokens === 20)).toBe(true);
+
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      "protocol-monitor",
+      "Backend protocol drift detected",
+      expect.objectContaining({ messageName: "codex/event/token_count" }),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("accepts legacy codex/event notifications without protocol drift", async () => {
+    const { mock } = await initAdapter();
+    const warnSpy = vi.spyOn(log, "warn").mockImplementation(() => {});
+
+    const legacyNotifications: Array<{ method: string; params: Record<string, unknown> }> = [
+      {
+        method: "codex/event/agent_message_delta",
+        params: { msg: { type: "agent_message_delta", delta: "a" } },
+      },
+      {
+        method: "codex/event/agent_message_content_delta",
+        params: {
+          msg: {
+            type: "agent_message_content_delta",
+            delta: "b",
+            thread_id: "thr_init",
+            item_id: "msg-1",
+          },
+        },
+      },
+      {
+        method: "codex/event/reasoning_content_delta",
+        params: {
+          msg: {
+            type: "reasoning_content_delta",
+            item_id: "rs-1",
+            delta: "thinking",
+          },
+        },
+      },
+      { method: "codex/event/agent_message", params: { msg: { type: "agent_message", message: "note" } } },
+      { method: "codex/event/item_started", params: { msg: { type: "item_started" } } },
+      { method: "codex/event/item_completed", params: { msg: { type: "item_completed" } } },
+      { method: "codex/event/exec_command_begin", params: { msg: { type: "exec_command_begin", call_id: "c1" } } },
+      { method: "codex/event/exec_command_output_delta", params: { msg: { type: "exec_command_output_delta", call_id: "c1" } } },
+      { method: "codex/event/exec_command_end", params: { msg: { type: "exec_command_end", call_id: "c1" } } },
+      { method: "codex/event/turn_diff", params: { msg: { type: "turn_diff", unified_diff: "" } } },
+      { method: "codex/event/terminal_interaction", params: { msg: { type: "terminal_interaction", call_id: "c1" } } },
+      { method: "codex/event/patch_apply_begin", params: { msg: { type: "patch_apply_begin", call_id: "p1" } } },
+      { method: "codex/event/patch_apply_end", params: { msg: { type: "patch_apply_end", call_id: "p1" } } },
+      { method: "codex/event/user_message", params: { msg: { type: "user_message", message: "hi" } } },
+      { method: "codex/event/task_started", params: { msg: { type: "task_started", turn_id: "t1" } } },
+      { method: "codex/event/task_complete", params: { msg: { type: "task_complete", turn_id: "t1" } } },
+      { method: "codex/event/mcp_startup_complete", params: { msg: { type: "mcp_startup_complete" } } },
+      { method: "codex/event/context_compacted", params: { msg: { type: "context_compacted" } } },
+      { method: "codex/event/agent_reasoning", params: { msg: { type: "agent_reasoning", text: "r" } } },
+      { method: "codex/event/agent_reasoning_delta", params: { msg: { type: "agent_reasoning_delta", delta: "r" } } },
+      { method: "codex/event/agent_reasoning_section_break", params: { msg: { type: "agent_reasoning_section_break", item_id: "r1" } } },
+    ];
+
+    for (const notification of legacyNotifications) {
+      mock.pushNotification(notification.method, notification.params);
+    }
+    await new Promise((r) => setTimeout(r, 20));
+
+    for (const notification of legacyNotifications) {
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        "protocol-monitor",
+        "Backend protocol drift detected",
+        expect.objectContaining({ messageName: notification.method }),
+      );
+    }
+    warnSpy.mockRestore();
+  });
+
   it("logs and surfaces unknown notification methods as protocol drift", async () => {
     // Unknown notifications should be elevated as compatibility warnings so
     // backend protocol drift is visible in logs and in the session UI.
