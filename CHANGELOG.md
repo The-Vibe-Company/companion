@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.84.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.84.0...the-companion-v0.84.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* **ws:** address greptile reconnect race feedback ([#551](https://github.com/The-Vibe-Company/companion/issues/551)) ([d77d0ff](https://github.com/The-Vibe-Company/companion/commit/d77d0ff18ea955faa7add952a27bd687cea0e0d1))
+
 ## [0.84.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.83.0...the-companion-v0.84.0) (2026-03-15)
 
 
