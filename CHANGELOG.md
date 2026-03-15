@@ -1,6 +1,11 @@
 # Changelog
 
-## [0.85.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.85.0...the-companion-v0.85.1) (2026-03-15)
+## [0.86.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.85.0...the-companion-v0.86.0) (2026-03-15)
+
+
+### Features
+
+* **folder-picker:** redesign with accessibility, keyboard nav, breadcrumbs, and search ([#568](https://github.com/The-Vibe-Company/companion/issues/568)) ([2d76819](https://github.com/The-Vibe-Company/companion/commit/2d768195b60fead3853e02dd3c160987975e42dc))
 
 
 ### Bug Fixes
