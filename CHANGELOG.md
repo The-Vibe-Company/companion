@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.84.4](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.84.3...the-companion-v0.84.4) (2026-03-15)
+
+
+### Bug Fixes
+
+* **codex:** resolve four stability issues breaking Codex sessions ([#562](https://github.com/The-Vibe-Company/companion/issues/562)) ([a978ab1](https://github.com/The-Vibe-Company/companion/commit/a978ab11269a01ef45d70204729aac526c212c6e))
+
 ## [0.84.3](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.84.2...the-companion-v0.84.3) (2026-03-15)
 
 
