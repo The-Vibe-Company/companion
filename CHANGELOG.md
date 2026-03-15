@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.84.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.83.0...the-companion-v0.84.0) (2026-03-15)
+
+
+### Features
+
+* **server:** add log file persistence with automatic rotation ([#554](https://github.com/The-Vibe-Company/companion/issues/554)) ([52d1cc0](https://github.com/The-Vibe-Company/companion/commit/52d1cc036561e6a9b4c9044f6391293c2c43b0c4))
+
 ## [0.83.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.82.2...the-companion-v0.83.0) (2026-03-15)
 
 
