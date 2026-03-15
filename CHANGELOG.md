@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.82.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.82.0...the-companion-v0.82.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* **ws:** reconnect current session after visibility restore ([#547](https://github.com/The-Vibe-Company/companion/issues/547)) ([0cc1cc6](https://github.com/The-Vibe-Company/companion/commit/0cc1cc6bf46f5eda5ebd25d4e9511ad255024ede))
+
+
+### Code Refactoring
+
+* **server:** introduce unified IBackendAdapter for Claude & Codex ([#543](https://github.com/The-Vibe-Company/companion/issues/543)) ([18337b8](https://github.com/The-Vibe-Company/companion/commit/18337b824b8d1465eb7fca67c9002729dee764bb))
+
 ## [0.82.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.81.1...the-companion-v0.82.0) (2026-03-14)
 
 
