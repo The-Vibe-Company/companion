@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.90.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.89.1...the-companion-v0.90.0) (2026-03-15)
+
+
+### Features
+
+* **task-panel:** redesign context panel with collapsible sections, design tokens, and accessibility ([#576](https://github.com/The-Vibe-Company/companion/issues/576)) ([a95145d](https://github.com/The-Vibe-Company/companion/commit/a95145d750fcb4272846373f4b93613cc1a84647))
+
 ## [0.89.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.89.0...the-companion-v0.89.1) (2026-03-15)
 
 
