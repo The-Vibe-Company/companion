@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.85.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.85.0...the-companion-v0.85.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* **codex:** harden connection resilience and error recovery ([#569](https://github.com/The-Vibe-Company/companion/issues/569)) ([b71281e](https://github.com/The-Vibe-Company/companion/commit/b71281e4ded9bc62be52c57b4bc8497a92fc10cc))
+
 ## [0.85.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.84.4...the-companion-v0.85.0) (2026-03-15)
 
 
