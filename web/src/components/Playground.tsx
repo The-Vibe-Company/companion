@@ -1288,16 +1288,34 @@ export function Playground() {
               </div>
             </div>
             {/* Task header */}
-            <div className="px-4 py-2.5 border-b border-cc-border flex items-center justify-between">
-              <span className="text-[12px] font-semibold text-cc-fg">
-                Tasks
-              </span>
-              <span className="text-[11px] text-cc-muted tabular-nums">
-                2/{MOCK_TASKS.length}
-              </span>
+            <div className="px-4 pt-3 pb-2 border-b border-cc-border space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] font-semibold text-cc-fg">
+                  Tasks
+                </span>
+                <span className="text-[11px] text-cc-muted tabular-nums">
+                  2/{MOCK_TASKS.length}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-cc-muted uppercase tracking-wider">
+                    Progress
+                  </span>
+                  <span className="text-cc-fg tabular-nums font-medium">
+                    50%
+                  </span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-cc-hover overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-cc-primary transition-all duration-500"
+                    style={{ width: "50%" }}
+                  />
+                </div>
+              </div>
             </div>
             {/* Task list */}
-            <div className="px-3 py-2 space-y-0.5">
+            <div className="px-3 py-2 space-y-1">
               {MOCK_TASKS.map((task) => (
                 <TaskRow key={task.id} task={task} />
               ))}
@@ -3472,12 +3490,23 @@ function PlaygroundMcpRow({ server }: { server: McpServerDetail }) {
 function TaskRow({ task }: { task: TaskItem }) {
   const isCompleted = task.status === "completed";
   const isInProgress = task.status === "in_progress";
+  const statusMeta = isInProgress
+    ? { label: "Running", badgeCls: "text-cc-primary bg-cc-primary/10 border-cc-primary/20" }
+    : isCompleted
+      ? { label: "Done", badgeCls: "text-cc-success bg-cc-success/10 border-cc-success/20" }
+      : { label: "Queued", badgeCls: "text-cc-muted bg-cc-hover border-cc-border" };
 
   return (
     <div
-      className={`px-2.5 py-2 rounded-lg ${isCompleted ? "opacity-50" : ""}`}
+      className={`px-2.5 py-2.5 rounded-lg border ${
+        isCompleted
+          ? "opacity-70 bg-cc-hover/20 border-cc-border/70"
+          : isInProgress
+            ? "bg-cc-primary/5 border-cc-primary/20"
+            : "bg-cc-bg border-cc-border/70"
+      }`}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-2.5">
         <span className="shrink-0 flex items-center justify-center w-4 h-4 mt-px">
           {isInProgress ? (
             <svg
@@ -3529,14 +3558,17 @@ function TaskRow({ task }: { task: TaskItem }) {
         >
           {task.subject}
         </span>
+        <span className={`shrink-0 text-[9px] uppercase tracking-wide border rounded-full px-1.5 py-0.5 font-medium ${statusMeta.badgeCls}`}>
+          {statusMeta.label}
+        </span>
       </div>
       {isInProgress && task.activeForm && (
-        <p className="mt-1 ml-6 text-[11px] text-cc-muted italic truncate">
+        <p className="mt-1.5 ml-6 text-[11px] text-cc-muted italic">
           {task.activeForm}
         </p>
       )}
       {task.blockedBy && task.blockedBy.length > 0 && (
-        <p className="mt-1 ml-6 text-[11px] text-cc-muted flex items-center gap-1">
+        <p className="mt-1.5 ml-6 text-[11px] text-cc-muted flex items-center gap-1">
           <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 shrink-0">
             <circle
               cx="8"

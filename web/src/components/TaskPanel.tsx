@@ -839,25 +839,51 @@ function TasksSection({ sessionId }: { sessionId: string }) {
   if (!session || isCodex) return null;
 
   const completedCount = tasks.filter((t) => t.status === "completed").length;
+  const completionPct = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
   return (
     <>
       {/* Task section header */}
-      <div className="px-4 py-2.5 flex items-center justify-between">
-        <span className="text-[13px] font-semibold text-cc-fg">Tasks</span>
+      <div className="px-4 pt-3 pb-2 border-t border-cc-border/70 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] font-semibold text-cc-fg tracking-tight">Tasks</span>
+          {tasks.length > 0 && (
+            <span className="text-[11px] text-cc-muted tabular-nums">
+              {completedCount}/{tasks.length}
+            </span>
+          )}
+        </div>
         {tasks.length > 0 && (
-          <span className="text-[11px] text-cc-muted tabular-nums">
-            {completedCount}/{tasks.length}
-          </span>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-cc-muted uppercase tracking-wider">Progress</span>
+              <span className="text-cc-fg tabular-nums font-medium">{completionPct}%</span>
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-cc-hover overflow-hidden">
+              <div
+                className="h-full rounded-full bg-cc-primary transition-all duration-500"
+                style={{ width: `${completionPct}%` }}
+              />
+            </div>
+          </div>
         )}
       </div>
 
       {/* Task list */}
       <div className="px-3 py-2">
         {tasks.length === 0 ? (
-          <p className="text-xs text-cc-muted text-center py-8">No tasks yet</p>
+          <div className="py-8 px-3 text-center space-y-1.5">
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cc-hover text-cc-muted">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
+                <path d="M4 8.5l2.2 2.2L12 5.8" strokeLinecap="round" strokeLinejoin="round" />
+                <rect x="2.5" y="2.5" width="11" height="11" rx="2.25" />
+              </svg>
+            </span>
+            <p className="text-xs text-cc-muted">No tasks yet</p>
+            <p className="text-[11px] text-cc-muted/80">Planned work will appear here as it streams.</p>
+          </div>
         ) : (
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {tasks.map((task) => (
               <TaskRow key={task.id} task={task} />
             ))}
@@ -1093,12 +1119,23 @@ export function TaskPanel({ sessionId }: { sessionId: string }) {
 function TaskRow({ task }: { task: TaskItem }) {
   const isCompleted = task.status === "completed";
   const isInProgress = task.status === "in_progress";
+  const statusMeta = isInProgress
+    ? { label: "Running", badgeCls: "text-cc-primary bg-cc-primary/10 border-cc-primary/20" }
+    : isCompleted
+      ? { label: "Done", badgeCls: "text-cc-success bg-cc-success/10 border-cc-success/20" }
+      : { label: "Queued", badgeCls: "text-cc-muted bg-cc-hover border-cc-border" };
 
   return (
     <div
-      className={`px-2.5 py-2 rounded-lg ${isCompleted ? "opacity-50" : ""}`}
+      className={`px-2.5 py-2.5 rounded-lg border transition-colors ${
+        isCompleted
+          ? "opacity-70 bg-cc-hover/20 border-cc-border/70"
+          : isInProgress
+            ? "bg-cc-primary/5 border-cc-primary/20"
+            : "bg-cc-bg border-cc-border/70"
+      }`}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-2.5">
         {/* Status icon */}
         <span className="shrink-0 flex items-center justify-center w-4 h-4 mt-px">
           {isInProgress ? (
@@ -1155,18 +1192,21 @@ function TaskRow({ task }: { task: TaskItem }) {
         >
           {task.subject}
         </span>
+        <span className={`shrink-0 text-[9px] uppercase tracking-wide border rounded-full px-1.5 py-0.5 font-medium ${statusMeta.badgeCls}`}>
+          {statusMeta.label}
+        </span>
       </div>
 
       {/* Active form text (in_progress only) */}
       {isInProgress && task.activeForm && (
-        <p className="mt-1 ml-6 text-[11px] text-cc-muted italic truncate">
+        <p className="mt-1.5 ml-6 text-[11px] text-cc-muted italic">
           {task.activeForm}
         </p>
       )}
 
       {/* Blocked by */}
       {task.blockedBy && task.blockedBy.length > 0 && (
-        <p className="mt-1 ml-6 text-[11px] text-cc-muted flex items-center gap-1">
+        <p className="mt-1.5 ml-6 text-[11px] text-cc-muted flex items-center gap-1">
           <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 shrink-0">
             <circle
               cx="8"
