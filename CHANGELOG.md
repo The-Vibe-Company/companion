@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.90.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.90.0...the-companion-v0.90.1) (2026-03-16)
+
+
+### Bug Fixes
+
+* **topbar:** prevent Session tab from being clipped on Android ([#581](https://github.com/The-Vibe-Company/companion/issues/581)) ([ee231c5](https://github.com/The-Vibe-Company/companion/commit/ee231c558bfb826942a3d96ce9c2c7b81ffb0043))
+* **ws-bridge:** prevent CLI session_id from overwriting Companion ID ([#580](https://github.com/The-Vibe-Company/companion/issues/580)) ([bc72ff1](https://github.com/The-Vibe-Company/companion/commit/bc72ff1859a9a4041702bcc73685ea8964c11ed4))
+
 ## [0.90.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.89.1...the-companion-v0.90.0) (2026-03-15)
 
 
