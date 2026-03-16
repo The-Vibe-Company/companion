@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.90.2](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.90.1...the-companion-v0.90.2) (2026-03-16)
+
+
+### Bug Fixes
+
+* **codex:** improve reconnection reliability and prevent message loss ([#584](https://github.com/The-Vibe-Company/companion/issues/584)) ([273f86d](https://github.com/The-Vibe-Company/companion/commit/273f86da9e7c0267aa705c0b52e640dc4a02cf6a))
+
 ## [0.90.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.90.0...the-companion-v0.90.1) (2026-03-16)
 
 
