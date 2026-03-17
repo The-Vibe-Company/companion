@@ -191,6 +191,22 @@ export function createRoutes(
     return c.json(result.session);
   });
 
+  api.post("/sessions/create-with-message", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const result = await orchestrator.createSession(body);
+    if (!result.ok) {
+      return c.json({ error: result.error }, result.status as any);
+    }
+
+    let messageQueued = false;
+    if (body.message && typeof body.message === "string") {
+      wsBridge.injectUserMessage(result.session.sessionId, body.message);
+      messageQueued = true;
+    }
+
+    return c.json({ ...result.session, messageQueued });
+  });
+
   // ─── SSE Session Creation (with progress streaming) ─────────────────────
 
   api.post("/sessions/create-stream", async (c) => {

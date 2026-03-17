@@ -544,6 +544,10 @@ export class CliLauncher {
     if (options.forkSession) {
       args.push("--fork-session");
     }
+    const guardrails = process.env.NON_ENGINEER_PROMPT_PREFIX;
+    if (guardrails) {
+      args.push("--append-system-prompt", guardrails);
+    }
 
     // Always pass -p "" for headless mode. When relaunching, also pass --resume
     // to restore the CLI's conversation context.
