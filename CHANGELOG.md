@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.92.1](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.92.0...the-companion-v0.92.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* **ui:** redesign chat blocks inline and fix streaming message duplication ([#597](https://github.com/The-Vibe-Company/companion/issues/597)) ([6735a9a](https://github.com/The-Vibe-Company/companion/commit/6735a9a6482c650c36ffb280448a00148f1c8b12))
+
 ## [0.92.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.91.0...the-companion-v0.92.0) (2026-03-17)
 
 
