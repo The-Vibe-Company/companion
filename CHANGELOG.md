@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.91.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.90.2...the-companion-v0.91.0) (2026-03-17)
+
+
+### Features
+
+* **docker:** add Docker-in-Docker and PostgreSQL to default image ([#596](https://github.com/The-Vibe-Company/companion/issues/596)) ([1bbfda0](https://github.com/The-Vibe-Company/companion/commit/1bbfda01943f798c877dd13759298efb6d32a0a5))
+* **linear:** support multi-agent OAuth with per-wizard staging slots and UI redesign ([#586](https://github.com/The-Vibe-Company/companion/issues/586)) ([0b2d38a](https://github.com/The-Vibe-Company/companion/commit/0b2d38a8b874f666c5f97632c26f4db49884a3ca))
+* **platform:** Railway deploy config, Resend emails, postgres.js driver ([#594](https://github.com/The-Vibe-Company/companion/issues/594)) ([eb64cb0](https://github.com/The-Vibe-Company/companion/commit/eb64cb0510a205c86964830592b4a5fcc9b99016))
+* **ui:** add reconnection indicator for CLI sessions ([#593](https://github.com/The-Vibe-Company/companion/issues/593)) ([cbaba1d](https://github.com/The-Vibe-Company/companion/commit/cbaba1de28cfdaaa32a6b2acc35e9de651c3daab))
+
+
+### Bug Fixes
+
+* **claude-adapter:** drop CLI user echo messages to prevent raw JSON in chat UI ([#592](https://github.com/The-Vibe-Company/companion/issues/592)) ([3368136](https://github.com/The-Vibe-Company/companion/commit/33681360e09c056f1e9f50d039209a5ce85ffc8b))
+* **codex:** resolve transport disconnect race causing stuck sessions on page refresh ([#595](https://github.com/The-Vibe-Company/companion/issues/595)) ([dd79e21](https://github.com/The-Vibe-Company/companion/commit/dd79e213d9cb6f04a920faa108a2af862728ecd1))
+* **ws-bridge:** repair state machine transitions and prevent memory leaks ([#590](https://github.com/The-Vibe-Company/companion/issues/590)) ([245a29b](https://github.com/The-Vibe-Company/companion/commit/245a29ba44d194211ed187180ee056a97e216e07))
+
 ## [0.90.2](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.90.1...the-companion-v0.90.2) (2026-03-16)
 
 
