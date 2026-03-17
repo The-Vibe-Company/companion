@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.92.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.91.0...the-companion-v0.92.0) (2026-03-17)
+
+
+### Features
+
+* **docker:** add standalone docker-compose CLI to default image ([#598](https://github.com/The-Vibe-Company/companion/issues/598)) ([d9611da](https://github.com/The-Vibe-Company/companion/commit/d9611dade088b9f5c2726e90eea2a8ae12175147))
+
 ## [0.91.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.90.2...the-companion-v0.91.0) (2026-03-17)
 
 
