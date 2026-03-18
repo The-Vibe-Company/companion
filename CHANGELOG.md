@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.92.3](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.92.2...the-companion-v0.92.3) (2026-03-18)
+
+
+### Bug Fixes
+
+* **docker:** preserve containers on idle-kill and increase default timeout to 24h ([#602](https://github.com/The-Vibe-Company/companion/issues/602)) ([7f5eab2](https://github.com/The-Vibe-Company/companion/commit/7f5eab2924686b3cbfebf1abf94951a361a13d13))
+
 ## [0.92.2](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.92.1...the-companion-v0.92.2) (2026-03-18)
 
 
