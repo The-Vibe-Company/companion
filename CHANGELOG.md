@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.92.5](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.92.4...the-companion-v0.92.5) (2026-03-18)
+
+
+### Code Refactoring
+
+* **linear:** separate OAuth Apps from Tickets integration ([#607](https://github.com/The-Vibe-Company/companion/issues/607)) ([6710519](https://github.com/The-Vibe-Company/companion/commit/6710519081bcbde1c785c34075b9a56c5b52d898))
+
 ## [0.92.4](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.92.3...the-companion-v0.92.4) (2026-03-18)
 
 
