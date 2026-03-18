@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.92.4](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.92.3...the-companion-v0.92.4) (2026-03-18)
+
+
+### Bug Fixes
+
+* **claude-adapter:** re-apply user echo drop fix reverted by [#589](https://github.com/The-Vibe-Company/companion/issues/589) ([#605](https://github.com/The-Vibe-Company/companion/issues/605)) ([ee65392](https://github.com/The-Vibe-Company/companion/commit/ee653928150ce7877d2baf79230dafbc5c9e3f84))
+
 ## [0.92.3](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.92.2...the-companion-v0.92.3) (2026-03-18)
 
 
