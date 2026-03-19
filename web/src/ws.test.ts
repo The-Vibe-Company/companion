@@ -273,6 +273,24 @@ describe("handleMessage: user_message", () => {
       content: "optimistic first prompt",
     });
   });
+
+  it("falls back to Date.now() when a live user_message is missing timestamp", () => {
+    vi.spyOn(Date, "now").mockReturnValue(424242);
+    wsModule.connectSession("s1");
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+
+    fireMessage({
+      type: "user_message",
+      id: "cmsg-live-no-ts",
+      content: "server-backed prompt without timestamp",
+    });
+
+    const messages = useStore.getState().messages.get("s1")!;
+    expect(messages[0]).toMatchObject({
+      id: "cmsg-live-no-ts",
+      timestamp: 424242,
+    });
+  });
 });
 
 // ===========================================================================
