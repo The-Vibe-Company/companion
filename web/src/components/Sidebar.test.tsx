@@ -154,6 +154,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockState = createMockState();
   window.location.hash = "";
+  localStorage.removeItem("companion-nav-expanded");
 });
 
 describe("Sidebar", () => {
@@ -375,8 +376,8 @@ describe("Sidebar", () => {
     const menuButton = screen.getByTitle("Session actions");
 
     expect(menuButton).toHaveClass("opacity-100");
-    expect(menuButton).toHaveClass("sm:opacity-0");
-    expect(menuButton).toHaveClass("sm:group-hover:opacity-100");
+    expect(menuButton).toHaveClass("can-hover:opacity-0");
+    expect(menuButton).toHaveClass("can-hover:group-hover:opacity-100");
   });
 
   it("pending permissions render a yellow awaiting status dot", () => {
@@ -1819,5 +1820,62 @@ describe("Sidebar", () => {
     fireEvent.click(screen.getByText("Delete all"));
 
     expect(screen.getByText(/3 archived sessions/)).toBeInTheDocument();
+  });
+
+  // ── Collapsible footer navigation ───────────────────────────────────────────
+
+  it("sidebar footer nav is expanded by default", () => {
+    // Default state should show all nav items — no regression from current behavior.
+    mockState = createMockState({});
+    render(<Sidebar />);
+
+    const toggle = screen.getByRole("button", { name: /collapse navigation/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    // Nav items should be visible
+    expect(screen.getByText("Prompts")).toBeInTheDocument();
+    expect(screen.getByText("Settings")).toBeInTheDocument();
+  });
+
+  it("clicking nav toggle collapses footer navigation and persists to localStorage", () => {
+    // Collapsing hides nav items and saves preference.
+    mockState = createMockState({});
+    render(<Sidebar />);
+
+    const toggle = screen.getByRole("button", { name: /collapse navigation/i });
+    fireEvent.click(toggle);
+
+    // Nav items should be hidden
+    expect(screen.queryByText("Prompts")).not.toBeInTheDocument();
+    expect(screen.queryByText("Settings")).not.toBeInTheDocument();
+
+    // Toggle label should update
+    expect(screen.getByRole("button", { name: /expand navigation/i })).toBeInTheDocument();
+
+    // localStorage should be persisted
+    expect(localStorage.getItem("companion-nav-expanded")).toBe("false");
+  });
+
+  it("clicking nav toggle again expands footer navigation", () => {
+    // Expanding restores nav items.
+    mockState = createMockState({});
+    render(<Sidebar />);
+
+    const toggle = screen.getByRole("button", { name: /collapse navigation/i });
+    fireEvent.click(toggle); // collapse
+    fireEvent.click(screen.getByRole("button", { name: /expand navigation/i })); // expand
+
+    expect(screen.getByText("Prompts")).toBeInTheDocument();
+    expect(localStorage.getItem("companion-nav-expanded")).toBe("true");
+  });
+
+  it("restores collapsed state from localStorage", () => {
+    // When localStorage has "false", footer should render collapsed.
+    localStorage.setItem("companion-nav-expanded", "false");
+    mockState = createMockState({});
+    render(<Sidebar />);
+
+    expect(screen.getByRole("button", { name: /expand navigation/i })).toBeInTheDocument();
+    expect(screen.queryByText("Prompts")).not.toBeInTheDocument();
   });
 });

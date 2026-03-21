@@ -458,6 +458,26 @@ export function Sidebar() {
   const logoSrc = currentSession?.backendType === "codex" ? "/logo-codex.svg" : "/logo.svg";
   const [showCronSessions, setShowCronSessions] = useState(true);
   const [showAgentSessions, setShowAgentSessions] = useState(true);
+  const [navExpanded, setNavExpanded] = useState(() => {
+    try {
+      const saved = localStorage.getItem("companion-nav-expanded");
+      return saved !== null ? saved !== "false" : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleNav = useCallback(() => {
+    setNavExpanded((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("companion-nav-expanded", String(next));
+      } catch {
+        // localStorage unavailable
+      }
+      return next;
+    });
+  }, []);
 
   // Group active sessions by project
   const projectGroups = useMemo(
@@ -685,81 +705,107 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-2 py-1.5 pb-safe bg-cc-sidebar-footer border-t border-cc-border/30">
-        <nav className="flex flex-col gap-1.5" aria-label="Navigation">
-          {NAV_SECTIONS.map((section) => (
-            <section key={section.id} className="rounded-lg border border-cc-border/30 bg-cc-card/20 p-0.5">
-              <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-cc-muted/75 block">
-                {section.label}
-              </span>
-              <div className="flex flex-col">
-                {section.itemIds.map((itemId) => {
-                  const item = NAV_ITEMS_BY_ID.get(itemId);
-                  if (!item) return null;
-                  const isActive = item.activePages
-                    ? item.activePages.some((p) => route.page === p)
-                    : route.page === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        if (item.id !== "terminal") {
-                          useStore.getState().closeTerminal();
-                        }
-                        window.location.hash = item.hash;
-                        // Close sidebar on mobile so the navigated page is visible
-                        if (window.innerWidth < 768) {
-                          useStore.getState().setSidebarOpen(false);
-                        }
-                      }}
-                      title={item.label}
-                      aria-current={isActive ? "page" : undefined}
-                      className={`group flex min-h-[44px] md:min-h-[34px] w-full items-center gap-2 rounded-md px-2 py-1 md:py-0.5 text-left transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cc-primary/60 ${
-                        isActive
-                          ? "bg-cc-active text-cc-fg"
-                          : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
-                      }`}
-                    >
-                      <span
-                        aria-hidden
-                        className={`h-4 w-0.5 shrink-0 rounded-full transition-colors ${
-                          isActive ? "bg-cc-primary" : "bg-transparent group-hover:bg-cc-border"
-                        }`}
-                      />
-                      <svg viewBox={item.viewBox} fill="currentColor" className="w-3.5 h-3.5 shrink-0">
-                        <path d={item.iconPath} fillRule={item.fillRule} clipRule={item.clipRule} />
-                      </svg>
-                      <span className="min-w-0 flex-1 text-[12px] font-medium leading-tight">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </nav>
-        <div className="mt-1.5 rounded-lg border border-cc-border/30 bg-cc-card/20 px-1.5 py-0.5">
-          <div className="flex items-center justify-between">
-            <span className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cc-muted/75">
-              Resources
-            </span>
-            <div className="flex items-center gap-0.5">
-              {EXTERNAL_LINKS.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={link.label}
-                  aria-label={`Open ${link.label.toLowerCase()}`}
-                  className="w-9 h-9 md:w-7 md:h-7 rounded-md flex items-center justify-center text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors"
-                >
-                  <svg viewBox={link.viewBox} fill="currentColor" className="w-3.5 h-3.5">
-                    <path d={link.iconPath} />
-                  </svg>
-                </a>
+        {/* Navigation toggle */}
+        <button
+          onClick={toggleNav}
+          aria-expanded={navExpanded}
+          aria-label={navExpanded ? "Collapse navigation" : "Expand navigation"}
+          aria-controls="sidebar-nav"
+          className="w-full flex items-center justify-between px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cc-muted/75 hover:text-cc-fg hover:bg-cc-hover rounded-md transition-colors cursor-pointer"
+        >
+          <span>Navigation</span>
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`w-2.5 h-2.5 transition-transform duration-150 ${navExpanded ? "rotate-180" : ""}`}
+          >
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        </button>
+
+        {navExpanded && (
+          <>
+            <nav id="sidebar-nav" className="flex flex-col gap-1.5 mt-1" aria-label="Navigation">
+              {NAV_SECTIONS.map((section) => (
+                <section key={section.id} className="rounded-lg border border-cc-border/30 bg-cc-card/20 p-0.5">
+                  <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-cc-muted/75 block">
+                    {section.label}
+                  </span>
+                  <div className="flex flex-col">
+                    {section.itemIds.map((itemId) => {
+                      const item = NAV_ITEMS_BY_ID.get(itemId);
+                      if (!item) return null;
+                      const isActive = item.activePages
+                        ? item.activePages.some((p) => route.page === p)
+                        : route.page === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            if (item.id !== "terminal") {
+                              useStore.getState().closeTerminal();
+                            }
+                            window.location.hash = item.hash;
+                            // Close sidebar on mobile so the navigated page is visible
+                            if (window.innerWidth < 768) {
+                              useStore.getState().setSidebarOpen(false);
+                            }
+                          }}
+                          title={item.label}
+                          aria-current={isActive ? "page" : undefined}
+                          className={`group flex min-h-[44px] md:min-h-[34px] w-full items-center gap-2 rounded-md px-2 py-1 md:py-0.5 text-left transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cc-primary/60 ${
+                            isActive
+                              ? "bg-cc-active text-cc-fg"
+                              : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+                          }`}
+                        >
+                          <span
+                            aria-hidden
+                            className={`h-4 w-0.5 shrink-0 rounded-full transition-colors ${
+                              isActive ? "bg-cc-primary" : "bg-transparent group-hover:bg-cc-border"
+                            }`}
+                          />
+                          <svg viewBox={item.viewBox} fill="currentColor" className="w-3.5 h-3.5 shrink-0">
+                            <path d={item.iconPath} fillRule={item.fillRule} clipRule={item.clipRule} />
+                          </svg>
+                          <span className="min-w-0 flex-1 text-[12px] font-medium leading-tight">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
               ))}
+            </nav>
+            <div className="mt-1.5 rounded-lg border border-cc-border/30 bg-cc-card/20 px-1.5 py-0.5">
+              <div className="flex items-center justify-between">
+                <span className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cc-muted/75">
+                  Resources
+                </span>
+                <div className="flex items-center gap-0.5">
+                  {EXTERNAL_LINKS.map((link) => (
+                    <a
+                      key={link.label}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={link.label}
+                      aria-label={`Open ${link.label.toLowerCase()}`}
+                      className="w-9 h-9 md:w-7 md:h-7 rounded-md flex items-center justify-center text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors"
+                    >
+                      <svg viewBox={link.viewBox} fill="currentColor" className="w-3.5 h-3.5">
+                        <path d={link.iconPath} />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* Delete confirmation modal */}

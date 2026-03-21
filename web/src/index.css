@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant can-hover (@media (hover: hover));
+
 /* Meslo LGS Nerd Font Mono — terminal font with powerline & devicon glyphs */
 @font-face {
   font-family: "MesloLGS Nerd Font Mono";

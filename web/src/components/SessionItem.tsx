@@ -263,14 +263,14 @@ export function SessionItem({
         )}
       </button>
 
-      {/* Archive button — hover reveal (desktop), always visible (mobile) */}
+      {/* Archive button — hover reveal on devices with hover capability; touch users use the three-dot menu */}
       {!archived && !isEditing && !menuOpen && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             onArchive(e, s.id);
           }}
-          className="absolute right-7 top-1/2 -translate-y-1/2 p-1 rounded-md opacity-0 pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto hover:bg-cc-border text-cc-muted hover:text-cc-fg transition-all cursor-pointer"
+          className="absolute right-7 top-1/2 -translate-y-1/2 p-1 rounded-md opacity-0 pointer-events-none can-hover:group-hover:opacity-100 can-hover:group-hover:pointer-events-auto hover:bg-cc-border text-cc-muted hover:text-cc-fg transition-all cursor-pointer"
           title="Archive"
           aria-label="Archive session"
         >
@@ -287,7 +287,7 @@ export function SessionItem({
           e.stopPropagation();
           setMenuOpen(!menuOpen);
         }}
-        className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-md opacity-100 pointer-events-auto sm:opacity-0 sm:pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto hover:bg-cc-border text-cc-muted hover:text-cc-fg transition-all cursor-pointer"
+        className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-md opacity-100 pointer-events-auto can-hover:opacity-0 can-hover:pointer-events-none can-hover:group-hover:opacity-100 can-hover:group-hover:pointer-events-auto hover:bg-cc-border text-cc-muted hover:text-cc-fg transition-all cursor-pointer"
         title="Session actions"
         aria-label="Session actions"
         aria-haspopup="true"
