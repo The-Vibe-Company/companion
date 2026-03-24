@@ -116,14 +116,14 @@ describe("diagnostics", () => {
     });
 
     it("detects rapid reconnect cycling", () => {
-      // 3 rapid disconnect/reconnect cycles (< 5s gaps)
+      // 3 rapid disconnect/reconnect cycles (< 5s gaps), spaced >20s apart so dedup doesn't merge them
       const recording = makeRecording([
         { ts: 1000, dir: "out", raw: JSON.stringify({ type: "cli_disconnected" }), ch: "browser" },
         { ts: 2000, dir: "out", raw: JSON.stringify({ type: "cli_connected" }), ch: "browser" },
-        { ts: 3000, dir: "out", raw: JSON.stringify({ type: "cli_disconnected" }), ch: "browser" },
-        { ts: 4000, dir: "out", raw: JSON.stringify({ type: "cli_connected" }), ch: "browser" },
-        { ts: 5000, dir: "out", raw: JSON.stringify({ type: "cli_disconnected" }), ch: "browser" },
-        { ts: 6000, dir: "out", raw: JSON.stringify({ type: "cli_connected" }), ch: "browser" },
+        { ts: 25000, dir: "out", raw: JSON.stringify({ type: "cli_disconnected" }), ch: "browser" },
+        { ts: 26000, dir: "out", raw: JSON.stringify({ type: "cli_connected" }), ch: "browser" },
+        { ts: 50000, dir: "out", raw: JSON.stringify({ type: "cli_disconnected" }), ch: "browser" },
+        { ts: 51000, dir: "out", raw: JSON.stringify({ type: "cli_connected" }), ch: "browser" },
       ]);
 
       const report = analyzeDisconnections(recording);

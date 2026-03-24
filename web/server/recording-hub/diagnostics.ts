@@ -184,15 +184,24 @@ function detectDisconnections(
     }
   }
 
-  return disconnections;
+  // Deduplicate: ws_close and cli_disconnected within 20s on same channel = same outage
+  const DEDUP_WINDOW_MS = 20_000;
+  const deduped: DisconnectionEvent[] = [];
+  for (const d of disconnections) {
+    const isDuplicate = deduped.some(
+      (existing) => existing.channel === d.channel && Math.abs(existing.ts - d.ts) < DEDUP_WINDOW_MS,
+    );
+    if (!isDuplicate) deduped.push(d);
+  }
+  return deduped;
 }
 
 function detectDataGaps(entries: RecordingEntry[]): DataGap[] {
   const gaps: DataGap[] = [];
 
   // Group entries by channel
-  const cliEntries = entries.filter((e) => e.ch === "cli" && e.dir === "in");
-  const browserEntries = entries.filter((e) => e.ch === "browser" && e.dir === "in");
+  const cliEntries = entries.filter((e) => e.ch === "cli" && e.dir === "in" && !e.event);
+  const browserEntries = entries.filter((e) => e.ch === "browser" && e.dir === "in" && !e.event);
 
   for (const [channel, channelEntries] of [
     ["cli", cliEntries],

@@ -25,10 +25,12 @@ export class ReplayAdapter implements IBackendAdapter {
   private currentIndex = 0;
   private pendingTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /** Timestamp of last scheduled entry (for pause/resume). */
-  private lastScheduledTs = 0;
-  /** Wall-clock time when last entry was scheduled. */
-  private lastScheduledAt = 0;
+  /** Tracks wall-clock time when the current timer was scheduled (for pause/resume drift fix). */
+  private timerScheduledAt = 0;
+  /** Tracks the delay used for the current timer (for pause/resume drift fix). */
+  private timerDelayMs = 0;
+  /** Remaining ms when paused mid-timer, used on resume to avoid timeline drift. */
+  private pausedRemainingMs = 0;
 
   private readonly recording: Recording;
 
@@ -77,6 +79,7 @@ export class ReplayAdapter implements IBackendAdapter {
 
   play(): void {
     if (this.state === "finished") return;
+    if (this.state === "playing") return;
 
     // Emit session metadata from recording header on first play
     if (this.state === "idle") {
@@ -92,6 +95,8 @@ export class ReplayAdapter implements IBackendAdapter {
 
   pause(): void {
     if (this.state !== "playing") return;
+    // Calculate how much time remained on the current timer so resume doesn't drift
+    this.pausedRemainingMs = Math.max(0, this.timerDelayMs - (Date.now() - this.timerScheduledAt));
     this.clearTimer();
     this.state = "paused";
   }
@@ -126,23 +131,31 @@ export class ReplayAdapter implements IBackendAdapter {
 
     const entry = this.entries[this.currentIndex];
 
-    // Calculate delay based on timing difference from previous entry
-    let delayMs = 0;
-    if (this.currentIndex > 0) {
-      const prevTs = this.entries[this.currentIndex - 1].ts;
-      delayMs = (entry.ts - prevTs) / this.speed;
-    }
+    let delayMs: number;
 
-    // Instant mode: no delay at all
-    if (!Number.isFinite(this.speed) || this.speed === Infinity) {
+    if (this.pausedRemainingMs > 0) {
+      // Resuming after pause — use the remaining time from the interrupted timer
+      delayMs = this.pausedRemainingMs;
+      this.pausedRemainingMs = 0;
+    } else {
+      // Calculate delay based on timing difference from previous entry
       delayMs = 0;
+      if (this.currentIndex > 0) {
+        const prevTs = this.entries[this.currentIndex - 1].ts;
+        delayMs = (entry.ts - prevTs) / this.speed;
+      }
+
+      // Instant mode: no delay at all
+      if (!Number.isFinite(this.speed) || this.speed === Infinity) {
+        delayMs = 0;
+      }
+
+      // Cap maximum delay to prevent excessively long waits
+      delayMs = Math.min(delayMs, 5000 / this.speed);
     }
 
-    // Cap maximum delay to prevent excessively long waits
-    delayMs = Math.min(delayMs, 5000 / this.speed);
-
-    this.lastScheduledTs = entry.ts;
-    this.lastScheduledAt = Date.now();
+    this.timerDelayMs = delayMs;
+    this.timerScheduledAt = Date.now();
 
     if (delayMs <= 0) {
       // Emit synchronously for instant mode, but use microtask to avoid stack overflow

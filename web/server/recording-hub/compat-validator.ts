@@ -150,6 +150,13 @@ export function compareRecordings(
     try {
       expectedParsed = JSON.parse(expectedMsgs[i].raw);
     } catch {
+      diffs.push({
+        entryIndex: i,
+        expected: { type: "unparseable" },
+        actual: actual[i],
+        kind: "field_mismatch",
+        details: `Entry ${i}: expected message has unparseable JSON`,
+      });
       continue;
     }
 

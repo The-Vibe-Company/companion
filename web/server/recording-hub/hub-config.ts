@@ -13,6 +13,7 @@ export function isRecordingHubEnabled(): boolean {
 }
 
 export function getMaxUploadBytes(): number {
-  const mb = Number(process.env.COMPANION_HUB_MAX_UPLOAD_MB) || DEFAULT_MAX_UPLOAD_MB;
+  const parsed = Number(process.env.COMPANION_HUB_MAX_UPLOAD_MB);
+  const mb = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_UPLOAD_MB;
   return mb * 1024 * 1024;
 }

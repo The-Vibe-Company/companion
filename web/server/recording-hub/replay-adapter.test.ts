@@ -153,15 +153,41 @@ describe("ReplayAdapter", () => {
   });
 
   describe("speed control", () => {
-    it("setSpeed changes playback rate", () => {
-      const adapter = new ReplayAdapter(makeRecording([{ type: "a" }]), 1);
-      adapter.onBrowserMessage(() => {});
+    it("2x speed completes faster than 1x", async () => {
+      // Two messages 1000ms apart at 1x speed
+      const messages = [{ type: "a" }, { type: "b" }];
+      const adapter = new ReplayAdapter(makeRecording(messages, 1000), 2);
+      const received: BrowserIncomingMessage[] = [];
+      adapter.onBrowserMessage((msg) => received.push(msg));
       adapter.onSessionMeta(() => {});
       adapter.onDisconnect(() => {});
 
-      adapter.setSpeed(2);
-      const progress = adapter.getProgress();
-      expect(progress.state).toBe("idle");
+      adapter.play();
+      // At 2x speed, 1000ms delay becomes 500ms. Advance 600ms — should see both messages.
+      await vi.advanceTimersByTimeAsync(600);
+      // First message is instant (index 0), second should have arrived by 500ms
+      expect(received.filter((m) => m.type !== "cli_disconnected").length).toBe(2);
+    });
+
+    it("setSpeed mid-play affects subsequent messages", async () => {
+      const messages = [{ type: "a" }, { type: "b" }, { type: "c" }];
+      const adapter = new ReplayAdapter(makeRecording(messages, 1000), 1);
+      const received: BrowserIncomingMessage[] = [];
+      adapter.onBrowserMessage((msg) => received.push(msg));
+      adapter.onSessionMeta(() => {});
+      adapter.onDisconnect(() => {});
+
+      adapter.play();
+      // First message is instant
+      await vi.advanceTimersByTimeAsync(0);
+      expect(received.length).toBeGreaterThanOrEqual(1);
+
+      // Switch to instant mode
+      adapter.setSpeed(Infinity);
+      await vi.runAllTimersAsync();
+
+      // All messages + cli_disconnected
+      expect(received.length).toBe(messages.length + 1);
     });
 
     it("ignores invalid speed values", () => {
@@ -174,6 +200,23 @@ describe("ReplayAdapter", () => {
       adapter.setSpeed(-1);
       // Speed should remain unchanged (verified indirectly via progress state)
       expect(adapter.getProgress().state).toBe("idle");
+    });
+
+    it("play() is idempotent while already playing", async () => {
+      const messages = [{ type: "a" }, { type: "b" }];
+      const adapter = new ReplayAdapter(makeRecording(messages, 100), 1);
+      const received: BrowserIncomingMessage[] = [];
+      adapter.onBrowserMessage((msg) => received.push(msg));
+      adapter.onSessionMeta(() => {});
+      adapter.onDisconnect(() => {});
+
+      adapter.play();
+      adapter.play(); // Should be no-op (no overlapping timers)
+      adapter.play();
+      await vi.runAllTimersAsync();
+
+      // Should still get exactly the expected number of messages (no duplicates)
+      expect(received.filter((m) => m.type !== "cli_disconnected").length).toBe(2);
     });
   });
 

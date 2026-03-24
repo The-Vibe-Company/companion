@@ -5,7 +5,7 @@
  */
 
 import type { Hono } from "hono";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { existsSync } from "node:fs";
 import { HubStore } from "./hub-store.js";
 import type { ReplayAdapter } from "./replay-adapter.js";
@@ -86,6 +86,11 @@ export function registerHubRoutes(api: Hono, options: HubRoutesOptions): void {
         return c.json({ error: "Missing 'filename' field" }, 400);
       }
       const sourcePath = join(options.recordingsDir, body.filename);
+      const resolvedSource = resolve(sourcePath);
+      const resolvedBase = resolve(options.recordingsDir);
+      if (!resolvedBase || !resolvedSource.startsWith(resolvedBase + sep)) {
+        return c.json({ error: "Invalid filename" }, 400);
+      }
       if (!existsSync(sourcePath)) {
         return c.json({ error: "Recording file not found in auto-recordings directory" }, 404);
       }
@@ -115,6 +120,10 @@ export function registerHubRoutes(api: Hono, options: HubRoutesOptions): void {
       const body = await c.req.json().catch(() => ({} as { recordingId?: string; speed?: number }));
       if (!body.recordingId) {
         return c.json({ error: "Missing 'recordingId'" }, 400);
+      }
+
+      if (body.speed !== undefined && (typeof body.speed !== "number" || body.speed <= 0)) {
+        return c.json({ error: "Invalid 'speed' value" }, 400);
       }
 
       const recording = store.loadRecording(body.recordingId);

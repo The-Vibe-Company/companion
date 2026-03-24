@@ -15,7 +15,7 @@ import {
   existsSync,
   statSync,
 } from "node:fs";
-import { join, basename } from "node:path";
+import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { COMPANION_HOME } from "../paths.js";
 import { loadRecording } from "../replay.js";
@@ -99,7 +99,7 @@ export class HubStore {
     for (let i = 1; i < lines.length; i++) {
       try {
         const entry = JSON.parse(lines[i]) as RecordingEntry;
-        if (typeof entry.ts !== "number" || !entry.dir || !entry.raw || !entry.ch) {
+        if (typeof entry.ts !== "number" || !entry.dir || entry.raw === undefined || !entry.ch) {
           throw new Error(`Malformed entry at line ${i + 1}`);
         }
         entries.push(entry);
