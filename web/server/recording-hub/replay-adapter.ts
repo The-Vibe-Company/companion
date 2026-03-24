@@ -103,10 +103,16 @@ export class ReplayAdapter implements IBackendAdapter {
 
   setSpeed(multiplier: number): void {
     if (multiplier <= 0) return;
-    const wasPlaying = this.state === "playing";
-    if (wasPlaying) this.clearTimer();
+    const oldSpeed = this.speed;
     this.speed = multiplier;
-    if (wasPlaying) this.scheduleNext();
+
+    if (this.state === "playing") {
+      this.clearTimer();
+      this.scheduleNext();
+    } else if (this.state === "paused" && this.pausedRemainingMs > 0) {
+      // Recalculate remaining time with the new speed ratio
+      this.pausedRemainingMs = this.pausedRemainingMs * (oldSpeed / multiplier);
+    }
   }
 
   getProgress(): { current: number; total: number; percentComplete: number; state: State } {

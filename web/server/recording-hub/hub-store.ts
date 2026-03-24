@@ -99,7 +99,7 @@ export class HubStore {
     for (let i = 1; i < lines.length; i++) {
       try {
         const entry = JSON.parse(lines[i]) as RecordingEntry;
-        if (typeof entry.ts !== "number" || !entry.dir || entry.raw === undefined || !entry.ch) {
+        if (typeof entry.ts !== "number" || !entry.dir || typeof entry.raw !== "string" || !entry.ch) {
           throw new Error(`Malformed entry at line ${i + 1}`);
         }
         entries.push(entry);

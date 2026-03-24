@@ -88,7 +88,7 @@ export function registerHubRoutes(api: Hono, options: HubRoutesOptions): void {
       const sourcePath = join(options.recordingsDir, body.filename);
       const resolvedSource = resolve(sourcePath);
       const resolvedBase = resolve(options.recordingsDir);
-      if (!resolvedBase || !resolvedSource.startsWith(resolvedBase + sep)) {
+      if (!resolvedSource.startsWith(resolvedBase + sep) && resolvedSource !== resolvedBase) {
         return c.json({ error: "Invalid filename" }, 400);
       }
       if (!existsSync(sourcePath)) {

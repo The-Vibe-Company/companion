@@ -184,12 +184,16 @@ function detectDisconnections(
     }
   }
 
-  // Deduplicate: ws_close and cli_disconnected within 20s on same channel = same outage
-  const DEDUP_WINDOW_MS = 20_000;
+  // Deduplicate: ws_close and cli_disconnected for the same outage.
+  // Only dedup if the second disconnect happens before the first one reconnected.
   const deduped: DisconnectionEvent[] = [];
   for (const d of disconnections) {
     const isDuplicate = deduped.some(
-      (existing) => existing.channel === d.channel && Math.abs(existing.ts - d.ts) < DEDUP_WINDOW_MS,
+      (existing) =>
+        existing.channel === d.channel &&
+        // Only dedup if this disconnect happened before the previous one reconnected
+        // (i.e. same outage, not a new one after recovery)
+        (!existing.reconnectedAt || d.ts < existing.reconnectedAt),
     );
     if (!isDuplicate) deduped.push(d);
   }
