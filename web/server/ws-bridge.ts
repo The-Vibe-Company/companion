@@ -733,6 +733,7 @@ export class WsBridge {
 
   handleCLIOpen(ws: ServerWebSocket<SocketData>, sessionId: string) {
     metricsCollector.recordWsConnection("cli", "open");
+    this.recorder?.recordEvent(sessionId, "ws_open", "cli");
     const session = this.getOrCreateSession(sessionId);
 
     // Create or retrieve ClaudeAdapter for this session
@@ -810,6 +811,7 @@ export class WsBridge {
   handleCLIClose(ws: ServerWebSocket<SocketData>) {
     metricsCollector.recordWsConnection("cli", "close");
     const sessionId = (ws.data as CLISocketData).sessionId;
+    this.recorder?.recordEvent(sessionId, "ws_close", "cli");
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
@@ -844,6 +846,7 @@ export class WsBridge {
 
   handleBrowserOpen(ws: ServerWebSocket<SocketData>, sessionId: string) {
     metricsCollector.recordWsConnection("browser", "open");
+    this.recorder?.recordEvent(sessionId, "ws_open", "browser");
     const session = this.getOrCreateSession(sessionId);
     const browserData = ws.data as BrowserSocketData;
     browserData.subscribed = false;
@@ -953,6 +956,7 @@ export class WsBridge {
   handleBrowserClose(ws: ServerWebSocket<SocketData>) {
     metricsCollector.recordWsConnection("browser", "close");
     const sessionId = (ws.data as BrowserSocketData).sessionId;
+    this.recorder?.recordEvent(sessionId, "ws_close", "browser");
     const session = this.sessions.get(sessionId);
     if (!session) return;
 

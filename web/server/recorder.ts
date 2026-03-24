@@ -22,11 +22,22 @@ export interface RecordingHeader {
 export type RecordingDirection = "in" | "out";
 export type RecordingChannel = "cli" | "browser";
 
+export type RecordingLifecycleEvent =
+  | "ws_open"
+  | "ws_close"
+  | "ws_error"
+  | "reconnect_attempt"
+  | "reconnect_success";
+
 export interface RecordingEntry {
   ts: number;
   dir: RecordingDirection;
   raw: string;
   ch: RecordingChannel;
+  /** Optional connection lifecycle event (for disconnection diagnostics). */
+  event?: RecordingLifecycleEvent;
+  /** Optional metadata for lifecycle events (e.g. close code, error message). */
+  meta?: Record<string, unknown>;
 }
 
 export interface RecordingFileMeta {
@@ -88,6 +99,32 @@ export class SessionRecorder {
     } catch (err) {
       // Never throw — recording must not disrupt normal operation.
       // But log once so operators can diagnose disk/permission issues.
+      if (!this._recordWriteErrorLogged) {
+        this._recordWriteErrorLogged = true;
+        console.warn(`[recorder] Write failed for ${this.filePath}: ${err instanceof Error ? err.message : err}`);
+      }
+    }
+  }
+
+  /** Record a connection lifecycle event (open, close, error, reconnect). */
+  recordEvent(
+    event: RecordingLifecycleEvent,
+    channel: RecordingChannel,
+    meta?: Record<string, unknown>,
+  ): void {
+    if (this.closed) return;
+    const entry: RecordingEntry = {
+      ts: Date.now(),
+      dir: "in",
+      raw: "",
+      ch: channel,
+      event,
+      ...(meta ? { meta } : {}),
+    };
+    try {
+      appendFileSync(this.filePath, JSON.stringify(entry) + "\n");
+      this.lineCount++;
+    } catch (err) {
       if (!this._recordWriteErrorLogged) {
         this._recordWriteErrorLogged = true;
         console.warn(`[recorder] Write failed for ${this.filePath}: ${err instanceof Error ? err.message : err}`);
@@ -201,6 +238,19 @@ export class RecorderManager {
       this.recorders.set(sessionId, recorder);
     }
     recorder.record(dir, raw, channel);
+  }
+
+  /** Record a connection lifecycle event for diagnostics. */
+  recordEvent(
+    sessionId: string,
+    event: RecordingLifecycleEvent,
+    channel: RecordingChannel,
+    meta?: Record<string, unknown>,
+  ): void {
+    const recorder = this.recorders.get(sessionId);
+    if (recorder) {
+      recorder.recordEvent(event, channel, meta);
+    }
   }
 
   stopRecording(sessionId: string): void {
