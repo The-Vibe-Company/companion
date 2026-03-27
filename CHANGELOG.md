@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.94.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.93.0...the-companion-v0.94.0) (2026-03-27)
+
+
+### Features
+
+* **settings:** add provider token configuration for Claude Code and Codex ([#623](https://github.com/The-Vibe-Company/companion/issues/623)) ([a555985](https://github.com/The-Vibe-Company/companion/commit/a5559854b55b9605a0203a1ac07a998696487ddf))
+
 ## [0.93.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.92.5...the-companion-v0.93.0) (2026-03-27)
 
 
