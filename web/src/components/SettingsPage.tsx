@@ -14,6 +14,7 @@ const CATEGORIES = [
   { id: "authentication", label: "Authentication" },
   { id: "notifications", label: "Notifications" },
   { id: "anthropic", label: "Anthropic" },
+  { id: "gemini", label: "Gemini Voice" },
   { id: "ai-validation", label: "AI Validation" },
   { id: "updates", label: "Updates" },
   { id: "telemetry", label: "Telemetry" },
@@ -59,6 +60,13 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
   const [apiKeyFocused, setApiKeyFocused] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<{ valid: boolean; error?: string } | null>(null);
+
+  // Gemini Voice state
+  const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [geminiConfigured, setGeminiConfigured] = useState(false);
+  const [geminiKeyFocused, setGeminiKeyFocused] = useState(false);
+  const [geminiSaving, setGeminiSaving] = useState(false);
+  const [geminiSaved, setGeminiSaved] = useState(false);
 
   // Auth section state
   const [authToken, setAuthToken] = useState<string | null>(null);
@@ -132,6 +140,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
           setPublicUrl(s.publicUrl);
           useStore.getState().setPublicUrl(s.publicUrl);
         }
+        if (typeof s.geminiApiKeyConfigured === "boolean") setGeminiConfigured(s.geminiApiKeyConfigured);
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
@@ -696,6 +705,91 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   </div>
                 )}
               </form>
+            </section>
+
+            {/* Gemini Voice */}
+            <section id="gemini" ref={setSectionRef("gemini")}>
+              <h2 className="text-sm font-semibold text-cc-fg mb-4">Gemini Voice</h2>
+              <div className="space-y-4">
+                <p className="text-xs text-cc-muted leading-relaxed">
+                  Enable hands-free voice control of The Companion using the Gemini 2.5 Flash Live API.
+                  Speak to create sessions, send prompts, approve permissions, navigate pages, and more.
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${geminiConfigured ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-cc-hover text-cc-muted"}`}>
+                    {geminiConfigured ? "Configured ✓" : "Not configured"}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs text-cc-muted">Gemini API Key</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type={geminiKeyFocused ? "text" : "password"}
+                      value={geminiApiKey}
+                      onChange={(e) => { setGeminiApiKey(e.target.value); setGeminiSaved(false); }}
+                      onFocus={() => setGeminiKeyFocused(true)}
+                      onBlur={() => setGeminiKeyFocused(false)}
+                      placeholder={geminiConfigured ? "••••••••••••••••" : "Enter your Gemini API key"}
+                      className="flex-1 px-3 py-2 text-sm bg-cc-input-bg border border-cc-border rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40"
+                    />
+                    <button
+                      type="button"
+                      disabled={geminiSaving || !geminiApiKey.trim()}
+                      onClick={async () => {
+                        setGeminiSaving(true);
+                        try {
+                          const res = await api.updateSettings({ geminiApiKey: geminiApiKey.trim() });
+                          setGeminiConfigured(!!res.geminiApiKeyConfigured);
+                          setGeminiApiKey("");
+                          setGeminiSaved(true);
+                          setTimeout(() => setGeminiSaved(false), 2000);
+                        } catch { /* ignore */ }
+                        setGeminiSaving(false);
+                      }}
+                      className={`px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                        geminiApiKey.trim()
+                          ? "border-cc-primary/30 bg-cc-primary/10 text-cc-primary hover:bg-cc-primary/20 cursor-pointer"
+                          : "border-cc-border text-cc-muted cursor-not-allowed"
+                      }`}
+                    >
+                      {geminiSaving ? "Saving…" : "Save Key"}
+                    </button>
+                    {geminiConfigured && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setGeminiSaving(true);
+                          try {
+                            const res = await api.updateSettings({ geminiApiKey: "" });
+                            setGeminiConfigured(!!res.geminiApiKeyConfigured);
+                            setGeminiApiKey("");
+                          } catch { /* ignore */ }
+                          setGeminiSaving(false);
+                        }}
+                        className="px-3 py-2 text-xs font-medium rounded-lg border border-cc-border text-cc-muted hover:text-cc-error hover:border-cc-error/30 transition-colors cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  {geminiSaved && (
+                    <div className="text-xs text-green-600 dark:text-green-400">API key saved successfully.</div>
+                  )}
+                </div>
+
+                <div className="text-xs text-cc-muted">
+                  <a
+                    href="https://aistudio.google.com/apikey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cc-primary hover:underline"
+                  >
+                    Get an API key from Google AI Studio →
+                  </a>
+                </div>
+              </div>
             </section>
 
             {/* AI Validation */}

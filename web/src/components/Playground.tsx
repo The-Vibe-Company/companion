@@ -44,6 +44,7 @@ import { SessionLaunchOverlay } from "./SessionLaunchOverlay.js";
 import { PlaygroundUpdateOverlay } from "./UpdateOverlay.js";
 import { PlaygroundDockerUpdateDialog } from "./DockerUpdateDialog.js";
 import { SessionItem } from "./SessionItem.js";
+import { VoiceControl } from "./VoiceControl.js";
 import type { CreationProgressEvent } from "../types.js";
 import type { SessionItem as SessionItemType } from "../utils/project-grouping.js";
 
@@ -2860,9 +2861,68 @@ export function Playground() {
             </Card>
           </div>
         </Section>
+
+        {/* ─── Voice Control ─────────────────────────────────── */}
+        <Section
+          title="Voice Control"
+          description="Floating action button for Gemini 2.5 Flash Live API voice control — idle, connecting, listening, speaking, and error states"
+        >
+          <div className="space-y-4">
+            <Card label="Idle (default)">
+              <div className="relative h-24 bg-cc-bg rounded-lg overflow-hidden border border-cc-border">
+                <PlaygroundVoiceState voiceActive={false} voiceConnecting={false} voiceListening={false} voiceSpeaking={false} voiceTranscript="" voiceError={null} voiceLastToolCall={null} />
+              </div>
+            </Card>
+            <Card label="Connecting">
+              <div className="relative h-32 bg-cc-bg rounded-lg overflow-hidden border border-cc-border">
+                <PlaygroundVoiceState voiceActive={false} voiceConnecting={true} voiceListening={false} voiceSpeaking={false} voiceTranscript="" voiceError={null} voiceLastToolCall={null} />
+              </div>
+            </Card>
+            <Card label="Listening (with transcript)">
+              <div className="relative h-40 bg-cc-bg rounded-lg overflow-hidden border border-cc-border">
+                <PlaygroundVoiceState voiceActive={true} voiceConnecting={false} voiceListening={true} voiceSpeaking={false} voiceTranscript="Create a new session on my project..." voiceError={null} voiceLastToolCall={null} />
+              </div>
+            </Card>
+            <Card label="Speaking (with tool call)">
+              <div className="relative h-40 bg-cc-bg rounded-lg overflow-hidden border border-cc-border">
+                <PlaygroundVoiceState voiceActive={true} voiceConnecting={false} voiceListening={false} voiceSpeaking={true} voiceTranscript="I'm creating a new session for your project..." voiceError={null} voiceLastToolCall={{ name: "create_session", args: { prompt: "Fix the bug" } }} />
+              </div>
+            </Card>
+            <Card label="Error">
+              <div className="relative h-32 bg-cc-bg rounded-lg overflow-hidden border border-cc-border">
+                <PlaygroundVoiceState voiceActive={false} voiceConnecting={false} voiceListening={false} voiceSpeaking={false} voiceTranscript="" voiceError="Connection to Gemini failed. Check your API key." voiceLastToolCall={null} />
+              </div>
+            </Card>
+          </div>
+        </Section>
       </div>
     </div>
   );
+}
+
+// ─── Voice Control Playground Helper ─────────────────────────────────────────
+
+/** Temporarily sets voice store state, renders VoiceControl, and restores on unmount. */
+function PlaygroundVoiceState(props: {
+  voiceActive: boolean;
+  voiceConnecting: boolean;
+  voiceListening: boolean;
+  voiceSpeaking: boolean;
+  voiceTranscript: string;
+  voiceError: string | null;
+  voiceLastToolCall: { name: string; args: Record<string, unknown> } | null;
+}) {
+  const store = useStore.getState();
+  // Apply the mocked state
+  store.setVoiceActive(props.voiceActive);
+  store.setVoiceConnecting(props.voiceConnecting);
+  store.setVoiceListening(props.voiceListening);
+  store.setVoiceSpeaking(props.voiceSpeaking);
+  store.setVoiceTranscript(props.voiceTranscript);
+  store.setVoiceError(props.voiceError);
+  store.setVoiceLastToolCall(props.voiceLastToolCall);
+
+  return <VoiceControl />;
 }
 
 // ─── Session Item Playground ─────────────────────────────────────────────────

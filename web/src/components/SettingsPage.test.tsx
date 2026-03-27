@@ -1168,6 +1168,69 @@ describe("SettingsPage", () => {
     });
   });
 
+  // ── Gemini Voice section ───────────────────────────────────────────────
+
+  it("renders Gemini Voice section with Not configured status", async () => {
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+    // "Gemini Voice" appears in both sidebar nav and section heading
+    expect(screen.getAllByText("Gemini Voice").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Not configured")).toBeInTheDocument();
+    expect(screen.getByText(/Get an API key from Google AI Studio/)).toBeInTheDocument();
+  });
+
+  it("saves Gemini API key when Save Key is clicked", async () => {
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    const input = screen.getByPlaceholderText(/Enter your Gemini API key/);
+    fireEvent.change(input, { target: { value: "test-gemini-key" } });
+    fireEvent.click(screen.getByText("Save Key"));
+
+    await waitFor(() => {
+      expect(mockApi.updateSettings).toHaveBeenCalledWith({ geminiApiKey: "test-gemini-key" });
+    });
+  });
+
+  it("shows Configured status and Clear button when Gemini key is set", async () => {
+    mockApi.getSettings.mockResolvedValueOnce({
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4-6",
+      claudeCodeOAuthTokenConfigured: false,
+      openaiApiKeyConfigured: false,
+      codexDeviceAuthConfigured: false,
+      onboardingCompleted: true,
+      linearApiKeyConfigured: false,
+      linearConnectionCount: 0,
+      linearAutoTransition: false,
+      linearAutoTransitionStateName: "",
+      linearArchiveTransition: false,
+      linearArchiveTransitionStateName: "",
+      linearOAuthConfigured: false,
+      linearOAuthCredentialsSaved: false,
+      geminiApiKeyConfigured: true,
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: false,
+      publicUrl: "",
+      updateChannel: "stable" as const,
+      dockerAutoUpdate: false,
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    expect(screen.getByText("Configured ✓")).toBeInTheDocument();
+    expect(screen.getByText("Clear")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Clear"));
+
+    await waitFor(() => {
+      expect(mockApi.updateSettings).toHaveBeenCalledWith({ geminiApiKey: "" });
+    });
+  });
+
   // Axe accessibility scan for the Webhooks section to ensure it meets
   // WCAG standards (labels, roles, contrast, etc.).
   it("passes axe accessibility checks for the Webhooks section", async () => {

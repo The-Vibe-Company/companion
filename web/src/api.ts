@@ -415,6 +415,7 @@ export interface AppSettings {
   linearArchiveTransitionStateName: string;
   linearOAuthConfigured: boolean;
   linearOAuthCredentialsSaved: boolean;
+  geminiApiKeyConfigured: boolean;
   editorTabEnabled: boolean;
   aiValidationEnabled: boolean;
   aiValidationAutoApprove: boolean;
@@ -944,11 +945,14 @@ export const api = {
 
   // Settings
   getSettings: () => get<AppSettings>("/settings"),
+  getGeminiKey: () => get<{ key: string }>("/settings/gemini-key"),
+
   updateSettings: (data: {
     anthropicApiKey?: string;
     anthropicModel?: string;
     claudeCodeOAuthToken?: string;
     openaiApiKey?: string;
+    geminiApiKey?: string;
     onboardingCompleted?: boolean;
     linearApiKey?: string;
     linearAutoTransition?: boolean;

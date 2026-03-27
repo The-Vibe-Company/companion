@@ -7,6 +7,7 @@ import { createTasksSlice, type TasksSlice } from "./tasks-slice.js";
 import { createUiSlice, type UiSlice, getInitialDiffBase } from "./ui-slice.js";
 import { createTerminalSlice, type TerminalSlice, getInitialQuickTerminalPlacement } from "./terminal-slice.js";
 import { createUpdatesSlice, type UpdatesSlice } from "./updates-slice.js";
+import { createVoiceSlice, type VoiceSlice } from "./voice-slice.js";
 
 export type AppState = AuthSlice &
   SessionsSlice &
@@ -15,7 +16,8 @@ export type AppState = AuthSlice &
   TasksSlice &
   UiSlice &
   TerminalSlice &
-  UpdatesSlice & {
+  UpdatesSlice &
+  VoiceSlice & {
     reset: () => void;
   };
 
@@ -28,6 +30,7 @@ export const useStore = create<AppState>((...args) => ({
   ...createUiSlice(...args),
   ...createTerminalSlice(...args),
   ...createUpdatesSlice(...args),
+  ...createVoiceSlice(...args),
 
   reset: () => {
     const [set] = args;

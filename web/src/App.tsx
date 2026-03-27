@@ -35,6 +35,7 @@ const AgentsPage = lazy(() => import("./components/AgentsPage.js").then((m) => (
 const RunsPage = lazy(() => import("./components/RunsPage.js").then((m) => ({ default: m.RunsPage })));
 const TerminalPage = lazy(() => import("./components/TerminalPage.js").then((m) => ({ default: m.TerminalPage })));
 const ProcessPanel = lazy(() => import("./components/ProcessPanel.js").then((m) => ({ default: m.ProcessPanel })));
+const VoiceControl = lazy(() => import("./components/VoiceControl.js").then((m) => ({ default: m.VoiceControl })));
 
 
 function LazyFallback() {
@@ -165,6 +166,7 @@ export default function App() {
   // Re-runs when isAuthenticated flips to true (e.g. after login) so that
   // users who authenticate first still see the onboarding wizard.
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [geminiConfigured, setGeminiConfigured] = useState(false);
   useEffect(() => {
     if (!isAuthenticated) return;
     api.getSettings().then((s) => {
@@ -172,6 +174,7 @@ export default function App() {
       if (!s.onboardingCompleted) {
         setShowOnboarding(true);
       }
+      setGeminiConfigured(!!s.geminiApiKeyConfigured);
     }).catch(() => {});
   }, [isAuthenticated]);
 
@@ -376,6 +379,11 @@ export default function App() {
       <UpdateOverlay active={updateOverlayActive} />
       <DockerUpdateDialog />
       {showOnboarding && <OnboardingModal onComplete={() => setShowOnboarding(false)} />}
+      {geminiConfigured && (
+        <Suspense fallback={null}>
+          <VoiceControl />
+        </Suspense>
+      )}
     </div>
   );
 }

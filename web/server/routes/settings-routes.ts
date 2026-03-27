@@ -23,6 +23,7 @@ export function registerSettingsRoutes(api: Hono): void {
       linearArchiveTransitionStateName: settings.linearArchiveTransitionStateName,
       linearOAuthConfigured: !!(settings.linearOAuthClientId.trim() && settings.linearOAuthClientSecret.trim() && settings.linearOAuthAccessToken.trim()),
       linearOAuthCredentialsSaved: !!(settings.linearOAuthClientId.trim() && settings.linearOAuthClientSecret.trim()),
+      geminiApiKeyConfigured: !!settings.geminiApiKey.trim(),
       editorTabEnabled: settings.editorTabEnabled,
       aiValidationEnabled: settings.aiValidationEnabled,
       aiValidationAutoApprove: settings.aiValidationAutoApprove,
@@ -31,6 +32,12 @@ export function registerSettingsRoutes(api: Hono): void {
       updateChannel: settings.updateChannel,
       dockerAutoUpdate: settings.dockerAutoUpdate,
     });
+  });
+
+  // Return the actual Gemini API key (needed for direct browser→Gemini WS connection)
+  api.get("/settings/gemini-key", (c) => {
+    const settings = getSettings();
+    return c.json({ key: settings.geminiApiKey });
   });
 
   api.put("/settings", async (c) => {
@@ -107,6 +114,9 @@ export function registerSettingsRoutes(api: Hono): void {
     if (body.dockerAutoUpdate !== undefined && typeof body.dockerAutoUpdate !== "boolean") {
       return c.json({ error: "dockerAutoUpdate must be a boolean" }, 400);
     }
+    if (body.geminiApiKey !== undefined && typeof body.geminiApiKey !== "string") {
+      return c.json({ error: "geminiApiKey must be a string" }, 400);
+    }
     const hasAnyField = body.anthropicApiKey !== undefined || body.anthropicModel !== undefined
       || body.claudeCodeOAuthToken !== undefined || body.openaiApiKey !== undefined
       || body.onboardingCompleted !== undefined
@@ -116,6 +126,7 @@ export function registerSettingsRoutes(api: Hono): void {
       || body.linearArchiveTransitionStateName !== undefined
       || body.linearOAuthClientId !== undefined || body.linearOAuthClientSecret !== undefined
       || body.linearOAuthWebhookSecret !== undefined
+      || body.geminiApiKey !== undefined
       || body.editorTabEnabled !== undefined
       || body.aiValidationEnabled !== undefined || body.aiValidationAutoApprove !== undefined
       || body.aiValidationAutoDeny !== undefined
@@ -191,6 +202,10 @@ export function registerSettingsRoutes(api: Hono): void {
         typeof body.linearOAuthWebhookSecret === "string"
           ? body.linearOAuthWebhookSecret.trim()
           : undefined,
+      geminiApiKey:
+        typeof body.geminiApiKey === "string"
+          ? body.geminiApiKey.trim()
+          : undefined,
       editorTabEnabled:
         typeof body.editorTabEnabled === "boolean"
           ? body.editorTabEnabled
@@ -237,6 +252,7 @@ export function registerSettingsRoutes(api: Hono): void {
       linearArchiveTransitionStateName: settings.linearArchiveTransitionStateName,
       linearOAuthConfigured: !!(settings.linearOAuthClientId.trim() && settings.linearOAuthClientSecret.trim() && settings.linearOAuthAccessToken.trim()),
       linearOAuthCredentialsSaved: !!(settings.linearOAuthClientId.trim() && settings.linearOAuthClientSecret.trim()),
+      geminiApiKeyConfigured: !!settings.geminiApiKey.trim(),
       editorTabEnabled: settings.editorTabEnabled,
       aiValidationEnabled: settings.aiValidationEnabled,
       aiValidationAutoApprove: settings.aiValidationAutoApprove,

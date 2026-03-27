@@ -107,7 +107,7 @@ describe("OnboardingModal", () => {
     expect(screen.getByText("Set up Codex")).toBeInTheDocument();
   });
 
-  it("saves Codex API key and completes onboarding", async () => {
+  it("saves Codex API key and navigates to Gemini step", async () => {
     const onComplete = vi.fn();
     render(<OnboardingModal onComplete={onComplete} />);
 
@@ -128,9 +128,9 @@ describe("OnboardingModal", () => {
       expect(mockUpdateSettings).toHaveBeenCalledWith({ openaiApiKey: "sk-test-key" });
     });
 
-    // Should show done step
+    // Should navigate to Gemini step
     await waitFor(() => {
-      expect(screen.getByText("Get Started")).toBeInTheDocument();
+      expect(screen.getByText("Enable Gemini Voice")).toBeInTheDocument();
     });
   });
 
@@ -159,7 +159,14 @@ describe("OnboardingModal", () => {
       expect(screen.getByText("Set up Codex")).toBeInTheDocument();
     });
 
-    // Skip Codex
+    // Skip Codex → lands on Gemini step
+    fireEvent.click(screen.getByText("Skip"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Enable Gemini Voice")).toBeInTheDocument();
+    });
+
+    // Skip Gemini → lands on Done
     fireEvent.click(screen.getByText("Skip"));
 
     await waitFor(() => {
@@ -171,10 +178,11 @@ describe("OnboardingModal", () => {
   it("shows 'Setup Skipped' when no providers configured", async () => {
     render(<OnboardingModal onComplete={vi.fn()} />);
 
-    // Skip through Claude and Codex
+    // Skip through Claude, Codex, and Gemini
     fireEvent.click(screen.getByText("Claude Code"));
-    fireEvent.click(screen.getByText("Skip"));
-    fireEvent.click(screen.getByText("Skip"));
+    fireEvent.click(screen.getByText("Skip")); // → Codex
+    fireEvent.click(screen.getByText("Skip")); // → Gemini
+    fireEvent.click(screen.getByText("Skip")); // → Done
 
     await waitFor(() => {
       expect(screen.getByText("Setup Skipped")).toBeInTheDocument();
@@ -185,10 +193,11 @@ describe("OnboardingModal", () => {
     const onComplete = vi.fn();
     render(<OnboardingModal onComplete={onComplete} />);
 
-    // Skip everything to get to done
+    // Skip everything (Claude → Codex → Gemini) to get to done
     fireEvent.click(screen.getByText("Claude Code"));
-    fireEvent.click(screen.getByText("Skip"));
-    fireEvent.click(screen.getByText("Skip"));
+    fireEvent.click(screen.getByText("Skip")); // → Codex
+    fireEvent.click(screen.getByText("Skip")); // → Gemini
+    fireEvent.click(screen.getByText("Skip")); // → Done
 
     await waitFor(() => {
       expect(screen.getByText("Get Started")).toBeInTheDocument();
@@ -196,6 +205,69 @@ describe("OnboardingModal", () => {
 
     fireEvent.click(screen.getByText("Get Started"));
     expect(onComplete).toHaveBeenCalled();
+  });
+
+  it("navigates to Gemini step and shows voice control description", async () => {
+    render(<OnboardingModal onComplete={vi.fn()} />);
+
+    // Skip Claude → Codex → Gemini
+    fireEvent.click(screen.getByText("Claude Code"));
+    fireEvent.click(screen.getByText("Skip")); // → Codex
+    fireEvent.click(screen.getByText("Skip")); // → Gemini
+
+    await waitFor(() => {
+      expect(screen.getByText("Enable Gemini Voice")).toBeInTheDocument();
+      expect(screen.getByText(/Control The Companion hands-free/)).toBeInTheDocument();
+      expect(screen.getByLabelText("Gemini API Key")).toBeInTheDocument();
+      expect(screen.getByText(/Get a free API key from Google AI Studio/)).toBeInTheDocument();
+    });
+  });
+
+  it("saves Gemini API key and completes onboarding", async () => {
+    render(<OnboardingModal onComplete={vi.fn()} />);
+
+    // Skip Claude → Codex → Gemini
+    fireEvent.click(screen.getByText("Claude Code"));
+    fireEvent.click(screen.getByText("Skip"));
+    fireEvent.click(screen.getByText("Skip"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Enable Gemini Voice")).toBeInTheDocument();
+    });
+
+    // Enter Gemini API key
+    const input = screen.getByLabelText("Gemini API Key");
+    fireEvent.change(input, { target: { value: "test-gemini-key" } });
+
+    // Save
+    fireEvent.click(screen.getByText("Save & Finish"));
+
+    await waitFor(() => {
+      expect(mockUpdateSettings).toHaveBeenCalledWith({ geminiApiKey: "test-gemini-key" });
+    });
+
+    // Should show done step with Gemini ready
+    await waitFor(() => {
+      expect(screen.getByText("You're all set!")).toBeInTheDocument();
+      expect(screen.getByText("Gemini Voice is ready.")).toBeInTheDocument();
+    });
+  });
+
+  it("navigates back from Gemini to Codex step", async () => {
+    render(<OnboardingModal onComplete={vi.fn()} />);
+
+    // Skip Claude → Codex → Gemini
+    fireEvent.click(screen.getByText("Claude Code"));
+    fireEvent.click(screen.getByText("Skip"));
+    fireEvent.click(screen.getByText("Skip"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Enable Gemini Voice")).toBeInTheDocument();
+    });
+
+    // Go back to Codex
+    fireEvent.click(screen.getByText("Back"));
+    expect(screen.getByText("Set up Codex")).toBeInTheDocument();
   });
 
   it("displays error when save fails", async () => {
@@ -248,9 +320,9 @@ describe("OnboardingModal", () => {
     await waitFor(() => {
       expect(mockGetSettings).toHaveBeenCalled();
     });
-    // Device auth found — should complete onboarding
+    // Device auth found — should navigate to Gemini step
     await waitFor(() => {
-      expect(screen.getByText("You're all set!")).toBeInTheDocument();
+      expect(screen.getByText("Enable Gemini Voice")).toBeInTheDocument();
     });
   });
 
