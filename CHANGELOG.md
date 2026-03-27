@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.93.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.92.5...the-companion-v0.93.0) (2026-03-27)
+
+
+### Features
+
+* **claude:** support channels protocol updates ([#613](https://github.com/The-Vibe-Company/companion/issues/613)) ([5baccb1](https://github.com/The-Vibe-Company/companion/commit/5baccb13ba0b87d2dfcaa9e0241951ca9febc684))
+* **onboarding:** add provider setup wizard for Claude Code and Codex ([#615](https://github.com/The-Vibe-Company/companion/issues/615)) ([c2f2b55](https://github.com/The-Vibe-Company/companion/commit/c2f2b55118cb576532746cbde87eab4de4b87001))
+* **recording-hub:** add hidden recording hub for replay, compat testing, and diagnostics ([#617](https://github.com/The-Vibe-Company/companion/issues/617)) ([6f6d411](https://github.com/The-Vibe-Company/companion/commit/6f6d411cc4e7cb7d16216f179212ef7ea44e4a40))
+
+
+### Bug Fixes
+
+* **linear:** log webhook acceptance and rejection ([#612](https://github.com/The-Vibe-Company/companion/issues/612)) ([08e495b](https://github.com/The-Vibe-Company/companion/commit/08e495b3ac06323d1113a43328682deedeac373d))
+* **sidebar:** reconcile client sessions with server on poll ([#621](https://github.com/The-Vibe-Company/companion/issues/621)) ([177af4b](https://github.com/The-Vibe-Company/companion/commit/177af4be321411dad1c1fe3683fd805e6beaa06c))
+
+
+### Code Refactoring
+
+* Code redundancy reduction ([#610](https://github.com/The-Vibe-Company/companion/issues/610)) ([c256360](https://github.com/The-Vibe-Company/companion/commit/c256360d6db3846e4110f1232c047ef16f939906))
+
 ## [0.92.5](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.92.4...the-companion-v0.92.5) (2026-03-18)
 
 
