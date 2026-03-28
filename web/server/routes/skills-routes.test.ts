@@ -22,12 +22,14 @@ vi.mock("node:fs/promises", () => ({
 }));
 vi.mock("node:os", () => ({ homedir: () => "/mock-home" }));
 
+import { join } from "node:path";
 import { Hono } from "hono";
 import { registerSkillRoutes } from "./skills-routes.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
-// SKILLS_DIR resolves to /mock-home/.claude/skills because homedir() is mocked.
-const SKILLS_DIR = "/mock-home/.claude/skills";
+// SKILLS_DIR resolves to join("/mock-home", ".claude", "skills") because homedir() is mocked.
+// On Windows, join() uses backslashes, so we use join() to match the source code behavior.
+const SKILLS_DIR = join("/mock-home", ".claude", "skills");
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -140,13 +142,13 @@ describe("GET /skills", () => {
       slug: "my-skill",
       name: "My Skill",
       description: "Does cool things",
-      path: `${SKILLS_DIR}/my-skill/SKILL.md`,
+      path: join(SKILLS_DIR, "my-skill", "SKILL.md"),
     });
     expect(json[1]).toEqual({
       slug: "another-skill",
       name: "Another Skill",
       description: "Also useful",
-      path: `${SKILLS_DIR}/another-skill/SKILL.md`,
+      path: join(SKILLS_DIR, "another-skill", "SKILL.md"),
     });
   });
 
@@ -268,7 +270,7 @@ describe("GET /skills/:slug", () => {
     const json = await res.json();
     expect(json).toEqual({
       slug: "my-skill",
-      path: `${SKILLS_DIR}/my-skill/SKILL.md`,
+      path: join(SKILLS_DIR, "my-skill", "SKILL.md"),
       content,
     });
   });
@@ -335,11 +337,11 @@ describe("POST /skills", () => {
     expect(json.slug).toBe("my-new-skill");
     expect(json.name).toBe("My New Skill");
     expect(json.description).toBe("Does amazing things");
-    expect(json.path).toBe(`${SKILLS_DIR}/my-new-skill/SKILL.md`);
+    expect(json.path).toBe(join(SKILLS_DIR, "my-new-skill", "SKILL.md"));
 
     // Verify mkdir was called for both SKILLS_DIR and the skill directory
     expect(mockMkdir).toHaveBeenCalledWith(SKILLS_DIR, { recursive: true });
-    expect(mockMkdir).toHaveBeenCalledWith(`${SKILLS_DIR}/my-new-skill`, { recursive: true });
+    expect(mockMkdir).toHaveBeenCalledWith(join(SKILLS_DIR, "my-new-skill"), { recursive: true });
 
     // Verify writeFile was called with the expected markdown content
     expect(mockWriteFile).toHaveBeenCalledTimes(1);
@@ -514,12 +516,12 @@ describe("PUT /skills/:slug", () => {
     expect(json).toEqual({
       ok: true,
       slug: "my-skill",
-      path: `${SKILLS_DIR}/my-skill/SKILL.md`,
+      path: join(SKILLS_DIR, "my-skill", "SKILL.md"),
     });
 
     // Verify writeFile was called with the new content
     expect(mockWriteFile).toHaveBeenCalledWith(
-      `${SKILLS_DIR}/my-skill/SKILL.md`,
+      join(SKILLS_DIR, "my-skill", "SKILL.md"),
       newContent,
       "utf-8",
     );
@@ -539,7 +541,7 @@ describe("PUT /skills/:slug", () => {
     const json = await res.json();
     expect(json.ok).toBe(true);
     expect(mockWriteFile).toHaveBeenCalledWith(
-      `${SKILLS_DIR}/my-skill/SKILL.md`,
+      join(SKILLS_DIR, "my-skill", "SKILL.md"),
       "",
       "utf-8",
     );
@@ -642,7 +644,7 @@ describe("DELETE /skills/:slug", () => {
 
     // Verify rm was called with recursive and force flags on the directory
     expect(mockRm).toHaveBeenCalledWith(
-      `${SKILLS_DIR}/doomed-skill`,
+      join(SKILLS_DIR, "doomed-skill"),
       { recursive: true, force: true },
     );
   });

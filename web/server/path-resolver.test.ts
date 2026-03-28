@@ -28,6 +28,8 @@ vi.mock("node:os", async (importOriginal) => {
 
 // ─── Import after mocks ─────────────────────────────────────────────────────
 
+import { join } from "node:path";
+
 import {
   captureUserShellPath,
   buildFallbackPath,
@@ -38,6 +40,15 @@ import {
 } from "./path-resolver.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+const isWindows = process.platform === "win32";
+const SEP = isWindows ? ";" : ":";
+
+/** Normalize a Unix-style path to the current platform (forward vs back slashes). */
+function p(unixPath: string): string {
+  if (isWindows) return unixPath.replace(/\//g, "\\");
+  return unixPath;
+}
 
 const originalEnv = { ...process.env };
 
@@ -141,60 +152,67 @@ describe("buildFallbackPath", () => {
   });
 
   it("includes ~/.local/bin for claude CLI", () => {
-    mockExistsSync.mockImplementation((p: string) =>
-      p === "/home/testuser/.local/bin" || p === "/usr/bin",
+    const localBin = join("/home/testuser", ".local", "bin");
+    mockExistsSync.mockImplementation((path: string) =>
+      path === localBin || path === "/usr/bin",
     );
 
     const result = buildFallbackPath();
-    expect(result).toContain("/home/testuser/.local/bin");
+    expect(result).toContain(localBin);
   });
 
   it("includes ~/.bun/bin", () => {
-    mockExistsSync.mockImplementation((p: string) =>
-      p === "/home/testuser/.bun/bin" || p === "/usr/bin",
+    const bunBin = join("/home/testuser", ".bun", "bin");
+    mockExistsSync.mockImplementation((path: string) =>
+      path === bunBin || path === "/usr/bin",
     );
 
     const result = buildFallbackPath();
-    expect(result).toContain("/home/testuser/.bun/bin");
+    expect(result).toContain(bunBin);
   });
 
   it("includes ~/.cargo/bin for Rust tools", () => {
-    mockExistsSync.mockImplementation((p: string) =>
-      p === "/home/testuser/.cargo/bin" || p === "/usr/bin",
+    const cargoBin = join("/home/testuser", ".cargo", "bin");
+    mockExistsSync.mockImplementation((path: string) =>
+      path === cargoBin || path === "/usr/bin",
     );
 
     const result = buildFallbackPath();
-    expect(result).toContain("/home/testuser/.cargo/bin");
+    expect(result).toContain(cargoBin);
   });
 
   it("probes nvm versions directory and includes all version bins", () => {
     // Ensure NVM_DIR is not set so the code falls back to ~/.nvm
     delete process.env.NVM_DIR;
-    mockExistsSync.mockImplementation((p: string) => {
-      if (p === "/home/testuser/.nvm/versions/node") return true;
-      if (p.includes(".nvm/versions/node/v") && p.endsWith("/bin")) return true;
-      if (p === "/usr/bin") return true;
+    const nvmVersionsDir = join("/home/testuser", ".nvm", "versions", "node");
+    const v18bin = join(nvmVersionsDir, "v18.20.0", "bin");
+    const v22bin = join(nvmVersionsDir, "v22.17.0", "bin");
+    mockExistsSync.mockImplementation((path: string) => {
+      if (path === nvmVersionsDir) return true;
+      if (path === v18bin || path === v22bin) return true;
+      if (path === "/usr/bin") return true;
       return false;
     });
     mockReaddirSync.mockReturnValue(["v18.20.0", "v22.17.0"] as any);
 
     const result = buildFallbackPath();
-    expect(result).toContain("/home/testuser/.nvm/versions/node/v18.20.0/bin");
-    expect(result).toContain("/home/testuser/.nvm/versions/node/v22.17.0/bin");
+    expect(result).toContain(v18bin);
+    expect(result).toContain(v22bin);
   });
 
   it("uses NVM_DIR env var when set", () => {
-    process.env.NVM_DIR = "/custom/nvm";
-    mockExistsSync.mockImplementation((p: string) => {
-      if (p === "/custom/nvm/versions/node") return true;
-      if (p.includes("/custom/nvm/versions/node/v") && p.endsWith("/bin"))
-        return true;
+    process.env.NVM_DIR = p("/custom/nvm");
+    const nvmVersionsDir = join(p("/custom/nvm"), "versions", "node");
+    const v20bin = join(nvmVersionsDir, "v20.0.0", "bin");
+    mockExistsSync.mockImplementation((path: string) => {
+      if (path === nvmVersionsDir) return true;
+      if (path === v20bin) return true;
       return false;
     });
     mockReaddirSync.mockReturnValue(["v20.0.0"] as any);
 
     const result = buildFallbackPath();
-    expect(result).toContain("/custom/nvm/versions/node/v20.0.0/bin");
+    expect(result).toContain(v20bin);
   });
 
   it("excludes directories that don't exist", () => {
@@ -256,16 +274,16 @@ describe("getEnrichedPath", () => {
   });
 
   it("deduplicates entries from both PATHs", () => {
-    process.env.PATH = "/usr/bin:/bin:/usr/local/bin";
+    process.env.PATH = ["/usr/bin", "/bin", "/usr/local/bin"].join(SEP);
     mockExecSync.mockImplementation((cmd: string) => {
       if (typeof cmd === "string" && cmd.includes("-lic")) {
-        return "___PATH_START___/usr/bin:/usr/local/bin:/home/testuser/.volta/bin___PATH_END___\n";
+        return `___PATH_START___${["/usr/bin", "/usr/local/bin", "/home/testuser/.volta/bin"].join(SEP)}___PATH_END___\n`;
       }
       return "";
     });
 
     const result = getEnrichedPath();
-    const dirs = result.split(":");
+    const dirs = result.split(SEP);
     expect(dirs.length).toBe(new Set(dirs).size);
     // /usr/bin should appear exactly once
     expect(dirs.filter((d) => d === "/usr/bin").length).toBe(1);
@@ -470,7 +488,12 @@ describe("resolveBinary", () => {
         throw new Error("not found");
       });
 
-      expect(resolveBinary("claude")).toBe("/c/Users/me/AppData/Roaming/npm/claude");
+      // On real Windows, the source converts /c/Users/... to c:\Users\...
+      // On Unix (where platform is faked to win32), the POSIX path is returned as-is
+      const expected = isWindows
+        ? "c:\\Users\\me\\AppData\\Roaming\\npm\\claude"
+        : "/c/Users/me/AppData/Roaming/npm/claude";
+      expect(resolveBinary("claude")).toBe(expected);
     });
 
     it("prefers .cmd result from 'where' output with multiple lines", () => {

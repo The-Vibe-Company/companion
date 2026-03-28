@@ -1,5 +1,5 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
 let tempDir: string;
@@ -48,8 +48,8 @@ describe("createPrompt", () => {
     // Validates project scope stores a normalized project root for later cwd matching.
     const prompt = promptManager.createPrompt("Plan", "Plan this feature", "project", "/tmp/my-repo/");
     expect(prompt.scope).toBe("project");
-    expect(prompt.projectPath).toBe("/tmp/my-repo");
-    expect(prompt.projectPaths).toEqual(["/tmp/my-repo"]);
+    expect(prompt.projectPath).toBe(resolve("/tmp/my-repo"));
+    expect(prompt.projectPaths).toEqual([resolve("/tmp/my-repo")]);
   });
 
   it("creates a project prompt with multiple projectPaths", () => {
@@ -62,9 +62,9 @@ describe("createPrompt", () => {
       ["/tmp/repo-a/", "/tmp/repo-b", "/tmp/repo-a/"],
     );
     expect(prompt.scope).toBe("project");
-    expect(prompt.projectPaths).toEqual(["/tmp/repo-a", "/tmp/repo-b"]);
+    expect(prompt.projectPaths).toEqual([resolve("/tmp/repo-a"), resolve("/tmp/repo-b")]);
     // projectPath is set to the first path for backward compatibility
-    expect(prompt.projectPath).toBe("/tmp/repo-a");
+    expect(prompt.projectPath).toBe(resolve("/tmp/repo-a"));
   });
 
   it("merges projectPaths and legacy projectPath without duplicates", () => {
@@ -76,7 +76,7 @@ describe("createPrompt", () => {
       "/tmp/repo-a",
       ["/tmp/repo-b", "/tmp/repo-a"],
     );
-    expect(prompt.projectPaths).toEqual(["/tmp/repo-b", "/tmp/repo-a"]);
+    expect(prompt.projectPaths).toEqual([resolve("/tmp/repo-b"), resolve("/tmp/repo-a")]);
   });
 
   it("rejects project prompts without a project path", () => {
@@ -169,8 +169,8 @@ describe("updatePrompt", () => {
       projectPaths: ["/tmp/repo-x"],
     });
     expect(updated!.scope).toBe("project");
-    expect(updated!.projectPaths).toEqual(["/tmp/repo-x"]);
-    expect(updated!.projectPath).toBe("/tmp/repo-x");
+    expect(updated!.projectPaths).toEqual([resolve("/tmp/repo-x")]);
+    expect(updated!.projectPath).toBe(resolve("/tmp/repo-x"));
   });
 
   it("changes scope from project to global and clears paths", () => {
@@ -196,8 +196,8 @@ describe("updatePrompt", () => {
     const updated = promptManager.updatePrompt(prompt.id, {
       projectPaths: ["/tmp/repo-b", "/tmp/repo-c"],
     });
-    expect(updated!.projectPaths).toEqual(["/tmp/repo-b", "/tmp/repo-c"]);
-    expect(updated!.projectPath).toBe("/tmp/repo-b");
+    expect(updated!.projectPaths).toEqual([resolve("/tmp/repo-b"), resolve("/tmp/repo-c")]);
+    expect(updated!.projectPath).toBe(resolve("/tmp/repo-b"));
   });
 });
 

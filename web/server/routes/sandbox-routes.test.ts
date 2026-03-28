@@ -27,6 +27,7 @@ vi.mock("../image-pull-manager.js", () => ({
   },
 }));
 
+import { resolve } from "node:path";
 import { Hono } from "hono";
 import * as sandboxManager from "../sandbox-manager.js";
 import { containerManager } from "../container-manager.js";
@@ -504,9 +505,10 @@ describe("POST /api/sandboxes/:slug/test-init", () => {
 
     expect(res.status).toBe(200);
     // The cwd passed to createContainer should be the resolved path
+    // On Windows, resolve("/home/user/../../../etc") yields "D:\etc" not "/etc"
     expect(containerManager.createContainer).toHaveBeenCalledWith(
       expect.any(String),
-      "/etc",
+      resolve("/home/user/../../../etc"),
       expect.any(Object),
     );
   });

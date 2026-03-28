@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { join } from "node:path";
 import type { CronJob } from "./cron-types.js";
 import type { AgentConfig } from "./agent-types.js";
 
@@ -46,9 +47,11 @@ vi.mock("./paths.js", () => ({
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+// Use join() to build paths the same way the source does, ensuring correct
+// path separators on Windows (backslash) and Unix (forward slash).
 const COMPANION_HOME = "/tmp/test-companion-home";
-const CRON_DIR = `${COMPANION_HOME}/cron`;
-const MIGRATION_FLAG = `${COMPANION_HOME}/.cron-migrated`;
+const CRON_DIR = join(COMPANION_HOME, "cron");
+const MIGRATION_FLAG = join(COMPANION_HOME, ".cron-migrated");
 
 /**
  * Build a valid CronJob object with sensible defaults.
@@ -194,8 +197,8 @@ describe("migrating cron job files to agents", () => {
     });
     fsMock.readdirSync.mockReturnValue(["job-one.json", "job-two.json"]);
     fsMock.readFileSync.mockImplementation((path: string) => {
-      if (path === `${CRON_DIR}/job-one.json`) return JSON.stringify(job1);
-      if (path === `${CRON_DIR}/job-two.json`) return JSON.stringify(job2);
+      if (path === join(CRON_DIR, "job-one.json")) return JSON.stringify(job1);
+      if (path === join(CRON_DIR, "job-two.json")) return JSON.stringify(job2);
       throw new Error(`Unexpected readFileSync call: ${path}`);
     });
 
@@ -271,7 +274,7 @@ describe("migrating cron job files to agents", () => {
       ".hidden",
     ]);
     fsMock.readFileSync.mockImplementation((path: string) => {
-      if (path === `${CRON_DIR}/valid-job.json`) return JSON.stringify(job);
+      if (path === join(CRON_DIR, "valid-job.json")) return JSON.stringify(job);
       throw new Error(`Unexpected readFileSync call: ${path}`);
     });
     agentStoreMock.listAgents.mockReturnValue([]);
@@ -398,8 +401,8 @@ describe("when an agent with the same name already exists", () => {
     });
     fsMock.readdirSync.mockReturnValue(["new-job.json", "already-there.json"]);
     fsMock.readFileSync.mockImplementation((path: string) => {
-      if (path === `${CRON_DIR}/new-job.json`) return JSON.stringify(jobNew);
-      if (path === `${CRON_DIR}/already-there.json`) return JSON.stringify(jobExisting);
+      if (path === join(CRON_DIR, "new-job.json")) return JSON.stringify(jobNew);
+      if (path === join(CRON_DIR, "already-there.json")) return JSON.stringify(jobExisting);
       throw new Error(`Unexpected readFileSync call: ${path}`);
     });
     agentStoreMock.listAgents.mockReturnValue([existingAgent]);
@@ -456,8 +459,8 @@ describe("when cron job files contain corrupt JSON", () => {
     });
     fsMock.readdirSync.mockReturnValue(["corrupt.json", "valid.json"]);
     fsMock.readFileSync.mockImplementation((path: string) => {
-      if (path === `${CRON_DIR}/corrupt.json`) return "{broken json!!";
-      if (path === `${CRON_DIR}/valid.json`) return JSON.stringify(validJob);
+      if (path === join(CRON_DIR, "corrupt.json")) return "{broken json!!";
+      if (path === join(CRON_DIR, "valid.json")) return JSON.stringify(validJob);
       throw new Error(`Unexpected readFileSync call: ${path}`);
     });
     agentStoreMock.listAgents.mockReturnValue([]);

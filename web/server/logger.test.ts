@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, utimesSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
 
@@ -169,7 +169,7 @@ describe("LogFileWriter", () => {
     const writer = new LogFileWriter({ logsDir: tmpDir, maxLines: 1_000_000 });
     try {
       // Filename format: companion_{iso-timestamp}_{pid}.log
-      const filename = writer.filePath.split("/").pop()!;
+      const filename = basename(writer.filePath);
       expect(filename).toContain(`_${process.pid}.log`);
       expect(filename).toMatch(/^companion_/);
     } finally {

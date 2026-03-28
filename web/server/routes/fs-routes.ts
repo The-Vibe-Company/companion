@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { readdir, readFile, stat, writeFile, mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import type { Hono } from "hono";
 
 /** Ensure a resolved path is within one of the allowed base directories.
@@ -583,12 +583,16 @@ export function registerFsRoutes(api: Hono, opts?: { allowedBases?: string[] }):
     if (!filePath || typeof content !== "string") {
       return c.json({ error: "path and content required" }, 400);
     }
-    const base = filePath.split("/").pop();
+    const base = basename(filePath);
     if (base !== "CLAUDE.md") {
       return c.json({ error: "Can only write CLAUDE.md files" }, 400);
     }
     const absPath = resolve(filePath);
-    if (!absPath.endsWith("/CLAUDE.md") && !absPath.endsWith("/.claude/CLAUDE.md")) {
+    // Check that the resolved path ends with CLAUDE.md or .claude/CLAUDE.md
+    // Handle both forward and backslash separators for cross-platform support
+    const endsWithClaudeMd = absPath.endsWith("/CLAUDE.md") || absPath.endsWith("\\CLAUDE.md");
+    const endsWithDotClaudeMd = absPath.endsWith("/.claude/CLAUDE.md") || absPath.endsWith("\\.claude\\CLAUDE.md");
+    if (!endsWithClaudeMd && !endsWithDotClaudeMd) {
       return c.json({ error: "Invalid CLAUDE.md path" }, 400);
     }
     try {

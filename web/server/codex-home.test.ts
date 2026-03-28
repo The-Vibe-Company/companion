@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 import {
   DEFAULT_COMPANION_CODEX_HOME,
@@ -25,7 +25,8 @@ describe("codex-home", () => {
 
   it("resolveCompanionCodexHome uses explicit path when provided", () => {
     const custom = "/tmp/my-codex-home";
-    expect(resolveCompanionCodexHome(custom)).toBe(custom);
+    // resolve() is used internally, so on Windows /tmp becomes D:\tmp
+    expect(resolveCompanionCodexHome(custom)).toBe(resolve(custom));
   });
 
   // Regression: resolveCompanionCodexHome must NOT read process.env.CODEX_HOME
@@ -54,8 +55,9 @@ describe("codex-home", () => {
   it("resolveCompanionCodexSessionHome uses explicit path", () => {
     const custom = "/tmp/my-codex-home";
     const sessionId = "xyz-789";
+    // resolve() is used internally on the custom path, so use resolve() in expected value
     expect(resolveCompanionCodexSessionHome(sessionId, custom)).toBe(
-      join(custom, sessionId),
+      join(resolve(custom), sessionId),
     );
   });
 });
