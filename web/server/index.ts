@@ -12,6 +12,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serveStatic } from "hono/bun";
 import { cacheControlMiddleware } from "./cache-headers.js";
+import { securityHeaders } from "./middleware/security-headers.js";
+import { rateLimit } from "./middleware/rate-limit.js";
 import { createRoutes } from "./routes.js";
 import { CliLauncher } from "./cli-launcher.js";
 import { WsBridge } from "./ws-bridge.js";
@@ -130,7 +132,15 @@ if (managedAuthEnabled) {
   console.log("[server] Managed auth disabled");
 }
 
+// Security headers on all responses
+app.use("/*", securityHeaders());
+
+// CORS for API routes
 app.use("/api/*", cors());
+
+// Rate limiting: 100 req/min for API, prevents abuse
+app.use("/api/*", rateLimit({ max: 100, windowMs: 60_000 }));
+
 app.route("/api", createRoutes(orchestrator, launcher, wsBridge, terminalManager, prPoller, recorder, cronScheduler, agentExecutor, linearAgentBridge, port));
 
 // Dynamic manifest — embeds auth token in start_url so PWA auto-authenticates
