@@ -916,13 +916,13 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
   return (
     <div className="flex-1 min-h-0 relative overflow-hidden">
       {/* Top fade — softens the scroll edge under the top bar */}
-      <div className="pointer-events-none absolute top-0 inset-x-0 h-6 bg-gradient-to-b from-cc-bg to-transparent z-10" />
+      <div className="pointer-events-none absolute top-0 inset-x-0 h-7 bg-gradient-to-b from-cc-bg to-transparent z-10" />
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 sm:px-6 py-5 sm:py-8"
+        className="h-full overflow-y-auto overflow-x-hidden overscroll-y-contain px-3.5 sm:px-5 py-4 sm:py-5"
       >
-        <div className="max-w-3xl mx-auto space-y-5 sm:space-y-7">
+        <div className="max-w-[860px] mx-auto space-y-4 sm:space-y-[18px]">
           {canLoadResumeHistory && !resumeHistoryLoaded && (
             <div className="rounded-xl border border-cc-border bg-cc-card p-3">
               <div className="flex items-center justify-between gap-3">

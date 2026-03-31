@@ -207,7 +207,7 @@ export default function App() {
         className={`
           fixed inset-y-0 left-0 md:relative md:inset-auto z-40 md:z-auto
           h-full shrink-0 transition-all duration-200 pt-safe md:pt-0
-          ${sidebarOpen ? "w-full md:w-[260px] translate-x-0" : "w-0 -translate-x-full md:w-0 md:-translate-x-full"}
+          ${sidebarOpen ? "w-full md:w-[288px] translate-x-0" : "w-0 -translate-x-full md:w-0 md:-translate-x-full"}
           overflow-hidden
         `}
       >

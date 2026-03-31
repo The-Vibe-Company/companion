@@ -56,10 +56,10 @@ export function ChatView({ sessionId }: { sessionId: string }) {
   const showCliBanner = connStatus === "connected" && !cliConnected;
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0 bg-cc-bg chat-grain">
       {/* CLI disconnected / reconnecting / error banner */}
       {showCliBanner && (
-        <div className="px-4 py-2.5 bg-gradient-to-r from-cc-warning/8 to-cc-warning/4 border-b border-cc-warning/15 flex items-center justify-center gap-3 animate-[fadeSlideIn_0.3s_ease-out]">
+        <div className="mx-3.5 mt-2.5 px-3.5 py-2 kanna-panel border-cc-warning/20 bg-cc-warning/5 flex items-center justify-center gap-3 animate-[fadeSlideIn_0.3s_ease-out]">
           {reconnectError ? (
             <>
               <span className="w-1.5 h-1.5 rounded-full bg-cc-error shrink-0" />
@@ -99,7 +99,7 @@ export function ChatView({ sessionId }: { sessionId: string }) {
 
       {/* WebSocket disconnected banner */}
       {connStatus === "disconnected" && (
-        <div className="px-4 py-2.5 bg-gradient-to-r from-cc-warning/8 to-cc-warning/4 border-b border-cc-warning/15 flex items-center justify-center gap-2 animate-[fadeSlideIn_0.3s_ease-out]">
+        <div className="mx-3.5 mt-2.5 px-3.5 py-2 kanna-panel border-cc-warning/20 bg-cc-warning/5 flex items-center justify-center gap-2 animate-[fadeSlideIn_0.3s_ease-out]">
           <span className="w-3 h-3 rounded-full border-2 border-cc-warning/30 border-t-cc-warning animate-spin" />
           <span className="text-xs text-cc-warning font-medium">
             Reconnecting to session...
@@ -112,7 +112,7 @@ export function ChatView({ sessionId }: { sessionId: string }) {
 
       {/* AI auto-resolved notification (most recent only) */}
       {aiResolved && aiResolved.length > 0 && (
-        <div className="shrink-0 border-t border-cc-border bg-cc-card">
+        <div className="shrink-0 border-t border-cc-border bg-cc-card/80 backdrop-blur-sm">
           <AiValidationBadge
             entry={aiResolved[aiResolved.length - 1]}
             onDismiss={() => clearAiResolvedPermissions(sessionId)}
@@ -122,7 +122,7 @@ export function ChatView({ sessionId }: { sessionId: string }) {
 
       {/* Permission banners */}
       {perms.length > 0 && (
-        <div className="shrink-0 max-h-[60dvh] overflow-y-auto border-t border-cc-border bg-cc-card">
+        <div className="shrink-0 max-h-[60dvh] overflow-y-auto border-t border-cc-border bg-cc-card/90 backdrop-blur-sm">
           {perms.map((p) => (
             <PermissionBanner key={p.request_id} permission={p} sessionId={sessionId} />
           ))}

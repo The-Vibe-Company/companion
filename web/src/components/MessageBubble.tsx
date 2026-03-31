@@ -7,9 +7,9 @@ import { ToolBlock, getToolIcon, getToolLabel, getPreview, ToolIcon } from "./To
 export function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === "system") {
     return (
-      <div className="flex items-center gap-3 py-1 min-w-0">
+      <div className="flex items-center gap-3 py-2 min-w-0">
         <div className="shrink-0 flex-1 h-px bg-cc-border" />
-        <span className="text-[11px] text-cc-muted italic font-mono-code px-1 min-w-0 break-words text-center">
+        <span className="text-[11px] text-cc-muted italic font-mono-code px-2 min-w-0 break-words text-center tracking-wide">
           {message.content}
         </span>
         <div className="shrink-0 flex-1 h-px bg-cc-border" />
@@ -20,7 +20,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === "user") {
     return (
       <div className="flex justify-end animate-[userSlideIn_0.3s_ease-out]">
-        <div className="max-w-[85%] sm:max-w-[80%] px-3.5 sm:px-4 py-2.5 rounded-[16px] rounded-br-[6px] user-bubble-gradient text-cc-fg shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="max-w-[85%] sm:max-w-[76%] px-3.5 sm:px-4 py-2.5 rounded-[14px] rounded-br-[5px] user-bubble-gradient text-cc-fg border border-cc-border/50 shadow-[0_4px_16px_rgba(20,25,36,0.08)]">
           {message.images && message.images.length > 0 && (
             <div className="flex gap-2 flex-wrap mb-2">
               {message.images.map((img, i) => (
@@ -43,7 +43,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
 
   // Assistant message
   return (
-    <div className="animate-[fadeSlideIn_0.3s_ease-out]">
+    <div className="animate-[fadeSlideIn_0.3s_ease-out] py-0.5">
       <AssistantMessage message={message} />
     </div>
   );
@@ -144,8 +144,8 @@ function AssistantAvatar() {
   return (
     <div className="w-6 h-6 rounded-full avatar-ring flex items-center justify-center shrink-0 mt-0.5">
       <div className="avatar-inner w-full h-full rounded-full flex items-center justify-center">
-        <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-cc-primary">
-          <path d="M8 2L10.5 6.5L15 8L10.5 9.5L8 14L5.5 9.5L1 8L5.5 6.5L8 2Z" />
+        <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-cc-primary">
+          <path d="M8 2.2l1.9 3.8L14 7l-3 2.9.7 4.1L8 12.2 4.3 14l.7-4.1L2 7l4.1-1L8 2.2z" />
         </svg>
       </div>
     </div>
@@ -154,7 +154,7 @@ function AssistantAvatar() {
 
 function MarkdownContent({ text, showCursor = false }: { text: string; showCursor?: boolean }) {
   return (
-    <div className="markdown-body text-[14px] sm:text-[15px] text-cc-fg leading-relaxed overflow-hidden">
+    <div className="markdown-body text-[14px] sm:text-[15px] text-cc-fg/95 leading-relaxed overflow-hidden">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -391,7 +391,7 @@ function ThinkingBlock({ text }: { text: string }) {
 
   return (
     <div>
-      <div className="markdown-body text-[13px] text-cc-fg/40 leading-relaxed italic">
+      <div className="markdown-body text-[13px] text-cc-fg/55 leading-relaxed italic">
         <Markdown
           remarkPlugins={[remarkGfm]}
           components={{
@@ -400,7 +400,7 @@ function ThinkingBlock({ text }: { text: string }) {
             ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
             li: ({ children }) => <li>{children}</li>,
             code: ({ children }) => (
-              <code className="px-1 py-0.5 rounded bg-cc-fg/[0.03] text-cc-fg/40 font-mono-code text-[12px] not-italic">
+              <code className="px-1 py-0.5 rounded bg-cc-fg/[0.03] text-cc-fg/55 font-mono-code text-[12px] not-italic">
                 {children}
               </code>
             ),
@@ -412,7 +412,7 @@ function ThinkingBlock({ text }: { text: string }) {
       {isLong && !expanded && (
         <button
           onClick={() => setExpanded(true)}
-          className="text-[11px] text-cc-muted/40 hover:text-cc-muted/70 cursor-pointer transition-colors"
+          className="text-[11px] text-cc-muted/60 hover:text-cc-muted/85 cursor-pointer transition-colors"
         >
           Show more
         </button>

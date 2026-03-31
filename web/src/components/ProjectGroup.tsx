@@ -56,12 +56,12 @@ export function ProjectGroup({
     : "";
 
   return (
-    <div className={!isFirst ? "mt-3 pt-3 border-t border-cc-separator" : ""}>
+    <div className={!isFirst ? "mt-2.5 pt-2.5 border-t border-cc-separator/70" : ""}>
       {/* Group header */}
       <button
         onClick={() => onToggleCollapse(group.key)}
         aria-expanded={!isCollapsed}
-        className="w-full px-2 py-1 flex items-center gap-1.5 hover:bg-cc-hover rounded-md transition-colors cursor-pointer group/header"
+        className="w-full px-2.5 py-[5px] flex items-center gap-1.5 hover:bg-cc-hover rounded-lg transition-colors cursor-pointer group/header"
       >
         <svg
           viewBox="0 0 16 16"
@@ -70,7 +70,7 @@ export function ProjectGroup({
         >
           <path d="M6 4l4 4-4 4" />
         </svg>
-        <span className="text-[11px] font-semibold text-cc-fg/60 truncate uppercase tracking-wide">
+        <span className="text-[11px] font-semibold text-cc-fg/70 truncate uppercase tracking-wide">
           {group.label}
         </span>
 
@@ -92,7 +92,7 @@ export function ProjectGroup({
 
       {/* Collapsed preview */}
       {isCollapsed && collapsedPreview && (
-        <div className="text-[10px] text-cc-muted/70 truncate pl-5 pb-0.5">
+        <div className="text-[10px] text-cc-muted/70 truncate pl-6 pb-0.5">
           {collapsedPreview}
         </div>
       )}

@@ -63,7 +63,7 @@ function StatusDot({ status }: { status: DerivedStatus }) {
 function BackendBadge({ type }: { type: "claude" | "codex" }) {
   if (type === "codex") {
     return (
-      <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-500 leading-none">
+      <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-600 dark:text-sky-300 leading-none">
         CX
       </span>
     );
@@ -185,10 +185,10 @@ export function SessionItem({
             onStartRename(s.id, label);
           }
         }}
-        className={`w-full flex items-center gap-2 py-2 pl-2.5 pr-12 min-h-[44px] rounded-lg transition-all duration-100 cursor-pointer relative ${
+        className={`w-full flex items-center gap-2 py-1.5 pl-2.5 pr-12 min-h-[44px] rounded-lg transition-all duration-100 cursor-pointer relative border ${
           isActive
-            ? "bg-cc-active"
-            : "hover:bg-cc-hover"
+            ? "bg-cc-active border-cc-primary/30"
+            : "border-transparent hover:bg-cc-hover hover:border-cc-border/60"
         }`}
       >
         {/* Left accent edge for active state */}
@@ -228,7 +228,7 @@ export function SessionItem({
         ) : (
           <div className="flex-1 min-w-0">
             <span
-              className={`text-[12.5px] font-medium truncate block leading-snug ${
+              className={`text-[12.5px] font-medium truncate block leading-snug tracking-tight ${
                 isActive ? "text-cc-fg" : "text-cc-fg/90"
               } ${isRecentlyRenamed ? "animate-name-appear" : ""}`}
               onAnimationEnd={() => onClearRecentlyRenamed(s.id)}
@@ -236,7 +236,7 @@ export function SessionItem({
               {label}
             </span>
             {cwdTail && (
-              <span className="text-[10px] text-cc-muted/70 truncate block leading-tight mt-px">
+              <span className="text-[10px] text-cc-muted/75 truncate block leading-tight mt-px">
                 {cwdTail}
               </span>
             )}

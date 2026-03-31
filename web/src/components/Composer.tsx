@@ -343,7 +343,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
   const canSend = text.trim().length > 0 && isConnected;
 
   return (
-    <div className="shrink-0 px-0 sm:px-6 pt-0 sm:pt-3 pb-5 sm:pb-4 bg-cc-input-bg sm:bg-transparent">
+    <div className="shrink-0 px-0 sm:px-6 pt-0 sm:pt-3 pb-5 sm:pb-4 bg-cc-input-bg/80 sm:bg-transparent backdrop-blur-sm">
       <div className="max-w-3xl mx-auto">
         {/* Image thumbnails */}
         {images.length > 0 && (
@@ -414,7 +414,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
         )}
 
         {/* Input container: flat separator on mobile, card on desktop */}
-        <div className={`relative overflow-visible transition-all duration-200 border-t border-cc-separator sm:border sm:border-cc-border sm:bg-cc-input-bg/95 sm:rounded-[16px] sm:backdrop-blur-sm composer-card ${
+        <div className={`relative overflow-visible transition-all duration-200 border-t border-cc-separator sm:border sm:border-cc-border sm:bg-cc-input-bg/95 sm:rounded-[14px] sm:backdrop-blur-sm composer-card ${
           isPlan
             ? "sm:border-cc-primary/40 sm:shadow-[0_10px_30px_rgba(217,119,87,0.08)]"
             : "sm:focus-within:border-cc-primary/25"
@@ -423,7 +423,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
           {slashMenuOpen && filteredCommands.length > 0 && (
             <div
               ref={menuRef}
-              className="absolute left-2 right-2 bottom-full mb-1 max-h-[240px] overflow-y-auto bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-20 py-1"
+              className="absolute left-2 right-2 bottom-full mb-1 max-h-[240px] overflow-y-auto bg-cc-card border border-cc-border rounded-[12px] shadow-xl z-20 py-1"
             >
               {filteredCommands.map((cmd, i) => (
                 <button
@@ -468,7 +468,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
           />
 
           {savePromptOpen && (
-            <div className="absolute left-2 right-2 bottom-full mb-1 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-20 p-3 space-y-2">
+            <div className="absolute left-2 right-2 bottom-full mb-1 bg-cc-card border border-cc-border rounded-[12px] shadow-xl z-20 p-3 space-y-2">
               <div className="text-xs font-semibold text-cc-fg">Save prompt</div>
               <input
                 value={savePromptName}
@@ -611,7 +611,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
           </div>
 
           {/* Textarea row */}
-          <div className="px-3 sm:px-3 pt-1 sm:pt-2.5">
+          <div className="px-3 sm:px-3 pt-1.5 sm:pt-2.5">
             <textarea
               ref={textareaRef}
               value={text}
@@ -626,7 +626,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
                 : "Waiting for CLI connection..."}
               disabled={!isConnected}
               rows={1}
-              className="w-full px-1 py-1.5 text-base sm:text-sm bg-transparent resize-none outline-none text-cc-fg font-sans-ui placeholder:text-cc-muted disabled:opacity-50 overflow-y-auto"
+              className="w-full px-1 py-1.5 text-base sm:text-sm bg-transparent resize-none outline-none text-cc-fg font-sans-ui placeholder:text-cc-muted disabled:opacity-50 overflow-y-auto leading-relaxed"
               style={{ minHeight: "36px", maxHeight: "200px" }}
             />
           </div>
@@ -663,7 +663,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
           </div>
 
           {/* Desktop action bar: + bookmark mode spacer model send (hidden on mobile) */}
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 pb-2">
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 pb-2.5 border-t border-cc-border/70">
             {/* + button (image upload) */}
             <button
               onClick={() => fileInputRef.current?.click()}

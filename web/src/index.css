@@ -18,25 +18,25 @@
 
 @theme {
   /* Light Mode (default) */
-  --color-cc-bg: #faf9f6;
-  --color-cc-fg: #141413;
+  --color-cc-bg: #f5f7fb;
+  --color-cc-fg: #141925;
   --color-cc-card: #ffffff;
-  --color-cc-primary: #d97757;
-  --color-cc-primary-hover: #e08b6b;
-  --color-cc-user-bubble: #f0efe8;
-  --color-cc-border: rgba(31,30,29,0.12);
-  --color-cc-muted: #6f6e69;
-  --color-cc-sidebar: #f5f4ef;
+  --color-cc-primary: #e86442;
+  --color-cc-primary-hover: #d85535;
+  --color-cc-user-bubble: #eef2f7;
+  --color-cc-border: rgba(20,25,37,0.11);
+  --color-cc-muted: #5f697d;
+  --color-cc-sidebar: #eef2f8;
   --color-cc-input-bg: #ffffff;
-  --color-cc-code-bg: #f5f4ef;
-  --color-cc-code-fg: #2d2d2d;
-  --color-cc-hover: rgba(31,30,29,0.05);
-  --color-cc-active: rgba(31,30,29,0.09);
-  --color-cc-success: #2d7d46;
+  --color-cc-code-bg: #f3f5f9;
+  --color-cc-code-fg: #283140;
+  --color-cc-hover: rgba(20,25,37,0.055);
+  --color-cc-active: rgba(32,52,94,0.11);
+  --color-cc-success: #23824f;
   --color-cc-error: #c53030;
-  --color-cc-warning: #b7791f;
-  --color-cc-sidebar-footer: #edece5;
-  --color-cc-separator: rgba(31,30,29,0.10);
+  --color-cc-warning: #b4741a;
+  --color-cc-sidebar-footer: #eef2f8;
+  --color-cc-separator: rgba(23,26,34,0.08);
   --color-cc-info: #2b6cb0;
   --color-cc-merged: #805ad5;
   --color-cc-codex: #10a37f;
@@ -187,25 +187,25 @@
 
 /* Dark mode overrides */
 .dark {
-  --color-cc-bg: #262624;
-  --color-cc-fg: #faf9f5;
-  --color-cc-card: #141413;
-  --color-cc-primary: #d97757;
-  --color-cc-primary-hover: #e08b6b;
-  --color-cc-user-bubble: #30302e;
-  --color-cc-border: rgba(222,220,209,0.15);
-  --color-cc-muted: #c2c0b6;
-  --color-cc-sidebar: #1e1e1c;
-  --color-cc-input-bg: #141413;
-  --color-cc-code-bg: #141413;
-  --color-cc-code-fg: #d4d4d4;
-  --color-cc-hover: rgba(222,220,209,0.06);
-  --color-cc-active: rgba(222,220,209,0.10);
+  --color-cc-bg: #171921;
+  --color-cc-fg: #f5f7fb;
+  --color-cc-card: #1f2330;
+  --color-cc-primary: #f27a59;
+  --color-cc-primary-hover: #ff8a6a;
+  --color-cc-user-bubble: #262d3c;
+  --color-cc-border: rgba(215,223,243,0.14);
+  --color-cc-muted: #aab4cc;
+  --color-cc-sidebar: #171c27;
+  --color-cc-input-bg: #1b202c;
+  --color-cc-code-bg: #161b25;
+  --color-cc-code-fg: #d6def3;
+  --color-cc-hover: rgba(215,223,243,0.08);
+  --color-cc-active: rgba(103,142,214,0.16);
   --color-cc-success: #48bb78;
   --color-cc-error: #fc8181;
   --color-cc-warning: #f6e05e;
-  --color-cc-sidebar-footer: #141413;
-  --color-cc-separator: rgba(222,220,209,0.08);
+  --color-cc-sidebar-footer: #151a24;
+  --color-cc-separator: rgba(215,223,243,0.09);
   --color-cc-info: #63b3ed;
   --color-cc-merged: #b794f4;
   --color-cc-codex: #34d399;
@@ -247,7 +247,7 @@
 }
 
 .font-sans-ui {
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", "Noto Sans", sans-serif;
 }
 
 .font-mono-code {
@@ -258,11 +258,11 @@
 
 /* Subtle inner glow for the composer card on desktop */
 .composer-card {
-  box-shadow: 0 10px 30px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.06);
+  box-shadow: 0 10px 24px rgba(26, 34, 52, 0.08), inset 0 1px 0 rgba(255,255,255,0.08);
   transition: box-shadow 200ms ease, border-color 200ms ease;
 }
 .composer-card:focus-within {
-  box-shadow: 0 12px 36px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.08);
+  box-shadow: 0 14px 30px rgba(37, 51, 83, 0.13), inset 0 1px 0 rgba(255,255,255,0.1);
 }
 
 /* Thinking block expand/collapse animation */
@@ -294,7 +294,20 @@
 
 /* User bubble subtle gradient */
 .user-bubble-gradient {
-  background: linear-gradient(135deg, var(--color-cc-user-bubble), color-mix(in srgb, var(--color-cc-user-bubble) 85%, var(--color-cc-primary) 15%));
+  background: linear-gradient(140deg, var(--color-cc-user-bubble), color-mix(in srgb, var(--color-cc-user-bubble) 90%, var(--color-cc-primary) 10%));
+}
+
+.chat-grain {
+  background-image: radial-gradient(circle at 1px 1px, rgba(96, 113, 148, 0.08) 1px, transparent 0);
+  background-size: 18px 18px;
+}
+
+@layer components {
+  .kanna-panel {
+    border: 1px solid var(--color-cc-border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--color-cc-card) 94%, var(--color-cc-bg) 6%);
+  }
 }
 
 /* Generation stats pulsing bar */

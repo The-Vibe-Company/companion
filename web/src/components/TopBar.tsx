@@ -132,8 +132,8 @@ export function TopBar() {
   }, [showWorkspaceControls, workspaceTabs, activeTab, cwd, quickTerminalOpen, quickTerminalTabs.length, openQuickTerminal, defaultTerminalOpts, setActiveTab, markChatTabReentry, currentSessionId]);
 
   return (
-    <header className="relative shrink-0 h-11 px-4 bg-cc-bg">
-      <div className="h-full flex items-center gap-1 min-w-0">
+    <header className="relative shrink-0 h-12 px-3.5 bg-cc-bg/90 backdrop-blur-sm border-b border-cc-border/70">
+      <div className="h-full flex items-center gap-0.5 min-w-0">
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors cursor-pointer shrink-0 ${
@@ -153,10 +153,10 @@ export function TopBar() {
           <div className="flex-1 flex items-center justify-start md:justify-center gap-0.5 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <button
                 onClick={() => activateWorkspaceTab("chat")}
-                className={`h-full px-3 text-[12px] font-medium transition-colors cursor-pointer flex items-center gap-1.5 border-b-[1.5px] shrink-0 ${
+                className={`h-7 px-2.5 text-[11.5px] font-medium transition-colors cursor-pointer flex items-center gap-1.5 border rounded-md shrink-0 ${
                   activeTab === "chat"
-                    ? "text-cc-fg border-cc-primary"
-                    : "text-cc-muted hover:text-cc-fg border-transparent"
+                    ? "text-cc-fg border-cc-primary/40 bg-cc-card shadow-[0_1px_0_rgba(0,0,0,0.03)]"
+                    : "text-cc-muted/90 hover:text-cc-fg border-transparent hover:bg-cc-hover"
                 }`}
                 title={sessionName || "Session"}
                 aria-label="Session tab"
@@ -174,10 +174,10 @@ export function TopBar() {
               </button>
               <button
                 onClick={() => activateWorkspaceTab("diff")}
-                className={`h-full px-3 text-[12px] font-medium transition-colors cursor-pointer flex items-center gap-1.5 border-b-[1.5px] shrink-0 ${
+                className={`h-7 px-2.5 text-[11.5px] font-medium transition-colors cursor-pointer flex items-center gap-1.5 border rounded-md shrink-0 ${
                   activeTab === "diff"
-                    ? "text-cc-fg border-cc-primary"
-                    : "text-cc-muted hover:text-cc-fg border-transparent"
+                    ? "text-cc-fg border-cc-primary/40 bg-cc-card shadow-[0_1px_0_rgba(0,0,0,0.03)]"
+                    : "text-cc-muted/90 hover:text-cc-fg border-transparent hover:bg-cc-hover"
                 }`}
                 aria-label="Diffs tab"
               >
@@ -191,12 +191,12 @@ export function TopBar() {
               <button
                 onClick={() => activateWorkspaceTab("terminal")}
                 disabled={!cwd}
-                className={`h-full px-3 text-[12px] font-medium transition-colors flex items-center border-b-[1.5px] shrink-0 ${
+                className={`h-7 px-2.5 text-[11.5px] font-medium transition-colors flex items-center border rounded-md shrink-0 ${
                   !cwd
                     ? "text-cc-muted/50 border-transparent cursor-not-allowed"
                     : activeTab === "terminal"
-                      ? "text-cc-fg border-cc-primary cursor-pointer"
-                      : "text-cc-muted hover:text-cc-fg border-transparent cursor-pointer"
+                      ? "text-cc-fg border-cc-primary/40 bg-cc-card shadow-[0_1px_0_rgba(0,0,0,0.03)] cursor-pointer"
+                      : "text-cc-muted/90 hover:text-cc-fg border-transparent hover:bg-cc-hover cursor-pointer"
                 }`}
                 title={terminalButtonTitle}
                 aria-label="Shell tab"
@@ -205,10 +205,10 @@ export function TopBar() {
               </button>
               <button
                 onClick={() => activateWorkspaceTab("processes")}
-                className={`h-full px-3 text-[12px] font-medium transition-colors cursor-pointer flex items-center gap-1.5 border-b-[1.5px] shrink-0 ${
+                className={`h-7 px-2.5 text-[11.5px] font-medium transition-colors cursor-pointer flex items-center gap-1.5 border rounded-md shrink-0 ${
                   activeTab === "processes"
-                    ? "text-cc-fg border-cc-primary"
-                    : "text-cc-muted hover:text-cc-fg border-transparent"
+                    ? "text-cc-fg border-cc-primary/40 bg-cc-card shadow-[0_1px_0_rgba(0,0,0,0.03)]"
+                    : "text-cc-muted/90 hover:text-cc-fg border-transparent hover:bg-cc-hover"
                 }`}
                 aria-label="Processes tab"
               >
@@ -222,12 +222,12 @@ export function TopBar() {
               <button
                 onClick={() => activateWorkspaceTab("editor")}
                 disabled={!cwd}
-                className={`h-full px-3 text-[12px] font-medium transition-colors flex items-center border-b-[1.5px] shrink-0 ${
+                className={`h-7 px-2.5 text-[11.5px] font-medium transition-colors flex items-center border rounded-md shrink-0 ${
                   !cwd
                     ? "text-cc-muted/50 border-transparent cursor-not-allowed"
                     : activeTab === "editor"
-                      ? "text-cc-fg border-cc-primary cursor-pointer"
-                      : "text-cc-muted hover:text-cc-fg border-transparent cursor-pointer"
+                      ? "text-cc-fg border-cc-primary/40 bg-cc-card shadow-[0_1px_0_rgba(0,0,0,0.03)] cursor-pointer"
+                      : "text-cc-muted/90 hover:text-cc-fg border-transparent hover:bg-cc-hover cursor-pointer"
                 }`}
                 title={!cwd ? "Editor unavailable while session is reconnecting" : "Editor"}
                 aria-label="Editor tab"
@@ -236,10 +236,10 @@ export function TopBar() {
               </button>
               <button
                 onClick={() => activateWorkspaceTab("browser")}
-                className={`h-full px-3 text-[12px] font-medium transition-colors cursor-pointer flex items-center border-b-[1.5px] shrink-0 ${
+                className={`h-7 px-2.5 text-[11.5px] font-medium transition-colors cursor-pointer flex items-center border rounded-md shrink-0 ${
                   activeTab === "browser"
-                    ? "text-cc-fg border-cc-primary"
-                    : "text-cc-muted hover:text-cc-fg border-transparent"
+                    ? "text-cc-fg border-cc-primary/40 bg-cc-card shadow-[0_1px_0_rgba(0,0,0,0.03)]"
+                    : "text-cc-muted/90 hover:text-cc-fg border-transparent hover:bg-cc-hover"
                 }`}
                 title="Browser preview"
                 aria-label="Browser tab"

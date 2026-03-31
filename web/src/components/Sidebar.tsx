@@ -495,11 +495,11 @@ export function Sidebar() {
   };
 
   return (
-    <aside aria-label="Session sidebar" className="w-full md:w-[260px] h-full flex flex-col bg-cc-sidebar">
+    <aside aria-label="Session sidebar" className="w-full md:w-[288px] h-full flex flex-col bg-cc-sidebar border-r border-cc-border/80">
       {/* Header */}
-      <div className="p-3.5 pb-2">
+      <div className="px-3.5 pt-3 pb-2 border-b border-cc-border/60 bg-cc-card/45 backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
-          <img src={logoSrc} alt="" className="w-6 h-6" />
+          <img src={logoSrc} alt="" className="w-6 h-6 rounded" />
           <span className="text-[13px] font-semibold text-cc-fg tracking-tight">The Companion</span>
           <button
             onClick={handleNewSession}
@@ -578,7 +578,7 @@ export function Sidebar() {
             ))}
 
             {cronSessions.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-cc-separator">
+              <div className="mt-2.5 pt-2.5 border-t border-cc-separator/70">
                 <button
                   onClick={() => setShowCronSessions(!showCronSessions)}
                   aria-expanded={showCronSessions}
@@ -608,7 +608,7 @@ export function Sidebar() {
             )}
 
             {agentSessions.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-cc-separator">
+              <div className="mt-2.5 pt-2.5 border-t border-cc-separator/70">
                 <button
                   onClick={() => setShowAgentSessions(!showAgentSessions)}
                   aria-expanded={showAgentSessions}
@@ -638,7 +638,7 @@ export function Sidebar() {
             )}
 
             {archivedSessions.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-cc-separator">
+              <div className="mt-2.5 pt-2.5 border-t border-cc-separator/70">
                 <div className="flex items-center">
                   <button
                     onClick={() => setShowArchived(!showArchived)}
@@ -697,10 +697,10 @@ export function Sidebar() {
       </div>
 
       {/* Footer */}
-      <div className="px-2 py-1.5 pb-safe bg-cc-sidebar-footer border-t border-cc-border/30">
+      <div className="px-2.5 py-2 pb-safe bg-cc-sidebar-footer border-t border-cc-border/60">
         <nav className="flex flex-col gap-1.5" aria-label="Navigation">
           {NAV_SECTIONS.map((section) => (
-            <section key={section.id} className="rounded-lg border border-cc-border/30 bg-cc-card/20 p-0.5">
+            <section key={section.id} className="rounded-xl border border-cc-border/40 bg-cc-card/45 p-1">
               <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-cc-muted/75 block">
                 {section.label}
               </span>
@@ -726,7 +726,7 @@ export function Sidebar() {
                       }}
                       title={item.label}
                       aria-current={isActive ? "page" : undefined}
-                      className={`group flex min-h-[44px] md:min-h-[34px] w-full items-center gap-2 rounded-md px-2 py-1 md:py-0.5 text-left transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cc-primary/60 ${
+                      className={`group flex min-h-[44px] md:min-h-[36px] w-full items-center gap-2 rounded-lg px-2.5 py-1 md:py-0.5 text-left transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cc-primary/60 ${
                         isActive
                           ? "bg-cc-active text-cc-fg"
                           : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
@@ -749,7 +749,7 @@ export function Sidebar() {
             </section>
           ))}
         </nav>
-        <div className="mt-1.5 rounded-lg border border-cc-border/30 bg-cc-card/20 px-1.5 py-0.5">
+        <div className="mt-1.5 rounded-xl border border-cc-border/40 bg-cc-card/45 px-1.5 py-1">
           <div className="flex items-center justify-between">
             <span className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cc-muted/75">
               Resources
