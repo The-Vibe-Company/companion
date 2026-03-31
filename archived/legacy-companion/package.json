@@ -14,6 +14,9 @@
   "dependencies": {
     "the-companion": "^0.2.2"
   },
+  "overrides": {
+    "lodash": "4.17.21"
+  },
   "devDependencies": {
     "husky": "^9.1.7"
   }

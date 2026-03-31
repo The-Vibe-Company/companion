@@ -31,6 +31,9 @@
     "stripe": "^17.0.0",
     "tailwind-merge": "^3.5.0"
   },
+  "overrides": {
+    "lodash": "4.17.21"
+  },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",
     "@testing-library/jest-dom": "^6.9.1",

@@ -18,6 +18,9 @@
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.0"
   },
+  "overrides": {
+    "lodash": "4.17.21"
+  },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
     "@testing-library/jest-dom": "^6.9.1",
