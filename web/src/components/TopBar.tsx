@@ -3,7 +3,7 @@ import { useStore } from "../store.js";
 import { parseHash } from "../utils/routing.js";
 import { AiValidationToggle } from "./AiValidationToggle.js";
 
-type WorkspaceTab = "chat" | "diff" | "terminal" | "processes" | "editor" | "browser";
+type WorkspaceTab = "chat" | "diff" | "environment";
 
 export function TopBar() {
   const hash = useSyncExternalStore(
@@ -27,48 +27,9 @@ export function TopBar() {
   const activeTab = useStore((s) => s.activeTab);
   const setActiveTab = useStore((s) => s.setActiveTab);
   const markChatTabReentry = useStore((s) => s.markChatTabReentry);
-  const quickTerminalOpen = useStore((s) => s.quickTerminalOpen);
-  const quickTerminalTabs = useStore((s) => s.quickTerminalTabs);
-  const openQuickTerminal = useStore((s) => s.openQuickTerminal);
-  const resetQuickTerminal = useStore((s) => s.resetQuickTerminal);
   const changedFilesCount = useStore((s) =>
     currentSessionId ? (s.gitChangedFilesCount.get(currentSessionId) ?? 0) : 0
   );
-
-  const runningProcessCount = useStore((s) => {
-    if (!currentSessionId) return 0;
-    const processes = s.sessionProcesses.get(currentSessionId);
-    if (!processes) return 0;
-    return processes.filter((p) => p.status === "running").length;
-  });
-
-  const cwd = useStore((s) => {
-    if (!currentSessionId) return null;
-    return (
-      s.sessions.get(currentSessionId)?.cwd ||
-      s.sdkSessions.find((sdk) => sdk.sessionId === currentSessionId)?.cwd ||
-      null
-    );
-  });
-  const sdkSession = useStore((s) => {
-    if (!currentSessionId) return null;
-    return s.sdkSessions.find((sdk) => sdk.sessionId === currentSessionId) || null;
-  });
-  const bridgeSession = useStore((s) => {
-    if (!currentSessionId) return null;
-    return s.sessions.get(currentSessionId) || null;
-  });
-  const defaultTerminalOpts = useMemo(() => {
-    if (sdkSession?.containerId) {
-      return { target: "docker" as const, cwd: "/workspace", containerId: sdkSession.containerId };
-    }
-    return { target: "host" as const, cwd: cwd || "" };
-  }, [cwd, sdkSession?.containerId]);
-  const terminalButtonTitle = !cwd
-    ? "Terminal unavailable while session is reconnecting"
-    : sdkSession?.containerId || bridgeSession?.is_containerized
-      ? "Open terminal in session container (Ctrl/Cmd+J)"
-      : "Quick terminal (Ctrl/Cmd+J)";
   const status = currentSessionId ? (sessionStatus.get(currentSessionId) ?? null) : null;
   const isConnected = currentSessionId ? (cliConnected.get(currentSessionId) ?? false) : false;
   const sessionName = currentSessionId
@@ -78,40 +39,14 @@ export function TopBar() {
     : null;
   const showWorkspaceControls = !!(currentSessionId && isSessionView);
   const showContextToggle = route.page === "session" && !!currentSessionId;
-  const workspaceTabs: WorkspaceTab[] = ["chat", "diff", "terminal", "processes", "editor", "browser"];
+  const workspaceTabs: WorkspaceTab[] = ["chat", "diff", "environment"];
 
   const activateWorkspaceTab = (tab: WorkspaceTab) => {
-    if (tab === "terminal") {
-      if (!cwd) return;
-      if (!quickTerminalOpen || quickTerminalTabs.length === 0) {
-        openQuickTerminal({ ...defaultTerminalOpts, reuseIfExists: true });
-      }
-      setActiveTab("terminal");
-      return;
-    }
-
-    if (tab === "editor") {
-      if (!cwd) return;
-      setActiveTab("editor");
-      return;
-    }
-
-    if (tab === "browser") {
-      setActiveTab("browser");
-      return;
-    }
-
     if (tab === "chat" && activeTab !== "chat" && currentSessionId) {
       markChatTabReentry(currentSessionId);
     }
     setActiveTab(tab);
   };
-
-  useEffect(() => {
-    if (!currentSessionId) {
-      resetQuickTerminal();
-    }
-  }, [currentSessionId, resetQuickTerminal]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -129,7 +64,7 @@ export function TopBar() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [showWorkspaceControls, workspaceTabs, activeTab, cwd, quickTerminalOpen, quickTerminalTabs.length, openQuickTerminal, defaultTerminalOpts, setActiveTab, markChatTabReentry, currentSessionId]);
+  }, [showWorkspaceControls, workspaceTabs, activeTab, setActiveTab, markChatTabReentry, currentSessionId]);
 
   return (
     <header className="relative shrink-0 h-11 px-4 bg-cc-bg">
@@ -189,62 +124,17 @@ export function TopBar() {
                 )}
               </button>
               <button
-                onClick={() => activateWorkspaceTab("terminal")}
-                disabled={!cwd}
-                className={`h-full px-3 text-[12px] font-medium transition-colors flex items-center border-b-[1.5px] shrink-0 ${
-                  !cwd
-                    ? "text-cc-muted/50 border-transparent cursor-not-allowed"
-                    : activeTab === "terminal"
-                      ? "text-cc-fg border-cc-primary cursor-pointer"
-                      : "text-cc-muted hover:text-cc-fg border-transparent cursor-pointer"
-                }`}
-                title={terminalButtonTitle}
-                aria-label="Shell tab"
-              >
-                Shell
-              </button>
-              <button
-                onClick={() => activateWorkspaceTab("processes")}
+                onClick={() => activateWorkspaceTab("environment")}
                 className={`h-full px-3 text-[12px] font-medium transition-colors cursor-pointer flex items-center gap-1.5 border-b-[1.5px] shrink-0 ${
-                  activeTab === "processes"
+                  activeTab === "environment"
                     ? "text-cc-fg border-cc-primary"
                     : "text-cc-muted hover:text-cc-fg border-transparent"
                 }`}
-                aria-label="Processes tab"
+                title="Environment: services & ports"
+                aria-label="Environment tab"
               >
-                Processes
-                {runningProcessCount > 0 && (
-                  <span className="text-[9px] rounded-full min-w-[15px] h-[15px] px-1 flex items-center justify-center font-semibold leading-none bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
-                    {runningProcessCount}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => activateWorkspaceTab("editor")}
-                disabled={!cwd}
-                className={`h-full px-3 text-[12px] font-medium transition-colors flex items-center border-b-[1.5px] shrink-0 ${
-                  !cwd
-                    ? "text-cc-muted/50 border-transparent cursor-not-allowed"
-                    : activeTab === "editor"
-                      ? "text-cc-fg border-cc-primary cursor-pointer"
-                      : "text-cc-muted hover:text-cc-fg border-transparent cursor-pointer"
-                }`}
-                title={!cwd ? "Editor unavailable while session is reconnecting" : "Editor"}
-                aria-label="Editor tab"
-              >
-                Editor
-              </button>
-              <button
-                onClick={() => activateWorkspaceTab("browser")}
-                className={`h-full px-3 text-[12px] font-medium transition-colors cursor-pointer flex items-center border-b-[1.5px] shrink-0 ${
-                  activeTab === "browser"
-                    ? "text-cc-fg border-cc-primary"
-                    : "text-cc-muted hover:text-cc-fg border-transparent"
-                }`}
-                title="Browser preview"
-                aria-label="Browser tab"
-              >
-                Browser
+                Environment
+                <PortStatusDots />
               </button>
           </div>
         )}
@@ -300,5 +190,35 @@ function ThemeToggle() {
         </svg>
       )}
     </button>
+  );
+}
+
+const EMPTY_PORT_STATUSES: import("../store/environment-slice.js").PortStatusInfo[] = [];
+
+/** Tiny colored dots showing port health at a glance in the Environment tab. */
+function PortStatusDots() {
+  const currentSessionId = useStore((s) => s.currentSessionId);
+  const portStatuses = useStore((s) =>
+    currentSessionId ? s.portStatuses.get(currentSessionId) ?? EMPTY_PORT_STATUSES : EMPTY_PORT_STATUSES,
+  );
+
+  if (portStatuses.length === 0) return null;
+
+  return (
+    <span className="flex items-center gap-0.5">
+      {portStatuses.map((ps) => (
+        <span
+          key={ps.port}
+          className={`w-1.5 h-1.5 rounded-full ${
+            ps.status === "healthy"
+              ? "bg-green-500"
+              : ps.status === "unhealthy"
+              ? "bg-red-500"
+              : "bg-yellow-500"
+          }`}
+          title={`${ps.label} (:${ps.port}) — ${ps.status}`}
+        />
+      ))}
+    </span>
   );
 }

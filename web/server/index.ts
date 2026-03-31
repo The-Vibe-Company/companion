@@ -36,6 +36,8 @@ import { NoVncProxy } from "./novnc-proxy.js";
 import { startPeriodicCheck, setServiceMode } from "./update-checker.js";
 import { imagePullManager } from "./image-pull-manager.js";
 import { restoreIfNeeded as restoreTailscaleFunnel, cleanup as cleanupTailscaleFunnel } from "./tailscale-manager.js";
+import { stopAll as stopAllLaunchServices } from "./launch-runner.js";
+import { stopAllMonitors } from "./port-monitor.js";
 import { isRunningAsService } from "./service.js";
 import { getToken, verifyToken } from "./auth-manager.js";
 import { getCookie } from "hono/cookie";
@@ -65,8 +67,17 @@ const linearAgentBridge = new LinearAgentBridge(agentExecutor, wsBridge);
 
 const orchestrator = new SessionOrchestrator({
   launcher, wsBridge, sessionStore, worktreeTracker,
-  prPoller, agentExecutor,
+  prPoller, agentExecutor, port,
 });
+
+// Subscribe to port health status events for broadcasting to browsers
+wsBridge.subscribePortStatus();
+
+// Subscribe to service status events for broadcasting to browsers
+wsBridge.subscribeServiceStatus();
+
+// Subscribe to service log events for streaming to browsers
+wsBridge.subscribeServiceLogs();
 
 // ── Cloud relay connection (for receiving webhooks behind a firewall) ────────
 // The relay forwards platform webhooks (e.g. GitHub, Slack) to the Companion
@@ -386,6 +397,8 @@ setInterval(() => {
 // ── Graceful shutdown — persist container state ──────────────────────────────
 function gracefulShutdown() {
   console.log("[server] Persisting container state before shutdown...");
+  stopAllLaunchServices();
+  stopAllMonitors();
   containerManager.persistState(CONTAINER_STATE_PATH);
   cleanupTailscaleFunnel(port);
   closeLogFile();

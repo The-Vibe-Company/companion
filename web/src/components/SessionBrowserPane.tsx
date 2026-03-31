@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
+import { useStore } from "../store.js";
 
 interface SessionBrowserPaneProps {
   sessionId: string;
@@ -37,6 +38,13 @@ export function SessionBrowserPane({ sessionId }: SessionBrowserPaneProps) {
         }
         setBrowserUrl(url.pathname + url.search);
         setBrowserMode("container");
+
+        // If EnvironmentPanel queued a URL, navigate now that the browser is ready
+        const pending = useStore.getState().pendingBrowserUrl.get(sessionId);
+        if (pending) {
+          useStore.getState().setPendingBrowserUrl(sessionId, null);
+          api.navigateBrowser(sessionId, pending).catch(() => { /* ignore */ });
+        }
       } else {
         setError(result.message || "Browser preview unavailable.");
       }
@@ -49,6 +57,16 @@ export function SessionBrowserPane({ sessionId }: SessionBrowserPaneProps) {
 
     return () => { cancelled = true; };
   }, [sessionId]);
+
+  // When already mounted and a new pending URL arrives (e.g. user clicks another port),
+  // navigate immediately since the browser is already running.
+  const pendingUrl = useStore((s) => s.pendingBrowserUrl.get(sessionId));
+  useEffect(() => {
+    if (pendingUrl && browserMode === "container" && !loading) {
+      useStore.getState().setPendingBrowserUrl(sessionId, null);
+      api.navigateBrowser(sessionId, pendingUrl).catch(() => { /* ignore */ });
+    }
+  }, [pendingUrl, browserMode, loading, sessionId]);
 
   const handleNavigate = useCallback(() => {
     if (!navUrl.trim()) return;

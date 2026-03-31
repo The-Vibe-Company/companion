@@ -4,6 +4,9 @@
 import type { BrowserIncomingMessage } from "./session-types.js";
 import type { CodexAdapter } from "./codex-adapter.js";
 import type { SessionPhase } from "./session-state-machine.js";
+import type { PortStatus } from "./port-monitor.js";
+import type { ServiceStatus } from "./launch-runner.js";
+import type { LaunchPortConfig } from "./launch-config.js";
 
 export interface CompanionEventMap {
   // ── Session lifecycle ──────────────────────────────────────────────
@@ -61,4 +64,26 @@ export interface CompanionEventMap {
 
   /** A result (turn completion) was processed and broadcast to browsers. */
   "message:result": { sessionId: string; message: BrowserIncomingMessage };
+
+  // ── Port monitoring ────────────────────────────────────────────────
+
+  /** Port health status changed (emitted by port-monitor). */
+  "port:status": { sessionId: string; ports: PortStatus[] };
+
+  /** Launch config ports resolved for a session before monitoring begins. */
+  "session:launch-ports-resolved": {
+    sessionId: string;
+    ports: Record<string, LaunchPortConfig>;
+  };
+
+  // ── Service monitoring ──────────────────────────────────────────────
+
+  /** A single log line from a service process (emitted by launch-runner). */
+  "service:log": { sessionId: string; serviceName: string; line: string };
+
+  /** Service status changed (emitted by launch-runner). */
+  "service:status": {
+    sessionId: string;
+    services: Array<{ name: string; status: ServiceStatus; pid?: number; port?: number }>;
+  };
 }

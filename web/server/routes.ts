@@ -19,6 +19,7 @@ import { registerFsRoutes } from "./routes/fs-routes.js";
 import { registerSkillRoutes } from "./routes/skills-routes.js";
 import { registerEnvRoutes } from "./routes/env-routes.js";
 import { registerSandboxRoutes } from "./routes/sandbox-routes.js";
+import { registerLaunchRoutes } from "./routes/launch-routes.js";
 import { registerCronRoutes } from "./routes/cron-routes.js";
 import { registerAgentRoutes } from "./routes/agent-routes.js";
 import { registerMetricsRoutes } from "./routes/metrics-routes.js";
@@ -26,6 +27,7 @@ import { registerLinearAgentWebhookRoute, registerLinearAgentProtectedRoutes } f
 import { registerPromptRoutes } from "./routes/prompt-routes.js";
 import { registerSettingsRoutes } from "./routes/settings-routes.js";
 import { registerTailscaleRoutes } from "./routes/tailscale-routes.js";
+import { registerMcpRoutes } from "./routes/mcp-routes.js";
 import { registerGitRoutes } from "./routes/git-routes.js";
 import { registerSystemRoutes } from "./routes/system-routes.js";
 import { isRecordingHubEnabled } from "./recording-hub/hub-config.js";
@@ -145,8 +147,8 @@ export function createRoutes(
   // ─── Auth middleware (protects all routes below) ───────────────────
 
   api.use("/*", async (c, next) => {
-    // Skip auth for the verify endpoint (handled above)
-    if (c.req.path === "/auth/verify") {
+    // Skip auth for endpoints that handle their own authentication
+    if (c.req.path === "/auth/verify" || c.req.path === "/mcp") {
       return next();
     }
 
@@ -666,7 +668,8 @@ export function createRoutes(
   const HOP_BY_HOP = new Set(["connection", "keep-alive", "transfer-encoding", "upgrade", "proxy-connection", "te", "trailer"]);
   api.all("/sessions/:id/browser/host-proxy/:port/*", async (c) => {
     const id = c.req.param("id");
-    const session = launcher.getSession(id);
+    // Check both launcher sessions and ws-bridge sessions (SDK connections)
+    const session = launcher.getSession(id) ?? (wsBridge.getSession(id) ? { cwd: wsBridge.getSession(id)!.state.cwd } : undefined);
     if (!session) return c.json({ error: "Session not found" }, 404);
 
     const portStr = c.req.param("port");
@@ -698,9 +701,20 @@ export function createRoutes(
     const timeout = setTimeout(() => controller.abort(), 15_000);
     try {
       const targetUrl = `http://127.0.0.1:${portNum}/${subPath}${queryString}`;
+
+      // Forward a broader set of request headers to the upstream service
+      const fwdHeaders: Record<string, string> = {
+        "host": `127.0.0.1:${portNum}`,
+        "accept": c.req.header("accept") || "*/*",
+      };
+      for (const h of ["accept-encoding", "accept-language", "user-agent"]) {
+        const v = c.req.header(h);
+        if (v) fwdHeaders[h] = v;
+      }
+
       const upstream = await fetch(targetUrl, {
         method: c.req.method,
-        headers: { "accept": c.req.header("accept") || "*/*" },
+        headers: fwdHeaders,
         body: ["GET", "HEAD"].includes(c.req.method) ? undefined : c.req.raw.body,
         redirect: "follow",
         signal: controller.signal,
@@ -713,6 +727,76 @@ export function createRoutes(
           headers.set(key, value);
         }
       });
+
+      // Inject <base> tag for HTML responses and rewrite root-relative dev-server
+      // asset references so HTML apps (notably Vite) render correctly through
+      // the host proxy.
+      const ct = upstream.headers.get("content-type") || "";
+      if (ct.includes("text/html")) {
+        const proxyBase = `/api/sessions/${id}/browser/host-proxy/${portNum}/`;
+        let html = await upstream.text();
+        const baseTag = `<base href="${proxyBase}">`;
+        if (!/<base\s/i.test(html)) {
+          if (html.includes("<head>")) {
+            html = html.replace("<head>", `<head>${baseTag}`);
+          } else if (html.includes("<head ")) {
+            html = html.replace(/<head\s[^>]*>/i, (match) => `${match}${baseTag}`);
+          } else if (html.includes("<html>")) {
+            html = html.replace("<html>", `<html><head>${baseTag}</head>`);
+          } else if (html.includes("<html ")) {
+            html = html.replace(/<html\s[^>]*>/i, (match) => `${match}<head>${baseTag}</head>`);
+          } else if (/<!doctype html>/i.test(html)) {
+            html = html.replace(/<!doctype html>/i, (match) => `${match}<head>${baseTag}</head>`);
+          } else {
+            html = `${baseTag}${html}`;
+          }
+        }
+        headers.delete("content-length");
+        headers.set("content-length", new TextEncoder().encode(html).byteLength.toString());
+        return new Response(html, {
+          status: upstream.status,
+          headers,
+        });
+      }
+
+      // Some dev servers (notably Vite) can answer failed HTML navigations with
+      // a browser-generated error page while still labeling the response as a
+      // top-level document. Force these to HTML handling so the preview can
+      // inspect and surface a friendlier message instead of silently rendering
+      // a broken navigation.
+      if (upstream.headers.get("content-type") === null && c.req.method === "GET") {
+        const cloned = upstream.clone();
+        const body = await cloned.text();
+        const isLikelyHtml = /^\s*<!doctype html>/i.test(body) || /^\s*<html[\s>]/i.test(body);
+        if (isLikelyHtml) {
+          const proxyBase = `/api/sessions/${id}/browser/host-proxy/${portNum}/`;
+          const baseTag = `<base href="${proxyBase}">`;
+          let rewritten = body;
+          if (!/<base\s/i.test(rewritten)) {
+            if (rewritten.includes("<head>")) {
+              rewritten = rewritten.replace("<head>", `<head>${baseTag}`);
+            } else if (rewritten.includes("<head ")) {
+              rewritten = rewritten.replace(/<head\s[^>]*>/i, (match) => `${match}${baseTag}`);
+            } else if (rewritten.includes("<html>")) {
+              rewritten = rewritten.replace("<html>", `<html><head>${baseTag}</head>`);
+            } else if (rewritten.includes("<html ")) {
+              rewritten = rewritten.replace(/<html\s[^>]*>/i, (match) => `${match}<head>${baseTag}</head>`);
+            } else if (/<!doctype html>/i.test(rewritten)) {
+              rewritten = rewritten.replace(/<!doctype html>/i, (match) => `${match}<head>${baseTag}</head>`);
+            } else {
+              rewritten = `${baseTag}${rewritten}`;
+            }
+          }
+          headers.set("content-type", "text/html; charset=utf-8");
+          headers.delete("content-length");
+          headers.set("content-length", new TextEncoder().encode(rewritten).byteLength.toString());
+          return new Response(rewritten, {
+            status: upstream.status,
+            headers,
+          });
+        }
+      }
+
       return new Response(upstream.body, {
         status: upstream.status,
         headers,
@@ -1238,6 +1322,8 @@ export function createRoutes(
   registerFsRoutes(api);
   registerEnvRoutes(api, { webDir: WEB_DIR });
   registerSandboxRoutes(api);
+  registerLaunchRoutes(api, launcher, wsBridge);
+  registerMcpRoutes(api, wsBridge, launcher);
 
   registerPromptRoutes(api);
   registerSettingsRoutes(api);

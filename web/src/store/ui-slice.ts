@@ -43,7 +43,7 @@ export interface UiSlice {
   homeResetKey: number;
   publicUrl: string;
   editorTabEnabled: boolean;
-  activeTab: "chat" | "diff" | "terminal" | "processes" | "editor" | "browser";
+  activeTab: "chat" | "diff" | "environment";
   chatTabReentryTickBySession: Map<string, number>;
   diffPanelSelectedFile: Map<string, string>;
   diffBase: DiffBase;
@@ -64,7 +64,7 @@ export interface UiSlice {
   resetTaskPanelConfig: () => void;
   newSession: () => void;
   setEditorTabEnabled: (enabled: boolean) => void;
-  setActiveTab: (tab: "chat" | "diff" | "terminal" | "processes" | "editor" | "browser") => void;
+  setActiveTab: (tab: "chat" | "diff" | "environment") => void;
   markChatTabReentry: (sessionId: string) => void;
   setDiffPanelSelectedFile: (sessionId: string, filePath: string | null) => void;
   setDiffBase: (base: DiffBase) => void;

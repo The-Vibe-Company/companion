@@ -14,8 +14,7 @@ import { DiffPanel } from "./components/DiffPanel.js";
 import { UpdateBanner } from "./components/UpdateBanner.js";
 import { SessionLaunchOverlay } from "./components/SessionLaunchOverlay.js";
 import { SessionTerminalDock } from "./components/SessionTerminalDock.js";
-import { SessionEditorPane } from "./components/SessionEditorPane.js";
-import { SessionBrowserPane } from "./components/SessionBrowserPane.js";
+import { EnvironmentPanel } from "./components/EnvironmentPanel.js";
 import { UpdateOverlay } from "./components/UpdateOverlay.js";
 import { DockerUpdateDialog } from "./components/DockerUpdateDialog.js";
 import { OnboardingModal } from "./components/OnboardingModal.js";
@@ -34,7 +33,6 @@ const CronManager = lazy(() => import("./components/CronManager.js").then((m) =>
 const AgentsPage = lazy(() => import("./components/AgentsPage.js").then((m) => ({ default: m.AgentsPage })));
 const RunsPage = lazy(() => import("./components/RunsPage.js").then((m) => ({ default: m.RunsPage })));
 const TerminalPage = lazy(() => import("./components/TerminalPage.js").then((m) => ({ default: m.TerminalPage })));
-const ProcessPanel = lazy(() => import("./components/ProcessPanel.js").then((m) => ({ default: m.ProcessPanel })));
 
 
 function LazyFallback() {
@@ -90,10 +88,11 @@ export default function App() {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
-  // Migrate legacy "files" tab to "editor"
+  // Migrate legacy tab values to valid ones
   useEffect(() => {
-    if ((activeTab as string) === "files") {
-      setActiveTab("editor");
+    const legacy = activeTab as string;
+    if (!["chat", "diff", "environment"].includes(legacy)) {
+      setActiveTab("chat");
     }
   }, [activeTab, setActiveTab]);
 
@@ -296,21 +295,9 @@ export default function App() {
             <>
               <div className="absolute inset-0">
                 {currentSessionId ? (
-                  activeTab === "browser"
-                    ? <SessionBrowserPane sessionId={currentSessionId} />
-                    : activeTab === "terminal"
-                    ? (
-                      <SessionTerminalDock
-                        sessionId={currentSessionId}
-                        terminalOnly
-                        onClosePanel={() => useStore.getState().setActiveTab("chat")}
-                      />
-                    )
-                    : activeTab === "processes"
-                      ? <Suspense fallback={<LazyFallback />}><ProcessPanel sessionId={currentSessionId} /></Suspense>
-                      : activeTab === "editor"
-                        ? <SessionEditorPane sessionId={currentSessionId} />
-                        : (
+                  activeTab === "environment"
+                    ? <EnvironmentPanel sessionId={currentSessionId} />
+                    : (
                         <SessionTerminalDock sessionId={currentSessionId} suppressPanel>
                           {activeTab === "diff"
                             ? <DiffPanel sessionId={currentSessionId} />

@@ -29,6 +29,7 @@ const { mockApi, createSessionStreamMock, mockStoreState, mockStoreGetState } = 
     listPrompts: vi.fn(),
     listLinearConnections: vi.fn(),
     listSandboxes: vi.fn(),
+    getLaunchConfig: vi.fn(),
   },
   createSessionStreamMock: vi.fn(),
   mockStoreState: {
@@ -151,6 +152,7 @@ describe("HomePage", () => {
     mockApi.listSandboxes.mockResolvedValue([]);
     mockApi.getImageStatus.mockResolvedValue({ status: "idle" });
     mockApi.pullImage.mockResolvedValue({ ok: true });
+    mockApi.getLaunchConfig.mockResolvedValue({ exists: false });
   });
 
   it("auto-sets branch from selected mapped Linear issue", async () => {

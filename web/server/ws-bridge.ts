@@ -51,6 +51,8 @@ import { companionBus } from "./event-bus.js";
 import { SessionStateMachine } from "./session-state-machine.js";
 import { metricsCollector } from "./metrics-collector.js";
 import { log } from "./logger.js";
+import { stopAllServices } from "./launch-runner.js";
+import { stopMonitoring } from "./port-monitor.js";
 
 // ─── Bridge ───────────────────────────────────────────────────────────────────
 
@@ -84,6 +86,43 @@ export class WsBridge {
     "git_ahead",
     "git_behind",
   ];
+
+  /** Subscribe to port:status events and broadcast to browsers. Call once at startup. */
+  subscribePortStatus(): void {
+    companionBus.on("port:status", ({ sessionId, ports }) => {
+      const session = this.sessions.get(sessionId);
+      if (!session) return;
+      this.broadcastToBrowsers(session, {
+        type: "port_status",
+        ports,
+      } as any);
+    });
+  }
+
+  /** Subscribe to service:status events and broadcast to browsers. */
+  subscribeServiceStatus(): void {
+    companionBus.on("service:status", ({ sessionId, services }) => {
+      const session = this.sessions.get(sessionId);
+      if (!session) return;
+      this.broadcastToBrowsers(session, {
+        type: "service_status",
+        services,
+      } as any);
+    });
+  }
+
+  /** Subscribe to service:log events and broadcast to browsers. */
+  subscribeServiceLogs(): void {
+    companionBus.on("service:log", ({ sessionId, serviceName, line }) => {
+      const session = this.sessions.get(sessionId);
+      if (!session) return;
+      this.broadcastToBrowsers(session, {
+        type: "service_log",
+        serviceName,
+        line,
+      } as any);
+    });
+  }
 
   /** Set the Linear agent session ID on a Companion session and persist it. */
   setLinearSessionId(sessionId: string, linearSessionId: string): void {
@@ -370,6 +409,10 @@ export class WsBridge {
       try { ws.close(); } catch {}
     }
     session.browserSockets.clear();
+
+    // Clean up launch services and port monitoring
+    stopAllServices(sessionId);
+    stopMonitoring(sessionId);
 
     this.sessions.delete(sessionId);
     this.autoNamingAttempted.delete(sessionId);

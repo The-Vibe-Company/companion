@@ -1,0 +1,50 @@
+{
+  "version": "1",
+  "env": {
+    "envFile": "web/.env.local",
+    "vars": {
+      "NODE_ENV": "development",
+      "PORT": "${PORT:-3457}"
+    }
+  },
+  "setup": [
+    {
+      "name": "install-deps",
+      "command": "cd web && bun install",
+      "conditions": { "local": true }
+    },
+    {
+      "name": "typecheck",
+      "command": "cd web && bun run typecheck"
+    }
+  ],
+  "services": {
+    "api": {
+      "command": "cd web && bun run dev:api",
+      "readyPattern": "Server running on http://",
+      "readyTimeout": 30,
+      "env": {
+        "PORT": "${PORT:-3457}"
+      }
+    },
+    "vite": {
+      "command": "cd web && bun run dev:vite",
+      "dependsOn": { "api": "ready" },
+      "readyPattern": "Local:.*http://",
+      "readyTimeout": 30
+    }
+  },
+  "ports": {
+    "3457": {
+      "label": "Hono API",
+      "protocol": "http",
+      "healthCheck": { "path": "/health", "interval": 15 }
+    },
+    "5174": {
+      "label": "Vite Dev Server",
+      "protocol": "http",
+      "openOnReady": true,
+      "healthCheck": { "path": "/", "interval": 10 }
+    }
+  }
+}

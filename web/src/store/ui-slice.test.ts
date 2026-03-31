@@ -259,17 +259,11 @@ describe("Active tab & diff panel", () => {
     useStore.getState().setActiveTab("diff");
     expect(useStore.getState().activeTab).toBe("diff");
 
-    useStore.getState().setActiveTab("terminal");
-    expect(useStore.getState().activeTab).toBe("terminal");
+    useStore.getState().setActiveTab("environment");
+    expect(useStore.getState().activeTab).toBe("environment");
 
     useStore.getState().setActiveTab("chat");
     expect(useStore.getState().activeTab).toBe("chat");
-
-    useStore.getState().setActiveTab("processes");
-    expect(useStore.getState().activeTab).toBe("processes");
-
-    useStore.getState().setActiveTab("editor");
-    expect(useStore.getState().activeTab).toBe("editor");
   });
 
   it("markChatTabReentry: increments tick per session", () => {

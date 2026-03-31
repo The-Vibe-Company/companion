@@ -1207,6 +1207,13 @@ export class CliLauncher {
   }
 
   /**
+   * Get the runtime environment variables for a session (from env profile + inline).
+   */
+  getSessionEnv(sessionId: string): Record<string, string> | undefined {
+    return this.sessionEnvs.get(sessionId);
+  }
+
+  /**
    * Check if a session exists and is alive (not exited).
    */
   isAlive(sessionId: string): boolean {

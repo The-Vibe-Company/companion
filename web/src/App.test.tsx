@@ -132,8 +132,8 @@ vi.mock("./components/SessionTerminalDock.js", () => ({
   ),
 }));
 
-vi.mock("./components/SessionEditorPane.js", () => ({
-  SessionEditorPane: () => <div data-testid="session-editor-pane">SessionEditorPane</div>,
+vi.mock("./components/EnvironmentPanel.js", () => ({
+  EnvironmentPanel: () => <div data-testid="environment-panel">EnvironmentPanel</div>,
 }));
 
 vi.mock("./components/UpdateOverlay.js", () => ({
@@ -183,9 +183,6 @@ vi.mock("./components/TerminalPage.js", () => ({
   TerminalPage: () => <div data-testid="terminal-page">TerminalPage</div>,
 }));
 
-vi.mock("./components/ProcessPanel.js", () => ({
-  ProcessPanel: () => <div data-testid="process-panel">ProcessPanel</div>,
-}));
 
 // ─── Import SUT after mocks ─────────────────────────────────────
 import App from "./App.js";
@@ -290,33 +287,14 @@ describe("App", () => {
       expect(screen.getByTestId("diff-panel")).toBeInTheDocument();
     });
 
-    it("renders SessionEditorPane when activeTab is editor", () => {
-      // Editor tab should replace the chat view with the editor pane.
+    it("renders EnvironmentPanel when activeTab is environment", () => {
+      // Environment tab replaces the old editor/terminal/processes tabs with
+      // a unified panel showing services, ports, and browser preview.
       (parseHash as ReturnType<typeof vi.fn>).mockReturnValue({ page: "session", sessionId: "s1" });
-      setStoreValues({ currentSessionId: "s1", activeTab: "editor" });
+      setStoreValues({ currentSessionId: "s1", activeTab: "environment" });
       render(<App />);
 
-      expect(screen.getByTestId("session-editor-pane")).toBeInTheDocument();
-    });
-
-    it("renders SessionTerminalDock in terminal-only mode when activeTab is terminal", () => {
-      // Terminal tab renders the dock without chat children.
-      (parseHash as ReturnType<typeof vi.fn>).mockReturnValue({ page: "session", sessionId: "s1" });
-      setStoreValues({ currentSessionId: "s1", activeTab: "terminal" });
-      render(<App />);
-
-      expect(screen.getByTestId("session-terminal-dock")).toBeInTheDocument();
-    });
-
-    it("renders ProcessPanel when activeTab is processes", async () => {
-      // Processes tab should render the lazy-loaded ProcessPanel.
-      (parseHash as ReturnType<typeof vi.fn>).mockReturnValue({ page: "session", sessionId: "s1" });
-      setStoreValues({ currentSessionId: "s1", activeTab: "processes" });
-      render(<App />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId("process-panel")).toBeInTheDocument();
-      });
+      expect(screen.getByTestId("environment-panel")).toBeInTheDocument();
     });
 
     it("renders TaskPanel when session active and taskPanelOpen", () => {

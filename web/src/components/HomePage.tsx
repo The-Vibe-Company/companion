@@ -11,6 +11,7 @@ import {
   type BackendInfo,
   type ImagePullState,
   type LinearIssue,
+  type LaunchConfig,
 } from "../api.js";
 import { connectSession, createClientMessageId, waitForConnection, sendToSession } from "../ws.js";
 import { disconnectSession } from "../ws.js";
@@ -134,6 +135,10 @@ export function HomePage() {
   const [sandboxImageState, setSandboxImageState] = useState<ImagePullState | null>(null);
   const sandboxImagePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Launch config detection
+  const [launchConfig, setLaunchConfig] = useState<LaunchConfig | null>(null);
+  const [launchConfigChecked, setLaunchConfigChecked] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Dropdown states
@@ -247,6 +252,23 @@ export function HomePage() {
       // Fall back to hardcoded models silently
     });
   }, [backend]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Check for .companion/launch.json when cwd changes
+  useEffect(() => {
+    if (!cwd) {
+      setLaunchConfig(null);
+      setLaunchConfigChecked(false);
+      return;
+    }
+    setLaunchConfigChecked(false);
+    api.getLaunchConfig(cwd).then((result) => {
+      setLaunchConfig(result.config ?? null);
+      setLaunchConfigChecked(true);
+    }).catch(() => {
+      setLaunchConfig(null);
+      setLaunchConfigChecked(true);
+    });
+  }, [cwd]);
 
   // When sandbox is enabled, check the-companion:latest image status
   useEffect(() => {
@@ -1216,6 +1238,48 @@ export function HomePage() {
             </button>
           </div>
         </div>
+
+        {/* ── Launch config banner ── */}
+        {cwd && launchConfigChecked && !launchConfig && (
+          <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-cc-hover/50 border border-cc-border/50">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4 text-cc-muted shrink-0">
+              <path d="M2 4l6-2 6 2v6l-6 2-6-2V4z" strokeLinejoin="round" />
+              <path d="M2 4l6 2 6-2M8 6v8" />
+            </svg>
+            <span className="text-xs text-cc-muted">No <code className="font-mono-code text-cc-fg/70">.companion/launch.json</code> found.</span>
+            <button
+              onClick={() => {
+                const setupPrompt = [
+                  "Create a .companion/launch.json file for this project.",
+                  "Start by calling get_launch_config_schema to learn the format.",
+                  "Then inspect the project (package.json, Makefile, docker-compose.yml, etc.) and define setup scripts, services with readyPattern, and ports with health checks.",
+                  "After writing the file, call validate_launch_config to verify it.",
+                ].join(" ");
+                doCreateSession(setupPrompt);
+              }}
+              className="ml-auto text-xs text-cc-primary hover:text-cc-primary-hover font-medium cursor-pointer shrink-0"
+            >
+              Set up automatically
+            </button>
+          </div>
+        )}
+        {cwd && launchConfigChecked && launchConfig && (
+          <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-cc-primary/5 border border-cc-primary/15">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4 text-cc-primary shrink-0">
+              <path d="M2 4l6-2 6 2v6l-6 2-6-2V4z" strokeLinejoin="round" />
+              <path d="M2 4l6 2 6-2M8 6v8" />
+            </svg>
+            <span className="text-xs text-cc-fg/70">
+              Launch config ready
+              {launchConfig.services && Object.keys(launchConfig.services).length > 0 && (
+                <> — {Object.keys(launchConfig.services).length} service{Object.keys(launchConfig.services).length !== 1 ? "s" : ""}</>
+              )}
+              {launchConfig.ports && Object.keys(launchConfig.ports).length > 0 && (
+                <>, {Object.keys(launchConfig.ports).length} port{Object.keys(launchConfig.ports).length !== 1 ? "s" : ""}</>
+              )}
+            </span>
+          </div>
+        )}
 
         {/* ── Below-card controls ── */}
         <div className="mt-3 sm:mt-4 space-y-2">

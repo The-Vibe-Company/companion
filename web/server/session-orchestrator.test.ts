@@ -404,6 +404,40 @@ describe("SessionOrchestrator", () => {
       expect(companionBus.listenerCount("session:idle-kill")).toBe(countsAfterFirst.idleKill);
       expect(companionBus.listenerCount("session:first-turn-completed")).toBe(countsAfterFirst.firstTurn);
     });
+
+    it("uses COMPANION_CONTAINER_SDK_HOST for injected container MCP URLs", async () => {
+      process.env.COMPANION_CONTAINER_SDK_HOST = "172.17.0.1";
+      deps = createDeps({ port: 3457 } as any);
+      orchestrator = new SessionOrchestrator(deps);
+      deps.launcher.getSession.mockReturnValue({
+        sessionId: "s1",
+        cwd: "/repo",
+        containerId: "cid-1",
+        archived: false,
+      });
+      deps.wsBridge.getSession.mockReturnValue({ backendType: "claude" });
+      deps.wsBridge.injectMcpSetServers = vi.fn();
+      deps.wsBridge.injectSystemPrompt = vi.fn();
+
+      orchestrator.initialize();
+      companionBus.emit("session:phase-changed", {
+        sessionId: "s1",
+        from: "reconnecting",
+        to: "ready",
+        trigger: "system_init",
+      });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(deps.wsBridge.injectMcpSetServers).toHaveBeenCalledWith(
+        "s1",
+        expect.objectContaining({
+          companion: expect.objectContaining({
+            url: expect.stringContaining("http://172.17.0.1:3457/api/mcp?sessionId=s1&token="),
+          }),
+        }),
+      );
+      delete process.env.COMPANION_CONTAINER_SDK_HOST;
+    });
   });
 
   // ── Session Creation ──────────────────────────────────────────────────────

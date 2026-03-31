@@ -7,6 +7,7 @@ import { createTasksSlice, type TasksSlice } from "./tasks-slice.js";
 import { createUiSlice, type UiSlice, getInitialDiffBase } from "./ui-slice.js";
 import { createTerminalSlice, type TerminalSlice, getInitialQuickTerminalPlacement } from "./terminal-slice.js";
 import { createUpdatesSlice, type UpdatesSlice } from "./updates-slice.js";
+import { createEnvironmentSlice, type EnvironmentSlice } from "./environment-slice.js";
 
 export type AppState = AuthSlice &
   SessionsSlice &
@@ -15,7 +16,8 @@ export type AppState = AuthSlice &
   TasksSlice &
   UiSlice &
   TerminalSlice &
-  UpdatesSlice & {
+  UpdatesSlice &
+  EnvironmentSlice & {
     reset: () => void;
   };
 
@@ -28,6 +30,7 @@ export const useStore = create<AppState>((...args) => ({
   ...createUiSlice(...args),
   ...createTerminalSlice(...args),
   ...createUpdatesSlice(...args),
+  ...createEnvironmentSlice(...args),
 
   reset: () => {
     const [set] = args;
@@ -78,6 +81,12 @@ export const useStore = create<AppState>((...args) => ({
       terminalOpen: false,
       terminalCwd: null,
       terminalId: null,
+      // Environment
+      portStatuses: new Map(),
+      activePort: new Map(),
+      pendingBrowserUrl: new Map(),
+      serviceStatuses: new Map(),
+      serviceLogs: new Map(),
     });
   },
 }));

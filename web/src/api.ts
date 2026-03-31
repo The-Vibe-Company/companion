@@ -323,6 +323,28 @@ export interface CompanionSandbox {
   updatedAt: number;
 }
 
+export interface LaunchConfig {
+  version: string;
+  setup?: Array<{
+    name: string;
+    command: string;
+    conditions?: { local?: boolean; sandbox?: boolean; worktree?: boolean };
+  }>;
+  services?: Record<string, {
+    command: string;
+    dependsOn?: Record<string, "started" | "ready">;
+    readyPattern?: string;
+    readyTimeout?: number;
+    conditions?: { local?: boolean; sandbox?: boolean; worktree?: boolean };
+  }>;
+  ports?: Record<string, {
+    label: string;
+    openOnReady?: boolean;
+    healthCheck?: { path?: string; interval?: number };
+    protocol?: "http" | "tcp";
+  }>;
+}
+
 export interface ImagePullState {
   image: string;
   status: "idle" | "pulling" | "ready" | "error";
@@ -1307,4 +1329,24 @@ export const api = {
     put<SavedPrompt>(`/prompts/${encodeURIComponent(id)}`, data),
   deletePrompt: (id: string) =>
     del<{ ok: boolean }>(`/prompts/${encodeURIComponent(id)}`),
+
+  // Launch config
+  getLaunchConfig: (cwd: string) =>
+    get<{ exists: boolean; config?: LaunchConfig }>(`/launch-config?cwd=${encodeURIComponent(cwd)}`),
+  getPortStatuses: (sessionId: string) =>
+    get<Array<{ port: number; label: string; protocol: string; status: string; service?: string }>>(`/sessions/${encodeURIComponent(sessionId)}/ports`),
+  getServiceStatuses: (sessionId: string) =>
+    get<Array<{ name: string; status: string; pid?: number }>>(`/sessions/${encodeURIComponent(sessionId)}/services`),
+  checkPort: (sessionId: string, port: number) =>
+    post<{ port: number; status: string }>(`/sessions/${encodeURIComponent(sessionId)}/ports/${port}/check`),
+  reloadLaunchConfig: (sessionId: string) =>
+    post<{ reloaded: boolean; error?: string; services?: string[]; ports?: string[] }>(`/sessions/${encodeURIComponent(sessionId)}/launch-config/reload`),
+  restartService: (sessionId: string, serviceName: string) =>
+    post<{ restarted: boolean; service: string }>(`/sessions/${encodeURIComponent(sessionId)}/services/${encodeURIComponent(serviceName)}/restart`),
+  stopService: (sessionId: string, serviceName: string) =>
+    post<{ stopped: boolean; service: string }>(`/sessions/${encodeURIComponent(sessionId)}/services/${encodeURIComponent(serviceName)}/stop`),
+  getServiceLogs: (sessionId: string, serviceName: string, limit = 200) =>
+    get<{ logs: string[] }>(`/sessions/${encodeURIComponent(sessionId)}/services/${encodeURIComponent(serviceName)}/logs?limit=${limit}`),
+  getServices: (sessionId: string) =>
+    get<Array<{ name: string; status: string; pid?: number; port?: number }>>(`/sessions/${encodeURIComponent(sessionId)}/services`),
 };

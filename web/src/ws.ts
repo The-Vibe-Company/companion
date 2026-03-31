@@ -1169,6 +1169,31 @@ function handleParsedMessage(
       break;
     }
 
+    case "port_status": {
+      if ("ports" in data && Array.isArray(data.ports)) {
+        store.setPortStatuses(sessionId, data.ports as import("./store/environment-slice.js").PortStatusInfo[]);
+      }
+      break;
+    }
+
+    case "service_status": {
+      if ("services" in data && Array.isArray(data.services)) {
+        store.setServiceStatuses(sessionId, data.services as import("./store/environment-slice.js").ServiceInfo[]);
+      }
+      break;
+    }
+
+    case "service_log": {
+      const { serviceName, line } = data as { type: string; serviceName: string; line: string };
+      if (serviceName && typeof line === "string") {
+        const existingLogs = store.getServiceLogs(sessionId, serviceName);
+        if (existingLogs.length === 0 || existingLogs[existingLogs.length - 1] !== line) {
+          store.appendServiceLog(sessionId, serviceName, line);
+        }
+      }
+      break;
+    }
+
     default: {
       console.debug("[ws] Unhandled message type:", (data as { type: string }).type);
       break;

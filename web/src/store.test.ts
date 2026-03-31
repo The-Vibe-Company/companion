@@ -1249,6 +1249,30 @@ describe("Update info", () => {
     useStore.getState().setEditorTabEnabled(false);
     expect(useStore.getState().editorTabEnabled).toBe(false);
   });
+
+  it("setServiceLogs replaces and truncates historical service logs", () => {
+    const lines = Array.from({ length: 520 }, (_, index) => `line-${index}`);
+
+    useStore.getState().setServiceLogs("s1", "api", lines);
+
+    const stored = useStore.getState().getServiceLogs("s1", "api");
+    expect(stored).toHaveLength(500);
+    expect(stored[0]).toBe("line-20");
+    expect(stored.at(-1)).toBe("line-519");
+  });
+
+  it("appendServiceLog keeps existing service history and truncates from the front", () => {
+    useStore.getState().setServiceLogs("s1", "api", ["existing"]);
+
+    for (let index = 0; index < 505; index += 1) {
+      useStore.getState().appendServiceLog("s1", "api", `line-${index}`);
+    }
+
+    const stored = useStore.getState().getServiceLogs("s1", "api");
+    expect(stored).toHaveLength(500);
+    expect(stored[0]).toBe("line-5");
+    expect(stored.at(-1)).toBe("line-504");
+  });
 });
 
 // ─── Active tab & diff panel ─────────────────────────────────────────────────
@@ -1258,17 +1282,11 @@ describe("Active tab & diff panel", () => {
     useStore.getState().setActiveTab("diff");
     expect(useStore.getState().activeTab).toBe("diff");
 
-    useStore.getState().setActiveTab("terminal");
-    expect(useStore.getState().activeTab).toBe("terminal");
+    useStore.getState().setActiveTab("environment");
+    expect(useStore.getState().activeTab).toBe("environment");
 
     useStore.getState().setActiveTab("chat");
     expect(useStore.getState().activeTab).toBe("chat");
-
-    useStore.getState().setActiveTab("processes");
-    expect(useStore.getState().activeTab).toBe("processes");
-
-    useStore.getState().setActiveTab("editor");
-    expect(useStore.getState().activeTab).toBe("editor");
   });
 
   it("markChatTabReentry: increments tick per session", () => {

@@ -114,6 +114,9 @@ import { hasContainerClaudeAuth } from "./claude-container-auth.js";
 import { hasContainerCodexAuth } from "./codex-container-auth.js";
 import { imagePullManager } from "./image-pull-manager.js";
 import { getConnection } from "./linear-connections.js";
+import * as launchConfig from "./launch-config.js";
+import * as launchRunner from "./launch-runner.js";
+import * as portMonitor from "./port-monitor.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -151,6 +154,19 @@ describe("executeSessionCreation", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(launchConfig, "loadLaunchConfig").mockReturnValue(null);
+    vi.spyOn(launchConfig, "resolveForContext").mockReturnValue({ setup: [], services: {}, ports: {} });
+    vi.spyOn(launchConfig, "resolveEnvVars").mockReturnValue({
+      topLevelEnv: {},
+      serviceEnvs: {},
+      setupEnvs: {},
+      warnings: [],
+    });
+    vi.spyOn(launchRunner, "runSetupScripts").mockResolvedValue({ ok: true });
+    vi.spyOn(launchRunner, "startServices").mockResolvedValue({ ok: true });
+    vi.spyOn(launchRunner, "reassociateServices").mockImplementation(() => {});
+    vi.spyOn(portMonitor, "startMonitoring").mockImplementation(() => {});
+    vi.spyOn(portMonitor, "reassociateMonitoring").mockImplementation(() => {});
     deps = makeDeps();
   });
 
