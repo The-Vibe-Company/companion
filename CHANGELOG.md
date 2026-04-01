@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.95.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.94.0...the-companion-v0.95.0) (2026-04-01)
+
+
+### Features
+
+* **keepalive:** proactive CLI relaunch when frontend is disconnected ([#634](https://github.com/The-Vibe-Company/companion/issues/634)) ([6a0e7c5](https://github.com/The-Vibe-Company/companion/commit/6a0e7c599c1700ca750fee2b6ad93f8aed362e99))
+
+
+### Bug Fixes
+
+* **workbench:** remove terminal and session extras ([#632](https://github.com/The-Vibe-Company/companion/issues/632)) ([9b5e675](https://github.com/The-Vibe-Company/companion/commit/9b5e67535233acb987f60348a7f3d90d6f76f83c))
+
 ## [0.94.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.93.0...the-companion-v0.94.0) (2026-03-27)
 
 
