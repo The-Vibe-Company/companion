@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import { rateLimit } from "./rate-limit.js";
 
-function createApp(max: number, windowMs: number) {
+function createApp(max: number, windowMs: number, trustProxy = false) {
   const app = new Hono();
-  app.use("/*", rateLimit({ max, windowMs }));
+  app.use("/*", rateLimit({ max, windowMs, trustProxy }));
   app.get("/test", (c) => c.text("ok"));
   return app;
 }
@@ -64,5 +64,54 @@ describe("rateLimit middleware", () => {
     const res = await app.request("/test");
     expect(res.status).toBe(429);
     expect(res.headers.get("X-RateLimit-Remaining")).toBe("0");
+  });
+
+  it("should_not_trust_x_forwarded_for_by_default", async () => {
+    const app = createApp(2, 60_000);
+
+    // Exhaust limit with 2 requests
+    await app.request("/test");
+    await app.request("/test");
+
+    // Spoofed X-Forwarded-For should NOT bypass rate limit when trustProxy is false
+    const res = await app.request("/test", {
+      headers: { "x-forwarded-for": "1.2.3.4" },
+    });
+    expect(res.status).toBe(429);
+  });
+
+  it("should_rate_limit_even_when_rotating_x_forwarded_for_values", async () => {
+    const app = createApp(2, 60_000);
+
+    // Each request uses a different spoofed X-Forwarded-For
+    await app.request("/test", {
+      headers: { "x-forwarded-for": "10.0.0.1" },
+    });
+    await app.request("/test", {
+      headers: { "x-forwarded-for": "10.0.0.2" },
+    });
+
+    // Should still be rate-limited because X-Forwarded-For is ignored
+    const res = await app.request("/test", {
+      headers: { "x-forwarded-for": "10.0.0.3" },
+    });
+    expect(res.status).toBe(429);
+  });
+
+  it("should_use_rightmost_ip_from_x_forwarded_for_when_trust_proxy_enabled", async () => {
+    const app = createApp(5, 60_000, true);
+
+    // X-Forwarded-For: <client>, <proxy1>, <proxy2>
+    // Rightmost (proxy2) should be used as the key
+    const res = await app.request("/test", {
+      headers: { "x-forwarded-for": "spoofed-client, 10.0.0.1, 192.168.1.1" },
+    });
+    expect(res.status).toBe(200);
+
+    // Same rightmost IP should decrement the same counter
+    const res2 = await app.request("/test", {
+      headers: { "x-forwarded-for": "different-client, 10.0.0.2, 192.168.1.1" },
+    });
+    expect(res2.headers.get("X-RateLimit-Remaining")).toBe("3");
   });
 });

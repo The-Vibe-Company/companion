@@ -5,6 +5,12 @@ interface RateLimitOptions {
   max: number;
   /** Time window in milliseconds */
   windowMs: number;
+  /**
+   * Whether to trust proxy headers (X-Forwarded-For).
+   * Only enable this when running behind a trusted reverse proxy.
+   * Default: false
+   */
+  trustProxy?: boolean;
 }
 
 interface RateLimitEntry {
@@ -21,7 +27,7 @@ interface RateLimitEntry {
  * Returns 429 Too Many Requests when limit is exceeded.
  */
 export function rateLimit(options: RateLimitOptions): MiddlewareHandler {
-  const { max, windowMs } = options;
+  const { max, windowMs, trustProxy = false } = options;
   const store = new Map<string, RateLimitEntry>();
 
   // Periodic cleanup every 60 seconds to prevent memory leak
@@ -36,7 +42,7 @@ export function rateLimit(options: RateLimitOptions): MiddlewareHandler {
   if (cleanupInterval.unref) cleanupInterval.unref();
 
   return async (c, next) => {
-    const ip = getClientIp(c) ?? "unknown";
+    const ip = getClientIp(c, trustProxy) ?? "unknown";
     const now = Date.now();
 
     let entry = store.get(ip);
@@ -61,11 +67,26 @@ export function rateLimit(options: RateLimitOptions): MiddlewareHandler {
   };
 }
 
-/** Extract client IP from request, considering reverse proxy headers. */
-function getClientIp(c: { req: { header: (name: string) => string | undefined }; env?: unknown }): string | undefined {
-  // Trust X-Forwarded-For from nginx reverse proxy
-  const forwarded = c.req.header("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
+/**
+ * Extract client IP from request.
+ *
+ * When trustProxy is false (default), X-Forwarded-For is ignored to prevent
+ * IP spoofing. Only x-real-ip (typically set by a trusted reverse proxy at
+ * the network level) or the connection remote address are used.
+ *
+ * When trustProxy is true, the RIGHTMOST IP in X-Forwarded-For is used
+ * because it is the one appended by the closest trusted proxy, whereas the
+ * leftmost value is client-controlled and trivially spoofable.
+ */
+function getClientIp(c: { req: { header: (name: string) => string | undefined }; env?: unknown }, trustProxy: boolean): string | undefined {
+  if (trustProxy) {
+    const forwarded = c.req.header("x-forwarded-for");
+    if (forwarded) {
+      const parts = forwarded.split(",").map((s) => s.trim()).filter(Boolean);
+      // Rightmost IP is appended by the closest trusted proxy
+      return parts[parts.length - 1];
+    }
+  }
 
   const realIp = c.req.header("x-real-ip");
   if (realIp) return realIp;
