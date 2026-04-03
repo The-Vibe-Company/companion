@@ -99,7 +99,7 @@ describe("GET /fs/raw", () => {
 });
 
 describe("path traversal protection", () => {
-  // On Windows, guardPath allows all absolute drive paths (D:\...) by design,
+  // On Windows, guardPath blocks sub-path access due to hardcoded "/" separator,
   // so path traversal tests that rely on 403 rejection are skipped.
   // These tests validate Unix-specific path guarding behavior.
   const itUnix = isWindows ? it.skip : it;
