@@ -240,7 +240,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
       if (sendKey === "Enter" && !modifier) {
         e.preventDefault();
         handleSend();
-      } else if (sendKey === "Cmd+Enter" && (e.metaKey || e.ctrlKey)) {
+      } else if (sendKey === "Cmd+Enter" && e.metaKey) {
         e.preventDefault();
         handleSend();
       } else if (sendKey === "Ctrl+Enter" && e.ctrlKey) {
