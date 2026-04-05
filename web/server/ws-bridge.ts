@@ -1191,6 +1191,10 @@ export class WsBridge {
       session.pendingPermissions.delete(msg.request_id);
       session.stateMachine.transition("streaming", "permission_resolved");
       this.persistSession(session);
+      // Notify all browsers that this permission was resolved (e.g. when auto-approved
+      // from WeChat, the browser still shows the permission_request UI and needs a
+      // resolution signal to dismiss it).
+      this.broadcastToBrowsers(session, { type: "permission_cancelled", request_id: msg.request_id });
     }
 
     // Delegate to the backend adapter if connected; otherwise queue for later flush.
