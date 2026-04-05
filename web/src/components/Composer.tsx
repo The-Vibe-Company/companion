@@ -42,6 +42,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
   const isCodex = sessionData?.backend_type === "codex";
   const modes: ModeOption[] = isCodex ? CODEX_MODES : CLAUDE_MODES;
   const modeLabel = modes.find((m) => m.value === currentMode)?.label?.toLowerCase() || currentMode;
+  const sendKey = useStore((s) => s.sendKey);
 
   const mention = useMentionMenu({
     text,
@@ -234,9 +235,21 @@ export function Composer({ sessionId }: { sessionId: string }) {
       toggleMode();
       return;
     }
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+    if (e.key === "Enter") {
+      const modifier = e.metaKey || e.ctrlKey ? "Cmd" : e.shiftKey ? "Shift" : null;
+      if (sendKey === "Enter" && !modifier) {
+        e.preventDefault();
+        handleSend();
+      } else if (sendKey === "Cmd+Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleSend();
+      } else if (sendKey === "Ctrl+Enter" && e.ctrlKey) {
+        e.preventDefault();
+        handleSend();
+      } else if (sendKey === "Shift+Enter" && e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
     }
   }
 
@@ -622,7 +635,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
               onPaste={handlePaste}
               aria-label="Message input"
               placeholder={isConnected
-                ? "Type a message... (/ + @)"
+                ? `Type a message... (${sendKey === "Enter" ? "Enter" : sendKey} to send)`
                 : "Waiting for CLI connection..."}
               disabled={!isConnected}
               rows={1}

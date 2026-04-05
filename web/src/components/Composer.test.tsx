@@ -115,6 +115,7 @@ function setupMockStore(overrides: {
     setSdkSessions: vi.fn(),
     promptSuggestions: new Map<string, string[]>(),
     clearPromptSuggestions: mockClearPromptSuggestions,
+    sendKey: "Enter",
   };
 }
 
@@ -220,6 +221,34 @@ describe("Composer sending messages", () => {
     fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
 
     expect(textarea.value).toBe("");
+  });
+
+  it("respects sendKey=Ctrl+Enter — plain Enter does not send", () => {
+    // When sendKey is Ctrl+Enter, plain Enter should not send the message.
+    mockStoreState.sendKey = "Ctrl+Enter";
+    const { container } = render(<Composer sessionId="s1" />);
+    const textarea = container.querySelector("textarea")!;
+
+    fireEvent.change(textarea, { target: { value: "test message" } });
+    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false, ctrlKey: false });
+
+    expect(mockSendToSession).not.toHaveBeenCalled();
+    mockStoreState.sendKey = "Enter";
+  });
+
+  it("respects sendKey=Ctrl+Enter — Ctrl+Enter sends the message", () => {
+    mockStoreState.sendKey = "Ctrl+Enter";
+    const { container } = render(<Composer sessionId="s1" />);
+    const textarea = container.querySelector("textarea")!;
+
+    fireEvent.change(textarea, { target: { value: "test message" } });
+    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false, ctrlKey: true });
+
+    expect(mockSendToSession).toHaveBeenCalledWith("s1", expect.objectContaining({
+      type: "user_message",
+      content: "test message",
+    }));
+    mockStoreState.sendKey = "Enter";
   });
 });
 
