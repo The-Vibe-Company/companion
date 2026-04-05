@@ -34,6 +34,8 @@ interface MockStoreState {
   setUpdateInfo: ReturnType<typeof vi.fn>;
   setUpdateOverlayActive: ReturnType<typeof vi.fn>;
   setEditorTabEnabled: ReturnType<typeof vi.fn>;
+  sendKey: string;
+  setSendKey: ReturnType<typeof vi.fn>;
 }
 
 let mockState: MockStoreState;
@@ -54,6 +56,8 @@ function createMockState(overrides: Partial<MockStoreState> = {}): MockStoreStat
     setUpdateInfo: vi.fn(),
     setUpdateOverlayActive: vi.fn(),
     setEditorTabEnabled: vi.fn(),
+    sendKey: "Enter",
+    setSendKey: vi.fn(),
     ...overrides,
   };
 }
@@ -1037,6 +1041,46 @@ describe("SettingsPage", () => {
 
     const toggle = screen.getByRole("switch", { name: "" });
     expect(toggle).toHaveAttribute("aria-checked", "true");
+  });
+
+  // ─── Send key toggle tests ──────────────────────────────────
+
+  // The "Send message" toggle button in the General section cycles through
+  // the send key options when clicked and calls setSendKey with the next value.
+  it("cycles send key option when Send message button is clicked", async () => {
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    // Default is "Enter", clicking should cycle to "Cmd+Enter"
+    fireEvent.click(screen.getByRole("button", { name: /Send message/i }));
+    expect(mockState.setSendKey).toHaveBeenCalledWith("Cmd+Enter");
+  });
+
+  // When sendKey is "Shift+Enter" (last option), clicking wraps back to "Enter".
+  it("wraps send key back to Enter after Shift+Enter", async () => {
+    mockState = createMockState({ sendKey: "Shift+Enter" });
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    fireEvent.click(screen.getByRole("button", { name: /Send message/i }));
+    expect(mockState.setSendKey).toHaveBeenCalledWith("Enter");
+  });
+
+  // The description text changes based on the current send key setting.
+  it("shows Enter-specific description when sendKey is Enter", async () => {
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    expect(screen.getByText("Press Enter to send. Shift+Enter for new line.")).toBeInTheDocument();
+  });
+
+  // When sendKey is not "Enter", the description shows the modifier key.
+  it("shows modifier description when sendKey is Ctrl+Enter", async () => {
+    mockState = createMockState({ sendKey: "Ctrl+Enter" });
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    expect(screen.getByText("Press Ctrl+Enter to send. Enter for new line.")).toBeInTheDocument();
   });
 
   // ─── Webhooks section tests ──────────────────────────────────

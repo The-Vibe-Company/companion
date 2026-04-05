@@ -2,6 +2,7 @@ import type { StateCreator } from "zustand";
 import type { AppState } from "./index.js";
 
 export type DiffBase = "last-commit" | "default-branch";
+export type SendKey = "Enter" | "Ctrl+Enter" | "Shift+Enter" | "Cmd+Enter";
 import { type TaskPanelConfig, getInitialTaskPanelConfig, getDefaultConfig, persistTaskPanelConfig } from "../components/task-panel-sections.js";
 
 function getInitialDarkMode(): boolean {
@@ -25,6 +26,15 @@ function getInitialNotificationDesktop(): boolean {
   return false;
 }
 
+const VALID_SEND_KEYS = new Set<string>(["Enter", "Ctrl+Enter", "Shift+Enter", "Cmd+Enter"]);
+
+function getInitialSendKey(): SendKey {
+  if (typeof window === "undefined") return "Enter";
+  const stored = localStorage.getItem("cc-send-key");
+  if (stored && VALID_SEND_KEYS.has(stored)) return stored as SendKey;
+  return "Enter";
+}
+
 export function getInitialDiffBase(): DiffBase {
   if (typeof window === "undefined") return "last-commit";
   const stored = window.localStorage.getItem("cc-diff-base");
@@ -46,6 +56,7 @@ export interface UiSlice {
   chatTabReentryTickBySession: Map<string, number>;
   diffPanelSelectedFile: Map<string, string>;
   diffBase: DiffBase;
+  sendKey: SendKey;
 
   setDarkMode: (v: boolean) => void;
   toggleDarkMode: () => void;
@@ -66,6 +77,7 @@ export interface UiSlice {
   markChatTabReentry: (sessionId: string) => void;
   setDiffPanelSelectedFile: (sessionId: string, filePath: string | null) => void;
   setDiffBase: (base: DiffBase) => void;
+  setSendKey: (key: SendKey) => void;
 }
 
 export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => ({
@@ -82,6 +94,7 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => (
   chatTabReentryTickBySession: new Map(),
   diffPanelSelectedFile: new Map(),
   diffBase: getInitialDiffBase(),
+  sendKey: getInitialSendKey(),
 
   setDarkMode: (v) => {
     localStorage.setItem("cc-dark-mode", String(v));
@@ -182,5 +195,11 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => (
       localStorage.setItem("cc-diff-base", base);
     }
     set({ diffBase: base });
+  },
+  setSendKey: (key) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cc-send-key", key);
+    }
+    set({ sendKey: key });
   },
 });

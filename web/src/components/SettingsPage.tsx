@@ -35,6 +35,8 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
   const toggleDarkMode = useStore((s) => s.toggleDarkMode);
   const diffBase = useStore((s) => s.diffBase);
   const setDiffBase = useStore((s) => s.setDiffBase);
+  const sendKey = useStore((s) => s.sendKey);
+  const setSendKey = useStore((s) => s.setSendKey);
   const notificationSound = useStore((s) => s.notificationSound);
   const toggleNotificationSound = useStore((s) => s.toggleNotificationSound);
   const notificationDesktop = useStore((s) => s.notificationDesktop);
@@ -339,6 +341,24 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                 </button>
                 <p className="text-xs text-cc-muted px-1">
                   Last commit shows only uncommitted changes. Default branch shows all changes since diverging from main.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const options: string[] = ["Enter", "Cmd+Enter", "Ctrl+Enter", "Shift+Enter"];
+                    const next = options[(options.indexOf(sendKey) + 1) % options.length];
+                    setSendKey(next as typeof sendKey);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
+                >
+                  <span>Send message</span>
+                  <span className="text-xs text-cc-muted font-mono-code">{sendKey}</span>
+                </button>
+                <p className="text-xs text-cc-muted px-1">
+                  {sendKey === "Enter"
+                    ? "Press Enter to send. Shift+Enter for new line."
+                    : `Press ${sendKey} to send. Enter for new line.`}
                 </p>
               </div>
             </section>
