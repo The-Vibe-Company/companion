@@ -15,7 +15,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 WEB_DIR="$ROOT_DIR/web"
 BACKEND_PORT=3457
-VITE_PORT=5174
+VITE_PORT=3456
 BACKEND_PID_FILE="$ROOT_DIR/.dev-backend.pid"
 VITE_PID_FILE="$ROOT_DIR/.dev-vite.pid"
 BACKEND_LOG="$ROOT_DIR/.dev-backend.log"
@@ -40,8 +40,9 @@ is_port_listening() {
 
 is_http_healthy() {
   local port="$1"
+  local path="${2:-/}"
   local code
-  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "http://localhost:$port" 2>/dev/null || echo "000")
+  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "http://localhost:$port$path" 2>/dev/null || echo "000")
   [[ "$code" =~ ^[23] ]]
 }
 
@@ -89,9 +90,12 @@ wait_for_port() {
   local pid_file="$3"
   local max_wait=60
   local waited=0
+  # Backend uses /health endpoint, Vite uses root
+  local health_path
+  [ "$port" = "$BACKEND_PORT" ] && health_path="/health" || health_path="/"
 
   while [ $waited -lt $max_wait ]; do
-    if is_http_healthy "$port"; then
+    if is_http_healthy "$port" "$health_path"; then
       return 0
     fi
     if [ -f "$pid_file" ] && ! kill -0 "$(cat "$pid_file")" 2>/dev/null; then
