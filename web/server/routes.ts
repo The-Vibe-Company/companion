@@ -34,6 +34,8 @@ import { registerLinearRoutes, fetchLinearTeamStates } from "./routes/linear-rou
 import { registerLinearConnectionRoutes } from "./routes/linear-connection-routes.js";
 import { getConnection, resolveApiKey } from "./linear-connections.js";
 import { registerLinearOAuthConnectionRoutes } from "./routes/linear-oauth-connection-routes.js";
+import { registerWeChatRoutes } from "./routes/wechat-routes.js";
+import type { WeChatBridge } from "./wechat-bridge.js";
 import { getSettings } from "./settings-manager.js";
 import { discoverClaudeSessions } from "./claude-session-discovery.js";
 import { getClaudeSessionHistoryPage } from "./claude-session-history.js";
@@ -61,6 +63,7 @@ export function createRoutes(
   agentExecutor?: import("./agent-executor.js").AgentExecutor,
   linearAgentBridge?: import("./linear-agent-bridge.js").LinearAgentBridge,
   port?: number,
+  wechatBridge?: WeChatBridge,
 ) {
   const api = new Hono();
 
@@ -1264,6 +1267,11 @@ export function createRoutes(
   registerCronRoutes(api, cronScheduler);
   registerAgentRoutes(api, agentExecutor);
   registerMetricsRoutes(api, { gaugeProvider: wsBridge });
+
+  // ─── WeChat Bot ────────────────────────────────────────────────────
+  if (wechatBridge) {
+    registerWeChatRoutes(api, wechatBridge);
+  }
 
   // ─── Recording Hub (hidden feature: COMPANION_RECORDING_HUB=1) ──────
   if (isRecordingHubEnabled()) {

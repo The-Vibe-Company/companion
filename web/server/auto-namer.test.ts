@@ -37,6 +37,12 @@ beforeEach(() => {
     publicUrl: "",
     updateChannel: "stable",
     dockerAutoUpdate: false,
+      wechatEnabled: false,
+      wechatAutoApproveSafe: true,
+      wechatForwardDangerous: true,
+      wechatAllowedUsers: "",
+      wechatDefaultPermissionMode: "acceptEdits",
+      wechatDefaultCwd: "",
     updatedAt: 0,
   });
 });
@@ -80,6 +86,12 @@ describe("generateSessionTitle", () => {
       publicUrl: "",
       updateChannel: "stable",
       dockerAutoUpdate: false,
+      wechatEnabled: false,
+      wechatAutoApproveSafe: true,
+      wechatForwardDangerous: true,
+      wechatAllowedUsers: "",
+      wechatDefaultPermissionMode: "acceptEdits",
+      wechatDefaultCwd: "",
       updatedAt: 0,
     });
 
@@ -130,6 +142,12 @@ describe("generateSessionTitle", () => {
       publicUrl: "",
       updateChannel: "stable",
       dockerAutoUpdate: false,
+      wechatEnabled: false,
+      wechatAutoApproveSafe: true,
+      wechatForwardDangerous: true,
+      wechatAllowedUsers: "",
+      wechatDefaultPermissionMode: "acceptEdits",
+      wechatDefaultCwd: "",
       updatedAt: 0,
     });
     mockFetch.mockResolvedValueOnce({
@@ -209,6 +227,12 @@ describe("generateSessionTitle", () => {
       publicUrl: "",
       updateChannel: "stable",
       dockerAutoUpdate: false,
+      wechatEnabled: false,
+      wechatAutoApproveSafe: true,
+      wechatForwardDangerous: true,
+      wechatAllowedUsers: "",
+      wechatDefaultPermissionMode: "acceptEdits",
+      wechatDefaultCwd: "",
       updatedAt: 0,
     });
     mockFetch.mockResolvedValueOnce({

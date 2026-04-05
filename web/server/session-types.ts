@@ -428,6 +428,8 @@ export interface SessionState {
   aiValidationAutoDeny?: boolean | null;
   /** If this session is linked to a Linear agent session */
   linearSessionId?: string;
+  /** If this session is linked to a WeChat user */
+  wechatUserId?: string;
 }
 
 // ─── MCP Types ───────────────────────────────────────────────────────────────

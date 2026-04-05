@@ -43,6 +43,18 @@ export interface CompanionSettings {
   publicUrl: string;
   updateChannel: UpdateChannel;
   dockerAutoUpdate: boolean;
+  /** Whether the WeChat bot channel is enabled */
+  wechatEnabled: boolean;
+  /** Auto-approve safe tools (Read, Glob, Grep, etc.) without forwarding to WeChat */
+  wechatAutoApproveSafe: boolean;
+  /** Forward dangerous tool permissions (Bash rm, Write, Edit) to WeChat for manual approval */
+  wechatForwardDangerous: boolean;
+  /** Comma-separated WeChat userId whitelist (empty = allow all users) */
+  wechatAllowedUsers: string;
+  /** Default permission mode for new WeChat-spawned sessions */
+  wechatDefaultPermissionMode: string;
+  /** Default working directory for new WeChat-spawned sessions */
+  wechatDefaultCwd: string;
   updatedAt: number;
 }
 
@@ -71,6 +83,12 @@ let settings: CompanionSettings = {
   aiValidationEnabled: false,
   aiValidationAutoApprove: true,
   aiValidationAutoDeny: false,
+  wechatEnabled: false,
+  wechatAutoApproveSafe: true,
+  wechatForwardDangerous: true,
+  wechatAllowedUsers: "",
+  wechatDefaultPermissionMode: "acceptEdits",
+  wechatDefaultCwd: "",
   publicUrl: "",
   updateChannel: "stable",
   dockerAutoUpdate: false,
@@ -102,6 +120,12 @@ function normalize(raw: Partial<CompanionSettings> | null | undefined): Companio
     aiValidationEnabled: typeof raw?.aiValidationEnabled === "boolean" ? raw.aiValidationEnabled : false,
     aiValidationAutoApprove: typeof raw?.aiValidationAutoApprove === "boolean" ? raw.aiValidationAutoApprove : true,
     aiValidationAutoDeny: typeof raw?.aiValidationAutoDeny === "boolean" ? raw.aiValidationAutoDeny : false,
+    wechatEnabled: typeof raw?.wechatEnabled === "boolean" ? raw.wechatEnabled : false,
+    wechatAutoApproveSafe: typeof raw?.wechatAutoApproveSafe === "boolean" ? raw.wechatAutoApproveSafe : true,
+    wechatForwardDangerous: typeof raw?.wechatForwardDangerous === "boolean" ? raw.wechatForwardDangerous : true,
+    wechatAllowedUsers: typeof raw?.wechatAllowedUsers === "string" ? raw.wechatAllowedUsers : "",
+    wechatDefaultPermissionMode: typeof raw?.wechatDefaultPermissionMode === "string" && raw.wechatDefaultPermissionMode.trim() ? raw.wechatDefaultPermissionMode : "acceptEdits",
+    wechatDefaultCwd: typeof raw?.wechatDefaultCwd === "string" ? raw.wechatDefaultCwd.trim() : "",
     publicUrl: typeof raw?.publicUrl === "string" ? raw.publicUrl.trim().replace(/\/+$/, "") : "",
     updateChannel: raw?.updateChannel === "prerelease" ? "prerelease" : "stable",
     dockerAutoUpdate: typeof raw?.dockerAutoUpdate === "boolean" ? raw.dockerAutoUpdate : false,
@@ -133,7 +157,7 @@ export function getSettings(): CompanionSettings {
 }
 
 export function updateSettings(
-  patch: Partial<Pick<CompanionSettings, "anthropicApiKey" | "anthropicModel" | "claudeCodeOAuthToken" | "openaiApiKey" | "onboardingCompleted" | "linearApiKey" | "linearAutoTransition" | "linearAutoTransitionStateId" | "linearAutoTransitionStateName" | "linearArchiveTransition" | "linearArchiveTransitionStateId" | "linearArchiveTransitionStateName" | "linearOAuthClientId" | "linearOAuthClientSecret" | "linearOAuthWebhookSecret" | "linearOAuthAccessToken" | "linearOAuthRefreshToken" | "aiValidationEnabled" | "aiValidationAutoApprove" | "aiValidationAutoDeny" | "publicUrl" | "updateChannel" | "dockerAutoUpdate">>,
+  patch: Partial<Pick<CompanionSettings, "anthropicApiKey" | "anthropicModel" | "claudeCodeOAuthToken" | "openaiApiKey" | "onboardingCompleted" | "linearApiKey" | "linearAutoTransition" | "linearAutoTransitionStateId" | "linearAutoTransitionStateName" | "linearArchiveTransition" | "linearArchiveTransitionStateId" | "linearArchiveTransitionStateName" | "linearOAuthClientId" | "linearOAuthClientSecret" | "linearOAuthWebhookSecret" | "linearOAuthAccessToken" | "linearOAuthRefreshToken" | "aiValidationEnabled" | "aiValidationAutoApprove" | "aiValidationAutoDeny" | "wechatEnabled" | "wechatAutoApproveSafe" | "wechatForwardDangerous" | "wechatAllowedUsers" | "wechatDefaultPermissionMode" | "wechatDefaultCwd" | "publicUrl" | "updateChannel" | "dockerAutoUpdate">>,
 ): CompanionSettings {
   ensureLoaded();
   settings = normalize({
@@ -157,6 +181,12 @@ export function updateSettings(
     aiValidationEnabled: patch.aiValidationEnabled ?? settings.aiValidationEnabled,
     aiValidationAutoApprove: patch.aiValidationAutoApprove ?? settings.aiValidationAutoApprove,
     aiValidationAutoDeny: patch.aiValidationAutoDeny ?? settings.aiValidationAutoDeny,
+    wechatEnabled: patch.wechatEnabled ?? settings.wechatEnabled,
+    wechatAutoApproveSafe: patch.wechatAutoApproveSafe ?? settings.wechatAutoApproveSafe,
+    wechatForwardDangerous: patch.wechatForwardDangerous ?? settings.wechatForwardDangerous,
+    wechatAllowedUsers: patch.wechatAllowedUsers ?? settings.wechatAllowedUsers,
+    wechatDefaultPermissionMode: patch.wechatDefaultPermissionMode ?? settings.wechatDefaultPermissionMode,
+    wechatDefaultCwd: patch.wechatDefaultCwd ?? settings.wechatDefaultCwd,
     publicUrl: patch.publicUrl ?? settings.publicUrl,
     updateChannel: patch.updateChannel ?? settings.updateChannel,
     dockerAutoUpdate: patch.dockerAutoUpdate ?? settings.dockerAutoUpdate,

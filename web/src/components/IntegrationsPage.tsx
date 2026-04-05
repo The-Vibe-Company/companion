@@ -15,6 +15,7 @@ export function IntegrationsPage({ embedded = false }: IntegrationsPageProps) {
   const [tailscaleStatus, setTailscaleStatus] = useState<TailscaleStatus | null>(null);
   const [oauthConnections, setOauthConnections] = useState<LinearOAuthConnectionSummary[]>([]);
   const [linearAgents, setLinearAgents] = useState<AgentInfo[]>([]);
+  const [wechatRunning, setWechatRunning] = useState(false);
 
   useEffect(() => {
     // Load Tailscale status (non-blocking)
@@ -46,6 +47,11 @@ export function IntegrationsPage({ embedded = false }: IntegrationsPageProps) {
       .then((agents) => {
         setLinearAgents(agents.filter(a => a.triggers?.linear?.enabled));
       })
+      .catch(() => {});
+
+    // Load WeChat bot status
+    api.getWeChatStatus()
+      .then((s) => setWechatRunning(s.running))
       .catch(() => {});
   }, []);
 
@@ -247,6 +253,55 @@ export function IntegrationsPage({ embedded = false }: IntegrationsPageProps) {
               aria-label="Open Tailscale settings"
               title="Open Tailscale settings"
               className="absolute bottom-0 right-0 sm:bottom-0 sm:right-0 inline-flex h-10 w-10 items-center justify-center rounded-full border border-cc-primary/28 bg-cc-primary/12 text-cc-fg transition-colors hover:border-cc-primary/50 hover:bg-cc-primary/20 focus:outline-none focus:ring-2 focus:ring-cc-primary/35 cursor-pointer"
+            >
+              <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <path d="M9.67 4.53 10 2h4l.33 2.53a7.9 7.9 0 0 1 1.7.7l2.03-1.55 2.83 2.83-1.55 2.03c.28.54.51 1.1.7 1.7L22 10v4l-2.53.33a7.9 7.9 0 0 1-.7 1.7l1.55 2.03-2.83 2.83-2.03-1.55c-.54.28-1.1.51-1.7.7L14 22h-4l-.33-2.53a7.9 7.9 0 0 1-1.7-.7l-2.03 1.55-2.83-2.83 1.55-2.03a7.9 7.9 0 0 1-.7-1.7L2 14v-4l2.53-.33c.19-.6.42-1.16.7-1.7L3.68 5.94 6.5 3.1l2.03 1.55c.54-.28 1.1-.51 1.7-.7Z" />
+                <circle cx="12" cy="12" r="3.2" />
+              </svg>
+            </button>
+          </div>
+        </section>
+
+        {/* WeChat Bot card */}
+        <section className="group relative mt-6 overflow-hidden rounded-3xl border border-cc-border/80 bg-cc-card p-5 pb-16 sm:p-7 sm:pb-7 transition-all duration-300 hover:border-cc-primary/35 hover:shadow-[0_18px_44px_rgba(0,0,0,0.18)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_140%_at_100%_0%,rgba(34,197,94,0.18),transparent_52%)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-30 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.04)_35%,transparent_62%)]" />
+          <div className="relative min-w-0">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 rounded-full border border-cc-border bg-cc-hover/55 px-3 py-1.5 text-xs tracking-wide text-cc-muted">
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 01.213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 00.167-.054l1.903-1.114a.864.864 0 01.717-.098 10.16 10.16 0 002.837.403c.276 0 .543-.027.811-.05a6.37 6.37 0 01-.248-1.753c0-3.694 3.387-6.69 7.565-6.69.267 0 .526.02.788.042C16.879 4.787 13.147 2.188 8.691 2.188zm-2.6 4.408a1.06 1.06 0 11-.001 2.12 1.06 1.06 0 01.001-2.12zm5.198 0a1.06 1.06 0 110 2.12 1.06 1.06 0 010-2.12z"/>
+                  <path d="M23.997 14.58c0-3.246-3.15-5.878-7.035-5.878s-7.035 2.632-7.035 5.878 3.15 5.878 7.035 5.878c.84 0 1.645-.126 2.386-.358a.71.71 0 01.59.082l1.58.923a.27.27 0 00.14.047c.134 0 .24-.111.24-.247 0-.06-.023-.118-.038-.177l-.326-1.236a.487.487 0 01.177-.553c1.52-1.126 2.286-2.795 2.286-4.359zm-9.346-1.19a.883.883 0 110 1.767.883.883 0 010-1.766zm4.621 0a.883.883 0 110 1.767.883.883 0 010-1.766z"/>
+                </svg>
+                <span>WeChat Bot</span>
+                {wechatRunning && (
+                  <span
+                    className="inline-block h-1.5 w-1.5 rounded-full bg-cc-success shadow-[0_0_0_3px_rgba(34,197,94,0.15)]"
+                    aria-label="Running"
+                    title="Running"
+                  />
+                )}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2.5">
+                <h2 className="text-[clamp(1.45rem,2.6vw,2rem)] font-semibold leading-[1.12] tracking-tight text-cc-fg">
+                  Control sessions from WeChat
+                </h2>
+              </div>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-cc-muted sm:text-[15px]">
+                Send messages, manage sessions, handle permissions, and switch models directly from your WeChat chat.
+              </p>
+              <div className="mt-4 inline-flex max-w-full items-center rounded-lg border border-cc-border/80 bg-black/10 px-3 py-1.5 text-xs text-cc-muted/95">
+                <span className="truncate">{wechatRunning ? "Bot connected" : "Not configured"}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.hash = "#/integrations/wechat";
+              }}
+              aria-label="Open WeChat Bot settings"
+              title="Open WeChat Bot settings"
+              className="absolute bottom-0 right-0 sm:bottom-0 sm:right-0 inline-flex h-10 w-10 items-center justify-center rounded-full border border-green-500/28 bg-green-500/12 text-cc-fg transition-colors hover:border-green-500/50 hover:bg-green-500/20 focus:outline-none focus:ring-2 focus:ring-green-500/35 cursor-pointer"
             >
               <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                 <path d="M9.67 4.53 10 2h4l.33 2.53a7.9 7.9 0 0 1 1.7.7l2.03-1.55 2.83 2.83-1.55 2.03c.28.54.51 1.1.7 1.7L22 10v4l-2.53.33a7.9 7.9 0 0 1-.7 1.7l1.55 2.03-2.83 2.83-2.03-1.55c-.54.28-1.1.51-1.7.7L14 22h-4l-.33-2.53a7.9 7.9 0 0 1-1.7-.7l-2.03 1.55-2.83-2.83 1.55-2.03a7.9 7.9 0 0 1-.7-1.7L2 14v-4l2.53-.33c.19-.6.42-1.16.7-1.7L3.68 5.94 6.5 3.1l2.03 1.55c.54-.28 1.1-.51 1.7-.7Z" />

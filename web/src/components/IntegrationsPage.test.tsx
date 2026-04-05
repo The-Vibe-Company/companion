@@ -26,6 +26,7 @@ const mockApi = {
   getTailscaleStatus: vi.fn(),
   listAgents: vi.fn(),
   listLinearOAuthConnections: vi.fn(),
+  getWeChatStatus: vi.fn(),
 };
 
 vi.mock("../api.js", () => ({
@@ -35,6 +36,7 @@ vi.mock("../api.js", () => ({
     getTailscaleStatus: (...args: unknown[]) => mockApi.getTailscaleStatus(...args),
     listAgents: (...args: unknown[]) => mockApi.listAgents(...args),
     listLinearOAuthConnections: (...args: unknown[]) => mockApi.listLinearOAuthConnections(...args),
+    getWeChatStatus: (...args: unknown[]) => mockApi.getWeChatStatus(...args),
   },
 }));
 
@@ -86,6 +88,7 @@ beforeEach(() => {
   });
   mockApi.listAgents.mockResolvedValue([]);
   mockApi.listLinearOAuthConnections.mockResolvedValue({ connections: [] });
+  mockApi.getWeChatStatus.mockResolvedValue({ running: false, starting: false, error: null, connectedUsers: 0, qrCode: null });
   window.location.hash = "#/integrations";
 });
 

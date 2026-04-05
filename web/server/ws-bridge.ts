@@ -950,6 +950,52 @@ export class WsBridge {
     this.routeBrowserMessage(session, { type: "user_message", content });
   }
 
+  /** Send a permission response into a session programmatically (no browser required).
+   *  Used by the WeChat bridge to resolve permission requests from WeChat. */
+  injectPermissionResponse(sessionId: string, requestId: string, behavior: "allow" | "deny", updatedInput?: Record<string, unknown>): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      console.error(`[ws-bridge] Cannot inject permission response: session ${sessionId} not found`);
+      return;
+    }
+    const msg: BrowserOutgoingMessage = { type: "permission_response", request_id: requestId, behavior };
+    if (updatedInput) msg.updated_input = updatedInput;
+    this.routeBrowserMessage(session, msg);
+  }
+
+  /** Interrupt the current operation in a session programmatically (no browser required).
+   *  Used by the WeChat bridge to cancel ongoing operations from WeChat. */
+  injectInterrupt(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      console.error(`[ws-bridge] Cannot inject interrupt: session ${sessionId} not found`);
+      return;
+    }
+    this.routeBrowserMessage(session, { type: "interrupt" });
+  }
+
+  /** Set the model for a session programmatically (no browser required).
+   *  Used by the WeChat bridge to switch models from WeChat. */
+  injectSetModel(sessionId: string, model: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      console.error(`[ws-bridge] Cannot inject set_model: session ${sessionId} not found`);
+      return;
+    }
+    this.routeBrowserMessage(session, { type: "set_model", model });
+  }
+
+  /** Set the permission mode for a session programmatically (no browser required).
+   *  Used by the WeChat bridge to switch permission modes from WeChat. */
+  injectSetPermissionMode(sessionId: string, mode: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      console.error(`[ws-bridge] Cannot inject set_permission_mode: session ${sessionId} not found`);
+      return;
+    }
+    this.routeBrowserMessage(session, { type: "set_permission_mode", mode });
+  }
+
   /** Configure MCP servers on a session programmatically (no browser required).
    *  Used by the agent executor to set up MCP servers after CLI connects. */
   injectMcpSetServers(sessionId: string, servers: Record<string, McpServerConfig>): void {

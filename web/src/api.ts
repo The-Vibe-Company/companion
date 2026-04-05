@@ -421,6 +421,12 @@ export interface AppSettings {
   publicUrl: string;
   updateChannel: "stable" | "prerelease";
   dockerAutoUpdate: boolean;
+  wechatEnabled: boolean;
+  wechatAutoApproveSafe: boolean;
+  wechatForwardDangerous: boolean;
+  wechatAllowedUsers: string;
+  wechatDefaultPermissionMode: string;
+  wechatDefaultCwd: string;
 }
 
 export interface LinearOAuthConnectionSummary {
@@ -970,6 +976,13 @@ export const api = {
   getTailscaleStatus: () => get<TailscaleStatus>("/tailscale/status"),
   startTailscaleFunnel: () => post<TailscaleStatus>("/tailscale/funnel/start"),
   stopTailscaleFunnel: () => post<TailscaleStatus>("/tailscale/funnel/stop"),
+
+  // WeChat Bot
+  getWeChatStatus: () => get<{ running: boolean; starting: boolean; error: string | null; connectedUsers: number; qrCode: string | null }>("/wechat/status"),
+  startWeChat: () => post<{ ok: boolean }>("/wechat/start"),
+  stopWeChat: () => post<{ ok: boolean }>("/wechat/stop"),
+  getWeChatSessions: () => get<{ sessions: Array<{ userId: string; activeSession: string | null; sessionCount: number }> }>("/wechat/sessions"),
+  deleteWeChatSession: (userId: string) => del<{ ok: boolean }>(`/wechat/sessions/${encodeURIComponent(userId)}`),
 
   // Linear connections CRUD
   listLinearConnections: () =>

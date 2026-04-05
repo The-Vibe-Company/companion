@@ -32,6 +32,8 @@ import { migrateLinearCredentialsToAgents } from "./linear-credential-migration.
 import { authenticateManagedWebSocket } from "./ws-auth.js";
 import { LinearAgentBridge } from "./linear-agent-bridge.js";
 import { NoVncProxy } from "./novnc-proxy.js";
+import { WeChatBridge } from "./wechat-bridge.js";
+import { getSettings } from "./settings-manager.js";
 
 import { startPeriodicCheck, setServiceMode } from "./update-checker.js";
 import { imagePullManager } from "./image-pull-manager.js";
@@ -67,6 +69,8 @@ const orchestrator = new SessionOrchestrator({
   launcher, wsBridge, sessionStore, worktreeTracker,
   prPoller, agentExecutor,
 });
+
+const wechatBridge = new WeChatBridge(wsBridge, orchestrator);
 
 // ── Cloud relay connection (for receiving webhooks behind a firewall) ────────
 // The relay forwards platform webhooks (e.g. GitHub, Slack) to the Companion
@@ -131,7 +135,7 @@ if (managedAuthEnabled) {
 }
 
 app.use("/api/*", cors());
-app.route("/api", createRoutes(orchestrator, launcher, wsBridge, terminalManager, prPoller, recorder, cronScheduler, agentExecutor, linearAgentBridge, port));
+app.route("/api", createRoutes(orchestrator, launcher, wsBridge, terminalManager, prPoller, recorder, cronScheduler, agentExecutor, linearAgentBridge, port, wechatBridge));
 
 // Dynamic manifest — embeds auth token in start_url so PWA auto-authenticates
 // on first launch. iOS gives standalone PWAs isolated storage from Safari,
@@ -338,6 +342,16 @@ migrateCronJobsToAgents();
 migrateLinearCredentialsToAgents();
 agentExecutor.startAll();
 
+// ── WeChat Bot ──────────────────────────────────────────────────────────────
+const _wechatSettings = getSettings();
+if (_wechatSettings.wechatEnabled) {
+  wechatBridge.start().then(() => {
+    console.log("[server] WeChat bot started");
+  }).catch((err: unknown) => {
+    console.error("[server] WeChat bot failed to start:", err);
+  });
+}
+
 // ── Image pull manager — pre-pull missing Docker images for environments ────
 imagePullManager.initFromEnvironments();
 
@@ -386,6 +400,7 @@ setInterval(() => {
 // ── Graceful shutdown — persist container state ──────────────────────────────
 function gracefulShutdown() {
   console.log("[server] Persisting container state before shutdown...");
+  wechatBridge.stop();
   containerManager.persistState(CONTAINER_STATE_PATH);
   cleanupTailscaleFunnel(port);
   closeLogFile();

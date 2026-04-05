@@ -63,6 +63,12 @@ beforeEach(() => {
     publicUrl: "",
     updateChannel: "stable",
     dockerAutoUpdate: false,
+      wechatEnabled: false,
+      wechatAutoApproveSafe: true,
+      wechatForwardDangerous: true,
+      wechatAllowedUsers: "",
+      wechatDefaultPermissionMode: "acceptEdits",
+      wechatDefaultCwd: "",
     updatedAt: 0,
   });
 });
@@ -194,6 +200,12 @@ describe("linear-connections", () => {
       publicUrl: "",
       updateChannel: "stable",
       dockerAutoUpdate: false,
+      wechatEnabled: false,
+      wechatAutoApproveSafe: true,
+      wechatForwardDangerous: true,
+      wechatAllowedUsers: "",
+      wechatDefaultPermissionMode: "acceptEdits",
+      wechatDefaultCwd: "",
       updatedAt: 0,
     });
     // Need to reset so migration runs with updated mock
@@ -235,6 +247,12 @@ describe("linear-connections", () => {
       publicUrl: "",
       updateChannel: "stable",
       dockerAutoUpdate: false,
+      wechatEnabled: false,
+      wechatAutoApproveSafe: true,
+      wechatForwardDangerous: true,
+      wechatAllowedUsers: "",
+      wechatDefaultPermissionMode: "acceptEdits",
+      wechatDefaultCwd: "",
       updatedAt: 0,
     });
     _resetForTest(join(tempDir, "linear-connections-migrate.json"));
@@ -295,6 +313,12 @@ describe("linear-connections", () => {
       publicUrl: "",
       updateChannel: "stable",
       dockerAutoUpdate: false,
+      wechatEnabled: false,
+      wechatAutoApproveSafe: true,
+      wechatForwardDangerous: true,
+      wechatAllowedUsers: "",
+      wechatDefaultPermissionMode: "acceptEdits",
+      wechatDefaultCwd: "",
       updatedAt: 0,
     });
 

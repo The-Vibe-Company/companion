@@ -26,6 +26,12 @@ export function registerSettingsRoutes(api: Hono): void {
       aiValidationEnabled: settings.aiValidationEnabled,
       aiValidationAutoApprove: settings.aiValidationAutoApprove,
       aiValidationAutoDeny: settings.aiValidationAutoDeny,
+      wechatEnabled: settings.wechatEnabled,
+      wechatAutoApproveSafe: settings.wechatAutoApproveSafe,
+      wechatForwardDangerous: settings.wechatForwardDangerous,
+      wechatAllowedUsers: settings.wechatAllowedUsers,
+      wechatDefaultPermissionMode: settings.wechatDefaultPermissionMode,
+      wechatDefaultCwd: settings.wechatDefaultCwd,
       publicUrl: settings.publicUrl,
       updateChannel: settings.updateChannel,
       dockerAutoUpdate: settings.dockerAutoUpdate,
@@ -103,6 +109,24 @@ export function registerSettingsRoutes(api: Hono): void {
     if (body.dockerAutoUpdate !== undefined && typeof body.dockerAutoUpdate !== "boolean") {
       return c.json({ error: "dockerAutoUpdate must be a boolean" }, 400);
     }
+    if (body.wechatEnabled !== undefined && typeof body.wechatEnabled !== "boolean") {
+      return c.json({ error: "wechatEnabled must be a boolean" }, 400);
+    }
+    if (body.wechatAutoApproveSafe !== undefined && typeof body.wechatAutoApproveSafe !== "boolean") {
+      return c.json({ error: "wechatAutoApproveSafe must be a boolean" }, 400);
+    }
+    if (body.wechatForwardDangerous !== undefined && typeof body.wechatForwardDangerous !== "boolean") {
+      return c.json({ error: "wechatForwardDangerous must be a boolean" }, 400);
+    }
+    if (body.wechatAllowedUsers !== undefined && typeof body.wechatAllowedUsers !== "string") {
+      return c.json({ error: "wechatAllowedUsers must be a string" }, 400);
+    }
+    if (body.wechatDefaultPermissionMode !== undefined && typeof body.wechatDefaultPermissionMode !== "string") {
+      return c.json({ error: "wechatDefaultPermissionMode must be a string" }, 400);
+    }
+    if (body.wechatDefaultCwd !== undefined && typeof body.wechatDefaultCwd !== "string") {
+      return c.json({ error: "wechatDefaultCwd must be a string" }, 400);
+    }
     const hasAnyField = body.anthropicApiKey !== undefined || body.anthropicModel !== undefined
       || body.claudeCodeOAuthToken !== undefined || body.openaiApiKey !== undefined
       || body.onboardingCompleted !== undefined
@@ -116,7 +140,13 @@ export function registerSettingsRoutes(api: Hono): void {
       || body.aiValidationAutoDeny !== undefined
       || body.publicUrl !== undefined
       || body.updateChannel !== undefined
-      || body.dockerAutoUpdate !== undefined;
+      || body.dockerAutoUpdate !== undefined
+      || body.wechatEnabled !== undefined
+      || body.wechatAutoApproveSafe !== undefined
+      || body.wechatForwardDangerous !== undefined
+      || body.wechatAllowedUsers !== undefined
+      || body.wechatDefaultPermissionMode !== undefined
+      || body.wechatDefaultCwd !== undefined;
     if (!hasAnyField) {
       return c.json({ error: "At least one settings field is required" }, 400);
     }
@@ -210,6 +240,30 @@ export function registerSettingsRoutes(api: Hono): void {
         typeof body.dockerAutoUpdate === "boolean"
           ? body.dockerAutoUpdate
           : undefined,
+      wechatEnabled:
+        typeof body.wechatEnabled === "boolean"
+          ? body.wechatEnabled
+          : undefined,
+      wechatAutoApproveSafe:
+        typeof body.wechatAutoApproveSafe === "boolean"
+          ? body.wechatAutoApproveSafe
+          : undefined,
+      wechatForwardDangerous:
+        typeof body.wechatForwardDangerous === "boolean"
+          ? body.wechatForwardDangerous
+          : undefined,
+      wechatAllowedUsers:
+        typeof body.wechatAllowedUsers === "string"
+          ? body.wechatAllowedUsers.trim()
+          : undefined,
+      wechatDefaultPermissionMode:
+        typeof body.wechatDefaultPermissionMode === "string"
+          ? body.wechatDefaultPermissionMode.trim()
+          : undefined,
+      wechatDefaultCwd:
+        typeof body.wechatDefaultCwd === "string"
+          ? body.wechatDefaultCwd.trim()
+          : undefined,
     });
 
     const connectionsAfterUpdate = listConnections();
@@ -231,6 +285,12 @@ export function registerSettingsRoutes(api: Hono): void {
       aiValidationEnabled: settings.aiValidationEnabled,
       aiValidationAutoApprove: settings.aiValidationAutoApprove,
       aiValidationAutoDeny: settings.aiValidationAutoDeny,
+      wechatEnabled: settings.wechatEnabled,
+      wechatAutoApproveSafe: settings.wechatAutoApproveSafe,
+      wechatForwardDangerous: settings.wechatForwardDangerous,
+      wechatAllowedUsers: settings.wechatAllowedUsers,
+      wechatDefaultPermissionMode: settings.wechatDefaultPermissionMode,
+      wechatDefaultCwd: settings.wechatDefaultCwd,
       publicUrl: settings.publicUrl,
       updateChannel: settings.updateChannel,
       dockerAutoUpdate: settings.dockerAutoUpdate,
