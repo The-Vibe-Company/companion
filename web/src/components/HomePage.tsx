@@ -113,6 +113,7 @@ export function HomePage() {
   const [showOnboardingTip, setShowOnboardingTip] = useState(
     () => localStorage.getItem("cc-onboarding-dismissed") !== "true",
   );
+  const [showWeChatGuide, setShowWeChatGuide] = useState(false);
 
   const MODELS = dynamicModels || getModelsForBackend(backend);
   const MODES = getModesForBackend(backend);
@@ -1514,6 +1515,99 @@ export function HomePage() {
               onConnectionSelect={setSelectedLinearConnectionId}
             />
           </div>
+
+        {/* WeChat usage guide */}
+        <div className="mt-3 sm:mt-4">
+          <button
+            type="button"
+            onClick={() => setShowWeChatGuide((v) => !v)}
+            className={`mx-auto flex items-center gap-1.5 px-2 py-1 text-[11px] sm:text-xs rounded-md transition-colors cursor-pointer ${
+              showWeChatGuide
+                ? "text-cc-primary"
+                : "text-cc-muted hover:text-cc-fg"
+            }`}
+            aria-expanded={showWeChatGuide}
+            aria-controls="wechat-guide-panel"
+          >
+            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 opacity-60">
+              <path d="M11.15 5.28c-.248-.04-.496-.06-.742-.06-2.637 0-4.882 1.893-5.39 4.412a.75.75 0 01-1.476-.266C4.16 6.248 6.948 3.97 10.408 3.97c.3 0 .603.02.908.06a.75.75 0 01-.166 1.49v-.001zM4.003 8.75a.75.75 0 01.75.75 2.5 2.5 0 005 0 .75.75 0 011.5 0 4 4 0 01-8 0 .75.75 0 01.75-.75zM7 10a1 1 0 100-2 1 1 0 000 2zm4.5-4.5a1 1 0 100-2 1 1 0 000 2zM5.5 12.5a1 1 0 100-2 1 1 0 000 2z" />
+            </svg>
+            WeChat Bot 使用说明
+            <svg
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              className={`w-3 h-3 opacity-40 transition-transform ${showWeChatGuide ? "rotate-180" : ""}`}
+            >
+              <path d="M4 6l4 4 4-4" />
+            </svg>
+          </button>
+
+          <div
+            className="accordion-panel"
+            data-open={showWeChatGuide ? "true" : "false"}
+          >
+            <div className="accordion-inner" inert={!showWeChatGuide || undefined}>
+              <div
+                id="wechat-guide-panel"
+                className="mt-2 px-4 py-3 space-y-3 rounded-xl border border-cc-border/20 bg-cc-card/30 text-[11px] sm:text-xs text-cc-muted"
+              >
+                <p className="text-cc-fg font-medium">
+                  通过微信控制 Claude Code / Codex 会话，无需打开浏览器。
+                </p>
+
+                <div>
+                  <p className="text-cc-fg font-medium mb-1">快速开始</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>
+                      进入 <a href="#/integrations/wechat" className="text-cc-primary hover:underline">Integrations &rarr; WeChat Bot</a> 设置页面
+                    </li>
+                    <li>点击 <strong className="text-cc-fg">Start</strong> 启动 Bot，扫描二维码登录微信</li>
+                    <li>登录成功后即可在微信中直接对话</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <p className="text-cc-fg font-medium mb-1">常用命令</p>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 font-mono-code">
+                    <span className="text-cc-primary">/new [folder]</span><span>创建新会话</span>
+                    <span className="text-cc-primary">/sessions</span><span>列出所有会话</span>
+                    <span className="text-cc-primary">/switch &lt;n&gt;</span><span>切换到第 n 个会话</span>
+                    <span className="text-cc-primary">/kill</span><span>终止当前会话</span>
+                    <span className="text-cc-primary">/model &lt;name&gt;</span><span>切换模型</span>
+                    <span className="text-cc-primary">/mode &lt;mode&gt;</span><span>切换权限模式</span>
+                    <span className="text-cc-primary">/allow</span><span>批准权限请求</span>
+                    <span className="text-cc-primary">/deny</span><span>拒绝权限请求</span>
+                    <span className="text-cc-primary">/interrupt</span><span>中断当前操作</span>
+                    <span className="text-cc-primary">/status</span><span>查看会话状态</span>
+                    <span className="text-cc-primary">/dir [path]</span><span>浏览目录，加 -r 递归</span>
+                    <span className="text-cc-primary">/help</span><span>查看所有命令</span>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-cc-fg font-medium mb-1">权限处理</p>
+                  <p>
+                    安全工具（Read、Glob、Grep）自动批准；危险操作（Bash、Write、Edit）转发微信等待你回复 <span className="font-mono-code text-cc-primary">/allow</span> 或 <span className="font-mono-code text-cc-primary">/deny</span>。
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-cc-fg font-medium mb-1">权限模式</p>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                    <span className="font-mono-code text-cc-fg">acceptEdits</span><span>默认，自动批准文件编辑</span>
+                    <span className="font-mono-code text-cc-fg">bypassPermissions</span><span>跳过所有权限检查</span>
+                    <span className="font-mono-code text-cc-fg">plan</span><span>只读模式，需要确认才执行</span>
+                    <span className="font-mono-code text-cc-fg">default</span><span>使用 Claude Code 默认行为</span>
+                  </div>
+                </div>
+
+                <p className="text-cc-muted/70">
+                  首次登录后凭据自动保存，后续无需再次扫码。如遇问题，发送 <span className="font-mono-code">/status</span> 检查会话状态。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Branch behind remote warning */}
         {pullPrompt && (
