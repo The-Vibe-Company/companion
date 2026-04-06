@@ -1,7 +1,7 @@
 // Typed event map for the Companion internal event bus.
 // Each key is a namespaced event name; values are the payload passed to handlers.
 
-import type { BrowserIncomingMessage } from "./session-types.js";
+import type { BrowserIncomingMessage, PermissionRequest } from "./session-types.js";
 import type { CodexAdapter } from "./codex-adapter.js";
 import type { SessionPhase } from "./session-state-machine.js";
 
@@ -35,6 +35,12 @@ export interface CompanionEventMap {
     from: SessionPhase;
     to: SessionPhase;
     trigger: string;
+  };
+
+  /** CLI requested permission for a tool use (before AI validation). */
+  "session:permission-request": {
+    sessionId: string;
+    request: PermissionRequest;
   };
 
   // ── Backend integration ────────────────────────────────────────────

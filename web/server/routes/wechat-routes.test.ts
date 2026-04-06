@@ -15,6 +15,7 @@ const mockWechatBridge = {
   getStatus: vi.fn(),
   start: vi.fn(),
   stop: vi.fn(),
+  relogin: vi.fn(),
   getSessions: vi.fn(),
   deleteSessionsForUser: vi.fn(),
   isRunning: false,
@@ -49,6 +50,7 @@ describe("GET /wechat/status", () => {
       error: null,
       connectedUsers: 0,
       qrCode: null,
+      reconnecting: false,
     });
 
     const app = createApp();
@@ -68,6 +70,7 @@ describe("GET /wechat/status", () => {
       error: null,
       connectedUsers: 3,
       qrCode: "data:image/png;base64,abc",
+      reconnecting: false,
     });
 
     const app = createApp();
@@ -136,6 +139,34 @@ describe("POST /wechat/stop", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(mockWechatBridge.stop).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── POST /wechat/relogin ───────────────────────────────────────────────
+
+describe("POST /wechat/relogin", () => {
+  it("relogs the bot with fresh credentials", async () => {
+    mockWechatBridge.relogin.mockResolvedValue(undefined);
+
+    const app = createApp();
+    const res = await app.request("/wechat/relogin", { method: "POST" });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(mockWechatBridge.relogin).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 500 when relogin throws", async () => {
+    mockWechatBridge.relogin.mockRejectedValue(new Error("Storage clear failed"));
+
+    const app = createApp();
+    const res = await app.request("/wechat/relogin", { method: "POST" });
+
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe("Storage clear failed");
   });
 });
 

@@ -7,6 +7,7 @@ interface WeChatStatus {
   error: string | null;
   connectedUsers: number;
   qrCode: string | null;
+  reconnecting: boolean;
 }
 
 interface WeChatUserSession {
@@ -90,6 +91,18 @@ export function WeChatSettingsPage({ embedded = false }: WeChatSettingsPageProps
     setLoading(false);
   };
 
+  const handleRelogin = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await api.reloginWeChat();
+      await loadStatus();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+    setLoading(false);
+  };
+
   const handleToggle = async (field: string, value: boolean) => {
     try {
       await api.updateSettings({ [field]: value });
@@ -135,9 +148,9 @@ export function WeChatSettingsPage({ embedded = false }: WeChatSettingsPageProps
         <section className="mb-6 p-4 rounded-xl border border-cc-border/80 bg-cc-card">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className={`inline-block h-2.5 w-2.5 rounded-full ${status?.running ? "bg-cc-success" : status?.starting ? "bg-yellow-400 animate-pulse" : "bg-cc-muted/40"}`} />
+              <span className={`inline-block h-2.5 w-2.5 rounded-full ${status?.running ? "bg-cc-success" : status?.reconnecting ? "bg-orange-400 animate-pulse" : status?.starting ? "bg-yellow-400 animate-pulse" : "bg-cc-muted/40"}`} />
               <span className="text-sm font-medium">
-                {status?.running ? "Running" : status?.starting ? "Starting..." : "Stopped"}
+                {status?.running ? "Running" : status?.reconnecting ? "Reconnecting..." : status?.starting ? "Starting..." : "Stopped"}
               </span>
               {status?.running && (
                 <span className="text-xs text-cc-muted">
@@ -146,7 +159,7 @@ export function WeChatSettingsPage({ embedded = false }: WeChatSettingsPageProps
               )}
             </div>
             <div className="flex gap-2">
-              {!status?.running && !status?.starting ? (
+              {!status?.running && !status?.starting && !status?.reconnecting ? (
                 <button
                   onClick={handleStart}
                   disabled={loading}
@@ -155,13 +168,22 @@ export function WeChatSettingsPage({ embedded = false }: WeChatSettingsPageProps
                   Start
                 </button>
               ) : status?.running ? (
-                <button
-                  onClick={handleStop}
-                  disabled={loading}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-cc-error/15 border border-cc-error/30 text-cc-fg hover:bg-cc-error/25 transition-colors disabled:opacity-50 cursor-pointer"
-                >
-                  Stop
-                </button>
+                <>
+                  <button
+                    onClick={handleStop}
+                    disabled={loading}
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-cc-error/15 border border-cc-error/30 text-cc-fg hover:bg-cc-error/25 transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    Stop
+                  </button>
+                  <button
+                    onClick={handleRelogin}
+                    disabled={loading}
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-yellow-500/15 border border-yellow-500/30 text-cc-fg hover:bg-yellow-500/25 transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    Re-login
+                  </button>
+                </>
               ) : null}
             </div>
           </div>

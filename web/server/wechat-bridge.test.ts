@@ -102,19 +102,16 @@ describe("isDangerousTool", () => {
     expect(isDangerousTool("mcp__context7__query-docs", {})).toBe(false);
   });
 
-  it("marks dangerous Bash commands", () => {
+  it("marks ALL Bash commands as dangerous — CLI decides permissions, not WeChat bridge", () => {
+    // Even harmless-looking commands like ls, git status are marked dangerous
+    // because if the CLI sent a control_request, it decided this needs approval.
+    // The WeChat bridge must not second-guess the CLI's permission decision.
+    expect(isDangerousTool("Bash", { command: "ls -la" })).toBe(true);
+    expect(isDangerousTool("Bash", { command: "git status" })).toBe(true);
+    expect(isDangerousTool("Bash", { command: "npm test" })).toBe(true);
+    expect(isDangerousTool("Bash", { command: "echo hello" })).toBe(true);
     expect(isDangerousTool("Bash", { command: "rm -rf /" })).toBe(true);
-    expect(isDangerousTool("Bash", { command: "rmdir old_dir" })).toBe(true);
-    expect(isDangerousTool("Bash", { command: "chmod 777 file" })).toBe(true);
-    expect(isDangerousTool("Bash", { command: "shutdown now" })).toBe(true);
-    expect(isDangerousTool("Bash", { command: "dd if=/dev/zero of=/dev/sda" })).toBe(true);
-  });
-
-  it("marks safe Bash commands", () => {
-    expect(isDangerousTool("Bash", { command: "ls -la" })).toBe(false);
-    expect(isDangerousTool("Bash", { command: "git status" })).toBe(false);
-    expect(isDangerousTool("Bash", { command: "npm test" })).toBe(false);
-    expect(isDangerousTool("Bash", { command: "echo hello" })).toBe(false);
+    expect(isDangerousTool("Bash", { command: "npx skills find glm" })).toBe(true);
   });
 
   it("marks Write as dangerous", () => {
@@ -128,5 +125,6 @@ describe("isDangerousTool", () => {
   it("marks unknown tools as dangerous", () => {
     expect(isDangerousTool("SomeCustomTool", {})).toBe(true);
     expect(isDangerousTool("Agent", {})).toBe(true);
+    expect(isDangerousTool("Skill", {})).toBe(true);
   });
 });

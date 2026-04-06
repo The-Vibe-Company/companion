@@ -978,9 +978,10 @@ export const api = {
   stopTailscaleFunnel: () => post<TailscaleStatus>("/tailscale/funnel/stop"),
 
   // WeChat Bot
-  getWeChatStatus: () => get<{ running: boolean; starting: boolean; error: string | null; connectedUsers: number; qrCode: string | null }>("/wechat/status"),
+  getWeChatStatus: () => get<{ running: boolean; starting: boolean; error: string | null; connectedUsers: number; qrCode: string | null; reconnecting: boolean }>("/wechat/status"),
   startWeChat: () => post<{ ok: boolean }>("/wechat/start"),
   stopWeChat: () => post<{ ok: boolean }>("/wechat/stop"),
+  reloginWeChat: () => post<{ ok: boolean }>("/wechat/relogin"),
   getWeChatSessions: () => get<{ sessions: Array<{ userId: string; activeSession: string | null; sessionCount: number }> }>("/wechat/sessions"),
   deleteWeChatSession: (userId: string) => del<{ ok: boolean }>(`/wechat/sessions/${encodeURIComponent(userId)}`),
 

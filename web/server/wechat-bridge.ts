@@ -38,9 +38,11 @@ const SAFE_TOOLS = new Set([
   "TodoRead", "TaskList", "TaskGet",
 ]);
 
-const DANGEROUS_BASH_PATTERN = /rm\s|rm$|rmdir|mkfs|dd\s|>\s*\/dev|chmod\s|chown\s|shutdown|reboot/i;
-
 const WECHAT_MSG_LIMIT = 4000;
+
+const MIN_RECONNECT_DELAY_MS = 2_000;
+const MAX_RECONNECT_DELAY_MS = 60_000;
+const MAX_RECONNECT_ATTEMPTS = 20;
 
 const PERSIST_PATH = join(COMPANION_HOME, "wechat-sessions.json");
 
@@ -73,14 +75,12 @@ export function parseCommand(text: string): ParsedCommand {
   return { type: "command", command, args };
 }
 
-/** Check if a tool use is considered dangerous. */
-export function isDangerousTool(toolName: string, input: Record<string, unknown>): boolean {
+/** Check if a tool use is considered dangerous.
+ *  If the CLI sent a control_request, it already decided this tool needs approval.
+ *  We only auto-approve truly read-only tools from SAFE_TOOLS; everything else is dangerous. */
+export function isDangerousTool(toolName: string, _input: Record<string, unknown>): boolean {
   if (SAFE_TOOLS.has(toolName)) return false;
-  if (toolName === "Bash") {
-    const cmd = String(input.command ?? "");
-    return DANGEROUS_BASH_PATTERN.test(cmd);
-  }
-  // Write, Edit, Agent, and unknown tools are considered dangerous
+  // Bash, Write, Edit, Agent, Skill, and all unknown tools are considered dangerous
   return true;
 }
 
@@ -170,6 +170,11 @@ export class WeChatBridge {
   private userIdBySession = new Map<string, string>();
   // QR code data for web UI display
   private qrCodeData: string | null = null;
+  // Auto-reconnect state
+  private reconnectDelay = MIN_RECONNECT_DELAY_MS;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private intentionalStop = false;
+  private reconnectAttempt = 0;
 
   constructor(wsBridge: WsBridge, orchestrator: SessionOrchestrator) {
     this.wsBridge = wsBridge;
@@ -186,6 +191,8 @@ export class WeChatBridge {
    */
   async start(): Promise<void> {
     if (this.running || this.starting) return;
+    this.intentionalStop = false;
+    this.reconnectAttempt = 0;
     this.starting = true;
     this.startError = null;
 
@@ -234,15 +241,22 @@ export class WeChatBridge {
       console.error("[wechat] Poll loop crashed:", err);
       this.running = false;
       this.starting = false;
+      if (!this.intentionalStop) {
+        this.scheduleReconnect();
+      }
     });
 
     this.running = true;
     this.starting = false;
+    this.reconnectDelay = MIN_RECONNECT_DELAY_MS;
+    this.reconnectAttempt = 0;
     this.qrCodeData = null;
     console.log("[wechat] Bot started and connected");
   }
 
   stop(): void {
+    this.intentionalStop = true;
+    this.clearReconnectTimer();
     if (!this.bot) return;
     try {
       this.bot.stop();
@@ -264,6 +278,85 @@ export class WeChatBridge {
 
   get qrCode(): string | null {
     return this.qrCodeData;
+  }
+
+  private scheduleReconnect(): void {
+    if (this.intentionalStop) return;
+
+    this.reconnectAttempt++;
+    if (this.reconnectAttempt > MAX_RECONNECT_ATTEMPTS) {
+      this.startError = `Failed to reconnect after ${MAX_RECONNECT_ATTEMPTS} attempts. Use the web UI to re-login.`;
+      console.error(`[wechat] ${this.startError}`);
+      return;
+    }
+
+    const delay = this.reconnectDelay;
+    console.log(`[wechat] Auto-reconnect attempt ${this.reconnectAttempt}/${MAX_RECONNECT_ATTEMPTS} in ${delay}ms`);
+
+    this.reconnectTimer = setTimeout(async () => {
+      this.reconnectTimer = null;
+      this.reconnectDelay = Math.min(this.reconnectDelay * 2, MAX_RECONNECT_DELAY_MS);
+      try {
+        await this.doStart();
+      } catch (err) {
+        console.error("[wechat] Reconnect attempt failed:", err);
+        if (!this.intentionalStop) {
+          this.scheduleReconnect();
+        }
+      }
+    }, delay);
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
+  // ── Message Handling ──────────────────────────────────────────────────
+
+  /**
+   * Force re-login: stop bot, clear stored credentials, restart with fresh QR code.
+   * User session mappings (Claude sessions) are preserved.
+   */
+  async relogin(): Promise<void> {
+    this.intentionalStop = true;
+    this.clearReconnectTimer();
+    this.running = false;
+    this.starting = false;
+
+    if (this.bot) {
+      try {
+        this.bot.stop();
+      } catch {
+        // ignore
+      }
+    }
+
+    // Clean up relay listeners
+    for (const [, cleanups] of this.sessionCleanups) {
+      for (const cleanup of cleanups) cleanup();
+    }
+    this.sessionCleanups.clear();
+
+    // Clear stored credentials via SDK storage
+    try {
+      if (this.bot?.storage) {
+        await this.bot.storage.clear();
+      }
+    } catch (err) {
+      console.error("[wechat] Failed to clear credentials:", err);
+    }
+
+    this.bot = null;
+    this.qrCodeData = null;
+    this.startError = null;
+    this.reconnectAttempt = 0;
+    this.reconnectDelay = MIN_RECONNECT_DELAY_MS;
+
+    // Fresh start — will show new QR code since credentials are cleared
+    await this.start();
   }
 
   // ── Message Handling ──────────────────────────────────────────────────
@@ -515,17 +608,6 @@ export class WeChatBridge {
   private async cmdPermissionResponse(userId: string, behavior: "allow" | "deny"): Promise<void> {
     const userSession = this.userSessions.get(userId);
     if (!userSession?.pendingPermission) {
-      // Check if the active session has pending permissions that weren't forwarded
-      // (e.g. auto-approved safe tools)
-      const sessionId = this.getActiveSessionId(userId);
-      if (sessionId) {
-        const session = this.wsBridge.getSession(sessionId);
-        if (session && session.stateMachine.phase === "awaiting_permission" && session.pendingPermissions.size > 0) {
-          // There ARE pending permissions but they weren't forwarded to WeChat — forward now
-          this.handlePendingPermissions(sessionId, userId);
-          return;
-        }
-      }
       await this.sendReply(userId, "No pending permission request. Tool calls shown with ℹ️ are informational and don't need approval.");
       return;
     }
@@ -718,13 +800,12 @@ export class WeChatBridge {
     cleanups.push(unsubResult);
 
     // Permission requests — auto-approve safe, forward dangerous
-    const unsubPhase = companionBus.on("session:phase-changed", ({ sessionId: sid, to }) => {
+    // Listen on session:permission-request (fires before AI validation in ws-bridge)
+    const unsubPermReq = companionBus.on("session:permission-request", ({ sessionId: sid, request }) => {
       if (sid !== sessionId) return;
-      if (to === "awaiting_permission") {
-        this.handlePendingPermissions(sessionId, userId);
-      }
+      this.handlePermissionRequest(sessionId, userId, request);
     });
-    cleanups.push(unsubPhase);
+    cleanups.push(unsubPermReq);
 
     // Session exited
     const unsubExited = companionBus.on("session:exited", ({ sessionId: sid }) => {
@@ -747,30 +828,35 @@ export class WeChatBridge {
     this.sessionRelayData.delete(sessionId);
   }
 
-  private handlePendingPermissions(sessionId: string, userId: string): void {
-    const session = this.wsBridge.getSession(sessionId);
-    if (!session) return;
-
+  /**
+   * Handle a single permission request from the CLI.
+   * This fires for EVERY permission request, before AI validation in ws-bridge.
+   * The WeChat bridge gets first crack at handling permissions.
+   */
+  private handlePermissionRequest(
+    sessionId: string,
+    userId: string,
+    perm: { request_id: string; tool_name: string; input: Record<string, unknown>; description?: string },
+  ): void {
     const settings = getSettings();
     const userSession = this.userSessions.get(userId);
     if (!userSession) return;
 
-    for (const [requestId, perm] of session.pendingPermissions) {
-      if (settings.wechatAutoApproveSafe && !isDangerousTool(perm.tool_name, perm.input)) {
-        // Auto-approve safe tools
-        this.wsBridge.injectPermissionResponse(sessionId, requestId, "allow", perm.input);
-        const inputStr = JSON.stringify(perm.input).slice(0, 200);
-        this.sendReply(userId, `✅ Auto-approved (safe): ${perm.tool_name}${inputStr ? `\n${inputStr}` : ""}`).catch(() => {});
-      } else if (settings.wechatForwardDangerous) {
-        // Forward to WeChat for approval
-        userSession.pendingPermission = { requestId, sessionId };
-        const desc = perm.description ?? perm.tool_name;
-        const inputStr = JSON.stringify(perm.input).slice(0, 300);
-        this.sendReply(userId, `⚠️ Permission needed:\nTool: ${perm.tool_name}\n${desc ? `Description: ${desc}\n` : ""}Input: ${inputStr}\n\nSend /allow or /deny`).catch(() => {});
-      } else {
-        // Auto-approve everything (bypassPermissions mode)
-        this.wsBridge.injectPermissionResponse(sessionId, requestId, "allow", perm.input);
-      }
+    if (settings.wechatAutoApproveSafe && !isDangerousTool(perm.tool_name, perm.input)) {
+      // Auto-approve safe tools (Read, Glob, Grep, etc.)
+      // pendingPermissions is already set by ws-bridge before emitting the event
+      this.wsBridge.injectPermissionResponse(sessionId, perm.request_id, "allow", perm.input);
+      const inputStr = JSON.stringify(perm.input).slice(0, 200);
+      this.sendReply(userId, `✅ Auto-approved (safe): ${perm.tool_name}${inputStr ? `\n${inputStr}` : ""}`).catch(() => {});
+    } else if (settings.wechatForwardDangerous) {
+      // Forward to WeChat for approval — do NOT auto-approve
+      userSession.pendingPermission = { requestId: perm.request_id, sessionId };
+      const desc = perm.description ?? perm.tool_name;
+      const inputStr = JSON.stringify(perm.input).slice(0, 300);
+      this.sendReply(userId, `⚠️ Permission needed:\nTool: ${perm.tool_name}\n${desc ? `Description: ${desc}\n` : ""}Input: ${inputStr}\n\nSend /allow or /deny`).catch(() => {});
+    } else {
+      // Auto-approve everything (bypassPermissions mode)
+      this.wsBridge.injectPermissionResponse(sessionId, perm.request_id, "allow", perm.input);
     }
   }
 
@@ -875,13 +961,14 @@ export class WeChatBridge {
 
   // ── Public API for routes ─────────────────────────────────────────────
 
-  getStatus(): { running: boolean; starting: boolean; error: string | null; connectedUsers: number; qrCode: string | null } {
+  getStatus(): { running: boolean; starting: boolean; error: string | null; connectedUsers: number; qrCode: string | null; reconnecting: boolean } {
     return {
       running: this.running,
       starting: this.starting,
       error: this.startError,
       connectedUsers: this.userSessions.size,
       qrCode: this.qrCodeData,
+      reconnecting: this.reconnectTimer !== null,
     };
   }
 

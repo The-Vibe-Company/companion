@@ -548,12 +548,15 @@ export class WsBridge {
         metricsCollector.recordPermissionRequested(perm.request_id, session.id);
 
         // AI Validation Mode: evaluate the tool call before showing to user
+        // Skip AI validation for WeChat sessions — WeChat bridge handles permissions itself
         const aiSettings = getEffectiveAiValidation(session.state);
+        const isWechatSession = !!session.state.wechatUserId;
         if (
           aiSettings.enabled
           && aiSettings.anthropicApiKey
           && perm.tool_name !== "AskUserQuestion"
           && perm.tool_name !== "ExitPlanMode"
+          && !isWechatSession
         ) {
           // Run AI validation async
           this.handleAiValidation(session, adapter, perm).catch((err) => {
@@ -570,6 +573,12 @@ export class WsBridge {
         session.pendingPermissions.set(perm.request_id, perm);
         session.stateMachine.transition("awaiting_permission", "permission_requested");
         this.persistSession(session);
+
+        // Emit bus event AFTER pendingPermissions is set so WeChat bridge can respond immediately
+        companionBus.emit("session:permission-request", {
+          sessionId: session.id,
+          request: perm,
+        });
       }
 
       // -- permission_cancelled: remove from pending -----------------------

@@ -19,6 +19,7 @@ const mockApi = {
   getSettings: vi.fn(),
   startWeChat: vi.fn(),
   stopWeChat: vi.fn(),
+  reloginWeChat: vi.fn(),
   updateSettings: vi.fn(),
   deleteWeChatSession: vi.fn(),
 };
@@ -30,6 +31,7 @@ vi.mock("../api.js", () => ({
     getSettings: (...args: unknown[]) => mockApi.getSettings(...args),
     startWeChat: (...args: unknown[]) => mockApi.startWeChat(...args),
     stopWeChat: (...args: unknown[]) => mockApi.stopWeChat(...args),
+    reloginWeChat: (...args: unknown[]) => mockApi.reloginWeChat(...args),
     updateSettings: (...args: unknown[]) => mockApi.updateSettings(...args),
     deleteWeChatSession: (...args: unknown[]) => mockApi.deleteWeChatSession(...args),
   },
@@ -39,7 +41,7 @@ import { WeChatSettingsPage } from "./WeChatSettingsPage.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockApi.getWeChatStatus.mockResolvedValue({ running: false, starting: false, error: null, connectedUsers: 0, qrCode: null });
+  mockApi.getWeChatStatus.mockResolvedValue({ running: false, starting: false, error: null, connectedUsers: 0, qrCode: null, reconnecting: false });
   mockApi.getWeChatSessions.mockResolvedValue({ sessions: [] });
   mockApi.getSettings.mockResolvedValue({
     anthropicApiKeyConfigured: false,
@@ -83,7 +85,7 @@ describe("WeChatSettingsPage", () => {
   });
 
   it("renders bot running status with connected users", async () => {
-    mockApi.getWeChatStatus.mockResolvedValue({ running: true, starting: false, error: null, connectedUsers: 2, qrCode: null });
+    mockApi.getWeChatStatus.mockResolvedValue({ running: true, starting: false, error: null, connectedUsers: 2, qrCode: null, reconnecting: false });
 
     render(<WeChatSettingsPage />);
 
@@ -99,6 +101,7 @@ describe("WeChatSettingsPage", () => {
       error: null,
       connectedUsers: 0,
       qrCode: "data:image/png;base64,fakeqr",
+      reconnecting: false,
     });
 
     render(<WeChatSettingsPage />);
@@ -131,8 +134,8 @@ describe("WeChatSettingsPage", () => {
     mockApi.startWeChat.mockResolvedValue({ ok: true });
     // After start, reload status shows running
     mockApi.getWeChatStatus
-      .mockResolvedValueOnce({ running: false, starting: false, error: null, connectedUsers: 0, qrCode: null })
-      .mockResolvedValueOnce({ running: true, starting: false, error: null, connectedUsers: 0, qrCode: null });
+      .mockResolvedValueOnce({ running: false, starting: false, error: null, connectedUsers: 0, qrCode: null, reconnecting: false })
+      .mockResolvedValueOnce({ running: true, starting: false, error: null, connectedUsers: 0, qrCode: null, reconnecting: false });
 
     render(<WeChatSettingsPage />);
 
@@ -145,7 +148,7 @@ describe("WeChatSettingsPage", () => {
   });
 
   it("stops the bot when Stop button is clicked", async () => {
-    mockApi.getWeChatStatus.mockResolvedValue({ running: true, starting: false, error: null, connectedUsers: 1, qrCode: null });
+    mockApi.getWeChatStatus.mockResolvedValue({ running: true, starting: false, error: null, connectedUsers: 1, qrCode: null, reconnecting: false });
     mockApi.stopWeChat.mockResolvedValue({ ok: true });
 
     render(<WeChatSettingsPage />);
@@ -156,6 +159,28 @@ describe("WeChatSettingsPage", () => {
     await waitFor(() => {
       expect(mockApi.stopWeChat).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("relogs the bot when Re-login button is clicked", async () => {
+    mockApi.getWeChatStatus.mockResolvedValue({ running: true, starting: false, error: null, connectedUsers: 1, qrCode: null, reconnecting: false });
+    mockApi.reloginWeChat.mockResolvedValue({ ok: true });
+
+    render(<WeChatSettingsPage />);
+
+    const reloginBtn = await screen.findByText("Re-login");
+    fireEvent.click(reloginBtn);
+
+    await waitFor(() => {
+      expect(mockApi.reloginWeChat).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("renders reconnecting status", async () => {
+    mockApi.getWeChatStatus.mockResolvedValue({ running: false, starting: false, error: null, connectedUsers: 0, qrCode: null, reconnecting: true });
+
+    render(<WeChatSettingsPage />);
+
+    await screen.findByText("Reconnecting...");
   });
 
   it("toggles wechatEnabled setting when checkbox is clicked", async () => {

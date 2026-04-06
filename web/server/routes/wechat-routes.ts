@@ -31,6 +31,17 @@ export function registerWeChatRoutes(api: Hono, wechatBridge: WeChatBridge): voi
     return c.json({ ok: true });
   });
 
+  // POST /wechat/relogin — force re-login with fresh QR code
+  api.post("/wechat/relogin", async (c) => {
+    try {
+      await wechatBridge.relogin();
+      return c.json({ ok: true });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return c.json({ ok: false, error: message }, 500);
+    }
+  });
+
   // GET /wechat/sessions — list WeChat user sessions
   api.get("/wechat/sessions", (c) => {
     const sessions = wechatBridge.getSessions();
