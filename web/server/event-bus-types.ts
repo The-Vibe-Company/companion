@@ -43,6 +43,12 @@ export interface CompanionEventMap {
     request: PermissionRequest;
   };
 
+  /** A permission request was cancelled (by CLI or session disconnect). */
+  "session:permission-cancelled": {
+    sessionId: string;
+    requestId: string;
+  };
+
   // ── Backend integration ────────────────────────────────────────────
 
   /** Codex adapter created and ready to be attached to WsBridge. */

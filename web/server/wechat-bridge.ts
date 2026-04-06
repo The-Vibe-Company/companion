@@ -166,7 +166,13 @@ export class WeChatBridge {
   private startError: string | null = null;
   private userSessions = new Map<string, WeChatUserSession>();
   private sessionCleanups = new Map<string, Array<() => void>>();
-  private sessionRelayData = new Map<string, { pendingText: string; lastTypingTs: number }>();
+  private sessionRelayData = new Map<string, {
+    pendingText: string;
+    lastTypingTs: number;
+    streamlinedSent: boolean;
+    contentSent: boolean;
+    lastBlockIndex: number;
+  }>();
   private userIdBySession = new Map<string, string>();
   // QR code data for web UI display
   private qrCodeData: string | null = null;
@@ -737,7 +743,7 @@ export class WeChatBridge {
     if (this.sessionCleanups.has(sessionId)) return;
 
     const cleanups: Array<() => void> = [];
-    this.sessionRelayData.set(sessionId, { pendingText: "", lastTypingTs: 0 });
+    this.sessionRelayData.set(sessionId, { pendingText: "", lastTypingTs: 0, streamlinedSent: false, contentSent: false, lastBlockIndex: -1 });
 
     // Stream events — accumulate text
     const unsubStream = companionBus.on("message:stream_event", ({ sessionId: sid, message }) => {
@@ -746,7 +752,17 @@ export class WeChatBridge {
       if (!delta) return;
       const relayData = this.sessionRelayData.get(sessionId);
       if (relayData) {
+        // Add separator when content block index changes (multi-step agent loop)
+        const event = (message as Record<string, unknown>).event as Record<string, unknown> | undefined;
+        const blockIndex = typeof event?.index === "number" ? event.index : -1;
+        if (relayData.lastBlockIndex >= 0 && blockIndex >= 0 && blockIndex !== relayData.lastBlockIndex && relayData.pendingText.length > 0) {
+          relayData.pendingText += "\n\n";
+        }
+        if (blockIndex >= 0) {
+          relayData.lastBlockIndex = blockIndex;
+        }
         relayData.pendingText += delta;
+        relayData.contentSent = true;
         // Throttle typing indicator to every 5 seconds
         const now = Date.now();
         if (now - relayData.lastTypingTs > 5000) {
@@ -764,6 +780,11 @@ export class WeChatBridge {
       const text = typeof raw.text === "string" ? raw.text : "";
       if (text.trim()) {
         this.sendReply(userId, text.trim());
+        const relayData = this.sessionRelayData.get(sessionId);
+        if (relayData) {
+          relayData.streamlinedSent = true;
+          relayData.contentSent = true;
+        }
       }
     });
     cleanups.push(unsubStreamlined);
@@ -779,9 +800,19 @@ export class WeChatBridge {
     });
     cleanups.push(unsubToolSummary);
 
-    // Assistant messages — extract tool uses only (text is already captured via stream events)
+    // Assistant messages — extract tool uses; use text as fallback if stream events missed it
     const unsubAssistant = companionBus.on("message:assistant", ({ sessionId: sid, message }) => {
       if (sid !== sessionId) return;
+
+      // Fallback: if stream events didn't capture text, use assistant message text instead
+      const relayData = this.sessionRelayData.get(sessionId);
+      if (relayData && !relayData.pendingText.trim()) {
+        const assistantText = extractTextFromAssistant(message);
+        if (assistantText.trim()) {
+          relayData.pendingText = assistantText.trim();
+        }
+      }
+
       // Report tool uses — labelled as informational to avoid confusion with permission prompts
       const tools = extractToolUses(message);
       if (tools.length > 0) {
@@ -789,6 +820,7 @@ export class WeChatBridge {
           .map((t) => `🔧 ${t.name}${t.input ? `: ${t.input.slice(0, 100)}` : ""}`)
           .join("\n");
         this.sendReply(userId, `${toolSummary}\nℹ️ Tool call in progress`);
+        if (relayData) relayData.contentSent = true;
       }
     });
     cleanups.push(unsubAssistant);
@@ -798,23 +830,39 @@ export class WeChatBridge {
       if (sid !== sessionId) return;
       const relayData = this.sessionRelayData.get(sessionId);
       const streamText = relayData?.pendingText ?? "";
-      if (relayData) relayData.pendingText = "";
+      const streamlinedSent = relayData?.streamlinedSent ?? false;
+      const hadContent = relayData?.contentSent ?? false;
+      // Reset all tracking state for this turn
+      if (relayData) {
+        relayData.pendingText = "";
+        relayData.streamlinedSent = false;
+        relayData.contentSent = false;
+        relayData.lastBlockIndex = -1;
+      }
 
       const result = message as Record<string, unknown>;
       const data = result.data as Record<string, unknown> | undefined;
 
-      // Prefer data.result (definitive CLI response) over accumulated streaming text.
-      // Streaming text may miss characters or arrive out of order;
-      // data.result is the complete, final response from the CLI.
-      const finalText = (typeof data?.result === "string" && data.result.trim())
-        ? data.result.trim()
-        : streamText.trim();
+      if (!streamlinedSent) {
+        // Prefer data.result (definitive CLI response) over accumulated streaming text.
+        // Streaming text may miss characters or arrive out of order;
+        // data.result is the complete, final response from the CLI.
+        const finalText = (typeof data?.result === "string" && data.result.trim())
+          ? data.result.trim()
+          : streamText.trim();
 
-      if (finalText) {
-        this.sendReply(userId, finalText);
+        if (finalText) {
+          this.sendReply(userId, finalText);
+        } else if (!hadContent) {
+          // Nothing was sent to the user this turn — send a minimal acknowledgment
+          // so the user knows their message was processed (unless it was an error turn)
+          if (!data?.is_error) {
+            this.sendReply(userId, "(operation completed)");
+          }
+        }
       }
 
-      // Check for errors
+      // Always check for errors regardless of streamlinedSent
       if (data?.is_error) {
         const errors = data.errors as string[] | undefined;
         if (errors?.length) {
@@ -831,6 +879,17 @@ export class WeChatBridge {
       this.handlePermissionRequest(sessionId, userId, request);
     });
     cleanups.push(unsubPermReq);
+
+    // Permission cancelled — clear stale pendingPermission state
+    const unsubPermCancel = companionBus.on("session:permission-cancelled", ({ sessionId: sid, requestId }) => {
+      if (sid !== sessionId) return;
+      const userSession = this.userSessions.get(userId);
+      if (userSession?.pendingPermission?.requestId === requestId) {
+        userSession.pendingPermission = null;
+        this.sendReply(userId, "Permission request was cancelled.");
+      }
+    });
+    cleanups.push(unsubPermCancel);
 
     // Session exited
     const unsubExited = companionBus.on("session:exited", ({ sessionId: sid }) => {

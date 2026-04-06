@@ -598,6 +598,10 @@ export class WsBridge {
           session.stateMachine.transition("streaming", "permission_cancelled");
         }
         this.persistSession(session);
+        companionBus.emit("session:permission-cancelled", {
+          sessionId: session.id,
+          requestId: reqId,
+        });
       }
 
       // -- system_event: append to history (except hook_progress) ----------
@@ -663,6 +667,7 @@ export class WsBridge {
         log.warn("ws-bridge", "Codex disconnect confirmed", { sessionId });
         for (const [reqId] of session.pendingPermissions) {
           this.broadcastToBrowsers(session, { type: "permission_cancelled", request_id: reqId });
+          companionBus.emit("session:permission-cancelled", { sessionId, requestId: reqId });
         }
         session.pendingPermissions.clear();
         session.stateMachine.transition("terminated", "disconnect_confirmed");
@@ -878,6 +883,7 @@ export class WsBridge {
       this.broadcastToBrowsers(session, { type: "cli_disconnected" });
       for (const [reqId] of session.pendingPermissions) {
         this.broadcastToBrowsers(session, { type: "permission_cancelled", request_id: reqId });
+        companionBus.emit("session:permission-cancelled", { sessionId, requestId: reqId });
       }
       session.pendingPermissions.clear();
 
@@ -1212,6 +1218,7 @@ export class WsBridge {
       // from WeChat, the browser still shows the permission_request UI and needs a
       // resolution signal to dismiss it).
       this.broadcastToBrowsers(session, { type: "permission_cancelled", request_id: msg.request_id });
+      companionBus.emit("session:permission-cancelled", { sessionId: session.id, requestId: msg.request_id });
     }
 
     // Delegate to the backend adapter if connected; otherwise queue for later flush.
