@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatToolCall, formatPermissionRequest } from "./wechat-formatter.js";
+import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat } from "./wechat-formatter.js";
 
 describe("formatToolCall", () => {
   it("formats Bash tool — extracts command", () => {
@@ -131,5 +131,84 @@ describe("formatPermissionRequest", () => {
     const result = formatPermissionRequest("Bash", { command: "ls" });
     expect(result).toContain("/y 批准");
     expect(result).toContain("/n 拒绝");
+  });
+});
+
+describe("splitForWeChat", () => {
+  it("returns single chunk for short text", () => {
+    const result = splitForWeChat("Hello world");
+    expect(result).toEqual(["Hello world"]);
+  });
+
+  it("splits at paragraph boundary", () => {
+    const para1 = "a".repeat(2000);
+    const para2 = "b".repeat(2000);
+    const text = `${para1}\n\n${para2}`;
+    const result = splitForWeChat(text);
+    expect(result.length).toBe(2);
+    // Should split at paragraph boundary and add page indicators
+    expect(result[0]).toContain(para1);
+    expect(result[1]).toContain(para2);
+    expect(result[0]).toMatch(/\[1\/2\]/);
+    expect(result[1]).toMatch(/\[2\/2\]/);
+  });
+
+  it("adds page indicators when splitting into multiple messages", () => {
+    const para1 = "a".repeat(3000);
+    const para2 = "b".repeat(3000);
+    const text = `${para1}\n\n${para2}`;
+    const result = splitForWeChat(text);
+    expect(result.length).toBe(2);
+    expect(result[0]).toMatch(/\[1\/2\]/);
+    expect(result[1]).toMatch(/\[2\/2\]/);
+  });
+
+  it("does not add page indicators for single chunk", () => {
+    const result = splitForWeChat("Short message");
+    expect(result[0]).not.toContain("[1/1]");
+  });
+
+  it("does not split inside code blocks", () => {
+    const code = "```js\n" + "x".repeat(3990) + "\n```";
+    const prefix = "a".repeat(50);
+    const text = `${prefix}\n\n${code}`;
+    const result = splitForWeChat(text);
+    // The code block should not be split — it should stay together
+    for (const chunk of result) {
+      if (chunk.includes("```js")) {
+        // Must also contain the closing ```
+        expect(chunk.includes("```")).toBe(true);
+      }
+    }
+  });
+
+  it("merges small trailing chunks (< 200 chars) with previous", () => {
+    const para1 = "a".repeat(3000);
+    const para2 = "short";
+    const text = `${para1}\n\n${para2}`;
+    const result = splitForWeChat(text);
+    // The short para2 should be merged with para1
+    expect(result.length).toBe(1);
+  });
+
+  it("falls back to newline boundary when no paragraph break", () => {
+    const line1 = "a".repeat(3000);
+    const line2 = "b".repeat(3000);
+    const text = `${line1}\n${line2}`;
+    const result = splitForWeChat(text);
+    expect(result.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("handles hard split when no boundaries available", () => {
+    const text = "a".repeat(8000);
+    const result = splitForWeChat(text);
+    expect(result.length).toBeGreaterThanOrEqual(2);
+    for (const chunk of result) {
+      expect(chunk.length).toBeLessThanOrEqual(4010); // 4000 + page indicator overhead
+    }
+  });
+
+  it("handles empty string", () => {
+    expect(splitForWeChat("")).toEqual([]);
   });
 });

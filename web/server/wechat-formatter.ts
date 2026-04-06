@@ -83,3 +83,67 @@ export function formatPermissionRequest(
 
   return header + body + footer;
 }
+
+const MIN_CHUNK_SIZE = 200;
+
+/** Find the best character index to split at, preserving code blocks. */
+function findSplitPoint(text: string, maxLen: number): number {
+  // Check if we'd be splitting inside a code block
+  const codeBlockStart = text.lastIndexOf("```", maxLen);
+  const codeBlockEnd = text.indexOf("```", codeBlockStart + 3);
+
+  if (codeBlockStart >= 0 && codeBlockStart < maxLen && (codeBlockEnd < 0 || codeBlockEnd > maxLen)) {
+    // We're inside a code block — split before it instead
+    if (codeBlockStart > maxLen * 0.3) {
+      return codeBlockStart;
+    }
+  }
+
+  // Try paragraph boundary (≥ 50% of maxLen)
+  let splitAt = text.lastIndexOf("\n\n", maxLen);
+  if (splitAt >= maxLen * 0.5) return splitAt;
+
+  // Try newline boundary
+  splitAt = text.lastIndexOf("\n", maxLen);
+  if (splitAt >= maxLen * 0.5) return splitAt;
+
+  // Hard split
+  return maxLen;
+}
+
+/** Split text into WeChat-safe chunks with smart boundaries and page indicators. */
+export function splitForWeChat(text: string): string[] {
+  if (!text.trim()) return [];
+  if (text.length <= WECHAT_MSG_LIMIT) return [text];
+
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    if (remaining.length <= WECHAT_MSG_LIMIT) {
+      chunks.push(remaining);
+      break;
+    }
+
+    const splitAt = findSplitPoint(remaining, WECHAT_MSG_LIMIT);
+    chunks.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt).trimStart();
+  }
+
+  // Merge trailing chunks that are too small
+  const merged: string[] = [];
+  for (const chunk of chunks) {
+    if (merged.length > 0 && chunk.length < MIN_CHUNK_SIZE) {
+      merged[merged.length - 1] += "\n\n" + chunk;
+    } else {
+      merged.push(chunk);
+    }
+  }
+
+  // Add page indicators if multiple chunks
+  if (merged.length > 1) {
+    return merged.map((chunk, i) => `${chunk} [${i + 1}/${merged.length}]`);
+  }
+
+  return merged;
+}
