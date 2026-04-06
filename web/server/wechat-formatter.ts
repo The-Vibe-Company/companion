@@ -204,3 +204,45 @@ export function splitForWeChat(text: string): string[] {
 
   return merged;
 }
+
+const SUPPRESSED_TOOLS = new Set(["TodoWrite", "TodoRead", "TaskList", "TaskGet"]);
+
+interface ToolRecord {
+  name: string;
+  input: ToolInput;
+}
+
+const TOOL_VERB_MAP: Record<string, { verb: string; noun: string }> = {
+  Read: { verb: "读取", noun: "文件" },
+  Write: { verb: "写入", noun: "文件" },
+  Edit: { verb: "编辑", noun: "文件" },
+  Bash: { verb: "运行", noun: "命令" },
+  Glob: { verb: "搜索", noun: "文件" },
+  Grep: { verb: "搜索", noun: "内容" },
+  WebSearch: { verb: "搜索", noun: "网页" },
+  Agent: { verb: "派发", noun: "子任务" },
+};
+
+/** Format a summary of tool calls executed in one turn. Returns empty string if nothing to show. */
+export function formatToolSummary(tools: ToolRecord[]): string {
+  const visible = tools.filter((t) => !SUPPRESSED_TOOLS.has(t.name));
+  if (visible.length === 0) return "";
+
+  const grouped = new Map<string, number>();
+  for (const tool of visible) {
+    const key = TOOL_VERB_MAP[tool.name] ? tool.name : "_unknown";
+    grouped.set(key, (grouped.get(key) ?? 0) + 1);
+  }
+
+  const parts: string[] = [];
+  for (const [toolName, count] of grouped) {
+    if (toolName === "_unknown") {
+      parts.push(`执行 ${count} 个操作`);
+    } else {
+      const { verb, noun } = TOOL_VERB_MAP[toolName];
+      parts.push(`${verb} ${count} 个${noun}`);
+    }
+  }
+
+  return `📊 本轮: ${parts.join(" · ")}`;
+}

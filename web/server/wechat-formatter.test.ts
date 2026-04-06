@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat } from "./wechat-formatter.js";
+import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary } from "./wechat-formatter.js";
 
 describe("formatToolCall", () => {
   it("formats Bash tool — extracts command", () => {
@@ -279,5 +279,59 @@ describe("formatMarkdown", () => {
 
   it("handles undefined/null gracefully", () => {
     expect(formatMarkdown(null as unknown as string)).toBe("");
+  });
+});
+
+describe("formatToolSummary", () => {
+  it("formats single tool type", () => {
+    const tools = [
+      { name: "Read", input: { file_path: "a.ts" } },
+      { name: "Read", input: { file_path: "b.ts" } },
+      { name: "Read", input: { file_path: "c.ts" } },
+    ];
+    const result = formatToolSummary(tools);
+    expect(result).toBe("📊 本轮: 读取 3 个文件");
+  });
+
+  it("formats multiple tool types with separator", () => {
+    const tools = [
+      { name: "Read", input: { file_path: "a.ts" } },
+      { name: "Read", input: { file_path: "b.ts" } },
+      { name: "Read", input: { file_path: "c.ts" } },
+      { name: "Edit", input: { file_path: "d.ts" } },
+      { name: "Bash", input: { command: "npm test" } },
+    ];
+    const result = formatToolSummary(tools);
+    expect(result).toBe("📊 本轮: 读取 3 个文件 · 编辑 1 个文件 · 运行 1 个命令");
+  });
+
+  it("returns empty string for empty array", () => {
+    expect(formatToolSummary([])).toBe("");
+  });
+
+  it("returns empty string for only suppressed tools (TodoWrite)", () => {
+    const tools = [
+      { name: "TodoWrite", input: { todos: [] } },
+    ];
+    expect(formatToolSummary(tools)).toBe("");
+  });
+
+  it("groups unknown tools as 执行 N 个操作", () => {
+    const tools = [
+      { name: "CustomTool1", input: {} },
+      { name: "CustomTool2", input: {} },
+    ];
+    const result = formatToolSummary(tools);
+    expect(result).toContain("执行 2 个操作");
+  });
+
+  it("filters out suppressed tools from summary", () => {
+    const tools = [
+      { name: "Read", input: { file_path: "a.ts" } },
+      { name: "TodoWrite", input: { todos: [] } },
+      { name: "Read", input: { file_path: "b.ts" } },
+    ];
+    const result = formatToolSummary(tools);
+    expect(result).toBe("📊 本轮: 读取 2 个文件");
   });
 });
