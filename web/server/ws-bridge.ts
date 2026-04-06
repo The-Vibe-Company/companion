@@ -502,6 +502,14 @@ export class WsBridge {
         companionBus.emit("message:stream_event", { sessionId: session.id, message: msg });
       }
 
+      if (msg.type === "streamlined_text") {
+        companionBus.emit("message:streamlined_text", { sessionId: session.id, message: msg });
+      }
+
+      if (msg.type === "streamlined_tool_use_summary") {
+        companionBus.emit("message:streamlined_tool_use_summary", { sessionId: session.id, message: msg });
+      }
+
       // -- result: update session cost/turns, refresh git, notify listeners
       if (msg.type === "result") {
         const resultData = msg.data;
