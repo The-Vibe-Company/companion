@@ -507,6 +507,9 @@ describe("WeChat relay — dedup and fallback logic", () => {
       streamlinedSent: true,
       contentSent: true,
       lastBlockIndex: 5,
+      toolAccumulator: [{ name: "Bash", input: { command: "ls" } }],
+      lastUserFacingMessageTs: 12345,
+      progressSent: false,
     };
 
     // Simulate result handler reset
@@ -514,6 +517,9 @@ describe("WeChat relay — dedup and fallback logic", () => {
     relayData.streamlinedSent = false;
     relayData.contentSent = false;
     relayData.lastBlockIndex = -1;
+    relayData.toolAccumulator = [];
+    relayData.lastUserFacingMessageTs = 67890;
+    relayData.progressSent = false;
 
     expect(relayData).toEqual({
       pendingText: "",
@@ -521,6 +527,9 @@ describe("WeChat relay — dedup and fallback logic", () => {
       streamlinedSent: false,
       contentSent: false,
       lastBlockIndex: -1,
+      toolAccumulator: [],
+      lastUserFacingMessageTs: 67890,
+      progressSent: false,
     });
   });
 });

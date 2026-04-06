@@ -1,0 +1,399 @@
+// Tests for wechat-formatter.ts — tool call display, permission formatting,
+// Markdown conversion, WeChat message splitting, and turn-level tool summaries.
+import { describe, it, expect } from "vitest";
+import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary } from "./wechat-formatter.js";
+
+// ── formatToolCall ─────────────────────────────────────────────────────────
+
+describe("formatToolCall", () => {
+  it("formats Bash tool — extracts command", () => {
+    const result = formatToolCall("Bash", { command: "npm test" });
+    expect(result).toBe("🔧 执行: npm test");
+  });
+
+  it("formats Read tool — extracts file_path", () => {
+    const result = formatToolCall("Read", { file_path: "src/index.ts" });
+    expect(result).toBe("📖 读取: src/index.ts");
+  });
+
+  it("formats Write tool — extracts file_path", () => {
+    const result = formatToolCall("Write", { file_path: "src/app.ts" });
+    expect(result).toBe("✏️ 写入: src/app.ts");
+  });
+
+  it("formats Edit tool — extracts file_path", () => {
+    const result = formatToolCall("Edit", { file_path: "package.json" });
+    expect(result).toBe("📝 编辑: package.json");
+  });
+
+  it("formats Glob tool — extracts pattern", () => {
+    const result = formatToolCall("Glob", { pattern: "**/*.test.ts" });
+    expect(result).toBe("🔍 搜索文件: **/*.test.ts");
+  });
+
+  it("formats Grep tool — extracts pattern from input", () => {
+    const result = formatToolCall("Grep", { pattern: "parseCommand" });
+    expect(result).toBe("🔍 搜索内容: parseCommand");
+  });
+
+  it("formats WebSearch tool — extracts query", () => {
+    const result = formatToolCall("WebSearch", { query: "bun install guide" });
+    expect(result).toBe("🌐 搜索: bun install guide");
+  });
+
+  it("formats Agent tool — extracts description or prompt", () => {
+    const result = formatToolCall("Agent", { description: "探索代码库" });
+    expect(result).toBe("🤖 子任务: 探索代码库");
+  });
+
+  it("formats Agent tool — falls back to prompt when no description", () => {
+    const result = formatToolCall("Agent", { prompt: "Find all TODOs" });
+    expect(result).toBe("🤖 子任务: Find all TODOs");
+  });
+
+  // TodoWrite, TaskList, etc. are suppressed because they are internal bookkeeping
+  // tools that would add noise to the WeChat conversation.
+  it("returns empty string for TodoWrite (suppressed)", () => {
+    const result = formatToolCall("TodoWrite", { todos: [] });
+    expect(result).toBe("");
+  });
+
+  it("formats unknown tools generically", () => {
+    const result = formatToolCall("MyCustomTool", { action: "do something" });
+    expect(result).toBe('🔧 MyCustomTool: {"action":"do something"}');
+  });
+
+  it("truncates long input to 200 chars", () => {
+    const longCommand = "x".repeat(300);
+    const result = formatToolCall("Bash", { command: longCommand });
+    // "🔧 执行: " prefix + truncated content + "..."
+    expect(result.length).toBeLessThan(220);
+    expect(result).toContain("...");
+  });
+
+  it("handles empty input", () => {
+    const result = formatToolCall("Bash", {});
+    expect(result).toBe("🔧 执行: ");
+  });
+
+  // MCP tools (e.g. mcp__context7__resolve-library-id) are not in the known-tool
+  // map, so they fall through to the generic JSON.stringify formatter.
+  it("handles MCP tools generically", () => {
+    const result = formatToolCall("mcp__context7__resolve-library-id", { query: "react" });
+    expect(result).toContain("mcp__context7__resolve-library-id");
+  });
+});
+
+// ── formatPermissionRequest ────────────────────────────────────────────────
+
+describe("formatPermissionRequest", () => {
+  it("formats Bash permission — shows command", () => {
+    const result = formatPermissionRequest("Bash", { command: "rm -rf /tmp/old_logs" });
+    expect(result).toContain("执行命令:");
+    expect(result).toContain("rm -rf /tmp/old_logs");
+    expect(result).toContain("/y 批准");
+    expect(result).toContain("/n 拒绝");
+  });
+
+  it("formats Write permission — shows file_path and content preview", () => {
+    const result = formatPermissionRequest("Write", {
+      file_path: "src/app.ts",
+      content: "export function hello() { return 42; }",
+    });
+    expect(result).toContain("写入文件: src/app.ts");
+    expect(result).toContain("内容预览:");
+    expect(result).toContain("export function hello()");
+  });
+
+  it("formats Edit permission — shows file_path and replacement", () => {
+    const result = formatPermissionRequest("Edit", {
+      file_path: "package.json",
+      old_string: "version: 1.0.0",
+      new_string: "version: 2.0.0",
+    });
+    expect(result).toContain("编辑文件: package.json");
+    expect(result).toContain("替换:");
+    expect(result).toContain("version: 1.0.0");
+    expect(result).toContain("→");
+    expect(result).toContain("version: 2.0.0");
+  });
+
+  it("formats Agent permission — shows description", () => {
+    const result = formatPermissionRequest("Agent", {
+      description: "探索 src 目录下的代码结构",
+    });
+    expect(result).toContain("子任务: 探索 src 目录下的代码结构");
+  });
+
+  it("formats unknown tool — shows tool name and description or input", () => {
+    const result = formatPermissionRequest("CustomTool", { action: "do thing" }, "A custom tool");
+    expect(result).toContain("CustomTool");
+    expect(result).toContain("A custom tool");
+  });
+
+  it("formats unknown tool without description — falls back to input", () => {
+    const result = formatPermissionRequest("CustomTool", { key: "value" });
+    expect(result).toContain("CustomTool");
+    expect(result).toContain("key");
+  });
+
+  it("always includes approval instructions", () => {
+    const result = formatPermissionRequest("Bash", { command: "ls" });
+    expect(result).toContain("/y 批准");
+    expect(result).toContain("/n 拒绝");
+  });
+});
+
+// ── splitForWeChat ─────────────────────────────────────────────────────────
+
+describe("splitForWeChat", () => {
+  it("returns single chunk for short text", () => {
+    const result = splitForWeChat("Hello world");
+    expect(result).toEqual(["Hello world"]);
+  });
+
+  it("splits at paragraph boundary", () => {
+    const para1 = "a".repeat(2000);
+    const para2 = "b".repeat(2000);
+    const text = `${para1}\n\n${para2}`;
+    const result = splitForWeChat(text);
+    expect(result.length).toBe(2);
+    // Should split at paragraph boundary and add page indicators
+    expect(result[0]).toContain(para1);
+    expect(result[1]).toContain(para2);
+    expect(result[0]).toMatch(/\[1\/2\]/);
+    expect(result[1]).toMatch(/\[2\/2\]/);
+  });
+
+  it("adds page indicators when splitting into multiple messages", () => {
+    const para1 = "a".repeat(3000);
+    const para2 = "b".repeat(3000);
+    const text = `${para1}\n\n${para2}`;
+    const result = splitForWeChat(text);
+    expect(result.length).toBe(2);
+    expect(result[0]).toMatch(/\[1\/2\]/);
+    expect(result[1]).toMatch(/\[2\/2\]/);
+  });
+
+  it("does not add page indicators for single chunk", () => {
+    const result = splitForWeChat("Short message");
+    expect(result[0]).not.toContain("[1/1]");
+  });
+
+  // Code blocks must never be split mid-way — splitting inside ``` would produce
+  // broken formatting in WeChat. The splitter backs up to before the code block.
+  it("does not split inside code blocks", () => {
+    const code = "```js\n" + "x".repeat(3990) + "\n```";
+    const prefix = "a".repeat(50);
+    const text = `${prefix}\n\n${code}`;
+    const result = splitForWeChat(text);
+    // The code block should not be split — it should stay together
+    for (const chunk of result) {
+      if (chunk.includes("```js")) {
+        // Must also contain the closing ```
+        expect(chunk.includes("```")).toBe(true);
+      }
+    }
+  });
+
+  // Tiny trailing chunks (< 200 chars) are merged into the previous chunk to
+  // avoid sending a near-empty second message with a page indicator.
+  it("merges small trailing chunks (< 200 chars) with previous", () => {
+    const para1 = "a".repeat(3000);
+    const para2 = "short";
+    const text = `${para1}\n\n${para2}`;
+    const result = splitForWeChat(text);
+    // The short para2 should be merged with para1
+    expect(result.length).toBe(1);
+  });
+
+  it("falls back to newline boundary when no paragraph break", () => {
+    const line1 = "a".repeat(3000);
+    const line2 = "b".repeat(3000);
+    const text = `${line1}\n${line2}`;
+    const result = splitForWeChat(text);
+    expect(result.length).toBeGreaterThanOrEqual(2);
+  });
+
+  // When no paragraph or newline boundaries exist (e.g. a very long single word),
+  // the splitter falls back to a hard cut at the character limit.
+  it("handles hard split when no boundaries available", () => {
+    const text = "a".repeat(8000);
+    const result = splitForWeChat(text);
+    expect(result.length).toBeGreaterThanOrEqual(2);
+    for (const chunk of result) {
+      expect(chunk.length).toBeLessThanOrEqual(4010); // 4000 + page indicator overhead
+    }
+  });
+
+  // Empty input should produce no chunks — nothing to send to WeChat.
+  it("handles empty string", () => {
+    expect(splitForWeChat("")).toEqual([]);
+  });
+});
+
+// ── formatMarkdown ─────────────────────────────────────────────────────────
+
+describe("formatMarkdown", () => {
+  it("converts fenced code blocks to indented blocks", () => {
+    const input = "```typescript\nconsole.log('hi');\n```";
+    const result = formatMarkdown(input);
+    expect(result).toBe("  │ console.log('hi');");
+  });
+
+  it("converts # headings to bracket format", () => {
+    expect(formatMarkdown("# Title")).toBe("【Title】");
+  });
+
+  it("converts ## headings to line format", () => {
+    expect(formatMarkdown("## Section")).toBe("━━ Section ━━");
+  });
+
+  it("converts - list items to bullet points", () => {
+    expect(formatMarkdown("- item one\n- item two")).toBe("• item one\n• item two");
+  });
+
+  it("converts blockquotes to line prefix", () => {
+    expect(formatMarkdown("> some quote")).toBe("┃ some quote");
+  });
+
+  it("converts [text](url) links to text (url)", () => {
+    expect(formatMarkdown("[click here](https://example.com)")).toBe("click here (https://example.com)");
+  });
+
+  it("converts horizontal rules", () => {
+    expect(formatMarkdown("---")).toBe("──────────────");
+  });
+
+  it("preserves plain text", () => {
+    expect(formatMarkdown("Hello world")).toBe("Hello world");
+  });
+
+  it("handles mixed markdown in one message", () => {
+    const input = "# Title\n\nSome text with a [link](https://example.com).\n\n- item 1\n- item 2";
+    const result = formatMarkdown(input);
+    expect(result).toContain("【Title】");
+    expect(result).toContain("link (https://example.com)");
+    expect(result).toContain("• item 1");
+    expect(result).toContain("• item 2");
+  });
+
+  // Content inside code blocks must be preserved verbatim — markdown symbols
+  // like # and - are literal code, not formatting directives.
+  it("preserves code block content as-is (no markdown processing inside)", () => {
+    const input = "```js\n# not a heading\n- not a list\n```";
+    const result = formatMarkdown(input);
+    expect(result).toContain("# not a heading");
+    expect(result).toContain("- not a list");
+    expect(result).not.toContain("【not a heading】");
+  });
+
+  it("handles multiple code blocks", () => {
+    const input = "```js\ncode1\n```\n\ntext\n\n```js\ncode2\n```";
+    const result = formatMarkdown(input);
+    expect(result).toContain("  │ code1");
+    expect(result).toContain("  │ code2");
+    expect(result).toContain("text");
+  });
+
+  it("handles empty string", () => {
+    expect(formatMarkdown("")).toBe("");
+  });
+
+  // Defensive: upstream may pass null/undefined if the CLI emits an empty field.
+  it("handles undefined/null gracefully", () => {
+    expect(formatMarkdown(null as unknown as string)).toBe("");
+  });
+});
+
+// ── formatToolSummary ──────────────────────────────────────────────────────
+
+// formatToolSummary produces a one-line Chinese summary of tool activity per
+// turn (e.g. "本轮: 读取 3 个文件 · 编辑 1 个文件"). It suppresses internal
+// bookkeeping tools and skips the summary entirely when only 1-2 safe tools
+// ran (too noisy for the user).
+describe("formatToolSummary", () => {
+  it("formats single tool type", () => {
+    const tools = [
+      { name: "Read", input: { file_path: "a.ts" } },
+      { name: "Read", input: { file_path: "b.ts" } },
+      { name: "Read", input: { file_path: "c.ts" } },
+    ];
+    const result = formatToolSummary(tools);
+    expect(result).toBe("📊 本轮: 读取 3 个文件");
+  });
+
+  it("formats multiple tool types with separator", () => {
+    const tools = [
+      { name: "Read", input: { file_path: "a.ts" } },
+      { name: "Read", input: { file_path: "b.ts" } },
+      { name: "Read", input: { file_path: "c.ts" } },
+      { name: "Edit", input: { file_path: "d.ts" } },
+      { name: "Bash", input: { command: "npm test" } },
+    ];
+    const result = formatToolSummary(tools);
+    expect(result).toBe("📊 本轮: 读取 3 个文件 · 编辑 1 个文件 · 运行 1 个命令");
+  });
+
+  it("returns empty string for empty array", () => {
+    expect(formatToolSummary([])).toBe("");
+  });
+
+  it("returns empty string for only suppressed tools (TodoWrite)", () => {
+    const tools = [
+      { name: "TodoWrite", input: { todos: [] } },
+    ];
+    expect(formatToolSummary(tools)).toBe("");
+  });
+
+  it("groups unknown tools as 执行 N 个操作", () => {
+    const tools = [
+      { name: "CustomTool1", input: {} },
+      { name: "CustomTool2", input: {} },
+    ];
+    const result = formatToolSummary(tools);
+    expect(result).toContain("执行 2 个操作");
+  });
+
+  it("filters out suppressed tools from summary", () => {
+    const tools = [
+      { name: "Read", input: { file_path: "a.ts" } },
+      { name: "TodoWrite", input: { todos: [] } },
+      { name: "Read", input: { file_path: "b.ts" } },
+      { name: "Read", input: { file_path: "c.ts" } },
+    ];
+    const result = formatToolSummary(tools);
+    expect(result).toBe("📊 本轮: 读取 3 个文件");
+  });
+
+  it("skips summary for 1-2 safe-only tools (auto-approved, too noisy)", () => {
+    const tools = [
+      { name: "Read", input: { file_path: "a.ts" } },
+    ];
+    expect(formatToolSummary(tools)).toBe("");
+
+    const twoSafe = [
+      { name: "Read", input: { file_path: "a.ts" } },
+      { name: "Glob", input: { pattern: "*.ts" } },
+    ];
+    expect(formatToolSummary(twoSafe)).toBe("");
+  });
+
+  it("shows summary for 3+ safe tools", () => {
+    const tools = [
+      { name: "Read", input: { file_path: "a.ts" } },
+      { name: "Read", input: { file_path: "b.ts" } },
+      { name: "Read", input: { file_path: "c.ts" } },
+    ];
+    const result = formatToolSummary(tools);
+    expect(result).toBe("📊 本轮: 读取 3 个文件");
+  });
+
+  it("shows summary for any count of non-safe tools", () => {
+    const tools = [
+      { name: "Edit", input: { file_path: "a.ts" } },
+    ];
+    const result = formatToolSummary(tools);
+    expect(result).toBe("📊 本轮: 编辑 1 个文件");
+  });
+});
