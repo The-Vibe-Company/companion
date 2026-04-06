@@ -207,6 +207,12 @@ export function splitForWeChat(text: string): string[] {
 
 const SUPPRESSED_TOOLS = new Set(["TodoWrite", "TodoRead", "TaskList", "TaskGet"]);
 
+/** Tools that are auto-approved and not interesting to summarize in small counts. */
+const SAFE_TOOLS = new Set([
+  "Read", "Glob", "Grep", "LS", "WebSearch",
+  "mcp__context7__resolve-library-id", "mcp__context7__query-docs",
+]);
+
 interface ToolRecord {
   name: string;
   input: ToolInput;
@@ -227,6 +233,10 @@ const TOOL_VERB_MAP: Record<string, { verb: string; noun: string }> = {
 export function formatToolSummary(tools: ToolRecord[]): string {
   const visible = tools.filter((t) => !SUPPRESSED_TOOLS.has(t.name));
   if (visible.length === 0) return "";
+
+  // Skip summary if only 1-2 safe (auto-approved) tools — too noisy
+  const nonSafe = visible.filter((t) => !SAFE_TOOLS.has(t.name));
+  if (nonSafe.length === 0 && visible.length <= 2) return "";
 
   const grouped = new Map<string, number>();
   for (const tool of visible) {

@@ -330,8 +330,40 @@ describe("formatToolSummary", () => {
       { name: "Read", input: { file_path: "a.ts" } },
       { name: "TodoWrite", input: { todos: [] } },
       { name: "Read", input: { file_path: "b.ts" } },
+      { name: "Read", input: { file_path: "c.ts" } },
     ];
     const result = formatToolSummary(tools);
-    expect(result).toBe("📊 本轮: 读取 2 个文件");
+    expect(result).toBe("📊 本轮: 读取 3 个文件");
+  });
+
+  it("skips summary for 1-2 safe-only tools (auto-approved, too noisy)", () => {
+    const tools = [
+      { name: "Read", input: { file_path: "a.ts" } },
+    ];
+    expect(formatToolSummary(tools)).toBe("");
+
+    const twoSafe = [
+      { name: "Read", input: { file_path: "a.ts" } },
+      { name: "Glob", input: { pattern: "*.ts" } },
+    ];
+    expect(formatToolSummary(twoSafe)).toBe("");
+  });
+
+  it("shows summary for 3+ safe tools", () => {
+    const tools = [
+      { name: "Read", input: { file_path: "a.ts" } },
+      { name: "Read", input: { file_path: "b.ts" } },
+      { name: "Read", input: { file_path: "c.ts" } },
+    ];
+    const result = formatToolSummary(tools);
+    expect(result).toBe("📊 本轮: 读取 3 个文件");
+  });
+
+  it("shows summary for any count of non-safe tools", () => {
+    const tools = [
+      { name: "Edit", input: { file_path: "a.ts" } },
+    ];
+    const result = formatToolSummary(tools);
+    expect(result).toBe("📊 本轮: 编辑 1 个文件");
   });
 });

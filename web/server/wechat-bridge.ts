@@ -147,6 +147,7 @@ export class WeChatBridge {
     lastBlockIndex: number;
     toolAccumulator: Array<{ name: string; input: Record<string, unknown> }>;
     lastUserFacingMessageTs: number;
+    progressSent: boolean;
   }>();
   private userIdBySession = new Map<string, string>();
   // QR code data for web UI display
@@ -718,7 +719,7 @@ export class WeChatBridge {
     if (this.sessionCleanups.has(sessionId)) return;
 
     const cleanups: Array<() => void> = [];
-    this.sessionRelayData.set(sessionId, { pendingText: "", lastTypingTs: 0, streamlinedSent: false, contentSent: false, lastBlockIndex: -1, toolAccumulator: [], lastUserFacingMessageTs: Date.now() });
+    this.sessionRelayData.set(sessionId, { pendingText: "", lastTypingTs: 0, streamlinedSent: false, contentSent: false, lastBlockIndex: -1, toolAccumulator: [], lastUserFacingMessageTs: Date.now(), progressSent: false });
 
     // Stream events — accumulate text
     const unsubStream = companionBus.on("message:stream_event", ({ sessionId: sid, message }) => {
@@ -744,13 +745,16 @@ export class WeChatBridge {
           relayData.lastTypingTs = now;
           this.sendTyping(userId).catch(() => {});
         }
-        // Progress indicator: if > 15s since last message and tools are running, send brief status
-        const progressNow = Date.now();
-        const elapsed = progressNow - relayData.lastUserFacingMessageTs;
-        if (elapsed > 15_000 && relayData.toolAccumulator.length > 0 && !relayData.contentSent) {
-          const count = relayData.toolAccumulator.length;
-          this.sendReply(userId, `⏳ 正在处理... (已执行 ${count} 个操作)`);
-          relayData.lastUserFacingMessageTs = progressNow;
+        // Progress indicator: if > 15s since last message and tools are running, send brief status (once per turn)
+        if (!relayData.progressSent) {
+          const progressNow = Date.now();
+          const elapsed = progressNow - relayData.lastUserFacingMessageTs;
+          if (elapsed > 15_000 && relayData.toolAccumulator.length > 0) {
+            const count = relayData.toolAccumulator.length;
+            this.sendReply(userId, `⏳ 正在处理... (已执行 ${count} 个操作)`);
+            relayData.lastUserFacingMessageTs = progressNow;
+            relayData.progressSent = true;
+          }
         }
       }
     });
@@ -867,6 +871,7 @@ export class WeChatBridge {
       if (relayData) {
         relayData.toolAccumulator = [];
         relayData.lastUserFacingMessageTs = Date.now();
+        relayData.progressSent = false;
       }
     });
     cleanups.push(unsubResult);
