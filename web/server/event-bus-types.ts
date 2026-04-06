@@ -67,4 +67,16 @@ export interface CompanionEventMap {
 
   /** A result (turn completion) was processed and broadcast to browsers. */
   "message:result": { sessionId: string; message: BrowserIncomingMessage };
+
+  /** Simplified text output from CLI (streamlined mode). */
+  "message:streamlined_text": {
+    sessionId: string;
+    message: BrowserIncomingMessage;
+  };
+
+  /** Simplified tool use summary from CLI (streamlined mode). */
+  "message:streamlined_tool_use_summary": {
+    sessionId: string;
+    message: BrowserIncomingMessage;
+  };
 }

@@ -175,6 +175,11 @@ export class WeChatBridge {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private intentionalStop = false;
   private reconnectAttempt = 0;
+  // Send queue: serializes all bot.send() calls so concurrent fire-and-forget
+  // sends (tool notifications + result text) don't overwhelm the WeChat SDK
+  // and silently drop the last message.
+  private sendQueue: Array<{ userId: string; text: string }> = [];
+  private sending = false;
 
   constructor(wsBridge: WsBridge, orchestrator: SessionOrchestrator) {
     this.wsBridge = wsBridge;
@@ -750,6 +755,28 @@ export class WeChatBridge {
     });
     cleanups.push(unsubStream);
 
+    // Streamlined text — send directly (complete text, not a delta)
+    const unsubStreamlined = companionBus.on("message:streamlined_text", ({ sessionId: sid, message }) => {
+      if (sid !== sessionId) return;
+      const raw = message as Record<string, unknown>;
+      const text = typeof raw.text === "string" ? raw.text : "";
+      if (text.trim()) {
+        this.sendReply(userId, text.trim());
+      }
+    });
+    cleanups.push(unsubStreamlined);
+
+    // Streamlined tool use summary — send as informational
+    const unsubToolSummary = companionBus.on("message:streamlined_tool_use_summary", ({ sessionId: sid, message }) => {
+      if (sid !== sessionId) return;
+      const raw = message as Record<string, unknown>;
+      const summary = typeof raw.tool_summary === "string" ? raw.tool_summary : "";
+      if (summary.trim()) {
+        this.sendReply(userId, `📋 ${summary}`);
+      }
+    });
+    cleanups.push(unsubToolSummary);
+
     // Assistant messages — extract tool uses only (text is already captured via stream events)
     const unsubAssistant = companionBus.on("message:assistant", ({ sessionId: sid, message }) => {
       if (sid !== sessionId) return;
@@ -759,41 +786,37 @@ export class WeChatBridge {
         const toolSummary = tools
           .map((t) => `🔧 ${t.name}${t.input ? `: ${t.input.slice(0, 100)}` : ""}`)
           .join("\n");
-        this.sendReply(userId, `${toolSummary}\nℹ️ Tool call in progress`).catch(() => {});
+        this.sendReply(userId, `${toolSummary}\nℹ️ Tool call in progress`);
       }
     });
     cleanups.push(unsubAssistant);
 
-    // Result — send accumulated response
+    // Result — send the response text
     const unsubResult = companionBus.on("message:result", ({ sessionId: sid, message }) => {
       if (sid !== sessionId) return;
       const relayData = this.sessionRelayData.get(sessionId);
-      const text = relayData?.pendingText ?? "";
+      const streamText = relayData?.pendingText ?? "";
       if (relayData) relayData.pendingText = "";
 
       const result = message as Record<string, unknown>;
       const data = result.data as Record<string, unknown> | undefined;
 
-      // Send the accumulated streaming text
-      if (text.trim()) {
-        const chunks = splitForWeChat(text.trim());
-        for (const chunk of chunks) {
-          this.sendReply(userId, chunk).catch(() => {});
-        }
-      } else if (typeof data?.result === "string" && data.result.trim()) {
-        // Slash commands (e.g. /cost, /compact) return their response directly
-        // in data.result without streaming — send it when no stream text was captured.
-        const chunks = splitForWeChat(data.result.trim());
-        for (const chunk of chunks) {
-          this.sendReply(userId, chunk).catch(() => {});
-        }
+      // Prefer data.result (definitive CLI response) over accumulated streaming text.
+      // Streaming text may miss characters or arrive out of order;
+      // data.result is the complete, final response from the CLI.
+      const finalText = (typeof data?.result === "string" && data.result.trim())
+        ? data.result.trim()
+        : streamText.trim();
+
+      if (finalText) {
+        this.sendReply(userId, finalText);
       }
 
       // Check for errors
       if (data?.is_error) {
         const errors = data.errors as string[] | undefined;
         if (errors?.length) {
-          this.sendReply(userId, `Error: ${errors.join(", ")}`).catch(() => {});
+          this.sendReply(userId, `Error: ${errors.join(", ")}`);
         }
       }
     });
@@ -812,7 +835,7 @@ export class WeChatBridge {
       if (sid !== sessionId) return;
       this.cleanupRelay(sessionId);
       this.removeSessionFromUser(userId, sessionId);
-      this.sendReply(userId, `Session ${sessionId.slice(0, 8)}... exited.`).catch(() => {});
+      this.sendReply(userId, `Session ${sessionId.slice(0, 8)}... exited.`);
     });
     cleanups.push(unsubExited);
 
@@ -847,13 +870,13 @@ export class WeChatBridge {
       // pendingPermissions is already set by ws-bridge before emitting the event
       this.wsBridge.injectPermissionResponse(sessionId, perm.request_id, "allow", perm.input);
       const inputStr = JSON.stringify(perm.input).slice(0, 200);
-      this.sendReply(userId, `✅ Auto-approved (safe): ${perm.tool_name}${inputStr ? `\n${inputStr}` : ""}`).catch(() => {});
+      this.sendReply(userId, `✅ Auto-approved (safe): ${perm.tool_name}${inputStr ? `\n${inputStr}` : ""}`);
     } else if (settings.wechatForwardDangerous) {
       // Forward to WeChat for approval — do NOT auto-approve
       userSession.pendingPermission = { requestId: perm.request_id, sessionId };
       const desc = perm.description ?? perm.tool_name;
       const inputStr = JSON.stringify(perm.input).slice(0, 300);
-      this.sendReply(userId, `⚠️ Permission needed:\nTool: ${perm.tool_name}\n${desc ? `Description: ${desc}\n` : ""}Input: ${inputStr}\n\nSend /allow or /deny`).catch(() => {});
+      this.sendReply(userId, `⚠️ Permission needed:\nTool: ${perm.tool_name}\n${desc ? `Description: ${desc}\n` : ""}Input: ${inputStr}\n\nSend /allow or /deny`);
     } else {
       // Auto-approve everything (bypassPermissions mode)
       this.wsBridge.injectPermissionResponse(sessionId, perm.request_id, "allow", perm.input);
@@ -891,7 +914,7 @@ export class WeChatBridge {
   private getActiveSessionId(userId: string): string | null {
     const userSession = this.userSessions.get(userId);
     if (!userSession || userSession.sessionIds.length === 0) {
-      this.sendReply(userId, "No active session. Send /new to create one.").catch(() => {});
+      this.sendReply(userId, "No active session. Send /new to create one.");
       return null;
     }
     return userSession.sessionIds[userSession.activeSessionIndex] ?? null;
@@ -937,16 +960,38 @@ export class WeChatBridge {
 
   // ── WeChat Send Helpers ───────────────────────────────────────────────
 
-  private async sendReply(userId: string, text: string): Promise<void> {
-    if (!this.bot?.isRunning) return;
+  /**
+   * Queue a message for delivery. All sends are serialized through a FIFO queue
+   * so that concurrent fire-and-forget calls (tool notifications + result text)
+   * don't overwhelm the WeChat SDK and silently drop messages.
+   */
+  private sendReply(userId: string, text: string): void {
+    const chunks = splitForWeChat(text);
+    for (const chunk of chunks) {
+      this.sendQueue.push({ userId, text: chunk });
+    }
+    this.drainSendQueue();
+  }
+
+  /** Process the send queue one message at a time. */
+  private async drainSendQueue(): Promise<void> {
+    if (this.sending) return; // already draining
+    this.sending = true;
     try {
-      // Smart split via SDK is preferred, but we pre-split for safety
-      const chunks = splitForWeChat(text);
-      for (const chunk of chunks) {
-        await this.bot.send(userId, chunk);
+      while (this.sendQueue.length > 0) {
+        const { userId, text } = this.sendQueue.shift()!;
+        if (!this.bot?.isRunning) {
+          console.warn("[wechat] Bot not running, dropping queued message");
+          continue;
+        }
+        try {
+          await this.bot.send(userId, text);
+        } catch (err) {
+          console.error("[wechat] Failed to send reply:", err);
+        }
       }
-    } catch (err) {
-      console.error("[wechat] Failed to send reply:", err);
+    } finally {
+      this.sending = false;
     }
   }
 
