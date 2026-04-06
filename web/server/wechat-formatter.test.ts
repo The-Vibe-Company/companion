@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatToolCall } from "./wechat-formatter.js";
+import { formatToolCall, formatPermissionRequest } from "./wechat-formatter.js";
 
 describe("formatToolCall", () => {
   it("formats Bash tool — extracts command", () => {
@@ -73,5 +73,63 @@ describe("formatToolCall", () => {
   it("handles MCP tools generically", () => {
     const result = formatToolCall("mcp__context7__resolve-library-id", { query: "react" });
     expect(result).toContain("mcp__context7__resolve-library-id");
+  });
+});
+
+describe("formatPermissionRequest", () => {
+  it("formats Bash permission — shows command", () => {
+    const result = formatPermissionRequest("Bash", { command: "rm -rf /tmp/old_logs" });
+    expect(result).toContain("执行命令:");
+    expect(result).toContain("rm -rf /tmp/old_logs");
+    expect(result).toContain("/y 批准");
+    expect(result).toContain("/n 拒绝");
+  });
+
+  it("formats Write permission — shows file_path and content preview", () => {
+    const result = formatPermissionRequest("Write", {
+      file_path: "src/app.ts",
+      content: "export function hello() { return 42; }",
+    });
+    expect(result).toContain("写入文件: src/app.ts");
+    expect(result).toContain("内容预览:");
+    expect(result).toContain("export function hello()");
+  });
+
+  it("formats Edit permission — shows file_path and replacement", () => {
+    const result = formatPermissionRequest("Edit", {
+      file_path: "package.json",
+      old_string: "version: 1.0.0",
+      new_string: "version: 2.0.0",
+    });
+    expect(result).toContain("编辑文件: package.json");
+    expect(result).toContain("替换:");
+    expect(result).toContain("version: 1.0.0");
+    expect(result).toContain("→");
+    expect(result).toContain("version: 2.0.0");
+  });
+
+  it("formats Agent permission — shows description", () => {
+    const result = formatPermissionRequest("Agent", {
+      description: "探索 src 目录下的代码结构",
+    });
+    expect(result).toContain("子任务: 探索 src 目录下的代码结构");
+  });
+
+  it("formats unknown tool — shows tool name and description or input", () => {
+    const result = formatPermissionRequest("CustomTool", { action: "do thing" }, "A custom tool");
+    expect(result).toContain("CustomTool");
+    expect(result).toContain("A custom tool");
+  });
+
+  it("formats unknown tool without description — falls back to input", () => {
+    const result = formatPermissionRequest("CustomTool", { key: "value" });
+    expect(result).toContain("CustomTool");
+    expect(result).toContain("key");
+  });
+
+  it("always includes approval instructions", () => {
+    const result = formatPermissionRequest("Bash", { command: "ls" });
+    expect(result).toContain("/y 批准");
+    expect(result).toContain("/n 拒绝");
   });
 });
