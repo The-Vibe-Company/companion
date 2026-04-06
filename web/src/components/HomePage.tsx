@@ -1575,8 +1575,8 @@ export function HomePage() {
                     <span className="text-cc-primary">/kill</span><span>终止当前会话</span>
                     <span className="text-cc-primary">/model &lt;name&gt;</span><span>切换模型</span>
                     <span className="text-cc-primary">/mode &lt;mode&gt;</span><span>切换权限模式</span>
-                    <span className="text-cc-primary">/allow</span><span>批准权限请求</span>
-                    <span className="text-cc-primary">/deny</span><span>拒绝权限请求</span>
+                    <span className="text-cc-primary">/y</span><span>批准权限请求</span>
+                    <span className="text-cc-primary">/n</span><span>拒绝权限请求</span>
                     <span className="text-cc-primary">/interrupt</span><span>中断当前操作</span>
                     <span className="text-cc-primary">/status</span><span>查看会话状态</span>
                     <span className="text-cc-primary">/dir [path]</span><span>浏览目录，加 -r 递归</span>
@@ -1587,7 +1587,7 @@ export function HomePage() {
                 <div>
                   <p className="text-cc-fg font-medium mb-1">权限处理</p>
                   <p>
-                    安全工具（Read、Glob、Grep）自动批准；危险操作（Bash、Write、Edit）转发微信等待你回复 <span className="font-mono-code text-cc-primary">/allow</span> 或 <span className="font-mono-code text-cc-primary">/deny</span>。
+                    安全工具（Read、Glob、Grep）自动批准；危险操作（Bash、Write、Edit）转发微信等待你回复 <span className="font-mono-code text-cc-primary">/y</span> 或 <span className="font-mono-code text-cc-primary">/n</span>。
                   </p>
                 </div>
 

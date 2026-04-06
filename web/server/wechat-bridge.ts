@@ -54,8 +54,8 @@ const HELP_TEXT = `Companion WeChat Bot Commands:
 /kill — Kill active session
 /model <name> — Switch model
 /mode <mode> — Set permission mode
-/allow — Approve pending permission
-/deny — Deny pending permission
+/allow (or /y) — Approve pending permission
+/deny (or /n) — Deny pending permission
 /interrupt — Cancel current operation
 /status — Show session status
 /dir [path] — List folders in default directory
@@ -439,9 +439,11 @@ export class WeChatBridge {
         await this.cmdSetPermissionMode(userId, args);
         break;
       case "allow":
+      case "y":
         await this.cmdPermissionResponse(userId, "allow");
         break;
       case "deny":
+      case "n":
         await this.cmdPermissionResponse(userId, "deny");
         break;
       case "interrupt":
@@ -876,7 +878,7 @@ export class WeChatBridge {
       userSession.pendingPermission = { requestId: perm.request_id, sessionId };
       const desc = perm.description ?? perm.tool_name;
       const inputStr = JSON.stringify(perm.input).slice(0, 300);
-      this.sendReply(userId, `⚠️ Permission needed:\nTool: ${perm.tool_name}\n${desc ? `Description: ${desc}\n` : ""}Input: ${inputStr}\n\nSend /allow or /deny`);
+      this.sendReply(userId, `⚠️ Permission needed:\nTool: ${perm.tool_name}\n${desc ? `Description: ${desc}\n` : ""}Input: ${inputStr}\n\nSend /y (allow) or /n (deny)`);
     } else {
       // Auto-approve everything (bypassPermissions mode)
       this.wsBridge.injectPermissionResponse(sessionId, perm.request_id, "allow", perm.input);

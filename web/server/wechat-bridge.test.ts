@@ -41,9 +41,11 @@ describe("parseCommand", () => {
     expect(result).toEqual({ type: "command", command: "mode", args: "bypassPermissions" });
   });
 
-  it("handles /allow and /deny", () => {
+  it("handles /allow, /deny, /y, /n", () => {
     expect(parseCommand("/allow")).toEqual({ type: "command", command: "allow", args: "" });
     expect(parseCommand("/deny")).toEqual({ type: "command", command: "deny", args: "" });
+    expect(parseCommand("/y")).toEqual({ type: "command", command: "y", args: "" });
+    expect(parseCommand("/n")).toEqual({ type: "command", command: "n", args: "" });
   });
 
   it("handles unknown commands", () => {
