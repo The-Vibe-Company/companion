@@ -12,6 +12,7 @@ import { join, resolve, isAbsolute } from "node:path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { COMPANION_HOME } from "./paths.js";
 import QRCode from "qrcode";
+import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary } from "./wechat-formatter.js";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -37,8 +38,6 @@ const SAFE_TOOLS = new Set([
   "mcp__context7__resolve-library-id", "mcp__context7__query-docs",
   "TodoRead", "TaskList", "TaskGet",
 ]);
-
-const WECHAT_MSG_LIMIT = 4000;
 
 const MIN_RECONNECT_DELAY_MS = 2_000;
 const MAX_RECONNECT_DELAY_MS = 60_000;
@@ -128,32 +127,6 @@ function extractToolUses(msg: BrowserIncomingMessage): Array<{ name: string; inp
     }));
 }
 
-/** Split text into WeChat-safe chunks */
-function splitForWeChat(text: string): string[] {
-  if (text.length <= WECHAT_MSG_LIMIT) return [text];
-  const chunks: string[] = [];
-  let remaining = text;
-  while (remaining.length > 0) {
-    if (remaining.length <= WECHAT_MSG_LIMIT) {
-      chunks.push(remaining);
-      break;
-    }
-    // Try to split at paragraph boundary
-    let splitAt = remaining.lastIndexOf("\n\n", WECHAT_MSG_LIMIT);
-    if (splitAt < WECHAT_MSG_LIMIT * 0.5) {
-      // Try newline
-      splitAt = remaining.lastIndexOf("\n", WECHAT_MSG_LIMIT);
-    }
-    if (splitAt < WECHAT_MSG_LIMIT * 0.5) {
-      // Hard split
-      splitAt = WECHAT_MSG_LIMIT;
-    }
-    chunks.push(remaining.slice(0, splitAt));
-    remaining = remaining.slice(splitAt).trimStart();
-  }
-  return chunks;
-}
-
 // ── WeChatBridge Class ─────────────────────────────────────────────────────
 
 export class WeChatBridge {
@@ -172,6 +145,8 @@ export class WeChatBridge {
     streamlinedSent: boolean;
     contentSent: boolean;
     lastBlockIndex: number;
+    toolAccumulator: Array<{ name: string; input: Record<string, unknown> }>;
+    lastUserFacingMessageTs: number;
   }>();
   private userIdBySession = new Map<string, string>();
   // QR code data for web UI display
@@ -743,7 +718,7 @@ export class WeChatBridge {
     if (this.sessionCleanups.has(sessionId)) return;
 
     const cleanups: Array<() => void> = [];
-    this.sessionRelayData.set(sessionId, { pendingText: "", lastTypingTs: 0, streamlinedSent: false, contentSent: false, lastBlockIndex: -1 });
+    this.sessionRelayData.set(sessionId, { pendingText: "", lastTypingTs: 0, streamlinedSent: false, contentSent: false, lastBlockIndex: -1, toolAccumulator: [], lastUserFacingMessageTs: Date.now() });
 
     // Stream events — accumulate text
     const unsubStream = companionBus.on("message:stream_event", ({ sessionId: sid, message }) => {
@@ -779,7 +754,7 @@ export class WeChatBridge {
       const raw = message as Record<string, unknown>;
       const text = typeof raw.text === "string" ? raw.text : "";
       if (text.trim()) {
-        this.sendReply(userId, text.trim());
+        this.sendReply(userId, formatMarkdown(text.trim()));
         const relayData = this.sessionRelayData.get(sessionId);
         if (relayData) {
           relayData.streamlinedSent = true;
@@ -813,14 +788,19 @@ export class WeChatBridge {
         }
       }
 
-      // Report tool uses — labelled as informational to avoid confusion with permission prompts
+      // Accumulate tool calls for end-of-turn summary
       const tools = extractToolUses(message);
       if (tools.length > 0) {
-        const toolSummary = tools
-          .map((t) => `🔧 ${t.name}${t.input ? `: ${t.input.slice(0, 100)}` : ""}`)
-          .join("\n");
-        this.sendReply(userId, `${toolSummary}\nℹ️ Tool call in progress`);
-        if (relayData) relayData.contentSent = true;
+        for (const t of tools) {
+          if (relayData) {
+            try {
+              relayData.toolAccumulator.push({ name: t.name, input: JSON.parse(t.input || "{}") });
+            } catch {
+              relayData.toolAccumulator.push({ name: t.name, input: {} });
+            }
+          }
+        }
+        // Individual tool call messages suppressed — summary sent at result time
       }
     });
     cleanups.push(unsubAssistant);
@@ -852,14 +832,19 @@ export class WeChatBridge {
           : streamText.trim();
 
         if (finalText) {
-          this.sendReply(userId, finalText);
+          this.sendReply(userId, formatMarkdown(finalText));
         } else if (!hadContent) {
-          // Nothing was sent to the user this turn — send a minimal acknowledgment
-          // so the user knows their message was processed (unless it was an error turn)
           if (!data?.is_error) {
-            this.sendReply(userId, "(operation completed)");
+            const toolSummary = formatToolSummary(relayData?.toolAccumulator ?? []);
+            this.sendReply(userId, toolSummary || "(操作完成)");
           }
         }
+      }
+
+      // Send tool summary for turns that also had content
+      if (relayData && relayData.toolAccumulator.length > 0 && (streamText.trim() || hadContent)) {
+        const summary = formatToolSummary(relayData.toolAccumulator);
+        if (summary) this.sendReply(userId, summary);
       }
 
       // Always check for errors regardless of streamlinedSent
@@ -868,6 +853,12 @@ export class WeChatBridge {
         if (errors?.length) {
           this.sendReply(userId, `Error: ${errors.join(", ")}`);
         }
+      }
+
+      // Reset tool accumulator and timestamp for next turn
+      if (relayData) {
+        relayData.toolAccumulator = [];
+        relayData.lastUserFacingMessageTs = Date.now();
       }
     });
     cleanups.push(unsubResult);
@@ -930,14 +921,12 @@ export class WeChatBridge {
       // Auto-approve safe tools (Read, Glob, Grep, etc.)
       // pendingPermissions is already set by ws-bridge before emitting the event
       this.wsBridge.injectPermissionResponse(sessionId, perm.request_id, "allow", perm.input);
-      const inputStr = JSON.stringify(perm.input).slice(0, 200);
-      this.sendReply(userId, `✅ Auto-approved (safe): ${perm.tool_name}${inputStr ? `\n${inputStr}` : ""}`);
+      const formatted = formatToolCall(perm.tool_name, perm.input);
+      this.sendReply(userId, formatted ? `✅ 自动批准: ${formatted}` : `✅ 自动批准: ${perm.tool_name}`);
     } else if (settings.wechatForwardDangerous) {
       // Forward to WeChat for approval — do NOT auto-approve
       userSession.pendingPermission = { requestId: perm.request_id, sessionId };
-      const desc = perm.description ?? perm.tool_name;
-      const inputStr = JSON.stringify(perm.input).slice(0, 300);
-      this.sendReply(userId, `⚠️ Permission needed:\nTool: ${perm.tool_name}\n${desc ? `Description: ${desc}\n` : ""}Input: ${inputStr}\n\nSend /y (allow) or /n (deny)`);
+      this.sendReply(userId, formatPermissionRequest(perm.tool_name, perm.input, perm.description));
     } else {
       // Auto-approve everything (bypassPermissions mode)
       this.wsBridge.injectPermissionResponse(sessionId, perm.request_id, "allow", perm.input);
