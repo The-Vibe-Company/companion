@@ -744,6 +744,14 @@ export class WeChatBridge {
           relayData.lastTypingTs = now;
           this.sendTyping(userId).catch(() => {});
         }
+        // Progress indicator: if > 15s since last message and tools are running, send brief status
+        const progressNow = Date.now();
+        const elapsed = progressNow - relayData.lastUserFacingMessageTs;
+        if (elapsed > 15_000 && relayData.toolAccumulator.length > 0 && !relayData.contentSent) {
+          const count = relayData.toolAccumulator.length;
+          this.sendReply(userId, `⏳ 正在处理... (已执行 ${count} 个操作)`);
+          relayData.lastUserFacingMessageTs = progressNow;
+        }
       }
     });
     cleanups.push(unsubStream);
