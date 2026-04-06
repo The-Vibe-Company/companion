@@ -93,5 +93,8 @@
     "vitest": "^4.0.18",
     "vitest-axe": "^0.1.0",
     "zustand": "^5.0.0"
+  },
+  "overrides": {
+    "cssstyle": "^4.0.1"
   }
 }

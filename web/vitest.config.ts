@@ -13,6 +13,11 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    pool: "threads",
+    deps: {
+      interopDefault: true,
+      inline: ["cssstyle", "@asamuzakjp/css-color"],
+    },
     environment: "node",
     coverage: {
       provider: "v8",
