@@ -1575,8 +1575,8 @@ export function HomePage() {
                     <span className="text-cc-primary">/kill</span><span>终止当前会话</span>
                     <span className="text-cc-primary">/model &lt;name&gt;</span><span>切换模型</span>
                     <span className="text-cc-primary">/mode &lt;mode&gt;</span><span>切换权限模式</span>
-                    <span className="text-cc-primary">/y</span><span>批准权限请求</span>
-                    <span className="text-cc-primary">/n</span><span>拒绝权限请求</span>
+                    <span className="text-cc-primary">/y (或 /allow)</span><span>批准权限请求</span>
+                    <span className="text-cc-primary">/n (或 /deny)</span><span>拒绝权限请求</span>
                     <span className="text-cc-primary">/interrupt</span><span>中断当前操作</span>
                     <span className="text-cc-primary">/status</span><span>查看会话状态</span>
                     <span className="text-cc-primary">/dir [path]</span><span>浏览目录，加 -r 递归</span>
