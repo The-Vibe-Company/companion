@@ -130,6 +130,37 @@ Preview builds use a patch-core bump (e.g. `0.68.1-preview.*` when stable is `0.
 
 In **Settings > Updates**, switch the update channel to **Prerelease** to receive preview builds. The default channel is **Stable** (semver releases only). Switching channels takes effect immediately on the next update check.
 
+## WeChat Bot
+
+Control your sessions directly from WeChat — no browser needed.
+
+**Features:**
+- Create and manage sessions via WeChat messages
+- Approve/deny tool permissions from your phone
+- Switch models and permission modes
+- Auto-approve safe tools (Read, Glob, Grep) + forward dangerous ones for approval
+
+**Setup:**
+1. Navigate to **Integrations** → **WeChat Bot** (or `#/integrations/wechat`)
+2. Click **Start** and scan the QR code with WeChat
+3. Configure options (auto-approve safe tools, forward dangerous permissions)
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `/new [folder]` | Create new session |
+| `/sessions` | List all sessions |
+| `/switch <n>` | Switch to session n |
+| `/kill` | Terminate current session |
+| `/model <name>` | Switch model |
+| `/mode <mode>` | Change permission mode |
+| `/allow` / `/deny` | Approve or deny permission request |
+| `/status` | Check session status |
+| `/help` | Show all commands |
+
+See [`docs/wechat-bot.md`](docs/wechat-bot.md) for full documentation.
+
 ## Docs
 - **Full documentation**: [`docs/`](docs/) (Mintlify — run `cd docs && mint dev` to preview locally)
 - Protocol reverse engineering: [`WEBSOCKET_PROTOCOL_REVERSED.md`](WEBSOCKET_PROTOCOL_REVERSED.md)
