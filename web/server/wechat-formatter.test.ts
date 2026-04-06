@@ -212,3 +212,72 @@ describe("splitForWeChat", () => {
     expect(splitForWeChat("")).toEqual([]);
   });
 });
+
+describe("formatMarkdown", () => {
+  it("converts fenced code blocks to indented blocks", () => {
+    const input = "```typescript\nconsole.log('hi');\n```";
+    const result = formatMarkdown(input);
+    expect(result).toBe("  │ console.log('hi');");
+  });
+
+  it("converts # headings to bracket format", () => {
+    expect(formatMarkdown("# Title")).toBe("【Title】");
+  });
+
+  it("converts ## headings to line format", () => {
+    expect(formatMarkdown("## Section")).toBe("━━ Section ━━");
+  });
+
+  it("converts - list items to bullet points", () => {
+    expect(formatMarkdown("- item one\n- item two")).toBe("• item one\n• item two");
+  });
+
+  it("converts blockquotes to line prefix", () => {
+    expect(formatMarkdown("> some quote")).toBe("┃ some quote");
+  });
+
+  it("converts [text](url) links to text (url)", () => {
+    expect(formatMarkdown("[click here](https://example.com)")).toBe("click here (https://example.com)");
+  });
+
+  it("converts horizontal rules", () => {
+    expect(formatMarkdown("---")).toBe("──────────────");
+  });
+
+  it("preserves plain text", () => {
+    expect(formatMarkdown("Hello world")).toBe("Hello world");
+  });
+
+  it("handles mixed markdown in one message", () => {
+    const input = "# Title\n\nSome text with a [link](https://example.com).\n\n- item 1\n- item 2";
+    const result = formatMarkdown(input);
+    expect(result).toContain("【Title】");
+    expect(result).toContain("link (https://example.com)");
+    expect(result).toContain("• item 1");
+    expect(result).toContain("• item 2");
+  });
+
+  it("preserves code block content as-is (no markdown processing inside)", () => {
+    const input = "```js\n# not a heading\n- not a list\n```";
+    const result = formatMarkdown(input);
+    expect(result).toContain("# not a heading");
+    expect(result).toContain("- not a list");
+    expect(result).not.toContain("【not a heading】");
+  });
+
+  it("handles multiple code blocks", () => {
+    const input = "```js\ncode1\n```\n\ntext\n\n```js\ncode2\n```";
+    const result = formatMarkdown(input);
+    expect(result).toContain("  │ code1");
+    expect(result).toContain("  │ code2");
+    expect(result).toContain("text");
+  });
+
+  it("handles empty string", () => {
+    expect(formatMarkdown("")).toBe("");
+  });
+
+  it("handles undefined/null gracefully", () => {
+    expect(formatMarkdown(null as unknown as string)).toBe("");
+  });
+});

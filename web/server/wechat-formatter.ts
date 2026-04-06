@@ -84,6 +84,63 @@ export function formatPermissionRequest(
   return header + body + footer;
 }
 
+interface TextSegment {
+  isCode: boolean;
+  content: string;
+}
+
+/** Split text into alternating code/non-code segments. */
+function splitCodeBlocks(text: string): TextSegment[] {
+  const segments: TextSegment[] = [];
+  const regex = /```[\w]*\n([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      const nonCode = text.slice(lastIndex, match.index).trim();
+      if (nonCode) segments.push({ isCode: false, content: nonCode });
+    }
+    segments.push({ isCode: true, content: match[1].trimEnd() });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    const remaining = text.slice(lastIndex).trim();
+    if (remaining) segments.push({ isCode: false, content: remaining });
+  }
+
+  if (segments.length === 0) {
+    segments.push({ isCode: false, content: text });
+  }
+
+  return segments;
+}
+
+/** Convert Markdown text to WeChat-friendly plain text format. */
+export function formatMarkdown(text: string): string {
+  if (!text) return "";
+
+  const segments = splitCodeBlocks(text);
+
+  return segments.map((seg) => {
+    if (seg.isCode) {
+      return seg.content
+        .split("\n")
+        .map((line) => `  │ ${line}`)
+        .join("\n");
+    }
+    return seg.content
+      .replace(/^### (.+)$/gm, "━━ $1 ━━")
+      .replace(/^## (.+)$/gm, "━━ $1 ━━")
+      .replace(/^# (.+)$/gm, "【$1】")
+      .replace(/^> (.+)$/gm, "┃ $1")
+      .replace(/^[-*] /gm, "• ")
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)")
+      .replace(/^---$/gm, "──────────────");
+  }).join("\n");
+}
+
 const MIN_CHUNK_SIZE = 200;
 
 /** Find the best character index to split at, preserving code blocks. */
