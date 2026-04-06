@@ -1,5 +1,9 @@
+// Tests for wechat-formatter.ts — tool call display, permission formatting,
+// Markdown conversion, WeChat message splitting, and turn-level tool summaries.
 import { describe, it, expect } from "vitest";
 import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary } from "./wechat-formatter.js";
+
+// ── formatToolCall ─────────────────────────────────────────────────────────
 
 describe("formatToolCall", () => {
   it("formats Bash tool — extracts command", () => {
@@ -47,6 +51,8 @@ describe("formatToolCall", () => {
     expect(result).toBe("🤖 子任务: Find all TODOs");
   });
 
+  // TodoWrite, TaskList, etc. are suppressed because they are internal bookkeeping
+  // tools that would add noise to the WeChat conversation.
   it("returns empty string for TodoWrite (suppressed)", () => {
     const result = formatToolCall("TodoWrite", { todos: [] });
     expect(result).toBe("");
@@ -70,11 +76,15 @@ describe("formatToolCall", () => {
     expect(result).toBe("🔧 执行: ");
   });
 
+  // MCP tools (e.g. mcp__context7__resolve-library-id) are not in the known-tool
+  // map, so they fall through to the generic JSON.stringify formatter.
   it("handles MCP tools generically", () => {
     const result = formatToolCall("mcp__context7__resolve-library-id", { query: "react" });
     expect(result).toContain("mcp__context7__resolve-library-id");
   });
 });
+
+// ── formatPermissionRequest ────────────────────────────────────────────────
 
 describe("formatPermissionRequest", () => {
   it("formats Bash permission — shows command", () => {
@@ -134,6 +144,8 @@ describe("formatPermissionRequest", () => {
   });
 });
 
+// ── splitForWeChat ─────────────────────────────────────────────────────────
+
 describe("splitForWeChat", () => {
   it("returns single chunk for short text", () => {
     const result = splitForWeChat("Hello world");
@@ -168,6 +180,8 @@ describe("splitForWeChat", () => {
     expect(result[0]).not.toContain("[1/1]");
   });
 
+  // Code blocks must never be split mid-way — splitting inside ``` would produce
+  // broken formatting in WeChat. The splitter backs up to before the code block.
   it("does not split inside code blocks", () => {
     const code = "```js\n" + "x".repeat(3990) + "\n```";
     const prefix = "a".repeat(50);
@@ -182,6 +196,8 @@ describe("splitForWeChat", () => {
     }
   });
 
+  // Tiny trailing chunks (< 200 chars) are merged into the previous chunk to
+  // avoid sending a near-empty second message with a page indicator.
   it("merges small trailing chunks (< 200 chars) with previous", () => {
     const para1 = "a".repeat(3000);
     const para2 = "short";
@@ -199,6 +215,8 @@ describe("splitForWeChat", () => {
     expect(result.length).toBeGreaterThanOrEqual(2);
   });
 
+  // When no paragraph or newline boundaries exist (e.g. a very long single word),
+  // the splitter falls back to a hard cut at the character limit.
   it("handles hard split when no boundaries available", () => {
     const text = "a".repeat(8000);
     const result = splitForWeChat(text);
@@ -208,10 +226,13 @@ describe("splitForWeChat", () => {
     }
   });
 
+  // Empty input should produce no chunks — nothing to send to WeChat.
   it("handles empty string", () => {
     expect(splitForWeChat("")).toEqual([]);
   });
 });
+
+// ── formatMarkdown ─────────────────────────────────────────────────────────
 
 describe("formatMarkdown", () => {
   it("converts fenced code blocks to indented blocks", () => {
@@ -257,6 +278,8 @@ describe("formatMarkdown", () => {
     expect(result).toContain("• item 2");
   });
 
+  // Content inside code blocks must be preserved verbatim — markdown symbols
+  // like # and - are literal code, not formatting directives.
   it("preserves code block content as-is (no markdown processing inside)", () => {
     const input = "```js\n# not a heading\n- not a list\n```";
     const result = formatMarkdown(input);
@@ -277,11 +300,18 @@ describe("formatMarkdown", () => {
     expect(formatMarkdown("")).toBe("");
   });
 
+  // Defensive: upstream may pass null/undefined if the CLI emits an empty field.
   it("handles undefined/null gracefully", () => {
     expect(formatMarkdown(null as unknown as string)).toBe("");
   });
 });
 
+// ── formatToolSummary ──────────────────────────────────────────────────────
+
+// formatToolSummary produces a one-line Chinese summary of tool activity per
+// turn (e.g. "本轮: 读取 3 个文件 · 编辑 1 个文件"). It suppresses internal
+// bookkeeping tools and skips the summary entirely when only 1-2 safe tools
+// ran (too noisy for the user).
 describe("formatToolSummary", () => {
   it("formats single tool type", () => {
     const tools = [
