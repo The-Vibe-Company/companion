@@ -526,7 +526,7 @@ export class WeChatBridge {
       }
 
       const phase = session.stateMachine?.phase ?? "unknown";
-      const phaseEmoji = phase === "idle" ? "🟢" : phase === "responding" ? "🔵" : phase === "awaiting_permission" ? "🟡" : "⚪";
+      const phaseEmoji = phase === "ready" ? "🟢" : phase === "streaming" ? "🔵" : phase === "awaiting_permission" ? "🟡" : "⚪";
 
       lines.push("");
       lines.push(`${isActive ? "▶" : " "} #${i + 1} ${sid.slice(0, 8)}... ${isActive ? "← active" : ""}`);
