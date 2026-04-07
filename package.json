@@ -7,6 +7,8 @@
     "dev": "cd web && bun run dev",
     "build": "cd web && bun run build",
     "start": "cd web && bun run start",
+    "test": "cd web && bun run test",
+    "typecheck": "cd web && bun run typecheck",
     "prepare": "husky"
   },
   "author": "The Vibe Company",
