@@ -49,6 +49,8 @@ const packageRoot = process.env.__COMPANION_PACKAGE_ROOT || resolve(__dirname, "
 
 import { DEFAULT_PORT_DEV, DEFAULT_PORT_PROD } from "./constants.js";
 
+if (!process.env.NODE_ENV) process.env.NODE_ENV = "production";
+
 const defaultPort = process.env.NODE_ENV === "production" ? DEFAULT_PORT_PROD : DEFAULT_PORT_DEV;
 const port = Number(process.env.PORT) || defaultPort;
 const host = process.env.HOST || "0.0.0.0";

@@ -30,7 +30,7 @@
     "dev:api": "bun --watch server/index.ts",
     "dev:vite": "vite",
     "build": "vite build",
-    "start": "NODE_ENV=production bun server/index.ts",
+    "start": "bun server/index.ts",
     "prepublishOnly": "bun run build",
     "typecheck": "tsc --noEmit",
     "deadcode:check": "tsc --project tsconfig.deadcode.json",
