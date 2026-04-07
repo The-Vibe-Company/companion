@@ -35,6 +35,11 @@ const UNIT_PATH = join(SYSTEMD_DIR, UNIT_NAME);
 // ─── Platform check ─────────────────────────────────────────────────────────────
 
 function ensureSupportedPlatform(): void {
+  if (process.platform === "win32") {
+    console.error("Service management is not supported on Windows yet.");
+    console.error("Use 'bun run dev' or 'bun run start' instead.");
+    process.exit(1);
+  }
   if (process.platform !== "darwin" && process.platform !== "linux") {
     console.error(
       "Service management is only supported on macOS (launchd) and Linux (systemd).",
