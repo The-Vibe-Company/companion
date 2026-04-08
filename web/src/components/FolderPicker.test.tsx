@@ -466,4 +466,117 @@ describe("FolderPicker", () => {
     setup({ initialPath: "" });
     expect(mockListDirs).toHaveBeenCalledWith(undefined);
   });
+
+  // ─── Windows path support ───────────────────────────────────────────────
+
+  it("handles Windows backslash paths from API response", async () => {
+    // Validates that backslash paths returned by the server on Windows
+    // are normalized to forward slashes for correct breadcrumb/display logic.
+    mockListDirs.mockResolvedValue({
+      path: "C:\\Users\\les\\projects",
+      dirs: [
+        { name: "src", path: "C:\\Users\\les\\projects\\src" },
+        { name: "docs", path: "C:\\Users\\les\\projects\\docs" },
+      ],
+      home: "C:\\Users\\les",
+    });
+    setup({ initialPath: "C:\\Users\\les\\projects" });
+
+    // Directories should render with normalized paths
+    await waitFor(() => {
+      expect(screen.getByText("src")).toBeInTheDocument();
+      expect(screen.getByText("docs")).toBeInTheDocument();
+    });
+
+    // Navigate into src — should call API with forward-slash path
+    fireEvent.click(screen.getByLabelText("Navigate into src"));
+    expect(mockListDirs).toHaveBeenCalledWith("C:/Users/les/projects/src");
+  });
+
+  it("renders Windows drive breadcrumbs correctly", async () => {
+    // Validates Windows paths produce "C: > Users > les" breadcrumb
+    // instead of a broken "/" → "C:\Users\les" single segment.
+    mockListDirs.mockResolvedValue({
+      path: "C:\\Users\\les",
+      dirs: [],
+      home: "C:\\Users\\les",
+    });
+    setup({ initialPath: "C:\\Users\\les" });
+
+    await waitFor(() => {
+      // Should show drive letter and segments as separate breadcrumbs
+      const nav = screen.getByLabelText("Directory breadcrumb");
+      expect(nav).toBeInTheDocument();
+      expect(screen.getByText("C:")).toBeInTheDocument();
+      expect(screen.getByText("Users")).toBeInTheDocument();
+      // "les" appears in both breadcrumb (as current) and select button
+      const lesElements = screen.getAllByText("les");
+      expect(lesElements.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("navigates to parent on Windows via breadcrumb click", async () => {
+    // Validates clicking a parent breadcrumb on Windows sends a valid path.
+    mockListDirs.mockResolvedValue({
+      path: "C:\\Users\\les\\projects",
+      dirs: [],
+      home: "C:\\Users\\les",
+    });
+    setup({ initialPath: "C:\\Users\\les\\projects" });
+
+    await waitFor(() => {
+      // "les" breadcrumb exists (may also appear in select button)
+      expect(screen.getAllByText("les").length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Click the "les" breadcrumb to navigate up (it's inside the nav)
+    const nav = screen.getByLabelText("Directory breadcrumb");
+    const lesBreadcrumb = [...nav.querySelectorAll("button")].find(
+      (btn) => btn.textContent === "les",
+    )!;
+    fireEvent.click(lesBreadcrumb);
+    expect(mockListDirs).toHaveBeenCalledWith("C:/Users/les");
+  });
+
+  it("selects a Windows path and normalizes it", async () => {
+    // Validates that selecting a directory on Windows normalizes backslashes.
+    mockListDirs.mockResolvedValue({
+      path: "C:\\Users\\les\\projects",
+      dirs: [
+        { name: "my-app", path: "C:\\Users\\les\\projects\\my-app" },
+      ],
+      home: "C:\\Users\\les",
+    });
+    const { onSelect } = setup({ initialPath: "C:\\Users\\les\\projects" });
+
+    await waitFor(() => {
+      expect(screen.getByText("my-app")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByLabelText("Select my-app"));
+    expect(onSelect).toHaveBeenCalledWith("C:/Users/les/projects/my-app");
+  });
+
+  it("normalizes manual path input on Windows", async () => {
+    // Validates manually typed Windows paths are normalized before select.
+    mockListDirs.mockResolvedValue({
+      path: "C:\\Users\\les",
+      dirs: [],
+      home: "C:\\Users\\les",
+    });
+    const { onSelect } = setup({ initialPath: "C:\\Users\\les" });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Type path manually")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByLabelText("Type path manually"));
+    const input = screen.getByLabelText("Type a directory path");
+
+    // User types a Windows-style path with backslashes
+    fireEvent.change(input, { target: { value: "D:\\workspace\\project" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSelect).toHaveBeenCalledWith("D:/workspace/project");
+  });
 });

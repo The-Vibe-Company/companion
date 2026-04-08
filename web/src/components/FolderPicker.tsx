@@ -9,18 +9,52 @@ interface FolderPickerProps {
   onClose: () => void;
 }
 
+/** Normalize a path to forward slashes for cross-platform compatibility. */
+function toForwardSlash(p: string): string {
+  return p.replace(/\\/g, "/");
+}
+
+/** Get the last segment of a path (directory name). */
+function getBaseName(p: string): string {
+  const parts = toForwardSlash(p).split("/").filter(Boolean);
+  return parts[parts.length - 1] || "/";
+}
+
+/** Get the parent directory path, or null if already at root. */
+function getParentPath(p: string): string | null {
+  const parts = toForwardSlash(p).split("/").filter(Boolean);
+  if (parts.length <= 1) return null;
+  const isWindowsDrive = /^[A-Za-z]:$/.test(parts[0]);
+  const parentParts = parts.slice(0, -1);
+  if (isWindowsDrive && parentParts.length === 1) return parentParts[0];
+  return (isWindowsDrive ? "" : "/") + parentParts.join("/");
+}
+
 /** Split an absolute path into clickable breadcrumb segments.
- *  e.g. "/Users/me/projects" → ["/", "Users", "me", "projects"]
+ *  Handles both Unix (/home/user) and Windows (C:\Users\user) paths.
  *  Each entry carries the full path up to that segment. */
 function pathSegments(p: string): { label: string; path: string }[] {
   if (!p) return [];
-  const parts = p.split("/").filter(Boolean);
-  const segs: { label: string; path: string }[] = [{ label: "/", path: "/" }];
-  let acc = "";
-  for (const part of parts) {
-    acc += "/" + part;
-    segs.push({ label: part, path: acc });
+  const normalized = toForwardSlash(p);
+  const parts = normalized.split("/").filter(Boolean);
+  if (parts.length === 0) return [{ label: "/", path: "/" }];
+  const isWindowsDrive = /^[A-Za-z]:$/.test(parts[0]);
+  const segs: { label: string; path: string }[] = [];
+
+  if (!isWindowsDrive) {
+    segs.push({ label: "/", path: "/" });
   }
+
+  let acc = "";
+  for (let i = 0; i < parts.length; i++) {
+    if (isWindowsDrive && i === 0) {
+      acc = parts[i]; // e.g. "C:"
+    } else {
+      acc += "/" + parts[i];
+    }
+    segs.push({ label: parts[i], path: acc });
+  }
+
   return segs;
 }
 
@@ -54,8 +88,9 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
     setFocusIndex(-1);
     try {
       const result = await api.listDirs(path);
-      setBrowsePath(result.path);
-      setBrowseDirs(result.dirs);
+      // Normalize all paths to forward slashes so split-by-"/" works on Windows too
+      setBrowsePath(toForwardSlash(result.path));
+      setBrowseDirs(result.dirs.map(d => ({ ...d, path: toForwardSlash(d.path) })));
     } catch {
       setBrowseError("Could not load directory");
       setBrowseDirs([]);
@@ -129,10 +164,12 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
 
       // Backspace: go to parent directory (works even with empty dir list)
       if (e.key === "Backspace" && document.activeElement !== filterRef.current) {
-        if (browsePath && browsePath !== "/") {
-          e.preventDefault();
-          const parent = browsePath.split("/").slice(0, -1).join("/") || "/";
-          loadDirs(parent);
+        if (browsePath) {
+          const parent = getParentPath(browsePath);
+          if (parent !== null) {
+            e.preventDefault();
+            loadDirs(parent);
+          }
         }
         return;
       }
@@ -165,15 +202,16 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
   }, [focusIndex]);
 
   function selectDir(path: string) {
-    addRecentDir(path);
+    const normalized = toForwardSlash(path);
+    addRecentDir(normalized);
     setRecentDirs(getRecentDirs());
-    onSelect(path);
+    onSelect(normalized);
     // Close immediately — no exit animation on selection (instant feedback)
     onClose();
   }
 
   const segments = pathSegments(browsePath);
-  const currentDirName = browsePath.split("/").pop() || "/";
+  const currentDirName = getBaseName(browsePath);
 
   return createPortal(
     <div
@@ -229,7 +267,7 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
                       <path d="M8 3.5a.5.5 0 00-1 0V8a.5.5 0 00.252.434l3.5 2a.5.5 0 00.496-.868L8 7.71V3.5z" />
                       <path fillRule="evenodd" d="M8 16A8 8 0 108 0a8 8 0 000 16zm7-8A7 7 0 111 8a7 7 0 0114 0z" />
                     </svg>
-                    <span className="font-medium truncate">{dir.split("/").pop() || dir}</span>
+                    <span className="font-medium truncate">{getBaseName(dir)}</span>
                     <span className="text-cc-muted font-mono-code text-[10px] truncate ml-auto">{dir}</span>
                   </button>
                 </li>

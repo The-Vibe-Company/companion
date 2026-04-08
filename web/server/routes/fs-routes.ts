@@ -9,14 +9,44 @@ function toPosix(p: string): string {
   return p.replace(/\\/g, "/");
 }
 
-/** Ensure a resolved path is within one of the allowed base directories.
+/** Ensure a resolved path is within one of the allowed base directories,
+ *  OR is an ancestor of an allowed base (so users can navigate up from cwd).
  *  Returns the resolved absolute path, or null if it escapes all bases. */
 function guardPath(raw: string, allowedBases: string[]): string | null {
   const abs = resolve(raw);
   const absPosix = toPosix(abs);
   for (const base of allowedBases) {
     const basePosix = toPosix(resolve(base));
-    if (absPosix === basePosix || absPosix.startsWith(basePosix + "/")) return abs;
+    if (
+      absPosix === basePosix ||
+      absPosix.startsWith(basePosix + "/") ||
+      basePosix.startsWith(absPosix + "/")
+    ) {
+      return abs;
+    }
+  }
+  return null;
+}
+
+/** Browse guard: allows directory browsing on the same drive/root as an
+ *  allowed base.  Used for listing endpoints (/fs/list, /fs/tree) where
+ *  users need to navigate freely between sibling directories.
+ *  File read/write endpoints still use the strict guardPath. */
+function guardBrowsePath(raw: string, allowedBases: string[]): string | null {
+  // First try the strict guard (exact match, child, or ancestor)
+  const strict = guardPath(raw, allowedBases);
+  if (strict) return strict;
+
+  // Fallback for Windows: allow any path on the same drive as an allowed base.
+  // This lets users navigate from cwd to sibling directories on the same drive.
+  const abs = resolve(raw);
+  const absPosix = toPosix(abs);
+  const absDrive = absPosix.match(/^([A-Za-z]:)/)?.[1]?.toLowerCase();
+  if (absDrive) {
+    for (const base of allowedBases) {
+      const baseDrive = toPosix(resolve(base)).match(/^([A-Za-z]:)/)?.[1]?.toLowerCase();
+      if (baseDrive === absDrive) return abs;
+    }
   }
   return null;
 }
@@ -72,7 +102,7 @@ export function registerFsRoutes(api: Hono, opts?: { allowedBases?: string[] }):
 
   api.get("/fs/list", async (c) => {
     const rawPath = c.req.query("path") || homedir();
-    const basePath = guardPath(rawPath, allowedBases());
+    const basePath = guardBrowsePath(rawPath, allowedBases());
     if (!basePath) return c.json({ error: "Path outside allowed directories" }, 403);
     try {
       const entries = await readdir(basePath, { withFileTypes: true });
@@ -112,7 +142,7 @@ export function registerFsRoutes(api: Hono, opts?: { allowedBases?: string[] }):
   api.get("/fs/tree", async (c) => {
     const rawPath = c.req.query("path");
     if (!rawPath) return c.json({ error: "path required" }, 400);
-    const basePath = guardPath(rawPath, allowedBases());
+    const basePath = guardBrowsePath(rawPath, allowedBases());
     if (!basePath) return c.json({ error: "Path outside allowed directories" }, 403);
 
     interface TreeNode {

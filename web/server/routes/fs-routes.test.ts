@@ -163,6 +163,37 @@ describe("path traversal protection", () => {
     const body = await res.json();
     expect(body.content).toBe("hello");
   });
+
+  it("allows /fs/list for ancestor directories of allowed bases", async () => {
+    // Users should be able to navigate UP from the allowed base (e.g. cwd)
+    // to parent directories. This enables folder browsing from cwd upward.
+    const parentDir = resolve(join(tempDir, ".."));
+    const res = await app.request(`/fs/list?path=${encodeURIComponent(parentDir)}`);
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.dirs)).toBe(true);
+    // The parent dir should contain at least the temp directory we created
+    const tempBaseName = tempDir.split(/[/\\]/).pop();
+    expect(tempBaseName).toBeTruthy();
+    const dirNames = body.dirs.map((d: { name: string }) => d.name);
+    expect(dirNames).toContain(tempBaseName);
+  });
+
+  it("allows /fs/list for sibling directories on the same drive", async () => {
+    // On Windows, users need to navigate between sibling directories
+    // (e.g. from cwd D:\projects\app-a to D:\projects\app-b).
+    // The browse guard should allow this when both are on the same drive.
+    const siblingDir = mkRealTempDir("fs-sibling-test-");
+    const res = await app.request(`/fs/list?path=${encodeURIComponent(siblingDir)}`);
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.dirs)).toBe(true);
+
+    // Cleanup sibling
+    try { rmSync(siblingDir, { recursive: true, force: true }); } catch { /* ignore */ }
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
