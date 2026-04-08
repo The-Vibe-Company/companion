@@ -25,7 +25,12 @@ describe("codex-home", () => {
 
   it("resolveCompanionCodexHome uses explicit path when provided", () => {
     const custom = "/tmp/my-codex-home";
-    expect(resolveCompanionCodexHome(custom)).toBe(custom);
+    // On Windows, resolve() adds a drive letter prefix (e.g. "D:/tmp/...");
+    // normalize both sides for cross-platform comparison.
+    const actual = resolveCompanionCodexHome(custom).replace(/\\/g, "/");
+    const expected = custom;
+    // The resolved path should end with the custom path (may have drive prefix on Windows)
+    expect(actual.endsWith(expected)).toBe(true);
   });
 
   // Regression: resolveCompanionCodexHome must NOT read process.env.CODEX_HOME
@@ -54,8 +59,11 @@ describe("codex-home", () => {
   it("resolveCompanionCodexSessionHome uses explicit path", () => {
     const custom = "/tmp/my-codex-home";
     const sessionId = "xyz-789";
-    expect(resolveCompanionCodexSessionHome(sessionId, custom)).toBe(
-      join(custom, sessionId),
-    );
+    // On Windows, resolve() adds a drive letter prefix;
+    // normalize both sides for cross-platform comparison.
+    const actual = resolveCompanionCodexSessionHome(sessionId, custom).replace(/\\/g, "/");
+    const expected = `${custom}/${sessionId}`;
+    // The resolved path should end with the expected suffix (may have drive prefix on Windows)
+    expect(actual.endsWith(expected)).toBe(true);
   });
 });

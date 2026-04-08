@@ -29,7 +29,7 @@ function ensureDir(): void {
 }
 
 function normalizePath(path: string): string {
-  return resolve(path).replace(/[\\/]+$/, "");
+  return resolve(path).replace(/[\\/]+$/, "").replace(/\\/g, "/");
 }
 
 function loadPrompts(): SavedPrompt[] {

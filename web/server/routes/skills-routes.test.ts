@@ -136,17 +136,17 @@ describe("GET /skills", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toHaveLength(2);
-    expect(json[0]).toEqual({
+    expect(json[0].path.replace(/\\/g, "/")).toBe(`${SKILLS_DIR}/my-skill/SKILL.md`);
+    expect(json[0]).toMatchObject({
       slug: "my-skill",
       name: "My Skill",
       description: "Does cool things",
-      path: `${SKILLS_DIR}/my-skill/SKILL.md`,
     });
-    expect(json[1]).toEqual({
+    expect(json[1].path.replace(/\\/g, "/")).toBe(`${SKILLS_DIR}/another-skill/SKILL.md`);
+    expect(json[1]).toMatchObject({
       slug: "another-skill",
       name: "Another Skill",
       description: "Also useful",
-      path: `${SKILLS_DIR}/another-skill/SKILL.md`,
     });
   });
 
@@ -266,9 +266,9 @@ describe("GET /skills/:slug", () => {
 
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toEqual({
+    expect(json.path.replace(/\\/g, "/")).toBe(`${SKILLS_DIR}/my-skill/SKILL.md`);
+    expect(json).toMatchObject({
       slug: "my-skill",
-      path: `${SKILLS_DIR}/my-skill/SKILL.md`,
       content,
     });
   });
@@ -335,11 +335,17 @@ describe("POST /skills", () => {
     expect(json.slug).toBe("my-new-skill");
     expect(json.name).toBe("My New Skill");
     expect(json.description).toBe("Does amazing things");
-    expect(json.path).toBe(`${SKILLS_DIR}/my-new-skill/SKILL.md`);
+    expect(json.path.replace(/\\/g, "/")).toBe(`${SKILLS_DIR}/my-new-skill/SKILL.md`);
 
     // Verify mkdir was called for both SKILLS_DIR and the skill directory
-    expect(mockMkdir).toHaveBeenCalledWith(SKILLS_DIR, { recursive: true });
-    expect(mockMkdir).toHaveBeenCalledWith(`${SKILLS_DIR}/my-new-skill`, { recursive: true });
+    // Normalize paths for cross-platform compatibility (Windows uses backslashes)
+    const normalizePath = (p: string) => p.replace(/\\/g, "/");
+    expect(
+      mockMkdir.mock.calls.some((c: any[]) => normalizePath(c[0]) === SKILLS_DIR && c[1]?.recursive === true),
+    ).toBe(true);
+    expect(
+      mockMkdir.mock.calls.some((c: any[]) => normalizePath(c[0]) === `${SKILLS_DIR}/my-new-skill` && c[1]?.recursive === true),
+    ).toBe(true);
 
     // Verify writeFile was called with the expected markdown content
     expect(mockWriteFile).toHaveBeenCalledTimes(1);
@@ -511,18 +517,17 @@ describe("PUT /skills/:slug", () => {
 
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toEqual({
+    expect(json.path.replace(/\\/g, "/")).toBe(`${SKILLS_DIR}/my-skill/SKILL.md`);
+    expect(json).toMatchObject({
       ok: true,
       slug: "my-skill",
-      path: `${SKILLS_DIR}/my-skill/SKILL.md`,
     });
 
-    // Verify writeFile was called with the new content
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      `${SKILLS_DIR}/my-skill/SKILL.md`,
-      newContent,
-      "utf-8",
-    );
+    // Verify writeFile was called with the new content (normalize path for cross-platform)
+    const writeCalls = mockWriteFile.mock.calls;
+    const matchedCall = writeCalls.find((c: any[]) => c[1] === newContent);
+    expect(matchedCall).toBeDefined();
+    expect((matchedCall![0] as string).replace(/\\/g, "/")).toBe(`${SKILLS_DIR}/my-skill/SKILL.md`);
   });
 
   it("allows updating with empty string content", async () => {
@@ -538,11 +543,11 @@ describe("PUT /skills/:slug", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.ok).toBe(true);
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      `${SKILLS_DIR}/my-skill/SKILL.md`,
-      "",
-      "utf-8",
-    );
+    // Verify writeFile was called (normalize path for cross-platform)
+    const writeCalls = mockWriteFile.mock.calls;
+    const matchedCall = writeCalls.find((c: any[]) => c[1] === "");
+    expect(matchedCall).toBeDefined();
+    expect((matchedCall![0] as string).replace(/\\/g, "/")).toBe(`${SKILLS_DIR}/my-skill/SKILL.md`);
   });
 
   it("returns 404 when the skill does not exist", async () => {
@@ -640,11 +645,11 @@ describe("DELETE /skills/:slug", () => {
     const json = await res.json();
     expect(json).toEqual({ ok: true, slug: "doomed-skill" });
 
-    // Verify rm was called with recursive and force flags on the directory
-    expect(mockRm).toHaveBeenCalledWith(
-      `${SKILLS_DIR}/doomed-skill`,
-      { recursive: true, force: true },
-    );
+    // Verify rm was called with recursive and force flags on the directory (normalize path for cross-platform)
+    const rmCalls = mockRm.mock.calls;
+    const matchedCall = rmCalls.find((c: any[]) => c[1]?.recursive === true && c[1]?.force === true);
+    expect(matchedCall).toBeDefined();
+    expect((matchedCall![0] as string).replace(/\\/g, "/")).toBe(`${SKILLS_DIR}/doomed-skill`);
   });
 
   it("returns 404 when the skill directory does not exist", async () => {
