@@ -19,6 +19,11 @@ import { join } from "node:path";
  * Falls back to probing common directories if shell sourcing fails.
  */
 export function captureUserShellPath(): string {
+  // Windows has no login shell paradigm — skip directly to fallback.
+  if (process.platform === "win32") {
+    return buildFallbackPath();
+  }
+
   try {
     const shell = process.env.SHELL || "/bin/bash";
     const captured = execSync(
@@ -73,6 +78,10 @@ export function buildFallbackPath(): string {
     "/usr/local/go/bin",
     // Deno
     join(home, ".deno", "bin"),
+    // Windows paths
+    join(process.env.LOCALAPPDATA || "", "Programs", "bun"),
+    join(process.env.LOCALAPPDATA || "", "Microsoft", "WindowsApps"),
+    join(home, "AppData", "Roaming", "npm"),
   ];
 
   // Probe nvm-managed node versions

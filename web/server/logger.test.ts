@@ -169,7 +169,8 @@ describe("LogFileWriter", () => {
     const writer = new LogFileWriter({ logsDir: tmpDir, maxLines: 1_000_000 });
     try {
       // Filename format: companion_{iso-timestamp}_{pid}.log
-      const filename = writer.filePath.split("/").pop()!;
+      // Split on both / and \ for cross-platform support
+      const filename = writer.filePath.split(/[/\\]/).pop()!;
       expect(filename).toContain(`_${process.pid}.log`);
       expect(filename).toMatch(/^companion_/);
     } finally {

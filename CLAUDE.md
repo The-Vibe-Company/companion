@@ -22,6 +22,12 @@ cd web && bun run typecheck
 # Production build + serve
 cd web && bun run build && bun run start
 
+# Windows Dev (PowerShell)
+pwsh scripts/dev-start.ps1          # start/verify dev servers
+pwsh scripts/dev-start.ps1 -Stop    # stop
+pwsh scripts/dev-start.ps1 -Status  # check status
+pwsh scripts/restart.ps1            # force restart
+
 # Auth token management
 cd web && bun run generate-token          # show current token
 cd web && bun run generate-token --force  # regenerate a new token

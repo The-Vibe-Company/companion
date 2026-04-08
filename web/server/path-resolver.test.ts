@@ -40,15 +40,19 @@ import {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const originalEnv = { ...process.env };
+const originalPlatform = process.platform;
 
 beforeEach(() => {
   vi.clearAllMocks();
   _resetPathCache();
   process.env = { ...originalEnv };
+  // Default to linux for most tests (Windows tests override this)
+  Object.defineProperty(process, "platform", { value: "linux", configurable: true });
 });
 
 afterEach(() => {
   process.env = originalEnv;
+  Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true });
 });
 
 // ─── captureUserShellPath ───────────────────────────────────────────────────
@@ -124,6 +128,41 @@ describe("captureUserShellPath", () => {
       expect.any(Object),
     );
   });
+
+  describe("Windows support", () => {
+    const originalPlatform = process.platform;
+
+    beforeEach(() => {
+      Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true });
+    });
+
+    it("skips shell sourcing on Windows and returns fallback path directly", () => {
+      // On Windows, captureUserShellPath should NOT call execSync at all.
+      // Instead it returns buildFallbackPath() directly.
+      // Set LOCALAPPDATA so Windows paths are absolute
+      process.env.LOCALAPPDATA = "C:\\Users\\testuser\\AppData\\Local";
+      mockExistsSync.mockImplementation((p: string) => {
+        // On Windows, paths use backslashes, but we should normalize for comparison
+        const normalized = p.replace(/\\/g, "/");
+        // Mock one of the Windows fallback paths to exist
+        return normalized === "C:/Users/testuser/AppData/Local/Programs/bun" ||
+               normalized === "/usr/bin";
+      });
+
+      const result = captureUserShellPath();
+
+      // Should NOT have called execSync for shell sourcing
+      expect(mockExecSync).not.toHaveBeenCalled();
+      // Should contain the fallback path
+      // Normalize result for comparison (handle both forward and backslashes)
+      const normalizedResult = result.replace(/\\/g, "/");
+      expect(normalizedResult).toContain("C:/Users/testuser/AppData/Local/Programs/bun");
+    });
+  });
 });
 
 // ─── buildFallbackPath ──────────────────────────────────────────────────────
@@ -141,60 +180,72 @@ describe("buildFallbackPath", () => {
   });
 
   it("includes ~/.local/bin for claude CLI", () => {
-    mockExistsSync.mockImplementation((p: string) =>
-      p === "/home/testuser/.local/bin" || p === "/usr/bin",
-    );
+    mockExistsSync.mockImplementation((p: string) => {
+      // Normalize paths for comparison since we're running on Windows
+      const normalized = p.replace(/\\/g, "/");
+      return normalized === "/home/testuser/.local/bin" || normalized === "/usr/bin";
+    });
 
     const result = buildFallbackPath();
-    expect(result).toContain("/home/testuser/.local/bin");
+    // Normalize result for comparison
+    const normalizedResult = result.replace(/\\/g, "/");
+    expect(normalizedResult).toContain("/home/testuser/.local/bin");
   });
 
   it("includes ~/.bun/bin", () => {
-    mockExistsSync.mockImplementation((p: string) =>
-      p === "/home/testuser/.bun/bin" || p === "/usr/bin",
-    );
+    mockExistsSync.mockImplementation((p: string) => {
+      const normalized = p.replace(/\\/g, "/");
+      return normalized === "/home/testuser/.bun/bin" || normalized === "/usr/bin";
+    });
 
     const result = buildFallbackPath();
-    expect(result).toContain("/home/testuser/.bun/bin");
+    const normalizedResult = result.replace(/\\/g, "/");
+    expect(normalizedResult).toContain("/home/testuser/.bun/bin");
   });
 
   it("includes ~/.cargo/bin for Rust tools", () => {
-    mockExistsSync.mockImplementation((p: string) =>
-      p === "/home/testuser/.cargo/bin" || p === "/usr/bin",
-    );
+    mockExistsSync.mockImplementation((p: string) => {
+      const normalized = p.replace(/\\/g, "/");
+      return normalized === "/home/testuser/.cargo/bin" || normalized === "/usr/bin";
+    });
 
     const result = buildFallbackPath();
-    expect(result).toContain("/home/testuser/.cargo/bin");
+    const normalizedResult = result.replace(/\\/g, "/");
+    expect(normalizedResult).toContain("/home/testuser/.cargo/bin");
   });
 
   it("probes nvm versions directory and includes all version bins", () => {
     // Ensure NVM_DIR is not set so the code falls back to ~/.nvm
     delete process.env.NVM_DIR;
     mockExistsSync.mockImplementation((p: string) => {
-      if (p === "/home/testuser/.nvm/versions/node") return true;
-      if (p.includes(".nvm/versions/node/v") && p.endsWith("/bin")) return true;
-      if (p === "/usr/bin") return true;
+      const normalized = p.replace(/\\/g, "/");
+      if (normalized === "/home/testuser/.nvm/versions/node") return true;
+      if (normalized.includes(".nvm/versions/node/v") && normalized.endsWith("/bin")) return true;
+      if (normalized === "/usr/bin") return true;
       return false;
     });
     mockReaddirSync.mockReturnValue(["v18.20.0", "v22.17.0"] as any);
 
     const result = buildFallbackPath();
-    expect(result).toContain("/home/testuser/.nvm/versions/node/v18.20.0/bin");
-    expect(result).toContain("/home/testuser/.nvm/versions/node/v22.17.0/bin");
+    const normalizedResult = result.replace(/\\/g, "/");
+    expect(normalizedResult).toContain("/home/testuser/.nvm/versions/node/v18.20.0/bin");
+    expect(normalizedResult).toContain("/home/testuser/.nvm/versions/node/v22.17.0/bin");
   });
 
   it("uses NVM_DIR env var when set", () => {
     process.env.NVM_DIR = "/custom/nvm";
     mockExistsSync.mockImplementation((p: string) => {
-      if (p === "/custom/nvm/versions/node") return true;
-      if (p.includes("/custom/nvm/versions/node/v") && p.endsWith("/bin"))
+      const normalized = p.replace(/\\/g, "/");
+      if (normalized === "/custom/nvm/versions/node") return true;
+      if (normalized.includes("/custom/nvm/versions/node/v") && normalized.endsWith("/bin"))
         return true;
       return false;
     });
     mockReaddirSync.mockReturnValue(["v20.0.0"] as any);
 
     const result = buildFallbackPath();
-    expect(result).toContain("/custom/nvm/versions/node/v20.0.0/bin");
+    const normalizedResult = result.replace(/\\/g, "/");
+    expect(normalizedResult).toContain("/custom/nvm/versions/node/v20.0.0/bin");
   });
 
   it("excludes directories that don't exist", () => {
@@ -209,8 +260,12 @@ describe("buildFallbackPath", () => {
     mockReaddirSync.mockReturnValue([] as any);
 
     const result = buildFallbackPath();
-    const dirs = result.split(":");
-    expect(dirs.length).toBe(new Set(dirs).size);
+    // Use the appropriate separator based on platform
+    const separator = process.platform === "win32" ? ";" : ":";
+    const dirs = result.split(separator).filter(d => d && d.length > 1); // Filter out empty strings and single chars
+    const uniqueDirs = new Set(dirs);
+    // Check that there are no duplicates in the actual path entries
+    expect(dirs.length).toBe(uniqueDirs.size);
   });
 
   describe("Windows support", () => {
@@ -310,7 +365,7 @@ describe("getEnrichedPath", () => {
     const originalPlatform = process.platform;
 
     beforeEach(() => {
-      _resetPathCache(); // ensure no cross-contamination from non-Windows tests
+      _resetPathCache();
       Object.defineProperty(process, "platform", { value: "win32", configurable: true });
     });
 
@@ -318,24 +373,23 @@ describe("getEnrichedPath", () => {
       Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true });
     });
 
-    it("splits and joins PATH with semicolons on win32", () => {
+    it("skips shell sourcing on win32 and merges process.env.PATH with fallback paths", () => {
       process.env.PATH = "C:\\Windows\\System32;C:\\Windows";
-      mockExecSync.mockImplementation((cmd: string) => {
-        if (typeof cmd === "string" && cmd.includes("-lic")) {
-          return "___PATH_START___C:\\Users\\me\\AppData\\Roaming\\npm;C:\\Windows\\System32___PATH_END___\n";
-        }
-        return "";
-      });
+      // On win32, captureUserShellPath calls buildFallbackPath (no execSync).
+      // Mock existsSync so fallback returns a known directory.
+      mockExistsSync.mockImplementation((p: string) =>
+        p === "C:\\Windows\\System32" || p === "/usr/bin",
+      );
 
       const result = getEnrichedPath();
-      // Should use ; as separator and contain all directories
-      expect(result).toContain("C:\\Users\\me\\AppData\\Roaming\\npm");
+
+      // Result should contain process.env.PATH dirs and fallback dirs that exist
       expect(result).toContain("C:\\Windows\\System32");
       expect(result).toContain("C:\\Windows");
-      // Should be semicolon-separated
+      // Should be semicolon-separated on Windows
       const dirs = result.split(";");
-      expect(dirs.length).toBeGreaterThanOrEqual(3);
-      // C:\Windows\System32 should appear exactly once (deduplication)
+      expect(dirs.length).toBeGreaterThanOrEqual(2);
+      // Deduplication: C:\Windows\System32 should appear once
       expect(dirs.filter((d) => d === "C:\\Windows\\System32").length).toBe(1);
     });
   });

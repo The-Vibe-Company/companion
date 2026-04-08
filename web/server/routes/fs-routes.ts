@@ -1,15 +1,22 @@
 import { execSync } from "node:child_process";
 import { readdir, readFile, stat, writeFile, mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, basename } from "node:path";
 import type { Hono } from "hono";
+
+/** Normalize a path to forward slashes for consistent cross-platform comparison. */
+function toPosix(p: string): string {
+  return p.replace(/\\/g, "/");
+}
 
 /** Ensure a resolved path is within one of the allowed base directories.
  *  Returns the resolved absolute path, or null if it escapes all bases. */
 function guardPath(raw: string, allowedBases: string[]): string | null {
   const abs = resolve(raw);
+  const absPosix = toPosix(abs);
   for (const base of allowedBases) {
-    if (abs === base || abs.startsWith(base + "/")) return abs;
+    const basePosix = toPosix(resolve(base));
+    if (absPosix === basePosix || absPosix.startsWith(basePosix + "/")) return abs;
   }
   return null;
 }
@@ -583,12 +590,13 @@ export function registerFsRoutes(api: Hono, opts?: { allowedBases?: string[] }):
     if (!filePath || typeof content !== "string") {
       return c.json({ error: "path and content required" }, 400);
     }
-    const base = filePath.split("/").pop();
+    const base = basename(filePath);
     if (base !== "CLAUDE.md") {
       return c.json({ error: "Can only write CLAUDE.md files" }, 400);
     }
     const absPath = resolve(filePath);
-    if (!absPath.endsWith("/CLAUDE.md") && !absPath.endsWith("/.claude/CLAUDE.md")) {
+    const absPosix = toPosix(absPath);
+    if (!absPosix.endsWith("/CLAUDE.md") && !absPosix.endsWith("/.claude/CLAUDE.md")) {
       return c.json({ error: "Invalid CLAUDE.md path" }, 400);
     }
     try {

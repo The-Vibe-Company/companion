@@ -46,6 +46,9 @@ vi.mock("./paths.js", () => ({
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+/** Normalize a path to forward slashes for cross-platform comparison. */
+const normalizePath = (p: string) => p.replace(/\\/g, "/");
+
 const COMPANION_HOME = "/tmp/test-companion-home";
 const CRON_DIR = `${COMPANION_HOME}/cron`;
 const MIGRATION_FLAG = `${COMPANION_HOME}/.cron-migrated`;
@@ -122,7 +125,8 @@ describe("when migration flag already exists", () => {
     // If the .cron-migrated flag file exists, the function should bail out
     // immediately without touching the filesystem further or calling agent-store.
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return true;
       return false;
     });
 
@@ -146,8 +150,9 @@ describe("when cron directory does not exist", () => {
     // When there is no .cron-migrated flag AND no cron/ directory,
     // the function should write the flag (nothing to migrate) and return zeros.
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return false;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return false;
       return false;
     });
 
@@ -156,11 +161,10 @@ describe("when cron directory does not exist", () => {
     expect(result).toEqual({ migrated: 0, skipped: 0 });
     // Should write the migration flag to prevent future runs
     expect(fsMock.writeFileSync).toHaveBeenCalledOnce();
-    expect(fsMock.writeFileSync).toHaveBeenCalledWith(
-      MIGRATION_FLAG,
-      expect.any(String),
-      "utf-8",
-    );
+    const writeCall = fsMock.writeFileSync.mock.calls[0];
+    expect(normalizePath(writeCall[0])).toBe(MIGRATION_FLAG);
+    expect(writeCall[1]).toEqual(expect.any(String));
+    expect(writeCall[2]).toBe("utf-8");
     // Should NOT attempt to read cron files or touch agent-store
     expect(fsMock.readdirSync).not.toHaveBeenCalled();
     expect(agentStoreMock.listAgents).not.toHaveBeenCalled();
@@ -188,14 +192,16 @@ describe("migrating cron job files to agents", () => {
     });
 
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue(["job-one.json", "job-two.json"]);
     fsMock.readFileSync.mockImplementation((path: string) => {
-      if (path === `${CRON_DIR}/job-one.json`) return JSON.stringify(job1);
-      if (path === `${CRON_DIR}/job-two.json`) return JSON.stringify(job2);
+      const np = normalizePath(path);
+      if (np === `${CRON_DIR}/job-one.json`) return JSON.stringify(job1);
+      if (np === `${CRON_DIR}/job-two.json`) return JSON.stringify(job2);
       throw new Error(`Unexpected readFileSync call: ${path}`);
     });
 
@@ -247,11 +253,13 @@ describe("migrating cron job files to agents", () => {
     });
 
     // Should write the migration flag after completion
-    expect(fsMock.writeFileSync).toHaveBeenCalledWith(
-      MIGRATION_FLAG,
-      expect.any(String),
-      "utf-8",
+    const writeCalls = fsMock.writeFileSync.mock.calls;
+    const flagWriteCall = writeCalls.find(
+      (call) => normalizePath(call[0]) === MIGRATION_FLAG,
     );
+    expect(flagWriteCall).toBeDefined();
+    expect(flagWriteCall![1]).toEqual(expect.any(String));
+    expect(flagWriteCall![2]).toBe("utf-8");
   });
 
   it("only processes .json files, ignoring other file types in cron directory", () => {
@@ -260,8 +268,9 @@ describe("migrating cron job files to agents", () => {
     const job = makeCronJob({ id: "only-json", name: "Only JSON" });
 
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue([
@@ -271,7 +280,8 @@ describe("migrating cron job files to agents", () => {
       ".hidden",
     ]);
     fsMock.readFileSync.mockImplementation((path: string) => {
-      if (path === `${CRON_DIR}/valid-job.json`) return JSON.stringify(job);
+      const np = normalizePath(path);
+      if (np === `${CRON_DIR}/valid-job.json`) return JSON.stringify(job);
       throw new Error(`Unexpected readFileSync call: ${path}`);
     });
     agentStoreMock.listAgents.mockReturnValue([]);
@@ -290,8 +300,9 @@ describe("migrating cron job files to agents", () => {
     const job = makeCronJob({ name: "CWD Test", cwd: "/custom/working/dir" });
 
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue(["cwd-test.json"]);
@@ -312,8 +323,9 @@ describe("migrating cron job files to agents", () => {
     const disabledJob = makeCronJob({ name: "Disabled Job", enabled: false });
 
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue(["disabled.json"]);
@@ -349,8 +361,9 @@ describe("when an agent with the same name already exists", () => {
     const existingAgent = makeAgentConfig({ name: "Existing Agent" });
 
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue(["existing.json"]);
@@ -370,8 +383,9 @@ describe("when an agent with the same name already exists", () => {
     const existingAgent = makeAgentConfig({ name: "daily check" });
 
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue(["daily-check.json"]);
@@ -392,14 +406,16 @@ describe("when an agent with the same name already exists", () => {
     const existingAgent = makeAgentConfig({ name: "Already There" });
 
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue(["new-job.json", "already-there.json"]);
     fsMock.readFileSync.mockImplementation((path: string) => {
-      if (path === `${CRON_DIR}/new-job.json`) return JSON.stringify(jobNew);
-      if (path === `${CRON_DIR}/already-there.json`) return JSON.stringify(jobExisting);
+      const np = normalizePath(path);
+      if (np === `${CRON_DIR}/new-job.json`) return JSON.stringify(jobNew);
+      if (np === `${CRON_DIR}/already-there.json`) return JSON.stringify(jobExisting);
       throw new Error(`Unexpected readFileSync call: ${path}`);
     });
     agentStoreMock.listAgents.mockReturnValue([existingAgent]);
@@ -423,8 +439,9 @@ describe("when cron job files contain corrupt JSON", () => {
     // Invalid JSON should be caught by the try/catch, logged, and counted
     // as skipped rather than crashing the entire migration.
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue(["corrupt.json"]);
@@ -450,14 +467,16 @@ describe("when cron job files contain corrupt JSON", () => {
     const validJob = makeCronJob({ name: "Valid Job" });
 
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue(["corrupt.json", "valid.json"]);
     fsMock.readFileSync.mockImplementation((path: string) => {
-      if (path === `${CRON_DIR}/corrupt.json`) return "{broken json!!";
-      if (path === `${CRON_DIR}/valid.json`) return JSON.stringify(validJob);
+      const np = normalizePath(path);
+      if (np === `${CRON_DIR}/corrupt.json`) return "{broken json!!";
+      if (np === `${CRON_DIR}/valid.json`) return JSON.stringify(validJob);
       throw new Error(`Unexpected readFileSync call: ${path}`);
     });
     agentStoreMock.listAgents.mockReturnValue([]);
@@ -482,8 +501,9 @@ describe("when cron job files contain corrupt JSON", () => {
     const job = makeCronJob({ name: "Failing Agent" });
 
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue(["failing.json"]);
@@ -517,8 +537,9 @@ describe("migration flag file", () => {
     const job = makeCronJob({ name: "Flagged Job" });
 
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue(["flagged.json"]);
@@ -531,7 +552,7 @@ describe("migration flag file", () => {
     // The last writeFileSync call should be the migration flag
     const writeFileCalls = fsMock.writeFileSync.mock.calls;
     const flagCall = writeFileCalls.find(
-      (call) => call[0] === MIGRATION_FLAG,
+      (call) => normalizePath(call[0]) === MIGRATION_FLAG,
     );
     expect(flagCall).toBeDefined();
     // The flag content should be an ISO date string
@@ -545,8 +566,9 @@ describe("migration flag file", () => {
     const existing = makeAgentConfig({ name: "Skip Me" });
 
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue(["skip-me.json"]);
@@ -555,11 +577,13 @@ describe("migration flag file", () => {
 
     migrateCronJobsToAgents();
 
-    expect(fsMock.writeFileSync).toHaveBeenCalledWith(
-      MIGRATION_FLAG,
-      expect.any(String),
-      "utf-8",
+    const writeCalls = fsMock.writeFileSync.mock.calls;
+    const flagWriteCall = writeCalls.find(
+      (call) => normalizePath(call[0]) === MIGRATION_FLAG,
     );
+    expect(flagWriteCall).toBeDefined();
+    expect(flagWriteCall![1]).toEqual(expect.any(String));
+    expect(flagWriteCall![2]).toBe("utf-8");
   });
 });
 
@@ -571,8 +595,9 @@ describe("when cron directory exists but is empty", () => {
     // An empty cron/ directory (no .json files) should produce zero counts
     // but still mark migration as complete.
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue([]);
@@ -581,19 +606,22 @@ describe("when cron directory exists but is empty", () => {
 
     expect(result).toEqual({ migrated: 0, skipped: 0 });
     expect(agentStoreMock.createAgent).not.toHaveBeenCalled();
-    expect(fsMock.writeFileSync).toHaveBeenCalledWith(
-      MIGRATION_FLAG,
-      expect.any(String),
-      "utf-8",
+    const writeCalls = fsMock.writeFileSync.mock.calls;
+    const flagWriteCall = writeCalls.find(
+      (call) => normalizePath(call[0]) === MIGRATION_FLAG,
     );
+    expect(flagWriteCall).toBeDefined();
+    expect(flagWriteCall![1]).toEqual(expect.any(String));
+    expect(flagWriteCall![2]).toBe("utf-8");
   });
 
   it("writes the migration flag when directory has only non-JSON files", () => {
     // Files that don't end with .json are filtered out, producing an empty
     // list effectively identical to an empty directory.
     fsMock.existsSync.mockImplementation((path: string) => {
-      if (path === MIGRATION_FLAG) return false;
-      if (path === CRON_DIR) return true;
+      const np = normalizePath(path);
+      if (np === MIGRATION_FLAG) return false;
+      if (np === CRON_DIR) return true;
       return false;
     });
     fsMock.readdirSync.mockReturnValue(["readme.txt", ".gitkeep", "backup.bak"]);
@@ -601,10 +629,12 @@ describe("when cron directory exists but is empty", () => {
     const result = migrateCronJobsToAgents();
 
     expect(result).toEqual({ migrated: 0, skipped: 0 });
-    expect(fsMock.writeFileSync).toHaveBeenCalledWith(
-      MIGRATION_FLAG,
-      expect.any(String),
-      "utf-8",
+    const writeCalls = fsMock.writeFileSync.mock.calls;
+    const flagWriteCall = writeCalls.find(
+      (call) => normalizePath(call[0]) === MIGRATION_FLAG,
     );
+    expect(flagWriteCall).toBeDefined();
+    expect(flagWriteCall![1]).toEqual(expect.any(String));
+    expect(flagWriteCall![2]).toBe("utf-8");
   });
 });

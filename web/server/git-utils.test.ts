@@ -379,7 +379,7 @@ describe("ensureWorktree", () => {
     mockExistsSync.mockReturnValue(false);
 
     const result = gitUtils.ensureWorktree("/repo", "feat/local");
-    expect(result.worktreePath).toBe("/fake/home/.companion/worktrees/repo/feat--local");
+    expect(result.worktreePath.replace(/\\/g, "/")).toBe("/fake/home/.companion/worktrees/repo/feat--local");
     expect(result.actualBranch).toBe("feat/local");
     expect(result.isNew).toBe(false);
 
@@ -517,7 +517,7 @@ describe("ensureWorktree", () => {
     gitUtils.ensureWorktree("/repo", "feat/new");
 
     expect(mockMkdirSync).toHaveBeenCalledWith(
-      "/fake/home/.companion/worktrees/repo",
+      expect.stringMatching(/[/\\]fake[/\\]home[/\\]\.companion[/\\]worktrees[/\\]repo/),
       { recursive: true },
     );
   });
@@ -546,7 +546,7 @@ describe("ensureWorktree", () => {
     const result = gitUtils.ensureWorktree("/repo", "main");
     // Should NOT return the main repo path
     expect(result.worktreePath).not.toBe("/repo");
-    expect(result.worktreePath).toBe("/fake/home/.companion/worktrees/repo/main");
+    expect(result.worktreePath.replace(/\\/g, "/")).toBe("/fake/home/.companion/worktrees/repo/main");
     expect(result.branch).toBe("main");
     expect(result.actualBranch).toMatch(/^main-wt-\d{4}$/);
     // Should create a branch-tracking worktree
@@ -570,13 +570,15 @@ describe("ensureWorktree", () => {
     });
     // Base path exists, random suffix path does not
     const basePath = "/fake/home/.companion/worktrees/repo/feat--x";
-    mockExistsSync.mockImplementation((path: string) => {
-      if (path === basePath) return true;
+    mockExistsSync.mockImplementation((p: string) => {
+      // Normalize path for cross-platform comparison
+      if (p.replace(/\\/g, "/") === basePath) return true;
       return false; // Any random-suffixed path is free
     });
 
     const result = gitUtils.ensureWorktree("/repo", "feat/x");
-    expect(result.worktreePath).toMatch(new RegExp(`^${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d{4}$`));
+    const normalizedBase = basePath.replace(/\\/g, "/");
+    expect(result.worktreePath.replace(/\\/g, "/")).toMatch(new RegExp(`^${normalizedBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d{4}$`));
   });
 
   it("creates branch-tracking worktree when forceNew=true and worktree already exists", () => {
@@ -604,7 +606,7 @@ describe("ensureWorktree", () => {
     mockExistsSync.mockReturnValue(false);
 
     const result = gitUtils.ensureWorktree("/repo", "feat/existing", { forceNew: true });
-    expect(result.worktreePath).toBe("/fake/home/.companion/worktrees/repo/feat--existing");
+    expect(result.worktreePath.replace(/\\/g, "/")).toBe("/fake/home/.companion/worktrees/repo/feat--existing");
     expect(result.branch).toBe("feat/existing");
     expect(result.actualBranch).toMatch(/^feat\/existing-wt-\d{4}$/);
 
@@ -639,7 +641,7 @@ describe("ensureWorktree", () => {
     mockExistsSync.mockReturnValue(false);
 
     const result = gitUtils.ensureWorktree("/repo", "main", { forceNew: true });
-    expect(result.worktreePath).toBe("/fake/home/.companion/worktrees/repo/main");
+    expect(result.worktreePath.replace(/\\/g, "/")).toBe("/fake/home/.companion/worktrees/repo/main");
     expect(result.branch).toBe("main");
     // Should get a unique branch, NOT the raw "main" branch
     expect(result.actualBranch).toMatch(/^main-wt-\d{4}$/);

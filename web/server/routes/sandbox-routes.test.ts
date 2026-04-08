@@ -503,11 +503,11 @@ describe("POST /api/sandboxes/:slug/test-init", () => {
     });
 
     expect(res.status).toBe(200);
-    // The cwd passed to createContainer should be the resolved path
-    expect(containerManager.createContainer).toHaveBeenCalledWith(
-      expect.any(String),
-      "/etc",
-      expect.any(Object),
-    );
+    // The cwd passed to createContainer should be the resolved path.
+    // On Windows, resolve("/home/user/../../../etc") produces "D:\etc" (or similar drive).
+    // Normalize both sides for cross-platform comparison.
+    const createCall = containerManager.createContainer.mock.calls[0];
+    const cwdArg = (createCall as any[])[1] as string;
+    expect(cwdArg.replace(/\\/g, "/").endsWith("/etc")).toBe(true);
   });
 });
