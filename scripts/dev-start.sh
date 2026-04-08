@@ -184,7 +184,7 @@ cmd_start() {
     clean_stale_pid "$BACKEND_PID_FILE"
 
     step "Starting backend on port $BACKEND_PORT..."
-    nohup bun --watch server/index.ts > "$BACKEND_LOG" 2>&1 &
+    NODE_ENV=development nohup bun --watch server/index.ts > "$BACKEND_LOG" 2>&1 &
     echo $! > "$BACKEND_PID_FILE"
 
     wait_for_port "$BACKEND_PORT" "Backend" "$BACKEND_PID_FILE"
