@@ -9,6 +9,9 @@ function toPosix(p: string): string {
   return p.replace(/\\/g, "/");
 }
 
+/** Regex to extract a Windows drive letter prefix (e.g. "C:") from a path. */
+const DRIVE_LETTER_RE = /^([A-Za-z]:)/;
+
 /** Ensure a resolved path is within one of the allowed base directories,
  *  OR is an ancestor of an allowed base (so users can navigate up from cwd).
  *  Returns the resolved absolute path, or null if it escapes all bases. */
@@ -41,10 +44,10 @@ function guardBrowsePath(raw: string, allowedBases: string[]): string | null {
   // This lets users navigate from cwd to sibling directories on the same drive.
   const abs = resolve(raw);
   const absPosix = toPosix(abs);
-  const absDrive = absPosix.match(/^([A-Za-z]:)/)?.[1]?.toLowerCase();
+  const absDrive = DRIVE_LETTER_RE.exec(absPosix)?.[1]?.toLowerCase();
   if (absDrive) {
     for (const base of allowedBases) {
-      const baseDrive = toPosix(resolve(base)).match(/^([A-Za-z]:)/)?.[1]?.toLowerCase();
+      const baseDrive = DRIVE_LETTER_RE.exec(toPosix(resolve(base)))?.[1]?.toLowerCase();
       if (baseDrive === absDrive) return abs;
     }
   }
