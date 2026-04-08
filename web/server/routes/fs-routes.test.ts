@@ -180,10 +180,22 @@ describe("path traversal protection", () => {
     expect(dirNames).toContain(tempBaseName);
   });
 
-  it("allows /fs/list for sibling directories on the same drive", async () => {
+  it("rejects /fs/read for sibling directories (only listing is relaxed)", async () => {
+    // The strict guardPath must still be used for file read/write endpoints
+    // even though guardBrowsePath relaxes the listing endpoints.
+    const siblingDir = mkRealTempDir("fs-read-guard-test-");
+    const filePath = join(siblingDir, "secret.txt");
+    writeFileSync(filePath, "confidential");
+    const res = await app.request(`/fs/read?path=${encodeURIComponent(filePath)}`);
+    expect(res.status).toBe(403);
+    try { rmSync(siblingDir, { recursive: true, force: true }); } catch { /* ignore */ }
+  });
+
+  (process.platform === "win32" ? it : it.skip)("allows /fs/list for sibling directories on the same drive", async () => {
     // On Windows, users need to navigate between sibling directories
     // (e.g. from cwd D:\projects\app-a to D:\projects\app-b).
     // The browse guard should allow this when both are on the same drive.
+    // Skipped on non-Windows: the drive-letter fallback only triggers on Windows.
     const siblingDir = mkRealTempDir("fs-sibling-test-");
     const res = await app.request(`/fs/list?path=${encodeURIComponent(siblingDir)}`);
 

@@ -9,7 +9,8 @@ interface FolderPickerProps {
   onClose: () => void;
 }
 
-/** Normalize a path to forward slashes for cross-platform compatibility. */
+/** Normalize a path to forward slashes for cross-platform compatibility.
+ *  NOTE: UNC paths (\\server\share\dir) are not supported. */
 function toForwardSlash(p: string): string {
   return p.replace(/\\/g, "/");
 }
@@ -20,7 +21,8 @@ function getBaseName(p: string): string {
   return parts[parts.length - 1] || "/";
 }
 
-/** Get the parent directory path, or null if already at root. */
+/** Get the parent directory path, or null if already at root.
+ *  NOTE: UNC paths (\\server\share\dir) are not supported. */
 function getParentPath(p: string): string | null {
   const parts = toForwardSlash(p).split("/").filter(Boolean);
   if (parts.length <= 1) return null;
@@ -32,6 +34,7 @@ function getParentPath(p: string): string | null {
 
 /** Split an absolute path into clickable breadcrumb segments.
  *  Handles both Unix (/home/user) and Windows (C:\Users\user) paths.
+ *  NOTE: UNC paths (\\server\share\dir) are not supported.
  *  Each entry carries the full path up to that segment. */
 function pathSegments(p: string): { label: string; path: string }[] {
   if (!p) return [];
