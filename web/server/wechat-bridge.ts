@@ -127,6 +127,27 @@ function extractToolUses(msg: BrowserIncomingMessage): Array<{ name: string; inp
     }));
 }
 
+/** Extract tool_result blocks (errors only) from assistant message content. */
+export function extractToolResults(msg: BrowserIncomingMessage): Array<{ tool_use_id: string; content: string; is_error: boolean }> {
+  if (msg.type !== "assistant") return [];
+  const raw = msg as Record<string, unknown>;
+  const message = raw.message;
+  if (!message || typeof message !== "object") return [];
+  const content = (message as Record<string, unknown>).content;
+  if (!Array.isArray(content)) return [];
+  return content
+    .filter((b): b is { type: string; tool_use_id: string; content: string; is_error: boolean } =>
+      typeof b === "object" && b !== null
+      && (b as Record<string, unknown>).type === "tool_result"
+      && typeof (b as Record<string, unknown>).tool_use_id === "string"
+      && (b as Record<string, unknown>).is_error === true)
+    .map((b) => ({
+      tool_use_id: b.tool_use_id,
+      content: typeof b.content === "string" ? b.content : JSON.stringify(b.content),
+      is_error: true,
+    }));
+}
+
 // ── WeChatBridge Class ─────────────────────────────────────────────────────
 
 export class WeChatBridge {
