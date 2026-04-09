@@ -1,7 +1,7 @@
 // Tests for wechat-formatter.ts — tool call display, permission formatting,
 // Markdown conversion, WeChat message splitting, and turn-level tool summaries.
 import { describe, it, expect } from "vitest";
-import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary } from "./wechat-formatter.js";
+import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary, formatToolCallFailure } from "./wechat-formatter.js";
 
 // ── formatToolCall ─────────────────────────────────────────────────────────
 
@@ -395,5 +395,27 @@ describe("formatToolSummary", () => {
     ];
     const result = formatToolSummary(tools);
     expect(result).toBe("📊 本轮: 编辑 1 个文件");
+  });
+});
+
+// ── formatToolCallFailure ─────────────────────────────────────────────────
+
+describe("formatToolCallFailure", () => {
+  it("formats a tool failure with truncated content", () => {
+    const result = formatToolCallFailure("Bash", "Error: command failed with exit code 1");
+    expect(result).toBe("❌ 失败: Bash\nError: command failed with exit code 1");
+  });
+
+  it("truncates long error content to 300 chars", () => {
+    const longError = "x".repeat(500);
+    const result = formatToolCallFailure("Bash", longError);
+    expect(result.length).toBeLessThan(350);
+    expect(result).toContain("❌ 失败: Bash\n");
+    expect(result.endsWith("...")).toBe(true);
+  });
+
+  it("handles empty content", () => {
+    const result = formatToolCallFailure("Bash", "");
+    expect(result).toBe("❌ 失败: Bash\n");
   });
 });
