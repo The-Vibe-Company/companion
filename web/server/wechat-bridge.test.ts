@@ -1,6 +1,6 @@
 // Tests for wechat-bridge.ts — command parsing, dangerous tool detection, helpers
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { parseCommand, isDangerousTool } from "./wechat-bridge.js";
+import { parseCommand, isDangerousTool, extractToolResults } from "./wechat-bridge.js";
 import { companionBus } from "./event-bus.js";
 
 // ── parseCommand ──────────────────────────────────────────────────────────
@@ -507,9 +507,11 @@ describe("WeChat relay — dedup and fallback logic", () => {
       streamlinedSent: true,
       contentSent: true,
       lastBlockIndex: 5,
-      toolAccumulator: [{ name: "Bash", input: { command: "ls" } }],
+      toolAccumulator: [{ name: "Bash", input: { command: "ls" }, toolUseId: "tu_123" }],
       lastUserFacingMessageTs: 12345,
       progressSent: false,
+      toolNotifyBuffer: [] as string[],
+      toolNotifyTimer: null as ReturnType<typeof setTimeout> | null,
     };
 
     // Simulate result handler reset
@@ -530,6 +532,79 @@ describe("WeChat relay — dedup and fallback logic", () => {
       toolAccumulator: [],
       lastUserFacingMessageTs: 67890,
       progressSent: false,
+      toolNotifyBuffer: [],
+      toolNotifyTimer: null,
     });
+  });
+});
+
+// ── extractToolResults ──────────────────────────────────────────────────────
+
+describe("extractToolResults", () => {
+  it("extracts error tool_result blocks from assistant message", () => {
+    const msg = {
+      type: "assistant",
+      message: {
+        content: [
+          { type: "tool_result", tool_use_id: "tu_1", content: "command failed", is_error: true },
+          { type: "tool_result", tool_use_id: "tu_2", content: "success output", is_error: false },
+        ],
+      },
+    };
+    const results = extractToolResults(msg as any);
+    expect(results).toEqual([
+      { tool_use_id: "tu_1", content: "command failed", is_error: true },
+    ]);
+  });
+
+  it("returns empty array for non-assistant message", () => {
+    const msg = { type: "user", message: { content: "hello" } };
+    const results = extractToolResults(msg as any);
+    expect(results).toEqual([]);
+  });
+
+  it("returns empty array when no tool_result blocks", () => {
+    const msg = {
+      type: "assistant",
+      message: {
+        content: [
+          { type: "text", text: "thinking..." },
+        ],
+      },
+    };
+    const results = extractToolResults(msg as any);
+    expect(results).toEqual([]);
+  });
+
+  it("ignores non-error tool_result blocks", () => {
+    const msg = {
+      type: "assistant",
+      message: {
+        content: [
+          { type: "tool_result", tool_use_id: "tu_ok", content: "success", is_error: false },
+        ],
+      },
+    };
+    const results = extractToolResults(msg as any);
+    expect(results).toHaveLength(0);
+  });
+
+  it("handles content as array", () => {
+    const msg = {
+      type: "assistant",
+      message: {
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "tu_arr",
+            content: [{ type: "text", text: "file not found" }],
+            is_error: true,
+          },
+        ],
+      },
+    };
+    const results = extractToolResults(msg as any);
+    expect(results).toHaveLength(1);
+    expect(results[0].content).toContain("file not found");
   });
 });

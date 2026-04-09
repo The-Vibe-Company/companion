@@ -256,3 +256,8 @@ export function formatToolSummary(tools: ToolRecord[]): string {
 
   return `📊 本轮: ${parts.join(" · ")}`;
 }
+
+/** Format a tool execution failure for WeChat display. */
+export function formatToolCallFailure(toolName: string, content: string): string {
+  return `❌ 失败: ${toolName}\n${truncate(content, 300)}`;
+}
