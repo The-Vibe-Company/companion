@@ -20,11 +20,13 @@ interface WeChatUserSession {
   sessionIds: string[];
   activeSessionIndex: number;
   pendingPermission: { requestId: string; sessionId: string } | null;
+  verboseMode: boolean;
 }
 
 interface PersistedMapping {
   sessionIds: string[];
   activeSessionIndex: number;
+  verboseMode?: boolean;
 }
 
 type ParsedCommand =
@@ -58,6 +60,7 @@ const HELP_TEXT = `Companion WeChat Bot Commands:
 /interrupt — Cancel current operation
 /status — Show session status
 /dir [path] — List folders in default directory
+/verbose — Toggle tool notification mode (batch/verbose)
 /help — Show this help
 
 Other /commands (e.g. /compact, /clear) are forwarded to Claude Code.
@@ -461,6 +464,9 @@ export class WeChatBridge {
       case "dir":
         await this.cmdDir(userId, args);
         break;
+      case "verbose":
+        await this.cmdVerbose(userId);
+        break;
       case "help":
         await this.sendReply(userId, HELP_TEXT);
         break;
@@ -647,6 +653,7 @@ export class WeChatBridge {
       await this.sendReply(userId, "Session not found.");
       return;
     }
+    const userSession = this.userSessions.get(userId);
     const state = session.state;
     const phase = session.stateMachine?.phase ?? "unknown";
     const pendingPerms = session.pendingPermissions.size;
@@ -661,6 +668,7 @@ export class WeChatBridge {
       `CWD: ${state.cwd}`,
       `Branch: ${state.git_branch || "none"}`,
       `Pending permissions: ${pendingPerms}`,
+      `工具通知: ${(userSession?.verboseMode ?? false) ? "逐条" : "批量"}`,
     ];
     await this.sendReply(userId, lines.join("\n"));
   }
@@ -701,6 +709,17 @@ export class WeChatBridge {
       await this.sendReply(userId, [header, ...lines].join("\n"));
     } catch (err) {
       await this.sendReply(userId, `Error listing directory: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  private async cmdVerbose(userId: string): Promise<void> {
+    const userSession = this.getOrCreateUserSession(userId);
+    userSession.verboseMode = !userSession.verboseMode;
+    this.persistSessionMappings();
+    if (userSession.verboseMode) {
+      await this.sendReply(userId, "🔔 已切换到逐条模式 — 每个操作即时推送");
+    } else {
+      await this.sendReply(userId, "🔕 已切换到批量模式 — 操作每3秒合并推送");
     }
   }
 
@@ -999,7 +1018,7 @@ export class WeChatBridge {
   private getOrCreateUserSession(userId: string): WeChatUserSession {
     let userSession = this.userSessions.get(userId);
     if (!userSession) {
-      userSession = { sessionIds: [], activeSessionIndex: 0, pendingPermission: null };
+      userSession = { sessionIds: [], activeSessionIndex: 0, pendingPermission: null, verboseMode: false };
       this.userSessions.set(userId, userSession);
     }
     return userSession;
@@ -1042,6 +1061,7 @@ export class WeChatBridge {
           sessionIds: mapping.sessionIds,
           activeSessionIndex: mapping.activeSessionIndex,
           pendingPermission: null,
+          verboseMode: mapping.verboseMode ?? false,
         });
         for (const sid of mapping.sessionIds) {
           this.userIdBySession.set(sid, userId);
@@ -1060,6 +1080,7 @@ export class WeChatBridge {
         data[userId] = {
           sessionIds: userSession.sessionIds,
           activeSessionIndex: userSession.activeSessionIndex,
+          verboseMode: userSession.verboseMode,
         };
       }
       mkdirSync(COMPANION_HOME, { recursive: true });
