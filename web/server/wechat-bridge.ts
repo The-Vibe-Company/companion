@@ -12,7 +12,7 @@ import { join, resolve, isAbsolute } from "node:path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { COMPANION_HOME } from "./paths.js";
 import QRCode from "qrcode";
-import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary } from "./wechat-formatter.js";
+import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary, formatToolCallFailure } from "./wechat-formatter.js";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -109,7 +109,7 @@ function extractTextDeltaFromStreamEvent(msg: BrowserIncomingMessage): string {
 }
 
 /** Extract tool use blocks from assistant message */
-function extractToolUses(msg: BrowserIncomingMessage): Array<{ name: string; input: string }> {
+function extractToolUses(msg: BrowserIncomingMessage): Array<{ name: string; input: string; id?: string }> {
   if (msg.type !== "assistant") return [];
   const raw = msg as Record<string, unknown>;
   const message = raw.message;
@@ -124,6 +124,7 @@ function extractToolUses(msg: BrowserIncomingMessage): Array<{ name: string; inp
     .map((toolBlock) => ({
       name: toolBlock.name,
       input: toolBlock.input ? JSON.stringify(toolBlock.input).slice(0, 200) : "",
+      id: (toolBlock as Record<string, unknown>).id as string | undefined,
     }));
 }
 
@@ -166,9 +167,11 @@ export class WeChatBridge {
     streamlinedSent: boolean;
     contentSent: boolean;
     lastBlockIndex: number;
-    toolAccumulator: Array<{ name: string; input: Record<string, unknown> }>;
+    toolAccumulator: Array<{ name: string; input: Record<string, unknown>; toolUseId?: string }>;
     lastUserFacingMessageTs: number;
     progressSent: boolean;
+    toolNotifyBuffer: string[];
+    toolNotifyTimer: ReturnType<typeof setTimeout> | null;
   }>();
   private userIdBySession = new Map<string, string>();
   // QR code data for web UI display
@@ -740,7 +743,7 @@ export class WeChatBridge {
     if (this.sessionCleanups.has(sessionId)) return;
 
     const cleanups: Array<() => void> = [];
-    this.sessionRelayData.set(sessionId, { pendingText: "", lastTypingTs: 0, streamlinedSent: false, contentSent: false, lastBlockIndex: -1, toolAccumulator: [], lastUserFacingMessageTs: Date.now(), progressSent: false });
+    this.sessionRelayData.set(sessionId, { pendingText: "", lastTypingTs: 0, streamlinedSent: false, contentSent: false, lastBlockIndex: -1, toolAccumulator: [], lastUserFacingMessageTs: Date.now(), progressSent: false, toolNotifyBuffer: [], toolNotifyTimer: null });
 
     // Stream events — accumulate text
     const unsubStream = companionBus.on("message:stream_event", ({ sessionId: sid, message }) => {
@@ -765,17 +768,6 @@ export class WeChatBridge {
         if (now - relayData.lastTypingTs > 5000) {
           relayData.lastTypingTs = now;
           this.sendTyping(userId).catch(() => {});
-        }
-        // Progress indicator: if > 15s since last message and tools are running, send brief status (once per turn)
-        if (!relayData.progressSent) {
-          const progressNow = Date.now();
-          const elapsed = progressNow - relayData.lastUserFacingMessageTs;
-          if (elapsed > 15_000 && relayData.toolAccumulator.length > 0) {
-            const count = relayData.toolAccumulator.length;
-            this.sendReply(userId, `⏳ 正在处理... (已执行 ${count} 个操作)`);
-            relayData.lastUserFacingMessageTs = progressNow;
-            relayData.progressSent = true;
-          }
         }
       }
     });
@@ -821,19 +813,46 @@ export class WeChatBridge {
         }
       }
 
-      // Accumulate tool calls for end-of-turn summary
+      // Extract and route tool calls to user notifications
       const tools = extractToolUses(message);
       if (tools.length > 0) {
+        const userSession = this.userSessions.get(userId);
+        const verboseMode = userSession?.verboseMode ?? false;
         for (const t of tools) {
+          // Parse input safely for accumulator and display
+          let parsedInput: Record<string, unknown> = {};
+          try {
+            parsedInput = JSON.parse(t.input || "{}");
+          } catch { /* use empty object */ }
+
           if (relayData) {
-            try {
-              relayData.toolAccumulator.push({ name: t.name, input: JSON.parse(t.input || "{}") });
-            } catch {
-              relayData.toolAccumulator.push({ name: t.name, input: {} });
+            relayData.toolAccumulator.push({ name: t.name, input: parsedInput, toolUseId: t.id });
+          }
+
+          // Route tool call to user notification
+          const formatted = formatToolCall(t.name, parsedInput);
+          if (!formatted) continue; // suppressed tools (TodoWrite, etc.)
+          if (verboseMode) {
+            this.sendReply(userId, formatted);
+          } else {
+            if (relayData) {
+              relayData.toolNotifyBuffer.push(formatted);
+              if (!relayData.toolNotifyTimer) {
+                relayData.toolNotifyTimer = setTimeout(() => this.flushToolNotifyBuffer(userId, sessionId), 3000);
+              }
             }
           }
         }
-        // Individual tool call messages suppressed — summary sent at result time
+      }
+
+      // Detect tool failures and send immediate notifications
+      const toolResults = extractToolResults(message);
+      if (toolResults.length > 0 && relayData) {
+        for (const result of toolResults) {
+          const match = relayData.toolAccumulator.find(t => t.toolUseId === result.tool_use_id);
+          const toolName = match?.name ?? "unknown";
+          this.sendReply(userId, formatToolCallFailure(toolName, result.content));
+        }
       }
     });
     cleanups.push(unsubAssistant);
@@ -872,12 +891,6 @@ export class WeChatBridge {
             this.sendReply(userId, toolSummary || "(操作完成)");
           }
         }
-      }
-
-      // Send tool summary for turns that also had content
-      if (relayData && relayData.toolAccumulator.length > 0 && (streamText.trim() || hadContent)) {
-        const summary = formatToolSummary(relayData.toolAccumulator);
-        if (summary) this.sendReply(userId, summary);
       }
 
       // Always check for errors regardless of streamlinedSent
@@ -929,12 +942,26 @@ export class WeChatBridge {
   }
 
   private cleanupRelay(sessionId: string): void {
+    const relayData = this.sessionRelayData.get(sessionId);
+    if (relayData?.toolNotifyTimer) {
+      clearTimeout(relayData.toolNotifyTimer);
+    }
     const cleanups = this.sessionCleanups.get(sessionId);
     if (cleanups) {
       for (const cleanup of cleanups) cleanup();
       this.sessionCleanups.delete(sessionId);
     }
     this.sessionRelayData.delete(sessionId);
+  }
+
+  /** Flush pending tool notification buffer to WeChat. */
+  private flushToolNotifyBuffer(userId: string, sessionId: string): void {
+    const relayData = this.sessionRelayData.get(sessionId);
+    if (!relayData || relayData.toolNotifyBuffer.length === 0) return;
+    const merged = relayData.toolNotifyBuffer.join("\n");
+    relayData.toolNotifyBuffer = [];
+    relayData.toolNotifyTimer = null;
+    this.sendReply(userId, merged);
   }
 
   /**
