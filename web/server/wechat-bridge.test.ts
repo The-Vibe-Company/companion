@@ -365,52 +365,34 @@ describe("WeChat relay — dedup and fallback logic", () => {
     expect(sent).toEqual(["Error: Permission denied: cannot write to /etc/passwd"]);
   });
 
-  // ── Issue 3: session:permission-cancelled clears pendingPermission ──
+  // ── Issue 3: session:permission-cancelled clears from Map ──
 
-  it("session:permission-cancelled event clears matching pendingPermission", () => {
-    // When CLI cancels a permission request (e.g. user interrupts), the WeChat bridge
-    // must clear its pendingPermission state so subsequent /y or /n don't match stale requests.
-    interface PendingPerm {
-      requestId: string;
-      sessionId: string;
-    }
+  it("session:permission-cancelled event clears matching entry from Map", () => {
+    const pendingPermissions = new Map<string, { requestId: string }>();
+    const pendingAskQuestions = new Map<string, { requestId: string }>();
 
-    let pendingPermission: PendingPerm | null = {
-      requestId: "req-123",
-      sessionId: "test-session-1",
-    };
+    pendingPermissions.set("req-123", { requestId: "req-123" });
+    pendingAskQuestions.set("req-ask-123", { requestId: "req-ask-123" });
 
-    // Simulate: session:permission-cancelled event fires
-    const cancelledSessionId = "test-session-1";
-    const cancelledRequestId = "req-123";
+    // Cancel req-123
+    pendingPermissions.delete("req-123");
+    pendingAskQuestions.delete("req-ask-123");
 
-    if (pendingPermission?.requestId === cancelledRequestId) {
-      pendingPermission = null;
-    }
-
-    expect(pendingPermission).toBeNull();
+    expect(pendingPermissions.size).toBe(0);
+    expect(pendingAskQuestions.size).toBe(0);
   });
 
-  it("session:permission-cancelled ignores non-matching requestId", () => {
-    // If the cancelled request doesn't match the pending one, state should be preserved.
-    interface PendingPerm {
-      requestId: string;
-      sessionId: string;
-    }
+  it("session:permission-cancelled only removes cancelled request, not others", () => {
+    const pendingPermissions = new Map<string, { requestId: string }>();
 
-    let pendingPermission: PendingPerm | null = {
-      requestId: "req-456",
-      sessionId: "test-session-1",
-    };
+    pendingPermissions.set("req-456", { requestId: "req-456" });
+    pendingPermissions.set("req-789", { requestId: "req-789" });
 
-    const cancelledRequestId = "req-789"; // different request
+    // Cancel only req-789
+    pendingPermissions.delete("req-789");
 
-    if (pendingPermission?.requestId === cancelledRequestId) {
-      pendingPermission = null;
-    }
-
-    expect(pendingPermission).not.toBeNull();
-    expect(pendingPermission?.requestId).toBe("req-456");
+    expect(pendingPermissions.size).toBe(1);
+    expect(pendingPermissions.has("req-456")).toBe(true);
   });
 
   // ── Issue 4: assistant text fallback fills pendingText ──
@@ -619,32 +601,19 @@ describe("extractToolResults", () => {
 // 5. Out-of-range numbers fall through to free-text
 
 describe("AskUserQuestion pending state handling", () => {
-  it("clears pendingAskQuestion when permission is cancelled", () => {
-    interface PendingAsk {
-      requestId: string;
-      sessionId: string;
-      questions: Array<Record<string, unknown>>;
-    }
-    interface PendingPerm {
-      requestId: string;
-      sessionId: string;
-    }
+  it("clears pendingAskQuestions entry when permission is cancelled", () => {
+    const pendingAskQuestions = new Map<string, { requestId: string }>();
+    const pendingPermissions = new Map<string, { requestId: string }>();
 
-    let pendingAskQuestion: PendingAsk | null = {
-      requestId: "req-ask-1",
-      sessionId: "sess-1",
-      questions: [{ question: "Pick one", options: [{ label: "A" }, { label: "B" }] }],
-    };
-    let pendingPermission: PendingPerm | null = { requestId: "req-ask-1", sessionId: "sess-1" };
+    pendingAskQuestions.set("req-ask-1", { requestId: "req-ask-1" });
+    pendingPermissions.set("req-ask-1", { requestId: "req-ask-1" });
 
-    // Simulate permission_cancelled
-    if (pendingPermission?.requestId === "req-ask-1") {
-      pendingPermission = null;
-      pendingAskQuestion = null;
-    }
+    // Cancel
+    pendingPermissions.delete("req-ask-1");
+    pendingAskQuestions.delete("req-ask-1");
 
-    expect(pendingPermission).toBeNull();
-    expect(pendingAskQuestion).toBeNull();
+    expect(pendingAskQuestions.size).toBe(0);
+    expect(pendingPermissions.size).toBe(0);
   });
 
   it("maps number to option label correctly", () => {
@@ -773,5 +742,301 @@ describe("AskUserQuestion multi-question iteration", () => {
     currentIndex = 2;
 
     expect(answers).toEqual({ "0": "My custom name", "1": "Dark" });
+  });
+});
+
+// ── Concurrent permission queue (Map-based) ──────────────────────────────────
+
+describe("concurrent permission queue", () => {
+  it("stores multiple pending permissions without overwriting", () => {
+    // Simulates the new Map-based state: multiple concurrent permissions
+    const pendingPermissions = new Map<string, {
+      requestId: string;
+      sessionId: string;
+      toolName: string;
+      agentId?: string;
+      isAskUserQuestion: boolean;
+      createdAt: number;
+    }>();
+
+    pendingPermissions.set("req-1", {
+      requestId: "req-1",
+      sessionId: "sess-1",
+      toolName: "Bash",
+      agentId: undefined,
+      isAskUserQuestion: false,
+      createdAt: 1000,
+    });
+    pendingPermissions.set("req-2", {
+      requestId: "req-2",
+      sessionId: "sess-1",
+      toolName: "Write",
+      agentId: "agent-sub-1",
+      isAskUserQuestion: false,
+      createdAt: 2000,
+    });
+
+    expect(pendingPermissions.size).toBe(2);
+    expect(pendingPermissions.has("req-1")).toBe(true);
+    expect(pendingPermissions.has("req-2")).toBe(true);
+  });
+
+  it("resolves FIFO — takes oldest pending permission first", () => {
+    const pendingPermissions = new Map<string, {
+      requestId: string;
+      sessionId: string;
+      toolName: string;
+      agentId?: string;
+      isAskUserQuestion: boolean;
+      createdAt: number;
+    }>();
+
+    pendingPermissions.set("req-1", {
+      requestId: "req-1",
+      sessionId: "sess-1",
+      toolName: "Bash",
+      agentId: undefined,
+      isAskUserQuestion: false,
+      createdAt: 1000,
+    });
+    pendingPermissions.set("req-2", {
+      requestId: "req-2",
+      sessionId: "sess-1",
+      toolName: "Write",
+      agentId: "agent-sub-1",
+      isAskUserQuestion: false,
+      createdAt: 2000,
+    });
+
+    // FIFO: Map preserves insertion order
+    const [firstKey, firstVal] = pendingPermissions.entries().next().value! as [string, any];
+    pendingPermissions.delete(firstKey);
+
+    expect(firstKey).toBe("req-1");
+    expect(firstVal.toolName).toBe("Bash");
+    expect(pendingPermissions.size).toBe(1);
+    expect(pendingPermissions.has("req-2")).toBe(true);
+  });
+
+  it("cleans up cancelled permission by requestId", () => {
+    const pendingPermissions = new Map<string, {
+      requestId: string;
+      sessionId: string;
+      toolName: string;
+      isAskUserQuestion: boolean;
+      createdAt: number;
+    }>();
+    const pendingAskQuestions = new Map<string, { requestId: string }>();
+
+    pendingPermissions.set("req-1", {
+      requestId: "req-1", sessionId: "s", toolName: "Bash", isAskUserQuestion: false, createdAt: 1,
+    });
+    pendingAskQuestions.set("req-ask", { requestId: "req-ask" });
+
+    // Cancel req-1
+    pendingPermissions.delete("req-1");
+    // Cancel a different AskUserQuestion
+    pendingAskQuestions.delete("req-ask");
+
+    expect(pendingPermissions.size).toBe(0);
+    expect(pendingAskQuestions.size).toBe(0);
+  });
+
+  it("stores multiple concurrent AskUserQuestion entries", () => {
+    const pendingAskQuestions = new Map<string, {
+      requestId: string;
+      sessionId: string;
+      questions: Array<Record<string, unknown>>;
+      currentIndex: number;
+      answers: Record<string, string>;
+      agentId?: string;
+    }>();
+
+    pendingAskQuestions.set("req-ask-1", {
+      requestId: "req-ask-1",
+      sessionId: "s1",
+      questions: [{ question: "Q1?", options: [{ label: "A" }] }],
+      currentIndex: 0,
+      answers: {},
+      agentId: undefined,
+    });
+    pendingAskQuestions.set("req-ask-2", {
+      requestId: "req-ask-2",
+      sessionId: "s1",
+      questions: [{ question: "Q2?", options: [{ label: "B" }] }],
+      currentIndex: 0,
+      answers: {},
+      agentId: "agent-sub-1",
+    });
+
+    expect(pendingAskQuestions.size).toBe(2);
+    // FIFO: first one is answered first
+    const [firstKey] = pendingAskQuestions.entries().next().value! as [string, any];
+    expect(firstKey).toBe("req-ask-1");
+  });
+
+  it("/allow resolves FIFO and removes from Map", () => {
+    // Simulates cmdPermissionResponse
+    const pendingPermissions = new Map<string, {
+      requestId: string; sessionId: string; toolName: string;
+      agentId?: string; isAskUserQuestion: boolean; createdAt: number;
+    }>();
+
+    pendingPermissions.set("req-1", {
+      requestId: "req-1", sessionId: "s1", toolName: "Bash",
+      agentId: undefined, isAskUserQuestion: false, createdAt: 1000,
+    });
+    pendingPermissions.set("req-2", {
+      requestId: "req-2", sessionId: "s1", toolName: "Write",
+      agentId: "sub-1", isAskUserQuestion: false, createdAt: 2000,
+    });
+
+    // cmdPermissionResponse: take oldest (FIFO)
+    expect(pendingPermissions.size).toBe(2);
+    const [firstKey, firstVal] = pendingPermissions.entries().next().value! as [string, any];
+    pendingPermissions.delete(firstKey);
+
+    expect(firstKey).toBe("req-1");
+    expect(firstVal.toolName).toBe("Bash");
+    expect(pendingPermissions.size).toBe(1);
+
+    // Second /allow
+    const [secondKey, secondVal] = pendingPermissions.entries().next().value! as [string, any];
+    pendingPermissions.delete(secondKey);
+
+    expect(secondKey).toBe("req-2");
+    expect(secondVal.agentId).toBe("sub-1");
+    expect(pendingPermissions.size).toBe(0);
+  });
+});
+
+// ── handlePermissionRequest — concurrent & agent_id ─────────────────────────
+
+describe("handlePermissionRequest — concurrent & agent_id", () => {
+  it("agent_id produces subtask label", () => {
+    const agentId = "agent-sub-1";
+    const agentLabel = agentId ? "[子任务] " : "";
+    expect(agentLabel).toBe("[子任务] ");
+  });
+
+  it("no agent_id produces no label", () => {
+    const agentId: string | undefined = undefined;
+    const agentLabel = agentId ? "[子任务] " : "";
+    expect(agentLabel).toBe("");
+  });
+
+  it("concurrent AskUserQuestion and dangerous tool both stored", () => {
+    // Simulates handlePermissionRequest adding to Maps
+    const pendingPermissions = new Map<string, {
+      requestId: string; toolName: string; agentId?: string; isAskUserQuestion: boolean;
+    }>();
+    const pendingAskQuestions = new Map<string, { requestId: string; agentId?: string }>();
+
+    // First: AskUserQuestion from subagent
+    const askRequestId = "req-ask-1";
+    pendingPermissions.set(askRequestId, {
+      requestId: askRequestId, toolName: "AskUserQuestion",
+      agentId: "agent-sub-1", isAskUserQuestion: true,
+    });
+    pendingAskQuestions.set(askRequestId, {
+      requestId: askRequestId, agentId: "agent-sub-1",
+    });
+
+    // Second: Bash from main agent
+    const bashRequestId = "req-bash-1";
+    pendingPermissions.set(bashRequestId, {
+      requestId: bashRequestId, toolName: "Bash",
+      agentId: undefined, isAskUserQuestion: false,
+    });
+
+    // Both stored, no overwrite
+    expect(pendingPermissions.size).toBe(2);
+    expect(pendingAskQuestions.size).toBe(1);
+    expect(pendingPermissions.get(askRequestId)?.isAskUserQuestion).toBe(true);
+    expect(pendingPermissions.get(bashRequestId)?.toolName).toBe("Bash");
+  });
+});
+
+// ── handleMessage — AskUserQuestion Map routing ──────────────────────────────
+
+describe("handleMessage — AskUserQuestion Map routing", () => {
+  it("routes numeric response to first pending AskUserQuestion", () => {
+    const pendingAskQuestions = new Map<string, {
+      requestId: string; questions: Array<Record<string, unknown>>;
+      currentIndex: number; answers: Record<string, string>; agentId?: string;
+    }>();
+    const pendingPermissions = new Map<string, { requestId: string; isAskUserQuestion: boolean }>();
+
+    // Two concurrent AskUserQuestions
+    pendingAskQuestions.set("req-ask-1", {
+      requestId: "req-ask-1", questions: [
+        { question: "Q1?", options: [{ label: "A" }, { label: "B" }] },
+      ], currentIndex: 0, answers: {}, agentId: undefined,
+    });
+    pendingAskQuestions.set("req-ask-2", {
+      requestId: "req-ask-2", questions: [
+        { question: "Q2?", options: [{ label: "C" }] },
+      ], currentIndex: 0, answers: {}, agentId: "sub-1",
+    });
+    pendingPermissions.set("req-ask-1", { requestId: "req-ask-1", isAskUserQuestion: true });
+    pendingPermissions.set("req-ask-2", { requestId: "req-ask-2", isAskUserQuestion: true });
+
+    // FIFO: first one is answered
+    const [firstKey, pending] = pendingAskQuestions.entries().next().value! as [string, any];
+    expect(firstKey).toBe("req-ask-1");
+
+    // User picks option 1 → "A"
+    const num = 1;
+    const q = pending.questions[pending.currentIndex];
+    const options = Array.isArray(q?.options) ? q.options as Array<Record<string, string>> : [];
+    const selectedLabel = options[num - 1].label;
+    pending.answers[String(pending.currentIndex)] = selectedLabel;
+
+    expect(selectedLabel).toBe("A");
+    expect(pending.answers["0"]).toBe("A");
+
+    // Only one question, so all answered → delete
+    const nextIndex = pending.currentIndex + 1;
+    if (nextIndex >= pending.questions.length) {
+      pendingAskQuestions.delete(firstKey);
+      pendingPermissions.delete(firstKey);
+    }
+
+    expect(pendingAskQuestions.size).toBe(1);
+    expect(pendingPermissions.size).toBe(1);
+    expect(pendingAskQuestions.has("req-ask-2")).toBe(true);
+  });
+});
+
+// ── subtask label in assistant messages ───────────────────────────────────────
+
+describe("subtask label in assistant messages", () => {
+  it("produces agent prefix when parent_tool_use_id is present", () => {
+    const message = {
+      type: "assistant",
+      parent_tool_use_id: "tu_agent_123",
+      message: {
+        content: [
+          { type: "tool_use", id: "tu_1", name: "Read", input: { file_path: "/foo.ts" } },
+        ],
+      },
+    };
+    const parentToolUseId = (message as any).parent_tool_use_id as string | undefined;
+    const agentPrefix = parentToolUseId ? "[子任务] " : "";
+    expect(agentPrefix).toBe("[子任务] ");
+  });
+
+  it("produces no prefix for main agent messages", () => {
+    const message = {
+      type: "assistant",
+      message: {
+        content: [
+          { type: "tool_use", id: "tu_1", name: "Read", input: { file_path: "/foo.ts" } },
+        ],
+      },
+    };
+    const parentToolUseId = (message as any).parent_tool_use_id as string | undefined;
+    const agentPrefix = parentToolUseId ? "[子任务] " : "";
+    expect(agentPrefix).toBe("");
   });
 });

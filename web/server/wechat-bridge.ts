@@ -19,15 +19,23 @@ import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat
 interface WeChatUserSession {
   sessionIds: string[];
   activeSessionIndex: number;
-  pendingPermission: { requestId: string; sessionId: string } | null;
+  pendingPermissions: Map<string, {
+    requestId: string;
+    sessionId: string;
+    toolName: string;
+    agentId?: string;
+    isAskUserQuestion: boolean;
+    createdAt: number;
+  }>;
   verboseMode: boolean;
-  pendingAskQuestion: {
+  pendingAskQuestions: Map<string, {
     requestId: string;
     sessionId: string;
     questions: Array<Record<string, unknown>>;
     currentIndex: number;
     answers: Record<string, string>;
-  } | null;
+    agentId?: string;
+  }>;
 }
 
 interface PersistedMapping {
@@ -433,10 +441,17 @@ export class WeChatBridge {
       }
     }
 
-    // Check for pending AskUserQuestion — number response selects option
+    // Parse commands BEFORE AskUserQuestion interceptor so /allow, /deny, /interrupt
+    // are not swallowed as free-text answers when both are pending concurrently.
+    const parsed = parseCommand(text.trim());
     const userSession = this.userSessions.get(userId);
-    if (userSession?.pendingAskQuestion) {
-      const pending = userSession.pendingAskQuestion;
+
+    // Check for pending AskUserQuestion — number response selects option
+    // Only intercept plain text messages (not commands) when AskUserQuestion is pending
+    if (parsed.type === "message" && userSession && userSession.pendingAskQuestions.size > 0) {
+      // FIFO: take the first pending AskUserQuestion
+      const entry = userSession.pendingAskQuestions.entries().next().value!;
+      const [askRequestId, pending] = entry;
       const num = parseInt(text.trim(), 10);
       const q = pending.questions[pending.currentIndex];
       const options = Array.isArray(q?.options) ? q.options as Array<Record<string, string>> : [];
@@ -451,27 +466,26 @@ export class WeChatBridge {
       }
 
       pending.answers[String(pending.currentIndex)] = selectedLabel;
-      await this.sendReply(userId, `✅ 已选择: ${selectedLabel}`);
+      const agentLabel = pending.agentId ? "[子任务] " : "";
+      await this.sendReply(userId, `✅ ${agentLabel}已选择: ${selectedLabel}`);
 
       // Advance to next question or submit all answers
       const nextIndex = pending.currentIndex + 1;
       if (nextIndex < pending.questions.length) {
         // More questions — show the next one
         pending.currentIndex = nextIndex;
-        this.sendReply(userId, formatSingleQuestion(pending.questions, nextIndex));
+        this.sendReply(userId, `${agentLabel}${formatSingleQuestion(pending.questions, nextIndex)}`);
       } else {
         // All questions answered — submit
-        userSession.pendingAskQuestion = null;
-        userSession.pendingPermission = null;
-        this.wsBridge.injectPermissionResponse(pending.sessionId, pending.requestId, "allow", {
+        userSession.pendingAskQuestions.delete(askRequestId);
+        userSession.pendingPermissions.delete(askRequestId);
+        this.wsBridge.injectPermissionResponse(pending.sessionId, askRequestId, "allow", {
           questions: pending.questions,
           answers: pending.answers,
         });
       }
       return;
     }
-
-    const parsed = parseCommand(text.trim());
 
     if (parsed.type === "message") {
       await this.handleUserMessage(userId, parsed.text);
@@ -706,16 +720,19 @@ export class WeChatBridge {
 
   private async cmdPermissionResponse(userId: string, behavior: "allow" | "deny"): Promise<void> {
     const userSession = this.userSessions.get(userId);
-    if (!userSession?.pendingPermission) {
+    if (!userSession || userSession.pendingPermissions.size === 0) {
       await this.sendReply(userId, "No pending permission request. Tool calls shown with ℹ️ are informational and don't need approval.");
       return;
     }
 
-    const { requestId, sessionId } = userSession.pendingPermission;
-    userSession.pendingPermission = null;
+    // FIFO: resolve the oldest pending permission
+    const entry = userSession.pendingPermissions.entries().next().value!;
+    const [requestId, pending] = entry;
+    userSession.pendingPermissions.delete(requestId);
 
-    this.wsBridge.injectPermissionResponse(sessionId, requestId, behavior);
-    await this.sendReply(userId, `Permission ${behavior === "allow" ? "approved" : "denied"}.`);
+    this.wsBridge.injectPermissionResponse(pending.sessionId, requestId, behavior);
+    const agentLabel = pending.agentId ? "[子任务] " : "";
+    await this.sendReply(userId, `${agentLabel}Permission ${behavior === "allow" ? "approved" : "denied"}.`);
   }
 
   private async cmdInterrupt(userId: string): Promise<void> {
@@ -903,6 +920,11 @@ export class WeChatBridge {
     const unsubAssistant = companionBus.on("message:assistant", ({ sessionId: sid, message }) => {
       if (sid !== sessionId) return;
 
+      // Detect subagent messages via parent_tool_use_id
+      const raw = message as Record<string, unknown>;
+      const parentToolUseId = raw.parent_tool_use_id as string | undefined;
+      const agentPrefix = parentToolUseId ? "[子任务] " : "";
+
       // Fallback: if stream events didn't capture text, use assistant message text instead
       const relayData = this.sessionRelayData.get(sessionId);
       if (relayData && !relayData.pendingText.trim()) {
@@ -928,11 +950,12 @@ export class WeChatBridge {
           // Route tool call to user notification
           const formatted = formatToolCall(t.name, parsedInput);
           if (!formatted) continue; // suppressed tools (TodoWrite, etc.)
+          const labeled = `${agentPrefix}${formatted}`;
           if (verboseMode) {
-            this.sendReply(userId, formatted);
+            this.sendReply(userId, labeled);
           } else {
             if (relayData) {
-              relayData.toolNotifyBuffer.push(formatted);
+              relayData.toolNotifyBuffer.push(labeled);
               if (!relayData.toolNotifyTimer) {
                 relayData.toolNotifyTimer = setTimeout(() => this.flushToolNotifyBuffer(userId, sessionId), 3000);
               }
@@ -1014,13 +1037,16 @@ export class WeChatBridge {
     });
     cleanups.push(unsubPermReq);
 
-    // Permission cancelled — clear stale pendingPermission state
+    // Permission cancelled — clean from Maps
     const unsubPermCancel = companionBus.on("session:permission-cancelled", ({ sessionId: sid, requestId }) => {
       if (sid !== sessionId) return;
       const userSession = this.userSessions.get(userId);
-      if (userSession?.pendingPermission?.requestId === requestId) {
-        userSession.pendingPermission = null;
-        userSession.pendingAskQuestion = null;
+      if (!userSession) return;
+
+      const wasInPerms = userSession.pendingPermissions.delete(requestId);
+      const wasInAsk = userSession.pendingAskQuestions.delete(requestId);
+
+      if (wasInPerms || wasInAsk) {
         this.sendReply(userId, "Permission request was cancelled.");
       }
     });
@@ -1069,25 +1095,40 @@ export class WeChatBridge {
   private handlePermissionRequest(
     sessionId: string,
     userId: string,
-    perm: { request_id: string; tool_name: string; input: Record<string, unknown>; description?: string },
+    perm: {
+      request_id: string;
+      tool_name: string;
+      input: Record<string, unknown>;
+      description?: string;
+      agent_id?: string;
+    },
   ): void {
     const settings = getSettings();
     const userSession = this.userSessions.get(userId);
     if (!userSession) return;
 
-    // AskUserQuestion: format as numbered options, track pending state for response
+    const agentLabel = perm.agent_id ? "[子任务] " : "";
+
+    // AskUserQuestion: track in both Maps, show first question
     if (perm.tool_name === "AskUserQuestion") {
       const questions = Array.isArray(perm.input.questions) ? perm.input.questions as Array<Record<string, unknown>> : [];
-      userSession.pendingAskQuestion = {
+      userSession.pendingAskQuestions.set(perm.request_id, {
         requestId: perm.request_id,
         sessionId,
         questions,
         currentIndex: 0,
         answers: {},
-      };
-      userSession.pendingPermission = { requestId: perm.request_id, sessionId };
-      // Show only the first question (subsequent ones shown after each answer)
-      this.sendReply(userId, formatSingleQuestion(questions, 0));
+        agentId: perm.agent_id,
+      });
+      userSession.pendingPermissions.set(perm.request_id, {
+        requestId: perm.request_id,
+        sessionId,
+        toolName: perm.tool_name,
+        agentId: perm.agent_id,
+        isAskUserQuestion: true,
+        createdAt: Date.now(),
+      });
+      this.sendReply(userId, `${agentLabel}${formatSingleQuestion(questions, 0)}`);
       return;
     }
 
@@ -1096,11 +1137,18 @@ export class WeChatBridge {
       // pendingPermissions is already set by ws-bridge before emitting the event
       this.wsBridge.injectPermissionResponse(sessionId, perm.request_id, "allow", perm.input);
       const formatted = formatToolCall(perm.tool_name, perm.input);
-      this.sendReply(userId, formatted ? `✅ 自动批准: ${formatted}` : `✅ 自动批准: ${perm.tool_name}`);
+      this.sendReply(userId, formatted ? `✅ 自动批准: ${agentLabel}${formatted}` : `✅ 自动批准: ${agentLabel}${perm.tool_name}`);
     } else if (settings.wechatForwardDangerous) {
       // Forward to WeChat for approval — do NOT auto-approve
-      userSession.pendingPermission = { requestId: perm.request_id, sessionId };
-      this.sendReply(userId, formatPermissionRequest(perm.tool_name, perm.input, perm.description));
+      userSession.pendingPermissions.set(perm.request_id, {
+        requestId: perm.request_id,
+        sessionId,
+        toolName: perm.tool_name,
+        agentId: perm.agent_id,
+        isAskUserQuestion: false,
+        createdAt: Date.now(),
+      });
+      this.sendReply(userId, `${agentLabel}${formatPermissionRequest(perm.tool_name, perm.input, perm.description)}`);
     } else {
       // Auto-approve everything (bypassPermissions mode)
       this.wsBridge.injectPermissionResponse(sessionId, perm.request_id, "allow", perm.input);
@@ -1112,7 +1160,13 @@ export class WeChatBridge {
   private getOrCreateUserSession(userId: string): WeChatUserSession {
     let userSession = this.userSessions.get(userId);
     if (!userSession) {
-      userSession = { sessionIds: [], activeSessionIndex: 0, pendingPermission: null, verboseMode: false, pendingAskQuestion: null };
+      userSession = {
+        sessionIds: [],
+        activeSessionIndex: 0,
+        pendingPermissions: new Map(),
+        verboseMode: false,
+        pendingAskQuestions: new Map(),
+      };
       this.userSessions.set(userId, userSession);
     }
     return userSession;
@@ -1131,6 +1185,13 @@ export class WeChatBridge {
       } else if (userSession.activeSessionIndex >= userSession.sessionIds.length) {
         userSession.activeSessionIndex = userSession.sessionIds.length - 1;
       }
+    }
+    // Purge orphaned permission/AskUserQuestion entries referencing the removed session
+    for (const [key, val] of userSession.pendingPermissions) {
+      if (val.sessionId === sessionId) userSession.pendingPermissions.delete(key);
+    }
+    for (const [key, val] of userSession.pendingAskQuestions) {
+      if (val.sessionId === sessionId) userSession.pendingAskQuestions.delete(key);
     }
     this.persistSessionMappings();
   }
@@ -1154,9 +1215,9 @@ export class WeChatBridge {
         this.userSessions.set(userId, {
           sessionIds: mapping.sessionIds,
           activeSessionIndex: mapping.activeSessionIndex,
-          pendingPermission: null,
+          pendingPermissions: new Map(),
           verboseMode: mapping.verboseMode ?? false,
-          pendingAskQuestion: null,
+          pendingAskQuestions: new Map(),
         });
         for (const sid of mapping.sessionIds) {
           this.userIdBySession.set(sid, userId);
