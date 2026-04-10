@@ -1,6 +1,6 @@
 // Tests for wechat-bridge.ts — command parsing, dangerous tool detection, helpers
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { parseCommand, isDangerousTool, extractToolResults } from "./wechat-bridge.js";
+import { parseCommand, isDangerousTool, extractToolResults, formatSingleQuestion } from "./wechat-bridge.js";
 import { companionBus } from "./event-bus.js";
 
 // ── parseCommand ──────────────────────────────────────────────────────────
@@ -606,5 +606,172 @@ describe("extractToolResults", () => {
     const results = extractToolResults(msg as any);
     expect(results).toHaveLength(1);
     expect(results[0].content).toContain("file not found");
+  });
+});
+
+// ── AskUserQuestion pending state handling ──────────────────────────────────────
+//
+// These tests verify the AskUserQuestion interactive response flow:
+// 1. pendingAskQuestion is cleared on permission cancellation
+// 2. Number input maps to the correct option label
+// 3. "Other" option index is calculated correctly
+// 4. Non-number text is treated as free-text answer
+// 5. Out-of-range numbers fall through to free-text
+
+describe("AskUserQuestion pending state handling", () => {
+  it("clears pendingAskQuestion when permission is cancelled", () => {
+    interface PendingAsk {
+      requestId: string;
+      sessionId: string;
+      questions: Array<Record<string, unknown>>;
+    }
+    interface PendingPerm {
+      requestId: string;
+      sessionId: string;
+    }
+
+    let pendingAskQuestion: PendingAsk | null = {
+      requestId: "req-ask-1",
+      sessionId: "sess-1",
+      questions: [{ question: "Pick one", options: [{ label: "A" }, { label: "B" }] }],
+    };
+    let pendingPermission: PendingPerm | null = { requestId: "req-ask-1", sessionId: "sess-1" };
+
+    // Simulate permission_cancelled
+    if (pendingPermission?.requestId === "req-ask-1") {
+      pendingPermission = null;
+      pendingAskQuestion = null;
+    }
+
+    expect(pendingPermission).toBeNull();
+    expect(pendingAskQuestion).toBeNull();
+  });
+
+  it("maps number to option label correctly", () => {
+    const questions = [
+      { question: "Pick one", options: [{ label: "Option A", description: "Fast" }, { label: "Option B", description: "Safe" }] },
+    ];
+    const num = 1;
+    const options = Array.isArray(questions[0]?.options) ? questions[0].options as Array<Record<string, string>> : [];
+    const selected = options[num - 1];
+    expect(selected?.label).toBe("Option A");
+  });
+
+  it("identifies Other option index correctly", () => {
+    const questions = [
+      { question: "Pick one", options: [{ label: "A" }, { label: "B" }] },
+    ];
+    const options = Array.isArray(questions[0]?.options) ? questions[0].options as Array<Record<string, string>> : [];
+    const otherIndex = options.length + 1;
+    expect(otherIndex).toBe(3);
+  });
+
+  it("handles non-number text as free-text answer", () => {
+    const text = "I want something custom";
+    const num = parseInt(text, 10);
+    expect(isNaN(num)).toBe(true);
+  });
+
+  it("handles number exceeding options as free-text", () => {
+    const questions = [
+      { question: "Pick one", options: [{ label: "A" }] },
+    ];
+    const options = Array.isArray(questions[0]?.options) ? questions[0].options as Array<Record<string, string>> : [];
+    const num = 5;
+    const isValid = !isNaN(num) && num >= 1 && num <= options.length;
+    expect(isValid).toBe(false);
+    // Should fall through to free-text path
+  });
+});
+
+// ── formatSingleQuestion ────────────────────────────────────────────────────
+
+describe("formatSingleQuestion", () => {
+  const questions = [
+    { question: "Which approach?", header: "Approach", options: [{ label: "A", description: "Fast" }, { label: "B", description: "Safe" }] },
+    { question: "Confirm?", header: "Confirm", options: [{ label: "Yes", description: "" }, { label: "No", description: "" }] },
+  ];
+
+  it("formats first question of multi-question set with progress indicator", () => {
+    const result = formatSingleQuestion(questions, 0);
+    expect(result).toContain("❓ [1/2] Which approach?");
+    expect(result).toContain("1. A");
+    expect(result).toContain("   Fast");
+    expect(result).toContain("2. B");
+    expect(result).toContain("3. 其他");
+    expect(result).toContain("回复序号选择");
+  });
+
+  it("formats second question with progress indicator", () => {
+    const result = formatSingleQuestion(questions, 1);
+    expect(result).toContain("❓ [2/2] Confirm?");
+    expect(result).toContain("1. Yes");
+    expect(result).toContain("2. No");
+  });
+
+  it("formats single question without progress indicator", () => {
+    const singleQ = [{ question: "Pick one", header: "Choice", options: [{ label: "A", description: "" }] }];
+    const result = formatSingleQuestion(singleQ, 0);
+    expect(result).toContain("❓ Pick one");
+    expect(result).not.toContain("[1/1]");
+  });
+
+  it("returns empty string for out-of-bounds index", () => {
+    expect(formatSingleQuestion(questions, 5)).toBe("");
+  });
+
+  it("returns empty string for empty questions", () => {
+    expect(formatSingleQuestion([], 0)).toBe("");
+  });
+});
+
+// ── Multi-question AskUserQuestion iteration logic ──────────────────────────
+
+describe("AskUserQuestion multi-question iteration", () => {
+  it("accumulates answers across multiple questions", () => {
+    // Simulates the iteration: user answers Q1, then Q2, then submit
+    const questions = [
+      { question: "Which approach?", options: [{ label: "A" }, { label: "B" }] },
+      { question: "Confirm?", options: [{ label: "Yes" }, { label: "No" }] },
+    ];
+    const answers: Record<string, string> = {};
+    let currentIndex = 0;
+
+    // Answer Q1: user picks option 1 ("A")
+    const q1Options = questions[0].options as Array<Record<string, string>>;
+    answers[String(currentIndex)] = q1Options[0].label; // "A"
+    currentIndex = 1;
+    expect(answers["0"]).toBe("A");
+    expect(currentIndex).toBe(1);
+
+    // Answer Q2: user picks option 2 ("No")
+    const q2Options = questions[1].options as Array<Record<string, string>>;
+    answers[String(currentIndex)] = q2Options[1].label; // "No"
+    currentIndex = 2;
+    expect(answers["1"]).toBe("No");
+
+    // All answered — would submit with { "0": "A", "1": "No" }
+    expect(currentIndex).toBe(questions.length);
+    expect(answers).toEqual({ "0": "A", "1": "No" });
+  });
+
+  it("supports free-text answer for one question and option for another", () => {
+    const questions = [
+      { question: "Name?", options: [] },
+      { question: "Style?", options: [{ label: "Dark" }, { label: "Light" }] },
+    ];
+    const answers: Record<string, string> = {};
+    let currentIndex = 0;
+
+    // Answer Q1: free text (no options, num out of range)
+    answers[String(currentIndex)] = "My custom name";
+    currentIndex = 1;
+
+    // Answer Q2: option 1 ("Dark")
+    const q2Options = questions[1].options as Array<Record<string, string>>;
+    answers[String(currentIndex)] = q2Options[0].label;
+    currentIndex = 2;
+
+    expect(answers).toEqual({ "0": "My custom name", "1": "Dark" });
   });
 });

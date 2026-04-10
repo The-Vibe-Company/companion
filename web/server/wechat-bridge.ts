@@ -12,7 +12,7 @@ import { join, resolve, isAbsolute } from "node:path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { COMPANION_HOME } from "./paths.js";
 import QRCode from "qrcode";
-import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary, formatToolCallFailure } from "./wechat-formatter.js";
+import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary, formatToolCallFailure, formatAskUserQuestion } from "./wechat-formatter.js";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,13 @@ interface WeChatUserSession {
   activeSessionIndex: number;
   pendingPermission: { requestId: string; sessionId: string } | null;
   verboseMode: boolean;
+  pendingAskQuestion: {
+    requestId: string;
+    sessionId: string;
+    questions: Array<Record<string, unknown>>;
+    currentIndex: number;
+    answers: Record<string, string>;
+  } | null;
 }
 
 interface PersistedMapping {
@@ -77,6 +84,41 @@ export function parseCommand(text: string): ParsedCommand {
   return { type: "command", command, args };
 }
 
+/** Format a single question from an AskUserQuestion input for WeChat display. */
+export function formatSingleQuestion(questions: Array<Record<string, unknown>>, index: number): string {
+  const q = questions[index];
+  if (!q) return "";
+
+  const parts: string[] = [];
+  const questionText = String(q.question ?? "");
+  if (questions.length > 1) {
+    parts.push(`❓ [${index + 1}/${questions.length}] ${questionText}`);
+  } else {
+    parts.push(`❓ ${questionText}`);
+  }
+  parts.push("");
+
+  const options = Array.isArray(q.options) ? q.options as Array<Record<string, string>> : [];
+  let num = 1;
+  for (const opt of options) {
+    const label = String(opt.label ?? "");
+    const desc = String(opt.description ?? "");
+    if (desc) {
+      parts.push(`${num}. ${label}`);
+      parts.push(`   ${desc}`);
+    } else {
+      parts.push(`${num}. ${label}`);
+    }
+    num++;
+  }
+  parts.push(`${num}. 其他`);
+  parts.push("   输入自定义回答");
+
+  parts.push("");
+  parts.push("回复序号选择 (如: 1)");
+  return parts.join("\n");
+}
+
 /** Check if a tool use is considered dangerous.
  *  If the CLI sent a control_request, it already decided this tool needs approval.
  *  We only auto-approve truly read-only tools from SAFE_TOOLS; everything else is dangerous. */
@@ -112,7 +154,7 @@ function extractTextDeltaFromStreamEvent(msg: BrowserIncomingMessage): string {
 }
 
 /** Extract tool use blocks from assistant message */
-function extractToolUses(msg: BrowserIncomingMessage): Array<{ name: string; input: string; id?: string }> {
+function extractToolUses(msg: BrowserIncomingMessage): Array<{ name: string; input: Record<string, unknown>; id?: string }> {
   if (msg.type !== "assistant") return [];
   const raw = msg as Record<string, unknown>;
   const message = raw.message;
@@ -126,7 +168,7 @@ function extractToolUses(msg: BrowserIncomingMessage): Array<{ name: string; inp
       && typeof (b as Record<string, unknown>).name === "string")
     .map((toolBlock) => ({
       name: toolBlock.name,
-      input: toolBlock.input ? JSON.stringify(toolBlock.input).slice(0, 200) : "",
+      input: toolBlock.input ?? {},
       id: (toolBlock as Record<string, unknown>).id as string | undefined,
     }));
 }
@@ -389,6 +431,44 @@ export class WeChatBridge {
         await this.sendReply(userId, "Access denied. Contact the admin to add your WeChat ID.");
         return;
       }
+    }
+
+    // Check for pending AskUserQuestion — number response selects option
+    const userSession = this.userSessions.get(userId);
+    if (userSession?.pendingAskQuestion) {
+      const pending = userSession.pendingAskQuestion;
+      const num = parseInt(text.trim(), 10);
+      const q = pending.questions[pending.currentIndex];
+      const options = Array.isArray(q?.options) ? q.options as Array<Record<string, string>> : [];
+
+      let selectedLabel: string;
+      if (!isNaN(num) && num >= 1 && num <= options.length) {
+        // Valid option number
+        selectedLabel = options[num - 1].label;
+      } else {
+        // "Other" or any free-text — use the user's text
+        selectedLabel = text.trim();
+      }
+
+      pending.answers[String(pending.currentIndex)] = selectedLabel;
+      await this.sendReply(userId, `✅ 已选择: ${selectedLabel}`);
+
+      // Advance to next question or submit all answers
+      const nextIndex = pending.currentIndex + 1;
+      if (nextIndex < pending.questions.length) {
+        // More questions — show the next one
+        pending.currentIndex = nextIndex;
+        this.sendReply(userId, formatSingleQuestion(pending.questions, nextIndex));
+      } else {
+        // All questions answered — submit
+        userSession.pendingAskQuestion = null;
+        userSession.pendingPermission = null;
+        this.wsBridge.injectPermissionResponse(pending.sessionId, pending.requestId, "allow", {
+          questions: pending.questions,
+          answers: pending.answers,
+        });
+      }
+      return;
     }
 
     const parsed = parseCommand(text.trim());
@@ -839,10 +919,7 @@ export class WeChatBridge {
         const verboseMode = userSession?.verboseMode ?? false;
         for (const t of tools) {
           // Parse input safely for accumulator and display
-          let parsedInput: Record<string, unknown> = {};
-          try {
-            parsedInput = JSON.parse(t.input || "{}");
-          } catch { /* use empty object */ }
+          const parsedInput = t.input;
 
           if (relayData) {
             relayData.toolAccumulator.push({ name: t.name, input: parsedInput, toolUseId: t.id });
@@ -943,6 +1020,7 @@ export class WeChatBridge {
       const userSession = this.userSessions.get(userId);
       if (userSession?.pendingPermission?.requestId === requestId) {
         userSession.pendingPermission = null;
+        userSession.pendingAskQuestion = null;
         this.sendReply(userId, "Permission request was cancelled.");
       }
     });
@@ -997,6 +1075,22 @@ export class WeChatBridge {
     const userSession = this.userSessions.get(userId);
     if (!userSession) return;
 
+    // AskUserQuestion: format as numbered options, track pending state for response
+    if (perm.tool_name === "AskUserQuestion") {
+      const questions = Array.isArray(perm.input.questions) ? perm.input.questions as Array<Record<string, unknown>> : [];
+      userSession.pendingAskQuestion = {
+        requestId: perm.request_id,
+        sessionId,
+        questions,
+        currentIndex: 0,
+        answers: {},
+      };
+      userSession.pendingPermission = { requestId: perm.request_id, sessionId };
+      // Show only the first question (subsequent ones shown after each answer)
+      this.sendReply(userId, formatSingleQuestion(questions, 0));
+      return;
+    }
+
     if (settings.wechatAutoApproveSafe && !isDangerousTool(perm.tool_name, perm.input)) {
       // Auto-approve safe tools (Read, Glob, Grep, etc.)
       // pendingPermissions is already set by ws-bridge before emitting the event
@@ -1018,7 +1112,7 @@ export class WeChatBridge {
   private getOrCreateUserSession(userId: string): WeChatUserSession {
     let userSession = this.userSessions.get(userId);
     if (!userSession) {
-      userSession = { sessionIds: [], activeSessionIndex: 0, pendingPermission: null, verboseMode: false };
+      userSession = { sessionIds: [], activeSessionIndex: 0, pendingPermission: null, verboseMode: false, pendingAskQuestion: null };
       this.userSessions.set(userId, userSession);
     }
     return userSession;
@@ -1062,6 +1156,7 @@ export class WeChatBridge {
           activeSessionIndex: mapping.activeSessionIndex,
           pendingPermission: null,
           verboseMode: mapping.verboseMode ?? false,
+          pendingAskQuestion: null,
         });
         for (const sid of mapping.sessionIds) {
           this.userIdBySession.set(sid, userId);

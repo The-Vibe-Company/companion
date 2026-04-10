@@ -1,7 +1,7 @@
 // Tests for wechat-formatter.ts — tool call display, permission formatting,
 // Markdown conversion, WeChat message splitting, and turn-level tool summaries.
 import { describe, it, expect } from "vitest";
-import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary, formatToolCallFailure } from "./wechat-formatter.js";
+import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary, formatToolCallFailure, formatAskUserQuestion } from "./wechat-formatter.js";
 
 // ── formatToolCall ─────────────────────────────────────────────────────────
 
@@ -81,6 +81,25 @@ describe("formatToolCall", () => {
   it("handles MCP tools generically", () => {
     const result = formatToolCall("mcp__context7__resolve-library-id", { query: "react" });
     expect(result).toContain("mcp__context7__resolve-library-id");
+  });
+
+  // Regression: extractToolUses used to truncate JSON.stringify(input) to 200 chars,
+  // which cut off file_path when content was large. Now input is passed as object.
+  it("formats Write tool with large content — file_path still visible", () => {
+    const result = formatToolCall("Write", {
+      file_path: "src/components/VeryLongComponentName.tsx",
+      content: "x".repeat(5000),
+    });
+    expect(result).toBe("✏️ 写入: src/components/VeryLongComponentName.tsx");
+  });
+
+  it("formats Edit tool with large old_string — file_path still visible", () => {
+    const result = formatToolCall("Edit", {
+      file_path: "package.json",
+      old_string: "x".repeat(5000),
+      new_string: "y".repeat(5000),
+    });
+    expect(result).toBe("📝 编辑: package.json");
   });
 });
 
@@ -417,5 +436,76 @@ describe("formatToolCallFailure", () => {
   it("handles empty content", () => {
     const result = formatToolCallFailure("Bash", "");
     expect(result).toBe("❌ 失败: Bash\n");
+  });
+});
+
+// ── formatAskUserQuestion ──────────────────────────────────────────────────
+
+describe("formatAskUserQuestion", () => {
+  it("formats single question with options", () => {
+    const input = {
+      questions: [
+        {
+          question: "Which approach?",
+          header: "Approach",
+          options: [
+            { label: "Option A", description: "Faster" },
+            { label: "Option B", description: "Safer" },
+          ],
+          multiSelect: false,
+        },
+      ],
+    };
+    const result = formatAskUserQuestion(input);
+    expect(result).toContain("❓ Which approach?");
+    expect(result).toContain("1. Option A");
+    expect(result).toContain("   Faster");
+    expect(result).toContain("2. Option B");
+    expect(result).toContain("   Safer");
+    expect(result).toContain("回复序号选择");
+  });
+
+  it("formats question without descriptions", () => {
+    const input = {
+      questions: [
+        {
+          question: "Confirm?",
+          header: "Confirm",
+          options: [
+            { label: "Yes", description: "" },
+            { label: "No", description: "" },
+          ],
+          multiSelect: false,
+        },
+      ],
+    };
+    const result = formatAskUserQuestion(input);
+    expect(result).toContain("1. Yes");
+    expect(result).toContain("2. No");
+  });
+
+  it("handles empty questions gracefully", () => {
+    const result = formatAskUserQuestion({ questions: [] });
+    expect(result).toBe("");
+  });
+
+  it("handles missing questions field", () => {
+    const result = formatAskUserQuestion({});
+    expect(result).toBe("");
+  });
+
+  it("includes Other option for free-text answers", () => {
+    const input = {
+      questions: [
+        {
+          question: "Pick one",
+          header: "Choice",
+          options: [{ label: "A", description: "desc" }],
+          multiSelect: false,
+        },
+      ],
+    };
+    const result = formatAskUserQuestion(input);
+    expect(result).toMatch(/\d+\.\s+其他/);
   });
 });

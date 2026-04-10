@@ -261,3 +261,37 @@ export function formatToolSummary(tools: ToolRecord[]): string {
 export function formatToolCallFailure(toolName: string, content: string): string {
   return `❌ 失败: ${toolName}\n${truncate(content, 300)}`;
 }
+
+/** Format an AskUserQuestion tool input for WeChat display with numbered options. */
+export function formatAskUserQuestion(input: Record<string, unknown>): string {
+  const questions = Array.isArray(input.questions) ? input.questions as Array<Record<string, unknown>> : [];
+  if (questions.length === 0) return "";
+
+  const parts: string[] = [];
+  for (const q of questions) {
+    const questionText = String(q.question ?? "");
+    if (questionText) parts.push(`❓ ${questionText}`);
+    parts.push("");
+
+    const options = Array.isArray(q.options) ? q.options as Array<Record<string, string>> : [];
+    let num = 1;
+    for (const opt of options) {
+      const label = String(opt.label ?? "");
+      const desc = String(opt.description ?? "");
+      if (desc) {
+        parts.push(`${num}. ${label}`);
+        parts.push(`   ${desc}`);
+      } else {
+        parts.push(`${num}. ${label}`);
+      }
+      num++;
+    }
+    // Add "Other" option for free-text answers
+    parts.push(`${num}. 其他`);
+    parts.push("   输入自定义回答");
+  }
+
+  parts.push("");
+  parts.push("回复序号选择 (如: 1)");
+  return parts.join("\n");
+}
