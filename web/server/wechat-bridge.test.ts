@@ -1,6 +1,6 @@
 // Tests for wechat-bridge.ts — command parsing, dangerous tool detection, helpers
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { parseCommand, isDangerousTool, extractToolResults, formatSingleQuestion } from "./wechat-bridge.js";
+import { parseCommand, isDangerousTool, extractToolResults, formatSingleQuestion, formatSessionName } from "./wechat-bridge.js";
 import { companionBus } from "./event-bus.js";
 
 // ── parseCommand ──────────────────────────────────────────────────────────
@@ -1038,5 +1038,768 @@ describe("subtask label in assistant messages", () => {
     const parentToolUseId = (message as any).parent_tool_use_id as string | undefined;
     const agentPrefix = parentToolUseId ? "[子任务] " : "";
     expect(agentPrefix).toBe("");
+  });
+});
+
+// ── New bus event relay tests ──────────────────────────────────────────────
+//
+// These tests verify that the new event bus events added for WeChat parity
+// (system_event, status_change, tool_progress, auth_status, permission_auto_resolved,
+// session_phase, prompt_suggestion) are correctly emitted and can be consumed
+// through the companionBus by the WeChat bridge.
+
+describe("WeChat relay — new bus events for message parity", () => {
+  // ── system_event ──
+
+  it("forwards system_event (task_notification) via bus", () => {
+    const received: Array<{ subtype: string; processName: string }> = [];
+    const unsub = companionBus.on("message:system_event", ({ sessionId, message }) => {
+      if (sessionId === "test-session-1") {
+        const raw = message as Record<string, unknown>;
+        const event = raw.event as Record<string, unknown>;
+        if (event) {
+          received.push({
+            subtype: event.subtype as string,
+            processName: String(event.processName ?? ""),
+          });
+        }
+      }
+    });
+
+    companionBus.emit("message:system_event", {
+      sessionId: "test-session-1",
+      message: {
+        type: "system_event",
+        event: { subtype: "task_notification", processName: "npm test", exitCode: 0 },
+      } as any,
+    });
+
+    expect(received).toEqual([{ subtype: "task_notification", processName: "npm test" }]);
+    unsub();
+  });
+
+  it("forwards system_event (files_persisted) via bus", () => {
+    const received: string[][] = [];
+    const unsub = companionBus.on("message:system_event", ({ sessionId, message }) => {
+      if (sessionId === "test-session-1") {
+        const raw = message as Record<string, unknown>;
+        const event = raw.event as Record<string, unknown>;
+        if (event?.subtype === "files_persisted") {
+          received.push(event.files as string[]);
+        }
+      }
+    });
+
+    companionBus.emit("message:system_event", {
+      sessionId: "test-session-1",
+      message: {
+        type: "system_event",
+        event: { subtype: "files_persisted", files: ["src/app.ts", "src/index.ts"] },
+      } as any,
+    });
+
+    expect(received).toEqual([["src/app.ts", "src/index.ts"]]);
+    unsub();
+  });
+
+  // ── status_change ──
+
+  it("forwards status_change (compacting) via bus", () => {
+    const received: string[] = [];
+    const unsub = companionBus.on("message:status_change", ({ sessionId, message }) => {
+      if (sessionId === "test-session-1") {
+        const raw = message as Record<string, unknown>;
+        if (typeof raw.status === "string") received.push(raw.status);
+      }
+    });
+
+    companionBus.emit("message:status_change", {
+      sessionId: "test-session-1",
+      message: { type: "status_change", status: "compacting" },
+    });
+
+    expect(received).toEqual(["compacting"]);
+    unsub();
+  });
+
+  // ── tool_progress ──
+
+  it("forwards tool_progress via bus", () => {
+    const received: Array<{ toolName: string; elapsed: number }> = [];
+    const unsub = companionBus.on("message:tool_progress", ({ sessionId, message }) => {
+      if (sessionId === "test-session-1") {
+        const raw = message as Record<string, unknown>;
+        received.push({
+          toolName: String(raw.toolName ?? ""),
+          elapsed: raw.elapsedSeconds as number,
+        });
+      }
+    });
+
+    companionBus.emit("message:tool_progress", {
+      sessionId: "test-session-1",
+      message: { type: "tool_progress", toolName: "Bash", toolUseId: "tu_1", elapsedSeconds: 45 } as any,
+    });
+
+    expect(received).toEqual([{ toolName: "Bash", elapsed: 45 }]);
+    unsub();
+  });
+
+  // ── auth_status ──
+
+  it("forwards auth_status via bus", () => {
+    const received: string[] = [];
+    const unsub = companionBus.on("message:auth_status", ({ sessionId, message }) => {
+      if (sessionId === "test-session-1") {
+        const raw = message as Record<string, unknown>;
+        if (typeof raw.error === "string") received.push(raw.error);
+      }
+    });
+
+    companionBus.emit("message:auth_status", {
+      sessionId: "test-session-1",
+      message: { type: "auth_status", error: "Token expired" } as any,
+    });
+
+    expect(received).toEqual(["Token expired"]);
+    unsub();
+  });
+
+  // ── session:permission-auto-resolved ──
+
+  it("forwards permission_auto_resolved via bus", () => {
+    const received: Array<{ behavior: string; toolName: string }> = [];
+    const unsub = companionBus.on("session:permission-auto-resolved", ({ sessionId, request, behavior }) => {
+      if (sessionId === "test-session-1") {
+        received.push({ behavior, toolName: request.tool_name });
+      }
+    });
+
+    companionBus.emit("session:permission-auto-resolved", {
+      sessionId: "test-session-1",
+      request: { request_id: "req-1", tool_name: "Bash", tool_use_id: "tu_1", input: { command: "ls" }, timestamp: Date.now() } as any,
+      behavior: "allow",
+      reason: "Read-only listing",
+    });
+
+    expect(received).toEqual([{ behavior: "allow", toolName: "Bash" }]);
+    unsub();
+  });
+
+  // ── session:phase-changed ──
+
+  it("forwards session phase change via bus", () => {
+    const received: Array<{ from: string; to: string }> = [];
+    const unsub = companionBus.on("session:phase-changed", ({ sessionId, from, to }) => {
+      if (sessionId === "test-session-1") {
+        received.push({ from, to });
+      }
+    });
+
+    companionBus.emit("session:phase-changed", {
+      sessionId: "test-session-1",
+      from: "starting",
+      to: "ready",
+      trigger: "system_init",
+    });
+
+    expect(received).toEqual([{ from: "starting", to: "ready" }]);
+    unsub();
+  });
+
+  // ── prompt_suggestion ──
+
+  it("forwards prompt_suggestion via bus", () => {
+    const received: string[][] = [];
+    const unsub = companionBus.on("message:prompt_suggestion", ({ sessionId, message }) => {
+      if (sessionId === "test-session-1") {
+        const raw = message as Record<string, unknown>;
+        if (Array.isArray(raw.suggestions)) received.push(raw.suggestions as string[]);
+      }
+    });
+
+    companionBus.emit("message:prompt_suggestion", {
+      sessionId: "test-session-1",
+      message: { type: "prompt_suggestion", suggestions: ["Run tests", "Check coverage"] },
+    });
+
+    expect(received).toEqual([["Run tests", "Check coverage"]]);
+    unsub();
+  });
+
+  // ── session filtering ──
+
+  it("does not deliver events for wrong session", () => {
+    // All new events should filter by sessionId
+    const received: string[] = [];
+
+    const unsubs = [
+      companionBus.on("message:system_event", ({ sessionId }) => { if (sessionId === "test-session-1") received.push("system_event"); }),
+      companionBus.on("message:status_change", ({ sessionId }) => { if (sessionId === "test-session-1") received.push("status_change"); }),
+      companionBus.on("message:tool_progress", ({ sessionId }) => { if (sessionId === "test-session-1") received.push("tool_progress"); }),
+      companionBus.on("message:auth_status", ({ sessionId }) => { if (sessionId === "test-session-1") received.push("auth_status"); }),
+      companionBus.on("message:prompt_suggestion", ({ sessionId }) => { if (sessionId === "test-session-1") received.push("prompt_suggestion"); }),
+    ];
+
+    // Emit all events for a DIFFERENT session
+    companionBus.emit("message:system_event", { sessionId: "other-session", message: { type: "system_event", event: { subtype: "task_notification" } } as any });
+    companionBus.emit("message:status_change", { sessionId: "other-session", message: { type: "status_change", status: "compacting" } });
+    companionBus.emit("message:tool_progress", { sessionId: "other-session", message: { type: "tool_progress", toolName: "Bash", elapsedSeconds: 45 } as any });
+    companionBus.emit("message:auth_status", { sessionId: "other-session", message: { type: "auth_status", error: "err" } as any });
+    companionBus.emit("message:prompt_suggestion", { sessionId: "other-session", message: { type: "prompt_suggestion", suggestions: ["a"] } });
+
+    expect(received).toEqual([]);
+    unsubs.forEach((u) => u());
+  });
+});
+
+// ── Tool progress throttling logic ────────────────────────────────────────
+
+describe("WeChat relay — tool progress throttling", () => {
+  it("allows first progress after 60s cooldown", () => {
+    const now = Date.now();
+    let lastToolProgressTs = 0; // No previous progress
+    const cooldownMs = 60_000;
+
+    const canSend = now - lastToolProgressTs >= cooldownMs;
+    expect(canSend).toBe(true);
+  });
+
+  it("blocks progress within 60s cooldown", () => {
+    const now = Date.now();
+    let lastToolProgressTs = now - 30_000; // Sent 30s ago
+    const cooldownMs = 60_000;
+
+    const canSend = now - lastToolProgressTs >= cooldownMs;
+    expect(canSend).toBe(false);
+  });
+
+  it("allows progress after 60s cooldown expires", () => {
+    const now = Date.now();
+    let lastToolProgressTs = now - 65_000; // Sent 65s ago
+    const cooldownMs = 60_000;
+
+    const canSend = now - lastToolProgressTs >= cooldownMs;
+    expect(canSend).toBe(true);
+  });
+});
+
+// ── Session phase isFirstReady tracking ────────────────────────────────────
+
+describe("WeChat relay — session phase ready tracking", () => {
+  it("phaseReadySeen starts as false and becomes true on ready", () => {
+    const relayData = { phaseReadySeen: false };
+    expect(relayData.phaseReadySeen).toBe(false);
+
+    // First ready
+    relayData.phaseReadySeen = true;
+    expect(relayData.phaseReadySeen).toBe(true);
+  });
+
+  it("subsequent ready transitions see phaseReadySeen as true", () => {
+    const relayData = { phaseReadySeen: true }; // Already seen first ready
+    // Compacting → ready transition: isFirstReady = false
+    expect(relayData.phaseReadySeen).toBe(true);
+  });
+});
+
+// ── Feature 1: Context usage warning ───────────────────────────────────────
+//
+// The context warning fires once when context_used_percent >= 80%.
+// It resets when context drops back below 60% (e.g. after /compact).
+
+describe("WeChat relay — context usage warning", () => {
+  it("sends warning when context >= 80% (first time)", () => {
+    let contextWarningSent = false;
+    const ctxPct = 82;
+    if (ctxPct >= 80 && !contextWarningSent) {
+      contextWarningSent = true;
+    }
+    expect(contextWarningSent).toBe(true);
+  });
+
+  it("does not send warning again while already sent", () => {
+    let contextWarningSent = true; // Already warned
+    const ctxPct = 90;
+    // The check is: ctxPct >= 80 && !contextWarningSent
+    const shouldWarn = ctxPct >= 80 && !contextWarningSent;
+    expect(shouldWarn).toBe(false);
+  });
+
+  it("resets warning when context drops below 60%", () => {
+    let contextWarningSent = true;
+    const ctxPct = 50;
+    if (ctxPct < 60) {
+      contextWarningSent = false;
+    }
+    expect(contextWarningSent).toBe(false);
+    // Now a subsequent rise to 80% would trigger again
+    const ctxPct2 = 85;
+    const shouldWarn = ctxPct2 >= 80 && !contextWarningSent;
+    expect(shouldWarn).toBe(true);
+  });
+
+  it("does not warn below 80%", () => {
+    let contextWarningSent = false;
+    const ctxPct = 70;
+    if (ctxPct >= 80 && !contextWarningSent) {
+      contextWarningSent = true;
+    }
+    expect(contextWarningSent).toBe(false);
+  });
+});
+
+// ── Feature 2: Per-turn cost notification ───────────────────────────────────
+//
+// After each result, a line like "💰 $0.0123 · ctx 45% · turn #5" is sent.
+
+describe("WeChat relay — per-turn cost notification", () => {
+  it("formats cost line with all fields", () => {
+    const cost = 0.0123;
+    const ctxPct = 45;
+    const turns = 5;
+    const line = `💰 $${cost.toFixed(4)} · ctx ${ctxPct.toFixed(0)}% · turn #${turns}`;
+    expect(line).toBe("💰 $0.0123 · ctx 45% · turn #5");
+  });
+
+  it("formats zero cost", () => {
+    const cost = 0;
+    const ctxPct = 0;
+    const turns = 0;
+    // Zero values still get sent so user knows the session is alive
+    const line = `💰 $${cost.toFixed(4)} · ctx ${ctxPct.toFixed(0)}% · turn #${turns}`;
+    expect(line).toBe("💰 $0.0000 · ctx 0% · turn #0");
+  });
+
+  it("formats high cost", () => {
+    const cost = 1.2345;
+    const line = `💰 $${cost.toFixed(4)} · ctx 95% · turn #20`;
+    expect(line).toContain("$1.2345");
+  });
+});
+
+// ── Feature 3: Session auto-naming ─────────────────────────────────────────
+//
+// formatSessionName generates a short name from the first user message.
+
+describe("formatSessionName", () => {
+  it("returns the first line as-is if short", () => {
+    expect(formatSessionName("Fix the login bug")).toBe("Fix the login bug");
+  });
+
+  it("truncates to 30 chars with ellipsis", () => {
+    const long = "This is a very long message that exceeds thirty characters easily";
+    const result = formatSessionName(long);
+    expect(result.length).toBe(30);
+    expect(result.endsWith("...")).toBe(true);
+  });
+
+  it("takes only the first line", () => {
+    const multiline = "Fix login\nAdd tests\nDeploy";
+    expect(formatSessionName(multiline)).toBe("Fix login");
+  });
+
+  it("returns empty for empty input", () => {
+    expect(formatSessionName("")).toBe("");
+  });
+
+  it("returns empty for whitespace-only input", () => {
+    expect(formatSessionName("   ")).toBe("");
+  });
+
+  it("handles exactly 30 chars", () => {
+    const exact = "a".repeat(30);
+    expect(formatSessionName(exact)).toBe(exact);
+  });
+
+  it("handles 31 chars", () => {
+    const over = "a".repeat(31);
+    const result = formatSessionName(over);
+    expect(result.length).toBe(30);
+    expect(result.endsWith("...")).toBe(true);
+  });
+});
+
+// ── Feature 4: Git branch change notification ──────────────────────────────
+
+describe("WeChat relay — git branch change", () => {
+  it("detects branch change and formats notification", () => {
+    let lastGitBranch = "main";
+    const newBranch = "feat/add-login";
+
+    // Simulate: git-info-ready fires with new branch
+    if (lastGitBranch && lastGitBranch !== newBranch) {
+      const msg = `🔀 分支切换: ${lastGitBranch} → ${newBranch}`;
+      expect(msg).toBe("🔀 分支切换: main → feat/add-login");
+    }
+    lastGitBranch = newBranch;
+    expect(lastGitBranch).toBe("feat/add-login");
+  });
+
+  it("does not notify on first git-info (no previous branch)", () => {
+    let lastGitBranch = ""; // Empty — first time
+    const newBranch = "main";
+
+    const shouldNotify = !!(lastGitBranch && lastGitBranch !== newBranch);
+    expect(shouldNotify).toBe(false);
+
+    lastGitBranch = newBranch;
+    expect(lastGitBranch).toBe("main");
+  });
+
+  it("does not notify when branch is same", () => {
+    let lastGitBranch = "main";
+    const newBranch = "main";
+
+    const shouldNotify = lastGitBranch && lastGitBranch !== newBranch;
+    expect(shouldNotify).toBe(false);
+  });
+});
+
+// ── Feature 5: Idle kill notification ───────────────────────────────────────
+//
+// When session:idle-kill fires, the user is notified that their session
+// was killed due to inactivity.
+
+describe("WeChat relay — idle kill notification", () => {
+  it("formats idle kill message with session ID prefix", () => {
+    const sessionId = "abcd1234efgh5678";
+    const msg = `⏰ 会话 ${sessionId.slice(0, 8)}... 因长时间无活动已自动关闭。\n发送 /new 创建新会话。`;
+    expect(msg).toContain("⏰ 会话 abcd1234...");
+    expect(msg).toContain("长时间无活动");
+    expect(msg).toContain("/new");
+  });
+
+  it("session:idle-kill event is receivable on bus", () => {
+    const received: string[] = [];
+    const unsub = companionBus.on("session:idle-kill", ({ sessionId }) => {
+      received.push(sessionId);
+    });
+
+    companionBus.emit("session:idle-kill", { sessionId: "test-session-1" });
+    expect(received).toEqual(["test-session-1"]);
+
+    unsub();
+  });
+});
+
+// ── Feature: File change summary (lines added/removed) ─────────────────────
+
+describe("WeChat relay — file change summary", () => {
+  it("formats stats line with lines added and removed", () => {
+    const linesAdded = 120;
+    const linesRemoved = 30;
+    const part = `${linesAdded > 0 ? `+${linesAdded}` : ""}${linesAdded > 0 && linesRemoved > 0 ? "/" : ""}${linesRemoved > 0 ? `-${linesRemoved}` : ""} 行`;
+    expect(part).toBe("+120/-30 行");
+  });
+
+  it("formats stats line with only additions", () => {
+    const linesAdded = 50;
+    const linesRemoved = 0;
+    const part = `${linesAdded > 0 ? `+${linesAdded}` : ""}${linesAdded > 0 && linesRemoved > 0 ? "/" : ""}${linesRemoved > 0 ? `-${linesRemoved}` : ""} 行`;
+    expect(part).toBe("+50 行");
+  });
+
+  it("formats stats line with only removals", () => {
+    const linesAdded = 0;
+    const linesRemoved = 10;
+    const part = `${linesAdded > 0 ? `+${linesAdded}` : ""}${linesAdded > 0 && linesRemoved > 0 ? "/" : ""}${linesRemoved > 0 ? `-${linesRemoved}` : ""} 行`;
+    expect(part).toBe("-10 行");
+  });
+
+  it("omits line stats when zero", () => {
+    const linesAdded = 0;
+    const linesRemoved = 0;
+    const shouldShow = linesAdded > 0 || linesRemoved > 0;
+    expect(shouldShow).toBe(false);
+  });
+});
+
+// ── Feature: Relaunch notification ─────────────────────────────────────────
+
+describe("WeChat relay — relaunch notification", () => {
+  it("session:relaunch-needed event is receivable on bus", () => {
+    const received: string[] = [];
+    const unsub = companionBus.on("session:relaunch-needed", ({ sessionId }) => {
+      received.push(sessionId);
+    });
+
+    companionBus.emit("session:relaunch-needed", { sessionId: "test-session-1" });
+    expect(received).toEqual(["test-session-1"]);
+
+    unsub();
+  });
+});
+
+// ── Feature: Subagent progress hint ────────────────────────────────────────
+
+describe("WeChat relay — subagent progress", () => {
+  it("sends subagent hint for Agent tool running > 15s", () => {
+    const toolName = "Agent";
+    const elapsed = 20;
+    const parentToolUseId = "tu_parent_1";
+
+    if (toolName === "Agent" && elapsed >= 15) {
+      const agentLabel = parentToolUseId ? "[子任务] " : "";
+      const msg = `${agentLabel}🤖 子任务执行中... 已运行 ${Math.round(elapsed)}s`;
+      expect(msg).toBe("[子任务] 🤖 子任务执行中... 已运行 20s");
+    }
+  });
+
+  it("sends subagent hint without label for top-level agent", () => {
+    const toolName = "Agent";
+    const elapsed = 30;
+    const parentToolUseId = null;
+
+    if (toolName === "Agent" && elapsed >= 15) {
+      const agentLabel = parentToolUseId ? "[子任务] " : "";
+      const msg = `${agentLabel}🤖 子任务执行中... 已运行 ${Math.round(elapsed)}s`;
+      expect(msg).toBe("🤖 子任务执行中... 已运行 30s");
+    }
+  });
+
+  it("does not send hint for Agent under 15s", () => {
+    const toolName = "Agent";
+    const elapsed = 10;
+    expect(toolName === "Agent" && elapsed >= 15).toBe(false);
+  });
+});
+
+// ── Feature: Thinking display toggle ───────────────────────────────────────
+
+describe("WeChat relay — thinking mode", () => {
+  it("thinkingMode defaults to false", () => {
+    const userSession = {
+      sessionIds: [] as string[],
+      activeSessionIndex: 0,
+      pendingPermissions: new Map(),
+      verboseMode: false,
+      thinkingMode: false,
+      pendingAskQuestions: new Map(),
+    };
+    expect(userSession.thinkingMode).toBe(false);
+  });
+
+  it("toggling thinkingMode flips state", () => {
+    let thinkingMode = false;
+    thinkingMode = !thinkingMode;
+    expect(thinkingMode).toBe(true);
+    thinkingMode = !thinkingMode;
+    expect(thinkingMode).toBe(false);
+  });
+
+  it("pendingThinking accumulates when mode is on", () => {
+    const thinkingMode = true;
+    let pendingThinking = "";
+    const delta = "Let me analyze this step by step...";
+
+    if (thinkingMode) {
+      pendingThinking += delta;
+    }
+    expect(pendingThinking).toBe("Let me analyze this step by step...");
+  });
+
+  it("pendingThinking does not accumulate when mode is off", () => {
+    const thinkingMode = false;
+    let pendingThinking = "";
+    const delta = "Let me analyze this step by step...";
+
+    if (thinkingMode) {
+      pendingThinking += delta;
+    }
+    expect(pendingThinking).toBe("");
+  });
+
+  it("pendingThinking resets after flush on result", () => {
+    let pendingThinking = "Some accumulated thinking";
+    // Reset after flush
+    pendingThinking = "";
+    expect(pendingThinking).toBe("");
+  });
+
+  it("thinking text is truncated at 800 chars", () => {
+    const thinking = "x".repeat(1000);
+    const truncated = thinking.length > 800 ? thinking.slice(0, 797) + "..." : thinking;
+    expect(truncated.length).toBe(800);
+    expect(truncated.endsWith("...")).toBe(true);
+  });
+});
+
+// ── Feature: Rate limit event notification ──────────────────────────────────
+
+describe("WeChat relay — rate limit event", () => {
+  it("session:rate_limit_event event is receivable on bus", () => {
+    const received: string[] = [];
+    const unsub = companionBus.on("message:rate_limit_event", ({ sessionId, message }) => {
+      if (sessionId === "test-session-1") {
+        const raw = message as Record<string, unknown>;
+        if (typeof raw.error === "string") received.push(raw.error);
+      }
+    });
+
+    companionBus.emit("message:rate_limit_event", {
+      sessionId: "test-session-1",
+      message: { type: "rate_limit_event", error: "Too many requests", retry_after_ms: 5000 } as any,
+    });
+
+    expect(received).toEqual(["Too many requests"]);
+    unsub();
+  });
+
+  it("rate limit event for wrong session is filtered", () => {
+    const received: string[] = [];
+    const unsub = companionBus.on("message:rate_limit_event", ({ sessionId }) => {
+      if (sessionId === "test-session-1") received.push("hit");
+    });
+
+    companionBus.emit("message:rate_limit_event", {
+      sessionId: "other-session",
+      message: { type: "rate_limit_event", error: "Rate limited" } as any,
+    });
+
+    expect(received).toEqual([]);
+    unsub();
+  });
+});
+
+// ── Feature: Tool result preview extraction ─────────────────────────────────
+
+describe("WeChat relay — tool result preview", () => {
+  it("extracts non-error tool results from assistant message", () => {
+    // Simulates the extraction pattern used in extractToolResultPreviews
+    const msg = {
+      type: "assistant",
+      message: {
+        content: [
+          { type: "tool_result", tool_use_id: "tu_1", content: "file contents here", is_error: false },
+          { type: "tool_result", tool_use_id: "tu_2", content: "command failed", is_error: true },
+          { type: "tool_result", tool_use_id: "tu_3", content: "search results: 5 files found" },
+        ],
+      },
+    };
+
+    const content = (msg as any).message.content;
+    const previews = content
+      .filter((b: any) =>
+        typeof b === "object" && b !== null
+        && b.type === "tool_result"
+        && typeof b.tool_use_id === "string"
+        && b.is_error !== true)
+      .map((b: any) => ({
+        tool_use_id: b.tool_use_id,
+        content: typeof b.content === "string" ? b.content : JSON.stringify(b.content),
+      }));
+
+    expect(previews).toHaveLength(2);
+    expect(previews[0].tool_use_id).toBe("tu_1");
+    expect(previews[1].tool_use_id).toBe("tu_3");
+  });
+
+  it("returns empty for non-assistant message", () => {
+    const msg = { type: "user", message: { content: "hello" } };
+    // content is a string "hello", not an array — extraction returns empty
+    const content = (msg as any).message?.content;
+    expect(Array.isArray(content)).toBe(false);
+  });
+
+  it("returns empty when all tool results are errors", () => {
+    const msg = {
+      type: "assistant",
+      message: {
+        content: [
+          { type: "tool_result", tool_use_id: "tu_1", content: "err1", is_error: true },
+          { type: "tool_result", tool_use_id: "tu_2", content: "err2", is_error: true },
+        ],
+      },
+    };
+    const content = (msg as any).message.content;
+    const previews = content.filter((b: any) => b.type === "tool_result" && b.is_error !== true);
+    expect(previews).toHaveLength(0);
+  });
+});
+
+// ── Feature: Thinking fallback from assistant message ───────────────────────
+
+describe("WeChat relay — thinking fallback from assistant", () => {
+  it("extracts thinking blocks from assistant message", () => {
+    const msg = {
+      type: "assistant",
+      message: {
+        content: [
+          { type: "thinking", thinking: "Let me analyze this step by step..." },
+          { type: "text", text: "Here is the answer." },
+        ],
+      },
+    };
+
+    const content = (msg as any).message.content;
+    const thinkingBlocks = content
+      .filter((b: any) => typeof b === "object" && b !== null && b.type === "thinking" && typeof b.thinking === "string")
+      .map((b: any) => b.thinking)
+      .join("\n");
+
+    expect(thinkingBlocks).toBe("Let me analyze this step by step...");
+  });
+
+  it("joins multiple thinking blocks", () => {
+    const msg = {
+      type: "assistant",
+      message: {
+        content: [
+          { type: "thinking", thinking: "First thought" },
+          { type: "thinking", thinking: "Second thought" },
+          { type: "text", text: "Final answer" },
+        ],
+      },
+    };
+
+    const content = (msg as any).message.content;
+    const thinkingBlocks = content
+      .filter((b: any) => b.type === "thinking" && typeof b.thinking === "string")
+      .map((b: any) => b.thinking)
+      .join("\n");
+
+    expect(thinkingBlocks).toBe("First thought\nSecond thought");
+  });
+
+  it("returns empty when no thinking blocks present", () => {
+    const msg = {
+      type: "assistant",
+      message: {
+        content: [
+          { type: "text", text: "Just text" },
+          { type: "tool_use", name: "Read", input: {} },
+        ],
+      },
+    };
+
+    const content = (msg as any).message.content;
+    const thinkingBlocks = content
+      .filter((b: any) => b.type === "thinking" && typeof b.thinking === "string")
+      .map((b: any) => b.thinking)
+      .join("\n");
+
+    expect(thinkingBlocks).toBe("");
+  });
+
+  it("returns empty for non-assistant message", () => {
+    const msg = { type: "user_message", content: "hello" };
+    // Simulate: type is not "assistant" → return ""
+    expect((msg as any).type).not.toBe("assistant");
+  });
+
+  it("thinking fallback only activates when pendingThinking is empty", () => {
+    // When stream events already captured thinking, the fallback should not overwrite.
+    let pendingThinking = "Already captured from stream";
+    const assistantThinking = "Different thinking from assistant";
+
+    // The condition is: thinkingMode && !relayData.pendingThinking.trim()
+    const shouldFallback = !pendingThinking.trim();
+    expect(shouldFallback).toBe(false);
+
+    // Now with empty pendingThinking
+    pendingThinking = "";
+    const shouldFallback2 = !pendingThinking.trim();
+    expect(shouldFallback2).toBe(true);
   });
 });

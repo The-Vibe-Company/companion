@@ -85,4 +85,48 @@ export interface CompanionEventMap {
     sessionId: string;
     message: BrowserIncomingMessage;
   };
+
+  /** System event from CLI (task_notification, files_persisted, hook events, etc.). */
+  "message:system_event": {
+    sessionId: string;
+    message: BrowserIncomingMessage;
+  };
+
+  /** Status change from CLI (compacting, idle, running). */
+  "message:status_change": {
+    sessionId: string;
+    message: BrowserIncomingMessage;
+  };
+
+  /** Tool progress update with elapsed time. */
+  "message:tool_progress": {
+    sessionId: string;
+    message: BrowserIncomingMessage;
+  };
+
+  /** Authentication status from CLI. */
+  "message:auth_status": {
+    sessionId: string;
+    message: BrowserIncomingMessage;
+  };
+
+  /** Prompt suggestions for the next turn. */
+  "message:prompt_suggestion": {
+    sessionId: string;
+    message: BrowserIncomingMessage;
+  };
+
+  /** AI validation auto-resolved a permission request. */
+  "session:permission-auto-resolved": {
+    sessionId: string;
+    request: PermissionRequest;
+    behavior: "allow" | "deny";
+    reason: string;
+  };
+
+  /** Rate limit event from CLI API. */
+  "message:rate_limit_event": {
+    sessionId: string;
+    message: BrowserIncomingMessage;
+  };
 }

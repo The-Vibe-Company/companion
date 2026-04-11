@@ -478,6 +478,7 @@ export class WsBridge {
           });
         }
         this.persistSession(session);
+        companionBus.emit("message:status_change", { sessionId: session.id, message: msg });
       }
 
       if (msg.type === "user_message") {
@@ -611,6 +612,27 @@ export class WsBridge {
           this.appendHistory(session, msg);
           this.persistSession(session);
         }
+        companionBus.emit("message:system_event", { sessionId: session.id, message: msg });
+      }
+
+      // -- tool_progress: emit to bus for integrations ---------------------
+      if (msg.type === "tool_progress") {
+        companionBus.emit("message:tool_progress", { sessionId: session.id, message: msg });
+      }
+
+      // -- auth_status: emit to bus for integrations -----------------------
+      if (msg.type === "auth_status") {
+        companionBus.emit("message:auth_status", { sessionId: session.id, message: msg });
+      }
+
+      // -- prompt_suggestion: emit to bus for integrations -----------------
+      if (msg.type === "prompt_suggestion") {
+        companionBus.emit("message:prompt_suggestion", { sessionId: session.id, message: msg });
+      }
+
+      // -- rate_limit_event: emit to bus for integrations ------------------
+      if (msg.type === "rate_limit_event") {
+        companionBus.emit("message:rate_limit_event", { sessionId: session.id, message: msg });
       }
 
       // Broadcast all messages to browsers
@@ -730,6 +752,12 @@ export class WsBridge {
         behavior: "allow",
         reason: result.reason,
       });
+      companionBus.emit("session:permission-auto-resolved", {
+        sessionId: session.id,
+        request: perm,
+        behavior: "allow",
+        reason: result.reason,
+      });
       adapter.send({
         type: "permission_response",
         request_id: perm.request_id,
@@ -744,6 +772,12 @@ export class WsBridge {
       metricsCollector.recordPermissionResolved(perm.request_id, "deny", true);
       this.broadcastToBrowsers(session, {
         type: "permission_auto_resolved",
+        request: perm,
+        behavior: "deny",
+        reason: result.reason,
+      });
+      companionBus.emit("session:permission-auto-resolved", {
+        sessionId: session.id,
         request: perm,
         behavior: "deny",
         reason: result.reason,

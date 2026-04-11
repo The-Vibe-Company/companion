@@ -360,7 +360,8 @@ export type BrowserIncomingMessageBase =
   | { type: "session_phase"; phase: SessionPhase; previousPhase: SessionPhase }
   | { type: "prompt_suggestion"; suggestions: string[] }
   | { type: "streamlined_text"; text: string }
-  | { type: "streamlined_tool_use_summary"; tool_summary: string };
+  | { type: "streamlined_tool_use_summary"; tool_summary: string }
+  | { type: "rate_limit_event"; error?: string; retry_after_ms?: number };
 
 export type BrowserIncomingMessage = BrowserIncomingMessageBase & { seq?: number };
 

@@ -12,7 +12,7 @@ import { join, resolve, isAbsolute } from "node:path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { COMPANION_HOME } from "./paths.js";
 import QRCode from "qrcode";
-import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary, formatToolCallFailure, formatAskUserQuestion } from "./wechat-formatter.js";
+import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary, formatToolCallFailure, formatAskUserQuestion, formatSystemEvent, formatStatusChange, formatAuthStatus, formatToolProgress, formatPermissionAutoResolved, formatSessionPhase, formatPromptSuggestions, formatRateLimitEvent, formatToolResultPreview } from "./wechat-formatter.js";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -28,6 +28,7 @@ interface WeChatUserSession {
     createdAt: number;
   }>;
   verboseMode: boolean;
+  thinkingMode: boolean;
   pendingAskQuestions: Map<string, {
     requestId: string;
     sessionId: string;
@@ -42,6 +43,7 @@ interface PersistedMapping {
   sessionIds: string[];
   activeSessionIndex: number;
   verboseMode?: boolean;
+  thinkingMode?: boolean;
 }
 
 type ParsedCommand =
@@ -76,12 +78,22 @@ const HELP_TEXT = `Companion WeChat Bot Commands:
 /status — Show session status
 /dir [path] — List folders in default directory
 /verbose — Toggle tool notification mode (batch/verbose)
+/thinking — Toggle extended thinking display
 /help — Show this help
 
 Other /commands (e.g. /compact, /clear) are forwarded to Claude Code.
 Plain text is also sent to the active session.`;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+/** Generate a short session name from the first user message. */
+export function formatSessionName(firstMessage: string): string {
+  if (!firstMessage?.trim()) return "";
+  // Take first line, truncate to 30 chars
+  const firstLine = firstMessage.split("\n")[0]!.trim();
+  if (firstLine.length <= 30) return firstLine;
+  return firstLine.slice(0, 27) + "...";
+}
 
 /** Parse an incoming WeChat text into command or plain message. */
 export function parseCommand(text: string): ParsedCommand {
@@ -202,6 +214,43 @@ export function extractToolResults(msg: BrowserIncomingMessage): Array<{ tool_us
     }));
 }
 
+/** Extract non-error tool_result previews from assistant message content. */
+function extractToolResultPreviews(msg: BrowserIncomingMessage): Array<{ tool_use_id: string; content: string }> {
+  if (msg.type !== "assistant") return [];
+  const raw = msg as Record<string, unknown>;
+  const message = raw.message;
+  if (!message || typeof message !== "object") return [];
+  const content = (message as Record<string, unknown>).content;
+  if (!Array.isArray(content)) return [];
+  return content
+    .filter((b): b is { type: string; tool_use_id: string; content: unknown; is_error?: boolean } =>
+      typeof b === "object" && b !== null
+      && (b as Record<string, unknown>).type === "tool_result"
+      && typeof (b as Record<string, unknown>).tool_use_id === "string"
+      && (b as Record<string, unknown>).is_error !== true)
+    .map((b) => ({
+      tool_use_id: b.tool_use_id,
+      content: typeof b.content === "string" ? b.content : JSON.stringify(b.content),
+    }));
+}
+
+/** Extract thinking content blocks from assistant message (fallback when stream missed them). */
+function extractThinkingFromAssistant(msg: BrowserIncomingMessage): string {
+  if (msg.type !== "assistant") return "";
+  const raw = msg as Record<string, unknown>;
+  const message = raw.message;
+  if (!message || typeof message !== "object") return "";
+  const content = (message as Record<string, unknown>).content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .filter((b): b is { type: string; thinking: string } =>
+      typeof b === "object" && b !== null
+      && (b as Record<string, unknown>).type === "thinking"
+      && typeof (b as Record<string, unknown>).thinking === "string")
+    .map((b) => b.thinking)
+    .join("\n");
+}
+
 // ── WeChatBridge Class ─────────────────────────────────────────────────────
 
 export class WeChatBridge {
@@ -225,6 +274,11 @@ export class WeChatBridge {
     progressSent: boolean;
     toolNotifyBuffer: string[];
     toolNotifyTimer: ReturnType<typeof setTimeout> | null;
+    phaseReadySeen: boolean;
+    lastToolProgressTs: number;
+    lastGitBranch: string;
+    contextWarningSent: boolean;
+    pendingThinking: string;
   }>();
   private userIdBySession = new Map<string, string>();
   // QR code data for web UI display
@@ -561,6 +615,9 @@ export class WeChatBridge {
       case "verbose":
         await this.cmdVerbose(userId);
         break;
+      case "thinking":
+        await this.cmdThinking(userId);
+        break;
       case "help":
         await this.sendReply(userId, HELP_TEXT);
         break;
@@ -766,6 +823,7 @@ export class WeChatBridge {
       `Branch: ${state.git_branch || "none"}`,
       `Pending permissions: ${pendingPerms}`,
       `工具通知: ${(userSession?.verboseMode ?? false) ? "逐条" : "批量"}`,
+      `思考显示: ${(userSession?.thinkingMode ?? false) ? "开启" : "关闭"}`,
     ];
     await this.sendReply(userId, lines.join("\n"));
   }
@@ -820,6 +878,17 @@ export class WeChatBridge {
     }
   }
 
+  private async cmdThinking(userId: string): Promise<void> {
+    const userSession = this.getOrCreateUserSession(userId);
+    userSession.thinkingMode = !userSession.thinkingMode;
+    this.persistSessionMappings();
+    if (userSession.thinkingMode) {
+      await this.sendReply(userId, "🧠 思考显示已开启 — 将展示 AI 的推理过程");
+    } else {
+      await this.sendReply(userId, "🧠 思考显示已关闭");
+    }
+  }
+
   /** Recursively list directory contents up to maxDepth levels. */
   private listDirectory(dir: string, recursive: boolean, depth: number, maxDepth: number): string[] {
     if (depth > maxDepth) return [`  ${"│ ".repeat(depth)}... (max depth reached)`];
@@ -859,27 +928,56 @@ export class WeChatBridge {
     if (this.sessionCleanups.has(sessionId)) return;
 
     const cleanups: Array<() => void> = [];
-    this.sessionRelayData.set(sessionId, { pendingText: "", lastTypingTs: 0, streamlinedSent: false, contentSent: false, lastBlockIndex: -1, toolAccumulator: [], lastUserFacingMessageTs: Date.now(), progressSent: false, toolNotifyBuffer: [], toolNotifyTimer: null });
+    this.sessionRelayData.set(sessionId, { pendingText: "", lastTypingTs: 0, streamlinedSent: false, contentSent: false, lastBlockIndex: -1, toolAccumulator: [], lastUserFacingMessageTs: Date.now(), progressSent: false, toolNotifyBuffer: [], toolNotifyTimer: null, phaseReadySeen: false, lastToolProgressTs: 0, lastGitBranch: "", contextWarningSent: false, pendingThinking: "" });
 
-    // Stream events — accumulate text
+    // Stream events — accumulate text + thinking
     const unsubStream = companionBus.on("message:stream_event", ({ sessionId: sid, message }) => {
       if (sid !== sessionId) return;
-      const delta = extractTextDeltaFromStreamEvent(message);
-      if (!delta) return;
       const relayData = this.sessionRelayData.get(sessionId);
-      if (relayData) {
-        // Add separator when content block index changes (multi-step agent loop)
-        const event = (message as Record<string, unknown>).event as Record<string, unknown> | undefined;
-        const blockIndex = typeof event?.index === "number" ? event.index : -1;
+      if (!relayData) return;
+
+      const event = (message as Record<string, unknown>).event as Record<string, unknown> | undefined;
+      if (!event || event.type !== "content_block_delta") return;
+
+      const delta = event.delta as Record<string, unknown> | undefined;
+      if (!delta) return;
+
+      const blockIndex = typeof event.index === "number" ? event.index : -1;
+
+      // Handle thinking deltas
+      if (delta.type === "thinking_delta" && typeof delta.thinking === "string") {
+        const userSession = this.userSessions.get(userId);
+        if (userSession?.thinkingMode) {
+          relayData.pendingThinking += delta.thinking;
+        }
+        // Still throttle typing indicator for thinking
+        const now = Date.now();
+        if (now - relayData.lastTypingTs > 5000) {
+          relayData.lastTypingTs = now;
+          this.sendTyping(userId).catch(() => {});
+        }
+        return;
+      }
+
+      // Handle text deltas
+      if (delta.type === "text_delta" && typeof delta.text === "string") {
+        // Flush accumulated thinking before text content
+        if (relayData.pendingThinking) {
+          const thinkingText = relayData.pendingThinking.trim();
+          if (thinkingText) {
+            this.sendReply(userId, `🧠 思考:\n${formatMarkdown(thinkingText.length > 800 ? thinkingText.slice(0, 797) + "..." : thinkingText)}`);
+          }
+          relayData.pendingThinking = "";
+        }
+        // Add separator when content block index changes
         if (relayData.lastBlockIndex >= 0 && blockIndex >= 0 && blockIndex !== relayData.lastBlockIndex && relayData.pendingText.length > 0) {
           relayData.pendingText += "\n\n";
         }
         if (blockIndex >= 0) {
           relayData.lastBlockIndex = blockIndex;
         }
-        relayData.pendingText += delta;
+        relayData.pendingText += delta.text;
         relayData.contentSent = true;
-        // Throttle typing indicator to every 5 seconds
         const now = Date.now();
         if (now - relayData.lastTypingTs > 5000) {
           relayData.lastTypingTs = now;
@@ -925,8 +1023,20 @@ export class WeChatBridge {
       const parentToolUseId = raw.parent_tool_use_id as string | undefined;
       const agentPrefix = parentToolUseId ? "[子任务] " : "";
 
-      // Fallback: if stream events didn't capture text, use assistant message text instead
       const relayData = this.sessionRelayData.get(sessionId);
+      const userSession = this.userSessions.get(userId);
+
+      // Thinking fallback: extract thinking blocks when stream events missed them
+      if (relayData && userSession?.thinkingMode && !relayData.pendingThinking.trim()) {
+        const thinkingText = extractThinkingFromAssistant(message);
+        if (thinkingText.trim()) {
+          relayData.pendingThinking = thinkingText.trim();
+          this.sendReply(userId, `🧠 思考:\n${formatMarkdown(thinkingText.length > 800 ? thinkingText.slice(0, 797) + "..." : thinkingText)}`);
+          relayData.pendingThinking = ""; // clear after sending
+        }
+      }
+
+      // Fallback: if stream events didn't capture text, use assistant message text instead
       if (relayData && !relayData.pendingText.trim()) {
         const assistantText = extractTextFromAssistant(message);
         if (assistantText.trim()) {
@@ -937,7 +1047,6 @@ export class WeChatBridge {
       // Extract and route tool calls to user notifications
       const tools = extractToolUses(message);
       if (tools.length > 0) {
-        const userSession = this.userSessions.get(userId);
         const verboseMode = userSession?.verboseMode ?? false;
         for (const t of tools) {
           // Parse input safely for accumulator and display
@@ -973,6 +1082,23 @@ export class WeChatBridge {
           this.sendReply(userId, formatToolCallFailure(toolName, result.content));
         }
       }
+
+      // Tool result previews: show brief non-error tool results in verbose mode
+      if (userSession?.verboseMode && relayData) {
+        const previews = extractToolResultPreviews(message);
+        for (const preview of previews) {
+          if (!preview.content.trim()) continue;
+          const match = relayData.toolAccumulator.find(t => t.toolUseId === preview.tool_use_id);
+          const toolName = match?.name ?? "unknown";
+          // Only show previews for interesting tools (skip Read, Glob, Grep results — too verbose)
+          if (!SAFE_TOOLS.has(toolName)) {
+            const formatted = formatToolResultPreview(toolName, preview.content);
+            if (formatted) {
+              this.sendReply(userId, `${agentPrefix}${formatted}`);
+            }
+          }
+        }
+      }
     });
     cleanups.push(unsubAssistant);
 
@@ -985,10 +1111,21 @@ export class WeChatBridge {
       const hadContent = relayData?.contentSent ?? false;
       // Reset all tracking state for this turn
       if (relayData) {
+        // Flush any remaining thinking before reset
+        if (relayData.pendingThinking) {
+          const userSession = this.userSessions.get(userId);
+          if (userSession?.thinkingMode) {
+            const thinkingText = relayData.pendingThinking.trim();
+            if (thinkingText) {
+              this.sendReply(userId, `🧠 思考:\n${formatMarkdown(thinkingText.length > 800 ? thinkingText.slice(0, 797) + "..." : thinkingText)}`);
+            }
+          }
+        }
         relayData.pendingText = "";
         relayData.streamlinedSent = false;
         relayData.contentSent = false;
         relayData.lastBlockIndex = -1;
+        relayData.pendingThinking = "";
       }
 
       const result = message as Record<string, unknown>;
@@ -1020,11 +1157,42 @@ export class WeChatBridge {
         }
       }
 
+      // Per-turn cost & context notification (feature 2)
+      // Context usage warning when >80% (feature 1)
+      // File change summary (feature: lines added/removed)
+      const session = this.wsBridge.getSession(sessionId);
+      if (session && !data?.is_error) {
+        const cost = session.state.total_cost_usd ?? 0;
+        const ctxPct = session.state.context_used_percent ?? 0;
+        const turns = session.state.num_turns ?? 0;
+        const linesAdded = session.state.total_lines_added ?? 0;
+        const linesRemoved = session.state.total_lines_removed ?? 0;
+        const statsParts: string[] = [];
+        statsParts.push(`$${cost.toFixed(4)}`);
+        statsParts.push(`ctx ${ctxPct.toFixed(0)}%`);
+        statsParts.push(`turn #${turns}`);
+        if (linesAdded > 0 || linesRemoved > 0) {
+          statsParts.push(`${linesAdded > 0 ? `+${linesAdded}` : ""}${linesAdded > 0 && linesRemoved > 0 ? "/" : ""}${linesRemoved > 0 ? `-${linesRemoved}` : ""} 行`);
+        }
+        if (cost > 0 || ctxPct > 0) {
+          this.sendReply(userId, `💰 ${statsParts.join(" · ")}`);
+        }
+        // Context warning: notify once when crossing 80%
+        if (relayData && ctxPct >= 80 && !relayData.contextWarningSent) {
+          relayData.contextWarningSent = true;
+          this.sendReply(userId, `⚠️ 上下文使用已达 ${ctxPct.toFixed(0)}%，建议发送 /compact 压缩或 /new 开新会话`);
+        }
+        if (relayData && ctxPct < 60) {
+          relayData.contextWarningSent = false;
+        }
+      }
+
       // Reset tool accumulator and timestamp for next turn
       if (relayData) {
         relayData.toolAccumulator = [];
         relayData.lastUserFacingMessageTs = Date.now();
         relayData.progressSent = false;
+        relayData.lastToolProgressTs = 0;
       }
     });
     cleanups.push(unsubResult);
@@ -1060,6 +1228,161 @@ export class WeChatBridge {
       this.sendReply(userId, `Session ${sessionId.slice(0, 8)}... exited.`);
     });
     cleanups.push(unsubExited);
+
+    // ── NEW: system_event (task_notification, files_persisted, hook events) ──
+    const unsubSystemEvent = companionBus.on("message:system_event", ({ sessionId: sid, message }) => {
+      if (sid !== sessionId) return;
+      const raw = message as Record<string, unknown>;
+      const event = raw.event as Record<string, unknown> | undefined;
+      if (!event) return;
+      const formatted = formatSystemEvent(event as { subtype: string; [key: string]: unknown });
+      if (formatted) {
+        this.sendReply(userId, formatted);
+      }
+    });
+    cleanups.push(unsubSystemEvent);
+
+    // ── NEW: status_change (compacting) ──
+    const unsubStatusChange = companionBus.on("message:status_change", ({ sessionId: sid, message }) => {
+      if (sid !== sessionId) return;
+      const raw = message as Record<string, unknown>;
+      const status = typeof raw.status === "string" ? raw.status : "";
+      const formatted = formatStatusChange(status);
+      if (formatted) {
+        this.sendReply(userId, formatted);
+      }
+    });
+    cleanups.push(unsubStatusChange);
+
+    // ── NEW: tool_progress (long-running tool notifications, throttled) ──
+    const unsubToolProgress = companionBus.on("message:tool_progress", ({ sessionId: sid, message }) => {
+      if (sid !== sessionId) return;
+      const raw = message as Record<string, unknown>;
+      const relayData = this.sessionRelayData.get(sessionId);
+      if (!relayData) return;
+
+      // Throttle: at most one progress notification per 60s per session
+      const now = Date.now();
+      if (now - relayData.lastToolProgressTs < 60_000) return;
+
+      const toolName = typeof raw.tool_name === "string" ? raw.tool_name : "";
+      const toolUseId = typeof raw.tool_use_id === "string" ? raw.tool_use_id : "";
+      const elapsed = typeof raw.elapsed_time_seconds === "number" ? raw.elapsed_time_seconds : 0;
+      const parentToolUseId = raw.parent_tool_use_id as string | null | undefined;
+
+      // Subagent-specific progress hint
+      if (toolName === "Agent" && elapsed >= 15) {
+        const agentLabel = parentToolUseId ? "[子任务] " : "";
+        relayData.lastToolProgressTs = now;
+        this.sendReply(userId, `${agentLabel}🤖 子任务执行中... 已运行 ${Math.round(elapsed)}s`);
+        return;
+      }
+
+      const formatted = formatToolProgress(toolName, toolUseId, elapsed);
+      if (formatted) {
+        relayData.lastToolProgressTs = now;
+        this.sendReply(userId, formatted);
+      }
+    });
+    cleanups.push(unsubToolProgress);
+
+    // ── NEW: auth_status ──
+    const unsubAuthStatus = companionBus.on("message:auth_status", ({ sessionId: sid, message }) => {
+      if (sid !== sessionId) return;
+      const formatted = formatAuthStatus(message as Record<string, unknown>);
+      if (formatted) {
+        this.sendReply(userId, formatted);
+      }
+    });
+    cleanups.push(unsubAuthStatus);
+
+    // ── NEW: permission_auto_resolved (AI validation) ──
+    // Note: AI validation is skipped for WeChat sessions, but this event
+    // can still fire if the setting is changed mid-session. Handle defensively.
+    const unsubPermAuto = companionBus.on("session:permission-auto-resolved", ({ sessionId: sid, request, behavior, reason }) => {
+      if (sid !== sessionId) return;
+      const formatted = formatPermissionAutoResolved(request.tool_name, request.input, behavior, reason);
+      if (formatted) {
+        const agentLabel = request.agent_id ? "[子任务] " : "";
+        this.sendReply(userId, `${agentLabel}${formatted}`);
+      }
+    });
+    cleanups.push(unsubPermAuto);
+
+    // ── NEW: session_phase (phase transitions) ──
+    const unsubPhase = companionBus.on("session:phase-changed", ({ sessionId: sid, from, to }) => {
+      if (sid !== sessionId) return;
+      const relayData = this.sessionRelayData.get(sessionId);
+      const isFirstReady = !relayData?.phaseReadySeen;
+      const formatted = formatSessionPhase(from, to, isFirstReady);
+      if (formatted) {
+        this.sendReply(userId, formatted);
+      }
+      if (to === "ready" && relayData) {
+        relayData.phaseReadySeen = true;
+      }
+    });
+    cleanups.push(unsubPhase);
+
+    // ── NEW: prompt_suggestion (next-turn suggestions) ──
+    const unsubPromptSuggestion = companionBus.on("message:prompt_suggestion", ({ sessionId: sid, message }) => {
+      if (sid !== sessionId) return;
+      const raw = message as Record<string, unknown>;
+      const suggestions = Array.isArray(raw.suggestions) ? raw.suggestions as string[] : [];
+      const formatted = formatPromptSuggestions(suggestions);
+      if (formatted) {
+        this.sendReply(userId, formatted);
+      }
+    });
+    cleanups.push(unsubPromptSuggestion);
+
+    // ── NEW: session auto-naming from first user message ──
+    const unsubFirstTurn = companionBus.on("session:first-turn-completed", ({ sessionId: sid, firstUserMessage }) => {
+      if (sid !== sessionId) return;
+      const name = formatSessionName(firstUserMessage);
+      if (name) {
+        this.sendReply(userId, `📝 会话已命名: ${name}`);
+      }
+    });
+    cleanups.push(unsubFirstTurn);
+
+    // ── NEW: git branch change notification ──
+    const unsubGitInfo = companionBus.on("session:git-info-ready", ({ sessionId: sid, branch }) => {
+      if (sid !== sessionId) return;
+      const relayData = this.sessionRelayData.get(sessionId);
+      if (!relayData) return;
+      if (relayData.lastGitBranch && relayData.lastGitBranch !== branch) {
+        this.sendReply(userId, `🔀 分支切换: ${relayData.lastGitBranch} → ${branch}`);
+      }
+      relayData.lastGitBranch = branch;
+    });
+    cleanups.push(unsubGitInfo);
+
+    // ── NEW: idle kill notification ──
+    const unsubIdleKill = companionBus.on("session:idle-kill", ({ sessionId: sid }) => {
+      if (sid !== sessionId) return;
+      this.cleanupRelay(sessionId);
+      this.removeSessionFromUser(userId, sessionId);
+      this.sendReply(userId, `⏰ 会话 ${sessionId.slice(0, 8)}... 因长时间无活动已自动关闭。\n发送 /new 创建新会话。`);
+    });
+    cleanups.push(unsubIdleKill);
+
+    // ── NEW: relaunch notification (CLI reconnection) ──
+    const unsubRelaunch = companionBus.on("session:relaunch-needed", ({ sessionId: sid }) => {
+      if (sid !== sessionId) return;
+      this.sendReply(userId, "🔄 会话正在重新连接...");
+    });
+    cleanups.push(unsubRelaunch);
+
+    // ── NEW: rate_limit_event ──
+    const unsubRateLimit = companionBus.on("message:rate_limit_event", ({ sessionId: sid, message }) => {
+      if (sid !== sessionId) return;
+      const formatted = formatRateLimitEvent(message as Record<string, unknown>);
+      if (formatted) {
+        this.sendReply(userId, formatted);
+      }
+    });
+    cleanups.push(unsubRateLimit);
 
     this.sessionCleanups.set(sessionId, cleanups);
   }
@@ -1165,6 +1488,7 @@ export class WeChatBridge {
         activeSessionIndex: 0,
         pendingPermissions: new Map(),
         verboseMode: false,
+        thinkingMode: false,
         pendingAskQuestions: new Map(),
       };
       this.userSessions.set(userId, userSession);
@@ -1217,6 +1541,7 @@ export class WeChatBridge {
           activeSessionIndex: mapping.activeSessionIndex,
           pendingPermissions: new Map(),
           verboseMode: mapping.verboseMode ?? false,
+          thinkingMode: mapping.thinkingMode ?? false,
           pendingAskQuestions: new Map(),
         });
         for (const sid of mapping.sessionIds) {
@@ -1237,6 +1562,7 @@ export class WeChatBridge {
           sessionIds: userSession.sessionIds,
           activeSessionIndex: userSession.activeSessionIndex,
           verboseMode: userSession.verboseMode,
+          thinkingMode: userSession.thinkingMode,
         };
       }
       mkdirSync(COMPANION_HOME, { recursive: true });
