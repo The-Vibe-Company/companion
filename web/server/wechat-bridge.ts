@@ -79,6 +79,7 @@ const HELP_TEXT = `Companion WeChat Bot Commands:
 /dir [path] — 浏览目录 / List folders in default directory
 /verbose — 切换工具通知模式(批量/详细) / Toggle tool notification mode
 /thinking — 切换思考过程显示 / Toggle extended thinking display
+/clear — 清除上下文并创建新会话 / Clear context and start fresh session
 /help — 显示此帮助 / Show this help
 
 其他 /命令（如 /compact、/clear）会转发给 Claude Code。
@@ -621,6 +622,9 @@ export class WeChatBridge {
       case "help":
         await this.sendReply(userId, HELP_TEXT);
         break;
+      case "clear":
+        await this.cmdClear(userId);
+        break;
       default:
         // Forward unknown /commands to the active Claude Code session
         // (e.g. /compact, /clear, /help from Claude Code itself)
@@ -749,6 +753,50 @@ export class WeChatBridge {
       ? `Session killed. Switched to session #${userSession.activeSessionIndex + 1}.`
       : "Session killed. No more sessions.";
     await this.sendReply(userId, msg);
+  }
+
+  /** Clear context: kill current session and create a fresh one with the same cwd. */
+  private async cmdClear(userId: string): Promise<void> {
+    const userSession = this.userSessions.get(userId);
+    if (!userSession || userSession.sessionIds.length === 0) {
+      await this.sendReply(userId, "No active session. Send /new to create one.");
+      return;
+    }
+
+    const oldSessionId = userSession.sessionIds[userSession.activeSessionIndex];
+    const oldSession = this.wsBridge.getSession(oldSessionId);
+    const cwd = oldSession?.state?.cwd;
+
+    // Kill old session
+    await this.orchestrator.killSession(oldSessionId);
+    this.removeSessionFromUser(userId, oldSessionId);
+
+    // Create new session with same cwd
+    const settings = getSettings();
+    const result: CreateSessionResult = await this.orchestrator.createSession({
+      permissionMode: settings.wechatDefaultPermissionMode || "acceptEdits",
+      ...(cwd ? { cwd } : {}),
+    });
+
+    if (!result.ok) {
+      await this.sendReply(userId, `Failed to create new session: ${result.error}`);
+      return;
+    }
+
+    const newSessionId = result.session.sessionId;
+    userSession.sessionIds.push(newSessionId);
+    userSession.activeSessionIndex = userSession.sessionIds.length - 1;
+    this.userIdBySession.set(newSessionId, userId);
+
+    const newSession = this.wsBridge.getSession(newSessionId);
+    if (newSession) {
+      newSession.state.wechatUserId = userId;
+    }
+
+    this.persistSessionMappings();
+    this.ensureRelay(newSessionId, userId);
+
+    await this.sendReply(userId, `🧹 上下文已清除，新会话已创建。\nSession: ${newSessionId.slice(0, 8)}... | CWD: ${cwd || "default"}`);
   }
 
   private async cmdSetModel(userId: string, args: string): Promise<void> {
