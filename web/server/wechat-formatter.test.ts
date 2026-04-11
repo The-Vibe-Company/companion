@@ -1,7 +1,7 @@
 // Tests for wechat-formatter.ts — tool call display, permission formatting,
 // Markdown conversion, WeChat message splitting, and turn-level tool summaries.
 import { describe, it, expect } from "vitest";
-import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary, formatToolCallFailure, formatAskUserQuestion } from "./wechat-formatter.js";
+import { formatToolCall, formatPermissionRequest, formatMarkdown, splitForWeChat, formatToolSummary, formatToolCallFailure, formatAskUserQuestion, formatSystemEvent, formatStatusChange, formatAuthStatus, formatToolProgress, formatPermissionAutoResolved, formatSessionPhase, formatPromptSuggestions, formatRateLimitEvent, formatToolResultPreview } from "./wechat-formatter.js";
 
 // ── formatToolCall ─────────────────────────────────────────────────────────
 
@@ -76,11 +76,11 @@ describe("formatToolCall", () => {
     expect(result).toBe("🔧 执行: ");
   });
 
-  // MCP tools (e.g. mcp__context7__resolve-library-id) are not in the known-tool
-  // map, so they fall through to the generic JSON.stringify formatter.
-  it("handles MCP tools generically", () => {
+  // MCP tools (e.g. mcp__context7__resolve-library-id) now have dedicated formatting
+  // instead of falling through to the generic JSON.stringify formatter.
+  it("handles MCP context7 resolve with dedicated format", () => {
     const result = formatToolCall("mcp__context7__resolve-library-id", { query: "react" });
-    expect(result).toContain("mcp__context7__resolve-library-id");
+    expect(result).toContain("📚 查找库: react");
   });
 
   // Regression: extractToolUses used to truncate JSON.stringify(input) to 200 chars,
@@ -507,5 +507,380 @@ describe("formatAskUserQuestion", () => {
     };
     const result = formatAskUserQuestion(input);
     expect(result).toMatch(/\d+\.\s+其他/);
+  });
+});
+
+// ── formatSystemEvent ───────────────────────────────────────────────────────
+
+// formatSystemEvent converts CLI system events to WeChat-friendly messages.
+// Only task_notification, files_persisted, hook_started, and hook_response
+// produce visible output. hook_progress and compact_boundary are suppressed.
+describe("formatSystemEvent", () => {
+  it("formats task_notification with success (exit code 0)", () => {
+    const result = formatSystemEvent({ subtype: "task_notification", processName: "npm test", exitCode: 0 });
+    expect(result).toBe("🔔 后台任务完成: npm test");
+  });
+
+  it("formats task_notification with success (no exit code)", () => {
+    const result = formatSystemEvent({ subtype: "task_notification", processName: "npm test" });
+    expect(result).toBe("🔔 后台任务完成: npm test");
+  });
+
+  it("formats task_notification with failure", () => {
+    const result = formatSystemEvent({ subtype: "task_notification", processName: "npm test", exitCode: 1 });
+    expect(result).toBe("❌ 后台任务失败: npm test (exit code: 1)");
+  });
+
+  it("formats task_notification with command field fallback", () => {
+    const result = formatSystemEvent({ subtype: "task_notification", command: "build.sh", exitCode: 0 });
+    expect(result).toBe("🔔 后台任务完成: build.sh");
+  });
+
+  it("formats files_persisted with file list", () => {
+    const result = formatSystemEvent({ subtype: "files_persisted", files: ["src/app.ts", "src/index.ts"] });
+    expect(result).toBe("💾 文件已保存: src/app.ts, src/index.ts");
+  });
+
+  it("formats files_persisted with many files (truncated)", () => {
+    const files = ["a.ts", "b.ts", "c.ts", "d.ts", "e.ts", "f.ts"];
+    const result = formatSystemEvent({ subtype: "files_persisted", files });
+    expect(result).toContain("等6个文件");
+  });
+
+  it("formats files_persisted with no files", () => {
+    const result = formatSystemEvent({ subtype: "files_persisted", files: [] });
+    expect(result).toBe("💾 文件已保存");
+  });
+
+  it("formats hook_started", () => {
+    const result = formatSystemEvent({ subtype: "hook_started", hookName: "pre-commit" });
+    expect(result).toBe("🪝 Hook 开始: pre-commit");
+  });
+
+  it("formats hook_response with success", () => {
+    const result = formatSystemEvent({ subtype: "hook_response", hookName: "pre-commit", exitCode: 0 });
+    expect(result).toBe("🪝 Hook 完成: pre-commit");
+  });
+
+  it("formats hook_response with failure", () => {
+    const result = formatSystemEvent({ subtype: "hook_response", hookName: "pre-commit", exitCode: 1 });
+    expect(result).toBe("🪝 Hook 失败: pre-commit (exit: 1)");
+  });
+
+  it("returns empty for suppressed hook_progress", () => {
+    const result = formatSystemEvent({ subtype: "hook_progress" });
+    expect(result).toBe("");
+  });
+
+  it("returns empty for compact_boundary", () => {
+    const result = formatSystemEvent({ subtype: "compact_boundary" });
+    expect(result).toBe("");
+  });
+
+  it("returns empty for unknown subtypes", () => {
+    const result = formatSystemEvent({ subtype: "unknown_event" });
+    expect(result).toBe("");
+  });
+});
+
+// ── formatStatusChange ──────────────────────────────────────────────────────
+
+// formatStatusChange notifies WeChat users when the CLI enters "compacting"
+// state (context window compression). Other statuses are silent.
+describe("formatStatusChange", () => {
+  it("formats compacting status", () => {
+    const result = formatStatusChange("compacting");
+    expect(result).toBe("🔄 正在压缩上下文，请稍候...");
+  });
+
+  it("returns empty for idle status", () => {
+    expect(formatStatusChange("idle")).toBe("");
+  });
+
+  it("returns empty for running status", () => {
+    expect(formatStatusChange("running")).toBe("");
+  });
+
+  it("returns empty for empty string", () => {
+    expect(formatStatusChange("")).toBe("");
+  });
+});
+
+// ── formatAuthStatus ────────────────────────────────────────────────────────
+
+// formatAuthStatus extracts error messages from auth_status events. If there
+// is no error, nothing is shown (auth success is not interesting).
+describe("formatAuthStatus", () => {
+  it("formats auth error", () => {
+    const result = formatAuthStatus({ error: "Token expired" });
+    expect(result).toBe("🔐 认证错误: Token expired");
+  });
+
+  it("returns empty when no error", () => {
+    const result = formatAuthStatus({ status: "ok" });
+    expect(result).toBe("");
+  });
+
+  it("truncates long error messages", () => {
+    const longError = "x".repeat(500);
+    const result = formatAuthStatus({ error: longError });
+    expect(result.length).toBeLessThan(350);
+    expect(result).toContain("...");
+  });
+});
+
+// ── formatToolProgress ──────────────────────────────────────────────────────
+
+// formatToolProgress shows a running tool's elapsed time, but only for tools
+// that have been running longer than minSeconds (default 30s). This avoids
+// noise from fast tools.
+describe("formatToolProgress", () => {
+  it("formats progress for tool running > 30s", () => {
+    const result = formatToolProgress("Bash", "tool-123", 45);
+    expect(result).toBe("⏳ 运行 已运行 45s");
+  });
+
+  it("returns empty for tool running < 30s", () => {
+    const result = formatToolProgress("Bash", "tool-123", 15);
+    expect(result).toBe("");
+  });
+
+  it("returns empty for tool running exactly 30s (boundary)", () => {
+    const result = formatToolProgress("Bash", "tool-123", 30);
+    expect(result).toBe("⏳ 运行 已运行 30s");
+  });
+
+  it("uses custom minSeconds threshold", () => {
+    const result = formatToolProgress("Bash", "tool-123", 10, 60);
+    expect(result).toBe("");
+  });
+
+  it("uses known tool verb for display", () => {
+    const result = formatToolProgress("Read", "tool-456", 35);
+    expect(result).toBe("⏳ 读取 已运行 35s");
+  });
+
+  it("falls back to tool name for unknown tools", () => {
+    const result = formatToolProgress("CustomTool", "tool-789", 40);
+    expect(result).toBe("⏳ CustomTool 已运行 40s");
+  });
+});
+
+// ── formatPermissionAutoResolved ────────────────────────────────────────────
+
+// formatPermissionAutoResolved shows when the AI validator auto-approved or
+// auto-denied a permission request. Includes the tool name and reason.
+describe("formatPermissionAutoResolved", () => {
+  it("formats auto-approve for Bash", () => {
+    const result = formatPermissionAutoResolved("Bash", { command: "ls" }, "allow", "Read-only listing command");
+    expect(result).toContain("🤖 AI自动批准");
+    expect(result).toContain("执行: ls");
+    expect(result).toContain("Read-only listing command");
+  });
+
+  it("formats auto-deny for Write", () => {
+    const result = formatPermissionAutoResolved("Write", { file_path: "/etc/passwd" }, "deny", "Writing to system file");
+    expect(result).toContain("🤖 AI自动拒绝");
+    expect(result).toContain("写入: /etc/passwd");
+    expect(result).toContain("Writing to system file");
+  });
+
+  it("uses tool name when formatToolCall returns empty (suppressed tool)", () => {
+    const result = formatPermissionAutoResolved("TodoWrite", {}, "allow", "Internal tool");
+    expect(result).toContain("🤖 AI自动批准");
+    expect(result).toContain("TodoWrite");
+  });
+
+  it("truncates long reason", () => {
+    const longReason = "x".repeat(300);
+    const result = formatPermissionAutoResolved("Bash", { command: "ls" }, "allow", longReason);
+    expect(result).toContain("...");
+  });
+});
+
+// ── formatSessionPhase ──────────────────────────────────────────────────────
+
+// formatSessionPhase shows messages for key phase transitions. "starting"
+// always shows. "ready" only shows the first time. "terminated" is handled
+// by session:exited instead.
+describe("formatSessionPhase", () => {
+  it("formats starting phase", () => {
+    const result = formatSessionPhase("terminated", "starting", false);
+    expect(result).toBe("⏳ 正在启动会话...");
+  });
+
+  it("formats first ready phase", () => {
+    const result = formatSessionPhase("starting", "ready", true);
+    expect(result).toBe("✅ 会话就绪");
+  });
+
+  it("returns empty for subsequent ready phases (e.g. after compacting)", () => {
+    const result = formatSessionPhase("compacting", "ready", false);
+    expect(result).toBe("");
+  });
+
+  it("returns empty for terminated phase (handled by session:exited)", () => {
+    const result = formatSessionPhase("streaming", "terminated", false);
+    expect(result).toBe("");
+  });
+
+  it("returns empty for other phases (streaming, initializing, etc.)", () => {
+    expect(formatSessionPhase("ready", "streaming", false)).toBe("");
+    expect(formatSessionPhase("starting", "initializing", false)).toBe("");
+  });
+});
+
+// ── formatPromptSuggestions ─────────────────────────────────────────────────
+
+// formatPromptSuggestions shows up to 3 next-turn prompt suggestions.
+describe("formatPromptSuggestions", () => {
+  it("formats up to 3 suggestions", () => {
+    const result = formatPromptSuggestions(["Run tests", "Check coverage", "Deploy"]);
+    expect(result).toContain("💡 你可以问:");
+    expect(result).toContain("1. Run tests");
+    expect(result).toContain("2. Check coverage");
+    expect(result).toContain("3. Deploy");
+  });
+
+  it("truncates to 3 suggestions even if more provided", () => {
+    const result = formatPromptSuggestions(["A", "B", "C", "D", "E"]);
+    expect(result).toContain("1. A");
+    expect(result).toContain("2. B");
+    expect(result).toContain("3. C");
+    expect(result).not.toContain("4. D");
+  });
+
+  it("returns empty for empty array", () => {
+    expect(formatPromptSuggestions([])).toBe("");
+  });
+
+  it("truncates long suggestions", () => {
+    const longSuggestion = "x".repeat(200);
+    const result = formatPromptSuggestions([longSuggestion]);
+    expect(result).toContain("...");
+  });
+});
+
+// ── MCP tool formatting ────────────────────────────────────────────────────
+//
+// Known MCP tools get human-readable labels instead of raw JSON dumps.
+
+describe("formatToolCall — MCP tools", () => {
+  it("formats context7 resolve-library-id", () => {
+    const result = formatToolCall("mcp__context7__resolve-library-id", { libraryName: "react", query: "react" });
+    expect(result).toBe("📚 查找库: react");
+  });
+
+  it("formats context7 query-docs", () => {
+    const result = formatToolCall("mcp__context7__query-docs", { query: "how to use hooks" });
+    expect(result).toBe("📚 查询文档: how to use hooks");
+  });
+
+  it("formats puppeteer navigate", () => {
+    const result = formatToolCall("mcp__puppeteer__puppeteer_navigate", { url: "https://example.com" });
+    expect(result).toBe("🌐 打开页面: https://example.com");
+  });
+
+  it("formats puppeteer screenshot", () => {
+    const result = formatToolCall("mcp__puppeteer__puppeteer_screenshot", { name: "homepage" });
+    expect(result).toBe("📸 截图: homepage");
+  });
+
+  it("formats puppeteer click", () => {
+    const result = formatToolCall("mcp__puppeteer__puppeteer_click", { selector: "#btn" });
+    expect(result).toBe("👆 点击: #btn");
+  });
+
+  it("formats puppeteer fill", () => {
+    const result = formatToolCall("mcp__puppeteer__puppeteer_fill", { selector: "input[name=q]", value: "test" });
+    expect(result).toBe("⌨️ 填写: input[name=q]");
+  });
+
+  it("formats puppeteer evaluate generically", () => {
+    const result = formatToolCall("mcp__puppeteer__puppeteer_evaluate", { script: "1+1" });
+    expect(result).toBe("🌐 浏览器: evaluate");
+  });
+
+  it("formats sentry issue lookup", () => {
+    const result = formatToolCall("mcp__sentry__get_sentry_issue", { issue_id_or_url: "PROJ-123" });
+    expect(result).toBe("🐛 Sentry: PROJ-123");
+  });
+
+  it("suppresses sequential thinking (internal)", () => {
+    const result = formatToolCall("mcp__sequential-thinking__sequentialthinking", { thought: "hmm" });
+    expect(result).toBe("");
+  });
+
+  it("formats web reader", () => {
+    const result = formatToolCall("mcp__web_reader__webReader", { url: "https://example.com" });
+    expect(result).toBe("🌐 读取网页: https://example.com");
+  });
+
+  it("falls back to generic for unknown MCP tools", () => {
+    const result = formatToolCall("mcp__unknown__some_tool", { key: "val" });
+    expect(result).toContain("mcp__unknown__some_tool");
+    expect(result).toContain("key");
+  });
+});
+
+// ── formatRateLimitEvent ────────────────────────────────────────────────────
+
+// formatRateLimitEvent shows rate limit errors with optional retry hint.
+describe("formatRateLimitEvent", () => {
+  it("formats rate limit error", () => {
+    const result = formatRateLimitEvent({ error: "Too many requests" });
+    expect(result).toBe("⏱️ 速率限制: Too many requests");
+  });
+
+  it("includes retry hint when retry_after_ms is present", () => {
+    const result = formatRateLimitEvent({ error: "Rate limited", retry_after_ms: 30000 });
+    expect(result).toContain("速率限制: Rate limited");
+    expect(result).toContain("等待 30s 后重试");
+  });
+
+  it("returns empty when no error", () => {
+    expect(formatRateLimitEvent({ status: "ok" })).toBe("");
+  });
+
+  it("truncates long error messages", () => {
+    const longError = "x".repeat(300);
+    const result = formatRateLimitEvent({ error: longError });
+    expect(result).toContain("...");
+    expect(result.length).toBeLessThan(250);
+  });
+
+  it("handles zero retry_after_ms", () => {
+    const result = formatRateLimitEvent({ error: "Limited", retry_after_ms: 0 });
+    // retry_after_ms is 0 which is falsy — no retry hint
+    expect(result).toBe("⏱️ 速率限制: Limited");
+  });
+});
+
+// ── formatToolResultPreview ─────────────────────────────────────────────────
+
+// formatToolResultPreview shows a brief preview of non-error tool results.
+describe("formatToolResultPreview", () => {
+  it("formats tool result with known tool verb", () => {
+    const result = formatToolResultPreview("Bash", "command output here");
+    expect(result).toContain("📄 运行:");
+    expect(result).toContain("command output here");
+  });
+
+  it("formats with generic verb for unknown tool", () => {
+    const result = formatToolResultPreview("CustomTool", "some result");
+    expect(result).toContain("📄 结果:");
+    expect(result).toContain("some result");
+  });
+
+  it("returns empty for empty content", () => {
+    expect(formatToolResultPreview("Bash", "")).toBe("");
+    expect(formatToolResultPreview("Bash", "   ")).toBe("");
+  });
+
+  it("truncates long content to 150 chars", () => {
+    const longContent = "x".repeat(300);
+    const result = formatToolResultPreview("Bash", longContent);
+    expect(result.length).toBeLessThan(180);
+    expect(result).toContain("...");
   });
 });

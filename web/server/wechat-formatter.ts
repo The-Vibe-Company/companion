@@ -33,9 +33,48 @@ export function formatToolCall(toolName: string, input: ToolInput): string {
     case "TaskList":
     case "TaskGet":
       return ""; // suppress — not interesting to user
-    default:
+    default: {
+      // MCP tool-specific formatting for known MCP servers
+      const mcpResult = formatMcpToolCall(toolName, input);
+      if (mcpResult === null) return ""; // null = suppress
+      if (mcpResult !== "") return mcpResult; // non-empty = formatted
       return `🔧 ${toolName}: ${truncate(JSON.stringify(input), TOOL_DISPLAY_LIMIT)}`;
+    }
   }
+}
+
+/** Format known MCP tool calls with human-readable labels.
+ *  Returns: string = formatted text, null = suppress, "" = unknown (use generic) */
+function formatMcpToolCall(toolName: string, input: ToolInput): string | null {
+  // context7: library documentation lookup
+  if (toolName === "mcp__context7__resolve-library-id") {
+    return `📚 查找库: ${truncate(String(input.libraryName ?? input.query ?? ""), TOOL_DISPLAY_LIMIT)}`;
+  }
+  if (toolName === "mcp__context7__query-docs") {
+    return `📚 查询文档: ${truncate(String(input.query ?? ""), TOOL_DISPLAY_LIMIT)}`;
+  }
+  // Puppeteer: browser automation
+  if (toolName.startsWith("mcp__puppeteer__")) {
+    const action = toolName.split("__").pop() ?? "";
+    if (action === "puppeteer_navigate") return `🌐 打开页面: ${truncate(String(input.url ?? ""), TOOL_DISPLAY_LIMIT)}`;
+    if (action === "puppeteer_screenshot") return `📸 截图: ${truncate(String(input.name ?? ""), TOOL_DISPLAY_LIMIT)}`;
+    if (action === "puppeteer_click") return `👆 点击: ${truncate(String(input.selector ?? ""), TOOL_DISPLAY_LIMIT)}`;
+    if (action === "puppeteer_fill") return `⌨️ 填写: ${truncate(String(input.selector ?? ""), TOOL_DISPLAY_LIMIT)}`;
+    return `🌐 浏览器: ${action.replace("puppeteer_", "")}`;
+  }
+  // Sentry: error tracking
+  if (toolName === "mcp__sentry__get_sentry_issue") {
+    return `🐛 Sentry: ${truncate(String(input.issue_id_or_url ?? ""), TOOL_DISPLAY_LIMIT)}`;
+  }
+  // Sequential thinking
+  if (toolName === "mcp__sequential-thinking__sequentialthinking") {
+    return null; // suppress — internal reasoning, not interesting to user
+  }
+  // Web reader
+  if (toolName === "mcp__web_reader__webReader") {
+    return `🌐 读取网页: ${truncate(String(input.url ?? ""), TOOL_DISPLAY_LIMIT)}`;
+  }
+  return "";
 }
 
 /** Truncate string with ellipsis indicator */
@@ -294,4 +333,134 @@ export function formatAskUserQuestion(input: Record<string, unknown>): string {
   parts.push("");
   parts.push("回复序号选择 (如: 1)");
   return parts.join("\n");
+}
+
+/** Format a system event for WeChat display. Returns empty string for suppressed events. */
+export function formatSystemEvent(event: { subtype: string; [key: string]: unknown }): string {
+  switch (event.subtype) {
+    case "task_notification": {
+      const processName = String(event.processName ?? event.command ?? "unknown");
+      const exitCode = event.exitCode as number | undefined;
+      const success = exitCode === 0 || exitCode === undefined;
+      if (success) {
+        return `🔔 后台任务完成: ${truncate(processName, TOOL_DISPLAY_LIMIT)}`;
+      }
+      return `❌ 后台任务失败: ${truncate(processName, TOOL_DISPLAY_LIMIT)} (exit code: ${exitCode})`;
+    }
+    case "files_persisted": {
+      const files = event.files as string[] | undefined;
+      if (files && files.length > 0) {
+        const fileList = files.length <= 5
+          ? files.map((f) => truncate(f, 80)).join(", ")
+          : `${files.slice(0, 4).map((f) => truncate(f, 80)).join(", ")} 等${files.length}个文件`;
+        return `💾 文件已保存: ${fileList}`;
+      }
+      return "💾 文件已保存";
+    }
+    case "hook_started": {
+      const hookName = String(event.hookName ?? "unknown");
+      return `🪝 Hook 开始: ${truncate(hookName, TOOL_DISPLAY_LIMIT)}`;
+    }
+    case "hook_response": {
+      const hookName = String(event.hookName ?? "unknown");
+      const exitCode = event.exitCode as number | undefined;
+      if (exitCode === 0 || exitCode === undefined) {
+        return `🪝 Hook 完成: ${truncate(hookName, TOOL_DISPLAY_LIMIT)}`;
+      }
+      return `🪝 Hook 失败: ${truncate(hookName, TOOL_DISPLAY_LIMIT)} (exit: ${exitCode})`;
+    }
+    // Suppress noisy/uninteresting subtypes
+    case "hook_progress":
+    case "compact_boundary":
+      return "";
+    default:
+      return "";
+  }
+}
+
+/** Format a status change for WeChat display. Returns empty string for uninteresting statuses. */
+export function formatStatusChange(status: string): string {
+  if (status === "compacting") {
+    return "🔄 正在压缩上下文，请稍候...";
+  }
+  return "";
+}
+
+/** Format an auth status message for WeChat display. */
+export function formatAuthStatus(message: Record<string, unknown>): string {
+  const error = message.error as string | undefined;
+  if (!error) return "";
+  return `🔐 认证错误: ${truncate(error, 300)}`;
+}
+
+/** Format tool progress for WeChat display. Returns empty string if too short. */
+export function formatToolProgress(
+  toolName: string,
+  toolUseId: string,
+  elapsedSeconds: number,
+  minSeconds: number = 30,
+): string {
+  if (elapsedSeconds < minSeconds) return "";
+  const label = TOOL_VERB_MAP[toolName]?.verb ?? toolName;
+  return `⏳ ${label} 已运行 ${Math.round(elapsedSeconds)}s`;
+}
+
+/** Format an AI auto-resolved permission for WeChat display. */
+export function formatPermissionAutoResolved(
+  toolName: string,
+  input: Record<string, unknown>,
+  behavior: "allow" | "deny",
+  reason: string,
+): string {
+  const label = behavior === "allow" ? "批准" : "拒绝";
+  const formatted = formatToolCall(toolName, input);
+  const toolDisplay = formatted || toolName;
+  return `🤖 AI自动${label}: ${toolDisplay}\n原因: ${truncate(reason, 150)}`;
+}
+
+/** Format a session phase change for WeChat display. Returns empty string for uninteresting transitions. */
+export function formatSessionPhase(
+  from: string,
+  to: string,
+  isFirstReady: boolean,
+): string {
+  // Only notify on specific transitions
+  switch (to) {
+    case "starting":
+      return "⏳ 正在启动会话...";
+    case "ready":
+      if (isFirstReady) return "✅ 会话就绪";
+      return ""; // Don't notify on subsequent ready (after compacting, etc.)
+    case "terminated":
+      return ""; // Handled by session:exited
+    default:
+      return "";
+  }
+}
+
+/** Format a rate limit event for WeChat display. Returns empty string if not actionable. */
+export function formatRateLimitEvent(message: Record<string, unknown>): string {
+  const error = message.error as string | undefined;
+  const retryAfter = message.retry_after_ms as number | undefined;
+  if (!error) return "";
+  const retryHint = retryAfter ? ` (等待 ${Math.round(retryAfter / 1000)}s 后重试)` : "";
+  return `⏱️ 速率限制: ${truncate(error, 200)}${retryHint}`;
+}
+
+/** Format a tool result preview for WeChat display. Shows a brief summary of non-error tool results. */
+export function formatToolResultPreview(toolName: string, content: string): string {
+  if (!content.trim()) return "";
+  const preview = truncate(content.trim(), 150);
+  const verb = TOOL_VERB_MAP[toolName]?.verb ?? "结果";
+  return `📄 ${verb}: ${preview}`;
+}
+
+/** Format prompt suggestions for WeChat display. */
+export function formatPromptSuggestions(suggestions: string[]): string {
+  if (suggestions.length === 0) return "";
+  const lines: string[] = ["💡 你可以问:"];
+  suggestions.slice(0, 3).forEach((s, i) => {
+    lines.push(`${i + 1}. ${truncate(s, 80)}`);
+  });
+  return lines.join("\n");
 }
