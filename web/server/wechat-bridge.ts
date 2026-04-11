@@ -1389,8 +1389,15 @@ export class WeChatBridge {
 
   private cleanupRelay(sessionId: string): void {
     const relayData = this.sessionRelayData.get(sessionId);
-    if (relayData?.toolNotifyTimer) {
-      clearTimeout(relayData.toolNotifyTimer);
+    if (relayData) {
+      // Flush any buffered tool notifications before cleaning up
+      if (relayData.toolNotifyBuffer.length > 0) {
+        const userId = this.userIdBySession.get(sessionId);
+        if (userId) this.flushToolNotifyBuffer(userId, sessionId);
+      }
+      if (relayData.toolNotifyTimer) {
+        clearTimeout(relayData.toolNotifyTimer);
+      }
     }
     const cleanups = this.sessionCleanups.get(sessionId);
     if (cleanups) {
@@ -1428,7 +1435,10 @@ export class WeChatBridge {
   ): void {
     const settings = getSettings();
     const userSession = this.userSessions.get(userId);
-    if (!userSession) return;
+    if (!userSession) {
+      console.warn(`[wechat] No userSession for userId=${userId}, sessionId=${sessionId} — permission request from ${perm.agent_id ? "subagent" : "main"} dropped: ${perm.tool_name}`);
+      return;
+    }
 
     const agentLabel = perm.agent_id ? "[子任务] " : "";
 
@@ -1593,15 +1603,28 @@ export class WeChatBridge {
     this.sending = true;
     try {
       while (this.sendQueue.length > 0) {
-        const { userId, text } = this.sendQueue.shift()!;
+        const item = this.sendQueue.shift()!;
         if (!this.bot?.isRunning) {
-          console.warn("[wechat] Bot not running, dropping queued message");
-          continue;
+          console.warn("[wechat] Bot not running, requeuing message");
+          this.sendQueue.unshift(item);
+          // Retry after a delay — if bot stays down, the next drain call
+          // (triggered by sendReply or bot reconnect) will pick it up.
+          setTimeout(() => this.drainSendQueue(), 5_000);
+          return;
         }
-        try {
-          await this.bot.send(userId, text);
-        } catch (err) {
-          console.error("[wechat] Failed to send reply:", err);
+        const maxRetries = 2;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            await this.bot.send(item.userId, item.text);
+            break; // success
+          } catch (err) {
+            if (attempt < maxRetries) {
+              console.warn(`[wechat] Send failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`, err);
+              await new Promise((r) => setTimeout(r, 1_000 * (attempt + 1)));
+            } else {
+              console.error(`[wechat] Send failed after ${maxRetries + 1} attempts, dropping:`, err);
+            }
+          }
         }
       }
     } finally {
