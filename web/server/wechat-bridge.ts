@@ -66,23 +66,23 @@ const PERSIST_PATH = join(COMPANION_HOME, "wechat-sessions.json");
 
 const HELP_TEXT = `Companion WeChat Bot Commands:
 
-/new [folder] — Create a new session (optionally in a subfolder)
-/sessions — List your sessions
-/switch <n> — Switch to session #n
-/kill — Kill active session
-/model <name> — Switch model
-/mode <mode> — Set permission mode
-/allow (or /y) — Approve pending permission
-/deny (or /n) — Deny pending permission
-/interrupt — Cancel current operation
-/status — Show session status
-/dir [path] — List folders in default directory
-/verbose — Toggle tool notification mode (batch/verbose)
-/thinking — Toggle extended thinking display
-/help — Show this help
+/new [folder] — 新建会话 / Create a new session
+/sessions — 查看会话列表 / List your sessions
+/switch <n> — 切换到第 n 个会话 / Switch to session #n
+/kill — 终止当前会话 / Kill active session
+/model <name> — 切换模型 / Switch model
+/mode <mode> — 设置权限模式 / Set permission mode
+/allow (或 /y) — 批准权限请求 / Approve pending permission
+/deny (或 /n) — 拒绝权限请求 / Deny pending permission
+/interrupt — 中断当前操作 / Cancel current operation
+/status — 查看会话状态 / Show session status
+/dir [path] — 浏览目录 / List folders in default directory
+/verbose — 切换工具通知模式(批量/详细) / Toggle tool notification mode
+/thinking — 切换思考过程显示 / Toggle extended thinking display
+/help — 显示此帮助 / Show this help
 
-Other /commands (e.g. /compact, /clear) are forwarded to Claude Code.
-Plain text is also sent to the active session.`;
+其他 /命令（如 /compact、/clear）会转发给 Claude Code。
+直接发送文字即可与当前会话对话。`;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
