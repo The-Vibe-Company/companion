@@ -516,33 +516,44 @@ describe("formatAskUserQuestion", () => {
 // Only task_notification, files_persisted, hook_started, and hook_response
 // produce visible output. hook_progress and compact_boundary are suppressed.
 describe("formatSystemEvent", () => {
-  it("formats task_notification with success (exit code 0)", () => {
-    const result = formatSystemEvent({ subtype: "task_notification", processName: "npm test", exitCode: 0 });
+  // task_notification uses `summary` (from CLITaskNotificationMessage) and `status`
+  // (completed/failed/stopped) — not processName/command/exitCode which don't exist
+  it("formats task_notification with completed status", () => {
+    const result = formatSystemEvent({ subtype: "task_notification", summary: "npm test", status: "completed" });
     expect(result).toBe("🔔 后台任务完成: npm test");
   });
 
-  it("formats task_notification with success (no exit code)", () => {
-    const result = formatSystemEvent({ subtype: "task_notification", processName: "npm test" });
+  it("formats task_notification with no status (defaults to success)", () => {
+    const result = formatSystemEvent({ subtype: "task_notification", summary: "npm test" });
     expect(result).toBe("🔔 后台任务完成: npm test");
   });
 
-  it("formats task_notification with failure", () => {
-    const result = formatSystemEvent({ subtype: "task_notification", processName: "npm test", exitCode: 1 });
-    expect(result).toBe("❌ 后台任务失败: npm test (exit code: 1)");
+  it("formats task_notification with failed status", () => {
+    const result = formatSystemEvent({ subtype: "task_notification", summary: "npm test", status: "failed" });
+    expect(result).toBe("❌ 后台任务失败: npm test");
   });
 
-  it("formats task_notification with command field fallback", () => {
-    const result = formatSystemEvent({ subtype: "task_notification", command: "build.sh", exitCode: 0 });
+  it("formats task_notification with task_id fallback when no summary", () => {
+    const result = formatSystemEvent({ subtype: "task_notification", task_id: "task-123", status: "completed" });
+    expect(result).toBe("🔔 后台任务完成: task-123");
+  });
+
+  it("formats task_notification with stopped status (treated as success)", () => {
+    const result = formatSystemEvent({ subtype: "task_notification", summary: "build.sh", status: "stopped" });
     expect(result).toBe("🔔 后台任务完成: build.sh");
   });
 
+  // files_persisted uses `{ filename, file_id }[]` objects, not string[]
   it("formats files_persisted with file list", () => {
-    const result = formatSystemEvent({ subtype: "files_persisted", files: ["src/app.ts", "src/index.ts"] });
+    const result = formatSystemEvent({
+      subtype: "files_persisted",
+      files: [{ filename: "src/app.ts", file_id: "abc" }, { filename: "src/index.ts", file_id: "def" }],
+    });
     expect(result).toBe("💾 文件已保存: src/app.ts, src/index.ts");
   });
 
   it("formats files_persisted with many files (truncated)", () => {
-    const files = ["a.ts", "b.ts", "c.ts", "d.ts", "e.ts", "f.ts"];
+    const files = ["a.ts", "b.ts", "c.ts", "d.ts", "e.ts", "f.ts"].map((f, i) => ({ filename: f, file_id: String(i) }));
     const result = formatSystemEvent({ subtype: "files_persisted", files });
     expect(result).toContain("等6个文件");
   });
@@ -552,18 +563,19 @@ describe("formatSystemEvent", () => {
     expect(result).toBe("💾 文件已保存");
   });
 
+  // hook events use snake_case fields (hook_name, exit_code) matching CLIHookStartedMessage
   it("formats hook_started", () => {
-    const result = formatSystemEvent({ subtype: "hook_started", hookName: "pre-commit" });
+    const result = formatSystemEvent({ subtype: "hook_started", hook_name: "pre-commit" });
     expect(result).toBe("🪝 Hook 开始: pre-commit");
   });
 
   it("formats hook_response with success", () => {
-    const result = formatSystemEvent({ subtype: "hook_response", hookName: "pre-commit", exitCode: 0 });
+    const result = formatSystemEvent({ subtype: "hook_response", hook_name: "pre-commit", exit_code: 0 });
     expect(result).toBe("🪝 Hook 完成: pre-commit");
   });
 
   it("formats hook_response with failure", () => {
-    const result = formatSystemEvent({ subtype: "hook_response", hookName: "pre-commit", exitCode: 1 });
+    const result = formatSystemEvent({ subtype: "hook_response", hook_name: "pre-commit", exit_code: 1 });
     expect(result).toBe("🪝 Hook 失败: pre-commit (exit: 1)");
   });
 

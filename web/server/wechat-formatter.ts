@@ -339,31 +339,31 @@ export function formatAskUserQuestion(input: Record<string, unknown>): string {
 export function formatSystemEvent(event: { subtype: string; [key: string]: unknown }): string {
   switch (event.subtype) {
     case "task_notification": {
-      const processName = String(event.processName ?? event.command ?? "unknown");
-      const exitCode = event.exitCode as number | undefined;
-      const success = exitCode === 0 || exitCode === undefined;
-      if (success) {
-        return `🔔 后台任务完成: ${truncate(processName, TOOL_DISPLAY_LIMIT)}`;
+      const label = String(event.summary ?? event.task_id ?? "unknown");
+      const status = event.status as string | undefined;
+      if (status === "failed") {
+        return `❌ 后台任务失败: ${truncate(label, TOOL_DISPLAY_LIMIT)}`;
       }
-      return `❌ 后台任务失败: ${truncate(processName, TOOL_DISPLAY_LIMIT)} (exit code: ${exitCode})`;
+      return `🔔 后台任务完成: ${truncate(label, TOOL_DISPLAY_LIMIT)}`;
     }
     case "files_persisted": {
-      const files = event.files as string[] | undefined;
-      if (files && files.length > 0) {
-        const fileList = files.length <= 5
-          ? files.map((f) => truncate(f, 80)).join(", ")
-          : `${files.slice(0, 4).map((f) => truncate(f, 80)).join(", ")} 等${files.length}个文件`;
+      const rawFiles = event.files as Array<{ filename: string; file_id: string }> | undefined;
+      const filenames = rawFiles?.map((f) => f.filename).filter(Boolean);
+      if (filenames && filenames.length > 0) {
+        const fileList = filenames.length <= 5
+          ? filenames.map((f) => truncate(f, 80)).join(", ")
+          : `${filenames.slice(0, 4).map((f) => truncate(f, 80)).join(", ")} 等${filenames.length}个文件`;
         return `💾 文件已保存: ${fileList}`;
       }
       return "💾 文件已保存";
     }
     case "hook_started": {
-      const hookName = String(event.hookName ?? "unknown");
+      const hookName = String(event.hook_name ?? "unknown");
       return `🪝 Hook 开始: ${truncate(hookName, TOOL_DISPLAY_LIMIT)}`;
     }
     case "hook_response": {
-      const hookName = String(event.hookName ?? "unknown");
-      const exitCode = event.exitCode as number | undefined;
+      const hookName = String(event.hook_name ?? "unknown");
+      const exitCode = event.exit_code as number | undefined;
       if (exitCode === 0 || exitCode === undefined) {
         return `🪝 Hook 完成: ${truncate(hookName, TOOL_DISPLAY_LIMIT)}`;
       }
