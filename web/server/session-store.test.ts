@@ -22,6 +22,8 @@ function makeSession(id: string, overrides: Partial<PersistedSession> = {}): Per
       skills: [],
       total_cost_usd: 0,
       num_turns: 0,
+      input_tokens: 0,
+      output_tokens: 0,
       context_used_percent: 0,
       is_compacting: false,
       git_branch: "",

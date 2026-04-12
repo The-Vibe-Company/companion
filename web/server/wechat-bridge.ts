@@ -150,6 +150,13 @@ export function isDangerousTool(toolName: string, _input: Record<string, unknown
 }
 
 /** Extract text from assistant message content blocks */
+/** Format token count: show as K if >= 1000 */
+function fmtTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
 function extractTextFromAssistant(msg: BrowserIncomingMessage): string {
   if (msg.type !== "assistant") return "";
   const raw = msg as Record<string, unknown>;
@@ -710,7 +717,8 @@ export class WeChatBridge {
       const details: string[] = [];
       details.push(`turns: ${state.num_turns ?? 0}`);
       details.push(`cost: $${(state.total_cost_usd ?? 0).toFixed(4)}`);
-      details.push(`ctx: ${(state.context_used_percent ?? 0).toFixed(0)}%`);
+      details.push(`in: ${fmtTokens(state.input_tokens ?? 0)}`);
+      details.push(`out: ${fmtTokens(state.output_tokens ?? 0)}`);
       if (state.git_branch) details.push(`branch: ${state.git_branch}`);
       if (state.permissionMode) details.push(`mode: ${state.permissionMode}`);
       const pendingPerms = session.pendingPermissions.size;
@@ -866,7 +874,8 @@ export class WeChatBridge {
       `Permission mode: ${state.permissionMode || "?"}`,
       `Turns: ${state.num_turns ?? 0}`,
       `Cost: $${(state.total_cost_usd ?? 0).toFixed(4)}`,
-      `Context: ${(state.context_used_percent ?? 0).toFixed(0)}%`,
+      `Input tokens: ${fmtTokens(state.input_tokens ?? 0)}`,
+      `Output tokens: ${fmtTokens(state.output_tokens ?? 0)}`,
       `CWD: ${state.cwd}`,
       `Branch: ${state.git_branch || "none"}`,
       `Pending permissions: ${pendingPerms}`,
@@ -1217,12 +1226,13 @@ export class WeChatBridge {
         const linesRemoved = session.state.total_lines_removed ?? 0;
         const statsParts: string[] = [];
         statsParts.push(`$${cost.toFixed(4)}`);
-        statsParts.push(`ctx ${ctxPct.toFixed(0)}%`);
+        statsParts.push(`in ${fmtTokens(session.state.input_tokens ?? 0)}`);
+        statsParts.push(`out ${fmtTokens(session.state.output_tokens ?? 0)}`);
         statsParts.push(`turn #${turns}`);
         if (linesAdded > 0 || linesRemoved > 0) {
           statsParts.push(`${linesAdded > 0 ? `+${linesAdded}` : ""}${linesAdded > 0 && linesRemoved > 0 ? "/" : ""}${linesRemoved > 0 ? `-${linesRemoved}` : ""} 行`);
         }
-        if (cost > 0 || ctxPct > 0) {
+        if (cost > 0 || (session.state.input_tokens ?? 0) > 0 || (session.state.output_tokens ?? 0) > 0) {
           this.sendReply(userId, `💰 ${statsParts.join(" · ")}`);
         }
         // Context warning: notify once when crossing 80%

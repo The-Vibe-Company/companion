@@ -523,7 +523,11 @@ export class WsBridge {
           session.state.total_lines_removed = resultData.total_lines_removed;
         }
         if (resultData.modelUsage) {
+          let totalInput = 0;
+          let totalOutput = 0;
           for (const usage of Object.values(resultData.modelUsage)) {
+            totalInput += usage.inputTokens;
+            totalOutput += usage.outputTokens;
             if (usage.contextWindow > 0) {
               const pct = Math.round(
                 ((usage.inputTokens + usage.outputTokens) / usage.contextWindow) * 100
@@ -531,6 +535,8 @@ export class WsBridge {
               session.state.context_used_percent = Math.max(0, Math.min(pct, 100));
             }
           }
+          session.state.input_tokens = totalInput;
+          session.state.output_tokens = totalOutput;
         }
         this.refreshGitInfo(session, { broadcastUpdate: true, notifyPoller: true });
         this.appendHistory(session, msg);

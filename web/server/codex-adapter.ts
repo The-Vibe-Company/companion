@@ -1103,6 +1103,8 @@ export class CodexAdapter implements IBackendAdapter {
         skills: [],
         total_cost_usd: 0,
         num_turns: 0,
+        input_tokens: 0,
+        output_tokens: 0,
         context_used_percent: 0,
         is_compacting: false,
         git_branch: "",
@@ -2701,6 +2703,8 @@ export class CodexAdapter implements IBackendAdapter {
         reasoningOutputTokens: total.reasoningOutputTokens || 0,
         modelContextWindow: contextWindow || 0,
       };
+      updates.input_tokens = total.inputTokens || 0;
+      updates.output_tokens = total.outputTokens || 0;
     }
 
     if (Object.keys(updates).length > 0) {
