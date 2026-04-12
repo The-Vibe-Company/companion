@@ -79,7 +79,7 @@ const HELP_TEXT = `Companion WeChat Bot Commands:
 /dir [path] — 浏览目录 / List folders in default directory
 /verbose — 切换工具通知模式(批量/详细) / Toggle tool notification mode
 /thinking — 切换思考过程显示 / Toggle extended thinking display
-/clear — 清除上下文并创建新会话 / Clear context and start fresh session
+/reset — 清除上下文并创建新会话 / Clear context and start fresh session
 /help — 显示此帮助 / Show this help
 
 其他 /命令（如 /compact、/clear）会转发给 Claude Code。
@@ -622,12 +622,12 @@ export class WeChatBridge {
       case "help":
         await this.sendReply(userId, HELP_TEXT);
         break;
-      case "clear":
+      case "reset":
         await this.cmdClear(userId);
         break;
       default:
         // Forward unknown /commands to the active Claude Code session
-        // (e.g. /compact, /clear, /help from Claude Code itself)
+        // (e.g. /compact, /help from Claude Code itself)
         await this.handleUserMessage(userId, `/${cmd}${args ? " " + args : ""}`);
     }
   }
