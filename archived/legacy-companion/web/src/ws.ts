@@ -808,13 +808,25 @@ function handleParsedMessage(
       if (typeof r.total_lines_removed === "number") {
         sessionUpdates.total_lines_removed = r.total_lines_removed;
       }
-      // Compute context % from modelUsage if available
-      if (r.modelUsage) {
-        for (const usage of Object.values(r.modelUsage)) {
-          if (usage.contextWindow > 0) {
-            const pct = Math.round(
-              ((usage.inputTokens + usage.outputTokens) / usage.contextWindow) * 100
-            );
+      // Compute context % from the last iteration's usage + contextWindow from modelUsage.
+      // Top-level usage sums across all iterations, which inflates the count for
+      // multi-tool-call turns. The last iteration reflects actual context state.
+      // Skip updates from subagent results (lower num_turns than main conversation).
+      if (r.usage && r.modelUsage) {
+        const currentNumTurns = store.sessions.get(sessionId)?.num_turns ?? 0;
+        const isMainConversation = r.num_turns >= currentNumTurns;
+        if (isMainConversation) {
+          const contextWindow = Math.max(
+            ...Object.values(r.modelUsage).map((m) => m.contextWindow ?? 0)
+          );
+          if (contextWindow > 0) {
+            const lastIter = r.usage.iterations?.at(-1) ?? r.usage;
+            const totalTokens =
+              (lastIter.input_tokens ?? 0) +
+              (lastIter.output_tokens ?? 0) +
+              (lastIter.cache_read_input_tokens ?? 0) +
+              (lastIter.cache_creation_input_tokens ?? 0);
+            const pct = Math.round((totalTokens / contextWindow) * 100);
             sessionUpdates.context_used_percent = Math.max(0, Math.min(pct, 100));
           }
         }
@@ -1132,13 +1144,20 @@ function handleParsedMessage(
           if (typeof r.total_lines_removed === "number") {
             resultUpdates.total_lines_removed = r.total_lines_removed;
           }
-          if (r.modelUsage) {
-            for (const usage of Object.values(r.modelUsage)) {
-              if ((usage as { contextWindow: number; inputTokens: number; outputTokens: number }).contextWindow > 0) {
-                const u = usage as { contextWindow: number; inputTokens: number; outputTokens: number };
-                const pct = Math.round(((u.inputTokens + u.outputTokens) / u.contextWindow) * 100);
-                resultUpdates.context_used_percent = Math.max(0, Math.min(pct, 100));
-              }
+          if (r.usage && r.modelUsage) {
+            const contextWindow = Math.max(
+              ...Object.values(r.modelUsage).map((m: Record<string, unknown>) => (m.contextWindow as number) ?? 0)
+            );
+            if (contextWindow > 0) {
+              const usageTyped = r.usage as { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number; iterations?: Array<{ input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number }> };
+              const lastIter = usageTyped.iterations?.at(-1) ?? usageTyped;
+              const totalTokens =
+                (lastIter.input_tokens ?? 0) +
+                (lastIter.output_tokens ?? 0) +
+                (lastIter.cache_read_input_tokens ?? 0) +
+                (lastIter.cache_creation_input_tokens ?? 0);
+              const pct = Math.round((totalTokens / contextWindow) * 100);
+              resultUpdates.context_used_percent = Math.max(0, Math.min(pct, 100));
             }
           }
           store.updateSession(sessionId, resultUpdates);

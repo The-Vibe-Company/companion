@@ -163,6 +163,7 @@ function ProgressMeter({ label, pct, detail }: { label: string; pct: number; det
 
 function UsageLimitsSection({ sessionId }: { sessionId: string }) {
   const [limits, setLimits] = useState<UsageLimits | null>(null);
+  const contextPct = useStore((s) => s.sessions.get(sessionId)?.context_used_percent ?? 0);
 
   const fetchLimits = useCallback(async () => {
     try {
@@ -187,31 +188,29 @@ function UsageLimitsSection({ sessionId }: { sessionId: string }) {
     return () => clearInterval(id);
   }, [fetchLimits]);
 
-  if (!limits) return null;
+  const has5h = limits?.five_hour !== null && limits?.five_hour !== undefined;
+  const has7d = limits?.seven_day !== null && limits?.seven_day !== undefined;
+  const hasExtra = !has5h && !has7d && limits?.extra_usage?.is_enabled;
 
-  const has5h = limits.five_hour !== null;
-  const has7d = limits.seven_day !== null;
-  const hasExtra = !has5h && !has7d && limits.extra_usage?.is_enabled;
-
-  if (!has5h && !has7d && !hasExtra) return null;
+  if (!has5h && !has7d && !hasExtra && contextPct <= 0) return null;
 
   return (
     <div className="shrink-0 px-4 py-2.5 space-y-2">
-      {limits.five_hour && (
+      {limits?.five_hour && (
         <ProgressMeter
           label="5h Limit"
           pct={limits.five_hour.utilization}
           detail={limits.five_hour.resets_at ? formatResetTime(limits.five_hour.resets_at) : undefined}
         />
       )}
-      {limits.seven_day && (
+      {limits?.seven_day && (
         <ProgressMeter
           label="7d Limit"
           pct={limits.seven_day.utilization}
           detail={limits.seven_day.resets_at ? formatResetTime(limits.seven_day.resets_at) : undefined}
         />
       )}
-      {hasExtra && limits.extra_usage && (
+      {hasExtra && limits?.extra_usage && (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-cc-muted uppercase tracking-wider">Extra</span>
@@ -235,6 +234,9 @@ function UsageLimitsSection({ sessionId }: { sessionId: string }) {
             </div>
           )}
         </div>
+      )}
+      {contextPct > 0 && (
+        <ProgressMeter label="Context" pct={contextPct} />
       )}
     </div>
   );
