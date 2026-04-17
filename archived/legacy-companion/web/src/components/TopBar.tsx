@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useStore } from "../store.js";
 import { parseHash } from "../utils/routing.js";
 import { AiValidationToggle } from "./AiValidationToggle.js";
+import { ContextWindowBar } from "./ContextWindowBar.js";
 
 type WorkspaceTab = "chat" | "diff";
 
@@ -127,6 +128,9 @@ export function TopBar() {
         )}
 
         <div className="flex items-center gap-0.5 shrink-0">
+          {showWorkspaceControls && currentSessionId && (
+            <ContextWindowBar sessionId={currentSessionId} />
+          )}
           {showWorkspaceControls && currentSessionId && (
             <AiValidationToggle sessionId={currentSessionId} />
           )}
