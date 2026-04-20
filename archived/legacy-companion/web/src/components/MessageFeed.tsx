@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState, useCallback } from "react";
+import { useEffect, useRef, useMemo, useState, useCallback, memo } from "react";
 import { useStore } from "../store.js";
 import { api } from "../api.js";
 import { MessageBubble } from "./MessageBubble.js";
@@ -374,6 +374,8 @@ function ToolMessageGroup({ group }: { group: ToolMsgGroup }) {
   );
 }
 
+const EMPTY_ACTIVITY: ToolActivityEntry[] = [];
+
 function FeedEntries({ entries, toolActivity }: { entries: FeedEntry[]; toolActivity?: ToolActivityEntry[] }) {
   return (
     <>
@@ -388,14 +390,13 @@ function FeedEntries({ entries, toolActivity }: { entries: FeedEntry[]; toolActi
         const toolUseIds = getToolUseIdsFromMessage(msg);
         const matchingActivity = toolActivity && toolUseIds.length > 0
           ? toolActivity.filter((a) => toolUseIds.includes(a.toolUseId))
-          : [];
-        // Show turn summary after assistant messages with completed tool calls
-        const allComplete = matchingActivity.length > 0 && matchingActivity.every((a) => a.completedAt);
+          : EMPTY_ACTIVITY;
         return (
-          <div key={msg.id}>
-            <MessageBubble message={msg} />
-            {allComplete && <ToolTurnSummary entries={matchingActivity} />}
-          </div>
+          <MemoizedMessageEntry
+            key={msg.id}
+            msg={msg}
+            matchingActivity={matchingActivity}
+          />
         );
       })}
     </>
@@ -578,6 +579,67 @@ function AssistantAvatar() {
   );
 }
 
+// ─── Isolated timer to avoid re-rendering the entire feed every second ────────
+
+function GenerationStats({ sessionId }: { sessionId: string }) {
+  const streamingStartedAt = useStore((s) =>
+    s.streamingStartedAt.get(sessionId),
+  );
+  const streamingOutputTokens = useStore((s) =>
+    s.streamingOutputTokens.get(sessionId),
+  );
+  const sessionStatus = useStore((s) => s.sessionStatus.get(sessionId));
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!streamingStartedAt && sessionStatus !== "running") {
+      setElapsed(0);
+      return;
+    }
+    const start = streamingStartedAt || Date.now();
+    setElapsed(Date.now() - start);
+    const interval = setInterval(() => setElapsed(Date.now() - start), 1000);
+    return () => clearInterval(interval);
+  }, [streamingStartedAt, sessionStatus]);
+
+  if (sessionStatus !== "running" || elapsed <= 0) return null;
+
+  return (
+    <div className="flex items-center gap-2 text-[11px] text-cc-muted font-mono-code pl-10 stats-glow py-1">
+      <span className="inline-block w-2 h-2 rounded-full bg-cc-primary animate-[typing-breathe_1.5s_ease-in-out_infinite]" />
+      <span className="text-cc-fg/70">Generating</span>
+      <span className="text-cc-muted/30">|</span>
+      <span className="tabular-nums">{formatElapsed(elapsed)}</span>
+      {(streamingOutputTokens ?? 0) > 0 && (
+        <>
+          <span className="text-cc-muted/30">|</span>
+          <span className="tabular-nums">{formatTokenCount(streamingOutputTokens!)} tokens</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Memoized entry wrapper to prevent re-render when toolActivity changes for unrelated messages
+
+const MemoizedMessageEntry = memo(function MemoizedMessageEntry({
+  msg,
+  matchingActivity,
+}: {
+  msg: ChatMessage;
+  matchingActivity: ToolActivityEntry[];
+}) {
+  const allComplete = matchingActivity.length > 0 && matchingActivity.every((a) => a.completedAt);
+  return (
+    <div>
+      <MessageBubble message={msg} />
+      {allComplete && <ToolTurnSummary entries={matchingActivity} />}
+    </div>
+  );
+}, (prev, next) => {
+  return prev.msg === next.msg && prev.matchingActivity === next.matchingActivity;
+});
+
 // ─── Main Feed ───────────────────────────────────────────────────────────────
 
 export function MessageFeed({ sessionId }: { sessionId: string }) {
@@ -587,19 +649,12 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
       (session) => session.sessionId === sessionId,
     ),
   );
-  const streamingStartedAt = useStore((s) =>
-    s.streamingStartedAt.get(sessionId),
-  );
-  const streamingOutputTokens = useStore((s) =>
-    s.streamingOutputTokens.get(sessionId),
-  );
   const sessionStatus = useStore((s) => s.sessionStatus.get(sessionId));
   const toolProgress = useStore((s) => s.toolProgress.get(sessionId));
   const toolActivity = useStore((s) => s.toolActivity.get(sessionId));
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottom = useRef(true);
-  const [elapsed, setElapsed] = useState(0);
   const [visibleCount, setVisibleCount] = useState(FEED_PAGE_SIZE);
   const [resumeHistoryMessages, setResumeHistoryMessages] = useState<
     ChatMessage[]
@@ -756,17 +811,6 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
     ],
   );
 
-  // Tick elapsed time every second while generating
-  useEffect(() => {
-    if (!streamingStartedAt && sessionStatus !== "running") {
-      setElapsed(0);
-      return;
-    }
-    const start = streamingStartedAt || Date.now();
-    setElapsed(Date.now() - start);
-    const interval = setInterval(() => setElapsed(Date.now() - start), 1000);
-    return () => clearInterval(interval);
-  }, [streamingStartedAt, sessionStatus]);
 
   function handleScroll() {
     const el = containerRef.current;
@@ -840,11 +884,13 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
     requestAnimationFrame(() => scrollToBottomInstant());
   }, [chatTabReentryTick, scrollToBottomInstant]);
 
+  const messageCount = messages.length;
+  const lastMessageId = messages[messages.length - 1]?.id;
   useEffect(() => {
     if (isNearBottom.current) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [messageCount, lastMessageId]);
 
   if (mergedMessages.length === 0) {
     return (
@@ -1013,21 +1059,7 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
             </div>
           )}
 
-          {/* Generation stats bar */}
-          {sessionStatus === "running" && elapsed > 0 && (
-            <div className="flex items-center gap-2 text-[11px] text-cc-muted font-mono-code pl-10 stats-glow py-1">
-              <span className="inline-block w-2 h-2 rounded-full bg-cc-primary animate-[typing-breathe_1.5s_ease-in-out_infinite]" />
-              <span className="text-cc-fg/70">Generating</span>
-              <span className="text-cc-muted/30">|</span>
-              <span className="tabular-nums">{formatElapsed(elapsed)}</span>
-              {(streamingOutputTokens ?? 0) > 0 && (
-                <>
-                  <span className="text-cc-muted/30">|</span>
-                  <span className="tabular-nums">{formatTokenCount(streamingOutputTokens!)} tokens</span>
-                </>
-              )}
-            </div>
-          )}
+          <GenerationStats sessionId={sessionId} />
 
           <div ref={bottomRef} />
         </div>

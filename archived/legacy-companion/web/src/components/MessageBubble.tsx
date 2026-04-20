@@ -1,10 +1,10 @@
-import { useState, useMemo, type ComponentProps } from "react";
+import { memo, useState, useMemo, type ComponentProps } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatMessage, ContentBlock } from "../types.js";
 import { ToolBlock, getToolIcon, getToolLabel, getPreview, ToolIcon } from "./ToolBlock.js";
 
-export function MessageBubble({ message }: { message: ChatMessage }) {
+export const MessageBubble = memo(function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === "system") {
     return (
       <div className="flex items-center gap-3 py-1 min-w-0">
@@ -47,7 +47,10 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
       <AssistantMessage message={message} />
     </div>
   );
-}
+}, (prev, next) => {
+  // Only re-render if the message content actually changed
+  return prev.message === next.message;
+});
 
 interface ToolGroupItem {
   id: string;
