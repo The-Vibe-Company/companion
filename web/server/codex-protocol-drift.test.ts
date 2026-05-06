@@ -24,13 +24,13 @@ describe("Codex adapter method drift vs upstream protocol snapshot", () => {
     const handledNotifications = extractCaseMethods(
       adapter,
       "private handleNotification(method: string, params: Record<string, unknown>): void {",
-      "private handleRequest(method: string, id: number, params: Record<string, unknown>): void {",
+      "private handleRequest(method: string, id: JsonRpcId, params: Record<string, unknown>): void {",
     );
 
     const handledRequests = extractCaseMethods(
       adapter,
-      "private handleRequest(method: string, id: number, params: Record<string, unknown>): void {",
-      "private handleCommandApproval(jsonRpcId: number, params: Record<string, unknown>): void {",
+      "private handleRequest(method: string, id: JsonRpcId, params: Record<string, unknown>): void {",
+      "private handleCommandApproval(jsonRpcId: JsonRpcId, params: Record<string, unknown>): void {",
     );
 
     const calledClientMethods = new Set(

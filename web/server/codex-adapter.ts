@@ -29,7 +29,7 @@ import { log } from "./logger.js";
 
 interface JsonRpcRequest {
   method: string;
-  id: number;
+  id: JsonRpcId;
   params: Record<string, unknown>;
 }
 
@@ -39,12 +39,13 @@ interface JsonRpcNotification {
 }
 
 interface JsonRpcResponse {
-  id: number;
+  id: JsonRpcId;
   result?: unknown;
   error?: { code: number; message: string; data?: unknown };
 }
 
 type JsonRpcMessage = JsonRpcRequest | JsonRpcNotification | JsonRpcResponse;
+type JsonRpcId = number | string;
 
 // Codex item types
 interface CodexItem {
@@ -139,9 +140,9 @@ interface CodexMcpStatusListResponse {
 export interface ICodexTransport {
   call(method: string, params?: Record<string, unknown>, timeoutMs?: number): Promise<unknown>;
   notify(method: string, params?: Record<string, unknown>): Promise<void>;
-  respond(id: number, result: unknown): Promise<void>;
+  respond(id: JsonRpcId, result: unknown): Promise<void>;
   onNotification(handler: (method: string, params: Record<string, unknown>) => void): void;
-  onRequest(handler: (method: string, id: number, params: Record<string, unknown>) => void): void;
+  onRequest(handler: (method: string, id: JsonRpcId, params: Record<string, unknown>) => void): void;
   onRawIncoming(cb: (line: string) => void): void;
   onRawOutgoing(cb: (data: string) => void): void;
   onParseError(cb: (message: string) => void): void;
@@ -186,7 +187,7 @@ export class StdioTransport implements ICodexTransport {
   private pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
   private pendingTimers = new Map<number, ReturnType<typeof setTimeout>>();
   private notificationHandler: ((method: string, params: Record<string, unknown>) => void) | null = null;
-  private requestHandler: ((method: string, id: number, params: Record<string, unknown>) => void) | null = null;
+  private requestHandler: ((method: string, id: JsonRpcId, params: Record<string, unknown>) => void) | null = null;
   private rawInCb: ((line: string) => void) | null = null;
   private rawOutCb: ((data: string) => void) | null = null;
   private parseErrorCb: ((message: string) => void) | null = null;
@@ -288,7 +289,7 @@ export class StdioTransport implements ICodexTransport {
     if ("id" in msg && msg.id !== undefined) {
       if ("method" in msg && msg.method) {
         // This is a request FROM the server (e.g., approval request)
-        this.requestHandler?.(msg.method, msg.id as number, (msg as JsonRpcRequest).params || {});
+        this.requestHandler?.(msg.method, msg.id as JsonRpcId, (msg as JsonRpcRequest).params || {});
       } else {
         // This is a response to one of our requests
         const msgId = msg.id as number;
@@ -367,7 +368,7 @@ export class StdioTransport implements ICodexTransport {
   }
 
   /** Respond to a request from the server (e.g., approval). */
-  async respond(id: number, result: unknown): Promise<void> {
+  async respond(id: JsonRpcId, result: unknown): Promise<void> {
     const response = JSON.stringify({ id, result });
     await this.writeRaw(response + "\n");
   }
@@ -378,7 +379,7 @@ export class StdioTransport implements ICodexTransport {
   }
 
   /** Register handler for server-initiated requests (need a response). */
-  onRequest(handler: (method: string, id: number, params: Record<string, unknown>) => void): void {
+  onRequest(handler: (method: string, id: JsonRpcId, params: Record<string, unknown>) => void): void {
     this.requestHandler = handler;
   }
 
@@ -480,14 +481,16 @@ export class CodexAdapter implements IBackendAdapter {
   private overloadRetryMsg: BrowserOutgoingMessage | null = null;
 
   // Pending approval requests (Codex sends these as JSON-RPC requests with an id)
-  private pendingApprovals = new Map<string, number>(); // request_id -> JSON-RPC id
+  private pendingApprovals = new Map<string, JsonRpcId>(); // request_id -> JSON-RPC id
 
   // Track request types that need different response formats
   private pendingUserInputQuestionIds = new Map<string, string[]>(); // request_id -> ordered Codex question IDs
   private pendingReviewDecisions = new Set<string>(); // request_ids that need ReviewDecision format
   private pendingExitPlanModeRequests = new Set<string>(); // request_ids for ExitPlanMode approvals
+  private pendingPermissionsRequests = new Map<string, Record<string, unknown>>(); // request_id -> requested permission profile
+  private pendingMcpElicitations = new Map<string, { mode: "form" | "url"; meta: unknown | null }>(); // request_id -> elicitation context
   private pendingDynamicToolCalls = new Map<string, {
-    jsonRpcId: number;
+    jsonRpcId: JsonRpcId;
     callId: string;
     toolName: string;
     timeout: ReturnType<typeof setTimeout>;
@@ -629,6 +632,8 @@ export class CodexAdapter implements IBackendAdapter {
     this.pendingApprovals.clear();
     this.pendingUserInputQuestionIds.clear();
     this.pendingReviewDecisions.clear();
+    this.pendingPermissionsRequests.clear();
+    this.pendingMcpElicitations.clear();
 
     // If an agentMessage was actively streaming, emit a synthetic
     // content_block_stop so the browser doesn't show an orphaned streaming
@@ -717,6 +722,8 @@ export class CodexAdapter implements IBackendAdapter {
     }
     this.pendingDynamicToolCalls.clear();
     this.pendingExitPlanModeRequests.clear();
+    this.pendingPermissionsRequests.clear();
+    this.pendingMcpElicitations.clear();
     if (!this.disconnectFired) {
       this.disconnectFired = true;
       this.disconnectCb?.();
@@ -752,6 +759,8 @@ export class CodexAdapter implements IBackendAdapter {
     this.pendingApprovals.clear();
     this.pendingUserInputQuestionIds.clear();
     this.pendingReviewDecisions.clear();
+    this.pendingPermissionsRequests.clear();
+    this.pendingMcpElicitations.clear();
     this.emittedToolUseIds.clear();
     this.commandStartTimes.clear();
     this.reasoningTextByItemId.clear();
@@ -1264,7 +1273,13 @@ export class CodexAdapter implements IBackendAdapter {
   }
 
   private async handleOutgoingPermissionResponse(
-    msg: { type: "permission_response"; request_id: string; behavior: "allow" | "deny"; updated_input?: Record<string, unknown> },
+    msg: {
+      type: "permission_response";
+      request_id: string;
+      behavior: "allow" | "deny";
+      updated_input?: Record<string, unknown>;
+      updated_permissions?: Array<Record<string, unknown>>;
+    },
   ): Promise<void> {
     const jsonRpcId = this.pendingApprovals.get(msg.request_id);
     if (jsonRpcId === undefined) {
@@ -1286,6 +1301,44 @@ export class CodexAdapter implements IBackendAdapter {
 
         const result = this.buildDynamicToolCallResponse(msg, pendingDynamic.toolName);
         await this.transport.respond(jsonRpcId, result);
+        return;
+      }
+
+      const pendingPermissions = this.pendingPermissionsRequests.get(msg.request_id);
+      if (pendingPermissions) {
+        this.pendingPermissionsRequests.delete(msg.request_id);
+        this.pendingApprovals.delete(msg.request_id);
+
+        if (msg.behavior === "allow") {
+          const explicit = this.asRecord(msg.updated_input?.permissions);
+          const granted = explicit ?? this.grantedPermissionsFromRequested(pendingPermissions);
+          const scope = this.extractPermissionScope(msg.updated_input, msg.updated_permissions);
+          await this.transport.respond(jsonRpcId, { permissions: granted, scope });
+        } else {
+          await this.transport.respond(jsonRpcId, { permissions: {}, scope: "turn" });
+        }
+        return;
+      }
+
+      const pendingElicitation = this.pendingMcpElicitations.get(msg.request_id);
+      if (pendingElicitation) {
+        this.pendingMcpElicitations.delete(msg.request_id);
+        this.pendingApprovals.delete(msg.request_id);
+
+        const requestedAction = msg.updated_input?.action;
+        let action: "accept" | "decline" | "cancel";
+        if (requestedAction === "accept" || requestedAction === "decline" || requestedAction === "cancel") {
+          action = requestedAction;
+        } else {
+          action = msg.behavior === "allow" ? "accept" : "decline";
+        }
+        const content = action === "accept" ? (msg.updated_input?.content ?? null) : null;
+
+        await this.transport.respond(jsonRpcId, {
+          action,
+          content,
+          _meta: pendingElicitation.meta ?? null,
+        });
         return;
       }
 
@@ -1388,6 +1441,46 @@ export class CodexAdapter implements IBackendAdapter {
       } else {
         console.warn("[codex-adapter] Interrupt failed:", err);
       }
+    }
+  }
+
+  private extractPermissionScope(
+    updatedInput: Record<string, unknown> | undefined,
+    updatedPermissions: Array<Record<string, unknown>> | undefined,
+  ): "turn" | "session" {
+    const explicitScope = updatedInput?.scope;
+    if (explicitScope === "session" || explicitScope === "turn") return explicitScope;
+
+    // Compatibility fallback: some browser flows encode "session" intent in
+    // generic permission updates instead of explicit scope.
+    if (updatedPermissions?.some((p) => p.type === "setMode" && p.destination === "session")) {
+      return "session";
+    }
+    return "turn";
+  }
+
+  private grantedPermissionsFromRequested(requested: Record<string, unknown>): Record<string, unknown> {
+    // Preserve the full requested permission profile as the default grant when
+    // the user allows without explicit edits. This keeps compatibility with
+    // new permission categories added upstream.
+    return { ...requested };
+  }
+
+  private clearPendingApprovalByJsonRpcId(jsonRpcId: JsonRpcId): void {
+    for (const [requestId, pendingId] of this.pendingApprovals) {
+      if (pendingId !== jsonRpcId) continue;
+
+      const pendingDynamic = this.pendingDynamicToolCalls.get(requestId);
+      if (pendingDynamic) clearTimeout(pendingDynamic.timeout);
+      this.pendingDynamicToolCalls.delete(requestId);
+      this.pendingExitPlanModeRequests.delete(requestId);
+      this.pendingUserInputQuestionIds.delete(requestId);
+      this.pendingReviewDecisions.delete(requestId);
+      this.pendingPermissionsRequests.delete(requestId);
+      this.pendingMcpElicitations.delete(requestId);
+      this.pendingApprovals.delete(requestId);
+      this.emit({ type: "permission_cancelled", request_id: requestId });
+      break;
     }
   }
 
@@ -1604,15 +1697,49 @@ export class CodexAdapter implements IBackendAdapter {
       case "thread/status/changed":
         this.handleThreadStatusChanged(params);
         break;
+      case "thread/archived":
+      case "thread/unarchived":
+      case "thread/closed":
+      case "thread/name/updated":
+        break;
       case "thread/tokenUsage/updated":
         this.handleTokenUsageUpdated(params);
         break;
       case "account/updated":
       case "account/login/completed":
+      case "mcpServer/oauthLogin/completed":
         // Auth events
         break;
       case "account/rateLimits/updated":
         this.updateRateLimits(params);
+        break;
+      case "serverRequest/resolved": {
+        const requestId = params.requestId as JsonRpcId | undefined;
+        if (requestId !== undefined) this.clearPendingApprovalByJsonRpcId(requestId);
+        break;
+      }
+      case "hook/started":
+      case "hook/completed":
+      case "item/autoApprovalReview/started":
+      case "item/autoApprovalReview/completed":
+      case "app/list/updated":
+      case "fs/changed":
+      case "model/rerouted":
+      case "fuzzyFileSearch/sessionUpdated":
+      case "fuzzyFileSearch/sessionCompleted":
+      case "thread/realtime/started":
+      case "thread/realtime/itemAdded":
+      case "thread/realtime/transcriptUpdated":
+      case "thread/realtime/outputAudio/delta":
+      case "thread/realtime/error":
+      case "thread/realtime/closed":
+      case "windows/worldWritableWarning":
+      case "windowsSandbox/setupCompleted":
+        // Currently not surfaced in the Companion UI.
+        break;
+      case "command/exec/outputDelta":
+        // Streaming command/exec chunks are connection-scoped process output.
+        // They are not item-scoped tool blocks, so ignore for now.
         break;
       // Legacy codex/event/* notifications forwarded by newer Codex runtimes.
       // token_count is still useful for metrics, but the streaming deltas are
@@ -1717,7 +1844,7 @@ export class CodexAdapter implements IBackendAdapter {
 
   // ── Incoming request handlers (approval requests) ───────────────────────
 
-  private handleRequest(method: string, id: number, params: Record<string, unknown>): void {
+  private handleRequest(method: string, id: JsonRpcId, params: Record<string, unknown>): void {
     try {
       switch (method) {
         case "item/commandExecution/requestApproval":
@@ -1728,6 +1855,12 @@ export class CodexAdapter implements IBackendAdapter {
           break;
         case "item/mcpToolCall/requestApproval":
           this.handleMcpToolCallApproval(id, params);
+          break;
+        case "item/permissions/requestApproval":
+          this.handlePermissionsRequestApproval(id, params);
+          break;
+        case "mcpServer/elicitation/request":
+          this.handleMcpServerElicitationRequest(id, params);
           break;
         case "item/tool/call":
           if ((params as Record<string, unknown>).tool === "ExitPlanMode") {
@@ -1789,7 +1922,7 @@ export class CodexAdapter implements IBackendAdapter {
     });
   }
 
-  private handleCommandApproval(jsonRpcId: number, params: Record<string, unknown>): void {
+  private handleCommandApproval(jsonRpcId: JsonRpcId, params: Record<string, unknown>): void {
     const requestId = `codex-approval-${randomUUID()}`;
     this.pendingApprovals.set(requestId, jsonRpcId);
 
@@ -1811,7 +1944,7 @@ export class CodexAdapter implements IBackendAdapter {
     this.emit({ type: "permission_request", request: perm });
   }
 
-  private handleFileChangeApproval(jsonRpcId: number, params: Record<string, unknown>): void {
+  private handleFileChangeApproval(jsonRpcId: JsonRpcId, params: Record<string, unknown>): void {
     const requestId = `codex-approval-${randomUUID()}`;
     this.pendingApprovals.set(requestId, jsonRpcId);
 
@@ -1836,7 +1969,7 @@ export class CodexAdapter implements IBackendAdapter {
     this.emit({ type: "permission_request", request: perm });
   }
 
-  private handleMcpToolCallApproval(jsonRpcId: number, params: Record<string, unknown>): void {
+  private handleMcpToolCallApproval(jsonRpcId: JsonRpcId, params: Record<string, unknown>): void {
     const requestId = `codex-approval-${randomUUID()}`;
     this.pendingApprovals.set(requestId, jsonRpcId);
 
@@ -1856,7 +1989,70 @@ export class CodexAdapter implements IBackendAdapter {
     this.emit({ type: "permission_request", request: perm });
   }
 
-  private handleDynamicToolCall(jsonRpcId: number, params: Record<string, unknown>): void {
+  private handlePermissionsRequestApproval(jsonRpcId: JsonRpcId, params: Record<string, unknown>): void {
+    const requestId = `codex-permissions-${randomUUID()}`;
+    this.pendingApprovals.set(requestId, jsonRpcId);
+
+    const requestedPermissions = this.asRecord(params.permissions) ?? {};
+    this.pendingPermissionsRequests.set(requestId, requestedPermissions);
+
+    const reason = typeof params.reason === "string" ? params.reason : "Additional permissions requested";
+
+    const perm: PermissionRequest = {
+      request_id: requestId,
+      tool_name: "RequestPermissions",
+      input: {
+        reason,
+        permissions: requestedPermissions,
+      },
+      description: reason,
+      tool_use_id: params.itemId as string || requestId,
+      timestamp: Date.now(),
+    };
+
+    this.emit({ type: "permission_request", request: perm });
+  }
+
+  private handleMcpServerElicitationRequest(jsonRpcId: JsonRpcId, params: Record<string, unknown>): void {
+    const requestId = `codex-mcp-elicitation-${randomUUID()}`;
+    this.pendingApprovals.set(requestId, jsonRpcId);
+
+    const mode = params.mode === "url" ? "url" : "form";
+    this.pendingMcpElicitations.set(requestId, {
+      mode,
+      meta: params._meta ?? null,
+    });
+
+    const message = typeof params.message === "string" ? params.message : "MCP server requested input";
+    const question = mode === "url" && typeof params.url === "string"
+      ? `${message}\n${params.url}`
+      : message;
+
+    const perm: PermissionRequest = {
+      request_id: requestId,
+      tool_name: "AskUserQuestion",
+      input: {
+        questions: [
+          {
+            header: "MCP Request",
+            question,
+            options: [
+              { label: "Accept", description: "Proceed with this MCP request." },
+              { label: "Decline", description: "Reject this MCP request." },
+            ],
+          },
+        ],
+        mode,
+      },
+      description: message,
+      tool_use_id: `${params.serverName || "mcp"}-${requestId}`,
+      timestamp: Date.now(),
+    };
+
+    this.emit({ type: "permission_request", request: perm });
+  }
+
+  private handleDynamicToolCall(jsonRpcId: JsonRpcId, params: Record<string, unknown>): void {
     const callId = params.callId as string || `dynamic-${randomUUID()}`;
     const toolName = params.tool as string || "unknown_dynamic_tool";
     const toolArgs = params.arguments as Record<string, unknown> || {};
@@ -1946,7 +2142,7 @@ export class CodexAdapter implements IBackendAdapter {
     };
   }
 
-  private handleUserInputRequest(jsonRpcId: number, params: Record<string, unknown>): void {
+  private handleUserInputRequest(jsonRpcId: JsonRpcId, params: Record<string, unknown>): void {
     const requestId = `codex-userinput-${randomUUID()}`;
     this.pendingApprovals.set(requestId, jsonRpcId);
 
@@ -1978,7 +2174,7 @@ export class CodexAdapter implements IBackendAdapter {
     this.emit({ type: "permission_request", request: perm });
   }
 
-  private handleExitPlanModeRequest(jsonRpcId: number, params: Record<string, unknown>): void {
+  private handleExitPlanModeRequest(jsonRpcId: JsonRpcId, params: Record<string, unknown>): void {
     const callId = params.callId as string || `exitplan-${randomUUID()}`;
     const toolArgs = params.arguments as Record<string, unknown> || {};
     const requestId = `codex-exitplan-${randomUUID()}`;
@@ -2007,7 +2203,7 @@ export class CodexAdapter implements IBackendAdapter {
     this.emit({ type: "permission_request", request: perm });
   }
 
-  private handleApplyPatchApproval(jsonRpcId: number, params: Record<string, unknown>): void {
+  private handleApplyPatchApproval(jsonRpcId: JsonRpcId, params: Record<string, unknown>): void {
     const requestId = `codex-patch-${randomUUID()}`;
     this.pendingApprovals.set(requestId, jsonRpcId);
     this.pendingReviewDecisions.add(requestId);
@@ -2033,7 +2229,7 @@ export class CodexAdapter implements IBackendAdapter {
     this.emit({ type: "permission_request", request: perm });
   }
 
-  private handleExecCommandApproval(jsonRpcId: number, params: Record<string, unknown>): void {
+  private handleExecCommandApproval(jsonRpcId: JsonRpcId, params: Record<string, unknown>): void {
     const requestId = `codex-exec-${randomUUID()}`;
     this.pendingApprovals.set(requestId, jsonRpcId);
     this.pendingReviewDecisions.add(requestId);
