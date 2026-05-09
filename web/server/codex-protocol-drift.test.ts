@@ -80,6 +80,8 @@ describe("Codex adapter method drift vs upstream protocol snapshot", () => {
       "mcpServer/startupStatus/updated",
       // Context compaction event (v2 form of codex/event/context_compacted).
       "thread/compacted",
+      // Legacy realtime transcript notification shape still seen in some runs.
+      "thread/realtime/transcriptUpdated",
       // Informational warnings from Codex runtime.
       "configWarning",
       "deprecationNotice",

@@ -4101,6 +4101,20 @@ describe("CodexAdapter with ICodexTransport", () => {
       { method: "codex/event/view_image_tool_call", params: { msg: { type: "view_image_tool_call" } } },
       { method: "codex/event/web_search_begin", params: { msg: { type: "web_search_begin" } } },
       { method: "codex/event/web_search_end", params: { msg: { type: "web_search_end" } } },
+      { method: "warning", params: { message: "runtime warning" } },
+      { method: "guardianWarning", params: { warning: "policy warning" } },
+      { method: "remoteControl/status/changed", params: { status: "inactive" } },
+      { method: "thread/goal/updated", params: { goal: { status: "active", objective: "x" } } },
+      { method: "thread/goal/cleared", params: {} },
+      { method: "thread/realtime/transcript/delta", params: { delta: "hello" } },
+      { method: "thread/realtime/transcript/done", params: {} },
+      { method: "thread/realtime/sdp", params: { sdp: "v=0" } },
+      { method: "process/outputDelta", params: { processId: "p1", delta: "line" } },
+      { method: "process/exited", params: { processId: "p1", exitCode: 0 } },
+      { method: "skills/changed", params: {} },
+      { method: "item/fileChange/patchUpdated", params: { itemId: "fc1" } },
+      { method: "model/verification", params: { verified: true } },
+      { method: "externalAgentConfig/import/completed", params: { imported: 1 } },
     ];
 
     for (const n of infoNotifications) {
@@ -4259,6 +4273,16 @@ describe("CodexAdapter with ICodexTransport", () => {
     mock.pushRequest("account/chatgptAuthTokens/refresh", 42, {});
     await new Promise((r) => setTimeout(r, 20));
     const resp = mock.responses.find((r) => r.id === 42);
+    expect(resp).toBeTruthy();
+    expect((resp!.result as { error: string }).error).toBe("not supported");
+  });
+
+  it("responds to attestation generate request with error", async () => {
+    // attestation/generate is currently unsupported in Companion.
+    const { mock } = await initAdapter();
+    mock.pushRequest("attestation/generate", 43, {});
+    await new Promise((r) => setTimeout(r, 20));
+    const resp = mock.responses.find((r) => r.id === 43);
     expect(resp).toBeTruthy();
     expect((resp!.result as { error: string }).error).toBe("not supported");
   });

@@ -1722,17 +1722,31 @@ export class CodexAdapter implements IBackendAdapter {
       case "hook/completed":
       case "item/autoApprovalReview/started":
       case "item/autoApprovalReview/completed":
+      case "item/fileChange/patchUpdated":
       case "app/list/updated":
       case "fs/changed":
+      case "skills/changed":
       case "model/rerouted":
+      case "model/verification":
       case "fuzzyFileSearch/sessionUpdated":
       case "fuzzyFileSearch/sessionCompleted":
+      case "process/exited":
+      case "process/outputDelta":
       case "thread/realtime/started":
       case "thread/realtime/itemAdded":
       case "thread/realtime/transcriptUpdated":
+      case "thread/realtime/transcript/delta":
+      case "thread/realtime/transcript/done":
+      case "thread/realtime/sdp":
       case "thread/realtime/outputAudio/delta":
       case "thread/realtime/error":
       case "thread/realtime/closed":
+      case "thread/goal/updated":
+      case "thread/goal/cleared":
+      case "remoteControl/status/changed":
+      case "externalAgentConfig/import/completed":
+      case "guardianWarning":
+      case "warning":
       case "windows/worldWritableWarning":
       case "windowsSandbox/setupCompleted":
         // Currently not surfaced in the Companion UI.
@@ -1877,6 +1891,10 @@ export class CodexAdapter implements IBackendAdapter {
           break;
         case "execCommandApproval":
           this.handleExecCommandApproval(id, params);
+          break;
+        case "attestation/generate":
+          console.warn("[codex-adapter] Attestation generation not supported");
+          this.transport.respond(id, { error: "not supported" });
           break;
         case "account/chatgptAuthTokens/refresh":
           console.warn("[codex-adapter] Auth token refresh not supported");
