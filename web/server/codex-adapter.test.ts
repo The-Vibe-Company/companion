@@ -2157,6 +2157,210 @@ describe("CodexAdapter", () => {
     expect(response.result.answers.q_beta).toEqual({ answers: ["No"] });
   });
 
+  it("forwards item/permissions/requestApproval and responds with granted permissions", async () => {
+    const messages: BrowserIncomingMessage[] = [];
+    const adapter = new CodexAdapter(proc as never, "test-session", { model: "o4-mini" });
+    adapter.onBrowserMessage((msg) => messages.push(msg));
+
+    await new Promise((r) => setTimeout(r, 50));
+    stdout.push(JSON.stringify({ id: 1, result: { userAgent: "codex" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    // New Codex protocol request for request_permissions tool approvals.
+    stdout.push(JSON.stringify({
+      method: "item/permissions/requestApproval",
+      id: 702,
+      params: {
+        threadId: "thr_123",
+        turnId: "turn_1",
+        itemId: "item_perm_1",
+        reason: "Need temporary network access",
+        permissions: {
+          network: { mode: "allowAll" },
+          fileSystem: { write: ["/workspace"] },
+          toolExecution: { mode: "allow" },
+        },
+      },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    const permReq = messages.find((m) => m.type === "permission_request") as unknown as {
+      request: { request_id: string; tool_name: string; input: { permissions: Record<string, unknown> } };
+    };
+    expect(permReq).toBeDefined();
+    expect(permReq.request.tool_name).toBe("RequestPermissions");
+    expect(permReq.request.input.permissions).toEqual({
+      network: { mode: "allowAll" },
+      fileSystem: { write: ["/workspace"] },
+      toolExecution: { mode: "allow" },
+    });
+
+    // Approve with a smaller granted subset + session scope.
+    adapter.sendBrowserMessage({
+      type: "permission_response",
+      request_id: permReq.request.request_id,
+      behavior: "allow",
+      updated_input: {
+        scope: "session",
+        permissions: { fileSystem: { write: ["/workspace"] } },
+      },
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const responseLine = stdin.chunks.join("").split("\n").find((l) => l.includes('"id":702'));
+    expect(responseLine).toBeDefined();
+    const response = JSON.parse(responseLine!);
+    expect(response.result.scope).toBe("session");
+    expect(response.result.permissions).toEqual({ fileSystem: { write: ["/workspace"] } });
+  });
+
+  it("forwards mcpServer/elicitation/request and converts deny into decline action", async () => {
+    const messages: BrowserIncomingMessage[] = [];
+    const adapter = new CodexAdapter(proc as never, "test-session", { model: "o4-mini" });
+    adapter.onBrowserMessage((msg) => messages.push(msg));
+
+    await new Promise((r) => setTimeout(r, 50));
+    stdout.push(JSON.stringify({ id: 1, result: { userAgent: "codex" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    stdout.push(JSON.stringify({
+      method: "mcpServer/elicitation/request",
+      id: 703,
+      params: {
+        threadId: "thr_123",
+        turnId: "turn_1",
+        serverName: "github",
+        mode: "url",
+        _meta: { source: "mcp" },
+        message: "Authorize GitHub connector",
+        url: "https://example.com/oauth",
+        elicitationId: "el_1",
+      },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    const permReq = messages.find((m) => m.type === "permission_request") as unknown as {
+      request: { request_id: string; tool_name: string; input: { mode: string } };
+    };
+    expect(permReq).toBeDefined();
+    expect(permReq.request.tool_name).toBe("AskUserQuestion");
+    expect(permReq.request.input.mode).toBe("url");
+
+    adapter.sendBrowserMessage({
+      type: "permission_response",
+      request_id: permReq.request.request_id,
+      behavior: "deny",
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const responseLine = stdin.chunks.join("").split("\n").find((l) => l.includes('"id":703'));
+    expect(responseLine).toBeDefined();
+    const response = JSON.parse(responseLine!);
+    expect(response.result.action).toBe("decline");
+    expect(response.result.content).toBeNull();
+  });
+
+  it("clears stale permission requests on serverRequest/resolved", async () => {
+    const messages: BrowserIncomingMessage[] = [];
+    const adapter = new CodexAdapter(proc as never, "test-session", { model: "o4-mini" });
+    adapter.onBrowserMessage((msg) => messages.push(msg));
+
+    await new Promise((r) => setTimeout(r, 50));
+    stdout.push(JSON.stringify({ id: 1, result: { userAgent: "codex" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    stdout.push(JSON.stringify({
+      method: "item/commandExecution/requestApproval",
+      id: 704,
+      params: {
+        itemId: "item_cmd_1",
+        threadId: "thr_123",
+        turnId: "turn_1",
+        command: ["echo", "hello"],
+        cwd: "/workspace",
+      },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    const permReq = messages.find((m) => m.type === "permission_request") as unknown as {
+      request: { request_id: string };
+    };
+    expect(permReq).toBeDefined();
+
+    // serverRequest/resolved should clear the pending approval banner.
+    stdout.push(JSON.stringify({
+      method: "serverRequest/resolved",
+      params: { threadId: "thr_123", requestId: 704 },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    const cancelled = messages.find((m) =>
+      m.type === "permission_cancelled"
+      && (m as { request_id: string }).request_id === permReq.request.request_id
+    );
+    expect(cancelled).toBeDefined();
+  });
+
+  it("treats string and numeric JSON-RPC request IDs as distinct in serverRequest/resolved", async () => {
+    const messages: BrowserIncomingMessage[] = [];
+    const adapter = new CodexAdapter(proc as never, "test-session", { model: "o4-mini" });
+    adapter.onBrowserMessage((msg) => messages.push(msg));
+
+    await new Promise((r) => setTimeout(r, 50));
+    stdout.push(JSON.stringify({ id: 1, result: { userAgent: "codex" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    stdout.push(JSON.stringify({
+      method: "item/commandExecution/requestApproval",
+      id: 1,
+      params: {
+        itemId: "item_cmd_num",
+        threadId: "thr_123",
+        turnId: "turn_1",
+        command: ["echo", "num"],
+      },
+    }) + "\n");
+    stdout.push(JSON.stringify({
+      method: "item/commandExecution/requestApproval",
+      id: "1",
+      params: {
+        itemId: "item_cmd_str",
+        threadId: "thr_123",
+        turnId: "turn_1",
+        command: ["echo", "str"],
+      },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    const permissionRequests = messages
+      .filter((m) => m.type === "permission_request")
+      .map((m) => m as unknown as { request: { request_id: string; input: Record<string, unknown> } });
+    expect(permissionRequests).toHaveLength(2);
+    const numericReq = permissionRequests.find((m) => String(m.request.input.command ?? "").includes("num"));
+    const stringReq = permissionRequests.find((m) => String(m.request.input.command ?? "").includes("str"));
+    expect(numericReq).toBeDefined();
+    expect(stringReq).toBeDefined();
+
+    stdout.push(JSON.stringify({
+      method: "serverRequest/resolved",
+      params: { threadId: "thr_123", requestId: "1" },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    const cancelled = messages.filter((m) => m.type === "permission_cancelled") as Array<{ request_id: string }>;
+    expect(cancelled).toHaveLength(1);
+    expect(cancelled[0]?.request_id).toBe(stringReq!.request.request_id);
+    expect(cancelled[0]?.request_id).not.toBe(numericReq!.request.request_id);
+  });
+
   // ── applyPatchApproval tests ──────────────────────────────────────────
 
   it("forwards applyPatchApproval as Edit permission_request", async () => {
@@ -3897,6 +4101,20 @@ describe("CodexAdapter with ICodexTransport", () => {
       { method: "codex/event/view_image_tool_call", params: { msg: { type: "view_image_tool_call" } } },
       { method: "codex/event/web_search_begin", params: { msg: { type: "web_search_begin" } } },
       { method: "codex/event/web_search_end", params: { msg: { type: "web_search_end" } } },
+      { method: "warning", params: { message: "runtime warning" } },
+      { method: "guardianWarning", params: { warning: "policy warning" } },
+      { method: "remoteControl/status/changed", params: { status: "inactive" } },
+      { method: "thread/goal/updated", params: { goal: { status: "active", objective: "x" } } },
+      { method: "thread/goal/cleared", params: {} },
+      { method: "thread/realtime/transcript/delta", params: { delta: "hello" } },
+      { method: "thread/realtime/transcript/done", params: {} },
+      { method: "thread/realtime/sdp", params: { sdp: "v=0" } },
+      { method: "process/outputDelta", params: { processId: "p1", delta: "line" } },
+      { method: "process/exited", params: { processId: "p1", exitCode: 0 } },
+      { method: "skills/changed", params: {} },
+      { method: "item/fileChange/patchUpdated", params: { itemId: "fc1" } },
+      { method: "model/verification", params: { verified: true } },
+      { method: "externalAgentConfig/import/completed", params: { imported: 1 } },
     ];
 
     for (const n of infoNotifications) {
@@ -4055,6 +4273,16 @@ describe("CodexAdapter with ICodexTransport", () => {
     mock.pushRequest("account/chatgptAuthTokens/refresh", 42, {});
     await new Promise((r) => setTimeout(r, 20));
     const resp = mock.responses.find((r) => r.id === 42);
+    expect(resp).toBeTruthy();
+    expect((resp!.result as { error: string }).error).toBe("not supported");
+  });
+
+  it("responds to attestation generate request with error", async () => {
+    // attestation/generate is currently unsupported in Companion.
+    const { mock } = await initAdapter();
+    mock.pushRequest("attestation/generate", 43, {});
+    await new Promise((r) => setTimeout(r, 20));
+    const resp = mock.responses.find((r) => r.id === 43);
     expect(resp).toBeTruthy();
     expect((resp!.result as { error: string }).error).toBe("not supported");
   });

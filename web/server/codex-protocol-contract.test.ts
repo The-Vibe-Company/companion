@@ -33,10 +33,19 @@ describe("Codex protocol compatibility (offline snapshot)", () => {
       "turn/plan/updated",
       "turn/diff/updated",
       "thread/started",
+      "thread/status/changed",
       "thread/tokenUsage/updated",
+      "thread/goal/updated",
+      "thread/goal/cleared",
+      "serverRequest/resolved",
+      "command/exec/outputDelta",
+      "hook/started",
+      "hook/completed",
       "account/updated",
       "account/rateLimits/updated",
       "account/login/completed",
+      "warning",
+      "guardianWarning",
     ]) {
       expect(methods).toContain(method);
     }
@@ -72,9 +81,12 @@ describe("Codex protocol compatibility (offline snapshot)", () => {
       "item/commandExecution/requestApproval",
       "item/fileChange/requestApproval",
       "item/tool/requestUserInput",
+      "mcpServer/elicitation/request",
+      "item/permissions/requestApproval",
       "item/tool/call",
       "applyPatchApproval",
       "execCommandApproval",
+      "attestation/generate",
       "account/chatgptAuthTokens/refresh",
     ]) {
       expect(methods).toContain(method);
