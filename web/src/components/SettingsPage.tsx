@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "../api.js";
 import { useStore } from "../store.js";
-import { getTelemetryPreferenceEnabled, setTelemetryPreferenceEnabled } from "../analytics.js";
 import { navigateToSession, navigateHome } from "../utils/routing.js";
 
 interface SettingsPageProps {
@@ -10,15 +9,14 @@ interface SettingsPageProps {
 
 const CATEGORIES = [
   { id: "general", label: "General" },
-  { id: "webhooks", label: "Webhooks" },
-  { id: "authentication", label: "Authentication" },
-  { id: "notifications", label: "Notifications" },
-  { id: "providers", label: "Providers" },
-  { id: "anthropic", label: "Anthropic" },
-  { id: "ai-validation", label: "AI Validation" },
+  { id: "webhooks", label: "Access" },
+  { id: "authentication", label: "Device Login" },
+  { id: "providers", label: "Agent Auth" },
+  { id: "anthropic", label: "Automation AI" },
+  { id: "ai-validation", label: "Safety" },
+  { id: "environments", label: "Runtime" },
   { id: "updates", label: "Updates" },
-  { id: "telemetry", label: "Telemetry" },
-  { id: "environments", label: "Environments" },
+  { id: "telemetry", label: "Privacy" },
 ] as const;
 
 type CategoryId = (typeof CATEGORIES)[number]["id"];
@@ -49,7 +47,6 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
   const [updatingApp, setUpdatingApp] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
   const [updateError, setUpdateError] = useState("");
-  const [telemetryEnabled, setTelemetryEnabled] = useState(getTelemetryPreferenceEnabled());
   const [aiValidationEnabled, setAiValidationEnabled] = useState(false);
   const [aiValidationAutoApprove, setAiValidationAutoApprove] = useState(true);
   const [aiValidationAutoDeny, setAiValidationAutoDeny] = useState(false);
@@ -248,7 +245,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
           <div>
             <h1 className="text-xl font-semibold text-cc-fg">Settings</h1>
             <p className="mt-1 text-sm text-cc-muted">
-              Configure API access, notifications, appearance, and workspace defaults.
+              Control access, agent credentials, safety checks, runtime defaults, and updates.
             </p>
           </div>
           {!embedded && (
@@ -344,12 +341,46 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                 <p className="text-xs text-cc-muted px-1">
                   Last commit shows only uncommitted changes. Default branch shows all changes since diverging from main.
                 </p>
+
+                <div className="pt-2">
+                  <h3 className="text-xs font-semibold text-cc-muted uppercase tracking-wide mb-2">Notifications</h3>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={toggleNotificationSound}
+                      className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
+                    >
+                      <span>Sound</span>
+                      <span className="text-xs text-cc-muted">{notificationSound ? "On" : "Off"}</span>
+                    </button>
+                    {notificationApiAvailable && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!notificationDesktop) {
+                            if (Notification.permission !== "granted") {
+                              const result = await Notification.requestPermission();
+                              if (result !== "granted") return;
+                            }
+                            setNotificationDesktop(true);
+                          } else {
+                            setNotificationDesktop(false);
+                          }
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
+                      >
+                        <span>Desktop Alerts</span>
+                        <span className="text-xs text-cc-muted">{notificationDesktop ? "On" : "Off"}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </section>
 
             {/* Webhooks */}
             <section id="webhooks" ref={setSectionRef("webhooks")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Webhooks</h2>
+              <h2 className="text-sm font-semibold text-cc-fg mb-4">Access URLs</h2>
               <div className="space-y-4">
                 <p className="text-xs text-cc-muted">
                   The public URL is used for webhook URLs that external services (Linear, GitHub) send events to.
@@ -411,7 +442,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* Authentication */}
             <section id="authentication" ref={setSectionRef("authentication")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Authentication</h2>
+              <h2 className="text-sm font-semibold text-cc-fg mb-4">Device Login</h2>
               <div className="space-y-4">
                 <p className="text-xs text-cc-muted">
                   Use the auth token or QR code to connect additional devices (e.g. mobile over Tailscale).
@@ -557,47 +588,12 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
               </div>
             </section>
 
-            {/* Notifications */}
-            <section id="notifications" ref={setSectionRef("notifications")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Notifications</h2>
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={toggleNotificationSound}
-                  className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
-                >
-                  <span>Sound</span>
-                  <span className="text-xs text-cc-muted">{notificationSound ? "On" : "Off"}</span>
-                </button>
-                {notificationApiAvailable && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!notificationDesktop) {
-                        if (Notification.permission !== "granted") {
-                          const result = await Notification.requestPermission();
-                          if (result !== "granted") return;
-                        }
-                        setNotificationDesktop(true);
-                      } else {
-                        setNotificationDesktop(false);
-                      }
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
-                  >
-                    <span>Desktop Alerts</span>
-                    <span className="text-xs text-cc-muted">{notificationDesktop ? "On" : "Off"}</span>
-                  </button>
-                )}
-              </div>
-            </section>
-
             {/* Providers */}
             <section id="providers" ref={setSectionRef("providers")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Providers</h2>
+              <h2 className="text-sm font-semibold text-cc-fg mb-4">Agent Auth</h2>
               <div className="space-y-6">
                 <p className="text-xs text-cc-muted">
-                  Configure authentication tokens for Claude Code and Codex. These are injected into sessions automatically.
+                  Claude Code and Codex can use local CLI login files. Add tokens here only when you want AgentHangar to inject credentials into sessions.
                 </p>
 
                 {/* Claude Code OAuth Token */}
@@ -705,8 +701,11 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* Anthropic */}
             <section id="anthropic" ref={setSectionRef("anthropic")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Anthropic</h2>
+              <h2 className="text-sm font-semibold text-cc-fg mb-4">Automation AI</h2>
               <form onSubmit={onSave} className="space-y-4">
+                <p className="text-xs text-cc-muted">
+                  This key is for AgentHangar features such as session naming and AI validation. It is separate from Claude Code login.
+                </p>
                 <div>
                   <label className="block text-sm font-medium mb-1.5" htmlFor="anthropic-key">
                     Anthropic API Key
@@ -722,7 +721,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
                   />
                   <p className="mt-1.5 text-xs text-cc-muted">
-                    Auto-renaming is disabled until this key is configured.
+                    Session naming and validation features are disabled until this key is configured.
                   </p>
                 </div>
 
@@ -810,7 +809,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* AI Validation */}
             <section id="ai-validation" ref={setSectionRef("ai-validation")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">AI Validation</h2>
+              <h2 className="text-sm font-semibold text-cc-fg mb-4">Safety</h2>
               <div className="space-y-3">
                 <p className="text-xs text-cc-muted leading-relaxed">
                   When enabled, an AI model evaluates tool calls before they execute.
@@ -837,7 +836,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   </span>
                 </button>
                 {!configured && (
-                  <p className="text-[11px] text-cc-warning">Configure an Anthropic API key above to enable AI validation.</p>
+                  <p className="text-[11px] text-cc-warning">Configure the Automation AI key above to enable AI validation.</p>
                 )}
 
                 {aiValidationEnabled && configured && (
@@ -871,6 +870,25 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     </button>
                   </>
                 )}
+              </div>
+            </section>
+
+            {/* Environments */}
+            <section id="environments" ref={setSectionRef("environments")}>
+              <h2 className="text-sm font-semibold text-cc-fg mb-4">Runtime</h2>
+              <div className="space-y-3">
+                <p className="text-xs text-cc-muted">
+                  Environment profiles provide reusable variables when launching sessions.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.hash = "#/environments";
+                  }}
+                  className="px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-cc-primary hover:bg-cc-primary-hover text-white transition-colors cursor-pointer"
+                >
+                  Open Environments
+                </button>
               </div>
             </section>
 
@@ -1035,45 +1053,15 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* Telemetry */}
             <section id="telemetry" ref={setSectionRef("telemetry")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Telemetry</h2>
+              <h2 className="text-sm font-semibold text-cc-fg mb-4">Privacy</h2>
               <div className="space-y-3">
+                <div className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg">
+                  <span>External telemetry</span>
+                  <span className="text-xs text-cc-muted">Disabled</span>
+                </div>
                 <p className="text-xs text-cc-muted">
-                  Anonymous product analytics and crash reports via PostHog to improve reliability.
+                  Analytics is compiled as a no-op in this build. No PostHog host or telemetry URL is configured.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !telemetryEnabled;
-                    setTelemetryPreferenceEnabled(next);
-                    setTelemetryEnabled(next);
-                  }}
-                  className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
-                >
-                  <span>Usage analytics and errors</span>
-                  <span className="text-xs text-cc-muted">{telemetryEnabled ? "On" : "Off"}</span>
-                </button>
-                <p className="text-xs text-cc-muted">
-                  Browser Do Not Track is respected automatically.
-                </p>
-              </div>
-            </section>
-
-            {/* Environments */}
-            <section id="environments" ref={setSectionRef("environments")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Environments</h2>
-              <div className="space-y-3">
-                <p className="text-xs text-cc-muted">
-                  Manage reusable environment profiles used when creating sessions.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.location.hash = "#/environments";
-                  }}
-                  className="px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-cc-primary hover:bg-cc-primary-hover text-white transition-colors cursor-pointer"
-                >
-                  Open Environments Page
-                </button>
               </div>
             </section>
           </div>

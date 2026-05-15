@@ -185,10 +185,10 @@ describe("SettingsPage", () => {
     await screen.findByText("Anthropic key not configured");
   });
 
-  it("shows the auto-renaming helper copy under the API key input", async () => {
+  it("shows the automation helper copy under the API key input", async () => {
     render(<SettingsPage />);
 
-    expect(await screen.findByText("Auto-renaming is disabled until this key is configured.")).toBeInTheDocument();
+    expect(await screen.findByText("Session naming and validation features are disabled until this key is configured.")).toBeInTheDocument();
   });
 
   it("saves settings with trimmed values", async () => {
@@ -341,19 +341,21 @@ describe("SettingsPage", () => {
     expect(mockState.toggleDarkMode).toHaveBeenCalledTimes(1);
   });
 
-  it("toggles telemetry preference from settings", async () => {
+  it("shows telemetry as disabled in privacy settings", async () => {
     render(<SettingsPage />);
     await screen.findByText("Anthropic key configured");
 
-    fireEvent.click(screen.getByRole("button", { name: /Usage analytics and errors/i }));
-    expect(mockTelemetry.setTelemetryPreferenceEnabled).toHaveBeenCalledWith(false);
+    expect(screen.getByText("External telemetry")).toBeInTheDocument();
+    expect(screen.getByText("Disabled")).toBeInTheDocument();
+    expect(screen.getByText("Analytics is compiled as a no-op in this build. No PostHog host or telemetry URL is configured.")).toBeInTheDocument();
+    expect(mockTelemetry.setTelemetryPreferenceEnabled).not.toHaveBeenCalled();
   });
 
   it("navigates to environments page from settings", async () => {
     render(<SettingsPage />);
     await screen.findByText("Anthropic key configured");
 
-    fireEvent.click(screen.getByRole("button", { name: "Open Environments Page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open Environments" }));
     expect(window.location.hash).toBe("#/environments");
   });
 
@@ -432,8 +434,9 @@ describe("SettingsPage", () => {
     const generalButtons = screen.getAllByRole("button", { name: "General" });
     expect(generalButtons.length).toBeGreaterThanOrEqual(1);
 
-    const notifButtons = screen.getAllByRole("button", { name: "Notifications" });
-    expect(notifButtons.length).toBeGreaterThanOrEqual(1);
+    for (const label of ["Access", "Device Login", "Agent Auth", "Automation AI", "Safety", "Runtime", "Privacy"]) {
+      expect(screen.getAllByRole("button", { name: label }).length).toBeGreaterThanOrEqual(1);
+    }
   });
 
   // Verify section headings have correct IDs for anchor-based scrolling
@@ -444,11 +447,12 @@ describe("SettingsPage", () => {
     expect(document.getElementById("general")).toBeInTheDocument();
     expect(document.getElementById("webhooks")).toBeInTheDocument();
     expect(document.getElementById("authentication")).toBeInTheDocument();
-    expect(document.getElementById("notifications")).toBeInTheDocument();
+    expect(document.getElementById("providers")).toBeInTheDocument();
     expect(document.getElementById("anthropic")).toBeInTheDocument();
+    expect(document.getElementById("ai-validation")).toBeInTheDocument();
+    expect(document.getElementById("environments")).toBeInTheDocument();
     expect(document.getElementById("updates")).toBeInTheDocument();
     expect(document.getElementById("telemetry")).toBeInTheDocument();
-    expect(document.getElementById("environments")).toBeInTheDocument();
   });
 
   // ─── Authentication section tests ──────────────────────────────────
@@ -541,12 +545,12 @@ describe("SettingsPage", () => {
     (window.confirm as ReturnType<typeof vi.spyOn>).mockRestore();
   });
 
-  // The Authentication navigation item appears in the sidebar.
-  it("includes Authentication in category navigation", async () => {
+  // The Device Login navigation item appears in the sidebar.
+  it("includes Device Login in category navigation", async () => {
     render(<SettingsPage />);
     await screen.findByText("Anthropic key configured");
 
-    const authButtons = screen.getAllByRole("button", { name: "Authentication" });
+    const authButtons = screen.getAllByRole("button", { name: "Device Login" });
     expect(authButtons.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -704,7 +708,7 @@ describe("SettingsPage", () => {
 
     // Warning message should be shown
     expect(
-      screen.getByText("Configure an Anthropic API key above to enable AI validation."),
+      screen.getByText("Configure the Automation AI key above to enable AI validation."),
     ).toBeInTheDocument();
   });
 
@@ -878,12 +882,12 @@ describe("SettingsPage", () => {
     expect(document.getElementById("ai-validation")).toBeInTheDocument();
   });
 
-  // The AI Validation category appears in the sidebar navigation.
-  it("includes AI Validation in category navigation", async () => {
+  // The Safety category appears in the sidebar navigation.
+  it("includes Safety in category navigation", async () => {
     render(<SettingsPage />);
     await screen.findByText("Anthropic key configured");
 
-    const aiValButtons = screen.getAllByRole("button", { name: "AI Validation" });
+    const aiValButtons = screen.getAllByRole("button", { name: "Safety" });
     expect(aiValButtons.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -1041,14 +1045,14 @@ describe("SettingsPage", () => {
 
   // ─── Webhooks section tests ──────────────────────────────────
 
-  // The Webhooks category should appear in the sidebar navigation so users
+  // The Access category should appear in the sidebar navigation so users
   // can quickly jump to the webhook configuration section.
-  it("includes Webhooks in category navigation", async () => {
+  it("includes Access in category navigation", async () => {
     render(<SettingsPage />);
     await screen.findByText("Anthropic key configured");
 
     // Each category appears in both desktop sidebar and mobile nav (jsdom renders both)
-    const webhookButtons = screen.getAllByRole("button", { name: "Webhooks" });
+    const webhookButtons = screen.getAllByRole("button", { name: "Access" });
     expect(webhookButtons.length).toBeGreaterThanOrEqual(1);
   });
 
