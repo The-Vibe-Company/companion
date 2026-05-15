@@ -1,7 +1,7 @@
 import type { BrowserIncomingMessage, BrowserOutgoingMessage } from "./session-types.js";
 
 // ─── Unified Backend Adapter Interface ───────────────────────────────────────
-// Both Claude Code (NDJSON WebSocket) and Codex (JSON-RPC stdio/WS) implement
+// Both Claude Code (NDJSON over stdio) and Codex (JSON-RPC over stdio) implement
 // this so that application code never branches on BackendType for message routing.
 
 /**

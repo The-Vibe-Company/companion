@@ -58,22 +58,29 @@ All UI components used in the message/chat flow **must** be represented in the P
 ### Data Flow
 
 ```
-Browser (React) ←→ WebSocket ←→ Hono Server (Bun) ←→ WebSocket (NDJSON) ←→ Claude Code CLI
-     :6060              /ws/browser/:id        :6060        /ws/cli/:id         (--sdk-url)
+Browser (React) ←─ WebSocket ─→ Hono Server (Bun) ←─ stdio (NDJSON) ─→ Claude Code / Codex CLI
+     :6060            /ws/browser/:id     :6060           child process pipes
 ```
 
 1. Browser sends a "create session" REST call to the server
-2. Server spawns `claude --sdk-url ws://localhost:6060/ws/cli/SESSION_ID` as a subprocess
-3. CLI connects back to the server over WebSocket using NDJSON protocol
-4. Server bridges messages between CLI WebSocket and browser WebSocket
-5. Tool calls arrive as `control_request` (subtype `can_use_tool`) — browser renders approval UI, server relays `control_response` back
+2. Server spawns the CLI as a child process and pipes NDJSON on its stdin/stdout:
+   - Claude: `claude --print --input-format stream-json --output-format stream-json …`
+   - Codex: `codex app-server …`
+3. The adapter (`claude-adapter.ts` / `codex-adapter.ts`) attaches at spawn time — no separate transport handshake — and normalises both backends into the same `BrowserIncomingMessage` / `BrowserOutgoingMessage` shapes.
+4. The bridge fans those messages out to all browser WebSockets subscribed to the session.
+5. Tool calls arrive as `control_request` (subtype `can_use_tool`) — browser renders approval UI, server relays `control_response` back.
+
+Historical note: Claude used to talk to companion over a `--sdk-url`
+WebSocket at `/ws/cli/:id`. That transport is gone — only `/ws/browser`
+(plus `/ws/terminal` and `/ws/novnc`) is upgraded by Bun.serve today.
 
 ### All code lives under `web/`
 
 - **`web/server/`** — Hono + Bun backend (runs on port 6060 in prod, 6061 in dev)
-  - `index.ts` — Server bootstrap, Bun.serve with dual WebSocket upgrade (CLI vs browser)
-  - `ws-bridge.ts` — Core message router. Maintains per-session state (CLI socket, browser sockets, message history, pending permissions). Parses NDJSON from CLI, translates to typed JSON for browsers.
-  - `cli-launcher.ts` — Spawns/kills/relaunches Claude Code CLI processes. Handles `--resume` for session recovery. Persists session state across server restarts.
+  - `index.ts` — Server bootstrap, Bun.serve with WebSocket upgrade for browser/terminal/novnc paths.
+  - `ws-bridge.ts` — Core message router. Maintains per-session state (backend adapter, browser sockets, message history, pending permissions). Receives NDJSON via the adapter, translates to typed JSON for browsers.
+  - `claude-adapter.ts` / `codex-adapter.ts` — Backend-specific adapters that own the stdio pipes and translate between the CLI's native protocol and the unified message shapes.
+  - `cli-launcher.ts` — Spawns/kills/relaunches Claude Code and Codex CLI processes. Handles `--resume` for session recovery. Persists session state across server restarts.
   - `session-store.ts` — JSON file persistence to `$TMPDIR/vibe-sessions/`. Debounced writes.
   - `session-types.ts` — All TypeScript types for CLI messages (NDJSON), browser messages, session state, permissions.
   - `routes.ts` — REST API: session CRUD, filesystem browsing, environment management.

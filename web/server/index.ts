@@ -262,7 +262,7 @@ const server = Bun.serve<SocketData>({
   },
   websocket: {
     idleTimeout: 0,
-    sendPings: false, // Disable Bun ping timeout that kills CLI connections (code 1006)
+    sendPings: false, // Disable Bun ping timeout that closes idle browser WebSockets with code 1006
     open(ws: ServerWebSocket<SocketData>) {
       const data = ws.data;
       if (data.kind === "browser") {

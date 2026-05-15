@@ -314,8 +314,11 @@ export interface LaunchOptions {
 }
 
 /**
- * Manages CLI backend processes (Claude Code via --sdk-url WebSocket,
- * or Codex via app-server stdio/WebSocket).
+ * Manages CLI backend processes — both Claude Code and Codex now talk to
+ * companion over stdio pipes (NDJSON). Claude is spawned with
+ * `--print --input-format stream-json --output-format stream-json`; Codex
+ * with `app-server`. The adapter attaches to the spawned process's
+ * stdin/stdout at spawn time.
  */
 export class CliLauncher {
   private sessions = new Map<string, SdkSessionInfo>();
