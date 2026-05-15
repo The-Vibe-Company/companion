@@ -132,10 +132,10 @@ export function registerSystemRoutes(
     setTimeout(async () => {
       try {
         console.log(
-          `[update] Updating the-companion to ${state.latestVersion}...`,
+          `[update] Updating agenthangar to ${state.latestVersion}...`,
         );
         const proc = Bun.spawn(
-          ["bun", "install", "-g", `the-companion@${state.latestVersion}`],
+          ["bun", "install", "-g", `agenthangar@${state.latestVersion}`],
           { stdout: "pipe", stderr: "pipe" },
         );
         const exitCode = await proc.exited;
@@ -153,8 +153,8 @@ export function registerSystemRoutes(
         if (getSettings().dockerAutoUpdate) {
           try {
             console.log("[update] Re-pulling Docker image (dockerAutoUpdate enabled)...");
-            imagePullManager.pull("the-companion:latest");
-            const ready = await imagePullManager.waitForReady("the-companion:latest", 120_000);
+            imagePullManager.pull("agenthangar:latest");
+            const ready = await imagePullManager.waitForReady("agenthangar:latest", 120_000);
             if (ready) {
               console.log("[update] Docker image re-pull complete.");
             } else {
@@ -177,10 +177,10 @@ export function registerSystemRoutes(
         const isLinux = process.platform === "linux";
         const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
         const restartCmd = isLinux
-          ? ["systemctl", "--user", "restart", "the-companion.service"]
+          ? ["systemctl", "--user", "restart", "agenthangar.service"]
           : uid !== undefined
-            ? ["launchctl", "kickstart", "-k", `gui/${uid}/sh.thecompanion.app`]
-            : ["launchctl", "kickstart", "-k", "sh.thecompanion.app"];
+            ? ["launchctl", "kickstart", "-k", `gui/${uid}/ai.blocksec.agenthangar`]
+            : ["launchctl", "kickstart", "-k", "ai.blocksec.agenthangar"];
 
         Bun.spawn(restartCmd, {
           stdout: "ignore",

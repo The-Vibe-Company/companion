@@ -3,9 +3,9 @@ import { mkdirSync, rmSync, readdirSync, readFileSync, writeFileSync } from "nod
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-// Redirect COMPANION_HOME to a temp directory so tests don't touch real config
+// Redirect AGENTHANGAR_HOME to a temp directory so tests don't touch real config
 const TEST_HOME = join(tmpdir(), `linear-staging-test-${Date.now()}`);
-process.env.COMPANION_HOME = TEST_HOME;
+process.env.AGENTHANGAR_HOME = TEST_HOME;
 
 // Import after setting env var so the module picks up the test directory
 const staging = await import("./linear-staging.js");

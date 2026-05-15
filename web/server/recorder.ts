@@ -2,7 +2,7 @@ import { mkdirSync, readdirSync, appendFileSync, statSync, unlinkSync } from "no
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import type { BackendType } from "./session-types.js";
-import { COMPANION_HOME } from "./paths.js";
+import { AGENTHANGAR_HOME } from "./paths.js";
 import { countFileLines } from "./fs-utils.js";
 
 const DEFAULT_MAX_LINES = 1_000_000;
@@ -142,10 +142,10 @@ export class SessionRecorder {
 /**
  * Manages recording for all sessions.
  *
- * Always enabled by default. Disable explicitly with COMPANION_RECORD=0.
+ * Always enabled by default. Disable explicitly with AGENTHANGAR_RECORD=0.
  *
  * Automatic rotation: when total lines across all recording files exceed
- * maxLines (default 1 000 000, override with COMPANION_RECORDINGS_MAX_LINES),
+ * maxLines (default 1 000 000, override with AGENTHANGAR_RECORDINGS_MAX_LINES),
  * the oldest files are deleted until we're back under the limit.
  */
 export class RecorderManager {
@@ -166,11 +166,11 @@ export class RecorderManager {
     this.globalEnabled = options?.globalEnabled ?? RecorderManager.resolveEnabled();
     this.recordingsDir =
       options?.recordingsDir ??
-      process.env.COMPANION_RECORDINGS_DIR ??
-      join(COMPANION_HOME, "recordings");
+      process.env.AGENTHANGAR_RECORDINGS_DIR ??
+      join(AGENTHANGAR_HOME, "recordings");
     this.maxLines =
       options?.maxLines ??
-      (Number(process.env.COMPANION_RECORDINGS_MAX_LINES) || DEFAULT_MAX_LINES);
+      (Number(process.env.AGENTHANGAR_RECORDINGS_MAX_LINES) || DEFAULT_MAX_LINES);
 
     if (this.globalEnabled) {
       // Run cleanup at startup (async, non-blocking) and periodically
@@ -181,10 +181,10 @@ export class RecorderManager {
   }
 
   /**
-   * Always on unless explicitly disabled with COMPANION_RECORD=0|false.
+   * Always on unless explicitly disabled with AGENTHANGAR_RECORD=0|false.
    */
   private static resolveEnabled(): boolean {
-    const env = process.env.COMPANION_RECORD;
+    const env = process.env.AGENTHANGAR_RECORD;
     if (env === "0" || env === "false") return false;
     return true;
   }

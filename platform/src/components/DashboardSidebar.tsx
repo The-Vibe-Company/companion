@@ -31,7 +31,7 @@ export function DashboardSidebar({ page, onNavigate, open, onClose }: DashboardS
       {/* Logo */}
       <div className="h-14 flex items-center px-5 border-b border-cc-separator">
         <span className="font-[family-name:var(--font-display)] font-bold text-sm tracking-tight">
-          companion<span className="text-cc-primary">.</span>cloud
+          agenthangar<span className="text-cc-primary">.</span>cloud
         </span>
       </div>
 

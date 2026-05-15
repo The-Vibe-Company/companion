@@ -16,10 +16,10 @@ const VALID_PLANS: Plan[] = ["starter", "pro", "enterprise"];
 
 function getProvisioner(): Provisioner {
   const hetznerToken = process.env.HETZNER_API_TOKEN;
-  const companionImage = process.env.COMPANION_IMAGE;
+  const agentHangarImage = process.env.AGENTHANGAR_IMAGE;
   const missing = [
     !hetznerToken && "HETZNER_API_TOKEN",
-    !companionImage && "COMPANION_IMAGE",
+    !agentHangarImage && "AGENTHANGAR_IMAGE",
   ].filter(Boolean);
 
   if (missing.length > 0) {
@@ -28,7 +28,7 @@ function getProvisioner(): Provisioner {
 
   return new Provisioner({
     hetznerToken: hetznerToken!,
-    companionImage: companionImage!,
+    agentHangarImage: agentHangarImage!,
     hetznerSshKeyId: process.env.HETZNER_SSH_KEY_ID,
     hetznerServerTypes: {
       starter: process.env.HETZNER_SERVER_TYPE_STARTER || undefined,
@@ -64,7 +64,7 @@ function isLocalHost(host: string): boolean {
 }
 
 function resolveLoginUrl(c: any): string {
-  const explicit = process.env.COMPANION_LOGIN_URL?.trim();
+  const explicit = process.env.AGENTHANGAR_LOGIN_URL?.trim();
   if (explicit) return explicit;
 
   const forwardedHost = c.req.header("x-forwarded-host");

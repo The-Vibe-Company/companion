@@ -151,7 +151,7 @@ describe("connectSession", () => {
     // — otherwise we'd be telling the bridge "I'm caught up" while the React
     // store is actually empty, and the bridge would skip the full
     // messageHistory broadcast. Seed both halves to validate the reconnect path.
-    localStorage.setItem("companion:last-seq:s1", "12");
+    localStorage.setItem("agenthangar:last-seq:s1", "12");
     useStore.getState().setMessages("s1", [
       { id: "m1", role: "assistant", content: "prior turn", timestamp: 1 },
     ]);
@@ -173,7 +173,7 @@ describe("connectSession", () => {
     // fa6d5906 (2026-05-13). The fix: when the local message store has
     // nothing for this session, ignore localStorage and ask for a fresh
     // full sync.
-    localStorage.setItem("companion:last-seq:s1", "205500");
+    localStorage.setItem("agenthangar:last-seq:s1", "205500");
     // Crucially: do NOT seed useStore.messages for "s1" — that's the
     // hard-refresh scenario.
     wsModule.connectSession("s1");
@@ -471,7 +471,7 @@ describe("handleMessage: event_replay", () => {
     });
 
     expect(useStore.getState().streaming.get("s1")).toBe("Hello");
-    expect(localStorage.getItem("companion:last-seq:s1")).toBe("1");
+    expect(localStorage.getItem("agenthangar:last-seq:s1")).toBe("1");
     expect(lastWs.send).toHaveBeenCalledWith(
       JSON.stringify({ type: "session_ack", last_seq: 1 }),
     );

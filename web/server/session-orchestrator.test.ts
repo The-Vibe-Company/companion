@@ -103,8 +103,8 @@ vi.mock("./container-manager.js", () => ({
     removeContainer: vi.fn(),
     createContainer: vi.fn(() => ({
       containerId: "cid-1",
-      name: "companion-1",
-      image: "the-companion:latest",
+      name: "agenthangar-1",
+      image: "agenthangar:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -230,8 +230,8 @@ describe("SessionOrchestrator", () => {
     vi.mocked(hasContainerCodexAuth).mockReturnValue(true);
     vi.mocked(containerManager.createContainer).mockReturnValue({
       containerId: "cid-1",
-      name: "companion-1",
-      image: "the-companion:latest",
+      name: "agenthangar-1",
+      image: "agenthangar:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -249,13 +249,13 @@ describe("SessionOrchestrator", () => {
     // reconnection watchdog). Lazy-spawn-only mode (the production default)
     // gates all three behind an env flag — disable it here so the legacy
     // expectations still hold. Lazy-mode behaviour is covered separately.
-    process.env.COMPANION_LAZY_SPAWN_ONLY = "0";
+    process.env.AGENTHANGAR_LAZY_SPAWN_ONLY = "0";
     deps = createDeps();
     orchestrator = new SessionOrchestrator(deps);
   });
 
   afterEach(() => {
-    delete process.env.COMPANION_LAZY_SPAWN_ONLY;
+    delete process.env.AGENTHANGAR_LAZY_SPAWN_ONLY;
   });
 
   // ── Initialization / Event wiring ─────────────────────────────────────────
@@ -1789,7 +1789,7 @@ describe("SessionOrchestrator", () => {
       // eligible for proactive relaunch again. relaunchSession() used to
       // call clearAutoRelaunchCount() but never delete the intentional marker,
       // so a crash after a manual relaunch was silently ignored (when
-      // COMPANION_LAZY_SPAWN_ONLY=0).
+      // AGENTHANGAR_LAZY_SPAWN_ONLY=0).
       deps.launcher.getSession.mockReturnValue({
         archived: false,
         state: "exited",
@@ -1942,7 +1942,7 @@ describe("SessionOrchestrator", () => {
 
   // ── Lazy-spawn-only mode (production default) ─────────────────────────────
 
-  // The default orchestrator is constructed with COMPANION_LAZY_SPAWN_ONLY=0
+  // The default orchestrator is constructed with AGENTHANGAR_LAZY_SPAWN_ONLY=0
   // in this suite's beforeEach so the legacy keepalive tests pass. These
   // lazy-mode tests construct a *separate* orchestrator with the env flag
   // unset (the production default) and prove the three auto-spawn paths
@@ -1951,7 +1951,7 @@ describe("SessionOrchestrator", () => {
     let lazyOrch: SessionOrchestrator;
 
     beforeEach(() => {
-      delete process.env.COMPANION_LAZY_SPAWN_ONLY;
+      delete process.env.AGENTHANGAR_LAZY_SPAWN_ONLY;
       vi.clearAllMocks();
       vi.useFakeTimers();
       companionBus.clear();
@@ -1964,7 +1964,7 @@ describe("SessionOrchestrator", () => {
       vi.useRealTimers();
       // Restore the suite-wide default so other tests still see the
       // legacy keepalive behaviour.
-      process.env.COMPANION_LAZY_SPAWN_ONLY = "0";
+      process.env.AGENTHANGAR_LAZY_SPAWN_ONLY = "0";
     });
 
     it("does NOT schedule a proactive keepalive when CLI exits unexpectedly", async () => {

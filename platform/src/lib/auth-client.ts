@@ -1,5 +1,5 @@
 /**
- * Better Auth client for the Companion Cloud frontend.
+ * Better Auth client for the AgentHangar Cloud frontend.
  *
  * Provides typed hooks for React 19 to manage:
  * - Session state (sign up, sign in, sign out, current user)

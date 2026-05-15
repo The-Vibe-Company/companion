@@ -3,7 +3,7 @@
  * Spike #2: verify the bidirectional control protocol works over stdio.
  *
  * The user-message round-trip (spike-stdio-protocol.ts) only proves the
- * happy path. Companion's interactive features depend on `control_request`
+ * happy path. AgentHangar's interactive features depend on `control_request`
  * (permission gates, mcp_status, set_model, interrupt). This spike asks
  * Claude to do something that requires a permission gate, then captures
  * what flows when companion would normally answer with control_response.

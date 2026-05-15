@@ -35,7 +35,7 @@ afterEach(() => {
 });
 
 function cronDir(): string {
-  return join(tempDir, ".companion", "cron");
+  return join(tempDir, ".agenthangar", "cron");
 }
 
 function makeJobInput(overrides: Record<string, unknown> = {}) {

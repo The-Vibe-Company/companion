@@ -29,14 +29,14 @@ import { log } from "./logger.js";
 const MAX_AUTO_RELAUNCHES = 3;
 const RELAUNCH_GRACE_MS = 10_000;
 const RELAUNCH_COOLDOWN_MS = 5_000;
-const RECONNECT_GRACE_MS = Number(process.env.COMPANION_RECONNECT_GRACE_MS || "30000");
+const RECONNECT_GRACE_MS = Number(process.env.AGENTHANGAR_RECONNECT_GRACE_MS || "30000");
 
 // Proactive keepalive: base delay before relaunching a crashed CLI (doubles per attempt)
 const KEEPALIVE_BASE_DELAY_MS = 3_000;
 
 const VSCODE_EDITOR_CONTAINER_PORT = 13337;
 const CODEX_APP_SERVER_CONTAINER_PORT = Number(
-  process.env.COMPANION_CODEX_CONTAINER_WS_PORT || "4502",
+  process.env.AGENTHANGAR_CODEX_CONTAINER_WS_PORT || "4502",
 );
 const NOVNC_CONTAINER_PORT = 6080;
 
@@ -144,10 +144,10 @@ export class SessionOrchestrator {
   //   1. proactive keepalive on `session:exited`
   //   2. browser-connect-driven `session:relaunch-needed`
   //   3. post-server-restart reconnection watchdog
-  // Set `COMPANION_LAZY_SPAWN_ONLY=0` to restore the old behaviour where
+  // Set `AGENTHANGAR_LAZY_SPAWN_ONLY=0` to restore the old behaviour where
   // crashes auto-respawn and browser focus auto-relaunches.
   private readonly lazySpawnOnly: boolean =
-    process.env.COMPANION_LAZY_SPAWN_ONLY !== "0";
+    process.env.AGENTHANGAR_LAZY_SPAWN_ONLY !== "0";
 
   // Idempotency guard for initialize()
   private _initialized = false;
@@ -369,7 +369,7 @@ export class SessionOrchestrator {
       // Resolve Docker image early
       let effectiveImage: string | null = null;
       if (sandboxEnabled) {
-        effectiveImage = "the-companion:latest";
+        effectiveImage = "agenthangar:latest";
       } else if (body.container?.image) {
         effectiveImage = body.container.image;
       }
@@ -520,7 +520,7 @@ export class SessionOrchestrator {
           ports: containerPorts,
           volumes: body.container?.volumes,
           env: { ...(envVars ?? {}), DISPLAY: ":99" },
-          privileged: sandboxEnabled && effectiveImage === "the-companion:latest",
+          privileged: sandboxEnabled && effectiveImage === "agenthangar:latest",
         };
         try {
           containerInfo = containerManager.createContainer(tempId, cwd!, cConfig);
@@ -586,7 +586,7 @@ export class SessionOrchestrator {
           if (onProgress) await onProgress("running_init_script", "Running init script...", "in_progress");
           try {
             console.log(`[orchestrator] Running init script for sandbox "${companionSandbox?.name || "sandbox"}" in container ${containerInfo.name}...`);
-            const initTimeout = Number(process.env.COMPANION_INIT_SCRIPT_TIMEOUT) || 120_000;
+            const initTimeout = Number(process.env.AGENTHANGAR_INIT_SCRIPT_TIMEOUT) || 120_000;
             const result = await containerManager.execInContainerAsync(
               containerInfo.containerId,
               ["sh", "-lc", initScript],
@@ -707,7 +707,7 @@ export class SessionOrchestrator {
     // this session back; a future REAL crash should be eligible for proactive
     // keepalive again. Without this, an idle-kill / hang-kill that happened
     // earlier would permanently shadow this session from proactive relaunch
-    // (only matters when COMPANION_LAZY_SPAWN_ONLY=0).
+    // (only matters when AGENTHANGAR_LAZY_SPAWN_ONLY=0).
     this.intentionalKills.delete(sessionId);
     const session = this.wsBridge.getSession(sessionId);
     if (session?.stateMachine) {

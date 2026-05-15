@@ -29,7 +29,7 @@ export function SessionBrowserPane({ sessionId }: SessionBrowserPaneProps) {
         setLoading(false);
       } else if (result.available && result.url) {
         // Container mode — inject auth token into noVNC WebSocket path
-        const token = localStorage.getItem("companion_auth_token") || "";
+        const token = localStorage.getItem("agenthangar_auth_token") || "";
         const url = new URL(result.url, window.location.origin);
         const wsPath = url.searchParams.get("path");
         if (wsPath && token) {

@@ -41,7 +41,7 @@ beforeEach(() => {
 describe("OnboardingModal", () => {
   it("renders the welcome step with provider options", () => {
     render(<OnboardingModal onComplete={vi.fn()} />);
-    expect(screen.getByText("Welcome to The Companion")).toBeInTheDocument();
+    expect(screen.getByText("Welcome to AgentHangar")).toBeInTheDocument();
     expect(screen.getByText("Claude Code")).toBeInTheDocument();
     expect(screen.getByText("Codex")).toBeInTheDocument();
   });

@@ -1,19 +1,16 @@
 {
-  "name": "the-companion",
+  "name": "agenthangar",
   "version": "0.95.0",
   "private": true,
-  "description": "Web UI for Claude Code agents",
+  "description": "Control plane for coding agents",
   "scripts": {
     "dev": "cd web && bun run dev",
     "build": "cd web && bun run build",
     "start": "cd web && bun run start",
     "prepare": "husky"
   },
-  "author": "The Vibe Company",
+  "author": "Yajin",
   "license": "MIT",
-  "dependencies": {
-    "the-companion": "^0.2.2"
-  },
   "devDependencies": {
     "husky": "^9.1.7"
   }

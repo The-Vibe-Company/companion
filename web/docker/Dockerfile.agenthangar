@@ -1,10 +1,10 @@
-# The Companion — comprehensive development image
+# AgentHangar — comprehensive development image
 # Ships with popular languages, runtimes, and tools pre-installed so Claude Code
 # can work on any project out of the box.
 # Includes Docker-in-Docker and PostgreSQL for full-stack development.
 #
-# Build:  docker build -t the-companion:latest -f Dockerfile.the-companion .
-# Usage:  Automatically used by The Companion when creating containerized sessions
+# Build:  docker build -t agenthangar:latest -f Dockerfile.agenthangar .
+# Usage:  Automatically used by AgentHangar when creating containerized sessions
 # Note:   Run with --privileged for Docker-in-Docker support
 
 FROM ubuntu:24.04

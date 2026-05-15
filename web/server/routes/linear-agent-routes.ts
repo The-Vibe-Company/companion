@@ -95,7 +95,7 @@ export function registerLinearAgentWebhookRoute(
   });
 
   // OAuth callback — redirect from Linear after authorization.
-  // Pre-auth because the browser lands here from Linear with no Companion auth token.
+  // Pre-auth because the browser lands here from Linear with no AgentHangar auth token.
   // Protected by the OAuth `state` nonce (CSRF prevention).
   api.get("/linear/oauth/callback", async (c) => {
     const code = c.req.query("code");

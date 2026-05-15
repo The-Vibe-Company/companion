@@ -14,7 +14,7 @@ const mockGetEnrichedPath = vi.hoisted(() => vi.fn(() => "/usr/bin:/usr/local/bi
 vi.mock("./path-resolver.js", () => ({ resolveBinary: mockResolveBinary, getEnrichedPath: mockGetEnrichedPath }));
 
 // Mock env-manager so envSlug fallback tests can synthesize a profile without
-// touching ~/.companion/envs/. Default: profile not found (preserves existing
+// touching ~/.agenthangar/envs/. Default: profile not found (preserves existing
 // tests' behavior since they don't pass envSlug).
 const mockGetEnv = vi.hoisted(() => vi.fn((_slug: string) => null as { name: string; slug: string; variables: Record<string, string>; createdAt: number; updatedAt: number } | null));
 vi.mock("./env-manager.js", () => ({
@@ -165,15 +165,15 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks();
   companionBus.clear();
-  delete process.env.COMPANION_CONTAINER_SDK_HOST;
-  delete process.env.COMPANION_FORCE_BYPASS_IN_CONTAINER;
+  delete process.env.AGENTHANGAR_CONTAINER_SDK_HOST;
+  delete process.env.AGENTHANGAR_FORCE_BYPASS_IN_CONTAINER;
   // Force the Bun.spawn path so the suite's existing `vi.stubGlobal("Bun", ...)`
   // mock intercepts the call. Production defaults to node:child_process.spawn
   // (see cli-launcher.ts useNodeSpawn comment); tests opt out so they don't
   // need a parallel mock for node:child_process.
-  process.env.COMPANION_CLAUDE_USE_NODE_SPAWN = "0";
+  process.env.AGENTHANGAR_CLAUDE_USE_NODE_SPAWN = "0";
   // Default to stdio for most tests; WS launcher behavior is covered explicitly below.
-  process.env.COMPANION_CODEX_TRANSPORT = "stdio";
+  process.env.AGENTHANGAR_CODEX_TRANSPORT = "stdio";
   tempDir = mkdtempSync(join(tmpdir(), "launcher-test-"));
   store = new SessionStore(tempDir);
   launcher = new CliLauncher();
@@ -185,10 +185,10 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env.COMPANION_CODEX_TRANSPORT;
-  delete process.env.COMPANION_CODEX_WS_CONNECT_TIMEOUT_MS;
-  delete process.env.COMPANION_CODEX_PONG_TIMEOUT_MS;
-  delete process.env.COMPANION_CLAUDE_USE_NODE_SPAWN;
+  delete process.env.AGENTHANGAR_CODEX_TRANSPORT;
+  delete process.env.AGENTHANGAR_CODEX_WS_CONNECT_TIMEOUT_MS;
+  delete process.env.AGENTHANGAR_CODEX_PONG_TIMEOUT_MS;
+  delete process.env.AGENTHANGAR_CLAUDE_USE_NODE_SPAWN;
   rmSync(tempDir, { recursive: true, force: true });
 });
 
@@ -290,7 +290,7 @@ describe("launch", () => {
 
   it("passes --permission-mode when provided", () => {
     // Allow bypassPermissions through even when tests run as root
-    process.env.COMPANION_FORCE_BYPASS_AS_ROOT = "1";
+    process.env.AGENTHANGAR_FORCE_BYPASS_AS_ROOT = "1";
     try {
       launcher.launch({ permissionMode: "bypassPermissions", cwd: "/tmp" });
 
@@ -299,7 +299,7 @@ describe("launch", () => {
       expect(modeIdx).toBeGreaterThan(-1);
       expect(cmdAndArgs[modeIdx + 1]).toBe("bypassPermissions");
     } finally {
-      delete process.env.COMPANION_FORCE_BYPASS_AS_ROOT;
+      delete process.env.AGENTHANGAR_FORCE_BYPASS_AS_ROOT;
     }
   });
 
@@ -308,7 +308,7 @@ describe("launch", () => {
       cwd: "/tmp/project",
       permissionMode: "bypassPermissions",
       containerId: "abc123def456",
-      containerName: "companion-test",
+      containerName: "agenthangar-test",
     });
 
     const [cmdAndArgs] = mockSpawn.mock.calls[0];
@@ -344,7 +344,7 @@ describe("launch", () => {
     }
   });
 
-  // NOTE: Removed "uses COMPANION_CONTAINER_SDK_HOST for containerized
+  // NOTE: Removed "uses AGENTHANGAR_CONTAINER_SDK_HOST for containerized
   // sdk-url" during the --sdk-url → stdio migration. Stdio doesn't connect
   // back to the host over WebSocket, so the host-alias indirection is
   // unnecessary. The env var is unused now and can be retired in a follow-up.
@@ -416,11 +416,11 @@ describe("launch", () => {
   it("uses node:child_process.spawn by default for host claude (escape hatch only opts back)", () => {
     // Production fix for the Bun.spawn × claude wedge (see
     // project_claude_bun_spawn_wedge.md). Default behaviour: when
-    // COMPANION_CLAUDE_USE_NODE_SPAWN is unset/empty/"1", host claude
+    // AGENTHANGAR_CLAUDE_USE_NODE_SPAWN is unset/empty/"1", host claude
     // is spawned via node:child_process.spawn rather than Bun.spawn.
     // The Bun.spawn mock is left intact only because the rest of this
     // test file forces "0" in beforeEach to keep using the existing stub.
-    delete process.env.COMPANION_CLAUDE_USE_NODE_SPAWN;
+    delete process.env.AGENTHANGAR_CLAUDE_USE_NODE_SPAWN;
     // Use the existing /tmp/project guarantee from beforeAll.
     const info = launcher.launch({ cwd: "/tmp/project" });
     // mockSpawn is the Bun.spawn stub; the node-spawn path bypasses it.
@@ -443,7 +443,7 @@ describe("launch", () => {
     // orchestrator stops re-attempting the spawn (each retry would
     // produce the same warning, wasting the relaunch budget and
     // muddying the log).
-    const ghostCwd = "/tmp/companion-test-ghost-cwd-DoesNotExist-789xyz";
+    const ghostCwd = "/tmp/agenthangar-test-ghost-cwd-DoesNotExist-789xyz";
     rmSync(ghostCwd, { recursive: true, force: true });
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
@@ -476,12 +476,12 @@ describe("launch", () => {
     const info = launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-session-1",
+      containerName: "agenthangar-session-1",
       containerImage: "ubuntu:22.04",
     });
 
     expect(info.containerId).toBe("abc123def456");
-    expect(info.containerName).toBe("companion-session-1");
+    expect(info.containerName).toBe("agenthangar-session-1");
     expect(info.containerImage).toBe("ubuntu:22.04");
     expect(info.containerCwd).toBe("/workspace");
   });
@@ -492,7 +492,7 @@ describe("launch", () => {
       cwd: "/tmp/project",
       backendType: "codex",
       containerId: "abc123def456",
-      containerName: "companion-session-1",
+      containerName: "agenthangar-session-1",
       containerImage: "ubuntu:22.04",
       containerCwd: "/workspace/repo",
     });
@@ -505,7 +505,7 @@ describe("launch", () => {
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-session-1",
+      containerName: "agenthangar-session-1",
     });
 
     const [cmdAndArgs] = mockSpawn.mock.calls[0];
@@ -876,7 +876,7 @@ describe("relaunch", () => {
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-test",
+      containerName: "agenthangar-test",
       env: { CLAUDE_CODE_OAUTH_TOKEN: "tok-test" },
     });
 
@@ -902,7 +902,7 @@ describe("relaunch", () => {
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-gone",
+      containerName: "agenthangar-gone",
     });
 
     // Simulate container being removed
@@ -910,7 +910,7 @@ describe("relaunch", () => {
 
     const result = await launcher.relaunch("test-session-id");
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("companion-gone");
+    expect(result.error).toContain("agenthangar-gone");
     expect(result.error).toContain("removed externally");
 
     // Session should be marked as exited
@@ -938,7 +938,7 @@ describe("relaunch", () => {
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-stopped",
+      containerName: "agenthangar-stopped",
     });
 
     // Container is stopped but can be restarted
@@ -958,7 +958,7 @@ describe("relaunch", () => {
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-dead",
+      containerName: "agenthangar-dead",
     });
 
     mockIsContainerAlive.mockReturnValueOnce("stopped");
@@ -966,7 +966,7 @@ describe("relaunch", () => {
 
     const result = await launcher.relaunch("test-session-id");
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("companion-dead");
+    expect(result.error).toContain("agenthangar-dead");
     expect(result.error).toContain("stopped");
     expect(result.error).toContain("container start failed");
   });
@@ -975,7 +975,7 @@ describe("relaunch", () => {
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-nobin",
+      containerName: "agenthangar-nobin",
     });
 
     mockIsContainerAlive.mockReturnValueOnce("running");
@@ -985,7 +985,7 @@ describe("relaunch", () => {
     expect(result.ok).toBe(false);
     expect(result.error).toContain("claude");
     expect(result.error).toContain("not found");
-    expect(result.error).toContain("companion-nobin");
+    expect(result.error).toContain("agenthangar-nobin");
 
     const session = launcher.getSession("test-session-id");
     expect(session?.state).toBe("exited");
@@ -1026,7 +1026,7 @@ describe("codex websocket launcher", () => {
     // Verify the WS transport path launches two subprocesses:
     // 1) codex app-server --listen ...
     // 2) a Node sidecar proxy that bridges stdio <-> WebSocket
-    process.env.COMPANION_CODEX_TRANSPORT = "ws";
+    process.env.AGENTHANGAR_CODEX_TRANSPORT = "ws";
     mockResolveBinary.mockReturnValue("/opt/fake/codex");
 
     const codexProc = createMockProc(2001);
@@ -1071,7 +1071,7 @@ describe("codex websocket launcher", () => {
   });
 
   it("skips already-claimed ws ports when selecting Codex host listen port", async () => {
-    process.env.COMPANION_CODEX_TRANSPORT = "ws";
+    process.env.AGENTHANGAR_CODEX_TRANSPORT = "ws";
     mockResolveBinary.mockReturnValue("/opt/fake/codex");
     (launcher as any).claimedCodexWsPorts.add(4500);
 
@@ -1092,11 +1092,11 @@ describe("codex websocket launcher", () => {
   });
 
   it("passes custom connect and pong timeouts from env vars to the ws proxy", async () => {
-    // When COMPANION_CODEX_WS_CONNECT_TIMEOUT_MS and COMPANION_CODEX_PONG_TIMEOUT_MS
+    // When AGENTHANGAR_CODEX_WS_CONNECT_TIMEOUT_MS and AGENTHANGAR_CODEX_PONG_TIMEOUT_MS
     // are set, those values should be forwarded as argv[3] and argv[4] to the proxy.
-    process.env.COMPANION_CODEX_TRANSPORT = "ws";
-    process.env.COMPANION_CODEX_WS_CONNECT_TIMEOUT_MS = "60000";
-    process.env.COMPANION_CODEX_PONG_TIMEOUT_MS = "45000";
+    process.env.AGENTHANGAR_CODEX_TRANSPORT = "ws";
+    process.env.AGENTHANGAR_CODEX_WS_CONNECT_TIMEOUT_MS = "60000";
+    process.env.AGENTHANGAR_CODEX_PONG_TIMEOUT_MS = "45000";
     mockResolveBinary.mockReturnValue("/opt/fake/codex");
 
     const codexProc = createMockProc(5001);
@@ -1119,7 +1119,7 @@ describe("codex websocket launcher", () => {
 
   it("relaunch kills the old codex process and ws proxy before spawning replacements", async () => {
     // Verify the WS sidecar is treated as part of session lifecycle during relaunch.
-    process.env.COMPANION_CODEX_TRANSPORT = "ws";
+    process.env.AGENTHANGAR_CODEX_TRANSPORT = "ws";
     mockResolveBinary.mockReturnValue("/opt/fake/codex");
 
     let resolveCodex1!: (code: number) => void;
@@ -1174,11 +1174,11 @@ describe("codex websocket launcher", () => {
   it("containerized codex ws mode ignores detached launcher exit and uses proxy exit for session liveness", async () => {
     // In container WS mode, docker exec -d exits immediately after launching Codex.
     // The session must remain alive until the proxy (actual transport) exits.
-    process.env.COMPANION_CODEX_TRANSPORT = "ws";
+    process.env.AGENTHANGAR_CODEX_TRANSPORT = "ws";
     mockGetContainerById.mockReturnValue({
       containerId: "abc123def456",
-      name: "companion-codex",
-      image: "the-companion:latest",
+      name: "agenthangar-codex",
+      image: "agenthangar:latest",
       portMappings: [{ containerPort: 4502, hostPort: 55021 }],
       hostCwd: "/tmp/project",
       containerCwd: "/workspace",
@@ -1205,7 +1205,7 @@ describe("codex websocket launcher", () => {
       cwd: "/tmp/project",
       codexSandbox: "workspace-write",
       containerId: "abc123def456",
-      containerName: "companion-codex",
+      containerName: "agenthangar-codex",
     });
 
     await new Promise((r) => setTimeout(r, 0));

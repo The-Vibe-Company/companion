@@ -19,7 +19,7 @@ export function HowItWorks() {
               </div>
               <span className="text-cc-muted font-mono-code text-xs">&larr; WebSocket &rarr;</span>
               <div className="bg-cc-primary text-[#fff4eb] border border-[#8e3518] rounded-[10px] px-5 py-3.5 text-sm font-mono-code whitespace-nowrap">
-                Companion Server
+                AgentHangar Server
               </div>
               <span className="text-cc-muted font-mono-code text-xs">&larr; WebSocket &rarr;</span>
               <div className="bg-[#f0e5d2] border border-cc-border rounded-[10px] px-5 py-3.5 text-sm font-mono-code whitespace-nowrap">
@@ -37,7 +37,7 @@ export function HowItWorks() {
                 title: "Launch",
                 description: (
                   <>
-                    Run <code className="font-mono-code text-xs bg-cc-code-bg text-cc-code-fg px-1.5 py-0.5 rounded">bunx the-companion</code>.
+                    Run <code className="font-mono-code text-xs bg-cc-code-bg text-cc-code-fg px-1.5 py-0.5 rounded">bunx agenthangar</code>.
                   </>
                 ),
               },

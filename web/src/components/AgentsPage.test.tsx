@@ -99,7 +99,7 @@ beforeEach(() => {
   // Reset publicUrl mock to empty (no public URL configured)
   mockPublicUrl = "";
   // Clear the PublicUrlBanner dismiss key so banner tests work correctly
-  localStorage.removeItem("companion_public_url_dismissed");
+  localStorage.removeItem("agenthangar_public_url_dismissed");
 });
 
 describe("AgentsPage", () => {

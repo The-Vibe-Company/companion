@@ -102,7 +102,7 @@ Archiving a Docker session removes the container and all uncommitted changes ins
 
 ## Permissions
 
-When an agent wants to perform a sensitive action — writing files, running commands, accessing the network — The Companion intercepts the request and presents it for your approval.
+When an agent wants to perform a sensitive action — writing files, running commands, accessing the network — AgentHangar intercepts the request and presents it for your approval.
 
 <img src="/screenshots/readme-permissions.png" alt="Permission approval UI" />
 
@@ -156,7 +156,7 @@ Click the **shield icon** in the session header to toggle AI validation on or of
 
 ### Automatic persistence
 
-Sessions are saved to disk as JSON files in `$TMPDIR/vibe-sessions/`. Writes are debounced to minimize I/O during streaming. The saved state includes the session configuration, message history, task list, permission state, and CLI process PID.
+Sessions are saved to disk as JSON files in `$TMPDIR/agenthangar-sessions/`. Writes are debounced to minimize I/O during streaming. The saved state includes the session configuration, message history, task list, permission state, and CLI process PID.
 
 ### What happens on server restart
 
@@ -165,7 +165,7 @@ Sessions are saved to disk as JSON files in `$TMPDIR/vibe-sessions/`. Writes are
 3. If alive, it gives a grace period for the CLI to reconnect its WebSocket
 4. If gone (or no reconnection), the server relaunches the CLI with `--resume` using the session's internal ID
 
-This means you can restart The Companion without losing your work. The agent picks up where it left off.
+This means you can restart AgentHangar without losing your work. The agent picks up where it left off.
 
 ### Limitations
 

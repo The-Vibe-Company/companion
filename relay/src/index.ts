@@ -1,16 +1,16 @@
 /**
- * Companion Relay Worker
+ * AgentHangar Relay Worker
  *
- * A Cloudflare Worker that acts as a webhook relay for The Companion app.
- * The Companion runs behind a firewall but needs to receive external platform
+ * A Cloudflare Worker that acts as a webhook relay for AgentHangar.
+ * AgentHangar runs behind a firewall but needs to receive external platform
  * webhooks (e.g. from Linear, GitHub, etc.).
  *
  * Architecture:
  *   Platform --> POST /webhooks/:platform --> Relay Worker
  *     | (WebSocket)
- *   Companion relay-client receives webhook request
+ *   AgentHangar relay-client receives webhook request
  *     | (local)
- *   Companion processes the webhook
+ *   AgentHangar processes the webhook
  *     | (WebSocket)
  *   Relay Worker receives response
  *     | (HTTP)
@@ -21,14 +21,14 @@ export interface Env {
   RELAY_SECRET: string;
 }
 
-/** Pending webhook request awaiting a response from the Companion. */
+/** Pending webhook request awaiting a response from AgentHangar. */
 interface PendingRequest {
   resolve: (response: WebhookResponse) => void;
   reject: (reason: Error) => void;
   timer: ReturnType<typeof setTimeout>;
 }
 
-/** Message sent from the Relay to the Companion over WebSocket. */
+/** Message sent from the Relay to AgentHangar over WebSocket. */
 interface WebhookRequest {
   type: "webhook_request";
   requestId: string;
@@ -38,7 +38,7 @@ interface WebhookRequest {
   body: string;
 }
 
-/** Message sent from the Companion to the Relay over WebSocket. */
+/** Message sent from AgentHangar to the Relay over WebSocket. */
 interface WebhookResponse {
   type: "webhook_response";
   requestId: string;
@@ -59,8 +59,8 @@ interface WebhookResponse {
 // traffic single-tenant deployments).
 // ---------------------------------------------------------------------------
 
-/** The active WebSocket connection from the Companion client. */
-let companionSocket: WebSocket | null = null;
+/** The active WebSocket connection from the AgentHangar client. */
+let agentHangarSocket: WebSocket | null = null;
 
 /** Map of requestId -> pending promise for webhook responses. */
 const pendingRequests = new Map<string, PendingRequest>();
@@ -105,17 +105,17 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
 // Route handlers
 // ---------------------------------------------------------------------------
 
-/** GET /health — returns whether the Companion is connected. */
+/** GET /health — returns whether AgentHangar is connected. */
 function handleHealth(): Response {
   return jsonResponse({
-    connected: companionSocket !== null && companionSocket.readyState === WebSocket.OPEN,
+    connected: agentHangarSocket !== null && agentHangarSocket.readyState === WebSocket.OPEN,
   });
 }
 
 /**
- * GET /ws/relay?secret=... — WebSocket upgrade for the Companion client.
+ * GET /ws/relay?secret=... — WebSocket upgrade for the AgentHangar client.
  *
- * The Companion connects here and keeps an open WebSocket to receive
+ * AgentHangar connects here and keeps an open WebSocket to receive
  * webhook requests and send back responses.
  */
 async function handleRelayWebSocket(request: Request, env: Env): Promise<Response> {
@@ -138,16 +138,16 @@ async function handleRelayWebSocket(request: Request, env: Env): Promise<Respons
   // Accept the server-side socket.
   server.accept();
 
-  // If there is an existing Companion connection, close it gracefully.
-  if (companionSocket !== null) {
+  // If there is an existing AgentHangar connection, close it gracefully.
+  if (agentHangarSocket !== null) {
     try {
-      companionSocket.close(1000, "Replaced by new connection");
+      agentHangarSocket.close(1000, "Replaced by new connection");
     } catch {
       // Ignore errors on already-closed sockets.
     }
   }
 
-  companionSocket = server;
+  agentHangarSocket = server;
 
   server.addEventListener("message", (event: MessageEvent) => {
     try {
@@ -169,20 +169,20 @@ async function handleRelayWebSocket(request: Request, env: Env): Promise<Respons
   });
 
   server.addEventListener("close", () => {
-    if (companionSocket === server) {
-      companionSocket = null;
+    if (agentHangarSocket === server) {
+      agentHangarSocket = null;
     }
     // Reject all pending requests that were relying on this connection.
     for (const [id, pending] of pendingRequests) {
       clearTimeout(pending.timer);
-      pending.reject(new Error("Companion disconnected"));
+      pending.reject(new Error("AgentHangar disconnected"));
       pendingRequests.delete(id);
     }
   });
 
   server.addEventListener("error", () => {
-    if (companionSocket === server) {
-      companionSocket = null;
+    if (agentHangarSocket === server) {
+      agentHangarSocket = null;
     }
   });
 
@@ -192,13 +192,13 @@ async function handleRelayWebSocket(request: Request, env: Env): Promise<Respons
 /**
  * POST /webhooks/:platform — receives an external platform webhook.
  *
- * Forwards the request to the connected Companion via WebSocket and waits
- * up to 30 seconds for the Companion to process it and respond.
+ * Forwards the request to the connected AgentHangar via WebSocket and waits
+ * up to 30 seconds for AgentHangar to process it and respond.
  */
 async function handleWebhook(request: Request, platform: string): Promise<Response> {
-  // Verify the Companion is connected.
-  if (!companionSocket || companionSocket.readyState !== WebSocket.OPEN) {
-    return jsonResponse({ error: "Companion not connected" }, 503);
+  // Verify AgentHangar is connected.
+  if (!agentHangarSocket || agentHangarSocket.readyState !== WebSocket.OPEN) {
+    return jsonResponse({ error: "AgentHangar not connected" }, 503);
   }
 
   const requestId = crypto.randomUUID();
@@ -222,25 +222,25 @@ async function handleWebhook(request: Request, platform: string): Promise<Respon
     body,
   };
 
-  // Create a promise that resolves when the Companion responds.
+  // Create a promise that resolves when AgentHangar responds.
   const responsePromise = new Promise<WebhookResponse>((resolve, reject) => {
     const timer = setTimeout(() => {
       pendingRequests.delete(requestId);
-      reject(new Error("Timeout waiting for Companion response"));
+      reject(new Error("Timeout waiting for AgentHangar response"));
     }, WEBHOOK_TIMEOUT_MS);
 
     pendingRequests.set(requestId, { resolve, reject, timer });
   });
 
-  // Send the webhook request to the Companion.
+  // Send the webhook request to AgentHangar.
   try {
-    companionSocket.send(JSON.stringify(message));
+    agentHangarSocket.send(JSON.stringify(message));
   } catch {
     pendingRequests.delete(requestId);
-    return jsonResponse({ error: "Failed to send to Companion" }, 502);
+    return jsonResponse({ error: "Failed to send to AgentHangar" }, 502);
   }
 
-  // Wait for the Companion to respond (or timeout).
+  // Wait for AgentHangar to respond (or timeout).
   try {
     const webhookResponse = await responsePromise;
 
@@ -258,7 +258,7 @@ async function handleWebhook(request: Request, platform: string): Promise<Respon
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     if (message.includes("Timeout")) {
-      return jsonResponse({ error: "Gateway timeout waiting for Companion" }, 504);
+      return jsonResponse({ error: "Gateway timeout waiting for AgentHangar" }, 504);
     }
     return jsonResponse({ error: message }, 502);
   }

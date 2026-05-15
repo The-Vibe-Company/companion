@@ -29,7 +29,7 @@ interface ProvisionResult {
 
 interface ProvisionerConfig {
   hetznerToken: string;
-  companionImage: string;
+  agentHangarImage: string;
   hetznerSshKeyId?: string;
   hetznerServerTypes?: Partial<Record<Plan, string>>;
 }
@@ -53,7 +53,7 @@ function makeVolumeName(hostname: string, suffixSeed: string): string {
     .replace(/_+/g, "_")
     .replace(/^_+|_+$/g, "");
   const suffix = (safe || "instance").slice(0, 20);
-  return `companion_${suffix}_${suffixSeed}`;
+  return `agenthangar_${suffix}_${suffixSeed}`;
 }
 
 function makeMachineName(hostname: string, suffixSeed: string): string {
@@ -63,7 +63,7 @@ function makeMachineName(hostname: string, suffixSeed: string): string {
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "");
   const suffix = (safe || "instance").slice(0, 32);
-  return `companion-${suffix}-${suffixSeed}`;
+  return `agenthangar-${suffix}-${suffixSeed}`;
 }
 
 function sanitizeCloudInitValue(value: string | undefined): string {
@@ -72,13 +72,13 @@ function sanitizeCloudInitValue(value: string | undefined): string {
 
 export class Provisioner {
   private hetzner: HetznerCloudClient;
-  private companionImage: string;
+  private agentHangarImage: string;
   private hetznerSshKeyId?: string;
   private hetznerServerTypes: Record<Plan, string>;
 
   constructor(config: ProvisionerConfig) {
     this.hetzner = new HetznerCloudClient(config.hetznerToken);
-    this.companionImage = config.companionImage;
+    this.agentHangarImage = config.agentHangarImage;
     this.hetznerSshKeyId = config.hetznerSshKeyId;
     this.hetznerServerTypes = {
       starter: config.hetznerServerTypes?.starter || DEFAULT_SERVER_TYPE_CANDIDATES.starter[0],
@@ -150,11 +150,11 @@ export class Provisioner {
     const env = [
       `NODE_ENV=production`,
       `HOST=0.0.0.0`,
-      `COMPANION_HOME=/data/companion`,
-      `COMPANION_SESSION_DIR=/data/sessions`,
-      `COMPANION_AUTH_ENABLED=0`,
-      `COMPANION_AUTH_TOKEN=${authSecret}`,
-      `COMPANION_LOGIN_URL=${loginUrl}`,
+      `AGENTHANGAR_HOME=/data/agenthangar`,
+      `AGENTHANGAR_SESSION_DIR=/data/sessions`,
+      `AGENTHANGAR_AUTH_ENABLED=0`,
+      `AGENTHANGAR_AUTH_TOKEN=${authSecret}`,
+      `AGENTHANGAR_LOGIN_URL=${loginUrl}`,
       tailscaleAuthKey ? `TAILSCALE_AUTH_KEY=${tailscaleAuthKey}` : "",
     ]
       .filter(Boolean)
@@ -172,36 +172,36 @@ runcmd:
   - if [ -b "$DEV" ]; then blkid "$DEV" || mkfs.ext4 -F "$DEV"; fi
   - if [ -b "$DEV" ]; then mountpoint -q /data || mount "$DEV" /data; fi
   - if [ -b "$DEV" ]; then grep -q "$DEV /data " /etc/fstab || echo "$DEV /data ext4 defaults,nofail 0 2" >> /etc/fstab; fi
-  - mkdir -p /data/companion /data/sessions
+  - mkdir -p /data/agenthangar /data/sessions
   - chown -R 10001:10001 /data
   - systemctl daemon-reload
-  - systemctl enable companion.service
-  - systemctl restart companion.service
+  - systemctl enable agenthangar.service
+  - systemctl restart agenthangar.service
 write_files:
-  - path: /etc/companion.env
+  - path: /etc/agenthangar.env
     permissions: "0600"
     content: |
 ${env}
-  - path: /usr/local/bin/companion-run.sh
+  - path: /usr/local/bin/agenthangar-run.sh
     permissions: "0755"
     content: |
       #!/usr/bin/env bash
       set -euo pipefail
-      docker rm -f companion >/dev/null 2>&1 || true
-      docker run -d --name companion --restart unless-stopped -p 80:3456 -v /data:/data --env-file /etc/companion.env ${this.companionImage}
-  - path: /etc/systemd/system/companion.service
+      docker rm -f agenthangar >/dev/null 2>&1 || true
+      docker run -d --name agenthangar --restart unless-stopped -p 80:3456 -v /data:/data --env-file /etc/agenthangar.env ${this.agentHangarImage}
+  - path: /etc/systemd/system/agenthangar.service
     permissions: "0644"
     content: |
       [Unit]
-      Description=Companion Container
+      Description=AgentHangar Container
       After=docker.service network-online.target
       Wants=network-online.target
 
       [Service]
       Type=oneshot
       RemainAfterExit=yes
-      ExecStart=/usr/local/bin/companion-run.sh
-      ExecStop=/usr/bin/docker stop companion
+      ExecStart=/usr/local/bin/agenthangar-run.sh
+      ExecStop=/usr/bin/docker stop agenthangar
 
       [Install]
       WantedBy=multi-user.target
@@ -229,7 +229,7 @@ ${env}
           location,
           size: config.storage_gb,
           labels: {
-            app: "companion",
+            app: "agenthangar",
             organization: input.organizationId,
           },
         });
@@ -254,7 +254,7 @@ ${env}
           user_data: this.buildHetznerUserData(input, authSecret, volume.name),
           ssh_keys: this.hetznerSshKeyId ? [this.hetznerSshKeyId] : undefined,
           labels: {
-            app: "companion",
+            app: "agenthangar",
             organization: input.organizationId,
           },
         });

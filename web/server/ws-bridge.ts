@@ -946,8 +946,8 @@ export class WsBridge {
   // ── Idle kill watchdog ─────────────────────────────────────────────────
 
   private static readonly IDLE_KILL_THRESHOLD_MS = Number(
-    process.env.COMPANION_IDLE_KILL_MINUTES
-      ? Number(process.env.COMPANION_IDLE_KILL_MINUTES) * 60_000
+    process.env.AGENTHANGAR_IDLE_KILL_MINUTES
+      ? Number(process.env.AGENTHANGAR_IDLE_KILL_MINUTES) * 60_000
       : 24 * 60 * 60_000, // 24 hours default
   );
   private static readonly IDLE_CHECK_INTERVAL_MS = 60_000; // check every 60s
@@ -1001,14 +1001,14 @@ export class WsBridge {
 
   // ── Active-idle eviction watchdog ─────────────────────────────────────
   // Independent of browser presence: any session whose CLI has been silent
-  // for `COMPANION_CLAUDE_IDLE_EVICT_MINUTES` (default 60) gets evicted.
+  // for `AGENTHANGAR_CLAUDE_IDLE_EVICT_MINUTES` (default 60) gets evicted.
   // Saves RSS / upstream-proxy slots on parked-open sessions. Set the env
   // var to 0 to disable.
 
   private static readonly ACTIVITY_EVICT_CHECK_INTERVAL_MS = 60_000;
 
   private getActivityEvictThresholdMs(): number {
-    const raw = process.env.COMPANION_CLAUDE_IDLE_EVICT_MINUTES;
+    const raw = process.env.AGENTHANGAR_CLAUDE_IDLE_EVICT_MINUTES;
     if (raw === undefined) return 60 * 60_000; // default 1h
     const n = Number(raw);
     if (!Number.isFinite(n) || n < 0) return 60 * 60_000;

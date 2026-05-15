@@ -125,7 +125,7 @@ export function registerFsRoutes(api: Hono, opts?: { allowedBases?: string[] }):
     const cwd = process.cwd();
     // Only report cwd if the user launched companion from a real project directory
     // (not from the package root or the home directory itself)
-    const packageRoot = process.env.__COMPANION_PACKAGE_ROOT;
+    const packageRoot = process.env.__AGENTHANGAR_PACKAGE_ROOT;
     const isProjectDir =
       cwd !== home &&
       (!packageRoot || !cwd.startsWith(packageRoot));

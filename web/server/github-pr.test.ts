@@ -348,7 +348,7 @@ describe("fetchPRInfo", () => {
     // which gh + gh repo view use execSync; gh api graphql uses execFileSync
     mockExecSync
       .mockReturnValueOnce("/opt/homebrew/bin/gh")       // which gh
-      .mockReturnValueOnce("The-Vibe-Company/companion"); // gh repo view
+      .mockReturnValueOnce("yajin/AgentHangar"); // gh repo view
     mockExecFileSync
       .mockReturnValueOnce(JSON.stringify(makeGraphQLResponse())); // gh api graphql
 

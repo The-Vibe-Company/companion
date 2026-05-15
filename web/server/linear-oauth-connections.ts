@@ -6,7 +6,7 @@ import {
 } from "node:fs";
 import { join, dirname } from "node:path";
 import { randomUUID } from "node:crypto";
-import { COMPANION_HOME } from "./paths.js";
+import { AGENTHANGAR_HOME } from "./paths.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -38,7 +38,7 @@ export interface LinearOAuthConnectionSummary {
 
 // ─── Paths ───────────────────────────────────────────────────────────────────
 
-const DEFAULT_PATH = join(COMPANION_HOME, "linear-oauth-connections.json");
+const DEFAULT_PATH = join(AGENTHANGAR_HOME, "linear-oauth-connections.json");
 
 // ─── Store ───────────────────────────────────────────────────────────────────
 

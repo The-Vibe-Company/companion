@@ -63,7 +63,7 @@ const features = [
   },
   {
     title: "Secure Remote Ops",
-    description: "Run Companion on a calm remote server and expose it safely over Tailscale for private access.",
+    description: "Run AgentHangar on a calm remote server and expose it safely over Tailscale for private access.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z" />

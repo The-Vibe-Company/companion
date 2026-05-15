@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "maple",
-  "name": "The Companion",
+  "name": "AgentHangar",
   "description": "Web UI for Claude Code and Codex sessions. Run multiple agents, inspect tool calls, and gate risky actions with explicit approvals.",
   "colors": {
     "primary": "#5B5FEA",
@@ -48,13 +48,13 @@
     "links": [
       {
         "label": "GitHub",
-        "href": "https://github.com/thevibecompany/the-companion"
+        "href": "https://github.com/yajin/AgentHangar"
       }
     ]
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/thevibecompany/the-companion"
+      "github": "https://github.com/yajin/AgentHangar"
     }
   },
   "favicon": "/images/favicon.svg"

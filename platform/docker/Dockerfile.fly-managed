@@ -1,0 +1,33 @@
+ARG BASE_IMAGE=docker.io/blocksec/agenthangar:latest
+FROM ${BASE_IMAGE}
+
+ARG AGENTHANGAR_SOURCE=npm
+ARG AGENTHANGAR_NPM_VERSION=latest
+
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3456
+ENV AGENTHANGAR_HOME=/data/agenthangar
+ENV AGENTHANGAR_SESSION_DIR=/data/sessions
+
+WORKDIR /tmp/agenthangar-src
+
+COPY . /tmp/agenthangar-src
+
+RUN if [ "$AGENTHANGAR_SOURCE" = "local" ]; then \
+      cd /tmp/agenthangar-src/web && \
+      bun install --frozen-lockfile && \
+      bun run build && \
+      ln -sf /tmp/agenthangar-src/web/bin/cli.ts /usr/local/bin/agenthangar; \
+    else \
+      bun install -g "agenthangar@${AGENTHANGAR_NPM_VERSION}"; \
+    fi
+
+COPY platform/docker/entrypoint-server.sh /usr/local/bin/agenthangar-entrypoint.sh
+RUN chmod +x /usr/local/bin/agenthangar-entrypoint.sh && \
+    mkdir -p /data/agenthangar /data/sessions
+
+VOLUME ["/data"]
+EXPOSE 3456
+
+ENTRYPOINT ["/usr/local/bin/agenthangar-entrypoint.sh"]

@@ -1768,7 +1768,7 @@ describe("hang watchdog (silent-stdout recovery)", () => {
   });
 
   it("watchdog is disabled when hangWatchdogMs is 0", () => {
-    // Operator escape hatch (COMPANION_CLAUDE_HANG_WATCHDOG_MS=0).
+    // Operator escape hatch (AGENTHANGAR_CLAUDE_HANG_WATCHDOG_MS=0).
     // Even after the original 90s default, no kill should fire.
     vi.useFakeTimers();
     try {

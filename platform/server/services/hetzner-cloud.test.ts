@@ -55,14 +55,14 @@ describe("HetznerCloudClient", () => {
     fetchMock.mockResolvedValue({
       ok: true,
       text: async () => JSON.stringify({
-        server: { id: 10, name: "companion-1", status: "running" },
+        server: { id: 10, name: "agenthangar-1", status: "running" },
         action: { id: 99, status: "running", command: "create_server" },
       }),
     });
 
     const client = new HetznerCloudClient(TOKEN);
     const result = await client.createServer({
-      name: "companion-1",
+      name: "agenthangar-1",
       server_type: "cpx11",
       location: "ash",
       image: "ubuntu-24.04",

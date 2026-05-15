@@ -5,7 +5,7 @@ import {
   existsSync,
 } from "node:fs";
 import { join, dirname } from "node:path";
-import { COMPANION_HOME } from "./paths.js";
+import { AGENTHANGAR_HOME } from "./paths.js";
 
 export const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
 
@@ -46,7 +46,7 @@ export interface CompanionSettings {
   updatedAt: number;
 }
 
-const DEFAULT_PATH = join(COMPANION_HOME, "settings.json");
+const DEFAULT_PATH = join(AGENTHANGAR_HOME, "settings.json");
 
 let loaded = false;
 let filePath = DEFAULT_PATH;

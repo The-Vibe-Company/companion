@@ -86,13 +86,13 @@ describe("getRepoInfo", () => {
 
   it("detects worktree when git-dir contains /worktrees/", () => {
     mockGitCommands({
-      "rev-parse --show-toplevel": "/fake/home/.companion/worktrees/proj/feat--x",
+      "rev-parse --show-toplevel": "/fake/home/.agenthangar/worktrees/proj/feat--x",
       "rev-parse --abbrev-ref HEAD": "feat/x",
       "rev-parse --git-dir": "/home/user/proj/.git/worktrees/feat--x",
       "symbolic-ref refs/remotes/origin/HEAD": "refs/remotes/origin/main",
     });
 
-    const result = gitUtils.getRepoInfo("/fake/home/.companion/worktrees/proj/feat--x");
+    const result = gitUtils.getRepoInfo("/fake/home/.agenthangar/worktrees/proj/feat--x");
     expect(result).not.toBeNull();
     expect(result!.isWorktree).toBe(true);
   });
@@ -255,7 +255,7 @@ describe("listWorktrees", () => {
       "HEAD abc1234567890abcdef1234567890abcdef123456",
       "branch refs/heads/main",
       "",
-      "worktree /fake/home/.companion/worktrees/project/feat--x",
+      "worktree /fake/home/.agenthangar/worktrees/project/feat--x",
       "HEAD def4567890abcdef1234567890abcdef12345678",
       "branch refs/heads/feat/x",
       "",
@@ -272,7 +272,7 @@ describe("listWorktrees", () => {
     const worktrees = gitUtils.listWorktrees("/home/user/project");
     expect(worktrees).toHaveLength(2);
     expect(worktrees[0].path).toBe("/home/user/project");
-    expect(worktrees[1].path).toBe("/fake/home/.companion/worktrees/project/feat--x");
+    expect(worktrees[1].path).toBe("/fake/home/.agenthangar/worktrees/project/feat--x");
   });
 
   it("marks first worktree as main", () => {
@@ -379,7 +379,7 @@ describe("ensureWorktree", () => {
     mockExistsSync.mockReturnValue(false);
 
     const result = gitUtils.ensureWorktree("/repo", "feat/local");
-    expect(result.worktreePath).toBe("/fake/home/.companion/worktrees/repo/feat--local");
+    expect(result.worktreePath).toBe("/fake/home/.agenthangar/worktrees/repo/feat--local");
     expect(result.actualBranch).toBe("feat/local");
     expect(result.isNew).toBe(false);
 
@@ -517,7 +517,7 @@ describe("ensureWorktree", () => {
     gitUtils.ensureWorktree("/repo", "feat/new");
 
     expect(mockMkdirSync).toHaveBeenCalledWith(
-      "/fake/home/.companion/worktrees/repo",
+      "/fake/home/.agenthangar/worktrees/repo",
       { recursive: true },
     );
   });
@@ -546,7 +546,7 @@ describe("ensureWorktree", () => {
     const result = gitUtils.ensureWorktree("/repo", "main");
     // Should NOT return the main repo path
     expect(result.worktreePath).not.toBe("/repo");
-    expect(result.worktreePath).toBe("/fake/home/.companion/worktrees/repo/main");
+    expect(result.worktreePath).toBe("/fake/home/.agenthangar/worktrees/repo/main");
     expect(result.branch).toBe("main");
     expect(result.actualBranch).toMatch(/^main-wt-\d{4}$/);
     // Should create a branch-tracking worktree
@@ -569,7 +569,7 @@ describe("ensureWorktree", () => {
       throw new Error(`Unmocked: ${cmd}`);
     });
     // Base path exists, random suffix path does not
-    const basePath = "/fake/home/.companion/worktrees/repo/feat--x";
+    const basePath = "/fake/home/.agenthangar/worktrees/repo/feat--x";
     mockExistsSync.mockImplementation((path: string) => {
       if (path === basePath) return true;
       return false; // Any random-suffixed path is free
@@ -604,7 +604,7 @@ describe("ensureWorktree", () => {
     mockExistsSync.mockReturnValue(false);
 
     const result = gitUtils.ensureWorktree("/repo", "feat/existing", { forceNew: true });
-    expect(result.worktreePath).toBe("/fake/home/.companion/worktrees/repo/feat--existing");
+    expect(result.worktreePath).toBe("/fake/home/.agenthangar/worktrees/repo/feat--existing");
     expect(result.branch).toBe("feat/existing");
     expect(result.actualBranch).toMatch(/^feat\/existing-wt-\d{4}$/);
 
@@ -639,7 +639,7 @@ describe("ensureWorktree", () => {
     mockExistsSync.mockReturnValue(false);
 
     const result = gitUtils.ensureWorktree("/repo", "main", { forceNew: true });
-    expect(result.worktreePath).toBe("/fake/home/.companion/worktrees/repo/main");
+    expect(result.worktreePath).toBe("/fake/home/.agenthangar/worktrees/repo/main");
     expect(result.branch).toBe("main");
     // Should get a unique branch, NOT the raw "main" branch
     expect(result.actualBranch).toMatch(/^main-wt-\d{4}$/);

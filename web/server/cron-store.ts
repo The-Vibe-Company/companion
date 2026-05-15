@@ -8,11 +8,11 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import type { CronJob, CronJobCreateInput } from "./cron-types.js";
-import { COMPANION_HOME } from "./paths.js";
+import { AGENTHANGAR_HOME } from "./paths.js";
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-const CRON_DIR = join(COMPANION_HOME, "cron");
+const CRON_DIR = join(AGENTHANGAR_HOME, "cron");
 
 function ensureDir(): void {
   mkdirSync(CRON_DIR, { recursive: true });

@@ -443,12 +443,12 @@ describe("updateSessionUrls", () => {
     });
 
     await updateSessionUrls(testCreds, "session-123", [
-      { label: "Companion", url: "http://localhost:3456/#/session/abc" },
+      { label: "AgentHangar", url: "http://localhost:3456/#/session/abc" },
     ]);
 
     const fetchBody = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(fetchBody.variables.input.externalUrls).toEqual([
-      { label: "Companion", url: "http://localhost:3456/#/session/abc" },
+      { label: "AgentHangar", url: "http://localhost:3456/#/session/abc" },
     ]);
   });
 });

@@ -3,7 +3,7 @@ import type { ContentBlock } from "./types.js";
 import { captureEvent, captureException } from "./analytics.js";
 
 const BASE = "/api";
-const AUTH_STORAGE_KEY = "companion_auth_token";
+const AUTH_STORAGE_KEY = "agenthangar_auth_token";
 
 function getAuthHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};

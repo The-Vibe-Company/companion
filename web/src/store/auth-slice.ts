@@ -1,7 +1,7 @@
 import type { StateCreator } from "zustand";
 import type { AppState } from "./index.js";
 
-const AUTH_STORAGE_KEY = "companion_auth_token";
+const AUTH_STORAGE_KEY = "agenthangar_auth_token";
 
 function getInitialAuthToken(): string | null {
   if (typeof window === "undefined") return null;

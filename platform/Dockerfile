@@ -1,4 +1,4 @@
-# companion-cloud — Railway deployment image
+# agenthangar-cloud — Railway deployment image
 # Builds the Vite frontend + Bun backend for the control plane.
 #
 # Multi-stage build:
@@ -32,7 +32,6 @@ COPY --from=builder /app/dist ./dist
 # Copy Drizzle schema + config + migrations for drizzle-kit migrate at deploy time
 COPY --from=builder /app/server/db ./server/db
 COPY --from=builder /app/drizzle.config.ts ./
-COPY --from=builder /app/drizzle ./drizzle
 
 ENV NODE_ENV=production
 

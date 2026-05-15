@@ -417,7 +417,7 @@ export function LinearOAuthSettingsPage({ embedded = false }: LinearOAuthSetting
                         <p className="mt-1 text-xs text-cc-muted">
                           {conn.status === "connected"
                             ? "Ready to receive @mentions and post updates back to Linear."
-                            : "This app may already be installed in Linear, but Companion no longer has a valid OAuth token. Reconnect it to restore agent replies."}
+                            : "This app may already be installed in Linear, but AgentHangar no longer has a valid OAuth token. Reconnect it to restore agent replies."}
                         </p>
 
                         {/* Agents using this connection */}

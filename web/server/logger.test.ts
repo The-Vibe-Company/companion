@@ -6,7 +6,7 @@ import { randomBytes } from "node:crypto";
 
 describe("logger", () => {
   let log: typeof import("./logger.js").log;
-  const originalEnv = process.env.COMPANION_LOG_FORMAT;
+  const originalEnv = process.env.AGENTHANGAR_LOG_FORMAT;
 
   beforeEach(() => {
     vi.resetModules();
@@ -14,15 +14,15 @@ describe("logger", () => {
 
   afterEach(() => {
     if (originalEnv === undefined) {
-      delete process.env.COMPANION_LOG_FORMAT;
+      delete process.env.AGENTHANGAR_LOG_FORMAT;
     } else {
-      process.env.COMPANION_LOG_FORMAT = originalEnv;
+      process.env.AGENTHANGAR_LOG_FORMAT = originalEnv;
     }
   });
 
   describe("human-readable format (default)", () => {
     beforeEach(async () => {
-      delete process.env.COMPANION_LOG_FORMAT;
+      delete process.env.AGENTHANGAR_LOG_FORMAT;
       const mod = await import("./logger.js");
       log = mod.log;
     });
@@ -69,9 +69,9 @@ describe("logger", () => {
     });
   });
 
-  describe("JSON format (COMPANION_LOG_FORMAT=json)", () => {
+  describe("JSON format (AGENTHANGAR_LOG_FORMAT=json)", () => {
     beforeEach(async () => {
-      process.env.COMPANION_LOG_FORMAT = "json";
+      process.env.AGENTHANGAR_LOG_FORMAT = "json";
       const mod = await import("./logger.js");
       log = mod.log;
     });
@@ -168,10 +168,10 @@ describe("LogFileWriter", () => {
   it("includes PID in the filename for uniqueness across server runs", () => {
     const writer = new LogFileWriter({ logsDir: tmpDir, maxLines: 1_000_000 });
     try {
-      // Filename format: companion_{iso-timestamp}_{pid}.log
+      // Filename format: agenthangar_{iso-timestamp}_{pid}.log
       const filename = writer.filePath.split("/").pop()!;
       expect(filename).toContain(`_${process.pid}.log`);
-      expect(filename).toMatch(/^companion_/);
+      expect(filename).toMatch(/^agenthangar_/);
     } finally {
       writer.close();
     }
@@ -191,8 +191,8 @@ describe("LogFileWriter", () => {
     it("deletes oldest log files when total lines exceed maxLines", () => {
       // Pre-create two old log files with known line counts and distinct mtimes
       // so rotation deletes the oldest first.
-      const oldFile1 = join(tmpDir, "companion_2020-01-01T00-00-00_1.log");
-      const oldFile2 = join(tmpDir, "companion_2020-06-01T00-00-00_2.log");
+      const oldFile1 = join(tmpDir, "agenthangar_2020-01-01T00-00-00_1.log");
+      const oldFile2 = join(tmpDir, "agenthangar_2020-06-01T00-00-00_2.log");
       writeFileSync(oldFile1, "line1\nline2\nline3\nline4\nline5\n");
       writeFileSync(oldFile2, "line1\nline2\nline3\nline4\nline5\n");
 
@@ -222,7 +222,7 @@ describe("LogFileWriter", () => {
 
     it("does not delete the current log file during cleanup", () => {
       // Pre-create one old file that puts us over the limit, with an old mtime
-      const oldFile = join(tmpDir, "companion_2020-01-01T00-00-00_1.log");
+      const oldFile = join(tmpDir, "agenthangar_2020-01-01T00-00-00_1.log");
       writeFileSync(oldFile, "line1\nline2\nline3\n");
       utimesSync(oldFile, new Date("2020-01-01"), new Date("2020-01-01"));
 
@@ -249,7 +249,7 @@ describe("LogFileWriter", () => {
     it("returns the number of files deleted during cleanup", () => {
       // Create 3 old files with 5 lines each = 15 lines total, with distinct mtimes
       for (let i = 0; i < 3; i++) {
-        const f = join(tmpDir, `companion_2020-0${i + 1}-01T00-00-00_${i}.log`);
+        const f = join(tmpDir, `agenthangar_2020-0${i + 1}-01T00-00-00_${i}.log`);
         writeFileSync(f, "a\nb\nc\nd\ne\n");
         const past = new Date(`2020-0${i + 1}-01`);
         utimesSync(f, past, past);
@@ -270,32 +270,32 @@ describe("LogFileWriter", () => {
   });
 
   describe("isEnabled", () => {
-    const origLogFile = process.env.COMPANION_LOG_FILE;
+    const origLogFile = process.env.AGENTHANGAR_LOG_FILE;
 
     afterEach(() => {
       if (origLogFile === undefined) {
-        delete process.env.COMPANION_LOG_FILE;
+        delete process.env.AGENTHANGAR_LOG_FILE;
       } else {
-        process.env.COMPANION_LOG_FILE = origLogFile;
+        process.env.AGENTHANGAR_LOG_FILE = origLogFile;
       }
     });
 
     it("returns true by default (no env var set)", async () => {
-      delete process.env.COMPANION_LOG_FILE;
+      delete process.env.AGENTHANGAR_LOG_FILE;
       vi.resetModules();
       const mod = await import("./logger.js");
       expect(mod.LogFileWriter.isEnabled()).toBe(true);
     });
 
-    it("returns false when COMPANION_LOG_FILE=0", async () => {
-      process.env.COMPANION_LOG_FILE = "0";
+    it("returns false when AGENTHANGAR_LOG_FILE=0", async () => {
+      process.env.AGENTHANGAR_LOG_FILE = "0";
       vi.resetModules();
       const mod = await import("./logger.js");
       expect(mod.LogFileWriter.isEnabled()).toBe(false);
     });
 
-    it("returns false when COMPANION_LOG_FILE=false", async () => {
-      process.env.COMPANION_LOG_FILE = "false";
+    it("returns false when AGENTHANGAR_LOG_FILE=false", async () => {
+      process.env.AGENTHANGAR_LOG_FILE = "false";
       vi.resetModules();
       const mod = await import("./logger.js");
       expect(mod.LogFileWriter.isEnabled()).toBe(false);
@@ -309,15 +309,15 @@ describe("initLogFile / closeLogFile", () => {
   let log: typeof import("./logger.js").log;
   let tmpDir: string;
 
-  const origLogFile = process.env.COMPANION_LOG_FILE;
-  const origLogFormat = process.env.COMPANION_LOG_FORMAT;
+  const origLogFile = process.env.AGENTHANGAR_LOG_FILE;
+  const origLogFormat = process.env.AGENTHANGAR_LOG_FORMAT;
 
   beforeEach(async () => {
     vi.resetModules();
     tmpDir = join(tmpdir(), `companion-log-init-${randomBytes(4).toString("hex")}`);
     mkdirSync(tmpDir, { recursive: true });
-    delete process.env.COMPANION_LOG_FILE;
-    delete process.env.COMPANION_LOG_FORMAT;
+    delete process.env.AGENTHANGAR_LOG_FILE;
+    delete process.env.AGENTHANGAR_LOG_FORMAT;
     const mod = await import("./logger.js");
     initLogFile = mod.initLogFile;
     closeLogFile = mod.closeLogFile;
@@ -332,14 +332,14 @@ describe("initLogFile / closeLogFile", () => {
       // ignore
     }
     if (origLogFile === undefined) {
-      delete process.env.COMPANION_LOG_FILE;
+      delete process.env.AGENTHANGAR_LOG_FILE;
     } else {
-      process.env.COMPANION_LOG_FILE = origLogFile;
+      process.env.AGENTHANGAR_LOG_FILE = origLogFile;
     }
     if (origLogFormat === undefined) {
-      delete process.env.COMPANION_LOG_FORMAT;
+      delete process.env.AGENTHANGAR_LOG_FORMAT;
     } else {
-      process.env.COMPANION_LOG_FORMAT = origLogFormat;
+      process.env.AGENTHANGAR_LOG_FORMAT = origLogFormat;
     }
   });
 
@@ -363,7 +363,7 @@ describe("initLogFile / closeLogFile", () => {
   });
 
   it("returns null when disabled via env var", async () => {
-    process.env.COMPANION_LOG_FILE = "0";
+    process.env.AGENTHANGAR_LOG_FILE = "0";
     vi.resetModules();
     const mod = await import("./logger.js");
     const writer = mod.initLogFile({ logsDir: tmpDir });

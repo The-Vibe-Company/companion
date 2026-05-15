@@ -23,7 +23,7 @@ app.use(
   "/api/*",
   cors({
     origin: (origin) => {
-      const allowed = (process.env.COMPANION_CLOUD_ORIGINS || "http://localhost:5175").split(",").map(s => s.trim());
+      const allowed = (process.env.AGENTHANGAR_CLOUD_ORIGINS || "http://localhost:5175").split(",").map(s => s.trim());
       return allowed.includes(origin) ? origin : allowed[0];
     },
     credentials: true,
@@ -62,7 +62,7 @@ app.route("/api/dashboard", dashboard);
 
 app.get("/api/status", (c) => {
   return c.json({
-    service: "companion-cloud",
+    service: "agenthangar-cloud",
     version: "0.1.0",
     status: "ok",
     provisioning: {
@@ -90,4 +90,4 @@ export default {
   fetch: app.fetch,
 };
 
-console.log(`[companion-cloud] Control plane running on http://localhost:${port}`);
+console.log(`[agenthangar-cloud] Control plane running on http://localhost:${port}`);

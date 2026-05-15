@@ -99,7 +99,7 @@ afterEach(() => {
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function plistPath(): string {
-  return join(tempDir, "Library", "LaunchAgents", "sh.thecompanion.app.plist");
+  return join(tempDir, "Library", "LaunchAgents", "ai.blocksec.agenthangar.plist");
 }
 
 function oldPlistPath(): string {
@@ -107,11 +107,11 @@ function oldPlistPath(): string {
 }
 
 function unitPath(): string {
-  return join(tempDir, ".config", "systemd", "user", "the-companion.service");
+  return join(tempDir, ".config", "systemd", "user", "agenthangar.service");
 }
 
 function logDir(): string {
-  return join(tempDir, ".companion", "logs");
+  return join(tempDir, ".agenthangar", "logs");
 }
 
 // ===========================================================================
@@ -119,62 +119,62 @@ function logDir(): string {
 // ===========================================================================
 describe("generatePlist", () => {
   it("generates valid XML with the correct label", () => {
-    const plist = service.generatePlist({ binPath: "/usr/local/bin/the-companion" });
+    const plist = service.generatePlist({ binPath: "/usr/local/bin/agenthangar" });
     expect(plist).toContain('<?xml version="1.0"');
-    expect(plist).toContain("<string>sh.thecompanion.app</string>");
+    expect(plist).toContain("<string>ai.blocksec.agenthangar</string>");
   });
 
   it("includes RunAtLoad true", () => {
-    const plist = service.generatePlist({ binPath: "/usr/local/bin/the-companion" });
+    const plist = service.generatePlist({ binPath: "/usr/local/bin/agenthangar" });
     expect(plist).toContain("<key>RunAtLoad</key>");
     expect(plist).toContain("<true/>");
   });
 
   it("includes KeepAlive with SuccessfulExit false", () => {
-    const plist = service.generatePlist({ binPath: "/usr/local/bin/the-companion" });
+    const plist = service.generatePlist({ binPath: "/usr/local/bin/agenthangar" });
     expect(plist).toContain("<key>KeepAlive</key>");
     expect(plist).toContain("<key>SuccessfulExit</key>");
     expect(plist).toContain("<false/>");
   });
 
   it("uses the provided binary path in ProgramArguments", () => {
-    const plist = service.generatePlist({ binPath: "/opt/homebrew/bin/the-companion" });
-    expect(plist).toContain("<string>/opt/homebrew/bin/the-companion</string>");
+    const plist = service.generatePlist({ binPath: "/opt/homebrew/bin/agenthangar" });
+    expect(plist).toContain("<string>/opt/homebrew/bin/agenthangar</string>");
     expect(plist).toContain("<string>start</string>");
     expect(plist).toContain("<string>--foreground</string>");
   });
 
   it("uses the default production port when none specified", () => {
-    const plist = service.generatePlist({ binPath: "/usr/local/bin/the-companion" });
+    const plist = service.generatePlist({ binPath: "/usr/local/bin/agenthangar" });
     expect(plist).toContain("<key>PORT</key>");
     expect(plist).toContain("<string>6060</string>");
   });
 
   it("uses a custom port when specified", () => {
-    const plist = service.generatePlist({ binPath: "/usr/local/bin/the-companion", port: 8080 });
+    const plist = service.generatePlist({ binPath: "/usr/local/bin/agenthangar", port: 8080 });
     expect(plist).toContain("<string>8080</string>");
   });
 
   it("includes NODE_ENV production", () => {
-    const plist = service.generatePlist({ binPath: "/usr/local/bin/the-companion" });
+    const plist = service.generatePlist({ binPath: "/usr/local/bin/agenthangar" });
     expect(plist).toContain("<key>NODE_ENV</key>");
     expect(plist).toContain("<string>production</string>");
   });
 
   it("uses enriched PATH from path-resolver when no path option given", () => {
-    const plist = service.generatePlist({ binPath: "/usr/local/bin/the-companion" });
+    const plist = service.generatePlist({ binPath: "/usr/local/bin/agenthangar" });
     expect(plist).toContain(MOCK_SERVICE_PATH);
   });
 
   it("uses custom path option when provided", () => {
     const customPath = "/custom/bin:/other/bin";
-    const plist = service.generatePlist({ binPath: "/usr/local/bin/the-companion", path: customPath });
+    const plist = service.generatePlist({ binPath: "/usr/local/bin/agenthangar", path: customPath });
     expect(plist).toContain(customPath);
     expect(plist).not.toContain(MOCK_SERVICE_PATH);
   });
 
   it("includes ThrottleInterval", () => {
-    const plist = service.generatePlist({ binPath: "/usr/local/bin/the-companion" });
+    const plist = service.generatePlist({ binPath: "/usr/local/bin/agenthangar" });
     expect(plist).toContain("<key>ThrottleInterval</key>");
     expect(plist).toContain("<integer>5</integer>");
   });
@@ -185,58 +185,58 @@ describe("generatePlist", () => {
 // ===========================================================================
 describe("generateSystemdUnit", () => {
   it("generates a valid systemd unit with correct sections", () => {
-    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/the-companion" });
+    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/agenthangar" });
     expect(unit).toContain("[Unit]");
     expect(unit).toContain("[Service]");
     expect(unit).toContain("[Install]");
   });
 
   it("includes the description", () => {
-    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/the-companion" });
-    expect(unit).toContain("Description=The Companion");
+    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/agenthangar" });
+    expect(unit).toContain("Description=AgentHangar");
   });
 
   it("uses the provided binary path in ExecStart", () => {
-    const unit = service.generateSystemdUnit({ binPath: "/home/user/.bun/bin/the-companion" });
-    expect(unit).toContain("ExecStart=/home/user/.bun/bin/the-companion start --foreground");
+    const unit = service.generateSystemdUnit({ binPath: "/home/user/.bun/bin/agenthangar" });
+    expect(unit).toContain("ExecStart=/home/user/.bun/bin/agenthangar start --foreground");
   });
 
   it("uses the default production port when none specified", () => {
-    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/the-companion" });
+    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/agenthangar" });
     expect(unit).toContain("Environment=PORT=6060");
   });
 
   it("uses a custom port when specified", () => {
-    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/the-companion", port: 8080 });
+    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/agenthangar", port: 8080 });
     expect(unit).toContain("Environment=PORT=8080");
   });
 
   it("includes NODE_ENV production", () => {
-    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/the-companion" });
+    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/agenthangar" });
     expect(unit).toContain("Environment=NODE_ENV=production");
   });
 
   it("includes restart always with graceful update exit code", () => {
-    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/the-companion" });
+    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/agenthangar" });
     expect(unit).toContain("Restart=always");
     expect(unit).toContain("RestartSec=5");
     expect(unit).toContain("SuccessExitStatus=42");
   });
 
   it("uses enriched PATH from path-resolver when no path option given", () => {
-    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/the-companion" });
+    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/agenthangar" });
     expect(unit).toContain(`Environment=PATH=${MOCK_SERVICE_PATH}`);
   });
 
   it("uses custom path option when provided", () => {
     const customPath = "/custom/bin:/other/bin";
-    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/the-companion", path: customPath });
+    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/agenthangar", path: customPath });
     expect(unit).toContain(`Environment=PATH=${customPath}`);
     expect(unit).not.toContain(MOCK_SERVICE_PATH);
   });
 
   it("targets default.target for user service", () => {
-    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/the-companion" });
+    const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/agenthangar" });
     expect(unit).toContain("WantedBy=default.target");
   });
 });
@@ -247,7 +247,7 @@ describe("generateSystemdUnit", () => {
 describe("install", () => {
   it("creates log directory and writes plist file", async () => {
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl load")) return "";
       return "";
     });
@@ -258,12 +258,12 @@ describe("install", () => {
     expect(existsSync(plistPath())).toBe(true);
 
     const content = readFileSync(plistPath(), "utf-8");
-    expect(content).toContain("sh.thecompanion.app");
+    expect(content).toContain("ai.blocksec.agenthangar");
   });
 
   it("calls launchctl load with the plist path", async () => {
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl load")) return "";
       return "";
     });
@@ -280,7 +280,7 @@ describe("install", () => {
   it("exits with error if already installed", async () => {
     // First install
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl")) return "";
       return "";
     });
@@ -303,7 +303,7 @@ describe("install", () => {
 
   it("uses custom port when provided", async () => {
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl")) return "";
       return "";
     });
@@ -316,7 +316,7 @@ describe("install", () => {
 
   it("cleans up plist if launchctl load fails", async () => {
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl load")) throw new Error("launchctl failed");
       return "";
     });
@@ -330,15 +330,15 @@ describe("install", () => {
     const launchAgentsDir = join(tempDir, "Library", "LaunchAgents");
     rmSync(launchAgentsDir, { recursive: true, force: true });
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl unload")) return "";
       if (cmd.startsWith("launchctl load")) return "";
       return "";
     });
 
     // Create a legacy plist to simulate pre-rename installs
-    const plist = service.generatePlist({ binPath: "/usr/local/bin/the-companion" })
-      .replaceAll("sh.thecompanion.app", "co.thevibecompany.companion");
+    const plist = service.generatePlist({ binPath: "/usr/local/bin/agenthangar" })
+      .replaceAll("ai.blocksec.agenthangar", "co.thevibecompany.companion");
     mkdirSync(launchAgentsDir, { recursive: true });
     writeFileSync(oldPath, plist, "utf-8");
 
@@ -366,7 +366,7 @@ describe("install (linux)", () => {
 
   it("creates log directory and writes systemd unit file", async () => {
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -377,12 +377,12 @@ describe("install (linux)", () => {
     expect(existsSync(unitPath())).toBe(true);
 
     const content = readFileSync(unitPath(), "utf-8");
-    expect(content).toContain("ExecStart=/usr/local/bin/the-companion start --foreground");
+    expect(content).toContain("ExecStart=/usr/local/bin/agenthangar start --foreground");
   });
 
   it("calls systemctl daemon-reload and enable --now", async () => {
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -402,7 +402,7 @@ describe("install (linux)", () => {
 
   it("exits with error if already installed", async () => {
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -424,7 +424,7 @@ describe("install (linux)", () => {
 
   it("uses custom port when provided", async () => {
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -437,7 +437,7 @@ describe("install (linux)", () => {
 
   it("cleans up unit file if systemctl enable fails", async () => {
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.includes("daemon-reload")) return "";
       if (cmd.includes("enable --now")) throw new Error("systemctl failed");
       return "";
@@ -455,7 +455,7 @@ describe("uninstall", () => {
   it("calls launchctl unload and removes plist", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl")) return "";
       return "";
     });
@@ -512,7 +512,7 @@ describe("uninstall (linux)", () => {
   it("calls systemctl disable --now and removes unit file", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -535,7 +535,7 @@ describe("uninstall (linux)", () => {
   it("calls daemon-reload after removing unit file", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -567,7 +567,7 @@ describe("start", () => {
   it("calls launchctl kickstart when installed", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl")) return "";
       return "";
     });
@@ -589,7 +589,7 @@ describe("start", () => {
   it("falls back to launchctl bootstrap when kickstart fails", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl")) return "";
       return "";
     });
@@ -632,7 +632,7 @@ describe("start (linux)", () => {
   it("calls systemctl start when installed", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -643,14 +643,14 @@ describe("start (linux)", () => {
     mockExecSync.mockReset();
     // start() now calls refreshServiceDefinition() which needs `which`
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       return "";
     });
 
     await service.start();
 
     const startCall = mockExecSync.mock.calls.find(
-      ([cmd]) => typeof cmd === "string" && cmd.includes("start the-companion.service"),
+      ([cmd]) => typeof cmd === "string" && cmd.includes("start agenthangar.service"),
     );
     expect(startCall).toBeDefined();
   });
@@ -659,7 +659,7 @@ describe("start (linux)", () => {
     // When the service is not installed, start() should auto-install it.
     // Mock `which` to return a valid binary path so install can proceed.
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       if (cmd.startsWith("loginctl")) return "";
       return "";
@@ -682,7 +682,7 @@ describe("start (linux)", () => {
     // start() should rewrite the unit via refreshServiceDefinition() so that
     // stale definitions from older versions don't cause restart loops.
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -699,7 +699,7 @@ describe("start (linux)", () => {
     service = await import("./service.js");
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -720,7 +720,7 @@ describe("stop", () => {
   it("calls launchctl bootout when installed", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl")) return "";
       return "";
     });
@@ -742,7 +742,7 @@ describe("stop", () => {
   it("falls back to launchctl unload when bootout fails", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl")) return "";
       return "";
     });
@@ -785,7 +785,7 @@ describe("stop (linux)", () => {
   it("calls systemctl stop when installed", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -799,7 +799,7 @@ describe("stop (linux)", () => {
     await service.stop();
 
     const stopCall = mockExecSync.mock.calls.find(
-      ([cmd]) => typeof cmd === "string" && cmd.includes("stop the-companion.service"),
+      ([cmd]) => typeof cmd === "string" && cmd.includes("stop agenthangar.service"),
     );
     expect(stopCall).toBeDefined();
   });
@@ -817,7 +817,7 @@ describe("restart", () => {
   it("calls launchctl kickstart when installed", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl")) return "";
       return "";
     });
@@ -856,7 +856,7 @@ describe("restart (linux)", () => {
   it("calls systemctl restart when installed", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -867,14 +867,14 @@ describe("restart (linux)", () => {
     mockExecSync.mockReset();
     // restart() now calls refreshServiceDefinition() which needs `which`
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       return "";
     });
 
     await service.restart();
 
     const restartCall = mockExecSync.mock.calls.find(
-      ([cmd]) => typeof cmd === "string" && cmd.includes("restart the-companion.service"),
+      ([cmd]) => typeof cmd === "string" && cmd.includes("restart agenthangar.service"),
     );
     expect(restartCall).toBeDefined();
   });
@@ -887,7 +887,7 @@ describe("restart (linux)", () => {
   it("refreshes the service definition before restarting", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -903,7 +903,7 @@ describe("restart (linux)", () => {
     service = await import("./service.js");
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -928,7 +928,7 @@ describe("status", () => {
   it("returns installed: true, running: true with PID", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl load")) return "";
       return "";
     });
@@ -939,7 +939,7 @@ describe("status", () => {
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
       if (typeof cmd === "string" && cmd.includes("launchctl list")) {
-        return `{\n\t"PID" = 12345;\n\t"Label" = "sh.thecompanion.app";\n}`;
+        return `{\n\t"PID" = 12345;\n\t"Label" = "ai.blocksec.agenthangar";\n}`;
       }
       return "";
     });
@@ -954,7 +954,7 @@ describe("status", () => {
   it("returns installed: true, running: false when service is loaded but not running", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl load")) return "";
       return "";
     });
@@ -965,7 +965,7 @@ describe("status", () => {
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
       if (typeof cmd === "string" && cmd.includes("launchctl list")) {
-        return `{\n\t"Label" = "sh.thecompanion.app";\n}`;
+        return `{\n\t"Label" = "ai.blocksec.agenthangar";\n}`;
       }
       return "";
     });
@@ -1031,7 +1031,7 @@ describe("status (linux)", () => {
   it("returns installed: true, running: true with PID", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -1041,7 +1041,7 @@ describe("status (linux)", () => {
     service = await import("./service.js");
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
-      if (typeof cmd === "string" && cmd.includes("show the-companion.service")) {
+      if (typeof cmd === "string" && cmd.includes("show agenthangar.service")) {
         return "ActiveState=active\nMainPID=54321\n";
       }
       return "";
@@ -1057,7 +1057,7 @@ describe("status (linux)", () => {
   it("returns installed: true, running: false when service is inactive", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -1067,7 +1067,7 @@ describe("status (linux)", () => {
     service = await import("./service.js");
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
-      if (typeof cmd === "string" && cmd.includes("show the-companion.service")) {
+      if (typeof cmd === "string" && cmd.includes("show agenthangar.service")) {
         return "ActiveState=inactive\nMainPID=0\n";
       }
       return "";
@@ -1080,7 +1080,7 @@ describe("status (linux)", () => {
 
   it("reads custom port from unit file", async () => {
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -1090,7 +1090,7 @@ describe("status (linux)", () => {
     service = await import("./service.js");
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
-      if (typeof cmd === "string" && cmd.includes("show the-companion.service")) {
+      if (typeof cmd === "string" && cmd.includes("show agenthangar.service")) {
         return "ActiveState=active\nMainPID=1234\n";
       }
       return "";
@@ -1122,7 +1122,7 @@ describe("isRunningAsService", () => {
   it("returns true when plist exists and service has a PID", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl load")) return "";
       return "";
     });
@@ -1133,7 +1133,7 @@ describe("isRunningAsService", () => {
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
       if (typeof cmd === "string" && cmd.includes("launchctl list")) {
-        return `{\n\t"PID" = 12345;\n\t"Label" = "sh.thecompanion.app";\n}`;
+        return `{\n\t"PID" = 12345;\n\t"Label" = "ai.blocksec.agenthangar";\n}`;
       }
       return "";
     });
@@ -1144,7 +1144,7 @@ describe("isRunningAsService", () => {
   it("returns false when plist exists but no PID (not running)", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl load")) return "";
       return "";
     });
@@ -1155,7 +1155,7 @@ describe("isRunningAsService", () => {
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
       if (typeof cmd === "string" && cmd.includes("launchctl list")) {
-        return `{\n\t"Label" = "sh.thecompanion.app";\n}`;
+        return `{\n\t"Label" = "ai.blocksec.agenthangar";\n}`;
       }
       return "";
     });
@@ -1182,7 +1182,7 @@ describe("isRunningAsService (linux)", () => {
   it("returns true when unit file exists and service is active", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.includes("daemon-reload")) return "";
       if (cmd.includes("enable --now")) return "";
       return "";
@@ -1205,7 +1205,7 @@ describe("isRunningAsService (linux)", () => {
   it("returns false when unit file exists but service is inactive", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.includes("daemon-reload")) return "";
       if (cmd.includes("enable --now")) return "";
       return "";
@@ -1233,7 +1233,7 @@ describe("refreshServiceDefinition (macOS)", () => {
   it("rewrites plist with current binary path", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl")) return "";
       return "";
     });
@@ -1241,27 +1241,27 @@ describe("refreshServiceDefinition (macOS)", () => {
 
     // Verify plist exists with original binary
     const originalContent = readFileSync(plistPath(), "utf-8");
-    expect(originalContent).toContain("/usr/local/bin/the-companion");
+    expect(originalContent).toContain("/usr/local/bin/agenthangar");
 
     // Now refresh with a different binary path
     vi.resetModules();
     service = await import("./service.js");
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/new/path/the-companion\n";
+      if (cmd.startsWith("which")) return "/new/path/agenthangar\n";
       return "";
     });
 
     service.refreshServiceDefinition();
 
     const updatedContent = readFileSync(plistPath(), "utf-8");
-    expect(updatedContent).toContain("/new/path/the-companion");
+    expect(updatedContent).toContain("/new/path/agenthangar");
   });
 
   it("preserves custom port from existing plist", async () => {
     // Install with custom port
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl")) return "";
       return "";
     });
@@ -1275,7 +1275,7 @@ describe("refreshServiceDefinition (macOS)", () => {
     service = await import("./service.js");
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       return "";
     });
 
@@ -1305,7 +1305,7 @@ describe("refreshServiceDefinition (linux)", () => {
   it("rewrites unit file and calls daemon-reload", async () => {
     // Install first
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -1316,7 +1316,7 @@ describe("refreshServiceDefinition (linux)", () => {
     service = await import("./service.js");
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/new/path/the-companion\n";
+      if (cmd.startsWith("which")) return "/new/path/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -1324,7 +1324,7 @@ describe("refreshServiceDefinition (linux)", () => {
     service.refreshServiceDefinition();
 
     const updatedContent = readFileSync(unitPath(), "utf-8");
-    expect(updatedContent).toContain("/new/path/the-companion");
+    expect(updatedContent).toContain("/new/path/agenthangar");
 
     // Verify daemon-reload was called
     const daemonReloadCall = mockExecSync.mock.calls.find(
@@ -1336,7 +1336,7 @@ describe("refreshServiceDefinition (linux)", () => {
   it("preserves custom port from existing unit", async () => {
     // Install with custom port
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -1350,7 +1350,7 @@ describe("refreshServiceDefinition (linux)", () => {
     service = await import("./service.js");
     mockExecSync.mockReset();
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });
@@ -1389,7 +1389,7 @@ describe("platform check", () => {
     service = await import("./service.js");
 
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("launchctl")) return "";
       return "";
     });
@@ -1407,7 +1407,7 @@ describe("platform check", () => {
     service = await import("./service.js");
 
     mockExecSync.mockImplementation((cmd: string) => {
-      if (cmd.startsWith("which")) return "/usr/local/bin/the-companion\n";
+      if (cmd.startsWith("which")) return "/usr/local/bin/agenthangar\n";
       if (cmd.startsWith("systemctl")) return "";
       return "";
     });

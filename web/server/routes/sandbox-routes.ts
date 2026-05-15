@@ -81,7 +81,7 @@ export function registerSandboxRoutes(
 
     if (!containerManager.checkDocker()) return c.json({ error: "Docker is not available" }, 503);
 
-    const effectiveImage = "the-companion:latest";
+    const effectiveImage = "agenthangar:latest";
     if (!imagePullManager.isReady(effectiveImage)) {
       return c.json({ error: `Docker image ${effectiveImage} is not available. Pull it first.` }, 503);
     }
@@ -99,7 +99,7 @@ export function registerSandboxRoutes(
 
       await containerManager.copyWorkspaceToContainer(containerId, cwd);
 
-      const initTimeout = Number(process.env.COMPANION_INIT_SCRIPT_TIMEOUT) || 120_000;
+      const initTimeout = Number(process.env.AGENTHANGAR_INIT_SCRIPT_TIMEOUT) || 120_000;
       const result = await containerManager.execInContainerAsync(
         containerId,
         ["sh", "-lc", initScript],

@@ -1,12 +1,12 @@
 /**
- * Companion-injected system-prompt fragments for Claude Code in stdio mode.
+ * AgentHangar-injected system-prompt fragments for Claude Code in stdio mode.
  *
  * These are appended to Claude Code's default system prompt via
  * `--append-system-prompt`. We do NOT replace the default prompt — that
  * would strip Claude's tool-use orchestration and cwd-aware context.
  *
  * Each rule lives as its own constant so growth is visible and stacking is
- * explicit. New rules append to COMPANION_APPEND_PROMPT below.
+ * explicit. New rules append to AGENTHANGAR_APPEND_PROMPT below.
  */
 
 /**
@@ -108,7 +108,7 @@ Instead:
  * Trailing newline keeps it visually separated from Claude's own prompt
  * tail when the user dumps the full system prompt for debugging.
  */
-export const COMPANION_APPEND_PROMPT = [
+export const AGENTHANGAR_APPEND_PROMPT = [
   ASK_USER_QUESTION_RULE,
   PHANTOM_REJECTION_RULE,
   BASH_SENSITIVE_APPROVAL_RULE,

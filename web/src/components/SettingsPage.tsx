@@ -221,12 +221,12 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
     setUpdateError("");
     try {
       // Flag so the Docker image update dialog appears after restart
-      localStorage.setItem("companion_docker_prompt_pending", "1");
+      localStorage.setItem("agenthangar_docker_prompt_pending", "1");
       const res = await api.triggerUpdate();
       setUpdateStatus(res.message);
       setUpdateOverlayActive(true);
     } catch (err: unknown) {
-      localStorage.removeItem("companion_docker_prompt_pending");
+      localStorage.removeItem("agenthangar_docker_prompt_pending");
       setUpdateError(err instanceof Error ? err.message : String(err));
       setUpdatingApp(false);
     }
@@ -349,7 +349,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
               <div className="space-y-4">
                 <p className="text-xs text-cc-muted">
                   The public URL is used for webhook URLs that external services (Linear, GitHub) send events to.
-                  Set this to the externally-reachable address of your Companion instance.
+                  Set this to the externally-reachable address of your AgentHangar instance.
                 </p>
                 <p className="text-xs text-cc-muted">
                   Tip:{" "}
@@ -943,7 +943,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   <div>
                     <span className="block text-sm font-medium">Auto-update Docker image</span>
                     <p className="mt-0.5 text-xs text-cc-muted">
-                      Automatically re-pull the sandbox Docker image when updating The Companion
+                      Automatically re-pull the sandbox Docker image when updating AgentHangar
                     </p>
                   </div>
                   <button
@@ -1012,7 +1012,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     </button>
                   ) : (
                     <p className="text-xs text-cc-muted self-center">
-                      Install service mode with <code className="font-mono-code bg-cc-code-bg px-1 py-0.5 rounded text-cc-code-fg">the-companion install</code> to enable one-click updates.
+                      Install service mode with <code className="font-mono-code bg-cc-code-bg px-1 py-0.5 rounded text-cc-code-fg">agenthangar install</code> to enable one-click updates.
                     </p>
                   )}
                 </div>

@@ -2,10 +2,10 @@ import { createMiddleware } from "hono/factory";
 import type { Context } from "hono";
 
 /**
- * Auth middleware for managed Companion Cloud instances.
+ * Auth middleware for managed AgentHangar Cloud instances.
  *
- * Only active when COMPANION_AUTH_ENABLED=1. Validates a JWT from a cookie
- * or query parameter, signed by the control plane using COMPANION_AUTH_SECRET.
+ * Only active when AGENTHANGAR_AUTH_ENABLED=1. Validates a JWT from a cookie
+ * or query parameter, signed by the control plane using AGENTHANGAR_AUTH_SECRET.
  *
  * Skipped paths:
  *  - /health    — monitoring endpoint used by control plane health checks
@@ -18,7 +18,7 @@ import type { Context } from "hono";
  */
 export const managedAuth = createMiddleware(async (c: Context, next) => {
   // This middleware is only registered by index.ts when managed auth is
-  // enabled (COMPANION_AUTH_ENABLED=1 or COMPANION_AUTH_SECRET is set).
+  // enabled (AGENTHANGAR_AUTH_ENABLED=1 or AGENTHANGAR_AUTH_SECRET is set).
   // No redundant env check needed here.
 
   const path = c.req.path;
@@ -26,7 +26,7 @@ export const managedAuth = createMiddleware(async (c: Context, next) => {
   // Internal paths that bypass auth
   if (path === "/health") return next();
 
-  const cookieToken = getCookie(c, "companion_token");
+  const cookieToken = getCookie(c, "agenthangar_token");
   const queryToken = c.req.query("token");
   // Give explicit URL token precedence so reconnect links can always override
   // stale/expired cookies in the browser.
@@ -36,9 +36,9 @@ export const managedAuth = createMiddleware(async (c: Context, next) => {
     return redirectOrUnauthorized(c);
   }
 
-  const secret = process.env.COMPANION_AUTH_SECRET;
+  const secret = process.env.AGENTHANGAR_AUTH_SECRET;
   if (!secret) {
-    console.error("[managed-auth] COMPANION_AUTH_SECRET is not set");
+    console.error("[managed-auth] AGENTHANGAR_AUTH_SECRET is not set");
     return c.json({ error: "Server misconfigured" }, 500);
   }
 
@@ -70,7 +70,7 @@ function setAuthCookie(c: Context, token: string): void {
   const secure = shouldUseSecureCookie(c) ? "; Secure" : "";
   c.header(
     "Set-Cookie",
-    `companion_token=${encoded}; Path=/; HttpOnly${secure}; SameSite=Lax; Max-Age=900`,
+    `agenthangar_token=${encoded}; Path=/; HttpOnly${secure}; SameSite=Lax; Max-Age=900`,
   );
 }
 
@@ -86,7 +86,7 @@ function shouldUseSecureCookie(c: Context): boolean {
 }
 
 function redirectOrUnauthorized(c: Context): Response {
-  const loginUrl = process.env.COMPANION_LOGIN_URL;
+  const loginUrl = process.env.AGENTHANGAR_LOGIN_URL;
   if (loginUrl) {
     return c.redirect(loginUrl);
   }

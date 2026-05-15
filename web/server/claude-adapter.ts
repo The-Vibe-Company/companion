@@ -2,7 +2,7 @@
  * Claude Code Backend Adapter
  *
  * Translates between the Claude Code NDJSON stdio protocol and
- * The Companion's BrowserIncomingMessage/BrowserOutgoingMessage types.
+ * AgentHangar's BrowserIncomingMessage/BrowserOutgoingMessage types.
  *
  * Transport: companion spawns claude in headless stdio mode
  * (`--print --input-format stream-json --output-format stream-json`) and

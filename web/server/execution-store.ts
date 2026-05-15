@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import type { AgentExecution } from "./agent-types.js";
 
-const EXECUTIONS_DIR = join(homedir(), ".companion", "executions");
+const EXECUTIONS_DIR = join(homedir(), ".agenthangar", "executions");
 
 export interface ExecutionQuery {
   agentId?: string;

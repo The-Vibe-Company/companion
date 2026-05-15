@@ -319,7 +319,7 @@ describe("GET /api/docker/base-image", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.exists).toBe(false);
-    expect(json.image).toBe("the-companion:latest");
+    expect(json.image).toBe("agenthangar:latest");
   });
 
   it("returns exists: true when the base image is present", async () => {

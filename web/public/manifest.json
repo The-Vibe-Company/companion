@@ -1,6 +1,6 @@
 {
-  "name": "The Companion",
-  "short_name": "Companion",
+  "name": "AgentHangar",
+  "short_name": "AgentHangar",
   "description": "Web UI for Claude Code and Codex",
   "start_url": "/",
   "scope": "/",

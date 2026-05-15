@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       REGISTRY: docker.io
-      IMAGE_NAME: stangirard/the-companion
+      IMAGE_NAME: blocksec/agenthangar
     steps:
       - uses: actions/checkout@v4
 
@@ -86,7 +86,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: web/docker
-          file: web/docker/Dockerfile.the-companion
+          file: web/docker/Dockerfile.agenthangar
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

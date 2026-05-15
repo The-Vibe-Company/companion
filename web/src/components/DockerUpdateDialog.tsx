@@ -42,7 +42,7 @@ export function DockerUpdateDialog() {
     }
 
     pollRef.current = setInterval(() => {
-      api.getImageStatus("the-companion:latest")
+      api.getImageStatus("agenthangar:latest")
         .then((state) => {
           setPullState(state);
           if (state.status === "ready") {
@@ -66,7 +66,7 @@ export function DockerUpdateDialog() {
 
   function triggerPull() {
     setPhase("pulling");
-    api.pullImage("the-companion:latest")
+    api.pullImage("agenthangar:latest")
       .then((res) => {
         if (res.state) setPullState(res.state);
       })
@@ -116,7 +116,7 @@ export function DockerUpdateDialog() {
               Update Sandbox Image?
             </h2>
             <p className="text-sm text-cc-muted mb-5">
-              A new version of The Companion was installed. Would you like to also
+              A new version of AgentHangar was installed. Would you like to also
               update the sandbox Docker image?
             </p>
 
@@ -173,7 +173,7 @@ export function DockerUpdateDialog() {
               </h2>
             </div>
             <p className="text-sm text-cc-muted mb-3">
-              Pulling the-companion:latest
+              Pulling agenthangar:latest
             </p>
             {pullState?.progress && pullState.progress.length > 0 && (
               <pre
@@ -269,7 +269,7 @@ export function PlaygroundDockerUpdateDialog({ phase }: { phase: DialogPhase }) 
           <div className="p-5">
             <h2 className="text-sm font-semibold text-cc-fg mb-1.5">Update Sandbox Image?</h2>
             <p className="text-xs text-cc-muted mb-4">
-              A new version of The Companion was installed. Would you like to also update the sandbox Docker image?
+              A new version of AgentHangar was installed. Would you like to also update the sandbox Docker image?
             </p>
             <div className="flex items-center justify-between px-2 py-2 rounded-lg bg-cc-hover text-xs text-cc-fg mb-4">
               <span>Always update automatically</span>
@@ -292,7 +292,7 @@ export function PlaygroundDockerUpdateDialog({ phase }: { phase: DialogPhase }) 
               <h2 className="text-sm font-semibold text-cc-fg">Updating Sandbox Image...</h2>
             </div>
             <pre className="px-2 py-1.5 text-[9px] font-mono-code bg-cc-code-bg rounded text-cc-muted max-h-[80px] overflow-auto whitespace-pre-wrap">
-              {"Pulling the-companion:latest...\nLayer 1/5: abc123 downloading\nLayer 2/5: def456 complete"}
+              {"Pulling agenthangar:latest...\nLayer 1/5: abc123 downloading\nLayer 2/5: def456 complete"}
             </pre>
           </div>
         )}

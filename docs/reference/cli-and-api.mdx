@@ -9,15 +9,15 @@ description: Complete reference for CLI commands, environment variables, and RES
 
 | Command | Description |
 |---|---|
-| `the-companion` | Start server in foreground (default) |
-| `the-companion serve` | Start server in foreground (explicit) |
-| `the-companion install` | Register as a background service (launchd/systemd) |
-| `the-companion start` | Start the background service |
-| `the-companion stop` | Stop the background service |
-| `the-companion restart` | Restart the background service |
-| `the-companion uninstall` | Remove the background service |
-| `the-companion status` | Show service status |
-| `the-companion logs` | Tail service log files |
+| `agenthangar` | Start server in foreground (default) |
+| `agenthangar serve` | Start server in foreground (explicit) |
+| `agenthangar install` | Register as a background service (launchd/systemd) |
+| `agenthangar start` | Start the background service |
+| `agenthangar stop` | Stop the background service |
+| `agenthangar restart` | Restart the background service |
+| `agenthangar uninstall` | Remove the background service |
+| `agenthangar status` | Show service status |
+| `agenthangar logs` | Tail service log files |
 
 ### Options
 
@@ -29,27 +29,27 @@ description: Complete reference for CLI commands, environment variables, and RES
 
 ```bash
 # Custom port
-the-companion --port 8080
+agenthangar --port 8080
 
 # Custom auth token
-COMPANION_AUTH_TOKEN="my-token" the-companion
+AGENTHANGAR_AUTH_TOKEN="my-token" agenthangar
 
 # Install and run as service
-the-companion install && the-companion start && the-companion status
+agenthangar install && agenthangar start && agenthangar status
 
 # View logs
-the-companion logs
+agenthangar logs
 ```
 
 ## Environment variables
 
 | Variable | Description | Default |
 |---|---|---|
-| `COMPANION_AUTH_TOKEN` | Auth token (overrides `~/.companion/auth.json`) | Auto-generated |
-| `COMPANION_RECORD` | Set to `0` or `false` to disable protocol recording | `true` |
-| `COMPANION_RECORDINGS_DIR` | Override recordings directory | `~/.companion/recordings/` |
-| `COMPANION_RECORDINGS_MAX_LINES` | Max total lines before recording rotation | `1,000,000` |
-| `COMPANION_INIT_SCRIPT_TIMEOUT` | Init script timeout in seconds | `120` |
+| `AGENTHANGAR_AUTH_TOKEN` | Auth token (overrides `~/.agenthangar/auth.json`) | Auto-generated |
+| `AGENTHANGAR_RECORD` | Set to `0` or `false` to disable protocol recording | `true` |
+| `AGENTHANGAR_RECORDINGS_DIR` | Override recordings directory | `~/.agenthangar/recordings/` |
+| `AGENTHANGAR_RECORDINGS_MAX_LINES` | Max total lines before recording rotation | `1,000,000` |
+| `AGENTHANGAR_INIT_SCRIPT_TIMEOUT` | Init script timeout in seconds | `120` |
 
 ## REST API
 

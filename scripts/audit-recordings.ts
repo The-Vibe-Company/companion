@@ -2,7 +2,7 @@
 /**
  * Audit script for raw protocol recordings.
  *
- * Analyzes JSONL files in ~/.companion/recordings/ and reports:
+ * Analyzes JSONL files in ~/.agenthangar/recordings/ and reports:
  * - Message types seen per backend (claude / codex)
  * - Tool input/result field coverage
  * - Gaps between protocol data and what the UI renders
@@ -81,7 +81,7 @@ interface ToolInfo {
 
 // ─── Load recordings ───────────────────────────────────────────────────────
 
-const recordingsDir = process.env.COMPANION_RECORDINGS_DIR || join(homedir(), ".companion", "recordings");
+const recordingsDir = process.env.AGENTHANGAR_RECORDINGS_DIR || join(homedir(), ".agenthangar", "recordings");
 
 let files: string[];
 try {

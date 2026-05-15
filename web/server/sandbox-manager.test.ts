@@ -6,7 +6,7 @@ let tempDir: string;
 let sandboxManager: typeof import("./sandbox-manager.js");
 
 // Redirect homedir() to a temporary directory so the module writes to an
-// isolated location instead of the real ~/.companion/sandboxes/.
+// isolated location instead of the real ~/.agenthangar/sandboxes/.
 const mockHomedir = vi.hoisted(() => {
   let dir = "";
   return {
@@ -42,7 +42,7 @@ afterEach(() => {
 // Helper to get the sandboxes directory path used by the module
 // ---------------------------------------------------------------------------
 function sandboxesDir(): string {
-  return join(tempDir, ".companion", "sandboxes");
+  return join(tempDir, ".agenthangar", "sandboxes");
 }
 
 // ===========================================================================

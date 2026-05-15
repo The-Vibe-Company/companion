@@ -1,12 +1,12 @@
-// Lightweight structured logger for the Companion server.
+// Lightweight structured logger for the AgentHangar server.
 // Provides JSON-structured log output for operational events while
 // keeping the familiar console.log interface for human-readable logs.
 //
 // Log file persistence:
-//   By default, all log output is also written to ~/.companion/logs/ with
+//   By default, all log output is also written to ~/.agenthangar/logs/ with
 //   automatic rotation (oldest files deleted when total lines exceed 2M).
-//   Disable with COMPANION_LOG_FILE=0, override dir with COMPANION_LOG_DIR,
-//   and configure rotation with COMPANION_LOG_MAX_LINES.
+//   Disable with AGENTHANGAR_LOG_FILE=0, override dir with AGENTHANGAR_LOG_DIR,
+//   and configure rotation with AGENTHANGAR_LOG_MAX_LINES.
 //
 // Usage:
 //   import { log } from "./logger.js";
@@ -24,7 +24,7 @@ import {
   unlinkSync,
 } from "node:fs";
 import { join } from "node:path";
-import { COMPANION_HOME } from "./paths.js";
+import { AGENTHANGAR_HOME } from "./paths.js";
 import { countFileLines } from "./fs-utils.js";
 
 type LogLevel = "info" | "warn" | "error";
@@ -37,7 +37,7 @@ interface LogEntry {
   [key: string]: unknown;
 }
 
-const STRUCTURED = process.env.COMPANION_LOG_FORMAT === "json";
+const STRUCTURED = process.env.AGENTHANGAR_LOG_FORMAT === "json";
 
 function formatEntry(level: LogLevel, module: string, msg: string, data?: Record<string, unknown>): string {
   if (STRUCTURED) {
@@ -68,7 +68,7 @@ const DEFAULT_LOG_MAX_LINES = 2_000_000;
 const LOG_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Writes log lines to a file under ~/.companion/logs/ with automatic rotation.
+ * Writes log lines to a file under ~/.agenthangar/logs/ with automatic rotation.
  * A new log file is created each time the server starts. When total lines across
  * all log files exceed maxLines (default 2M), the oldest files are deleted.
  *
@@ -88,14 +88,14 @@ export class LogFileWriter {
     this.logsDir = options?.logsDir ?? LogFileWriter.resolveDir();
     this.maxLines =
       options?.maxLines ??
-      (Number(process.env.COMPANION_LOG_MAX_LINES) || DEFAULT_LOG_MAX_LINES);
+      (Number(process.env.AGENTHANGAR_LOG_MAX_LINES) || DEFAULT_LOG_MAX_LINES);
 
     this.ensureDir();
 
     // Create a new log file for this server run and keep the fd open
     const ts = new Date().toISOString().replace(/:/g, "-");
     const pid = process.pid;
-    this.filePath = join(this.logsDir, `companion_${ts}_${pid}.log`);
+    this.filePath = join(this.logsDir, `agenthangar_${ts}_${pid}.log`);
     this.fd = openSync(this.filePath, "a");
 
     // Defer initial cleanup so it doesn't block the event loop at startup
@@ -109,12 +109,12 @@ export class LogFileWriter {
   }
 
   private static resolveDir(): string {
-    return process.env.COMPANION_LOG_DIR ?? join(COMPANION_HOME, "logs");
+    return process.env.AGENTHANGAR_LOG_DIR ?? join(AGENTHANGAR_HOME, "logs");
   }
 
-  /** Whether log file writing is enabled. Disable with COMPANION_LOG_FILE=0|false. */
+  /** Whether log file writing is enabled. Disable with AGENTHANGAR_LOG_FILE=0|false. */
   static isEnabled(): boolean {
-    const env = process.env.COMPANION_LOG_FILE;
+    const env = process.env.AGENTHANGAR_LOG_FILE;
     if (env === "0" || env === "false") return false;
     return true;
   }

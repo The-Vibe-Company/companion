@@ -10,7 +10,7 @@ on:
         required: false
         default: "latest"
       npm_version:
-        description: "the-companion npm version (default: latest)"
+        description: "agenthangar npm version (default: latest)"
         required: false
         default: "latest"
 
@@ -19,8 +19,8 @@ permissions:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: stangirard/the-companion-server
-  DEFAULT_BASE_IMAGE: docker.io/stangirard/the-companion:latest
+  IMAGE_NAME: blocksec/agenthangar-server
+  DEFAULT_BASE_IMAGE: docker.io/blocksec/agenthangar:latest
 
 jobs:
   build-and-push:
@@ -45,7 +45,7 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           INPUT_TAG: ${{ github.event.inputs.tag }}
           INPUT_NPM_VERSION: ${{ github.event.inputs.npm_version }}
-          VAR_BASE_IMAGE: ${{ vars.THE_COMPANION_BASE_IMAGE }}
+          VAR_BASE_IMAGE: ${{ vars.AGENTHANGAR_BASE_IMAGE }}
         run: |
           set -euo pipefail
 
@@ -54,11 +54,11 @@ jobs:
             BASE_IMAGE="${DEFAULT_BASE_IMAGE}"
           fi
           echo "base_image=$BASE_IMAGE" >> "$GITHUB_OUTPUT"
-          echo "companion_source=npm" >> "$GITHUB_OUTPUT"
+          echo "agenthangar_source=npm" >> "$GITHUB_OUTPUT"
 
           if [ "${GITHUB_EVENT_NAME}" = "release" ]; then
             RAW_TAG="${RELEASE_TAG}"
-            VERSION_TAG="${RAW_TAG#the-companion-v}"
+            VERSION_TAG="${RAW_TAG#agenthangar-v}"
             echo "npm_version=${VERSION_TAG}" >> "$GITHUB_OUTPUT"
             echo "image_tags=${REGISTRY}/${IMAGE_NAME}:${VERSION_TAG},${REGISTRY}/${IMAGE_NAME}:latest" >> "$GITHUB_OUTPUT"
           else
@@ -77,6 +77,6 @@ jobs:
           push: true
           build-args: |
             BASE_IMAGE=${{ steps.prep.outputs.base_image }}
-            COMPANION_SOURCE=${{ steps.prep.outputs.companion_source }}
-            COMPANION_NPM_VERSION=${{ steps.prep.outputs.npm_version }}
+            AGENTHANGAR_SOURCE=${{ steps.prep.outputs.agenthangar_source }}
+            AGENTHANGAR_NPM_VERSION=${{ steps.prep.outputs.npm_version }}
           tags: ${{ steps.prep.outputs.image_tags }}

@@ -15,7 +15,7 @@ export function EmptyState({ onInstanceCreated }: EmptyStateProps) {
         No instances yet
       </h2>
       <p className="text-cc-muted text-sm max-w-sm mb-6">
-        Create your first Companion instance to start building with Claude Code
+        Create your first AgentHangar instance to start building with Claude Code
         in the browser.
       </p>
       <CreateInstanceButton onInstanceCreated={onInstanceCreated} />

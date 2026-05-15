@@ -56,7 +56,7 @@ describe("Auth actions", () => {
     const state = useStore.getState();
     expect(state.authToken).toBe("my-secret-token");
     expect(state.isAuthenticated).toBe(true);
-    expect(localStorage.getItem("companion_auth_token")).toBe("my-secret-token");
+    expect(localStorage.getItem("agenthangar_auth_token")).toBe("my-secret-token");
   });
 
   it("logout: removes token from localStorage and sets isAuthenticated false", () => {
@@ -70,6 +70,6 @@ describe("Auth actions", () => {
     const state = useStore.getState();
     expect(state.authToken).toBeNull();
     expect(state.isAuthenticated).toBe(false);
-    expect(localStorage.getItem("companion_auth_token")).toBeNull();
+    expect(localStorage.getItem("agenthangar_auth_token")).toBeNull();
   });
 });

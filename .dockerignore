@@ -1,0 +1,12 @@
+.git
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+**/coverage
+.env
+.env.*
+*.log
+*.pid
+web/dev-dist

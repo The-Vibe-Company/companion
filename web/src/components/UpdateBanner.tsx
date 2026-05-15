@@ -16,12 +16,12 @@ export function UpdateBanner() {
     setUpdating(true);
     try {
       // Flag so the Docker image update dialog appears after restart
-      localStorage.setItem("companion_docker_prompt_pending", "1");
+      localStorage.setItem("agenthangar_docker_prompt_pending", "1");
       await api.triggerUpdate();
       // Show the full-screen updating overlay
       useStore.getState().setUpdateOverlayActive(true);
     } catch (err) {
-      localStorage.removeItem("companion_docker_prompt_pending");
+      localStorage.removeItem("agenthangar_docker_prompt_pending");
       captureException(err);
       setUpdating(false);
     }
@@ -56,7 +56,7 @@ export function UpdateBanner() {
         <span className="text-xs text-cc-muted">
           Run{" "}
           <code className="font-mono-code bg-cc-code-bg px-1 py-0.5 rounded text-cc-code-fg">
-            the-companion install
+            agenthangar install
           </code>{" "}
           for auto-updates
         </span>

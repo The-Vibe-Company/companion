@@ -60,12 +60,12 @@ export function registerEnvRoutes(
 
   api.post("/docker/build-base", async (c) => {
     if (!containerManager.checkDocker()) return c.json({ error: "Docker is not available" }, 503);
-    const dockerfilePath = join(options.webDir, "docker", "Dockerfile.the-companion");
+    const dockerfilePath = join(options.webDir, "docker", "Dockerfile.agenthangar");
     if (!existsSync(dockerfilePath)) {
       return c.json({ error: "Base Dockerfile not found at " + dockerfilePath }, 404);
     }
     try {
-      const log = containerManager.buildImage(dockerfilePath, "the-companion:latest");
+      const log = containerManager.buildImage(dockerfilePath, "agenthangar:latest");
       return c.json({ success: true, log });
     } catch (e: unknown) {
       return c.json({ success: false, error: e instanceof Error ? e.message : String(e) }, 500);
@@ -73,8 +73,8 @@ export function registerEnvRoutes(
   });
 
   api.get("/docker/base-image", (c) => {
-    const exists = containerManager.imageExists("the-companion:latest");
-    return c.json({ exists, image: "the-companion:latest" });
+    const exists = containerManager.imageExists("agenthangar:latest");
+    return c.json({ exists, image: "agenthangar:latest" });
   });
 
   api.get("/images/:tag/status", (c) => {

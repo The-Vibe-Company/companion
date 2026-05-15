@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-recordings_dir="${COMPANION_RECORDINGS_DIR:-$HOME/.companion/recordings}"
+recordings_dir="${AGENTHANGAR_RECORDINGS_DIR:-$HOME/.agenthangar/recordings}"
 session_id="${1:-}"
 
 if [[ ! -d "$recordings_dir" ]]; then

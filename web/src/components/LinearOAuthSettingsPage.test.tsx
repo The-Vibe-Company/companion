@@ -178,7 +178,7 @@ describe("LinearOAuthSettingsPage", () => {
       screen.getByText("Ready to receive @mentions and post updates back to Linear."),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("This app may already be installed in Linear, but Companion no longer has a valid OAuth token. Reconnect it to restore agent replies."),
+      screen.getByText("This app may already be installed in Linear, but AgentHangar no longer has a valid OAuth token. Reconnect it to restore agent replies."),
     ).toBeInTheDocument();
   });
 

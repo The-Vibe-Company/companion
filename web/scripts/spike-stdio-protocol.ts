@@ -8,7 +8,7 @@
  * until the CLI exits.
  *
  * Compare the resulting type histogram against a recent recording under
- * ~/.companion/recordings/<id>_claude_*.jsonl (filter `ch=cli`) to confirm
+ * ~/.agenthangar/recordings/<id>_claude_*.jsonl (filter `ch=cli`) to confirm
  * the protocol is transport-agnostic.
  *
  * Usage: bun web/scripts/spike-stdio-protocol.ts [prompt]

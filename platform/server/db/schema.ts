@@ -8,7 +8,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 // Re-export Better Auth tables so Drizzle's fullSchema includes them.
-export * from "./auth-schema.js";
+export * from "./auth-schema";
 
 // ─── Organization Billing ────────────────────────────────────────────────────
 // Links Stripe billing to a Better Auth organization.

@@ -6,7 +6,7 @@ import { resolveBinary } from "./path-resolver.js";
 import { join, dirname, basename, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
-import { COMPANION_HOME } from "./paths.js";
+import { AGENTHANGAR_HOME } from "./paths.js";
 import {
   existsSync,
   readFileSync,
@@ -61,7 +61,7 @@ import {
 const UPDATE_CHECK_STALE_MS = 5 * 60 * 1000;
 const ROUTES_DIR = dirname(fileURLToPath(import.meta.url));
 const WEB_DIR = dirname(ROUTES_DIR);
-const VSCODE_EDITOR_HOST_PORT = Number(process.env.COMPANION_EDITOR_PORT || "13338");
+const VSCODE_EDITOR_HOST_PORT = Number(process.env.AGENTHANGAR_EDITOR_PORT || "13338");
 
 function shellEscapeArg(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
@@ -119,7 +119,7 @@ export function createRoutes(
     if (verifyToken(body.token)) {
       // Set cookie so the dynamic manifest can embed the token in start_url.
       // This bridges auth from Safari to standalone PWA on iOS (isolated storage).
-      setCookie(c, "companion_auth", body.token!, {
+      setCookie(c, "agenthangar_auth", body.token!, {
         path: "/",
         httpOnly: true,
         sameSite: "Strict",
@@ -173,7 +173,7 @@ export function createRoutes(
   api.get("/auth/auto", (c) => {
     if (isLocalhostRequest(c)) {
       const token = getToken();
-      setCookie(c, "companion_auth", token, {
+      setCookie(c, "agenthangar_auth", token, {
         path: "/",
         httpOnly: true,
         sameSite: "Strict",
@@ -185,7 +185,7 @@ export function createRoutes(
   });
 
   // ─── Linear Agent SDK webhook route (exempt from auth middleware) ────────
-  // Uses HMAC-SHA256 signature verification, not Companion auth tokens.
+  // Uses HMAC-SHA256 signature verification, not AgentHangar auth tokens.
   if (linearAgentBridge) {
     registerLinearAgentWebhookRoute(api, linearAgentBridge);
   }
@@ -205,9 +205,9 @@ export function createRoutes(
 
     const authHeader = c.req.header("Authorization");
     const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    // Also check the companion_auth cookie — iframes (browser preview) can't
+    // Also check the agenthangar_auth cookie — iframes (browser preview) can't
     // send Authorization headers, but browsers do forward cookies automatically.
-    const cookieToken = getCookie(c, "companion_auth") ?? null;
+    const cookieToken = getCookie(c, "agenthangar_auth") ?? null;
     if (!verifyToken(token) && !verifyToken(cookieToken)) {
       return c.json({ error: "unauthorized" }, 401);
     }
@@ -446,13 +446,13 @@ export function createRoutes(
     const editorPathSuffix = `?folder=${encodeURIComponent(hostFallbackCwd)}`;
 
     try {
-      const logFile = join(COMPANION_HOME, "code-server-host.log");
+      const logFile = join(AGENTHANGAR_HOME, "code-server-host.log");
       const startCmd = [
         `if ! pgrep -f ${shellEscapeArg(`code-server.*--bind-addr 127.0.0.1:${VSCODE_EDITOR_HOST_PORT}`)} >/dev/null 2>&1; then`,
         `nohup ${shellEscapeArg(hostCodeServer)} --auth none --disable-telemetry --bind-addr 127.0.0.1:${VSCODE_EDITOR_HOST_PORT} ${shellEscapeArg(hostFallbackCwd)} >> ${shellEscapeArg(logFile)} 2>&1 &`,
         "fi",
       ].join(" ");
-      const startHostCmd = `mkdir -p ${shellEscapeArg(COMPANION_HOME)} && ${startCmd}`;
+      const startHostCmd = `mkdir -p ${shellEscapeArg(AGENTHANGAR_HOME)} && ${startCmd}`;
       execSync(startHostCmd, { encoding: "utf-8", timeout: 10_000 });
 
       // Wait for code-server to be ready (up to 5s)
@@ -536,7 +536,7 @@ export function createRoutes(
       return c.json({
         available: false,
         mode: "container" as const,
-        message: "Browser preview requires Xvfb and noVNC in the container image. Rebuild with the latest the-companion image.",
+        message: "Browser preview requires Xvfb and noVNC in the container image. Rebuild with the latest agenthangar image.",
       });
     }
 
@@ -822,7 +822,7 @@ export function createRoutes(
   //
   // Sandboxing: the file_path must resolve inside the session's cwd or the
   // user's home `.claude/` directory. Anything else (e.g. `/etc/passwd`,
-  // or `~/.companion/auth.json` — which would let the model overwrite
+  // or `~/.agenthangar/auth.json` — which would let the model overwrite
   // companion's own auth/config/session state) is refused regardless of
   // what the model asked for. The Claude sensitive-file guard this route
   // bypasses only fires on `.claude/*` and memory files, so widening past
@@ -859,7 +859,7 @@ export function createRoutes(
     const allowedRealRoots: string[] = [];
     try {
       filePath = resolveRealPath(body.file_path);
-      // Least-privilege allowlist. Do NOT add ~/.companion here — that root
+      // Least-privilege allowlist. Do NOT add ~/.agenthangar here — that root
       // holds companion's auth token, settings, session/recording state.
       // The model has no legitimate reason to write into companion's own
       // state via this Claude-sensitive-file bypass.
@@ -1225,9 +1225,9 @@ export function createRoutes(
     const session = launcher.getSession(sessionId);
     if (!session) return c.json({ error: "Session not found" }, 404);
 
-    // Safety: don't allow killing the Companion server or Claude CLI process itself
+    // Safety: don't allow killing the AgentHangar server or Claude CLI process itself
     if (pid === process.pid) {
-      return c.json({ error: "Cannot kill the Companion server" }, 403);
+      return c.json({ error: "Cannot kill the AgentHangar server" }, 403);
     }
     if (session.pid === pid) {
       return c.json({ error: "Use the session kill endpoint to terminate Claude" }, 403);
@@ -1477,7 +1477,7 @@ export function createRoutes(
   registerAgentRoutes(api, agentExecutor);
   registerMetricsRoutes(api, { gaugeProvider: wsBridge });
 
-  // ─── Recording Hub (hidden feature: COMPANION_RECORDING_HUB=1) ──────
+  // ─── Recording Hub (hidden feature: AGENTHANGAR_RECORDING_HUB=1) ──────
   if (isRecordingHubEnabled()) {
     registerHubRoutes(api, {
       wsBridge,

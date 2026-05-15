@@ -75,12 +75,12 @@ beforeEach(() => {
   // Default: Docker available, base image ready, one sandbox, server cwd
   mockListSandboxes.mockResolvedValue([makeSandbox()]);
   mockGetContainerStatus.mockResolvedValue({ available: true, version: "27.0.0" });
-  mockGetImageStatus.mockResolvedValue({ image: "the-companion:latest", status: "ready", progress: [] });
+  mockGetImageStatus.mockResolvedValue({ image: "agenthangar:latest", status: "ready", progress: [] });
   mockCreateSandbox.mockResolvedValue(makeSandbox());
   mockUpdateSandbox.mockResolvedValue(makeSandbox());
   mockDeleteSandbox.mockResolvedValue({});
   mockTestInitScript.mockResolvedValue({ success: true, exitCode: 0, output: "ok\n" });
-  mockPullImage.mockResolvedValue({ ok: true, state: { image: "the-companion:latest", status: "pulling", progress: [] } });
+  mockPullImage.mockResolvedValue({ ok: true, state: { image: "agenthangar:latest", status: "pulling", progress: [] } });
   mockGetHome.mockResolvedValue({ home: "/home/user", cwd: "/home/user/project" });
 });
 
@@ -590,7 +590,7 @@ describe("SandboxManager base image banner", () => {
   it("shows Not downloaded when base image status is idle", async () => {
     // When the base image has status "idle" or null, a "Not downloaded"
     // label should appear with a Pull button.
-    mockGetImageStatus.mockResolvedValue({ image: "the-companion:latest", status: "idle", progress: [] });
+    mockGetImageStatus.mockResolvedValue({ image: "agenthangar:latest", status: "idle", progress: [] });
     render(<SandboxManager embedded />);
     await screen.findByText("Base Image");
     await screen.findByText("Not downloaded");
@@ -602,7 +602,7 @@ describe("SandboxManager base image banner", () => {
     // "Pulling..." labels should appear (in both the badge and the button).
     // We use getAllByText since "Pulling..." appears in multiple places.
     mockGetImageStatus.mockResolvedValue({
-      image: "the-companion:latest",
+      image: "agenthangar:latest",
       status: "pulling",
       progress: ["Downloading layer 1..."],
     });
@@ -618,7 +618,7 @@ describe("SandboxManager base image banner", () => {
     // When the base image pull status is "error", the banner should
     // show "Pull failed" along with the error message.
     mockGetImageStatus.mockResolvedValue({
-      image: "the-companion:latest",
+      image: "agenthangar:latest",
       status: "error",
       progress: [],
       error: "Network timeout",

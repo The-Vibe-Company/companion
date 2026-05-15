@@ -189,7 +189,7 @@ class ImagePullManager {
         this.markReady(localTag);
       } else {
         // Pull failed — try local build for default image
-        if (localTag === "the-companion:latest") {
+        if (localTag === "agenthangar:latest") {
           this.appendProgress(localTag, "Pull failed, falling back to local build...");
           await this.doLocalBuild(localTag);
         } else {
@@ -199,7 +199,7 @@ class ImagePullManager {
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
       // Try local build fallback for default image
-      if (localTag === "the-companion:latest") {
+      if (localTag === "agenthangar:latest") {
         this.appendProgress(localTag, `Pull error (${reason}), falling back to local build...`);
         await this.doLocalBuild(localTag);
       } else {
@@ -209,7 +209,7 @@ class ImagePullManager {
   }
 
   private async doLocalBuild(localTag: string): Promise<void> {
-    const dockerfilePath = join(WEB_DIR, "docker", "Dockerfile.the-companion");
+    const dockerfilePath = join(WEB_DIR, "docker", "Dockerfile.agenthangar");
     if (!existsSync(dockerfilePath)) {
       this.markError(localTag, `Dockerfile not found at ${dockerfilePath}`);
       return;

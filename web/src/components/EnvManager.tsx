@@ -159,7 +159,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
 
               <div className="flex items-center justify-between pt-1">
                 <p className="text-[11px] text-cc-muted">
-                  Stored in <code className="text-[10px]">~/.companion/envs/</code>
+                  Stored in <code className="text-[10px]">~/.agenthangar/envs/</code>
                 </p>
                 <button
                   onClick={handleCreate}

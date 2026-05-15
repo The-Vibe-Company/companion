@@ -288,7 +288,7 @@ function WelcomeStep({
           First time setup
         </div>
         <h2 className="text-xl font-semibold text-cc-fg leading-tight">
-          Welcome to The Companion
+          Welcome to AgentHangar
         </h2>
         <p className="text-sm text-cc-muted mt-1.5 leading-relaxed">
           Connect your AI providers to start coding. Configure one or both.

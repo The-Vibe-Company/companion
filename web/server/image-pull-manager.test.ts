@@ -5,7 +5,7 @@ const mockImageExists = vi.hoisted(() => vi.fn((_image: string) => false));
 const mockPullImage = vi.hoisted(() => vi.fn(async (_remote: string, _local: string, _onProgress?: (line: string) => void) => true));
 const mockBuildImage = vi.hoisted(() => vi.fn((_path: string, _tag?: string) => "ok"));
 const mockGetRegistryImage = vi.hoisted(() => vi.fn((tag: string) => {
-  if (tag === "the-companion:latest") return "docker.io/stangirard/the-companion:latest";
+  if (tag === "agenthangar:latest") return "docker.io/blocksec/agenthangar:latest";
   return null as string | null;
 }));
 
@@ -51,7 +51,7 @@ describe("ImagePullManager", () => {
     mockExistsSync.mockReturnValue(true);
     // Restore default registry mapping (clearAllMocks removes it)
     mockGetRegistryImage.mockImplementation((tag: string) => {
-      if (tag === "the-companion:latest") return "docker.io/stangirard/the-companion:latest";
+      if (tag === "agenthangar:latest") return "docker.io/blocksec/agenthangar:latest";
       return null as string | null;
     });
   });
@@ -60,15 +60,15 @@ describe("ImagePullManager", () => {
     it("returns 'ready' when image exists locally", async () => {
       mockImageExists.mockReturnValue(true);
       const manager = await createManager();
-      const state = manager.getState("the-companion:latest");
+      const state = manager.getState("agenthangar:latest");
       expect(state.status).toBe("ready");
-      expect(state.image).toBe("the-companion:latest");
+      expect(state.image).toBe("agenthangar:latest");
     });
 
     it("returns 'idle' when image does not exist locally", async () => {
       mockImageExists.mockReturnValue(false);
       const manager = await createManager();
-      const state = manager.getState("the-companion:latest");
+      const state = manager.getState("agenthangar:latest");
       expect(state.status).toBe("idle");
     });
   });
@@ -77,13 +77,13 @@ describe("ImagePullManager", () => {
     it("returns true when image exists locally", async () => {
       mockImageExists.mockReturnValue(true);
       const manager = await createManager();
-      expect(manager.isReady("the-companion:latest")).toBe(true);
+      expect(manager.isReady("agenthangar:latest")).toBe(true);
     });
 
     it("returns false when image does not exist locally", async () => {
       mockImageExists.mockReturnValue(false);
       const manager = await createManager();
-      expect(manager.isReady("the-companion:latest")).toBe(false);
+      expect(manager.isReady("agenthangar:latest")).toBe(false);
     });
   });
 
@@ -92,15 +92,15 @@ describe("ImagePullManager", () => {
       mockImageExists.mockReturnValue(false);
       const manager = await createManager();
 
-      manager.ensureImage("the-companion:latest");
+      manager.ensureImage("agenthangar:latest");
 
-      const state = manager.getState("the-companion:latest");
+      const state = manager.getState("agenthangar:latest");
       expect(state.status).toBe("pulling");
       expect(state.startedAt).toBeGreaterThan(0);
 
       // Wait for the async pull to complete
       await vi.waitFor(() => {
-        expect(manager.getState("the-companion:latest").status).toBe("ready");
+        expect(manager.getState("agenthangar:latest").status).toBe("ready");
       });
       expect(mockPullImage).toHaveBeenCalledOnce();
     });
@@ -109,7 +109,7 @@ describe("ImagePullManager", () => {
       mockImageExists.mockReturnValue(true);
       const manager = await createManager();
 
-      manager.ensureImage("the-companion:latest");
+      manager.ensureImage("agenthangar:latest");
 
       expect(mockPullImage).not.toHaveBeenCalled();
     });
@@ -120,8 +120,8 @@ describe("ImagePullManager", () => {
       mockPullImage.mockImplementation(() => new Promise(() => {}));
       const manager = await createManager();
 
-      manager.ensureImage("the-companion:latest");
-      manager.ensureImage("the-companion:latest"); // second call
+      manager.ensureImage("agenthangar:latest");
+      manager.ensureImage("agenthangar:latest"); // second call
 
       expect(mockPullImage).toHaveBeenCalledOnce();
     });
@@ -132,7 +132,7 @@ describe("ImagePullManager", () => {
       mockImageExists.mockReturnValue(true);
       const manager = await createManager();
 
-      const result = await manager.waitForReady("the-companion:latest");
+      const result = await manager.waitForReady("agenthangar:latest");
       expect(result).toBe(true);
     });
 
@@ -140,8 +140,8 @@ describe("ImagePullManager", () => {
       mockImageExists.mockReturnValue(false);
       const manager = await createManager();
 
-      manager.ensureImage("the-companion:latest");
-      const result = await manager.waitForReady("the-companion:latest", 5000);
+      manager.ensureImage("agenthangar:latest");
+      const result = await manager.waitForReady("agenthangar:latest", 5000);
       expect(result).toBe(true);
     });
 
@@ -151,7 +151,7 @@ describe("ImagePullManager", () => {
       mockExistsSync.mockReturnValue(false); // no Dockerfile fallback
       const manager = await createManager();
 
-      const result = await manager.waitForReady("the-companion:latest", 5000);
+      const result = await manager.waitForReady("agenthangar:latest", 5000);
       expect(result).toBe(false);
     });
 
@@ -160,7 +160,7 @@ describe("ImagePullManager", () => {
       const manager = await createManager();
 
       // Calling waitForReady on an idle image should trigger a pull
-      const result = await manager.waitForReady("the-companion:latest", 5000);
+      const result = await manager.waitForReady("agenthangar:latest", 5000);
       expect(result).toBe(true);
       expect(mockPullImage).toHaveBeenCalledOnce();
     });
@@ -170,7 +170,7 @@ describe("ImagePullManager", () => {
       mockPullImage.mockImplementation(() => new Promise(() => {})); // never resolves
       const manager = await createManager();
 
-      const result = await manager.waitForReady("the-companion:latest", 50);
+      const result = await manager.waitForReady("agenthangar:latest", 50);
       expect(result).toBe(false);
     });
   });
@@ -180,10 +180,10 @@ describe("ImagePullManager", () => {
       mockImageExists.mockReturnValue(true);
       const manager = await createManager();
 
-      manager.pull("the-companion:latest");
+      manager.pull("agenthangar:latest");
 
       // Should have started pulling despite image being present
-      const state = manager.getState("the-companion:latest");
+      const state = manager.getState("agenthangar:latest");
       expect(state.status).toBe("pulling");
       expect(mockPullImage).toHaveBeenCalledOnce();
     });
@@ -193,8 +193,8 @@ describe("ImagePullManager", () => {
       mockPullImage.mockImplementation(() => new Promise(() => {}));
       const manager = await createManager();
 
-      manager.pull("the-companion:latest");
-      manager.pull("the-companion:latest");
+      manager.pull("agenthangar:latest");
+      manager.pull("agenthangar:latest");
 
       expect(mockPullImage).toHaveBeenCalledOnce();
     });
@@ -212,12 +212,12 @@ describe("ImagePullManager", () => {
       });
 
       const manager = await createManager();
-      const unsub = manager.onProgress("the-companion:latest", (line) => lines.push(line));
+      const unsub = manager.onProgress("agenthangar:latest", (line) => lines.push(line));
 
-      manager.ensureImage("the-companion:latest");
+      manager.ensureImage("agenthangar:latest");
 
       await vi.waitFor(() => {
-        expect(manager.getState("the-companion:latest").status).toBe("ready");
+        expect(manager.getState("agenthangar:latest").status).toBe("ready");
       });
 
       // Should have received the pull lines plus "Image ready"
@@ -231,13 +231,13 @@ describe("ImagePullManager", () => {
   });
 
   describe("fallback to local build", () => {
-    it("falls back to local build when pull fails for the-companion:latest", async () => {
+    it("falls back to local build when pull fails for agenthangar:latest", async () => {
       mockImageExists.mockReturnValue(false);
       mockPullImage.mockResolvedValue(false);
       mockExistsSync.mockReturnValue(true);
 
       const manager = await createManager();
-      const result = await manager.waitForReady("the-companion:latest", 5000);
+      const result = await manager.waitForReady("agenthangar:latest", 5000);
 
       expect(result).toBe(true);
       expect(mockPullImage).toHaveBeenCalledOnce();
@@ -262,10 +262,10 @@ describe("ImagePullManager", () => {
       mockExistsSync.mockReturnValue(false); // no Dockerfile
 
       const manager = await createManager();
-      const result = await manager.waitForReady("the-companion:latest", 5000);
+      const result = await manager.waitForReady("agenthangar:latest", 5000);
 
       expect(result).toBe(false);
-      const state = manager.getState("the-companion:latest");
+      const state = manager.getState("agenthangar:latest");
       expect(state.status).toBe("error");
       expect(state.error).toContain("Dockerfile not found");
     });
@@ -275,7 +275,7 @@ describe("ImagePullManager", () => {
     it("is a no-op since environments no longer carry Docker fields", async () => {
       mockImageExists.mockReturnValue(false);
       mockListEnvs.mockReturnValue([
-        { name: "env1", slug: "env1", baseImage: "the-companion:latest", variables: {}, createdAt: 0, updatedAt: 0 },
+        { name: "env1", slug: "env1", baseImage: "agenthangar:latest", variables: {}, createdAt: 0, updatedAt: 0 },
         { name: "env2", slug: "env2", imageTag: "custom:v1", variables: {}, createdAt: 0, updatedAt: 0 },
       ]);
 
@@ -291,7 +291,7 @@ describe("ImagePullManager", () => {
     it("skips images that are already available", async () => {
       mockImageExists.mockReturnValue(true);
       mockListEnvs.mockReturnValue([
-        { name: "env1", slug: "env1", baseImage: "the-companion:latest", variables: {}, createdAt: 0, updatedAt: 0 },
+        { name: "env1", slug: "env1", baseImage: "agenthangar:latest", variables: {}, createdAt: 0, updatedAt: 0 },
       ]);
 
       const manager = await createManager();

@@ -5,7 +5,7 @@ import { getDb } from "./db/index.js";
 import { Resend } from "resend";
 
 /**
- * Better Auth configuration for Companion Cloud.
+ * Better Auth configuration for AgentHangar Cloud.
  *
  * Uses the organization plugin with teams enabled to support:
  * - Organizations (teams): groups of users that share billing and instances
@@ -43,7 +43,7 @@ function escapeHtml(s: string): string {
  */
 function buildEmailSender() {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL || "Companion Cloud <noreply@thecompanion.sh>";
+  const from = process.env.RESEND_FROM_EMAIL || "AgentHangar Cloud <noreply@blocksec.ai>";
 
   if (!apiKey) {
     console.warn("[auth] RESEND_API_KEY not set — emails will be logged to console");
@@ -69,7 +69,7 @@ export function getAuth(): Auth {
     if (!secret) throw new Error("BETTER_AUTH_SECRET is not set");
 
     const sendEmail = buildEmailSender();
-    const appName = "Companion Cloud";
+    const appName = "AgentHangar Cloud";
 
     _auth = betterAuth({
       secret,

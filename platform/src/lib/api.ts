@@ -1,5 +1,5 @@
 /**
- * REST client for the Companion Cloud control plane API.
+ * REST client for the AgentHangar Cloud control plane API.
  */
 
 import type { ProvisioningStep } from "./types";

@@ -5,7 +5,7 @@ description: Use git branches and worktrees to isolate agent sessions
 
 # Git Branches & Worktrees
 
-The Companion lets you select a git branch when creating a session and optionally create an isolated git worktree so multiple agents can work on the same repo without interfering with each other.
+AgentHangar lets you select a git branch when creating a session and optionally create an isolated git worktree so multiple agents can work on the same repo without interfering with each other.
 
 ## Branch picker
 
@@ -31,7 +31,7 @@ Click the **Worktree** button (git branch icon) next to the branch picker to ena
 
 A git worktree is an independent working tree with its own branch, staging area, and files. When you enable worktrees:
 
-1. The Companion creates a new working directory at `~/.companion/worktrees/{repo-name}/{branch}/`
+1. AgentHangar creates a new working directory at `~/.agenthangar/worktrees/{repo-name}/{branch}/`
 2. The session uses this worktree as its working directory instead of the original repo
 3. Your original checkout is untouched
 4. Multiple sessions can work on the same branch — each gets its own worktree with a unique branch name (e.g., `main-wt-5391`)
@@ -46,9 +46,9 @@ A git worktree is an independent working tree with its own branch, staging area,
 
 | Scenario | Worktree path | Actual branch |
 |---|---|---|
-| First session on `feature/login` | `~/.companion/worktrees/my-repo/feature--login/` | `feature/login` |
-| Second session on `feature/login` | `~/.companion/worktrees/my-repo/feature--login-wt-8374/` | `feature/login-wt-8374` |
-| First session on `main` | `~/.companion/worktrees/my-repo/main/` | `main` |
+| First session on `feature/login` | `~/.agenthangar/worktrees/my-repo/feature--login/` | `feature/login` |
+| Second session on `feature/login` | `~/.agenthangar/worktrees/my-repo/feature--login-wt-8374/` | `feature/login-wt-8374` |
+| First session on `main` | `~/.agenthangar/worktrees/my-repo/main/` | `main` |
 
 Branch name collisions are resolved by appending a random 4-digit suffix. The user-selected branch is tracked separately from the actual git branch name.
 
@@ -62,7 +62,7 @@ The agent editor has the same branch and worktree controls. When an agent runs:
 
 ## Cleanup
 
-Worktrees are tracked in `~/.companion/worktrees.json`. When you archive a session, its worktree can be cleaned up. Worktrees with uncommitted changes are flagged before deletion.
+Worktrees are tracked in `~/.agenthangar/worktrees.json`. When you archive a session, its worktree can be cleaned up. Worktrees with uncommitted changes are flagged before deletion.
 
 ## Docker sessions
 

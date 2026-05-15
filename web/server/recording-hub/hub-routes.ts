@@ -1,7 +1,7 @@
 /**
  * REST API routes for the Recording Hub.
  *
- * All routes are under /api/hub/ and only registered when COMPANION_RECORDING_HUB=1.
+ * All routes are under /api/hub/ and only registered when AGENTHANGAR_RECORDING_HUB=1.
  */
 
 import type { Hono } from "hono";

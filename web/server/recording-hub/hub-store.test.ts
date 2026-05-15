@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
 
-// Mock COMPANION_HOME before importing hub-store
+// Mock AGENTHANGAR_HOME before importing hub-store
 const TEST_HOME = join(tmpdir(), `hub-test-${randomBytes(4).toString("hex")}`);
-vi.mock("../paths.js", () => ({ COMPANION_HOME: TEST_HOME }));
+vi.mock("../paths.js", () => ({ AGENTHANGAR_HOME: TEST_HOME }));
 
 // Must import after mock
 const { HubStore } = await import("./hub-store.js");

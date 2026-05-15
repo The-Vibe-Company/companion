@@ -35,7 +35,7 @@ afterEach(() => {
 });
 
 function agentsDir(): string {
-  return join(tempDir, ".companion", "agents");
+  return join(tempDir, ".agenthangar", "agents");
 }
 
 /**

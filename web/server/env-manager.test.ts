@@ -38,7 +38,7 @@ afterEach(() => {
 // Helper to get the envs directory path used by the module
 // ---------------------------------------------------------------------------
 function envsDir(): string {
-  return join(tempDir, ".companion", "envs");
+  return join(tempDir, ".agenthangar", "envs");
 }
 
 // ===========================================================================

@@ -21,7 +21,7 @@ describe("CreateInstanceModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetStatus.mockResolvedValue({
-      service: "companion-cloud",
+      service: "agenthangar-cloud",
       version: "0.1.0",
       status: "ok",
       provisioning: {

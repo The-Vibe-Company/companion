@@ -33,10 +33,10 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  // Clean up localStorage to prevent test leaks (e.g. companion_auth_token
+  // Clean up localStorage to prevent test leaks (e.g. agenthangar_auth_token
   // set during auth token injection tests). Using afterEach ensures cleanup
   // runs even if an assertion throws.
-  localStorage.removeItem("companion_auth_token");
+  localStorage.removeItem("agenthangar_auth_token");
 });
 
 describe("SessionBrowserPane", () => {
@@ -223,7 +223,7 @@ describe("SessionBrowserPane", () => {
   // ─── Auth token injection ────────────────────────────────────────────
   it("injects auth token into noVNC WebSocket path for remote server support", async () => {
     // Simulate an auth token being stored (as happens on remote deployments)
-    localStorage.setItem("companion_auth_token", "test-secret-token");
+    localStorage.setItem("agenthangar_auth_token", "test-secret-token");
     mockStartBrowser.mockResolvedValue({
       available: true,
       mode: "container",

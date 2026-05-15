@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-// Use a temp directory so tests don't touch the real ~/.companion/auth.json
+// Use a temp directory so tests don't touch the real ~/.agenthangar/auth.json
 const TEST_DIR = join(tmpdir(), `companion-auth-test-${Date.now()}`);
 const TEST_AUTH_FILE = join(TEST_DIR, "auth.json");
 
@@ -15,14 +15,14 @@ describe("auth-manager", () => {
   beforeEach(async () => {
     mkdirSync(TEST_DIR, { recursive: true });
     // Clear env var
-    delete process.env.COMPANION_AUTH_TOKEN;
+    delete process.env.AGENTHANGAR_AUTH_TOKEN;
     // Re-import with fresh module state
     authManager = await import("./auth-manager.js");
     authManager._resetForTest();
   });
 
   afterEach(() => {
-    delete process.env.COMPANION_AUTH_TOKEN;
+    delete process.env.AGENTHANGAR_AUTH_TOKEN;
     try {
       rmSync(TEST_DIR, { recursive: true, force: true });
     } catch {
@@ -43,9 +43,9 @@ describe("auth-manager", () => {
     expect(first).toBe(second);
   });
 
-  it("uses COMPANION_AUTH_TOKEN env var when set", () => {
+  it("uses AGENTHANGAR_AUTH_TOKEN env var when set", () => {
     // Env var should override any persisted or generated token
-    process.env.COMPANION_AUTH_TOKEN = "my-custom-token-123";
+    process.env.AGENTHANGAR_AUTH_TOKEN = "my-custom-token-123";
     authManager._resetForTest();
     expect(authManager.getToken()).toBe("my-custom-token-123");
   });
@@ -68,7 +68,7 @@ describe("auth-manager", () => {
   });
 
   it("verifyToken works with env var token", () => {
-    process.env.COMPANION_AUTH_TOKEN = "env-token-abc";
+    process.env.AGENTHANGAR_AUTH_TOKEN = "env-token-abc";
     authManager._resetForTest();
     expect(authManager.verifyToken("env-token-abc")).toBe(true);
     expect(authManager.verifyToken("wrong")).toBe(false);

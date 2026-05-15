@@ -1,6 +1,6 @@
 # Codex App-Server Protocol Mapping
 
-This document describes how the Codex `app-server` JSON-RPC protocol maps to The Companion's internal browser message protocol. The adapter (`web/server/codex-adapter.ts`) performs this translation so the frontend doesn't need to know which backend is running.
+This document describes how the Codex `app-server` JSON-RPC protocol maps to AgentHangar's internal browser message protocol. The adapter (`web/server/codex-adapter.ts`) performs this translation so the frontend doesn't need to know which backend is running.
 
 ## Architecture
 
@@ -21,7 +21,7 @@ The Codex adapter communicates with the `codex app-server` binary via stdin/stdo
 | Reconnect | Respawn process, use `--resume <session_id>` | Respawn process, use `thread/resume` |
 
 > Historical note: Claude used to connect back to the server over a
-> `--sdk-url` WebSocket. Companion 0.95+ moved to stdio after Claude
+> `--sdk-url` WebSocket. AgentHangar 0.95+ moved to stdio after Claude
 > Code 2.1.121 added hostname validation that broke the WS path. The
 > "WebSocket reconnect" semantics are gone — both backends now use the
 > "respawn + resume" pattern.
@@ -29,7 +29,7 @@ The Codex adapter communicates with the `codex app-server` binary via stdin/stdo
 ## Initialization Sequence
 
 ```
-Server → Codex:  {"method":"initialize","id":1,"params":{"clientInfo":{"name":"the-companion",...},"capabilities":{}}}
+Server → Codex:  {"method":"initialize","id":1,"params":{"clientInfo":{"name":"agenthangar",...},"capabilities":{}}}
 Codex → Server:  {"id":1,"result":{...capabilities...}}
 Server → Codex:  {"method":"initialized","params":{}}
 Server → Codex:  {"method":"thread/start","id":2,"params":{"model":"...","cwd":"...","approvalPolicy":"...","sandbox":"workspace-write"}}

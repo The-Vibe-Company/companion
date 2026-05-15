@@ -1,5 +1,5 @@
 // ─── Relay Client ────────────────────────────────────────────────────────────
-// Connects The Companion to a cloud relay worker via outbound WebSocket.
+// Connects AgentHangar to a cloud relay worker via outbound WebSocket.
 // This allows a Companion instance running behind a firewall (NAT, no public IP)
 // to receive external webhooks relayed through a cloud worker.
 //

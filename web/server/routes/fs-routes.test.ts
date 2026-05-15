@@ -307,8 +307,8 @@ describe("GET /fs/home", () => {
   it("returns cwd different from home when running from a project directory", async () => {
     // When cwd is not the home dir and not under the package root, it should
     // be returned as the cwd (indicating a project directory context)
-    const originalPackageRoot = process.env.__COMPANION_PACKAGE_ROOT;
-    delete process.env.__COMPANION_PACKAGE_ROOT;
+    const originalPackageRoot = process.env.__AGENTHANGAR_PACKAGE_ROOT;
+    delete process.env.__AGENTHANGAR_PACKAGE_ROOT;
 
     const res = await app.request("/fs/home");
     const body = await res.json();
@@ -319,7 +319,7 @@ describe("GET /fs/home", () => {
 
     // Restore
     if (originalPackageRoot !== undefined) {
-      process.env.__COMPANION_PACKAGE_ROOT = originalPackageRoot;
+      process.env.__AGENTHANGAR_PACKAGE_ROOT = originalPackageRoot;
     }
   });
 
@@ -339,13 +339,13 @@ describe("GET /fs/home", () => {
   });
 
   it("returns home as cwd when cwd is under the package root", async () => {
-    // When __COMPANION_PACKAGE_ROOT is set and cwd starts with it,
+    // When __AGENTHANGAR_PACKAGE_ROOT is set and cwd starts with it,
     // the route treats cwd as the package install dir (not a real project)
     // and returns home instead.
     const originalCwd = process.cwd;
-    const originalPackageRoot = process.env.__COMPANION_PACKAGE_ROOT;
+    const originalPackageRoot = process.env.__AGENTHANGAR_PACKAGE_ROOT;
 
-    process.env.__COMPANION_PACKAGE_ROOT = "/fake/package/root";
+    process.env.__AGENTHANGAR_PACKAGE_ROOT = "/fake/package/root";
     process.cwd = () => "/fake/package/root/subdir";
 
     const res = await app.request("/fs/home");
@@ -356,9 +356,9 @@ describe("GET /fs/home", () => {
 
     process.cwd = originalCwd;
     if (originalPackageRoot !== undefined) {
-      process.env.__COMPANION_PACKAGE_ROOT = originalPackageRoot;
+      process.env.__AGENTHANGAR_PACKAGE_ROOT = originalPackageRoot;
     } else {
-      delete process.env.__COMPANION_PACKAGE_ROOT;
+      delete process.env.__AGENTHANGAR_PACKAGE_ROOT;
     }
   });
 });

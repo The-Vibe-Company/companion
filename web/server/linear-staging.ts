@@ -13,7 +13,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { COMPANION_HOME } from "./paths.js";
+import { AGENTHANGAR_HOME } from "./paths.js";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ export interface StagingSlot {
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const STAGING_DIR = join(COMPANION_HOME, "staging");
+const STAGING_DIR = join(AGENTHANGAR_HOME, "staging");
 const SLOT_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 function ensureDir(): void {

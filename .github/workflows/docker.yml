@@ -4,20 +4,20 @@ on:
   push:
     branches: [main]
     paths:
-      - "web/docker/Dockerfile.the-companion"
+      - "web/docker/Dockerfile.agenthangar"
     tags:
-      - "the-companion-v*"
+      - "agenthangar-v*"
   pull_request:
     branches: [main]
     paths:
-      - "web/docker/Dockerfile.the-companion"
+      - "web/docker/Dockerfile.agenthangar"
 
 permissions:
   contents: read
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: stangirard/the-companion
+  IMAGE_NAME: blocksec/agenthangar
 
 jobs:
   build:
@@ -43,14 +43,14 @@ jobs:
           tags: |
             type=sha
             type=ref,event=branch
-            type=match,pattern=the-companion-v(.*),group=1
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/the-companion-v') }}
+            type=match,pattern=agenthangar-v(.*),group=1
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/agenthangar-v') }}
 
       - name: Build & Push
         uses: docker/build-push-action@v6
         with:
           context: web/docker
-          file: web/docker/Dockerfile.the-companion
+          file: web/docker/Dockerfile.agenthangar
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

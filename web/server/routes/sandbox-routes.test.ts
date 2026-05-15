@@ -13,7 +13,7 @@ vi.mock("../sandbox-manager.js", () => ({
 vi.mock("../container-manager.js", () => ({
   containerManager: {
     checkDocker: vi.fn(() => true),
-    createContainer: vi.fn(() => ({ containerId: "test-container-123", name: "companion-test" })),
+    createContainer: vi.fn(() => ({ containerId: "test-container-123", name: "agenthangar-test" })),
     copyWorkspaceToContainer: vi.fn(async () => {}),
     execInContainerAsync: vi.fn(async () => ({ exitCode: 0, output: "ok\n" })),
     removeContainer: vi.fn(),

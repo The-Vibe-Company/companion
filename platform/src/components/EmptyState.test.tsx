@@ -15,7 +15,7 @@ describe("EmptyState", () => {
   it("renders a descriptive message", () => {
     render(<EmptyState onInstanceCreated={vi.fn()} />);
     expect(
-      screen.getByText(/Create your first Companion instance/),
+      screen.getByText(/Create your first AgentHangar instance/),
     ).toBeDefined();
   });
 

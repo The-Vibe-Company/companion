@@ -1,6 +1,6 @@
 // Tests for the Linear Agent Session Bridge.
 // Covers session creation from AgentSessionEvent, follow-up prompt handling,
-// message relay from Companion sessions to Linear activities, cleanup,
+// message relay from AgentHangar sessions to Linear activities, cleanup,
 // session persistence, plan relay, enriched prompts, tool results, and progress flush.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -125,7 +125,7 @@ describe("LinearAgentBridge", () => {
       expect(linearAgent.postActivity).toHaveBeenCalledWith(
         expect.any(Object),
         "linear-session-1",
-        expect.objectContaining({ type: "thought", body: "Starting Companion session..." }),
+        expect.objectContaining({ type: "thought", body: "Starting AgentHangar session..." }),
         expect.any(Function),
       );
 
@@ -141,7 +141,7 @@ describe("LinearAgentBridge", () => {
         expect.any(Object),
         "linear-session-1",
         expect.arrayContaining([
-          expect.objectContaining({ label: "Companion Session" }),
+          expect.objectContaining({ label: "AgentHangar Session" }),
         ]),
         expect.any(Function),
       );
@@ -202,7 +202,7 @@ describe("LinearAgentBridge", () => {
       );
     });
 
-    it("persists the linear session ID on the Companion session", async () => {
+    it("persists the linear session ID on the AgentHangar session", async () => {
       // Verifies that setLinearSessionId is called so the mapping survives server restarts.
       vi.mocked(agentStore.listAgents).mockReturnValue([testAgent] as ReturnType<typeof agentStore.listAgents>);
       vi.mocked(executor.executeAgent).mockResolvedValue({ sessionId: "comp-sess-1" } as never);
@@ -241,7 +241,7 @@ describe("LinearAgentBridge", () => {
         "linear-session-1",
         expect.objectContaining({
           type: "error",
-          body: expect.stringContaining("Failed to start Companion session"),
+          body: expect.stringContaining("Failed to start AgentHangar session"),
         }),
         expect.any(Function),
       );
@@ -375,7 +375,7 @@ describe("LinearAgentBridge", () => {
   });
 
   describe("handleEvent — prompted action", () => {
-    it("injects follow-up message into existing Companion session", async () => {
+    it("injects follow-up message into existing AgentHangar session", async () => {
       // First, create a session to establish the mapping
       vi.mocked(agentStore.listAgents).mockReturnValue([testAgent] as ReturnType<typeof agentStore.listAgents>);
       vi.mocked(executor.executeAgent).mockResolvedValue({ sessionId: "comp-sess-1" } as never);
@@ -396,11 +396,11 @@ describe("LinearAgentBridge", () => {
         expect.any(Function),
       );
 
-      // Should inject message into the Companion session
+      // Should inject message into the AgentHangar session
       expect(wsBridge.injectUserMessage).toHaveBeenCalledWith("comp-sess-1", "What's the status?");
     });
 
-    it("creates new session with follow-up message when Companion session is dead", async () => {
+    it("creates new session with follow-up message when AgentHangar session is dead", async () => {
       // Create a session first
       vi.mocked(agentStore.listAgents).mockReturnValue([testAgent] as ReturnType<typeof agentStore.listAgents>);
       vi.mocked(executor.executeAgent).mockResolvedValue({ sessionId: "comp-sess-1" } as never);
@@ -460,7 +460,7 @@ describe("LinearAgentBridge", () => {
   });
 
   describe("session persistence", () => {
-    // Verifies that Linear↔Companion session mappings are restored from
+    // Verifies that Linear↔AgentHangar session mappings are restored from
     // persisted SessionState on construction.
 
     it("restores session mappings from wsBridge on construction", async () => {

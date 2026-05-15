@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { join, basename } from "node:path";
-import { COMPANION_HOME } from "./paths.js";
+import { AGENTHANGAR_HOME } from "./paths.js";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ export interface WorktreeCreateResult {
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-const WORKTREES_BASE = join(COMPANION_HOME, "worktrees");
+const WORKTREES_BASE = join(AGENTHANGAR_HOME, "worktrees");
 
 function sanitizeBranch(branch: string): string {
   return branch.replace(/\//g, "--");

@@ -947,7 +947,7 @@ export function Playground() {
         {/* ─── Sensitive-file write approval ───────────────────── */}
         <Section
           title="Sensitive file write approval"
-          description="Claude Code stdio mode rejects Write to `.claude/hooks/*`, `.claude/settings.json`, etc. with a misleading 'requested permissions' error and no can_use_tool gate. Companion detects the pattern and shows a real Approve/Reject UI; Approve writes via the server API."
+          description="Claude Code stdio mode rejects Write to `.claude/hooks/*`, `.claude/settings.json`, etc. with a misleading 'requested permissions' error and no can_use_tool gate. AgentHangar detects the pattern and shows a real Approve/Reject UI; Approve writes via the server API."
         >
           <Card label="tool_result match → inline Approve / Reject card">
             <SensitiveFileWriteApproval
@@ -2518,7 +2518,7 @@ export function Playground() {
                     },
                   ] satisfies CreationProgressEvent[]
                 }
-                error="Failed to pull docker.io/stangirard/the-companion:latest — connection timed out after 30s"
+                error="Failed to pull docker.io/blocksec/agenthangar:latest — connection timed out after 30s"
               />
             </Card>
             <Card label="With streaming init script logs">
@@ -2688,7 +2688,7 @@ export function Playground() {
                       },
                     ] satisfies CreationProgressEvent[]
                   }
-                  error="Failed to pull docker.io/stangirard/the-companion:latest — connection timed out after 30s"
+                  error="Failed to pull docker.io/blocksec/agenthangar:latest — connection timed out after 30s"
                   backend="claude"
                   onCancel={() => {}}
                 />

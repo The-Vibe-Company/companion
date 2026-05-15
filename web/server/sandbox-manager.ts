@@ -28,8 +28,8 @@ export interface SandboxUpdateFields {
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-const COMPANION_DIR = join(homedir(), ".companion");
-const SANDBOXES_DIR = join(COMPANION_DIR, "sandboxes");
+const AGENTHANGAR_DIR = join(homedir(), ".agenthangar");
+const SANDBOXES_DIR = join(AGENTHANGAR_DIR, "sandboxes");
 
 function ensureDir(): void {
   mkdirSync(SANDBOXES_DIR, { recursive: true });

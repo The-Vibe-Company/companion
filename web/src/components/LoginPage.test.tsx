@@ -47,7 +47,7 @@ describe("LoginPage", () => {
     // a submit button, and help text about scanning QR with native camera
     render(<LoginPage />);
 
-    expect(screen.getByText("The Companion")).toBeInTheDocument();
+    expect(screen.getByText("AgentHangar")).toBeInTheDocument();
     expect(screen.getByLabelText("Auth Token")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Paste your token here")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();

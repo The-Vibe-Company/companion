@@ -1,7 +1,7 @@
 /**
  * Storage and indexing for curated recording files.
  *
- * Recordings uploaded or imported into the hub live in ~/.companion/hub/recordings/
+ * Recordings uploaded or imported into the hub live in ~/.agenthangar/hub/recordings/
  * (separate from the auto-recording directory to avoid rotation cleanup).
  * An index file (index.json) provides fast listing without re-parsing JSONL.
  */
@@ -17,7 +17,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { COMPANION_HOME } from "../paths.js";
+import { AGENTHANGAR_HOME } from "../paths.js";
 import { loadRecording } from "../replay.js";
 import type { RecordingHeader, RecordingEntry } from "../recorder.js";
 import type { BackendType } from "../session-types.js";
@@ -46,7 +46,7 @@ export interface HubRecordingSummary extends HubRecordingMeta {
 
 // ─── HubStore ────────────────────────────────────────────────────────────────
 
-const HUB_DIR = join(COMPANION_HOME, "hub");
+const HUB_DIR = join(AGENTHANGAR_HOME, "hub");
 const RECORDINGS_DIR = join(HUB_DIR, "recordings");
 const INDEX_PATH = join(HUB_DIR, "index.json");
 

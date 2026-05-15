@@ -2,7 +2,7 @@
  * Codex App-Server Adapter
  *
  * Translates between the Codex app-server JSON-RPC protocol (stdin/stdout)
- * and The Companion's BrowserIncomingMessage/BrowserOutgoingMessage types.
+ * and AgentHangar's BrowserIncomingMessage/BrowserOutgoingMessage types.
  *
  * This allows the browser to be completely unaware of which backend is running —
  * it sees the same message types regardless of whether Claude Code or Codex is
@@ -966,8 +966,8 @@ export class CodexAdapter implements IBackendAdapter {
       // Step 1: Send initialize request
       await this.transport.call("initialize", {
         clientInfo: {
-          name: "thecompanion",
-          title: "The Companion",
+          name: "agenthangar",
+          title: "AgentHangar",
           version: "1.0.0",
         },
         capabilities: {
@@ -1531,9 +1531,9 @@ export class CodexAdapter implements IBackendAdapter {
   private handleNotification(method: string, params: Record<string, unknown>): void {
     // Optional verbose trace, off by default — high-frequency deltas like
     // item/agentMessage/delta would otherwise flood production logs. The
-    // recorder under ~/.companion/recordings/ already captures the full raw
+    // recorder under ~/.agenthangar/recordings/ already captures the full raw
     // protocol for offline debugging, so this trace is rarely useful.
-    if (process.env.COMPANION_DEBUG_CODEX === "1") {
+    if (process.env.AGENTHANGAR_DEBUG_CODEX === "1") {
       const item = params.item as { type?: string; id?: string } | undefined;
       console.log(`[codex-adapter] ← ${method}${item ? ` type=${item.type} id=${item.id}` : ""}${!item && Object.keys(params).length > 0 ? ` keys=[${Object.keys(params).join(",")}]` : ""}`);
     }
@@ -1620,7 +1620,7 @@ export class CodexAdapter implements IBackendAdapter {
         break;
       // ─── Codex meta / lifecycle notifications ─────────────────────────
       // Informational-only; we acknowledge them so reportProtocolDrift
-      // doesn't fire and spam the user with "Companion may need an update".
+      // doesn't fire and spam the user with "AgentHangar may need an update".
       // Surface the user-facing ones to UI later if/when a use case comes
       // up — for now the recorder captures them for diagnostics.
       case "configWarning":
@@ -1742,7 +1742,7 @@ export class CodexAdapter implements IBackendAdapter {
       });
       this.browserMessageCb?.({
         type: "error",
-        message: `Codex notification handler crashed on "${method}". Companion may need an update.`,
+        message: `Codex notification handler crashed on "${method}". AgentHangar may need an update.`,
       });
     }
   }
@@ -1795,7 +1795,7 @@ export class CodexAdapter implements IBackendAdapter {
       });
       this.browserMessageCb?.({
         type: "error",
-        message: `Codex request handler crashed on "${method}". Companion may need an update.`,
+        message: `Codex request handler crashed on "${method}". AgentHangar may need an update.`,
       });
     }
   }

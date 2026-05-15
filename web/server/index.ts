@@ -19,7 +19,7 @@ import { SessionStore } from "./session-store.js";
 import { WorktreeTracker } from "./worktree-tracker.js";
 import { containerManager } from "./container-manager.js";
 import { join } from "node:path";
-import { COMPANION_HOME } from "./paths.js";
+import { AGENTHANGAR_HOME } from "./paths.js";
 import { TerminalManager } from "./terminal-manager.js";
 import { PRPoller } from "./pr-poller.js";
 import { RecorderManager } from "./recorder.js";
@@ -43,18 +43,18 @@ import type { SocketData } from "./ws-bridge.js";
 import type { ServerWebSocket } from "bun";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const packageRoot = process.env.__COMPANION_PACKAGE_ROOT || resolve(__dirname, "..");
+const packageRoot = process.env.__AGENTHANGAR_PACKAGE_ROOT || resolve(__dirname, "..");
 
 import { DEFAULT_PORT_DEV, DEFAULT_PORT_PROD } from "./constants.js";
 
 const defaultPort = process.env.NODE_ENV === "production" ? DEFAULT_PORT_PROD : DEFAULT_PORT_DEV;
 const port = Number(process.env.PORT) || defaultPort;
 const host = process.env.HOST || "0.0.0.0";
-const sessionStore = new SessionStore(process.env.COMPANION_SESSION_DIR);
+const sessionStore = new SessionStore(process.env.AGENTHANGAR_SESSION_DIR);
 const wsBridge = new WsBridge();
 const launcher = new CliLauncher();
 const worktreeTracker = new WorktreeTracker();
-const CONTAINER_STATE_PATH = join(COMPANION_HOME, "containers.json");
+const CONTAINER_STATE_PATH = join(AGENTHANGAR_HOME, "containers.json");
 const terminalManager = new TerminalManager();
 const noVncProxy = new NoVncProxy();
 const prPoller = new PRPoller(wsBridge);
@@ -73,10 +73,10 @@ const orchestrator = new SessionOrchestrator({
 // instance via an outbound WebSocket. Currently no webhook handlers are
 // registered (Chat SDK was removed). The relay is left disabled until handlers
 // are wired up (e.g. LinearAgentBridge or future platform integrations).
-if (process.env.COMPANION_RELAY_URL && process.env.COMPANION_RELAY_SECRET) {
+if (process.env.AGENTHANGAR_RELAY_URL && process.env.AGENTHANGAR_RELAY_SECRET) {
   console.warn(
-    "[server] COMPANION_RELAY_URL is set but no relay webhook handlers are registered. " +
-    "The relay client will not be started. Remove COMPANION_RELAY_URL/COMPANION_RELAY_SECRET " +
+    "[server] AGENTHANGAR_RELAY_URL is set but no relay webhook handlers are registered. " +
+    "The relay client will not be started. Remove AGENTHANGAR_RELAY_URL/AGENTHANGAR_RELAY_SECRET " +
     "or wire up webhook handlers to use relay mode.",
   );
 }
@@ -98,7 +98,7 @@ if (recorder.isGloballyEnabled()) {
   console.log(`[server] Recording enabled (dir: ${recorder.getRecordingsDir()}, max: ${recorder.getMaxLines()} lines)`);
 }
 
-// ── Log file persistence — writes all log output to ~/.companion/logs/ ───────
+// ── Log file persistence — writes all log output to ~/.agenthangar/logs/ ───────
 const logFileWriter = initLogFile();
 if (logFileWriter) {
   console.log(`[server] Log file enabled (dir: ${logFileWriter.getLogsDir()}, max: ${logFileWriter.getMaxLines()} lines, file: ${logFileWriter.filePath})`);
@@ -116,11 +116,11 @@ app.get("/health", (c) => {
   });
 });
 
-// ── Managed auth middleware — only active when COMPANION_AUTH_ENABLED=1 ────
-const hasManagedAuthSecret = Boolean(process.env.COMPANION_AUTH_SECRET?.trim());
+// ── Managed auth middleware — only active when AGENTHANGAR_AUTH_ENABLED=1 ────
+const hasManagedAuthSecret = Boolean(process.env.AGENTHANGAR_AUTH_SECRET?.trim());
 const managedAuthEnabled =
-  process.env.COMPANION_AUTH_ENABLED === "1" ||
-  (hasManagedAuthSecret && process.env.COMPANION_AUTH_ENABLED !== "0");
+  process.env.AGENTHANGAR_AUTH_ENABLED === "1" ||
+  (hasManagedAuthSecret && process.env.AGENTHANGAR_AUTH_ENABLED !== "0");
 
 if (managedAuthEnabled) {
   const { managedAuth } = await import("./middleware/managed-auth.js");
@@ -138,8 +138,8 @@ app.route("/api", createRoutes(orchestrator, launcher, wsBridge, terminalManager
 // so this is the only way to bridge auth across the install boundary.
 app.get("/manifest.json", (c) => {
   const manifest = {
-    name: "The Companion",
-    short_name: "Companion",
+    name: "AgentHangar",
+    short_name: "AgentHangar",
     description: "Web UI for Claude Code and Codex",
     start_url: "/",
     scope: "/",
@@ -154,7 +154,7 @@ app.get("/manifest.json", (c) => {
 
   // If the user has an auth cookie (set during login), embed token in start_url.
   // Safari sends this cookie when fetching the manifest at "Add to Home Screen" time.
-  const authCookie = getCookie(c, "companion_auth");
+  const authCookie = getCookie(c, "agenthangar_auth");
   if (authCookie && verifyToken(authCookie)) {
     manifest.start_url = `/?token=${authCookie}`;
   } else {
@@ -301,8 +301,8 @@ const authToken = getToken();
 console.log(`Server running on http://${host}:${server.port}`);
 console.log();
 console.log(`  Auth token: ${authToken}`);
-if (process.env.COMPANION_AUTH_TOKEN) {
-  console.log("  (using COMPANION_AUTH_TOKEN env var)");
+if (process.env.AGENTHANGAR_AUTH_TOKEN) {
+  console.log("  (using AGENTHANGAR_AUTH_TOKEN env var)");
 }
 console.log();
 console.log(`  Browser WebSocket: ws://localhost:${server.port}/ws/browser/:sessionId`);

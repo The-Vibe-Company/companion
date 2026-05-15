@@ -65,7 +65,7 @@ export function LoginPage() {
     <div className="h-[100dvh] flex items-center justify-center bg-cc-bg text-cc-fg font-sans-ui antialiased">
       <div className="w-full max-w-sm px-6">
         <div className="text-center mb-8">
-          <h1 className="text-xl font-semibold text-cc-fg mb-2">The Companion</h1>
+          <h1 className="text-xl font-semibold text-cc-fg mb-2">AgentHangar</h1>
           <p className="text-sm text-cc-muted">Enter your auth token to continue</p>
         </div>
 

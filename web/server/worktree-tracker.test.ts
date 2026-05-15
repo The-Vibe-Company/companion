@@ -54,7 +54,7 @@ function makeMapping(overrides: Partial<WorktreeMapping> = {}): WorktreeMapping 
 }
 
 function trackerFilePath(): string {
-  return join(tempDir, ".companion", "worktrees.json");
+  return join(tempDir, ".agenthangar", "worktrees.json");
 }
 
 function readTrackerFile(): WorktreeMapping[] {
@@ -72,7 +72,7 @@ describe("WorktreeTracker", () => {
 
     it("loads existing mappings from disk", () => {
       const mapping = makeMapping();
-      mkdirSync(join(tempDir, ".companion"), { recursive: true });
+      mkdirSync(join(tempDir, ".agenthangar"), { recursive: true });
       writeFileSync(trackerFilePath(), JSON.stringify([mapping]));
 
       const tracker = new WorktreeTracker();
@@ -80,7 +80,7 @@ describe("WorktreeTracker", () => {
     });
 
     it("handles corrupt JSON gracefully", () => {
-      mkdirSync(join(tempDir, ".companion"), { recursive: true });
+      mkdirSync(join(tempDir, ".agenthangar"), { recursive: true });
       writeFileSync(trackerFilePath(), "NOT VALID JSON {{{");
 
       const tracker = new WorktreeTracker();

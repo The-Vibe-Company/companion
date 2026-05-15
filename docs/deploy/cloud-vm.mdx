@@ -1,17 +1,17 @@
 ---
 title: Deploy on a Cloud VM
-description: Deploy The Companion on a private cloud VM with Tailscale access
+description: Deploy AgentHangar on a private cloud VM with Tailscale access
 ---
 
 # Deploy on a Cloud VM
 
-The Companion runs locally by default, but you can deploy it on a remote server for always-on access, shared team usage, or dedicated development environments.
+AgentHangar runs locally by default, but you can deploy it on a remote server for always-on access, shared team usage, or dedicated development environments.
 
 ## Choosing a setup
 
 | Scenario | Recommended approach |
 |---|---|
-| Solo developer, single machine | [Local install](/get-started/installation) with `bunx the-companion` |
+| Solo developer, single machine | [Local install](/get-started/installation) with `bunx agenthangar` |
 | Always-on server in the cloud | Cloud VM with Tailscale (this guide) |
 | Isolated per-project environments | [Docker sessions](/guides/docker-and-environments) on any host |
 | Team sharing a single instance | Remote deploy with Tailscale ACLs for access control |
@@ -24,7 +24,7 @@ You can combine approaches — for example, deploy on a GCP VM and use Docker se
 
 Regardless of where you deploy, the architecture stays the same:
 
-1. The Companion server runs on the host (port 6060 by default)
+1. AgentHangar server runs on the host (port 6060 by default)
 2. It spawns Claude Code or Codex CLI processes as child subprocesses
 3. Your browser connects to the server over WebSocket
 4. A reverse proxy or tunnel (like Tailscale) provides secure remote access
@@ -33,15 +33,15 @@ The server is stateless enough to restart cleanly — sessions persist to disk a
 
 ## GCP Virtual Machine
 
-This guide walks you through deploying The Companion on a private GCP VM in the `europe-west9` (Paris) region. The VM has no public IP — you'll access it securely through Tailscale, which gives you an HTTPS endpoint without exposing anything to the internet.
+This guide walks you through deploying AgentHangar on a private GCP VM in the `europe-west9` (Paris) region. The VM has no public IP — you'll access it securely through Tailscale, which gives you an HTTPS endpoint without exposing anything to the internet.
 
-By the end, you'll have a dedicated Companion server running at `https://<hostname>.<tailnet>.ts.net/`.
+By the end, you'll have a dedicated AgentHangar server running at `https://<hostname>.<tailnet>.ts.net/`.
 
 ### What you'll set up
 
 | Component | Purpose |
 |---|---|
-| GCP Compute Engine VM | Runs The Companion (no public IP) |
+| GCP Compute Engine VM | Runs AgentHangar (no public IP) |
 | IAP tunnel | SSH access to the private VM |
 | Cloud NAT | Outbound internet for package installs |
 | Tailscale | Secure access via your private network |
@@ -62,7 +62,7 @@ Define these once — every command below references them.
 export PROJECT_ID="your-project-id"
 export ZONE="europe-west9-a"              # Paris
 export REGION="europe-west9"
-export INSTANCE="companion-vm"
+export INSTANCE="agenthangar-vm"
 export MACHINE_TYPE="e2-standard-4"       # 4 vCPU, 16 GB RAM
 export IMAGE_FAMILY="ubuntu-2404-lts-amd64"
 export IMAGE_PROJECT="ubuntu-os-cloud"
@@ -71,7 +71,7 @@ export DISK_TYPE="pd-ssd"
 export NETWORK="default"
 export ROUTER_NAME="nat-router-ew9"
 export NAT_NAME="nat-config-ew9"
-export COMPANION_HOSTNAME="companion"
+export AGENTHANGAR_HOSTNAME="agenthangar"
 export TAILSCALE_AUTH_KEY="tskey-auth-REPLACE_ME"
 ```
 
@@ -94,7 +94,7 @@ gcloud compute instances create "$INSTANCE" \
   --boot-disk-type="$DISK_TYPE" \
   --no-address \
   --scopes=cloud-platform \
-  --tags=companion
+  --tags=agenthangar
 ```
 
 Verify it's running:
@@ -204,9 +204,9 @@ gcloud compute ssh "$INSTANCE" \
   --command 'bash -s' < ./provision-devbox.sh
 ```
 
-### 6. Install Bun and The Companion
+### 6. Install Bun and AgentHangar
 
-SSH into the VM and install The Companion as a global package with a background service:
+SSH into the VM and install AgentHangar as a global package with a background service:
 
 ```bash
 gcloud compute ssh "$INSTANCE" \
@@ -222,12 +222,12 @@ if ! command -v bun >/dev/null 2>&1; then
 fi
 export PATH=\$HOME/.bun/bin:\$PATH
 
-# Install The Companion globally
-bun install -g the-companion
+# Install AgentHangar globally
+bun install -g agenthangar
 
 # Register as a systemd service and start
-the-companion install
-the-companion start
+agenthangar install
+agenthangar start
 "'
 ```
 
@@ -240,7 +240,7 @@ gcloud compute ssh "$INSTANCE" \
   --tunnel-through-iap \
   --command 'bash -lc "
 export PATH=\$HOME/.bun/bin:\$PATH
-the-companion status
+agenthangar status
 "'
 ```
 
@@ -262,11 +262,11 @@ curl -fsSL https://tailscale.com/install.sh | sh
 # Join your tailnet (auth key passed via env var to avoid process-table exposure)
 export TS_AUTHKEY=\"$TAILSCALE_AUTH_KEY\"
 sudo -E tailscale up \
-  --hostname=\"$COMPANION_HOSTNAME\" \
+  --hostname=\"$AGENTHANGAR_HOSTNAME\" \
   --ssh
 unset TS_AUTHKEY
 
-# Serve The Companion over HTTPS
+# Serve AgentHangar over HTTPS
 sudo tailscale serve --bg 6060
 '"
 ```
@@ -277,7 +277,7 @@ Once connected, open your browser and navigate to:
 https://<hostname>.<tailnet>.ts.net/
 ```
 
-Replace `<hostname>` with the value of `COMPANION_HOSTNAME` and `<tailnet>` with your Tailscale network name.
+Replace `<hostname>` with the value of `AGENTHANGAR_HOSTNAME` and `<tailnet>` with your Tailscale network name.
 
 <Tip>
 Run `sudo tailscale status` on the VM to see the full hostname and confirm the node is connected.
@@ -285,14 +285,14 @@ Run `sudo tailscale status` on the VM to see the full hostname and confirm the n
 
 ## Day-to-day operations
 
-### Companion commands
+### AgentHangar commands
 
 | Command | What it does |
 |---|---|
-| `the-companion status` | Check if the service is running |
-| `the-companion logs` | Tail recent logs |
-| `the-companion restart` | Restart the server |
-| `the-companion stop` | Stop the server |
+| `agenthangar status` | Check if the service is running |
+| `agenthangar logs` | Tail recent logs |
+| `agenthangar restart` | Restart the server |
+| `agenthangar stop` | Stop the server |
 
 ### Tailscale commands
 
@@ -348,18 +348,18 @@ sudo apt-get install -y unzip
 - Verify the node is connected: `sudo tailscale status`
 - Make sure your local device is also on the same tailnet
 
-### The Companion UI loads but sessions fail
+### AgentHangar UI loads but sessions fail
 
 - Confirm the Claude Code CLI is authenticated: SSH in and run `claude` once
 - Check that your API key or subscription is valid
-- Review server logs: `the-companion logs`
+- Review server logs: `agenthangar logs`
 
 ## Security considerations
 
 - The VM has **no public IP** — it's only reachable via IAP (SSH) and Tailscale (HTTPS)
 - **Revoke and regenerate** the Tailscale auth key after provisioning
 - Use [Tailscale ACLs](https://tailscale.com/kb/1018/acls) to restrict which devices and users can reach the VM
-- The Companion generates an auth token automatically — see [Authentication](/get-started/installation#authentication) for details
+- AgentHangar generates an auth token automatically — see [Authentication](/get-started/installation#authentication) for details
 - Consider enabling GCP [OS Login](https://cloud.google.com/compute/docs/instances/managing-instance-access) for centralized SSH access control
 - Clear shell history after provisioning to remove any sensitive values: `history -c && history -w`
 

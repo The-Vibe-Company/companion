@@ -467,7 +467,7 @@ describe("getCloudProviderPlan", () => {
       image: "companion-core:latest",
       cwd: "/repo",
       mappedPorts: [{ containerPort: 3000, hostPort: 49152 }],
-      commandPreview: "modal run companion_cloud.py --manifest /repo/.companion/cloud/environments/s1.json",
+      commandPreview: "modal run companion_cloud.py --manifest /repo/.agenthangar/cloud/environments/s1.json",
     };
     mockFetch.mockResolvedValueOnce(mockResponse(plan));
 

@@ -68,7 +68,7 @@ Docker sessions run the agent CLI inside a container, providing an isolated file
 
 ### The container image
 
-The default image (`the-companion:latest`) is based on Ubuntu 24.04 and includes:
+The default image (`agenthangar:latest`) is based on Ubuntu 24.04 and includes:
 
 | Tool | Version |
 |---|---|
@@ -90,7 +90,7 @@ Plus system tools: git, curl, wget, make, jq, cmake, sqlite3, ffmpeg, imagemagic
 
 1. Go to **Environments** and create a new profile (or edit an existing one)
 2. Open the **Docker** tab
-3. Select a **base image** from the dropdown (e.g., `the-companion:latest`) or enter a custom image name
+3. Select a **base image** from the dropdown (e.g., `agenthangar:latest`) or enter a custom image name
 4. Click **Pull** to download the image — progress is shown in real time
 
 ### Custom Dockerfile
@@ -100,7 +100,7 @@ If you need additional dependencies:
 1. In the Docker tab, write a custom **Dockerfile**:
 
 ```dockerfile
-FROM the-companion:latest
+FROM agenthangar:latest
 
 # Add project-specific dependencies
 RUN apt-get update && apt-get install -y postgresql-client
@@ -137,10 +137,10 @@ Docker sessions require the `CLAUDE_CODE_OAUTH_TOKEN` environment variable to au
 claude setup-token
 ```
 
-This will output a token you can set in your environment profile's **Variables** tab, or export in your shell before starting the Companion.
+This will output a token you can set in your environment profile's **Variables** tab, or export in your shell before starting the AgentHangar.
 </Warning>
 
-The Companion automatically:
+AgentHangar automatically:
 - Copies your Claude Code / Codex credentials into the container
 - Sets up `gh` as the git credential helper for GitHub authentication
 - Copies your git identity (`user.name`, `user.email`)
@@ -160,7 +160,7 @@ The **Init Script** tab in the environment profile editor lets you write a shell
 
 - The script runs via `sh -lc` (login shell)
 - In Docker sessions: runs inside the container as root
-- Timeout: **120 seconds** (configurable via `COMPANION_INIT_SCRIPT_TIMEOUT` env var)
+- Timeout: **120 seconds** (configurable via `AGENTHANGAR_INIT_SCRIPT_TIMEOUT` env var)
 - If the script fails (non-zero exit code), the session creation is aborted
 
 ### Examples
@@ -215,7 +215,7 @@ Ports are mapped with `-p 0:PORT` so the host port is automatically assigned. Ch
 
 ## Storage
 
-Profiles are stored as individual JSON files in `~/.companion/envs/`, named by slug (e.g., `glm-v5.json`).
+Profiles are stored as individual JSON files in `~/.agenthangar/envs/`, named by slug (e.g., `glm-v5.json`).
 
 ## REST API
 

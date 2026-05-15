@@ -4,7 +4,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Landing } from "./pages/Landing";
 
 /**
- * Root application component for Companion Cloud.
+ * Root application component for AgentHangar Cloud.
  *
  * Auth-aware routing using Better Auth's useSession hook:
  * - Unauthenticated → Landing page (login/signup)
@@ -81,7 +81,7 @@ export default function App() {
         <div className="flex flex-col items-center gap-4">
           <div className="w-2 h-2 rounded-full bg-cc-primary animate-pulse-dot" />
           <span className="font-[family-name:var(--font-display)] text-xs text-cc-muted-fg">
-            companion<span className="text-cc-primary">.</span>cloud
+            agenthangar<span className="text-cc-primary">.</span>cloud
           </span>
         </div>
       </div>

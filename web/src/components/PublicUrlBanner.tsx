@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const DISMISS_KEY = "companion_public_url_dismissed";
+const DISMISS_KEY = "agenthangar_public_url_dismissed";
 
 export function PublicUrlBanner({ publicUrl }: { publicUrl: string }) {
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === "1");

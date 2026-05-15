@@ -1,30 +1,30 @@
 ---
-title: The Companion
+title: AgentHangar
 description: Web UI for Claude Code and Codex sessions
 ---
 
-# The Companion
+# AgentHangar
 
 A browser-based interface for running multiple [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://github.com/openai/codex) sessions with streaming output, tool call visibility, and permission control.
 
-<img src="/screenshots/readme-main-workspace.png" alt="The Companion main workspace" />
+<img src="/screenshots/readme-main-workspace.png" alt="AgentHangar main workspace" />
 
 ## Quick start
 
 ```bash
-bunx the-companion
+bunx agenthangar
 ```
 
 Open [http://localhost:6060](http://localhost:6060). See the [Installation](/get-started/installation) guide for more options.
 
 ## Subscription and authentication
 
-The Companion is a local UI layer that runs on your machine. It does not have its own account system or billing.
+AgentHangar is a local UI layer that runs on your machine. It does not have its own account system or billing.
 
 - **Claude Code** requires an Anthropic API key or a Claude Pro/Team/Enterprise subscription with Claude Code enabled.
 - **Codex** requires an OpenAI account with Codex CLI access.
 
-All model inference happens through your own subscriptions. The Companion bridges your browser to these CLI tools over a local WebSocket connection.
+All model inference happens through your own subscriptions. AgentHangar bridges your browser to these CLI tools over a local WebSocket connection.
 
 ## Features
 
@@ -48,6 +48,6 @@ All model inference happens through your own subscriptions. The Companion bridge
     Search and create Linear issues, link them to sessions, and auto-transition issue status.
   </Card>
   <Card title="Deploy" icon="cloud" href="/deploy/cloud-vm">
-    Run The Companion on cloud VMs for always-on access with secure Tailscale networking.
+    Run AgentHangar on cloud VMs for always-on access with secure Tailscale networking.
   </Card>
 </CardGroup>

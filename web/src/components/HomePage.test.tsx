@@ -342,10 +342,10 @@ describe("HomePage", () => {
     render(<HomePage />);
 
     // Title
-    expect(screen.getByText("The Companion")).toBeInTheDocument();
+    expect(screen.getByText("AgentHangar")).toBeInTheDocument();
 
     // Logo image (the claude logo is the default)
-    const logo = screen.getByAltText("The Companion");
+    const logo = screen.getByAltText("AgentHangar");
     expect(logo).toBeInTheDocument();
     expect(logo).toHaveAttribute("src", "/logo.svg");
 
@@ -525,7 +525,7 @@ describe("HomePage", () => {
 
     // Logo should change to codex
     await waitFor(() => {
-      const logo = screen.getByAltText("The Companion");
+      const logo = screen.getByAltText("AgentHangar");
       expect(logo).toHaveAttribute("src", "/logo-codex.svg");
     });
 
@@ -936,7 +936,7 @@ describe("HomePage", () => {
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
 
     // Logo should be the codex logo since backend was restored from localStorage
-    const logo = screen.getByAltText("The Companion");
+    const logo = screen.getByAltText("AgentHangar");
     expect(logo).toHaveAttribute("src", "/logo-codex.svg");
   });
 
@@ -1153,7 +1153,7 @@ describe("HomePage", () => {
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
 
     // Component should still render without errors
-    expect(screen.getByText("The Companion")).toBeInTheDocument();
+    expect(screen.getByText("AgentHangar")).toBeInTheDocument();
   });
 
   // ─── getHome fallback ──────────────────────────────────────────────────────
@@ -1339,7 +1339,7 @@ describe("HomePage", () => {
       await act(async () => { fireEvent.click(sandboxBtn); });
 
       // Dropdown opens — select Default to enable sandbox
-      const defaultOption = await screen.findByText("Default (the-companion:latest)");
+      const defaultOption = await screen.findByText("Default (agenthangar:latest)");
       await act(async () => { fireEvent.click(defaultOption.closest("button")!); });
 
       expect(localStorage.getItem("cc-sandbox-enabled")).toBe("true");
@@ -1362,7 +1362,7 @@ describe("HomePage", () => {
 
       // The dropdown should show Off, Default, and our sandbox
       await screen.findByText("Off");
-      await screen.findByText("Default (the-companion:latest)");
+      await screen.findByText("Default (agenthangar:latest)");
       await screen.findByText("My Sandbox");
     });
 

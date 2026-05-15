@@ -21,7 +21,7 @@ vi.mock("node:child_process", () => ({ execSync: mockExecSync }));
 vi.mock("node:crypto", () => ({ randomUUID: () => "test-uuid" }));
 
 // Mock settings-manager to prevent AI validation from interfering with tests.
-// Without this mock, the real settings file (~/.companion/settings.json) may have
+// Without this mock, the real settings file (~/.agenthangar/settings.json) may have
 // aiValidationEnabled: true, causing handleControlRequest to call validatePermission
 // (an external API call) and auto-approve/deny permissions before they reach pendingPermissions.
 vi.mock("./settings-manager.js", () => ({
@@ -688,7 +688,7 @@ describe("CLI handlers", () => {
     const getContainerSpy = vi.spyOn(containerManager, "getContainer").mockReturnValue({
       containerId: "abc123def456",
       name: "companion-test",
-      image: "the-companion:latest",
+      image: "agenthangar:latest",
       portMappings: [],
       hostCwd: "/Users/stan/Dev/myproject",
       containerCwd: "/workspace",
@@ -725,7 +725,7 @@ describe("CLI handlers", () => {
     const getContainerSpy = vi.spyOn(containerManager, "getContainer").mockReturnValue({
       containerId: "abc123def456",
       name: "companion-test",
-      image: "the-companion:latest",
+      image: "agenthangar:latest",
       portMappings: [],
       hostCwd: "/Users/stan/Dev/myproject",
       containerCwd: "/workspace",
@@ -4635,14 +4635,14 @@ describe("Idle kill watchdog", () => {
   // active-idle eviction has its own suite below with its own assertions.
   let prevEvictEnv: string | undefined;
   beforeEach(() => {
-    prevEvictEnv = process.env.COMPANION_CLAUDE_IDLE_EVICT_MINUTES;
-    process.env.COMPANION_CLAUDE_IDLE_EVICT_MINUTES = "0";
+    prevEvictEnv = process.env.AGENTHANGAR_CLAUDE_IDLE_EVICT_MINUTES;
+    process.env.AGENTHANGAR_CLAUDE_IDLE_EVICT_MINUTES = "0";
     vi.useFakeTimers();
   });
 
   afterEach(() => {
-    if (prevEvictEnv === undefined) delete process.env.COMPANION_CLAUDE_IDLE_EVICT_MINUTES;
-    else process.env.COMPANION_CLAUDE_IDLE_EVICT_MINUTES = prevEvictEnv;
+    if (prevEvictEnv === undefined) delete process.env.AGENTHANGAR_CLAUDE_IDLE_EVICT_MINUTES;
+    else process.env.AGENTHANGAR_CLAUDE_IDLE_EVICT_MINUTES = prevEvictEnv;
     vi.useRealTimers();
   });
 
@@ -4905,11 +4905,11 @@ describe("Active-idle eviction watchdog", () => {
     companionBus.off("session:idle-kill", idleKillHandler);
   });
 
-  it("eviction is opt-out when COMPANION_CLAUDE_IDLE_EVICT_MINUTES=0", () => {
+  it("eviction is opt-out when AGENTHANGAR_CLAUDE_IDLE_EVICT_MINUTES=0", () => {
     // Operator escape hatch: setting the env var to 0 disables active
     // eviction entirely. Existing 24h-no-browsers idle-kill is unaffected.
-    const prev = process.env.COMPANION_CLAUDE_IDLE_EVICT_MINUTES;
-    process.env.COMPANION_CLAUDE_IDLE_EVICT_MINUTES = "0";
+    const prev = process.env.AGENTHANGAR_CLAUDE_IDLE_EVICT_MINUTES;
+    process.env.AGENTHANGAR_CLAUDE_IDLE_EVICT_MINUTES = "0";
     try {
       // Need to reconstruct the bridge after env change so the new value
       // is read. The default-config path creates a fresh thresholds map.
@@ -4927,8 +4927,8 @@ describe("Active-idle eviction watchdog", () => {
       expect(idleKillHandler).not.toHaveBeenCalled();
       companionBus.off("session:idle-kill", idleKillHandler);
     } finally {
-      if (prev === undefined) delete process.env.COMPANION_CLAUDE_IDLE_EVICT_MINUTES;
-      else process.env.COMPANION_CLAUDE_IDLE_EVICT_MINUTES = prev;
+      if (prev === undefined) delete process.env.AGENTHANGAR_CLAUDE_IDLE_EVICT_MINUTES;
+      else process.env.AGENTHANGAR_CLAUDE_IDLE_EVICT_MINUTES = prev;
     }
   });
 });

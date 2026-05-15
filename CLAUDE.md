@@ -4,7 +4,7 @@ This file provides guidance to Claude Code & Codex when working with code in thi
 
 ## What This Is
 
-The Companion — a web UI for Claude Code & Codex.
+AgentHangar — a web UI for Claude Code & Codex.
 It runs each CLI as a child process and exchanges NDJSON over the
 CLI's stdin/stdout pipes (Claude with `--print --input-format
 stream-json --output-format stream-json`, Codex via `app-server`), so
@@ -32,7 +32,7 @@ cd web && bun run build && bun run start
 cd web && bun run generate-token          # show current token
 cd web && bun run generate-token --force  # regenerate a new token
 
-# Landing page (thecompanion.sh) — idempotent: starts if down, no-op if up
+# Landing page (github.com/yajin/AgentHangar) — idempotent: starts if down, no-op if up
 # IMPORTANT: Always use this script to run the landing page. Never cd into landing/ and run bun/vite manually.
 ./scripts/landing-start.sh          # start
 ./scripts/landing-start.sh --stop   # stop
@@ -76,7 +76,7 @@ Browser (React) ←─ WebSocket ─→ Hono Server (Bun) ←─ stdio (NDJSON) 
 4. The bridge fans those messages out to all browser WebSockets subscribed to the session.
 5. Tool calls arrive as `control_request` (subtype `can_use_tool`) — browser renders approval UI, server relays `control_response` back.
 
-Historical note: Claude used to talk to companion over a `--sdk-url`
+Historical note: Claude used to talk to AgentHangar over a `--sdk-url`
 WebSocket at `/ws/cli/:id`. That transport is gone — only `/ws/browser`
 (plus `/ws/terminal` and `/ws/novnc`) is upgraded by Bun.serve today.
 
@@ -87,10 +87,10 @@ WebSocket at `/ws/cli/:id`. That transport is gone — only `/ws/browser`
   - `ws-bridge.ts` — Core message router. Maintains per-session state (backend adapter, browser sockets, message history, pending permissions). Receives NDJSON via the adapter, translates to typed JSON for browsers.
   - `claude-adapter.ts` / `codex-adapter.ts` — Backend-specific adapters that own the stdio pipes and translate between the CLI's native protocol and the unified message shapes.
   - `cli-launcher.ts` — Spawns/kills/relaunches Claude Code and Codex CLI processes. Handles `--resume` for session recovery. Persists session state across server restarts.
-  - `session-store.ts` — JSON file persistence to `$TMPDIR/vibe-sessions/`. Debounced writes.
+  - `session-store.ts` — JSON file persistence to `$TMPDIR/agenthangar-sessions/`. Debounced writes.
   - `session-types.ts` — All TypeScript types for CLI messages (NDJSON), browser messages, session state, permissions.
   - `routes.ts` — REST API: session CRUD, filesystem browsing, environment management.
-  - `env-manager.ts` — CRUD for environment profiles stored in `~/.companion/envs/`.
+  - `env-manager.ts` — CRUD for environment profiles stored in `~/.agenthangar/envs/`.
 
 - **`web/src/`** — React 19 frontend
   - `store.ts` — Zustand store. All state keyed by session ID (messages, streaming text, permissions, tasks, connection status).
@@ -100,7 +100,7 @@ WebSocket at `/ws/cli/:id`. That transport is gone — only `/ws/browser`
   - `App.tsx` — Root layout with sidebar, chat view, task panel. Hash routing (`#/playground`).
   - `components/` — UI: `ChatView`, `MessageFeed`, `MessageBubble`, `ToolBlock`, `Composer`, `Sidebar`, `TopBar`, `HomePage`, `TaskPanel`, `PermissionBanner`, `EnvManager`, `Playground`.
 
-- **`web/bin/cli.ts`** — CLI entry point (`bunx the-companion`). Sets `__COMPANION_PACKAGE_ROOT` and imports the server.
+- **`web/bin/cli.ts`** — CLI entry point (`bunx agenthangar`). Sets `__AGENTHANGAR_PACKAGE_ROOT` and imports the server.
 
 ### WebSocket Protocol
 
@@ -110,17 +110,17 @@ Full protocol documentation is in `WEBSOCKET_PROTOCOL_REVERSED.md`.
 
 ### Session Lifecycle
 
-Sessions persist to disk (`$TMPDIR/vibe-sessions/`) and survive server restarts. On restart, live CLI processes are detected by PID and given a grace period to reconnect their WebSocket. If they don't, they're killed and relaunched with `--resume` using the CLI's internal session ID.
+Sessions persist to disk (`$TMPDIR/agenthangar-sessions/`) and survive server restarts. On restart, live CLI processes are detected by PID and given a grace period to reconnect their WebSocket. If they don't, they're killed and relaunched with `--resume` using the CLI's internal session ID.
 
 ### Raw Protocol Recordings
 
 The server automatically records **all raw protocol messages** (both Claude Code NDJSON and Codex JSON-RPC) to JSONL files. This is useful for debugging, understanding the protocol, and building replay-based tests.
 
-- **Location**: `~/.companion/recordings/` (override with `COMPANION_RECORDINGS_DIR`)
+- **Location**: `~/.agenthangar/recordings/` (override with `AGENTHANGAR_RECORDINGS_DIR`)
 - **Format**: JSONL — one JSON object per line. First line is a header with session metadata, subsequent lines are raw message entries.
 - **File naming**: `{sessionId}_{backendType}_{ISO-timestamp}_{randomSuffix}.jsonl`
-- **Disable**: set `COMPANION_RECORD=0` or `COMPANION_RECORD=false`
-- **Rotation**: automatic cleanup when total lines exceed 1M (configurable via `COMPANION_RECORDINGS_MAX_LINES`)
+- **Disable**: set `AGENTHANGAR_RECORD=0` or `AGENTHANGAR_RECORD=false`
+- **Rotation**: automatic cleanup when total lines exceed 1M (configurable via `AGENTHANGAR_RECORDINGS_MAX_LINES`)
 
 Each entry captures:
 ```json
@@ -209,6 +209,6 @@ gh pr edit --body-file /tmp/pr_body.md
 ### Caveats
 - `./scripts/dev-start.sh` health-checks the backend on `/` which returns 404. If the script times out, the backend is still running — verify with `curl http://localhost:6061/api/sessions`. You can start the servers manually as background processes instead.
 - The app requires Claude Code CLI or Codex CLI to create functional sessions. Without them, the UI loads but session creation will fail. The component playground at `#/playground` works without any CLI.
-- No external databases or services are needed. Session state persists to `$TMPDIR/vibe-sessions/` as JSON files.
+- No external databases or services are needed. Session state persists to `$TMPDIR/agenthangar-sessions/` as JSON files.
 - The pre-commit hook (`.husky/pre-commit`) runs `cd web && bun run typecheck && bun run test -- --coverage`. Run these before committing.
 - Two blocked postinstalls (`core-js`, `protobufjs`) are harmless and do not affect functionality.

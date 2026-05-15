@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { PublicUrlBanner } from "./PublicUrlBanner.js";
 
-const DISMISS_KEY = "companion_public_url_dismissed";
+const DISMISS_KEY = "agenthangar_public_url_dismissed";
 
 describe("PublicUrlBanner", () => {
   // Clean up localStorage before each test so dismiss state doesn't leak

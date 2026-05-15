@@ -183,7 +183,7 @@ describe("checkForUpdate", () => {
 
     // Should use /latest for stable channel
     expect(mockFetch).toHaveBeenCalledWith(
-      "https://registry.npmjs.org/the-companion/latest",
+      "https://registry.npmjs.org/agenthangar/latest",
       expect.objectContaining({
         headers: { Accept: "application/json" },
       }),
@@ -205,7 +205,7 @@ describe("checkForUpdate", () => {
 
     // Should use /next for prerelease channel
     expect(mockFetch).toHaveBeenCalledWith(
-      "https://registry.npmjs.org/the-companion/next",
+      "https://registry.npmjs.org/agenthangar/next",
       expect.objectContaining({
         headers: { Accept: "application/json" },
       }),

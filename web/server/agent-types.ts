@@ -29,7 +29,7 @@ export interface AgentConfig {
   permissionMode: string;
   /** Working directory path, or "temp" for an auto-created temp dir */
   cwd: string;
-  /** Optional environment slug (references ~/.companion/envs/) */
+  /** Optional environment slug (references ~/.agenthangar/envs/) */
   envSlug?: string;
   /** Extra environment variables */
   env?: Record<string, string>;

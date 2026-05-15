@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeAll } from "vitest";
 
 // Suppress the console.log that fires when the module is first imported.
 // This must happen BEFORE the dynamic import below so that the
-// "[companion-cloud] Control plane running on ..." message is silenced.
+// "[agenthangar-cloud] Control plane running on ..." message is silenced.
 vi.spyOn(console, "log").mockImplementation(() => {});
 
 // Clear PORT env var so the server falls back to the default (3458).
-// In some environments (e.g. when the Companion dev server is running)
+// In some environments (e.g. when the AgentHangar dev server is running)
 // PORT is set to 3456 which would override the default.
 const savedPort = process.env.PORT;
 delete process.env.PORT;
@@ -51,7 +51,7 @@ describe("GET /api/status", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual({
-      service: "companion-cloud",
+      service: "agenthangar-cloud",
       version: "0.1.0",
       status: "ok",
       provisioning: {

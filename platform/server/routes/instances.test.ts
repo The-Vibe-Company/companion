@@ -74,12 +74,12 @@ describe("instances routes (hetzner)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.HETZNER_API_TOKEN = "hcloud-token";
-    process.env.COMPANION_IMAGE = "docker.io/stangirard/the-companion-server:latest";
+    process.env.AGENTHANGAR_IMAGE = "docker.io/blocksec/agenthangar-server:latest";
     delete process.env.HETZNER_SSH_KEY_ID;
     delete process.env.HETZNER_SERVER_TYPE_STARTER;
     delete process.env.HETZNER_SERVER_TYPE_PRO;
     delete process.env.HETZNER_SERVER_TYPE_ENTERPRISE;
-    delete process.env.COMPANION_LOGIN_URL;
+    delete process.env.AGENTHANGAR_LOGIN_URL;
 
     findManyMock.mockResolvedValue([]);
     findFirstMock.mockResolvedValue(null);
@@ -116,7 +116,7 @@ describe("instances routes (hetzner)", () => {
     expect(provisionerCtorMock).toHaveBeenCalledWith(
       expect.objectContaining({
         hetznerToken: "hcloud-token",
-        companionImage: "docker.io/stangirard/the-companion-server:latest",
+        agentHangarImage: "docker.io/blocksec/agenthangar-server:latest",
       }),
     );
     expect(insertValuesMock).toHaveBeenCalledWith(

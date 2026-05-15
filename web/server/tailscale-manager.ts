@@ -3,7 +3,7 @@
  *
  * Detects the `tailscale` binary, checks connection status, and manages
  * Tailscale Funnel to expose the Companion over HTTPS. Persists funnel
- * state to ~/.companion/tailscale-state.json for restoration across
+ * state to ~/.agenthangar/tailscale-state.json for restoration across
  * server restarts.
  */
 
@@ -47,7 +47,7 @@ interface PersistedFunnelState {
 
 // ── Internal state ──────────────────────────────────────────────────────────
 
-const STATE_PATH = join(homedir(), ".companion", "tailscale-state.json");
+const STATE_PATH = join(homedir(), ".agenthangar", "tailscale-state.json");
 const CMD_TIMEOUT = 15_000;
 const BINARY_CACHE_TTL = 60_000; // 1 minute — allows detecting install/uninstall without restart
 
@@ -422,10 +422,10 @@ export async function restoreIfNeeded(port: number): Promise<void> {
 /**
  * Best-effort cleanup on server shutdown. Uses spawnSync since process.exit follows.
  * By default, leaves Funnel running (it's a system daemon).
- * Set COMPANION_TAILSCALE_CLEANUP_ON_EXIT=1 to stop on shutdown.
+ * Set AGENTHANGAR_TAILSCALE_CLEANUP_ON_EXIT=1 to stop on shutdown.
  */
 export function cleanup(port: number): void {
-  const shouldCleanup = process.env.COMPANION_TAILSCALE_CLEANUP_ON_EXIT === "1";
+  const shouldCleanup = process.env.AGENTHANGAR_TAILSCALE_CLEANUP_ON_EXIT === "1";
   if (!shouldCleanup) return;
 
   const binary = findBinary();

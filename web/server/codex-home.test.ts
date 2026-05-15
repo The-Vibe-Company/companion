@@ -2,16 +2,16 @@ import { describe, it, expect } from "vitest";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import {
-  DEFAULT_COMPANION_CODEX_HOME,
+  DEFAULT_AGENTHANGAR_CODEX_HOME,
   getLegacyCodexHome,
   resolveCompanionCodexHome,
   resolveCompanionCodexSessionHome,
 } from "./codex-home.js";
 
 describe("codex-home", () => {
-  it("DEFAULT_COMPANION_CODEX_HOME points to ~/.companion/codex-home", () => {
-    expect(DEFAULT_COMPANION_CODEX_HOME).toBe(
-      join(homedir(), ".companion", "codex-home"),
+  it("DEFAULT_AGENTHANGAR_CODEX_HOME points to ~/.agenthangar/codex-home", () => {
+    expect(DEFAULT_AGENTHANGAR_CODEX_HOME).toBe(
+      join(homedir(), ".agenthangar", "codex-home"),
     );
   });
 
@@ -20,7 +20,7 @@ describe("codex-home", () => {
   });
 
   it("resolveCompanionCodexHome returns default when no explicit path given", () => {
-    expect(resolveCompanionCodexHome()).toBe(DEFAULT_COMPANION_CODEX_HOME);
+    expect(resolveCompanionCodexHome()).toBe(DEFAULT_AGENTHANGAR_CODEX_HOME);
   });
 
   it("resolveCompanionCodexHome uses explicit path when provided", () => {
@@ -34,7 +34,7 @@ describe("codex-home", () => {
     const original = process.env.CODEX_HOME;
     try {
       process.env.CODEX_HOME = "/tmp/global-codex";
-      expect(resolveCompanionCodexHome()).toBe(DEFAULT_COMPANION_CODEX_HOME);
+      expect(resolveCompanionCodexHome()).toBe(DEFAULT_AGENTHANGAR_CODEX_HOME);
     } finally {
       if (original === undefined) {
         delete process.env.CODEX_HOME;
@@ -47,7 +47,7 @@ describe("codex-home", () => {
   it("resolveCompanionCodexSessionHome appends sessionId to base", () => {
     const sessionId = "abc-123";
     expect(resolveCompanionCodexSessionHome(sessionId)).toBe(
-      join(DEFAULT_COMPANION_CODEX_HOME, sessionId),
+      join(DEFAULT_AGENTHANGAR_CODEX_HOME, sessionId),
     );
   });
 

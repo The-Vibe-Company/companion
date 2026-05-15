@@ -12,13 +12,13 @@ const TEST_SUFFIX = randomBytes(4).toString("hex");
 const TEST_HOME = join(tmpdir(), `hub-routes-test-${TEST_SUFFIX}`);
 const RECORDINGS_DIR = join(TEST_HOME, "auto-recordings");
 
-// Mock COMPANION_HOME so HubStore writes to our temp directory
+// Mock AGENTHANGAR_HOME so HubStore writes to our temp directory
 // vi.mock is hoisted, so we use the tmpdir + suffix pattern inline
 vi.mock("../paths.js", () => {
   const { tmpdir: td } = require("node:os");
   const { join: jn } = require("node:path");
   // Read the suffix from the env var we set before import
-  return { COMPANION_HOME: jn(td(), `hub-routes-test-${process.env.__HUB_ROUTES_TEST_SUFFIX}`) };
+  return { AGENTHANGAR_HOME: jn(td(), `hub-routes-test-${process.env.__HUB_ROUTES_TEST_SUFFIX}`) };
 });
 
 // Set the suffix in env before mock resolution

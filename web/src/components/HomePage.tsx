@@ -38,7 +38,7 @@ type ResumeCandidate = {
   createdAt: number;
   cwd: string;
   gitBranch?: string;
-  source: "companion" | "claude_disk";
+  source: "agenthangar" | "claude_disk";
 };
 
 type SessionLaunchOverride = {
@@ -269,7 +269,7 @@ export function HomePage() {
     }
   }, [backend, selectedEnv]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When sandbox is enabled, check the-companion:latest image status
+  // When sandbox is enabled, check agenthangar:latest image status
   useEffect(() => {
     if (sandboxImagePollRef.current) {
       clearInterval(sandboxImagePollRef.current);
@@ -279,7 +279,7 @@ export function HomePage() {
 
     if (!sandboxEnabled) return;
 
-    const effectiveImage = "the-companion:latest";
+    const effectiveImage = "agenthangar:latest";
 
     const checkAndPull = () => {
       api.getImageStatus(effectiveImage).then((state) => {
@@ -392,7 +392,7 @@ export function HomePage() {
     setResumeCandidatesLoading(true);
     setResumeCandidatesError("");
     try {
-      const [companionSessions, discovered] = await Promise.all([
+      const [agentHangarSessions, discovered] = await Promise.all([
         api.listSessions(),
         api.discoverClaudeSessions(400).then((result) => result.sessions),
       ]);
@@ -405,7 +405,7 @@ export function HomePage() {
         }
       };
 
-      for (const session of companionSessions as SdkSessionInfo[]) {
+      for (const session of agentHangarSessions as SdkSessionInfo[]) {
         if (session.backendType === "codex") continue;
         if (!session.cliSessionId) continue;
         upsertCandidate({
@@ -416,7 +416,7 @@ export function HomePage() {
           createdAt: session.createdAt,
           cwd: session.cwd,
           gitBranch: session.gitBranch,
-          source: "companion",
+          source: "agenthangar",
         });
       }
 
@@ -853,9 +853,9 @@ export function HomePage() {
       <div className="w-full max-w-[720px]">
         {/* Logo + Title — minimal, centered */}
         <div className="flex flex-col items-center mb-6 sm:mb-10">
-          <img src={logoSrc} alt="The Companion" className="w-10 h-10 sm:w-12 sm:h-12 mb-3" />
+          <img src={logoSrc} alt="AgentHangar" className="w-10 h-10 sm:w-12 sm:h-12 mb-3" />
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-cc-fg">
-            The Companion
+            AgentHangar
           </h1>
         </div>
 
@@ -1173,7 +1173,7 @@ export function HomePage() {
                       sandboxEnabled && !selectedSandbox ? "text-cc-primary font-medium" : "text-cc-fg"
                     }`}
                   >
-                    Default (the-companion:latest)
+                    Default (agenthangar:latest)
                   </button>
                   {sandboxes.map((sb) => (
                     <button
@@ -1403,7 +1403,7 @@ export function HomePage() {
                               {visibleResumeCandidates.map((candidate) => {
                                 const title = getResumeCandidateTitle(candidate);
                                 const project = getResumeCandidateProject(candidate.cwd);
-                                const sourceLabel = candidate.source === "companion" ? "Companion" : "Claude";
+                                const sourceLabel = candidate.source === "agenthangar" ? "AgentHangar" : "Claude";
                                 const selected = trimmedResumeSessionAt === candidate.resumeSessionId;
                                 return (
                                   <div

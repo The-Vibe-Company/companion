@@ -32,7 +32,7 @@ export interface LinearConnection {
 
 // ─── Paths ───────────────────────────────────────────────────────────────────
 
-const DEFAULT_PATH = join(homedir(), ".companion", "linear-connections.json");
+const DEFAULT_PATH = join(homedir(), ".agenthangar", "linear-connections.json");
 
 // ─── Store ───────────────────────────────────────────────────────────────────
 

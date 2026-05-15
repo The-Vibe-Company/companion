@@ -45,6 +45,6 @@ export function reportProtocolDrift(
   });
 
   emitError?.(
-    `${options.backend === "codex" ? "Codex" : "Claude"} protocol drift: unsupported ${options.direction} ${options.messageKind} "${options.messageName}". Companion may need an update.`,
+    `${options.backend === "codex" ? "Codex" : "Claude"} protocol drift: unsupported ${options.direction} ${options.messageKind} "${options.messageName}". AgentHangar may need an update.`,
   );
 }

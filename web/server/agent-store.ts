@@ -7,13 +7,13 @@ import {
   existsSync,
 } from "node:fs";
 import { join } from "node:path";
-import { COMPANION_HOME } from "./paths.js";
+import { AGENTHANGAR_HOME } from "./paths.js";
 import { randomBytes } from "node:crypto";
 import type { AgentConfig, AgentConfigCreateInput } from "./agent-types.js";
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-const AGENTS_DIR = join(COMPANION_HOME, "agents");
+const AGENTS_DIR = join(AGENTHANGAR_HOME, "agents");
 
 function ensureDir(): void {
   mkdirSync(AGENTS_DIR, { recursive: true });

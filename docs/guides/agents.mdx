@@ -69,7 +69,7 @@ Expose your agent as an HTTP endpoint that external services can call.
 **Calling the webhook:**
 
 ```bash
-curl -X POST https://your-companion:6060/api/agents/pr-reviewer/webhook/YOUR_SECRET \
+curl -X POST https://your-agenthangar:6060/api/agents/pr-reviewer/webhook/YOUR_SECRET \
   -H "Content-Type: application/json" \
   -d '{"input": "Review PR #42 on the main branch"}'
 ```
@@ -215,4 +215,4 @@ curl -X POST http://localhost:6060/api/agents/import \
 
 ## Storage
 
-Agents are stored as individual JSON files in `~/.companion/agents/`. The agent ID is a slug derived from the name (e.g., "PR Reviewer" becomes `pr-reviewer`).
+Agents are stored as individual JSON files in `~/.agenthangar/agents/`. The agent ID is a slug derived from the name (e.g., "PR Reviewer" becomes `pr-reviewer`).

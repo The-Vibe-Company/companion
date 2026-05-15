@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 // Package root so the server can find dist/ regardless of CWD
 const __dirname = dirname(fileURLToPath(import.meta.url));
-process.env.__COMPANION_PACKAGE_ROOT = resolve(__dirname, "..");
+process.env.__AGENTHANGAR_PACKAGE_ROOT = resolve(__dirname, "..");
 
 const command = process.argv[2];
 
@@ -15,7 +15,7 @@ const CTL_COMMANDS = new Set([
 
 function printUsage(): void {
   console.log(`
-Usage: companion [command]
+Usage: agenthangar [command]
 
 Server commands:
   (none)      Start the server in foreground (default)
@@ -25,7 +25,7 @@ Server commands:
   stop        Stop the background service
   restart     Restart the background service
   uninstall   Remove the background service
-  status      Show service status (or use 'companion status' when server is running)
+  status      Show service status (or use 'agenthangar status' when server is running)
   logs        Tail service log files
   help        Show this help message
 
@@ -35,7 +35,7 @@ Management commands (requires running server):
   cron        Manage scheduled jobs (list, get, create, update, delete, toggle, run)
   skills      Manage Claude Code skills (list, get, create, update, delete)
   settings    Manage settings (get, set)
-  assistant   Manage the Companion Assistant (status, launch, stop, config)
+  assistant   Manage the AgentHangar Assistant (status, launch, stop, config)
 
 Options:
   --port <n>  Override the default port (default: 6060)
@@ -105,14 +105,14 @@ switch (command) {
       const { status } = await import("../server/service.js");
       const result = await status();
       if (!result.installed) {
-        console.log("The Companion is not installed as a service.");
-        console.log("Run: companion install");
+        console.log("AgentHangar is not installed as a service.");
+        console.log("Run: agenthangar install");
       } else if (result.running) {
-        console.log(`The Companion is running (PID: ${result.pid})`);
+        console.log(`AgentHangar is running (PID: ${result.pid})`);
         console.log(`  URL: http://localhost:${result.port}`);
       } else {
-        console.log("The Companion is installed but not running.");
-        console.log("Check logs at ~/.companion/logs/");
+        console.log("AgentHangar is installed but not running.");
+        console.log("Check logs at ~/.agenthangar/logs/");
       }
     }
     break;
@@ -134,15 +134,15 @@ switch (command) {
     const { join } = await import("node:path");
     const { homedir } = await import("node:os");
     const { spawn } = await import("node:child_process");
-    const logFile = join(homedir(), ".companion/logs/companion.log");
-    const errFile = join(homedir(), ".companion/logs/companion.error.log");
+    const logFile = join(homedir(), ".agenthangar/logs/agenthangar.log");
+    const errFile = join(homedir(), ".agenthangar/logs/agenthangar.error.log");
     const { existsSync } = await import("node:fs");
     if (!existsSync(logFile) && !existsSync(errFile)) {
-      console.error("No log files found at ~/.companion/logs/");
+      console.error("No log files found at ~/.agenthangar/logs/");
       console.error("The service may not have been started yet.");
       process.exit(1);
     }
-    console.log("Tailing logs from ~/.companion/logs/");
+    console.log("Tailing logs from ~/.agenthangar/logs/");
     const tail = spawn("tail", ["-f", logFile, errFile], { stdio: "inherit" });
     tail.on("exit", () => process.exit(0));
     break;

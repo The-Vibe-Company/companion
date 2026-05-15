@@ -1,14 +1,15 @@
 <p align="center">
-  <img src="screenshot.png" alt="The Companion" width="100%" />
+  <img src="screenshot.png" alt="AgentHangar" width="100%" />
 </p>
 
-<h1 align="center">The Companion</h1>
+<h1 align="center">AgentHangar</h1>
 <p align="center"><strong>Web UI for Claude Code and Codex sessions.</strong></p>
 <p align="center">Run multiple agents, inspect every tool call, and gate risky actions with explicit approvals.</p>
+<p align="center"><em>Maintained fork of The Companion, originally created by The Vibe Company.</em></p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/the-companion"><img src="https://img.shields.io/npm/v/the-companion.svg" alt="npm version" /></a>
-  <a href="https://www.npmjs.com/package/the-companion"><img src="https://img.shields.io/npm/dm/the-companion.svg" alt="npm downloads" /></a>
+  <a href="https://www.npmjs.com/package/agenthangar"><img src="https://img.shields.io/npm/v/agenthangar.svg" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/agenthangar"><img src="https://img.shields.io/npm/dm/agenthangar.svg" alt="npm downloads" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License" /></a>
 </p>
 
@@ -19,7 +20,7 @@
 ### Try it instantly
 
 ```bash
-bunx the-companion
+bunx agenthangar
 ```
 
 Open [http://localhost:6060](http://localhost:6060).
@@ -27,13 +28,13 @@ Open [http://localhost:6060](http://localhost:6060).
 ### Install globally
 
 ```bash
-bun install -g the-companion
+bun install -g agenthangar
 
 # Register as a background service (launchd on macOS, systemd on Linux)
-the-companion install
+agenthangar install
 
 # Start the service
-the-companion start
+agenthangar start
 ```
 
 Open [http://localhost:6060](http://localhost:6060). The server runs in the background and survives reboots.
@@ -44,15 +45,15 @@ In dev mode, Vite serves the UI on the same port and proxies `/api` + `/ws` to t
 
 | Command | Description |
 |---|---|
-| `the-companion` | Start server in foreground (default) |
-| `the-companion serve` | Start server in foreground (explicit) |
-| `the-companion install` | Register as a background service (launchd/systemd) |
-| `the-companion start` | Start the background service |
-| `the-companion stop` | Stop the background service |
-| `the-companion restart` | Restart the background service |
-| `the-companion uninstall` | Remove the background service |
-| `the-companion status` | Show service status |
-| `the-companion logs` | Tail service log files |
+| `agenthangar` | Start server in foreground (default) |
+| `agenthangar serve` | Start server in foreground (explicit) |
+| `agenthangar install` | Register as a background service (launchd/systemd) |
+| `agenthangar start` | Start the background service |
+| `agenthangar stop` | Stop the background service |
+| `agenthangar restart` | Restart the background service |
+| `agenthangar uninstall` | Remove the background service |
+| `agenthangar status` | Show service status |
+| `agenthangar logs` | Tail service log files |
 
 **Options:** `--port <n>` overrides the default port (6060).
 
@@ -72,16 +73,16 @@ In dev mode, Vite serves the UI on the same port and proxies `/api` + `/ws` to t
 ```text
 Browser (React)
   <-> ws://localhost:6060/ws/browser/:session
-Companion server (Bun + Hono)
+AgentHangar server (Bun + Hono)
   <-> stdio (NDJSON)
 Claude Code / Codex CLI (child process)
 ```
 
-The Companion server spawns each Claude Code / Codex CLI as a child process and exchanges NDJSON over its stdin/stdout — the historical `--sdk-url` WebSocket transport for Claude has been replaced by `--print --input-format stream-json --output-format stream-json`. Browsers still talk to the server over WebSocket on `/ws/browser/:session`.
+AgentHangar server spawns each Claude Code / Codex CLI as a child process and exchanges NDJSON over its stdin/stdout — the historical `--sdk-url` WebSocket transport for Claude has been replaced by `--print --input-format stream-json --output-format stream-json`. Browsers still talk to the server over WebSocket on `/ws/browser/:session`.
 
 ## Authentication
 
-The server auto-generates an auth token on first start, stored at `~/.companion/auth.json`. You can also manage tokens manually:
+The server auto-generates an auth token on first start, stored at `~/.agenthangar/auth.json`. You can also manage tokens manually:
 
 ```bash
 # Show the current token (or auto-generate one)
@@ -94,7 +95,7 @@ cd web && bun run generate-token --force
 Or set a token via environment variable (takes priority over the file):
 
 ```bash
-COMPANION_AUTH_TOKEN="my-secret-token" bunx the-companion
+AGENTHANGAR_AUTH_TOKEN="my-secret-token" bunx agenthangar
 ```
 
 ## Development
@@ -122,9 +123,9 @@ Every push to `main` publishes a preview artifact:
 
 | Artifact | Tag / dist-tag | Example |
 |---|---|---|
-| Docker image (moving) | `preview-main` | `docker.io/stangirard/the-companion:preview-main` |
-| Docker image (immutable) | `preview-<sha>` | `docker.io/stangirard/the-companion:preview-abc1234...` |
-| npm package | `next` | `bunx the-companion@next` |
+| Docker image (moving) | `preview-main` | `docker.io/blocksec/agenthangar:preview-main` |
+| Docker image (immutable) | `preview-<sha>` | `docker.io/blocksec/agenthangar:preview-abc1234...` |
+| npm package | `next` | `bunx agenthangar@next` |
 
 Preview builds use a patch-core bump (e.g. `0.68.1-preview.*` when stable is `0.68.0`) so the in-app update checker can detect them as semver-ahead of the current stable release. They are **not** production-stable — use `latest` / semver tags for stable releases.
 

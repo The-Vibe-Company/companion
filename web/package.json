@@ -1,13 +1,12 @@
 {
-  "name": "the-companion",
+  "name": "agenthangar",
   "version": "0.95.0",
   "type": "module",
-  "description": "Web UI for launching and interacting with Claude Code agents",
+  "description": "Control plane for launching and governing coding agents",
   "license": "MIT",
-  "author": "The Vibe Company",
+  "author": "Yajin",
   "bin": {
-    "the-companion": "./bin/cli.ts",
-    "companion": "./bin/cli.ts"
+    "agenthangar": "./bin/cli.ts"
   },
   "files": [
     "bin/",
@@ -23,7 +22,7 @@
     "ai",
     "agent",
     "web-ui",
-    "vibe-coding"
+    "coding-agents"
   ],
   "scripts": {
     "dev": "bun dev.ts",

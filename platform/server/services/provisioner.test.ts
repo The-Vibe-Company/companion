@@ -33,7 +33,7 @@ describe("Provisioner (hetzner)", () => {
       const method = opts.method ?? "GET";
 
       if (url === `${HETZNER_BASE}/volumes` && method === "POST") {
-        return Promise.resolve(okResponse({ volume: { id: 901, name: "companion_test", size: 10 } }));
+        return Promise.resolve(okResponse({ volume: { id: 901, name: "agenthangar_test", size: 10 } }));
       }
       if (url === `${HETZNER_BASE}/servers` && method === "POST") {
         return Promise.resolve(okResponse({
@@ -88,7 +88,7 @@ describe("Provisioner (hetzner)", () => {
   function makeProvisioner() {
     return new Provisioner({
       hetznerToken: "hcloud-token",
-      companionImage: "docker.io/stangirard/the-companion-server:latest",
+      agentHangarImage: "docker.io/blocksec/agenthangar-server:latest",
       hetznerServerTypes: {
         starter: "cpx11",
         pro: "cpx21",
@@ -129,12 +129,12 @@ describe("Provisioner (hetzner)", () => {
     const serverCall = fetchMock.mock.calls.find((c: any[]) => c[0] === `${HETZNER_BASE}/servers`);
     const body = JSON.parse(serverCall![1].body);
     expect(body.server_type).toBe("cpx11");
-    expect(body.user_data).toContain("COMPANION_AUTH_TOKEN=");
-    expect(body.user_data).toContain("COMPANION_AUTH_ENABLED=0");
+    expect(body.user_data).toContain("AGENTHANGAR_AUTH_TOKEN=");
+    expect(body.user_data).toContain("AGENTHANGAR_AUTH_ENABLED=0");
 
     const volumeCall = fetchMock.mock.calls.find((c: any[]) => c[0] === `${HETZNER_BASE}/volumes`);
-    expect(JSON.parse(volumeCall![1].body).name).toBe("companion_demo_feedbeef");
-    expect(body.name).toBe("companion-demo-feedbeef");
+    expect(JSON.parse(volumeCall![1].body).name).toBe("agenthangar_demo_feedbeef");
+    expect(body.name).toBe("agenthangar-demo-feedbeef");
   });
 
   it("falls back to server ipv4 hostname when hostname is empty", async () => {
@@ -203,7 +203,7 @@ describe("Provisioner (hetzner)", () => {
               ),
           } as unknown as Response);
         }
-        return Promise.resolve(okResponse({ volume: { id: 901, name: "companion_test", size: 10 } }));
+        return Promise.resolve(okResponse({ volume: { id: 901, name: "agenthangar_test", size: 10 } }));
       }
       if (url === `${HETZNER_BASE}/servers` && method === "POST") {
         return Promise.resolve(okResponse({
@@ -257,9 +257,9 @@ describe("Provisioner (hetzner)", () => {
       if (url === `${HETZNER_BASE}/volumes` && method === "POST") {
         const body = JSON.parse(String(opts.body));
         if (body.location === "ash") {
-          return Promise.resolve(okResponse({ volume: { id: 901, name: "companion_test_a", size: 10 } }));
+          return Promise.resolve(okResponse({ volume: { id: 901, name: "agenthangar_test_a", size: 10 } }));
         }
-        return Promise.resolve(okResponse({ volume: { id: 902, name: "companion_test_b", size: 10 } }));
+        return Promise.resolve(okResponse({ volume: { id: 902, name: "agenthangar_test_b", size: 10 } }));
       }
       if (url === `${HETZNER_BASE}/servers` && method === "POST") {
         const body = JSON.parse(String(opts.body));
@@ -323,7 +323,7 @@ describe("Provisioner (hetzner)", () => {
     fetchMock.mockImplementation((url: string, opts: RequestInit) => {
       const method = opts.method ?? "GET";
       if (url === `${HETZNER_BASE}/volumes` && method === "POST") {
-        return Promise.resolve(okResponse({ volume: { id: 901, name: "companion_test_a", size: 10 } }));
+        return Promise.resolve(okResponse({ volume: { id: 901, name: "agenthangar_test_a", size: 10 } }));
       }
       if (url === `${HETZNER_BASE}/servers` && method === "POST") {
         const body = JSON.parse(String(opts.body));
@@ -362,7 +362,7 @@ describe("Provisioner (hetzner)", () => {
 
     const provisioner = new Provisioner({
       hetznerToken: "hcloud-token",
-      companionImage: "docker.io/stangirard/the-companion-server:latest",
+      agentHangarImage: "docker.io/blocksec/agenthangar-server:latest",
       hetznerServerTypes: {
         starter: "cpx11",
       },
@@ -389,7 +389,7 @@ describe("Provisioner (hetzner)", () => {
     fetchMock.mockImplementation((url: string, opts: RequestInit) => {
       const method = opts.method ?? "GET";
       if (url === `${HETZNER_BASE}/volumes` && method === "POST") {
-        return Promise.resolve(okResponse({ volume: { id: 901, name: "companion_test_a", size: 10 } }));
+        return Promise.resolve(okResponse({ volume: { id: 901, name: "agenthangar_test_a", size: 10 } }));
       }
       if (url === `${HETZNER_BASE}/servers` && method === "POST") {
         const body = JSON.parse(String(opts.body));
@@ -428,7 +428,7 @@ describe("Provisioner (hetzner)", () => {
 
     const provisioner = new Provisioner({
       hetznerToken: "hcloud-token",
-      companionImage: "docker.io/stangirard/the-companion-server:latest",
+      agentHangarImage: "docker.io/blocksec/agenthangar-server:latest",
       hetznerServerTypes: {
         starter: "104",
       },
@@ -455,9 +455,9 @@ describe("Provisioner (hetzner)", () => {
       if (url === `${HETZNER_BASE}/volumes` && method === "POST") {
         const body = JSON.parse(String(opts.body));
         if (body.location === "nbg1") {
-          return Promise.resolve(okResponse({ volume: { id: 901, name: "companion_test_a", size: 10 } }));
+          return Promise.resolve(okResponse({ volume: { id: 901, name: "agenthangar_test_a", size: 10 } }));
         }
-        return Promise.resolve(okResponse({ volume: { id: 902, name: "companion_test_b", size: 10 } }));
+        return Promise.resolve(okResponse({ volume: { id: 902, name: "agenthangar_test_b", size: 10 } }));
       }
       if (url === `${HETZNER_BASE}/servers` && method === "POST") {
         const body = JSON.parse(String(opts.body));
@@ -499,7 +499,7 @@ describe("Provisioner (hetzner)", () => {
 
     const provisioner = new Provisioner({
       hetznerToken: "hcloud-token",
-      companionImage: "docker.io/stangirard/the-companion-server:latest",
+      agentHangarImage: "docker.io/blocksec/agenthangar-server:latest",
       hetznerServerTypes: {
         starter: "cpx22",
       },

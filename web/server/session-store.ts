@@ -25,13 +25,13 @@ export interface PersistedSession {
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 
-// Default storage lives under $HOME/.companion/sessions so it survives system
+// Default storage lives under $HOME/.agenthangar/sessions so it survives system
 // reboots. Most Linux distros wipe /tmp at boot, so the legacy location lost
 // every session whenever the host restarted. The legacy path is migrated once
 // (see migrateLegacyDir below) when a SessionStore is constructed without an
 // explicit dir argument.
-const defaultDir = (): string => join(homedir(), ".companion", "sessions");
-const legacyDir = (): string => join(tmpdir(), "vibe-sessions");
+const defaultDir = (): string => join(homedir(), ".agenthangar", "sessions");
+const legacyDir = (): string => join(tmpdir(), "agenthangar-sessions");
 
 export class SessionStore {
   private dir: string;
@@ -44,7 +44,7 @@ export class SessionStore {
   }
 
   /**
-   * One-shot copy of any leftover files from the legacy `$TMPDIR/vibe-sessions/`
+   * One-shot copy of any leftover files from the legacy `$TMPDIR/agenthangar-sessions/`
    * location into the new default dir. Per-file: skipped if the file already
    * exists in the new dir (so existing data wins). Source files are removed
    * after a successful copy so subsequent boots don't re-migrate the same

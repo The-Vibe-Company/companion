@@ -213,7 +213,7 @@ beforeEach(() => {
   mockGetState.mockReturnValue(mockStoreState);
   (parseHash as ReturnType<typeof vi.fn>).mockReturnValue({ page: "home" });
   window.location.hash = "";
-  localStorage.removeItem("companion_docker_prompt_pending");
+  localStorage.removeItem("agenthangar_docker_prompt_pending");
 });
 
 // ─── Tests ───────────────────────────────────────────────────────
@@ -357,15 +357,15 @@ describe("App", () => {
   });
 
   describe("docker update dialog activation", () => {
-    it("opens DockerUpdateDialog and clears localStorage when companion_docker_prompt_pending is set", () => {
+    it("opens DockerUpdateDialog and clears localStorage when agenthangar_docker_prompt_pending is set", () => {
       // After an app update, the localStorage flag triggers the Docker update dialog.
       // This useEffect reads the flag, removes it, and opens the dialog via the store.
-      localStorage.setItem("companion_docker_prompt_pending", "1");
+      localStorage.setItem("agenthangar_docker_prompt_pending", "1");
       setStoreValues({ isAuthenticated: true });
       render(<App />);
 
       expect(mockStoreState.setDockerUpdateDialogOpen).toHaveBeenCalledWith(true);
-      expect(localStorage.getItem("companion_docker_prompt_pending")).toBeNull();
+      expect(localStorage.getItem("agenthangar_docker_prompt_pending")).toBeNull();
     });
 
     it("does not open DockerUpdateDialog on normal page load", () => {

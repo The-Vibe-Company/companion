@@ -17,7 +17,7 @@ export interface CronJob {
   model: string;
   /** Working directory for the session */
   cwd: string;
-  /** Optional environment slug (references ~/.companion/envs/) */
+  /** Optional environment slug (references ~/.agenthangar/envs/) */
   envSlug?: string;
   /** Whether the job is currently enabled */
   enabled: boolean;

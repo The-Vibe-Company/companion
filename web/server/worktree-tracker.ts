@@ -5,7 +5,7 @@ import {
   existsSync,
 } from "node:fs";
 import { join, dirname } from "node:path";
-import { COMPANION_HOME } from "./paths.js";
+import { AGENTHANGAR_HOME } from "./paths.js";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -21,7 +21,7 @@ export interface WorktreeMapping {
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-const TRACKER_PATH = join(COMPANION_HOME, "worktrees.json");
+const TRACKER_PATH = join(AGENTHANGAR_HOME, "worktrees.json");
 
 // ─── Tracker ────────────────────────────────────────────────────────────────
 

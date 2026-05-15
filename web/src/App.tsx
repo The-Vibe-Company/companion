@@ -163,8 +163,8 @@ export default function App() {
 
   // Show Docker image update dialog if an app update just completed
   useEffect(() => {
-    if (localStorage.getItem("companion_docker_prompt_pending") === "1") {
-      localStorage.removeItem("companion_docker_prompt_pending");
+    if (localStorage.getItem("agenthangar_docker_prompt_pending") === "1") {
+      localStorage.removeItem("agenthangar_docker_prompt_pending");
       useStore.getState().setDockerUpdateDialogOpen(true);
     }
   }, []);

@@ -59,9 +59,9 @@ describe("managed-auth middleware", () => {
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeEach(() => {
-    savedEnv.COMPANION_AUTH_ENABLED = process.env.COMPANION_AUTH_ENABLED;
-    savedEnv.COMPANION_AUTH_SECRET = process.env.COMPANION_AUTH_SECRET;
-    savedEnv.COMPANION_LOGIN_URL = process.env.COMPANION_LOGIN_URL;
+    savedEnv.AGENTHANGAR_AUTH_ENABLED = process.env.AGENTHANGAR_AUTH_ENABLED;
+    savedEnv.AGENTHANGAR_AUTH_SECRET = process.env.AGENTHANGAR_AUTH_SECRET;
+    savedEnv.AGENTHANGAR_LOGIN_URL = process.env.AGENTHANGAR_LOGIN_URL;
   });
 
   afterEach(() => {
@@ -82,11 +82,11 @@ describe("managed-auth middleware", () => {
     return app;
   }
 
-  it("enforces auth even without COMPANION_AUTH_ENABLED (enable decision is in index.ts)", async () => {
+  it("enforces auth even without AGENTHANGAR_AUTH_ENABLED (enable decision is in index.ts)", async () => {
     // The middleware is always active when registered — the enable/disable
     // decision moved to index.ts which only registers it when appropriate.
-    delete process.env.COMPANION_AUTH_ENABLED;
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
+    delete process.env.AGENTHANGAR_AUTH_ENABLED;
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
     const app = createTestApp();
 
     const res = await app.request("/api/sessions");
@@ -94,8 +94,8 @@ describe("managed-auth middleware", () => {
   });
 
   it("bypasses auth for /health endpoint", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
     const app = createTestApp();
 
     const res = await app.request("/health");
@@ -109,9 +109,9 @@ describe("managed-auth middleware", () => {
   // to the Hono SPA fallback and served index.html without a token. That's a
   // stale unauthenticated namespace — close it.
   it("does NOT bypass auth for /ws/cli/ paths (stale namespace after stdio migration)", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
-    delete process.env.COMPANION_LOGIN_URL;
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
+    delete process.env.AGENTHANGAR_LOGIN_URL;
     const app = createTestApp();
 
     const res = await app.request("/ws/cli/abc-123");
@@ -119,9 +119,9 @@ describe("managed-auth middleware", () => {
   });
 
   it("returns 401 when no token is provided and no login URL is set", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
-    delete process.env.COMPANION_LOGIN_URL;
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
+    delete process.env.AGENTHANGAR_LOGIN_URL;
     const app = createTestApp();
 
     const res = await app.request("/api/sessions");
@@ -131,9 +131,9 @@ describe("managed-auth middleware", () => {
   });
 
   it("redirects when no token is provided and login URL is set", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
-    process.env.COMPANION_LOGIN_URL = "https://login.example.com";
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
+    process.env.AGENTHANGAR_LOGIN_URL = "https://login.example.com";
     const app = createTestApp();
 
     const res = await app.request("/api/sessions", { redirect: "manual" });
@@ -141,9 +141,9 @@ describe("managed-auth middleware", () => {
     expect(res.headers.get("location")).toBe("https://login.example.com");
   });
 
-  it("returns 500 when COMPANION_AUTH_SECRET is missing", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    delete process.env.COMPANION_AUTH_SECRET;
+  it("returns 500 when AGENTHANGAR_AUTH_SECRET is missing", async () => {
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    delete process.env.AGENTHANGAR_AUTH_SECRET;
     const app = createTestApp();
 
     // Provide a token so it gets past the "no token" check
@@ -154,20 +154,20 @@ describe("managed-auth middleware", () => {
   });
 
   it("allows access with a valid token in query param", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
     const app = createTestApp();
 
     const token = await createToken(TEST_SECRET, 60);
     const res = await app.request(`/api/sessions?token=${token}`);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
-    expect(res.headers.get("set-cookie")).toContain("companion_token=");
+    expect(res.headers.get("set-cookie")).toContain("agenthangar_token=");
   });
 
   it("sets a Secure auth cookie for HTTPS requests", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
     const app = createTestApp();
 
     const token = await createToken(TEST_SECRET, 60);
@@ -178,8 +178,8 @@ describe("managed-auth middleware", () => {
   });
 
   it("omits Secure on auth cookie for direct HTTP instance URLs", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
     const app = createTestApp();
 
     const token = await createToken(TEST_SECRET, 60);
@@ -190,8 +190,8 @@ describe("managed-auth middleware", () => {
   });
 
   it("persists query-token auth as cookie for follow-up requests", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
     const app = createTestApp();
 
     const token = await createToken(TEST_SECRET, 60);
@@ -210,22 +210,22 @@ describe("managed-auth middleware", () => {
   });
 
   it("allows access with a valid token in cookie", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
     const app = createTestApp();
 
     const token = await createToken(TEST_SECRET, 60);
     const res = await app.request("/api/sessions", {
-      headers: { cookie: `companion_token=${token}` },
+      headers: { cookie: `agenthangar_token=${token}` },
     });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
   });
 
   it("rejects an invalid token", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
-    delete process.env.COMPANION_LOGIN_URL;
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
+    delete process.env.AGENTHANGAR_LOGIN_URL;
     const app = createTestApp();
 
     const res = await app.request("/api/sessions?token=bad.token");
@@ -233,9 +233,9 @@ describe("managed-auth middleware", () => {
   });
 
   it("rejects an expired token", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
-    delete process.env.COMPANION_LOGIN_URL;
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
+    delete process.env.AGENTHANGAR_LOGIN_URL;
     const app = createTestApp();
 
     const token = await createToken(TEST_SECRET, -1);
@@ -244,9 +244,9 @@ describe("managed-auth middleware", () => {
   });
 
   it("redirects with invalid token when login URL is set", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
-    process.env.COMPANION_LOGIN_URL = "https://login.example.com";
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
+    process.env.AGENTHANGAR_LOGIN_URL = "https://login.example.com";
     const app = createTestApp();
 
     const res = await app.request("/api/sessions?token=bad.token", {
@@ -257,14 +257,14 @@ describe("managed-auth middleware", () => {
   });
 
   it("prefers query param over cookie when both are present", async () => {
-    process.env.COMPANION_AUTH_ENABLED = "1";
-    process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
+    process.env.AGENTHANGAR_AUTH_ENABLED = "1";
+    process.env.AGENTHANGAR_AUTH_SECRET = TEST_SECRET;
     const app = createTestApp();
 
     const validToken = await createToken(TEST_SECRET, 60);
     // Query has valid token, cookie has bad token — query wins.
     const res = await app.request(`/api/sessions?token=${validToken}`, {
-      headers: { cookie: "companion_token=bad.token" },
+      headers: { cookie: "agenthangar_token=bad.token" },
     });
     expect(res.status).toBe(200);
   });

@@ -569,7 +569,7 @@ function PromptEditorCard({
             <div className="rounded-2xl border border-dashed border-cc-border/70 bg-cc-bg/40 p-4">
               <p className="text-xs font-medium uppercase tracking-[0.24em] text-cc-muted">Storage</p>
               <p className="mt-2 text-sm leading-relaxed text-cc-muted">
-                Saved in <code className="text-[11px] text-cc-fg">~/.companion/prompts.json</code> and available from the composer autocomplete.
+                Saved in <code className="text-[11px] text-cc-fg">~/.agenthangar/prompts.json</code> and available from the composer autocomplete.
               </p>
             </div>
           </div>

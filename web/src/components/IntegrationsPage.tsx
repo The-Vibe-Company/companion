@@ -223,7 +223,7 @@ export function IntegrationsPage({ embedded = false }: IntegrationsPageProps) {
                 </h2>
               </div>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-cc-muted sm:text-[15px]">
-                Use Tailscale Funnel to expose your Companion over HTTPS with automatic TLS certificates.
+                Use Tailscale Funnel to expose your AgentHangar over HTTPS with automatic TLS certificates.
               </p>
               <div className="mt-4 inline-flex max-w-full items-center rounded-lg border border-cc-border/80 bg-black/10 px-3 py-1.5 text-xs text-cc-muted/95">
                 <span className="truncate">

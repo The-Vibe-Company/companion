@@ -108,11 +108,11 @@ describe("getAuth", () => {
     expect((auth1 as any).options.baseURL).toBe("http://localhost:3458");
 
     // With BETTER_AUTH_URL set
-    process.env.BETTER_AUTH_URL = "https://app.thecompanion.sh";
+    process.env.BETTER_AUTH_URL = "https://app.blocksec.ai";
     const mod2 = await freshImport();
     const auth2 = mod2.getAuth();
     expect((auth2 as any).options.baseURL).toBe(
-      "https://app.thecompanion.sh",
+      "https://app.blocksec.ai",
     );
   });
 

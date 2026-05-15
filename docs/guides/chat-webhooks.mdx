@@ -10,7 +10,7 @@ Chat webhooks let your agents respond to mentions and messages on external platf
 ## How it works
 
 1. An external platform sends a webhook when someone mentions your agent
-2. The Companion matches the mention to a configured agent
+2. AgentHangar matches the mention to a configured agent
 3. A new session is created and the agent processes the message
 4. The agent's response is posted back to the platform thread
 5. Follow-up messages in the same thread continue the conversation in the same session
@@ -24,25 +24,25 @@ You need two values from Linear:
 | Credential | Where to find it |
 |---|---|
 | **API key** | [Linear Settings > API](https://linear.app/settings/api) — create a personal or workspace key |
-| **Webhook secret** | [Linear Settings > Webhooks](https://linear.app/settings/api/webhooks) — create a webhook pointing to your Companion's URL |
+| **Webhook secret** | [Linear Settings > Webhooks](https://linear.app/settings/api/webhooks) — create a webhook pointing to your AgentHangar's URL |
 
 ### 2. Set environment variables
 
-Add these to your Companion server's environment:
+Add these to your AgentHangar server's environment:
 
 ```bash
 LINEAR_API_KEY=lin_api_...
 LINEAR_WEBHOOK_SECRET=lin_wh_...
 ```
 
-The Companion checks for these on startup. If both are present, the Linear chat adapter is initialized automatically.
+AgentHangar checks for these on startup. If both are present, the Linear chat adapter is initialized automatically.
 
 ### 3. Configure the Linear webhook
 
 In Linear's webhook settings, create a webhook pointing to:
 
 ```
-https://your-companion:6060/api/chat/webhooks/linear
+https://your-agenthangar:6060/api/chat/webhooks/linear
 ```
 
 <Warning>
@@ -62,7 +62,7 @@ The webhook endpoint (`/api/chat/webhooks/linear`) is intentionally **unauthenti
 
 ### 5. Test it
 
-In a Linear issue, post a comment mentioning your bot. The Companion picks up the webhook, finds the matching agent, starts a session, and posts the response back as a comment on the issue.
+In a Linear issue, post a comment mentioning your bot. AgentHangar picks up the webhook, finds the matching agent, starts a session, and posts the response back as a comment on the issue.
 
 ## Mention patterns
 
@@ -92,7 +92,7 @@ If a follow-up message arrives on a thread that has no active session (e.g., the
 
 ## Cloud relay
 
-If your Companion runs behind a firewall or NAT (no public URL), you can use the **cloud relay** — a Cloudflare Worker that forwards webhooks to your local Companion over a WebSocket tunnel.
+If your AgentHangar runs behind a firewall or NAT (no public URL), you can use the **cloud relay** — a Cloudflare Worker that forwards webhooks to your local AgentHangar over a WebSocket tunnel.
 
 ### 1. Deploy the relay worker
 
@@ -110,20 +110,20 @@ Set the `RELAY_SECRET` environment variable in your Cloudflare Worker settings:
 npx wrangler secret put RELAY_SECRET
 ```
 
-### 2. Connect the Companion
+### 2. Connect the AgentHangar
 
-Add these environment variables to your Companion server:
+Add these environment variables to your AgentHangar server:
 
 ```bash
-COMPANION_RELAY_URL=https://your-relay.your-worker.workers.dev
-COMPANION_RELAY_SECRET=your-shared-secret
+AGENTHANGAR_RELAY_URL=https://your-relay.your-worker.workers.dev
+AGENTHANGAR_RELAY_SECRET=your-shared-secret
 ```
 
-On startup, the Companion opens a WebSocket connection to the relay. When an external platform sends a webhook to the relay (`POST https://your-relay.workers.dev/webhooks/linear`), the relay forwards it to the Companion over the WebSocket, waits for the response, and returns it to the platform.
+On startup, the AgentHangar opens a WebSocket connection to the relay. When an external platform sends a webhook to the relay (`POST https://your-relay.workers.dev/webhooks/linear`), the relay forwards it to the AgentHangar over the WebSocket, waits for the response, and returns it to the platform.
 
 ### 3. Update the Linear webhook URL
 
-Point your Linear webhook to the relay instead of the Companion:
+Point your Linear webhook to the relay instead of the AgentHangar:
 
 ```
 https://your-relay.your-worker.workers.dev/webhooks/linear
@@ -131,7 +131,7 @@ https://your-relay.your-worker.workers.dev/webhooks/linear
 
 ### Relay health check
 
-Check if the Companion is connected to the relay:
+Check if the AgentHangar is connected to the relay:
 
 ```bash
 curl https://your-relay.your-worker.workers.dev/health
@@ -166,7 +166,7 @@ curl http://localhost:6060/api/chat/platforms \
 # {"platforms": ["linear"]}
 ```
 
-2. The `/api/chat/platforms` endpoint requires authentication. If it returns an empty array, check that your `LINEAR_API_KEY` and `LINEAR_WEBHOOK_SECRET` environment variables are set correctly and restart the Companion.
+2. The `/api/chat/platforms` endpoint requires authentication. If it returns an empty array, check that your `LINEAR_API_KEY` and `LINEAR_WEBHOOK_SECRET` environment variables are set correctly and restart the AgentHangar.
 
 3. Post a test comment in a Linear issue and watch the **Runs** page for a new execution.
 

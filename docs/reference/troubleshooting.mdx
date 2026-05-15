@@ -29,7 +29,7 @@ which codex
 
 ```bash
 lsof -i :6060
-the-companion --port 8080
+agenthangar --port 8080
 ```
 
 ## Authentication errors
@@ -45,7 +45,7 @@ cd web && bun run generate-token --force
 Or set explicitly:
 
 ```bash
-COMPANION_AUTH_TOKEN="my-token" the-companion
+AGENTHANGAR_AUTH_TOKEN="my-token" agenthangar
 ```
 
 ## CLI disconnects immediately
@@ -57,7 +57,7 @@ COMPANION_AUTH_TOKEN="my-token" the-companion
 - Working directory doesn't exist
 - Incompatible CLI version
 
-Check server logs: `the-companion logs`
+Check server logs: `agenthangar logs`
 
 ## Docker not detected
 
@@ -75,7 +75,7 @@ Check server logs: `the-companion logs`
 **Fix**:
 - Check your internet connection
 - Verify the image name is correct
-- Try pulling manually: `docker pull the-companion:latest`
+- Try pulling manually: `docker pull agenthangar:latest`
 - Check Docker Hub rate limits if pulling many images
 
 ## Worktree conflicts
@@ -86,7 +86,7 @@ Check server logs: `the-companion logs`
 - The branch is already checked out in the main working tree (git doesn't allow a branch in two worktrees)
 - The worktree path already exists on disk
 
-**Fix**: The Companion handles this automatically by creating a unique branch name (e.g., `main-wt-5391`). If you see persistent errors, check `~/.companion/worktrees.json` and remove stale entries.
+**Fix**: AgentHangar handles this automatically by creating a unique branch name (e.g., `main-wt-5391`). If you see persistent errors, check `~/.agenthangar/worktrees.json` and remove stale entries.
 
 ## Linear connection fails
 
@@ -105,7 +105,7 @@ Check server logs: `the-companion logs`
 - Check that the CLI is still installed and on `PATH`
 - Verify your authentication is still valid
 - Check that the working directory still exists
-- View server logs for relaunch errors: `the-companion logs`
+- View server logs for relaunch errors: `agenthangar logs`
 
 ## Browser WebSocket not connecting
 
@@ -122,19 +122,19 @@ Check server logs: `the-companion logs`
 When running as a background service:
 
 ```bash
-the-companion logs
+agenthangar logs
 ```
 
-When running in foreground, logs print to stdout. Check the session files directly at `$TMPDIR/vibe-sessions/` for raw state inspection.
+When running in foreground, logs print to stdout. Check the session files directly at `$TMPDIR/agenthangar-sessions/` for raw state inspection.
 
 ## Debugging with protocol recordings
 
-The Companion automatically records all WebSocket messages to JSONL files. Use recordings to debug issues, understand agent behavior, or build test fixtures.
+AgentHangar automatically records all WebSocket messages to JSONL files. Use recordings to debug issues, understand agent behavior, or build test fixtures.
 
 ### Where recordings are stored
 
-- **Directory**: `~/.companion/recordings/`
-- **Override**: Set `COMPANION_RECORDINGS_DIR` env var
+- **Directory**: `~/.agenthangar/recordings/`
+- **Override**: Set `AGENTHANGAR_RECORDINGS_DIR` env var
 - **File naming**: `{sessionId}_{backendType}_{ISO-timestamp}_{randomSuffix}.jsonl`
 
 ### Recording format
@@ -156,16 +156,16 @@ Each file is JSONL (one JSON object per line). The first line is a header with s
 
 ```bash
 # View the first 20 messages
-head -20 ~/.companion/recordings/SESSION_*.jsonl
+head -20 ~/.agenthangar/recordings/SESSION_*.jsonl
 
 # Filter for CLI messages only
-grep '"ch":"cli"' ~/.companion/recordings/SESSION_*.jsonl
+grep '"ch":"cli"' ~/.agenthangar/recordings/SESSION_*.jsonl
 
 # Find permission requests
-grep 'can_use_tool' ~/.companion/recordings/SESSION_*.jsonl
+grep 'can_use_tool' ~/.agenthangar/recordings/SESSION_*.jsonl
 
 # Pretty-print a single entry
-sed -n '5p' ~/.companion/recordings/SESSION_*.jsonl | python3 -m json.tool
+sed -n '5p' ~/.agenthangar/recordings/SESSION_*.jsonl | python3 -m json.tool
 ```
 
 ### Enable and disable
@@ -173,7 +173,7 @@ sed -n '5p' ~/.companion/recordings/SESSION_*.jsonl | python3 -m json.tool
 Recording is enabled by default. Disable it with:
 
 ```bash
-COMPANION_RECORD=0 the-companion
+AGENTHANGAR_RECORD=0 agenthangar
 ```
 
 ### Per-session control
@@ -196,4 +196,4 @@ curl -X POST http://localhost:6060/api/sessions/SESSION_ID/recording/start \
 
 ### Rotation
 
-Automatic cleanup triggers when total lines across all recordings exceed 1,000,000 (configurable with `COMPANION_RECORDINGS_MAX_LINES`).
+Automatic cleanup triggers when total lines across all recordings exceed 1,000,000 (configurable with `AGENTHANGAR_RECORDINGS_MAX_LINES`).

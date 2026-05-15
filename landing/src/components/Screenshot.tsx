@@ -13,11 +13,11 @@ export function Screenshot() {
                 <div className="w-2.5 h-2.5 rounded-full bg-[#c09f59]" />
                 <div className="w-2.5 h-2.5 rounded-full bg-[#5c8e83]" />
               </div>
-              <span className="font-mono-code text-[11px] text-cc-muted tracking-wide">companion.session.dashboard</span>
+              <span className="font-mono-code text-[11px] text-cc-muted tracking-wide">agenthangar.session.dashboard</span>
             </div>
             <img
               src="/screenshot.png"
-              alt="Companion WebUI with multi-session agent output, MCP controls, and integrated terminal"
+              alt="AgentHangar WebUI with multi-session agent output, MCP controls, and integrated terminal"
               className="w-full block object-cover"
               loading="lazy"
             />

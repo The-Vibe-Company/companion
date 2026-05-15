@@ -524,8 +524,8 @@ describe("restoreIfNeeded", () => {
 // cleanup() uses spawnSync (synchronous) because it runs before process.exit
 
 describe("cleanup", () => {
-  it("is a no-op when COMPANION_TAILSCALE_CLEANUP_ON_EXIT is not set", () => {
-    delete process.env.COMPANION_TAILSCALE_CLEANUP_ON_EXIT;
+  it("is a no-op when AGENTHANGAR_TAILSCALE_CLEANUP_ON_EXIT is not set", () => {
+    delete process.env.AGENTHANGAR_TAILSCALE_CLEANUP_ON_EXIT;
     mockResolveBinary.mockReturnValue("/usr/bin/tailscale");
 
     cleanup(3456);
@@ -534,8 +534,8 @@ describe("cleanup", () => {
     expect(mockSpawnSync).not.toHaveBeenCalled();
   });
 
-  it("stops funnel when COMPANION_TAILSCALE_CLEANUP_ON_EXIT=1", () => {
-    process.env.COMPANION_TAILSCALE_CLEANUP_ON_EXIT = "1";
+  it("stops funnel when AGENTHANGAR_TAILSCALE_CLEANUP_ON_EXIT=1", () => {
+    process.env.AGENTHANGAR_TAILSCALE_CLEANUP_ON_EXIT = "1";
     mockResolveBinary.mockReturnValue("/usr/bin/tailscale");
     mockSpawnSync.mockReturnValue({ status: 0 } as ReturnType<typeof spawnSync>);
 
@@ -548,6 +548,6 @@ describe("cleanup", () => {
       expect.any(Object),
     );
 
-    delete process.env.COMPANION_TAILSCALE_CLEANUP_ON_EXIT;
+    delete process.env.AGENTHANGAR_TAILSCALE_CLEANUP_ON_EXIT;
   });
 });

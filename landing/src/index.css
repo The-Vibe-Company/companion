@@ -168,27 +168,6 @@
   font-family: "Azeret Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-.clawd-eye {
-  transform-origin: center;
-  transform-box: fill-box;
-  will-change: transform;
-}
-
-.clawd-eye-left {
-  animation: eyeMoveLeft 3.8s steps(2, end) infinite;
-}
-
-.clawd-eye-right {
-  animation: eyeMoveRight 3.8s steps(2, end) infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .clawd-eye-left,
-  .clawd-eye-right {
-    animation: none;
-  }
-}
-
 body {
   margin: 0;
   color: var(--color-cc-fg);

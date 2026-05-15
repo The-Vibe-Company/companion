@@ -47,7 +47,7 @@ export function SandboxManager({ embedded = false }: Props) {
     api.getContainerStatus()
       .then((s) => setDockerAvailable(s.available))
       .catch(() => setDockerAvailable(false));
-    api.getImageStatus("the-companion:latest")
+    api.getImageStatus("agenthangar:latest")
       .then((state) => setBaseImageState(state))
       .catch(() => {});
     api.getHome()
@@ -67,7 +67,7 @@ export function SandboxManager({ embedded = false }: Props) {
 
     if (!baseImagePollRef.current) {
       baseImagePollRef.current = setInterval(() => {
-        api.getImageStatus("the-companion:latest")
+        api.getImageStatus("agenthangar:latest")
           .then((state) => setBaseImageState(state))
           .catch(() => {});
       }, 2000);
@@ -82,7 +82,7 @@ export function SandboxManager({ embedded = false }: Props) {
   }, [baseImageState]);
 
   function handlePullBaseImage() {
-    api.pullImage("the-companion:latest")
+    api.pullImage("agenthangar:latest")
       .then((res) => {
         if (res.state) setBaseImageState(res.state);
       })
@@ -201,7 +201,7 @@ export function SandboxManager({ embedded = false }: Props) {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-[11px] font-medium text-cc-muted">Base Image</span>
-            <code className="text-[10px] font-mono-code text-cc-fg">the-companion:latest</code>
+            <code className="text-[10px] font-mono-code text-cc-fg">agenthangar:latest</code>
             {baseImageState?.status === "ready" && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">
                 Ready
@@ -326,7 +326,7 @@ export function SandboxManager({ embedded = false }: Props) {
 
               <div className="flex items-center justify-between pt-1">
                 <p className="text-[11px] text-cc-muted">
-                  Stored in <code className="text-[10px]">~/.companion/sandboxes/</code>
+                  Stored in <code className="text-[10px]">~/.agenthangar/sandboxes/</code>
                 </p>
                 <button
                   onClick={handleCreate}

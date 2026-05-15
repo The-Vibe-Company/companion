@@ -16,7 +16,7 @@ import type { BackendType } from "./session-types.js";
 import type { RecorderManager } from "./recorder.js";
 import { ClaudeAdapter } from "./claude-adapter.js";
 import type { ClaudeAdapterStdinSink, ClaudeAdapterStdoutSource } from "./claude-adapter.js";
-import { COMPANION_APPEND_PROMPT } from "./claude-prompts.js";
+import { AGENTHANGAR_APPEND_PROMPT } from "./claude-prompts.js";
 import { CodexAdapter } from "./codex-adapter.js";
 import { resolveBinary, getEnrichedPath } from "./path-resolver.js";
 import { containerManager } from "./container-manager.js";
@@ -30,7 +30,7 @@ import {
 
 /** Whether WebSocket transport is enabled for Codex sessions. */
 function isCodexWsTransportEnabled(): boolean {
-  const val = (process.env.COMPANION_CODEX_TRANSPORT || "ws").toLowerCase();
+  const val = (process.env.AGENTHANGAR_CODEX_TRANSPORT || "ws").toLowerCase();
   return val === "ws" || val === "websocket";
 }
 
@@ -45,7 +45,7 @@ function isCodexWsTransportEnabled(): boolean {
  * wedges claude's Node + undici stack post-SSE-response — bytes arrive but
  * never get flushed back out to the parent. `node:child_process.spawn`
  * uses POSIX pipes, matching how a bash-launched child sees its stdio.
- * Toggle via `COMPANION_CLAUDE_USE_NODE_SPAWN=1` to compare.
+ * Toggle via `AGENTHANGAR_CLAUDE_USE_NODE_SPAWN=1` to compare.
  */
 function nodeSpawnAsBunSubprocess(
   cmd: string[],
@@ -207,7 +207,7 @@ function sanitizeSpawnArgsForLog(args: string[]): string {
 }
 
 const CODEX_WS_PROXY_PATH = fileURLToPath(new URL("./codex-ws-proxy.cjs", import.meta.url));
-const CODEX_CONTAINER_WS_PORT = Number(process.env.COMPANION_CODEX_CONTAINER_WS_PORT || "4502");
+const CODEX_CONTAINER_WS_PORT = Number(process.env.AGENTHANGAR_CODEX_CONTAINER_WS_PORT || "4502");
 
 export interface SdkSessionInfo {
   sessionId: string;
@@ -257,7 +257,7 @@ export interface SdkSessionInfo {
    * Companion env profile slug used to spawn this session. Persisted (unlike
    * the merged env vars themselves) so post-restart relaunch and route
    * lookups can re-derive the actual env via envManager.getEnv(slug). The
-   * slug is not a secret — it's a reference to ~/.companion/envs/<slug>.json.
+   * slug is not a secret — it's a reference to ~/.agenthangar/envs/<slug>.json.
    */
   envSlug?: string;
 
@@ -696,12 +696,12 @@ export class CliLauncher {
     const shouldDowngradeContainerBypass =
       isContainerized
       && options.permissionMode === "bypassPermissions"
-      && process.env.COMPANION_FORCE_BYPASS_IN_CONTAINER !== "1";
+      && process.env.AGENTHANGAR_FORCE_BYPASS_IN_CONTAINER !== "1";
     const shouldDowngradeRootBypass =
       !isContainerized
       && isRootProcess
       && options.permissionMode === "bypassPermissions"
-      && process.env.COMPANION_FORCE_BYPASS_AS_ROOT !== "1";
+      && process.env.AGENTHANGAR_FORCE_BYPASS_AS_ROOT !== "1";
 
     if (shouldDowngradeContainerBypass || shouldDowngradeRootBypass) {
       const scope = isContainerized ? "container" : "root";
@@ -726,8 +726,8 @@ export class CliLauncher {
     // covers the AskUserQuestion no-self-answer rule. Appended to Claude
     // Code's default system prompt rather than replacing it, so Claude's
     // own tool-use / cwd context stays intact.
-    if (COMPANION_APPEND_PROMPT.trim().length > 0) {
-      args.push("--append-system-prompt", COMPANION_APPEND_PROMPT);
+    if (AGENTHANGAR_APPEND_PROMPT.trim().length > 0) {
+      args.push("--append-system-prompt", AGENTHANGAR_APPEND_PROMPT);
     }
 
     if (options.model) {
@@ -839,9 +839,9 @@ export class CliLauncher {
     //
     // Container path keeps Bun.spawn since the docker exec wrapper layer
     // shields claude from the host stdio quirk. Set
-    // COMPANION_CLAUDE_USE_NODE_SPAWN=0 to force the Bun.spawn path back
+    // AGENTHANGAR_CLAUDE_USE_NODE_SPAWN=0 to force the Bun.spawn path back
     // (escape hatch + how the existing test suite stubs spawn).
-    const useNodeSpawn = !isContainerized && process.env.COMPANION_CLAUDE_USE_NODE_SPAWN !== "0";
+    const useNodeSpawn = !isContainerized && process.env.AGENTHANGAR_CLAUDE_USE_NODE_SPAWN !== "0";
 
     console.log(
       `[cli-launcher] Spawning session ${sessionId}${isContainerized ? " (container)" : ""}` +
@@ -870,7 +870,7 @@ export class CliLauncher {
     // and respawns with --resume <cliSessionId>.
     const hangWatchdogMs = Math.max(
       0,
-      parseInt(process.env.COMPANION_CLAUDE_HANG_WATCHDOG_MS ?? "", 10) || 90_000,
+      parseInt(process.env.AGENTHANGAR_CLAUDE_HANG_WATCHDOG_MS ?? "", 10) || 90_000,
     );
     const adapter = new ClaudeAdapter(sessionId, {
       recorder: this.recorder,
@@ -923,7 +923,7 @@ export class CliLauncher {
 
   /**
    * Spawn a Codex app-server subprocess for a session.
-   * Transport (stdio vs WebSocket) is selected by `COMPANION_CODEX_TRANSPORT`.
+   * Transport (stdio vs WebSocket) is selected by `AGENTHANGAR_CODEX_TRANSPORT`.
    */
   private prepareCodexHome(codexHome: string): void {
     mkdirSync(codexHome, { recursive: true });
@@ -977,8 +977,8 @@ export class CliLauncher {
    */
   private async spawnCodexWs(sessionId: string, info: SdkSessionInfo, options: LaunchOptions): Promise<void> {
     const isContainerized = !!options.containerId;
-    const connectTimeoutMs = Math.max(1000, parseInt(process.env.COMPANION_CODEX_WS_CONNECT_TIMEOUT_MS ?? "", 10) || 30000);
-    const pongTimeoutMs = Math.max(1000, parseInt(process.env.COMPANION_CODEX_PONG_TIMEOUT_MS ?? "", 10) || 30000);
+    const connectTimeoutMs = Math.max(1000, parseInt(process.env.AGENTHANGAR_CODEX_WS_CONNECT_TIMEOUT_MS ?? "", 10) || 30000);
+    const pongTimeoutMs = Math.max(1000, parseInt(process.env.AGENTHANGAR_CODEX_PONG_TIMEOUT_MS ?? "", 10) || 30000);
 
     let binary = options.codexBinary || "codex";
     if (!isContainerized) {

@@ -100,7 +100,7 @@ export function TailscalePage({ embedded = false }: TailscalePageProps) {
           <div>
             <h1 className="text-xl font-semibold text-cc-fg">Tailscale Settings</h1>
             <p className="mt-1 text-sm text-cc-muted">
-              Expose your Companion over HTTPS with Tailscale Funnel.
+              Expose your AgentHangar over HTTPS with Tailscale Funnel.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -145,7 +145,7 @@ export function TailscalePage({ embedded = false }: TailscalePageProps) {
                 HTTPS access in one click
               </h2>
               <p className="mt-1.5 text-sm text-cc-muted max-w-2xl">
-                Tailscale Funnel exposes your Companion to the internet over HTTPS with automatic TLS certificates. No configuration needed.
+                Tailscale Funnel exposes your AgentHangar to the internet over HTTPS with automatic TLS certificates. No configuration needed.
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
                 <span className="px-2 py-1 rounded-md bg-cc-hover text-cc-muted">Automatic TLS</span>
@@ -221,7 +221,7 @@ export function TailscalePage({ embedded = false }: TailscalePageProps) {
             <div className="space-y-3">
               <p className="text-sm text-cc-muted">
                 Tailscale is connected as <span className="font-medium text-cc-fg">{status.dnsName}</span>.
-                Enable Funnel to expose your Companion over HTTPS.
+                Enable Funnel to expose your AgentHangar over HTTPS.
               </p>
 
               {status.needsOperatorMode && !status.error && (
@@ -256,7 +256,7 @@ export function TailscalePage({ embedded = false }: TailscalePageProps) {
           {!loading && status && status.installed && status.connected && status.funnelActive && (
             <div className="space-y-3">
               <p className="text-sm text-cc-muted">
-                Funnel is active. Your Companion is accessible at:
+                Funnel is active. Your AgentHangar is accessible at:
               </p>
               <div className="flex items-center gap-2">
                 <a

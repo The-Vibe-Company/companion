@@ -1,7 +1,7 @@
 /**
  * PATH discovery and binary resolution for service environments.
  *
- * When The Companion runs as a macOS launchd or Linux systemd service, it inherits
+ * When AgentHangar runs as a macOS launchd or Linux systemd service, it inherits
  * a restricted PATH that omits directories from version managers (nvm, fnm, volta,
  * mise, etc.) and user-local installs (~/.local/bin, ~/.cargo/bin). This module
  * captures the user's real shell PATH at runtime and provides binary resolution

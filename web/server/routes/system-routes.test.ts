@@ -413,7 +413,7 @@ describe("POST /api/update", () => {
 
     // The install spawn should have been called
     expect(mockSpawn).toHaveBeenCalledWith(
-      ["bun", "install", "-g", "the-companion@2.0.0"],
+      ["bun", "install", "-g", "agenthangar@2.0.0"],
       expect.anything(),
     );
 
