@@ -428,6 +428,7 @@ export interface AppSettings {
   anthropicApiKeyConfigured: boolean;
   anthropicModel: string;
   claudeCodeOAuthTokenConfigured: boolean;
+  claudeDeviceAuthConfigured: boolean;
   openaiApiKeyConfigured: boolean;
   codexDeviceAuthConfigured: boolean;
   onboardingCompleted: boolean;

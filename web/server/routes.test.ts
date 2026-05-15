@@ -184,6 +184,10 @@ vi.mock("./codex-container-auth.js", () => ({
   hasContainerCodexAuth: vi.fn(() => false),
 }));
 
+vi.mock("./claude-container-auth.js", () => ({
+  hasContainerClaudeAuth: vi.fn(() => false),
+}));
+
 const mockDiscoverClaudeSessions = vi.hoisted(() => vi.fn(
   (_options?: { limit?: number }) =>
     [] as Array<{
@@ -1718,6 +1722,7 @@ describe("GET /api/settings", () => {
       anthropicApiKeyConfigured: true,
       anthropicModel: "claude-sonnet-4-6",
       claudeCodeOAuthTokenConfigured: false,
+      claudeDeviceAuthConfigured: false,
       openaiApiKeyConfigured: false,
       codexDeviceAuthConfigured: false,
       onboardingCompleted: false,
@@ -1774,6 +1779,7 @@ describe("GET /api/settings", () => {
       anthropicApiKeyConfigured: false,
       anthropicModel: "openai/gpt-4o-mini",
       claudeCodeOAuthTokenConfigured: false,
+      claudeDeviceAuthConfigured: false,
       openaiApiKeyConfigured: false,
       codexDeviceAuthConfigured: false,
       onboardingCompleted: false,
@@ -1890,6 +1896,7 @@ describe("PUT /api/settings", () => {
       anthropicApiKeyConfigured: true,
       anthropicModel: "claude-sonnet-4-6",
       claudeCodeOAuthTokenConfigured: false,
+      claudeDeviceAuthConfigured: false,
       openaiApiKeyConfigured: false,
       codexDeviceAuthConfigured: false,
       onboardingCompleted: false,

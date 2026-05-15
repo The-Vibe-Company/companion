@@ -2,6 +2,7 @@ import type { Hono } from "hono";
 import { DEFAULT_ANTHROPIC_MODEL, getSettings, updateSettings, type UpdateChannel } from "../settings-manager.js";
 import { linearCache } from "../linear-cache.js";
 import { listConnections } from "../linear-connections.js";
+import { hasContainerClaudeAuth } from "../claude-container-auth.js";
 import { hasContainerCodexAuth } from "../codex-container-auth.js";
 
 export function registerSettingsRoutes(api: Hono): void {
@@ -12,6 +13,7 @@ export function registerSettingsRoutes(api: Hono): void {
       anthropicApiKeyConfigured: !!settings.anthropicApiKey.trim(),
       anthropicModel: settings.anthropicModel || DEFAULT_ANTHROPIC_MODEL,
       claudeCodeOAuthTokenConfigured: !!settings.claudeCodeOAuthToken.trim(),
+      claudeDeviceAuthConfigured: hasContainerClaudeAuth(),
       openaiApiKeyConfigured: !!settings.openaiApiKey.trim(),
       codexDeviceAuthConfigured: hasContainerCodexAuth(),
       onboardingCompleted: settings.onboardingCompleted,
@@ -217,6 +219,7 @@ export function registerSettingsRoutes(api: Hono): void {
       anthropicApiKeyConfigured: !!settings.anthropicApiKey.trim(),
       anthropicModel: settings.anthropicModel || DEFAULT_ANTHROPIC_MODEL,
       claudeCodeOAuthTokenConfigured: !!settings.claudeCodeOAuthToken.trim(),
+      claudeDeviceAuthConfigured: hasContainerClaudeAuth(),
       openaiApiKeyConfigured: !!settings.openaiApiKey.trim(),
       codexDeviceAuthConfigured: hasContainerCodexAuth(),
       onboardingCompleted: settings.onboardingCompleted,

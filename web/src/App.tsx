@@ -155,7 +155,12 @@ export default function App() {
     if (!isAuthenticated) return;
     api.getSettings().then((s) => {
       if (s.publicUrl) useStore.getState().setPublicUrl(s.publicUrl);
-      if (!s.onboardingCompleted) {
+      const hasUsableProviderAuth =
+        s.claudeCodeOAuthTokenConfigured
+        || s.claudeDeviceAuthConfigured
+        || s.openaiApiKeyConfigured
+        || s.codexDeviceAuthConfigured;
+      if (!s.onboardingCompleted && !hasUsableProviderAuth) {
         setShowOnboarding(true);
       }
     }).catch(() => {});

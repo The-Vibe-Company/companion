@@ -22,7 +22,7 @@ import "@testing-library/jest-dom";
 vi.mock("../api.js", () => ({
   api: {
     updateSettings: vi.fn().mockResolvedValue({}),
-    getSettings: vi.fn().mockResolvedValue({ codexDeviceAuthConfigured: false }),
+    getSettings: vi.fn(),
   },
 }));
 
@@ -32,10 +32,37 @@ import { api } from "../api.js";
 const mockUpdateSettings = vi.mocked(api.updateSettings);
 const mockGetSettings = vi.mocked(api.getSettings);
 
+function mockSettings(overrides: Partial<Awaited<ReturnType<typeof api.getSettings>>> = {}) {
+  return {
+    anthropicApiKeyConfigured: false,
+    anthropicModel: "claude-sonnet-4-6",
+    claudeCodeOAuthTokenConfigured: false,
+    claudeDeviceAuthConfigured: false,
+    openaiApiKeyConfigured: false,
+    codexDeviceAuthConfigured: false,
+    onboardingCompleted: false,
+    linearApiKeyConfigured: false,
+    linearConnectionCount: 0,
+    linearAutoTransition: false,
+    linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateName: "",
+    linearOAuthConfigured: false,
+    linearOAuthCredentialsSaved: false,
+    aiValidationEnabled: false,
+    aiValidationAutoApprove: true,
+    aiValidationAutoDeny: false,
+    publicUrl: "",
+    updateChannel: "stable" as const,
+    dockerAutoUpdate: false,
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockUpdateSettings.mockResolvedValue({} as ReturnType<typeof api.updateSettings> extends Promise<infer T> ? T : never);
-  mockGetSettings.mockResolvedValue({ codexDeviceAuthConfigured: false } as ReturnType<typeof api.getSettings> extends Promise<infer T> ? T : never);
+  mockGetSettings.mockResolvedValue(mockSettings());
 });
 
 describe("OnboardingModal", () => {
@@ -51,6 +78,18 @@ describe("OnboardingModal", () => {
     fireEvent.click(screen.getByText("Claude Code"));
     expect(screen.getByText("Set up Claude Code")).toBeInTheDocument();
     expect(screen.getByText("claude setup-token")).toBeInTheDocument();
+  });
+
+  it("shows detected Claude auth instead of forcing token setup", async () => {
+    mockGetSettings.mockResolvedValue(mockSettings({ claudeDeviceAuthConfigured: true }));
+
+    render(<OnboardingModal onComplete={vi.fn()} />);
+    fireEvent.click(screen.getByText("Claude Code"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Local Claude Code auth found.")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("claude setup-token")).not.toBeInTheDocument();
   });
 
   it("navigates to Codex setup when Codex is clicked", () => {
@@ -235,7 +274,7 @@ describe("OnboardingModal", () => {
 
   // Verifies "I've logged in" button checks device auth via getSettings
   it("checks Codex device auth when 'I've logged in' is clicked", async () => {
-    mockGetSettings.mockResolvedValueOnce({ codexDeviceAuthConfigured: true } as ReturnType<typeof api.getSettings> extends Promise<infer T> ? T : never);
+    mockGetSettings.mockResolvedValue(mockSettings({ codexDeviceAuthConfigured: true }));
 
     render(<OnboardingModal onComplete={vi.fn()} />);
 
@@ -256,7 +295,7 @@ describe("OnboardingModal", () => {
 
   // Verifies error when device auth not found
   it("shows error when Codex device auth is not configured", async () => {
-    mockGetSettings.mockResolvedValueOnce({ codexDeviceAuthConfigured: false } as ReturnType<typeof api.getSettings> extends Promise<infer T> ? T : never);
+    mockGetSettings.mockResolvedValue(mockSettings({ codexDeviceAuthConfigured: false }));
 
     render(<OnboardingModal onComplete={vi.fn()} />);
 

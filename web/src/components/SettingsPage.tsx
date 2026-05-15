@@ -62,8 +62,10 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
   // Provider tokens state
   const [claudeCodeToken, setClaudeCodeToken] = useState("");
   const [claudeCodeTokenConfigured, setClaudeCodeTokenConfigured] = useState(false);
+  const [claudeDeviceAuthConfigured, setClaudeDeviceAuthConfigured] = useState(false);
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [openaiApiKeyConfigured, setOpenaiApiKeyConfigured] = useState(false);
+  const [codexDeviceAuthConfigured, setCodexDeviceAuthConfigured] = useState(false);
   const [providerSaving, setProviderSaving] = useState(false);
   const [providerSaved, setProviderSaved] = useState(false);
   const [providerError, setProviderError] = useState("");
@@ -131,7 +133,9 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
       .then((s) => {
         setConfigured(s.anthropicApiKeyConfigured);
         setClaudeCodeTokenConfigured(s.claudeCodeOAuthTokenConfigured);
+        setClaudeDeviceAuthConfigured(s.claudeDeviceAuthConfigured);
         setOpenaiApiKeyConfigured(s.openaiApiKeyConfigured);
+        setCodexDeviceAuthConfigured(s.codexDeviceAuthConfigured);
         setAnthropicModel(s.anthropicModel || "claude-sonnet-4-6");
         if (typeof s.aiValidationEnabled === "boolean") setAiValidationEnabled(s.aiValidationEnabled);
         if (typeof s.aiValidationAutoApprove === "boolean") setAiValidationAutoApprove(s.aiValidationAutoApprove);
@@ -615,7 +619,11 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
                   />
                   <p className="text-xs text-cc-muted">
-                    {claudeCodeTokenConfigured ? "Claude Code token configured" : "Claude Code token not configured"}
+                    {claudeCodeTokenConfigured
+                      ? "Claude Code token configured"
+                      : claudeDeviceAuthConfigured
+                        ? "Local Claude Code auth detected"
+                        : "Claude Code token not configured"}
                   </p>
                 </div>
 
@@ -638,7 +646,11 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
                   />
                   <p className="text-xs text-cc-muted">
-                    {openaiApiKeyConfigured ? "OpenAI key configured" : "OpenAI key not configured"}
+                    {openaiApiKeyConfigured
+                      ? "OpenAI key configured"
+                      : codexDeviceAuthConfigured
+                        ? "Local Codex auth detected"
+                        : "OpenAI key not configured"}
                   </p>
                 </div>
 
@@ -667,7 +679,9 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                       if (openaiApiKey.trim()) payload.openaiApiKey = openaiApiKey.trim();
                       const res = await api.updateSettings(payload);
                       setClaudeCodeTokenConfigured(res.claudeCodeOAuthTokenConfigured);
+                      setClaudeDeviceAuthConfigured(res.claudeDeviceAuthConfigured);
                       setOpenaiApiKeyConfigured(res.openaiApiKeyConfigured);
+                      setCodexDeviceAuthConfigured(res.codexDeviceAuthConfigured);
                       setClaudeCodeToken("");
                       setOpenaiApiKey("");
                       setProviderSaved(true);

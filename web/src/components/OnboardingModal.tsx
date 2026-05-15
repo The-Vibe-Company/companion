@@ -77,6 +77,19 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [step]);
 
+  useEffect(() => {
+    api.getSettings()
+      .then((settings) => {
+        setClaudeConfigured(
+          settings.claudeCodeOAuthTokenConfigured || settings.claudeDeviceAuthConfigured,
+        );
+        setCodexConfigured(
+          settings.openaiApiKeyConfigured || settings.codexDeviceAuthConfigured,
+        );
+      })
+      .catch(() => {});
+  }, []);
+
   const handleSaveClaude = useCallback(async () => {
     if (!claudeToken.trim()) {
       setStep("codex");
@@ -228,6 +241,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
           {step === "claude" && (
             <ClaudeSetupStep
               token={claudeToken}
+              detectedAuth={claudeConfigured}
               onTokenChange={setClaudeToken}
               onSave={handleSaveClaude}
               onSkip={() => goToStep("codex")}
@@ -355,6 +369,7 @@ function WelcomeStep({
 
 function ClaudeSetupStep({
   token,
+  detectedAuth,
   onTokenChange,
   onSave,
   onSkip,
@@ -362,6 +377,7 @@ function ClaudeSetupStep({
   error,
 }: {
   token: string;
+  detectedAuth: boolean;
   onTokenChange: (v: string) => void;
   onSave: () => void;
   onSkip: () => void;
@@ -385,32 +401,40 @@ function ClaudeSetupStep({
           Set up Claude Code
         </h2>
         <p className="text-sm text-cc-muted mt-1.5 leading-relaxed">
-          Generate an OAuth token by running this in your terminal:
+          {detectedAuth
+            ? "AgentHangar detected an existing Claude Code login on this machine. You can continue or paste an override token."
+            : "Generate an OAuth token by running this in your terminal:"}
         </p>
       </div>
 
       {/* Terminal-style command block */}
-      <div
-        className="rounded-lg overflow-hidden mb-4 border border-cc-border"
-        style={{ background: "var(--color-cc-code-bg)" }}
-      >
+      {detectedAuth ? (
+        <div className="mb-4 rounded-lg border border-cc-success/30 bg-cc-success/10 px-3 py-2 text-xs text-cc-success">
+          Local Claude Code auth found.
+        </div>
+      ) : (
         <div
-          className="flex items-center justify-between px-3 py-1.5 border-b border-cc-border"
+          className="rounded-lg overflow-hidden mb-4 border border-cc-border"
+          style={{ background: "var(--color-cc-code-bg)" }}
         >
-          <div className="flex items-center gap-1.5" aria-hidden="true">
-            <div className="w-[7px] h-[7px] rounded-full bg-cc-error opacity-60" />
-            <div className="w-[7px] h-[7px] rounded-full bg-cc-warning opacity-60" />
-            <div className="w-[7px] h-[7px] rounded-full bg-cc-success opacity-60" />
+          <div
+            className="flex items-center justify-between px-3 py-1.5 border-b border-cc-border"
+          >
+            <div className="flex items-center gap-1.5" aria-hidden="true">
+              <div className="w-[7px] h-[7px] rounded-full bg-cc-error opacity-60" />
+              <div className="w-[7px] h-[7px] rounded-full bg-cc-warning opacity-60" />
+              <div className="w-[7px] h-[7px] rounded-full bg-cc-success opacity-60" />
+            </div>
+            <CopyButton text="claude setup-token" />
           </div>
-          <CopyButton text="claude setup-token" />
-        </div>
-        <div className="px-3.5 py-3">
-          <div className="flex items-center gap-2">
-            <span className="text-cc-muted text-xs font-mono-code select-none" aria-hidden="true">$</span>
-            <code className="text-[13px] font-mono-code text-cc-fg select-all">claude setup-token</code>
+          <div className="px-3.5 py-3">
+            <div className="flex items-center gap-2">
+              <span className="text-cc-muted text-xs font-mono-code select-none" aria-hidden="true">$</span>
+              <code className="text-[13px] font-mono-code text-cc-fg select-all">claude setup-token</code>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Token input */}
       <div className="mb-4">
