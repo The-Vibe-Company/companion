@@ -1009,6 +1009,33 @@ describe("POST /api/sessions/:id/sensitive-write", () => {
     expect(await readFileAsync(victim, "utf8")).toBe("ORIGINAL");
   });
 
+  it("returns 403 when file_path is a DANGLING symlink whose target outside the sandbox does not exist yet", async () => {
+    // Edge case that the realpath-prefix check alone misses:
+    //   - cwd/link is a symlink → outside/new.txt
+    //   - outside/new.txt does NOT exist yet
+    // realpathSync(cwd/link) fails because the leaf target is missing, so
+    // resolveRealPath falls back to (realpath of parent) + appended "link",
+    // which is back inside cwd as a string and passes the prefix check.
+    // Then writeFileSync follows the symlink at write time and CREATES the
+    // ghost target outside the sandbox. The leaf must be lstat-rejected.
+    const ghostTarget = join(outsideDir, "ghost.txt");
+    const symlinkPath = join(realTmpDir, "dangling");
+    symlinkSync(ghostTarget, symlinkPath);
+    // Pre-condition: the ghost target really does not exist yet.
+    expect(() => statSync(ghostTarget)).toThrow(/ENOENT/);
+
+    const res = await app.request("/api/sessions/s1/sensitive-write", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file_path: symlinkPath, content: "PWNED" }),
+    });
+
+    expect(res.status).toBe(403);
+    // Ghost target must still not exist — the write was refused before
+    // the kernel had a chance to follow the symlink and create it.
+    expect(() => statSync(ghostTarget)).toThrow(/ENOENT/);
+  });
+
   it("returns 403 when an intermediate path component is a symlinked directory pointing outside the sandbox", async () => {
     // cwd/escape -> /tmp/outside, so cwd/escape/file.txt is really /tmp/outside/file.txt
     const escapeDir = join(realTmpDir, "escape");

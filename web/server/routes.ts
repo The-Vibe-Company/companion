@@ -7,7 +7,7 @@ import { join, dirname, basename, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { COMPANION_HOME } from "./paths.js";
-import { existsSync, readFileSync, writeFileSync, mkdirSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, realpathSync, lstatSync } from "node:fs";
 import { findTeamForCliSession } from "./team-config-reader.js";
 import type { SessionOrchestrator } from "./session-orchestrator.js";
 import type { CliLauncher } from "./cli-launcher.js";
@@ -861,6 +861,31 @@ export function createRoutes(
       return c.json({
         error: `Refused: ${filePath} is outside the session cwd, ~/.claude, and ~/.companion`,
       }, 403);
+    }
+
+    // SECURITY: reject if the LEAF is a symbolic link, including a dangling
+    // one whose target does not exist yet. resolveRealPath() above already
+    // collapses existing-target symlinks in the prefix and at the leaf —
+    // those land outside the sandbox after realpath and fail the prefix
+    // check. But a dangling-target leaf is invisible to realpath, so
+    // resolveRealPath falls back to (parent realpath + appended leaf name)
+    // which stays inside the sandbox as a string — and then writeFileSync
+    // follows the symlink and creates the file at the outside target.
+    // lstatSync does not follow symlinks, so it can see the dangling link.
+    try {
+      const leaf = lstatSync(filePath);
+      if (leaf.isSymbolicLink()) {
+        return c.json({
+          error: `Refused: ${filePath} is a symbolic link`,
+        }, 403);
+      }
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+        return c.json({
+          error: `lstat failed for ${filePath}: ${(err as Error).message}`,
+        }, 500);
+      }
+      // ENOENT just means the target doesn't exist yet — fine, we'll create it.
     }
 
     // Create parent dir if missing (mirrors `mkdir -p` so the model doesn't
