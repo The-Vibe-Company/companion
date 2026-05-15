@@ -441,9 +441,9 @@ describe("CLI handlers", () => {
 
   it("handleCLIOpen: flushes pending messages immediately", () => {
     // Per the SDK protocol, the first user message triggers system.init,
-    // so queued messages must be flushed as soon as the CLI WebSocket connects
-    // (not deferred until system.init, which would create a deadlock for
-    // slow-starting sessions like Docker containers).
+    // so queued messages must be flushed as soon as the CLI's stdio pipe is
+    // attached (not deferred until system.init, which would create a
+    // deadlock for slow-starting sessions like Docker containers).
     const browser = makeBrowserSocket("s1");
     bridge.handleBrowserOpen(browser, "s1");
 

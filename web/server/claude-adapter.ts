@@ -270,7 +270,7 @@ export class ClaudeAdapter implements IBackendAdapter {
   // -- IBackendAdapter: Raw message ingestion from CLI ------------------------
 
   /**
-   * Called when raw NDJSON data arrives from the CLI WebSocket.
+   * Called when raw NDJSON data arrives from the CLI's stdout pipe.
    * Parses lines, deduplicates, and routes each message.
    */
   handleRawMessage(data: string): void {

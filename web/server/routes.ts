@@ -219,7 +219,7 @@ export function createRoutes(
     return c.json({ token });
   });
 
-  // ─── SDK Sessions (--sdk-url) ─────────────────────────────────────
+  // ─── Sessions ─────────────────────────────────────────────────────
 
   api.post("/sessions/create", async (c) => {
     const body = await c.req.json().catch(() => ({}));

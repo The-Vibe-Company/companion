@@ -4,10 +4,10 @@ import { useState } from "react";
  * Renders Claude's AskUserQuestion tool input as a clickable, multi-question
  * survey. Used by both:
  *   1. PermissionBanner — when the tool flows through the can_use_tool
- *      permission gate (legacy --sdk-url protocol path).
+ *      permission-gate path (server holds an open permission_request).
  *   2. ToolBlock (AskUserQuestionToolBlock wrapper) — when the tool appears
- *      as a regular `tool_use` in the assistant message stream (the
- *      stdio-mode path; CLI doesn't gate it).
+ *      as a regular `tool_use` in the assistant message stream (CLI didn't
+ *      gate it on the server side).
  *
  * The component is purely presentational: parent decides what to do with
  * `onSelect(answers)`. Permission path translates it to a permission_response;

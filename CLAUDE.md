@@ -4,8 +4,14 @@ This file provides guidance to Claude Code & Codex when working with code in thi
 
 ## What This Is
 
-The Companion — a web UI for Claude Code & Codex. 
-It reverse-engineers the undocumented `--sdk-url` WebSocket protocol in the Claude Code CLI to provide a browser-based interface for running multiple Claude Code sessions with streaming, tool call visibility, and permission control.
+The Companion — a web UI for Claude Code & Codex.
+It runs each CLI as a child process and exchanges NDJSON over the
+CLI's stdin/stdout pipes (Claude with `--print --input-format
+stream-json --output-format stream-json`, Codex via `app-server`), so
+browsers can run multiple sessions with streaming output, tool-call
+visibility, and explicit permission control. Originally bootstrapped
+off Claude's `--sdk-url` WebSocket transport — that path is gone now;
+see `web/server/claude-adapter.ts`.
 
 ## Development Commands
 

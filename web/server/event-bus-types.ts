@@ -15,7 +15,8 @@ export interface CompanionEventMap {
   /** CLI/Codex process exited. */
   "session:exited": { sessionId: string; exitCode: number | null };
 
-  /** CLI WebSocket disconnected and a browser needs a relaunch. */
+  /** The CLI child process disconnected (its stdio pipe closed or it exited)
+   *  and a browser is still attached, so the orchestrator may want to relaunch. */
   "session:relaunch-needed": { sessionId: string };
 
   /** Idle-kill threshold reached with no connected browsers. */

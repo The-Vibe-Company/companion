@@ -960,7 +960,7 @@ export function Playground() {
         {/* ─── AskUserQuestion ──────────────────────────────── */}
         <Section
           title="AskUserQuestion"
-          description="Interactive questions with selectable options. Permission-banner path (legacy --sdk-url) and tool_use path (stdio) share the same core display."
+          description="Interactive questions with selectable options. Permission-banner path (can_use_tool gate) and tool_use path (inline in assistant stream) share the same core display."
         >
           <div className="space-y-4">
             <Card label="Single question (permission_request path)">

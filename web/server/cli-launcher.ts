@@ -648,7 +648,8 @@ export class CliLauncher {
   }
 
   /**
-   * Get all sessions in "starting" state (awaiting CLI WebSocket connection).
+   * Get all sessions in "starting" state (spawn issued, awaiting the child
+   * process's first system.init message over the stdio pipe).
    */
   getStartingSessions(): SdkSessionInfo[] {
     return Array.from(this.sessions.values()).filter((s) => s.state === "starting");
