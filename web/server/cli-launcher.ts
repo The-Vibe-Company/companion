@@ -1258,8 +1258,9 @@ export class CliLauncher {
   }
 
   /**
-   * Spawn Codex with stdio transport (legacy).
-   * Unlike Claude Code (which connects back via WebSocket), Codex uses stdin/stdout.
+   * Spawn Codex with stdio transport (Codex's primary transport).
+   * Companion attaches a CodexAdapter directly to the spawned process's
+   * stdin/stdout — same shape as the Claude stdio path post-migration.
    */
   private spawnCodexStdio(sessionId: string, info: SdkSessionInfo, options: LaunchOptions): void {
     const isContainerized = !!options.containerId;

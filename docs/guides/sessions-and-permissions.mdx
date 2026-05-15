@@ -25,9 +25,9 @@ Click **Start** to launch the session.
 
 ### What happens at creation
 
-1. The server spawns a CLI subprocess (Claude Code or Codex) with `--sdk-url` pointing back to the server
-2. The CLI connects to the server over WebSocket
-3. The server bridges messages between the CLI and your browser
+1. The server spawns a CLI subprocess (Claude Code with `--print --input-format stream-json --output-format stream-json`, or Codex with `app-server`)
+2. The server attaches its backend adapter to the child's stdin/stdout and exchanges NDJSON over the pipes
+3. The server bridges those messages out to your browser over WebSocket
 4. If a branch is selected, the server checks it out (or creates a worktree)
 5. If a Docker environment is configured, the session runs inside a container
 

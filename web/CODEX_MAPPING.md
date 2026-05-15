@@ -15,10 +15,16 @@ The Codex adapter communicates with the `codex app-server` binary via stdin/stdo
 
 | | Claude Code | Codex |
 |---|---|---|
-| Transport | WebSocket (CLI connects back via `--sdk-url`) | stdio (server spawns `codex app-server`) |
+| Transport | stdio (server spawns `claude --print --input-format stream-json --output-format stream-json`) | stdio (server spawns `codex app-server`) |
 | Protocol | NDJSON (newline-delimited JSON) | JSON-RPC 2.0 (newline-delimited) |
-| Connection | CLI connects TO server | Server spawns and owns process |
-| Reconnect | CLI has built-in WS reconnection | Respawn process, use `thread/resume` |
+| Connection | Server spawns and owns process | Server spawns and owns process |
+| Reconnect | Respawn process, use `--resume <session_id>` | Respawn process, use `thread/resume` |
+
+> Historical note: Claude used to connect back to the server over a
+> `--sdk-url` WebSocket. Companion 0.95+ moved to stdio after Claude
+> Code 2.1.121 added hostname validation that broke the WS path. The
+> "WebSocket reconnect" semantics are gone — both backends now use the
+> "respawn + resume" pattern.
 
 ## Initialization Sequence
 

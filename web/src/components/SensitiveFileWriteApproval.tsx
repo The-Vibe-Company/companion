@@ -26,8 +26,8 @@ export function isSensitiveFileRejection(content: string): boolean {
  * Inline approval card rendered in place of the misleading "Claude
  * requested permissions..." tool_result. Approve writes the file out-of-
  * band via the companion server (which sandboxes the path to session.cwd
- * + ~/.claude/* + ~/.companion/*) and injects a follow-up user_message
- * so the model stops retrying. Reject sends a "skip this" user_message.
+ * and ~/.claude/) and injects a follow-up user_message so the model stops
+ * retrying. Reject sends a "skip this" user_message.
  */
 export function SensitiveFileWriteApproval({
   content,
