@@ -1781,6 +1781,39 @@ describe("SessionOrchestrator", () => {
       expect(deps.launcher.relaunch).toHaveBeenCalledWith("s1");
     });
 
+    it("explicit relaunch clears the intentional-kill marker so a LATER crash can be relaunched", async () => {
+      // Regression: after an intentional kill (idle-kill / hang-kill / archive),
+      // the session is added to intentionalKills so proactive keepalive
+      // doesn't immediately revive it. But if the user then manually clicks
+      // Reconnect, the session is back in use — a future REAL crash must be
+      // eligible for proactive relaunch again. relaunchSession() used to
+      // call clearAutoRelaunchCount() but never delete the intentional marker,
+      // so a crash after a manual relaunch was silently ignored (when
+      // COMPANION_LAZY_SPAWN_ONLY=0).
+      deps.launcher.getSession.mockReturnValue({
+        archived: false,
+        state: "exited",
+        pid: undefined,
+      } as any);
+      deps.wsBridge.isCliConnected.mockReturnValue(false);
+      orchestrator.initialize();
+
+      // 1. Idle-kill flow marks the session as intentional.
+      companionBus.emit("session:idle-kill", { sessionId: "s1" });
+      // 2. User manually relaunches via the explicit path.
+      await orchestrator.relaunchSession("s1");
+      expect(deps.launcher.relaunch).toHaveBeenCalledTimes(1);
+      // 3. Some time later a real crash happens.
+      companionBus.emit("session:exited", { sessionId: "s1", exitCode: 1 });
+      await vi.advanceTimersByTimeAsync(3_000);
+      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // The proactive keepalive timer should fire and relaunch the session
+      // again. Total: 1 explicit + 1 proactive = 2.
+      expect(deps.launcher.relaunch).toHaveBeenCalledTimes(2);
+    });
+
     it("does NOT proactively relaunch after idle-kill (intentional kill)", async () => {
       // Idle-kill is intentional — the proactive keepalive should NOT trigger.
       // The debounce timer in ws-bridge is also cancelled by the idle-kill

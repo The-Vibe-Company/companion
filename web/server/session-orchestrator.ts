@@ -703,6 +703,12 @@ export class SessionOrchestrator {
       return { ok: false, error: "Session is archived and cannot be relaunched" };
     }
     this.clearAutoRelaunchCount(sessionId);
+    // Clear any prior intentional-kill marker. The user is explicitly bringing
+    // this session back; a future REAL crash should be eligible for proactive
+    // keepalive again. Without this, an idle-kill / hang-kill that happened
+    // earlier would permanently shadow this session from proactive relaunch
+    // (only matters when COMPANION_LAZY_SPAWN_ONLY=0).
+    this.intentionalKills.delete(sessionId);
     const session = this.wsBridge.getSession(sessionId);
     if (session?.stateMachine) {
       session.stateMachine.transition("starting", "relaunch_initiated");
