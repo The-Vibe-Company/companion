@@ -7,7 +7,16 @@ import { join, dirname, basename, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { COMPANION_HOME } from "./paths.js";
-import { existsSync, readFileSync, writeFileSync, mkdirSync, realpathSync, lstatSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  mkdirSync,
+  realpathSync,
+  openSync,
+  writeSync,
+  closeSync,
+  constants as fsConstants,
+} from "node:fs";
 import { findTeamForCliSession } from "./team-config-reader.js";
 import type { SessionOrchestrator } from "./session-orchestrator.js";
 import type { CliLauncher } from "./cli-launcher.js";
@@ -871,39 +880,48 @@ export function createRoutes(
       }, 403);
     }
 
-    // SECURITY: reject if the LEAF is a symbolic link, including a dangling
-    // one whose target does not exist yet. resolveRealPath() above already
-    // collapses existing-target symlinks in the prefix and at the leaf —
-    // those land outside the sandbox after realpath and fail the prefix
-    // check. But a dangling-target leaf is invisible to realpath, so
-    // resolveRealPath falls back to (parent realpath + appended leaf name)
-    // which stays inside the sandbox as a string — and then writeFileSync
-    // follows the symlink and creates the file at the outside target.
-    // lstatSync does not follow symlinks, so it can see the dangling link.
+    // Create parent dir if missing (mirrors `mkdir -p` so the model doesn't
+    // need a separate Bash step to materialize `.claude/hooks/` etc.).
+    //
+    // SECURITY: open with O_NOFOLLOW so the kernel REFUSES the call if the
+    // leaf is any kind of symbolic link (existing-target, dangling, or one
+    // that gets swapped in between our realpath check and the write). This
+    // replaces a prior lstat-then-write check, which had a TOCTOU window —
+    // a concurrent process could swap the leaf to a symlink between lstat
+    // and writeFileSync. open(O_NOFOLLOW|O_CREAT|O_TRUNC|O_WRONLY) is one
+    // syscall, so there's no gap for the leaf. Intermediate components are
+    // still followed by open() — those were already collapsed and
+    // prefix-checked by resolveRealPath above. mkdir(recursive) likewise
+    // does not follow existing leaves it didn't create. The remaining
+    // residual TOCTOU risk (parent dir swapped to a symlink between the
+    // realpath check and mkdir's traversal) requires a concurrent local
+    // attacker, which is outside this single-user/token-protected server's
+    // threat model.
+    let fd: number | undefined;
     try {
-      const leaf = lstatSync(filePath);
-      if (leaf.isSymbolicLink()) {
+      mkdirSync(dirname(filePath), { recursive: true });
+      fd = openSync(
+        filePath,
+        // eslint-disable-next-line no-bitwise
+        fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC | fsConstants.O_NOFOLLOW,
+        0o644,
+      );
+      writeSync(fd, content, 0, "utf8");
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      // ELOOP = leaf is a symlink and O_NOFOLLOW refused it.
+      // EMLINK on some BSDs reports the same condition.
+      if (code === "ELOOP" || code === "EMLINK") {
         return c.json({
           error: `Refused: ${filePath} is a symbolic link`,
         }, 403);
       }
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
-        return c.json({
-          error: `lstat failed for ${filePath}: ${(err as Error).message}`,
-        }, 500);
-      }
-      // ENOENT just means the target doesn't exist yet — fine, we'll create it.
-    }
-
-    // Create parent dir if missing (mirrors `mkdir -p` so the model doesn't
-    // need a separate Bash step to materialize `.claude/hooks/` etc.).
-    try {
-      mkdirSync(dirname(filePath), { recursive: true });
-      writeFileSync(filePath, content, "utf8");
-    } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return c.json({ error: `Write failed: ${msg}` }, 500);
+    } finally {
+      if (fd !== undefined) {
+        try { closeSync(fd); } catch { /* best effort */ }
+      }
     }
 
     // Tell the model the gate is cleared so it stops looping. Phrase it so
