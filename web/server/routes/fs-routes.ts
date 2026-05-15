@@ -1,15 +1,45 @@
 import { execSync } from "node:child_process";
 import { readdir, readFile, stat, writeFile, mkdir } from "node:fs/promises";
+import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import type { Hono } from "hono";
 
+/** Walk up `inputPath` until we hit an existing ancestor, realpath that, and
+ *  re-append the non-existent tail segments (which can't be symlinks because
+ *  they don't exist). Mirrors the logic the sensitive-write route uses. */
+function resolveRealPath(inputPath: string): string {
+  const abs = resolve(inputPath);
+  const tail: string[] = [];
+  let cur = abs;
+  while (true) {
+    try {
+      const real = realpathSync(cur);
+      return tail.length === 0 ? real : join(real, ...tail.slice().reverse());
+    } catch {
+      const parent = dirname(cur);
+      if (parent === cur) return abs;
+      tail.push(basename(cur));
+      cur = parent;
+    }
+  }
+}
+
 /** Ensure a resolved path is within one of the allowed base directories.
- *  Returns the resolved absolute path, or null if it escapes all bases. */
+ *  Returns the realpathed absolute path, or null if it escapes all bases.
+ *
+ *  SECURITY: realpath both sides so a symlink inside an allowed base that
+ *  points OUTSIDE the base is rejected. Without realpath, the prefix check
+ *  passed as a string while the later stat()/readFile() call followed the
+ *  symlink and read outside the sandbox. The walk-up form (`resolveRealPath`)
+ *  is needed so writes to a not-yet-created file can still be validated
+ *  against the real parent — its existing prefix is realpathed, and the new
+ *  tail can't be a symlink because it doesn't exist on disk. */
 function guardPath(raw: string, allowedBases: string[]): string | null {
-  const abs = resolve(raw);
+  const abs = resolveRealPath(raw);
   for (const base of allowedBases) {
-    if (abs === base || abs.startsWith(base + "/")) return abs;
+    const realBase = resolveRealPath(base);
+    if (abs === realBase || abs.startsWith(realBase + "/")) return abs;
   }
   return null;
 }

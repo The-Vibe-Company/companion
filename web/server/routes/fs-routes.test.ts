@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync, realpathSync, symlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir, homedir } from "node:os";
 import { execSync } from "node:child_process";
@@ -179,6 +179,27 @@ describe("path traversal protection", () => {
     expect(res.status).toBe(403);
     const body = await res.json();
     expect(body.error).toMatch(/outside allowed/i);
+  });
+
+  // Regression: a symlink inside the allowed base whose target is outside
+  // the allowed base used to pass guardPath's prefix check (the string still
+  // starts with tempDir), and then readFile() / stat() followed the symlink
+  // and read outside the sandbox. The realpath upgrade closes that.
+  it("rejects /fs/read for a symlink inside allowed base that points outside", async () => {
+    const outside = mkRealTempDir("fs-symlink-target-");
+    try {
+      const secret = join(outside, "secret.txt");
+      writeFileSync(secret, "TOP SECRET");
+      const leak = join(tempDir, "leak");
+      symlinkSync(secret, leak);
+
+      const res = await app.request(`/fs/read?path=${encodeURIComponent(leak)}`);
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body.error).toMatch(/outside allowed/i);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 
   it("rejects PUT /fs/claude-md for path outside allowed bases", async () => {
