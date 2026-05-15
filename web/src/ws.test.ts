@@ -228,6 +228,37 @@ describe("sendToSession", () => {
     expect(typeof payload.client_msg_id).toBe("string");
   });
 
+  // Defensive cap: a long-disconnected session shouldn't grow the in-memory
+  // outgoing queue without bound. The cap mirrors the server's
+  // PENDING_MESSAGES_LIMIT (200). Older messages get FIFO-evicted, the most
+  // recent 200 are preserved.
+  it("caps the queued outgoing buffer at 200 entries (oldest evicted)", () => {
+    wsModule.connectSession("s1");
+    lastWs.readyState = MockWebSocket.CONNECTING;
+
+    // Push 205 user_messages with distinguishable content.
+    for (let i = 0; i < 205; i++) {
+      wsModule.sendToSession("s1", {
+        type: "user_message",
+        content: `msg-${i}`,
+      });
+    }
+    // Pre-flush: nothing actually sent yet.
+    expect(lastWs.send).not.toHaveBeenCalled();
+
+    // Open the socket, the queued backlog flushes (after session_subscribe).
+    lastWs.readyState = MockWebSocket.OPEN;
+    lastWs.onopen?.(new Event("open"));
+
+    // session_subscribe (1) + 200 retained messages = 201 sends.
+    expect(lastWs.send).toHaveBeenCalledTimes(201);
+    const firstUser = JSON.parse(lastWs.send.mock.calls[1][0]);
+    const lastUser = JSON.parse(lastWs.send.mock.calls[200][0]);
+    // The first 5 (msg-0..msg-4) got evicted, msg-5 is the oldest survivor.
+    expect(firstUser.content).toBe("msg-5");
+    expect(lastUser.content).toBe("msg-204");
+  });
+
   it("queues idempotent messages until the socket is open, then flushes them", () => {
     wsModule.connectSession("s1");
     lastWs.readyState = MockWebSocket.CONNECTING;

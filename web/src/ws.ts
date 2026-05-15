@@ -401,9 +401,19 @@ function nextId(): string {
   return `msg-${Date.now()}-${++idCounter}`;
 }
 
+/** Maximum number of queued idempotent outgoing messages per session before
+ *  oldest gets evicted. Mirrors the server's PENDING_MESSAGES_LIMIT (200).
+ *  Without this cap, a long-disconnected session that keeps receiving
+ *  programmatic sends (mcp_get_status / user_message bursts) could grow this
+ *  Map without bound in browser memory. */
+const OUTGOING_QUEUE_LIMIT = 200;
+
 function enqueueOutgoing(sessionId: string, msg: BrowserOutgoingMessage) {
   const queued = pendingOutgoingBySession.get(sessionId) || [];
   queued.push(msg);
+  while (queued.length > OUTGOING_QUEUE_LIMIT) {
+    queued.shift();
+  }
   pendingOutgoingBySession.set(sessionId, queued);
 }
 
