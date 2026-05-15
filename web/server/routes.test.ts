@@ -965,7 +965,7 @@ describe("POST /api/sessions/:id/sensitive-write", () => {
     expect(await readFileAsync(target, "utf8")).toBe("hello");
   });
 
-  it("returns 403 when path is outside cwd, ~/.claude, and ~/.companion", async () => {
+  it("returns 403 when path is outside cwd and ~/.claude", async () => {
     const target = join(outsideDir, "evil.txt");
 
     const res = await app.request("/api/sessions/s1/sensitive-write", {
@@ -978,6 +978,11 @@ describe("POST /api/sessions/:id/sensitive-write", () => {
     // existsSync is mocked to false at the top of the file — use statSync
     // (not mocked) and treat ENOENT as "doesn't exist".
     expect(() => statSync(target)).toThrow(/ENOENT/);
+    // Error message should not advertise ~/.companion — that root was
+    // dropped because the model has no legitimate reason to overwrite
+    // companion's auth/config/session state via this Claude-guard bypass.
+    const body = await res.json() as { error: string };
+    expect(body.error).not.toMatch(/\.companion/);
   });
 
   // ── SECURITY REGRESSIONS ──────────────────────────────────────────────────

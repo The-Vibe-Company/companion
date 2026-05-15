@@ -811,9 +811,13 @@ export function createRoutes(
   // here so companion writes the file out-of-band, then injects a synthetic
   // user_message to unblock the model.
   //
-  // Sandboxing: the file_path must resolve inside the session's cwd, the
-  // user's home `.claude/` directory, or `~/.companion/`. Anything else
-  // (e.g. `/etc/passwd`) is refused regardless of what the model asked for.
+  // Sandboxing: the file_path must resolve inside the session's cwd or the
+  // user's home `.claude/` directory. Anything else (e.g. `/etc/passwd`,
+  // or `~/.companion/auth.json` — which would let the model overwrite
+  // companion's own auth/config/session state) is refused regardless of
+  // what the model asked for. The Claude sensitive-file guard this route
+  // bypasses only fires on `.claude/*` and memory files, so widening past
+  // those is unnecessary.
   api.post("/sessions/:id/sensitive-write", async (c) => {
     const id = c.req.param("id");
     const session = launcher.getSession(id);
@@ -846,7 +850,11 @@ export function createRoutes(
     const allowedRealRoots: string[] = [];
     try {
       filePath = resolveRealPath(body.file_path);
-      for (const root of [session.cwd, join(home, ".claude"), join(home, ".companion")]) {
+      // Least-privilege allowlist. Do NOT add ~/.companion here — that root
+      // holds companion's auth token, settings, session/recording state.
+      // The model has no legitimate reason to write into companion's own
+      // state via this Claude-sensitive-file bypass.
+      for (const root of [session.cwd, join(home, ".claude")]) {
         allowedRealRoots.push(resolveRealPath(root));
       }
     } catch (err) {
@@ -859,7 +867,7 @@ export function createRoutes(
     );
     if (!inside) {
       return c.json({
-        error: `Refused: ${filePath} is outside the session cwd, ~/.claude, and ~/.companion`,
+        error: `Refused: ${filePath} is outside the session cwd and ~/.claude`,
       }, 403);
     }
 
