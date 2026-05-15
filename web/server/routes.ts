@@ -3,11 +3,11 @@ import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
 import { execSync } from "node:child_process";
 import { resolveBinary } from "./path-resolver.js";
-import { join, dirname, resolve as resolvePath } from "node:path";
+import { join, dirname, basename, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { COMPANION_HOME } from "./paths.js";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, realpathSync } from "node:fs";
 import { findTeamForCliSession } from "./team-config-reader.js";
 import type { SessionOrchestrator } from "./session-orchestrator.js";
 import type { CliLauncher } from "./cli-launcher.js";
@@ -56,6 +56,37 @@ const VSCODE_EDITOR_HOST_PORT = Number(process.env.COMPANION_EDITOR_PORT || "133
 
 function shellEscapeArg(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+/**
+ * Resolve `inputPath` to a real filesystem path, tolerating not-yet-created
+ * leaf segments. The existing prefix is realpath'd (so any symlinks in it are
+ * collapsed); the remaining non-existent tail is appended as-is.
+ *
+ * Used by the sensitive-file write endpoint to validate a path BEFORE writing,
+ * so an attacker can't trick the prefix check with a symlink that points
+ * outside the sandbox.
+ *
+ * Throws if walking up never finds an existing ancestor (would only happen on
+ * truly malformed input like a relative path against a non-existent cwd).
+ */
+function resolveRealPath(inputPath: string): string {
+  const abs = resolvePath(inputPath);
+  const tail: string[] = [];
+  let cur = abs;
+  while (true) {
+    try {
+      const real = realpathSync(cur);
+      return tail.length === 0 ? real : join(real, ...tail.slice().reverse());
+    } catch {
+      const parent = dirname(cur);
+      if (parent === cur) {
+        throw new Error(`Cannot resolve real path: no existing ancestor for ${inputPath}`);
+      }
+      tail.push(basename(cur));
+      cur = parent;
+    }
+  }
 }
 
 export function createRoutes(
@@ -796,20 +827,34 @@ export function createRoutes(
     if (!body || typeof body.file_path !== "string" || typeof body.content !== "string") {
       return c.json({ error: "Body must include file_path: string and content: string" }, 400);
     }
-    const filePath = resolvePath(body.file_path);
     const content = body.content;
     const toolUseId = typeof body.tool_use_id === "string" ? body.tool_use_id : null;
 
     // Path sandbox. We refuse to write outside known-safe roots even though
     // the user clicked Approve — the model picked the path, not the human,
     // so we can't grant it /etc-level reach just on a button click.
+    //
+    // SECURITY: use realpath on both the candidate and the allowed roots so
+    // a symlink under cwd that points outside the sandbox doesn't pass the
+    // prefix check. A naive `path.resolve()` + `startsWith` was vulnerable:
+    // `${cwd}/leak` → /etc/something would slip through, then writeFileSync
+    // would follow the symlink and write to /etc/something. This route is
+    // explicitly a Claude-guard bypass, so its own boundary has to hold even
+    // when the model picks a hostile path.
     const home = homedir();
-    const allowedRoots = [
-      resolvePath(session.cwd),
-      resolvePath(home, ".claude"),
-      resolvePath(home, ".companion"),
-    ];
-    const inside = allowedRoots.some((root) =>
+    let filePath: string;
+    const allowedRealRoots: string[] = [];
+    try {
+      filePath = resolveRealPath(body.file_path);
+      for (const root of [session.cwd, join(home, ".claude"), join(home, ".companion")]) {
+        allowedRealRoots.push(resolveRealPath(root));
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return c.json({ error: `Refused: ${msg}` }, 400);
+    }
+
+    const inside = allowedRealRoots.some((root) =>
       filePath === root || filePath.startsWith(root + "/"),
     );
     if (!inside) {

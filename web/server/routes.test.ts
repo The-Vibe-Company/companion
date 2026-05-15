@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach } from "vitest";
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 
 // Mock auth-manager so all test requests pass the auth middleware
 vi.mock("./auth-manager.js", () => ({
@@ -291,7 +291,20 @@ vi.mock("./image-pull-manager.js", () => ({
 
 import { Hono } from "hono";
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  mkdtempSync,
+  mkdirSync,
+  symlinkSync,
+  writeFileSync,
+  rmSync,
+  realpathSync,
+  statSync,
+} from "node:fs";
+import { readFile as readFileAsync } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createRoutes } from "./routes.js";
 import * as envManager from "./env-manager.js";
 import * as sandboxManager from "./sandbox-manager.js";
@@ -332,6 +345,7 @@ function createMockBridge() {
     prePopulateCommands: vi.fn(),
     broadcastNameUpdate: vi.fn(),
     injectSystemPrompt: vi.fn(),
+    injectUserMessage: vi.fn(),
   } as any;
 }
 
@@ -900,6 +914,134 @@ describe("POST /api/sessions/:id/relaunch", () => {
     expect(res.status).toBe(404);
     const json = await res.json();
     expect(json.error).toContain("Session not found");
+  });
+});
+
+describe("POST /api/sessions/:id/sensitive-write", () => {
+  // This endpoint exists to override Claude Code's CLI-side rejection of
+  // "sensitive" file writes (settings.json, .claude/hooks/*, etc.) — clicking
+  // Approve in the UI POSTs here so companion writes the file out-of-band.
+  // Because it's a deliberate Claude-guard bypass, its OWN sandbox must hold
+  // even under hostile inputs. The cases below pin down that boundary so a
+  // refactor can't silently widen it.
+
+  let tmpDir: string;
+  let realTmpDir: string;
+  let outsideDir: string;
+
+  beforeEach(() => {
+    // Real fs is needed: realpath / symlink / writeFile are all delegated to
+    // the actual filesystem. existsSync is mocked at the top of this file
+    // (returns false), but the sensitive-write route doesn't call existsSync,
+    // so it's harmless here.
+    tmpDir = mkdtempSync(join(tmpdir(), "sensitive-write-cwd-"));
+    realTmpDir = realpathSync(tmpDir);
+    outsideDir = mkdtempSync(join(tmpdir(), "sensitive-write-outside-"));
+    launcher.getSession.mockImplementation((id: string) =>
+      id === "s1"
+        ? { sessionId: "s1", state: "running", cwd: realTmpDir, createdAt: Date.now() }
+        : undefined,
+    );
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(outsideDir, { recursive: true, force: true });
+  });
+
+  it("writes the file when path is inside session cwd", async () => {
+    const target = join(realTmpDir, "subdir", "ok.txt");
+
+    const res = await app.request("/api/sessions/s1/sensitive-write", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file_path: target, content: "hello" }),
+    });
+
+    expect(res.status).toBe(200);
+    // Parent dir was missing — endpoint mkdir -p's it before writing.
+    // readFileSync is module-mocked at the top of this file (returns ""), so
+    // use the promises variant of fs which isn't mocked.
+    expect(await readFileAsync(target, "utf8")).toBe("hello");
+  });
+
+  it("returns 403 when path is outside cwd, ~/.claude, and ~/.companion", async () => {
+    const target = join(outsideDir, "evil.txt");
+
+    const res = await app.request("/api/sessions/s1/sensitive-write", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file_path: target, content: "should not land" }),
+    });
+
+    expect(res.status).toBe(403);
+    // existsSync is mocked to false at the top of the file — use statSync
+    // (not mocked) and treat ENOENT as "doesn't exist".
+    expect(() => statSync(target)).toThrow(/ENOENT/);
+  });
+
+  // ── SECURITY REGRESSIONS ──────────────────────────────────────────────────
+  //
+  // The original guard was a string prefix check on path.resolve() output. A
+  // symlink inside cwd that points outside the sandbox passes that check
+  // because the string still starts with cwd — but writeFileSync follows the
+  // symlink and writes to the real target. That breaks the whole purpose of
+  // this endpoint as a Claude-guard bypass. The two tests below pin the gap.
+
+  it("returns 403 when file_path is a symlink inside cwd that points outside the sandbox", async () => {
+    // Pre-create the would-be victim so the symlink target is concrete; if
+    // the bypass works, writeFileSync overwrites this file.
+    const victim = join(outsideDir, "victim.txt");
+    writeFileSync(victim, "ORIGINAL", "utf8");
+
+    const symlinkPath = join(realTmpDir, "leak");
+    symlinkSync(victim, symlinkPath);
+
+    const res = await app.request("/api/sessions/s1/sensitive-write", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file_path: symlinkPath, content: "PWNED" }),
+    });
+
+    expect(res.status).toBe(403);
+    // Victim file untouched — write was refused at the boundary.
+    // (readFileSync is module-mocked; use the promises variant.)
+    expect(await readFileAsync(victim, "utf8")).toBe("ORIGINAL");
+  });
+
+  it("returns 403 when an intermediate path component is a symlinked directory pointing outside the sandbox", async () => {
+    // cwd/escape -> /tmp/outside, so cwd/escape/file.txt is really /tmp/outside/file.txt
+    const escapeDir = join(realTmpDir, "escape");
+    symlinkSync(outsideDir, escapeDir);
+    const target = join(escapeDir, "file.txt");
+
+    const res = await app.request("/api/sessions/s1/sensitive-write", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file_path: target, content: "PWNED" }),
+    });
+
+    expect(res.status).toBe(403);
+    // existsSync is mocked to false; statSync (not mocked) throws ENOENT.
+    expect(() => statSync(join(outsideDir, "file.txt"))).toThrow(/ENOENT/);
+  });
+
+  it("returns 404 when session does not exist", async () => {
+    const res = await app.request("/api/sessions/nope/sensitive-write", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file_path: join(realTmpDir, "x.txt"), content: "x" }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 when body is missing required fields", async () => {
+    const res = await app.request("/api/sessions/s1/sensitive-write", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file_path: 123 }),
+    });
+    expect(res.status).toBe(400);
   });
 });
 
