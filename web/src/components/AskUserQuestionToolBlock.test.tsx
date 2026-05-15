@@ -94,6 +94,30 @@ describe("AskUserQuestionToolBlock", () => {
     });
   });
 
+  // Regression: a multi-question card used to show "Submit answers" as soon
+  // as ONE option was clicked, sending a partial selections object back to
+  // the model. The model then interpreted that as "the human answered all
+  // questions" and proceeded with the missing answers blank. The user has
+  // to answer every question before the submit button is offered.
+  it("multi-question mode does NOT offer Submit while answers are incomplete", () => {
+    render(<AskUserQuestionToolBlock input={MULTI_QUESTION} toolUseId="tu-partial" />);
+
+    // Sanity check: with zero clicks the submit button must not be there.
+    expect(screen.queryByRole("button", { name: /submit answers/i })).toBeNull();
+
+    // Answer only the first of two questions.
+    fireEvent.click(screen.getByText("Two"));
+
+    // Submit must still not appear — the second question is unanswered.
+    expect(screen.queryByRole("button", { name: /submit answers/i })).toBeNull();
+    // And of course nothing was sent to the session.
+    expect(mockSendToSession).not.toHaveBeenCalled();
+
+    // Finish the second question — now Submit appears.
+    fireEvent.click(screen.getByText("Split"));
+    expect(screen.getByRole("button", { name: /submit answers/i })).toBeInTheDocument();
+  });
+
   it("multi-question mode requires Submit and labels each line with the question header", () => {
     // For multi-question we keep the question header alongside each label so
     // the model can disambiguate which answer maps to which question.

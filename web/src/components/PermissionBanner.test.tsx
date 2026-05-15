@@ -480,6 +480,9 @@ describe("AskUserQuestionDisplay", () => {
     });
     render(<PermissionBanner permission={perm} sessionId="s1" />);
 
+    // Answer Q1 with the regular option so Submit can appear at all — the
+    // card requires every question answered before showing Submit.
+    fireEvent.click(screen.getByText("A"));
     const otherButtons = screen.getAllByText("Other...");
     fireEvent.click(otherButtons[1]);
     const input = screen.getByPlaceholderText("Type your answer...");
@@ -489,7 +492,7 @@ describe("AskUserQuestionDisplay", () => {
     fireEvent.click(screen.getByText("Submit answers"));
 
     const payload = mockSendToSession.mock.calls[0][1];
-    expect(payload.updated_input.answers).toEqual({ "1": "Custom response" });
+    expect(payload.updated_input.answers).toEqual({ "0": "A", "1": "Custom response" });
   });
 
   it("shows Enter hint for single-question custom Other input", () => {
@@ -536,13 +539,18 @@ describe("AskUserQuestionDisplay", () => {
     fireEvent.click(otherButtons[1]);
     const input = screen.getByPlaceholderText("Type your answer...");
     fireEvent.change(input, { target: { value: "Stale answer" } });
-    fireEvent.click(otherButtons[1]); // toggle off
+    fireEvent.click(otherButtons[1]); // toggle off — Q2 is now back to unanswered
 
     fireEvent.click(screen.getByText("Keep"));
+    // Submit must still be hidden — Q2 has no answer.
+    expect(screen.queryByText("Submit answers")).toBeNull();
+    // Answer Q2 to make Submit available.
+    fireEvent.click(screen.getByText("Preset"));
     fireEvent.click(screen.getByText("Submit answers"));
 
     const payload = mockSendToSession.mock.calls[0][1];
-    expect(payload.updated_input.answers).toEqual({ "0": "Keep" });
+    // The toggled-off "Stale answer" must not have leaked into Q2's slot.
+    expect(payload.updated_input.answers).toEqual({ "0": "Keep", "1": "Preset" });
   });
 });
 

@@ -200,8 +200,10 @@ export function AskUserQuestionDisplay({
         );
       })}
 
-      {/* Submit all for multi-question */}
-      {questions.length > 1 && Object.keys(selections).length > 0 && (
+      {/* Submit all for multi-question — only when EVERY question has an answer.
+          Used to enable on the first click, which let the user send a partial
+          selections object and made the model think it had all answers. */}
+      {questions.length > 1 && Object.keys(selections).length === questions.length && (
         <button
           onClick={handleSubmitAll}
           disabled={disabled}
