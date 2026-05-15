@@ -228,25 +228,46 @@ export function HomePage() {
     }
   }
 
-  // Fetch dynamic models for the selected backend
+  // Fetch dynamic models for the selected backend.
+  // - Codex: always dynamic, sourced from local cache via the backend route.
+  // - Claude: dynamic only when the selected env profile points at a proxy
+  //   (server returns 404 otherwise → we fall back to CLAUDE_MODELS). Empty
+  //   list / fetch failure also falls back, so the picker is never empty.
   useEffect(() => {
-    if (backend !== "codex") {
-      setDynamicModels(null);
+    if (backend === "codex") {
+      api.getBackendModels(backend).then((models) => {
+        if (models.length > 0) {
+          const options = toModelOptions(models);
+          setDynamicModels(options);
+          if (!options.some((m) => m.value === model)) {
+            setModel(options[0].value);
+          }
+        }
+      }).catch(() => {
+        // Fall back to hardcoded models silently
+      });
       return;
     }
-    api.getBackendModels(backend).then((models) => {
-      if (models.length > 0) {
-        const options = toModelOptions(models);
-        setDynamicModels(options);
-        // If current model isn't in the list, switch to first
-        if (!options.some((m) => m.value === model)) {
-          setModel(options[0].value);
-        }
+    if (backend === "claude") {
+      if (!selectedEnv) {
+        setDynamicModels(null);
+        return;
       }
-    }).catch(() => {
-      // Fall back to hardcoded models silently
-    });
-  }, [backend]); // eslint-disable-line react-hooks/exhaustive-deps
+      api.getBackendModels(backend, selectedEnv).then((models) => {
+        if (models.length > 0) {
+          const options = toModelOptions(models);
+          setDynamicModels(options);
+          if (!options.some((m) => m.value === model)) {
+            setModel(options[0].value);
+          }
+        } else {
+          setDynamicModels(null);
+        }
+      }).catch(() => {
+        setDynamicModels(null);
+      });
+    }
+  }, [backend, selectedEnv]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // When sandbox is enabled, check the-companion:latest image status
   useEffect(() => {
@@ -503,6 +524,7 @@ export function HomePage() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.nativeEvent.isComposing) return;
     // @ mention menu navigation
     if (mention.mentionMenuOpen) {
       if (e.key === "Escape") {

@@ -136,6 +136,19 @@ export class SessionOrchestrator {
   // Timers for proactive keepalive relaunches (for cancellation on delete)
   private keepaliveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+  // Lazy-spawn-only mode: when ON (the default), companion NEVER auto-
+  // respawns or auto-relaunches a CLI process. Sessions stay dead until
+  // the user explicitly clicks Reconnect (which routes through
+  // `orchestrator.relaunchSession` via `POST /api/sessions/:id/relaunch`).
+  // Three auto-spawn paths are gated behind this:
+  //   1. proactive keepalive on `session:exited`
+  //   2. browser-connect-driven `session:relaunch-needed`
+  //   3. post-server-restart reconnection watchdog
+  // Set `COMPANION_LAZY_SPAWN_ONLY=0` to restore the old behaviour where
+  // crashes auto-respawn and browser focus auto-relaunches.
+  private readonly lazySpawnOnly: boolean =
+    process.env.COMPANION_LAZY_SPAWN_ONLY !== "0";
+
   // Idempotency guard for initialize()
   private _initialized = false;
 
@@ -167,6 +180,12 @@ export class SessionOrchestrator {
       this.wsBridge.attachBackendAdapter(sessionId, adapter, "codex");
     });
 
+    // When a Claude adapter is created (right after the launcher spawns the
+    // CLI in stdio mode), attach it the same way. Mirrors the Codex path.
+    companionBus.on("backend:claude-adapter-created", ({ sessionId, adapter }) => {
+      this.wsBridge.attachBackendAdapter(sessionId, adapter, "claude");
+    });
+
     // When a CLI/Codex process exits, notify agent executor and external listeners
     // separately so a throw in one doesn't skip the other (bus isolates each handler).
     companionBus.on("session:exited", ({ sessionId, exitCode }) => {
@@ -192,7 +211,10 @@ export class SessionOrchestrator {
     // a browser connected. This ensures long-running sessions (agents, cron
     // jobs) stay alive. Intentional kills (idle-kill, manual delete/archive)
     // are excluded via the intentionalKills set.
+    // Skipped in lazy-spawn-only mode — session stays "exited", user has to
+    // click Reconnect.
     companionBus.on("session:exited", ({ sessionId }) => {
+      if (this.lazySpawnOnly) return;
       this.scheduleProactiveRelaunch(sessionId);
     });
 
@@ -201,8 +223,16 @@ export class SessionOrchestrator {
       this.prPoller.watch(sessionId, cwd, branch);
     });
 
-    // Auto-relaunch CLI when a browser connects to a session with no CLI
+    // Auto-relaunch CLI when a browser connects to a session with no CLI.
+    // Skipped in lazy-spawn-only mode — the bridge still emits
+    // `cli_disconnected` to the browser, which renders a Reconnect banner
+    // (ChatView). User must click it to trigger the explicit relaunch path
+    // via `POST /api/sessions/:id/relaunch`.
     companionBus.on("session:relaunch-needed", async ({ sessionId }) => {
+      if (this.lazySpawnOnly) {
+        log.info("orchestrator", "Skipping auto-relaunch (lazy-spawn-only mode)", { sessionId });
+        return;
+      }
       await this.handleAutoRelaunch(sessionId);
     });
 
@@ -221,6 +251,37 @@ export class SessionOrchestrator {
       // Clear relaunch counters so the session gets a fresh budget when the user
       // returns. Idle-kill is intentional cleanup, not a crash — the session
       // should be fully relaunchable.
+      this.clearAutoRelaunchCount(sessionId);
+    });
+
+    // Watchdog hang: claude-adapter detected silent stdout during an
+    // active turn. Mark the kill intentional so keepalive doesn't burn
+    // budget respawning into the same upstream stall — the next browser
+    // focus / user message triggers a fresh respawn via relaunch-needed.
+    // The adapter already SIGTERMs the child via its killProcess hook;
+    // we just have to win the race to set intentionalKills before the
+    // resulting session:exited fires. Bus dispatch is sync so this works.
+    companionBus.on("session:hang-detected", ({ sessionId }) => {
+      const info = this.launcher.getSession(sessionId);
+      if (!info || info.archived) return;
+      log.warn("orchestrator", "Hang detected — marking intentional, deferring relaunch", { sessionId });
+      this.intentionalKills.add(sessionId);
+      // Reset auto-relaunch budget — when the user returns and triggers
+      // relaunch-needed, they should get a fresh attempt count instead of
+      // inheriting any stale failures from before.
+      this.clearAutoRelaunchCount(sessionId);
+    });
+
+    // cli-launcher refused to spawn because of a permanent precondition
+    // failure (currently: cwd missing on disk). Without intervention the
+    // condition won't fix itself — retrying just burns the relaunch
+    // budget and spams the log. Mark intentional + clear the count so
+    // OTHER sessions' auto-relaunch budget isn't contaminated, and so
+    // the next user-initiated relaunch (e.g. after they recreate the
+    // worktree) gets a fresh attempt.
+    companionBus.on("session:spawn-aborted-permanent", ({ sessionId, reason }) => {
+      log.warn("orchestrator", "Spawn aborted (permanent) — skipping auto-relaunch", { sessionId, reason });
+      this.intentionalKills.add(sessionId);
       this.clearAutoRelaunchCount(sessionId);
     });
 
@@ -569,6 +630,7 @@ export class SessionOrchestrator {
           codexSandbox: backend === "codex" ? "danger-full-access" : undefined,
           allowedTools: body.allowedTools,
           env: envVars,
+          envSlug: body.envSlug,
           backendType: backend,
           containerId,
           containerName,
@@ -766,6 +828,21 @@ export class SessionOrchestrator {
     const info = this.launcher.getSession(sessionId);
     if (info?.archived) return;
 
+    // Orphan: launcher has no record of this session. Handle immediately,
+    // before the exhausted-notify gate, so every reconnect attempt against
+    // an unknown sessionId reliably tells the browser to forget it. Without
+    // this, after the first notify the gate would suppress further sends
+    // and the browser's heartbeats would silently pile up in pendingMessages.
+    if (!info) {
+      log.info("orchestrator", "Relaunch requested for unknown session, notifying browser", { sessionId });
+      this.wsBridge.broadcastToSession(sessionId, {
+        type: "session_unknown",
+        reason: "no_launcher_record",
+      });
+      this.wsBridge.removeSession(sessionId);
+      return;
+    }
+
     // If we've already notified the user about relaunch exhaustion, bail out
     // silently. Without this, every reconnect event from a dead session
     // (e.g. deleted container) re-logs the "limit reached" warning endlessly.
@@ -924,6 +1001,19 @@ export class SessionOrchestrator {
   // ── Private: Reconnection watchdog ─────────────────────────────────────────
 
   private startReconnectionWatchdog(): void {
+    if (this.lazySpawnOnly) {
+      // Lazy-spawn-only mode: never auto-relaunch on server-restart. Any
+      // CLI that survived the restart gets to keep running; any "starting"
+      // CLI that never reconnects its WS will sit there until the user
+      // clicks Reconnect. Same UX as a fresh crash.
+      const starting = this.launcher.getStartingSessions();
+      if (starting.length > 0) {
+        log.info("orchestrator", "Skipping reconnection watchdog (lazy-spawn-only mode)", {
+          startingCount: starting.length,
+        });
+      }
+      return;
+    }
     const starting = this.launcher.getStartingSessions();
     if (starting.length > 0) {
       console.log(`[orchestrator] Waiting ${RECONNECT_GRACE_MS / 1000}s for ${starting.length} CLI process(es) to reconnect...`);

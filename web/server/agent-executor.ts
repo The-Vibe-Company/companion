@@ -174,6 +174,7 @@ export class AgentExecutor {
         permissionMode: "bypassPermissions",
         cwd,
         env: envVars,
+        envSlug: agent.envSlug,
         allowedTools: agent.allowedTools,
         backendType: agent.backendType,
         codexInternetAccess: agent.backendType === "codex" ? (agent.codexInternetAccess ?? true) : undefined,

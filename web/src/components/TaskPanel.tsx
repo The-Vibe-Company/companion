@@ -782,7 +782,7 @@ function LinearIssueSection({ sessionId }: { sessionId: string }) {
           type="text"
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendComment(); } }}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleSendComment(); } }}
           placeholder="Add a comment..."
           aria-label="Add a comment"
           className="flex-1 text-[11px] bg-transparent border border-cc-border rounded-md px-2 py-1.5 text-cc-fg placeholder:text-cc-muted focus:outline-none focus:border-cc-primary/50"
@@ -896,21 +896,207 @@ function GitBranchSection({ sessionId }: { sessionId: string }) {
 
 /** Tasks section — only visible for Claude Code sessions */
 function TasksSection({ sessionId }: { sessionId: string }) {
-  const tasks = useStore((s) => s.sessionTasks.get(sessionId) || EMPTY_TASKS);
+  // Use useCallback to ensure selector updates when sessionId changes
+  const tasks = useStore(
+    useCallback(
+      (s) => s.sessionTasks.get(sessionId) || EMPTY_TASKS,
+      [sessionId],
+    ),
+  );
   const session = useStore((s) => s.sessions.get(sessionId));
   const sdk = useSdkSession(sessionId);
   const isCodex = (session?.backend_type || sdk?.backendType) === "codex";
 
   if (!session || isCodex) return null;
 
+  // Auto-switch layout based on whether agent teams are in use:
+  //   - Any task has owner → group by agent (team mode)
+  //   - All tasks unowned → flat list (TodoWrite / no-team mode, unchanged)
+  // The split is intentional — owners give the user a meaningful axis to
+  // group by, but adding owner headers to a 5-item plain todo list would
+  // be visual noise.
+  const hasAnyOwner = tasks.some((t) => Boolean(t.owner));
+
   return (
     <div className="px-3 py-2">
       {tasks.length === 0 ? (
         <p className="text-[11px] text-cc-muted text-center py-6">Tasks will appear here as the agent works</p>
+      ) : hasAnyOwner ? (
+        <TeamGroupedView tasks={tasks} />
       ) : (
         <div className="space-y-0.5">
           {tasks.map((task) => (
             <TaskRow key={task.id} task={task} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Team-grouped view ─────────────────────────────────────────────────────
+// Shown only when at least one task has an `owner` (agent-team scenario).
+// Groups tasks by owner, with an "Unassigned" bucket for tasks without one.
+// Each agent card is collapsible so a long roster doesn't dominate the
+// panel. Counters next to each owner ("3/5") help the user see progress
+// without expanding.
+
+const UNASSIGNED_KEY = "__unassigned__";
+
+interface TeamGroup {
+  key: string;
+  owner: string | null;
+  tasks: TaskItem[];
+  done: number;
+  inProgress: number;
+}
+
+function groupByOwner(tasks: TaskItem[]): TeamGroup[] {
+  const buckets = new Map<string, TaskItem[]>();
+  for (const t of tasks) {
+    const key = t.owner ?? UNASSIGNED_KEY;
+    const arr = buckets.get(key) ?? [];
+    arr.push(t);
+    buckets.set(key, arr);
+  }
+  // Owners first (sorted alphabetically for stable rendering), unassigned last.
+  const groups: TeamGroup[] = [];
+  for (const [key, ts] of [...buckets.entries()].sort(([a], [b]) => {
+    if (a === UNASSIGNED_KEY) return 1;
+    if (b === UNASSIGNED_KEY) return -1;
+    return a.localeCompare(b);
+  })) {
+    groups.push({
+      key,
+      owner: key === UNASSIGNED_KEY ? null : key,
+      tasks: ts,
+      done: ts.filter((t) => t.status === "completed").length,
+      inProgress: ts.filter((t) => t.status === "in_progress").length,
+    });
+  }
+  return groups;
+}
+
+function TeamGroupedView({ tasks }: { tasks: TaskItem[] }) {
+  const groups = groupByOwner(tasks);
+  return (
+    <div className="space-y-2" data-testid="team-grouped-view">
+      <TeamSummaryBar tasks={tasks} groups={groups} />
+      {groups.map((group) => (
+        <TeamGroupCard key={group.key} group={group} />
+      ))}
+    </div>
+  );
+}
+
+function TeamSummaryBar({ tasks, groups }: { tasks: TaskItem[]; groups: TeamGroup[] }) {
+  const total = tasks.length;
+  const done = tasks.filter((t) => t.status === "completed").length;
+  const inProgress = tasks.filter((t) => t.status === "in_progress").length;
+  const pending = tasks.filter((t) => t.status === "pending").length;
+  const blocked = tasks.filter((t) => (t.blockedBy?.length ?? 0) > 0).length;
+  const agentCount = groups.filter((g) => g.owner !== null).length;
+
+  return (
+    <div
+      className="text-[11px] text-cc-muted px-1 pb-1 flex flex-wrap gap-x-2 gap-y-0.5"
+      data-testid="team-summary-bar"
+    >
+      <span>
+        <strong className="text-cc-fg">{agentCount}</strong> agent{agentCount === 1 ? "" : "s"}
+      </span>
+      <span>·</span>
+      <span>
+        <strong className="text-cc-fg">{total}</strong> task{total === 1 ? "" : "s"}
+      </span>
+      {done > 0 && (
+        <>
+          <span>·</span>
+          <span><strong className="text-cc-success">{done}</strong> done</span>
+        </>
+      )}
+      {inProgress > 0 && (
+        <>
+          <span>·</span>
+          <span><strong className="text-cc-primary">{inProgress}</strong> in progress</span>
+        </>
+      )}
+      {pending > 0 && (
+        <>
+          <span>·</span>
+          <span><strong className="text-cc-fg">{pending}</strong> pending</span>
+        </>
+      )}
+      {blocked > 0 && (
+        <>
+          <span>·</span>
+          <span><strong className="text-cc-fg">{blocked}</strong> blocked</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+function TeamGroupCard({ group }: { group: TeamGroup }) {
+  const [open, setOpen] = useState(true);
+  const ownerLabel = group.owner ?? "Unassigned";
+  const counter = `${group.done}/${group.tasks.length}`;
+  const fullyDone = group.done === group.tasks.length;
+
+  return (
+    <div className="border border-cc-border rounded-lg overflow-hidden" data-testid="team-group-card">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-cc-hover transition-colors cursor-pointer"
+        aria-expanded={open}
+      >
+        <svg
+          viewBox="0 0 16 16"
+          fill="currentColor"
+          className={`w-3 h-3 text-cc-muted transition-transform shrink-0 ${open ? "rotate-90" : ""}`}
+          aria-hidden
+        >
+          <path d="M6 4l4 4-4 4" />
+        </svg>
+        {group.owner !== null ? (
+          <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-cc-fg/60 shrink-0" aria-hidden>
+            <path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 6a5 5 0 1110 0H3z" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 text-cc-muted shrink-0" aria-hidden>
+            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 2" />
+          </svg>
+        )}
+        <span className="text-[12px] font-medium text-cc-fg truncate flex-1">{ownerLabel}</span>
+        {group.inProgress > 0 && (
+          <svg
+            className="w-3 h-3 text-cc-primary animate-spin shrink-0"
+            viewBox="0 0 16 16"
+            fill="none"
+            aria-hidden
+          >
+            <circle
+              cx="8"
+              cy="8"
+              r="6"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeDasharray="28"
+              strokeDashoffset="8"
+              strokeLinecap="round"
+            />
+          </svg>
+        )}
+        <span
+          className={`text-[11px] font-mono-code shrink-0 ${fullyDone ? "text-cc-success" : "text-cc-muted"}`}
+        >
+          {counter}
+        </span>
+      </button>
+      {open && (
+        <div className="px-1 py-1 border-t border-cc-border/60 space-y-0.5">
+          {group.tasks.map((task) => (
+            <TaskRow key={task.id} task={task} showOwnerChip={false} />
           ))}
         </div>
       )}
@@ -933,7 +1119,12 @@ const SECTION_COMPONENTS: Record<string, ComponentType<{ sessionId: string }>> =
 
 /** Returns a badge ReactNode for a section, if applicable */
 function useSectionBadge(sectionId: string, sessionId: string): ReactNode {
-  const tasks = useStore((s) => s.sessionTasks.get(sessionId) || EMPTY_TASKS);
+  const tasks = useStore(
+    useCallback(
+      (s) => s.sessionTasks.get(sessionId) || EMPTY_TASKS,
+      [sessionId],
+    ),
+  );
 
   if (sectionId === "tasks" && tasks.length > 0) {
     const completedCount = tasks.filter((t) => t.status === "completed").length;
@@ -1180,7 +1371,7 @@ export function TaskPanel({ sessionId }: { sessionId: string }) {
   );
 }
 
-function TaskRow({ task }: { task: TaskItem }) {
+function TaskRow({ task, showOwnerChip = true }: { task: TaskItem; showOwnerChip?: boolean }) {
   const isCompleted = task.status === "completed";
   const isInProgress = task.status === "in_progress";
 
@@ -1251,6 +1442,26 @@ function TaskRow({ task }: { task: TaskItem }) {
         >
           {task.subject}
         </span>
+
+        {/* Owner chip — agent assigned to this task. Distinguishes
+            agent-team tasks from plain TodoWrite items, where everything
+            is implicitly "self". Hidden inside team-group cards
+            (showOwnerChip=false) since the group header already names
+            the agent. */}
+        {showOwnerChip && task.owner && (
+          <span
+            className={`shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium border border-cc-border ${
+              isCompleted ? "text-cc-muted/60 bg-cc-card" : "text-cc-fg/80 bg-cc-card"
+            }`}
+            title={`Assigned to ${task.owner}`}
+            data-testid="task-owner-chip"
+          >
+            <svg viewBox="0 0 16 16" fill="currentColor" className="w-2.5 h-2.5 shrink-0" aria-hidden>
+              <path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 6a5 5 0 1110 0H3z" />
+            </svg>
+            <span className="truncate max-w-[120px]">{task.owner}</span>
+          </span>
+        )}
       </div>
 
       {/* Active form text (in_progress only) */}

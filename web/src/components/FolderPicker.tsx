@@ -247,7 +247,7 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
               value={dirInput}
               onChange={(e) => setDirInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && dirInput.trim()) {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing && dirInput.trim()) {
                   selectDir(dirInput.trim());
                 }
                 if (e.key === "Escape") {

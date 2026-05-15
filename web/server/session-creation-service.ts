@@ -420,6 +420,7 @@ export async function executeSessionCreation(
       codexSandbox: backend === "codex" ? "danger-full-access" : undefined,
       allowedTools: body.allowedTools as string[] | undefined,
       env: envVars,
+      envSlug: body.envSlug as string | undefined,
       backendType: backend,
       containerId,
       containerName,

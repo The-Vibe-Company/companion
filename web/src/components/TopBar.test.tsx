@@ -24,7 +24,7 @@ interface MockStoreState {
   activeTab: "chat" | "diff";
   setActiveTab: ReturnType<typeof vi.fn>;
   markChatTabReentry: ReturnType<typeof vi.fn>;
-  sessions: Map<string, { cwd?: string; is_containerized?: boolean }>;
+  sessions: Map<string, { cwd?: string; is_containerized?: boolean; memory_path?: string }>;
   sdkSessions: { sessionId: string; cwd?: string; containerId?: string; model?: string; backendType?: string }[];
   gitChangedFilesCount: Map<string, number>;
 }
@@ -134,6 +134,36 @@ describe("TopBar", () => {
     render(<TopBar />);
     expect(screen.getByRole("button", { name: "Session tab" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Diffs tab" })).toBeInTheDocument();
+  });
+
+  it("Session tab tooltip shows memory_path when the session has one", () => {
+    // The CLI's auto-memory dir is opaque to users (hash-named subdir under
+    // ~/.claude/projects/<slug>/memory/). Surface it on the Session tab's
+    // hover-tooltip so it's discoverable without leaving the chat. When
+    // memory_path is absent, the tooltip falls back to the session name.
+    resetStore({
+      sessionNames: new Map([["s1", "Demo Session"]]),
+      sessions: new Map([[
+        "s1",
+        { cwd: "/repo", memory_path: "/home/user/.claude/projects/-repo/memory/" },
+      ]]),
+    });
+    render(<TopBar />);
+
+    const tab = screen.getByRole("button", { name: "Session tab" });
+    expect(tab).toHaveAttribute("title", expect.stringContaining("Demo Session") as unknown as string);
+    expect(tab.getAttribute("title")).toContain("/home/user/.claude/projects/-repo/memory/");
+  });
+
+  it("Session tab tooltip omits memory line when session has no memory_path", () => {
+    resetStore({
+      sessionNames: new Map([["s1", "Demo Session"]]),
+      sessions: new Map([["s1", { cwd: "/repo" }]]),
+    });
+    render(<TopBar />);
+
+    const tab = screen.getByRole("button", { name: "Session tab" });
+    expect(tab.getAttribute("title")).toBe("Demo Session");
   });
 
   it("cycles from diff to chat on Cmd+J", () => {

@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach } from "vitest";
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 
 // ── Module mocks ────────────────────────────────────────────────────────────
 // Must be declared before any imports that reference them.
@@ -177,6 +177,7 @@ function createMockBridge() {
     injectSystemPrompt: vi.fn(),
     attachBackendAdapter: vi.fn(),
     cancelDisconnectTimer: vi.fn(() => false),
+    removeSession: vi.fn(),
   } as any;
 }
 
@@ -243,8 +244,18 @@ describe("SessionOrchestrator", () => {
       errors: [],
     } as any);
     vi.mocked(containerManager.execInContainerAsync).mockResolvedValue({ exitCode: 0, output: "ok" });
+    // The bulk of this suite tests the legacy proactive-keepalive paths
+    // (auto-respawn on crash, auto-relaunch on browser focus, post-restart
+    // reconnection watchdog). Lazy-spawn-only mode (the production default)
+    // gates all three behind an env flag — disable it here so the legacy
+    // expectations still hold. Lazy-mode behaviour is covered separately.
+    process.env.COMPANION_LAZY_SPAWN_ONLY = "0";
     deps = createDeps();
     orchestrator = new SessionOrchestrator(deps);
+  });
+
+  afterEach(() => {
+    delete process.env.COMPANION_LAZY_SPAWN_ONLY;
   });
 
   // ── Initialization / Event wiring ─────────────────────────────────────────
@@ -310,6 +321,74 @@ describe("SessionOrchestrator", () => {
       // Container must NOT be removed — idle-kill only stops the CLI process
       // so the container can be reused on relaunch.
       expect(containerManager.removeContainer).not.toHaveBeenCalled();
+    });
+
+    it("hang-detected marks intentional and resets auto-relaunch budget without re-killing", async () => {
+      // Watchdog already SIGTERM'd the child via its killProcess hook — the
+      // orchestrator's job here is just to set the intentional-kill flag
+      // BEFORE the resulting session:exited fires, so keepalive's proactive
+      // respawn skips and waits for the user to come back.
+      deps.launcher.getSession.mockReturnValue({ archived: false });
+      orchestrator.initialize();
+
+      companionBus.emit("session:hang-detected", { sessionId: "s1" });
+      await new Promise(r => setTimeout(r, 0));
+
+      // Orchestrator does NOT call launcher.kill — the adapter already did.
+      // Doing it twice would race with the existing exit handler and could
+      // SIGTERM a freshly spawned PID after a quick respawn.
+      expect(deps.launcher.kill).not.toHaveBeenCalled();
+    });
+
+    it("hang-detected on archived session is a no-op", async () => {
+      deps.launcher.getSession.mockReturnValue({ archived: true });
+      orchestrator.initialize();
+
+      companionBus.emit("session:hang-detected", { sessionId: "s1" });
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(deps.launcher.kill).not.toHaveBeenCalled();
+    });
+
+    it("hang-detected followed by session:exited does NOT trigger proactive relaunch", async () => {
+      // End-to-end: watchdog → hang-detected → orchestrator marks
+      // intentional → SIGTERM happens → session:exited fires, but
+      // scheduleProactiveRelaunch sees intentionalKills and skips.
+      vi.useFakeTimers();
+      deps.launcher.getSession.mockReturnValue({ archived: false, state: "exited", pid: undefined } as any);
+      orchestrator.initialize();
+
+      companionBus.emit("session:hang-detected", { sessionId: "s1" });
+      companionBus.emit("session:exited", { sessionId: "s1", exitCode: -15 });
+
+      // Advance well past the keepalive backoff window.
+      await vi.advanceTimersByTimeAsync(20_000);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(deps.launcher.relaunch).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("after hang-detected, browser-driven relaunch-needed still works", async () => {
+      // Confirms the lazy-respawn path: when the user comes back and the
+      // browser reconnects, handleAutoRelaunch should bring the session back
+      // up. The hang event must not poison this path.
+      vi.useFakeTimers();
+      deps.launcher.getSession.mockReturnValue({ archived: false, state: "exited", pid: undefined } as any);
+      deps.launcher.relaunch.mockResolvedValue({ ok: true });
+      orchestrator.initialize();
+
+      companionBus.emit("session:hang-detected", { sessionId: "s1" });
+      companionBus.emit("session:exited", { sessionId: "s1", exitCode: -15 });
+      await vi.advanceTimersByTimeAsync(0);
+
+      // User reconnects — browser open fires relaunch-needed.
+      companionBus.emit("session:relaunch-needed", { sessionId: "s1" });
+      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(deps.launcher.relaunch).toHaveBeenCalledWith("s1");
+      vi.useRealTimers();
     });
 
     it("after idle-kill, relaunch reuses preserved container without creating a new one", async () => {
@@ -1461,6 +1540,52 @@ describe("SessionOrchestrator", () => {
       expect(deps.launcher.relaunch).not.toHaveBeenCalled();
     });
 
+    it("notifies browser and removes session when launcher has no record (orphan)", async () => {
+      // Reproduces the orphan loop: a stub session JSON exists, browser
+      // reconnects, ws-bridge emits relaunch-needed, but launcher.getSession
+      // returns undefined because launcher.json never knew about it. Without
+      // this fix, the orchestrator silently drops the request and the
+      // browser keeps queuing heartbeats forever. Expected behavior:
+      // broadcast `session_unknown` to the browser AND remove the bridge
+      // session so the per-session JSON gets cleaned up. Orphan handling
+      // happens immediately — no relaunch grace period needed since there's
+      // nothing to grace for.
+      deps.launcher.getSession.mockReturnValue(undefined);
+      deps.wsBridge.isCliConnected.mockReturnValue(false);
+      orchestrator.initialize();
+
+      companionBus.emit("session:relaunch-needed", { sessionId: "ghost" });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(deps.launcher.relaunch).not.toHaveBeenCalled();
+      expect(deps.wsBridge.broadcastToSession).toHaveBeenCalledWith(
+        "ghost",
+        expect.objectContaining({ type: "session_unknown" }),
+      );
+      expect(deps.wsBridge.removeSession).toHaveBeenCalledWith("ghost");
+    });
+
+    it("re-notifies on every reconnect of an orphan so the browser cannot stay silently broken", async () => {
+      // If the user's URL stays at #/session/<orphan> across multiple browser
+      // reconnects (e.g. mobile background→foreground, page reload), the
+      // bridge will create a fresh stub each time and emit relaunch-needed.
+      // Each emission must idempotently re-broadcast session_unknown — if we
+      // gated this on relaunchExhaustedNotified, the second attempt onwards
+      // would silently accumulate mcp_get_status heartbeats again.
+      deps.launcher.getSession.mockReturnValue(undefined);
+      deps.wsBridge.isCliConnected.mockReturnValue(false);
+      orchestrator.initialize();
+
+      for (let i = 0; i < 3; i++) {
+        companionBus.emit("session:relaunch-needed", { sessionId: "ghost" });
+        await vi.advanceTimersByTimeAsync(0);
+      }
+
+      expect(deps.wsBridge.broadcastToSession).toHaveBeenCalledTimes(3);
+      expect(deps.wsBridge.removeSession).toHaveBeenCalledTimes(3);
+      expect(deps.launcher.relaunch).not.toHaveBeenCalled();
+    });
+
     it("skips relaunch when session state is 'connected' after grace", async () => {
       // If the session reconnects (state=connected) during grace, skip relaunch.
       deps.launcher.getSession
@@ -1779,6 +1904,83 @@ describe("SessionOrchestrator", () => {
 
       // kill() is called by deleteSession, but relaunch should NOT be
       expect(deps.launcher.relaunch).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Lazy-spawn-only mode (production default) ─────────────────────────────
+
+  // The default orchestrator is constructed with COMPANION_LAZY_SPAWN_ONLY=0
+  // in this suite's beforeEach so the legacy keepalive tests pass. These
+  // lazy-mode tests construct a *separate* orchestrator with the env flag
+  // unset (the production default) and prove the three auto-spawn paths
+  // are all gated off.
+  describe("lazy-spawn-only mode (production default)", () => {
+    let lazyOrch: SessionOrchestrator;
+
+    beforeEach(() => {
+      delete process.env.COMPANION_LAZY_SPAWN_ONLY;
+      vi.clearAllMocks();
+      vi.useFakeTimers();
+      companionBus.clear();
+      deps = createDeps();
+      lazyOrch = new SessionOrchestrator(deps);
+      lazyOrch.initialize();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      // Restore the suite-wide default so other tests still see the
+      // legacy keepalive behaviour.
+      process.env.COMPANION_LAZY_SPAWN_ONLY = "0";
+    });
+
+    it("does NOT schedule a proactive keepalive when CLI exits unexpectedly", async () => {
+      deps.launcher.getSession.mockReturnValue({
+        sessionId: "lazy-1", state: "exited", cwd: "/repo", model: "claude", createdAt: 1, backendType: "claude",
+      } as any);
+
+      companionBus.emit("session:exited", { sessionId: "lazy-1", exitCode: 1 });
+      // Wait past every backoff bucket the legacy keepalive could've used.
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(deps.launcher.relaunch).not.toHaveBeenCalled();
+    });
+
+    it("does NOT auto-relaunch when a browser connect raises session:relaunch-needed", async () => {
+      deps.launcher.getSession.mockReturnValue({
+        sessionId: "lazy-2", state: "exited", cwd: "/repo", model: "claude", createdAt: 1, backendType: "claude",
+      } as any);
+
+      companionBus.emit("session:relaunch-needed", { sessionId: "lazy-2" });
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      // Lazy mode: the user has to click Reconnect explicitly — auto path
+      // must stay quiet so we don't burn budget on tabs that just got
+      // focused.
+      expect(deps.launcher.relaunch).not.toHaveBeenCalled();
+    });
+
+    it("skips the post-restart reconnection watchdog (stale 'starting' sessions are left alone)", async () => {
+      deps.launcher.getStartingSessions.mockReturnValue([
+        { sessionId: "stale-1", state: "starting", archived: false } as any,
+      ]);
+
+      lazyOrch.initialize(); // idempotent — should hit startReconnectionWatchdog
+      // Race in the legacy path waits ~10s before nudging. Lazy mode
+      // shouldn't nudge at all.
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(deps.launcher.relaunch).not.toHaveBeenCalled();
+    });
+
+    it("explicit relaunchSession (Reconnect button → /api/sessions/:id/relaunch) still works", async () => {
+      // The Reconnect button goes through orchestrator.relaunchSession,
+      // NOT through the gated auto-paths. Make sure lazy mode does not
+      // break that flow.
+      deps.launcher.relaunch.mockResolvedValue({ ok: true });
+      const result = await lazyOrch.relaunchSession("any-session");
+      expect(result.ok).toBe(true);
+      expect(deps.launcher.relaunch).toHaveBeenCalledWith("any-session");
     });
   });
 });

@@ -6,6 +6,8 @@ import { sendToSession } from "../ws.js";
 import type { PermissionRequest } from "../types.js";
 import type { PermissionUpdate, AiValidationInfo } from "../../server/session-types.js";
 import { DiffViewer } from "./DiffViewer.js";
+import { AskUserQuestionDisplay } from "./AskUserQuestionDisplay.js";
+import { ExitPlanModeDisplay } from "./ExitPlanModeDisplay.js";
 
 /** Human-readable label for a permission suggestion */
 function suggestionLabel(s: PermissionUpdate): string {
@@ -82,12 +84,15 @@ export function PermissionBanner({
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               <span className={`text-xs font-semibold ${isAskUser ? "text-cc-primary" : "text-cc-warning"}`}>
                 {isAskUser ? "Question" : "Permission Request"}
               </span>
               {!isAskUser && (
-                <span className="text-[11px] text-cc-muted font-mono-code">{permission.display_name || permission.tool_name}</span>
+                <>
+                  <span className="text-[11px] text-cc-muted font-mono-code">{permission.display_name || permission.tool_name}</span>
+                  <FilePathIndicator toolName={permission.tool_name} input={permission.input} />
+                </>
               )}
               {permission.title && (
                 <span className="text-[11px] text-cc-muted">{permission.title}</span>
@@ -197,6 +202,53 @@ function AiValidationBadge({ validation }: { validation: AiValidationInfo }) {
   );
 }
 
+/** Shows the file path for file operations in the permission header */
+function FilePathIndicator({
+  toolName,
+  input,
+}: {
+  toolName: string;
+  input: Record<string, unknown>;
+}) {
+  const filePath = typeof input.file_path === "string" ? input.file_path : "";
+
+  // File operation tools that have a file_path
+  if ((toolName === "Edit" || toolName === "Write" || toolName === "Read") && filePath) {
+    const fileName = filePath.split("/").pop() || filePath;
+    return (
+      <span className="text-[11px] px-2 py-1 rounded-md bg-cc-code-bg/50 text-cc-fg/80 font-mono-code truncate max-w-[300px]" title={filePath}>
+        {fileName}
+      </span>
+    );
+  }
+
+  // Glob has a pattern
+  if (toolName === "Glob") {
+    const pattern = typeof input.pattern === "string" ? input.pattern : "";
+    if (pattern) {
+      return (
+        <span className="text-[11px] px-2 py-1 rounded-md bg-cc-code-bg/50 text-cc-fg/80 font-mono-code truncate max-w-[300px]" title={pattern}>
+          {pattern}
+        </span>
+      );
+    }
+  }
+
+  // Grep has a pattern
+  if (toolName === "Grep") {
+    const pattern = typeof input.pattern === "string" ? input.pattern : "";
+    if (pattern) {
+      return (
+        <span className="text-[11px] px-2 py-1 rounded-md bg-cc-code-bg/50 text-cc-fg/80 font-mono-code truncate max-w-[300px]" title={pattern}>
+          {pattern}
+        </span>
+      );
+    }
+  }
+
+  return null;
+}
+
 function ToolInputDisplay({
   toolName,
   input,
@@ -246,202 +298,10 @@ function BashDisplay({ input }: { input: Record<string, unknown> }) {
   );
 }
 
-function AskUserQuestionDisplay({
-  input,
-  onSelect,
-  disabled,
-}: {
-  input: Record<string, unknown>;
-  onSelect: (answers: Record<string, string>) => void;
-  disabled: boolean;
-}) {
-  const questions = Array.isArray(input.questions) ? input.questions : [];
-  const [selections, setSelections] = useState<Record<string, string>>({});
-  const [customText, setCustomText] = useState<Record<string, string>>({});
-  const [showCustom, setShowCustom] = useState<Record<string, boolean>>({});
-
-  function handleOptionClick(questionIdx: number, label: string) {
-    const key = String(questionIdx);
-    setSelections((prev) => ({ ...prev, [key]: label }));
-    setShowCustom((prev) => ({ ...prev, [key]: false }));
-
-    // Auto-submit if single question
-    if (questions.length <= 1) {
-      onSelect({ [key]: label });
-    }
-  }
-
-  function handleCustomSubmit(questionIdx: number) {
-    const key = String(questionIdx);
-    const text = customText[key]?.trim();
-    if (!text) return;
-    setSelections((prev) => ({ ...prev, [key]: text }));
-
-    if (questions.length <= 1) {
-      onSelect({ [key]: text });
-    }
-  }
-
-  function handleCustomChange(questionIdx: number, value: string) {
-    const key = String(questionIdx);
-    setCustomText((prev) => ({ ...prev, [key]: value }));
-    const trimmed = value.trim();
-    setSelections((prev) => {
-      if (!trimmed) {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      }
-      return { ...prev, [key]: trimmed };
-    });
-  }
-
-  function handleCustomToggle(questionIdx: number) {
-    const key = String(questionIdx);
-    setShowCustom((prev) => {
-      const wasOpen = Boolean(prev[key]);
-      const next = { ...prev, [key]: !wasOpen };
-      if (wasOpen) {
-        setSelections((s) => {
-          const cleared = { ...s };
-          delete cleared[key];
-          return cleared;
-        });
-        setCustomText((t) => {
-          const cleared = { ...t };
-          delete cleared[key];
-          return cleared;
-        });
-      }
-      return next;
-    });
-  }
-
-  function handleSubmitAll() {
-    onSelect(selections);
-  }
-
-  if (questions.length === 0) {
-    // Fallback for simple question string
-    const question = typeof input.question === "string" ? input.question : "";
-    if (question) {
-      return (
-        <div className="text-sm text-cc-fg bg-cc-code-bg/30 rounded-lg px-3 py-2">
-          {question}
-        </div>
-      );
-    }
-    return <GenericDisplay input={input} />;
-  }
-
-  return (
-    <div className="space-y-3">
-      {questions.map((q: Record<string, unknown>, i: number) => {
-        const header = typeof q.header === "string" ? q.header : "";
-        const text = typeof q.question === "string" ? q.question : "";
-        const options = Array.isArray(q.options) ? q.options : [];
-        const key = String(i);
-        const selected = selections[key];
-        const isCustom = showCustom[key];
-
-        return (
-          <div key={i} className="space-y-2">
-            {header && (
-              <span className="inline-block text-[10px] font-semibold text-cc-primary bg-cc-primary/10 px-1.5 py-0.5 rounded">
-                {header}
-              </span>
-            )}
-            {text && (
-              <p className="text-sm text-cc-fg leading-relaxed">{text}</p>
-            )}
-            {options.length > 0 && (
-              <div className="space-y-1.5">
-                {options.map((opt: Record<string, unknown>, j: number) => {
-                  const label = typeof opt.label === "string" ? opt.label : String(opt);
-                  const desc = typeof opt.description === "string" ? opt.description : "";
-                  const isSelected = selected === label;
-
-                  return (
-                    <button
-                      key={j}
-                      onClick={() => handleOptionClick(i, label)}
-                      disabled={disabled}
-                      className={`w-full text-left px-3 py-2 rounded-lg border transition-all cursor-pointer disabled:opacity-50 ${
-                        isSelected
-                          ? "border-cc-primary bg-cc-primary/10 ring-1 ring-cc-primary/30"
-                          : "border-cc-border bg-cc-hover/50 hover:bg-cc-hover hover:border-cc-primary/30"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                          isSelected ? "border-cc-primary" : "border-cc-muted/40"
-                        }`}>
-                          {isSelected && <span className="w-2 h-2 rounded-full bg-cc-primary" />}
-                        </span>
-                        <div>
-                          <span className="text-xs font-medium text-cc-fg">{label}</span>
-                          {desc && <p className="text-[11px] text-cc-muted mt-0.5 leading-snug">{desc}</p>}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-
-                {/* "Other" option */}
-                <button
-                  onClick={() => handleCustomToggle(i)}
-                  disabled={disabled}
-                  className={`w-full text-left px-3 py-2 rounded-lg border transition-all cursor-pointer disabled:opacity-50 ${
-                    isCustom
-                      ? "border-cc-primary bg-cc-primary/10 ring-1 ring-cc-primary/30"
-                      : "border-cc-border bg-cc-hover/50 hover:bg-cc-hover hover:border-cc-primary/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                      isCustom ? "border-cc-primary" : "border-cc-muted/40"
-                    }`}>
-                      {isCustom && <span className="w-2 h-2 rounded-full bg-cc-primary" />}
-                    </span>
-                    <span className="text-xs font-medium text-cc-muted">Other...</span>
-                  </div>
-                </button>
-
-                {isCustom && (
-                  <div className="pl-6">
-                    <input
-                      type="text"
-                      value={customText[key] || ""}
-                      onChange={(e) => handleCustomChange(i, e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleCustomSubmit(i); }}
-                      placeholder="Type your answer..."
-                      className="w-full px-2.5 py-1.5 text-xs bg-cc-input-bg border border-cc-border rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:border-cc-primary/50"
-                      autoFocus
-                    />
-                    {questions.length <= 1 && (
-                      <p className="mt-1 text-[10px] text-cc-muted">Press Enter to submit</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {/* Submit all for multi-question */}
-      {questions.length > 1 && Object.keys(selections).length > 0 && (
-        <button
-          onClick={handleSubmitAll}
-          disabled={disabled}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-cc-primary hover:bg-cc-primary-hover text-white disabled:opacity-50 transition-colors cursor-pointer"
-        >
-          Submit answers
-        </button>
-      )}
-    </div>
-  );
-}
+// AskUserQuestionDisplay was extracted to its own file so that ToolBlock can
+// re-use the same UI when AskUserQuestion appears as a regular tool_use in
+// the assistant stream (stdio-mode path, where the CLI never invokes the
+// can_use_tool gate). See AskUserQuestionDisplay.tsx.
 
 function EditDisplay({ input }: { input: Record<string, unknown> }) {
   const filePath = String(input.file_path || "");
@@ -504,86 +364,10 @@ function GrepDisplay({ input }: { input: Record<string, unknown> }) {
   );
 }
 
-function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
-  const plan = typeof input.plan === "string" ? input.plan : "";
-  const allowedPrompts = Array.isArray(input.allowedPrompts) ? input.allowedPrompts : [];
-
-  return (
-    <div className="space-y-2">
-      {plan && (
-        <div className="rounded-xl border border-cc-border overflow-hidden bg-cc-card">
-          <div className="px-3 py-2 border-b border-cc-border bg-cc-primary/[0.04] flex items-center gap-2">
-            <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-cc-primary/15 text-cc-primary shrink-0">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
-                <path d="M3 3.5h10M3 8h10M3 12.5h6" strokeLinecap="round" />
-              </svg>
-            </span>
-            <span className="text-[11px] text-cc-primary font-semibold tracking-wide uppercase">Plan</span>
-          </div>
-          <div className="px-3 py-3 max-h-72 overflow-y-auto markdown-body text-[13px] text-cc-fg leading-relaxed">
-            <Markdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                h1: ({ children }) => <h1 className="text-base font-semibold text-cc-fg mb-2">{children}</h1>,
-                h2: ({ children }) => <h2 className="text-sm font-semibold text-cc-fg mb-1.5 mt-3 first:mt-0">{children}</h2>,
-                h3: ({ children }) => <h3 className="text-sm font-medium text-cc-fg mb-1.5 mt-2">{children}</h3>,
-                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
-                ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
-                li: ({ children }) => <li>{children}</li>,
-                strong: ({ children }) => <strong className="font-semibold text-cc-fg">{children}</strong>,
-                a: ({ href, children }) => (
-                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-cc-primary hover:underline">{children}</a>
-                ),
-                code: (props: ComponentProps<"code">) => {
-                  const { children, className } = props;
-                  const match = /language-(\w+)/.exec(className || "");
-                  const isBlock = match || (typeof children === "string" && children.includes("\n"));
-
-                  if (isBlock) {
-                    return (
-                      <pre className="my-2 px-2.5 py-2 rounded-lg bg-cc-code-bg text-cc-code-fg text-[12px] font-mono-code leading-relaxed overflow-x-auto border border-cc-border">
-                        <code>{children}</code>
-                      </pre>
-                    );
-                  }
-
-                  return (
-                    <code className="px-1.5 py-0.5 rounded-md bg-cc-fg/[0.06] text-cc-code-fg font-mono-code text-[12px]">
-                      {children}
-                    </code>
-                  );
-                },
-                pre: ({ children }) => <>{children}</>,
-                blockquote: ({ children }) => (
-                  <blockquote className="border-l-2 border-cc-primary/40 pl-2 text-cc-muted italic my-2">{children}</blockquote>
-                ),
-              }}
-            >
-              {plan}
-            </Markdown>
-          </div>
-        </div>
-      )}
-      {allowedPrompts.length > 0 && (
-        <div className="space-y-1">
-          <div className="text-[10px] text-cc-muted uppercase tracking-wider">Requested permissions</div>
-          <div className="space-y-1">
-            {allowedPrompts.map((p: Record<string, unknown>, i: number) => (
-              <div key={i} className="flex items-center gap-2 text-[11px] font-mono-code bg-cc-code-bg/30 rounded-lg px-2.5 py-1.5">
-                <span className="text-cc-muted shrink-0">{String(p.tool || "")}</span>
-                <span className="text-cc-fg">{String(p.prompt || "")}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {!plan && allowedPrompts.length === 0 && (
-        <div className="text-xs text-cc-muted">Plan approval requested</div>
-      )}
-    </div>
-  );
-}
+// ExitPlanModeDisplay was extracted to its own file so ToolBlock can re-use
+// the same plan-card layout when the tool appears as a regular tool_use in
+// the assistant stream (bypass-mode path; CLI auto-approves the plan-mode
+// transition without firing can_use_tool). See ExitPlanModeDisplay.tsx.
 
 function GenericDisplay({
   input,
@@ -603,15 +387,15 @@ function GenericDisplay({
   return (
     <div className="space-y-1">
       {description && <div className="text-xs text-cc-muted mb-1">{description}</div>}
-      <div className="bg-cc-code-bg/30 rounded-lg px-3 py-2 space-y-1">
+      <div className="bg-cc-code-bg/30 rounded-lg px-3 py-2 space-y-1 max-h-[50vh] overflow-y-auto">
         {entries.map(([key, value]) => {
           const displayValue = typeof value === "string"
-            ? value.length > 200 ? value.slice(0, 200) + "..." : value
-            : JSON.stringify(value);
+            ? value
+            : JSON.stringify(value, null, 2);
           return (
-            <div key={key} className="flex gap-2 text-[11px] font-mono-code">
-              <span className="text-cc-muted shrink-0">{key}:</span>
-              <span className="text-cc-fg break-all">{displayValue}</span>
+            <div key={key} className="text-[11px] font-mono-code">
+              <span className="text-cc-muted">{key}:</span>
+              <pre className="text-cc-fg whitespace-pre-wrap break-words mt-0.5">{displayValue}</pre>
             </div>
           );
         })}

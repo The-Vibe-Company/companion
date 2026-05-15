@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { PermissionBanner } from "./PermissionBanner.js";
+import { AskUserQuestionToolBlock } from "./AskUserQuestionToolBlock.js";
+import { SensitiveFileWriteApproval } from "./SensitiveFileWriteApproval.js";
 import { MessageBubble } from "./MessageBubble.js";
 import {
   ToolBlock,
@@ -443,12 +445,14 @@ const MOCK_TASKS: TaskItem[] = [
     description: "",
     status: "in_progress",
     activeForm: "Refactoring login to return JWT",
+    owner: "code-architect",
   },
   {
     id: "4",
     subject: "Add refresh token support",
     description: "",
     status: "pending",
+    owner: "code-architect",
   },
   {
     id: "5",
@@ -456,6 +460,7 @@ const MOCK_TASKS: TaskItem[] = [
     description: "",
     status: "pending",
     blockedBy: ["3"],
+    owner: "test-runner",
   },
   {
     id: "6",
@@ -463,6 +468,8 @@ const MOCK_TASKS: TaskItem[] = [
     description: "",
     status: "pending",
     blockedBy: ["5"],
+    // No owner — covers the no-team scenario in the same panel so the
+    // Playground exercises both visual paths.
   },
 ];
 
@@ -913,35 +920,71 @@ export function Playground() {
           </div>
         </Section>
 
-        {/* ─── ExitPlanMode (the fix) ──────────────────────────── */}
+        {/* ─── ExitPlanMode ──────────────────────────── */}
         <Section
           title="ExitPlanMode"
-          description="Plan approval request — previously rendered as raw JSON, now shows formatted markdown"
+          description="Plan markdown shown both in the permission banner (non-bypass) and as a tool_use card with Approve/Reject buttons (stdio path — used for both bypass and plan modes since the CLI doesn't gate this tool through can_use_tool in stdio)."
         >
-          <div className="border border-cc-border rounded-xl overflow-hidden bg-cc-card">
-            <PermissionBanner
-              permission={PERM_EXIT_PLAN}
-              sessionId={MOCK_SESSION_ID}
-            />
+          <div className="space-y-4">
+            <Card label="permission_request path (Approve / Deny in banner)">
+              <div className="border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+                <PermissionBanner
+                  permission={PERM_EXIT_PLAN}
+                  sessionId={MOCK_SESSION_ID}
+                />
+              </div>
+            </Card>
+            <Card label="tool_use path (stdio — Approve flips plan→default mode + sends user_message)">
+              <ToolBlock
+                name="ExitPlanMode"
+                input={PERM_EXIT_PLAN.input}
+                toolUseId="playground-tu-exit-plan"
+              />
+            </Card>
           </div>
+        </Section>
+
+        {/* ─── Sensitive-file write approval ───────────────────── */}
+        <Section
+          title="Sensitive file write approval"
+          description="Claude Code stdio mode rejects Write to `.claude/hooks/*`, `.claude/settings.json`, etc. with a misleading 'requested permissions' error and no can_use_tool gate. Companion detects the pattern and shows a real Approve/Reject UI; Approve writes via the server API."
+        >
+          <Card label="tool_result match → inline Approve / Reject card">
+            <SensitiveFileWriteApproval
+              content="Claude requested permissions to edit /home/ubuntu/.claude/hooks/eval-team-mode.sh which is a sensitive file."
+              toolUseId="playground-tu-sensitive-1"
+            />
+          </Card>
         </Section>
 
         {/* ─── AskUserQuestion ──────────────────────────────── */}
         <Section
           title="AskUserQuestion"
-          description="Interactive questions with selectable options"
+          description="Interactive questions with selectable options. Permission-banner path (legacy --sdk-url) and tool_use path (stdio) share the same core display."
         >
           <div className="space-y-4">
-            <Card label="Single question">
+            <Card label="Single question (permission_request path)">
               <PermissionBanner
                 permission={PERM_ASK_SINGLE}
                 sessionId={MOCK_SESSION_ID}
               />
             </Card>
-            <Card label="Multi-question">
+            <Card label="Multi-question (permission_request path)">
               <PermissionBanner
                 permission={PERM_ASK_MULTI}
                 sessionId={MOCK_SESSION_ID}
+              />
+            </Card>
+            <Card label="Single question (tool_use path — stdio default)">
+              <AskUserQuestionToolBlock
+                input={PERM_ASK_SINGLE.input}
+                toolUseId="playground-tu-single"
+              />
+            </Card>
+            <Card label="Multi-question (tool_use path — stdio default)">
+              <AskUserQuestionToolBlock
+                input={PERM_ASK_MULTI.input}
+                toolUseId="playground-tu-multi"
               />
             </Card>
           </div>
@@ -3694,7 +3737,7 @@ function PlaygroundMcpRow({ server }: { server: McpServerDetail }) {
 
 // ─── Inline TaskRow (avoids store dependency from TaskPanel) ────────────────
 
-function TaskRow({ task }: { task: TaskItem }) {
+function TaskRow({ task, showOwnerChip = true }: { task: TaskItem; showOwnerChip?: boolean }) {
   const isCompleted = task.status === "completed";
   const isInProgress = task.status === "in_progress";
 
@@ -3754,6 +3797,20 @@ function TaskRow({ task }: { task: TaskItem }) {
         >
           {task.subject}
         </span>
+        {showOwnerChip && task.owner && (
+          <span
+            className={`shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium border border-cc-border ${
+              isCompleted ? "text-cc-muted/60 bg-cc-card" : "text-cc-fg/80 bg-cc-card"
+            }`}
+            title={`Assigned to ${task.owner}`}
+            data-testid="task-owner-chip"
+          >
+            <svg viewBox="0 0 16 16" fill="currentColor" className="w-2.5 h-2.5 shrink-0" aria-hidden>
+              <path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 6a5 5 0 1110 0H3z" />
+            </svg>
+            <span className="truncate max-w-[120px]">{task.owner}</span>
+          </span>
+        )}
       </div>
       {isInProgress && task.activeForm && (
         <p className="mt-1 ml-6 text-[11px] text-cc-muted italic truncate">

@@ -3,6 +3,7 @@ import type { CliLauncher } from "../cli-launcher.js";
 import type { WsBridge } from "../ws-bridge.js";
 import type { TerminalManager } from "../terminal-manager.js";
 import { getUsageLimits } from "../usage-limits.js";
+import { fetchProxyModelOptions } from "../model-resolver.js";
 import {
   getUpdateState,
   checkForUpdate,
@@ -55,6 +56,25 @@ export function registerSystemRoutes(
 
     const limits = await getUsageLimits();
     return c.json(limits);
+  });
+
+  // Per-session dynamic model list. Mirrors GET /backends/claude/models?envSlug=
+  // but resolves the env from the live session's runtime vars (the merged
+  // record actually passed to the spawned CLI), which is what the resolver
+  // checks at spawn time. Returns an empty array when the session is unknown,
+  // has no proxy, or the proxy probe fails — frontend falls back to its
+  // hardcoded picker in those cases. Claude-only; Codex sessions always use
+  // their local cache and get [].
+  api.get("/sessions/:id/models", async (c) => {
+    const sessionId = c.req.param("id");
+    const session = deps.launcher.getSession(sessionId);
+    if (!session || session.backendType === "codex") return c.json([]);
+    const env = deps.launcher.getSessionEnv(sessionId);
+    const baseUrl = env?.ANTHROPIC_BASE_URL;
+    const token = env?.ANTHROPIC_AUTH_TOKEN || env?.ANTHROPIC_API_KEY;
+    if (!baseUrl || !token) return c.json([]);
+    const opts = await fetchProxyModelOptions(baseUrl, token);
+    return c.json(opts ?? []);
   });
 
   api.get("/update-check", async (c) => {

@@ -44,43 +44,37 @@ describe("analytics", () => {
   });
 
   it("initializes PostHog and captures events when key is configured", async () => {
-    // Validates successful initialization and the main event/error/pageview wrappers.
+    // Analytics is now permanently disabled - this test validates the no-op behavior
     vi.stubEnv("VITE_POSTHOG_KEY", "phc_test_key");
     vi.stubEnv("VITE_POSTHOG_HOST", "https://eu.i.posthog.com");
     const mod = await import("./analytics.js");
 
-    expect(mod.initAnalytics()).toBe(true);
-    expect(mod.isAnalyticsEnabled()).toBe(true);
-    expect(posthogOptInMock).toHaveBeenCalled();
+    // initAnalytics always returns false now (disabled)
+    expect(mod.initAnalytics()).toBe(false);
+    expect(mod.isAnalyticsEnabled()).toBe(false);
 
-    expect(posthogInitMock).toHaveBeenCalledWith(
-      "phc_test_key",
-      expect.objectContaining({
-        api_host: "https://eu.i.posthog.com",
-        capture_pageview: false,
-        capture_exceptions: true,
-        respect_dnt: true,
-      }),
-    );
+    // PostHog is never initialized since analytics is disabled
+    expect(posthogInitMock).not.toHaveBeenCalled();
 
     mod.captureEvent("test_event", { foo: "bar" });
     mod.captureException(new Error("boom"), { source: "unit_test" });
     mod.capturePageView("#/settings");
 
-    expect(posthogCaptureMock).toHaveBeenCalledWith("test_event", { foo: "bar" });
-    expect(posthogCaptureExceptionMock).toHaveBeenCalled();
-    expect(posthogCaptureMock).toHaveBeenCalledWith("$pageview", { $current_url: "#/settings" });
+    // All capture methods are no-ops, so nothing is sent
+    expect(posthogCaptureMock).not.toHaveBeenCalled();
+    expect(posthogCaptureExceptionMock).not.toHaveBeenCalled();
   });
 
   it("respects telemetry preference opt-out", async () => {
-    // Validates persisted user opt-out prevents all event capture even when key exists.
+    // Analytics is now permanently disabled regardless of preferences
     vi.stubEnv("VITE_POSTHOG_KEY", "phc_test_key");
     localStorage.setItem("cc-telemetry-enabled", "false");
     const mod = await import("./analytics.js");
 
-    expect(mod.initAnalytics()).toBe(true);
+    expect(mod.initAnalytics()).toBe(false);
     expect(mod.isAnalyticsEnabled()).toBe(false);
-    expect(posthogOptOutMock).toHaveBeenCalled();
+    // PostHog is never called since analytics is disabled
+    expect(posthogOptOutMock).not.toHaveBeenCalled();
     mod.captureEvent("test_event");
     expect(posthogCaptureMock).not.toHaveBeenCalled();
   });

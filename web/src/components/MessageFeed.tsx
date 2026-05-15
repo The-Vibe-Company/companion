@@ -21,6 +21,7 @@ const savedDistanceFromBottomBySession = new Map<string, number>();
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
 const EMPTY_SDK_SESSIONS: SdkSessionInfo[] = [];
+const emptyStringArray: string[] = [];
 
 function formatResumeSourcePath(path: string): string {
   const parts = path.split("/").filter(Boolean);
@@ -108,13 +109,71 @@ function getTaskIdsFromEntry(entry: FeedEntry): string[] {
         (b): b is Extract<ContentBlock, { type: "tool_use" }> =>
           b.type === "tool_use",
       )
-      .filter((b) => b.name === "Task")
+      .filter((b) => isSubagentInvocationName(b.name))
       .map((b) => b.id);
   }
-  if (entry.kind === "tool_msg_group" && entry.toolName === "Task") {
+  if (entry.kind === "tool_msg_group" && isSubagentInvocationName(entry.toolName)) {
     return entry.items.map((item) => item.id);
   }
   return [];
+}
+
+/** Tool names that delegate to a subagent. Both Task (older) and Agent
+ *  (used in CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS sessions) carry a
+ *  subagent_type and produce nested children via parent_tool_use_id —
+ *  treat them the same for grouping purposes. */
+function isSubagentInvocationName(name: string): boolean {
+  return name === "Task" || name === "Agent";
+}
+
+/** Walk the feed entries (recursively into subagent groups) and collect
+ *  the set of distinct agent types invoked. Used by the per-agent filter
+ *  pillbar — empty array hides the pillbar, single entry doesn't render
+ *  it (a 1-agent filter has no meaningful "All vs X" choice).
+ *
+ *  `excludeAgents` filters out built-in Claude Code agents (Explore,
+ *  general-purpose, Plan, etc.) which are tools the model uses
+ *  one-shot, not project team members worth focusing on. The list comes
+ *  from the session's state.agents (populated by the CLI at init). */
+function extractAgentTypes(entries: FeedEntry[], excludeAgents: string[] = []): string[] {
+  const exclude = new Set(excludeAgents);
+  const seen = new Set<string>();
+  const walk = (items: FeedEntry[]) => {
+    for (const entry of items) {
+      if (entry.kind === "subagent" && entry.agentType && !exclude.has(entry.agentType)) {
+        seen.add(entry.agentType);
+        walk(entry.children);
+      }
+    }
+  };
+  walk(entries);
+  return [...seen].sort((a, b) => a.localeCompare(b));
+}
+
+/** Filter entries to only show subagent groups matching the selected
+ *  agent type. Non-subagent entries (text bubbles, tool calls in the
+ *  main thread) are hidden in focus mode — the user has explicitly
+ *  asked to see only one agent's work. */
+function filterEntriesByAgent(entries: FeedEntry[], agentType: string): FeedEntry[] {
+  const out: FeedEntry[] = [];
+  for (const entry of entries) {
+    if (entry.kind === "subagent") {
+      if (entry.agentType === agentType) {
+        // Match — keep the whole subtree intact (nested subagents within
+        // this agent's work stay visible).
+        out.push(entry);
+      } else {
+        // Not a match at this level, but a child might be (rare: nested
+        // delegation to a different agent). Recurse and lift any matches
+        // up to the top of the filtered view.
+        const nested = filterEntriesByAgent(entry.children, agentType);
+        if (nested.length > 0) out.push(...nested);
+      }
+    }
+    // Non-subagent entries (text, tool_msg_group, message): hidden in
+    // focus mode. The "All" view is for that.
+  }
+  return out;
 }
 
 /** Group consecutive same-tool messages */
@@ -213,7 +272,7 @@ function groupMessages(messages: ChatMessage[]): FeedEntry[] {
   for (const msg of messages) {
     if (!msg.contentBlocks) continue;
     for (const b of msg.contentBlocks) {
-      if (b.type === "tool_use" && b.name === "Task") {
+      if (b.type === "tool_use" && isSubagentInvocationName(b.name)) {
         const { input, id } = b;
         const receiverThreadIds = Array.isArray(input?.receiver_thread_ids)
           ? input.receiver_thread_ids.filter(
@@ -371,6 +430,77 @@ function ToolMessageGroup({ group }: { group: ToolMsgGroup }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Pillbar above the feed for filtering by agent (V2 Phase A focus mode).
+ *  Hidden when fewer than 2 distinct agents have been invoked — a single
+ *  "Explore" button next to "All" is just visual noise. */
+function AgentFilterPillbar({
+  agentTypes,
+  selected,
+  onChange,
+}: {
+  agentTypes: string[];
+  selected: string | null;
+  onChange: (agent: string | null) => void;
+}) {
+  return (
+    <div
+      className="flex flex-wrap items-center gap-1.5 pb-2"
+      role="tablist"
+      aria-label="Filter messages by agent"
+      data-testid="agent-filter-pillbar"
+    >
+      <span className="text-[11px] text-cc-muted font-medium pr-1">Focus:</span>
+      <FilterPill
+        label="All"
+        selected={selected === null}
+        onClick={() => onChange(null)}
+      />
+      {agentTypes.map((agent) => (
+        <FilterPill
+          key={agent}
+          label={agent}
+          selected={selected === agent}
+          onClick={() => onChange(agent)}
+          icon={
+            <svg viewBox="0 0 16 16" fill="currentColor" className="w-2.5 h-2.5 shrink-0" aria-hidden>
+              <path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 6a5 5 0 1110 0H3z" />
+            </svg>
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
+function FilterPill({
+  label,
+  selected,
+  onClick,
+  icon,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <button
+      role="tab"
+      aria-selected={selected}
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors cursor-pointer ${
+        selected
+          ? "bg-cc-primary text-white border-cc-primary"
+          : "bg-cc-card text-cc-fg/70 border-cc-border hover:bg-cc-hover"
+      }`}
+      data-testid={`agent-filter-pill-${label}`}
+    >
+      {icon}
+      <span className="truncate max-w-[120px]">{label}</span>
+    </button>
   );
 }
 
@@ -578,6 +708,20 @@ function AssistantAvatar() {
   );
 }
 
+function ContextBadge({ percent }: { percent: number }) {
+  const color =
+    percent > 80
+      ? "text-red-500"
+      : percent >= 50
+        ? "text-yellow-600 dark:text-yellow-400"
+        : "text-green-600 dark:text-green-400";
+  return (
+    <span className={`${color} tabular-nums`} data-testid="context-badge">
+      Ctx {Math.round(percent)}%
+    </span>
+  );
+}
+
 // ─── Main Feed ───────────────────────────────────────────────────────────────
 
 export function MessageFeed({ sessionId }: { sessionId: string }) {
@@ -596,6 +740,9 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
   const sessionStatus = useStore((s) => s.sessionStatus.get(sessionId));
   const toolProgress = useStore((s) => s.toolProgress.get(sessionId));
   const toolActivity = useStore((s) => s.toolActivity.get(sessionId));
+  const contextUsedPercent = useStore(
+    (s) => s.sessions.get(sessionId)?.context_used_percent ?? 0,
+  );
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottom = useRef(true);
@@ -647,6 +794,38 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
     [mergedMessages],
   );
 
+  // Per-agent filter (V2 Phase A): collect the agent types invoked in
+  // this session and let the user focus on one. null = "All" (default).
+  // Excludes Claude Code built-in agents (Explore, general-purpose, Plan,
+  // statusline-setup) — those are one-shot tools the model invokes, not
+  // project team members worth focusing the feed on. The list comes from
+  // the session's state.agents which the CLI populates at init.
+  const builtinAgents = useStore(
+    useCallback(
+      (s) => s.sessions.get(sessionId)?.agents ?? emptyStringArray,
+      [sessionId],
+    ),
+  );
+  const agentTypes = useMemo(
+    () => extractAgentTypes(grouped, builtinAgents),
+    [grouped, builtinAgents],
+  );
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+
+  // Drop the filter selection if the chosen agent disappears (session
+  // switch or that agent's tasks are no longer in the visible window).
+  // Avoids a "stuck on missing agent" empty feed state.
+  useEffect(() => {
+    if (selectedAgent !== null && !agentTypes.includes(selectedAgent)) {
+      setSelectedAgent(null);
+    }
+  }, [agentTypes, selectedAgent]);
+
+  const filteredGrouped = useMemo(() => {
+    if (selectedAgent === null) return grouped;
+    return filterEntriesByAgent(grouped, selectedAgent);
+  }, [grouped, selectedAgent]);
+
   // Reset paging/transcript state when switching sessions.
   useEffect(() => {
     setVisibleCount(FEED_PAGE_SIZE);
@@ -657,13 +836,14 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
     setResumeHistoryLoading(false);
     setResumeHistoryError("");
     resumeHistoryMessageIdsRef.current = new Set();
+    setSelectedAgent(null);
   }, [sessionId, resumeSourceSessionId]);
 
-  const totalEntries = grouped.length;
+  const totalEntries = filteredGrouped.length;
   const hasMore = totalEntries > visibleCount;
   const visibleEntries = hasMore
-    ? grouped.slice(totalEntries - visibleCount)
-    : grouped;
+    ? filteredGrouped.slice(totalEntries - visibleCount)
+    : filteredGrouped;
   const hiddenCount = totalEntries - visibleEntries.length;
 
   const handleLoadMore = useCallback(() => {
@@ -844,7 +1024,7 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
     if (isNearBottom.current) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [messages.length]);
 
   if (mergedMessages.length === 0) {
     return (
@@ -989,6 +1169,13 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
               </button>
             </div>
           )}
+          {agentTypes.length >= 2 && (
+            <AgentFilterPillbar
+              agentTypes={agentTypes}
+              selected={selectedAgent}
+              onChange={setSelectedAgent}
+            />
+          )}
           <FeedEntries entries={visibleEntries} toolActivity={toolActivity} />
 
           {/* Tool progress indicator */}
@@ -998,7 +1185,10 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
 
           {/* Compacting context indicator */}
           {sessionStatus === "compacting" && (
-            <div className="flex items-center gap-2 text-[11px] text-cc-warning font-mono-code pl-10 py-1">
+            <div
+              className="flex items-center gap-2 text-[11px] text-cc-warning font-mono-code pl-10 py-1"
+              data-testid="compacting-indicator"
+            >
               <svg
                 className="w-3.5 h-3.5 animate-spin shrink-0"
                 viewBox="0 0 16 16"
@@ -1026,6 +1216,22 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
                   <span className="tabular-nums">{formatTokenCount(streamingOutputTokens!)} tokens</span>
                 </>
               )}
+              {contextUsedPercent > 0 && (
+                <>
+                  <span className="text-cc-muted/30">|</span>
+                  <ContextBadge percent={contextUsedPercent} />
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Idle context badge — shown only when not running and not compacting */}
+          {sessionStatus !== "running" && sessionStatus !== "compacting" && contextUsedPercent > 0 && (
+            <div
+              className="flex items-center gap-2 text-[11px] text-cc-muted font-mono-code pl-10 py-1"
+              data-testid="context-usage-idle"
+            >
+              <ContextBadge percent={contextUsedPercent} />
             </div>
           )}
 

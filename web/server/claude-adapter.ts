@@ -1,16 +1,20 @@
 /**
  * Claude Code Backend Adapter
  *
- * Translates between the Claude Code NDJSON WebSocket protocol and
+ * Translates between the Claude Code NDJSON stdio protocol and
  * The Companion's BrowserIncomingMessage/BrowserOutgoingMessage types.
  *
- * This allows the bridge (and by extension the browser) to be completely
- * unaware of which backend is running -- it sees the same message types
- * regardless of whether Claude Code or Codex is the backend.
+ * Transport: companion spawns claude in headless stdio mode
+ * (`--print --input-format stream-json --output-format stream-json`) and
+ * pipes stdin/stdout directly. The bridge stays transport-agnostic — it
+ * only sees the typed Browser* messages.
+ *
+ * Historical note: through 2026-05 this adapter consumed the CLI's
+ * `--sdk-url` WebSocket. Claude Code 2.1.121 added hostname validation
+ * that broke that path (companion#655); we cut over to documented stdio.
  */
 
 import { randomUUID } from "node:crypto";
-import type { ServerWebSocket } from "bun";
 import type { IBackendAdapter } from "./backend-adapter.js";
 import type {
   BrowserIncomingMessage,
@@ -40,12 +44,13 @@ import type {
   McpServerDetail,
   SessionState,
 } from "./session-types.js";
-import type { SocketData } from "./ws-bridge-types.js";
 import type { PendingControlRequest } from "./ws-bridge-types.js";
 import type { RecorderManager } from "./recorder.js";
 import { parseNDJSON, isDuplicateCLIMessage } from "./ws-bridge-cli-ingest.js";
 import type { CLIDedupState } from "./ws-bridge-cli-ingest.js";
 import { reportProtocolDrift } from "./protocol-monitor.js";
+import { companionBus } from "./event-bus.js";
+import { log } from "./logger.js";
 
 // --- Constants ----------------------------------------------------------------
 
@@ -54,19 +59,47 @@ const CLI_DEDUP_WINDOW = 2000;
 
 // --- Claude Code Adapter ------------------------------------------------------
 
+/** Minimal duck-typed stdin handle. Wide return type accommodates both
+ *  Node's Writable (returns boolean) and Bun's FileSink (returns number |
+ *  Promise<number>) without coupling callers to a specific stream library.
+ */
+export interface ClaudeAdapterStdinSink {
+  write(data: string): unknown;
+}
+
+/** Minimal duck-typed stdout source. The adapter only listens for `data`
+ *  events; using a small interface keeps tests free of real streams. */
+export interface ClaudeAdapterStdoutSource {
+  on(event: "data", listener: (chunk: Buffer | string) => void): unknown;
+  off(event: "data", listener: (chunk: Buffer | string) => void): unknown;
+}
+
 export class ClaudeAdapter implements IBackendAdapter {
   private sessionId: string;
 
-  // WebSocket to the Claude Code CLI process
-  private cliSocket: ServerWebSocket<SocketData> | null = null;
+  // stdio handles to the spawned Claude Code CLI subprocess. Both null until
+  // attachStdio() runs; null again after disconnect / child exit.
+  private cliStdin: ClaudeAdapterStdinSink | null = null;
+  private cliStdout: ClaudeAdapterStdoutSource | null = null;
+  private stdoutListener: ((chunk: Buffer | string) => void) | null = null;
+  // Line buffer for stdout — OS pipe boundaries can split an NDJSON line in
+  // half, so we accumulate until we see a newline before dispatching.
+  private stdoutBuffer = "";
 
   // Callbacks registered by the bridge via on*() methods
   private browserMessageCb: ((msg: BrowserIncomingMessage) => void) | null = null;
   private sessionMetaCb: ((meta: { cliSessionId?: string; model?: string; cwd?: string }) => void) | null = null;
   private disconnectCb: (() => void) | null = null;
 
-  // Pending NDJSON messages queued before CLI WebSocket connects
+  // Pending NDJSON messages queued before stdio is attached. The launcher
+  // attaches synchronously after spawn, so this normally stays empty, but
+  // a stray send() between adapter construction and attach is still queued.
   private pendingMessages: string[] = [];
+
+  // Last model reported via sessionMetaCb. Used to debounce per-assistant-message
+  // model reconciliation so we only fire onSessionMeta when the model actually
+  // changes (otherwise refreshGitInfo would run on every turn).
+  private lastReportedModel: string | null = null;
 
   // Async control request/response pairs (e.g. MCP status queries)
   private pendingControlRequests = new Map<string, PendingControlRequest>();
@@ -83,6 +116,23 @@ export class ClaudeAdapter implements IBackendAdapter {
   // Callback to update session.lastCliActivityTs from the bridge
   private onActivityUpdate: (() => void) | null;
 
+  // Hang-watchdog: kills the child process if no stdout arrives within
+  // `hangWatchdogMs` while we're still expecting a turn to finish.
+  // Recovers from cases where the upstream API SSE stream silently stalls
+  // (proxy stops sending chunks without closing TCP) — the stall can happen
+  // before the first byte OR mid-stream, so the watchdog ticks across the
+  // entire turn until a `result` arrives. See project_claude_silent_hang.md.
+  //
+  // Permission-gate pause: while `pendingPermissionGates > 0` the CLI is
+  // waiting on the user (control_request{can_use_tool} was sent and the
+  // user hasn't clicked Allow/Deny yet). Suspend the watchdog refcounted
+  // so a long human-side delay doesn't get misread as an upstream hang.
+  private killProcess: (() => void) | null;
+  private hangWatchdogMs: number;
+  private hangWatchdogTimer: ReturnType<typeof setTimeout> | null = null;
+  private expectingTurnResponse = false;
+  private pendingPermissionGates = 0;
+
   private protocolDriftSeen = new Set<string>();
   private parseErrorSeen = new Set<string>();
 
@@ -91,21 +141,49 @@ export class ClaudeAdapter implements IBackendAdapter {
     opts?: {
       recorder?: RecorderManager | null;
       onActivityUpdate?: () => void;
+      /** Fired when no stdout arrives within hangWatchdogMs of a user
+       *  message — usually wired to `proc.kill("SIGTERM")` so the
+       *  orchestrator's keepalive can respawn with --resume. */
+      killProcess?: () => void;
+      /** Silence threshold after a user_message before killProcess fires.
+       *  Default 90s. Set to 0 to disable. Override via env in launcher. */
+      hangWatchdogMs?: number;
     },
   ) {
     this.sessionId = sessionId;
     this.recorder = opts?.recorder ?? null;
     this.onActivityUpdate = opts?.onActivityUpdate ?? null;
+    this.killProcess = opts?.killProcess ?? null;
+    this.hangWatchdogMs = opts?.hangWatchdogMs ?? 90_000;
   }
 
-  // -- WebSocket lifecycle ----------------------------------------------------
+  // -- stdio lifecycle --------------------------------------------------------
 
   /**
-   * Called when the CLI WebSocket connects. Stores the socket reference and
-   * flushes any NDJSON messages that were queued before the connection.
+   * Wire the adapter to the spawned CLI's stdin/stdout. Stdin is used for
+   * outgoing NDJSON; stdout is line-buffered and each complete line is fed
+   * back into handleRawMessage(). Flushes any messages that were queued
+   * before the spawn completed.
    */
-  attachWebSocket(ws: ServerWebSocket<SocketData>): void {
-    this.cliSocket = ws;
+  attachStdio(stdin: ClaudeAdapterStdinSink, stdout: ClaudeAdapterStdoutSource): void {
+    // If something else is still attached (re-spawn race), detach it first.
+    this.detachStdio();
+    this.cliStdin = stdin;
+    this.cliStdout = stdout;
+    this.stdoutBuffer = "";
+
+    const onData = (chunk: Buffer | string) => {
+      this.stdoutBuffer += typeof chunk === "string" ? chunk : chunk.toString("utf8");
+      let nl: number;
+      while ((nl = this.stdoutBuffer.indexOf("\n")) !== -1) {
+        const line = this.stdoutBuffer.slice(0, nl);
+        this.stdoutBuffer = this.stdoutBuffer.slice(nl + 1);
+        if (line.trim().length === 0) continue;
+        this.handleRawMessage(line);
+      }
+    };
+    this.stdoutListener = onData;
+    stdout.on("data", onData);
 
     // Flush pending messages
     if (this.pendingMessages.length > 0) {
@@ -120,13 +198,36 @@ export class ClaudeAdapter implements IBackendAdapter {
   }
 
   /**
-   * Called when the CLI WebSocket closes. Guards against stale socket references
-   * (a new WS may have opened before the old one closed).
+   * Tear down the stdio attachment without firing the disconnect callback.
+   * Called from attachStdio() (re-attach path) and disconnect() (intentional
+   * shutdown). The bridge invokes notifyDisconnect() separately on child exit.
    */
-  detachWebSocket(ws: ServerWebSocket<SocketData>): void {
-    // Only detach if this is the current socket -- ignore stale close events
-    if (this.cliSocket !== ws) return;
-    this.cliSocket = null;
+  detachStdio(): void {
+    if (this.cliStdout && this.stdoutListener) {
+      try {
+        this.cliStdout.off("data", this.stdoutListener);
+      } catch {
+        // Stream already destroyed; nothing to clean up.
+      }
+    }
+    this.cliStdin = null;
+    this.cliStdout = null;
+    this.stdoutListener = null;
+    this.stdoutBuffer = "";
+    // Clear any armed hang watchdog — the child is gone (or about to be
+    // re-attached); firing killProcess on a stale process would either
+    // be a no-op or kill the wrong PID after fork-then-spawn.
+    this.clearHangWatchdog();
+  }
+
+  /**
+   * Called by the launcher when the spawned CLI process exits. Drops the
+   * stdio refs and fires the disconnect callback so the bridge / orchestrator
+   * can run their existing relaunch path.
+   */
+  notifyChildExited(): void {
+    if (!this.cliStdin && !this.cliStdout) return;
+    this.detachStdio();
     this.disconnectCb?.();
   }
 
@@ -147,30 +248,23 @@ export class ClaudeAdapter implements IBackendAdapter {
   // -- IBackendAdapter: Transport state ---------------------------------------
 
   isConnected(): boolean {
-    return this.cliSocket !== null;
+    return this.cliStdin !== null;
   }
 
   async disconnect(): Promise<void> {
     // Clear pending control requests to prevent memory leaks from
     // unresolved promises (CLI won't respond after disconnect)
     this.pendingControlRequests.clear();
-    if (this.cliSocket) {
-      try {
-        this.cliSocket.close();
-      } catch {
-        // Socket may already be closed
-      }
-      this.cliSocket = null;
-    }
+    this.detachStdio();
   }
 
   /**
-   * Handle transport-level close (used when WS proxy drops).
-   * Clears the socket reference without triggering the disconnect callback,
-   * allowing the CLI to reconnect.
+   * Drop the transport without firing the disconnect callback. Kept for
+   * parity with the old API; functionally equivalent to detachStdio() in
+   * the stdio world (no separate proxy layer to consider).
    */
   handleTransportClose(): void {
-    this.cliSocket = null;
+    this.detachStdio();
   }
 
   // -- IBackendAdapter: Raw message ingestion from CLI ------------------------
@@ -180,6 +274,13 @@ export class ClaudeAdapter implements IBackendAdapter {
    * Parses lines, deduplicates, and routes each message.
    */
   handleRawMessage(data: string): void {
+    // Any byte from the CLI counts as liveness — the silent-hang watchdog
+    // is purely about "is the child still talking to us?", not about
+    // whether the message is meaningful. Reschedule before parsing so
+    // even garbled lines that fail JSON.parse defuse a pending kill,
+    // then re-arm if we're still expecting a result for this turn.
+    this.scheduleHangWatchdog();
+
     // Record raw incoming CLI message before any parsing
     this.recorder?.record(
       this.sessionId, "in", data, "cli", "claude", "",
@@ -217,6 +318,13 @@ export class ClaudeAdapter implements IBackendAdapter {
   // -- IBackendAdapter: send() -- browser -> CLI translation ------------------
 
   send(msg: BrowserOutgoingMessage): boolean {
+    if (msg.type === "user_message") {
+      // Arm the silent-hang watchdog: if no stdout line arrives from the
+      // CLI within hangWatchdogMs after we ship this user message, the
+      // upstream SSE has probably stalled and we kill the child so the
+      // orchestrator's keepalive can respawn it with --resume.
+      this.armHangWatchdog();
+    }
     switch (msg.type) {
       case "user_message":
         return this.handleOutgoingUserMessage(msg);
@@ -340,6 +448,15 @@ export class ClaudeAdapter implements IBackendAdapter {
         },
       });
       this.sendToBackend(ndjson);
+    }
+    // Close one permission gate. When the last one closes, the CLI is
+    // back at work on the upstream API — re-arm the hang watchdog so it
+    // can catch a stall that happens between here and `result`.
+    if (this.pendingPermissionGates > 0) {
+      this.pendingPermissionGates--;
+      if (this.pendingPermissionGates === 0) {
+        this.scheduleHangWatchdog();
+      }
     }
     return true;
   }
@@ -479,9 +596,12 @@ export class ClaudeAdapter implements IBackendAdapter {
 
       case "user":
         // CLI echoes back user messages (including tool_result blocks from
-        // subagents). These are purely informational — the bridge already
-        // persists user messages from the browser side. Silently drop them
-        // to avoid rendering raw tool_result JSON in the chat UI.
+        // subagents). The browser doesn't need these — it already has
+        // tool_progress/tool_use_summary for live state, and persists user
+        // messages from its own send path. But non-browser observers need
+        // a signal that a tool completed; emit tool:result on the bus for
+        // each tool_result content block we see.
+        this.handleUserEcho(msg as { message?: { content?: unknown } });
         break;
 
       case "rate_limit_event":
@@ -541,6 +661,25 @@ export class ClaudeAdapter implements IBackendAdapter {
         statusChange.permissionMode = statusMsg.permissionMode;
       }
       this.browserMessageCb?.(statusChange as BrowserIncomingMessage);
+      return;
+    }
+
+    if (msg.subtype === "api_retry") {
+      // 2.1.119+ emits this when the upstream API call fails with a 5xx
+      // and the CLI is about to retry. Forward as a system_event so the
+      // UI can show "retrying after 502" inline; without this the user
+      // sees only the eventual error result after a long opaque pause.
+      const m = msg as import("./session-types.js").CLISystemApiRetryMessage;
+      this.emitSystemEvent({
+        subtype: "api_retry",
+        attempt: m.attempt,
+        max_retries: m.max_retries,
+        retry_delay_ms: m.retry_delay_ms,
+        error_status: m.error_status,
+        error: m.error,
+        uuid: m.uuid,
+        session_id: m.session_id,
+      });
       return;
     }
 
@@ -641,6 +780,7 @@ export class ClaudeAdapter implements IBackendAdapter {
       model: msg.model,
       cwd: msg.cwd,
     });
+    this.lastReportedModel = msg.model;
 
     // Emit session_init to browsers with CLI-provided fields only.
     // The bridge's attachBackendAdapter handler will merge these into the
@@ -658,6 +798,10 @@ export class ClaudeAdapter implements IBackendAdapter {
         agents: msg.agents ?? [],
         slash_commands: msg.slash_commands ?? [],
         skills: msg.skills ?? [],
+        // memory_paths is only emitted by 2.1.119+ — leave undefined when
+        // the field is absent so older CLIs don't poison existing state with
+        // a stale empty string.
+        ...(msg.memory_paths?.auto ? { memory_path: msg.memory_paths.auto } : {}),
       } as SessionState,
     });
 
@@ -677,6 +821,16 @@ export class ClaudeAdapter implements IBackendAdapter {
   // -- Assistant, result, stream ----------------------------------------------
 
   private handleAssistantMessage(msg: CLIAssistantMessage): void {
+    // Reconcile session model with what the CLI actually used. Set_model is
+    // fire-and-forget with no control_response, and the CLI doesn't re-emit
+    // `system init`, so this assistant.model field is the authoritative
+    // confirmation. Skip subagent turns (parent_tool_use_id != null) since
+    // those run under their own model and shouldn't overwrite the session's.
+    const model = msg.message.model;
+    if (model && msg.parent_tool_use_id == null && model !== this.lastReportedModel) {
+      this.lastReportedModel = model;
+      this.sessionMetaCb?.({ model });
+    }
     this.browserMessageCb?.({
       type: "assistant",
       message: msg.message,
@@ -686,6 +840,9 @@ export class ClaudeAdapter implements IBackendAdapter {
   }
 
   private handleResultMessage(msg: CLIResultMessage): void {
+    // Turn complete — stop ticking the hang watchdog until the next
+    // user_message arms it again.
+    this.finishTurnWatchdog();
     this.browserMessageCb?.({
       type: "result",
       data: msg,
@@ -704,6 +861,12 @@ export class ClaudeAdapter implements IBackendAdapter {
 
   private handleControlRequest(msg: CLIControlRequestMessage): void {
     if (msg.request.subtype === "can_use_tool") {
+      // Open a permission gate: the CLI is now waiting on the user, not on
+      // the upstream API. Pause the hang watchdog until the response goes
+      // back out (handleOutgoingPermissionResponse decrements & re-arms).
+      this.pendingPermissionGates++;
+      this.clearHangWatchdog();
+
       const perm: PermissionRequest = {
         request_id: msg.request_id,
         tool_name: msg.request.tool_name,
@@ -731,6 +894,14 @@ export class ClaudeAdapter implements IBackendAdapter {
   private handleControlCancelRequest(msg: CLIControlCancelRequestMessage): void {
     // Clean up any pending async control request in the adapter
     this.pendingControlRequests.delete(msg.request_id);
+    // CLI is rescinding the permission gate — re-arm watchdog if this
+    // closes the last one. Same accounting as a user-side response.
+    if (this.pendingPermissionGates > 0) {
+      this.pendingPermissionGates--;
+      if (this.pendingPermissionGates === 0) {
+        this.scheduleHangWatchdog();
+      }
+    }
     // Emit permission_cancelled so the bridge removes from pendingPermissions
     this.browserMessageCb?.({
       type: "permission_cancelled",
@@ -798,6 +969,50 @@ export class ClaudeAdapter implements IBackendAdapter {
     });
   }
 
+  // -- User echo (extract tool_result blocks for the event bus) -------------
+  //
+  // The CLI echoes back its own user message after running a tool — content
+  // is an array of blocks, typically one or more tool_result entries.
+  // Browsers ignore this echo for normal tool outcomes (tool state is
+  // communicated via tool_progress and tool_use_summary). Non-browser
+  // observers (TG bot) need to know when a tool finished, so emit
+  // tool:result on the bus per tool_result block.
+  //
+  // Exception: the CLI's internal "sensitive file" rejection of Write/Edit
+  // returns `{is_error:true, content:"Claude requested permissions to edit
+  // X which is a sensitive file."}` and never fires can_use_tool. Without
+  // a side-channel the browser never learns the gate exists. We sniff that
+  // exact wording and forward it to the browser so the
+  // SensitiveFileWriteApproval card can render. See
+  // project_claude_sensitive_file_gate.md.
+  private handleUserEcho(msg: { message?: { content?: unknown } }): void {
+    const content = msg.message?.content;
+    if (!Array.isArray(content)) return;
+    for (const block of content) {
+      if (!block || typeof block !== "object") continue;
+      const b = block as { type?: string; tool_use_id?: string; content?: unknown; is_error?: boolean };
+      if (b.type !== "tool_result") continue;
+      if (typeof b.tool_use_id !== "string") continue;
+      companionBus.emit("tool:result", {
+        sessionId: this.sessionId,
+        toolUseId: b.tool_use_id,
+        content: typeof b.content === "string" || Array.isArray(b.content) ? b.content : "",
+        isError: Boolean(b.is_error),
+      });
+      if (
+        b.is_error
+        && typeof b.content === "string"
+        && /which is a sensitive file\.?\s*$/i.test(b.content.trim())
+      ) {
+        this.browserMessageCb?.({
+          type: "sensitive_file_rejection",
+          tool_use_id: b.tool_use_id,
+          content: b.content,
+        });
+      }
+    }
+  }
+
   // -- Auth status ------------------------------------------------------------
 
   private handleAuthStatus(msg: CLIAuthStatusMessage): void {
@@ -853,11 +1068,80 @@ export class ClaudeAdapter implements IBackendAdapter {
   }
 
   /**
-   * Send an NDJSON string to the CLI. If the CLI socket is not yet connected,
-   * queues the message for later delivery (flushed in attachWebSocket).
+   * Begin watching for stdout activity for the current turn. Called when
+   * a user_message goes out; turn ends when a `result` message arrives
+   * (handled in routeCLIMessage → finishTurnWatchdog).
+   */
+  private armHangWatchdog(): void {
+    this.expectingTurnResponse = true;
+    this.scheduleHangWatchdog();
+  }
+
+  /**
+   * (Re)start the silent-stdout timer. Called by armHangWatchdog and on
+   * every incoming line so the timer rolls forward across a streaming
+   * turn — the SSE stall can happen mid-stream too.
+   */
+  private scheduleHangWatchdog(): void {
+    this.clearHangWatchdog();
+    if (!this.expectingTurnResponse) return;
+    if (!this.killProcess || this.hangWatchdogMs <= 0) return;
+    // Don't tick while a permission gate is open — the CLI is waiting on
+    // the user, not the API. Will be re-armed when the last permission
+    // resolves (see handleOutgoingPermissionResponse).
+    if (this.pendingPermissionGates > 0) return;
+    this.hangWatchdogTimer = setTimeout(() => {
+      this.hangWatchdogTimer = null;
+      log.warn("claude-adapter", "CLI hang watchdog fired — no stdout during active turn", {
+        sessionId: this.sessionId,
+        windowMs: this.hangWatchdogMs,
+      });
+      // Two-step recovery: emit the bus event FIRST so the orchestrator
+      // can mark this as an intentional kill BEFORE the SIGTERM causes
+      // proc.exited → session:exited → keepalive. Without that ordering,
+      // keepalive would race ahead and auto-respawn into the same SSE
+      // stall (or worse, into a session-level upstream outage). The user
+      // still gets a relaunch when they focus the session again, via the
+      // existing browser-driven relaunch-needed path.
+      companionBus.emit("session:hang-detected", { sessionId: this.sessionId });
+      try {
+        this.killProcess?.();
+      } catch (err) {
+        log.error("claude-adapter", "killProcess threw during hang recovery", {
+          sessionId: this.sessionId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }, this.hangWatchdogMs);
+  }
+
+  private clearHangWatchdog(): void {
+    if (this.hangWatchdogTimer) {
+      clearTimeout(this.hangWatchdogTimer);
+      this.hangWatchdogTimer = null;
+    }
+  }
+
+  /**
+   * Mark the current turn as finished. Called when `result` arrives —
+   * after that, no further stdout is expected and the watchdog should
+   * stop ticking until the next user_message. Any permission gates that
+   * were open at turn end are also closed (the CLI won't ask again on
+   * this turn) so the refcount can't leak across turns.
+   */
+  private finishTurnWatchdog(): void {
+    this.expectingTurnResponse = false;
+    this.pendingPermissionGates = 0;
+    this.clearHangWatchdog();
+  }
+
+  /**
+   * Send an NDJSON string to the CLI. If stdio isn't attached yet (rare:
+   * launcher attaches synchronously after spawn), queue for the next flush
+   * in attachStdio().
    */
   private sendToBackend(ndjson: string): void {
-    if (!this.cliSocket) {
+    if (!this.cliStdin) {
       console.log(
         `[claude-adapter] CLI not yet connected for session ${this.sessionId}, queuing message`,
       );
@@ -868,8 +1152,8 @@ export class ClaudeAdapter implements IBackendAdapter {
   }
 
   /**
-   * Low-level send: writes NDJSON to the CLI socket with newline delimiter.
-   * Records the outgoing message. Assumes cliSocket is non-null.
+   * Low-level send: writes NDJSON to the CLI's stdin with a newline delimiter.
+   * Records the outgoing message. Assumes cliStdin is non-null.
    */
   private sendRaw(ndjson: string): void {
     // Record raw outgoing CLI message
@@ -877,11 +1161,10 @@ export class ClaudeAdapter implements IBackendAdapter {
       this.sessionId, "out", ndjson, "cli", "claude", "",
     );
     try {
-      // NDJSON requires a newline delimiter
-      this.cliSocket!.send(ndjson + "\n");
+      this.cliStdin!.write(ndjson + "\n");
     } catch (err) {
       console.error(
-        `[claude-adapter] Failed to send to CLI for session ${this.sessionId}:`,
+        `[claude-adapter] Failed to write to CLI stdin for session ${this.sessionId}:`,
         err,
       );
     }

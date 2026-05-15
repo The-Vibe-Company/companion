@@ -65,7 +65,7 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function makeSession(id: string): SessionState {
+function makeSession(id: string, overrides: Partial<SessionState> = {}): SessionState {
   return {
     session_id: id,
     model: "claude-opus-4-20250514",
@@ -89,6 +89,7 @@ function makeSession(id: string): SessionState {
     git_behind: 0,
     total_lines_added: 0,
     total_lines_removed: 0,
+    ...overrides,
   };
 }
 
@@ -145,14 +146,42 @@ describe("connectSession", () => {
   });
 
 
-  it("sends session_subscribe with last_seq on open", () => {
+  it("sends session_subscribe with last_seq on open when the store already has messages for the session", () => {
+    // Cached lastSeq is only respected when the local message store has data
+    // — otherwise we'd be telling the bridge "I'm caught up" while the React
+    // store is actually empty, and the bridge would skip the full
+    // messageHistory broadcast. Seed both halves to validate the reconnect path.
     localStorage.setItem("companion:last-seq:s1", "12");
+    useStore.getState().setMessages("s1", [
+      { id: "m1", role: "assistant", content: "prior turn", timestamp: 1 },
+    ]);
     wsModule.connectSession("s1");
 
     lastWs.onopen?.(new Event("open"));
 
     expect(lastWs.send).toHaveBeenCalledWith(
       JSON.stringify({ type: "session_subscribe", last_seq: 12 }),
+    );
+  });
+
+  it("forces last_seq=0 on open when the local message store is empty even if localStorage has a stale seq", () => {
+    // Regression: hard-refreshes wipe React state but leave localStorage
+    // intact. If we hand the bridge the stale seq, it thinks we're caught
+    // up and skips messageHistory — old assistant messages outside the
+    // rolling eventBuffer (e.g. an ExitPlanMode card with a long plan)
+    // never reach the new browser instance and never render. See session
+    // fa6d5906 (2026-05-13). The fix: when the local message store has
+    // nothing for this session, ignore localStorage and ask for a fresh
+    // full sync.
+    localStorage.setItem("companion:last-seq:s1", "205500");
+    // Crucially: do NOT seed useStore.messages for "s1" — that's the
+    // hard-refresh scenario.
+    wsModule.connectSession("s1");
+
+    lastWs.onopen?.(new Event("open"));
+
+    expect(lastWs.send).toHaveBeenCalledWith(
+      JSON.stringify({ type: "session_subscribe", last_seq: 0 }),
     );
   });
 });
@@ -906,6 +935,100 @@ describe("handleMessage: result", () => {
     expect(msgs[0].role).toBe("system");
     expect(msgs[0].content).toBe("Error: Something went wrong, Another error");
   });
+
+  it("error result with api_error_status categorizes the message and surfaces result text", () => {
+    // 2.1.119+ puts the humane error message on `result.result` (e.g.
+    // "API Error: 502 Upstream request failed.") and the numeric HTTP
+    // status on `api_error_status`. The frontend should pair them as
+    // "<Category>: <message>" so the user sees actionable framing.
+    wsModule.connectSession("s1");
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+
+    fireMessage({
+      type: "result",
+      data: {
+        type: "result",
+        subtype: "success",
+        is_error: true,
+        api_error_status: 502,
+        terminal_reason: "completed",
+        result: "API Error: 502 Upstream request failed.",
+        duration_ms: 2581,
+        duration_api_ms: 0,
+        num_turns: 1,
+        total_cost_usd: 0,
+        stop_reason: "stop_sequence",
+        usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        uuid: "u-err-502",
+        session_id: "s1",
+      },
+    });
+
+    const msgs = useStore.getState().messages.get("s1")!;
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].role).toBe("system");
+    expect(msgs[0].content).toBe("Upstream API error: API Error: 502 Upstream request failed.");
+  });
+
+  it("categorizeApiError maps common HTTP status codes to user-facing labels", () => {
+    expect(wsModule.categorizeApiError(401)).toBe("Authentication failed");
+    expect(wsModule.categorizeApiError(403)).toBe("Authentication failed");
+    expect(wsModule.categorizeApiError(429)).toBe("Rate limited");
+    expect(wsModule.categorizeApiError(529)).toBe("Model overloaded");
+    expect(wsModule.categorizeApiError(502)).toBe("Upstream API error");
+    expect(wsModule.categorizeApiError(404)).toBe("Request rejected");
+    expect(wsModule.categorizeApiError(418)).toBe("Request rejected");
+    expect(wsModule.categorizeApiError(0)).toBe("API error");
+  });
+
+  it("does not overwrite server-computed context_used_percent for codex sessions", () => {
+    wsModule.connectSession("s1");
+    fireMessage({ type: "session_init", session: makeSession("s1", { backend_type: "codex" }) });
+
+    fireMessage({
+      type: "session_update",
+      session: {
+        context_used_percent: 35,
+        codex_token_details: {
+          inputTokens: 1_150_000,
+          outputTokens: 50_000,
+          cachedInputTokens: 930_000,
+          reasoningOutputTokens: 20_000,
+          modelContextWindow: 258_400,
+        },
+      },
+    });
+
+    fireMessage({
+      type: "result",
+      data: {
+        type: "result",
+        subtype: "success",
+        is_error: false,
+        duration_ms: 1000,
+        duration_api_ms: 800,
+        num_turns: 3,
+        total_cost_usd: 0.05,
+        stop_reason: "end_turn",
+        usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        modelUsage: {
+          "gpt-5-codex": {
+            inputTokens: 1_150_000,
+            outputTokens: 50_000,
+            cacheReadInputTokens: 930_000,
+            cacheCreationInputTokens: 0,
+            contextWindow: 258_400,
+            maxOutputTokens: 32_768,
+            costUSD: 0.05,
+          },
+        },
+        uuid: "u-codex-1",
+        session_id: "s1",
+      },
+    });
+
+    expect(useStore.getState().sessions.get("s1")!.context_used_percent).toBe(35);
+  });
 });
 
 // ===========================================================================
@@ -1055,6 +1178,38 @@ describe("handleMessage: system_event", () => {
     expect(msgs[0].timestamp).toBe(1500);
   });
 
+  it("appends api_retry events as a chat message naming the status code and delay", () => {
+    // 2.1.119+ retries 5xx upstream failures internally before producing
+    // the eventual error result. Surfacing the retry as a chat message
+    // explains the long pause to the user instead of letting them sit in
+    // silence wondering whether the session hung.
+    wsModule.connectSession("s1");
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+
+    fireMessage({
+      type: "system_event",
+      timestamp: 1700,
+      event: {
+        subtype: "api_retry",
+        attempt: 1,
+        max_retries: 2,
+        retry_delay_ms: 560,
+        error_status: 502,
+        error: "server_error",
+        uuid: "u-retry-1",
+        session_id: "s1",
+      },
+    });
+
+    const msgs = useStore.getState().messages.get("s1")!;
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].role).toBe("system");
+    expect(msgs[0].content).toContain("502");
+    expect(msgs[0].content).toContain("server_error");
+    expect(msgs[0].content).toContain("retry 1/2");
+    expect(msgs[0].content).toContain("0.6s");
+  });
+
   it("ignores noisy hook_progress events in chat", () => {
     wsModule.connectSession("s1");
     fireMessage({ type: "session_init", session: makeSession("s1") });
@@ -1095,6 +1250,63 @@ describe("handleMessage: cli_disconnected/connected", () => {
 
     fireMessage({ type: "cli_connected" });
     expect(useStore.getState().cliConnected.get("s1")).toBe(true);
+  });
+});
+
+// ===========================================================================
+// handleMessage: session_unknown
+// ===========================================================================
+describe("handleMessage: session_unknown", () => {
+  it("removes the session from the store so the orphan does not reappear on reload", () => {
+    // The server sends session_unknown when a browser reconnects to a
+    // sessionId that has no launcher record. The frontend must drop the
+    // session entirely — keeping it would resurrect the same orphan
+    // sessionId on the next reconnect via localStorage.
+    wsModule.connectSession("s1");
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+    expect(useStore.getState().sessions.has("s1")).toBe(true);
+
+    fireMessage({ type: "session_unknown", reason: "no_launcher_record" });
+
+    expect(useStore.getState().sessions.has("s1")).toBe(false);
+    expect(useStore.getState().cliConnected.has("s1")).toBe(false);
+  });
+
+  it("navigates home when the URL is currently pointed at the unknown session", () => {
+    // App.tsx watches the URL hash and unconditionally reconnects on every
+    // route change to `#/session/<id>`. If we don't clear the hash here,
+    // every page render or hashchange will resurrect the orphan WS — store
+    // cleanup alone is not enough. We spy on history.replaceState because
+    // jsdom does not always reflect replaceState into window.location.hash
+    // (see utils/routing.test.ts for the same pattern).
+    window.location.hash = "#/session/s1";
+    const replaceSpy = vi.spyOn(history, "replaceState");
+
+    wsModule.connectSession("s1");
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+    replaceSpy.mockClear();
+
+    fireMessage({ type: "session_unknown" });
+
+    expect(replaceSpy).toHaveBeenCalled();
+    replaceSpy.mockRestore();
+  });
+
+  it("does not navigate when viewing a different session", () => {
+    // Background tabs / sidebar previews can receive session_unknown for a
+    // session the user is not currently viewing. We must not yank them away
+    // from their current view.
+    window.location.hash = "#/session/active";
+    const replaceSpy = vi.spyOn(history, "replaceState");
+
+    wsModule.connectSession("orphan");
+    fireMessage({ type: "session_init", session: makeSession("orphan") });
+    replaceSpy.mockClear();
+
+    fireMessage({ type: "session_unknown" });
+
+    expect(replaceSpy).not.toHaveBeenCalled();
+    replaceSpy.mockRestore();
   });
 });
 // ===========================================================================

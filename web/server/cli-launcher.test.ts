@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -12,6 +12,14 @@ vi.mock("node:crypto", () => ({ randomUUID: () => "test-session-id" }));
 const mockResolveBinary = vi.hoisted(() => vi.fn((_name: string): string | null => "/usr/bin/claude"));
 const mockGetEnrichedPath = vi.hoisted(() => vi.fn(() => "/usr/bin:/usr/local/bin"));
 vi.mock("./path-resolver.js", () => ({ resolveBinary: mockResolveBinary, getEnrichedPath: mockGetEnrichedPath }));
+
+// Mock env-manager so envSlug fallback tests can synthesize a profile without
+// touching ~/.companion/envs/. Default: profile not found (preserves existing
+// tests' behavior since they don't pass envSlug).
+const mockGetEnv = vi.hoisted(() => vi.fn((_slug: string) => null as { name: string; slug: string; variables: Record<string, string>; createdAt: number; updatedAt: number } | null));
+vi.mock("./env-manager.js", () => ({
+  getEnv: mockGetEnv,
+}));
 
 // Mock container-manager for container validation in relaunch
 const mockIsContainerAlive = vi.hoisted(() => vi.fn((): "running" | "stopped" | "missing" => "running"));
@@ -83,12 +91,16 @@ function createMockProc(pid = 12345) {
     resolve = r;
   });
   exitResolve = resolve!;
+  // Stdio handles must exist now that the launcher pipes them into
+  // ClaudeAdapter at spawn time. Empty streams are fine for tests that
+  // only assert spawn args / state transitions.
   return {
     pid,
     kill: vi.fn(),
     exited: exitedPromise,
-    stdout: null,
-    stderr: null,
+    stdin: { write: vi.fn() },
+    stdout: new ReadableStream<Uint8Array>(),
+    stderr: new ReadableStream<Uint8Array>(),
   };
 }
 
@@ -142,11 +154,24 @@ let tempDir: string;
 let store: SessionStore;
 let launcher: CliLauncher;
 
+// Most tests pass `cwd: "/tmp/project"` to launch(). spawnCLI now refuses to
+// proceed when the cwd is missing on disk (see project_companion_missing_cwd.md
+// — fixes the misleading ENOENT-on-binary spawn error). Materialize the path
+// once so existing assertions don't have to migrate to mkdtemp paths.
+beforeAll(() => {
+  mkdirSync("/tmp/project", { recursive: true });
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   companionBus.clear();
   delete process.env.COMPANION_CONTAINER_SDK_HOST;
   delete process.env.COMPANION_FORCE_BYPASS_IN_CONTAINER;
+  // Force the Bun.spawn path so the suite's existing `vi.stubGlobal("Bun", ...)`
+  // mock intercepts the call. Production defaults to node:child_process.spawn
+  // (see cli-launcher.ts useNodeSpawn comment); tests opt out so they don't
+  // need a parallel mock for node:child_process.
+  process.env.COMPANION_CLAUDE_USE_NODE_SPAWN = "0";
   // Default to stdio for most tests; WS launcher behavior is covered explicitly below.
   process.env.COMPANION_CODEX_TRANSPORT = "stdio";
   tempDir = mkdtempSync(join(tmpdir(), "launcher-test-"));
@@ -163,22 +188,30 @@ afterEach(() => {
   delete process.env.COMPANION_CODEX_TRANSPORT;
   delete process.env.COMPANION_CODEX_WS_CONNECT_TIMEOUT_MS;
   delete process.env.COMPANION_CODEX_PONG_TIMEOUT_MS;
+  delete process.env.COMPANION_CLAUDE_USE_NODE_SPAWN;
   rmSync(tempDir, { recursive: true, force: true });
 });
 
 // ─── launch ──────────────────────────────────────────────────────────────────
 
 describe("launch", () => {
-  it("creates a session with a UUID and starting state", () => {
+  it("creates a session with a UUID and connected state right after spawn", () => {
+    // Stdio transport: state flips to "connected" as soon as the launcher
+    // attaches stdin/stdout to the adapter (no separate WS handshake to wait
+    // for). "starting" is now only briefly observable in test-mocked spawn
+    // failures and during PID-recovery on startup.
     const info = launcher.launch({ cwd: "/tmp/project" });
 
     expect(info.sessionId).toBe("test-session-id");
-    expect(info.state).toBe("starting");
+    expect(info.state).toBe("connected");
     expect(info.cwd).toBe("/tmp/project");
     expect(info.createdAt).toBeGreaterThan(0);
   });
 
-  it("spawns CLI with correct --sdk-url and flags", () => {
+  it("spawns CLI with the headless stdio flags (no --sdk-url)", () => {
+    // Migration target: claude must be invoked in pure stdio headless mode.
+    // --sdk-url was the old WS bridge and got removed; the launcher now
+    // pipes child.stdin/stdout into ClaudeAdapter directly.
     launcher.launch({ cwd: "/tmp/project" });
 
     expect(mockSpawn).toHaveBeenCalledOnce();
@@ -187,9 +220,11 @@ describe("launch", () => {
     // Binary should be resolved via execSync
     expect(cmdAndArgs[0]).toBe("/usr/bin/claude");
 
+    // The hostname-validating flag is gone for good — keep this assertion
+    // as a regression guard (companion#655).
+    expect(cmdAndArgs).not.toContain("--sdk-url");
+
     // Core required flags
-    expect(cmdAndArgs).toContain("--sdk-url");
-    expect(cmdAndArgs).toContain("ws://localhost:3456/ws/cli/test-session-id");
     expect(cmdAndArgs).toContain("--print");
     expect(cmdAndArgs).toContain("--output-format");
     expect(cmdAndArgs).toContain("stream-json");
@@ -201,8 +236,11 @@ describe("launch", () => {
     expect(cmdAndArgs).toContain("-p");
     expect(cmdAndArgs).toContain("");
 
-    // Spawn options
+    // All three stdio handles must be piped now — stdin is required so the
+    // launcher can write outgoing NDJSON; stdout carries the protocol;
+    // stderr stays for debug logging.
     expect(options.cwd).toBe("/tmp/project");
+    expect(options.stdin).toBe("pipe");
     expect(options.stdout).toBe("pipe");
     expect(options.stderr).toBe("pipe");
   });
@@ -214,6 +252,40 @@ describe("launch", () => {
     const modelIdx = cmdAndArgs.indexOf("--model");
     expect(modelIdx).toBeGreaterThan(-1);
     expect(cmdAndArgs[modelIdx + 1]).toBe("claude-opus-4-20250514");
+  });
+
+  it("passes --append-system-prompt with the phantom-rejection + bash-sensitive rules", () => {
+    // Stdio mode defeats AskUserQuestion / ExitPlanMode's blocking semantics
+    // and ALSO surfaces a confusing "Bash multi-operation requires approval"
+    // gate. We steer the model to wait quietly / route around via an appended
+    // system-prompt (see claude-prompts.ts). This locks the args contract —
+    // if any of these rules silently goes missing, the model goes back to
+    // self-answering / claiming the user cancelled / looping on Bash.
+    launcher.launch({ cwd: "/tmp" });
+
+    const [cmdAndArgs] = mockSpawn.mock.calls[0];
+    const idx = cmdAndArgs.indexOf("--append-system-prompt");
+    expect(idx).toBeGreaterThan(-1);
+    const appended = cmdAndArgs[idx + 1] as string;
+
+    // AskUserQuestion-specific rule (end_turn + no "Recommended" labels).
+    expect(appended).toContain("AskUserQuestion");
+    expect(appended).toContain("end the turn immediately");
+    expect(appended).toContain("Recommended");
+
+    // Phantom-rejection rule names BOTH placeholder strings the CLI emits
+    // so the model doesn't read either as a cancellation. Regression for
+    // session fa6d5906 (AskUserQuestion) and the analogous ExitPlanMode case.
+    expect(appended).toContain("Answer questions?");
+    expect(appended).toContain("Exit plan mode?");
+    expect(appended).toContain("NOT USER CANCELLATIONS");
+
+    // Bash-sensitive-path gate: model must not loop retrying the same Bash
+    // and must not invent an Approve button — it should switch to Read/Write
+    // tools instead.
+    expect(appended).toContain("This Bash command contains multiple operations");
+    expect(appended).toContain("Read tool");
+    expect(appended).toContain("Write tool");
   });
 
   it("passes --permission-mode when provided", () => {
@@ -272,20 +344,10 @@ describe("launch", () => {
     }
   });
 
-  it("uses COMPANION_CONTAINER_SDK_HOST for containerized sdk-url when set", () => {
-    process.env.COMPANION_CONTAINER_SDK_HOST = "172.17.0.1";
-    launcher.launch({
-      cwd: "/tmp/project",
-      containerId: "abc123def456",
-      containerName: "companion-test",
-    });
-
-    const [cmdAndArgs] = mockSpawn.mock.calls[0];
-    // With bash -lc wrapping, CLI args are in the last element as a single string
-    const bashCmd = cmdAndArgs[cmdAndArgs.length - 1];
-    expect(bashCmd).toContain("--sdk-url");
-    expect(bashCmd).toContain("ws://172.17.0.1:3456/ws/cli/test-session-id");
-  });
+  // NOTE: Removed "uses COMPANION_CONTAINER_SDK_HOST for containerized
+  // sdk-url" during the --sdk-url → stdio migration. Stdio doesn't connect
+  // back to the host over WebSocket, so the host-alias indirection is
+  // unnecessary. The env var is unused now and can be retired in a follow-up.
 
   it("passes --allowedTools for each tool", () => {
     launcher.launch({
@@ -349,6 +411,65 @@ describe("launch", () => {
     expect(info.state).toBe("exited");
     expect(info.exitCode).toBe(127);
     expect(mockSpawn).not.toHaveBeenCalled();
+  });
+
+  it("uses node:child_process.spawn by default for host claude (escape hatch only opts back)", () => {
+    // Production fix for the Bun.spawn × claude wedge (see
+    // project_claude_bun_spawn_wedge.md). Default behaviour: when
+    // COMPANION_CLAUDE_USE_NODE_SPAWN is unset/empty/"1", host claude
+    // is spawned via node:child_process.spawn rather than Bun.spawn.
+    // The Bun.spawn mock is left intact only because the rest of this
+    // test file forces "0" in beforeEach to keep using the existing stub.
+    delete process.env.COMPANION_CLAUDE_USE_NODE_SPAWN;
+    // Use the existing /tmp/project guarantee from beforeAll.
+    const info = launcher.launch({ cwd: "/tmp/project" });
+    // mockSpawn is the Bun.spawn stub; the node-spawn path bypasses it.
+    expect(mockSpawn).not.toHaveBeenCalled();
+    // Process state still sane (the launcher recorded the spawn even though
+    // the actual child won't function in this test environment — node:child_process
+    // is genuinely invoked here, which immediately fails because /usr/bin/claude
+    // is the mocked resolveBinary value, not a real executable).
+    expect(info.state).toBe("connected");
+  });
+
+  it("sets state=exited + warns + emits spawn-aborted-permanent when cwd does not exist on disk (worktree removed)", () => {
+    // Regression for project_companion_missing_cwd.md — companion used to let
+    // Bun.spawn report this as "ENOENT: posix_spawn '<binary>'", falsely
+    // implicating the claude binary instead of the missing cwd.
+    //
+    // Also asserts: log level is `warn` (not `error`) since one missing
+    // worktree shouldn't read as fleet-wide breakage, AND a
+    // `session:spawn-aborted-permanent` bus event fires so the
+    // orchestrator stops re-attempting the spawn (each retry would
+    // produce the same warning, wasting the relaunch budget and
+    // muddying the log).
+    const ghostCwd = "/tmp/companion-test-ghost-cwd-DoesNotExist-789xyz";
+    rmSync(ghostCwd, { recursive: true, force: true });
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const busEvents: Array<{ sessionId: string; reason: string }> = [];
+    const off = companionBus.on("session:spawn-aborted-permanent", (payload) => {
+      busEvents.push(payload);
+    });
+    try {
+      const info = launcher.launch({ cwd: ghostCwd });
+
+      expect(info.state).toBe("exited");
+      expect(info.exitCode).toBe(1);
+      expect(mockSpawn).not.toHaveBeenCalled();
+      // Surface a message that names the cwd, not the binary.
+      expect(warnSpy.mock.calls.some((call) =>
+        String(call[0]).includes(`cwd does not exist on disk: ${ghostCwd}`),
+      )).toBe(true);
+      // Bus event fired so orchestrator can add sessionId to
+      // intentionalKills + clearAutoRelaunchCount.
+      expect(busEvents).toHaveLength(1);
+      expect(busEvents[0].sessionId).toBe("test-session-id");
+      expect(busEvents[0].reason).toContain(ghostCwd);
+    } finally {
+      off();
+      warnSpy.mockRestore();
+    }
   });
 
   it("stores container metadata when containerId provided", () => {
@@ -706,8 +827,9 @@ describe("relaunch", () => {
       pid: 12345,
       kill: vi.fn(() => { resolveFirst(0); }),
       exited: new Promise<number>((r) => { resolveFirst = r; }),
-      stdout: null,
-      stderr: null,
+      stdin: { write: vi.fn() },
+      stdout: new ReadableStream<Uint8Array>(),
+      stderr: new ReadableStream<Uint8Array>(),
     };
     mockSpawn.mockReturnValueOnce(firstProc);
 
@@ -730,11 +852,13 @@ describe("relaunch", () => {
     expect(cmdAndArgs).toContain("--resume");
     expect(cmdAndArgs).toContain("cli-resume-id");
 
-    // Session state should be reset to starting (set by relaunch before spawnCLI)
-    // Allow microtask queue to flush
+    // Session state flips through "starting" briefly inside relaunch and
+    // lands on "connected" once spawnCLI attaches stdio. Under stdio there
+    // is no separate post-spawn handshake, so the post-flush state is
+    // "connected" — assert that here.
     await new Promise((r) => setTimeout(r, 10));
     const session = launcher.getSession("test-session-id");
-    expect(session?.state).toBe("starting");
+    expect(session?.state).toBe("connected");
   });
 
   it("reuses launch env variables during relaunch", async () => {
@@ -743,8 +867,9 @@ describe("relaunch", () => {
       pid: 12345,
       kill: vi.fn(() => { resolveFirst(0); }),
       exited: new Promise<number>((r) => { resolveFirst = r; }),
-      stdout: null,
-      stderr: null,
+      stdin: { write: vi.fn() },
+      stdout: new ReadableStream<Uint8Array>(),
+      stderr: new ReadableStream<Uint8Array>(),
     };
     mockSpawn.mockReturnValueOnce(firstProc);
 
@@ -804,8 +929,9 @@ describe("relaunch", () => {
       pid: 12345,
       kill: vi.fn(() => { resolveFirst(0); }),
       exited: new Promise<number>((r) => { resolveFirst = r; }),
-      stdout: null,
-      stderr: null,
+      stdin: { write: vi.fn() },
+      stdout: new ReadableStream<Uint8Array>(),
+      stderr: new ReadableStream<Uint8Array>(),
     };
     mockSpawn.mockReturnValueOnce(firstProc);
 
@@ -873,8 +999,9 @@ describe("relaunch", () => {
       pid: 12345,
       kill: vi.fn(() => { resolveFirst(0); }),
       exited: new Promise<number>((r) => { resolveFirst = r; }),
-      stdout: null,
-      stderr: null,
+      stdin: { write: vi.fn() },
+      stdout: new ReadableStream<Uint8Array>(),
+      stderr: new ReadableStream<Uint8Array>(),
     };
     mockSpawn.mockReturnValueOnce(firstProc);
 
@@ -1000,8 +1127,9 @@ describe("codex websocket launcher", () => {
       pid: 3001,
       kill: vi.fn(() => resolveCodex1(0)),
       exited: new Promise<number>((r) => { resolveCodex1 = r; }),
-      stdout: null,
-      stderr: null,
+      stdin: { write: vi.fn() },
+      stdout: new ReadableStream<Uint8Array>(),
+      stderr: new ReadableStream<Uint8Array>(),
     };
     const proxy1 = createPendingCodexWsProxyProc(3002);
     proxy1.proc.kill.mockImplementation(() => proxy1.resolveExit(0));
@@ -1062,8 +1190,9 @@ describe("codex websocket launcher", () => {
       pid: 5001,
       kill: vi.fn(),
       exited: new Promise<number>((r) => { resolveLauncherProc = r; }),
-      stdout: null,
-      stderr: null,
+      stdin: { write: vi.fn() },
+      stdout: new ReadableStream<Uint8Array>(),
+      stderr: new ReadableStream<Uint8Array>(),
     };
     const proxy = createPendingCodexWsProxyProc(5002);
 
@@ -1286,13 +1415,13 @@ describe("persistence", () => {
 // ─── getStartingSessions ─────────────────────────────────────────────────────
 
 describe("getStartingSessions", () => {
-  it("returns only sessions in starting state", () => {
-    launcher.launch({ cwd: "/tmp" });
-
-    const starting = launcher.getStartingSessions();
-    expect(starting).toHaveLength(1);
-    expect(starting[0].state).toBe("starting");
-  });
+  // NOTE: Removed "returns only sessions in starting state" during the
+  // --sdk-url → stdio migration. launch() used to leave sessions in
+  // "starting" state until the WS connected; under stdio the launcher
+  // attaches stdio synchronously and flips state to "connected" inside
+  // the same spawnCLI call, so there's no longer a clean way to make
+  // launch() observe "starting" without going through restoreFromDisk
+  // (covered separately in the restore-from-disk tests).
 
   it("excludes sessions that have been connected", () => {
     launcher.launch({ cwd: "/tmp" });
@@ -1339,5 +1468,97 @@ describe("isCmdScript platform guard", () => {
     // On non-Windows, .cmd files should be spawned directly (no cmd.exe wrapping)
     expect(cmdAndArgs[0]).toBe("/usr/local/bin/claude.cmd");
     expect(cmdAndArgs[0]).not.toBe("cmd.exe");
+  });
+});
+
+// ─── envSlug persistence + restart-tolerant getSessionEnv ─────────────────────
+//
+// SdkSessionInfo.envSlug is the only env-related field that survives a server
+// restart (sessionEnvs Map is intentionally in-memory only because it carries
+// secrets). After restart, getSessionEnv must re-derive the env from envSlug
+// via envManager — otherwise relaunch spawns without the session's API token
+// and post-restart routes (e.g. /sessions/:id/models) return empty lists.
+
+describe("envSlug persistence and getSessionEnv fallback", () => {
+  it("stores options.envSlug on the SdkSessionInfo so it persists via launcher.json", () => {
+    const info = launcher.launch({
+      cwd: "/tmp",
+      envSlug: "product",
+      env: { ANTHROPIC_BASE_URL: "http://proxy", ANTHROPIC_AUTH_TOKEN: "tk" },
+    });
+    expect(info.envSlug).toBe("product");
+  });
+
+  it("getSessionEnv returns the cached env vars when sessionEnvs is warm", () => {
+    launcher.launch({
+      cwd: "/tmp",
+      envSlug: "product",
+      env: { ANTHROPIC_BASE_URL: "http://proxy", ANTHROPIC_AUTH_TOKEN: "tk" },
+    });
+    const env = launcher.getSessionEnv("test-session-id");
+    expect(env).toEqual({ ANTHROPIC_BASE_URL: "http://proxy", ANTHROPIC_AUTH_TOKEN: "tk" });
+    // envManager fallback should NOT have been consulted — the warm cache wins.
+    expect(mockGetEnv).not.toHaveBeenCalled();
+  });
+
+  it("getSessionEnv re-derives env from envSlug + envManager when sessionEnvs is cold (post-restart)", () => {
+    // Simulate a session that was created before a server restart: launch
+    // gave it info.envSlug, but afterwards we manually clear sessionEnvs to
+    // mimic the restart state (the in-memory map is empty, info is loaded
+    // from launcher.json).
+    const info = launcher.launch({
+      cwd: "/tmp",
+      envSlug: "product",
+      env: { ANTHROPIC_BASE_URL: "http://proxy", ANTHROPIC_AUTH_TOKEN: "tk" },
+    });
+    // Reach into the launcher to drop the runtime cache (post-restart simulation).
+    (launcher as unknown as { sessionEnvs: Map<string, unknown> }).sessionEnvs.clear();
+
+    mockGetEnv.mockReturnValueOnce({
+      name: "product",
+      slug: "product",
+      variables: { ANTHROPIC_BASE_URL: "http://proxy", ANTHROPIC_AUTH_TOKEN: "tk-from-disk" },
+      createdAt: 0,
+      updatedAt: 0,
+    });
+
+    const env = launcher.getSessionEnv(info.sessionId);
+    expect(env).toEqual({
+      ANTHROPIC_BASE_URL: "http://proxy",
+      ANTHROPIC_AUTH_TOKEN: "tk-from-disk",
+    });
+    expect(mockGetEnv).toHaveBeenCalledWith("product");
+  });
+
+  it("warms sessionEnvs after a successful envSlug fallback so subsequent calls do not hit envManager again", () => {
+    launcher.launch({ cwd: "/tmp", envSlug: "product" });
+    (launcher as unknown as { sessionEnvs: Map<string, unknown> }).sessionEnvs.clear();
+    mockGetEnv.mockReturnValueOnce({
+      name: "product",
+      slug: "product",
+      variables: { ANTHROPIC_BASE_URL: "http://proxy", ANTHROPIC_AUTH_TOKEN: "tk" },
+      createdAt: 0,
+      updatedAt: 0,
+    });
+
+    launcher.getSessionEnv("test-session-id"); // first call: cold → fallback
+    launcher.getSessionEnv("test-session-id"); // second call: should be warm
+
+    expect(mockGetEnv).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns undefined when session has no envSlug AND sessionEnvs is cold (no surprise side effects)", () => {
+    launcher.launch({ cwd: "/tmp" });
+    (launcher as unknown as { sessionEnvs: Map<string, unknown> }).sessionEnvs.clear();
+    expect(launcher.getSessionEnv("test-session-id")).toBeUndefined();
+    expect(mockGetEnv).not.toHaveBeenCalled();
+  });
+
+  it("returns undefined when envSlug points to a profile that no longer exists", () => {
+    launcher.launch({ cwd: "/tmp", envSlug: "deleted-profile" });
+    (launcher as unknown as { sessionEnvs: Map<string, unknown> }).sessionEnvs.clear();
+    mockGetEnv.mockReturnValueOnce(null);
+    expect(launcher.getSessionEnv("test-session-id")).toBeUndefined();
+    expect(mockGetEnv).toHaveBeenCalledWith("deleted-profile");
   });
 });

@@ -275,19 +275,15 @@ describe("MessageBubble - assistant messages", () => {
 
     // Footer shows "last 20 of N" info text
     expect(screen.getByText(/last 20 of \d+/)).toBeTruthy();
-    // Find the second pre (first is the command, second is the result)
-    const allPres = document.querySelectorAll("pre");
-    const resultPre = allPres[allPres.length - 1];
-    const tailLines = (resultPre?.textContent || "").split("\n");
-    expect(tailLines.includes("line-1")).toBe(false);
-    expect(tailLines.includes("line-25")).toBe(true);
+    // BashResultBlock now shows lines in divs with copy buttons
+    // Check that only the last 20 lines are shown (line-6 through line-25)
+    expect(screen.queryByText("line-1")).toBeFalsy();
+    expect(screen.getByText("line-25")).toBeTruthy();
 
     // Click "Show all" to expand
     fireEvent.click(screen.getByText("Show all"));
-    const allPresAfter = document.querySelectorAll("pre");
-    const fullPre = allPresAfter[allPresAfter.length - 1];
-    const fullLines = (fullPre?.textContent || "").split("\n");
-    expect(fullLines.includes("line-1")).toBe(true);
+    // After expanding, all lines should be visible (line-1 through line-25)
+    expect(screen.getByText("line-1")).toBeTruthy();
     expect(screen.getByText("Show tail")).toBeTruthy();
   });
 });
@@ -412,8 +408,12 @@ describe("MessageBubble - streaming", () => {
 // ─── ThinkingBlock edge cases ───────────────────────────────────────────────
 
 describe("MessageBubble - ThinkingBlock", () => {
-  it("shows 'No thinking text captured.' for empty thinking content", () => {
-    // When thinking text is empty/whitespace, the block shows fallback text
+  // Opus 4.7 returns thinking blocks with empty content + a `signature`
+  // field (encrypted/extended-thinking format). Hide those blocks rather
+  // than rendering "No thinking text captured." every turn — the user has
+  // nothing useful to read. Older models with readable thinking text still
+  // render normally (see other tests in this describe block).
+  it("hides thinking blocks with empty/whitespace content (Opus 4.7 encrypted)", () => {
     const msg = makeMessage({
       role: "assistant",
       content: "",
@@ -423,7 +423,27 @@ describe("MessageBubble - ThinkingBlock", () => {
     });
     render(<MessageBubble message={msg} />);
 
-    expect(screen.getByText("No thinking text captured.")).toBeTruthy();
+    expect(screen.queryByText("No thinking text captured.")).toBeNull();
+  });
+
+  // Anthropic's redacted_thinking block carries opaque encrypted data
+  // with no human-readable text. Render nothing.
+  it("hides redacted_thinking blocks entirely", () => {
+    const msg = makeMessage({
+      role: "assistant",
+      content: "",
+      contentBlocks: [
+        // The redacted_thinking shape isn't part of our typed ContentBlock
+        // union, so we cast through to test the render-time guard.
+        { type: "redacted_thinking", data: "opaque-base64-blob" } as never,
+      ],
+    });
+    const { container } = render(<MessageBubble message={msg} />);
+
+    // The bubble shell still renders, but no thinking body / fallback text.
+    expect(screen.queryByText(/thinking/i)).toBeNull();
+    // Sanity: container itself rendered (we got a real DOM)
+    expect(container.firstChild).not.toBeNull();
   });
 
   it("does not show 'Show more' for short thinking content", () => {

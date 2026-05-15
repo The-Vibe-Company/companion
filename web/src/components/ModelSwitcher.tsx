@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "../store.js";
 import { sendToSession } from "../ws.js";
-import { getModelsForBackend } from "../utils/backends.js";
+import { api } from "../api.js";
+import { getModelsForBackend, toModelOptions } from "../utils/backends.js";
 import type { ModelOption } from "../utils/backends.js";
 
 interface ModelSwitcherProps {
@@ -22,7 +23,28 @@ export function ModelSwitcher({ sessionId }: ModelSwitcherProps) {
   const backendType = sdkSession?.backendType ?? runtimeSession?.backend_type ?? "claude";
   // Prefer runtime model (from CLI init) over sdkSession model (from launch config)
   const currentModel = runtimeSession?.model ?? sdkSession?.model ?? "";
-  const models = getModelsForBackend(backendType);
+
+  // Dynamic picker: GET /sessions/:id/models returns the proxy's /v1/models
+  // when the session routes through ANTHROPIC_BASE_URL. An empty array means
+  // "session is host/direct or the probe failed" — fall back to the static
+  // CLAUDE_MODELS list. Refetches when sessionId or backendType changes.
+  const [dynamicModels, setDynamicModels] = useState<ModelOption[] | null>(null);
+  useEffect(() => {
+    if (backendType === "codex" || !sessionId) {
+      setDynamicModels(null);
+      return;
+    }
+    let cancelled = false;
+    api.getSessionModels(sessionId).then((list) => {
+      if (cancelled) return;
+      setDynamicModels(list.length > 0 ? toModelOptions(list) : null);
+    }).catch(() => {
+      if (!cancelled) setDynamicModels(null);
+    });
+    return () => { cancelled = true; };
+  }, [sessionId, backendType]);
+
+  const models = dynamicModels ?? getModelsForBackend(backendType);
 
   // Find the matching model option, or build a fallback for custom models
   const currentOption: ModelOption | null =

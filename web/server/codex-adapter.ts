@@ -24,6 +24,7 @@ import type {
 import type { RecorderManager } from "./recorder.js";
 import { reportProtocolDrift } from "./protocol-monitor.js";
 import { log } from "./logger.js";
+import { companionBus } from "./event-bus.js";
 
 // ─── Codex JSON-RPC Types ─────────────────────────────────────────────────────
 
@@ -1528,8 +1529,11 @@ export class CodexAdapter implements IBackendAdapter {
   // ── Incoming notification handlers ──────────────────────────────────────
 
   private handleNotification(method: string, params: Record<string, unknown>): void {
-    // Debug: log all significant notifications to understand Codex event flow
-    if (method.startsWith("item/") || method.startsWith("turn/") || method.startsWith("thread/")) {
+    // Optional verbose trace, off by default — high-frequency deltas like
+    // item/agentMessage/delta would otherwise flood production logs. The
+    // recorder under ~/.companion/recordings/ already captures the full raw
+    // protocol for offline debugging, so this trace is rarely useful.
+    if (process.env.COMPANION_DEBUG_CODEX === "1") {
       const item = params.item as { type?: string; id?: string } | undefined;
       console.log(`[codex-adapter] ← ${method}${item ? ` type=${item.type} id=${item.id}` : ""}${!item && Object.keys(params).length > 0 ? ` keys=[${Object.keys(params).join(",")}]` : ""}`);
     }
@@ -1614,6 +1618,45 @@ export class CodexAdapter implements IBackendAdapter {
       case "account/rateLimits/updated":
         this.updateRateLimits(params);
         break;
+      // ─── Codex meta / lifecycle notifications ─────────────────────────
+      // Informational-only; we acknowledge them so reportProtocolDrift
+      // doesn't fire and spam the user with "Companion may need an update".
+      // Surface the user-facing ones to UI later if/when a use case comes
+      // up — for now the recorder captures them for diagnostics.
+      case "configWarning":
+        // e.g. {"summary":"Codex's Linux sandbox uses bubblewrap and needs
+        // access to create user namespaces.","details":null} — host-config
+        // limitation reported once at startup. Log once at info level so
+        // operators can see it, but don't surface as an error.
+        console.log(`[codex-adapter] configWarning: ${JSON.stringify(params)}`);
+        break;
+      case "deprecationNotice":
+      case "windows/worldWritableWarning":
+      case "authStatusChange":
+      case "loginChatGptComplete":
+      case "sessionConfigured":
+      case "thread/name/updated":
+      case "thread/compacted":
+      case "fuzzyFileSearch/sessionUpdated":
+      case "app/list/updated":
+      case "mcpServer/oauthLogin/completed":
+        // Declared by upstream ServerNotification but no companion UI hook
+        // yet — silently consume to avoid drift warnings.
+        break;
+      case "mcpServer/startupStatus/updated":
+        // MCP server startup progress — Codex v2 reports per-server status
+        // as servers initialise. Carries {name, status, error}; status flows
+        // through "starting" → "ready" / "failed". Trigger a full
+        // mcp_get_status refresh so the browser sees up-to-date states.
+        this.handleOutgoingMcpGetStatus();
+        break;
+      case "remoteControl/status/changed":
+        // Newer than the snapshot in protocol/codex-upstream/. Carries
+        // {status, environmentId} where status is "disabled" / "enabled".
+        // Companion does not use Codex remote-control today, so consume
+        // silently — the drift warning was firing every reattach and the
+        // recorder still captures the payload for future use.
+        break;
       // Legacy codex/event/* notifications forwarded by newer Codex runtimes.
       // token_count is still useful for metrics, but the streaming deltas are
       // often duplicated by canonical item/* deltas in the same session.
@@ -1673,18 +1716,7 @@ export class CodexAdapter implements IBackendAdapter {
         }
         break;
       }
-      // MCP server startup progress — Codex v2 reports per-server status as
-      // they initialise. Trigger a full mcp_get_status refresh so the browser
-      // sees up-to-date server states.
-      case "mcpServer/startupStatus/updated":
-        this.handleOutgoingMcpGetStatus();
-        break;
-      // Context compaction — similar to codex/event/context_compacted.
-      case "thread/compacted":
-        break;
-      // Informational: config or deprecation warnings from Codex runtime.
-      case "configWarning":
-      case "deprecationNotice":
+      // Informational: deprecation warning from Codex runtime (legacy variant).
       case "codex/event/deprecation_notice":
         break;
       // Legacy event variants already covered by canonical item/* handlers.
@@ -2933,6 +2965,15 @@ export class CodexAdapter implements IBackendAdapter {
       },
       parent_tool_use_id: null,
       timestamp: Date.now(),
+    });
+    // Mirror the Claude adapter: emit tool:result on the bus so non-browser
+    // observers (TG bot) can react to tool completion without parsing the
+    // synthetic assistant message we just emitted to the browser path.
+    companionBus.emit("tool:result", {
+      sessionId: this.sessionId,
+      toolUseId,
+      content: safeContent,
+      isError,
     });
   }
 

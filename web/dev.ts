@@ -64,7 +64,7 @@ async function start() {
     cwd: webDir,
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...process.env, NODE_ENV: "development" },
+    env: { ...process.env, NODE_ENV: "development", COMPANION_RECORDINGS_MAX_LINES: process.env.COMPANION_RECORDINGS_MAX_LINES ?? "10000" },
   });
   procs.push(backend);
 

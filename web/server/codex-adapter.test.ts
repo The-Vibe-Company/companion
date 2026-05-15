@@ -4009,6 +4009,46 @@ describe("CodexAdapter with ICodexTransport", () => {
     warnSpy.mockRestore();
   });
 
+  // Newer Codex CLI versions emit informational/lifecycle notifications that
+  // older companion versions didn't recognize. We acknowledge them so the
+  // user-facing "Companion may need an update" warning doesn't fire on every
+  // session — even though the UI doesn't render them yet.
+  it("accepts meta/lifecycle notifications without protocol drift", async () => {
+    const { mock } = await initAdapter();
+    const warnSpy = vi.spyOn(log, "warn").mockImplementation(() => {});
+
+    // Each entry uses the actual payload shape observed in companion logs.
+    const metaNotifications: Array<{ method: string; params: Record<string, unknown> }> = [
+      { method: "configWarning", params: { summary: "Codex's Linux sandbox uses bubblewrap and needs access to create user namespaces.", details: null } },
+      { method: "mcpServer/startupStatus/updated", params: { name: "codex_apps", status: "starting", error: null } },
+      { method: "deprecationNotice", params: { summary: "feature X is deprecated" } },
+      { method: "windows/worldWritableWarning", params: { path: "C:\\foo" } },
+      { method: "authStatusChange", params: { status: "unauthenticated" } },
+      { method: "loginChatGptComplete", params: {} },
+      { method: "sessionConfigured", params: { sessionId: "s1" } },
+      { method: "thread/name/updated", params: { threadId: "t1", name: "renamed" } },
+      { method: "thread/compacted", params: { threadId: "t1" } },
+      { method: "fuzzyFileSearch/sessionUpdated", params: { sessionId: "s1" } },
+      { method: "app/list/updated", params: { apps: [] } },
+      { method: "mcpServer/oauthLogin/completed", params: { name: "codex_apps" } },
+    ];
+
+    for (const notification of metaNotifications) {
+      mock.pushNotification(notification.method, notification.params);
+    }
+    await new Promise((r) => setTimeout(r, 20));
+
+    for (const notification of metaNotifications) {
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        "protocol-monitor",
+        "Backend protocol drift detected",
+        expect.objectContaining({ messageName: notification.method }),
+      );
+    }
+
+    warnSpy.mockRestore();
+  });
+
   it("logs and surfaces unknown notification methods as protocol drift", async () => {
     // Unknown notifications should be elevated as compatibility warnings so
     // backend protocol drift is visible in logs and in the session UI.

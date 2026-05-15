@@ -148,7 +148,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
                 placeholder="Environment name (e.g. production)"
                 className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && newName.trim()) handleCreate();
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing && newName.trim()) handleCreate();
                 }}
               />
               <VarEditor rows={newVars} onChange={setNewVars} />
@@ -264,7 +264,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
         placeholder="Environment name (e.g. production)"
         className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
         onKeyDown={(e) => {
-          if (e.key === "Enter" && newName.trim()) handleCreate();
+          if (e.key === "Enter" && !e.nativeEvent.isComposing && newName.trim()) handleCreate();
         }}
       />
       <VarEditor rows={newVars} onChange={setNewVars} />

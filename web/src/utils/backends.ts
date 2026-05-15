@@ -40,7 +40,15 @@ export function toModelOptions(models: BackendModelInfo[]): ModelOption[] {
 // ─── Static fallbacks ────────────────────────────────────────────────────────
 
 export const CLAUDE_MODELS: ModelOption[] = [
+  // Opus 4.7 default is already 1M context — no [1m] suffix needed.
+  // (Verified via `claude --print --model claude-opus-4-7 …` returning
+  // contextWindow=1,000,000.)
+  { value: "claude-opus-4-7", label: "Opus 4.7", icon: "" },
   { value: "claude-opus-4-6", label: "Opus 4.6", icon: "" },
+  // Opus 4.6 default is 200k. The `[1m]` model-id suffix opts into the
+  // 1M-context variant (contextWindow=1,000,000, maxOutputTokens=64,000).
+  // No --betas flag needed.
+  { value: "claude-opus-4-6[1m]", label: "Opus 4.6 (1M)", icon: "" },
   { value: "claude-sonnet-4-6", label: "Sonnet 4.6", icon: "" },
   { value: "claude-haiku-4-5-20251001", label: "Haiku 4.5", icon: "" },
 ];

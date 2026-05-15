@@ -3,11 +3,12 @@ import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
 import { execSync } from "node:child_process";
 import { resolveBinary } from "./path-resolver.js";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { COMPANION_HOME } from "./paths.js";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { findTeamForCliSession } from "./team-config-reader.js";
 import type { SessionOrchestrator } from "./session-orchestrator.js";
 import type { CliLauncher } from "./cli-launcher.js";
 import type { WsBridge } from "./ws-bridge.js";
@@ -38,6 +39,8 @@ import { getSettings } from "./settings-manager.js";
 import { discoverClaudeSessions } from "./claude-session-discovery.js";
 import { getClaudeSessionHistoryPage } from "./claude-session-history.js";
 import { verifyToken, getToken, regenerateToken, getAllAddresses } from "./auth-manager.js";
+import { fetchProxyModelOptions } from "./model-resolver.js";
+import * as envManager from "./env-manager.js";
 import QRCode from "qrcode";
 import { VSCODE_EDITOR_CONTAINER_PORT, NOVNC_CONTAINER_PORT } from "./constants.js";
 
@@ -264,6 +267,23 @@ export function createRoutes(
     const limit = limitRaw ? Number(limitRaw) : undefined;
     const sessions = discoverClaudeSessions({ limit });
     return c.json({ sessions });
+  });
+
+  api.get("/sessions/:id/team", (c) => {
+    // Return the agent-team configuration for this session if one exists.
+    // Looked up by matching the session's cliSessionId to the leadSessionId
+    // in any team config under ~/.claude/teams. 404 when no matching team
+    // (most sessions don't use agent teams).
+    const id = c.req.param("id");
+    const session = launcher.getSession(id);
+    if (!session?.cliSessionId) {
+      return c.json({ error: "Session not found or has no CLI session ID" }, 404);
+    }
+    const team = findTeamForCliSession(session.cliSessionId);
+    if (!team) {
+      return c.json({ error: "No team configured for this session" }, 404);
+    }
+    return c.json(team);
   });
 
   api.get("/claude/sessions/:id/history", (c) => {
@@ -743,6 +763,78 @@ export function createRoutes(
     return c.json({ ok: true });
   });
 
+  // Sensitive-file write bypass.
+  //
+  // Claude Code's stdio mode auto-rejects `Write` calls to paths it considers
+  // sensitive (`.claude/hooks/*`, `.claude/settings.json`, memory files in
+  // some configs, etc.) with a confusing `tool_result` that reads
+  //   "Claude requested permissions to edit X which is a sensitive file."
+  // — but no `can_use_tool` request ever reaches companion, so the
+  // PermissionBanner UI never shows. The frontend detects this pattern in
+  // the tool_result content and offers an Approve button; clicking it POSTs
+  // here so companion writes the file out-of-band, then injects a synthetic
+  // user_message to unblock the model.
+  //
+  // Sandboxing: the file_path must resolve inside the session's cwd, the
+  // user's home `.claude/` directory, or `~/.companion/`. Anything else
+  // (e.g. `/etc/passwd`) is refused regardless of what the model asked for.
+  api.post("/sessions/:id/sensitive-write", async (c) => {
+    const id = c.req.param("id");
+    const session = launcher.getSession(id);
+    if (!session) return c.json({ error: "Session not found" }, 404);
+
+    const body = await c.req.json().catch(() => null) as null | {
+      file_path?: unknown;
+      content?: unknown;
+      tool_use_id?: unknown;
+    };
+    if (!body || typeof body.file_path !== "string" || typeof body.content !== "string") {
+      return c.json({ error: "Body must include file_path: string and content: string" }, 400);
+    }
+    const filePath = resolvePath(body.file_path);
+    const content = body.content;
+    const toolUseId = typeof body.tool_use_id === "string" ? body.tool_use_id : null;
+
+    // Path sandbox. We refuse to write outside known-safe roots even though
+    // the user clicked Approve — the model picked the path, not the human,
+    // so we can't grant it /etc-level reach just on a button click.
+    const home = homedir();
+    const allowedRoots = [
+      resolvePath(session.cwd),
+      resolvePath(home, ".claude"),
+      resolvePath(home, ".companion"),
+    ];
+    const inside = allowedRoots.some((root) =>
+      filePath === root || filePath.startsWith(root + "/"),
+    );
+    if (!inside) {
+      return c.json({
+        error: `Refused: ${filePath} is outside the session cwd, ~/.claude, and ~/.companion`,
+      }, 403);
+    }
+
+    // Create parent dir if missing (mirrors `mkdir -p` so the model doesn't
+    // need a separate Bash step to materialize `.claude/hooks/` etc.).
+    try {
+      mkdirSync(dirname(filePath), { recursive: true });
+      writeFileSync(filePath, content, "utf8");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return c.json({ error: `Write failed: ${msg}` }, 500);
+    }
+
+    // Tell the model the gate is cleared so it stops looping. Phrase it so
+    // it's obvious the file is on disk and the next step is to continue.
+    const notice =
+      `[companion] User approved the sensitive-file write via the UI. ` +
+      `Wrote ${content.length} byte(s) to ${filePath}` +
+      (toolUseId ? ` (replacing failed Write tool_use_id=${toolUseId})` : "") +
+      `. Please continue — do NOT retry the Write tool for this path.`;
+    wsBridge.injectUserMessage(id, notice, "external");
+
+    return c.json({ ok: true, bytes_written: Buffer.byteLength(content, "utf8"), path: filePath });
+  });
+
   api.post("/sessions/:id/relaunch", async (c) => {
     const id = c.req.param("id");
     const result = await orchestrator.relaunchSession(id);
@@ -1183,8 +1275,27 @@ export function createRoutes(
     return c.json(backends);
   });
 
-  api.get("/backends/:id/models", (c) => {
+  api.get("/backends/:id/models", async (c) => {
     const backendId = c.req.param("id");
+
+    // Claude with `?envSlug=` opts into a dynamic list driven by the configured
+    // proxy's /v1/models. Without the query param, fall through to the legacy
+    // 404 so the frontend keeps using its hardcoded picker. Proxy fetch errors
+    // also fall through (frontend will fallback) — never block the picker on
+    // a transient proxy issue.
+    if (backendId === "claude") {
+      const envSlug = c.req.query("envSlug");
+      if (envSlug) {
+        const env = envManager.getEnv(envSlug);
+        const baseUrl = env?.variables.ANTHROPIC_BASE_URL;
+        const token = env?.variables.ANTHROPIC_AUTH_TOKEN
+          || env?.variables.ANTHROPIC_API_KEY;
+        if (baseUrl && token) {
+          const opts = await fetchProxyModelOptions(baseUrl, token);
+          if (opts && opts.length > 0) return c.json(opts);
+        }
+      }
+    }
 
     if (backendId === "codex") {
       // Read Codex model list from its local cache file

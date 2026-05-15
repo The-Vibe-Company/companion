@@ -1,1 +1,1 @@
-cd web && bun run typecheck && bun run test -- --coverage
+bash scripts/check-no-data-exfiltration.sh && cd web && bun run typecheck && bun run test -- --coverage

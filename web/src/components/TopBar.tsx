@@ -37,6 +37,18 @@ export function TopBar() {
       sdkSessions.find((s) => s.sessionId === currentSessionId)?.name ||
       `Session ${currentSessionId.slice(0, 8)}`)
     : null;
+  // Auto-memory dir Claude is reading CLAUDE.md / MEMORY.md from on this turn
+  // (~/.claude/projects/<slug>/memory/, hash-named — hard to find otherwise).
+  // Surface it as a tooltip on the Session tab so users can spot what context
+  // is in play without spelunking the filesystem.
+  const memoryPath = useStore((s) =>
+    currentSessionId ? s.sessions.get(currentSessionId)?.memory_path : null,
+  );
+  const sessionTitle = sessionName
+    ? memoryPath
+      ? `${sessionName}\nMemory: ${memoryPath}`
+      : sessionName
+    : "Session";
   const showWorkspaceControls = !!(currentSessionId && isSessionView);
   const showContextToggle = route.page === "session" && !!currentSessionId;
   const workspaceTabs: WorkspaceTab[] = ["chat", "diff"];
@@ -93,7 +105,7 @@ export function TopBar() {
                     ? "text-cc-fg border-cc-primary"
                     : "text-cc-muted hover:text-cc-fg border-transparent"
                 }`}
-                title={sessionName || "Session"}
+                title={sessionTitle}
                 aria-label="Session tab"
               >
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${

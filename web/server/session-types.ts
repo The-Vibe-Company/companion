@@ -20,13 +20,44 @@ export interface CLISystemInitMessage {
   skills?: string[];
   output_style: string;
   uuid: string;
+  // ─── Added in Claude Code 2.1.119+; emitted on stdio transport. ─────────────
+  /** True when the user has disabled Claude Code analytics. Informational. */
+  analytics_disabled?: boolean;
+  /** Filesystem paths the CLI reads memory/context from. `auto` is the
+   *  auto-discovered project memory directory (~/.claude/projects/<slug>/memory). */
+  memory_paths?: { auto?: string } & Record<string, string | undefined>;
 }
 
 export interface CLISystemStatusMessage {
   type: "system";
   subtype: "status";
-  status: "compacting" | null;
+  /** Loosened from `"compacting" | null` after observing `"requesting"`
+   *  emitted by 2.1.119+ during the upstream API call. Kept as a string so
+   *  unknown future values don't break parsing — handlers should match on
+   *  the values they care about and ignore the rest. */
+  status: string | null;
   permissionMode?: string;
+  uuid: string;
+  session_id: string;
+}
+
+/**
+ * Emitted by Claude Code 2.1.119+ when an upstream API call fails and
+ * a retry is scheduled. The CLI does this transparently — by the time
+ * the user-facing `result` arrives, retries have already been exhausted.
+ * Surface to the UI so the user knows "we're retrying after a 502" rather
+ * than seeing a long opaque pause.
+ */
+export interface CLISystemApiRetryMessage {
+  type: "system";
+  subtype: "api_retry";
+  attempt: number;
+  max_retries: number;
+  retry_delay_ms: number;
+  /** Numeric HTTP status that triggered the retry (e.g. 502). */
+  error_status: number;
+  /** Short error category string (e.g. "server_error"). */
+  error: string;
   uuid: string;
   session_id: string;
 }
@@ -104,6 +135,7 @@ export interface CLIHookResponseMessage {
 export type CLISystemMessage =
   | CLISystemInitMessage
   | CLISystemStatusMessage
+  | CLISystemApiRetryMessage
   | CLICompactBoundaryMessage
   | CLITaskNotificationMessage
   | CLIFilesPersistedMessage
@@ -120,6 +152,9 @@ export interface CLIAssistantMessage {
     model: string;
     content: ContentBlock[];
     stop_reason: string | null;
+    /** Added in Claude Code 2.1.119+. Structured detail about *why* the turn
+     *  ended. Populated for refusals / max_tokens cutoffs / tool_use stops. */
+    stop_details?: { type: string; [k: string]: unknown } | null;
     usage: {
       input_tokens: number;
       output_tokens: number;
@@ -163,6 +198,17 @@ export interface CLIResultMessage {
   total_lines_removed?: number;
   uuid: string;
   session_id: string;
+  // ─── Added in Claude Code 2.1.119+; emitted on stdio transport. ─────────────
+  /** Numeric upstream HTTP status when the turn failed against the model
+   *  API (401 auth, 429 rate-limit, 5xx server). `null` on success. The UI
+   *  uses this to give actionable error messaging instead of a generic
+   *  "session error". (Originally typed as an object during Phase 1 from a
+   *  speculative schema; corrected after capturing a real 502 result.) */
+  api_error_status?: number | null;
+  /** Session-level termination reason. Cleaner than inferring from
+   *  is_error+stop_reason. Observed: "completed". Likely also "interrupted",
+   *  "error", "compacted" — kept as a string so unknown values don't break us. */
+  terminal_reason?: string | null;
 }
 
 export interface CLIStreamEventMessage {
@@ -337,7 +383,8 @@ export type BrowserIncomingMessageBase =
       | Pick<CLIFilesPersistedMessage, "subtype" | "files" | "failed" | "processed_at" | "uuid" | "session_id">
       | Pick<CLIHookStartedMessage, "subtype" | "hook_id" | "hook_name" | "hook_event" | "uuid" | "session_id">
       | Pick<CLIHookProgressMessage, "subtype" | "hook_id" | "hook_name" | "hook_event" | "stdout" | "stderr" | "output" | "uuid" | "session_id">
-      | Pick<CLIHookResponseMessage, "subtype" | "hook_id" | "hook_name" | "hook_event" | "output" | "stdout" | "stderr" | "exit_code" | "outcome" | "uuid" | "session_id">;
+      | Pick<CLIHookResponseMessage, "subtype" | "hook_id" | "hook_name" | "hook_event" | "output" | "stdout" | "stderr" | "exit_code" | "outcome" | "uuid" | "session_id">
+      | Pick<CLISystemApiRetryMessage, "subtype" | "attempt" | "max_retries" | "retry_delay_ms" | "error_status" | "error" | "uuid" | "session_id">;
     timestamp?: number;
   }
   | { type: "result"; data: CLIResultMessage }
@@ -351,6 +398,7 @@ export type BrowserIncomingMessageBase =
   | { type: "error"; message: string }
   | { type: "cli_disconnected" }
   | { type: "cli_connected" }
+  | { type: "session_unknown"; reason?: string }
   | { type: "user_message"; content: string; timestamp: number; id?: string }
   | { type: "message_history"; messages: BrowserIncomingMessage[] }
   | { type: "event_replay"; events: BufferedBrowserEvent[] }
@@ -360,7 +408,16 @@ export type BrowserIncomingMessageBase =
   | { type: "session_phase"; phase: SessionPhase; previousPhase: SessionPhase }
   | { type: "prompt_suggestion"; suggestions: string[] }
   | { type: "streamlined_text"; text: string }
-  | { type: "streamlined_tool_use_summary"; tool_summary: string };
+  | { type: "streamlined_tool_use_summary"; tool_summary: string }
+  /** Surfaces the Claude CLI's internal "sensitive file" rejection of a
+   *  Write/Edit tool_use. The CLI returns a tool_result with
+   *  is_error: true + content "Claude requested permissions to edit X
+   *  which is a sensitive file." in stdio mode, but never fires
+   *  can_use_tool, so PermissionBanner is silent. claude-adapter sniffs
+   *  the pattern and emits this event so the frontend can render the
+   *  SensitiveFileWriteApproval card adjacent to the rejected tool_use.
+   *  See project_claude_sensitive_file_gate.md. */
+  | { type: "sensitive_file_rejection"; tool_use_id: string; content: string };
 
 export type BrowserIncomingMessage = BrowserIncomingMessageBase & { seq?: number };
 
@@ -399,6 +456,12 @@ export interface SessionState {
   git_behind: number;
   total_lines_added: number;
   total_lines_removed: number;
+  /** Auto-memory directory the CLI is reading CLAUDE.md / MEMORY.md from.
+   *  Forwarded from `system.init.memory_paths.auto` (Claude Code 2.1.119+).
+   *  Surfaced in the UI so users can find the directory whose contents the
+   *  model has been consulting — typically a hash-named project subdir under
+   *  `~/.claude/projects/<slug>/memory/` that is otherwise hard to locate. */
+  memory_path?: string;
   // Codex-specific token details (forwarded from thread/tokenUsage/updated)
   codex_token_details?: {
     inputTokens: number;

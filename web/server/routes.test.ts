@@ -214,6 +214,25 @@ vi.mock("./claude-session-history.js", () => ({
 }));
 
 const mockGetUsageLimits = vi.hoisted(() => vi.fn());
+const mockFetchProxyModelOptions = vi.hoisted(() => vi.fn());
+
+vi.mock("./model-resolver.js", () => ({
+  fetchProxyModelOptions: mockFetchProxyModelOptions,
+  // Resolver internals are not exercised by route tests; stub safe defaults so
+  // accidental imports from other code paths don't blow up.
+  resolveClaudeModel: vi.fn(async (m: string | undefined) => ({
+    model: m, original: m, swapped: false,
+  })),
+  DEFAULT_CLAUDE_MODEL: "claude-opus-4-7",
+  SUPPORTED_CLAUDE_MODELS: new Set([
+    "claude-opus-4-7",
+    "claude-opus-4-6",
+    "claude-opus-4-6[1m]",
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5-20251001",
+  ]),
+  __resetProxyCacheForTests: vi.fn(),
+}));
 const mockUpdateCheckerState = vi.hoisted(() => ({
   currentVersion: "0.22.1",
   latestVersion: null as string | null,
@@ -3612,6 +3631,110 @@ describe("GET /api/backends/:id/models", () => {
     const res = await app.request("/api/backends/claude/models", { method: "GET" });
 
     expect(res.status).toBe(404);
+  });
+
+  // Dynamic-list path: when ?envSlug points to a profile that configures a
+  // proxy, the route hits /v1/models via fetchProxyModelOptions and returns
+  // the actual list the proxy supports. This is what feeds the picker on the
+  // create-session form, replacing the hardcoded CLAUDE_MODELS.
+  it("returns dynamic claude models when envSlug resolves to a proxy", async () => {
+    vi.mocked(envManager.getEnv).mockReturnValue({
+      name: "proxy",
+      slug: "proxy",
+      variables: {
+        ANTHROPIC_BASE_URL: "http://proxy",
+        ANTHROPIC_AUTH_TOKEN: "tk",
+      },
+      createdAt: 0,
+      updatedAt: 0,
+    } as any);
+    mockFetchProxyModelOptions.mockResolvedValueOnce([
+      { value: "claude-opus-4-7", label: "Claude Opus 4.7" },
+      { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5" },
+    ]);
+    const res = await app.request("/api/backends/claude/models?envSlug=proxy", { method: "GET" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([
+      { value: "claude-opus-4-7", label: "Claude Opus 4.7" },
+      { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5" },
+    ]);
+    expect(mockFetchProxyModelOptions).toHaveBeenCalledWith("http://proxy", "tk");
+  });
+
+  // ANTHROPIC_API_KEY should be accepted as an alternative to AUTH_TOKEN — the
+  // resolver treats them interchangeably and so should the route.
+  it("accepts ANTHROPIC_API_KEY as the auth source", async () => {
+    vi.mocked(envManager.getEnv).mockReturnValue({
+      name: "proxy",
+      slug: "proxy",
+      variables: {
+        ANTHROPIC_BASE_URL: "http://proxy",
+        ANTHROPIC_API_KEY: "sk-ant-xxx",
+      },
+      createdAt: 0,
+      updatedAt: 0,
+    } as any);
+    mockFetchProxyModelOptions.mockResolvedValueOnce([
+      { value: "claude-opus-4-7", label: "Claude Opus 4.7" },
+    ]);
+    const res = await app.request("/api/backends/claude/models?envSlug=proxy", { method: "GET" });
+    expect(res.status).toBe(200);
+    expect(mockFetchProxyModelOptions).toHaveBeenCalledWith("http://proxy", "sk-ant-xxx");
+  });
+
+  // Failure modes must fall through to 404 so the frontend keeps using its
+  // hardcoded picker — the picker must never be empty just because the proxy
+  // is briefly unreachable.
+  it("falls through to 404 when proxy fetch returns null (frontend will use hardcoded picker)", async () => {
+    vi.mocked(envManager.getEnv).mockReturnValue({
+      name: "proxy",
+      slug: "proxy",
+      variables: {
+        ANTHROPIC_BASE_URL: "http://proxy",
+        ANTHROPIC_AUTH_TOKEN: "tk",
+      },
+      createdAt: 0,
+      updatedAt: 0,
+    } as any);
+    mockFetchProxyModelOptions.mockResolvedValueOnce(null);
+    const res = await app.request("/api/backends/claude/models?envSlug=proxy", { method: "GET" });
+    expect(res.status).toBe(404);
+  });
+
+  it("falls through to 404 when proxy returns an empty list", async () => {
+    vi.mocked(envManager.getEnv).mockReturnValue({
+      name: "proxy",
+      slug: "proxy",
+      variables: {
+        ANTHROPIC_BASE_URL: "http://proxy",
+        ANTHROPIC_AUTH_TOKEN: "tk",
+      },
+      createdAt: 0,
+      updatedAt: 0,
+    } as any);
+    mockFetchProxyModelOptions.mockResolvedValueOnce([]);
+    const res = await app.request("/api/backends/claude/models?envSlug=proxy", { method: "GET" });
+    expect(res.status).toBe(404);
+  });
+
+  it("falls through to 404 when envSlug profile has no BASE_URL (no proxy configured)", async () => {
+    vi.mocked(envManager.getEnv).mockReturnValue({
+      name: "plain",
+      slug: "plain",
+      variables: { SOMETHING_ELSE: "x" },
+      createdAt: 0,
+      updatedAt: 0,
+    } as any);
+    const res = await app.request("/api/backends/claude/models?envSlug=plain", { method: "GET" });
+    expect(res.status).toBe(404);
+    expect(mockFetchProxyModelOptions).not.toHaveBeenCalled();
+  });
+
+  it("falls through to 404 when envSlug does not resolve to a known profile", async () => {
+    vi.mocked(envManager.getEnv).mockReturnValue(null as any);
+    const res = await app.request("/api/backends/claude/models?envSlug=missing", { method: "GET" });
+    expect(res.status).toBe(404);
+    expect(mockFetchProxyModelOptions).not.toHaveBeenCalled();
   });
 });
 

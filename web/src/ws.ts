@@ -4,10 +4,13 @@ import { generateUniqueSessionName } from "./utils/names.js";
 import { playNotificationSound } from "./utils/notification-sound.js";
 import { getPreview } from "./components/ToolBlock.js";
 import type { ToolActivityEntry } from "./store/tasks-slice.js";
+import { navigateHome, parseHash } from "./utils/routing.js";
 
 const WS_RECONNECT_DELAY_MS = 2000;
+const WS_HEARTBEAT_INTERVAL_MS = 30000; // Send heartbeat every 30 seconds
 const sockets = new Map<string, WebSocket>();
 const reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const heartbeatTimers = new Map<string, ReturnType<typeof setInterval>>();
 const lastSeqBySession = new Map<string, number>();
 const taskCounters = new Map<string, number>();
 const streamingPhaseBySession = new Map<string, "thinking" | "text">();
@@ -36,6 +39,13 @@ function getReconnectCandidates(): string[] {
   }
   if (store.currentSessionId) ids.add(store.currentSessionId);
   return Array.from(ids);
+}
+
+function getSessionBackend(sessionId: string): "claude" | "codex" | undefined {
+  const store = useStore.getState();
+  const sessionBackend = store.sessions.get(sessionId)?.backend_type;
+  if (sessionBackend) return sessionBackend;
+  return store.sdkSessions.find((s) => s.sessionId === sessionId)?.backendType;
 }
 
 // ── Page visibility handling ─────────────────────────────────────────────────
@@ -328,6 +338,21 @@ function sendBrowserNotification(title: string, body: string, tag: string) {
   new Notification(title, { body, tag });
 }
 
+/**
+ * Map an HTTP status code reported on `result.api_error_status` (Claude
+ * Code 2.1.119+) to a short user-facing category prefix. Used by the
+ * result handler to give the user actionable framing instead of an opaque
+ * raw error string. Unknown ranges fall back to a generic "API error".
+ */
+export function categorizeApiError(status: number): string {
+  if (status === 401 || status === 403) return "Authentication failed";
+  if (status === 429) return "Rate limited";
+  if (status === 529) return "Model overloaded";
+  if (status >= 500 && status < 600) return "Upstream API error";
+  if (status >= 400 && status < 500) return "Request rejected";
+  return "API error";
+}
+
 function summarizeSystemEvent(
   event: Extract<BrowserIncomingMessage, { type: "system_event" }>["event"],
 ): string | null {
@@ -356,6 +381,14 @@ function summarizeSystemEvent(
   if (event.subtype === "hook_response") {
     const exitCode = typeof event.exit_code === "number" ? ` (exit ${event.exit_code})` : "";
     return `Hook ${event.outcome}: ${event.hook_name} (${event.hook_event})${exitCode}.`;
+  }
+
+  if (event.subtype === "api_retry") {
+    // Surface upstream API failure + the CLI's auto-retry plan inline so the
+    // user understands why a turn is paused rather than seeing a long
+    // opaque wait. Convert ms → seconds with one decimal for readability.
+    const seconds = (event.retry_delay_ms / 1000).toFixed(1);
+    return `Upstream API ${event.error_status} (${event.error}) — retry ${event.attempt}/${event.max_retries} in ${seconds}s.`;
   }
 
   // hook_progress can be high-volume; keep it out of chat by default.
@@ -479,6 +512,28 @@ function getLastSeqStorageKey(sessionId: string): string {
 function getLastSeq(sessionId: string): number {
   const cached = lastSeqBySession.get(sessionId);
   if (typeof cached === "number") return cached;
+  // Hard-refresh / new-tab guard: localStorage persists across page reloads
+  // but the in-memory message store does not. If we hand the bridge a stale
+  // last_seq from localStorage while the local chat is empty, the bridge
+  // thinks we're "caught up", skips the full message_history broadcast,
+  // and only replays the (rolling, ~600-event) eventBuffer. Any assistant
+  // message older than the buffer's window (e.g. an ExitPlanMode card with
+  // a long plan that the user is supposed to approve) vanishes from the
+  // chat. Force a 0 in that case so the bridge re-sends messageHistory.
+  // We use the store getter rather than a closure import to avoid a circular
+  // dep — the chat slice is registered at module load.
+  let hasLocalMessages = false;
+  try {
+    hasLocalMessages = (useStore.getState().messages.get(sessionId)?.length ?? 0) > 0;
+  } catch {
+    // Store not initialized yet (shouldn't happen — ws.ts is imported after
+    // the store) — fall through to localStorage so behaviour is unchanged.
+    hasLocalMessages = true;
+  }
+  if (!hasLocalMessages) {
+    lastSeqBySession.set(sessionId, 0);
+    return 0;
+  }
   try {
     const raw = localStorage.getItem(getLastSeqStorageKey(sessionId));
     const parsed = raw ? Number(raw) : 0;
@@ -769,13 +824,22 @@ function handleParsedMessage(
             setStreamingDraftMessage(sessionId, parts.text, "text");
           }
           if (delta?.type === "thinking_delta" && typeof delta.thinking === "string") {
-            const parts = streamingBlocksBySession.get(sessionId) || { thinking: "", text: "" };
-            parts.thinking += delta.thinking;
-            streamingBlocksBySession.set(sessionId, parts);
-            streamingPhaseBySession.set(sessionId, "thinking");
-            // Show thinking text directly as faded inline text
-            store.setStreaming(sessionId, parts.thinking);
-            setStreamingDraftMessage(sessionId, parts.thinking, "thinking");
+            // Opus 4.7 sends thinking_delta with empty `thinking` strings
+            // (extended-thinking is encrypted server-side; see signature
+            // field on the final block). Skip empty deltas so we don't
+            // flicker the thinking phase indicator with no content.
+            if (delta.thinking.length === 0) {
+              // Continue rather than break — there could still be
+              // meaningful subsequent deltas in the same turn.
+            } else {
+              const parts = streamingBlocksBySession.get(sessionId) || { thinking: "", text: "" };
+              parts.thinking += delta.thinking;
+              streamingBlocksBySession.set(sessionId, parts);
+              streamingPhaseBySession.set(sessionId, "thinking");
+              // Show thinking text directly as faded inline text
+              store.setStreaming(sessionId, parts.thinking);
+              setStreamingDraftMessage(sessionId, parts.thinking, "thinking");
+            }
           }
         }
 
@@ -809,7 +873,7 @@ function handleParsedMessage(
         sessionUpdates.total_lines_removed = r.total_lines_removed;
       }
       // Compute context % from modelUsage if available
-      if (r.modelUsage) {
+      if (r.modelUsage && getSessionBackend(sessionId) !== "codex") {
         for (const usage of Object.values(r.modelUsage)) {
           if (usage.contextWindow > 0) {
             const pct = Math.round(
@@ -834,11 +898,28 @@ function handleParsedMessage(
       if (!document.hasFocus() && store.notificationDesktop) {
         sendBrowserNotification("Session completed", "Claude finished the task", sessionId);
       }
-      if (r.is_error && r.errors?.length) {
+      if (r.is_error) {
+        // Build the most informative error message available, in this priority:
+        //   1. categorized api_error_status + the CLI's humane `result` text
+        //   2. legacy `errors[]` array (older CLIs)
+        //   3. generic fallback
+        // 2.1.119+ puts the user-facing message on `result.result` and the
+        // numeric upstream status on `api_error_status`. We pair them so the
+        // user sees both "what happened" and "what category" in one line.
+        const status = r.api_error_status;
+        const category = status ? categorizeApiError(status) : null;
+        const detail = typeof r.result === "string" && r.result.trim()
+          ? r.result.trim()
+          : r.errors?.length
+            ? r.errors.join(", ")
+            : "(no additional detail)";
+        const content = category
+          ? `${category}: ${detail}`
+          : `Error: ${detail}`;
         store.appendMessage(sessionId, {
           id: nextId(),
           role: "system",
-          content: `Error: ${r.errors.join(", ")}`,
+          content,
           timestamp: Date.now(),
         });
       }
@@ -896,6 +977,13 @@ function handleParsedMessage(
       store.updateToolActivity(sessionId, data.tool_use_id, {
         elapsedSeconds: data.elapsed_time_seconds,
       });
+      break;
+    }
+
+    case "sensitive_file_rejection": {
+      // Server already broadcast this — record it so MessageBubble can
+      // render an Approve/Reject card next to the rejected tool_use.
+      store.setSensitiveFileRejection(sessionId, data.tool_use_id, data.content);
       break;
     }
 
@@ -1021,6 +1109,25 @@ function handleParsedMessage(
       break;
     }
 
+    case "session_unknown": {
+      // The server has confirmed there is no launcher record for this
+      // sessionId — it cannot be relaunched and is not coming back.
+      // Tear down the WS, drop the session from the store (which clears
+      // localStorage entries), and if the URL hash is still pointing at
+      // this orphan, navigate home — otherwise App.tsx's route effect
+      // would just reconnect on the next render and resurrect the loop.
+      disconnectSession(sessionId);
+      store.removeSession(sessionId);
+      if (typeof window !== "undefined") {
+        const hash = window.location?.hash ?? "";
+        const route = parseHash(hash);
+        if (route.page === "session" && route.sessionId === sessionId) {
+          navigateHome(true);
+        }
+      }
+      break;
+    }
+
     case "session_name_update": {
       // Only apply auto-name if user hasn't manually renamed (still has random Adj+Noun name)
       const currentName = store.sessionNames.get(sessionId);
@@ -1132,7 +1239,7 @@ function handleParsedMessage(
           if (typeof r.total_lines_removed === "number") {
             resultUpdates.total_lines_removed = r.total_lines_removed;
           }
-          if (r.modelUsage) {
+          if (r.modelUsage && getSessionBackend(sessionId) !== "codex") {
             for (const usage of Object.values(r.modelUsage)) {
               if ((usage as { contextWindow: number; inputTokens: number; outputTokens: number }).contextWindow > 0) {
                 const u = usage as { contextWindow: number; inputTokens: number; outputTokens: number };
@@ -1275,6 +1382,8 @@ export function connectSession(sessionId: string) {
       clearTimeout(timer);
       reconnectTimers.delete(sessionId);
     }
+    // Start heartbeat to keep connection alive during idle periods
+    startHeartbeat(sessionId, ws);
   };
 
   ws.onmessage = (event) => handleMessage(sessionId, event);
@@ -1283,6 +1392,7 @@ export function connectSession(sessionId: string) {
     // Guard against stale close events from a replaced socket.
     if (sockets.get(sessionId) !== ws) return;
     sockets.delete(sessionId);
+    stopHeartbeat(sessionId);
     useStore.getState().setConnectionStatus(sessionId, "disconnected");
     scheduleReconnect(sessionId);
   };
@@ -1307,12 +1417,45 @@ function scheduleReconnect(sessionId: string) {
   reconnectTimers.set(sessionId, timer);
 }
 
+function startHeartbeat(sessionId: string, ws: WebSocket) {
+  // Clear any existing heartbeat for this session
+  stopHeartbeat(sessionId);
+
+  const timer = setInterval(() => {
+    // Check if socket is still usable
+    if (!isSocketUsable(ws)) {
+      stopHeartbeat(sessionId);
+      return;
+    }
+
+    // Send a lightweight MCP status check to keep the connection alive
+    try {
+      ws.send(JSON.stringify({ type: "mcp_get_status" }));
+    } catch {
+      // If sending fails, the socket is probably dead, stop the heartbeat
+      stopHeartbeat(sessionId);
+      scheduleReconnect(sessionId);
+    }
+  }, WS_HEARTBEAT_INTERVAL_MS);
+
+  heartbeatTimers.set(sessionId, timer);
+}
+
+function stopHeartbeat(sessionId: string) {
+  const timer = heartbeatTimers.get(sessionId);
+  if (timer) {
+    clearInterval(timer);
+    heartbeatTimers.delete(sessionId);
+  }
+}
+
 export function disconnectSession(sessionId: string) {
   const timer = reconnectTimers.get(sessionId);
   if (timer) {
     clearTimeout(timer);
     reconnectTimers.delete(sessionId);
   }
+  stopHeartbeat(sessionId);
   const ws = sockets.get(sessionId);
   if (ws) {
     ws.close();

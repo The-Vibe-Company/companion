@@ -25,11 +25,17 @@ vi.mock("../ws.js", () => ({
   createClientMessageId: () => "test-client-msg-id",
 }));
 
+const mockGetSessionTeam = vi.fn();
 vi.mock("../api.js", () => ({
   api: {
     gitPull: vi.fn().mockResolvedValue({ success: true, output: "", git_ahead: 0, git_behind: 0 }),
     listPrompts: (...args: unknown[]) => mockListPrompts(...args),
     createPrompt: (...args: unknown[]) => mockCreatePrompt(...args),
+    getSessionTeam: (...args: unknown[]) => mockGetSessionTeam(...args),
+    // Composer indirectly renders ModelSwitcher, which fetches a per-session
+    // dynamic model list. Stub it to an empty array so ModelSwitcher falls
+    // back to its hardcoded picker without hitting the network in jsdom.
+    getSessionModels: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -83,11 +89,14 @@ function setupMockStore(overrides: {
   isConnected?: boolean;
   sessionStatus?: "idle" | "running" | "compacting" | null;
   session?: Partial<SessionState>;
+  /** Override messages on the store. Used by Phase B agent-target tests. */
+  messages?: Array<{ id: string; role: string; content: string; contentBlocks?: unknown[] }>;
 } = {}) {
   const {
     isConnected = true,
     sessionStatus = "idle",
     session = {},
+    messages,
   } = overrides;
 
   const sessionsMap = new Map<string, SessionState>();
@@ -102,8 +111,14 @@ function setupMockStore(overrides: {
   const previousPermissionModeMap = new Map<string, string>();
   previousPermissionModeMap.set("s1", "acceptEdits");
 
+  const messagesMap = new Map<string, Array<{ id: string; role: string; content: string; contentBlocks?: unknown[] }>>();
+  if (messages) {
+    messagesMap.set("s1", messages);
+  }
+
   mockStoreState = {
     sessions: sessionsMap,
+    messages: messagesMap,
     cliConnected: cliConnectedMap,
     sessionStatus: sessionStatusMap,
     previousPermissionMode: previousPermissionModeMap,
@@ -121,6 +136,7 @@ function setupMockStore(overrides: {
 beforeEach(() => {
   vi.clearAllMocks();
   mockListPrompts.mockResolvedValue([]);
+  mockGetSessionTeam.mockResolvedValue(null);  // default: no team
   mockCreatePrompt.mockResolvedValue({
     id: "p-new",
     name: "New Prompt",
@@ -220,6 +236,211 @@ describe("Composer sending messages", () => {
     fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
 
     expect(textarea.value).toBe("");
+  });
+});
+
+// ─── Phase B: agent target selector ──────────────────────────────────────────
+
+describe("Composer agent target (Phase B)", () => {
+  // No agents invoked → the "Reply to:" pillbar is hidden so plain
+  // sessions don't see any new UI noise. Regression guard for the
+  // no-team scenario.
+  it("hides the agent target pillbar when no Agent/Task calls have happened", () => {
+    setupMockStore({ messages: [] });
+    render(<Composer sessionId="s1" />);
+    expect(screen.queryByTestId("composer-agent-target")).toBeNull();
+  });
+
+  // The pillbar is populated ONLY from team config — messageHistory
+  // alone is not used. Without an active team config, the picker stays
+  // hidden so historical/ghost agents don't surface.
+  it("does NOT populate pillbar from messageHistory when no team config", () => {
+    mockGetSessionTeam.mockResolvedValueOnce(null);
+    setupMockStore({
+      messages: [
+        {
+          id: "a1",
+          role: "assistant",
+          content: "",
+          contentBlocks: [
+            { type: "tool_use", id: "u1", name: "SendMessage", input: { to: "btc-fuzzer", summary: "ping" } },
+            { type: "tool_use", id: "u2", name: "Agent", input: { subagent_type: "Explore" } },
+          ],
+        },
+      ],
+    });
+    render(<Composer sessionId="s1" />);
+    expect(screen.queryByTestId("composer-agent-target")).toBeNull();
+  });
+
+  // With team config, persistent members populate the pillbar.
+  it("shows the agent pillbar populated from team config", async () => {
+    mockGetSessionTeam.mockResolvedValueOnce({
+      name: "phase",
+      leadSessionId: "s1",
+      leadAgentId: "team-lead@phase",
+      configPath: "/fake",
+      members: [
+        { name: "team-lead", agentId: "team-lead@phase", agentType: "team-lead", isLead: true, role: "lead" },
+        { name: "code-reviewer", agentId: "cr@phase", agentType: "reviewer", backendType: "external", isLead: false, role: "persistent" },
+      ],
+    });
+    setupMockStore({ messages: [] });
+    render(<Composer sessionId="s1" />);
+    await waitFor(() => {
+      expect(screen.queryByTestId("composer-target-code-reviewer")).toBeTruthy();
+    });
+    expect(screen.getByTestId("composer-target-coordinator")).toBeTruthy();
+  });
+
+  // Headline: selecting a team-config agent prepends "@<agent>: " on send.
+  it("prepends @<agent>: when target is selected from team-config picker", async () => {
+    mockGetSessionTeam.mockResolvedValueOnce({
+      name: "phase",
+      leadSessionId: "s1",
+      leadAgentId: "team-lead@phase",
+      configPath: "/fake",
+      members: [
+        { name: "team-lead", agentId: "team-lead@phase", agentType: "team-lead", isLead: true, role: "lead" },
+        { name: "code-reviewer", agentId: "cr@phase", agentType: "reviewer", backendType: "external", isLead: false, role: "persistent" },
+      ],
+    });
+    setupMockStore({ messages: [] });
+    const { container } = render(<Composer sessionId="s1" />);
+    await waitFor(() => {
+      expect(screen.queryByTestId("composer-target-code-reviewer")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId("composer-target-code-reviewer"));
+    const textarea = container.querySelector("textarea")! as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: "ping?" } });
+    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+
+    expect(mockSendToSession).toHaveBeenCalledWith("s1", expect.objectContaining({
+      type: "user_message",
+      content: "@code-reviewer: ping?",
+    }));
+  });
+
+  // Coordinator target (default) sends the content unmodified — no
+  // surprise @-prefix when the user hasn't asked to target an agent.
+  it("sends content as-is when Coordinator is the selected target", () => {
+    setupMockStore({
+      messages: [
+        {
+          id: "a1",
+          role: "assistant",
+          content: "",
+          contentBlocks: [
+            { type: "tool_use", id: "agent-1", name: "Agent", input: { description: "x", subagent_type: "Explore" } },
+          ],
+        },
+      ],
+    });
+    const { container } = render(<Composer sessionId="s1" />);
+    const textarea = container.querySelector("textarea")! as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: "general status update" } });
+    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+
+    expect(mockSendToSession).toHaveBeenCalledWith("s1", expect.objectContaining({
+      type: "user_message",
+      content: "general status update",
+    }));
+  });
+
+  // ── Team config-driven filtering ────────────────────────────────────
+  //
+  // When a team config is available for the session (from the new server
+  // /sessions/:id/team endpoint), the picker uses that as authoritative:
+  //   - Only "persistent" members are @-targetable
+  //   - Lead is excluded (you can't @-target yourself)
+  //   - Transient (in-process) members are hidden — they're single-task
+  //     subagents, not sensible @-targets
+  //
+  // Fallback: if no team config, picker uses messageHistory state-machine
+  // inference (covered by tests above).
+
+  it("uses team config to populate pillbar when one is available", async () => {
+    mockGetSessionTeam.mockResolvedValueOnce({
+      name: "phase-x",
+      leadSessionId: "lead-x",
+      leadAgentId: "team-lead@phase-x",
+      configPath: "/fake",
+      members: [
+        { name: "team-lead", agentId: "team-lead@phase-x", agentType: "team-lead", isLead: true, role: "lead" },
+        { name: "btc-fuzzer", agentId: "btc-fuzzer@phase-x", agentType: "fuzzer", backendType: "in-process", isLead: false, role: "transient" },
+        { name: "code-reviewer", agentId: "code-reviewer@phase-x", agentType: "reviewer", backendType: "external", isLead: false, role: "persistent" },
+      ],
+    });
+    setupMockStore({ messages: [] });
+    render(<Composer sessionId="s1" />);
+    // Allow the useEffect's promise to resolve
+    await waitFor(() => {
+      expect(screen.queryByTestId("composer-target-code-reviewer")).toBeTruthy();
+    });
+    // Persistent member is in the picker
+    expect(screen.getByTestId("composer-target-code-reviewer")).toBeTruthy();
+    // Transient (in-process) member is filtered out
+    expect(screen.queryByTestId("composer-target-btc-fuzzer")).toBeNull();
+    // Lead is filtered out (can't @-target yourself)
+    expect(screen.queryByTestId("composer-target-team-lead")).toBeNull();
+  });
+
+  // Edge: team with only lead and transient members → no targetable
+  // agents. Pillbar must hide entirely (no @-pills to show).
+  it("hides the pillbar entirely when team has no @-targetable members", async () => {
+    mockGetSessionTeam.mockResolvedValueOnce({
+      name: "phase-x",
+      leadSessionId: "lead-x",
+      leadAgentId: "team-lead@phase-x",
+      configPath: "/fake",
+      members: [
+        { name: "team-lead", agentId: "team-lead@phase-x", agentType: "team-lead", isLead: true, role: "lead" },
+        { name: "fuzzer", agentId: "fuzzer@phase-x", agentType: "fuzzer", backendType: "in-process", isLead: false, role: "transient" },
+      ],
+    });
+    setupMockStore({ messages: [] });
+    render(<Composer sessionId="s1" />);
+    // Wait briefly for the team fetch to settle, then assert nothing showed up.
+    await waitFor(() => {
+      // No team-target pillbar
+      expect(screen.queryByTestId("composer-agent-target")).toBeNull();
+    });
+  });
+
+  // No team config: the messageHistory state machine still works as
+  // before (regression guard for non-team sessions). Already covered
+  // by the earlier @-target tests using the default mock (returns null).
+
+  // Toggle behavior: clicking the same agent pill twice clears the target
+  // (back to Coordinator). Saves a click vs requiring a separate "clear".
+  it("clicking the active agent pill again clears the target", async () => {
+    mockGetSessionTeam.mockResolvedValueOnce({
+      name: "phase",
+      leadSessionId: "s1",
+      leadAgentId: "team-lead@phase",
+      configPath: "/fake",
+      members: [
+        { name: "team-lead", agentId: "team-lead@phase", agentType: "team-lead", isLead: true, role: "lead" },
+        { name: "ops", agentId: "ops@phase", agentType: "ops", backendType: "external", isLead: false, role: "persistent" },
+      ],
+    });
+    setupMockStore({ messages: [] });
+    const { container } = render(<Composer sessionId="s1" />);
+    await waitFor(() => {
+      expect(screen.queryByTestId("composer-target-ops")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByTestId("composer-target-ops"));
+    fireEvent.click(screen.getByTestId("composer-target-ops"));
+
+    const textarea = container.querySelector("textarea")! as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: "ok then" } });
+    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+
+    // No @-prefix — target was cleared
+    expect(mockSendToSession).toHaveBeenCalledWith("s1", expect.objectContaining({
+      content: "ok then",
+    }));
   });
 });
 

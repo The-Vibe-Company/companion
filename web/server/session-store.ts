@@ -1,6 +1,6 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import type {
   SessionState,
   BrowserIncomingMessage,
@@ -25,15 +25,61 @@ export interface PersistedSession {
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 
-const DEFAULT_DIR = join(tmpdir(), "vibe-sessions");
+// Default storage lives under $HOME/.companion/sessions so it survives system
+// reboots. Most Linux distros wipe /tmp at boot, so the legacy location lost
+// every session whenever the host restarted. The legacy path is migrated once
+// (see migrateLegacyDir below) when a SessionStore is constructed without an
+// explicit dir argument.
+const defaultDir = (): string => join(homedir(), ".companion", "sessions");
+const legacyDir = (): string => join(tmpdir(), "vibe-sessions");
 
 export class SessionStore {
   private dir: string;
   private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor(dir?: string) {
-    this.dir = dir || DEFAULT_DIR;
+    this.dir = dir || defaultDir();
     mkdirSync(this.dir, { recursive: true });
+    if (!dir) this.migrateLegacyDir();
+  }
+
+  /**
+   * One-shot copy of any leftover files from the legacy `$TMPDIR/vibe-sessions/`
+   * location into the new default dir. Per-file: skipped if the file already
+   * exists in the new dir (so existing data wins). Source files are removed
+   * after a successful copy so subsequent boots don't re-migrate the same
+   * stale state.
+   */
+  private migrateLegacyDir(): void {
+    const src = legacyDir();
+    if (src === this.dir) return;
+    let files: string[];
+    try {
+      files = readdirSync(src);
+    } catch {
+      return; // legacy dir does not exist — nothing to do
+    }
+    let migrated = 0;
+    for (const file of files) {
+      if (!file.endsWith(".json")) continue;
+      const srcPath = join(src, file);
+      const dstPath = join(this.dir, file);
+      try {
+        // Skip if destination already has data for this file.
+        readFileSync(dstPath);
+        continue;
+      } catch {}
+      try {
+        copyFileSync(srcPath, dstPath);
+        try { unlinkSync(srcPath); } catch {}
+        migrated++;
+      } catch {
+        // Permissions / disk full — keep going so we migrate as much as we can.
+      }
+    }
+    if (migrated > 0) {
+      console.log(`[session-store] Migrated ${migrated} file(s) from ${src} to ${this.dir}`);
+    }
   }
 
   private filePath(sessionId: string): string {

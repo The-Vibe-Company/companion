@@ -276,6 +276,30 @@ export interface ClaudeSessionHistoryPage {
   totalMessages: number;
 }
 
+/** Agent-team membership info, returned by GET /sessions/:id/team.
+ *  Mirrors the server's TeamInfo type (web/server/team-config-reader.ts).
+ *  `role` derives from backendType + lead status:
+ *    lead = team-lead, the user's own conversational entity
+ *    persistent = long-lived agent (separate process / external)
+ *    transient = in-process single-task subagent (not @-targetable) */
+export interface TeamMember {
+  name: string;
+  agentId: string;
+  agentType: string;
+  backendType?: string;
+  isLead: boolean;
+  role: "lead" | "transient" | "persistent";
+  color?: string;
+}
+
+export interface TeamInfo {
+  name: string;
+  leadSessionId: string;
+  leadAgentId: string;
+  members: TeamMember[];
+  configPath: string;
+}
+
 export interface GitRepoInfo {
   repoRoot: string;
   repoName: string;
@@ -862,6 +886,17 @@ export const api = {
     get<{ sessions: ClaudeDiscoveredSession[] }>(
       `/claude/sessions/discover?limit=${encodeURIComponent(String(limit))}`,
     ),
+  /** Fetch the agent-team configuration for a session, if one exists.
+   *  Returns null when no team is configured (404 from server). */
+  getSessionTeam: async (sessionId: string): Promise<TeamInfo | null> => {
+    try {
+      return await get<TeamInfo>(`/sessions/${encodeURIComponent(sessionId)}/team`);
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("404")) return null;
+      throw err;
+    }
+  },
+
   getClaudeSessionHistory: (sessionId: string, opts?: { cursor?: number; limit?: number }) => {
     const cursor = Math.max(0, Math.floor(opts?.cursor ?? 0));
     const limit = Math.max(1, Math.floor(opts?.limit ?? 40));
@@ -878,6 +913,20 @@ export const api = {
 
   relaunchSession: (sessionId: string) =>
     post(`/sessions/${encodeURIComponent(sessionId)}/relaunch`),
+
+  /** Bypass Claude Code's internal "sensitive file" guard by writing the
+   *  file directly via companion (with path-sandbox + server injects a
+   *  follow-up user_message so the model stops looping). Used by the
+   *  SensitiveFileWriteApproval UI when CLI returns a tool_result whose
+   *  content matches "...which is a sensitive file." */
+  sensitiveWrite: (
+    sessionId: string,
+    body: { file_path: string; content: string; tool_use_id?: string },
+  ) =>
+    post<{ ok: true; bytes_written: number; path: string }>(
+      `/sessions/${encodeURIComponent(sessionId)}/sensitive-write`,
+      body,
+    ),
 
   archiveSession: (sessionId: string, opts?: { force?: boolean; linearTransition?: "none" | "backlog" | "configured" }) =>
     post(`/sessions/${encodeURIComponent(sessionId)}/archive`, opts),
@@ -1083,8 +1132,15 @@ export const api = {
 
   // Backends
   getBackends: () => get<BackendInfo[]>("/backends"),
-  getBackendModels: (backendId: string) =>
-    get<BackendModelInfo[]>(`/backends/${encodeURIComponent(backendId)}/models`),
+  getBackendModels: (backendId: string, envSlug?: string) => {
+    const qs = envSlug ? `?envSlug=${encodeURIComponent(envSlug)}` : "";
+    return get<BackendModelInfo[]>(`/backends/${encodeURIComponent(backendId)}/models${qs}`);
+  },
+  // Per-session dynamic model list. Returns [] when the session is unknown,
+  // not a Claude proxy session, or the proxy probe fails — caller should
+  // fall back to the hardcoded picker on empty.
+  getSessionModels: (sessionId: string) =>
+    get<BackendModelInfo[]>(`/sessions/${encodeURIComponent(sessionId)}/models`),
 
   // Containers
   getContainerStatus: () => get<ContainerStatus>("/containers/status"),

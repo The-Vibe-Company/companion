@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useStore } from "../store.js";
 import { createClientMessageId, sendToSession } from "../ws.js";
 import { CLAUDE_MODES, CODEX_MODES } from "../utils/backends.js";
-import { api, type SavedPrompt } from "../api.js";
+import { api, type SavedPrompt, type TeamInfo } from "../api.js";
 import type { ModeOption } from "../utils/backends.js";
 import { ModelSwitcher } from "./ModelSwitcher.js";
 import { MentionMenu } from "./MentionMenu.js";
@@ -28,13 +28,62 @@ export function Composer({ sessionId }: { sessionId: string }) {
   const [savePromptScope, setSavePromptScope] = useState<"global" | "project">("global");
   const [savePromptError, setSavePromptError] = useState<string | null>(null);
   const [caretPos, setCaretPos] = useState(0);
+  // Phase B: optional target agent for directed messages. null = send to
+  // coordinator (default). When set, the user's content is prefixed with
+  // "@<agent>: " on send so the coordinator naturally forwards via
+  // SendMessage. Reset when switching sessions.
+  const [targetAgent, setTargetAgent] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const pendingSelectionRef = useRef<number | null>(null);
   const cliConnected = useStore((s) => s.cliConnected);
   const sessionData = useStore((s) => s.sessions.get(sessionId));
+  const sessionMessages = useStore((s) => s.messages.get(sessionId));
   const previousMode = useStore((s) => s.previousPermissionMode.get(sessionId) || "acceptEdits");
+
+  // Reset target on session switch — agents in one session don't exist in
+  // another, and a stale target would silently send to the wrong agent.
+  useEffect(() => {
+    setTargetAgent(null);
+  }, [sessionId]);
+
+  // Fetch the team config for this session (when one exists). Provides
+  // authoritative roster + role info for the @-target picker. Without it
+  // we'd fall back to messageHistory state-machine inference, which can't
+  // tell apart persistent agents from in-process single-task subagents.
+  const [team, setTeam] = useState<TeamInfo | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    api.getSessionTeam(sessionId).then(
+      (t) => { if (!cancelled) setTeam(t); },
+      () => { if (!cancelled) setTeam(null); },
+    );
+    return () => { cancelled = true; };
+  }, [sessionId]);
+
+  // Compute the list of agents the user can @-target. ONLY shown when a
+  // team config is available for this session — message-history-based
+  // inference can't reliably tell apart "agent currently alive" from
+  // "agent already exited but never sent a shutdown_request" (e.g.,
+  // in-process single-task subagents that just return). Without team
+  // config we'd surface ghosts in the picker. Better to hide the
+  // picker entirely than show stale agents.
+  const availableAgents = useMemo(() => {
+    if (!team) return emptyStringArray;
+    const targetable = team.members
+      .filter((m) => m.role === "persistent")
+      .map((m) => m.name);
+    return targetable.length === 0 ? emptyStringArray : targetable.sort((a, b) => a.localeCompare(b));
+  }, [team]);
+
+  // If the user picked an agent that's no longer in the active set
+  // (e.g., session switch or paged-out history), drop the target.
+  useEffect(() => {
+    if (targetAgent !== null && !availableAgents.includes(targetAgent)) {
+      setTargetAgent(null);
+    }
+  }, [availableAgents, targetAgent]);
 
   const isConnected = cliConnected.get(sessionId) ?? false;
   const currentMode = sessionData?.permissionMode || "acceptEdits";
@@ -137,9 +186,17 @@ export function Composer({ sessionId }: { sessionId: string }) {
     if (!msg || !isConnected) return;
     const clientMsgId = createClientMessageId();
 
+    // Phase B: when a target agent is selected, prefix with @<agent>:.
+    // The coordinator (main Claude) reads this and naturally forwards via
+    // SendMessage — no protocol or backend changes required. Falls back
+    // gracefully if the coordinator decides to handle directly (the prefix
+    // is just text, not metadata). The displayed user message keeps the
+    // prefix so the user remembers what they sent and to whom.
+    const finalContent = targetAgent ? `@${targetAgent}: ${msg}` : msg;
+
     sendToSession(sessionId, {
       type: "user_message",
-      content: msg,
+      content: finalContent,
       session_id: sessionId,
       images: images.length > 0 ? images.map((img) => ({ media_type: img.mediaType, data: img.base64 })) : undefined,
       client_msg_id: clientMsgId,
@@ -148,7 +205,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
     useStore.getState().appendMessage(sessionId, {
       id: clientMsgId,
       role: "user",
-      content: msg,
+      content: finalContent,
       images: images.length > 0 ? images.map((img) => ({ media_type: img.mediaType, data: img.base64 })) : undefined,
       timestamp: Date.now(),
     });
@@ -165,6 +222,9 @@ export function Composer({ sessionId }: { sessionId: string }) {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    // Ignore key events during IME composition (e.g. Chinese pinyin input)
+    if (e.nativeEvent.isComposing) return;
+
     // Slash menu navigation
     if (slashMenuOpen && filteredCommands.length > 0) {
       if (e.key === "ArrowDown") {
@@ -609,6 +669,49 @@ export function Composer({ sessionId }: { sessionId: string }) {
               </svg>
             </button>
           </div>
+
+          {/* Agent target selector — Phase B. Only shown in agent-team
+              sessions where ≥1 distinct subagent has been invoked. The
+              "@target" prefix gets prepended on send so the coordinator
+              naturally forwards via SendMessage. */}
+          {availableAgents.length > 0 && (
+            <div
+              className="flex flex-wrap items-center gap-1.5 px-3 pt-2"
+              data-testid="composer-agent-target"
+            >
+              <span className="text-[11px] text-cc-muted font-medium">
+                {targetAgent ? "→" : "Reply to:"}
+              </span>
+              <button
+                onClick={() => setTargetAgent(null)}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors cursor-pointer ${
+                  targetAgent === null
+                    ? "bg-cc-card text-cc-fg border-cc-border"
+                    : "bg-transparent text-cc-muted border-transparent hover:bg-cc-hover"
+                }`}
+                title="Send to coordinator (no specific agent)"
+                data-testid="composer-target-coordinator"
+              >
+                Coordinator
+              </button>
+              {availableAgents.map((agent) => (
+                <button
+                  key={agent}
+                  onClick={() => setTargetAgent(agent === targetAgent ? null : agent)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors cursor-pointer ${
+                    targetAgent === agent
+                      ? "bg-cc-primary text-white border-cc-primary"
+                      : "bg-transparent text-cc-muted border-transparent hover:bg-cc-hover"
+                  }`}
+                  title={`Send directly to ${agent} (prepends @${agent}: to your message)`}
+                  data-testid={`composer-target-${agent}`}
+                >
+                  <span className="opacity-70">@</span>
+                  <span className="truncate max-w-[120px]">{agent}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Textarea row */}
           <div className="px-3 sm:px-3 pt-1 sm:pt-2.5">

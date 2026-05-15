@@ -167,11 +167,19 @@ describe("SessionRecorder", () => {
 
 describe("RecorderManager", () => {
   it("enabled by default when no options provided", () => {
-    // Recording is always on unless explicitly disabled
-    const mgr = new RecorderManager({ recordingsDir: tempDir });
-    expect(mgr.isGloballyEnabled()).toBe(true);
-    expect(mgr.isRecording("any-session")).toBe(true);
-    mgr.closeAll();
+    // Recording is always on unless explicitly disabled. The default is read
+    // from the COMPANION_RECORD env var, which can be set in the developer's
+    // shell — null it out here so the test asserts the *actual* default.
+    const prev = process.env.COMPANION_RECORD;
+    delete process.env.COMPANION_RECORD;
+    try {
+      const mgr = new RecorderManager({ recordingsDir: tempDir });
+      expect(mgr.isGloballyEnabled()).toBe(true);
+      expect(mgr.isRecording("any-session")).toBe(true);
+      mgr.closeAll();
+    } finally {
+      if (prev !== undefined) process.env.COMPANION_RECORD = prev;
+    }
   });
 
   it("respects globalEnabled: true", () => {

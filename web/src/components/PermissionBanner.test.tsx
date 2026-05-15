@@ -143,8 +143,8 @@ describe("EditDisplay", () => {
         sessionId="s1"
       />,
     );
-    // DiffViewer renders file header (basename extracted)
-    expect(screen.getByText("main.ts")).toBeTruthy();
+    // FilePathIndicator and DiffViewer both show file name; just verify it exists
+    expect(screen.getAllByText("main.ts").length).toBeGreaterThanOrEqual(1);
     // DiffViewer renders del/add lines
     expect(container.querySelector(".diff-line-del")).toBeTruthy();
     expect(container.querySelector(".diff-line-add")).toBeTruthy();
@@ -167,8 +167,8 @@ describe("WriteDisplay", () => {
         sessionId="s1"
       />,
     );
-    // DiffViewer renders file header (basename extracted)
-    expect(screen.getByText("output.ts")).toBeTruthy();
+    // FilePathIndicator and DiffViewer both show file name; just verify it exists
+    expect(screen.getAllByText("output.ts").length).toBeGreaterThanOrEqual(1);
     // Write renders as all-add diff lines
     expect(container.querySelector(".diff-line-add")).toBeTruthy();
     expect(container.querySelector(".diff-line-del")).toBeNull();
@@ -190,7 +190,7 @@ describe("WriteDisplay", () => {
     );
     // DiffViewer renders the content as add lines
     expect(container.querySelector(".diff-line-add")).toBeTruthy();
-    expect(screen.getByText("big.ts")).toBeTruthy();
+    expect(screen.getAllByText("big.ts").length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -224,7 +224,8 @@ describe("GlobDisplay", () => {
         sessionId="s1"
       />,
     );
-    expect(screen.getByText("**/*.ts")).toBeTruthy();
+    // FilePathIndicator and GlobDisplay both show pattern; just verify it exists
+    expect(screen.getAllByText("**/*.ts").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("/src")).toBeTruthy();
   });
 
@@ -238,7 +239,7 @@ describe("GlobDisplay", () => {
         sessionId="s1"
       />,
     );
-    expect(screen.getByText("*.json")).toBeTruthy();
+    expect(screen.getAllByText("*.json").length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -255,7 +256,8 @@ describe("GrepDisplay", () => {
         sessionId="s1"
       />,
     );
-    expect(screen.getByText("TODO")).toBeTruthy();
+    // "TODO" should appear twice: in header (FilePathIndicator) and in content (GrepDisplay)
+    expect(screen.getAllByText("TODO").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("/src")).toBeTruthy();
     expect(screen.getByText("*.ts")).toBeTruthy();
   });

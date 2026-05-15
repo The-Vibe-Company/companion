@@ -558,6 +558,205 @@ describe("TasksSection (Claude Code sessions)", () => {
     expect(screen.getByText("Executing test suite")).toBeInTheDocument();
   });
 
+  // Agent-team tasks have an `owner` field naming the agent assigned to
+  // the task. In grouped (team) mode, the owner appears as the group
+  // header — chips inside rows would be redundant, so they're suppressed.
+  // The agent name still surfaces, just once per group.
+  it("shows agent name as group header when owners are present (agent-team scenario)", () => {
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      sessionTasks: new Map([
+        ["s1", [
+          { id: "t1", status: "in_progress", subject: "Plan feature X", owner: "code-architect" },
+          { id: "t2", status: "pending", subject: "Write tests", owner: "test-runner" },
+        ]],
+      ]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    // Grouping is active and each agent shows up exactly once (in its
+    // group header — no per-row chip duplication).
+    expect(screen.getByTestId("team-grouped-view")).toBeInTheDocument();
+    expect(screen.getAllByText("code-architect").length).toBe(1);
+    expect(screen.getAllByText("test-runner").length).toBe(1);
+    // Per-row owner chip should NOT render in grouped mode (group header
+    // already names the agent — duplicating would be visual noise).
+    expect(screen.queryByTestId("task-owner-chip")).toBeNull();
+  });
+
+  // Critical regression guard: TodoWrite-only flows (no agent team) don't
+  // populate owner. Make sure a task without an owner field renders no
+  // chip — otherwise we'd add visual noise for the common case.
+  it("renders no owner chip when task.owner is absent (TodoWrite / no-team scenario)", () => {
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      sessionTasks: new Map([
+        ["s1", [
+          { id: "t1", status: "pending", subject: "Plain todo, no team" },
+        ]],
+      ]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    expect(screen.getByText("Plain todo, no team")).toBeInTheDocument();
+    expect(screen.queryByTestId("task-owner-chip")).toBeNull();
+  });
+
+  // ── Team-grouped view (auto-switches when any task has owner) ──────────
+
+  // The flat list is what TodoWrite sessions see today. When NO task has
+  // an owner, the layout must stay flat — no group cards, no summary bar
+  // — so the no-team experience is unchanged.
+  it("uses the flat list (no team grouping) when no task has owner", () => {
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      sessionTasks: new Map([
+        ["s1", [
+          { id: "t1", status: "pending", subject: "Task A" },
+          { id: "t2", status: "in_progress", subject: "Task B" },
+        ]],
+      ]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    expect(screen.queryByTestId("team-grouped-view")).toBeNull();
+    expect(screen.queryByTestId("team-summary-bar")).toBeNull();
+    expect(screen.queryByTestId("team-group-card")).toBeNull();
+    // Flat tasks still render
+    expect(screen.getByText("Task A")).toBeInTheDocument();
+    expect(screen.getByText("Task B")).toBeInTheDocument();
+  });
+
+  // Team mode: at least one task has an owner → groups appear, one per
+  // distinct owner plus an "Unassigned" group for tasks without owner.
+  it("switches to grouped view when any task has owner", () => {
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      sessionTasks: new Map([
+        ["s1", [
+          { id: "t1", status: "completed", subject: "Plan", owner: "code-architect" },
+          { id: "t2", status: "in_progress", subject: "Implement", owner: "code-architect" },
+          { id: "t3", status: "pending", subject: "Test", owner: "test-runner" },
+          { id: "t4", status: "pending", subject: "Untracked todo" }, // no owner
+        ]],
+      ]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    expect(screen.getByTestId("team-grouped-view")).toBeInTheDocument();
+    // 2 owner cards + 1 unassigned card = 3 group cards
+    expect(screen.getAllByTestId("team-group-card").length).toBe(3);
+    // Owners labeled, Unassigned group present
+    expect(screen.getByText("code-architect")).toBeInTheDocument();
+    expect(screen.getByText("test-runner")).toBeInTheDocument();
+    expect(screen.getByText("Unassigned")).toBeInTheDocument();
+  });
+
+  // Per-group counter: "done/total". For alpha (1 completed of 3), the
+  // counter "1/3" appears within the group card. Query inside the card to
+  // avoid clashing with the panel-level "1/3" summary.
+  it("shows per-group done/total counter", () => {
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      sessionTasks: new Map([
+        ["s1", [
+          { id: "t1", status: "completed", subject: "A", owner: "alpha" },
+          { id: "t2", status: "in_progress", subject: "B", owner: "alpha" },
+          { id: "t3", status: "pending", subject: "C", owner: "alpha" },
+        ]],
+      ]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    const cards = screen.getAllByTestId("team-group-card");
+    expect(cards.length).toBe(1);
+    expect(cards[0].textContent).toContain("1/3");
+  });
+
+  // Summary bar aggregates across all groups. Verifies the math:
+  //   3 agents (alpha, beta, gamma) — 5 tasks — 2 done — 1 in progress —
+  //   2 pending — 1 blocked.
+  it("renders the team summary bar with aggregate counts", () => {
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      sessionTasks: new Map([
+        ["s1", [
+          { id: "1", status: "completed", subject: "a", owner: "alpha" },
+          { id: "2", status: "in_progress", subject: "b", owner: "alpha" },
+          { id: "3", status: "pending", subject: "c", owner: "beta", blockedBy: ["2"] },
+          { id: "4", status: "completed", subject: "d", owner: "beta" },
+          { id: "5", status: "pending", subject: "e", owner: "gamma" },
+        ]],
+      ]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    const summary = screen.getByTestId("team-summary-bar");
+    // We can't easily assert exact text because of the interleaved <strong>
+    // elements; instead verify each aggregate is present.
+    expect(summary.textContent).toMatch(/3.*agents/);
+    expect(summary.textContent).toMatch(/5.*tasks/);
+    expect(summary.textContent).toMatch(/2.*done/);
+    expect(summary.textContent).toMatch(/1.*in progress/);
+    expect(summary.textContent).toMatch(/2.*pending/);
+    expect(summary.textContent).toMatch(/1.*blocked/);
+  });
+
+  // Owner sort: alphabetical so the rendering is deterministic across
+  // re-renders (no jitter when a new task is added). Unassigned always
+  // sorts last regardless of name.
+  it("sorts owner groups alphabetically with Unassigned last", () => {
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      sessionTasks: new Map([
+        ["s1", [
+          { id: "1", status: "pending", subject: "z task" }, // unassigned
+          { id: "2", status: "pending", subject: "a task", owner: "zebra" },
+          { id: "3", status: "pending", subject: "b task", owner: "alpha" },
+        ]],
+      ]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    const cards = screen.getAllByTestId("team-group-card");
+    // Card text in DOM order
+    const labels = cards.map((c) => c.textContent ?? "");
+    expect(labels[0]).toContain("alpha");
+    expect(labels[1]).toContain("zebra");
+    expect(labels[2]).toContain("Unassigned");
+  });
+
+  // Group cards are collapsible. Default open; clicking the header
+  // collapses; clicking again expands. Critical for long agent rosters.
+  it("collapses and expands group cards on header click", () => {
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      sessionTasks: new Map([
+        ["s1", [
+          { id: "t1", status: "pending", subject: "Visible task", owner: "alpha" },
+        ]],
+      ]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    expect(screen.getByText("Visible task")).toBeInTheDocument();
+    const header = screen.getByText("alpha").closest("button");
+    expect(header).not.toBeNull();
+    fireEvent.click(header!);
+    expect(screen.queryByText("Visible task")).toBeNull();
+    fireEvent.click(header!);
+    expect(screen.getByText("Visible task")).toBeInTheDocument();
+  });
+
+  // Edge: only one task with owner. Should still grouped (have owner ⇒
+  // grouped layout). Single group, single task.
+  it("groups even when only one task has owner", () => {
+    resetStore({
+      sessions: new Map([["s1", { backend_type: "claude" }]]),
+      sessionTasks: new Map([
+        ["s1", [
+          { id: "t1", status: "in_progress", subject: "Lone task", owner: "solo-agent" },
+        ]],
+      ]),
+    });
+    render(<TaskPanel sessionId="s1" />);
+    expect(screen.getByTestId("team-grouped-view")).toBeInTheDocument();
+    expect(screen.getAllByTestId("team-group-card").length).toBe(1);
+    expect(screen.getByText("solo-agent")).toBeInTheDocument();
+  });
+
   it("shows blockedBy info for blocked tasks", () => {
     // Tasks with blockedBy should show the blocking task references
     resetStore({

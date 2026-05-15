@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { DiffViewer } from "./DiffViewer.js";
+import { AskUserQuestionToolBlock } from "./AskUserQuestionToolBlock.js";
+import { ExitPlanModeToolBlock } from "./ExitPlanModeToolBlock.js";
 
 const TOOL_ICONS: Record<string, string> = {
   Bash: "terminal",
@@ -70,6 +72,24 @@ export function ToolBlock({
   // Bash gets a terminal-style borderless treatment
   if (name === "Bash") {
     return <BashBlock input={input} toolUseId={toolUseId} />;
+  }
+
+  // AskUserQuestion is interactive — render the option cards inline so the
+  // user can answer without typing. CLI doesn't gate this tool through
+  // can_use_tool in stdio mode, so the rendering happens here at the
+  // tool_use level rather than via the permission-banner path.
+  if (name === "AskUserQuestion") {
+    return <AskUserQuestionToolBlock input={input} toolUseId={toolUseId} />;
+  }
+
+  // ExitPlanMode carries the plan markdown that the user is about to
+  // execute. The CLI auto-resolves the tool_use without firing
+  // can_use_tool — but in `--permission-mode plan` the model is still
+  // refused on subsequent file writes until the mode actually flips.
+  // ExitPlanModeToolBlock provides Approve/Reject buttons that send the
+  // mode change + a confirmation user_message so the model proceeds.
+  if (name === "ExitPlanMode") {
+    return <ExitPlanModeToolBlock input={input} toolUseId={toolUseId} />;
   }
 
   return (
@@ -192,18 +212,42 @@ function EditBlock({ input, toolUseId }: { input: Record<string, unknown>; toolU
 
 /** Bash tool — shows command directly, always visible */
 function BashBlock({ input, toolUseId }: { input: Record<string, unknown>; toolUseId: string }) {
+  const [copied, setCopied] = useState(false);
   const command = typeof input.command === "string" ? input.command : "";
   const desc = typeof input.description === "string" ? input.description : "";
+
+  const copyCommand = async () => {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   return (
     <div data-tool-use-id={toolUseId}>
       {desc && (
         <div className="text-[11px] text-cc-muted/50 mb-1 italic">{desc}</div>
       )}
-      <div className="rounded-lg bg-cc-code-bg px-3 py-2 overflow-x-auto">
-        <pre className="text-[12px] font-mono-code text-cc-code-fg leading-relaxed whitespace-pre-wrap break-words">
-          <span className="text-cc-muted/40 select-none">$ </span>{command}
-        </pre>
+      <div className="flex items-center gap-2 group">
+        <div className="flex-1 rounded-lg bg-cc-code-bg overflow-x-auto">
+          <pre className="text-[12px] font-mono-code text-cc-code-fg px-3 py-2 leading-relaxed whitespace-pre-wrap break-words">
+            <span className="text-cc-muted/40 select-none">$ </span>{command}
+          </pre>
+        </div>
+        <button
+          onClick={copyCommand}
+          className={`shrink-0 text-[11px] font-medium px-2.5 py-1.5 rounded-lg transition-all ${
+            copied
+              ? "bg-cc-success/20 text-cc-success"
+              : "bg-cc-muted/15 text-cc-muted hover:bg-cc-muted/25"
+          } cursor-pointer border border-cc-border/40`}
+          title="Copy command"
+        >
+          {copied ? "✓" : "copy"}
+        </button>
       </div>
     </div>
   );
@@ -249,15 +293,43 @@ function ToolDetail({ name, input }: { name: string; input: Record<string, unkno
 // ─── Per-tool detail components ─────────────────────────────────────────────
 
 function BashDetail({ input }: { input: Record<string, unknown> }) {
+  const [copied, setCopied] = useState(false);
+  const command = String(input.command || "");
+
+  const copyCommand = async () => {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
   return (
     <div className="space-y-1.5">
       {!!input.description && (
         <div className="text-[11px] text-cc-muted italic">{String(input.description)}</div>
       )}
-      <pre className="px-3 py-2 rounded-lg bg-cc-code-bg text-cc-code-fg text-[12px] font-mono-code leading-relaxed overflow-x-auto">
-        <span className="text-cc-muted select-none">$ </span>
-        {String(input.command || "")}
-      </pre>
+      <div className="flex items-center gap-2 group">
+        <div className="flex-1 rounded-lg bg-cc-code-bg overflow-x-auto">
+          <pre className="px-3 py-2 text-cc-code-fg text-[12px] font-mono-code leading-relaxed whitespace-pre-wrap">
+            <span className="text-cc-muted select-none">$ </span>
+            {command}
+          </pre>
+        </div>
+        <button
+          onClick={copyCommand}
+          className={`shrink-0 text-[11px] font-medium px-2.5 py-1.5 rounded-lg transition-all ${
+            copied
+              ? "bg-cc-success/20 text-cc-success"
+              : "bg-cc-muted/15 text-cc-muted hover:bg-cc-muted/25"
+          } cursor-pointer border border-cc-border/40`}
+          title="Copy command"
+        >
+          {copied ? "✓" : "copy"}
+        </button>
+      </div>
       {!!input.timeout && (
         <div className="text-[10px] text-cc-muted">timeout: {String(input.timeout)}ms</div>
       )}

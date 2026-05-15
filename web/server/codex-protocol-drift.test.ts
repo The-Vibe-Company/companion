@@ -50,6 +50,14 @@ describe("Codex adapter method drift vs upstream protocol snapshot", () => {
       // Status notification observed in production logs but not yet present in
       // the pinned upstream snapshot files.
       "thread/status/changed",
+      // MCP lifecycle update emitted by newer Codex builds; not yet in the
+      // pinned ServerNotification snapshot — re-sync upstream protocol when
+      // the snapshot catches up to drop this allowlist entry.
+      "mcpServer/startupStatus/updated",
+      // Remote-control status emitted by newer Codex builds (status enum:
+      // "disabled" / "enabled", plus environmentId). Companion ignores it;
+      // re-sync upstream snapshot when it surfaces officially.
+      "remoteControl/status/changed",
       "codex/event/stream_error",
       "codex/event/error",
       "codex/event/token_count",

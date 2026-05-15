@@ -17,6 +17,15 @@ export interface ChatSlice {
   promptSuggestions: Map<string, string[]>;
   setPromptSuggestions: (sessionId: string, suggestions: string[]) => void;
   clearPromptSuggestions: (sessionId: string) => void;
+
+  /** Per-session map of tool_use_id → CLI rejection content for sensitive-
+   *  file Write/Edit calls. Populated by the WS `sensitive_file_rejection`
+   *  handler (server-side detection in claude-adapter.handleUserEcho) and
+   *  consumed by MessageBubble to render an Approve/Reject card adjacent
+   *  to the matching tool_use. See project_claude_sensitive_file_gate.md. */
+  sensitiveFileRejections: Map<string, Map<string, string>>;
+  setSensitiveFileRejection: (sessionId: string, toolUseId: string, content: string) => void;
+  clearSensitiveFileRejection: (sessionId: string, toolUseId: string) => void;
 }
 
 export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set) => ({
@@ -97,5 +106,27 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set) 
       const promptSuggestions = new Map(s.promptSuggestions);
       promptSuggestions.delete(sessionId);
       return { promptSuggestions };
+    }),
+
+  sensitiveFileRejections: new Map(),
+
+  setSensitiveFileRejection: (sessionId, toolUseId, content) =>
+    set((s) => {
+      const sensitiveFileRejections = new Map(s.sensitiveFileRejections);
+      const inner = new Map(sensitiveFileRejections.get(sessionId) ?? []);
+      inner.set(toolUseId, content);
+      sensitiveFileRejections.set(sessionId, inner);
+      return { sensitiveFileRejections };
+    }),
+
+  clearSensitiveFileRejection: (sessionId, toolUseId) =>
+    set((s) => {
+      const sensitiveFileRejections = new Map(s.sensitiveFileRejections);
+      const inner = sensitiveFileRejections.get(sessionId);
+      if (!inner || !inner.has(toolUseId)) return s;
+      const next = new Map(inner);
+      next.delete(toolUseId);
+      sensitiveFileRejections.set(sessionId, next);
+      return { sensitiveFileRejections };
     }),
 });

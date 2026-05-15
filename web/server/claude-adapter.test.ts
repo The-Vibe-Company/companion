@@ -36,16 +36,33 @@ vi.mock("./settings-manager.js", () => ({
 import { ClaudeAdapter } from "./claude-adapter.js";
 import { log } from "./logger.js";
 
-// ─── Mock socket factory ────────────────────────────────────────────────────
+// ─── Mock stdio factory ─────────────────────────────────────────────────────
 
-/** Creates a minimal mock ServerWebSocket<SocketData> for CLI connections. */
-function createMockSocket(sessionId: string) {
+/** Build a tiny pair of fakes that satisfy ClaudeAdapterStdinSink /
+ *  ClaudeAdapterStdoutSource. The adapter writes outgoing NDJSON to
+ *  `stdin.write` (a vi.fn for assertions) and reads incoming events by
+ *  registering a `data` listener on `stdout`. Tests that simulate CLI
+ *  output can call `pushStdoutChunk(line)` to drive that listener.
+ */
+function createMockStdio() {
+  const stdin = { write: vi.fn() };
+  let listener: ((chunk: Buffer | string) => void) | null = null;
+  const stdout = {
+    on: vi.fn((event: "data", l: (chunk: Buffer | string) => void) => {
+      if (event === "data") listener = l;
+    }),
+    off: vi.fn((event: "data", l: (chunk: Buffer | string) => void) => {
+      if (event === "data" && listener === l) listener = null;
+    }),
+  };
   return {
-    data: { kind: "cli" as const, sessionId },
-    send: vi.fn(),
-    close: vi.fn(),
-    readyState: 1,
-  } as any;
+    stdin,
+    stdout,
+    pushStdoutChunk(chunk: string) {
+      if (!listener) throw new Error("no stdout listener attached yet");
+      listener(chunk);
+    },
+  };
 }
 
 // ─── Helper: build NDJSON CLI messages ──────────────────────────────────────
@@ -286,8 +303,8 @@ describe("Known non-standard CLI message types", () => {
     // The CLI sends rate_limit_event messages with throttle/allow status.
     // These should be silently consumed and NOT trigger protocol drift logs.
     const spy = vi.spyOn(log, "warn").mockImplementation(() => {});
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     adapter.handleRawMessage(
       JSON.stringify({
@@ -316,8 +333,8 @@ describe("Known non-standard CLI message types", () => {
     // (the browser sends user_message → ws-bridge stores it → CLI echoes it
     // back). Silently drop them to prevent duplicate messages in the UI.
     const spy = vi.spyOn(log, "warn").mockImplementation(() => {});
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     adapter.handleRawMessage(
       JSON.stringify({
@@ -342,12 +359,13 @@ describe("Known non-standard CLI message types", () => {
     spy.mockRestore();
   });
 
-  it("user echo with non-string content is silently dropped", () => {
-    // User echo messages with tool_result arrays are redundant — the tool
-    // results are already present in the subsequent assistant message content
-    // blocks. Forwarding them caused raw JSON text bubbles in the chat UI.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+  it("user echo with non-string content is silently dropped from browser path", () => {
+    // User echo with tool_result blocks must NOT be forwarded to the
+    // browser as a user_message — that was the original bug that caused
+    // raw JSON text bubbles in the chat UI. The browser already has
+    // tool_progress / tool_use_summary for live tool state.
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     const complexContent = [
       { type: "tool_result", tool_use_id: "t1", content: "result" },
@@ -366,73 +384,222 @@ describe("Known non-standard CLI message types", () => {
       expect.objectContaining({ type: "user_message" }),
     );
   });
+
+  // tool_result blocks inside the user echo MUST surface as tool:result
+  // events on companionBus so non-browser observers can mark tool messages
+  // completed. Without this, tool cards in external integrations sit at
+  // "(running…)" forever and the user has no idea when an Edit/Bash/Read
+  // succeeded or failed.
+  it("user echo with tool_result blocks emits tool:result on companionBus", async () => {
+    const { companionBus } = await import("./event-bus.js");
+    const events: Array<{ sessionId: string; toolUseId: string; content: unknown; isError: boolean }> = [];
+    const off = companionBus.on("tool:result", (payload) => {
+      events.push(payload);
+    });
+    try {
+      const stdio = createMockStdio();
+      adapter.attachStdio(stdio.stdin, stdio.stdout);
+
+      adapter.handleRawMessage(
+        JSON.stringify({
+          type: "user",
+          message: {
+            role: "user",
+            content: [
+              { type: "tool_result", tool_use_id: "tool-A", content: "ok", is_error: false },
+              { type: "tool_result", tool_use_id: "tool-B", content: "boom", is_error: true },
+              { type: "text", text: "this should be ignored" },
+            ],
+          },
+          uuid: "user-echo-3",
+          session_id: "cli-123",
+        }) + "\n",
+      );
+
+      expect(events).toHaveLength(2);
+      expect(events[0]).toEqual({
+        sessionId: "sess-1",
+        toolUseId: "tool-A",
+        content: "ok",
+        isError: false,
+      });
+      expect(events[1]).toEqual({
+        sessionId: "sess-1",
+        toolUseId: "tool-B",
+        content: "boom",
+        isError: true,
+      });
+    } finally {
+      off();
+    }
+  });
+
+  // The CLI's internal "sensitive file" guard returns a tool_result with
+  // is_error=true and a specific phrasing instead of firing can_use_tool.
+  // claude-adapter must surface this to the browser as a
+  // sensitive_file_rejection event so the SensitiveFileWriteApproval card
+  // can render. See project_claude_sensitive_file_gate.md.
+  it("user echo with a 'sensitive file' tool_result forwards a sensitive_file_rejection to the browser", () => {
+    const browserMessages: Array<{ type: string; tool_use_id?: string; content?: string }> = [];
+    adapter.onBrowserMessage((msg) => {
+      browserMessages.push(msg as { type: string; tool_use_id?: string; content?: string });
+    });
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
+
+    adapter.handleRawMessage(
+      JSON.stringify({
+        type: "user",
+        message: {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "tool-sensitive",
+              content: "Claude requested permissions to edit /home/u/.claude/hooks/x.sh which is a sensitive file.",
+              is_error: true,
+            },
+          ],
+        },
+        uuid: "user-echo-sensitive",
+        session_id: "cli-123",
+      }) + "\n",
+    );
+
+    const rejection = browserMessages.find((m) => m.type === "sensitive_file_rejection");
+    expect(rejection).toBeDefined();
+    expect(rejection?.tool_use_id).toBe("tool-sensitive");
+    expect(rejection?.content).toContain("which is a sensitive file");
+  });
+
+  // Negative case: a non-error tool_result, even with similar wording in
+  // its content, should NOT trigger the sensitive_file_rejection forward —
+  // only is_error=true + the canonical "which is a sensitive file." tail.
+  it("user echo with a non-error tool_result does not emit sensitive_file_rejection", () => {
+    const browserMessages: Array<{ type: string }> = [];
+    adapter.onBrowserMessage((msg) => {
+      browserMessages.push(msg as { type: string });
+    });
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
+
+    adapter.handleRawMessage(
+      JSON.stringify({
+        type: "user",
+        message: {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "tool-ok",
+              content: "Discussed which is a sensitive file in the chat",
+              is_error: false,
+            },
+          ],
+        },
+        uuid: "user-echo-nonerror",
+        session_id: "cli-123",
+      }) + "\n",
+    );
+
+    expect(browserMessages.find((m) => m.type === "sensitive_file_rejection")).toBeUndefined();
+  });
+
+  // Defensive: if the user echo arrives with no content array (e.g. plain
+  // string from a browser message echo), don't emit any tool:result events.
+  it("user echo without tool_result blocks does not emit tool:result", async () => {
+    const { companionBus } = await import("./event-bus.js");
+    const events: unknown[] = [];
+    const off = companionBus.on("tool:result", (payload) => {
+      events.push(payload);
+    });
+    try {
+      const stdio = createMockStdio();
+      adapter.attachStdio(stdio.stdin, stdio.stdout);
+      adapter.handleRawMessage(
+        JSON.stringify({
+          type: "user",
+          message: { role: "user", content: "plain string echo" },
+          uuid: "user-echo-4",
+          session_id: "cli-123",
+        }) + "\n",
+      );
+      expect(events).toHaveLength(0);
+    } finally {
+      off();
+    }
+  });
 });
 
 // ─── Connection lifecycle ───────────────────────────────────────────────────
 
 describe("Connection lifecycle", () => {
-  it("isConnected() returns false initially when no WebSocket is attached", () => {
-    // A freshly created adapter has no CLI socket, so it should not be connected.
+  it("isConnected() returns false initially when no stdio is attached", () => {
+    // A freshly created adapter has no CLI streams, so it should not be connected.
     expect(adapter.isConnected()).toBe(false);
   });
 
-  it("attachWebSocket stores the socket and makes isConnected() return true", () => {
-    // Attaching a mock WebSocket should mark the adapter as connected.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+  it("attachStdio stores the streams and makes isConnected() return true", () => {
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
     expect(adapter.isConnected()).toBe(true);
   });
 
-  it("detachWebSocket clears the socket and calls disconnectCb", () => {
-    // Detaching the current socket should clear the connection and notify
-    // the bridge via the disconnect callback.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+  it("notifyChildExited clears the streams and calls disconnectCb", () => {
+    // The launcher invokes notifyChildExited when the spawned CLI process
+    // exits. The adapter must drop the streams and tell the bridge so the
+    // existing relaunch flow can take over.
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
     expect(adapter.isConnected()).toBe(true);
 
-    adapter.detachWebSocket(ws);
+    adapter.notifyChildExited();
     expect(adapter.isConnected()).toBe(false);
     expect(disconnectCb).toHaveBeenCalledOnce();
   });
 
-  it("detachWebSocket with a stale socket (different ws) does nothing", () => {
-    // If a new WebSocket replaced an old one, closing the old one should
-    // NOT clear the current connection or trigger the disconnect callback.
-    const ws1 = createMockSocket("sess-1");
-    const ws2 = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws1);
+  it("notifyChildExited with no attached streams is a no-op (no spurious disconnect)", () => {
+    // After explicit disconnect(), child exit may still fire. We must not
+    // re-fire the disconnect callback in that race or the orchestrator
+    // would attempt a second relaunch.
+    adapter.notifyChildExited();
+    expect(disconnectCb).not.toHaveBeenCalled();
+  });
 
-    // Replace with ws2
-    adapter.attachWebSocket(ws2);
+  it("attachStdio replaces an existing attachment cleanly without firing disconnect", () => {
+    // After respawn, the launcher attaches new streams. The adapter should
+    // unhook the old stdout listener silently — no detachment event makes
+    // it to the bridge because it was the same logical CLI session.
+    const stdio1 = createMockStdio();
+    adapter.attachStdio(stdio1.stdin, stdio1.stdout);
+    const stdio2 = createMockStdio();
+    adapter.attachStdio(stdio2.stdin, stdio2.stdout);
 
-    // Detach ws1 (stale) — should be ignored
-    adapter.detachWebSocket(ws1);
+    // Old stdout's listener is gone — confirm by trying to push and getting
+    // the "no listener" error from the mock.
+    expect(() => stdio1.pushStdoutChunk("noop\n")).toThrow();
     expect(adapter.isConnected()).toBe(true);
     expect(disconnectCb).not.toHaveBeenCalled();
   });
 
-  it("disconnect() closes the socket and clears the connection", async () => {
-    // disconnect() should call close() on the socket and clear it.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+  it("disconnect() detaches stdio and clears the connection", async () => {
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
-    await adapter.disconnect();
-    expect(ws.close).toHaveBeenCalledOnce();
-    expect(adapter.isConnected()).toBe(false);
-  });
-
-  it("disconnect() with no socket is a no-op", async () => {
-    // Calling disconnect when there's no socket should not throw.
     await adapter.disconnect();
     expect(adapter.isConnected()).toBe(false);
   });
 
-  it("handleTransportClose() clears socket without calling disconnectCb", () => {
-    // handleTransportClose is used when a WS proxy drops — it clears the
-    // socket reference without triggering the disconnect callback so the
-    // CLI can reconnect.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+  it("disconnect() with no stdio is a no-op", async () => {
+    await adapter.disconnect();
+    expect(adapter.isConnected()).toBe(false);
+  });
+
+  it("handleTransportClose() clears stdio without firing disconnectCb", () => {
+    // handleTransportClose is the stdio analogue of the old WS-proxy-drop
+    // path: lose the transport without telling the bridge. Kept for parity.
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     adapter.handleTransportClose();
     expect(adapter.isConnected()).toBe(false);
@@ -452,27 +619,27 @@ describe("Message queuing", () => {
     // No socket attached — nothing was sent yet.
   });
 
-  it("queued messages are flushed when attachWebSocket is called", () => {
+  it("queued messages are flushed when attachStdio is called", () => {
     // Send messages while disconnected, then verify they are delivered
     // when the WebSocket attaches.
     adapter.send({ type: "user_message", content: "first" });
     adapter.send({ type: "user_message", content: "second" });
 
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     // Both queued messages should have been flushed to the socket.
     // Each message results in a send() call with NDJSON + newline.
-    expect(ws.send).toHaveBeenCalledTimes(2);
+    expect(stdio.stdin.write).toHaveBeenCalledTimes(2);
 
     // Verify the first message content
-    const firstCall = ws.send.mock.calls[0][0] as string;
+    const firstCall = stdio.stdin.write.mock.calls[0][0] as string;
     const parsed1 = JSON.parse(firstCall.trim());
     expect(parsed1.type).toBe("user");
     expect(parsed1.message.content).toBe("first");
 
     // Verify the second message content
-    const secondCall = ws.send.mock.calls[1][0] as string;
+    const secondCall = stdio.stdin.write.mock.calls[1][0] as string;
     const parsed2 = JSON.parse(secondCall.trim());
     expect(parsed2.type).toBe("user");
     expect(parsed2.message.content).toBe("second");
@@ -481,13 +648,13 @@ describe("Message queuing", () => {
   it("messages sent after WebSocket connects go directly to the socket", () => {
     // Once a socket is attached, messages should be sent immediately
     // without queuing.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     adapter.send({ type: "user_message", content: "direct" });
 
-    expect(ws.send).toHaveBeenCalledTimes(1);
-    const sent = JSON.parse((ws.send.mock.calls[0][0] as string).trim());
+    expect(stdio.stdin.write).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse((stdio.stdin.write.mock.calls[0][0] as string).trim());
     expect(sent.type).toBe("user");
     expect(sent.message.content).toBe("direct");
   });
@@ -496,16 +663,16 @@ describe("Message queuing", () => {
 // ─── send() — outgoing message translation ──────────────────────────────────
 
 describe("send() — outgoing message translation", () => {
-  let ws: ReturnType<typeof createMockSocket>;
+  let stdio: ReturnType<typeof createMockStdio>;
 
   beforeEach(() => {
-    ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
   });
 
   /** Helper to parse the last NDJSON sent on the mock socket. */
   function getLastSent(): any {
-    const calls = ws.send.mock.calls;
+    const calls = stdio.stdin.write.mock.calls;
     return JSON.parse((calls[calls.length - 1][0] as string).trim());
   }
 
@@ -648,21 +815,21 @@ describe("send() — outgoing message translation", () => {
     });
     expect(result).toBe(true);
     // No message should have been sent to the socket
-    expect(ws.send).not.toHaveBeenCalled();
+    expect(stdio.stdin.write).not.toHaveBeenCalled();
   });
 
   it("session_subscribe → returns false (handled at bridge level)", () => {
     // session_subscribe is handled by the bridge, not forwarded to the backend.
     const result = adapter.send({ type: "session_subscribe", last_seq: 0 });
     expect(result).toBe(false);
-    expect(ws.send).not.toHaveBeenCalled();
+    expect(stdio.stdin.write).not.toHaveBeenCalled();
   });
 
   it("session_ack → returns false (handled at bridge level)", () => {
     // session_ack is handled by the bridge, not forwarded to the backend.
     const result = adapter.send({ type: "session_ack", last_seq: 5 });
     expect(result).toBe(false);
-    expect(ws.send).not.toHaveBeenCalled();
+    expect(stdio.stdin.write).not.toHaveBeenCalled();
   });
 
   it("mcp_get_status → sends control_request with subtype 'mcp_status'", () => {
@@ -688,11 +855,11 @@ describe("send() — outgoing message translation", () => {
 // ─── handleRawMessage() — incoming CLI message routing ──────────────────────
 
 describe("handleRawMessage() — incoming CLI message routing", () => {
-  let ws: ReturnType<typeof createMockSocket>;
+  let stdio: ReturnType<typeof createMockStdio>;
 
   beforeEach(() => {
-    ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
   });
 
   it("system init → emits sessionMetaCb and browserMessageCb with session_init", () => {
@@ -719,6 +886,29 @@ describe("handleRawMessage() — incoming CLI message routing", () => {
     expect(msg.session.mcp_servers).toEqual([]);
   });
 
+  it("system init → forwards memory_paths.auto into session.memory_path", () => {
+    // Claude Code 2.1.119+ reports the auto-memory directory it reads
+    // CLAUDE.md/MEMORY.md from. Surface it on SessionState so the UI can
+    // show users which memory dir Claude is actually consulting (often
+    // surprising — affected by ~/.claude/projects/<slug-hash>/memory/).
+    adapter.handleRawMessage(makeInitMsg({
+      memory_paths: { auto: "/home/me/.claude/projects/-home-me-proj/memory/" },
+    }));
+
+    const msg = browserMessageCb.mock.calls[0][0];
+    expect(msg.type).toBe("session_init");
+    expect(msg.session.memory_path).toBe("/home/me/.claude/projects/-home-me-proj/memory/");
+  });
+
+  it("system init without memory_paths → leaves session.memory_path undefined", () => {
+    // Pre-2.1.119 CLI builds (and any future build that drops the field)
+    // must still init cleanly with no memory_path leaked through.
+    adapter.handleRawMessage(makeInitMsg());
+
+    const msg = browserMessageCb.mock.calls[0][0];
+    expect(msg.session.memory_path).toBeUndefined();
+  });
+
   it("system status → emits browserMessageCb with status_change", () => {
     // A system status message (e.g. compacting) should be translated to
     // a status_change browser message.
@@ -739,6 +929,34 @@ describe("handleRawMessage() — incoming CLI message routing", () => {
     expect(msg.status).toBeNull();
   });
 
+  it("system api_retry → emits a system_event so the UI can show retry state", () => {
+    // 2.1.119+ emits `system/api_retry` notifications when the upstream API
+    // returns 5xx and the CLI retries internally. Without surfacing this,
+    // the user just sees a long opaque pause before the eventual error
+    // result. Emit it as a system_event so the message feed can render
+    // "Retrying after 502 (attempt 1/2 in 0.6s)" inline.
+    adapter.handleRawMessage(JSON.stringify({
+      type: "system",
+      subtype: "api_retry",
+      attempt: 1,
+      max_retries: 2,
+      retry_delay_ms: 560,
+      error_status: 502,
+      error: "server_error",
+      session_id: "cli-123",
+      uuid: "retry-uuid-1",
+    }));
+
+    expect(browserMessageCb).toHaveBeenCalledOnce();
+    const msg = browserMessageCb.mock.calls[0][0];
+    expect(msg.type).toBe("system_event");
+    expect(msg.event.subtype).toBe("api_retry");
+    expect(msg.event.attempt).toBe(1);
+    expect(msg.event.max_retries).toBe(2);
+    expect(msg.event.error_status).toBe(502);
+    expect(msg.event.error).toBe("server_error");
+  });
+
   it("assistant → emits browserMessageCb with assistant message including timestamp", () => {
     // An assistant message should be forwarded with its full message payload
     // and a server-assigned timestamp.
@@ -755,6 +973,66 @@ describe("handleRawMessage() — incoming CLI message routing", () => {
     // Timestamp should be roughly "now"
     expect(msg.timestamp).toBeGreaterThanOrEqual(now);
     expect(msg.timestamp).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("assistant with new model → fires sessionMetaCb to reconcile session.state.model", () => {
+    // Why: set_model is fire-and-forget and the CLI doesn't re-emit `system init`,
+    // so the assistant.model field is the authoritative confirmation of which
+    // model the CLI is actually using. Without this reconciliation the bridge
+    // would never observe a CLI-side fallback (e.g. unsupported model → default).
+    adapter.handleRawMessage(makeInitMsg());
+    sessionMetaCb.mockClear();
+
+    adapter.handleRawMessage(makeAssistantMsg({
+      message: {
+        id: "msg-2",
+        type: "message",
+        role: "assistant",
+        model: "claude-opus-4-7",
+        content: [{ type: "text", text: "switched" }],
+        stop_reason: "end_turn",
+        usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+      },
+    }));
+
+    expect(sessionMetaCb).toHaveBeenCalledOnce();
+    expect(sessionMetaCb).toHaveBeenCalledWith({ model: "claude-opus-4-7" });
+  });
+
+  it("assistant with same model → does not re-fire sessionMetaCb", () => {
+    // Why: refreshGitInfo runs on every onSessionMeta. Firing on every assistant
+    // turn would cause needless filesystem work; we only need to reconcile when
+    // the model actually changes.
+    adapter.handleRawMessage(makeInitMsg()); // model: claude-sonnet-4-6
+    sessionMetaCb.mockClear();
+
+    adapter.handleRawMessage(makeAssistantMsg()); // same model
+    adapter.handleRawMessage(makeAssistantMsg()); // same model again
+
+    expect(sessionMetaCb).not.toHaveBeenCalled();
+  });
+
+  it("assistant from subagent (parent_tool_use_id != null) → does not change session model", () => {
+    // Why: subagents may run under a different model (e.g. a Haiku helper invoked
+    // by an Opus session). Their assistant.model field reflects the subagent's
+    // model, not the session's, so we must not reconcile from subagent turns.
+    adapter.handleRawMessage(makeInitMsg()); // model: claude-sonnet-4-6
+    sessionMetaCb.mockClear();
+
+    adapter.handleRawMessage(makeAssistantMsg({
+      parent_tool_use_id: "tu-parent-1",
+      message: {
+        id: "msg-sub",
+        type: "message",
+        role: "assistant",
+        model: "claude-haiku-4-5-20251001",
+        content: [{ type: "text", text: "subagent reply" }],
+        stop_reason: "end_turn",
+        usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+      },
+    }));
+
+    expect(sessionMetaCb).not.toHaveBeenCalled();
   });
 
   it("result → emits browserMessageCb with result data", () => {
@@ -882,11 +1160,11 @@ describe("handleRawMessage() — incoming CLI message routing", () => {
 // ─── Activity update callback ───────────────────────────────────────────────
 
 describe("Activity update callback", () => {
-  let ws: ReturnType<typeof createMockSocket>;
+  let stdio: ReturnType<typeof createMockStdio>;
 
   beforeEach(() => {
-    ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
   });
 
   it("onActivityUpdate called on non-keepalive messages", () => {
@@ -919,11 +1197,11 @@ describe("Activity update callback", () => {
 // ─── Deduplication ──────────────────────────────────────────────────────────
 
 describe("Deduplication", () => {
-  let ws: ReturnType<typeof createMockSocket>;
+  let stdio: ReturnType<typeof createMockStdio>;
 
   beforeEach(() => {
-    ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
   });
 
   it("duplicate assistant messages are filtered out", () => {
@@ -969,11 +1247,11 @@ describe("Deduplication", () => {
 // ─── Control request/response flow ──────────────────────────────────────────
 
 describe("Control request/response flow", () => {
-  let ws: ReturnType<typeof createMockSocket>;
+  let stdio: ReturnType<typeof createMockStdio>;
 
   beforeEach(() => {
-    ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
   });
 
   it("MCP status request creates pending control request and resolves on response", () => {
@@ -984,7 +1262,7 @@ describe("Control request/response flow", () => {
     adapter.send({ type: "mcp_get_status" });
 
     // Extract the request_id from what was sent to the CLI
-    const sentRaw = (ws.send.mock.calls[0][0] as string).trim();
+    const sentRaw = (stdio.stdin.write.mock.calls[0][0] as string).trim();
     const sent = JSON.parse(sentRaw);
     const requestId = sent.request_id;
 
@@ -1034,7 +1312,7 @@ describe("Control request/response flow", () => {
     uuidCounter = 200;
     adapter.send({ type: "mcp_get_status" });
 
-    const sentRaw = (ws.send.mock.calls[0][0] as string).trim();
+    const sentRaw = (stdio.stdin.write.mock.calls[0][0] as string).trim();
     const sent = JSON.parse(sentRaw);
     const requestId = sent.request_id;
 
@@ -1063,7 +1341,7 @@ describe("Control request/response flow", () => {
     uuidCounter = 300;
     adapter.send({ type: "mcp_get_status" });
 
-    const sentRaw = (ws.send.mock.calls[0][0] as string).trim();
+    const sentRaw = (stdio.stdin.write.mock.calls[0][0] as string).trim();
     const sent = JSON.parse(sentRaw);
     const requestId = sent.request_id;
 
@@ -1101,11 +1379,11 @@ describe("System init flushes pending messages", () => {
     adapter.send({ type: "user_message", content: "queued-msg" });
 
     // Attach socket — this flushes the pendingMessages
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
-    expect(ws.send).toHaveBeenCalledTimes(1);
-    const firstSent = JSON.parse((ws.send.mock.calls[0][0] as string).trim());
+    expect(stdio.stdin.write).toHaveBeenCalledTimes(1);
+    const firstSent = JSON.parse((stdio.stdin.write.mock.calls[0][0] as string).trim());
     expect(firstSent.message.content).toBe("queued-msg");
   });
 });
@@ -1120,8 +1398,8 @@ describe("Edge cases", () => {
     const cb = vi.fn();
     plainAdapter.onBrowserMessage(cb);
 
-    const ws = createMockSocket("sess-2");
-    plainAdapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    plainAdapter.attachStdio(stdio.stdin, stdio.stdout);
     plainAdapter.handleRawMessage(makeAssistantMsg());
 
     expect(cb).toHaveBeenCalledOnce();
@@ -1130,8 +1408,8 @@ describe("Edge cases", () => {
   it("adapter works without any callbacks registered", () => {
     // Processing messages without any registered callbacks should not throw.
     const plainAdapter = new ClaudeAdapter("sess-3");
-    const ws = createMockSocket("sess-3");
-    plainAdapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    plainAdapter.attachStdio(stdio.stdin, stdio.stdout);
 
     // Should not throw even without callbacks
     expect(() => plainAdapter.handleRawMessage(makeInitMsg())).not.toThrow();
@@ -1143,8 +1421,8 @@ describe("Edge cases", () => {
     const cb = vi.fn();
     adapter.onBrowserMessage(cb);
 
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     adapter.handleRawMessage(
       makeInitMsg({
@@ -1164,8 +1442,8 @@ describe("Edge cases", () => {
 
   it("empty NDJSON data produces no emissions", () => {
     // An empty string or whitespace-only message should produce no emissions.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
     adapter.handleRawMessage("");
     adapter.handleRawMessage("   \n  \n  ");
     expect(browserMessageCb).not.toHaveBeenCalled();
@@ -1179,8 +1457,8 @@ describe("control_cancel_request", () => {
     // When the CLI cancels a pending control request (e.g. tool permission
     // that is no longer needed), the adapter should notify browsers so they
     // can remove the pending permission UI.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     const msg = JSON.stringify({ type: "control_cancel_request", request_id: "req-cancel-1" });
     adapter.handleRawMessage(msg);
@@ -1199,8 +1477,8 @@ describe("enriched can_use_tool", () => {
     // Newer CLI versions may include enriched fields on can_use_tool requests
     // (title, display_name, blocked_path, decision_reason). The adapter should
     // forward all of these to the browser in the permission_request.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     const msg = JSON.stringify({
       type: "control_request",
@@ -1231,8 +1509,8 @@ describe("enriched can_use_tool", () => {
   it("works without enriched fields (backward compat)", () => {
     // Older CLI versions do not include enriched fields. The adapter should
     // still emit a valid permission_request with those fields undefined.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     const msg = JSON.stringify({
       type: "control_request",
@@ -1261,12 +1539,12 @@ describe("end_session", () => {
   it("sends end_session control_request to CLI", () => {
     // The browser can request the session to end. This should be translated
     // into a control_request with subtype "end_session" and the reason forwarded.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     adapter.send({ type: "end_session", reason: "user closed" } as any);
 
-    const sent = JSON.parse((ws.send.mock.calls[0][0] as string).trim());
+    const sent = JSON.parse((stdio.stdin.write.mock.calls[0][0] as string).trim());
     expect(sent.type).toBe("control_request");
     expect(sent.request.subtype).toBe("end_session");
     expect(sent.request.reason).toBe("user closed");
@@ -1279,12 +1557,12 @@ describe("stop_task", () => {
   it("sends stop_task control_request to CLI", () => {
     // The browser can stop a running task. This should be translated into
     // a control_request with subtype "stop_task" and the task_id forwarded.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     adapter.send({ type: "stop_task", task_id: "task-123" } as any);
 
-    const sent = JSON.parse((ws.send.mock.calls[0][0] as string).trim());
+    const sent = JSON.parse((stdio.stdin.write.mock.calls[0][0] as string).trim());
     expect(sent.type).toBe("control_request");
     expect(sent.request.subtype).toBe("stop_task");
     expect(sent.request.task_id).toBe("task-123");
@@ -1298,12 +1576,12 @@ describe("update_environment_variables", () => {
     // Environment variable updates are sent as a top-level message type,
     // not wrapped in a control_request, because the CLI expects them
     // as a distinct message kind.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     adapter.send({ type: "update_environment_variables", variables: { TOKEN: "new-val" } } as any);
 
-    const sent = JSON.parse((ws.send.mock.calls[0][0] as string).trim());
+    const sent = JSON.parse((stdio.stdin.write.mock.calls[0][0] as string).trim());
     expect(sent.type).toBe("update_environment_variables");
     expect(sent.variables.TOKEN).toBe("new-val");
   });
@@ -1315,8 +1593,8 @@ describe("streamlined messages", () => {
   it("forwards streamlined_text to browser", () => {
     // In simplified output mode, the CLI sends streamlined_text messages
     // instead of full assistant messages. These should be forwarded as-is.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     const msg = JSON.stringify({ type: "streamlined_text", text: "Hello world", session_id: "s1", uuid: "u1" });
     adapter.handleRawMessage(msg);
@@ -1330,8 +1608,8 @@ describe("streamlined messages", () => {
   it("forwards streamlined_tool_use_summary to browser", () => {
     // In simplified output mode, tool use summaries are sent as
     // streamlined_tool_use_summary. These should be forwarded with the summary text.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     const msg = JSON.stringify({ type: "streamlined_tool_use_summary", tool_summary: "Read 2 files", session_id: "s1", uuid: "u2" });
     adapter.handleRawMessage(msg);
@@ -1349,8 +1627,8 @@ describe("prompt_suggestion", () => {
   it("forwards prompt suggestions to browser", () => {
     // The CLI can suggest next prompts to the user. These should be forwarded
     // so the browser can render suggestion chips in the UI.
-    const ws = createMockSocket("sess-1");
-    adapter.attachWebSocket(ws);
+    const stdio = createMockStdio();
+    adapter.attachStdio(stdio.stdin, stdio.stdout);
 
     const msg = JSON.stringify({ type: "prompt_suggestion", suggestions: ["Fix the bug", "Add tests"], session_id: "s1", uuid: "u3" });
     adapter.handleRawMessage(msg);
@@ -1359,5 +1637,235 @@ describe("prompt_suggestion", () => {
     const emitted = browserMessageCb.mock.calls[0][0];
     expect(emitted.type).toBe("prompt_suggestion");
     expect(emitted.suggestions).toEqual(["Fix the bug", "Add tests"]);
+  });
+});
+
+// ─── Hang watchdog ───────────────────────────────────────────────────────────
+
+describe("hang watchdog (silent-stdout recovery)", () => {
+  it("calls killProcess when no stdout arrives within the watchdog window after a user_message", () => {
+    // Reproduces the silent-hang scenario observed on session
+    // 525910be-...: Claude CLI is alive but its upstream API SSE has
+    // stalled, so no stream_event/assistant/result ever arrives. The
+    // watchdog should detect the gap and kill the child so the
+    // orchestrator's keepalive can respawn with --resume.
+    vi.useFakeTimers();
+    try {
+      const killProcess = vi.fn();
+      const watchdogAdapter = new ClaudeAdapter("sess-watchdog", {
+        killProcess,
+        hangWatchdogMs: 5000, // shrunk for the test
+      });
+      const stdio = createMockStdio();
+      watchdogAdapter.attachStdio(stdio.stdin, stdio.stdout);
+
+      watchdogAdapter.send({ type: "user_message", content: "hello" });
+
+      // Just before the deadline: still no kill.
+      vi.advanceTimersByTime(4999);
+      expect(killProcess).not.toHaveBeenCalled();
+
+      // Past the deadline: kill fires once.
+      vi.advanceTimersByTime(2);
+      expect(killProcess).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("emits session:hang-detected on the bus before SIGTERM so the orchestrator can mark intentional", async () => {
+    // Two-step ordering matters: the orchestrator's intentionalKills flag
+    // must be set BEFORE the SIGTERM-driven session:exited reaches
+    // scheduleProactiveRelaunch, otherwise the session would be re-launched
+    // straight back into the same upstream stall and the kill would be
+    // wasted budget.
+    const { companionBus } = await import("./event-bus.js");
+    vi.useFakeTimers();
+    try {
+      const killProcess = vi.fn();
+      const onHang = vi.fn();
+      companionBus.on("session:hang-detected", onHang);
+
+      const watchdogAdapter = new ClaudeAdapter("sess-bus", {
+        killProcess,
+        hangWatchdogMs: 1000,
+      });
+      const stdio = createMockStdio();
+      watchdogAdapter.attachStdio(stdio.stdin, stdio.stdout);
+      watchdogAdapter.send({ type: "user_message", content: "hi" });
+
+      vi.advanceTimersByTime(1001);
+
+      expect(onHang).toHaveBeenCalledWith({ sessionId: "sess-bus" });
+      // Order: bus event must happen before kill so the orchestrator's
+      // listener has set intentionalKills before proc.exited fires.
+      expect(onHang.mock.invocationCallOrder[0]).toBeLessThan(
+        killProcess.mock.invocationCallOrder[0]!,
+      );
+
+      companionBus.off("session:hang-detected", onHang);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("any stdout activity defuses the watchdog", () => {
+    // A healthy turn streams events continuously (system/status,
+    // stream_event, assistant). Each line must reset the timer so a
+    // legitimately-long-but-streaming turn doesn't trigger a false kill.
+    vi.useFakeTimers();
+    try {
+      const killProcess = vi.fn();
+      const watchdogAdapter = new ClaudeAdapter("sess-stream", {
+        killProcess,
+        hangWatchdogMs: 5000,
+      });
+      const stdio = createMockStdio();
+      watchdogAdapter.attachStdio(stdio.stdin, stdio.stdout);
+      watchdogAdapter.send({ type: "user_message", content: "hello" });
+
+      // Halfway through, the CLI emits a status notification. That
+      // should reset the watchdog clock to zero.
+      vi.advanceTimersByTime(3000);
+      watchdogAdapter.handleRawMessage(JSON.stringify({
+        type: "system",
+        subtype: "status",
+        status: "requesting",
+        uuid: "u",
+        session_id: "cli-1",
+      }));
+
+      // Continue past the original deadline — kill must NOT fire because
+      // the timer was reset by the inbound line above.
+      vi.advanceTimersByTime(4500);
+      expect(killProcess).not.toHaveBeenCalled();
+
+      // But going silent again from this point should still trigger kill
+      // after a fresh full window.
+      vi.advanceTimersByTime(600);
+      expect(killProcess).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("watchdog is opt-out when killProcess is not provided", () => {
+    // Existing call sites that construct the adapter without supplying
+    // killProcess (e.g. unit tests, future custom transports) must still
+    // work without crashing — no kill, no error, just silent no-op.
+    vi.useFakeTimers();
+    try {
+      const localAdapter = new ClaudeAdapter("sess-noop", { hangWatchdogMs: 1000 });
+      const stdio = createMockStdio();
+      localAdapter.attachStdio(stdio.stdin, stdio.stdout);
+      localAdapter.send({ type: "user_message", content: "hello" });
+
+      // Just verify nothing throws when the timer would fire.
+      expect(() => vi.advanceTimersByTime(2000)).not.toThrow();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("watchdog is disabled when hangWatchdogMs is 0", () => {
+    // Operator escape hatch (COMPANION_CLAUDE_HANG_WATCHDOG_MS=0).
+    // Even after the original 90s default, no kill should fire.
+    vi.useFakeTimers();
+    try {
+      const killProcess = vi.fn();
+      const localAdapter = new ClaudeAdapter("sess-disabled", {
+        killProcess,
+        hangWatchdogMs: 0,
+      });
+      const stdio = createMockStdio();
+      localAdapter.attachStdio(stdio.stdin, stdio.stdout);
+      localAdapter.send({ type: "user_message", content: "hello" });
+
+      vi.advanceTimersByTime(120_000);
+      expect(killProcess).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("pauses while a permission gate is open and re-arms after the user resolves", () => {
+    // When the CLI emits control_request{can_use_tool}, the user is the
+    // bottleneck — the CLI is waiting on us, not the API. Without this
+    // pause, a user who walks away for two minutes would come back to a
+    // killed session even though everything was healthy.
+    vi.useFakeTimers();
+    try {
+      const killProcess = vi.fn();
+      const a = new ClaudeAdapter("sess-perm", {
+        killProcess,
+        hangWatchdogMs: 5000,
+      });
+      const stdio = createMockStdio();
+      a.attachStdio(stdio.stdin, stdio.stdout);
+      a.send({ type: "user_message", content: "run a command" });
+
+      // CLI asks for permission — this is incoming activity (resets the
+      // timer) AND opens a gate (further timer scheduling is suppressed).
+      a.handleRawMessage(JSON.stringify({
+        type: "control_request",
+        request_id: "perm-1",
+        request: { subtype: "can_use_tool", tool_name: "Bash", input: {}, tool_use_id: "t1" },
+      }));
+
+      // User takes a long time to respond. No more CLI activity, but the
+      // watchdog must NOT fire because the CLI is waiting on US.
+      vi.advanceTimersByTime(60_000);
+      expect(killProcess).not.toHaveBeenCalled();
+
+      // User resolves the permission. CLI resumes — re-arm the watchdog
+      // for the rest of the turn.
+      a.send({ type: "permission_response", request_id: "perm-1", behavior: "allow" });
+
+      // Now silence past the window SHOULD fire the kill.
+      vi.advanceTimersByTime(5001);
+      expect(killProcess).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("nested permission gates do not re-arm prematurely (refcounted)", () => {
+    // The CLI can fan out and ask for several permissions in a single
+    // turn (e.g. multi-file edits). The watchdog must stay paused until
+    // every outstanding request is resolved — not just the first one.
+    vi.useFakeTimers();
+    try {
+      const killProcess = vi.fn();
+      const a = new ClaudeAdapter("sess-multi-perm", {
+        killProcess,
+        hangWatchdogMs: 5000,
+      });
+      const stdio = createMockStdio();
+      a.attachStdio(stdio.stdin, stdio.stdout);
+      a.send({ type: "user_message", content: "do many things" });
+
+      a.handleRawMessage(JSON.stringify({
+        type: "control_request", request_id: "p1",
+        request: { subtype: "can_use_tool", tool_name: "Bash", input: {}, tool_use_id: "t1" },
+      }));
+      a.handleRawMessage(JSON.stringify({
+        type: "control_request", request_id: "p2",
+        request: { subtype: "can_use_tool", tool_name: "Edit", input: {}, tool_use_id: "t2" },
+      }));
+
+      // Resolve only one of the two. Gate is still open.
+      a.send({ type: "permission_response", request_id: "p1", behavior: "allow" });
+
+      vi.advanceTimersByTime(30_000);
+      expect(killProcess).not.toHaveBeenCalled();
+
+      // Resolve the second — gate closes, watchdog re-arms.
+      a.send({ type: "permission_response", request_id: "p2", behavior: "allow" });
+
+      vi.advanceTimersByTime(5001);
+      expect(killProcess).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

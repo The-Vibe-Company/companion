@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { spawn as nodeSpawn, type ChildProcess } from "node:child_process";
+import { Readable as NodeReadable } from "node:stream";
 import {
   mkdirSync,
   existsSync,
@@ -12,10 +14,15 @@ import type { Subprocess } from "bun";
 import type { SessionStore } from "./session-store.js";
 import type { BackendType } from "./session-types.js";
 import type { RecorderManager } from "./recorder.js";
+import { ClaudeAdapter } from "./claude-adapter.js";
+import type { ClaudeAdapterStdinSink, ClaudeAdapterStdoutSource } from "./claude-adapter.js";
+import { COMPANION_APPEND_PROMPT } from "./claude-prompts.js";
 import { CodexAdapter } from "./codex-adapter.js";
 import { resolveBinary, getEnrichedPath } from "./path-resolver.js";
 import { containerManager } from "./container-manager.js";
 import { companionBus } from "./event-bus.js";
+import { resolveClaudeModel } from "./model-resolver.js";
+import * as envManager from "./env-manager.js";
 import {
   getLegacyCodexHome,
   resolveCompanionCodexSessionHome,
@@ -25,6 +32,133 @@ import {
 function isCodexWsTransportEnabled(): boolean {
   const val = (process.env.COMPANION_CODEX_TRANSPORT || "ws").toLowerCase();
   return val === "ws" || val === "websocket";
+}
+
+/**
+ * Wrap a node `child_process.ChildProcess` in a Bun-`Subprocess`-shaped
+ * facade so the existing host-spawn pipeline (`StreamEventEmitter`,
+ * `pipeStream`, `proc.exited.then(...)`) keeps working unchanged.
+ *
+ * Why this exists: under `Bun.spawn(... stdin: "pipe" ...)`, the child
+ * inherits stdio backed by a unix **socketpair**, not POSIX pipes. Empirical
+ * evidence (see project_claude_silent_hang.md) suggests that combination
+ * wedges claude's Node + undici stack post-SSE-response — bytes arrive but
+ * never get flushed back out to the parent. `node:child_process.spawn`
+ * uses POSIX pipes, matching how a bash-launched child sees its stdio.
+ * Toggle via `COMPANION_CLAUDE_USE_NODE_SPAWN=1` to compare.
+ */
+function nodeSpawnAsBunSubprocess(
+  cmd: string[],
+  opts: { cwd: string | undefined; env: Record<string, string | undefined> },
+): Subprocess {
+  // Node's spawn expects a Record<string, string> (no `undefined`s).
+  const cleanEnv: Record<string, string> = {};
+  for (const [k, v] of Object.entries(opts.env)) {
+    if (typeof v === "string") cleanEnv[k] = v;
+  }
+  const child: ChildProcess = nodeSpawn(cmd[0]!, cmd.slice(1), {
+    cwd: opts.cwd,
+    env: cleanEnv,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+
+  // Convert node Readable streams to WHATWG ReadableStreams so the existing
+  // pump APIs (StreamEventEmitter, pipeStream's getReader/read loop) keep
+  // working without a separate node-flavored code path.
+  const stdoutWeb = child.stdout
+    ? (NodeReadable.toWeb(child.stdout) as unknown as ReadableStream<Uint8Array>)
+    : null;
+  const stderrWeb = child.stderr
+    ? (NodeReadable.toWeb(child.stderr) as unknown as ReadableStream<Uint8Array>)
+    : null;
+
+  const exited = new Promise<number>((resolve) => {
+    let settled = false;
+    child.on("exit", (code) => {
+      if (settled) return;
+      settled = true;
+      resolve(code ?? 0);
+    });
+    // Spawn-time failures (ENOENT on the binary, EACCES, etc.) surface as
+    // 'error' on the ChildProcess in node — Bun raises synchronously instead.
+    // Translate to an exit so downstream `proc.exited.then(...)` cleanup runs.
+    // 127 matches the "binary not found" exit code already produced upstream
+    // by the resolveBinary path.
+    child.on("error", (err) => {
+      console.error(
+        `[cli-launcher] node:child_process spawn error for ${cmd[0]}:`,
+        err,
+      );
+      if (settled) return;
+      settled = true;
+      resolve(127);
+    });
+  });
+
+  return {
+    pid: child.pid ?? 0,
+    stdin: child.stdin,
+    stdout: stdoutWeb,
+    stderr: stderrWeb,
+    exited,
+    kill(signal?: number | NodeJS.Signals): boolean {
+      try { child.kill(signal as NodeJS.Signals); return true; } catch { return false; }
+    },
+    killed: false,
+    exitCode: null,
+    signalCode: null,
+  } as unknown as Subprocess;
+}
+
+/**
+ * Adapt a Bun `ReadableStream<Uint8Array>` (the shape of `proc.stdout` in
+ * pipe mode) to the `ClaudeAdapterStdoutSource` interface, which is event-
+ * based (`on("data", ...)` / `off`). Drives a single async reader loop that
+ * decodes UTF-8 and fans chunks out to every registered listener.
+ */
+class StreamEventEmitter implements ClaudeAdapterStdoutSource {
+  private listeners: Array<(chunk: Buffer | string) => void> = [];
+  private closed = false;
+
+  constructor(stream: ReadableStream<Uint8Array>) {
+    void this.pump(stream);
+  }
+
+  private async pump(stream: ReadableStream<Uint8Array>): Promise<void> {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    try {
+      while (!this.closed) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value);
+        // Snapshot listeners so a removal during dispatch doesn't shift indices.
+        for (const l of [...this.listeners]) {
+          try { l(text); } catch { /* listener errors are not our problem */ }
+        }
+      }
+    } catch {
+      // stream closed or errored; nothing more to dispatch
+    }
+  }
+
+  on(event: "data", listener: (chunk: Buffer | string) => void): unknown {
+    if (event === "data") this.listeners.push(listener);
+    return this;
+  }
+
+  off(event: "data", listener: (chunk: Buffer | string) => void): unknown {
+    if (event === "data") {
+      const i = this.listeners.indexOf(listener);
+      if (i !== -1) this.listeners.splice(i, 1);
+    }
+    return this;
+  }
+
+  destroy(): void {
+    this.closed = true;
+    this.listeners = [];
+  }
 }
 
 /** Find a free TCP port in the given range by attempting to listen on each. */
@@ -119,6 +253,13 @@ export interface SdkSessionInfo {
   agentName?: string;
   /** Sandbox profile slug used for this session */
   sandboxSlug?: string;
+  /**
+   * Companion env profile slug used to spawn this session. Persisted (unlike
+   * the merged env vars themselves) so post-restart relaunch and route
+   * lookups can re-derive the actual env via envManager.getEnv(slug). The
+   * slug is not a secret — it's a reference to ~/.companion/envs/<slug>.json.
+   */
+  envSlug?: string;
 
   // Codex WebSocket transport fields
   /** Port used for Codex WebSocket transport (host mode). */
@@ -168,6 +309,8 @@ export interface LaunchOptions {
   systemPrompt?: string;
   /** Sandbox profile slug used for this session */
   sandboxSlug?: string;
+  /** Companion env profile slug; persisted so env can be re-derived after restart. */
+  envSlug?: string;
 }
 
 /**
@@ -205,6 +348,31 @@ export class CliLauncher {
     if (!this.store) return;
     const data = Array.from(this.sessions.values());
     this.store.saveLauncher(data);
+  }
+
+  /**
+   * Read-only access to a session's runtime env vars (the merged record passed
+   * to the spawned CLI). Falls back to re-deriving from the persisted envSlug
+   * via envManager when the in-memory map is cold (which is normal right after
+   * a server restart — sessionEnvs is intentionally not persisted). Warming
+   * the cache here means the next relaunch also sees the right env.
+   *
+   * Returns undefined only when the session is unknown or had no env profile
+   * to begin with.
+   */
+  getSessionEnv(sessionId: string): Record<string, string> | undefined {
+    let env = this.sessionEnvs.get(sessionId);
+    if (!env) {
+      const info = this.sessions.get(sessionId);
+      if (info?.envSlug) {
+        const profile = envManager.getEnv(info.envSlug);
+        if (profile) {
+          env = { ...profile.variables };
+          this.sessionEnvs.set(sessionId, env);
+        }
+      }
+    }
+    return env ? { ...env } : undefined;
   }
 
   private claimCodexWsPort(port: number): void {
@@ -306,6 +474,13 @@ export class CliLauncher {
       info.forkSession = options.forkSession === true;
     }
 
+    // Persist the env profile reference (not the merged env vars themselves —
+    // those stay runtime-only because they may carry tokens). The slug lets
+    // routes and relaunch re-derive the live env after a server restart.
+    if (options.envSlug) {
+      info.envSlug = options.envSlug;
+    }
+
     if (backendType === "codex") {
       info.codexInternetAccess = options.codexInternetAccess === true;
       info.codexSandbox = options.codexSandbox;
@@ -332,7 +507,12 @@ export class CliLauncher {
     if (backendType === "codex") {
       this.spawnCodex(sessionId, info, options);
     } else {
-      this.spawnCLI(sessionId, info, options);
+      void this.spawnCLI(sessionId, info, options).catch((err) => {
+        console.error(`[cli-launcher] Session ${sessionId}: spawnCLI failed:`, err);
+        info.state = "exited";
+        info.exitCode = info.exitCode ?? 1;
+        this.persistState();
+      });
     }
     return info;
   }
@@ -425,7 +605,11 @@ export class CliLauncher {
 
     info.state = "starting";
 
-    const runtimeEnv = this.sessionEnvs.get(sessionId);
+    // getSessionEnv() rather than sessionEnvs.get() — the latter is cold after
+    // a server restart, so a session that was originally launched with a proxy
+    // env profile would otherwise relaunch without ANTHROPIC_AUTH_TOKEN and
+    // fail authentication. The fallback re-derives env from info.envSlug.
+    const runtimeEnv = this.getSessionEnv(sessionId);
 
     if (info.backendType === "codex") {
       this.spawnCodex(sessionId, info, {
@@ -441,7 +625,7 @@ export class CliLauncher {
         env: runtimeEnv,
       });
     } else {
-      this.spawnCLI(sessionId, info, {
+      void this.spawnCLI(sessionId, info, {
         model: info.model,
         permissionMode: info.permissionMode,
         cwd: info.cwd,
@@ -450,6 +634,11 @@ export class CliLauncher {
         containerName: info.containerName,
         containerImage: info.containerImage,
         env: runtimeEnv,
+      }).catch((err) => {
+        console.error(`[cli-launcher] Session ${sessionId}: relaunch spawnCLI failed:`, err);
+        info.state = "exited";
+        info.exitCode = info.exitCode ?? 1;
+        this.persistState();
       });
     }
     return { ok: true };
@@ -462,8 +651,26 @@ export class CliLauncher {
     return Array.from(this.sessions.values()).filter((s) => s.state === "starting");
   }
 
-  private spawnCLI(sessionId: string, info: SdkSessionInfo, options: LaunchOptions & { resumeSessionId?: string }): void {
+  private async spawnCLI(sessionId: string, info: SdkSessionInfo, options: LaunchOptions & { resumeSessionId?: string }): Promise<void> {
     const isContainerized = !!options.containerId;
+
+    // Map the saved/requested model id to one the active backend will accept.
+    // Only round-trip through the resolver when this session routes through
+    // an Anthropic-compatible proxy (ANTHROPIC_BASE_URL set). For host/CLI
+    // sessions the upstream Claude CLI handles model validation itself, and
+    // staying synchronous here preserves call-site timing assumptions for
+    // first-party launchers (see cli-launcher.test.ts).
+    if (options.env?.ANTHROPIC_BASE_URL && options.model) {
+      const resolved = await resolveClaudeModel(options.model, options.env);
+      if (resolved.swapped && resolved.model) {
+        console.warn(
+          `[cli-launcher] Session ${sessionId}: model "${resolved.original}" → "${resolved.model}" (${resolved.reason ?? "fallback"})`,
+        );
+        options = { ...options, model: resolved.model };
+        info.model = resolved.model;
+        this.persistState();
+      }
+    }
 
     // For containerized sessions, the CLI binary lives inside the container.
     // For host sessions, resolve the binary on the host.
@@ -480,17 +687,6 @@ export class CliLauncher {
         return;
       }
     }
-
-    // Allow overriding the host alias used by containerized Claude sessions.
-    // Useful when host.docker.internal is unavailable in a given Docker setup.
-    const containerSdkHost = (process.env.COMPANION_CONTAINER_SDK_HOST || "host.docker.internal").trim()
-      || "host.docker.internal";
-
-    // When running inside a container, the SDK URL should target the host alias
-    // so the CLI can connect back to the Hono server running on the host.
-    const sdkUrl = isContainerized
-      ? `ws://${containerSdkHost}:${this.port}/ws/cli/${sessionId}`
-      : `ws://localhost:${this.port}/ws/cli/${sessionId}`;
 
     // Claude Code rejects bypassPermissions when running with root/sudo.
     // Container sessions are downgraded by default; host sessions are only
@@ -518,7 +714,6 @@ export class CliLauncher {
     }
 
     const args: string[] = [
-      "--sdk-url", sdkUrl,
       "--print",
       "--output-format", "stream-json",
       "--input-format", "stream-json",
@@ -526,6 +721,14 @@ export class CliLauncher {
       "--include-partial-messages",
       "--verbose",
     ];
+
+    // Companion-injected behaviour rules (see claude-prompts.ts). Currently
+    // covers the AskUserQuestion no-self-answer rule. Appended to Claude
+    // Code's default system prompt rather than replacing it, so Claude's
+    // own tool-use / cwd context stays intact.
+    if (COMPANION_APPEND_PROMPT.trim().length > 0) {
+      args.push("--append-system-prompt", COMPANION_APPEND_PROMPT);
+    }
 
     if (options.model) {
       args.push("--model", options.model);
@@ -590,34 +793,113 @@ export class CliLauncher {
       spawnEnv = {
         ...process.env,
         CLAUDECODE: undefined,
+        // Never inherit stale OAuth tokens from the server process environment.
+        // The CLI should read fresh credentials from ~/.claude/.credentials.json.
+        CLAUDE_CODE_OAUTH_TOKEN: undefined,
         ...options.env,
         PATH: getEnrichedPath(),
       };
       spawnCwd = info.cwd;
     }
 
+    // Guard: cwd must exist on disk before posix_spawn. Without this check,
+    // Bun.spawn surfaces the failure as
+    //   ENOENT: posix_spawn '/home/ubuntu/.local/bin/claude'
+    // which falsely points at the binary path. The real cause — a deleted
+    // worktree, ExitWorktree cleanup, or an out-of-sync session.cwd — gets
+    // hidden, and the orchestrator just respawn-loops into the same ENOENT.
+    // See project_companion_missing_cwd.md. Mirrors the binary-not-found
+    // exit path: mutate info, persist, return — no throw.
+    //
+    // Emit `session:spawn-aborted-permanent` so the orchestrator stops
+    // retrying with the auto-relaunch budget. The condition is permanent
+    // until the user recreates the directory or updates the session cwd,
+    // so retries just spam the log + waste the relaunch count.
+    if (!isContainerized && spawnCwd && !existsSync(spawnCwd)) {
+      const reason =
+        `cwd does not exist on disk: ${spawnCwd} ` +
+        `(worktree may have been removed; recreate the directory or update the session cwd)`;
+      console.warn(`[cli-launcher] Session ${sessionId}: ${reason}`);
+      info.state = "exited";
+      info.exitCode = 1;
+      this.persistState();
+      companionBus.emit("session:spawn-aborted-permanent", { sessionId, reason });
+      return;
+    }
+
+    // Host (non-containerized) claude is spawned via node:child_process.spawn,
+    // not Bun.spawn. Empirically, claude's node + undici SSE pipeline wedges
+    // post-response when its stdio is set up by Bun.spawn — bytes arrive over
+    // the proxy connection, claude consumes them at the kernel layer, but
+    // never emits any stdout back to companion. Switching the host spawn to
+    // node:child_process.spawn makes the wedge go away (responses flow end
+    // to end). We don't fully understand the underlying differential — the
+    // child still ends up with unix-socketpair stdio either way under Bun —
+    // but the empirical fix is solid. See project_claude_bun_spawn_wedge.md.
+    //
+    // Container path keeps Bun.spawn since the docker exec wrapper layer
+    // shields claude from the host stdio quirk. Set
+    // COMPANION_CLAUDE_USE_NODE_SPAWN=0 to force the Bun.spawn path back
+    // (escape hatch + how the existing test suite stubs spawn).
+    const useNodeSpawn = !isContainerized && process.env.COMPANION_CLAUDE_USE_NODE_SPAWN !== "0";
+
     console.log(
-      `[cli-launcher] Spawning session ${sessionId}${isContainerized ? " (container)" : ""}: ` +
+      `[cli-launcher] Spawning session ${sessionId}${isContainerized ? " (container)" : ""}` +
+      `${useNodeSpawn ? " [via node:child_process.spawn]" : ""}: ` +
       sanitizeSpawnArgsForLog(spawnCmd),
     );
 
-    const proc = Bun.spawn(spawnCmd, {
-      cwd: spawnCwd,
-      env: spawnEnv,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
+    const proc: Subprocess = useNodeSpawn
+      ? nodeSpawnAsBunSubprocess(spawnCmd, { cwd: spawnCwd, env: spawnEnv })
+      : Bun.spawn(spawnCmd, {
+        cwd: spawnCwd,
+        env: spawnEnv,
+        stdin: "pipe",
+        stdout: "pipe",
+        stderr: "pipe",
+      });
 
     info.pid = proc.pid;
     this.processes.set(sessionId, proc);
 
-    // Stream stdout/stderr for debugging
-    this.pipeOutput(sessionId, proc);
+    // Wire stdio into a fresh ClaudeAdapter and tell the bridge so it can
+    // route browser messages. stderr is still piped to console for debugging
+    // (the protocol channel is stdout only). killProcess is the recovery
+    // hook for the silent-hang watchdog (see project_claude_silent_hang.md):
+    // SIGTERM the child so the orchestrator's exit-driven keepalive fires
+    // and respawns with --resume <cliSessionId>.
+    const hangWatchdogMs = Math.max(
+      0,
+      parseInt(process.env.COMPANION_CLAUDE_HANG_WATCHDOG_MS ?? "", 10) || 90_000,
+    );
+    const adapter = new ClaudeAdapter(sessionId, {
+      recorder: this.recorder,
+      hangWatchdogMs,
+      killProcess: () => {
+        try { proc.kill("SIGTERM"); } catch { /* already dead */ }
+      },
+    });
+    const stdoutSource = new StreamEventEmitter(proc.stdout as ReadableStream<Uint8Array>);
+    adapter.attachStdio(proc.stdin as ClaudeAdapterStdinSink, stdoutSource);
+    companionBus.emit("backend:claude-adapter-created", { sessionId, adapter });
+
+    // Mark as connected immediately — under stdio there is no separate
+    // post-spawn handshake to wait for; the transport is live as soon as
+    // the child has stdin/stdout.
+    if (info.state === "starting") {
+      info.state = "connected";
+    }
+
+    if (proc.stderr && typeof proc.stderr !== "number") {
+      this.pipeStream(sessionId, proc.stderr, "stderr");
+    }
 
     // Monitor process exit
     const spawnedAt = Date.now();
     proc.exited.then((exitCode) => {
       console.log(`[cli-launcher] Session ${sessionId} exited (code=${exitCode})`);
+      stdoutSource.destroy();
+      adapter.notifyChildExited();
       const session = this.sessions.get(sessionId);
       if (session) {
         session.state = "exited";

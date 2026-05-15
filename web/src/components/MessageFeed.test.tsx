@@ -45,6 +45,7 @@ vi.mock("../store.js", () => ({
       chatTabReentryTickBySession:
         mockStoreValues.chatTabReentryTickBySession ?? new Map(),
       sdkSessions: mockStoreValues.sdkSessions ?? [],
+      sessions: mockStoreValues.sessions ?? new Map(),
     };
     return selector(state);
   },
@@ -103,6 +104,12 @@ function setSdkSessions(sessions: Array<Record<string, unknown>>) {
   mockStoreValues.sdkSessions = sessions;
 }
 
+function setStoreSession(sessionId: string, session: Record<string, unknown>) {
+  const map = (mockStoreValues.sessions as Map<string, unknown>) ?? new Map();
+  map.set(sessionId, session);
+  mockStoreValues.sessions = map;
+}
+
 function resetStore() {
   mockStoreValues.messages = new Map();
   mockStoreValues.streaming = new Map();
@@ -113,6 +120,7 @@ function resetStore() {
   mockStoreValues.toolActivity = new Map();
   mockStoreValues.chatTabReentryTickBySession = new Map();
   mockStoreValues.sdkSessions = [];
+  mockStoreValues.sessions = new Map();
 }
 
 beforeEach(() => {
@@ -626,6 +634,178 @@ describe("MessageFeed - subagent grouping", () => {
     expect(screen.getByText("researcher")).toBeTruthy();
   });
 
+  // ── Per-agent filter pillbar (V2 Phase A focus mode) ─────────────────
+
+  // The pillbar is hidden when there's only 1 (or 0) agents — a single
+  // "Explore" button next to "All" provides no useful filter.
+  it("hides the agent filter pillbar when only one agent is invoked", () => {
+    const sid = "test-single-agent-no-pillbar";
+    setStoreMessages(sid, [
+      makeMessage({
+        id: "a1",
+        role: "assistant",
+        content: "",
+        contentBlocks: [
+          { type: "tool_use", id: "agent-1", name: "Agent", input: { description: "x", subagent_type: "Explore" } },
+        ],
+      }),
+      makeMessage({ id: "child-1", role: "assistant", content: "result", parentToolUseId: "agent-1" }),
+    ]);
+    render(<MessageFeed sessionId={sid} />);
+    expect(screen.queryByTestId("agent-filter-pillbar")).toBeNull();
+  });
+
+  // With 2+ agents, the pillbar appears with "All" + each agent name.
+  // Default selection is "All".
+  it("shows the agent filter pillbar when 2+ agents are invoked", () => {
+    const sid = "test-multi-agent-pillbar";
+    setStoreMessages(sid, [
+      makeMessage({
+        id: "a1",
+        role: "assistant",
+        content: "",
+        contentBlocks: [
+          { type: "tool_use", id: "agent-1", name: "Agent", input: { description: "explore", subagent_type: "Explore" } },
+        ],
+      }),
+      makeMessage({ id: "child-1", role: "assistant", content: "explored", parentToolUseId: "agent-1" }),
+      makeMessage({
+        id: "a2",
+        role: "assistant",
+        content: "",
+        contentBlocks: [
+          { type: "tool_use", id: "agent-2", name: "Agent", input: { description: "fuzz", subagent_type: "btc-fuzzer" } },
+        ],
+      }),
+      makeMessage({ id: "child-2", role: "assistant", content: "fuzzed", parentToolUseId: "agent-2" }),
+    ]);
+    render(<MessageFeed sessionId={sid} />);
+    expect(screen.getByTestId("agent-filter-pillbar")).toBeTruthy();
+    expect(screen.getByTestId("agent-filter-pill-All")).toBeTruthy();
+    expect(screen.getByTestId("agent-filter-pill-Explore")).toBeTruthy();
+    expect(screen.getByTestId("agent-filter-pill-btc-fuzzer")).toBeTruthy();
+    // Default "All" is selected
+    expect(screen.getByTestId("agent-filter-pill-All").getAttribute("aria-selected")).toBe("true");
+  });
+
+  // Selecting an agent hides everything except that agent's subagent
+  // group. The other agent's content disappears from the feed.
+  it("filters feed to selected agent's subagent group only", () => {
+    const sid = "test-agent-filter-apply";
+    setStoreMessages(sid, [
+      makeMessage({
+        id: "a1",
+        role: "assistant",
+        content: "",
+        contentBlocks: [
+          { type: "tool_use", id: "agent-1", name: "Agent", input: { description: "explore work", subagent_type: "Explore" } },
+        ],
+      }),
+      makeMessage({ id: "child-1", role: "assistant", content: "exploration done", parentToolUseId: "agent-1" }),
+      makeMessage({
+        id: "a2",
+        role: "assistant",
+        content: "",
+        contentBlocks: [
+          { type: "tool_use", id: "agent-2", name: "Agent", input: { description: "fuzzing work", subagent_type: "btc-fuzzer" } },
+        ],
+      }),
+      makeMessage({ id: "child-2", role: "assistant", content: "fuzzing done", parentToolUseId: "agent-2" }),
+    ]);
+    render(<MessageFeed sessionId={sid} />);
+    // Both visible in default "All"
+    expect(screen.getByText("exploration done")).toBeTruthy();
+    expect(screen.getByText("fuzzing done")).toBeTruthy();
+    // Select btc-fuzzer
+    fireEvent.click(screen.getByTestId("agent-filter-pill-btc-fuzzer"));
+    expect(screen.queryByText("exploration done")).toBeNull();
+    expect(screen.getByText("fuzzing done")).toBeTruthy();
+    // Back to All
+    fireEvent.click(screen.getByTestId("agent-filter-pill-All"));
+    expect(screen.getByText("exploration done")).toBeTruthy();
+    expect(screen.getByText("fuzzing done")).toBeTruthy();
+  });
+
+  // Built-in Claude Code agents (Explore, general-purpose, Plan,
+  // statusline-setup) are one-shot tools the model invokes — they're
+  // not project team members. Filtered out of the Focus pillbar so
+  // only the user's own team agents appear. The list of built-ins
+  // comes from session.state.agents which the CLI populates at init.
+  it("excludes built-in agents from the Focus filter pillbar", () => {
+    const sid = "test-builtin-filter";
+    setStoreSession(sid, { agents: ["Explore", "general-purpose"] });
+    setStoreMessages(sid, [
+      makeMessage({
+        id: "a1",
+        role: "assistant",
+        content: "",
+        contentBlocks: [
+          { type: "tool_use", id: "agent-1", name: "Agent", input: { subagent_type: "Explore" } },
+        ],
+      }),
+      makeMessage({ id: "c1", role: "assistant", content: "x", parentToolUseId: "agent-1" }),
+      makeMessage({
+        id: "a2",
+        role: "assistant",
+        content: "",
+        contentBlocks: [
+          { type: "tool_use", id: "agent-2", name: "Agent", input: { subagent_type: "btc-fuzzer" } },
+        ],
+      }),
+      makeMessage({ id: "c2", role: "assistant", content: "y", parentToolUseId: "agent-2" }),
+      makeMessage({
+        id: "a3",
+        role: "assistant",
+        content: "",
+        contentBlocks: [
+          { type: "tool_use", id: "agent-3", name: "Agent", input: { subagent_type: "eth-fuzzer" } },
+        ],
+      }),
+      makeMessage({ id: "c3", role: "assistant", content: "z", parentToolUseId: "agent-3" }),
+    ]);
+    render(<MessageFeed sessionId={sid} />);
+    expect(screen.getByTestId("agent-filter-pillbar")).toBeTruthy();
+    expect(screen.getByTestId("agent-filter-pill-btc-fuzzer")).toBeTruthy();
+    expect(screen.getByTestId("agent-filter-pill-eth-fuzzer")).toBeTruthy();
+    // Built-in Explore is filtered out
+    expect(screen.queryByTestId("agent-filter-pill-Explore")).toBeNull();
+  });
+
+  it("nests child messages under Agent tool_use entries (agent-team mode)", () => {
+    const sid = "test-agent-subagent";
+    setStoreMessages(sid, [
+      makeMessage({
+        id: "a1",
+        role: "assistant",
+        content: "",
+        contentBlocks: [
+          {
+            type: "tool_use",
+            id: "agent-1",
+            name: "Agent",
+            input: {
+              description: "Map firmware config storage",
+              subagent_type: "Explore",
+            },
+          },
+        ],
+      }),
+      makeMessage({
+        id: "child-1",
+        role: "assistant",
+        content: "Found 3 storage paths",
+        parentToolUseId: "agent-1",
+      }),
+    ]);
+
+    render(<MessageFeed sessionId={sid} />);
+
+    expect(
+      screen.getAllByText("Map firmware config storage").length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Explore")).toBeTruthy();
+  });
+
   it("renders Codex subagent metadata badges (status + receiver count)", () => {
     const sid = "test-codex-subagent-meta";
     setStoreMessages(sid, [
@@ -735,5 +915,134 @@ describe("MessageFeed - subagent grouping", () => {
     expect(screen.getByText(/sender: thr_main/)).toBeTruthy();
     expect(screen.getByText("thr_sub_1")).toBeTruthy();
     expect(screen.getByText("thr_sub_2")).toBeTruthy();
+  });
+});
+
+// ─── Context usage badge ──────────────────────────────────────────────────────
+
+describe("MessageFeed - context usage badge", () => {
+  it("shows context badge in generation stats bar when running and context > 0", () => {
+    const sid = "test-ctx-running";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "running");
+    setStoreStreamingStartedAt(sid, Date.now() - 5000);
+    setStoreSession(sid, { context_used_percent: 62 });
+
+    render(<MessageFeed sessionId={sid} />);
+
+    // Context badge should appear inside the generation stats bar
+    expect(screen.getByTestId("context-badge")).toBeTruthy();
+    expect(screen.getByText("Ctx 62%")).toBeTruthy();
+  });
+
+  it("shows context badge when idle and context > 0", () => {
+    const sid = "test-ctx-idle";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "idle");
+    setStoreSession(sid, { context_used_percent: 45 });
+
+    render(<MessageFeed sessionId={sid} />);
+
+    // Context badge shown persistently below messages when idle
+    expect(screen.getByTestId("context-usage-idle")).toBeTruthy();
+    expect(screen.getByText("Ctx 45%")).toBeTruthy();
+  });
+
+  it("does not show context badge when context_used_percent is 0", () => {
+    const sid = "test-ctx-zero";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "idle");
+    setStoreSession(sid, { context_used_percent: 0 });
+
+    render(<MessageFeed sessionId={sid} />);
+
+    expect(screen.queryByTestId("context-badge")).toBeNull();
+    expect(screen.queryByTestId("context-usage-idle")).toBeNull();
+  });
+
+  it("applies green color for low context usage (< 50%)", () => {
+    const sid = "test-ctx-green";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "idle");
+    setStoreSession(sid, { context_used_percent: 30 });
+
+    render(<MessageFeed sessionId={sid} />);
+
+    const badge = screen.getByTestId("context-badge");
+    expect(badge.className).toContain("text-green");
+  });
+
+  it("applies yellow color for medium context usage (50-80%)", () => {
+    const sid = "test-ctx-yellow";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "idle");
+    setStoreSession(sid, { context_used_percent: 65 });
+
+    render(<MessageFeed sessionId={sid} />);
+
+    const badge = screen.getByTestId("context-badge");
+    expect(badge.className).toContain("text-yellow");
+  });
+
+  it("applies red color for high context usage (> 80%)", () => {
+    const sid = "test-ctx-red";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "idle");
+    setStoreSession(sid, { context_used_percent: 90 });
+
+    render(<MessageFeed sessionId={sid} />);
+
+    const badge = screen.getByTestId("context-badge");
+    expect(badge.className).toContain("text-red");
+  });
+});
+
+// ─── Compacting indicator ─────────────────────────────────────────────────────
+
+describe("MessageFeed - compacting indicator", () => {
+  it("shows compacting indicator when session status is compacting", () => {
+    const sid = "test-compacting";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "compacting");
+
+    render(<MessageFeed sessionId={sid} />);
+
+    expect(screen.getByTestId("compacting-indicator")).toBeTruthy();
+    expect(screen.getByText("Compacting context...")).toBeTruthy();
+  });
+
+  it("does not show compacting indicator when session is running", () => {
+    const sid = "test-not-compacting";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "running");
+    setStoreStreamingStartedAt(sid, Date.now() - 3000);
+
+    render(<MessageFeed sessionId={sid} />);
+
+    expect(screen.queryByTestId("compacting-indicator")).toBeNull();
+    expect(screen.queryByText("Compacting context...")).toBeNull();
+  });
+
+  it("does not show compacting indicator when session is idle", () => {
+    const sid = "test-idle-no-compact";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "idle");
+
+    render(<MessageFeed sessionId={sid} />);
+
+    expect(screen.queryByTestId("compacting-indicator")).toBeNull();
+  });
+
+  it("does not show idle context badge when compacting", () => {
+    // During compacting, the compacting indicator should show instead of the idle context badge
+    const sid = "test-compact-no-idle-ctx";
+    setStoreMessages(sid, [makeMessage({ role: "user", content: "hi" })]);
+    setStoreStatus(sid, "compacting");
+    setStoreSession(sid, { context_used_percent: 85 });
+
+    render(<MessageFeed sessionId={sid} />);
+
+    expect(screen.getByTestId("compacting-indicator")).toBeTruthy();
+    expect(screen.queryByTestId("context-usage-idle")).toBeNull();
   });
 });

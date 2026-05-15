@@ -30,6 +30,12 @@ vi.mock("../service.js", () => ({
   refreshServiceDefinition: vi.fn(),
 }));
 
+// ─── Mock model-resolver ───────────────────────────────────────────────────
+const mockFetchProxyModelOptions = vi.hoisted(() => vi.fn());
+vi.mock("../model-resolver.js", () => ({
+  fetchProxyModelOptions: mockFetchProxyModelOptions,
+}));
+
 import { Hono } from "hono";
 import { getUsageLimits } from "../usage-limits.js";
 import {
@@ -47,6 +53,7 @@ function createMockLauncher() {
   return {
     getSession: vi.fn(() => undefined as any),
     isAlive: vi.fn(() => false),
+    getSessionEnv: vi.fn(() => undefined as Record<string, string> | undefined),
   };
 }
 
@@ -633,5 +640,97 @@ describe("POST /api/sessions/:id/message", () => {
     expect(res2.status).toBe(400);
     const json2 = await res2.json();
     expect(json2.error).toMatch(/content/i);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GET /api/sessions/:id/models
+//
+// Per-session dynamic picker. Drives ModelSwitcher on already-running sessions
+// — feeds it the actual list the proxy supports rather than the hardcoded
+// CLAUDE_MODELS. Always returns 200 with an array (possibly empty); the
+// frontend treats [] as "use the static fallback".
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("GET /api/sessions/:id/models", () => {
+  it("returns the proxy /v1/models options when session env carries BASE_URL + token", async () => {
+    launcher.getSession.mockReturnValue({ sessionId: "s1", backendType: "claude" } as any);
+    launcher.getSessionEnv.mockReturnValue({
+      ANTHROPIC_BASE_URL: "http://proxy",
+      ANTHROPIC_AUTH_TOKEN: "tk",
+    });
+    mockFetchProxyModelOptions.mockResolvedValueOnce([
+      { value: "claude-opus-4-7", label: "Claude Opus 4.7" },
+    ]);
+
+    const res = await app.request("/api/sessions/s1/models", { method: "GET" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([
+      { value: "claude-opus-4-7", label: "Claude Opus 4.7" },
+    ]);
+    expect(mockFetchProxyModelOptions).toHaveBeenCalledWith("http://proxy", "tk");
+  });
+
+  it("accepts ANTHROPIC_API_KEY as an alternative auth header source", async () => {
+    launcher.getSession.mockReturnValue({ sessionId: "s1", backendType: "claude" } as any);
+    launcher.getSessionEnv.mockReturnValue({
+      ANTHROPIC_BASE_URL: "http://proxy",
+      ANTHROPIC_API_KEY: "sk-ant-xxx",
+    });
+    mockFetchProxyModelOptions.mockResolvedValueOnce([
+      { value: "claude-opus-4-7", label: "Claude Opus 4.7" },
+    ]);
+
+    const res = await app.request("/api/sessions/s1/models", { method: "GET" });
+    expect(res.status).toBe(200);
+    expect(mockFetchProxyModelOptions).toHaveBeenCalledWith("http://proxy", "sk-ant-xxx");
+  });
+
+  // [] (not 404) so the frontend can react with a single shape — empty means
+  // "fall back to hardcoded picker", same convention everywhere.
+  it("returns [] when session is unknown", async () => {
+    launcher.getSession.mockReturnValue(undefined as any);
+    const res = await app.request("/api/sessions/missing/models", { method: "GET" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
+    expect(mockFetchProxyModelOptions).not.toHaveBeenCalled();
+  });
+
+  it("returns [] for codex sessions (codex picker is sourced separately)", async () => {
+    launcher.getSession.mockReturnValue({ sessionId: "c1", backendType: "codex" } as any);
+    const res = await app.request("/api/sessions/c1/models", { method: "GET" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
+    expect(mockFetchProxyModelOptions).not.toHaveBeenCalled();
+  });
+
+  it("returns [] when session env has no BASE_URL (host/direct session)", async () => {
+    launcher.getSession.mockReturnValue({ sessionId: "s1", backendType: "claude" } as any);
+    launcher.getSessionEnv.mockReturnValue({ SOME_OTHER_VAR: "x" });
+    const res = await app.request("/api/sessions/s1/models", { method: "GET" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
+    expect(mockFetchProxyModelOptions).not.toHaveBeenCalled();
+  });
+
+  it("returns [] when session env has BASE_URL but no token (cannot probe)", async () => {
+    launcher.getSession.mockReturnValue({ sessionId: "s1", backendType: "claude" } as any);
+    launcher.getSessionEnv.mockReturnValue({ ANTHROPIC_BASE_URL: "http://proxy" });
+    const res = await app.request("/api/sessions/s1/models", { method: "GET" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
+    expect(mockFetchProxyModelOptions).not.toHaveBeenCalled();
+  });
+
+  it("returns [] when proxy fetch fails (transient outage must not break picker)", async () => {
+    launcher.getSession.mockReturnValue({ sessionId: "s1", backendType: "claude" } as any);
+    launcher.getSessionEnv.mockReturnValue({
+      ANTHROPIC_BASE_URL: "http://proxy",
+      ANTHROPIC_AUTH_TOKEN: "tk",
+    });
+    mockFetchProxyModelOptions.mockResolvedValueOnce(null);
+    const res = await app.request("/api/sessions/s1/models", { method: "GET" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
   });
 });

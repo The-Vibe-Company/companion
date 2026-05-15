@@ -1121,7 +1121,7 @@ describe("attachCodexAdapterHandlers", () => {
         publicUrl: "",
         updateChannel: "stable",
         dockerAutoUpdate: false,
-        updatedAt: 0,
+      updatedAt: 0,
       });
     }
 
@@ -1297,7 +1297,7 @@ describe("attachCodexAdapterHandlers", () => {
         publicUrl: "",
         updateChannel: "stable",
         dockerAutoUpdate: false,
-        updatedAt: 0,
+      updatedAt: 0,
       });
 
       attachCodexAdapterHandlers("test-session", session, adapter as unknown as CodexAdapter, deps);
@@ -1343,7 +1343,7 @@ describe("attachCodexAdapterHandlers", () => {
         publicUrl: "",
         updateChannel: "stable",
         dockerAutoUpdate: false,
-        updatedAt: 0,
+      updatedAt: 0,
       });
 
       attachCodexAdapterHandlers("test-session", session, adapter as unknown as CodexAdapter, deps);
@@ -1454,7 +1454,7 @@ describe("attachCodexAdapterHandlers", () => {
         publicUrl: "",
         updateChannel: "stable",
         dockerAutoUpdate: false,
-        updatedAt: 0,
+      updatedAt: 0,
       });
 
       vi.mocked(aiValidator.validatePermission).mockResolvedValue({
@@ -1584,7 +1584,7 @@ describe("attachCodexAdapterHandlers", () => {
         publicUrl: "",
         updateChannel: "stable",
         dockerAutoUpdate: false,
-        updatedAt: 0,
+      updatedAt: 0,
       });
 
       vi.mocked(aiValidator.validatePermission).mockResolvedValue({

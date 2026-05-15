@@ -104,6 +104,15 @@ if (logFileWriter) {
   console.log(`[server] Log file enabled (dir: ${logFileWriter.getLogsDir()}, max: ${logFileWriter.getMaxLines()} lines, file: ${logFileWriter.filePath})`);
 }
 
+// ── Telegram bot — optional, requires encrypted config + password prompt ────
+import { startTgBot, type TgBotHandle } from "./tg-bot/index.js";
+let tgBotHandle: TgBotHandle | null = null;
+try {
+  tgBotHandle = await startTgBot({ launcher, wsBridge });
+} catch (err) {
+  console.error("[server] TG bot failed to start (server continues):", (err as Error).message);
+}
+
 const app = new Hono();
 
 // ── Health endpoint — always unauthenticated (used by Fly.io + control plane) ─
@@ -186,17 +195,6 @@ const server = Bun.serve<SocketData>({
   async fetch(req, server) {
     const url = new URL(req.url);
 
-    // ── CLI WebSocket — Claude Code CLI connects here via --sdk-url ────
-    const cliMatch = url.pathname.match(/^\/ws\/cli\/([a-f0-9-]+)$/);
-    if (cliMatch) {
-      const sessionId = cliMatch[1];
-      const upgraded = server.upgrade(req, {
-        data: { kind: "cli" as const, sessionId },
-      });
-      if (upgraded) return undefined;
-      return new Response("WebSocket upgrade failed", { status: 400 });
-    }
-
     // Helper: check if request is from localhost (same machine)
     const reqIp = server.requestIP(req);
     const reqAddr = reqIp?.address ?? "";
@@ -276,10 +274,7 @@ const server = Bun.serve<SocketData>({
     sendPings: false, // Disable Bun ping timeout that kills CLI connections (code 1006)
     open(ws: ServerWebSocket<SocketData>) {
       const data = ws.data;
-      if (data.kind === "cli") {
-        wsBridge.handleCLIOpen(ws, data.sessionId);
-        launcher.markConnected(data.sessionId);
-      } else if (data.kind === "browser") {
+      if (data.kind === "browser") {
         wsBridge.handleBrowserOpen(ws, data.sessionId);
       } else if (data.kind === "terminal") {
         terminalManager.addBrowserSocket(ws);
@@ -289,9 +284,7 @@ const server = Bun.serve<SocketData>({
     },
     message(ws: ServerWebSocket<SocketData>, msg: string | Buffer) {
       const data = ws.data;
-      if (data.kind === "cli") {
-        wsBridge.handleCLIMessage(ws, msg);
-      } else if (data.kind === "browser") {
+      if (data.kind === "browser") {
         wsBridge.handleBrowserMessage(ws, msg);
       } else if (data.kind === "terminal") {
         terminalManager.handleBrowserMessage(ws, msg);
@@ -302,9 +295,7 @@ const server = Bun.serve<SocketData>({
     close(ws: ServerWebSocket<SocketData>, code?: number, _reason?: string) {
       console.log("[ws-close]", ws.data.kind, "code=" + code);
       const data = ws.data;
-      if (data.kind === "cli") {
-        wsBridge.handleCLIClose(ws);
-      } else if (data.kind === "browser") {
+      if (data.kind === "browser") {
         wsBridge.handleBrowserClose(ws);
       } else if (data.kind === "terminal") {
         terminalManager.removeBrowserSocket(ws);
@@ -323,7 +314,6 @@ if (process.env.COMPANION_AUTH_TOKEN) {
   console.log("  (using COMPANION_AUTH_TOKEN env var)");
 }
 console.log();
-console.log(`  CLI WebSocket:     ws://localhost:${server.port}/ws/cli/:sessionId`);
 console.log(`  Browser WebSocket: ws://localhost:${server.port}/ws/browser/:sessionId`);
 
 if (process.env.NODE_ENV !== "production") {
@@ -384,10 +374,13 @@ setInterval(() => {
 }, DIAGNOSTICS_INTERVAL_MS);
 
 // ── Graceful shutdown — persist container state ──────────────────────────────
-function gracefulShutdown() {
+async function gracefulShutdown() {
   console.log("[server] Persisting container state before shutdown...");
   containerManager.persistState(CONTAINER_STATE_PATH);
   cleanupTailscaleFunnel(port);
+  if (tgBotHandle) {
+    try { await tgBotHandle.stop(); } catch (err) { console.error("[server] TG bot stop error:", err); }
+  }
   closeLogFile();
   process.exit(0);
 }

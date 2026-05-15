@@ -126,6 +126,7 @@ export class CronScheduler {
         permissionMode: job.permissionMode,
         cwd: job.cwd,
         env: envVars,
+        envSlug: job.envSlug,
         backendType: job.backendType,
         codexInternetAccess: job.backendType === "codex" ? (job.codexInternetAccess ?? true) : undefined,
         codexSandbox: job.backendType === "codex"

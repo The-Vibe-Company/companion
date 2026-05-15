@@ -288,3 +288,84 @@ describe("saveLauncher / loadLauncher", () => {
     expect(loaded).toBeNull();
   });
 });
+
+// ─── Legacy /tmp migration ───────────────────────────────────────────────────
+// /tmp gets wiped on most Linux distros at boot, so a fresh boot loses every
+// session. Default storage now lives under ~/.companion/sessions, but to keep
+// upgrades seamless we copy any leftover files from the legacy $TMPDIR path
+// the first time a SessionStore is created with the default location.
+
+describe("legacy /tmp migration", () => {
+  let homeDir: string;
+  let legacyDir: string;
+  let prevHome: string | undefined;
+  let prevTmp: string | undefined;
+
+  beforeEach(() => {
+    // Sandbox HOME and TMPDIR so the test does not touch the real disk.
+    homeDir = mkdtempSync(join(tmpdir(), "ss-home-"));
+    const tmpRoot = mkdtempSync(join(tmpdir(), "ss-tmp-"));
+    legacyDir = join(tmpRoot, "vibe-sessions");
+    prevHome = process.env.HOME;
+    prevTmp = process.env.TMPDIR;
+    process.env.HOME = homeDir;
+    process.env.TMPDIR = tmpRoot;
+  });
+
+  afterEach(() => {
+    if (prevHome === undefined) delete process.env.HOME;
+    else process.env.HOME = prevHome;
+    if (prevTmp === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = prevTmp;
+    rmSync(homeDir, { recursive: true, force: true });
+    rmSync(legacyDir, { recursive: true, force: true });
+  });
+
+  it("copies launcher.json and per-session files from legacy $TMPDIR/vibe-sessions/ on first default-path init", () => {
+    // Seed the legacy dir with a launcher.json + one session file.
+    const legacyStore = new SessionStore(legacyDir);
+    legacyStore.saveLauncher([{ sessionId: "legacy-1", state: "exited" }]);
+    legacyStore.saveSync(makeSession("legacy-1"));
+
+    // Construct with no dir arg → uses default ~/.companion/sessions and
+    // should pull the legacy files over.
+    const migrated = new SessionStore();
+
+    expect(migrated.loadLauncher()).toEqual([{ sessionId: "legacy-1", state: "exited" }]);
+    expect(migrated.load("legacy-1")?.id).toBe("legacy-1");
+  });
+
+  it("does not migrate when an explicit dir is passed (custom deployments must opt in)", () => {
+    // Seed legacy dir.
+    const legacyStore = new SessionStore(legacyDir);
+    legacyStore.saveSync(makeSession("legacy-1"));
+
+    // Caller passes a custom dir — we must respect it and leave it pristine.
+    const customDir = mkdtempSync(join(tmpdir(), "ss-custom-"));
+    try {
+      const custom = new SessionStore(customDir);
+      expect(custom.load("legacy-1")).toBeNull();
+    } finally {
+      rmSync(customDir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not overwrite an existing session in the new dir", () => {
+    // If the user already has data in ~/.companion/sessions from a prior run
+    // of the new code, do not let the legacy /tmp contents stomp on it.
+    const newDir = join(homeDir, ".companion", "sessions");
+    const seed = new SessionStore(newDir);
+    seed.saveSync(makeSession("legacy-1", { state: { ...makeSession("legacy-1").state, cwd: "/from-new-dir" } }));
+
+    const legacyStore = new SessionStore(legacyDir);
+    legacyStore.saveSync(makeSession("legacy-1", { state: { ...makeSession("legacy-1").state, cwd: "/from-legacy" } }));
+
+    const migrated = new SessionStore();
+    expect(migrated.load("legacy-1")?.state.cwd).toBe("/from-new-dir");
+  });
+
+  it("is a no-op when the legacy directory does not exist", () => {
+    // Most fresh installs will hit this path.
+    expect(() => new SessionStore()).not.toThrow();
+  });
+});

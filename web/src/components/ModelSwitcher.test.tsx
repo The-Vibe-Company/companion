@@ -8,6 +8,19 @@ vi.mock("../ws.js", () => ({
   sendToSession: (...args: unknown[]) => mockSendToSession(...args),
 }));
 
+// Mock api so the per-session dynamic-models fetch doesn't hit the network in
+// jsdom. Default: returns [] (= "no proxy / probe failed", component falls back
+// to the hardcoded picker). Tests that exercise the dynamic path override
+// the resolved value before mount.
+const mockGetSessionModels = vi.fn(
+  async (_sessionId: string) => [] as Array<{ value: string; label: string }>,
+);
+vi.mock("../api.js", () => ({
+  api: {
+    getSessionModels: (sessionId: string) => mockGetSessionModels(sessionId),
+  },
+}));
+
 interface MockStoreState {
   sdkSessions: { sessionId: string; model?: string; backendType?: string; cwd: string }[];
   cliConnected: Map<string, boolean>;
@@ -61,8 +74,10 @@ describe("ModelSwitcher", () => {
     render(<ModelSwitcher sessionId="s1" />);
     fireEvent.click(screen.getByLabelText("Switch model"));
 
-    // All three Claude models should appear as options
-    expect(screen.getByRole("option", { name: /Opus/ })).toBeInTheDocument();
+    // CLAUDE_MODELS has multiple Opus variants (4.7, 4.6, 4.6 (1M)) — use exact
+    // labels so the assertion stays unambiguous as new models are added.
+    expect(screen.getByRole("option", { name: "Opus 4.7" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Opus 4.6" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /Sonnet/ })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /Haiku/ })).toBeInTheDocument();
   });
@@ -71,7 +86,8 @@ describe("ModelSwitcher", () => {
     render(<ModelSwitcher sessionId="s1" />);
     fireEvent.click(screen.getByLabelText("Switch model"));
 
-    const opusOption = screen.getByRole("option", { name: /Opus/ });
+    // Fixture model is claude-opus-4-6 → "Opus 4.6" must be the selected option.
+    const opusOption = screen.getByRole("option", { name: "Opus 4.6" });
     expect(opusOption).toHaveAttribute("aria-selected", "true");
 
     const sonnetOption = screen.getByRole("option", { name: /Sonnet/ });
@@ -102,7 +118,8 @@ describe("ModelSwitcher", () => {
   it("does not send when selecting the already-active model", () => {
     render(<ModelSwitcher sessionId="s1" />);
     fireEvent.click(screen.getByLabelText("Switch model"));
-    fireEvent.click(screen.getByRole("option", { name: /Opus/ }));
+    // Re-click the currently-active option (Opus 4.6 per the fixture).
+    fireEvent.click(screen.getByRole("option", { name: "Opus 4.6" }));
 
     // Same model — no WS message, no store update
     expect(mockSendToSession).not.toHaveBeenCalled();
@@ -182,5 +199,44 @@ describe("ModelSwitcher", () => {
     fireEvent.click(screen.getByLabelText("Switch model"));
     const results = await axe(container);
     expect(results).toHaveNoViolations();
+  });
+
+  // Dynamic picker: when /api/sessions/:id/models returns a non-empty list
+  // (proxy session), the dropdown shows that list instead of CLAUDE_MODELS.
+  // Verifies the fetch is wired to sessionId, the list propagates into the
+  // dropdown, and the hardcoded picker is replaced (not appended).
+  it("uses the dynamic model list returned by /sessions/:id/models when non-empty", async () => {
+    mockGetSessionModels.mockResolvedValueOnce([
+      { value: "proxy-model-a", label: "Proxy Model A" },
+      { value: "proxy-model-b", label: "Proxy Model B" },
+    ]);
+    render(<ModelSwitcher sessionId="s1" />);
+    // Allow the useEffect promise to settle so dynamicModels state lands
+    // before we open the dropdown.
+    await new Promise((r) => setTimeout(r, 0));
+    fireEvent.click(screen.getByLabelText("Switch model"));
+    expect(screen.getByText("Proxy Model A")).toBeInTheDocument();
+    expect(screen.getByText("Proxy Model B")).toBeInTheDocument();
+    // Hardcoded "Sonnet 4.6" is not present — dynamic list replaced the static one.
+    expect(screen.queryByText("Sonnet 4.6")).not.toBeInTheDocument();
+    expect(mockGetSessionModels).toHaveBeenCalledWith("s1");
+  });
+
+  // Failure / empty list: picker must remain functional with the hardcoded list.
+  it("falls back to CLAUDE_MODELS when /sessions/:id/models returns empty", async () => {
+    mockGetSessionModels.mockResolvedValueOnce([]);
+    render(<ModelSwitcher sessionId="s1" />);
+    await new Promise((r) => setTimeout(r, 0));
+    fireEvent.click(screen.getByLabelText("Switch model"));
+    // Hardcoded list is back — Opus/Sonnet labels present.
+    expect(screen.getByText("Sonnet 4.6")).toBeInTheDocument();
+  });
+
+  it("falls back to CLAUDE_MODELS on api fetch error", async () => {
+    mockGetSessionModels.mockRejectedValueOnce(new Error("network"));
+    render(<ModelSwitcher sessionId="s1" />);
+    await new Promise((r) => setTimeout(r, 0));
+    fireEvent.click(screen.getByLabelText("Switch model"));
+    expect(screen.getByText("Sonnet 4.6")).toBeInTheDocument();
   });
 });
