@@ -152,6 +152,46 @@ describe("path traversal protection", () => {
     expect(body.error).toMatch(/outside allowed/i);
   });
 
+  // Regression: /fs/changed-files, /fs/claude-md (GET + PUT), and
+  // /fs/claude-config used to accept ANY cwd/path query without going
+  // through guardPath. That created a policy mismatch with the rest of
+  // fs-routes — `/fs/read?path=/etc/passwd` was rejected, but
+  // `/fs/claude-md?cwd=/etc` was happily processed against `/etc/CLAUDE.md`,
+  // and `PUT /fs/claude-md` would write anywhere ending in `CLAUDE.md`.
+  // These tests pin the unified policy.
+
+  it("rejects /fs/changed-files for cwd outside allowed bases", async () => {
+    const res = await app.request(`/fs/changed-files?cwd=${encodeURIComponent("/etc")}`);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toMatch(/outside allowed/i);
+  });
+
+  it("rejects /fs/claude-md (GET) for cwd outside allowed bases", async () => {
+    const res = await app.request(`/fs/claude-md?cwd=${encodeURIComponent("/etc")}`);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toMatch(/outside allowed/i);
+  });
+
+  it("rejects /fs/claude-config for cwd outside allowed bases", async () => {
+    const res = await app.request(`/fs/claude-config?cwd=${encodeURIComponent("/etc")}`);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toMatch(/outside allowed/i);
+  });
+
+  it("rejects PUT /fs/claude-md for path outside allowed bases", async () => {
+    const res = await app.request("/fs/claude-md", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: "/etc/CLAUDE.md", content: "pwned" }),
+    });
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toMatch(/outside allowed/i);
+  });
+
   it("allows access to files within allowed bases", async () => {
     // Files inside tempDir (our allowed base) should work fine
     const filePath = join(tempDir, "allowed.txt");

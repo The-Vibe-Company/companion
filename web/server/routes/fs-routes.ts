@@ -294,8 +294,11 @@ export function registerFsRoutes(api: Hono, opts?: { allowedBases?: string[] }):
   api.get("/fs/changed-files", (c) => {
     const cwd = c.req.query("cwd");
     if (!cwd) return c.json({ error: "cwd required" }, 400);
+    // Apply the same path guard used by /fs/list, /fs/read, etc. so this
+    // route can't be used as an unsandboxed `git -C <anywhere>` runner.
+    const resolvedCwd = guardPath(cwd, allowedBases());
+    if (!resolvedCwd) return c.json({ error: "Path outside allowed directories" }, 403);
     const base = c.req.query("base"); // "last-commit" | "default-branch" | undefined
-    const resolvedCwd = resolve(cwd);
     try {
       const repoRoot = execSync("git rev-parse --show-toplevel", {
         cwd: resolvedCwd,
@@ -370,7 +373,8 @@ export function registerFsRoutes(api: Hono, opts?: { allowedBases?: string[] }):
   api.get("/fs/claude-md", async (c) => {
     const cwd = c.req.query("cwd");
     if (!cwd) return c.json({ error: "cwd required" }, 400);
-    const resolvedCwd = resolve(cwd);
+    const resolvedCwd = guardPath(cwd, allowedBases());
+    if (!resolvedCwd) return c.json({ error: "Path outside allowed directories" }, 403);
 
     // Find the git repo root so we can search upward from cwd.
     let repoRoot: string | null = null;
@@ -419,7 +423,8 @@ export function registerFsRoutes(api: Hono, opts?: { allowedBases?: string[] }):
   api.get("/fs/claude-config", async (c) => {
     const cwd = c.req.query("cwd");
     if (!cwd) return c.json({ error: "cwd required" }, 400);
-    const resolvedCwd = resolve(cwd);
+    const resolvedCwd = guardPath(cwd, allowedBases());
+    if (!resolvedCwd) return c.json({ error: "Path outside allowed directories" }, 403);
 
     // Find repo root
     let repoRoot: string | null = null;
@@ -587,7 +592,8 @@ export function registerFsRoutes(api: Hono, opts?: { allowedBases?: string[] }):
     if (base !== "CLAUDE.md") {
       return c.json({ error: "Can only write CLAUDE.md files" }, 400);
     }
-    const absPath = resolve(filePath);
+    const absPath = guardPath(filePath, allowedBases());
+    if (!absPath) return c.json({ error: "Path outside allowed directories" }, 403);
     if (!absPath.endsWith("/CLAUDE.md") && !absPath.endsWith("/.claude/CLAUDE.md")) {
       return c.json({ error: "Invalid CLAUDE.md path" }, 400);
     }
