@@ -975,8 +975,8 @@ export class ClaudeAdapter implements IBackendAdapter {
   // is an array of blocks, typically one or more tool_result entries.
   // Browsers ignore this echo for normal tool outcomes (tool state is
   // communicated via tool_progress and tool_use_summary). Non-browser
-  // observers (TG bot) need to know when a tool finished, so emit
-  // tool:result on the bus per tool_result block.
+  // observers need to know when a tool finished, so emit tool:result
+  // on the bus per tool_result block.
   //
   // Exception: the CLI's internal "sensitive file" rejection of Write/Edit
   // returns `{is_error:true, content:"Claude requested permissions to edit

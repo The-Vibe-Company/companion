@@ -2967,7 +2967,7 @@ export class CodexAdapter implements IBackendAdapter {
       timestamp: Date.now(),
     });
     // Mirror the Claude adapter: emit tool:result on the bus so non-browser
-    // observers (TG bot) can react to tool completion without parsing the
+    // observers can react to tool completion without parsing the
     // synthetic assistant message we just emitted to the browser path.
     companionBus.emit("tool:result", {
       sessionId: this.sessionId,

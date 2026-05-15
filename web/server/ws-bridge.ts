@@ -836,9 +836,10 @@ export class WsBridge {
   }
 
   /** Send a user message into a session programmatically (no browser required).
-   *  Used by the cron scheduler, agent executor, and TG bot to send prompts.
-   *  `source` flows through to the message:user bus event so subscribers can
-   *  distinguish "I just sent this myself" from "someone else sent this". */
+   *  Used by the cron scheduler, agent executor, and other out-of-band
+   *  injectors to send prompts. `source` flows through to the message:user
+   *  bus event so subscribers can distinguish "I just sent this myself"
+   *  from "someone else sent this". */
   injectUserMessage(
     sessionId: string,
     content: string,

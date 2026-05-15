@@ -22,7 +22,7 @@
 bunx the-companion
 ```
 
-Open [http://localhost:3456](http://localhost:3456).
+Open [http://localhost:6060](http://localhost:6060).
 
 ### Install globally
 
@@ -36,7 +36,9 @@ the-companion install
 the-companion start
 ```
 
-Open [http://localhost:3456](http://localhost:3456). The server runs in the background and survives reboots.
+Open [http://localhost:6060](http://localhost:6060). The server runs in the background and survives reboots.
+
+In dev mode, Vite serves the UI on the same port and proxies `/api` + `/ws` to the Hono backend on `6061`.
 
 ## CLI commands
 
@@ -52,7 +54,7 @@ Open [http://localhost:3456](http://localhost:3456). The server runs in the back
 | `the-companion status` | Show service status |
 | `the-companion logs` | Tail service log files |
 
-**Options:** `--port <n>` overrides the default port (3456).
+**Options:** `--port <n>` overrides the default port (6060).
 
 ## Why this is useful
 - **Parallel sessions**: work on multiple tasks without juggling terminals.
@@ -69,13 +71,13 @@ Open [http://localhost:3456](http://localhost:3456). The server runs in the back
 ## Architecture (simple)
 ```text
 Browser (React)
-  <-> ws://localhost:3456/ws/browser/:session
+  <-> ws://localhost:6060/ws/browser/:session
 Companion server (Bun + Hono)
-  <-> ws://localhost:3456/ws/cli/:session
-Claude Code / Codex CLI
+  <-> stdio (NDJSON)
+Claude Code / Codex CLI (child process)
 ```
 
-The bridge uses the CLI `--sdk-url` websocket path and NDJSON events.
+The Companion server spawns each Claude Code / Codex CLI as a child process and exchanges NDJSON over its stdin/stdout — the historical `--sdk-url` WebSocket transport for Claude has been replaced by `--print --input-format stream-json --output-format stream-json`. Browsers still talk to the server over WebSocket on `/ws/browser/:session`.
 
 ## Authentication
 
