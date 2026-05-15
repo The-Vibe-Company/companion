@@ -102,13 +102,20 @@ describe("managed-auth middleware", () => {
     expect(res.status).toBe(200);
   });
 
-  it("bypasses auth for /ws/cli/ paths", async () => {
+  // Regression: /ws/cli/* used to be an unauthenticated bypass because Claude
+  // Code connected its CLI WebSocket there. The stdio migration retired that
+  // transport (index.ts only upgrades /ws/browser, /ws/terminal, /ws/novnc
+  // now), so an unauthenticated HTTP request to /ws/cli/anything fell through
+  // to the Hono SPA fallback and served index.html without a token. That's a
+  // stale unauthenticated namespace — close it.
+  it("does NOT bypass auth for /ws/cli/ paths (stale namespace after stdio migration)", async () => {
     process.env.COMPANION_AUTH_ENABLED = "1";
     process.env.COMPANION_AUTH_SECRET = TEST_SECRET;
+    delete process.env.COMPANION_LOGIN_URL;
     const app = createTestApp();
 
     const res = await app.request("/ws/cli/abc-123");
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(401);
   });
 
   it("returns 401 when no token is provided and no login URL is set", async () => {
