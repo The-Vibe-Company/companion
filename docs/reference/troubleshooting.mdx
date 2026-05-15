@@ -23,12 +23,12 @@ which codex
 
 ## Port already in use
 
-**Symptom**: Server fails to start with "address already in use" on port 3456.
+**Symptom**: Server fails to start with "address already in use" on port 6060.
 
 **Fix**: Find what's using the port or choose another:
 
 ```bash
-lsof -i :3456
+lsof -i :6060
 the-companion --port 8080
 ```
 
@@ -182,15 +182,15 @@ Use the REST API to start/stop recording for individual sessions:
 
 ```bash
 # Check recording status
-curl http://localhost:3456/api/sessions/SESSION_ID/recording/status \
+curl http://localhost:6060/api/sessions/SESSION_ID/recording/status \
   -H "Authorization: Bearer YOUR_TOKEN"
 
 # Stop recording
-curl -X POST http://localhost:3456/api/sessions/SESSION_ID/recording/stop \
+curl -X POST http://localhost:6060/api/sessions/SESSION_ID/recording/stop \
   -H "Authorization: Bearer YOUR_TOKEN"
 
 # Start recording
-curl -X POST http://localhost:3456/api/sessions/SESSION_ID/recording/start \
+curl -X POST http://localhost:6060/api/sessions/SESSION_ID/recording/start \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 

@@ -69,7 +69,7 @@ Expose your agent as an HTTP endpoint that external services can call.
 **Calling the webhook:**
 
 ```bash
-curl -X POST https://your-companion:3456/api/agents/pr-reviewer/webhook/YOUR_SECRET \
+curl -X POST https://your-companion:6060/api/agents/pr-reviewer/webhook/YOUR_SECRET \
   -H "Content-Type: application/json" \
   -d '{"input": "Review PR #42 on the main branch"}'
 ```
@@ -119,7 +119,7 @@ Each agent tracks:
 View execution history via the API:
 
 ```bash
-curl http://localhost:3456/api/agents/pr-reviewer/executions \
+curl http://localhost:6060/api/agents/pr-reviewer/executions \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -202,12 +202,12 @@ Imported agents start disabled. Review the agent's prompt, environment variables
 
 ```bash
 # Export
-curl http://localhost:3456/api/agents/pr-reviewer/export \
+curl http://localhost:6060/api/agents/pr-reviewer/export \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -o pr-reviewer.agent.json
 
 # Import
-curl -X POST http://localhost:3456/api/agents/import \
+curl -X POST http://localhost:6060/api/agents/import \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d @pr-reviewer.agent.json

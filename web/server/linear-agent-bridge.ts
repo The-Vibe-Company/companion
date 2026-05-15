@@ -254,7 +254,7 @@ export class LinearAgentBridge {
 
       // 5. Set external URL linking back to Companion
       const settings = getSettings();
-      const baseUrl = settings.publicUrl || "http://localhost:3456";
+      const baseUrl = settings.publicUrl || "http://localhost:6060";
       linearAgent.updateSessionUrls(
         creds,
         linearSessionId,

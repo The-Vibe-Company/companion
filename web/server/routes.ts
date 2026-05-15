@@ -42,7 +42,12 @@ import { verifyToken, getToken, regenerateToken, getAllAddresses } from "./auth-
 import { fetchProxyModelOptions } from "./model-resolver.js";
 import * as envManager from "./env-manager.js";
 import QRCode from "qrcode";
-import { VSCODE_EDITOR_CONTAINER_PORT, NOVNC_CONTAINER_PORT } from "./constants.js";
+import {
+  VSCODE_EDITOR_CONTAINER_PORT,
+  NOVNC_CONTAINER_PORT,
+  DEFAULT_PORT_PROD,
+  DEFAULT_PORT_DEV,
+} from "./constants.js";
 
 const UPDATE_CHECK_STALE_MS = 5 * 60 * 1000;
 const ROUTES_DIR = dirname(fileURLToPath(import.meta.url));
@@ -93,7 +98,7 @@ export function createRoutes(
       return c.json({ error: "unauthorized" }, 401);
     }
 
-    const port = Number(process.env.PORT) || (process.env.NODE_ENV === "production" ? 3456 : 3457);
+    const port = Number(process.env.PORT) || (process.env.NODE_ENV === "production" ? DEFAULT_PORT_PROD : DEFAULT_PORT_DEV);
     const authToken = getToken();
 
     // Build QR codes for each remote address (skip localhost — it auto-auths).
@@ -697,7 +702,7 @@ export function createRoutes(
 
     // Block well-known sensitive service ports to limit SSRF surface area
     const BLOCKED_PORTS = new Set([22, 23, 25, 110, 143, 3306, 5432, 6379, 27017, 11211]);
-    const serverPort = port || (process.env.NODE_ENV === "production" ? 3456 : 3457);
+    const serverPort = port || (process.env.NODE_ENV === "production" ? DEFAULT_PORT_PROD : DEFAULT_PORT_DEV);
     if (portNum === serverPort || BLOCKED_PORTS.has(portNum)) {
       return c.json({ error: "Port not allowed" }, 400);
     }

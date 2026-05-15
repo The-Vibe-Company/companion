@@ -1,5 +1,5 @@
-export const DEFAULT_PORT_DEV = 3457;
-export const DEFAULT_PORT_PROD = 3456;
+export const DEFAULT_PORT_DEV = 6061;
+export const DEFAULT_PORT_PROD = 6060;
 
 // Container port constants — shared between routes.ts and session-creation-service.ts
 export const VSCODE_EDITOR_CONTAINER_PORT = 13337;

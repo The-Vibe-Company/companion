@@ -26,12 +26,12 @@ export default defineConfig({
   ],
   server: {
     host: "0.0.0.0",
-    port: 5174,
+    port: 6060,
     strictPort: false,
     proxy: {
-      "/api": "http://localhost:3457",
+      "/api": "http://localhost:6061",
       "/ws": {
-        target: "ws://localhost:3457",
+        target: "ws://localhost:6061",
         ws: true,
       },
     },

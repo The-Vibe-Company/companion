@@ -5,7 +5,7 @@
  * All output is JSON to stdout for easy parsing by both humans and AI agents.
  */
 
-const DEFAULT_PORT = 3456;
+const DEFAULT_PORT = 6060;
 
 function getPort(argv: string[]): number {
   const idx = argv.indexOf("--port");
@@ -472,7 +472,7 @@ Management commands:
   companion assistant <subcommand>        Manage the Companion Assistant
 
 Global options:
-  --port <n>    Override the Companion API port (default: 3456, or COMPANION_PORT env)
+  --port <n>    Override the Companion API port (default: 6060, or COMPANION_PORT env)
 
 Run 'companion <command>' without subcommand for available subcommands.
 `);

@@ -123,7 +123,7 @@ export function registerLinearAgentWebhookRoute(
 
     // Build redirect URI (must match what was sent in the authorize request)
     const settings = getSettings();
-    const baseUrl = settings.publicUrl || `http://localhost:${process.env.PORT || 3456}`;
+    const baseUrl = settings.publicUrl || `http://localhost:${process.env.PORT || 6060}`;
     const redirectUri = `${baseUrl}/api/linear/oauth/callback`;
 
     // Determine which credentials to use for token exchange:
@@ -233,7 +233,7 @@ export function registerLinearAgentProtectedRoutes(api: Hono): void {
   // Get OAuth authorize URL for installing the app
   api.get("/linear/oauth/authorize-url", (c) => {
     const settings = getSettings();
-    const baseUrl = settings.publicUrl || `http://localhost:${process.env.PORT || 3456}`;
+    const baseUrl = settings.publicUrl || `http://localhost:${process.env.PORT || 6060}`;
     const redirectUri = `${baseUrl}/api/linear/oauth/callback`;
     const returnTo = c.req.query("returnTo");
     const stagingId = c.req.query("stagingId");

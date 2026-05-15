@@ -147,7 +147,7 @@ describe("generatePlist", () => {
   it("uses the default production port when none specified", () => {
     const plist = service.generatePlist({ binPath: "/usr/local/bin/the-companion" });
     expect(plist).toContain("<key>PORT</key>");
-    expect(plist).toContain("<string>3456</string>");
+    expect(plist).toContain("<string>6060</string>");
   });
 
   it("uses a custom port when specified", () => {
@@ -203,7 +203,7 @@ describe("generateSystemdUnit", () => {
 
   it("uses the default production port when none specified", () => {
     const unit = service.generateSystemdUnit({ binPath: "/usr/local/bin/the-companion" });
-    expect(unit).toContain("Environment=PORT=3456");
+    expect(unit).toContain("Environment=PORT=6060");
   });
 
   it("uses a custom port when specified", () => {
@@ -948,7 +948,7 @@ describe("status", () => {
     expect(result.installed).toBe(true);
     expect(result.running).toBe(true);
     expect(result.pid).toBe(12345);
-    expect(result.port).toBe(3456);
+    expect(result.port).toBe(6060);
   });
 
   it("returns installed: true, running: false when service is loaded but not running", async () => {
@@ -1051,7 +1051,7 @@ describe("status (linux)", () => {
     expect(result.installed).toBe(true);
     expect(result.running).toBe(true);
     expect(result.pid).toBe(54321);
-    expect(result.port).toBe(3456);
+    expect(result.port).toBe(6060);
   });
 
   it("returns installed: true, running: false when service is inactive", async () => {

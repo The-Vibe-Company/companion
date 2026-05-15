@@ -42,7 +42,7 @@ The Companion checks for these on startup. If both are present, the Linear chat 
 In Linear's webhook settings, create a webhook pointing to:
 
 ```
-https://your-companion:3456/api/chat/webhooks/linear
+https://your-companion:6060/api/chat/webhooks/linear
 ```
 
 <Warning>
@@ -161,7 +161,7 @@ After configuring everything:
 1. Check that platforms are detected:
 
 ```bash
-curl http://localhost:3456/api/chat/platforms \
+curl http://localhost:6060/api/chat/platforms \
   -H "Authorization: Bearer YOUR_TOKEN"
 # {"platforms": ["linear"]}
 ```

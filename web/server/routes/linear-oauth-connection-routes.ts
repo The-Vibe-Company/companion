@@ -110,7 +110,7 @@ export function registerLinearOAuthConnectionRoutes(api: Hono): void {
     if (!conn) return c.json({ error: "OAuth connection not found" }, 404);
 
     const settings = getSettings();
-    const baseUrl = settings.publicUrl || `http://localhost:${process.env.PORT || 3456}`;
+    const baseUrl = settings.publicUrl || `http://localhost:${process.env.PORT || 6060}`;
     const redirectUri = `${baseUrl}/api/linear/oauth/callback`;
     const returnTo = c.req.query("returnTo");
     const safeReturnTo = returnTo && /^\/?#\//.test(returnTo) ? returnTo : undefined;

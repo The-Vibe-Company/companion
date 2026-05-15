@@ -8,14 +8,14 @@ set -euo pipefail
 #        ./scripts/dev-start.sh --stop   Stop all dev servers
 #        ./scripts/dev-start.sh --status Check if running
 #
-# Starts both the Bun backend (port 3456) and Vite frontend (port 5174).
+# Starts both the Bun backend (port 6061) and Vite frontend (port 6060).
 # Idempotent: safe to run N times. If servers are healthy, exits instantly.
 # =============================================================================
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 WEB_DIR="$ROOT_DIR/web"
-BACKEND_PORT=3457
-VITE_PORT=5174
+BACKEND_PORT=6061
+VITE_PORT=6060
 BACKEND_PID_FILE="$ROOT_DIR/.dev-backend.pid"
 VITE_PID_FILE="$ROOT_DIR/.dev-vite.pid"
 BACKEND_LOG="$ROOT_DIR/.dev-backend.log"

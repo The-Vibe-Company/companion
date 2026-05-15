@@ -24,7 +24,7 @@ You can combine approaches — for example, deploy on a GCP VM and use Docker se
 
 Regardless of where you deploy, the architecture stays the same:
 
-1. The Companion server runs on the host (port 3456 by default)
+1. The Companion server runs on the host (port 6060 by default)
 2. It spawns Claude Code or Codex CLI processes as child subprocesses
 3. Your browser connects to the server over WebSocket
 4. A reverse proxy or tunnel (like Tailscale) provides secure remote access
@@ -267,7 +267,7 @@ sudo -E tailscale up \
 unset TS_AUTHKEY
 
 # Serve The Companion over HTTPS
-sudo tailscale serve --bg 3456
+sudo tailscale serve --bg 6060
 '"
 ```
 

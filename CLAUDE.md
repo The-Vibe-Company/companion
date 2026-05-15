@@ -10,7 +10,7 @@ It reverse-engineers the undocumented `--sdk-url` WebSocket protocol in the Clau
 ## Development Commands
 
 ```bash
-# Dev server (Hono backend on :3456 + Vite HMR on :5174)
+# Dev server (Vite HMR on :6060 + Hono backend on :6061, Vite proxies /api+/ws to backend)
 cd web && bun install && bun run dev
 
 # Or from repo root
@@ -59,18 +59,18 @@ All UI components used in the message/chat flow **must** be represented in the P
 
 ```
 Browser (React) ←→ WebSocket ←→ Hono Server (Bun) ←→ WebSocket (NDJSON) ←→ Claude Code CLI
-     :5174              /ws/browser/:id        :3456        /ws/cli/:id         (--sdk-url)
+     :6060              /ws/browser/:id        :6060        /ws/cli/:id         (--sdk-url)
 ```
 
 1. Browser sends a "create session" REST call to the server
-2. Server spawns `claude --sdk-url ws://localhost:3456/ws/cli/SESSION_ID` as a subprocess
+2. Server spawns `claude --sdk-url ws://localhost:6060/ws/cli/SESSION_ID` as a subprocess
 3. CLI connects back to the server over WebSocket using NDJSON protocol
 4. Server bridges messages between CLI WebSocket and browser WebSocket
 5. Tool calls arrive as `control_request` (subtype `can_use_tool`) — browser renders approval UI, server relays `control_response` back
 
 ### All code lives under `web/`
 
-- **`web/server/`** — Hono + Bun backend (runs on port 3456)
+- **`web/server/`** — Hono + Bun backend (runs on port 6060 in prod, 6061 in dev)
   - `index.ts` — Server bootstrap, Bun.serve with dual WebSocket upgrade (CLI vs browser)
   - `ws-bridge.ts` — Core message router. Maintains per-session state (CLI socket, browser sockets, message history, pending permissions). Parses NDJSON from CLI, translates to typed JSON for browsers.
   - `cli-launcher.ts` — Spawns/kills/relaunches Claude Code CLI processes. Handles `--resume` for session recovery. Persists session state across server restarts.
@@ -189,12 +189,12 @@ gh pr edit --body-file /tmp/pr_body.md
 ## Cursor Cloud specific instructions
 
 ### Services
-- **Hono backend** (port 3457 in dev): `cd web && bun run dev:api` or via `./scripts/dev-start.sh`
-- **Vite frontend** (port 5174 in dev): `cd web && bun run dev:vite` or via `./scripts/dev-start.sh`
+- **Hono backend** (port 6061 in dev): `cd web && bun run dev:api` or via `./scripts/dev-start.sh`
+- **Vite frontend** (port 6060 in dev): `cd web && bun run dev:vite` or via `./scripts/dev-start.sh`
 - Both start together with `cd web && bun run dev` (or `make dev`), but that runs in foreground. Use `./scripts/dev-start.sh` for background mode.
 
 ### Caveats
-- `./scripts/dev-start.sh` health-checks the backend on `/` which returns 404. If the script times out, the backend is still running — verify with `curl http://localhost:3457/api/sessions`. You can start the servers manually as background processes instead.
+- `./scripts/dev-start.sh` health-checks the backend on `/` which returns 404. If the script times out, the backend is still running — verify with `curl http://localhost:6061/api/sessions`. You can start the servers manually as background processes instead.
 - The app requires Claude Code CLI or Codex CLI to create functional sessions. Without them, the UI loads but session creation will fail. The component playground at `#/playground` works without any CLI.
 - No external databases or services are needed. Session state persists to `$TMPDIR/vibe-sessions/` as JSON files.
 - The pre-commit hook (`.husky/pre-commit`) runs `cd web && bun run typecheck && bun run test -- --coverage`. Run these before committing.

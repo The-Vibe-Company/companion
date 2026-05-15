@@ -4686,8 +4686,8 @@ describe("GET /api/sessions/:id/browser/host-proxy/:port/*", () => {
       cwd: "/repo",
     });
 
-    // Default dev port is 3457
-    const res = await app.request("/api/sessions/s1/browser/host-proxy/3457/api/sessions");
+    // Default dev port is 6061
+    const res = await app.request("/api/sessions/s1/browser/host-proxy/6061/api/sessions");
 
     expect(res.status).toBe(400);
     const json = await res.json();

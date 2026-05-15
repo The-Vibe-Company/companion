@@ -104,15 +104,6 @@ if (logFileWriter) {
   console.log(`[server] Log file enabled (dir: ${logFileWriter.getLogsDir()}, max: ${logFileWriter.getMaxLines()} lines, file: ${logFileWriter.filePath})`);
 }
 
-// ── Telegram bot — optional, requires encrypted config + password prompt ────
-import { startTgBot, type TgBotHandle } from "./tg-bot/index.js";
-let tgBotHandle: TgBotHandle | null = null;
-try {
-  tgBotHandle = await startTgBot({ launcher, wsBridge });
-} catch (err) {
-  console.error("[server] TG bot failed to start (server continues):", (err as Error).message);
-}
-
 const app = new Hono();
 
 // ── Health endpoint — always unauthenticated (used by Fly.io + control plane) ─
@@ -317,7 +308,7 @@ console.log();
 console.log(`  Browser WebSocket: ws://localhost:${server.port}/ws/browser/:sessionId`);
 
 if (process.env.NODE_ENV !== "production") {
-  console.log("Dev mode: frontend at http://localhost:5174");
+  console.log(`Dev mode: frontend at http://localhost:${DEFAULT_PORT_PROD}`);
 }
 
 // ── Cron scheduler ──────────────────────────────────────────────────────────
@@ -378,9 +369,6 @@ async function gracefulShutdown() {
   console.log("[server] Persisting container state before shutdown...");
   containerManager.persistState(CONTAINER_STATE_PATH);
   cleanupTailscaleFunnel(port);
-  if (tgBotHandle) {
-    try { await tgBotHandle.stop(); } catch (err) { console.error("[server] TG bot stop error:", err); }
-  }
   closeLogFile();
   process.exit(0);
 }

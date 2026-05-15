@@ -38,7 +38,7 @@ Management commands (requires running server):
   assistant   Manage the Companion Assistant (status, launch, stop, config)
 
 Options:
-  --port <n>  Override the default port (default: 3456)
+  --port <n>  Override the default port (default: 6060)
 `);
 }
 

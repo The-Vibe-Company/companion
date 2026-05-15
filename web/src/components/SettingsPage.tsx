@@ -377,7 +377,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   <p className="mt-1.5 text-[10px] text-cc-muted">
                     {publicUrl
                       ? `Using: ${publicUrl}`
-                      : `Fallback: ${typeof window !== "undefined" ? window.location.origin : "http://localhost:3456"}`}
+                      : `Fallback: ${typeof window !== "undefined" ? window.location.origin : "http://localhost:6060"}`}
                   </p>
                 </div>
                 <button
