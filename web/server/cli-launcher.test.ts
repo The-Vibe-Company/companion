@@ -176,7 +176,7 @@ beforeEach(() => {
   process.env.COMPANION_CODEX_TRANSPORT = "stdio";
   tempDir = mkdtempSync(join(tmpdir(), "launcher-test-"));
   store = new SessionStore(tempDir);
-  launcher = new CliLauncher(3456);
+  launcher = new CliLauncher();
   launcher.setStore(store);
   mockSpawn.mockReturnValue(createMockProc());
   mockListen.mockImplementation(() => ({ stop: vi.fn() }));
@@ -1262,7 +1262,7 @@ describe("persistence", () => {
         return origKill.call(process, pid, signal as any);
       }) as any);
 
-      const newLauncher = new CliLauncher(3456);
+      const newLauncher = new CliLauncher();
       newLauncher.setStore(store);
       const recovered = newLauncher.restoreFromDisk();
 
@@ -1298,7 +1298,7 @@ describe("persistence", () => {
         return true;
       }) as any);
 
-      const newLauncher = new CliLauncher(3456);
+      const newLauncher = new CliLauncher();
       newLauncher.setStore(store);
       const recovered = newLauncher.restoreFromDisk();
 
@@ -1314,13 +1314,13 @@ describe("persistence", () => {
     });
 
     it("returns 0 when no store is set", () => {
-      const newLauncher = new CliLauncher(3456);
+      const newLauncher = new CliLauncher();
       // No setStore call
       expect(newLauncher.restoreFromDisk()).toBe(0);
     });
 
     it("returns 0 when store has no launcher data", () => {
-      const newLauncher = new CliLauncher(3456);
+      const newLauncher = new CliLauncher();
       newLauncher.setStore(store);
       // Store is empty, no launcher.json file
       expect(newLauncher.restoreFromDisk()).toBe(0);
@@ -1345,7 +1345,7 @@ describe("persistence", () => {
 
       mockIsContainerAlive.mockReturnValueOnce("running");
 
-      const newLauncher = new CliLauncher(3456);
+      const newLauncher = new CliLauncher();
       newLauncher.setStore(store);
       const recovered = newLauncher.restoreFromDisk();
 
@@ -1373,7 +1373,7 @@ describe("persistence", () => {
 
       mockIsContainerAlive.mockReturnValueOnce("stopped");
 
-      const newLauncher = new CliLauncher(3456);
+      const newLauncher = new CliLauncher();
       newLauncher.setStore(store);
       const recovered = newLauncher.restoreFromDisk();
 
@@ -1399,7 +1399,7 @@ describe("persistence", () => {
       ];
       store.saveLauncher(savedSessions);
 
-      const newLauncher = new CliLauncher(3456);
+      const newLauncher = new CliLauncher();
       newLauncher.setStore(store);
       const recovered = newLauncher.restoreFromDisk();
 

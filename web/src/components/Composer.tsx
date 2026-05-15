@@ -39,7 +39,6 @@ export function Composer({ sessionId }: { sessionId: string }) {
   const pendingSelectionRef = useRef<number | null>(null);
   const cliConnected = useStore((s) => s.cliConnected);
   const sessionData = useStore((s) => s.sessions.get(sessionId));
-  const sessionMessages = useStore((s) => s.messages.get(sessionId));
   const previousMode = useStore((s) => s.previousPermissionMode.get(sessionId) || "acceptEdits");
 
   // Reset target on session switch — agents in one session don't exist in

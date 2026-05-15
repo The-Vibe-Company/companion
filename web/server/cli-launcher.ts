@@ -329,12 +329,8 @@ export class CliLauncher {
   private claimedCodexWsPorts = new Set<number>();
   /** Runtime-only env vars per session (kept out of persisted launcher state). */
   private sessionEnvs = new Map<string, Record<string, string>>();
-  private port: number;
   private store: SessionStore | null = null;
   private recorder: RecorderManager | null = null;
-  constructor(port: number) {
-    this.port = port;
-  }
 
   /** Attach a persistent store for surviving server restarts. */
   setStore(store: SessionStore): void {

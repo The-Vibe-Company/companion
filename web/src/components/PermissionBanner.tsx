@@ -1,6 +1,4 @@
-import { useState, type ComponentProps } from "react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { useState } from "react";
 import { useStore } from "../store.js";
 import { sendToSession } from "../ws.js";
 import type { PermissionRequest } from "../types.js";

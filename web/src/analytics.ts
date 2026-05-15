@@ -13,8 +13,9 @@ export function getTelemetryPreferenceEnabled(): boolean {
   return false;
 }
 
-export function setTelemetryPreferenceEnabled(enabled: boolean): void {
-  // No-op - analytics is disabled
+export function setTelemetryPreferenceEnabled(_enabled: boolean): void {
+  // No-op — analytics is disabled. We still pin the localStorage flag
+  // to "false" so any code that reads it back gets a consistent answer.
   if (typeof localStorage !== "undefined") {
     localStorage.setItem(TELEMETRY_STORAGE_KEY, "false");
   }
@@ -25,14 +26,14 @@ export function initAnalytics(): boolean {
   return false;
 }
 
-export function captureEvent(event: string, properties?: Record<string, unknown>): void {
-  // No-op - analytics is disabled
+export function captureEvent(_event: string, _properties?: Record<string, unknown>): void {
+  // No-op — analytics is disabled.
 }
 
-export function captureException(error: unknown, properties?: Record<string, unknown>): void {
-  // No-op - analytics is disabled
+export function captureException(_error: unknown, _properties?: Record<string, unknown>): void {
+  // No-op — analytics is disabled.
 }
 
-export function capturePageView(path: string): void {
-  // No-op - analytics is disabled
+export function capturePageView(_path: string): void {
+  // No-op — analytics is disabled.
 }
