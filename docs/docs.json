@@ -32,7 +32,8 @@
       {
         "group": "Deploy",
         "pages": [
-          "deploy/cloud-vm"
+          "deploy/cloud-vm",
+          "deploy/agenthangar-cloud"
         ]
       },
       {

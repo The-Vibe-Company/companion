@@ -1,0 +1,204 @@
+---
+title: AgentHangar Cloud Control Plane
+description: Deploy the beta AgentHangar Cloud control plane and understand the SaaS roadmap boundaries
+---
+
+# AgentHangar Cloud Control Plane
+
+AgentHangar has two deployable surfaces:
+
+| Surface | Path | Purpose |
+|---|---|---|
+| Local/self-hosted app | `web/` | Runs one AgentHangar server on a user's machine or VM |
+| Cloud control plane | `platform/` | Authenticated dashboard that provisions dedicated AgentHangar instances |
+
+The cloud control plane is currently a beta self-hosted admin surface. It can create, list, start, stop, and destroy Hetzner-backed AgentHangar instances, but it is not a complete SaaS billing and access platform yet.
+
+## Current capabilities
+
+The implemented control-plane path is:
+
+1. A user signs in through Better Auth.
+2. The user creates or selects an organization.
+3. The dashboard calls the `platform/server/routes/instances.ts` API.
+4. The provisioner creates a Hetzner Cloud server and volume.
+5. Cloud-init installs Docker and starts `agenthangar-server`.
+6. The control plane stores the instance record in Postgres.
+
+Created instances run the managed image from:
+
+```bash
+docker.io/blocksec/agenthangar-server:latest
+```
+
+The managed instance itself uses:
+
+```bash
+AGENTHANGAR_HOME=/data/agenthangar
+AGENTHANGAR_SESSION_DIR=/data/sessions
+AGENTHANGAR_AUTH_TOKEN=<generated-instance-token>
+```
+
+## Not yet production SaaS
+
+These areas are intentionally still future work:
+
+| Area | Intended role | Current state |
+|---|---|---|
+| Stripe | Subscription, plan, quota, billing status, pause/destroy policy | Routes and tables exist, business logic is still stubbed |
+| Tailscale | Private access to cloud instances without exposing high-privilege agent services directly to the public internet | Routes exist, enable/disable/status logic is still stubbed |
+| Domain automation | Stable HTTPS URLs per instance, DNS, TLS, reverse proxy, and login callback routing | Not automated yet |
+
+For a production SaaS, Stripe should decide who can create instances and at which size; Tailscale or an equivalent private networking layer should be the default secure access path; domain automation should provide stable HTTPS entry points such as:
+
+```text
+https://alice.agenthangar.blocksec.ai
+https://org-123.agenthangar.blocksec.ai
+```
+
+## Required services
+
+Minimum production dependencies:
+
+| Dependency | Required | Purpose |
+|---|---|---|
+| PostgreSQL | Yes | Better Auth state, organizations, instances, subscriptions |
+| Better Auth secret | Yes | Session signing |
+| Hetzner Cloud API token | Yes | VM and volume provisioning |
+| AgentHangar server image | Yes | Runtime image used by each managed instance |
+| Resend | Optional | Email verification, password reset, organization invitations |
+| Stripe | Optional for beta | Future subscription and billing enforcement |
+| Tailscale | Optional for beta | Future private instance access |
+
+## Environment
+
+Start from:
+
+```bash
+cd platform
+cp .env.example .env
+```
+
+Minimum environment:
+
+```bash
+DATABASE_URL=postgresql://user:password@host:5432/agenthangar?sslmode=require
+BETTER_AUTH_SECRET=replace-with-at-least-32-random-characters
+BETTER_AUTH_URL=https://cloud.example.com
+BETTER_AUTH_TRUSTED_ORIGINS=https://cloud.example.com
+AGENTHANGAR_CLOUD_ORIGINS=https://cloud.example.com
+
+HETZNER_API_TOKEN=hcloud_...
+AGENTHANGAR_IMAGE=docker.io/blocksec/agenthangar-server:latest
+AGENTHANGAR_LOGIN_URL=https://cloud.example.com/login
+```
+
+Optional email configuration:
+
+```bash
+RESEND_API_KEY=re_...
+RESEND_FROM_EMAIL="AgentHangar Cloud <noreply@blocksec.ai>"
+```
+
+Optional Hetzner sizing overrides:
+
+```bash
+HETZNER_SERVER_TYPE_STARTER=cpx11
+HETZNER_SERVER_TYPE_PRO=cpx21
+HETZNER_SERVER_TYPE_ENTERPRISE=cpx31
+```
+
+## Build managed images
+
+Publish the base development image:
+
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -f web/docker/Dockerfile.agenthangar \
+  -t docker.io/blocksec/agenthangar:latest \
+  --push web/docker
+```
+
+Publish the managed server image:
+
+```bash
+IMAGE_REPO=docker.io/blocksec/agenthangar-server \
+BASE_IMAGE=docker.io/blocksec/agenthangar:latest \
+./scripts/build-push-agenthangar-server.sh latest
+```
+
+The managed server image is what `platform/` injects into Hetzner cloud-init via `AGENTHANGAR_IMAGE`.
+
+## Local control-plane run
+
+Install dependencies:
+
+```bash
+cd platform
+bun install
+```
+
+Create the database schema:
+
+```bash
+bun run db:migrate
+```
+
+Run the API and frontend:
+
+```bash
+bun run dev
+bun run dev:frontend
+```
+
+Open:
+
+```text
+http://localhost:5175
+```
+
+## Production deployment
+
+The `platform/` directory includes:
+
+- `Dockerfile` for the control-plane app
+- `railway.json` for Railway deployment
+- Drizzle migrations under `platform/server/db/migrations/`
+
+For Railway, deploy with the project root set to `platform/`, configure the environment variables above, and let the start command run:
+
+```bash
+bunx drizzle-kit migrate && bun run dist/server/index.js
+```
+
+For a plain VM, use the same `platform/Dockerfile` or run:
+
+```bash
+cd platform
+bun install --frozen-lockfile
+bun run build
+bunx drizzle-kit migrate
+NODE_ENV=production bun run dist/server/index.js
+```
+
+## Instance access model
+
+The current beta provisioner maps instance port `3456` to VM port `80`:
+
+```text
+http://<server-ip>
+```
+
+This is enough for internal validation, but it should not be the final public SaaS access model. Before external production use, prefer one of:
+
+- private Tailscale access per instance
+- a controlled HTTPS reverse proxy
+- per-instance domain automation with TLS and auth-aware routing
+
+## Operational notes
+
+- Treat `platform/` as beta until billing, access isolation, and domain routing are complete.
+- Do not expose unmanaged high-privilege agent instances directly to the public internet.
+- Keep `AGENTHANGAR_IMAGE` pinned to a tested tag for production; use `latest` only for preview or internal environments.
+- Store Hetzner, Resend, Stripe, and auth secrets in the deployment provider's secret manager.
