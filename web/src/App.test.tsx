@@ -347,6 +347,75 @@ describe("App", () => {
       expect(screen.queryByTestId("onboarding-modal")).not.toBeInTheDocument();
     });
 
+    it("does not force onboarding when saved Claude API key auth is configured", async () => {
+      vi.mocked(api.getSettings).mockResolvedValueOnce({
+        publicUrl: "",
+        onboardingCompleted: false,
+        anthropicApiKeyConfigured: false,
+        anthropicModel: "claude-sonnet-4-6",
+        claudeCodeOAuthTokenConfigured: false,
+        claudeApiKeyConfigured: true,
+        claudeAuthMethod: "apiKey",
+        claudeDeviceAuthConfigured: false,
+        openaiApiKeyConfigured: false,
+        codexDeviceAuthConfigured: false,
+        linearApiKeyConfigured: false,
+        linearConnectionCount: 0,
+        linearAutoTransition: false,
+        linearAutoTransitionStateName: "",
+        linearArchiveTransition: false,
+        linearArchiveTransitionStateName: "",
+        linearOAuthConfigured: false,
+        linearOAuthCredentialsSaved: false,
+        aiValidationEnabled: false,
+        aiValidationAutoApprove: true,
+        aiValidationAutoDeny: false,
+        updateChannel: "stable",
+        dockerAutoUpdate: false,
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(api.getSettings).toHaveBeenCalled();
+      });
+      expect(screen.queryByTestId("onboarding-modal")).not.toBeInTheDocument();
+    });
+
+    it("shows onboarding when the saved Claude auth method is API key but no API key is configured", async () => {
+      vi.mocked(api.getSettings).mockResolvedValueOnce({
+        publicUrl: "",
+        onboardingCompleted: false,
+        anthropicApiKeyConfigured: false,
+        anthropicModel: "claude-sonnet-4-6",
+        claudeCodeOAuthTokenConfigured: false,
+        claudeApiKeyConfigured: false,
+        claudeAuthMethod: "apiKey",
+        claudeDeviceAuthConfigured: true,
+        openaiApiKeyConfigured: false,
+        codexDeviceAuthConfigured: false,
+        linearApiKeyConfigured: false,
+        linearConnectionCount: 0,
+        linearAutoTransition: false,
+        linearAutoTransitionStateName: "",
+        linearArchiveTransition: false,
+        linearArchiveTransitionStateName: "",
+        linearOAuthConfigured: false,
+        linearOAuthCredentialsSaved: false,
+        aiValidationEnabled: false,
+        aiValidationAutoApprove: true,
+        aiValidationAutoDeny: false,
+        updateChannel: "stable",
+        dockerAutoUpdate: false,
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("onboarding-modal")).toBeInTheDocument();
+      });
+    });
+
     it("renders ChatView when a session is active", () => {
       (parseHash as ReturnType<typeof vi.fn>).mockReturnValue({ page: "session", sessionId: "s1" });
       setStoreValues({ currentSessionId: "s1" });

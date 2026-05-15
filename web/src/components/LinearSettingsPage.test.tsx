@@ -108,6 +108,16 @@ beforeEach(() => {
 // =============================================================================
 
 describe("LinearSettingsPage — connection list", () => {
+  it("shows integrations breadcrumb above the Linear settings title", async () => {
+    // Integration detail pages should expose their parent context in the page
+    // header, not only as a low-emphasis action on the right side.
+    render(<LinearSettingsPage />);
+
+    const breadcrumb = await screen.findByLabelText("Breadcrumb");
+    expect(breadcrumb).toHaveTextContent("Integrations>Linear Settings");
+    expect(screen.getByRole("link", { name: "Integrations" })).toHaveAttribute("href", "#/integrations");
+  });
+
   it("loads and displays connections on mount", async () => {
     // Verifies that the connection list is fetched and rendered on mount.
     render(<LinearSettingsPage />);

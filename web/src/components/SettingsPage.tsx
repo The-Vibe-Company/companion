@@ -20,6 +20,34 @@ const CATEGORIES = [
 ] as const;
 
 type CategoryId = (typeof CATEGORIES)[number]["id"];
+type AgentAuthProvider = "claude" | "codex";
+type ClaudeAuthMethod = "local" | "oauth" | "apiKey";
+type CodexAuthMethod = "local" | "apiKey";
+type ProviderVerifyState = {
+  valid: boolean;
+  error?: string;
+  authMethod: ClaudeAuthMethod | CodexAuthMethod;
+  token: string;
+  baseUrl: string;
+};
+
+const SECTION_HEADING_CLASS = "text-lg font-semibold tracking-tight text-cc-fg mb-5";
+const AUTH_METHOD_LABELS: Record<ClaudeAuthMethod | CodexAuthMethod, string> = {
+  local: "Local CLI login",
+  oauth: "OAuth token",
+  apiKey: "API key",
+};
+const AUTH_SELECT_CLASS = "w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg border border-cc-border rounded-lg text-cc-fg focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow";
+
+function isCategoryId(value: string | null): value is CategoryId {
+  return CATEGORIES.some((cat) => cat.id === value);
+}
+
+function getRequestedSettingsSection(hash = window.location.hash): CategoryId | null {
+  const query = hash.split("?")[1] ?? "";
+  const section = new URLSearchParams(query).get("section");
+  return isCategoryId(section) ? section : null;
+}
 
 export function SettingsPage({ embedded = false }: SettingsPageProps) {
   const [anthropicApiKey, setAnthropicApiKey] = useState("");
@@ -51,7 +79,8 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
   const [aiValidationAutoApprove, setAiValidationAutoApprove] = useState(true);
   const [aiValidationAutoDeny, setAiValidationAutoDeny] = useState(false);
   const [publicUrl, setPublicUrl] = useState("");
-  const [activeSection, setActiveSection] = useState<CategoryId>("general");
+  const [savedPublicUrl, setSavedPublicUrl] = useState("");
+  const [activeSection, setActiveSection] = useState<CategoryId>(() => getRequestedSettingsSection() ?? "general");
   const [apiKeyFocused, setApiKeyFocused] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<{ valid: boolean; error?: string } | null>(null);
@@ -59,14 +88,28 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
   // Provider tokens state
   const [claudeCodeToken, setClaudeCodeToken] = useState("");
   const [claudeCodeTokenConfigured, setClaudeCodeTokenConfigured] = useState(false);
+  const [claudeApiKey, setClaudeApiKey] = useState("");
+  const [claudeApiKeyConfigured, setClaudeApiKeyConfigured] = useState(false);
+  const [claudeAuthMethod, setClaudeAuthMethod] = useState<ClaudeAuthMethod>("local");
+  const [savedClaudeAuthMethod, setSavedClaudeAuthMethod] = useState<ClaudeAuthMethod>("local");
   const [claudeDeviceAuthConfigured, setClaudeDeviceAuthConfigured] = useState(false);
+  const [claudeBaseUrl, setClaudeBaseUrl] = useState("");
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [openaiApiKeyConfigured, setOpenaiApiKeyConfigured] = useState(false);
+  const [codexAuthMethod, setCodexAuthMethod] = useState<CodexAuthMethod>("local");
+  const [savedCodexAuthMethod, setSavedCodexAuthMethod] = useState<CodexAuthMethod>("local");
   const [codexDeviceAuthConfigured, setCodexDeviceAuthConfigured] = useState(false);
-  const [providerSaving, setProviderSaving] = useState(false);
-  const [providerSaved, setProviderSaved] = useState(false);
+  const [openaiBaseUrl, setOpenaiBaseUrl] = useState("");
+  const [providerSaving, setProviderSaving] = useState<AgentAuthProvider | null>(null);
+  const [providerSaved, setProviderSaved] = useState<AgentAuthProvider | null>(null);
   const [providerError, setProviderError] = useState("");
+  const [providerVerifying, setProviderVerifying] = useState<AgentAuthProvider | null>(null);
+  const [providerVerifyResults, setProviderVerifyResults] = useState<Record<AgentAuthProvider, ProviderVerifyState | null>>({
+    claude: null,
+    codex: null,
+  });
   const [claudeTokenFocused, setClaudeTokenFocused] = useState(false);
+  const [claudeApiKeyFocused, setClaudeApiKeyFocused] = useState(false);
   const [openaiKeyFocused, setOpenaiKeyFocused] = useState(false);
 
   // Auth section state
@@ -119,10 +162,22 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
   const scrollToSection = useCallback((id: CategoryId) => {
     setActiveSection(id);
     const el = sectionRefs.current[id];
-    if (el) {
+    if (typeof el?.scrollIntoView === "function") {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    const scrollToRequestedSection = () => {
+      const requested = getRequestedSettingsSection();
+      if (requested) scrollToSection(requested);
+    };
+
+    scrollToRequestedSection();
+    window.addEventListener("hashchange", scrollToRequestedSection);
+    return () => window.removeEventListener("hashchange", scrollToRequestedSection);
+  }, [loading, scrollToSection]);
 
   useEffect(() => {
     api
@@ -130,9 +185,19 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
       .then((s) => {
         setConfigured(s.anthropicApiKeyConfigured);
         setClaudeCodeTokenConfigured(s.claudeCodeOAuthTokenConfigured);
+        setClaudeApiKeyConfigured(s.claudeApiKeyConfigured ?? false);
+        const resolvedClaudeAuthMethod = s.claudeAuthMethod
+          ?? (s.claudeCodeOAuthTokenConfigured ? "oauth" : s.claudeApiKeyConfigured ? "apiKey" : "local");
+        setClaudeAuthMethod(resolvedClaudeAuthMethod);
+        setSavedClaudeAuthMethod(resolvedClaudeAuthMethod);
         setClaudeDeviceAuthConfigured(s.claudeDeviceAuthConfigured);
+        setClaudeBaseUrl(s.claudeBaseUrl || "");
         setOpenaiApiKeyConfigured(s.openaiApiKeyConfigured);
+        const resolvedCodexAuthMethod = s.codexAuthMethod ?? (s.openaiApiKeyConfigured ? "apiKey" : "local");
+        setCodexAuthMethod(resolvedCodexAuthMethod);
+        setSavedCodexAuthMethod(resolvedCodexAuthMethod);
         setCodexDeviceAuthConfigured(s.codexDeviceAuthConfigured);
+        setOpenaiBaseUrl(s.openaiBaseUrl || "");
         setAnthropicModel(s.anthropicModel || "claude-sonnet-4-6");
         if (typeof s.aiValidationEnabled === "boolean") setAiValidationEnabled(s.aiValidationEnabled);
         if (typeof s.aiValidationAutoApprove === "boolean") setAiValidationAutoApprove(s.aiValidationAutoApprove);
@@ -141,6 +206,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
         if (typeof s.dockerAutoUpdate === "boolean") setDockerAutoUpdate(s.dockerAutoUpdate);
         if (typeof s.publicUrl === "string") {
           setPublicUrl(s.publicUrl);
+          setSavedPublicUrl(s.publicUrl);
           useStore.getState().setPublicUrl(s.publicUrl);
         }
       })
@@ -237,6 +303,157 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
     sectionRefs.current[id] = el;
   }, []);
 
+  const claudeAuthSource =
+    savedClaudeAuthMethod === "oauth"
+      ? claudeCodeTokenConfigured ? "Using Claude OAuth token" : "No available Claude auth"
+      : savedClaudeAuthMethod === "apiKey"
+        ? claudeApiKeyConfigured ? "Using Claude API key" : "No available Claude auth"
+        : claudeDeviceAuthConfigured ? "Using local Claude login" : "No available Claude auth";
+  const codexAuthSource =
+    savedCodexAuthMethod === "apiKey"
+      ? openaiApiKeyConfigured ? "Using Codex API key" : "No available Codex auth"
+      : codexDeviceAuthConfigured ? "Using local Codex login" : "No available Codex auth";
+  const claudeAuthDetail =
+    claudeAuthMethod === "oauth"
+      ? "After Save, new Claude sessions inject CLAUDE_CODE_OAUTH_TOKEN from AgentHangar. This overrides local Claude CLI login files unless a session environment profile or host process env provides its own auth env."
+      : claudeAuthMethod === "apiKey"
+        ? "After Save, new Claude sessions inject ANTHROPIC_API_KEY and the Claude-compatible Base URL if set. This is used even when local Claude CLI login exists, unless a session environment profile or host process env overrides it."
+        : claudeDeviceAuthConfigured
+          ? "After Save, AgentHangar will not inject Claude credentials. Claude Code will use its own local CLI configuration, which may be OAuth files, API-key env in Claude settings, or other CLI-supported local auth."
+          : "Local Claude Code login was not detected. Use claude login, configure auth env in ~/.claude/settings.json, paste an OAuth token, or save an API key.";
+  const codexAuthDetail =
+    codexAuthMethod === "apiKey"
+      ? "After Save, new Codex sessions inject OPENAI_API_KEY and the OpenAI-compatible Base URL if set. This is used even when local Codex login exists, unless a session environment profile or host process env overrides it."
+      : codexDeviceAuthConfigured
+        ? "After Save, AgentHangar will not inject Codex credentials. Codex will use its own local CLI configuration."
+        : "Local Codex login was not detected. Use codex --login or save an OpenAI-compatible API key.";
+  const normalizedPublicUrl = publicUrl.trim().replace(/\/+$/, "");
+  const publicUrlChanged = normalizedPublicUrl !== savedPublicUrl;
+
+  const providerInput = useCallback((provider: AgentAuthProvider) => {
+    const authMethod = provider === "claude" ? claudeAuthMethod : codexAuthMethod;
+    const token = provider === "claude"
+      ? claudeAuthMethod === "apiKey" ? claudeApiKey.trim() : claudeCodeToken.trim()
+      : openaiApiKey.trim();
+    return {
+      authMethod,
+      token,
+      baseUrl: provider === "claude"
+        ? claudeAuthMethod === "apiKey" ? claudeBaseUrl.trim() : ""
+        : codexAuthMethod === "apiKey" ? openaiBaseUrl.trim() : "",
+    };
+  }, [claudeApiKey, claudeAuthMethod, claudeBaseUrl, claudeCodeToken, codexAuthMethod, openaiApiKey, openaiBaseUrl]);
+
+  const invalidateProviderTest = useCallback((provider: AgentAuthProvider) => {
+    setProviderVerifyResults((prev) => ({ ...prev, [provider]: null }));
+    if (providerSaved === provider) setProviderSaved(null);
+  }, [providerSaved]);
+
+  const providerTestPassed = useCallback((provider: AgentAuthProvider) => {
+    const current = providerInput(provider);
+    const result = providerVerifyResults[provider];
+    return !!result?.valid
+      && result.authMethod === current.authMethod
+      && result.token === current.token
+      && result.baseUrl === current.baseUrl;
+  }, [providerInput, providerVerifyResults]);
+
+  const providerSaveRequired = useCallback((provider: AgentAuthProvider) => {
+    const current = providerInput(provider);
+    const savedAuthMethod = provider === "claude" ? savedClaudeAuthMethod : savedCodexAuthMethod;
+    return !(current.authMethod === "local" && savedAuthMethod === "local");
+  }, [providerInput, savedClaudeAuthMethod, savedCodexAuthMethod]);
+
+  const providerCanSave = useCallback((provider: AgentAuthProvider) => {
+    return providerSaveRequired(provider) && providerTestPassed(provider);
+  }, [providerSaveRequired, providerTestPassed]);
+
+  const providerSaveLabel = useCallback((provider: AgentAuthProvider) => {
+    if (provider === "claude") {
+      if (providerSaving === "claude") return "Saving...";
+      if (!providerSaveRequired("claude") && claudeAuthMethod === "local") return "Using Claude Local Login";
+      return "Save Claude Auth";
+    }
+    if (providerSaving === "codex") return "Saving...";
+    if (!providerSaveRequired("codex") && codexAuthMethod === "local") return "Using Codex Local Login";
+    return "Save Codex Auth";
+  }, [claudeAuthMethod, codexAuthMethod, providerSaveRequired, providerSaving]);
+
+  async function verifyProvider(provider: AgentAuthProvider) {
+    setProviderVerifying(provider);
+    setProviderError("");
+    setProviderVerifyResults((prev) => ({ ...prev, [provider]: null }));
+    const current = providerInput(provider);
+    try {
+      const result = await api.verifyProvider({
+        provider,
+        authMethod: current.authMethod,
+        token: current.token,
+        baseUrl: current.baseUrl,
+      });
+      setProviderVerifyResults((prev) => ({ ...prev, [provider]: { ...result, ...current } }));
+    } catch (err: unknown) {
+      setProviderVerifyResults((prev) => ({
+        ...prev,
+        [provider]: { ...current, valid: false, error: err instanceof Error ? err.message : String(err) },
+      }));
+    } finally {
+      setProviderVerifying(null);
+    }
+  }
+
+  async function saveProviderAuth(provider: AgentAuthProvider) {
+    setProviderSaving(provider);
+    setProviderError("");
+    setProviderSaved(null);
+    try {
+      const payload: {
+        claudeCodeOAuthToken?: string;
+        claudeApiKey?: string;
+        claudeAuthMethod?: ClaudeAuthMethod;
+        claudeBaseUrl?: string;
+        openaiApiKey?: string;
+        codexAuthMethod?: CodexAuthMethod;
+        openaiBaseUrl?: string;
+      } = provider === "claude"
+        ? { claudeAuthMethod }
+        : { codexAuthMethod };
+      if (provider === "claude" && claudeAuthMethod === "apiKey") payload.claudeBaseUrl = claudeBaseUrl.trim();
+      if (provider === "codex" && codexAuthMethod === "apiKey") payload.openaiBaseUrl = openaiBaseUrl.trim();
+      if (provider === "claude" && claudeAuthMethod === "oauth" && claudeCodeToken.trim()) payload.claudeCodeOAuthToken = claudeCodeToken.trim();
+      if (provider === "claude" && claudeAuthMethod === "apiKey" && claudeApiKey.trim()) payload.claudeApiKey = claudeApiKey.trim();
+      if (provider === "codex" && codexAuthMethod === "apiKey" && openaiApiKey.trim()) payload.openaiApiKey = openaiApiKey.trim();
+
+      const res = await api.updateSettings(payload);
+      if (provider === "claude") {
+        setClaudeCodeTokenConfigured(res.claudeCodeOAuthTokenConfigured);
+        setClaudeApiKeyConfigured(res.claudeApiKeyConfigured ?? false);
+        const nextAuthMethod = res.claudeAuthMethod ?? claudeAuthMethod;
+        setClaudeAuthMethod(nextAuthMethod);
+        setSavedClaudeAuthMethod(nextAuthMethod);
+        setClaudeDeviceAuthConfigured(res.claudeDeviceAuthConfigured);
+        setClaudeBaseUrl(res.claudeBaseUrl || "");
+        setClaudeCodeToken("");
+        setClaudeApiKey("");
+      } else {
+        setOpenaiApiKeyConfigured(res.openaiApiKeyConfigured);
+        const nextAuthMethod = res.codexAuthMethod ?? codexAuthMethod;
+        setCodexAuthMethod(nextAuthMethod);
+        setSavedCodexAuthMethod(nextAuthMethod);
+        setCodexDeviceAuthConfigured(res.codexDeviceAuthConfigured);
+        setOpenaiBaseUrl(res.openaiBaseUrl || "");
+        setOpenaiApiKey("");
+      }
+      setProviderVerifyResults((prev) => ({ ...prev, [provider]: null }));
+      setProviderSaved(provider);
+      setTimeout(() => setProviderSaved((current) => current === provider ? null : current), 1800);
+    } catch (err: unknown) {
+      setProviderError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setProviderSaving(null);
+    }
+  }
+
   return (
     <div className={`${embedded ? "h-full" : "h-[100dvh]"} bg-cc-bg text-cc-fg font-sans-ui antialiased flex flex-col`}>
       {/* Header */}
@@ -276,11 +493,12 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
             <button
               key={cat.id}
               type="button"
+              aria-current={activeSection === cat.id ? "page" : undefined}
               onClick={() => scrollToSection(cat.id)}
-              className={`shrink-0 px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+              className={`shrink-0 px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
                 activeSection === cat.id
-                  ? "text-cc-primary bg-cc-primary/8"
-                  : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+                  ? "text-cc-primary bg-cc-primary/8 border-cc-primary/30"
+                  : "text-cc-muted border-transparent hover:text-cc-fg hover:bg-cc-hover hover:border-cc-border"
               }`}
             >
               {cat.label}
@@ -293,18 +511,19 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
       <div className="flex-1 min-h-0 flex max-w-5xl w-full mx-auto">
         {/* Desktop sidebar nav */}
         <nav
-          className="hidden sm:flex flex-col gap-0.5 w-44 shrink-0 pt-2 pr-6 pl-8 sticky top-0 self-start"
+          className="hidden sm:flex flex-col gap-1 w-44 shrink-0 mt-2 mr-6 ml-8 p-1.5 rounded-xl border border-cc-border/80 bg-cc-hover/30 sticky top-2 self-start"
           aria-label="Settings categories"
         >
           {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
               type="button"
+              aria-current={activeSection === cat.id ? "page" : undefined}
               onClick={() => scrollToSection(cat.id)}
-              className={`text-left px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+              className={`text-left px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
                 activeSection === cat.id
-                  ? "text-cc-primary bg-cc-primary/8"
-                  : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+                  ? "text-cc-primary bg-cc-primary/8 border-cc-primary/30"
+                  : "text-cc-muted border-transparent hover:text-cc-fg hover:bg-cc-hover hover:border-cc-border"
               }`}
             >
               {cat.label}
@@ -314,10 +533,10 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
         {/* Scrollable content */}
         <div ref={contentRef} className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-8 sm:pl-0 pb-safe">
-          <div className="space-y-10 py-4 sm:py-2">
+          <div className="divide-y divide-cc-border/80 py-4 sm:py-2 [&>section]:py-8 [&>section:first-child]:pt-0 [&>section:last-child]:pb-12">
             {/* General */}
             <section id="general" ref={setSectionRef("general")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">General</h2>
+              <h2 className={SECTION_HEADING_CLASS}>General</h2>
               <div className="space-y-3">
                 <button
                   type="button"
@@ -380,7 +599,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* Webhooks */}
             <section id="webhooks" ref={setSectionRef("webhooks")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Access URLs</h2>
+              <h2 className={SECTION_HEADING_CLASS}>Access URLs</h2>
               <div className="space-y-4">
                 <p className="text-xs text-cc-muted">
                   The public URL is used for webhook URLs that external services (Linear, GitHub) send events to.
@@ -421,8 +640,9 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     setSaving(true);
                     setError("");
                     try {
-                      const res = await api.updateSettings({ publicUrl: publicUrl.trim() });
+                      const res = await api.updateSettings({ publicUrl: normalizedPublicUrl });
                       setPublicUrl(res.publicUrl);
+                      setSavedPublicUrl(res.publicUrl);
                       useStore.getState().setPublicUrl(res.publicUrl);
                       setSaved(true);
                       setTimeout(() => setSaved(false), 1800);
@@ -432,8 +652,8 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                       setSaving(false);
                     }
                   }}
-                  disabled={saving}
-                  className="px-4 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-cc-primary text-white hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+                  disabled={saving || !publicUrlChanged}
+                  className="px-4 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-cc-primary text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {saving ? "Saving..." : saved ? "Saved!" : "Save Public URL"}
                 </button>
@@ -442,7 +662,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* Authentication */}
             <section id="authentication" ref={setSectionRef("authentication")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Device Login</h2>
+              <h2 className={SECTION_HEADING_CLASS}>Device Login</h2>
               <div className="space-y-4">
                 <p className="text-xs text-cc-muted">
                   Use the auth token or QR code to connect additional devices (e.g. mobile over Tailscale).
@@ -590,64 +810,234 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* Providers */}
             <section id="providers" ref={setSectionRef("providers")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Agent Auth</h2>
+              <h2 className={SECTION_HEADING_CLASS}>Agent Auth</h2>
               <div className="space-y-6">
-                <p className="text-xs text-cc-muted">
-                  Claude Code and Codex can use local CLI login files. Add tokens here only when you want AgentHangar to inject credentials into sessions.
+                <p className="text-sm text-cc-muted leading-relaxed">
+                  AgentHangar uses session environment variables first, then the credentials saved here, then local CLI login files.
+                  Save a token here when you want AgentHangar to inject credentials for new sessions or use a third-party endpoint.
                 </p>
 
-                {/* Claude Code OAuth Token */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium" htmlFor="claude-code-token">
-                    Claude Code OAuth Token
-                  </label>
-                  <p className="text-xs text-cc-muted">
-                    Run <code className="font-mono-code bg-cc-code-bg px-1 py-0.5 rounded text-cc-code-fg">claude setup-token</code> in your terminal, then paste the token here.
-                  </p>
-                  <input
-                    id="claude-code-token"
-                    type="password"
-                    value={claudeCodeTokenConfigured && !claudeTokenFocused && !claudeCodeToken ? "••••••••••••••••" : claudeCodeToken}
-                    onChange={(e) => setClaudeCodeToken(e.target.value)}
-                    onFocus={() => setClaudeTokenFocused(true)}
-                    onBlur={() => setClaudeTokenFocused(false)}
-                    placeholder={claudeCodeTokenConfigured ? "Enter a new token to replace" : "Paste token from claude setup-token"}
-                    className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
-                  />
-                  <p className="text-xs text-cc-muted">
-                    {claudeCodeTokenConfigured
-                      ? "Claude Code token configured"
-                      : claudeDeviceAuthConfigured
-                        ? "Local Claude Code auth detected"
-                        : "Claude Code token not configured"}
-                  </p>
+                <div className="rounded-xl border border-cc-border bg-cc-hover/20 p-4 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-cc-fg">Claude Code</h3>
+                      <p className="mt-1 text-xs text-cc-muted leading-relaxed">{claudeAuthDetail}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${
+                      claudeAuthSource.includes("No available") ? "bg-cc-warning/10 text-cc-warning" : "bg-cc-success/10 text-cc-success"
+                    }`}>
+                      {claudeAuthSource}
+                    </span>
+                  </div>
+                  <div className="grid gap-2">
+                    <label className="block text-sm font-medium" htmlFor="claude-auth-method">Claude auth method</label>
+                    <select
+                      id="claude-auth-method"
+                      value={claudeAuthMethod}
+                      onChange={(e) => { setClaudeAuthMethod(e.target.value as ClaudeAuthMethod); invalidateProviderTest("claude"); }}
+                      className={AUTH_SELECT_CLASS}
+                    >
+                      <option value="local">{AUTH_METHOD_LABELS.local}</option>
+                      <option value="oauth">{AUTH_METHOD_LABELS.oauth}</option>
+                      <option value="apiKey">{AUTH_METHOD_LABELS.apiKey}</option>
+                    </select>
+                    <div className="rounded-lg border border-cc-border bg-cc-bg px-3 py-2 text-xs text-cc-muted leading-relaxed">
+                      <span className="font-medium text-cc-fg">Tip:</span>{" "}
+                      The dropdown opens on the currently saved method. Changing it selects a target method; verify must pass before Save makes that target the saved method. Local CLI login means AgentHangar does not inject Claude credentials. OAuth token and API key modes inject the saved credential for new sessions even if local Claude CLI login is also available. Session environment profiles and host process env vars can still override both.
+                    </div>
+                  </div>
+                  {claudeAuthMethod === "oauth" && (
+                    <div className="grid gap-3">
+                      <label className="block text-sm font-medium" htmlFor="claude-code-token">
+                        Claude Code OAuth Token
+                      </label>
+                      <p className="text-xs text-cc-muted">
+                        Run <code className="font-mono-code bg-cc-code-bg px-1 py-0.5 rounded text-cc-code-fg">claude setup-token</code> in your terminal, then paste the token here. Saved as <code className="font-mono-code">CLAUDE_CODE_OAUTH_TOKEN</code>.
+                      </p>
+                      <input
+                        id="claude-code-token"
+                        type="password"
+                        value={claudeCodeTokenConfigured && !claudeTokenFocused && !claudeCodeToken ? "••••••••••••••••" : claudeCodeToken}
+                        onChange={(e) => { setClaudeCodeToken(e.target.value); invalidateProviderTest("claude"); }}
+                        onFocus={() => setClaudeTokenFocused(true)}
+                        onBlur={() => setClaudeTokenFocused(false)}
+                        placeholder={claudeCodeTokenConfigured ? "Enter a new token to replace" : "Paste token from claude setup-token"}
+                        className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+                      />
+                    </div>
+                  )}
+                  {claudeAuthMethod === "apiKey" && (
+                    <div className="grid gap-3">
+                      <label className="block text-sm font-medium" htmlFor="claude-api-key">
+                        Claude API Key
+                      </label>
+                      <p className="text-xs text-cc-muted">
+                        Used as <code className="font-mono-code">ANTHROPIC_API_KEY</code> for Claude sessions. This is not the same as Claude Code OAuth.
+                      </p>
+                      <input
+                        id="claude-api-key"
+                        type="password"
+                        value={claudeApiKeyConfigured && !claudeApiKeyFocused && !claudeApiKey ? "••••••••••••••••" : claudeApiKey}
+                        onChange={(e) => { setClaudeApiKey(e.target.value); invalidateProviderTest("claude"); }}
+                        onFocus={() => setClaudeApiKeyFocused(true)}
+                        onBlur={() => setClaudeApiKeyFocused(false)}
+                        placeholder={claudeApiKeyConfigured ? "Enter a new API key to replace" : "sk-ant-..."}
+                        className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+                      />
+                    </div>
+                  )}
+                  {claudeAuthMethod === "apiKey" && (
+                    <div className="grid gap-2">
+                      <label className="block text-sm font-medium" htmlFor="claude-base-url">Claude-compatible Base URL</label>
+                      <input
+                        id="claude-base-url"
+                        type="url"
+                        value={claudeBaseUrl}
+                        onChange={(e) => { setClaudeBaseUrl(e.target.value); invalidateProviderTest("claude"); }}
+                        placeholder="Default: https://api.anthropic.com"
+                        className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+                      />
+                      <p className="text-xs text-cc-muted">
+                        Saved as <code className="font-mono-code">ANTHROPIC_BASE_URL</code>. Leave blank for the default Anthropic endpoint.
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => verifyProvider("claude")}
+                      disabled={providerVerifying === "claude"}
+                      className="px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-cc-hover hover:bg-cc-active text-cc-fg transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {providerVerifying === "claude" ? "Testing..." : "Test Claude Auth"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => saveProviderAuth("claude")}
+                      disabled={providerSaving === "claude" || !providerCanSave("claude")}
+                      className={`px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
+                        providerSaving === "claude" || !providerCanSave("claude")
+                          ? "bg-cc-hover text-cc-muted cursor-not-allowed"
+                          : "bg-cc-primary hover:bg-cc-primary-hover text-white cursor-pointer"
+                      }`}
+                    >
+                      {providerSaveLabel("claude")}
+                    </button>
+                  </div>
+                  {providerVerifyResults.claude && (
+                    <div className={`px-3 py-2 rounded-lg text-xs ${
+                      providerVerifyResults.claude.valid
+                        ? "bg-cc-success/10 border border-cc-success/20 text-cc-success"
+                        : "bg-cc-error/10 border border-cc-error/20 text-cc-error"
+                    }`}>
+                      {providerVerifyResults.claude.valid ? "Claude auth test passed." : `Claude auth test failed${providerVerifyResults.claude.error ? `: ${providerVerifyResults.claude.error}` : "."}`}
+                    </div>
+                  )}
+                  {providerSaved === "claude" && (
+                    <div className="px-3 py-2 rounded-lg bg-cc-success/10 border border-cc-success/20 text-xs text-cc-success">
+                      Claude auth saved.
+                    </div>
+                  )}
                 </div>
 
-                {/* OpenAI API Key (Codex) */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium" htmlFor="openai-api-key">
-                    OpenAI API Key (Codex)
-                  </label>
-                  <p className="text-xs text-cc-muted">
-                    Used to authenticate Codex sessions. You can also use <code className="font-mono-code bg-cc-code-bg px-1 py-0.5 rounded text-cc-code-fg">codex --login</code> for device-based auth.
-                  </p>
-                  <input
-                    id="openai-api-key"
-                    type="password"
-                    value={openaiApiKeyConfigured && !openaiKeyFocused && !openaiApiKey ? "••••••••••••••••" : openaiApiKey}
-                    onChange={(e) => setOpenaiApiKey(e.target.value)}
-                    onFocus={() => setOpenaiKeyFocused(true)}
-                    onBlur={() => setOpenaiKeyFocused(false)}
-                    placeholder={openaiApiKeyConfigured ? "Enter a new key to replace" : "sk-..."}
-                    className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
-                  />
-                  <p className="text-xs text-cc-muted">
-                    {openaiApiKeyConfigured
-                      ? "OpenAI key configured"
-                      : codexDeviceAuthConfigured
-                        ? "Local Codex auth detected"
-                        : "OpenAI key not configured"}
-                  </p>
+                <div className="rounded-xl border border-cc-border bg-cc-hover/20 p-4 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-cc-fg">Codex / OpenAI</h3>
+                      <p className="mt-1 text-xs text-cc-muted leading-relaxed">{codexAuthDetail}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${
+                      codexAuthSource.includes("No available") ? "bg-cc-warning/10 text-cc-warning" : "bg-cc-success/10 text-cc-success"
+                    }`}>
+                      {codexAuthSource}
+                    </span>
+                  </div>
+                  <div className="grid gap-2">
+                    <label className="block text-sm font-medium" htmlFor="codex-auth-method">Codex auth method</label>
+                    <select
+                      id="codex-auth-method"
+                      value={codexAuthMethod}
+                      onChange={(e) => { setCodexAuthMethod(e.target.value as CodexAuthMethod); invalidateProviderTest("codex"); }}
+                      className={AUTH_SELECT_CLASS}
+                    >
+                      <option value="local">{AUTH_METHOD_LABELS.local}</option>
+                      <option value="apiKey">{AUTH_METHOD_LABELS.apiKey}</option>
+                    </select>
+                    <div className="rounded-lg border border-cc-border bg-cc-bg px-3 py-2 text-xs text-cc-muted leading-relaxed">
+                      <span className="font-medium text-cc-fg">Tip:</span>{" "}
+                      The dropdown opens on the currently saved method. Changing it selects a target method; verify must pass before Save makes that target the saved method. Local CLI login means AgentHangar does not inject Codex credentials. API key mode injects the saved credential for new sessions even if local Codex login is also available. Session environment profiles and host process env vars can still override both.
+                    </div>
+                  </div>
+                  {codexAuthMethod === "apiKey" && (
+                    <div className="grid gap-3">
+                    <label className="block text-sm font-medium" htmlFor="openai-api-key">OpenAI API Key</label>
+                    <p className="text-xs text-cc-muted">
+                      Used as <code className="font-mono-code">OPENAI_API_KEY</code> for Codex sessions. This is not the same as Codex local OAuth login.
+                    </p>
+                    <input
+                      id="openai-api-key"
+                      type="password"
+                      value={openaiApiKeyConfigured && !openaiKeyFocused && !openaiApiKey ? "••••••••••••••••" : openaiApiKey}
+                      onChange={(e) => { setOpenaiApiKey(e.target.value); invalidateProviderTest("codex"); }}
+                      onFocus={() => setOpenaiKeyFocused(true)}
+                      onBlur={() => setOpenaiKeyFocused(false)}
+                      placeholder={openaiApiKeyConfigured ? "Enter a new key to replace" : "sk-..."}
+                      className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+                    />
+                    </div>
+                  )}
+                  {codexAuthMethod === "apiKey" && (
+                    <div className="grid gap-2">
+                      <label className="block text-sm font-medium" htmlFor="openai-base-url">OpenAI-compatible Base URL</label>
+                      <input
+                        id="openai-base-url"
+                        type="url"
+                        value={openaiBaseUrl}
+                        onChange={(e) => { setOpenaiBaseUrl(e.target.value); invalidateProviderTest("codex"); }}
+                        placeholder="Default: https://api.openai.com/v1"
+                        className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+                      />
+                      <p className="text-xs text-cc-muted">
+                        Saved as <code className="font-mono-code">OPENAI_BASE_URL</code>. Leave blank for the default OpenAI endpoint.
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => verifyProvider("codex")}
+                      disabled={providerVerifying === "codex"}
+                      className="px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-cc-hover hover:bg-cc-active text-cc-fg transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {providerVerifying === "codex" ? "Testing..." : "Test Codex Auth"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => saveProviderAuth("codex")}
+                      disabled={providerSaving === "codex" || !providerCanSave("codex")}
+                      className={`px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
+                        providerSaving === "codex" || !providerCanSave("codex")
+                          ? "bg-cc-hover text-cc-muted cursor-not-allowed"
+                          : "bg-cc-primary hover:bg-cc-primary-hover text-white cursor-pointer"
+                      }`}
+                    >
+                      {providerSaveLabel("codex")}
+                    </button>
+                  </div>
+                  {providerVerifyResults.codex && (
+                    <div className={`px-3 py-2 rounded-lg text-xs ${
+                      providerVerifyResults.codex.valid
+                        ? "bg-cc-success/10 border border-cc-success/20 text-cc-success"
+                        : "bg-cc-error/10 border border-cc-error/20 text-cc-error"
+                    }`}>
+                      {providerVerifyResults.codex.valid ? "Codex auth test passed." : `Codex auth test failed${providerVerifyResults.codex.error ? `: ${providerVerifyResults.codex.error}` : "."}`}
+                    </div>
+                  )}
+                  {providerSaved === "codex" && (
+                    <div className="px-3 py-2 rounded-lg bg-cc-success/10 border border-cc-success/20 text-xs text-cc-success">
+                      Codex auth saved.
+                    </div>
+                  )}
                 </div>
 
                 {providerError && (
@@ -656,52 +1046,12 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   </div>
                 )}
 
-                {providerSaved && (
-                  <div className="px-3 py-2 rounded-lg bg-cc-success/10 border border-cc-success/20 text-xs text-cc-success">
-                    Provider settings saved.
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  disabled={providerSaving || (!claudeCodeToken.trim() && !openaiApiKey.trim())}
-                  onClick={async () => {
-                    setProviderSaving(true);
-                    setProviderError("");
-                    setProviderSaved(false);
-                    try {
-                      const payload: { claudeCodeOAuthToken?: string; openaiApiKey?: string } = {};
-                      if (claudeCodeToken.trim()) payload.claudeCodeOAuthToken = claudeCodeToken.trim();
-                      if (openaiApiKey.trim()) payload.openaiApiKey = openaiApiKey.trim();
-                      const res = await api.updateSettings(payload);
-                      setClaudeCodeTokenConfigured(res.claudeCodeOAuthTokenConfigured);
-                      setClaudeDeviceAuthConfigured(res.claudeDeviceAuthConfigured);
-                      setOpenaiApiKeyConfigured(res.openaiApiKeyConfigured);
-                      setCodexDeviceAuthConfigured(res.codexDeviceAuthConfigured);
-                      setClaudeCodeToken("");
-                      setOpenaiApiKey("");
-                      setProviderSaved(true);
-                      setTimeout(() => setProviderSaved(false), 1800);
-                    } catch (err: unknown) {
-                      setProviderError(err instanceof Error ? err.message : String(err));
-                    } finally {
-                      setProviderSaving(false);
-                    }
-                  }}
-                  className={`px-4 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
-                    providerSaving || (!claudeCodeToken.trim() && !openaiApiKey.trim())
-                      ? "bg-cc-hover text-cc-muted cursor-not-allowed"
-                      : "bg-cc-primary hover:bg-cc-primary-hover text-white cursor-pointer"
-                  }`}
-                >
-                  {providerSaving ? "Saving..." : "Save Provider Settings"}
-                </button>
               </div>
             </section>
 
             {/* Anthropic */}
             <section id="anthropic" ref={setSectionRef("anthropic")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Automation AI</h2>
+              <h2 className={SECTION_HEADING_CLASS}>Automation AI</h2>
               <form onSubmit={onSave} className="space-y-4">
                 <p className="text-xs text-cc-muted">
                   This key is for AgentHangar features such as session naming and AI validation. It is separate from Claude Code login.
@@ -809,7 +1159,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* AI Validation */}
             <section id="ai-validation" ref={setSectionRef("ai-validation")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Safety</h2>
+              <h2 className={SECTION_HEADING_CLASS}>Safety</h2>
               <div className="space-y-3">
                 <p className="text-xs text-cc-muted leading-relaxed">
                   When enabled, an AI model evaluates tool calls before they execute.
@@ -875,7 +1225,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* Environments */}
             <section id="environments" ref={setSectionRef("environments")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Runtime</h2>
+              <h2 className={SECTION_HEADING_CLASS}>Runtime</h2>
               <div className="space-y-3">
                 <p className="text-xs text-cc-muted">
                   Environment profiles provide reusable variables when launching sessions.
@@ -894,14 +1244,20 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* Updates */}
             <section id="updates" ref={setSectionRef("updates")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Updates</h2>
+              <h2 className={SECTION_HEADING_CLASS}>Updates</h2>
               <div className="space-y-3">
                 {updateInfo ? (
-                  <p className="text-xs text-cc-muted">
-                    Current version: v{updateInfo.currentVersion}
-                    {updateInfo.latestVersion ? ` • Latest: v${updateInfo.latestVersion}` : ""}
-                    {updateInfo.channel === "prerelease" ? " (prerelease)" : ""}
-                  </p>
+                  <div className="space-y-1 text-xs text-cc-muted">
+                    <p>
+                      Local build version: v{updateInfo.currentVersion}
+                      {updateInfo.channel === "prerelease" ? " (prerelease)" : ""}
+                    </p>
+                    <p>
+                      {updateInfo.latestVersion
+                        ? `Release source: npm agenthangar ${updateInfo.channel === "prerelease" ? "next" : "latest"} • Latest: v${updateInfo.latestVersion}`
+                        : "Release source not configured."}
+                    </p>
+                  </div>
                 ) : (
                   <p className="text-xs text-cc-muted">Version information not loaded yet.</p>
                 )}
@@ -1053,14 +1409,17 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* Telemetry */}
             <section id="telemetry" ref={setSectionRef("telemetry")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Privacy</h2>
+              <h2 className={SECTION_HEADING_CLASS}>Privacy</h2>
               <div className="space-y-3">
-                <div className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg">
+                <div
+                  aria-disabled="true"
+                  className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover/40 text-cc-muted opacity-70"
+                >
                   <span>External telemetry</span>
                   <span className="text-xs text-cc-muted">Disabled</span>
                 </div>
                 <p className="text-xs text-cc-muted">
-                  Analytics is compiled as a no-op in this build. No PostHog host or telemetry URL is configured.
+                  Telemetry is not included in this build.
                 </p>
               </div>
             </section>

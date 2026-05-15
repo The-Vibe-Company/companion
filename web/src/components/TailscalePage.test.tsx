@@ -68,7 +68,9 @@ describe("TailscalePage", () => {
 
     render(<TailscalePage embedded />);
 
-    expect(await screen.findByText("Tailscale Settings")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Tailscale Settings" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Breadcrumb")).toHaveTextContent("Integrations>Tailscale Settings");
+    expect(screen.getByRole("link", { name: "Integrations" })).toHaveAttribute("href", "#/integrations");
     expect(screen.getByText("HTTPS access in one click")).toBeInTheDocument();
     expect(screen.getByText("Tailscale Funnel")).toBeInTheDocument();
   });
@@ -588,8 +590,8 @@ describe("TailscalePage", () => {
     expect(results).toHaveNoViolations();
   });
 
-  // Navigation: Integrations button navigates back to integrations hub
-  it("Integrations button navigates to integrations page", async () => {
+  // Navigation: breadcrumb returns to the integrations hub.
+  it("Integrations breadcrumb links to integrations page", async () => {
     mockApi.getTailscaleStatus.mockResolvedValue({
       installed: true,
       binaryPath: "/usr/bin/tailscale",
@@ -602,13 +604,8 @@ describe("TailscalePage", () => {
 
     render(<TailscalePage embedded />);
 
-    await screen.findByText("Tailscale Settings");
+    await screen.findByRole("heading", { level: 1, name: "Tailscale Settings" });
 
-    const integrationsBtn = screen.getByRole("button", { name: "Integrations" });
-    integrationsBtn.click();
-
-    await waitFor(() => {
-      expect(window.location.hash).toBe("#/integrations");
-    });
+    expect(screen.getByRole("link", { name: "Integrations" })).toHaveAttribute("href", "#/integrations");
   });
 });

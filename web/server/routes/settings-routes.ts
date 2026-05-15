@@ -1,9 +1,23 @@
 import type { Hono } from "hono";
-import { DEFAULT_ANTHROPIC_MODEL, getSettings, updateSettings, type UpdateChannel } from "../settings-manager.js";
+import { DEFAULT_ANTHROPIC_MODEL, getSettings, updateSettings, type ClaudeAuthMethod, type CodexAuthMethod, type UpdateChannel } from "../settings-manager.js";
 import { linearCache } from "../linear-cache.js";
 import { listConnections } from "../linear-connections.js";
 import { hasContainerClaudeAuth } from "../claude-container-auth.js";
 import { hasContainerCodexAuth } from "../codex-container-auth.js";
+import { verifyLocalCliAuth } from "../provider-local-auth.js";
+
+function normalizeBaseUrl(value: string): string {
+  return value.trim().replace(/\/+$/, "");
+}
+
+function isHttpUrl(value: string): boolean {
+  return value === "" || /^https?:\/\/.+/.test(value);
+}
+
+function modelsUrl(baseUrl: string): string {
+  const cleanBase = baseUrl.replace(/\/+$/, "");
+  return cleanBase.endsWith("/v1") ? `${cleanBase}/models` : `${cleanBase}/v1/models`;
+}
 
 export function registerSettingsRoutes(api: Hono): void {
   api.get("/settings", (c) => {
@@ -13,8 +27,13 @@ export function registerSettingsRoutes(api: Hono): void {
       anthropicApiKeyConfigured: !!settings.anthropicApiKey.trim(),
       anthropicModel: settings.anthropicModel || DEFAULT_ANTHROPIC_MODEL,
       claudeCodeOAuthTokenConfigured: !!settings.claudeCodeOAuthToken.trim(),
+      claudeApiKeyConfigured: !!(settings.claudeApiKey ?? "").trim(),
+      claudeAuthMethod: settings.claudeAuthMethod ?? "local",
+      claudeBaseUrl: settings.claudeBaseUrl,
       claudeDeviceAuthConfigured: hasContainerClaudeAuth(),
       openaiApiKeyConfigured: !!settings.openaiApiKey.trim(),
+      codexAuthMethod: settings.codexAuthMethod ?? "local",
+      openaiBaseUrl: settings.openaiBaseUrl,
       codexDeviceAuthConfigured: hasContainerCodexAuth(),
       onboardingCompleted: settings.onboardingCompleted,
       linearApiKeyConfigured: !!settings.linearApiKey.trim() || connections.length > 0,
@@ -96,8 +115,42 @@ export function registerSettingsRoutes(api: Hono): void {
     if (body.claudeCodeOAuthToken !== undefined && typeof body.claudeCodeOAuthToken !== "string") {
       return c.json({ error: "claudeCodeOAuthToken must be a string" }, 400);
     }
+    if (body.claudeApiKey !== undefined && typeof body.claudeApiKey !== "string") {
+      return c.json({ error: "claudeApiKey must be a string" }, 400);
+    }
+    if (
+      body.claudeAuthMethod !== undefined
+      && body.claudeAuthMethod !== "local"
+      && body.claudeAuthMethod !== "oauth"
+      && body.claudeAuthMethod !== "apiKey"
+    ) {
+      return c.json({ error: "claudeAuthMethod must be 'local', 'oauth', or 'apiKey'" }, 400);
+    }
+    if (body.claudeBaseUrl !== undefined) {
+      if (typeof body.claudeBaseUrl !== "string") {
+        return c.json({ error: "claudeBaseUrl must be a string" }, 400);
+      }
+      if (!isHttpUrl(normalizeBaseUrl(body.claudeBaseUrl))) {
+        return c.json({ error: "claudeBaseUrl must be a valid http/https URL" }, 400);
+      }
+    }
     if (body.openaiApiKey !== undefined && typeof body.openaiApiKey !== "string") {
       return c.json({ error: "openaiApiKey must be a string" }, 400);
+    }
+    if (
+      body.codexAuthMethod !== undefined
+      && body.codexAuthMethod !== "local"
+      && body.codexAuthMethod !== "apiKey"
+    ) {
+      return c.json({ error: "codexAuthMethod must be 'local' or 'apiKey'" }, 400);
+    }
+    if (body.openaiBaseUrl !== undefined) {
+      if (typeof body.openaiBaseUrl !== "string") {
+        return c.json({ error: "openaiBaseUrl must be a string" }, 400);
+      }
+      if (!isHttpUrl(normalizeBaseUrl(body.openaiBaseUrl))) {
+        return c.json({ error: "openaiBaseUrl must be a valid http/https URL" }, 400);
+      }
     }
     if (body.onboardingCompleted !== undefined && typeof body.onboardingCompleted !== "boolean") {
       return c.json({ error: "onboardingCompleted must be a boolean" }, 400);
@@ -106,7 +159,9 @@ export function registerSettingsRoutes(api: Hono): void {
       return c.json({ error: "dockerAutoUpdate must be a boolean" }, 400);
     }
     const hasAnyField = body.anthropicApiKey !== undefined || body.anthropicModel !== undefined
-      || body.claudeCodeOAuthToken !== undefined || body.openaiApiKey !== undefined
+      || body.claudeCodeOAuthToken !== undefined || body.claudeApiKey !== undefined
+      || body.claudeAuthMethod !== undefined || body.claudeBaseUrl !== undefined
+      || body.openaiApiKey !== undefined || body.codexAuthMethod !== undefined || body.openaiBaseUrl !== undefined
       || body.onboardingCompleted !== undefined
       || body.linearApiKey !== undefined || body.linearAutoTransition !== undefined
       || body.linearAutoTransitionStateId !== undefined || body.linearAutoTransitionStateName !== undefined
@@ -140,9 +195,29 @@ export function registerSettingsRoutes(api: Hono): void {
         typeof body.claudeCodeOAuthToken === "string"
           ? body.claudeCodeOAuthToken.trim()
           : undefined,
+      claudeApiKey:
+        typeof body.claudeApiKey === "string"
+          ? body.claudeApiKey.trim()
+          : undefined,
+      claudeAuthMethod:
+        body.claudeAuthMethod === "local" || body.claudeAuthMethod === "oauth" || body.claudeAuthMethod === "apiKey"
+          ? (body.claudeAuthMethod as ClaudeAuthMethod)
+          : undefined,
+      claudeBaseUrl:
+        typeof body.claudeBaseUrl === "string"
+          ? normalizeBaseUrl(body.claudeBaseUrl)
+          : undefined,
       openaiApiKey:
         typeof body.openaiApiKey === "string"
           ? body.openaiApiKey.trim()
+          : undefined,
+      codexAuthMethod:
+        body.codexAuthMethod === "local" || body.codexAuthMethod === "apiKey"
+          ? (body.codexAuthMethod as CodexAuthMethod)
+          : undefined,
+      openaiBaseUrl:
+        typeof body.openaiBaseUrl === "string"
+          ? normalizeBaseUrl(body.openaiBaseUrl)
           : undefined,
       onboardingCompleted:
         typeof body.onboardingCompleted === "boolean"
@@ -219,8 +294,13 @@ export function registerSettingsRoutes(api: Hono): void {
       anthropicApiKeyConfigured: !!settings.anthropicApiKey.trim(),
       anthropicModel: settings.anthropicModel || DEFAULT_ANTHROPIC_MODEL,
       claudeCodeOAuthTokenConfigured: !!settings.claudeCodeOAuthToken.trim(),
+      claudeApiKeyConfigured: !!(settings.claudeApiKey ?? "").trim(),
+      claudeAuthMethod: settings.claudeAuthMethod ?? "local",
+      claudeBaseUrl: settings.claudeBaseUrl,
       claudeDeviceAuthConfigured: hasContainerClaudeAuth(),
       openaiApiKeyConfigured: !!settings.openaiApiKey.trim(),
+      codexAuthMethod: settings.codexAuthMethod ?? "local",
+      openaiBaseUrl: settings.openaiBaseUrl,
       codexDeviceAuthConfigured: hasContainerCodexAuth(),
       onboardingCompleted: settings.onboardingCompleted,
       linearApiKeyConfigured: !!settings.linearApiKey.trim() || connectionsAfterUpdate.length > 0,
@@ -262,6 +342,75 @@ export function registerSettingsRoutes(api: Hono): void {
       if (res.ok) {
         return c.json({ valid: true });
       }
+      return c.json({ valid: false, error: `API returned ${res.status}` });
+    } catch (err) {
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      return c.json({ valid: false, error: isAbort ? "Request timed out" : "Request failed" });
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+
+  api.post("/settings/providers/verify", async (c) => {
+    const body = await c.req.json().catch(() => ({} as { provider?: string; authMethod?: string; token?: string; baseUrl?: string }));
+    const provider = body.provider === "claude" || body.provider === "codex" ? body.provider : "";
+    if (!provider) {
+      return c.json({ valid: false, error: "provider must be 'claude' or 'codex'" }, 400);
+    }
+    const authMethod = provider === "claude"
+      ? (body.authMethod === "apiKey" || body.authMethod === "oauth" || body.authMethod === "local" ? body.authMethod : getSettings().claudeAuthMethod ?? "local")
+      : (body.authMethod === "apiKey" || body.authMethod === "local" ? body.authMethod : getSettings().codexAuthMethod ?? "local");
+
+    if (authMethod === "local") {
+      return c.json(await verifyLocalCliAuth(provider));
+    }
+
+    const current = getSettings();
+    const token = typeof body.token === "string" && body.token.trim()
+      ? body.token.trim()
+      : provider === "claude"
+        ? authMethod === "apiKey"
+          ? (current.claudeApiKey ?? "").trim()
+          : current.claudeCodeOAuthToken.trim()
+        : current.openaiApiKey.trim();
+    if (!token) {
+      return c.json({ valid: false, error: "Provider token is required" }, 400);
+    }
+
+    const hasBaseUrl = Object.prototype.hasOwnProperty.call(body, "baseUrl");
+    const suppliedBaseUrl = typeof body.baseUrl === "string" ? normalizeBaseUrl(body.baseUrl) : "";
+    if (!isHttpUrl(suppliedBaseUrl)) {
+      return c.json({ valid: false, error: "baseUrl must be a valid http/https URL" }, 400);
+    }
+    const usesBaseUrl = authMethod === "apiKey";
+    const defaultBaseUrl = provider === "claude" ? "https://api.anthropic.com/v1" : "https://api.openai.com/v1";
+    const baseUrl = !usesBaseUrl
+      ? defaultBaseUrl
+      : hasBaseUrl
+      ? (suppliedBaseUrl || defaultBaseUrl)
+      : (provider === "claude" ? current.claudeBaseUrl : current.openaiBaseUrl)
+      || defaultBaseUrl;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const headers: Record<string, string> =
+        provider === "claude" && authMethod === "apiKey"
+          ? {
+              "x-api-key": token,
+              "anthropic-version": "2023-06-01",
+            }
+          : provider === "claude"
+            ? {
+                Authorization: `Bearer ${token}`,
+                "anthropic-version": "2023-06-01",
+              }
+            : { Authorization: `Bearer ${token}` };
+      const res = await fetch(modelsUrl(baseUrl), {
+        headers,
+        signal: controller.signal,
+      });
+      if (res.ok) return c.json({ valid: true });
       return c.json({ valid: false, error: `API returned ${res.status}` });
     } catch (err) {
       const isAbort = err instanceof Error && err.name === "AbortError";

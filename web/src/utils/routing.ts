@@ -33,29 +33,30 @@ function ensureClipboardFallbackInstalled(): void {
 export function parseHash(hash: string): Route {
   ensureClipboardFallbackInstalled();
 
-  if (hash === "#/settings") return { page: "settings" };
-  if (hash === "#/integrations") return { page: "integrations" };
-  if (hash === "#/integrations/linear") return { page: "integration-linear" };
-  if (hash === "#/integrations/linear-oauth") return { page: "integration-linear-oauth" };
-  if (hash === "#/integrations/tailscale") return { page: "integration-tailscale" };
-  if (hash === "#/prompts") return { page: "prompts" };
-  if (hash === "#/environments") return { page: "environments" };
-  if (hash === "#/sandboxes") return { page: "sandboxes" };
-  // #/scheduled redirects to #/agents (cron absorbed into agents)
-  if (hash === "#/scheduled") return { page: "agents" };
-  if (hash === "#/runs") return { page: "runs" };
-  if (hash === "#/playground") return { page: "playground" };
-  // Strip query params from hash for matching (OAuth callback appends ?oauth_success=true, ?setup=linear)
+  // Strip query params from hash for matching (OAuth callbacks and deep links
+  // append data such as ?oauth_success=true or ?section=providers).
   const hashPath = hash.split("?")[0];
+  if (hashPath === "#/settings") return { page: "settings" };
+  if (hashPath === "#/integrations") return { page: "integrations" };
+  if (hashPath === "#/integrations/linear") return { page: "integration-linear" };
+  if (hashPath === "#/integrations/linear-oauth") return { page: "integration-linear-oauth" };
+  if (hashPath === "#/integrations/tailscale") return { page: "integration-tailscale" };
+  if (hashPath === "#/prompts") return { page: "prompts" };
+  if (hashPath === "#/environments") return { page: "environments" };
+  if (hashPath === "#/sandboxes") return { page: "sandboxes" };
+  // #/scheduled redirects to #/agents (cron absorbed into agents)
+  if (hashPath === "#/scheduled") return { page: "agents" };
+  if (hashPath === "#/runs") return { page: "runs" };
+  if (hashPath === "#/playground") return { page: "playground" };
   if (hashPath === "#/agents") return { page: "agents" };
 
-  if (hash.startsWith(AGENT_PREFIX)) {
-    const agentId = hash.slice(AGENT_PREFIX.length);
+  if (hashPath.startsWith(AGENT_PREFIX)) {
+    const agentId = hashPath.slice(AGENT_PREFIX.length);
     if (agentId) return { page: "agent-detail", agentId };
   }
 
-  if (hash.startsWith(SESSION_PREFIX)) {
-    const sessionId = hash.slice(SESSION_PREFIX.length);
+  if (hashPath.startsWith(SESSION_PREFIX)) {
+    const sessionId = hashPath.slice(SESSION_PREFIX.length);
     if (sessionId) return { page: "session", sessionId };
   }
 

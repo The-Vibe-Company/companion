@@ -24,6 +24,10 @@ describe("parseHash", () => {
     expect(parseHash("#/settings")).toEqual({ page: "settings" });
   });
 
+  it("parses settings route with section query", () => {
+    expect(parseHash("#/settings?section=providers")).toEqual({ page: "settings" });
+  });
+
   it("parses integrations route", () => {
     expect(parseHash("#/integrations")).toEqual({ page: "integrations" });
   });

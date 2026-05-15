@@ -37,8 +37,18 @@ describe("hasContainerClaudeAuth", () => {
     expect(hasContainerClaudeAuth()).toBe(true);
   });
 
+  it("returns true when user Claude settings provide auth env vars", () => {
+    const claudeDir = join(tempHome, ".claude");
+    mkdirSync(claudeDir, { recursive: true });
+    writeFileSync(
+      join(claudeDir, "settings.json"),
+      JSON.stringify({ env: { ANTHROPIC_API_KEY: "sk-ant-from-settings" } }),
+    );
+
+    expect(hasContainerClaudeAuth()).toBe(true);
+  });
+
   it("returns false when neither env nor auth files are present", () => {
     expect(hasContainerClaudeAuth()).toBe(false);
   });
 });
-

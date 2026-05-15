@@ -8,18 +8,18 @@ export function PublicUrlBanner({ publicUrl }: { publicUrl: string }) {
   if (publicUrl || dismissed) return null;
 
   return (
-    <div className="mb-4 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-start justify-between gap-3" role="alert">
+    <div className="mb-4 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/55 border border-amber-300 dark:border-amber-700/70 text-amber-950 dark:text-amber-100 text-xs flex items-start justify-between gap-3" role="alert">
       <div>
         <strong>No public URL configured.</strong>{" "}
         Webhook URLs currently use your browser address, which external services like Linear may not be able to reach.{" "}
-        <a href="#/settings" className="underline hover:text-amber-300">Set your public URL in Settings</a>.
+        <a href="#/settings" className="font-medium underline underline-offset-2 text-amber-900 hover:text-amber-700 dark:text-amber-100 dark:hover:text-amber-50">Set your public URL in Settings</a>.
       </div>
       <button
         onClick={() => {
           localStorage.setItem(DISMISS_KEY, "1");
           setDismissed(true);
         }}
-        className="text-amber-400 hover:text-amber-200 transition-colors cursor-pointer flex-shrink-0"
+        className="text-amber-800 hover:text-amber-950 dark:text-amber-200 dark:hover:text-amber-50 transition-colors cursor-pointer flex-shrink-0"
         aria-label="Dismiss public URL banner"
       >
         <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">

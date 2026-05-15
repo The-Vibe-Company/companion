@@ -127,6 +127,8 @@ describe("LinearOAuthSettingsPage", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1, name: "Linear OAuth Apps" })).toBeInTheDocument();
     });
+    expect(screen.getByLabelText("Breadcrumb")).toHaveTextContent("Integrations>Linear OAuth Apps");
+    expect(screen.getByRole("link", { name: "Integrations" })).toHaveAttribute("href", "#/integrations");
     expect(
       screen.getByText("Manage OAuth app connections for Linear agent integrations."),
     ).toBeInTheDocument();
@@ -491,16 +493,14 @@ describe("LinearOAuthSettingsPage", () => {
 
   // ─── Navigation ───────────────────────────────────────────────────────────
 
-  it("renders Integrations button that navigates to integrations page", async () => {
+  it("renders Integrations breadcrumb link", async () => {
     render(<LinearOAuthSettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Integrations")).toBeInTheDocument();
+      expect(screen.getByLabelText("Breadcrumb")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Integrations"));
-
-    expect(window.location.hash).toBe("#/integrations");
+    expect(screen.getByRole("link", { name: "Integrations" })).toHaveAttribute("href", "#/integrations");
   });
 
   it("renders Back button when not embedded and navigates home when no session", async () => {

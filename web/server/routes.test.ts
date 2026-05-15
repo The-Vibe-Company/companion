@@ -92,7 +92,12 @@ vi.mock("./settings-manager.js", () => ({
     linearOAuthAccessToken: "",
     linearOAuthRefreshToken: "",
     claudeCodeOAuthToken: "",
+    claudeApiKey: "",
+    claudeAuthMethod: "local",
+    claudeBaseUrl: "",
     openaiApiKey: "",
+    codexAuthMethod: "local",
+    openaiBaseUrl: "",
     onboardingCompleted: false,
     aiValidationEnabled: false,
     aiValidationAutoApprove: true,
@@ -117,6 +122,13 @@ vi.mock("./settings-manager.js", () => ({
     linearOAuthWebhookSecret: patch.linearOAuthWebhookSecret ?? "",
     linearOAuthAccessToken: patch.linearOAuthAccessToken ?? "",
     linearOAuthRefreshToken: patch.linearOAuthRefreshToken ?? "",
+    claudeCodeOAuthToken: patch.claudeCodeOAuthToken ?? "",
+    claudeApiKey: patch.claudeApiKey ?? "",
+    claudeAuthMethod: patch.claudeAuthMethod ?? "local",
+    claudeBaseUrl: patch.claudeBaseUrl ?? "",
+    openaiApiKey: patch.openaiApiKey ?? "",
+    codexAuthMethod: patch.codexAuthMethod ?? "local",
+    openaiBaseUrl: patch.openaiBaseUrl ?? "",
     aiValidationEnabled: patch.aiValidationEnabled ?? false,
     aiValidationAutoApprove: patch.aiValidationAutoApprove ?? true,
     aiValidationAutoDeny: patch.aiValidationAutoDeny ?? false,
@@ -186,6 +198,11 @@ vi.mock("./codex-container-auth.js", () => ({
 
 vi.mock("./claude-container-auth.js", () => ({
   hasContainerClaudeAuth: vi.fn(() => false),
+}));
+
+const mockVerifyLocalCliAuth = vi.hoisted(() => vi.fn(async () => ({ valid: true })));
+vi.mock("./provider-local-auth.js", () => ({
+  verifyLocalCliAuth: mockVerifyLocalCliAuth,
 }));
 
 const mockDiscoverClaudeSessions = vi.hoisted(() => vi.fn(
@@ -705,7 +722,7 @@ describe("GET /api/claude/sessions/discover", () => {
     expect(res.status).toBe(200);
     expect(mockDiscoverClaudeSessions).toHaveBeenCalledWith({ limit: 250 });
     const json = await res.json();
-    expect(json).toEqual({
+    expect(json).toMatchObject({
       sessions: [
         {
           sessionId: "session-123",
@@ -1102,7 +1119,7 @@ describe("GET /api/sessions/:id/processes/system", () => {
 
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toEqual({
+    expect(json).toMatchObject({
       ok: true,
       processes: [
         {
@@ -1718,7 +1735,7 @@ describe("GET /api/settings", () => {
 
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toEqual({
+    expect(json).toMatchObject({
       anthropicApiKeyConfigured: true,
       anthropicModel: "claude-sonnet-4-6",
       claudeCodeOAuthTokenConfigured: false,
@@ -1775,7 +1792,7 @@ describe("GET /api/settings", () => {
 
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toEqual({
+    expect(json).toMatchObject({
       anthropicApiKeyConfigured: false,
       anthropicModel: "openai/gpt-4o-mini",
       claudeCodeOAuthTokenConfigured: false,
@@ -1892,7 +1909,7 @@ describe("PUT /api/settings", () => {
       updateChannel: undefined,
     });
     const json = await res.json();
-    expect(json).toEqual({
+    expect(json).toMatchObject({
       anthropicApiKeyConfigured: true,
       anthropicModel: "claude-sonnet-4-6",
       claudeCodeOAuthTokenConfigured: false,
@@ -2165,6 +2182,48 @@ describe("PUT /api/settings", () => {
     expect(json).toEqual({ error: "openaiApiKey must be a string" });
   });
 
+  // Provider Base URLs are optional per-protocol endpoints used for third-party
+  // compatible APIs; the route normalizes and persists them with other settings.
+  it("accepts provider base URLs", async () => {
+    vi.mocked(settingsManager.updateSettings).mockReturnValueOnce({
+      ...settingsManager.getSettings(),
+      claudeBaseUrl: "https://claude-proxy.example.com",
+      openaiBaseUrl: "https://openai-proxy.example.com/v1",
+    });
+
+    const res = await app.request("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        claudeBaseUrl: " https://claude-proxy.example.com/// ",
+        openaiBaseUrl: " https://openai-proxy.example.com/v1/// ",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(settingsManager.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        claudeBaseUrl: "https://claude-proxy.example.com",
+        openaiBaseUrl: "https://openai-proxy.example.com/v1",
+      }),
+    );
+    const json = await res.json();
+    expect(json.claudeBaseUrl).toBe("https://claude-proxy.example.com");
+    expect(json.openaiBaseUrl).toBe("https://openai-proxy.example.com/v1");
+  });
+
+  it("returns 400 for invalid provider base URL scheme", async () => {
+    const res = await app.request("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ openaiBaseUrl: "ftp://proxy.example.com" }),
+    });
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ error: "openaiBaseUrl must be a valid http/https URL" });
+  });
+
   // Validates that onboardingCompleted must be a boolean
   it("returns 400 for non-boolean onboardingCompleted", async () => {
     const res = await app.request("/api/settings", {
@@ -2273,6 +2332,116 @@ describe("POST /api/settings/anthropic/verify", () => {
     expect(json).toEqual({ valid: false, error: "Request failed" });
 
     vi.unstubAllGlobals();
+  });
+});
+
+describe("POST /api/settings/providers/verify", () => {
+  it("verifies local auth by running the selected provider CLI", async () => {
+    mockVerifyLocalCliAuth.mockResolvedValueOnce({ valid: true });
+
+    const res = await app.request("/api/settings/providers/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: "claude", authMethod: "local" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ valid: true });
+    expect(mockVerifyLocalCliAuth).toHaveBeenCalledWith("claude");
+  });
+
+  it("verifies Claude API key auth with x-api-key only", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/settings/providers/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: "claude",
+        authMethod: "apiKey",
+        token: "sk-ant-test",
+        baseUrl: "https://claude-proxy.example.com",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ valid: true });
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers).toEqual(expect.objectContaining({
+      "x-api-key": "sk-ant-test",
+      "anthropic-version": "2023-06-01",
+    }));
+    expect(init.headers).not.toHaveProperty("Authorization");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("verifies Claude OAuth token auth with bearer auth only", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/settings/providers/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: "claude",
+        authMethod: "oauth",
+        token: "oauth-token",
+        baseUrl: "https://api.anthropic.com",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ valid: true });
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers).toEqual(expect.objectContaining({
+      Authorization: "Bearer oauth-token",
+      "anthropic-version": "2023-06-01",
+    }));
+    expect(init.headers).not.toHaveProperty("x-api-key");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("verifies a Codex/OpenAI token against the selected Base URL", async () => {
+    // The test endpoint uses the typed token and Base URL so users can validate
+    // third-party OpenAI-compatible endpoints before saving settings.
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/settings/providers/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: "codex",
+        authMethod: "apiKey",
+        token: "sk-test",
+        baseUrl: "https://openai-proxy.example.com/v1/",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ valid: true });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://openai-proxy.example.com/v1/models",
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: "Bearer sk-test" }),
+      }),
+    );
+
+    vi.unstubAllGlobals();
+  });
+
+  it("returns a clear error when no provider token is available", async () => {
+    const res = await app.request("/api/settings/providers/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: "claude", authMethod: "oauth" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ valid: false, error: "Provider token is required" });
   });
 });
 

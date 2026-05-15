@@ -428,8 +428,13 @@ export interface AppSettings {
   anthropicApiKeyConfigured: boolean;
   anthropicModel: string;
   claudeCodeOAuthTokenConfigured: boolean;
+  claudeApiKeyConfigured?: boolean;
+  claudeAuthMethod?: "local" | "oauth" | "apiKey";
+  claudeBaseUrl?: string;
   claudeDeviceAuthConfigured: boolean;
   openaiApiKeyConfigured: boolean;
+  codexAuthMethod?: "local" | "apiKey";
+  openaiBaseUrl?: string;
   codexDeviceAuthConfigured: boolean;
   onboardingCompleted: boolean;
   linearApiKeyConfigured: boolean;
@@ -997,7 +1002,12 @@ export const api = {
     anthropicApiKey?: string;
     anthropicModel?: string;
     claudeCodeOAuthToken?: string;
+    claudeApiKey?: string;
+    claudeAuthMethod?: "local" | "oauth" | "apiKey";
+    claudeBaseUrl?: string;
     openaiApiKey?: string;
+    codexAuthMethod?: "local" | "apiKey";
+    openaiBaseUrl?: string;
     onboardingCompleted?: boolean;
     linearApiKey?: string;
     linearAutoTransition?: boolean;
@@ -1015,6 +1025,8 @@ export const api = {
   }) => put<AppSettings>("/settings", data),
   verifyAnthropicKey: (apiKey: string) =>
     post<{ valid: boolean; error?: string }>("/settings/anthropic/verify", { apiKey }),
+  verifyProvider: (data: { provider: "claude" | "codex"; authMethod?: "local" | "oauth" | "apiKey"; token?: string; baseUrl?: string }) =>
+    post<{ valid: boolean; error?: string }>("/settings/providers/verify", data),
 
   // Tailscale
   getTailscaleStatus: () => get<TailscaleStatus>("/tailscale/status"),

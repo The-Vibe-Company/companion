@@ -18,6 +18,7 @@ import { generateUniqueSessionName } from "../utils/names.js";
 import { getRecentDirs, addRecentDir } from "../utils/recent-dirs.js";
 import { navigateToSession } from "../utils/routing.js";
 import { getModelsForBackend, getModesForBackend, getDefaultModel, getDefaultMode, toModelOptions, type ModelOption } from "../utils/backends.js";
+import { hasUsableClaudeAuth, hasUsableCodexAuth, hasUsableProviderAuth } from "../utils/provider-auth.js";
 import type { BackendType } from "../types.js";
 import { EnvManager } from "./EnvManager.js";
 import { FolderPicker } from "./FolderPicker.js";
@@ -53,6 +54,7 @@ type SessionLaunchOverride = {
 const RECENT_SESSIONS_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 const INITIAL_VISIBLE_SESSION_ROWS = 12;
 const LOAD_MORE_SESSION_ROWS = 24;
+const AGENT_AUTH_SETTINGS_HREF = "#/settings?section=providers";
 
 function getResumeCandidateProject(cwd: string): string {
   return cwd.split("/").filter(Boolean).pop() || cwd;
@@ -96,6 +98,11 @@ export function HomePage() {
     (localStorage.getItem("cc-backend") as BackendType) || "claude",
   );
   const [backends, setBackends] = useState<BackendInfo[]>([]);
+  const [providerAuthAvailability, setProviderAuthAvailability] = useState({
+    loaded: false,
+    claude: false,
+    codex: false,
+  });
   const [model, setModel] = useState(() => getDefaultModel(
     (localStorage.getItem("cc-backend") as BackendType) || "claude",
   ));
@@ -113,9 +120,14 @@ export function HomePage() {
   const [showOnboardingTip, setShowOnboardingTip] = useState(
     () => localStorage.getItem("cc-onboarding-dismissed") !== "true",
   );
+  const [authRequiredOpen, setAuthRequiredOpen] = useState(false);
 
   const MODELS = dynamicModels || getModelsForBackend(backend);
   const MODES = getModesForBackend(backend);
+  const hasAnyUsableProviderAuth = !providerAuthAvailability.loaded
+    || providerAuthAvailability.claude
+    || providerAuthAvailability.codex;
+  const authDisabled = providerAuthAvailability.loaded && !hasAnyUsableProviderAuth;
 
   // Environment state
   const [envs, setEnvs] = useState<CompanionEnv[]>([]);
@@ -169,6 +181,7 @@ export function HomePage() {
   const modelDropdownRef = useRef<HTMLDivElement>(null);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
   const envDropdownRef = useRef<HTMLDivElement>(null);
+  const defaultBackendAppliedRef = useRef(false);
 
   const currentSessionId = useStore((s) => s.currentSessionId);
 
@@ -207,11 +220,29 @@ export function HomePage() {
     api.getBackends().then(setBackends).catch(() => {});
     api.getSettings().then((s) => {
       setLinearConfigured(s.linearApiKeyConfigured);
+      setProviderAuthAvailability({
+        loaded: true,
+        claude: hasUsableClaudeAuth(s),
+        codex: hasUsableCodexAuth(s),
+      });
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (defaultBackendAppliedRef.current || !providerAuthAvailability.loaded || backends.length === 0) return;
+    const cliAvailable = new Set(backends.filter((b) => b.available).map((b) => b.id));
+    const canUseClaude = cliAvailable.has("claude") && providerAuthAvailability.claude;
+    const canUseCodex = cliAvailable.has("codex") && providerAuthAvailability.codex;
+    const defaultBackend: BackendType | null = canUseClaude ? "claude" : canUseCodex ? "codex" : null;
+    defaultBackendAppliedRef.current = true;
+    if (defaultBackend && backend !== defaultBackend) {
+      switchBackend(defaultBackend);
+    }
+  }, [backend, backends, providerAuthAvailability]);
+
   // When backend changes, reset model and mode to defaults
   function switchBackend(newBackend: BackendType) {
+    if (authDisabled) return;
     setBackend(newBackend);
     localStorage.setItem("cc-backend", newBackend);
     setDynamicModels(null);
@@ -569,6 +600,10 @@ export function HomePage() {
     }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      if (authDisabled) {
+        setAuthRequiredOpen(true);
+        return;
+      }
       handleSend();
     }
   }
@@ -592,10 +627,18 @@ export function HomePage() {
   async function handleSend() {
     const msg = text.trim();
     if (!msg || sending) return;
+    if (authDisabled) {
+      setAuthRequiredOpen(true);
+      return;
+    }
 
     setSending(true);
     setError("");
     setPullError("");
+
+    if (!(await ensureProviderAuthAvailable())) {
+      return;
+    }
 
     // Branch freshness check: warn if behind remote
     // Only offer pull when the effective branch is the currently checked-out branch,
@@ -618,6 +661,10 @@ export function HomePage() {
     msg: string,
     launchOverride?: SessionLaunchOverride,
   ) {
+    if (!(await ensureProviderAuthAvailable())) {
+      return;
+    }
+
     const store = useStore.getState();
     store.clearCreation();
     store.setSessionCreating(true, backend as "claude" | "codex");
@@ -761,6 +808,41 @@ export function HomePage() {
     }
   }
 
+  async function ensureProviderAuthAvailable(): Promise<boolean> {
+    try {
+      const settings = await api.getSettings();
+      const nextAvailability = {
+        loaded: true,
+        claude: hasUsableClaudeAuth(settings),
+        codex: hasUsableCodexAuth(settings),
+      };
+      setProviderAuthAvailability(nextAvailability);
+
+      if (!hasUsableProviderAuth(settings)) {
+        setAuthRequiredOpen(true);
+        setSending(false);
+        return false;
+      }
+
+      const selectedBackendUsable = backend === "claude" ? nextAvailability.claude : nextAvailability.codex;
+      if (!selectedBackendUsable) {
+        const fallbackBackend = nextAvailability.claude ? "claude" : nextAvailability.codex ? "codex" : null;
+        if (fallbackBackend) {
+          switchBackend(fallbackBackend);
+        }
+        setError(`${backend === "claude" ? "Claude Code" : "Codex"} auth is not available. Select a verified provider or configure auth in Settings.`);
+        setSending(false);
+        return false;
+      }
+
+      return true;
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to check provider auth");
+      setSending(false);
+      return false;
+    }
+  }
+
   async function handleOpenBranchedSession(candidate: ResumeCandidate, shouldFork: boolean) {
     if (sending) return;
     setSending(true);
@@ -844,7 +926,19 @@ export function HomePage() {
     }
   }, [gitRepoInfo]);
 
-  const canSend = text.trim().length > 0 && !sending;
+  const canSend = text.trim().length > 0 && !sending && !authDisabled;
+
+  function getBackendAvailability(info: BackendInfo): { usable: boolean; reason: string } {
+    if (!info.available) return { usable: false, reason: `${info.name} CLI not found in PATH` };
+    if (!providerAuthAvailability.loaded) return { usable: true, reason: info.name };
+    if (info.id === "claude" && !providerAuthAvailability.claude) {
+      return { usable: false, reason: "No verified Claude Code auth configured" };
+    }
+    if (info.id === "codex" && !providerAuthAvailability.codex) {
+      return { usable: false, reason: "No verified Codex auth configured" };
+    }
+    return { usable: true, reason: info.name };
+  }
 
   return (
     <div className="flex-1 h-full flex flex-col items-center px-3 sm:px-6 pb-6 pb-safe overflow-y-auto overscroll-y-contain">
@@ -865,13 +959,28 @@ export function HomePage() {
           type="file"
           accept="image/*"
           multiple
-          onChange={handleFileSelect}
+          onChange={authDisabled ? undefined : handleFileSelect}
+          disabled={authDisabled}
           className="hidden"
           aria-label="Attach images"
         />
 
         {/* Main input card — the hero element */}
-        <div className="relative bg-cc-card border border-cc-border rounded-2xl shadow-sm">
+        <div className={`relative bg-cc-card border rounded-2xl shadow-sm ${authDisabled ? "border-cc-warning/30" : "border-cc-border"}`}>
+          {authDisabled && (
+            <div className="px-4 pt-4">
+              <div className="rounded-lg border border-cc-warning/40 bg-cc-warning/10 px-3 py-2 text-xs text-cc-warning">
+                <span>No verified Claude Code or Codex auth method is configured. </span>
+                <a
+                  href={AGENT_AUTH_SETTINGS_HREF}
+                  className="font-semibold underline underline-offset-2 hover:text-cc-fg focus:outline-none focus:ring-2 focus:ring-cc-warning/40 rounded-sm"
+                >
+                  Configure Agent Auth
+                </a>
+                <span> before creating a session.</span>
+              </div>
+            </div>
+          )}
           <MentionMenu
             open={mention.mentionMenuOpen}
             loading={mention.promptsLoading}
@@ -921,15 +1030,16 @@ export function HomePage() {
           <textarea
             ref={textareaRef}
             value={text}
-            onChange={handleInput}
+            onChange={authDisabled ? undefined : handleInput}
             onKeyDown={handleKeyDown}
             onClick={syncCaret}
             onKeyUp={syncCaret}
             onPaste={handlePaste}
+            disabled={authDisabled}
             aria-label="Task description"
-            placeholder="Fix a bug, build a feature, refactor code..."
+            placeholder={authDisabled ? "Configure Agent Auth before creating a session..." : "Fix a bug, build a feature, refactor code..."}
             rows={3}
-            className="w-full px-4 sm:px-5 pt-4 pb-2 text-[15px] sm:text-sm bg-transparent resize-none focus:outline-none text-cc-fg font-sans-ui placeholder:text-cc-muted/70 overflow-y-auto"
+            className="w-full px-4 sm:px-5 pt-4 pb-2 text-[15px] sm:text-sm bg-transparent resize-none focus:outline-none text-cc-fg font-sans-ui placeholder:text-cc-muted/70 overflow-y-auto disabled:cursor-not-allowed"
             style={{ minHeight: "80px", maxHeight: "200px" }}
           />
 
@@ -938,9 +1048,10 @@ export function HomePage() {
             {/* Model selector */}
             <div className="relative" ref={modelDropdownRef}>
               <button
-                onClick={() => setShowModelDropdown(!showModelDropdown)}
+                onClick={() => !authDisabled && setShowModelDropdown(!showModelDropdown)}
                 aria-expanded={showModelDropdown}
-                className="flex items-center gap-1 px-2 py-1 text-[11px] sm:text-xs text-cc-muted hover:text-cc-fg rounded-lg hover:bg-cc-hover transition-colors cursor-pointer"
+                disabled={authDisabled}
+                className="flex items-center gap-1 px-2 py-1 text-[11px] sm:text-xs text-cc-muted hover:text-cc-fg rounded-lg hover:bg-cc-hover transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
                 <span>{selectedModel.icon}</span>
                 <span>{selectedModel.label}</span>
@@ -969,9 +1080,10 @@ export function HomePage() {
             {/* Mode dropdown */}
             <div className="relative" ref={modeDropdownRef}>
               <button
-                onClick={() => setShowModeDropdown(!showModeDropdown)}
+                onClick={() => !authDisabled && setShowModeDropdown(!showModeDropdown)}
                 aria-expanded={showModeDropdown}
-                className="flex items-center gap-1 px-2 py-1 text-[11px] sm:text-xs text-cc-muted hover:text-cc-fg rounded-lg hover:bg-cc-hover transition-colors cursor-pointer"
+                disabled={authDisabled}
+                className="flex items-center gap-1 px-2 py-1 text-[11px] sm:text-xs text-cc-muted hover:text-cc-fg rounded-lg hover:bg-cc-hover transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
                   <path d="M2 4h12M2 8h8M2 12h10" strokeLinecap="round" />
@@ -1004,8 +1116,9 @@ export function HomePage() {
             {/* Folder selector */}
             <div>
               <button
-                onClick={() => setShowFolderPicker(true)}
-                className="flex items-center gap-1 px-2 py-1 text-[11px] sm:text-xs text-cc-muted hover:text-cc-fg rounded-lg hover:bg-cc-hover transition-colors cursor-pointer"
+                onClick={() => !authDisabled && setShowFolderPicker(true)}
+                disabled={authDisabled}
+                className="flex items-center gap-1 px-2 py-1 text-[11px] sm:text-xs text-cc-muted hover:text-cc-fg rounded-lg hover:bg-cc-hover transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
                 <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
                   <path d="M1 3.5A1.5 1.5 0 012.5 2h3.379a1.5 1.5 0 011.06.44l.622.621a.5.5 0 00.353.146H13.5A1.5 1.5 0 0115 4.707V12.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5v-9z" />
@@ -1028,9 +1141,10 @@ export function HomePage() {
               selectedBranch={selectedBranch}
               isNewBranch={isNewBranch}
               useWorktree={useWorktree}
-              onBranchChange={handleBranchChange}
-              onWorktreeChange={setUseWorktree}
+              onBranchChange={authDisabled ? () => {} : handleBranchChange}
+              onWorktreeChange={authDisabled ? () => {} : setUseWorktree}
               onBranchesLoaded={handleBranchesLoaded}
+              disabled={authDisabled}
             />
 
             {/* Separator dot */}
@@ -1040,13 +1154,15 @@ export function HomePage() {
             <div className="relative" ref={envDropdownRef}>
               <button
                 onClick={() => {
+                  if (authDisabled) return;
                   if (!showEnvDropdown) {
                     api.listEnvs().then(setEnvs).catch(() => {});
                   }
                   setShowEnvDropdown(!showEnvDropdown);
                 }}
                 aria-expanded={showEnvDropdown}
-                className="flex items-center gap-1 px-2 py-1 text-[11px] sm:text-xs text-cc-muted hover:text-cc-fg rounded-lg hover:bg-cc-hover transition-colors cursor-pointer"
+                disabled={authDisabled}
+                className="flex items-center gap-1 px-2 py-1 text-[11px] sm:text-xs text-cc-muted hover:text-cc-fg rounded-lg hover:bg-cc-hover transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
                 <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
                   <path d="M8 1a2 2 0 012 2v1h2a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h2V3a2 2 0 012-2zm0 1.5a.5.5 0 00-.5.5v1h1V3a.5.5 0 00-.5-.5zM4 5.5a.5.5 0 00-.5.5v6a.5.5 0 00.5.5h8a.5.5 0 00.5-.5V6a.5.5 0 00-.5-.5H4z" />
@@ -1106,12 +1222,14 @@ export function HomePage() {
             <div className="relative" ref={sandboxDropdownRef}>
               <button
                 onClick={() => {
+                  if (authDisabled) return;
                   if (!showSandboxDropdown) {
                     api.listSandboxes().then(setSandboxes).catch(() => {});
                   }
                   setShowSandboxDropdown(!showSandboxDropdown);
                 }}
                 aria-expanded={showSandboxDropdown}
+                disabled={authDisabled}
                 className={`flex items-center gap-1 px-2 py-1 text-[11px] sm:text-xs rounded-lg transition-colors cursor-pointer ${
                   sandboxEnabled
                     ? "text-cc-primary bg-cc-primary/8 hover:bg-cc-primary/12"
@@ -1210,8 +1328,9 @@ export function HomePage() {
 
             {/* Image upload */}
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center justify-center w-7 h-7 rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+              onClick={() => !authDisabled && fileInputRef.current?.click()}
+              disabled={authDisabled}
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer disabled:cursor-not-allowed"
               title="Upload image"
             >
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
@@ -1246,29 +1365,32 @@ export function HomePage() {
           {backends.length > 1 && (
             <div className="flex items-center justify-center">
               <div className="flex items-center bg-cc-hover/50 rounded-lg p-0.5">
-                {backends.map((b) => (
-                  <button
-                    key={b.id}
-                    onClick={() => b.available && switchBackend(b.id as BackendType)}
-                    disabled={!b.available}
-                    title={b.available ? b.name : `${b.name} CLI not found in PATH`}
-                    className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-md transition-colors ${
-                      !b.available
-                        ? "text-cc-muted/40 cursor-not-allowed"
-                        : backend === b.id
-                          ? "bg-cc-card text-cc-fg font-medium shadow-sm cursor-pointer"
-                          : "text-cc-muted hover:text-cc-fg cursor-pointer"
-                    }`}
-                  >
-                    {b.name}
-                    {!b.available && (
-                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3 text-cc-error/60">
-                        <circle cx="8" cy="8" r="6" />
-                        <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
+                {backends.map((b) => {
+                  const availability = getBackendAvailability(b);
+                  return (
+                    <button
+                      key={b.id}
+                      onClick={() => availability.usable && switchBackend(b.id as BackendType)}
+                      disabled={!availability.usable}
+                      title={availability.reason}
+                      className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-md transition-colors ${
+                        !availability.usable
+                          ? "text-cc-muted/40 cursor-not-allowed"
+                          : backend === b.id
+                            ? "bg-cc-card text-cc-fg font-medium shadow-sm cursor-pointer"
+                            : "text-cc-muted hover:text-cc-fg cursor-pointer"
+                      }`}
+                    >
+                      {b.name}
+                      {!availability.usable && (
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3 text-cc-error/60">
+                          <circle cx="8" cy="8" r="6" />
+                          <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1609,6 +1731,39 @@ export function HomePage() {
             api.listEnvs().then(setEnvs).catch(() => {});
           }}
         />
+      )}
+      {authRequiredOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="auth-required-title"
+            className="w-full max-w-sm rounded-xl border border-cc-border bg-cc-card p-5 shadow-xl"
+          >
+            <h2 id="auth-required-title" className="text-base font-semibold text-cc-fg">
+              Agent auth required
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-cc-muted">
+              No verified Claude Code or Codex auth method is configured. Verify and save at least one provider before creating a session.
+            </p>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setAuthRequiredOpen(false)}
+                className="px-3 py-2 min-h-[44px] rounded-lg text-sm text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <a
+                href={AGENT_AUTH_SETTINGS_HREF}
+                onClick={() => setAuthRequiredOpen(false)}
+                className="px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-cc-primary text-white hover:bg-cc-primary-hover transition-colors cursor-pointer inline-flex items-center"
+              >
+                Configure Agent Auth
+              </a>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

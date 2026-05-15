@@ -11,6 +11,7 @@ interface BranchPickerProps {
   onWorktreeChange: (useWorktree: boolean) => void;
   /** Expose branches + pull check to parent for session creation */
   onBranchesLoaded: (branches: GitBranchInfo[]) => void;
+  disabled?: boolean;
 }
 
 export function BranchPicker({
@@ -22,6 +23,7 @@ export function BranchPicker({
   onBranchChange,
   onWorktreeChange,
   onBranchesLoaded,
+  disabled = false,
 }: BranchPickerProps) {
   const [branches, setBranches] = useState<GitBranchInfo[]>([]);
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
@@ -64,7 +66,9 @@ export function BranchPicker({
       <div className="relative" ref={branchDropdownRef}>
         <button
           aria-expanded={showBranchDropdown}
+          disabled={disabled}
           onClick={() => {
+            if (disabled) return;
             if (!showBranchDropdown && gitRepoInfo) {
               api.gitFetch(gitRepoInfo.repoRoot)
                 .catch(() => {})
@@ -81,7 +85,7 @@ export function BranchPicker({
             setShowBranchDropdown(!showBranchDropdown);
             setBranchFilter("");
           }}
-          className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors cursor-pointer text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+          className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors cursor-pointer text-cc-muted hover:text-cc-fg hover:bg-cc-hover disabled:cursor-not-allowed"
           title={`Repository: ${cwd}`}
           data-is-new-branch={isNewBranch ? "true" : "false"}
         >
@@ -210,12 +214,15 @@ export function BranchPicker({
 
       {/* Worktree toggle */}
       <button
-        onClick={() => onWorktreeChange(!useWorktree)}
+        onClick={() => {
+          if (!disabled) onWorktreeChange(!useWorktree);
+        }}
+        disabled={disabled}
         className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors cursor-pointer ${
           useWorktree
             ? "bg-cc-primary/15 text-cc-primary font-medium"
             : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
-        }`}
+        } disabled:cursor-not-allowed`}
         title="Create an isolated worktree for this session"
       >
         <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 opacity-70">

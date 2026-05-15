@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type TailscaleStatus } from "../api.js";
 import { navigateHome, navigateToSession } from "../utils/routing.js";
 import { useStore } from "../store.js";
+import { IntegrationBreadcrumb } from "./IntegrationBreadcrumb.js";
 
 interface TailscalePageProps {
   embedded?: boolean;
@@ -98,20 +99,13 @@ export function TailscalePage({ embedded = false }: TailscalePageProps) {
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-6">
           <div>
+            <IntegrationBreadcrumb current="Tailscale Settings" />
             <h1 className="text-xl font-semibold text-cc-fg">Tailscale Settings</h1>
             <p className="mt-1 text-sm text-cc-muted">
               Expose your AgentHangar over HTTPS with Tailscale Funnel.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                window.location.hash = "#/integrations";
-              }}
-              className="px-3 py-2.5 min-h-[44px] rounded-lg text-sm text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
-            >
-              Integrations
-            </button>
             {!embedded && (
               <button
                 onClick={() => {

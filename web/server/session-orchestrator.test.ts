@@ -228,6 +228,37 @@ describe("SessionOrchestrator", () => {
     // previous tests (clearAllMocks resets calls/results but NOT implementations).
     vi.mocked(hasContainerClaudeAuth).mockReturnValue(true);
     vi.mocked(hasContainerCodexAuth).mockReturnValue(true);
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4-6",
+      linearApiKey: "",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+      linearArchiveTransition: false,
+      linearArchiveTransitionStateId: "",
+      linearArchiveTransitionStateName: "",
+      claudeCodeOAuthToken: "",
+      claudeApiKey: "",
+      claudeAuthMethod: "local",
+      claudeBaseUrl: "",
+      openaiApiKey: "",
+      codexAuthMethod: "local",
+      openaiBaseUrl: "",
+      onboardingCompleted: false,
+      linearOAuthClientId: "",
+      linearOAuthClientSecret: "",
+      linearOAuthWebhookSecret: "",
+      linearOAuthAccessToken: "",
+      linearOAuthRefreshToken: "",
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: false,
+      publicUrl: "",
+      updateChannel: "stable",
+      dockerAutoUpdate: false,
+      updatedAt: 0,
+    });
     vi.mocked(containerManager.createContainer).mockReturnValue({
       containerId: "cid-1",
       name: "agenthangar-1",
@@ -514,6 +545,49 @@ describe("SessionOrchestrator", () => {
       }
     });
 
+    it("returns 400 when the selected backend has no usable saved auth", async () => {
+      vi.mocked(settingsManager.getSettings).mockReturnValue({
+        ...settingsManager.getSettings(),
+        claudeAuthMethod: "apiKey",
+        claudeApiKey: "",
+        claudeCodeOAuthToken: "",
+      });
+      vi.mocked(hasContainerClaudeAuth).mockReturnValue(true);
+
+      const result = await orchestrator.createSession({ cwd: "/test", backend: "claude" });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("No usable Claude Code auth");
+        expect(result.status).toBe(400);
+      }
+      expect(deps.launcher.launch).not.toHaveBeenCalled();
+    });
+
+    it("allows session creation when auth is supplied by the selected environment", async () => {
+      vi.mocked(settingsManager.getSettings).mockReturnValue({
+        ...settingsManager.getSettings(),
+        codexAuthMethod: "apiKey",
+        openaiApiKey: "",
+      });
+      vi.mocked(envManager.getEnv).mockReturnValue({
+        name: "OpenAI Env",
+        slug: "openai",
+        variables: { OPENAI_API_KEY: "sk-env" },
+        createdAt: 1000,
+        updatedAt: 1000,
+      });
+
+      const result = await orchestrator.createSession({ cwd: "/test", backend: "codex", envSlug: "openai" });
+
+      expect(result.ok).toBe(true);
+      expect(deps.launcher.launch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          env: expect.objectContaining({ OPENAI_API_KEY: "sk-env" }),
+        }),
+      );
+    });
+
     it("resolves environment variables from envSlug", async () => {
       vi.mocked(envManager.getEnv).mockReturnValue({
         name: "Production",
@@ -541,6 +615,7 @@ describe("SessionOrchestrator", () => {
     it("injects CLAUDE_CODE_OAUTH_TOKEN from global settings for claude backend", async () => {
       vi.mocked(settingsManager.getSettings).mockReturnValue({
         ...settingsManager.getSettings(),
+        claudeAuthMethod: "oauth",
         claudeCodeOAuthToken: "global-oauth-token",
       });
 
@@ -553,11 +628,27 @@ describe("SessionOrchestrator", () => {
       );
     });
 
+    it("injects ANTHROPIC_API_KEY from global settings for Claude API key auth", async () => {
+      vi.mocked(settingsManager.getSettings).mockReturnValue({
+        ...settingsManager.getSettings(),
+        claudeAuthMethod: "apiKey",
+        claudeApiKey: "sk-ant-global",
+        claudeCodeOAuthToken: "oauth-token-that-should-not-be-used",
+      });
+
+      await orchestrator.createSession({ cwd: "/test", backend: "claude" });
+
+      const launchCall = vi.mocked(deps.launcher.launch).mock.calls[0][0];
+      expect(launchCall.env).toEqual(expect.objectContaining({ ANTHROPIC_API_KEY: "sk-ant-global" }));
+      expect(launchCall.env?.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
+    });
+
     // Verifies that OPENAI_API_KEY is injected from global settings
     // when the session backend is "codex" and no key is already set
     it("injects OPENAI_API_KEY from global settings for codex backend", async () => {
       vi.mocked(settingsManager.getSettings).mockReturnValue({
         ...settingsManager.getSettings(),
+        codexAuthMethod: "apiKey",
         openaiApiKey: "sk-global-key",
       });
 
@@ -570,10 +661,72 @@ describe("SessionOrchestrator", () => {
       );
     });
 
+    it("does not inject OPENAI_API_KEY for Codex when local CLI auth is selected", async () => {
+      vi.mocked(settingsManager.getSettings).mockReturnValue({
+        ...settingsManager.getSettings(),
+        codexAuthMethod: "local",
+        openaiApiKey: "sk-global-key",
+      });
+
+      await orchestrator.createSession({ cwd: "/test", backend: "codex" });
+
+      const launchCall = vi.mocked(deps.launcher.launch).mock.calls[0][0];
+      expect(launchCall.env?.OPENAI_API_KEY).toBeUndefined();
+    });
+
+    // Verifies provider Base URLs from global settings are injected into new
+    // sessions, giving third-party compatible endpoints a project-wide default.
+    it("injects provider base URLs from global settings", async () => {
+      vi.mocked(settingsManager.getSettings).mockReturnValue({
+        ...settingsManager.getSettings(),
+        claudeAuthMethod: "apiKey",
+        claudeApiKey: "sk-ant-global",
+        claudeBaseUrl: "https://claude-proxy.example.com",
+        codexAuthMethod: "apiKey",
+        openaiApiKey: "sk-global-key",
+        openaiBaseUrl: "https://openai-proxy.example.com/v1",
+      });
+
+      await orchestrator.createSession({ cwd: "/test", backend: "claude" });
+      await orchestrator.createSession({ cwd: "/test", backend: "codex" });
+
+      expect(deps.launcher.launch).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          env: expect.objectContaining({ ANTHROPIC_BASE_URL: "https://claude-proxy.example.com" }),
+        }),
+      );
+      expect(deps.launcher.launch).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          env: expect.objectContaining({ OPENAI_BASE_URL: "https://openai-proxy.example.com/v1" }),
+        }),
+      );
+    });
+
+    it("does not inject provider base URLs for local or OAuth auth methods", async () => {
+      vi.mocked(settingsManager.getSettings).mockReturnValue({
+        ...settingsManager.getSettings(),
+        claudeAuthMethod: "oauth",
+        claudeCodeOAuthToken: "oauth-token",
+        claudeBaseUrl: "https://claude-proxy.example.com",
+        codexAuthMethod: "local",
+        openaiApiKey: "sk-global-key",
+        openaiBaseUrl: "https://openai-proxy.example.com/v1",
+      });
+
+      await orchestrator.createSession({ cwd: "/test", backend: "claude" });
+      await orchestrator.createSession({ cwd: "/test", backend: "codex" });
+
+      expect(vi.mocked(deps.launcher.launch).mock.calls[0][0].env?.ANTHROPIC_BASE_URL).toBeUndefined();
+      expect(vi.mocked(deps.launcher.launch).mock.calls[1][0].env?.OPENAI_BASE_URL).toBeUndefined();
+    });
+
     // Verifies that env-profile tokens take precedence over global settings
     it("does not overwrite CLAUDE_CODE_OAUTH_TOKEN when already set by env profile", async () => {
       vi.mocked(settingsManager.getSettings).mockReturnValue({
         ...settingsManager.getSettings(),
+        claudeAuthMethod: "oauth",
         claudeCodeOAuthToken: "global-token",
       });
       vi.mocked(envManager.getEnv).mockReturnValue({

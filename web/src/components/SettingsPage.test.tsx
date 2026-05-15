@@ -25,6 +25,7 @@ interface MockStoreState {
     isServiceMode: boolean;
     updateInProgress: boolean;
     lastChecked: number;
+    channel?: "stable" | "prerelease";
   } | null;
   toggleDarkMode: ReturnType<typeof vi.fn>;
   toggleNotificationSound: ReturnType<typeof vi.fn>;
@@ -67,6 +68,7 @@ const mockApi = {
   regenerateAuthToken: vi.fn(),
   getAuthQr: vi.fn(),
   verifyAnthropicKey: vi.fn(),
+  verifyProvider: vi.fn(),
 };
 
 const mockTelemetry = {
@@ -84,6 +86,7 @@ vi.mock("../api.js", () => ({
     regenerateAuthToken: (...args: unknown[]) => mockApi.regenerateAuthToken(...args),
     getAuthQr: (...args: unknown[]) => mockApi.getAuthQr(...args),
     verifyAnthropicKey: (...args: unknown[]) => mockApi.verifyAnthropicKey(...args),
+    verifyProvider: (...args: unknown[]) => mockApi.verifyProvider(...args),
   },
 }));
 
@@ -110,6 +113,15 @@ beforeEach(() => {
     linearApiKeyConfigured: false,
     linearAutoTransition: false,
     linearAutoTransitionStateName: "",
+    claudeCodeOAuthTokenConfigured: false,
+    claudeApiKeyConfigured: false,
+    claudeAuthMethod: "local",
+    claudeBaseUrl: "",
+    claudeDeviceAuthConfigured: true,
+    openaiApiKeyConfigured: false,
+    codexAuthMethod: "local",
+    openaiBaseUrl: "",
+    codexDeviceAuthConfigured: true,
     updateChannel: "stable",
     publicUrl: "",
   });
@@ -121,6 +133,15 @@ beforeEach(() => {
     linearAutoTransitionStateName: "",
     updateChannel: "stable",
     publicUrl: "",
+    claudeCodeOAuthTokenConfigured: false,
+    claudeApiKeyConfigured: false,
+    claudeAuthMethod: "local",
+    claudeBaseUrl: "",
+    claudeDeviceAuthConfigured: true,
+    openaiApiKeyConfigured: false,
+    codexAuthMethod: "local",
+    openaiBaseUrl: "",
+    codexDeviceAuthConfigured: true,
   });
   mockApi.forceCheckForUpdate.mockResolvedValue({
     currentVersion: "0.22.1",
@@ -143,6 +164,7 @@ beforeEach(() => {
       { label: "Tailscale", url: "http://100.118.112.23:3456", qrDataUrl: "data:image/png;base64,TS_QR" },
     ],
   });
+  mockApi.verifyProvider.mockResolvedValue({ valid: true });
   mockTelemetry.getTelemetryPreferenceEnabled.mockReturnValue(true);
 });
 
@@ -347,7 +369,8 @@ describe("SettingsPage", () => {
 
     expect(screen.getByText("External telemetry")).toBeInTheDocument();
     expect(screen.getByText("Disabled")).toBeInTheDocument();
-    expect(screen.getByText("Analytics is compiled as a no-op in this build. No PostHog host or telemetry URL is configured.")).toBeInTheDocument();
+    expect(screen.getByText("Telemetry is not included in this build.")).toBeInTheDocument();
+    expect(screen.getByText("External telemetry").closest("div")).toHaveAttribute("aria-disabled", "true");
     expect(mockTelemetry.setTelemetryPreferenceEnabled).not.toHaveBeenCalled();
   });
 
@@ -402,6 +425,26 @@ describe("SettingsPage", () => {
     expect(await screen.findByText("Update v0.23.0 is available.")).toBeInTheDocument();
   });
 
+  it("labels the current update version as a local build when no release source is loaded", async () => {
+    mockState = createMockState({
+      updateInfo: {
+        currentVersion: "0.95.0",
+        latestVersion: null,
+        updateAvailable: false,
+        isServiceMode: false,
+        updateInProgress: false,
+        lastChecked: 0,
+        channel: "stable",
+      },
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    expect(screen.getByText("Local build version: v0.95.0")).toBeInTheDocument();
+    expect(screen.getByText("Release source not configured.")).toBeInTheDocument();
+  });
+
   it("triggers app update from settings when service mode is enabled", async () => {
     mockState = createMockState({
       updateInfo: {
@@ -439,6 +482,40 @@ describe("SettingsPage", () => {
     }
   });
 
+  // The active settings category should be exposed semantically so the visual
+  // menu highlight is also clear to assistive technology.
+  it("marks the active settings category in navigation", async () => {
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    for (const button of screen.getAllByRole("button", { name: "General" })) {
+      expect(button).toHaveAttribute("aria-current", "page");
+    }
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Access" })[0]);
+
+    for (const button of screen.getAllByRole("button", { name: "Access" })) {
+      expect(button).toHaveAttribute("aria-current", "page");
+    }
+    for (const button of screen.getAllByRole("button", { name: "General" })) {
+      expect(button).not.toHaveAttribute("aria-current");
+    }
+  });
+
+  it("opens the Agent Auth section from the settings section query", async () => {
+    window.location.hash = "#/settings?section=providers";
+
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    for (const button of screen.getAllByRole("button", { name: "Agent Auth" })) {
+      expect(button).toHaveAttribute("aria-current", "page");
+    }
+    for (const button of screen.getAllByRole("button", { name: "General" })) {
+      expect(button).not.toHaveAttribute("aria-current");
+    }
+  });
+
   // Verify section headings have correct IDs for anchor-based scrolling
   it("renders section headings with anchor IDs", async () => {
     render(<SettingsPage />);
@@ -453,6 +530,16 @@ describe("SettingsPage", () => {
     expect(document.getElementById("environments")).toBeInTheDocument();
     expect(document.getElementById("updates")).toBeInTheDocument();
     expect(document.getElementById("telemetry")).toBeInTheDocument();
+  });
+
+  // Top-level settings section headings should stand apart from individual
+  // field labels such as "Update Channel" so the page scans as grouped settings.
+  it("renders top-level settings headings with stronger visual hierarchy", async () => {
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    expect(screen.getByRole("heading", { name: "Updates" })).toHaveClass("text-lg");
+    expect(screen.getByText("Update Channel")).toHaveClass("text-sm");
   });
 
   // ─── Authentication section tests ──────────────────────────────────
@@ -1075,8 +1162,8 @@ describe("SettingsPage", () => {
     // When publicUrl is empty, the fallback text should show window.location.origin
     expect(screen.getByText(`Fallback: ${window.location.origin}`)).toBeInTheDocument();
 
-    // The "Save Public URL" button should be present
-    expect(screen.getByRole("button", { name: "Save Public URL" })).toBeInTheDocument();
+    // The "Save Public URL" button is present but disabled until the value changes.
+    expect(screen.getByRole("button", { name: "Save Public URL" })).toBeDisabled();
   });
 
   // When a publicUrl is set (returned from getSettings), the status text should
@@ -1132,6 +1219,43 @@ describe("SettingsPage", () => {
     });
   });
 
+  // The Public URL save button should only be enabled when the value changes.
+  // Clearing an existing value is a real change because it restores fallback URL behavior.
+  it("allows clearing an existing public URL but disables unchanged values", async () => {
+    mockApi.getSettings.mockResolvedValueOnce({
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4-6",
+      linearApiKeyConfigured: false,
+      linearAutoTransition: false,
+      linearAutoTransitionStateName: "",
+      updateChannel: "stable",
+      publicUrl: "https://my-companion.example.com",
+    });
+    mockApi.updateSettings.mockResolvedValueOnce({
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4-6",
+      linearApiKeyConfigured: false,
+      linearAutoTransition: false,
+      linearAutoTransitionStateName: "",
+      updateChannel: "stable",
+      publicUrl: "",
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText("Using: https://my-companion.example.com");
+
+    const saveButton = screen.getByRole("button", { name: "Save Public URL" });
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Public URL"), { target: { value: "" } });
+    expect(saveButton).not.toBeDisabled();
+
+    fireEvent.click(saveButton);
+    await waitFor(() => {
+      expect(mockApi.updateSettings).toHaveBeenCalledWith({ publicUrl: "" });
+    });
+  });
+
   // Axe accessibility scan for the Webhooks section to ensure it meets
   // WCAG standards (labels, roles, contrast, etc.).
   it("passes axe accessibility checks for the Webhooks section", async () => {
@@ -1156,14 +1280,22 @@ describe("SettingsPage", () => {
       anthropicApiKeyConfigured: true,
       anthropicModel: "claude-sonnet-4-6",
       claudeCodeOAuthTokenConfigured: true,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "oauth",
+      claudeBaseUrl: "https://claude-proxy.example.com",
+      claudeDeviceAuthConfigured: true,
       openaiApiKeyConfigured: false,
+      codexAuthMethod: "local",
+      openaiBaseUrl: "",
+      codexDeviceAuthConfigured: true,
       updateChannel: "stable",
       publicUrl: "",
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Claude Code token configured");
-    expect(screen.getByText("OpenAI key not configured")).toBeInTheDocument();
+    await screen.findByText("Using Claude OAuth token");
+    expect(screen.getByText("Using local Codex login")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Claude-compatible Base URL")).not.toBeInTheDocument();
   });
 
   // Verifies that the Claude Code token input shows masked dots when configured,
@@ -1173,13 +1305,19 @@ describe("SettingsPage", () => {
       anthropicApiKeyConfigured: true,
       anthropicModel: "claude-sonnet-4-6",
       claudeCodeOAuthTokenConfigured: true,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "oauth",
+      claudeBaseUrl: "",
+      claudeDeviceAuthConfigured: false,
       openaiApiKeyConfigured: false,
+      openaiBaseUrl: "",
+      codexDeviceAuthConfigured: false,
       updateChannel: "stable",
       publicUrl: "",
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Claude Code token configured");
+    await screen.findByText("Using Claude OAuth token");
 
     const input = screen.getByLabelText("Claude Code OAuth Token") as HTMLInputElement;
     expect(input.value).toBe("••••••••••••••••");
@@ -1188,14 +1326,288 @@ describe("SettingsPage", () => {
     expect(input.value).toBe("");
   });
 
-  // Verifies that provider settings are saved correctly via updateSettings API
-  // and that the inputs are cleared after successful save.
-  it("saves provider settings and clears inputs on success", async () => {
+  it("hides Claude Base URL unless Claude API key auth is selected", async () => {
+    mockApi.getSettings.mockResolvedValueOnce({
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4-6",
+      claudeCodeOAuthTokenConfigured: true,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "oauth",
+      claudeBaseUrl: "https://claude-proxy.example.com",
+      claudeDeviceAuthConfigured: true,
+      openaiApiKeyConfigured: false,
+      codexAuthMethod: "local",
+      openaiBaseUrl: "",
+      codexDeviceAuthConfigured: true,
+      updateChannel: "stable",
+      publicUrl: "",
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText("Using Claude OAuth token");
+    expect(screen.queryByLabelText("Claude-compatible Base URL")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Claude auth method"), { target: { value: "apiKey" } });
+    expect(screen.getByLabelText("Claude-compatible Base URL")).toBeInTheDocument();
+  });
+
+  it("does not require saving when the current Claude auth method is already local", async () => {
     mockApi.getSettings.mockResolvedValueOnce({
       anthropicApiKeyConfigured: true,
       anthropicModel: "claude-sonnet-4-6",
       claudeCodeOAuthTokenConfigured: false,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "local",
+      claudeBaseUrl: "",
+      claudeDeviceAuthConfigured: true,
       openaiApiKeyConfigured: false,
+      codexAuthMethod: "local",
+      openaiBaseUrl: "",
+      codexDeviceAuthConfigured: true,
+      updateChannel: "stable",
+      publicUrl: "",
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText("Using local Claude login");
+
+    fireEvent.click(screen.getByRole("button", { name: "Test Claude Auth" }));
+    expect(await screen.findByText("Claude auth test passed.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Using Claude Local Login" })).toBeDisabled();
+    expect(mockApi.updateSettings).not.toHaveBeenCalled();
+  });
+
+  it("uses auth method dropdowns and explains verify-before-save credential priority", async () => {
+    mockApi.getSettings.mockResolvedValueOnce({
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4-6",
+      claudeCodeOAuthTokenConfigured: true,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "oauth",
+      claudeBaseUrl: "",
+      claudeDeviceAuthConfigured: true,
+      openaiApiKeyConfigured: false,
+      codexAuthMethod: "local",
+      openaiBaseUrl: "",
+      codexDeviceAuthConfigured: true,
+      updateChannel: "stable",
+      publicUrl: "",
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText("Using Claude OAuth token");
+
+    expect(screen.getByLabelText("Claude auth method")).toHaveValue("oauth");
+    expect(document.body.textContent).toContain("The dropdown opens on the currently saved method.");
+    expect(document.body.textContent).toContain(
+      "OAuth token and API key modes inject the saved credential for new sessions even if local Claude CLI login is also available. Session environment profiles and host process env vars can still override both.",
+    );
+
+    fireEvent.change(screen.getByLabelText("Claude auth method"), { target: { value: "local" } });
+
+    expect(screen.getByLabelText("Claude auth method")).toHaveValue("local");
+    expect(screen.getByRole("button", { name: "Save Claude Auth" })).toBeDisabled();
+  });
+
+  it("requires saving when switching Codex from API key auth back to local login", async () => {
+    mockApi.getSettings.mockResolvedValueOnce({
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4-6",
+      claudeCodeOAuthTokenConfigured: false,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "local",
+      claudeBaseUrl: "",
+      claudeDeviceAuthConfigured: true,
+      openaiApiKeyConfigured: true,
+      codexAuthMethod: "apiKey",
+      openaiBaseUrl: "https://openai-proxy.example.com/v1",
+      codexDeviceAuthConfigured: true,
+      updateChannel: "stable",
+      publicUrl: "",
+    });
+    mockApi.updateSettings.mockResolvedValueOnce({
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4-6",
+      claudeCodeOAuthTokenConfigured: false,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "local",
+      claudeBaseUrl: "",
+      claudeDeviceAuthConfigured: true,
+      openaiApiKeyConfigured: true,
+      codexAuthMethod: "local",
+      openaiBaseUrl: "https://openai-proxy.example.com/v1",
+      codexDeviceAuthConfigured: true,
+      updateChannel: "stable",
+      publicUrl: "",
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText("Using Codex API key");
+
+    fireEvent.change(screen.getByLabelText("Codex auth method"), { target: { value: "local" } });
+    fireEvent.click(screen.getByRole("button", { name: "Test Codex Auth" }));
+    expect(await screen.findByText("Codex auth test passed.")).toBeInTheDocument();
+
+    const saveBtn = screen.getByRole("button", { name: "Save Codex Auth" });
+    expect(saveBtn).not.toBeDisabled();
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(mockApi.updateSettings).toHaveBeenCalledWith({ codexAuthMethod: "local" });
+    });
+  });
+
+  // Verifies that provider settings are saved independently and only after a
+  // successful provider test for the values currently in that provider card.
+  it("requires a successful provider test before saving Codex auth", async () => {
+    mockApi.getSettings.mockResolvedValueOnce({
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4-6",
+      claudeCodeOAuthTokenConfigured: false,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "local",
+      claudeBaseUrl: "",
+      claudeDeviceAuthConfigured: false,
+      openaiApiKeyConfigured: false,
+      codexAuthMethod: "apiKey",
+      openaiBaseUrl: "",
+      codexDeviceAuthConfigured: false,
+      updateChannel: "stable",
+      publicUrl: "",
+    });
+    mockApi.updateSettings.mockResolvedValueOnce({
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4-6",
+      claudeCodeOAuthTokenConfigured: false,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "local",
+      claudeBaseUrl: "",
+      claudeDeviceAuthConfigured: false,
+      openaiApiKeyConfigured: true,
+      codexAuthMethod: "apiKey",
+      openaiBaseUrl: "https://openai-proxy.example.com/v1",
+      codexDeviceAuthConfigured: false,
+      updateChannel: "stable",
+      publicUrl: "",
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText("No available Codex auth");
+
+    const openaiInput = screen.getByLabelText("OpenAI API Key") as HTMLInputElement;
+    fireEvent.change(openaiInput, { target: { value: "sk-test-key" } });
+    fireEvent.change(screen.getByLabelText("OpenAI-compatible Base URL"), {
+      target: { value: " https://openai-proxy.example.com/v1/// " },
+    });
+
+    const saveBtn = screen.getByRole("button", { name: "Save Codex Auth" });
+    expect(saveBtn).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Test Codex Auth" }));
+    expect(await screen.findByText("Codex auth test passed.")).toBeInTheDocument();
+    expect(saveBtn).not.toBeDisabled();
+
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(mockApi.updateSettings).toHaveBeenCalledWith({
+        codexAuthMethod: "apiKey",
+        openaiApiKey: "sk-test-key",
+        openaiBaseUrl: "https://openai-proxy.example.com/v1///",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Codex auth saved.")).toBeInTheDocument();
+      expect(openaiInput.value).toBe("••••••••••••••••");
+      expect(screen.getByDisplayValue("https://openai-proxy.example.com/v1")).toBeInTheDocument();
+    });
+  });
+
+  // Verifies each provider has its own save action instead of one global save
+  // that mixes Claude Code and Codex credentials together.
+  it("renders separate disabled save actions for Claude Code and Codex auth", async () => {
+    mockApi.getSettings.mockResolvedValueOnce({
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4-6",
+      claudeCodeOAuthTokenConfigured: false,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "oauth",
+      claudeBaseUrl: "",
+      claudeDeviceAuthConfigured: false,
+      openaiApiKeyConfigured: false,
+      codexAuthMethod: "apiKey",
+      openaiBaseUrl: "",
+      codexDeviceAuthConfigured: false,
+      updateChannel: "stable",
+      publicUrl: "",
+    });
+
+    render(<SettingsPage />);
+    await screen.findAllByText(/No available/);
+
+    expect(screen.getByRole("button", { name: "Save Claude Auth" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save Codex Auth" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Save Provider Settings" })).not.toBeInTheDocument();
+  });
+
+  // Verifies the provider test button sends the typed token and Base URL to
+  // the backend so users can validate third-party endpoints before saving.
+  it("tests provider auth with typed token and base URL", async () => {
+    mockApi.getSettings.mockResolvedValueOnce({
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4-6",
+      claudeCodeOAuthTokenConfigured: false,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "local",
+      claudeBaseUrl: "",
+      claudeDeviceAuthConfigured: true,
+      openaiApiKeyConfigured: false,
+      codexAuthMethod: "apiKey",
+      openaiBaseUrl: "",
+      codexDeviceAuthConfigured: true,
+      updateChannel: "stable",
+      publicUrl: "",
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText("No available Codex auth");
+
+    fireEvent.change(screen.getByLabelText("Codex auth method"), {
+      target: { value: "apiKey" },
+    });
+    fireEvent.change(await screen.findByLabelText("OpenAI API Key"), {
+      target: { value: "sk-test-key" },
+    });
+    fireEvent.change(screen.getByLabelText("OpenAI-compatible Base URL"), {
+      target: { value: "https://openai-proxy.example.com/v1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Test Codex Auth" }));
+
+    await waitFor(() => {
+      expect(mockApi.verifyProvider).toHaveBeenCalledWith({
+        provider: "codex",
+        authMethod: "apiKey",
+        token: "sk-test-key",
+        baseUrl: "https://openai-proxy.example.com/v1",
+      });
+    });
+    expect(await screen.findByText("Codex auth test passed.")).toBeInTheDocument();
+  });
+
+  it("tests and saves Claude API key auth separately from Claude OAuth", async () => {
+    mockApi.getSettings.mockResolvedValueOnce({
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4-6",
+      claudeCodeOAuthTokenConfigured: true,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "apiKey",
+      claudeBaseUrl: "",
+      claudeDeviceAuthConfigured: true,
+      openaiApiKeyConfigured: false,
+      codexAuthMethod: "local",
+      openaiBaseUrl: "",
+      codexDeviceAuthConfigured: true,
       updateChannel: "stable",
       publicUrl: "",
     });
@@ -1203,57 +1615,51 @@ describe("SettingsPage", () => {
       anthropicApiKeyConfigured: true,
       anthropicModel: "claude-sonnet-4-6",
       claudeCodeOAuthTokenConfigured: true,
-      openaiApiKeyConfigured: true,
+      claudeApiKeyConfigured: true,
+      claudeAuthMethod: "apiKey",
+      claudeBaseUrl: "https://claude-proxy.example.com",
+      claudeDeviceAuthConfigured: true,
+      openaiApiKeyConfigured: false,
+      codexAuthMethod: "local",
+      openaiBaseUrl: "",
+      codexDeviceAuthConfigured: true,
       updateChannel: "stable",
       publicUrl: "",
     });
 
     render(<SettingsPage />);
-    // Wait for initial load to complete
-    await screen.findByText("Claude Code token not configured");
+    await screen.findByText("No available Claude auth");
 
-    const claudeInput = screen.getByLabelText("Claude Code OAuth Token") as HTMLInputElement;
-    const openaiInput = screen.getByLabelText("OpenAI API Key (Codex)") as HTMLInputElement;
+    fireEvent.change(screen.getByLabelText("Claude API Key"), {
+      target: { value: "sk-ant-session-key" },
+    });
+    fireEvent.change(screen.getByLabelText("Claude-compatible Base URL"), {
+      target: { value: "https://claude-proxy.example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Test Claude Auth" }));
 
-    fireEvent.change(claudeInput, { target: { value: "test-oauth-token" } });
-    fireEvent.change(openaiInput, { target: { value: "sk-test-key" } });
+    await waitFor(() => {
+      expect(mockApi.verifyProvider).toHaveBeenCalledWith({
+        provider: "claude",
+        authMethod: "apiKey",
+        token: "sk-ant-session-key",
+        baseUrl: "https://claude-proxy.example.com",
+      });
+    });
 
-    const saveBtn = screen.getByRole("button", { name: "Save Provider Settings" });
+    const saveBtn = screen.getByRole("button", { name: "Save Claude Auth" });
+    await waitFor(() => {
+      expect(saveBtn).not.toBeDisabled();
+    });
     fireEvent.click(saveBtn);
 
     await waitFor(() => {
       expect(mockApi.updateSettings).toHaveBeenCalledWith({
-        claudeCodeOAuthToken: "test-oauth-token",
-        openaiApiKey: "sk-test-key",
+        claudeAuthMethod: "apiKey",
+        claudeApiKey: "sk-ant-session-key",
+        claudeBaseUrl: "https://claude-proxy.example.com",
       });
     });
-
-    // Inputs should be cleared after save – button is disabled again,
-    // and masked-dot placeholders are restored since both tokens are now configured.
-    await waitFor(() => {
-      expect(screen.getByText("Provider settings saved.")).toBeInTheDocument();
-      expect(saveBtn).toBeDisabled();
-      expect(claudeInput.value).toBe("••••••••••••••••");
-      expect(openaiInput.value).toBe("••••••••••••••••");
-    });
-  });
-
-  // Verifies that the save button is disabled when both provider inputs are empty
-  it("disables Save Provider Settings button when no inputs have values", async () => {
-    mockApi.getSettings.mockResolvedValueOnce({
-      anthropicApiKeyConfigured: true,
-      anthropicModel: "claude-sonnet-4-6",
-      claudeCodeOAuthTokenConfigured: false,
-      openaiApiKeyConfigured: false,
-      updateChannel: "stable",
-      publicUrl: "",
-    });
-
-    render(<SettingsPage />);
-    await screen.findByText("Claude Code token not configured");
-
-    const saveBtn = screen.getByRole("button", { name: "Save Provider Settings" });
-    expect(saveBtn).toBeDisabled();
   });
 
   // Verifies that the Providers section passes accessibility checks
@@ -1264,13 +1670,20 @@ describe("SettingsPage", () => {
       anthropicApiKeyConfigured: true,
       anthropicModel: "claude-sonnet-4-6",
       claudeCodeOAuthTokenConfigured: false,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "local",
+      claudeBaseUrl: "",
+      claudeDeviceAuthConfigured: false,
       openaiApiKeyConfigured: false,
+      codexAuthMethod: "local",
+      openaiBaseUrl: "",
+      codexDeviceAuthConfigured: false,
       updateChannel: "stable",
       publicUrl: "",
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Claude Code token not configured");
+    await screen.findAllByText(/No available/);
 
     const providersSection = document.getElementById("providers");
     expect(providersSection).toBeInTheDocument();

@@ -4,6 +4,7 @@ import { connectSession } from "./ws.js";
 import { api } from "./api.js";
 import { capturePageView } from "./analytics.js";
 import { parseHash, navigateToSession } from "./utils/routing.js";
+import { hasUsableProviderAuth } from "./utils/provider-auth.js";
 import { LoginPage } from "./components/LoginPage.js";
 import { Sidebar } from "./components/Sidebar.js";
 import { ChatView } from "./components/ChatView.js";
@@ -155,12 +156,7 @@ export default function App() {
     if (!isAuthenticated) return;
     api.getSettings().then((s) => {
       if (s.publicUrl) useStore.getState().setPublicUrl(s.publicUrl);
-      const hasUsableProviderAuth =
-        s.claudeCodeOAuthTokenConfigured
-        || s.claudeDeviceAuthConfigured
-        || s.openaiApiKeyConfigured
-        || s.codexDeviceAuthConfigured;
-      if (!s.onboardingCompleted && !hasUsableProviderAuth) {
+      if (!s.onboardingCompleted && !hasUsableProviderAuth(s)) {
         setShowOnboarding(true);
       }
     }).catch(() => {});

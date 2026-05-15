@@ -17,6 +17,7 @@ import { buildLinearSystemPrompt } from "./linear-prompt-builder.js";
 import { transitionLinearIssue, fetchLinearTeamStates } from "./routes/linear-routes.js";
 import { hasContainerClaudeAuth } from "./claude-container-auth.js";
 import { hasContainerCodexAuth } from "./codex-container-auth.js";
+import { hasUsableClaudeSessionAuth, hasUsableCodexSessionAuth } from "./provider-auth-availability.js";
 import { discoverCommandsAndSkills } from "./commands-discovery.js";
 import { getSettings } from "./settings-manager.js";
 import { generateSessionTitle } from "./auto-namer.js";
@@ -342,11 +343,51 @@ export class SessionOrchestrator {
       // global onboarding tokens serve as defaults for all session types, including
       // containers, so that container auth preflight checks pass automatically.
       const globalSettings = getSettings();
-      if (backend === "claude" && globalSettings.claudeCodeOAuthToken && !("CLAUDE_CODE_OAUTH_TOKEN" in (envVars ?? {}))) {
+      const hasClaudeAuthEnv =
+        "ANTHROPIC_API_KEY" in (envVars ?? {})
+        || "ANTHROPIC_AUTH_TOKEN" in (envVars ?? {})
+        || "CLAUDE_CODE_AUTH_TOKEN" in (envVars ?? {})
+        || "CLAUDE_CODE_OAUTH_TOKEN" in (envVars ?? {});
+      if (
+        backend === "claude"
+        && (globalSettings.claudeAuthMethod ?? "local") === "oauth"
+        && globalSettings.claudeCodeOAuthToken
+        && !hasClaudeAuthEnv
+      ) {
         envVars = { ...envVars, CLAUDE_CODE_OAUTH_TOKEN: globalSettings.claudeCodeOAuthToken };
       }
-      if (backend === "codex" && globalSettings.openaiApiKey && !("OPENAI_API_KEY" in (envVars ?? {}))) {
+      if (
+        backend === "claude"
+        && (globalSettings.claudeAuthMethod ?? "local") === "apiKey"
+        && globalSettings.claudeApiKey
+        && !hasClaudeAuthEnv
+      ) {
+        envVars = { ...envVars, ANTHROPIC_API_KEY: globalSettings.claudeApiKey };
+      }
+      if (
+        backend === "claude"
+        && (globalSettings.claudeAuthMethod ?? "local") === "apiKey"
+        && globalSettings.claudeBaseUrl
+        && !("ANTHROPIC_BASE_URL" in (envVars ?? {}))
+      ) {
+        envVars = { ...envVars, ANTHROPIC_BASE_URL: globalSettings.claudeBaseUrl };
+      }
+      const hasCodexAuthEnv = "OPENAI_API_KEY" in (envVars ?? {}) || "CODEX_API_KEY" in (envVars ?? {});
+      if (
+        backend === "codex"
+        && (globalSettings.codexAuthMethod ?? "local") === "apiKey"
+        && globalSettings.openaiApiKey
+        && !hasCodexAuthEnv
+      ) {
         envVars = { ...envVars, OPENAI_API_KEY: globalSettings.openaiApiKey };
+      }
+      if (
+        backend === "codex"
+        && (globalSettings.codexAuthMethod ?? "local") === "apiKey"
+        && globalSettings.openaiBaseUrl
+        && !("OPENAI_BASE_URL" in (envVars ?? {}))
+      ) {
+        envVars = { ...envVars, OPENAI_BASE_URL: globalSettings.openaiBaseUrl };
       }
 
       // Resolve sandbox configuration
@@ -374,6 +415,21 @@ export class SessionOrchestrator {
         effectiveImage = body.container.image;
       }
       const isDockerSession = !!effectiveImage;
+
+      if (!isDockerSession && backend === "claude" && !hasUsableClaudeSessionAuth(globalSettings, envVars)) {
+        return {
+          ok: false,
+          error: "No usable Claude Code auth is configured. Verify and save Claude Code auth in Settings, or provide Claude auth in the selected environment.",
+          status: 400,
+        };
+      }
+      if (!isDockerSession && backend === "codex" && !hasUsableCodexSessionAuth(globalSettings, envVars)) {
+        return {
+          ok: false,
+          error: "No usable Codex auth is configured. Verify and save Codex auth in Settings, or provide Codex auth in the selected environment.",
+          status: 400,
+        };
+      }
 
       if (onProgress) await onProgress("resolving_env", "Environment resolved", "done");
 

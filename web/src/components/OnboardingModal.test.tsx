@@ -7,9 +7,9 @@
  *
  * Key behaviors tested:
  * - Welcome step renders with provider options
- * - Claude setup step shows command and token input
- * - Codex setup step shows API key input
- * - Saving tokens calls the API correctly
+ * - Claude setup step supports local CLI, OAuth token, and API key auth
+ * - Codex setup step supports local CLI and API key auth
+ * - Saving provider auth first verifies the selected method
  * - Skip flow marks onboarding as completed
  * - Done step shows correct configured status
  * - Accessibility audit passes
@@ -23,6 +23,7 @@ vi.mock("../api.js", () => ({
   api: {
     updateSettings: vi.fn().mockResolvedValue({}),
     getSettings: vi.fn(),
+    verifyProvider: vi.fn().mockResolvedValue({ valid: true }),
   },
 }));
 
@@ -31,14 +32,20 @@ import { api } from "../api.js";
 
 const mockUpdateSettings = vi.mocked(api.updateSettings);
 const mockGetSettings = vi.mocked(api.getSettings);
+const mockVerifyProvider = vi.mocked(api.verifyProvider);
 
 function mockSettings(overrides: Partial<Awaited<ReturnType<typeof api.getSettings>>> = {}) {
   return {
     anthropicApiKeyConfigured: false,
     anthropicModel: "claude-sonnet-4-6",
     claudeCodeOAuthTokenConfigured: false,
+    claudeApiKeyConfigured: false,
+    claudeAuthMethod: "local" as const,
+    claudeBaseUrl: "",
     claudeDeviceAuthConfigured: false,
     openaiApiKeyConfigured: false,
+    codexAuthMethod: "local" as const,
+    openaiBaseUrl: "",
     codexDeviceAuthConfigured: false,
     onboardingCompleted: false,
     linearApiKeyConfigured: false,
@@ -63,6 +70,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockUpdateSettings.mockResolvedValue({} as ReturnType<typeof api.updateSettings> extends Promise<infer T> ? T : never);
   mockGetSettings.mockResolvedValue(mockSettings());
+  mockVerifyProvider.mockResolvedValue({ valid: true });
 });
 
 describe("OnboardingModal", () => {
@@ -77,7 +85,8 @@ describe("OnboardingModal", () => {
     render(<OnboardingModal onComplete={vi.fn()} />);
     fireEvent.click(screen.getByText("Claude Code"));
     expect(screen.getByText("Set up Claude Code")).toBeInTheDocument();
-    expect(screen.getByText("claude setup-token")).toBeInTheDocument();
+    expect(screen.getByLabelText("Claude auth method")).toHaveValue("local");
+    expect(screen.getByText(/claude -p hello/)).toBeInTheDocument();
   });
 
   it("shows detected Claude auth instead of forcing token setup", async () => {
@@ -87,7 +96,7 @@ describe("OnboardingModal", () => {
     fireEvent.click(screen.getByText("Claude Code"));
 
     await waitFor(() => {
-      expect(screen.getByText("Local Claude Code auth found.")).toBeInTheDocument();
+      expect(screen.getByText(/A local Claude Code auth source was detected/)).toBeInTheDocument();
     });
     expect(screen.queryByText("claude setup-token")).not.toBeInTheDocument();
   });
@@ -119,21 +128,74 @@ describe("OnboardingModal", () => {
     // Go to Claude setup
     fireEvent.click(screen.getByText("Claude Code"));
     expect(screen.getByText("Set up Claude Code")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Claude auth method"), { target: { value: "oauth" } });
 
     // Enter token
     const input = screen.getByLabelText("OAuth Token");
     fireEvent.change(input, { target: { value: "test-oauth-token" } });
 
-    // Save
-    fireEvent.click(screen.getByText("Save & Continue"));
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    fireEvent.click(screen.getByText("Verify Claude Auth"));
 
     await waitFor(() => {
-      expect(mockUpdateSettings).toHaveBeenCalledWith({ claudeCodeOAuthToken: "test-oauth-token" });
+      expect(mockVerifyProvider).toHaveBeenCalledWith({
+        provider: "claude",
+        authMethod: "oauth",
+        token: "test-oauth-token",
+        baseUrl: "",
+      });
+    });
+    expect(mockUpdateSettings).not.toHaveBeenCalledWith(expect.objectContaining({ claudeAuthMethod: "oauth" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Continue" })).not.toBeDisabled();
+    });
+    expect(screen.getByRole("button", { name: "Skip" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(() => {
+      expect(mockUpdateSettings).toHaveBeenCalledWith({
+        claudeAuthMethod: "oauth",
+        claudeCodeOAuthToken: "test-oauth-token",
+      });
     });
 
     // Should navigate to Codex step
     await waitFor(() => {
       expect(screen.getByText("Set up Codex")).toBeInTheDocument();
+    });
+  });
+
+  it("verifies and saves Claude API key auth with optional base URL", async () => {
+    render(<OnboardingModal onComplete={vi.fn()} />);
+
+    fireEvent.click(screen.getByText("Claude Code"));
+    fireEvent.change(screen.getByLabelText("Claude auth method"), { target: { value: "apiKey" } });
+    fireEvent.change(screen.getByLabelText("Claude API Key"), { target: { value: "sk-ant-test" } });
+    fireEvent.change(screen.getByLabelText("Claude-compatible Base URL"), {
+      target: { value: "https://claude-proxy.example.com" },
+    });
+    fireEvent.click(screen.getByText("Verify Claude Auth"));
+
+    await waitFor(() => {
+      expect(mockVerifyProvider).toHaveBeenCalledWith({
+        provider: "claude",
+        authMethod: "apiKey",
+        token: "sk-ant-test",
+        baseUrl: "https://claude-proxy.example.com",
+      });
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Continue" })).not.toBeDisabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(() => {
+      expect(mockUpdateSettings).toHaveBeenCalledWith({
+        claudeAuthMethod: "apiKey",
+        claudeApiKey: "sk-ant-test",
+        claudeBaseUrl: "https://claude-proxy.example.com",
+      });
     });
   });
 
@@ -152,19 +214,36 @@ describe("OnboardingModal", () => {
 
     // Go directly to Codex setup
     fireEvent.click(screen.getByText("Codex"));
-
-    // Expand API key accordion
-    fireEvent.click(screen.getByText("Or use an API key instead"));
+    fireEvent.change(screen.getByLabelText("Codex auth method"), { target: { value: "apiKey" } });
 
     // Enter API key
     const input = screen.getByLabelText("OpenAI API Key");
     fireEvent.change(input, { target: { value: "sk-test-key" } });
 
-    // Save — button shows "Save & Finish" when API key is entered
-    fireEvent.click(screen.getByText("Save & Finish"));
+    expect(screen.getByRole("button", { name: "Finish" })).toBeDisabled();
+    fireEvent.click(screen.getByText("Verify Codex Auth"));
 
     await waitFor(() => {
-      expect(mockUpdateSettings).toHaveBeenCalledWith({ openaiApiKey: "sk-test-key" });
+      expect(mockVerifyProvider).toHaveBeenCalledWith({
+        provider: "codex",
+        authMethod: "apiKey",
+        token: "sk-test-key",
+        baseUrl: "",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Finish" })).not.toBeDisabled();
+    });
+    expect(screen.getByRole("button", { name: "Skip" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+
+    await waitFor(() => {
+      expect(mockUpdateSettings).toHaveBeenCalledWith({
+        codexAuthMethod: "apiKey",
+        openaiApiKey: "sk-test-key",
+        openaiBaseUrl: "",
+      });
     });
 
     // Should show done step
@@ -190,9 +269,12 @@ describe("OnboardingModal", () => {
 
     // Go to Claude, enter token, save
     fireEvent.click(screen.getByText("Claude Code"));
+    fireEvent.change(screen.getByLabelText("Claude auth method"), { target: { value: "oauth" } });
     const input = screen.getByLabelText("OAuth Token");
     fireEvent.change(input, { target: { value: "token" } });
-    fireEvent.click(screen.getByText("Save & Continue"));
+    fireEvent.click(screen.getByText("Verify Claude Auth"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => {
       expect(screen.getByText("Set up Codex")).toBeInTheDocument();
@@ -220,6 +302,30 @@ describe("OnboardingModal", () => {
     });
   });
 
+  it("shows 'Setup Skipped' when detected local auth is skipped", async () => {
+    mockGetSettings.mockResolvedValue(mockSettings({
+      claudeDeviceAuthConfigured: true,
+      codexDeviceAuthConfigured: true,
+    }));
+
+    render(<OnboardingModal onComplete={vi.fn()} />);
+
+    // Local CLI auth may be detected, but skipping means the user did not
+    // choose it as the onboarding result.
+    fireEvent.click(screen.getByText("Claude Code"));
+    await waitFor(() => {
+      expect(screen.getByText(/A local Claude Code auth source was detected/)).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("Skip"));
+    fireEvent.click(screen.getByText("Skip"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Setup Skipped")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Claude Code is ready.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Codex is ready.")).not.toBeInTheDocument();
+  });
+
   it("calls onComplete when Get Started is clicked on done step", async () => {
     const onComplete = vi.fn();
     render(<OnboardingModal onComplete={onComplete} />);
@@ -243,9 +349,12 @@ describe("OnboardingModal", () => {
     render(<OnboardingModal onComplete={vi.fn()} />);
 
     fireEvent.click(screen.getByText("Claude Code"));
+    fireEvent.change(screen.getByLabelText("Claude auth method"), { target: { value: "oauth" } });
     const input = screen.getByLabelText("OAuth Token");
     fireEvent.change(input, { target: { value: "bad-token" } });
-    fireEvent.click(screen.getByText("Save & Continue"));
+    fireEvent.click(screen.getByText("Verify Claude Auth"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => {
       expect(screen.getByText("Network error")).toBeInTheDocument();
@@ -260,53 +369,60 @@ describe("OnboardingModal", () => {
 
     // Go to Codex setup
     fireEvent.click(screen.getByText("Codex"));
-
-    // Expand API key accordion, enter key and save
-    fireEvent.click(screen.getByText("Or use an API key instead"));
+    fireEvent.change(screen.getByLabelText("Codex auth method"), { target: { value: "apiKey" } });
     const input = screen.getByLabelText("OpenAI API Key");
     fireEvent.change(input, { target: { value: "bad-key" } });
-    fireEvent.click(screen.getByText("Save & Finish"));
+    fireEvent.click(screen.getByText("Verify Codex Auth"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Finish" })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
 
     await waitFor(() => {
       expect(screen.getByText("API key invalid")).toBeInTheDocument();
     });
   });
 
-  // Verifies "I've logged in" button checks device auth via getSettings
-  it("checks Codex device auth when 'I've logged in' is clicked", async () => {
-    mockGetSettings.mockResolvedValue(mockSettings({ codexDeviceAuthConfigured: true }));
+  // Verifies local Codex auth checks by running the shared provider verifier.
+  it("checks Codex local CLI auth when Verify is clicked", async () => {
+    mockVerifyProvider.mockResolvedValueOnce({ valid: true });
 
     render(<OnboardingModal onComplete={vi.fn()} />);
 
     // Go to Codex setup
     fireEvent.click(screen.getByText("Codex"));
 
-    // Click "I've logged in" — should check device auth
-    fireEvent.click(screen.getByText("I've logged in"));
+    fireEvent.click(screen.getByText("Verify Codex Auth"));
 
     await waitFor(() => {
-      expect(mockGetSettings).toHaveBeenCalled();
+      expect(mockVerifyProvider).toHaveBeenCalledWith({
+        provider: "codex",
+        authMethod: "local",
+        token: "",
+        baseUrl: "",
+      });
     });
-    // Device auth found — should complete onboarding
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+
+    await waitFor(() => {
+      expect(mockUpdateSettings).toHaveBeenCalledWith({ codexAuthMethod: "local" });
+    });
     await waitFor(() => {
       expect(screen.getByText("You're all set!")).toBeInTheDocument();
     });
   });
 
-  // Verifies error when device auth not found
-  it("shows error when Codex device auth is not configured", async () => {
-    mockGetSettings.mockResolvedValue(mockSettings({ codexDeviceAuthConfigured: false }));
+  // Verifies error when local CLI verification fails.
+  it("shows error when Codex local CLI auth verification fails", async () => {
+    mockVerifyProvider.mockResolvedValueOnce({ valid: false, error: "Codex CLI auth check failed" });
 
     render(<OnboardingModal onComplete={vi.fn()} />);
 
     // Go to Codex setup
     fireEvent.click(screen.getByText("Codex"));
 
-    // Click "I've logged in" — no auth found
-    fireEvent.click(screen.getByText("I've logged in"));
+    fireEvent.click(screen.getByText("Verify Codex Auth"));
 
     await waitFor(() => {
-      expect(screen.getByText(/No Codex auth found/)).toBeInTheDocument();
+      expect(screen.getByText(/Codex CLI auth check failed/)).toBeInTheDocument();
     });
   });
 
@@ -319,6 +435,7 @@ describe("OnboardingModal", () => {
 
     render(<OnboardingModal onComplete={vi.fn()} />);
     fireEvent.click(screen.getByText("Claude Code"));
+    fireEvent.change(screen.getByLabelText("Claude auth method"), { target: { value: "oauth" } });
 
     const copyBtn = screen.getByLabelText("Copy command");
     fireEvent.click(copyBtn);
@@ -334,9 +451,12 @@ describe("OnboardingModal", () => {
 
     // Go to Claude, trigger error
     fireEvent.click(screen.getByText("Claude Code"));
+    fireEvent.change(screen.getByLabelText("Claude auth method"), { target: { value: "oauth" } });
     const input = screen.getByLabelText("OAuth Token");
     fireEvent.change(input, { target: { value: "bad-token" } });
-    fireEvent.click(screen.getByText("Save & Continue"));
+    fireEvent.click(screen.getByText("Verify Claude Auth"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => {
       expect(screen.getByText("Save failed")).toBeInTheDocument();

@@ -40,7 +40,12 @@ describe("settings-manager", () => {
       linearOAuthAccessToken: "",
       linearOAuthRefreshToken: "",
       claudeCodeOAuthToken: "",
+      claudeApiKey: "",
+      claudeAuthMethod: "local",
+      claudeBaseUrl: "",
       openaiApiKey: "",
+      codexAuthMethod: "local",
+      openaiBaseUrl: "",
       onboardingCompleted: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -95,7 +100,12 @@ describe("settings-manager", () => {
       linearOAuthAccessToken: "",
       linearOAuthRefreshToken: "",
       claudeCodeOAuthToken: "",
+      claudeApiKey: "",
+      claudeAuthMethod: "local",
+      claudeBaseUrl: "",
       openaiApiKey: "",
+      codexAuthMethod: "local",
+      openaiBaseUrl: "",
       onboardingCompleted: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -174,7 +184,12 @@ describe("settings-manager", () => {
       linearOAuthAccessToken: "",
       linearOAuthRefreshToken: "",
       claudeCodeOAuthToken: "",
+      claudeApiKey: "",
+      claudeAuthMethod: "local",
+      claudeBaseUrl: "",
       openaiApiKey: "",
+      codexAuthMethod: "local",
+      openaiBaseUrl: "",
       onboardingCompleted: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -193,6 +208,34 @@ describe("settings-manager", () => {
     expect(updated.anthropicApiKey).toBe("sk-ant-key");
     expect(updated.anthropicModel).toBe("claude-sonnet-4-6");
     expect(updated.linearApiKey).toBe("lin_api_123");
+  });
+
+  // Provider Base URLs are global launch defaults for third-party Claude/OpenAI
+  // compatible endpoints. They should persist normalized without trailing slash.
+  it("saves provider base URLs", () => {
+    const updated = updateSettings({
+      claudeBaseUrl: " https://claude-proxy.example.com/// ",
+      openaiBaseUrl: " https://openai-proxy.example.com/v1/// ",
+    });
+
+    expect(updated.claudeBaseUrl).toBe("https://claude-proxy.example.com");
+    expect(updated.openaiBaseUrl).toBe("https://openai-proxy.example.com/v1");
+  });
+
+  it("saves provider auth methods and Claude API key separately from OAuth token", () => {
+    const updated = updateSettings({
+      claudeAuthMethod: "apiKey",
+      claudeApiKey: "sk-ant-claude",
+      claudeCodeOAuthToken: "oauth-token",
+      codexAuthMethod: "apiKey",
+      openaiApiKey: "sk-openai",
+    });
+
+    expect(updated.claudeAuthMethod).toBe("apiKey");
+    expect(updated.claudeApiKey).toBe("sk-ant-claude");
+    expect(updated.claudeCodeOAuthToken).toBe("oauth-token");
+    expect(updated.codexAuthMethod).toBe("apiKey");
+    expect(updated.openaiApiKey).toBe("sk-openai");
   });
 
   it("ignores undefined patch values and preserves existing keys", () => {

@@ -23,6 +23,16 @@ describe("PublicUrlBanner", () => {
     ).toBeInTheDocument();
   });
 
+  // Regression: the old amber-on-transparent warning was too low contrast in
+  // some themes. The banner should use a stronger warning surface and text color.
+  it("uses high-contrast warning colors for the banner text and surface", () => {
+    render(<PublicUrlBanner publicUrl="" />);
+
+    const banner = screen.getByRole("alert");
+    expect(banner).toHaveClass("bg-amber-50", "text-amber-950", "dark:text-amber-100");
+    expect(banner).not.toHaveClass("text-amber-400");
+  });
+
   // When publicUrl is set, there is nothing to warn about — the banner should
   // not appear at all.
   it("does NOT render when publicUrl is set", () => {

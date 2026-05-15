@@ -110,7 +110,16 @@ describe("HomePage", () => {
     mockApi.getHome.mockResolvedValue({ home: "/home/ubuntu", cwd: "/repo" });
     mockApi.listEnvs.mockResolvedValue([]);
     mockApi.getBackends.mockResolvedValue([{ id: "claude", name: "Claude", available: true }]);
-    mockApi.getSettings.mockResolvedValue({ linearApiKeyConfigured: true });
+    mockApi.getSettings.mockResolvedValue({
+      linearApiKeyConfigured: true,
+      claudeCodeOAuthTokenConfigured: false,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "local",
+      claudeDeviceAuthConfigured: true,
+      openaiApiKeyConfigured: false,
+      codexAuthMethod: "local",
+      codexDeviceAuthConfigured: true,
+    });
     mockApi.getRepoInfo.mockResolvedValue({
       repoRoot: "/repo",
       repoName: "repo",
@@ -547,6 +556,33 @@ describe("HomePage", () => {
     expect(codexButton).toBeDisabled();
   });
 
+  it("defaults to Codex and greys Claude when only Codex auth is usable", async () => {
+    mockApi.getBackends.mockResolvedValue([
+      { id: "claude", name: "Claude", available: true },
+      { id: "codex", name: "Codex", available: true },
+    ]);
+    mockApi.getSettings.mockResolvedValue({
+      linearApiKeyConfigured: true,
+      claudeCodeOAuthTokenConfigured: false,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "apiKey",
+      claudeDeviceAuthConfigured: true,
+      openaiApiKeyConfigured: true,
+      codexAuthMethod: "apiKey",
+      codexDeviceAuthConfigured: false,
+    });
+    mockApi.getBackendModels.mockResolvedValue([]);
+
+    render(<HomePage />);
+    await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
+
+    await waitFor(() => {
+      expect(screen.getByAltText("AgentHangar")).toHaveAttribute("src", "/logo-codex.svg");
+    });
+    expect(screen.getByTitle("No verified Claude Code auth configured")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Codex" })).not.toBeDisabled();
+  });
+
   // ─── Environment dropdown ───────────────────────────────────────────────────
 
   it("opens environment dropdown and selects an environment", async () => {
@@ -682,6 +718,37 @@ describe("HomePage", () => {
         }),
       );
     });
+  });
+
+  it("shows an auth-required dialog instead of creating a session when no provider auth is usable", async () => {
+    mockApi.getBackends.mockResolvedValue([
+      { id: "claude", name: "Claude", available: true },
+      { id: "codex", name: "Codex", available: true },
+    ]);
+    mockApi.getSettings.mockResolvedValue({
+      linearApiKeyConfigured: true,
+      claudeCodeOAuthTokenConfigured: false,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "apiKey",
+      claudeDeviceAuthConfigured: true,
+      openaiApiKeyConfigured: false,
+      codexAuthMethod: "apiKey",
+      codexDeviceAuthConfigured: true,
+    });
+
+    render(<HomePage />);
+    const textarea = await screen.findByPlaceholderText("Configure Agent Auth before creating a session...");
+    expect(textarea).toBeDisabled();
+    expect(screen.getByText(/No verified Claude Code or Codex auth method is configured/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Configure Agent Auth" })).toHaveAttribute("href", "#/settings?section=providers");
+    expect(screen.getByTitle("No verified Claude Code auth configured")).toBeDisabled();
+    expect(screen.getByTitle("No verified Codex auth configured")).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Opus 4.7/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Agent/ })).toBeDisabled();
+    expect(screen.getByText("repo").closest("button")).toBeDisabled();
+    expect(screen.getByTitle("Upload image")).toBeDisabled();
+    expect(screen.getByTitle("Send message")).toBeDisabled();
+    expect(createSessionStreamMock).not.toHaveBeenCalled();
   });
 
   it("displays an error when session creation fails", async () => {
