@@ -1100,6 +1100,17 @@ export class WsBridge {
       return;
     }
 
+    // -- mcp_get_status as heartbeat: drop when no backend can answer it ---
+    // The browser fires `mcp_get_status` every 30s to keep its WS alive. In
+    // lazy-spawn-only mode the CLI may have exited and not been respawned,
+    // leaving the adapter unattached or its transport disconnected. Queuing
+    // heartbeats has no useful semantics — there is nothing to "replay" later,
+    // they only bloat pendingMessages (up to the 200-cap) and trigger a
+    // persistSession write every interval. Drop them on the floor here.
+    if (msg.type === "mcp_get_status" && !session.backendAdapter?.isConnected()) {
+      return;
+    }
+
     // -- set_ai_validation: bridge-level, not forwarded to backend --------
     if (msg.type === "set_ai_validation") {
       handleSetAiValidation(session, msg);

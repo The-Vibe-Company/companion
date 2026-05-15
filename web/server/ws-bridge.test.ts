@@ -1902,6 +1902,70 @@ describe("Browser message routing", () => {
     expect(queued.content).toBe("retry this");
   });
 
+  // Regression: in lazy-spawn-only mode the CLI exits and is not auto-relaunched,
+  // but the browser keeps sending its 30s `mcp_get_status` heartbeat. Before the
+  // fix, every heartbeat hit the disconnected-adapter branch and was enqueued
+  // into pendingMessages, accumulating up to PENDING_MESSAGES_LIMIT (200) and
+  // triggering one persistSession write per beat. On reconnect they'd then be
+  // flushed in a burst. mcp_get_status is a transient status probe — there is
+  // nothing useful to replay if no backend is around to answer it.
+  it("mcp_get_status heartbeat is dropped (not queued) when no backend adapter is attached", () => {
+    const browser = makeBrowserSocket("heartbeat-lazy");
+    bridge.handleBrowserOpen(browser, "heartbeat-lazy");
+    const session = bridge.getSession("heartbeat-lazy")!;
+    // No backendAdapter — simulates lazy-spawn-only after the CLI exited.
+    expect(session.backendAdapter).toBeFalsy();
+
+    // 5 heartbeats — what a couple of minutes of idle disconnected session looks like.
+    for (let i = 0; i < 5; i++) {
+      bridge.handleBrowserMessage(browser, JSON.stringify({ type: "mcp_get_status" }));
+    }
+
+    expect(session.pendingMessages).toHaveLength(0);
+  });
+
+  // Same regression, dual case: an mcp_get_status that lands while the adapter
+  // is attached but its underlying transport reports disconnected (Codex
+  // transient WS drop). Still pure heartbeat noise — must not queue.
+  it("mcp_get_status heartbeat is dropped when adapter is attached but transport disconnected", () => {
+    const browser = makeBrowserSocket("heartbeat-codex-drop");
+    bridge.handleBrowserOpen(browser, "heartbeat-codex-drop");
+    const session = bridge.getSession("heartbeat-codex-drop")!;
+    session.backendAdapter = {
+      isConnected: () => false,
+      send: () => false,
+      disconnect: async () => {},
+      onBrowserMessage: () => {},
+      onSessionMeta: () => {},
+      onDisconnect: () => {},
+    } as never;
+
+    bridge.handleBrowserMessage(browser, JSON.stringify({ type: "mcp_get_status" }));
+
+    expect(session.pendingMessages).toHaveLength(0);
+  });
+
+  // Guard against over-broad short-circuit: a real user_message arriving on a
+  // disconnected session MUST still queue (that's the whole point of lazy-spawn
+  // — keep the user's input safe until they click Reconnect).
+  it("user_message still queues on a disconnected session (regression for the heartbeat short-circuit)", () => {
+    const browser = makeBrowserSocket("heartbeat-user");
+    bridge.handleBrowserOpen(browser, "heartbeat-user");
+    const session = bridge.getSession("heartbeat-user")!;
+
+    bridge.handleBrowserMessage(browser, JSON.stringify({ type: "mcp_get_status" }));
+    bridge.handleBrowserMessage(browser, JSON.stringify({
+      type: "user_message",
+      content: "wake me up when reconnected",
+    }));
+    bridge.handleBrowserMessage(browser, JSON.stringify({ type: "mcp_get_status" }));
+
+    expect(session.pendingMessages).toHaveLength(1);
+    const queued = JSON.parse(session.pendingMessages[0]);
+    expect(queued.type).toBe("user_message");
+    expect(queued.content).toBe("wake me up when reconnected");
+  });
+
   it("flushes bridge-queued messages once backend becomes connected", () => {
     const browser = makeBrowserSocket("codex-s1");
     bridge.handleBrowserOpen(browser, "codex-s1");
