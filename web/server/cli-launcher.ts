@@ -276,6 +276,12 @@ export interface SdkSessionInfo {
   containerImage?: string;
   /** Runtime cwd inside container for agent RPC calls (e.g. "/workspace"). */
   containerCwd?: string;
+  /**
+   * True when the session was intentionally put to sleep by idle cleanup.
+   * Persisted so lazy-spawn mode can still auto-wake the session after a
+   * server restart when the browser reconnects.
+   */
+  idleSleeping?: boolean;
 }
 
 export interface LaunchOptions {
@@ -1504,6 +1510,23 @@ export class CliLauncher {
     const info = this.sessions.get(sessionId);
     if (info) {
       info.archived = archived;
+      this.persistState();
+    }
+  }
+
+  /**
+   * Mark whether a session is intentionally sleeping due to idle cleanup.
+   * This is persisted in launcher.json because the orchestrator's in-memory
+   * wake set is lost across server restarts.
+   */
+  setIdleSleeping(sessionId: string, idleSleeping: boolean): void {
+    const info = this.sessions.get(sessionId);
+    if (info) {
+      if (idleSleeping) {
+        info.idleSleeping = true;
+      } else {
+        delete info.idleSleeping;
+      }
       this.persistState();
     }
   }

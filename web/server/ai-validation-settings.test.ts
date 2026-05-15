@@ -1,13 +1,23 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   _resetForTest,
   updateSettings,
 } from "./settings-manager.js";
 import { getEffectiveAiValidation } from "./ai-validation-settings.js";
 import type { SessionState } from "./session-types.js";
+import { hasContainerClaudeAuth } from "./claude-container-auth.js";
+import { hasContainerCodexAuth } from "./codex-container-auth.js";
+
+vi.mock("./claude-container-auth.js", () => ({
+  hasContainerClaudeAuth: vi.fn(() => false),
+}));
+
+vi.mock("./codex-container-auth.js", () => ({
+  hasContainerCodexAuth: vi.fn(() => false),
+}));
 
 let tempDir: string;
 let settingsPath: string;
@@ -45,6 +55,8 @@ beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "ai-validation-settings-test-"));
   settingsPath = join(tempDir, "settings.json");
   _resetForTest(settingsPath);
+  vi.mocked(hasContainerClaudeAuth).mockReturnValue(false);
+  vi.mocked(hasContainerCodexAuth).mockReturnValue(false);
 });
 
 afterEach(() => {
@@ -60,7 +72,8 @@ describe("getEffectiveAiValidation", () => {
     expect(result.enabled).toBe(false);
     expect(result.autoApprove).toBe(true);
     expect(result.autoDeny).toBe(false);
-    expect(result.anthropicApiKey).toBe("");
+    expect(result.automationAvailable).toBe(false);
+    expect(result.automationProvider).toBeNull();
   });
 
   it("returns global defaults when session fields are null (explicit inherit)", () => {
@@ -112,17 +125,19 @@ describe("getEffectiveAiValidation", () => {
     expect(result.autoDeny).toBe(false);
   });
 
-  it("anthropicApiKey always comes from global settings", () => {
-    updateSettings({ anthropicApiKey: "sk-test-key-123" });
+  it("resolves the current session backend provider when available", () => {
+    vi.mocked(hasContainerCodexAuth).mockReturnValue(true);
 
-    const session = makeSessionState({ aiValidationEnabled: true });
+    const session = makeSessionState({ aiValidationEnabled: true, backend_type: "codex" });
     const result = getEffectiveAiValidation(session);
-    expect(result.anthropicApiKey).toBe("sk-test-key-123");
+    expect(result.automationAvailable).toBe(true);
+    expect(result.automationProvider).toBe("codex");
   });
 
-  it("returns empty API key when global has none, regardless of session settings", () => {
+  it("reports unavailable when no Claude or Codex auth is verified", () => {
     const session = makeSessionState({ aiValidationEnabled: true });
     const result = getEffectiveAiValidation(session);
-    expect(result.anthropicApiKey).toBe("");
+    expect(result.automationAvailable).toBe(false);
+    expect(result.automationProvider).toBeNull();
   });
 });

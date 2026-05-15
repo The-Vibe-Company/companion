@@ -565,7 +565,7 @@ export class WsBridge {
         const aiSettings = getEffectiveAiValidation(session.state);
         if (
           aiSettings.enabled
-          && aiSettings.anthropicApiKey
+          && aiSettings.automationAvailable
           && perm.tool_name !== "AskUserQuestion"
           && perm.tool_name !== "ExitPlanMode"
         ) {
@@ -686,7 +686,7 @@ export class WsBridge {
     });
 
     // Start the active-idle eviction watchdog. Unlike the no-browsers
-    // idle-kill (24h, gated on browser absence), this one fires whenever
+    // idle-kill (default 30m, gated on browser absence), this one fires whenever
     // a session goes quiet for the configured threshold, regardless of
     // whether tabs are still parked open. Wave (c) goal: stop a stalled
     // session from holding RAM/proxy slots indefinitely.
@@ -948,7 +948,7 @@ export class WsBridge {
   private static readonly IDLE_KILL_THRESHOLD_MS = Number(
     process.env.AGENTHANGAR_IDLE_KILL_MINUTES
       ? Number(process.env.AGENTHANGAR_IDLE_KILL_MINUTES) * 60_000
-      : 24 * 60 * 60_000, // 24 hours default
+      : 30 * 60_000, // 30 minutes after the last browser disconnects
   );
   private static readonly IDLE_CHECK_INTERVAL_MS = 60_000; // check every 60s
 

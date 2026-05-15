@@ -115,7 +115,7 @@ export function attachCodexAdapterHandlers(
       const aiSettings = getEffectiveAiValidation(session.state);
       if (
         aiSettings.enabled
-        && aiSettings.anthropicApiKey
+        && aiSettings.automationAvailable
         && perm.tool_name !== "AskUserQuestion"
         && perm.tool_name !== "ExitPlanMode"
       ) {

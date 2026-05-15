@@ -1,22 +1,26 @@
 import { getSettings } from "./settings-manager.js";
 import type { SessionState } from "./session-types.js";
+import { resolveAutomationAiProvider, type AutomationAiProvider } from "./automation-ai.js";
 
 export interface EffectiveAiValidationSettings {
   enabled: boolean;
   autoApprove: boolean;
   autoDeny: boolean;
-  anthropicApiKey: string;
+  automationProvider: AutomationAiProvider | null;
+  automationAvailable: boolean;
 }
 
 /**
  * Resolve effective AI validation settings for a session.
  * Session-level overrides take priority; falls back to global settings.
- * The anthropicApiKey is always from global settings.
+ * Automation uses the verified Agent Auth provider for the current session
+ * backend when possible, then falls back to any available provider.
  */
 export function getEffectiveAiValidation(
   sessionState: SessionState,
 ): EffectiveAiValidationSettings {
   const global = getSettings();
+  const automationProvider = resolveAutomationAiProvider(sessionState.backend_type, global);
   return {
     enabled:
       sessionState.aiValidationEnabled != null
@@ -30,6 +34,7 @@ export function getEffectiveAiValidation(
       sessionState.aiValidationAutoDeny != null
         ? sessionState.aiValidationAutoDeny
         : global.aiValidationAutoDeny,
-    anthropicApiKey: global.anthropicApiKey,
+    automationProvider,
+    automationAvailable: automationProvider != null,
   };
 }

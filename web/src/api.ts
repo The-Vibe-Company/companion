@@ -1022,6 +1022,9 @@ export const api = {
     publicUrl?: string;
     updateChannel?: "stable" | "prerelease";
     dockerAutoUpdate?: boolean;
+    aiValidationEnabled?: boolean;
+    aiValidationAutoApprove?: boolean;
+    aiValidationAutoDeny?: boolean;
   }) => put<AppSettings>("/settings", data),
   verifyAnthropicKey: (apiKey: string) =>
     post<{ valid: boolean; error?: string }>("/settings/anthropic/verify", { apiKey }),

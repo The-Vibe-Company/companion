@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
 // IntersectionObserver is not available in jsdom — provide a no-op mock
@@ -173,23 +173,15 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
 
     expect(mockApi.getSettings).toHaveBeenCalledTimes(1);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
     expect(screen.getByDisplayValue("claude-sonnet-4-6")).toBeInTheDocument();
   });
 
-  // When a key is already configured, the input shows masked dots (••••) to
-  // visually indicate a key is present. The dots clear on focus so the user
-  // can type a replacement key.
-  it("shows masked dots in API key field when key is configured", async () => {
+  it("shows the current Automation AI provider from Agent Auth", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
-
-    const input = screen.getByLabelText("Anthropic API Key") as HTMLInputElement;
-    expect(input.value).toBe("••••••••••••••••");
-
-    // On focus the dots clear to allow entering a new key
-    fireEvent.focus(input);
-    expect(input.value).toBe("");
+    await screen.findByText("Automation AI can run with Agent Auth");
+    expect(screen.getByText("Current automation provider")).toBeInTheDocument();
+    expect(screen.getAllByText("Claude Code").length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows not configured status", async () => {
@@ -200,27 +192,31 @@ describe("SettingsPage", () => {
       linearAutoTransition: false,
       linearAutoTransitionStateName: "",
       updateChannel: "stable",
+      claudeCodeOAuthTokenConfigured: false,
+      claudeApiKeyConfigured: false,
+      claudeAuthMethod: "local",
+      claudeDeviceAuthConfigured: false,
+      openaiApiKeyConfigured: false,
+      codexAuthMethod: "local",
+      codexDeviceAuthConfigured: false,
     });
 
     render(<SettingsPage />);
 
-    await screen.findByText("Anthropic key not configured");
+    await screen.findByText("Configure Agent Auth to enable automation");
   });
 
-  it("shows the automation helper copy under the API key input", async () => {
+  it("shows the automation helper copy under the provider status", async () => {
     render(<SettingsPage />);
 
-    expect(await screen.findByText("Session naming and validation features are disabled until this key is configured.")).toBeInTheDocument();
+    expect(await screen.findByText("Automation features reuse your verified Agent Auth. AgentHangar uses Claude Code when it is available; otherwise it uses Codex.")).toBeInTheDocument();
   });
 
-  it("saves settings with trimmed values", async () => {
+  it("saves the automation model with trimmed value", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
-    fireEvent.change(screen.getByLabelText("Anthropic API Key"), {
-      target: { value: "  or-key  " },
-    });
-    fireEvent.change(screen.getByLabelText("Anthropic Model"), {
+    fireEvent.change(screen.getByLabelText("Automation Model"), {
       target: { value: "  openai/gpt-4o-mini  " },
     });
 
@@ -228,7 +224,6 @@ describe("SettingsPage", () => {
 
     await waitFor(() => {
       expect(mockApi.updateSettings).toHaveBeenCalledWith({
-        anthropicApiKey: "or-key",
         anthropicModel: "openai/gpt-4o-mini",
       });
     });
@@ -238,8 +233,8 @@ describe("SettingsPage", () => {
 
   it("falls back model to claude-sonnet-4-6 when blank", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
-    fireEvent.change(screen.getByLabelText("Anthropic Model"), {
+    await screen.findByText("Automation AI can run with Agent Auth");
+    fireEvent.change(screen.getByLabelText("Automation Model"), {
       target: { value: "   " },
     });
 
@@ -254,9 +249,9 @@ describe("SettingsPage", () => {
 
   it("does not send key when left empty", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
-    fireEvent.change(screen.getByLabelText("Anthropic Model"), {
+    fireEvent.change(screen.getByLabelText("Automation Model"), {
       target: { value: "openai/gpt-4o-mini" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -280,11 +275,8 @@ describe("SettingsPage", () => {
     mockApi.updateSettings.mockRejectedValueOnce(new Error("save failed"));
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
-    fireEvent.change(screen.getByLabelText("Anthropic API Key"), {
-      target: { value: "or-key" },
-    });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText("save failed")).toBeInTheDocument();
@@ -292,7 +284,7 @@ describe("SettingsPage", () => {
 
   it("navigates back when Back button is clicked", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(window.location.hash).toBe("");
@@ -300,7 +292,7 @@ describe("SettingsPage", () => {
 
   it("hides Back button in embedded mode", async () => {
     render(<SettingsPage embedded />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
     expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
   });
 
@@ -319,21 +311,16 @@ describe("SettingsPage", () => {
     );
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
-    fireEvent.change(screen.getByLabelText("Anthropic API Key"), {
-      target: { value: "or-key" },
-    });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    // Both the Anthropic "Save" and Webhooks "Save Public URL" buttons share the
-    // `saving` state, so both show "Saving..." while the request is in flight.
-    // We check that the submit-type button (Anthropic form) is disabled.
-    const savingButtons = screen.getAllByRole("button", { name: "Saving..." });
-    expect(savingButtons.length).toBeGreaterThanOrEqual(1);
-    const submitSavingBtn = savingButtons.find((b) => b.getAttribute("type") === "submit");
-    expect(submitSavingBtn).toBeDefined();
+    // Automation AI has its own save state; saving this form must not turn the
+    // Public URL action into "Saving...".
+    const submitSavingBtn = screen.getByRole("button", { name: "Saving..." });
+    expect(submitSavingBtn).toHaveAttribute("type", "submit");
     expect(submitSavingBtn).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save Public URL" })).toBeInTheDocument();
 
     resolveSave?.({
       anthropicApiKeyConfigured: true,
@@ -344,11 +331,14 @@ describe("SettingsPage", () => {
     });
 
     await screen.findByText("Settings saved.");
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    });
   });
 
   it("toggles sound notifications from settings", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     fireEvent.click(screen.getByRole("button", { name: /Sound/i }));
     expect(mockState.toggleNotificationSound).toHaveBeenCalledTimes(1);
@@ -357,7 +347,7 @@ describe("SettingsPage", () => {
   it("toggles theme from settings", async () => {
     mockState = createMockState({ darkMode: true });
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     fireEvent.click(screen.getByRole("button", { name: /Theme/i }));
     expect(mockState.toggleDarkMode).toHaveBeenCalledTimes(1);
@@ -365,7 +355,7 @@ describe("SettingsPage", () => {
 
   it("shows telemetry as disabled in privacy settings", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     expect(screen.getByText("External telemetry")).toBeInTheDocument();
     expect(screen.getByText("Disabled")).toBeInTheDocument();
@@ -376,7 +366,7 @@ describe("SettingsPage", () => {
 
   it("navigates to environments page from settings", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     fireEvent.click(screen.getByRole("button", { name: "Open Environments" }));
     expect(window.location.hash).toBe("#/environments");
@@ -390,7 +380,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
     fireEvent.click(screen.getByRole("button", { name: /Desktop Alerts/i }));
 
     await waitFor(() => {
@@ -412,7 +402,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
     fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
 
     await waitFor(() => {
@@ -439,7 +429,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     expect(screen.getByText("Local build version: v0.95.0")).toBeInTheDocument();
     expect(screen.getByText("Release source not configured.")).toBeInTheDocument();
@@ -457,7 +447,7 @@ describe("SettingsPage", () => {
       },
     });
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     fireEvent.click(screen.getByRole("button", { name: "Update & Restart" }));
 
@@ -471,7 +461,7 @@ describe("SettingsPage", () => {
   // Verify left sidebar nav renders category labels for quick navigation
   it("renders category navigation with all section labels", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     // Each category appears in both desktop sidebar and mobile nav (jsdom renders both)
     const generalButtons = screen.getAllByRole("button", { name: "General" });
@@ -486,7 +476,7 @@ describe("SettingsPage", () => {
   // menu highlight is also clear to assistive technology.
   it("marks the active settings category in navigation", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     for (const button of screen.getAllByRole("button", { name: "General" })) {
       expect(button).toHaveAttribute("aria-current", "page");
@@ -506,7 +496,7 @@ describe("SettingsPage", () => {
     window.location.hash = "#/settings?section=providers";
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     for (const button of screen.getAllByRole("button", { name: "Agent Auth" })) {
       expect(button).toHaveAttribute("aria-current", "page");
@@ -519,7 +509,7 @@ describe("SettingsPage", () => {
   // Verify section headings have correct IDs for anchor-based scrolling
   it("renders section headings with anchor IDs", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     expect(document.getElementById("general")).toBeInTheDocument();
     expect(document.getElementById("webhooks")).toBeInTheDocument();
@@ -536,7 +526,7 @@ describe("SettingsPage", () => {
   // field labels such as "Update Channel" so the page scans as grouped settings.
   it("renders top-level settings headings with stronger visual hierarchy", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     expect(screen.getByRole("heading", { name: "Updates" })).toHaveClass("text-lg");
     expect(screen.getByText("Update Channel")).toHaveClass("text-sm");
@@ -547,7 +537,7 @@ describe("SettingsPage", () => {
   // The auth section fetches the token on mount and displays it masked.
   it("fetches and displays the auth token masked by default", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     // Token should be fetched
     expect(mockApi.getAuthToken).toHaveBeenCalledTimes(1);
@@ -562,7 +552,7 @@ describe("SettingsPage", () => {
   // Clicking "Show" reveals the actual token value.
   it("reveals the token when Show is clicked", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     await waitFor(() => {
       expect(screen.getByText("\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022")).toBeInTheDocument();
@@ -575,7 +565,7 @@ describe("SettingsPage", () => {
   // Clicking "Show QR Code" loads and displays QR with address tabs.
   it("shows QR code with address tabs when button is clicked", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     fireEvent.click(screen.getByRole("button", { name: "Show QR Code" }));
 
@@ -604,7 +594,7 @@ describe("SettingsPage", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     fireEvent.click(screen.getByRole("button", { name: "Regenerate Token" }));
 
@@ -623,7 +613,7 @@ describe("SettingsPage", () => {
     vi.spyOn(window, "confirm").mockReturnValue(false);
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     fireEvent.click(screen.getByRole("button", { name: "Regenerate Token" }));
 
@@ -635,132 +625,19 @@ describe("SettingsPage", () => {
   // The Device Login navigation item appears in the sidebar.
   it("includes Device Login in category navigation", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     const authButtons = screen.getAllByRole("button", { name: "Device Login" });
     expect(authButtons.length).toBeGreaterThanOrEqual(1);
   });
 
-  // ─── Verify button tests ──────────────────────────────────
-
-  // The Verify button is disabled when the API key input is empty.
-  it("disables Verify button when anthropic key input is empty", async () => {
-    render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
-
-    const verifyBtn = screen.getByRole("button", { name: "Verify" });
-    expect(verifyBtn).toBeDisabled();
-  });
-
-  // The Verify button is enabled when the user types a new key.
-  it("enables Verify button when user types a key", async () => {
-    render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
-
-    const keyInput = screen.getByLabelText("Anthropic API Key");
-    fireEvent.focus(keyInput);
-    fireEvent.change(keyInput, { target: { value: "sk-ant-test-key" } });
-
-    const verifyBtn = screen.getByRole("button", { name: "Verify" });
-    expect(verifyBtn).toBeEnabled();
-  });
-
-  // Clicking Verify calls verifyAnthropicKey and shows success state.
-  it("shows success message when verify succeeds", async () => {
-    mockApi.verifyAnthropicKey.mockResolvedValueOnce({ valid: true });
-
-    render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
-
-    const keyInput = screen.getByLabelText("Anthropic API Key");
-    fireEvent.focus(keyInput);
-    fireEvent.change(keyInput, { target: { value: "sk-ant-test-key" } });
-
-    const verifyBtn = screen.getByRole("button", { name: "Verify" });
-    fireEvent.click(verifyBtn);
-
-    expect(mockApi.verifyAnthropicKey).toHaveBeenCalledWith("sk-ant-test-key");
-    await screen.findByText("API key is valid.");
-  });
-
-  // Clicking Verify shows error state when verification fails.
-  it("shows error message when verify fails", async () => {
-    mockApi.verifyAnthropicKey.mockResolvedValueOnce({ valid: false, error: "API returned 401" });
-
-    render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
-
-    const keyInput = screen.getByLabelText("Anthropic API Key");
-    fireEvent.focus(keyInput);
-    fireEvent.change(keyInput, { target: { value: "sk-ant-bad-key" } });
-
-    const verifyBtn = screen.getByRole("button", { name: "Verify" });
-    fireEvent.click(verifyBtn);
-
-    expect(mockApi.verifyAnthropicKey).toHaveBeenCalledWith("sk-ant-bad-key");
-    await screen.findByText("Invalid API key: API returned 401");
-  });
-
-  // Verify result auto-dismisses after 5 seconds.
-  it("auto-dismisses verify result after 5 seconds", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    mockApi.verifyAnthropicKey.mockResolvedValueOnce({ valid: true });
-
-    render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
-
-    const keyInput = screen.getByLabelText("Anthropic API Key");
-    fireEvent.focus(keyInput);
-    fireEvent.change(keyInput, { target: { value: "sk-ant-test-key" } });
-
-    const verifyBtn = screen.getByRole("button", { name: "Verify" });
-    fireEvent.click(verifyBtn);
-
-    await screen.findByText("API key is valid.");
-
-    // Advance past the 5s auto-dismiss
-    act(() => {
-      vi.advanceTimersByTime(5100);
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByText("API key is valid.")).not.toBeInTheDocument();
-    });
-
-    vi.useRealTimers();
-  });
-
-  // Verify result clears when the key input changes.
-  it("clears verify result when key input changes", async () => {
-    mockApi.verifyAnthropicKey.mockResolvedValueOnce({ valid: true });
-
-    render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
-
-    const keyInput = screen.getByLabelText("Anthropic API Key");
-    fireEvent.focus(keyInput);
-    fireEvent.change(keyInput, { target: { value: "sk-ant-test-key" } });
-
-    const verifyBtn = screen.getByRole("button", { name: "Verify" });
-    fireEvent.click(verifyBtn);
-
-    await screen.findByText("API key is valid.");
-
-    // Changing the key should clear the verify result
-    fireEvent.change(keyInput, { target: { value: "sk-ant-test-key-changed" } });
-
-    await waitFor(() => {
-      expect(screen.queryByText("API key is valid.")).not.toBeInTheDocument();
-    });
-  });
-
   // ─── AI Validation section tests ──────────────────────────────────
 
   // The AI Validation section renders with its heading and the toggle button
-  // when an Anthropic key is configured (configured === true).
-  it("renders AI Validation section with toggle when Anthropic key is configured", async () => {
+  // when Agent Auth is configured (configured === true).
+  it("renders AI Validation section with toggle when Agent Auth is configured", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     // Section heading should be present inside the #ai-validation section
     const section = document.getElementById("ai-validation");
@@ -775,9 +652,9 @@ describe("SettingsPage", () => {
     expect(toggleBtn).toHaveTextContent("Off");
   });
 
-  // When no Anthropic API key is configured, the AI Validation toggle should
+  // When no Agent Auth method is configured, the AI Validation toggle should
   // be disabled and a warning message should appear.
-  it("disables AI Validation toggle when Anthropic key is NOT configured", async () => {
+  it("disables AI Validation toggle when Agent Auth is NOT configured", async () => {
     mockApi.getSettings.mockResolvedValueOnce({
       anthropicApiKeyConfigured: false,
       anthropicModel: "claude-sonnet-4-6",
@@ -788,14 +665,14 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key not configured");
+    await screen.findByText("Configure Agent Auth to enable automation");
 
     const toggleBtn = screen.getByRole("button", { name: /AI Validation Mode/i });
     expect(toggleBtn).toBeDisabled();
 
     // Warning message should be shown
     expect(
-      screen.getByText("Configure the Automation AI key above to enable AI validation."),
+      screen.getByText("Configure Agent Auth before enabling AI validation."),
     ).toBeInTheDocument();
   });
 
@@ -814,7 +691,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     fireEvent.click(screen.getByRole("button", { name: /AI Validation Mode/i }));
 
@@ -823,7 +700,7 @@ describe("SettingsPage", () => {
     });
   });
 
-  // When AI Validation is enabled (and Anthropic key is configured), the
+  // When AI Validation is enabled (and Agent Auth is configured), the
   // auto-approve and auto-deny sub-toggles should appear.
   it("shows auto-approve and auto-deny sub-toggles when AI Validation is enabled", async () => {
     // Return settings with aiValidationEnabled: true so sub-toggles render
@@ -840,7 +717,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     // Sub-toggles should be visible
     expect(screen.getByRole("button", { name: /Auto-approve safe tools/i })).toBeInTheDocument();
@@ -862,7 +739,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     expect(screen.queryByRole("button", { name: /Auto-approve safe tools/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Auto-deny dangerous tools/i })).not.toBeInTheDocument();
@@ -894,7 +771,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     // Auto-approve is currently "On" (true), clicking should toggle to false
     fireEvent.click(screen.getByRole("button", { name: /Auto-approve safe tools/i }));
@@ -930,7 +807,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     // Auto-deny is currently "On" (true), clicking should toggle to false
     fireEvent.click(screen.getByRole("button", { name: /Auto-deny dangerous tools/i }));
@@ -946,7 +823,7 @@ describe("SettingsPage", () => {
     mockApi.updateSettings.mockRejectedValueOnce(new Error("network error"));
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     const toggleBtn = screen.getByRole("button", { name: /AI Validation Mode/i });
     // Initially off
@@ -964,7 +841,7 @@ describe("SettingsPage", () => {
   // The AI Validation section includes its anchor ID for sidebar navigation.
   it("renders AI Validation section with anchor ID for navigation", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     expect(document.getElementById("ai-validation")).toBeInTheDocument();
   });
@@ -972,7 +849,7 @@ describe("SettingsPage", () => {
   // The Safety category appears in the sidebar navigation.
   it("includes Safety in category navigation", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     const aiValButtons = screen.getAllByRole("button", { name: "Safety" });
     expect(aiValButtons.length).toBeGreaterThanOrEqual(1);
@@ -983,7 +860,7 @@ describe("SettingsPage", () => {
   // The update channel selector renders with Stable selected by default.
   it("renders update channel selector with Stable selected by default", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     expect(screen.getByText("Stable")).toBeInTheDocument();
     expect(screen.getByText("Prerelease")).toBeInTheDocument();
@@ -1002,7 +879,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     expect(screen.getByText(/Tracking prerelease channel/)).toBeInTheDocument();
   });
@@ -1028,7 +905,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     fireEvent.click(screen.getByText("Prerelease"));
 
@@ -1043,7 +920,7 @@ describe("SettingsPage", () => {
   // Clicking Stable when already on stable is a no-op (doesn't call updateSettings).
   it("does not call updateSettings when clicking already-selected channel", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     fireEvent.click(screen.getByText("Stable"));
 
@@ -1067,7 +944,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     // Find the toggle by its role=switch and aria-checked attribute
     const toggle = screen.getByRole("switch", { name: "" });
@@ -1096,7 +973,7 @@ describe("SettingsPage", () => {
     mockApi.updateSettings.mockRejectedValueOnce(new Error("network error"));
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     const toggle = screen.getByRole("switch", { name: "" });
     expect(toggle).toHaveAttribute("aria-checked", "false");
@@ -1124,7 +1001,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     const toggle = screen.getByRole("switch", { name: "" });
     expect(toggle).toHaveAttribute("aria-checked", "true");
@@ -1136,7 +1013,7 @@ describe("SettingsPage", () => {
   // can quickly jump to the webhook configuration section.
   it("includes Access in category navigation", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     // Each category appears in both desktop sidebar and mobile nav (jsdom renders both)
     const webhookButtons = screen.getAllByRole("button", { name: "Access" });
@@ -1148,7 +1025,7 @@ describe("SettingsPage", () => {
   // the fallback text should show the current window origin.
   it("renders Public URL input in Webhooks section with fallback text", async () => {
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     // The section heading should be present
     expect(document.getElementById("webhooks")).toBeInTheDocument();
@@ -1180,7 +1057,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     expect(screen.getByText("Using: https://my-companion.example.com")).toBeInTheDocument();
   });
@@ -1199,7 +1076,7 @@ describe("SettingsPage", () => {
     });
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     const urlInput = screen.getByLabelText("Public URL");
     fireEvent.change(urlInput, { target: { value: "  https://my-companion.example.com  " } });
@@ -1262,7 +1139,7 @@ describe("SettingsPage", () => {
     const { axe } = await import("vitest-axe");
 
     render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
+    await screen.findByText("Automation AI can run with Agent Auth");
 
     const webhooksSection = document.getElementById("webhooks");
     expect(webhooksSection).toBeInTheDocument();

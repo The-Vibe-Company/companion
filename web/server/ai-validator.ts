@@ -1,6 +1,5 @@
-import { getSettings, DEFAULT_ANTHROPIC_MODEL } from "./settings-manager.js";
+import { runAutomationAi } from "./automation-ai.js";
 
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const AI_TIMEOUT_MS = 5_000;
 
 export type AiVerdict = "safe" | "dangerous" | "uncertain";
@@ -105,122 +104,33 @@ Rules:
 Be conservative: when in doubt, say "uncertain" rather than "safe".`;
 
 /**
- * Parse a non-2xx Anthropic response into a concise, actionable reason string.
- * Never throws — returns a fallback reason on any parsing failure.
- * Never echoes sensitive data (API keys, full payloads).
- */
-async function formatHttpErrorReason(res: Response): Promise<string> {
-  const status = res.status;
-
-  // Map well-known HTTP status codes to user-friendly messages
-  const statusMap: Record<number, string> = {
-    401: "Invalid Anthropic API key",
-    403: "Anthropic API key lacks permission",
-    404: "Model not found or endpoint unavailable",
-    429: "Anthropic rate limit exceeded",
-    500: "Anthropic internal server error",
-    502: "Anthropic service temporarily unavailable (bad gateway)",
-    503: "Anthropic service temporarily unavailable",
-    529: "Anthropic API overloaded",
-  };
-
-  // Try to extract a more specific message from the response body
-  let upstreamMessage = "";
-  try {
-    const text = await res.text();
-    if (text) {
-      const body = JSON.parse(text) as { error?: { message?: string; type?: string } };
-      if (body.error?.message) {
-        // Truncate to keep it concise and avoid leaking sensitive details
-        upstreamMessage = body.error.message.slice(0, 120);
-      }
-    }
-  } catch {
-    // Body is not JSON or unreadable — that's fine, use status-based message
-  }
-
-  const baseReason = statusMap[status] || `AI service error (HTTP ${status})`;
-  return upstreamMessage ? `${baseReason}: ${upstreamMessage}` : baseReason;
-}
-
-/**
- * Call the AI model via Anthropic to evaluate a tool call.
+ * Call the configured Automation AI provider to evaluate a tool call.
  */
 export async function aiEvaluate(
   toolName: string,
   input: Record<string, unknown>,
   description?: string,
 ): Promise<AiValidationResult> {
-  const settings = getSettings();
-  const apiKey = settings.anthropicApiKey.trim();
-
-  if (!apiKey) {
-    return { verdict: "uncertain", reason: "No Anthropic API key configured", ruleBasedOnly: false };
-  }
-
-  const model = settings.anthropicModel?.trim() || DEFAULT_ANTHROPIC_MODEL;
-
   // Build a concise representation of the tool call for the AI
   const inputStr = JSON.stringify(input, null, 0);
   const truncatedInput = inputStr.length > 1000 ? inputStr.slice(0, 1000) + "..." : inputStr;
-  let userPrompt = `Tool: ${toolName}\nInput: ${truncatedInput}`;
+  let userPrompt = `${SYSTEM_PROMPT}\n\nTool: ${toolName}\nInput: ${truncatedInput}`;
   if (description) {
     userPrompt += `\nDescription: ${description}`;
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
-
   try {
-    const res = await fetch(ANTHROPIC_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 256,
-        system: SYSTEM_PROMPT,
-        messages: [
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0,
-      }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      const reason = await formatHttpErrorReason(res);
-      console.warn(`[ai-validator] Anthropic request failed: ${res.status} ${res.statusText} — ${reason}`);
-      return { verdict: "uncertain", reason, ruleBasedOnly: false };
+    const result = await runAutomationAi(userPrompt, { timeoutMs: AI_TIMEOUT_MS });
+    if (!result.ok) {
+      console.warn(`[ai-validator] Automation AI request failed: ${result.reason}`);
+      return { verdict: "uncertain", reason: result.reason, ruleBasedOnly: false };
     }
-
-    const data = (await res.json()) as {
-      content?: Array<{ type: string; text?: string }>;
-    };
-
-    const raw = data.content?.[0]?.type === "text"
-      ? (data.content[0].text ?? "")
-      : "";
-
-    return parseAiResponse(raw);
+    return parseAiResponse(result.text);
   } catch (err) {
-    const isAbort = err instanceof Error && err.name === "AbortError";
     const errMsg = err instanceof Error ? err.message : String(err);
-    console.warn(`[ai-validator] AI evaluation failed:`, isAbort ? "timeout" : err);
-    let reason: string;
-    if (isAbort) {
-      reason = "AI evaluation timed out";
-    } else if (errMsg.includes("ENOTFOUND") || errMsg.includes("ECONNREFUSED") || errMsg.includes("fetch failed")) {
-      reason = `AI service unreachable: ${errMsg.slice(0, 100)}`;
-    } else {
-      reason = `AI service unavailable: ${errMsg.slice(0, 100)}`;
-    }
+    console.warn("[ai-validator] AI evaluation failed:", err);
+    const reason = `Automation AI unavailable: ${errMsg.slice(0, 100)}`;
     return { verdict: "uncertain", reason, ruleBasedOnly: false };
-  } finally {
-    clearTimeout(timer);
   }
 }
 

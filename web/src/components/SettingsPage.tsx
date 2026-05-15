@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "../api.js";
 import { useStore } from "../store.js";
 import { navigateToSession, navigateHome } from "../utils/routing.js";
+import { hasUsableClaudeAuth, hasUsableCodexAuth } from "../utils/provider-auth.js";
 
 interface SettingsPageProps {
   embedded?: boolean;
@@ -50,13 +51,15 @@ function getRequestedSettingsSection(hash = window.location.hash): CategoryId | 
 }
 
 export function SettingsPage({ embedded = false }: SettingsPageProps) {
-  const [anthropicApiKey, setAnthropicApiKey] = useState("");
   const [anthropicModel, setAnthropicModel] = useState("claude-sonnet-4-6");
   const [configured, setConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [publicUrlSaving, setPublicUrlSaving] = useState(false);
+  const [automationSaving, setAutomationSaving] = useState(false);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
+  const [automationError, setAutomationError] = useState("");
+  const [publicUrlSaved, setPublicUrlSaved] = useState(false);
+  const [automationSaved, setAutomationSaved] = useState(false);
   const darkMode = useStore((s) => s.darkMode);
   const toggleDarkMode = useStore((s) => s.toggleDarkMode);
   const diffBase = useStore((s) => s.diffBase);
@@ -81,9 +84,6 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
   const [publicUrl, setPublicUrl] = useState("");
   const [savedPublicUrl, setSavedPublicUrl] = useState("");
   const [activeSection, setActiveSection] = useState<CategoryId>(() => getRequestedSettingsSection() ?? "general");
-  const [apiKeyFocused, setApiKeyFocused] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [verifyResult, setVerifyResult] = useState<{ valid: boolean; error?: string } | null>(null);
 
   // Provider tokens state
   const [claudeCodeToken, setClaudeCodeToken] = useState("");
@@ -183,7 +183,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
     api
       .getSettings()
       .then((s) => {
-        setConfigured(s.anthropicApiKeyConfigured);
+        setConfigured(s.anthropicApiKeyConfigured || hasUsableClaudeAuth(s) || hasUsableCodexAuth(s));
         setClaudeCodeTokenConfigured(s.claudeCodeOAuthTokenConfigured);
         setClaudeApiKeyConfigured(s.claudeApiKeyConfigured ?? false);
         const resolvedClaudeAuthMethod = s.claudeAuthMethod
@@ -219,27 +219,20 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setError("");
-    setSaved(false);
+    setAutomationSaving(true);
+    setAutomationError("");
+    setAutomationSaved(false);
     try {
-      const nextKey = anthropicApiKey.trim();
-      const payload: { anthropicApiKey?: string; anthropicModel: string } = {
+      const res = await api.updateSettings({
         anthropicModel: anthropicModel.trim() || "claude-sonnet-4-6",
-      };
-      if (nextKey) {
-        payload.anthropicApiKey = nextKey;
-      }
-
-      const res = await api.updateSettings(payload);
-      setConfigured(res.anthropicApiKeyConfigured);
-      setAnthropicApiKey("");
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1800);
+      });
+      setConfigured(res.anthropicApiKeyConfigured || hasUsableClaudeAuth(res) || hasUsableCodexAuth(res));
+      setAutomationSaved(true);
+      setTimeout(() => setAutomationSaved(false), 1800);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
+      setAutomationError(err instanceof Error ? err.message : String(err));
     } finally {
-      setSaving(false);
+      setAutomationSaving(false);
     }
   }
 
@@ -262,6 +255,22 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
       else setAiValidationAutoDeny(current);
     }
   }
+
+  const automationClaudeAvailable =
+    savedClaudeAuthMethod === "local"
+      ? claudeDeviceAuthConfigured
+      : savedClaudeAuthMethod === "oauth"
+        ? claudeCodeTokenConfigured
+        : claudeApiKeyConfigured;
+  const automationCodexAvailable =
+    savedCodexAuthMethod === "local" ? codexDeviceAuthConfigured : openaiApiKeyConfigured;
+  const automationProviderLabel = automationClaudeAvailable
+    ? "Claude Code"
+    : automationCodexAvailable
+      ? "Codex"
+      : configured
+        ? "Legacy Anthropic key"
+        : "No verified provider";
 
   async function onCheckUpdates() {
     setCheckingUpdates(true);
@@ -534,6 +543,12 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
         {/* Scrollable content */}
         <div ref={contentRef} className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-8 sm:pl-0 pb-safe">
           <div className="divide-y divide-cc-border/80 py-4 sm:py-2 [&>section]:py-8 [&>section:first-child]:pt-0 [&>section:last-child]:pb-12">
+            {error && (
+              <div className="mb-4 px-3 py-2 rounded-lg bg-cc-error/10 border border-cc-error/20 text-xs text-cc-error">
+                {error}
+              </div>
+            )}
+
             {/* General */}
             <section id="general" ref={setSectionRef("general")}>
               <h2 className={SECTION_HEADING_CLASS}>General</h2>
@@ -637,25 +652,25 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                 <button
                   type="button"
                   onClick={async () => {
-                    setSaving(true);
+                    setPublicUrlSaving(true);
                     setError("");
                     try {
                       const res = await api.updateSettings({ publicUrl: normalizedPublicUrl });
                       setPublicUrl(res.publicUrl);
                       setSavedPublicUrl(res.publicUrl);
                       useStore.getState().setPublicUrl(res.publicUrl);
-                      setSaved(true);
-                      setTimeout(() => setSaved(false), 1800);
+                      setPublicUrlSaved(true);
+                      setTimeout(() => setPublicUrlSaved(false), 1800);
                     } catch (err: unknown) {
                       setError(err instanceof Error ? err.message : String(err));
                     } finally {
-                      setSaving(false);
+                      setPublicUrlSaving(false);
                     }
                   }}
-                  disabled={saving || !publicUrlChanged}
+                  disabled={publicUrlSaving || !publicUrlChanged}
                   className="px-4 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-cc-primary text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  {saving ? "Saving..." : saved ? "Saved!" : "Save Public URL"}
+                  {publicUrlSaving ? "Saving..." : publicUrlSaved ? "Saved!" : "Save Public URL"}
                 </button>
               </div>
             </section>
@@ -1049,35 +1064,28 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
               </div>
             </section>
 
-            {/* Anthropic */}
+            {/* Automation AI */}
             <section id="anthropic" ref={setSectionRef("anthropic")}>
               <h2 className={SECTION_HEADING_CLASS}>Automation AI</h2>
               <form onSubmit={onSave} className="space-y-4">
                 <p className="text-xs text-cc-muted">
-                  This key is for AgentHangar features such as session naming and AI validation. It is separate from Claude Code login.
+                  Automation features reuse your verified Agent Auth. AgentHangar uses Claude Code when it is available; otherwise it uses Codex.
                 </p>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5" htmlFor="anthropic-key">
-                    Anthropic API Key
-                  </label>
-                  <input
-                    id="anthropic-key"
-                    type="password"
-                    value={configured && !apiKeyFocused && !anthropicApiKey ? "••••••••••••••••" : anthropicApiKey}
-                    onChange={(e) => { setAnthropicApiKey(e.target.value); setVerifyResult(null); }}
-                    onFocus={() => setApiKeyFocused(true)}
-                    onBlur={() => setApiKeyFocused(false)}
-                    placeholder={configured ? "Enter a new key to replace" : "sk-ant-api03-..."}
-                    className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
-                  />
+                <div className="rounded-lg border border-cc-border bg-cc-bg px-3 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-cc-fg">Current automation provider</span>
+                    <span className={`text-xs font-medium ${configured ? "text-cc-success" : "text-cc-warning"}`}>
+                      {automationProviderLabel}
+                    </span>
+                  </div>
                   <p className="mt-1.5 text-xs text-cc-muted">
-                    Session naming and validation features are disabled until this key is configured.
+                    Change the active provider from Agent Auth. Local CLI login, OAuth token, and API key modes are all supported through the selected CLI.
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-1.5" htmlFor="anthropic-model">
-                    Anthropic Model
+                    Automation Model
                   </label>
                   <input
                     id="anthropic-model"
@@ -1087,15 +1095,18 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     placeholder="claude-sonnet-4-6"
                     className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
                   />
+                  <p className="mt-1.5 text-xs text-cc-muted">
+                    Use a model supported by the current provider. Examples: Claude models for Claude Code, GPT/Codex models for Codex.
+                  </p>
                 </div>
 
-                {error && (
+                {automationError && (
                   <div className="px-3 py-2 rounded-lg bg-cc-error/10 border border-cc-error/20 text-xs text-cc-error">
-                    {error}
+                    {automationError}
                   </div>
                 )}
 
-                {saved && (
+                {automationSaved && (
                   <div className="px-3 py-2 rounded-lg bg-cc-success/10 border border-cc-success/20 text-xs text-cc-success">
                     Settings saved.
                   </div>
@@ -1103,57 +1114,22 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-cc-muted">
-                    {loading ? "Loading..." : configured ? "Anthropic key configured" : "Anthropic key not configured"}
+                    {loading ? "Loading..." : configured ? "Automation AI can run with Agent Auth" : "Configure Agent Auth to enable automation"}
                   </span>
                   <div className="flex items-center gap-2">
                     <button
-                      type="button"
-                      disabled={verifying || !anthropicApiKey.trim()}
-                      onClick={async () => {
-                        setVerifying(true);
-                        setVerifyResult(null);
-                        try {
-                          const result = await api.verifyAnthropicKey(anthropicApiKey.trim());
-                          setVerifyResult(result);
-                          setTimeout(() => setVerifyResult(null), 5000);
-                        } catch (err: unknown) {
-                          setVerifyResult({ valid: false, error: err instanceof Error ? err.message : String(err) });
-                          setTimeout(() => setVerifyResult(null), 5000);
-                        } finally {
-                          setVerifying(false);
-                        }
-                      }}
-                      className={`px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
-                        verifying || !anthropicApiKey.trim()
-                          ? "bg-cc-hover text-cc-muted cursor-not-allowed"
-                          : "bg-cc-hover hover:bg-cc-active text-cc-fg cursor-pointer"
-                      }`}
-                    >
-                      {verifying ? "Verifying..." : "Verify"}
-                    </button>
-                    <button
                       type="submit"
-                      disabled={saving || loading}
+                      disabled={automationSaving || loading}
                       className={`px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
-                        saving || loading
+                        automationSaving || loading
                           ? "bg-cc-hover text-cc-muted cursor-not-allowed"
                           : "bg-cc-primary hover:bg-cc-primary-hover text-white cursor-pointer"
                       }`}
                     >
-                      {saving ? "Saving..." : "Save"}
+                      {automationSaving ? "Saving..." : "Save"}
                     </button>
                   </div>
                 </div>
-
-                {verifyResult && (
-                  <div className={`px-3 py-2 rounded-lg text-xs ${
-                    verifyResult.valid
-                      ? "bg-cc-success/10 border border-cc-success/20 text-cc-success"
-                      : "bg-cc-error/10 border border-cc-error/20 text-cc-error"
-                  }`}>
-                    {verifyResult.valid ? "API key is valid." : `Invalid API key${verifyResult.error ? `: ${verifyResult.error}` : "."}`}
-                  </div>
-                )}
               </form>
             </section>
 
@@ -1165,7 +1141,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   When enabled, an AI model evaluates tool calls before they execute.
                   Safe operations are auto-approved, dangerous ones are blocked,
                   and uncertain cases are shown to you with a recommendation.
-                  Requires an Anthropic API key. These settings serve as defaults
+                  Requires a verified Claude Code or Codex auth method. These settings serve as defaults
                   for new sessions. Each session can override AI validation
                   independently via the shield icon in the session header.
                 </p>
@@ -1186,7 +1162,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   </span>
                 </button>
                 {!configured && (
-                  <p className="text-[11px] text-cc-warning">Configure the Automation AI key above to enable AI validation.</p>
+                  <p className="text-[11px] text-cc-warning">Configure Agent Auth before enabling AI validation.</p>
                 )}
 
                 {aiValidationEnabled && configured && (

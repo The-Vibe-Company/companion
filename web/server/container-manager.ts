@@ -716,6 +716,25 @@ export class ContainerManager {
   }
 
   /**
+   * Stop a running container without removing it.
+   *
+   * Used by sleep-on-idle: Docker keeps the container metadata, published port
+   * choices, and named workspace volume, while releasing the runtime memory.
+   * `startContainer()` can later wake it and re-seed tmpfs-backed auth files.
+   */
+  stopContainer(containerId: string): void {
+    validateContainerId(containerId);
+    exec(`docker stop ${shellEscape(containerId)}`, {
+      encoding: "utf-8",
+      timeout: CONTAINER_BOOT_TIMEOUT_MS,
+    });
+    const info = this.getContainerById(containerId);
+    if (info) {
+      info.state = "stopped";
+    }
+  }
+
+  /**
    * Check whether a Docker container exists and its running state.
    * Returns "running", "stopped", or "missing".
    */

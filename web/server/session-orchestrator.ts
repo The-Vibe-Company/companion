@@ -21,6 +21,7 @@ import { hasUsableClaudeSessionAuth, hasUsableCodexSessionAuth } from "./provide
 import { discoverCommandsAndSkills } from "./commands-discovery.js";
 import { getSettings } from "./settings-manager.js";
 import { generateSessionTitle } from "./auto-namer.js";
+import { resolveAutomationAiProvider } from "./automation-ai.js";
 import { companionBus } from "./event-bus.js";
 import { metricsCollector } from "./metrics-collector.js";
 import { log } from "./logger.js";
@@ -134,6 +135,9 @@ export class SessionOrchestrator {
   // Tracks sessions intentionally killed (idle-kill, manual delete/archive)
   // so the proactive keepalive doesn't relaunch them.
   private intentionalKills = new Set<string>();
+  // Sessions intentionally put to sleep by idle-kill. Unlike crashes, these may
+  // auto-wake when a browser reconnects even in lazy-spawn-only mode.
+  private idleSleptSessions = new Set<string>();
   // Timers for proactive keepalive relaunches (for cancellation on delete)
   private keepaliveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -230,25 +234,38 @@ export class SessionOrchestrator {
     // (ChatView). User must click it to trigger the explicit relaunch path
     // via `POST /api/sessions/:id/relaunch`.
     companionBus.on("session:relaunch-needed", async ({ sessionId }) => {
-      if (this.lazySpawnOnly) {
+      if (this.lazySpawnOnly && !this.shouldWakeSleepingSession(sessionId)) {
         log.info("orchestrator", "Skipping auto-relaunch (lazy-spawn-only mode)", { sessionId });
         return;
       }
       await this.handleAutoRelaunch(sessionId);
     });
 
-    // Kill CLI process when idle with no browsers for 24 hours.
-    // Only kills the CLI process — containers are preserved so the session
-    // can be relaunched without recreating the container.
+    // Sleep sessions when idle with no browsers. Host sessions only stop the
+    // CLI process. Container sessions additionally `docker stop` the container
+    // without removing it, so relaunch can `docker start` and resume.
     companionBus.on("session:idle-kill", async ({ sessionId }) => {
       const info = this.launcher.getSession(sessionId);
       if (!info || info.archived) return;
       log.info("orchestrator", "Idle-killing session (preserving container)", { sessionId, reason: "no browsers, no activity" });
       this.intentionalKills.add(sessionId);
+      this.idleSleptSessions.add(sessionId);
+      this.launcher.setIdleSleeping(sessionId, true);
       // Cancel the CLI disconnect debounce timer so it doesn't fire
       // session:relaunch-needed after we intentionally kill the process.
       this.wsBridge.cancelDisconnectTimer(sessionId);
       await this.launcher.kill(sessionId);
+      if (info.containerId) {
+        try {
+          containerManager.stopContainer(info.containerId);
+        } catch (err) {
+          log.warn("orchestrator", "Failed to stop idle container", {
+            sessionId,
+            containerId: info.containerId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
       // Clear relaunch counters so the session gets a fresh budget when the user
       // returns. Idle-kill is intentional cleanup, not a crash — the session
       // should be fully relaunchable.
@@ -765,6 +782,8 @@ export class SessionOrchestrator {
     // earlier would permanently shadow this session from proactive relaunch
     // (only matters when AGENTHANGAR_LAZY_SPAWN_ONLY=0).
     this.intentionalKills.delete(sessionId);
+    this.idleSleptSessions.delete(sessionId);
+    this.launcher.setIdleSleeping(sessionId, false);
     const session = this.wsBridge.getSession(sessionId);
     if (session?.stateMachine) {
       session.stateMachine.transition("starting", "relaunch_initiated");
@@ -812,6 +831,8 @@ export class SessionOrchestrator {
     }
 
     this.intentionalKills.add(sessionId);
+    this.idleSleptSessions.delete(sessionId);
+    this.launcher.setIdleSleeping(sessionId, false);
     this.cancelKeepaliveTimer(sessionId);
     this.wsBridge.cancelDisconnectTimer(sessionId);
     await this.launcher.kill(sessionId);
@@ -829,6 +850,8 @@ export class SessionOrchestrator {
 
   async deleteSession(sessionId: string): Promise<DeleteSessionResult> {
     this.intentionalKills.add(sessionId);
+    this.idleSleptSessions.delete(sessionId);
+    this.launcher.setIdleSleeping(sessionId, false);
     this.cancelKeepaliveTimer(sessionId);
     this.wsBridge.cancelDisconnectTimer(sessionId);
     await this.launcher.kill(sessionId);
@@ -842,6 +865,7 @@ export class SessionOrchestrator {
     this.relaunchExhaustedNotified.delete(sessionId);
     this.relaunchingSet.delete(sessionId);
     this.intentionalKills.delete(sessionId);
+    this.idleSleptSessions.delete(sessionId);
     return { ok: true, worktree: worktreeResult };
   }
 
@@ -858,6 +882,12 @@ export class SessionOrchestrator {
   clearAutoRelaunchCount(sessionId: string): void {
     this.autoRelaunchCounts.delete(sessionId);
     this.relaunchExhaustedNotified.delete(sessionId);
+  }
+
+  private shouldWakeSleepingSession(sessionId: string): boolean {
+    const info = this.launcher.getSession(sessionId);
+    if (!info || info.archived) return false;
+    return this.idleSleptSessions.has(sessionId) || info.idleSleeping === true;
   }
 
   // ── Event registration ─────────────────────────────────────────────────────
@@ -966,6 +996,8 @@ export class SessionOrchestrator {
           metricsCollector.recordRelaunchSucceeded();
           this.autoRelaunchCounts.delete(sessionId);
           this.relaunchExhaustedNotified.delete(sessionId);
+          this.idleSleptSessions.delete(sessionId);
+          this.launcher.setIdleSleeping(sessionId, false);
           // Clear intentionalKills so future crashes can use proactive keepalive.
           // After a successful relaunch, the session is alive again — any prior
           // idle-kill intent no longer applies.
@@ -1048,11 +1080,11 @@ export class SessionOrchestrator {
 
   private async handleAutoNaming(sessionId: string, firstUserMessage: string): Promise<void> {
     if (sessionNames.getName(sessionId)) return;
-    if (!getSettings().anthropicApiKey.trim()) return;
     const info = this.launcher.getSession(sessionId);
+    if (!resolveAutomationAiProvider(info?.backendType)) return;
     const model = info?.model || "claude-sonnet-4-6";
-    console.log(`[orchestrator] Auto-naming session ${sessionId} via Anthropic with model ${model}...`);
-    const title = await generateSessionTitle(firstUserMessage, model);
+    console.log(`[orchestrator] Auto-naming session ${sessionId} via Automation AI...`);
+    const title = await generateSessionTitle(firstUserMessage, model, { preferredBackend: info?.backendType });
     if (title && !sessionNames.getName(sessionId)) {
       console.log(`[orchestrator] Auto-named session ${sessionId}: "${title}"`);
       sessionNames.setName(sessionId, title);

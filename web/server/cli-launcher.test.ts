@@ -1562,3 +1562,23 @@ describe("envSlug persistence and getSessionEnv fallback", () => {
     expect(mockGetEnv).toHaveBeenCalledWith("deleted-profile");
   });
 });
+
+// ─── idleSleeping persistence ────────────────────────────────────────────────
+
+describe("idleSleeping persistence", () => {
+  it("persists and clears the idle sleep marker in launcher.json", () => {
+    // The orchestrator uses this marker after a server restart to tell lazy
+    // mode that an exited session is intentionally sleeping and may auto-wake
+    // when the browser reconnects.
+    const info = launcher.launch({ cwd: "/tmp" });
+
+    launcher.setIdleSleeping(info.sessionId, true);
+    expect(store.loadLauncher<Array<{ sessionId: string; idleSleeping?: boolean }>>()?.[0]).toMatchObject({
+      sessionId: info.sessionId,
+      idleSleeping: true,
+    });
+
+    launcher.setIdleSleeping(info.sessionId, false);
+    expect(store.loadLauncher<Array<{ sessionId: string; idleSleeping?: boolean }>>()?.[0]?.idleSleeping).toBeUndefined();
+  });
+});

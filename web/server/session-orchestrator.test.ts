@@ -101,6 +101,7 @@ vi.mock("./image-pull-manager.js", () => ({
 vi.mock("./container-manager.js", () => ({
   containerManager: {
     removeContainer: vi.fn(),
+    stopContainer: vi.fn(),
     createContainer: vi.fn(() => ({
       containerId: "cid-1",
       name: "agenthangar-1",
@@ -158,6 +159,7 @@ function createMockLauncher() {
     listSessions: vi.fn(() => []),
     getSession: vi.fn(() => undefined),
     setArchived: vi.fn(),
+    setIdleSleeping: vi.fn(),
     removeSession: vi.fn(),
     setCLISessionId: vi.fn(),
     getStartingSessions: vi.fn(() => []),
@@ -341,7 +343,7 @@ describe("SessionOrchestrator", () => {
       expect(deps.launcher.kill).not.toHaveBeenCalled();
     });
 
-    it("idle kill callback kills CLI but preserves container", async () => {
+    it("idle kill callback kills host CLI without touching Docker", async () => {
       deps.launcher.getSession.mockReturnValue({ archived: false });
       orchestrator.initialize();
 
@@ -349,8 +351,43 @@ describe("SessionOrchestrator", () => {
       await new Promise(r => setTimeout(r, 0));
 
       expect(deps.launcher.kill).toHaveBeenCalledWith("s1");
-      // Container must NOT be removed — idle-kill only stops the CLI process
-      // so the container can be reused on relaunch.
+      expect(deps.launcher.setIdleSleeping).toHaveBeenCalledWith("s1", true);
+      expect(containerManager.stopContainer).not.toHaveBeenCalled();
+      expect(containerManager.removeContainer).not.toHaveBeenCalled();
+    });
+
+    it("idle kill callback stops containerized sessions without removing the container", async () => {
+      deps.launcher.getSession.mockReturnValue({
+        archived: false,
+        containerId: "cid-sleep",
+      } as any);
+      orchestrator.initialize();
+
+      companionBus.emit("session:idle-kill", { sessionId: "s1" });
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(deps.launcher.kill).toHaveBeenCalledWith("s1");
+      expect(deps.launcher.setIdleSleeping).toHaveBeenCalledWith("s1", true);
+      expect(containerManager.stopContainer).toHaveBeenCalledWith("cid-sleep");
+      expect(containerManager.removeContainer).not.toHaveBeenCalled();
+    });
+
+    it("idle kill still preserves session when docker stop fails", async () => {
+      vi.mocked(containerManager.stopContainer).mockImplementationOnce(() => {
+        throw new Error("docker unavailable");
+      });
+      deps.launcher.getSession.mockReturnValue({
+        archived: false,
+        containerId: "cid-sleep",
+      } as any);
+      orchestrator.initialize();
+
+      companionBus.emit("session:idle-kill", { sessionId: "s1" });
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(deps.launcher.kill).toHaveBeenCalledWith("s1");
+      expect(deps.launcher.setIdleSleeping).toHaveBeenCalledWith("s1", true);
+      expect(containerManager.stopContainer).toHaveBeenCalledWith("cid-sleep");
       expect(containerManager.removeContainer).not.toHaveBeenCalled();
     });
 
@@ -436,10 +473,12 @@ describe("SessionOrchestrator", () => {
       deps.launcher.relaunch.mockResolvedValue({ ok: true });
       orchestrator.initialize();
 
-      // 1. Idle-kill fires — CLI killed, container preserved
+      // 1. Idle-kill fires — CLI killed, container stopped but preserved
       companionBus.emit("session:idle-kill", { sessionId: "s1" });
       await vi.advanceTimersByTimeAsync(0);
       expect(deps.launcher.kill).toHaveBeenCalledWith("s1");
+      expect(deps.launcher.setIdleSleeping).toHaveBeenCalledWith("s1", true);
+      expect(containerManager.stopContainer).toHaveBeenCalledWith("cid-preserved");
       expect(containerManager.removeContainer).not.toHaveBeenCalled();
 
       // 2. Browser reconnects — triggers auto-relaunch
@@ -1484,25 +1523,26 @@ describe("SessionOrchestrator", () => {
   // ── Auto-naming ───────────────────────────────────────────────────────────
 
   describe("handleAutoNaming (via initialize)", () => {
-    it("generates title when anthropicApiKey is set and no name exists", async () => {
+    it("generates title when Automation AI auth is available and no name exists", async () => {
       vi.mocked(settingsManager.getSettings).mockReturnValue({
-        anthropicApiKey: "sk-ant-123",
+        claudeAuthMethod: "local",
       } as any);
       vi.mocked(sessionNames.getName).mockReturnValue(undefined);
-      deps.launcher.getSession.mockReturnValue({ model: "claude-sonnet-4-6" });
+      deps.launcher.getSession.mockReturnValue({ model: "claude-sonnet-4-6", backendType: "claude" });
       vi.mocked(generateSessionTitle).mockResolvedValue("Test Title");
 
       orchestrator.initialize();
       companionBus.emit("session:first-turn-completed", { sessionId: "s1", firstUserMessage: "Hello world" });
-      await new Promise(r => setTimeout(r, 0));
 
-      expect(generateSessionTitle).toHaveBeenCalledWith("Hello world", "claude-sonnet-4-6");
+      await vi.waitFor(() => {
+        expect(generateSessionTitle).toHaveBeenCalledWith("Hello world", "claude-sonnet-4-6", { preferredBackend: "claude" });
+      });
       expect(sessionNames.setName).toHaveBeenCalledWith("s1", "Test Title");
       expect(deps.wsBridge.broadcastNameUpdate).toHaveBeenCalledWith("s1", "Test Title");
     });
 
     it("skips naming when session already has a name", async () => {
-      vi.mocked(settingsManager.getSettings).mockReturnValue({ anthropicApiKey: "sk-ant-123" } as any);
+      vi.mocked(settingsManager.getSettings).mockReturnValue({ claudeAuthMethod: "local" } as any);
       vi.mocked(sessionNames.getName).mockReturnValue("Existing Name");
 
       orchestrator.initialize();
@@ -1512,8 +1552,10 @@ describe("SessionOrchestrator", () => {
       expect(generateSessionTitle).not.toHaveBeenCalled();
     });
 
-    it("skips naming when no API key is configured", async () => {
-      vi.mocked(settingsManager.getSettings).mockReturnValue({ anthropicApiKey: "" } as any);
+    it("skips naming when no Automation AI provider auth is available", async () => {
+      vi.mocked(settingsManager.getSettings).mockReturnValue({ claudeAuthMethod: "local", codexAuthMethod: "local" } as any);
+      vi.mocked(hasContainerClaudeAuth).mockReturnValue(false);
+      vi.mocked(hasContainerCodexAuth).mockReturnValue(false);
 
       orchestrator.initialize();
       companionBus.emit("session:first-turn-completed", { sessionId: "s1", firstUserMessage: "Hello" });
@@ -2144,6 +2186,65 @@ describe("SessionOrchestrator", () => {
       // must stay quiet so we don't burn budget on tabs that just got
       // focused.
       expect(deps.launcher.relaunch).not.toHaveBeenCalled();
+    });
+
+    it("auto-wakes an idle-slept container session when a browser reconnects", async () => {
+      // Lazy mode normally suppresses browser-connect auto relaunches. Idle sleep
+      // is different: the user returning to the session is the wake signal, so a
+      // stopped preserved container should be started through the normal relaunch path.
+      deps.launcher.getSession.mockReturnValue({
+        sessionId: "lazy-sleep",
+        state: "exited",
+        cwd: "/repo",
+        model: "claude",
+        createdAt: 1,
+        backendType: "claude",
+        containerId: "cid-sleep",
+        archived: false,
+      } as any);
+      deps.wsBridge.isCliConnected.mockReturnValue(false);
+      deps.launcher.relaunch.mockResolvedValue({ ok: true });
+
+      companionBus.emit("session:idle-kill", { sessionId: "lazy-sleep" });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(deps.launcher.kill).toHaveBeenCalledWith("lazy-sleep");
+      expect(deps.launcher.setIdleSleeping).toHaveBeenCalledWith("lazy-sleep", true);
+      expect(containerManager.stopContainer).toHaveBeenCalledWith("cid-sleep");
+      expect(containerManager.removeContainer).not.toHaveBeenCalled();
+
+      companionBus.emit("session:relaunch-needed", { sessionId: "lazy-sleep" });
+      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(deps.launcher.relaunch).toHaveBeenCalledWith("lazy-sleep");
+      expect(deps.launcher.setIdleSleeping).toHaveBeenCalledWith("lazy-sleep", false);
+    });
+
+    it("auto-wakes a persisted idle-sleep session after orchestrator restart", async () => {
+      // After a server restart the orchestrator's in-memory idle-slept Set is
+      // empty. The persisted launcher flag is what lets lazy mode distinguish
+      // an intentionally sleeping session from an ordinary exited/crashed one.
+      deps.launcher.getSession.mockReturnValue({
+        sessionId: "lazy-persisted-sleep",
+        state: "exited",
+        cwd: "/repo",
+        model: "claude",
+        createdAt: 1,
+        backendType: "claude",
+        containerId: "cid-sleep",
+        archived: false,
+        idleSleeping: true,
+      } as any);
+      deps.wsBridge.isCliConnected.mockReturnValue(false);
+      deps.launcher.relaunch.mockResolvedValue({ ok: true });
+
+      companionBus.emit("session:relaunch-needed", { sessionId: "lazy-persisted-sleep" });
+      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(deps.launcher.relaunch).toHaveBeenCalledWith("lazy-persisted-sleep");
+      expect(deps.launcher.setIdleSleeping).toHaveBeenCalledWith("lazy-persisted-sleep", false);
     });
 
     it("skips the post-restart reconnection watchdog (stale 'starting' sessions are left alone)", async () => {

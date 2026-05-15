@@ -1113,7 +1113,8 @@ describe("attachCodexAdapterHandlers", () => {
         linearOAuthAccessToken: "",
         linearOAuthRefreshToken: "",
         claudeCodeOAuthToken: "",
-        openaiApiKey: "",
+        openaiApiKey: "sk-openai-test",
+        codexAuthMethod: "apiKey",
         onboardingCompleted: false,
         aiValidationEnabled: true,
         aiValidationAutoApprove: true,
@@ -1316,9 +1317,9 @@ describe("attachCodexAdapterHandlers", () => {
       );
     });
 
-    it("skips AI validation when anthropicApiKey is empty", () => {
-      // Even if aiValidationEnabled is true, an empty API key means we can't call
-      // the AI — fall through to normal manual flow.
+    it("skips AI validation when no Automation AI provider auth is available", () => {
+      // Even if aiValidationEnabled is true, no verified Claude/Codex auth means
+      // Automation AI cannot run, so the handler falls through to manual flow.
       vi.mocked(settingsManager.getSettings).mockReturnValue({
         anthropicApiKey: "",  // empty
         anthropicModel: "claude-sonnet-4-6",
@@ -1334,8 +1335,11 @@ describe("attachCodexAdapterHandlers", () => {
         linearOAuthWebhookSecret: "",
         linearOAuthAccessToken: "",
         linearOAuthRefreshToken: "",
+        claudeAuthMethod: "apiKey",
+        claudeApiKey: "",
         claudeCodeOAuthToken: "",
         openaiApiKey: "",
+        codexAuthMethod: "apiKey",
         onboardingCompleted: false,
         aiValidationEnabled: true,
         aiValidationAutoApprove: true,
@@ -1446,7 +1450,8 @@ describe("attachCodexAdapterHandlers", () => {
         linearOAuthAccessToken: "",
         linearOAuthRefreshToken: "",
         claudeCodeOAuthToken: "",
-        openaiApiKey: "",
+        openaiApiKey: "sk-openai-test",
+        codexAuthMethod: "apiKey",
         onboardingCompleted: false,
         aiValidationEnabled: true,
         aiValidationAutoApprove: false,  // disabled
@@ -1576,7 +1581,8 @@ describe("attachCodexAdapterHandlers", () => {
         linearOAuthAccessToken: "",
         linearOAuthRefreshToken: "",
         claudeCodeOAuthToken: "",
-        openaiApiKey: "",
+        openaiApiKey: "sk-openai-test",
+        codexAuthMethod: "apiKey",
         onboardingCompleted: false,
         aiValidationEnabled: true,
         aiValidationAutoApprove: true,

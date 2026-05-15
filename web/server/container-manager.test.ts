@@ -708,6 +708,41 @@ describe("ContainerManager startContainer", () => {
 });
 
 // ---------------------------------------------------------------------------
+// stopContainer
+// ---------------------------------------------------------------------------
+
+describe("ContainerManager stopContainer", () => {
+  beforeEach(() => {
+    mockExecSync.mockReset();
+  });
+
+  it("runs docker stop and keeps the tracked container", () => {
+    mockExecSync.mockReturnValue("true");
+    const manager = new ContainerManager();
+    const info = {
+      containerId: "abc123", name: "test", image: "node:22",
+      portMappings: [], hostCwd: "/tmp", containerCwd: "/workspace",
+      state: "running" as const,
+    };
+    manager.restoreContainer("sess-1", info);
+
+    mockExecSync.mockReset();
+    mockExecSync.mockReturnValue("");
+    manager.stopContainer("abc123");
+
+    const cmds = mockExecSync.mock.calls.map((c) => String(c[0] ?? ""));
+    expect(cmds[0]).toContain("docker stop");
+    expect(manager.getContainer("sess-1")).toBe(info);
+    expect(info.state).toBe("stopped");
+  });
+
+  it("throws on invalid container ID", () => {
+    const manager = new ContainerManager();
+    expect(() => manager.stopContainer("../evil")).toThrow("Invalid container ID");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // restoreContainer
 // ---------------------------------------------------------------------------
 
