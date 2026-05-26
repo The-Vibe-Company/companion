@@ -4106,6 +4106,7 @@ describe("CodexAdapter with ICodexTransport", () => {
       { method: "remoteControl/status/changed", params: { status: "inactive" } },
       { method: "thread/goal/updated", params: { goal: { status: "active", objective: "x" } } },
       { method: "thread/goal/cleared", params: {} },
+      { method: "thread/settings/updated", params: { settings: { model: "gpt-5" } } },
       { method: "thread/realtime/transcript/delta", params: { delta: "hello" } },
       { method: "thread/realtime/transcript/done", params: {} },
       { method: "thread/realtime/sdp", params: { sdp: "v=0" } },
@@ -5618,6 +5619,7 @@ describe("CodexAdapter streaming state reset on WS reconnect", () => {
     };
 
     const messages: BrowserIncomingMessage[] = [];
+    const warnSpy = vi.spyOn(log, "warn").mockImplementation(() => {});
     const adapter = new CodexAdapter(transport, "streaming-reset-test", { model: "o4-mini", cwd: "/tmp" });
     adapter.onBrowserMessage((msg) => messages.push(msg));
 
@@ -5658,6 +5660,14 @@ describe("CodexAdapter streaming state reset on WS reconnect", () => {
     );
     expect(deltaEvents.length).toBeGreaterThanOrEqual(1);
     expect((deltaEvents[0] as any).event.delta.stop_reason).toBe("interrupted");
+
+    // Legacy item/delta alias should not be treated as protocol drift.
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      "protocol-monitor",
+      "Backend protocol drift detected",
+      expect.objectContaining({ messageName: "item/delta" }),
+    );
+    warnSpy.mockRestore();
   });
 
   it("does NOT emit synthetic events when no streaming was active", async () => {

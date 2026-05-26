@@ -44,6 +44,8 @@ describe("Codex adapter method drift vs upstream protocol snapshot", () => {
 
     const legacyNotifications = new Set([
       "item/updated",
+      // Legacy/alternate delta envelope still observed in some runs.
+      "item/delta",
       // Legacy alias still observed in recordings; upstream snapshot currently
       // models the same payload under item/reasoning/textDelta.
       "item/reasoning/delta",

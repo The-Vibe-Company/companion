@@ -1635,6 +1635,9 @@ export class CodexAdapter implements IBackendAdapter {
       case "item/agentMessage/delta":
         this.handleAgentMessageDelta(params);
         break;
+      case "item/delta":
+        this.handleItemDelta(params);
+        break;
       case "item/commandExecution/outputDelta":
         // Streaming command output — emit as tool_progress so the browser
         // shows a live elapsed-time indicator while the command runs.
@@ -1743,6 +1746,7 @@ export class CodexAdapter implements IBackendAdapter {
       case "thread/realtime/closed":
       case "thread/goal/updated":
       case "thread/goal/cleared":
+      case "thread/settings/updated":
       case "remoteControl/status/changed":
       case "externalAgentConfig/import/completed":
       case "guardianWarning":
@@ -2618,6 +2622,16 @@ export class CodexAdapter implements IBackendAdapter {
       },
       parent_tool_use_id: parentToolUseId,
     });
+  }
+
+  private handleItemDelta(params: Record<string, unknown>): void {
+    // Legacy/alternate delta envelope observed in some Codex runs.
+    // Route text deltas through the same streaming path as item/agentMessage/delta.
+    const deltaObj = params.delta;
+    if (!deltaObj || typeof deltaObj !== "object") return;
+    const deltaText = (deltaObj as Record<string, unknown>).text;
+    if (typeof deltaText !== "string" || deltaText.length === 0) return;
+    this.handleAgentMessageDelta({ ...params, delta: deltaText });
   }
 
   private handleItemUpdated(_params: Record<string, unknown>): void {
