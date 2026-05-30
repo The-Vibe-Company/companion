@@ -165,6 +165,9 @@ export function Composer({ sessionId }: { sessionId: string }) {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    // Ignore key events during IME composition (e.g. Chinese/Japanese/Korean input)
+    if (e.nativeEvent.isComposing) return;
+
     // Slash menu navigation
     if (slashMenuOpen && filteredCommands.length > 0) {
       if (e.key === "ArrowDown") {

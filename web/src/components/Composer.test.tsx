@@ -189,6 +189,24 @@ describe("Composer sending messages", () => {
     }));
   });
 
+  it("pressing Enter during IME composition does NOT send the message", () => {
+    // When using CJK input methods (Chinese/Japanese/Korean), pressing Enter
+    // confirms the raw input instead of sending. The keydown event fires with
+    // isComposing=true in this case and should be ignored.
+    const { container } = render(<Composer sessionId="s1" />);
+    const textarea = container.querySelector("textarea")!;
+
+    fireEvent.change(textarea, { target: { value: "abc" } });
+    fireEvent.keyDown(textarea, {
+      key: "Enter",
+      shiftKey: false,
+      nativeEvent: { isComposing: true },
+      isComposing: true,
+    });
+
+    expect(mockSendToSession).not.toHaveBeenCalled();
+  });
+
   it("pressing Shift+Enter does NOT send the message", () => {
     const { container } = render(<Composer sessionId="s1" />);
     const textarea = container.querySelector("textarea")!;
