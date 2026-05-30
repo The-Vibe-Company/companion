@@ -178,6 +178,8 @@ export interface CodexAdapterOptions {
   killProcess?: () => Promise<void> | void;
   /** Optional system prompt injected into thread/start as instructions (e.g. Linear context). */
   systemPrompt?: string;
+  /** Optional additional skill roots to expose to Codex via skills/extraRoots/set. */
+  extraSkillRoots?: string[];
 }
 
 // ─── Stdio JSON-RPC Transport ────────────────────────────────────────────────
@@ -992,6 +994,18 @@ export class CodexAdapter implements IBackendAdapter {
 
       // Step 2: Send initialized notification
       await this.transport.notify("initialized", {});
+
+      // Step 2.1: Configure additional skill roots when provided.
+      // This is best-effort; initialization should not fail if unsupported.
+      if (this.options.extraSkillRoots && this.options.extraSkillRoots.length > 0) {
+        try {
+          await this.transport.call("skills/extraRoots/set", {
+            extraRoots: this.options.extraSkillRoots,
+          });
+        } catch (err) {
+          console.warn(`[codex-adapter] skills/extraRoots/set failed: ${err}`);
+        }
+      }
 
       this.connected = true;
 

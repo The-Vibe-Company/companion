@@ -6,6 +6,7 @@ import {
   cpSync,
   realpathSync,
 } from "node:fs";
+import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Subprocess } from "bun";
@@ -70,6 +71,32 @@ function sanitizeSpawnArgsForLog(args: string[]): string {
     }
   }
   return out.join(" ");
+}
+
+function parseExtraSkillRootsFromEnv(raw?: string): string[] {
+  if (!raw) return [];
+  return raw
+    .split(":")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+function resolveCodexExtraSkillRoots(cwd: string, env?: Record<string, string>): string[] {
+  const roots = new Set<string>();
+  const envRoots = parseExtraSkillRootsFromEnv(
+    env?.COMPANION_CODEX_EXTRA_SKILL_ROOTS || process.env.COMPANION_CODEX_EXTRA_SKILL_ROOTS,
+  );
+  for (const r of envRoots) roots.add(resolve(r));
+
+  // Shared user skill root used by local agent workflows.
+  const userAgentsSkills = resolve(homedir(), ".agents", "skills");
+  if (existsSync(userAgentsSkills)) roots.add(userAgentsSkills);
+
+  // Project-local skill root, when present.
+  const projectAgentsSkills = resolve(cwd, ".agents", "skills");
+  if (existsSync(projectAgentsSkills)) roots.add(projectAgentsSkills);
+
+  return Array.from(roots);
 }
 
 const CODEX_WS_PROXY_PATH = fileURLToPath(new URL("./codex-ws-proxy.cjs", import.meta.url));
@@ -881,6 +908,7 @@ export class CliLauncher {
       sandbox: options.codexSandbox,
       recorder: this.recorder ?? undefined,
       systemPrompt: options.systemPrompt,
+      extraSkillRoots: resolveCodexExtraSkillRoots(info.cwd, options.env),
       killProcess: async () => {
         try {
           proxyProc.kill("SIGTERM");
@@ -1093,6 +1121,7 @@ export class CliLauncher {
       sandbox: options.codexSandbox,
       recorder: this.recorder ?? undefined,
       systemPrompt: options.systemPrompt,
+      extraSkillRoots: resolveCodexExtraSkillRoots(info.cwd, options.env),
     });
 
     // Handle init errors — mark session as exited so UI shows failure.

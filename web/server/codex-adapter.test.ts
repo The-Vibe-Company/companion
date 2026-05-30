@@ -1194,6 +1194,28 @@ describe("CodexAdapter", () => {
     expect(allWritten).toContain('"cwd":"/workspace/app"');
   });
 
+  it("configures extra skill roots when provided", async () => {
+    new CodexAdapter(proc as never, "test-session", {
+      model: "gpt-5.2-codex",
+      cwd: "/workspace/app",
+      extraSkillRoots: ["/Users/stan/.agents/skills", "/workspace/app/.agents/skills"],
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+    stdout.push(JSON.stringify({ id: 1, result: { userAgent: "codex" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 2, result: {} }) + "\n"); // skills/extraRoots/set
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 3, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    const allWritten = stdin.chunks.join("");
+    expect(allWritten).toContain('"method":"skills/extraRoots/set"');
+    expect(allWritten).toContain('"/Users/stan/.agents/skills"');
+    expect(allWritten).toContain('"/workspace/app/.agents/skills"');
+    expect(allWritten).toContain('"method":"thread/start"');
+  });
+
   it("uses executionCwd for thread/start while preserving session cwd in session_init", async () => {
     const messages: BrowserIncomingMessage[] = [];
     const adapter = new CodexAdapter(proc as never, "test-session", {
