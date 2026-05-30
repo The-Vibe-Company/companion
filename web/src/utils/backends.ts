@@ -40,6 +40,7 @@ export function toModelOptions(models: BackendModelInfo[]): ModelOption[] {
 // ─── Static fallbacks ────────────────────────────────────────────────────────
 
 export const CLAUDE_MODELS: ModelOption[] = [
+  { value: "claude-opus-4-7", label: "Opus 4.7", icon: "" },
   { value: "claude-opus-4-6", label: "Opus 4.6", icon: "" },
   { value: "claude-sonnet-4-6", label: "Sonnet 4.6", icon: "" },
   { value: "claude-haiku-4-5-20251001", label: "Haiku 4.5", icon: "" },
