@@ -3,6 +3,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatMessage, ContentBlock } from "../types.js";
 import { ToolBlock, getToolIcon, getToolLabel, getPreview, ToolIcon } from "./ToolBlock.js";
+import { CopyButton } from "./CopyButton.js";
 
 export function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === "system") {
@@ -207,18 +208,21 @@ function MarkdownContent({ text, showCursor = false }: { text: string; showCurso
               const lang = match?.[1] || "";
               return (
                 <div className="my-2.5 rounded-xl overflow-hidden border border-cc-border shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-                  {lang && (
-                    <div className="px-3 py-1.5 bg-cc-code-bg border-b border-cc-border flex items-center gap-2">
+                  <div className="px-3 py-1.5 bg-cc-code-bg border-b border-cc-border flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                       <div className="flex gap-1">
                         <span className="w-2 h-2 rounded-full bg-cc-muted/20" />
                         <span className="w-2 h-2 rounded-full bg-cc-muted/20" />
                         <span className="w-2 h-2 rounded-full bg-cc-muted/20" />
                       </div>
-                      <span className="text-[10px] text-cc-muted/70 font-mono-code uppercase tracking-wider">
-                        {lang}
-                      </span>
+                      {lang && (
+                        <span className="text-[10px] text-cc-muted/70 font-mono-code uppercase tracking-wider">
+                          {lang}
+                        </span>
+                      )}
                     </div>
-                  )}
+                    <CopyButton text={String(children).replace(/\n$/, '')} size="sm" className="opacity-70 hover:opacity-100" />
+                  </div>
                   <pre className="px-3 sm:px-4 py-2.5 sm:py-3 bg-cc-code-bg text-cc-code-fg text-[12px] sm:text-[13px] font-mono-code leading-relaxed overflow-x-auto">
                     <code>{children}</code>
                   </pre>
