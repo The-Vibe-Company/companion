@@ -70,7 +70,7 @@ function visibleForCwd(prompt: SavedPrompt, cwd: string): boolean {
   const normalizedCwd = normalizePath(cwd);
   return paths.some((p) => {
     const normalizedProject = normalizePath(p);
-    return normalizedCwd === normalizedProject || normalizedCwd.startsWith(`${normalizedProject}/`);
+    return normalizedCwd === normalizedProject || normalizedCwd.startsWith(`${normalizedProject}/`) || normalizedCwd.startsWith(`${normalizedProject}\\`);
   });
 }
 

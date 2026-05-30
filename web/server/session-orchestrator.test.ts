@@ -1498,7 +1498,7 @@ describe("SessionOrchestrator", () => {
       // let the PID check prevent relaunch. The fix skips PID liveness for
       // exited sessions entirely.
       deps.launcher.getSession
-        .mockReturnValueOnce({ archived: false } as any) // check archived
+        .mockReturnValueOnce({ archived: false } as any) // handleAutoRelaunch: check archived
         .mockReturnValueOnce({ state: "exited", pid: process.pid } as any); // after grace: PID is alive (recycled!)
       deps.wsBridge.isCliConnected.mockReturnValue(false);
       orchestrator.initialize();
@@ -1518,7 +1518,7 @@ describe("SessionOrchestrator", () => {
       // connected/running guard and actually exercise the container check path.
       vi.mocked(containerManager.isContainerAlive).mockReturnValue("running" as any);
       deps.launcher.getSession
-        .mockReturnValueOnce({ archived: false } as any) // check archived
+        .mockReturnValueOnce({ archived: false } as any) // handleAutoRelaunch: check archived
         .mockReturnValueOnce({ state: "starting", containerId: "cid-abc", pid: 99999 } as any); // after grace
       deps.wsBridge.isCliConnected.mockReturnValue(false);
       orchestrator.initialize();
@@ -1537,7 +1537,7 @@ describe("SessionOrchestrator", () => {
       // sessions entirely, so relaunch proceeds.
       vi.mocked(containerManager.isContainerAlive).mockReturnValue("not_found" as any);
       deps.launcher.getSession
-        .mockReturnValueOnce({ archived: false } as any) // check archived
+        .mockReturnValueOnce({ archived: false } as any) // handleAutoRelaunch: check archived
         .mockReturnValueOnce({ state: "exited", containerId: "cid-dead", pid: 99999 } as any); // after grace
       deps.wsBridge.isCliConnected.mockReturnValue(false);
       orchestrator.initialize();
@@ -1553,8 +1553,8 @@ describe("SessionOrchestrator", () => {
     it("relaunches when CLI does not reconnect after grace period", async () => {
       // When CLI disconnects and doesn't reconnect, the session should be relaunched.
       deps.launcher.getSession
-        .mockReturnValueOnce({ archived: false } as any) // First call: check archived
-        .mockReturnValueOnce({ state: "exited", pid: undefined } as any); // Second call: after grace
+        .mockReturnValueOnce({ archived: false } as any) // handleAutoRelaunch: check archived
+        .mockReturnValueOnce({ state: "exited", pid: undefined } as any); // after grace: check state
       deps.wsBridge.isCliConnected.mockReturnValue(false);
       orchestrator.initialize();
 

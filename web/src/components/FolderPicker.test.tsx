@@ -241,7 +241,7 @@ describe("FolderPicker", () => {
 
     fireEvent.click(screen.getByText("home"));
 
-    expect(mockListDirs).toHaveBeenCalledWith("/home");
+    expect(mockListDirs).toHaveBeenCalledWith("/home", undefined);
   });
 
   // ─── Filter/search ─────────────────────────────────────────────────────
@@ -289,7 +289,7 @@ describe("FolderPicker", () => {
 
     fireEvent.click(screen.getByLabelText("Navigate into src"));
 
-    expect(mockListDirs).toHaveBeenCalledWith("/home/user/project/src");
+    expect(mockListDirs).toHaveBeenCalledWith("/home/user/project/src", undefined);
   });
 
   // ─── Select directory ───────────────────────────────────────────────────
@@ -458,12 +458,12 @@ describe("FolderPicker", () => {
   it("calls api.listDirs with initialPath on mount", () => {
     // Validates the API is called with the provided initial path
     setup({ initialPath: "/custom/path" });
-    expect(mockListDirs).toHaveBeenCalledWith("/custom/path");
+    expect(mockListDirs).toHaveBeenCalledWith("/custom/path", undefined);
   });
 
   it("calls api.listDirs without path when initialPath is empty", () => {
     // Validates empty initialPath results in an undefined path call
     setup({ initialPath: "" });
-    expect(mockListDirs).toHaveBeenCalledWith(undefined);
+    expect(mockListDirs).toHaveBeenCalledWith(undefined, undefined);
   });
 });
