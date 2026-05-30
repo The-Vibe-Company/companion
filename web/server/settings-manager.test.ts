@@ -6,6 +6,7 @@ import {
   updateSettings,
   _resetForTest,
   DEFAULT_ANTHROPIC_MODEL,
+  supportsSamplingParams,
 } from "./settings-manager.js";
 
 let tempDir: string;
@@ -271,5 +272,32 @@ describe("settings-manager", () => {
     updateSettings({ publicUrl: "https://example.com" });
     const updated = updateSettings({ anthropicModel: "claude-haiku-3" });
     expect(updated.publicUrl).toBe("https://example.com");
+  });
+});
+
+// supportsSamplingParams gates whether callers that hit the Anthropic API
+// directly (auto-namer, ai-validator) may include `temperature` etc. in the
+// request body. Opus 4.7 rejects those params with 400.
+describe("supportsSamplingParams", () => {
+  it("returns false for claude-opus-4-7 (full version string)", () => {
+    expect(supportsSamplingParams("claude-opus-4-7")).toBe(false);
+  });
+
+  it("returns false for the 'opus' short alias (floats to latest Opus)", () => {
+    expect(supportsSamplingParams("opus")).toBe(false);
+  });
+
+  it("is case-insensitive and trims whitespace", () => {
+    expect(supportsSamplingParams("  OPUS  ")).toBe(false);
+    expect(supportsSamplingParams("Claude-Opus-4-7")).toBe(false);
+  });
+
+  it("returns true for sonnet/haiku and older opus versions", () => {
+    expect(supportsSamplingParams("claude-sonnet-4-6")).toBe(true);
+    expect(supportsSamplingParams("claude-haiku-4-5-20251001")).toBe(true);
+    expect(supportsSamplingParams("claude-opus-4-6")).toBe(true);
+    expect(supportsSamplingParams("claude-opus-4-5")).toBe(true);
+    expect(supportsSamplingParams("sonnet")).toBe(true);
+    expect(supportsSamplingParams("haiku")).toBe(true);
   });
 });

@@ -46,6 +46,10 @@ import { PlaygroundDockerUpdateDialog } from "./DockerUpdateDialog.js";
 import { SessionItem } from "./SessionItem.js";
 import type { CreationProgressEvent } from "../types.js";
 import type { SessionItem as SessionItemType } from "../utils/project-grouping.js";
+import { IdePicker } from "./IdePicker.js";
+import { IdeDisconnectBanner } from "./IdeDisconnectBanner.js";
+import type { AvailableIde } from "../api.js";
+import type { IdeBinding } from "../types.js";
 
 // ─── Mock Data ──────────────────────────────────────────────────────────────
 
@@ -718,7 +722,7 @@ export function Playground() {
     const session: SessionState = {
       session_id: sessionId,
       backend_type: "claude",
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-4-6",
       cwd: "/Users/stan/Dev/project",
       tools: ["Bash", "Read", "Edit", "Write", "Glob", "Grep", "WebSearch"],
       permissionMode: "default",
@@ -2872,6 +2876,14 @@ export function Playground() {
             </Card>
           </div>
         </Section>
+
+        {/* ─── IDE Picker (UI-03) ─────────────────────────────── */}
+        <Section
+          title="IDE Picker"
+          description="Modal picker for Claude Code /ide integration — UI-03 + BIND-05"
+        >
+          <PlaygroundIdePickerStates />
+        </Section>
       </div>
     </div>
   );
@@ -3098,6 +3110,229 @@ function Card({
         </span>
       </div>
       <div className="p-4">{children}</div>
+    </div>
+  );
+}
+
+// ─── IDE Picker Playground ───────────────────────────────────────────────────
+//
+// Registers the five IdePicker visual states (Task 10) + the BIND-05 banner.
+// IdePicker renders via `createPortal` to document.body — which makes it
+// unsuitable for inline "card" previews (every mount would overlay the full
+// viewport). So we render a pure inline preview panel (`IdePickerPreviewPanel`
+// below) that mirrors the picker's body contents. The real IdePicker has its
+// own tests (IdePicker.test.tsx); this section exists for visual coverage
+// (UI-03) and a11y coverage (Playground.test.tsx axe scan).
+//
+// BIND-05 banner is mounted directly because it's already inline.
+
+const PLAYGROUND_IDES_SINGLE: AvailableIde[] = [
+  {
+    port: 38630,
+    ideName: "Neovim",
+    workspaceFolders: ["/Users/demo/project"],
+    lockfilePath: "/Users/demo/.claude/ide/38630.lock",
+    lockfileMtime: 1700000000000,
+    transport: "ws-ide",
+  },
+];
+
+const PLAYGROUND_IDES_MANY: AvailableIde[] = [
+  {
+    port: 38630,
+    ideName: "Neovim",
+    workspaceFolders: ["/Users/demo/project"],
+    lockfilePath: "/Users/demo/.claude/ide/38630.lock",
+    lockfileMtime: 1700000000000,
+    transport: "ws-ide",
+  },
+  {
+    port: 62282,
+    ideName: "Visual Studio Code",
+    workspaceFolders: ["/Users/demo"],
+    lockfilePath: "/Users/demo/.claude/ide/62282.lock",
+    lockfileMtime: 1699000000000,
+    transport: "sse-ide",
+  },
+  {
+    port: 51811,
+    ideName: "Obsidian",
+    workspaceFolders: ["/Users/demo/notes"],
+    lockfilePath: "/Users/demo/.claude/ide/51811.lock",
+    lockfileMtime: 1698000000000,
+    transport: "ws-ide",
+  },
+];
+
+const PLAYGROUND_BOUND_BINDING: IdeBinding = {
+  port: 38630,
+  ideName: "Neovim",
+  workspaceFolders: ["/Users/demo/project"],
+  transport: "ws-ide",
+  boundAt: 1700000000000,
+  lockfilePath: "/Users/demo/.claude/ide/38630.lock",
+};
+
+/**
+ * Inline visual mirror of the IdePicker dialog body for playground cards.
+ * Does not render a portal or overlay — only the panel itself. Keeps the
+ * a11y contract (role=dialog + aria-modal is omitted intentionally so that
+ * axe is happy without a real focus trap here).
+ */
+function IdePickerPreviewPanel(props: {
+  ides: AvailableIde[];
+  currentBinding?: IdeBinding | null;
+  emphasizeBestMatch?: boolean;
+  bindError?: string | null;
+}) {
+  const { ides, currentBinding, emphasizeBestMatch, bindError } = props;
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  return (
+    <div className="w-full max-w-lg h-[420px] mx-auto flex flex-col bg-cc-bg border border-cc-border rounded-[14px] shadow overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-cc-border shrink-0">
+        <h2 className="text-sm font-semibold text-cc-fg font-sans-ui">
+          Select IDE
+        </h2>
+        <button
+          type="button"
+          aria-label="Close preview"
+          className="w-6 h-6 flex items-center justify-center rounded-md text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+        >
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="w-3.5 h-3.5"
+            aria-hidden="true"
+          >
+            <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+      {currentBinding && (
+        <div
+          className="px-4 py-2 border-b border-cc-border shrink-0 flex items-center gap-2 bg-cc-hover/40"
+          role="group"
+          aria-label="Current IDE binding (preview)"
+        >
+          <span className="text-xs text-cc-fg font-medium">
+            {currentBinding.ideName}
+          </span>
+          <span className="text-[11px] text-cc-muted font-mono-code truncate">
+            {currentBinding.workspaceFolders[0] ?? ""}
+          </span>
+          <button
+            type="button"
+            className="ml-auto shrink-0 px-2 py-1 text-[11px] rounded-md text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+          >
+            Disconnect
+          </button>
+        </div>
+      )}
+      {bindError && (
+        <div
+          className="px-4 py-2 border-b border-cc-border shrink-0 flex items-center gap-2 bg-cc-error/10"
+          role="alert"
+        >
+          <span className="text-xs text-cc-error flex-1">{bindError}</span>
+          <button
+            type="button"
+            className="shrink-0 px-2 py-1 text-[11px] font-medium rounded-md bg-cc-primary text-white hover:bg-cc-primary-hover transition-colors cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {ides.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <p className="text-xs text-cc-muted">
+              No IDE detected. Start one and try again.
+            </p>
+          </div>
+        ) : (
+          <ul
+            role="listbox"
+            aria-label="Available IDEs (preview)"
+            className="list-none m-0 p-0"
+          >
+            {ides.map((ide, i) => {
+              const selected = i === selectedIndex;
+              return (
+                <li
+                  key={`${ide.port}-${ide.lockfilePath}`}
+                  role="option"
+                  aria-selected={selected}
+                  onClick={() => setSelectedIndex(i)}
+                  className={`flex items-center gap-2 px-4 py-2 cursor-pointer transition-colors ${
+                    selected ? "bg-cc-hover" : "hover:bg-cc-hover/60"
+                  }`}
+                >
+                  <span className="text-xs font-medium text-cc-fg truncate">
+                    {ide.ideName}
+                  </span>
+                  <span
+                    className="text-[11px] text-cc-muted font-mono-code truncate"
+                    aria-hidden="true"
+                  >
+                    · {ide.workspaceFolders[0]}
+                  </span>
+                  {i === 0 && emphasizeBestMatch && (
+                    <span className="ml-auto shrink-0 text-[10px] text-cc-primary font-medium uppercase tracking-wider">
+                      matches cwd
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PlaygroundIdePickerStates() {
+  // Silence the unused-import warning: `IdePicker` is referenced in a
+  // comment-typed assertion below so the playground transitively re-exports
+  // it for tooling/storybook-like consumers.
+  void IdePicker;
+  return (
+    <div className="space-y-4" data-testid="playground-ide-picker-states">
+      <Card label="1. Empty — no IDE detected">
+        <IdePickerPreviewPanel ides={[]} />
+      </Card>
+      <Card label="2. Single match">
+        <IdePickerPreviewPanel
+          ides={PLAYGROUND_IDES_SINGLE}
+          emphasizeBestMatch
+        />
+      </Card>
+      <Card label="3. Many IDEs with a best match">
+        <IdePickerPreviewPanel
+          ides={PLAYGROUND_IDES_MANY}
+          emphasizeBestMatch
+        />
+      </Card>
+      <Card label="4. Currently bound">
+        <IdePickerPreviewPanel
+          ides={PLAYGROUND_IDES_SINGLE}
+          currentBinding={PLAYGROUND_BOUND_BINDING}
+          emphasizeBestMatch
+        />
+      </Card>
+      <Card label="5. Bind failed / retry">
+        <IdePickerPreviewPanel
+          ides={PLAYGROUND_IDES_SINGLE}
+          bindError="IDE not reachable"
+          emphasizeBestMatch
+        />
+      </Card>
+      <Card label="BIND-05 — IDE disconnected banner (ChatView in-chat)">
+        <IdeDisconnectBanner onDismiss={() => {}} />
+      </Card>
     </div>
   );
 }

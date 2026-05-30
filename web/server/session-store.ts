@@ -23,6 +23,25 @@ export interface PersistedSession {
   archived?: boolean;
 }
 
+// ─── Sanitization ───────────────────────────────────────────────────────────
+//
+// BIND-03 (SPEC.md line 30): `authToken` on an IdeBinding is runtime-only and
+// must NEVER be written to disk. On restart, Companion re-reads the token from
+// the live `.lock` file. This sanitizer does a deep clone of the persisted
+// session and strips `authToken` from any `ideBinding` before JSON.stringify.
+//
+// We go through structuredClone to avoid mutating the caller's in-memory state
+// (which ws-bridge still needs the authToken on for MCP injection).
+function sanitizeForDisk(session: PersistedSession): PersistedSession {
+  const clone = structuredClone(session);
+  const binding = clone.state?.ideBinding;
+  if (binding && typeof binding === "object") {
+    // `authToken` is optional in the IdeBinding type — delete unconditionally.
+    delete (binding as { authToken?: string }).authToken;
+  }
+  return clone;
+}
+
 // ─── Store ──────────────────────────────────────────────────────────────────
 
 const DEFAULT_DIR = join(tmpdir(), "vibe-sessions");
@@ -55,7 +74,8 @@ export class SessionStore {
   /** Immediate write — use for critical state changes. */
   saveSync(session: PersistedSession): void {
     try {
-      writeFileSync(this.filePath(session.id), JSON.stringify(session), "utf-8");
+      const sanitized = sanitizeForDisk(session);
+      writeFileSync(this.filePath(session.id), JSON.stringify(sanitized), "utf-8");
     } catch (err) {
       console.error(`[session-store] Failed to save session ${session.id}:`, err);
     }

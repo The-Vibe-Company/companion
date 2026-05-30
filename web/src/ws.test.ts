@@ -68,7 +68,7 @@ afterEach(() => {
 function makeSession(id: string): SessionState {
   return {
     session_id: id,
-    model: "claude-opus-4-20250514",
+    model: "claude-opus-4-7",
     cwd: "/home/user",
     tools: ["Bash", "Read"],
     permissionMode: "default",
@@ -361,7 +361,7 @@ describe("handleMessage: session_init", () => {
 
     const state = useStore.getState();
     expect(state.sessions.has("s1")).toBe(true);
-    expect(state.sessions.get("s1")!.model).toBe("claude-opus-4-20250514");
+    expect(state.sessions.get("s1")!.model).toBe("claude-opus-4-7");
     expect(state.cliConnected.get("s1")).toBe(true);
     expect(state.sessionStatus.get("s1")).toBe("idle");
     expect(state.sessionNames.get("s1")).toBe("Test Session");
@@ -469,7 +469,7 @@ describe("handleMessage: assistant", () => {
         id: "msg-1",
         type: "message",
         role: "assistant",
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [{ type: "text", text: "Hello world" }],
         stop_reason: "end_turn",
         usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
@@ -509,7 +509,7 @@ describe("handleMessage: assistant", () => {
         id: "msg-final-1",
         type: "message",
         role: "assistant",
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [{ type: "text", text: "Final answer" }],
         stop_reason: "end_turn",
         usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
@@ -534,7 +534,7 @@ describe("handleMessage: assistant", () => {
         id: "msg-shared-1",
         type: "message",
         role: "assistant",
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [{ type: "thinking", thinking: "Thinking step" }],
         stop_reason: null,
         usage: { input_tokens: 10, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
@@ -548,7 +548,7 @@ describe("handleMessage: assistant", () => {
         id: "msg-shared-1",
         type: "message",
         role: "assistant",
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [{ type: "text", text: "Final answer text" }],
         stop_reason: "end_turn",
         usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
@@ -573,7 +573,7 @@ describe("handleMessage: assistant", () => {
         id: "msg-tool-1",
         type: "message",
         role: "assistant",
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [
           {
             type: "tool_use",
@@ -601,7 +601,7 @@ describe("handleMessage: assistant", () => {
         id: "msg-tool-2",
         type: "message",
         role: "assistant",
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [
           {
             type: "tool_use",
@@ -629,7 +629,7 @@ describe("handleMessage: assistant", () => {
         id: "msg-tool-3",
         type: "message",
         role: "assistant",
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [
           {
             type: "tool_use",
@@ -657,7 +657,7 @@ describe("handleMessage: assistant", () => {
         id: "msg-tool-dedupe",
         type: "message" as const,
         role: "assistant" as const,
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [
           {
             type: "tool_use" as const,
@@ -1190,7 +1190,7 @@ describe("handleMessage: message_history", () => {
             id: "msg-hist-1",
             type: "message",
             role: "assistant",
-            model: "claude-opus-4-20250514",
+            model: "claude-opus-4-7",
             content: [{ type: "text", text: "4" }],
             stop_reason: "end_turn",
             usage: { input_tokens: 5, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
@@ -1304,7 +1304,7 @@ describe("handleMessage: message_history", () => {
             id: "msg-1",
             type: "message",
             role: "assistant",
-            model: "claude-opus-4-20250514",
+            model: "claude-opus-4-7",
             content: [{ type: "text", text: "hi" }],
             stop_reason: "end_turn",
             usage: { input_tokens: 5, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
@@ -1337,7 +1337,7 @@ describe("handleMessage: message_history", () => {
             id: "msg-shared-history-1",
             type: "message",
             role: "assistant",
-            model: "claude-opus-4-20250514",
+            model: "claude-opus-4-7",
             content: [{ type: "thinking", thinking: "Planning..." }],
             stop_reason: null,
             usage: { input_tokens: 10, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
@@ -1351,7 +1351,7 @@ describe("handleMessage: message_history", () => {
             id: "msg-shared-history-1",
             type: "message",
             role: "assistant",
-            model: "claude-opus-4-20250514",
+            model: "claude-opus-4-7",
             content: [{ type: "text", text: "Final from history" }],
             stop_reason: "end_turn",
             usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
@@ -1383,7 +1383,7 @@ describe("handleMessage: message_history", () => {
             id: "msg-1",
             type: "message",
             role: "assistant",
-            model: "claude-opus-4-20250514",
+            model: "claude-opus-4-7",
             content: [{ type: "text", text: "hi" }],
             stop_reason: "end_turn",
             usage: { input_tokens: 5, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
@@ -1421,7 +1421,7 @@ describe("handleMessage: message_history", () => {
             id: "msg-tool-history-1",
             type: "message",
             role: "assistant",
-            model: "claude-opus-4-20250514",
+            model: "claude-opus-4-7",
             content: [
               { type: "tool_use", id: "tool-hist-1", name: "Bash", input: { command: "bun test" } },
             ],
@@ -1437,7 +1437,7 @@ describe("handleMessage: message_history", () => {
             id: "msg-tool-history-2",
             type: "message",
             role: "assistant",
-            model: "claude-opus-4-20250514",
+            model: "claude-opus-4-7",
             content: [
               { type: "tool_result", tool_use_id: "tool-hist-1", content: "done" },
             ],
@@ -1557,7 +1557,7 @@ describe("task extraction: TodoWrite", () => {
         id: "msg-tasks-1",
         type: "message",
         role: "assistant",
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [
           {
             type: "tool_use",
@@ -1601,7 +1601,7 @@ describe("task extraction: TaskCreate", () => {
         id: "msg-tc-1",
         type: "message",
         role: "assistant",
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [
           {
             type: "tool_use",
@@ -1639,7 +1639,7 @@ describe("task extraction: TaskUpdate", () => {
         id: "msg-tc-2",
         type: "message",
         role: "assistant",
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [
           {
             type: "tool_use",
@@ -1664,7 +1664,7 @@ describe("task extraction: TaskUpdate", () => {
         id: "msg-tu-1",
         type: "message",
         role: "assistant",
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [
           {
             type: "tool_use",
@@ -1989,7 +1989,7 @@ describe("handleMessage: assistant clears only completed tool progress", () => {
         id: "msg-1",
         type: "message",
         role: "assistant",
-        model: "claude-opus-4-20250514",
+        model: "claude-opus-4-7",
         content: [
           { type: "tool_result", tool_use_id: "tu-a", content: "3 matches" },
         ] as ContentBlock[],
@@ -2004,5 +2004,226 @@ describe("handleMessage: assistant clears only completed tool progress", () => {
     expect(progress?.has("tu-a")).toBeFalsy();
     // tu-b should still be present (still running)
     expect(progress?.get("tu-b")).toEqual({ toolName: "Glob", elapsedSeconds: 2 });
+  });
+});
+
+// ===========================================================================
+// Task 12 (DISC-03 UX side): ide_list_changed → window CustomEvent
+// ===========================================================================
+//
+// Contract: when the server broadcasts `{type: "ide_list_changed"}` over the
+// browser WebSocket, ws.ts dispatches a DOM CustomEvent named
+// "companion:ide-list-changed" on window. IdePicker instances subscribe to
+// that event on mount to refetch `GET /api/ide/available`. Using the browser
+// event bus (vs a module emitter) piggybacks on an already-present pattern
+// for cross-component notifications and costs zero dependencies.
+describe("handleMessage: ide_list_changed dispatches companion:ide-list-changed CustomEvent", () => {
+  it("fires the event exactly once per incoming ide_list_changed message", () => {
+    wsModule.connectSession("s1");
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+
+    const listener = vi.fn();
+    window.addEventListener("companion:ide-list-changed", listener);
+    try {
+      fireMessage({ type: "ide_list_changed" });
+      expect(listener).toHaveBeenCalledTimes(1);
+      const evt = listener.mock.calls[0][0] as Event;
+      expect(evt.type).toBe("companion:ide-list-changed");
+    } finally {
+      window.removeEventListener("companion:ide-list-changed", listener);
+    }
+  });
+
+  it("fires once per subsequent ide_list_changed (not cumulative)", () => {
+    // Multiple dispatches independently notify — important so that arbitrary
+    // add/remove/change events observed while the picker is closed don't
+    // queue up work that IdePicker has to deduplicate.
+    //
+    // NOTE: "not cumulative" means subsequent events still fire, but after
+    // the dedup fix they only fire ONCE per logical event — even if multiple
+    // sockets receive the same broadcast. Because we only have ONE session
+    // socket in this test, each fireMessage is a distinct logical event
+    // carrying a distinct `generation` value.
+    wsModule.connectSession("s1");
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+
+    const listener = vi.fn();
+    window.addEventListener("companion:ide-list-changed", listener);
+    try {
+      // Messages with NO generation field fall through to legacy path and
+      // always fire — three distinct pings, three CustomEvents.
+      fireMessage({ type: "ide_list_changed" });
+      fireMessage({ type: "ide_list_changed" });
+      fireMessage({ type: "ide_list_changed" });
+      expect(listener).toHaveBeenCalledTimes(3);
+    } finally {
+      window.removeEventListener("companion:ide-list-changed", listener);
+    }
+  });
+
+  // cubic-ai review (PR #652): the server broadcasts `ide_list_changed` to
+  // EVERY connected browser socket across EVERY live session. With N session
+  // sockets connected in the same browser, IdePicker would refetch N times
+  // per single discovery event — wasted network + potential spurious state
+  // churn.
+  //
+  // Codex adversarial review (BRITTLE 1): dedupe by the server-stamped
+  // `generation` counter (monotonic, sourced from ide-discovery's scanGeneration).
+  // Same generation = same logical discovery scan (skip). Newer generation =
+  // fresh event (always dispatch) — including legitimate fast add+remove
+  // cycles (IDE restart) that a time-window dedupe would wrongly drop.
+  it("ide_list_changed: same generation is deduplicated across two session sockets", () => {
+    // Connect two sessions; each spawns its own MockWebSocket instance.
+    // `lastWs` always points to the most recently constructed one, so we
+    // capture `ws1` explicitly before the second connectSession overwrites it.
+    wsModule.connectSession("s1");
+    const ws1 = lastWs;
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+
+    wsModule.connectSession("s2");
+    const ws2 = lastWs;
+    ws2.onmessage!({
+      data: JSON.stringify({ type: "session_init", session: makeSession("s2") }),
+    });
+
+    const listener = vi.fn();
+    window.addEventListener("companion:ide-list-changed", listener);
+    try {
+      // Simulate the server broadcast hitting BOTH sockets near-simultaneously
+      // with the SAME generation. In a real browser this is one logical
+      // discovery scan fanned out to two sockets.
+      ws1.onmessage!({ data: JSON.stringify({ type: "ide_list_changed", generation: 42 }) });
+      ws2.onmessage!({ data: JSON.stringify({ type: "ide_list_changed", generation: 42 }) });
+
+      // Without dedup, the listener would fire 2x — one per session socket.
+      // With generation-based dedup, the second ping (same generation) is
+      // recognized as the same logical event and dropped.
+      expect(listener).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener("companion:ide-list-changed", listener);
+    }
+  });
+
+  it("ide_list_changed: newer generation fires a fresh event", () => {
+    // Regression: the dedupe must not be so aggressive that legitimate
+    // fast discovery events (e.g. an IDE add+remove within a few ms during
+    // restart) get swallowed. The server stamps each scan's broadcast with
+    // a new generation, so any generation strictly greater than the last
+    // observed one MUST dispatch — even if it arrives microseconds after
+    // the previous one. This replaces the old time-window check which
+    // would incorrectly drop the second event inside a ~100ms window.
+    wsModule.connectSession("s1");
+    const ws1 = lastWs;
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+
+    wsModule.connectSession("s2");
+    const ws2 = lastWs;
+    ws2.onmessage!({
+      data: JSON.stringify({ type: "session_init", session: makeSession("s2") }),
+    });
+
+    const listener = vi.fn();
+    window.addEventListener("companion:ide-list-changed", listener);
+    try {
+      // First event — gen=1. Both sockets receive the broadcast, one dispatch.
+      ws1.onmessage!({ data: JSON.stringify({ type: "ide_list_changed", generation: 1 }) });
+      ws2.onmessage!({ data: JSON.stringify({ type: "ide_list_changed", generation: 1 }) });
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      // Second event — gen=2 — arriving on the SAME synchronous tick as the
+      // first (no time advance). Under the old time-window dedupe this would
+      // be dropped; under generation dedupe it fires because gen 2 > 1.
+      ws1.onmessage!({ data: JSON.stringify({ type: "ide_list_changed", generation: 2 }) });
+      ws2.onmessage!({ data: JSON.stringify({ type: "ide_list_changed", generation: 2 }) });
+      expect(listener).toHaveBeenCalledTimes(2);
+
+      // An out-of-order older generation (e.g. a delayed retransmit) must NOT
+      // fire — generations are monotonic and we already observed gen=2.
+      ws1.onmessage!({ data: JSON.stringify({ type: "ide_list_changed", generation: 1 }) });
+      expect(listener).toHaveBeenCalledTimes(2);
+    } finally {
+      window.removeEventListener("companion:ide-list-changed", listener);
+    }
+  });
+
+  // cubic-ai review (PR #652, round 3, P2): after a full Hono server restart
+  // the server's `scanGeneration` resets to 0/1. Previously the client's
+  // module-scope `lastIdeListChangedGeneration` survived across the WS
+  // reconnect, so generations from the NEW server lifetime (e.g. gen=1)
+  // would be suppressed until they climbed past whatever the old lifetime
+  // reached (e.g. gen=42). Users would see "IDE list never updates" for
+  // many minutes after a server restart, until enough discovery events
+  // accumulated on the new server to cross the stale high-water mark.
+  //
+  // Fix: reset the client-side generation counter whenever a session
+  // WebSocket (re-)opens. Server-restart ALWAYS drops the underlying WS,
+  // so every cross-lifetime case is covered. The false-positive case —
+  // reset on a transient WS bounce while the server is fine — is benign:
+  // the server would still send the same generation, which post-reset is
+  // accepted once, triggering at most one redundant REST refetch.
+  it("ide_list_changed: after WS reconnect, an older generation is accepted once (server restart scenario)", () => {
+    wsModule.connectSession("s1");
+    const wsBefore = lastWs;
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+
+    const listener = vi.fn();
+    window.addEventListener("companion:ide-list-changed", listener);
+    try {
+      // Old server lifetime reached generation 42.
+      wsBefore.onmessage!({ data: JSON.stringify({ type: "ide_list_changed", generation: 42 }) });
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      // Server restarts: existing socket closes, a fresh one is created.
+      // MockWebSocket starts in OPEN readyState so mark this one CLOSED
+      // before reconnecting so connectSession treats it as stale.
+      wsBefore.readyState = MockWebSocket.CLOSED;
+      if (wsBefore.onclose) wsBefore.onclose();
+      wsModule.connectSession("s1");
+      const wsAfter = lastWs;
+      expect(wsAfter).not.toBe(wsBefore);
+      // Fire the open handler so the reset logic runs.
+      if (wsAfter.onopen) wsAfter.onopen(new Event("open"));
+
+      // New server lifetime starts at gen=1. Without the reset, this would
+      // be suppressed (1 <= 42). With the reset, it fires.
+      wsAfter.onmessage!({ data: JSON.stringify({ type: "ide_list_changed", generation: 1 }) });
+      expect(listener).toHaveBeenCalledTimes(2);
+    } finally {
+      window.removeEventListener("companion:ide-list-changed", listener);
+    }
+  });
+
+  // Regression: after the reset-on-reconnect fix, the within-connection
+  // monotonic dedupe must still work. Otherwise every duplicate broadcast
+  // in a stable connection would refire and defeat the primary dedupe.
+  it("ide_list_changed: monotonic dedupe still works between reconnects", () => {
+    wsModule.connectSession("s1");
+    const wsBefore = lastWs;
+    fireMessage({ type: "session_init", session: makeSession("s1") });
+
+    const listener = vi.fn();
+    window.addEventListener("companion:ide-list-changed", listener);
+    try {
+      // Establish high-water on old connection.
+      wsBefore.onmessage!({ data: JSON.stringify({ type: "ide_list_changed", generation: 42 }) });
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      // Reconnect (server restart).
+      wsBefore.readyState = MockWebSocket.CLOSED;
+      if (wsBefore.onclose) wsBefore.onclose();
+      wsModule.connectSession("s1");
+      const wsAfter = lastWs;
+      if (wsAfter.onopen) wsAfter.onopen(new Event("open"));
+
+      // First post-reconnect event — accepted regardless of value (reset).
+      wsAfter.onmessage!({ data: JSON.stringify({ type: "ide_list_changed", generation: 1 }) });
+      expect(listener).toHaveBeenCalledTimes(2);
+
+      // Same generation on same connection — dedupe still active.
+      wsAfter.onmessage!({ data: JSON.stringify({ type: "ide_list_changed", generation: 1 }) });
+      expect(listener).toHaveBeenCalledTimes(2);
+    } finally {
+      window.removeEventListener("companion:ide-list-changed", listener);
+    }
   });
 });

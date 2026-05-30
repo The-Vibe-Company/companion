@@ -330,8 +330,9 @@ describe("FolderPicker", () => {
     // Validates the pencil icon opens a text input, and Enter selects the typed path
     const { onSelect } = setup();
 
+    // Wait for directories to load so browsePath is populated
     await waitFor(() => {
-      expect(screen.getByLabelText("Type path manually")).toBeInTheDocument();
+      expect(screen.getByText("src")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByLabelText("Type path manually"));
@@ -351,8 +352,9 @@ describe("FolderPicker", () => {
     // Validates Escape in manual input mode exits the input, not the dialog
     const { onClose } = setup();
 
+    // Wait for directories to load so the component is fully initialized
     await waitFor(() => {
-      expect(screen.getByLabelText("Type path manually")).toBeInTheDocument();
+      expect(screen.getByText("src")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByLabelText("Type path manually"));

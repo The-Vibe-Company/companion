@@ -288,3 +288,134 @@ describe("saveLauncher / loadLauncher", () => {
     expect(loaded).toBeNull();
   });
 });
+
+// ─── ideBinding persistence (Task 8: BIND-03, STATE-01) ───────────────────────
+//
+// These tests verify:
+//   a) ideBinding round-trips through the store cleanly (minus authToken).
+//   b) authToken is NEVER written to disk — neither as a string nor a JSON key.
+//      (SPEC.md BIND-03 line 30: "authToken is NOT written to disk".)
+//   c) The loader tolerates a stale/dangling lockfilePath without throwing.
+
+describe("ideBinding persistence (BIND-03, STATE-01)", () => {
+  // (a) Roundtrip: populated ideBinding without authToken must come back byte-equal.
+  it("round-trips an ideBinding through saveSync / load", () => {
+    const boundAt = 1_700_000_000_000;
+    const session = makeSession("ide-a", {
+      state: {
+        ...makeSession("ide-a").state,
+        ideBinding: {
+          port: 63210,
+          ideName: "Neovim",
+          workspaceFolders: ["/Users/test/project"],
+          transport: "ws-ide",
+          boundAt,
+          lockfilePath: "/Users/test/.claude/ide/63210.lock",
+        },
+      },
+    });
+
+    store.saveSync(session);
+
+    // Simulate a server restart: drop in-memory state and reload from disk.
+    const reloaded = store.load("ide-a");
+    expect(reloaded).not.toBeNull();
+    expect(reloaded!.state.ideBinding).toEqual({
+      port: 63210,
+      ideName: "Neovim",
+      workspaceFolders: ["/Users/test/project"],
+      transport: "ws-ide",
+      boundAt,
+      lockfilePath: "/Users/test/.claude/ide/63210.lock",
+    });
+  });
+
+  // (b) SECURITY: authToken must NEVER be persisted — string-level and key-level check.
+  //     Corresponds to BIND-03 (SPEC.md line 30).
+  it("never writes authToken to disk even when present in ideBinding", () => {
+    const session = makeSession("ide-b", {
+      state: {
+        ...makeSession("ide-b").state,
+        ideBinding: {
+          port: 63211,
+          ideName: "Visual Studio Code",
+          workspaceFolders: ["/Users/test/project-b"],
+          transport: "ws-ide",
+          authToken: "secret-token-xyz",
+          boundAt: 1_700_000_000_000,
+          lockfilePath: "/Users/test/.claude/ide/63211.lock",
+        },
+      },
+    });
+
+    store.saveSync(session);
+
+    // String-level proof: the raw token must not appear anywhere on disk.
+    const raw = readFileSync(join(tempDir, "ide-b.json"), "utf-8");
+    expect(raw).not.toContain("secret-token-xyz");
+
+    // Key-level proof: recursively walk the parsed JSON and assert no `authToken` key.
+    const parsed = JSON.parse(raw);
+    const findAuthToken = (node: unknown, path: string[] = []): string[] | null => {
+      if (node && typeof node === "object") {
+        for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+          if (k === "authToken") return [...path, k];
+          const nested = findAuthToken(v, [...path, k]);
+          if (nested) return nested;
+        }
+      }
+      return null;
+    };
+    expect(findAuthToken(parsed)).toBeNull();
+
+    // Also verify the rest of the binding survived the sanitization.
+    const reloaded = store.load("ide-b");
+    expect(reloaded!.state.ideBinding).toMatchObject({
+      port: 63211,
+      ideName: "Visual Studio Code",
+      transport: "ws-ide",
+    });
+    expect((reloaded!.state.ideBinding as unknown as Record<string, unknown>).authToken).toBeUndefined();
+  });
+
+  // (c) Stale lockfile: a dangling lockfilePath must NOT crash the loader.
+  //     Behavior observed in this codebase: the loader PRESERVES the stale
+  //     ideBinding as-is (ws-bridge is expected to reconcile via the discovery
+  //     rescan and emit ide:removed). We assert "does not throw" + "no crash"
+  //     without asserting a specific post-value beyond the two allowed options.
+  it("tolerates an ideBinding whose lockfilePath no longer exists", () => {
+    const session = makeSession("ide-c", {
+      state: {
+        ...makeSession("ide-c").state,
+        ideBinding: {
+          port: 63212,
+          ideName: "Neovim",
+          workspaceFolders: ["/Users/test/project-c"],
+          transport: "ws-ide",
+          boundAt: 1_700_000_000_000,
+          lockfilePath: "/tmp/definitely-does-not-exist-12345.lock",
+        },
+      },
+    });
+
+    store.saveSync(session);
+
+    // Loader must not throw on a dangling lockfilePath.
+    let reloaded: PersistedSession | null = null;
+    expect(() => {
+      reloaded = store.load("ide-c");
+    }).not.toThrow();
+
+    expect(reloaded).not.toBeNull();
+    const binding = reloaded!.state.ideBinding;
+    // Acceptable: either preserved as-is OR proactively set to null.
+    // This codebase's SessionStore does a raw JSON load (no lockfile touch at
+    // load time), so behavior is "preserve as-is"; ws-bridge reconciles later.
+    const isPreserved =
+      binding !== null &&
+      binding !== undefined &&
+      binding.lockfilePath === "/tmp/definitely-does-not-exist-12345.lock";
+    const isNulled = binding === null;
+    expect(isPreserved || isNulled).toBe(true);
+  });
+});

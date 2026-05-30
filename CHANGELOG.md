@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.96.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.95.0...the-companion-v0.96.0) (2026-04-02)
+
+
+### Features
+
+* **ui:** add ActivityTray floating component for background agents and tasks ([#638](https://github.com/The-Vibe-Company/companion/issues/638)) ([abdfb4b](https://github.com/The-Vibe-Company/companion/commit/abdfb4bc7e096e810bde30b3cac844ceb2d8f469))
+
+
+### Bug Fixes
+
+* **codex:** handle unhandled Codex notification methods to prevent protocol drift warnings ([#637](https://github.com/The-Vibe-Company/companion/issues/637)) ([e0c242d](https://github.com/The-Vibe-Company/companion/commit/e0c242dd1b0c94ff5ddbf3f8e7e706ce6d5cd506))
+* **keepalive:** add Codex disconnect debounce and enable headless proactive keepalive ([#635](https://github.com/The-Vibe-Company/companion/issues/635)) ([a0d4e52](https://github.com/The-Vibe-Company/companion/commit/a0d4e5263820fefc2bb6beaf6aeb1903052b568d))
+* **prompts:** expand prompt editor workspace ([#640](https://github.com/The-Vibe-Company/companion/issues/640)) ([5288314](https://github.com/The-Vibe-Company/companion/commit/52883144858f62d6f9b418c00432279f28d119d4))
+* **ws-bridge:** broadcast permissionMode changes from CLI to browsers ([#639](https://github.com/The-Vibe-Company/companion/issues/639)) ([4c9dbab](https://github.com/The-Vibe-Company/companion/commit/4c9dbab91094d0d83a04c79681e6e153d7f17652))
+
 ## [0.95.0](https://github.com/The-Vibe-Company/companion/compare/the-companion-v0.94.0...the-companion-v0.95.0) (2026-04-01)
 
 

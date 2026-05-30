@@ -20,7 +20,14 @@ export default defineConfig({
       // The coverage-gate CI workflow reads json-summary to enforce
       // that new / changed files have ≥ 80 % line coverage.
     },
-    include: ["server/**/*.test.ts", "src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: [
+      "server/**/*.test.ts",
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
+      // Diagnostic scripts (e.g. probe-ide) live at repo root `scripts/`.
+      // Their tests are included here so `cd web && bun run test` picks them up.
+      "../scripts/**/*.test.ts",
+    ],
     environmentMatchGlobs: [
       ["src/**/*.test.ts", "jsdom"],
       ["src/**/*.test.tsx", "jsdom"],

@@ -2739,6 +2739,66 @@ describe("CodexAdapter", () => {
     await new Promise((r) => setTimeout(r, 30));
   });
 
+  // Codex round-3 issue: `mcp_set_servers` with `servers: {}` used to be a
+  // no-op on Codex — handleOutgoingMcpSetServers built zero batchWrite edits
+  // and early-returned (line 1516 guard `if (edits.length > 0)`). The bridge's
+  // `unbindIde` path relied on that message to remove the IDE MCP entry, so
+  // the CLI kept the stale registration while the UI cleared `ideBinding`
+  // (split-brain).
+  //
+  // Fix: extend the `mcp_set_servers` wire shape with an optional
+  // `deleteKeys: string[]`. For each key, the Codex adapter issues a
+  // `config/value/write` with `value: null, mergeStrategy: "replace"` —
+  // reusing the same pattern the toggle-fallback test above pins.
+  //
+  // This test pins the adapter-level translation. It deliberately uses
+  // BOTH an upsert (via `servers`) AND a delete (via `deleteKeys`) in a
+  // single message to prove the adapter handles them together, not just
+  // one-or-the-other.
+  it("mcp_set_servers with deleteKeys removes mcp_servers.<key> via config/value/write(value=null, mergeStrategy=replace)", async () => {
+    const adapter = new CodexAdapter(proc as never, "test-session", { model: "o4-mini" });
+
+    await new Promise((r) => setTimeout(r, 50));
+    stdout.push(JSON.stringify({ id: 1, result: { userAgent: "codex" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    stdin.chunks.length = 0;
+    adapter.sendBrowserMessage({
+      type: "mcp_set_servers",
+      servers: {}, // no upserts — pure removal
+      deleteKeys: ["neovim"],
+    });
+    await new Promise((r) => setTimeout(r, 20));
+
+    const written = stdin.chunks.join("");
+    const lines = written.split("\n").filter(Boolean).map((l) => JSON.parse(l));
+
+    // The adapter must emit a config/value/write for the deleted key.
+    // value: null + mergeStrategy: "replace" is how Codex's config layer
+    // expresses "drop this entry" (see codex-adapter.ts:1478 — the invalid
+    // transport fallback uses the same three-field shape).
+    const deleteWrite = lines.find(
+      (msg) =>
+        msg.method === "config/value/write"
+        && msg.params?.keyPath === "mcp_servers.neovim",
+    );
+    expect(deleteWrite).toBeDefined();
+    expect(deleteWrite.params.value).toBe(null);
+    expect(deleteWrite.params.mergeStrategy).toBe("replace");
+
+    // Drain in-flight requests (delete write + reload + status list + config read)
+    stdout.push(JSON.stringify({ id: 4, result: { status: "updated" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 5, result: {} }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 6, result: { data: [], nextCursor: null } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 7, result: { config: { mcp_servers: {} } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 30));
+  });
+
   it("mcp_toggle fallback removes server entry when reload fails with invalid transport", async () => {
     const adapter = new CodexAdapter(proc as never, "test-session", { model: "o4-mini" });
 

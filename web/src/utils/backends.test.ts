@@ -141,10 +141,33 @@ describe("static model/mode lists", () => {
     }
   });
 
-  it("has claude models with claude- prefix", () => {
+  it("has claude models with claude- prefix or a valid short alias", () => {
+    // Most entries are full version IDs (claude-opus-4-7, claude-sonnet-4-6...).
+    // The Claude CLI also accepts short aliases (e.g. 'opus') that resolve to
+    // the latest pinned version automatically, so allow those too.
+    const SHORT_ALIASES = new Set(["opus", "sonnet", "haiku"]);
     for (const m of CLAUDE_MODELS) {
-      expect(m.value).toMatch(/^claude-/);
+      expect(m.value.startsWith("claude-") || SHORT_ALIASES.has(m.value)).toBe(true);
     }
+  });
+
+  it("includes a claude-opus-4-7 option for Claude (claude-opus-latest is not a valid CLI model ID)", () => {
+    // Regression test: the Claude CLI rejects 'claude-opus-latest' with
+    // "There's an issue with the selected model". Valid values are either
+    // full version IDs like 'claude-opus-4-7' or short aliases like 'opus'.
+    // This test ensures the invalid string is never re-introduced.
+    expect(CLAUDE_MODELS.some((m) => m.value === "claude-opus-4-7")).toBe(true);
+    expect(CLAUDE_MODELS.some((m) => m.value === "claude-opus-latest")).toBe(false);
+  });
+
+  it("includes the 'opus' floating alias so users can pin to latest Opus without a release", () => {
+    // The Claude CLI accepts `--model opus` as a short alias that resolves to
+    // the current latest Opus at runtime. Exposing this option lets users opt
+    // into "always latest" without waiting for a Companion release to add a
+    // new pinned version. The two-sided guard still prevents 'claude-opus-latest'
+    // (which the CLI rejects) from being re-introduced.
+    expect(CLAUDE_MODELS.some((m) => m.value === "opus")).toBe(true);
+    expect(CLAUDE_MODELS.some((m) => m.value === "claude-opus-latest")).toBe(false);
   });
 
   it("has at least 2 modes for each backend", () => {

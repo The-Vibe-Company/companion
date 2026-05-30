@@ -913,7 +913,7 @@ export class CodexAdapter implements IBackendAdapter {
         this.handleOutgoingMcpReconnect();
         return true;
       case "mcp_set_servers":
-        this.handleOutgoingMcpSetServers(msg.servers);
+        this.handleOutgoingMcpSetServers(msg.servers, msg.deleteKeys);
         return true;
       default:
         return false;
@@ -1593,8 +1593,87 @@ export class CodexAdapter implements IBackendAdapter {
     }
   }
 
-  private async handleOutgoingMcpSetServers(servers: Record<string, McpServerConfig>): Promise<void> {
+  /**
+   * Await-able entry point for `mcp_set_servers` used by callers that must
+   * not commit UI state until the Codex backend has actually applied the
+   * change. Returns `{ok: true}` only after deletes + upserts + reload +
+   * status reconciliation all succeed, `{ok: false, error}` otherwise.
+   *
+   * The fire-and-forget `send({type: "mcp_set_servers"})` path remains for
+   * callers that only care about enqueuing (e.g. browser-initiated edits);
+   * it delegates to this method but does not propagate the result.
+   */
+  async applyMcpSetServers(
+    servers: Record<string, McpServerConfig>,
+    deleteKeys?: string[],
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
+    if (!this.connected) return { ok: false, error: "backend not connected" };
     try {
+      await this.runMcpSetServers(servers, deleteKeys);
+      return { ok: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
+    }
+  }
+
+  private async handleOutgoingMcpSetServers(
+    servers: Record<string, McpServerConfig>,
+    deleteKeys?: string[],
+  ): Promise<void> {
+    try {
+      await this.runMcpSetServers(servers, deleteKeys);
+    } catch (err) {
+      this.emit({ type: "error", message: `Failed to configure MCP servers: ${err}` });
+    }
+  }
+
+  /**
+   * Core MCP-set-servers work — deletes, upserts, reload, status refresh.
+   * Separated from the two entry points above so `applyMcpSetServers` can
+   * surface failures to the caller while `handleOutgoingMcpSetServers`
+   * keeps fire-and-forget semantics for browser-initiated edits.
+   */
+  private async runMcpSetServers(
+    servers: Record<string, McpServerConfig>,
+    deleteKeys?: string[],
+  ): Promise<void> {
+      // Phase 1 — removals. Codex's `config/batchWrite` edits support
+      // `upsert`/`replace` semantics; to drop a `mcp_servers.<name>` entry
+      // entirely we write `value: null` with `mergeStrategy: "replace"` on
+      // each key. The invalid-transport fallback in `handleOutgoingMcpToggle`
+      // uses the same three-field shape; we deliberately reuse it here so
+      // there is exactly one pattern for "delete an MCP entry" in Codex.
+      //
+      // Each delete is a separate `config/value/write` call rather than one
+      // batched replace — matches the existing toggle-fallback pattern and
+      // keeps per-key failures isolated. Deletes run BEFORE upserts so a
+      // combined message is well-defined: remove, then add.
+      const deleteErrors: string[] = [];
+      if (deleteKeys && deleteKeys.length > 0) {
+        for (const name of deleteKeys) {
+          if (typeof name !== "string" || name.length === 0) continue;
+          if (name.includes(".")) {
+            throw new Error(`Server names containing '.' are not supported: ${name}`);
+          }
+          try {
+            await this.transport.call("config/value/write", {
+              keyPath: `mcp_servers.${name}`,
+              value: null,
+              mergeStrategy: "replace",
+            });
+          } catch (delErr) {
+            // Cubic round-8 P2: per-key catch so a single delete failure
+            // does not abort remaining deletes + upserts + status reconciliation.
+            // Collect the error so callers (applyMcpSetServers) can surface it.
+            const msg = `Failed to delete MCP server '${name}': ${delErr}`;
+            deleteErrors.push(msg);
+            this.emit({ type: "error", message: msg });
+          }
+        }
+      }
+
+      // Phase 2 — upserts.
       const edits: Array<{ keyPath: string; value: Record<string, unknown>; mergeStrategy: "upsert" }> = [];
       for (const [name, config] of Object.entries(servers)) {
         if (name.includes(".")) {
@@ -1613,9 +1692,12 @@ export class CodexAdapter implements IBackendAdapter {
       }
       await this.reloadMcpServers();
       await this.handleOutgoingMcpGetStatus();
-    } catch (err) {
-      this.emit({ type: "error", message: `Failed to configure MCP servers: ${err}` });
-    }
+      // Propagate delete failures after upserts + reload + status refresh
+      // are complete, so applyMcpSetServers returns {ok:false} when
+      // deletions fail (cubic PR #652 P2 issue #3).
+      if (deleteErrors.length > 0) {
+        throw new Error(deleteErrors.join("; "));
+      }
   }
 
   // ── Incoming notification handlers ──────────────────────────────────────

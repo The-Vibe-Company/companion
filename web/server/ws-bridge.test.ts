@@ -2551,6 +2551,145 @@ describe("Persistence", () => {
     expect(session.state.model).toBe("live-model");
   });
 
+  // ─── MIGRATE-01 / MIGRATE-02: legacy-key migration invariant (codex round-4 BLOCK 2) ─
+  //
+  // Context: earlier commits wrote the IDE MCP entry under the bare sanitized
+  // ideName (e.g. `"neovim"`), then under `"companionideneovim"`, and now
+  // under `"companion-ide-neovim"`. Codex review asked: after upgrade, do
+  // legacy entries on disk become permanent orphans?
+  //
+  // Verified (see session-store.ts + ws-bridge.ts:287): `dynamicMcpServers`
+  // is a ws-bridge-local in-memory mirror that is NEVER persisted. The only
+  // state that round-trips to disk is `session.state` (which includes
+  // `ideBinding`), `messageHistory`, `pendingMessages`, and a few metadata
+  // fields — never `dynamicMcpServers`. On every `restoreFromDisk`, the
+  // bridge hydrates `dynamicMcpServers: {}` unconditionally (ws-bridge.ts
+  // line 287), so no legacy IDE MCP key from a prior in-memory run can
+  // survive a restart. The Claude CLI subprocess is restarted too, and its
+  // dynamic MCP set (scope:"dynamic") is also in-memory only. BLOCK 2 is
+  // therefore moot — there is no persistence path that carries the old key
+  // forward.
+  //
+  // These two tests pin the invariant so a future refactor that adds
+  // `dynamicMcpServers` to `PersistedSession` (e.g. for hot-restart speed)
+  // cannot silently re-introduce the orphan bug.
+
+  it("MIGRATE-01: restoreFromDisk always hydrates dynamicMcpServers to {} — legacy IDE keys cannot survive a restart", () => {
+    // Emulate a pre-fix persisted session that had an `ideBinding` and that
+    // at runtime carried a legacy IDE MCP entry under the bare ideName. The
+    // legacy entry lives only in the in-memory mirror (which is not
+    // persisted); on disk we just have the ideBinding + standard state.
+    store.saveSync({
+      id: "migrate-1",
+      state: {
+        session_id: "migrate-1",
+        model: "claude-sonnet-4-6",
+        cwd: "/w",
+        tools: ["Bash"],
+        permissionMode: "default",
+        claude_code_version: "1.0",
+        mcp_servers: [],
+        agents: [],
+        slash_commands: [],
+        skills: [],
+        total_cost_usd: 0,
+        num_turns: 0,
+        context_used_percent: 0,
+        is_compacting: false,
+        git_branch: "main",
+        is_worktree: false,
+        is_containerized: false,
+        repo_root: "/w",
+        git_ahead: 0,
+        git_behind: 0,
+        total_lines_added: 0,
+        total_lines_removed: 0,
+        // Legacy ideBinding shape — ideName "Neovim" would sanitize to "neovim"
+        // under the old code, "companionideneovim" under the prior fix.
+        ideBinding: {
+          port: 50001,
+          ideName: "Neovim",
+          workspaceFolders: ["/w"],
+          transport: "ws-ide",
+          boundAt: 1_700_000_000_000,
+          lockfilePath: "/tmp/fake.lock",
+        },
+      } as any,
+      messageHistory: [],
+      pendingMessages: [],
+      pendingPermissions: [],
+    });
+
+    const count = bridge.restoreFromDisk();
+    expect(count).toBe(1);
+
+    const session = bridge.getSession("migrate-1")!;
+    // The IDE binding is restored (state round-trips).
+    expect(session.state.ideBinding?.ideName).toBe("Neovim");
+    // But the dynamicMcpServers mirror is ALWAYS fresh-empty after restore,
+    // regardless of what key format the previous process used. Any legacy
+    // `"neovim"`, `"companionideneovim"`, etc. is simply not reachable.
+    expect(session.dynamicMcpServers).toEqual({});
+  });
+
+  it("MIGRATE-02: restoreFromDisk does not accept dynamicMcpServers from the PersistedSession shape (defensive)", () => {
+    // Even if a future disk write accidentally includes a `dynamicMcpServers`
+    // field (via a cast / new type / forked bridge), the restore path must
+    // NOT read it. This guards against silently re-introducing the legacy
+    // key problem if persistence shape is expanded later.
+    const maliciousPersisted = {
+      id: "migrate-2",
+      state: {
+        session_id: "migrate-2",
+        model: "claude-sonnet-4-6",
+        cwd: "/w",
+        tools: [],
+        permissionMode: "default",
+        claude_code_version: "1.0",
+        mcp_servers: [],
+        agents: [],
+        slash_commands: [],
+        skills: [],
+        total_cost_usd: 0,
+        num_turns: 0,
+        context_used_percent: 0,
+        is_compacting: false,
+        git_branch: "main",
+        is_worktree: false,
+        is_containerized: false,
+        repo_root: "/w",
+        git_ahead: 0,
+        git_behind: 0,
+        total_lines_added: 0,
+        total_lines_removed: 0,
+      },
+      messageHistory: [],
+      pendingMessages: [],
+      pendingPermissions: [],
+      // Attacker / legacy-bug shape: an old dynamicMcpServers field that
+      // includes BOTH the legacy bare key AND a user entry at the current
+      // structurally-disjoint key. Per BLOCK 2 concern, we must never read
+      // this back — the bridge builds dynamicMcpServers fresh.
+      dynamicMcpServers: {
+        neovim: { type: "ws-ide", ideName: "Neovim" },
+        "companion-ide-neovim": { type: "ws-ide", ideName: "Neovim" },
+      },
+    };
+    store.saveSync(maliciousPersisted as any);
+
+    const count = bridge.restoreFromDisk();
+    expect(count).toBe(1);
+
+    const session = bridge.getSession("migrate-2")!;
+    // Critical invariant: the bridge does NOT trust the on-disk
+    // `dynamicMcpServers` — it always starts empty. If a future change
+    // breaks this invariant, both keys above would leak into the mirror
+    // and potentially be re-sent to the CLI on the next `bindIde` merge.
+    expect(session.dynamicMcpServers).toEqual({});
+    expect(session.dynamicMcpServers.neovim).toBeUndefined();
+    expect(session.dynamicMcpServers["companion-ide-neovim"]).toBeUndefined();
+  });
+
   it("persistSession: called after state changes (via store.save)", async () => {
     mockExecSync.mockImplementation(() => {
       throw new Error("not a git repo");
@@ -4018,7 +4157,9 @@ describe("MCP control messages", () => {
     expect(browserMsg.servers[0].tools).toHaveLength(1);
   });
 
-  it("control_response with error: does not broadcast to browsers", async () => {
+  it("control_response with error: resolves pending callback and broadcasts mcp_status", async () => {
+    // Issue #5 (cubic-ai PR #652): error control_responses now resolve the
+    // pending callback. For mcp_status, this emits mcp_status with servers: [].
     bridge.handleBrowserMessage(browser, JSON.stringify({
       type: "mcp_get_status",
     }));
@@ -4033,8 +4174,12 @@ describe("MCP control messages", () => {
       },
     }));
 
-    // Should not broadcast anything
-    expect(browser.send).not.toHaveBeenCalled();
+    // The pending resolve IS called, which for mcp_status emits
+    // mcp_status with an empty server list to browsers.
+    expect(browser.send).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse(browser.send.mock.calls[0][0]);
+    expect(sent.type).toBe("mcp_status");
+    expect(sent.servers).toEqual([]);
   });
 
   it("control_response for unknown request_id: ignored silently", async () => {
@@ -4773,5 +4918,2157 @@ describe("User message during initializing phase", () => {
     // State machine transitions to streaming — the adapter queues the
     // message internally until the backend is ready.
     expect(session.stateMachine.phase).toBe("streaming");
+  });
+});
+
+// ─── IDE binding (Task 6: BIND-01, BIND-02, BIND-04, BIND-06, STATE-01) ──────
+//
+// These tests pin the bindIde/unbindIde contract on WsBridge.
+//
+// Test seam: we seed `listAvailableIdes()` by running `startIdeDiscovery` on a
+// fresh temp directory and writing real lockfile JSON with our own pid (so
+// isPidAlive returns true). That exercises the production discovery path —
+// no internal mock — matching how routes/ide-routes.test.ts seeds fixtures.
+//
+// Adapter seam: we attach a fake IBackendAdapter via attachBackendAdapter and
+// capture every .send() call. bindIde must route through session.backendAdapter.send
+// with a single {type:"mcp_set_servers", servers:{ide:{...}}} message — never a
+// {type:"user_message"} carrying "/ide" (that would leak the slash command into
+// the CLI and duplicate the intercept, violating BIND-06).
+
+import {
+  startIdeDiscovery as startIdeDiscoveryForBind,
+  resetIdeDiscoveryForTests as resetIdeDiscoveryForBind,
+  listAvailableIdes as listAvailableIdesForBind,
+} from "./ide-discovery.js";
+import { writeFileSync as writeFileSyncForBind } from "node:fs";
+
+describe("IDE binding (bindIde / unbindIde)", () => {
+  let ideTmpDir: string;
+  let stopDiscovery: (() => void) | null = null;
+
+  /** Write a healthy lockfile to the ide dir and wait for discovery to see it. */
+  async function seedIde(opts: {
+    port: number;
+    ideName?: string;
+    workspaceFolders?: string[];
+    authToken?: string;
+    transport?: "ws" | "sse";
+  }): Promise<void> {
+    const path = join(ideTmpDir, `${opts.port}.lock`);
+    writeFileSyncForBind(
+      path,
+      JSON.stringify({
+        pid: process.pid, // our own pid — guaranteed alive
+        ideName: opts.ideName ?? "Neovim",
+        workspaceFolders: opts.workspaceFolders ?? ["/Users/test/proj"],
+        authToken: opts.authToken ?? "tok-xyz",
+        transport: opts.transport ?? "ws",
+      }),
+    );
+    // Wait until discovery reflects the new IDE. fs.watch on macOS can lag
+    // up to several hundred ms; we poll for up to 4s and fall back to
+    // manually restarting discovery (which does a synchronous scan) if the
+    // watcher event never fires.
+    const deadline = Date.now() + 4000;
+    while (Date.now() < deadline) {
+      if (listAvailableIdesForBind().some((i) => i.port === opts.port)) return;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    // Watcher event never fired — force a synchronous rescan via restart.
+    if (stopDiscovery) {
+      try { stopDiscovery(); } catch { /* ignore */ }
+    }
+    stopDiscovery = startIdeDiscoveryForBind({ ideDir: ideTmpDir });
+    if (listAvailableIdesForBind().some((i) => i.port === opts.port)) return;
+    throw new Error(`seedIde: discovery did not pick up port ${opts.port}`);
+  }
+
+  /**
+   * Walk a deserialized JSON object tree and fail the test if any key named
+   * `authToken` is encountered. Used to enforce BIND-03 (authToken never
+   * crosses the browser WS boundary).
+   */
+  function walkAssertNoAuthToken(node: unknown, path: string = "$"): void {
+    if (node === null || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      node.forEach((v, i) => walkAssertNoAuthToken(v, `${path}[${i}]`));
+      return;
+    }
+    for (const [k, v] of Object.entries(node)) {
+      if (k === "authToken") {
+        throw new Error(`BIND-03 violation: authToken present at ${path}.${k}`);
+      }
+      walkAssertNoAuthToken(v, `${path}.${k}`);
+    }
+  }
+
+  /** Build a fake backend adapter that records every outgoing message. */
+  function makeFakeAdapter(): { adapter: any; sendCalls: any[] } {
+    const sendCalls: any[] = [];
+    const adapter = {
+      isConnected: () => true,
+      send: (msg: any) => {
+        sendCalls.push(msg);
+        return true;
+      },
+      disconnect: async () => {},
+      onBrowserMessage: () => {},
+      onSessionMeta: () => {},
+      onDisconnect: () => {},
+      onInitError: () => {},
+    };
+    return { adapter, sendCalls };
+  }
+
+  beforeEach(() => {
+    ideTmpDir = mkdtempSync(join(tmpdir(), "ide-bind-"));
+    resetIdeDiscoveryForBind();
+    // NOTE: the top-level beforeEach (above, outside any describe) creates
+    // `bridge = new WsBridge()` and THEN calls companionBus.clear(). The
+    // clear() wipes out the constructor's "ide:removed" subscription (the
+    // BIND-04 auto-unbind wiring). Re-create the bridge here, AFTER clear,
+    // so the subscription is alive for these tests. This is specific to the
+    // ordering chosen by the outer setup and does not affect other describes.
+    bridge = new WsBridge();
+    bridge.setStore(store);
+    // startIdeDiscovery populates the internal known-map by scanning ideTmpDir.
+    stopDiscovery = startIdeDiscoveryForBind({ ideDir: ideTmpDir });
+  });
+
+  afterEach(() => {
+    if (stopDiscovery) {
+      try { stopDiscovery(); } catch { /* ignore */ }
+      stopDiscovery = null;
+    }
+    resetIdeDiscoveryForBind();
+    try { rmSync(ideTmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
+  });
+
+  // BIND-01 core contract: bindIde must translate into exactly one
+  // mcp_set_servers with the IDE server entry keyed by the sanitized ideName.
+  // We assert on the PROTOCOL payload, not on a derivative — per the plan,
+  // this pins "CLI sees mcp_set_servers, never /ide text".
+  //
+  // NOTE: The key must NOT be the literal "ide" — see BIND-07 for why.
+  // The CLI's _35 filter blocks all mcp__ide__* tools except getDiagnostics
+  // and executeCode. Using the sanitized ideName (e.g. "neovim") causes the
+  // CLI to prefix tools as mcp__neovim__* which bypasses the filter entirely.
+  it("bindIde sends mcp_set_servers with a sanitized-ideName entry containing transport/url/ideName/authToken/scope", async () => {
+    await seedIde({ port: 42424, ideName: "Neovim", authToken: "secret-t" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    sendCalls.length = 0; // ignore any send that happened during attach
+
+    const result = await bridge.bindIde("s1", 42424);
+    expect(result).toEqual({ ok: true });
+
+    // Find the mcp_set_servers call — there should be exactly one.
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    const payload = mcpCalls[0];
+    // Keyed by `companion-ide-` structural-separator prefix + sanitized
+    // ideName (BIND-08 / BIND-08d). The bare "ide" literal was ruled out by
+    // BIND-07 (CLI tool filter bypass); the bare "neovim" was ruled out by
+    // BIND-08 (namespace collision with user MCP servers); the bare
+    // `companionide` prefix was ruled out by BIND-08d (same-namespace
+    // collision still possible — hyphens are structurally disjoint).
+    const serverEntry = payload.servers["companion-ide-neovim"];
+    expect(serverEntry).toBeDefined();
+    expect(serverEntry).toMatchObject({
+      type: "ws-ide",
+      url: "ws://127.0.0.1:42424",
+      ideName: "Neovim",
+      authToken: "secret-t",
+      ideRunningInWindows: false,
+      scope: "dynamic",
+    });
+  });
+
+  // STATE-01 + session_update broadcast contract.
+  // ideBinding must land on session.state AND be visible to browsers via the
+  // existing session_update channel (never a new variant — plan forbids it).
+  it("bindIde sets session.state.ideBinding and broadcasts session_update with the binding", async () => {
+    await seedIde({ port: 50001, ideName: "VSCode", workspaceFolders: ["/w/a", "/w/b"] });
+
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    const { adapter } = makeFakeAdapter();
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    browser.send.mockClear();
+
+    const result = await bridge.bindIde("s1", 50001);
+    expect(result).toEqual({ ok: true });
+
+    const session = bridge.getSession("s1")!;
+    expect(session.state.ideBinding).toMatchObject({
+      port: 50001,
+      ideName: "VSCode",
+      workspaceFolders: ["/w/a", "/w/b"],
+      transport: "ws-ide",
+      authToken: "tok-xyz",
+    });
+    expect(typeof session.state.ideBinding?.boundAt).toBe("number");
+    expect(session.state.ideBinding?.lockfilePath.endsWith("50001.lock")).toBe(true);
+
+    // At least one session_update broadcast contained ideBinding.
+    const broadcasts = browser.send.mock.calls
+      .map(([arg]: [string]) => JSON.parse(arg))
+      .filter((m: any) => m.type === "session_update");
+    const hasBinding = broadcasts.some(
+      (m: any) => m.session && m.session.ideBinding && m.session.ideBinding.port === 50001,
+    );
+    expect(hasBinding).toBe(true);
+  });
+
+  // BIND-03 SECURITY: authToken MUST NEVER leak over the browser WebSocket.
+  // Spec says it is runtime-only, server-internal (same rule as session-store
+  // persistence). If a future refactor re-adds the field to the session_update
+  // payload, this test fails loudly with a string match on the raw wire bytes.
+  //
+  // Regression-guarded by two orthogonal assertions:
+  //   (1) Structural — walk the deserialized object tree, assert no authToken key.
+  //   (2) String-level — the raw send payload never contains "authToken".
+  it("BIND-03: bindIde session_update broadcast never includes authToken (or the string)", async () => {
+    await seedIde({ port: 50099, ideName: "Neovim", authToken: "must-not-leak-xyz" });
+
+    const { adapter } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    browser.send.mockClear();
+
+    const result = await bridge.bindIde("s1", 50099);
+    expect(result).toEqual({ ok: true });
+
+    // (1) Structural walk across all outbound browser messages.
+    const allBroadcasts = browser.send.mock.calls.map(
+      ([arg]: [string]) => JSON.parse(arg),
+    );
+    for (const msg of allBroadcasts) {
+      walkAssertNoAuthToken(msg);
+    }
+
+    // (2) String-level: the literal secret must never appear on the wire.
+    for (const [raw] of browser.send.mock.calls) {
+      expect(raw).not.toContain("must-not-leak-xyz");
+      expect(raw).not.toContain("authToken");
+    }
+  });
+
+  // Negative safety: binding without a live backend adapter is incoherent.
+  // Without the adapter we cannot dispatch the mcp_set_servers that tells the
+  // CLI about the IDE; setting ideBinding anyway produces a split-brain where
+  // the FE renders "bound" but the CLI sees nothing. The bridge MUST return
+  // an error and NOT mutate session state or broadcast when no adapter exists.
+  it("bindIde with no backendAdapter returns error and does NOT mutate session state", async () => {
+    await seedIde({ port: 49999, ideName: "Neovim" });
+
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    // Deliberately do NOT attach a backend adapter — simulates a session that
+    // hasn't reached CLI-connected yet.
+    browser.send.mockClear();
+
+    const result = await bridge.bindIde("s1", 49999);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/backend|adapter|not connected/i);
+
+    // State untouched.
+    const session = bridge.getSession("s1")!;
+    expect(session.state.ideBinding).toBeFalsy();
+
+    // No session_update ideBinding broadcast fired.
+    const broadcasts = browser.send.mock.calls
+      .map(([arg]: [string]) => JSON.parse(arg))
+      .filter((m: any) => m.type === "session_update" && m.session?.ideBinding);
+    expect(broadcasts).toHaveLength(0);
+  });
+
+  // Negative safety: unknown port must NOT issue any backend send. A failed
+  // match leaking mcp_set_servers with an empty `ide` would destabilize the
+  // live MCP config for the session — never acceptable.
+  it("bindIde with an unknown port returns error and does NOT call adapter.send", async () => {
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    sendCalls.length = 0;
+
+    const result = await bridge.bindIde("s1", 9999);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/unknown port/i);
+
+    // Critical: no MCP traffic on the failure path.
+    expect(sendCalls.filter((m) => m.type === "mcp_set_servers")).toHaveLength(0);
+  });
+
+  // Unbind contract — pins the BIND-04 transition payload the FE relies on:
+  // ideBinding must be EXPLICITLY null (not undefined) so ChatView can detect
+  // the bound → unbound transition and render the disconnect banner.
+  it("unbindIde clears binding, sends mcp_set_servers (ide removed), and broadcasts session_update with ideBinding:null", async () => {
+    await seedIde({ port: 33333, ideName: "Neovim" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    await bridge.bindIde("s1", 33333);
+    sendCalls.length = 0;
+    browser.send.mockClear();
+
+    const result = await bridge.unbindIde("s1");
+    expect(result).toEqual({ ok: true });
+
+    const session = bridge.getSession("s1")!;
+    // Use Object.is to prove it's LITERAL null, not undefined.
+    expect(session.state.ideBinding).toBeNull();
+
+    // mcp_set_servers was sent on unbind. Claude uses full-replace wire
+    // semantics, so the IDE entry is dropped by OMISSION from `servers`
+    // (no `deleteKeys` — that's Codex-only, see the backend-split tests
+    // below for the full rationale). Regardless of backend, the IDE's
+    // sanitized key ("neovim") must not appear in the outbound `servers`.
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    expect(mcpCalls[0].servers.ide).toBeUndefined();
+    expect(mcpCalls[0].servers.neovim).toBeUndefined();
+    // BIND-08: the actual IDE key is the companion-ide-prefixed form.
+    expect(mcpCalls[0].servers["companion-ide-neovim"]).toBeUndefined();
+    // Claude: deleteKeys is an empty array (Claude adapter ignores the
+    // field, but we pin the shape to prevent accidental wire churn).
+    expect(mcpCalls[0].deleteKeys).toEqual([]);
+
+    // session_update carries the explicit null.
+    const broadcasts = browser.send.mock.calls
+      .map(([arg]: [string]) => JSON.parse(arg))
+      .filter((m: any) => m.type === "session_update");
+    const hasNullBinding = broadcasts.some(
+      (m: any) => m.session && Object.prototype.hasOwnProperty.call(m.session, "ideBinding") && m.session.ideBinding === null,
+    );
+    expect(hasNullBinding).toBe(true);
+  });
+
+  // BIND-04 auto-unbind wiring: when the lockfile goes away mid-session,
+  // discovery emits ide:removed. ws-bridge must react by unbinding every
+  // session whose binding matches that port — no user action required.
+  it("BIND-04: companionBus.emit ide:removed for a bound port auto-unbinds matching sessions", async () => {
+    await seedIde({ port: 44444, ideName: "Neovim" });
+
+    const { adapter } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    await bridge.bindIde("s1", 44444);
+    expect(bridge.getSession("s1")!.state.ideBinding?.port).toBe(44444);
+    browser.send.mockClear();
+
+    // Emit the event as if the lockfile had disappeared. We emit directly
+    // on companionBus rather than rely on fs.watch timing — the bridge's
+    // wiring is what we're pinning here, not discovery's eviction loop.
+    companionBus.emit("ide:removed", {
+      port: 44444,
+      lockfilePath: join(ideTmpDir, "44444.lock"),
+      generation: 1,
+    });
+
+    // Auto-unbind may be async (unbindIde is async); give microtasks a tick.
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(bridge.getSession("s1")!.state.ideBinding).toBeNull();
+    const broadcasts = browser.send.mock.calls
+      .map(([arg]: [string]) => JSON.parse(arg))
+      .filter((m: any) => m.type === "session_update");
+    expect(
+      broadcasts.some(
+        (m: any) =>
+          m.session &&
+          Object.prototype.hasOwnProperty.call(m.session, "ideBinding") &&
+          m.session.ideBinding === null,
+      ),
+    ).toBe(true);
+  });
+
+  // BIND-10 (Round-4 robustness): when the IDE lockfile goes away AND the
+  // backend adapter is disconnected, unbindIde's wire send fails. Without
+  // a force path, `session.state.ideBinding` would stay pointing at the
+  // dead IDE — UI shows it bound, MCP mirror keeps the stale entry, and
+  // the disconnect banner never fires. The auto-unbind listener must
+  // detect unbindIde's failure and force-clear local state so reality
+  // matches the on-disk truth (IDE is gone).
+  it("BIND-10a: ide:removed while backend disconnected force-clears local ideBinding and broadcasts", async () => {
+    await seedIde({ port: 57001, ideName: "Neovim" });
+
+    // Build an adapter that is "connected" for the initial bind (so the
+    // bind succeeds), then flip to disconnected before the ide:removed
+    // event so unbindIde's wire send fails.
+    const sendCalls: any[] = [];
+    let connected = true;
+    const adapter = {
+      isConnected: () => connected,
+      send: (msg: any) => {
+        sendCalls.push(msg);
+        return connected;
+      },
+      disconnect: async () => {},
+      onBrowserMessage: () => {},
+      onSessionMeta: () => {},
+      onDisconnect: () => {},
+      onInitError: () => {},
+    };
+
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    // Bind with backend connected.
+    await bridge.bindIde("s1", 57001);
+    const session = bridge.getSession("s1")!;
+    expect(session.state.ideBinding?.port).toBe(57001);
+    // Sanity: the bridge's MCP mirror now has the companion-ide-neovim key.
+    expect(session.dynamicMcpServers["companion-ide-neovim"]).toBeDefined();
+    browser.send.mockClear();
+    sendCalls.length = 0;
+
+    // Backend goes away (e.g. CLI process died). Now simulate the
+    // lockfile being removed by discovery.
+    connected = false;
+    companionBus.emit("ide:removed", {
+      port: 57001,
+      lockfilePath: join(ideTmpDir, "57001.lock"),
+      generation: 2,
+    });
+    // Auto-unbind is fire-and-forget — wait a tick for the promise chain.
+    await new Promise((r) => setTimeout(r, 20));
+
+    // Even though unbindIde's wire send failed (backend disconnected),
+    // the force-clear path must still set ideBinding to null and purge
+    // the MCP mirror. Otherwise the UI stays stuck "bound" to a dead IDE.
+    expect(
+      bridge.getSession("s1")!.state.ideBinding,
+      "BIND-10a: dead-IDE ideBinding must be force-cleared to null",
+    ).toBeNull();
+    expect(
+      bridge.getSession("s1")!.dynamicMcpServers["companion-ide-neovim"],
+      "BIND-10a: stale MCP mirror entry must be purged",
+    ).toBeUndefined();
+
+    // The disconnect banner relies on receiving a session_update with
+    // ideBinding === null. Force-clear must broadcast this to the browser.
+    const broadcasts = browser.send.mock.calls
+      .map(([arg]: [string]) => JSON.parse(arg))
+      .filter((m: any) => m.type === "session_update");
+    expect(
+      broadcasts.some(
+        (m: any) =>
+          m.session &&
+          Object.prototype.hasOwnProperty.call(m.session, "ideBinding") &&
+          m.session.ideBinding === null,
+      ),
+      "BIND-10a: force-clear must broadcast session_update with ideBinding:null so BIND-05 fires",
+    ).toBe(true);
+
+    // unbindIde short-circuits before adapter.send when isConnected() is
+    // false, so NO mcp_set_servers should have been sent — the force path
+    // intentionally skips the adapter entirely (backend is dead).
+    expect(
+      sendCalls.filter((m) => m.type === "mcp_set_servers"),
+      "BIND-10a: force-clear path must not attempt adapter.send",
+    ).toEqual([]);
+  });
+
+  // BIND-10b regression guard: when backend IS connected, ide:removed must
+  // still flow through the normal unbindIde path — wire send succeeds,
+  // local state cleared by the regular flow. The force path must NOT run
+  // (and in particular, must not double-broadcast or double-persist).
+  it("BIND-10b: ide:removed with backend connected runs normal unbindIde (no force path)", async () => {
+    await seedIde({ port: 57002, ideName: "Neovim" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    await bridge.bindIde("s1", 57002);
+    const session = bridge.getSession("s1")!;
+    expect(session.state.ideBinding?.port).toBe(57002);
+    browser.send.mockClear();
+    sendCalls.length = 0;
+
+    companionBus.emit("ide:removed", {
+      port: 57002,
+      lockfilePath: join(ideTmpDir, "57002.lock"),
+      generation: 3,
+    });
+    await new Promise((r) => setTimeout(r, 20));
+
+    // Local state cleared by the normal unbindIde path.
+    expect(bridge.getSession("s1")!.state.ideBinding).toBeNull();
+
+    // mcp_set_servers was sent over the wire (regular unbind). The IDE
+    // key is gone from `servers` (Claude full-replace semantics).
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    expect(mcpCalls[0].servers["companion-ide-neovim"]).toBeUndefined();
+
+    // Exactly ONE session_update with ideBinding:null — if the force path
+    // erroneously also ran, we'd see two. This guards against double-fire.
+    const nullBindingBroadcasts = browser.send.mock.calls
+      .map(([arg]: [string]) => JSON.parse(arg))
+      .filter(
+        (m: any) =>
+          m.type === "session_update" &&
+          m.session &&
+          Object.prototype.hasOwnProperty.call(m.session, "ideBinding") &&
+          m.session.ideBinding === null,
+      );
+    expect(
+      nullBindingBroadcasts,
+      "BIND-10b: normal path must broadcast ideBinding:null exactly once",
+    ).toHaveLength(1);
+  });
+
+  // BIND-06 safety (positive form): prePopulateCommands must never be invoked
+  // with "ide" or "/ide" during binding. The /ide slash is a CLIENT-ONLY
+  // affordance — the CLI never sees it.
+  it("BIND-06: prePopulateCommands is never called with `ide` or `/ide` during bindIde", async () => {
+    await seedIde({ port: 55555, ideName: "Neovim" });
+
+    const { adapter } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    const preSpy = vi.spyOn(bridge, "prePopulateCommands");
+
+    await bridge.bindIde("s1", 55555);
+
+    for (const call of preSpy.mock.calls) {
+      const slash = call[1] as string[];
+      const skills = call[2] as string[];
+      expect(slash).not.toContain("ide");
+      expect(slash).not.toContain("/ide");
+      expect(skills).not.toContain("ide");
+      expect(skills).not.toContain("/ide");
+    }
+
+    preSpy.mockRestore();
+  });
+
+  // BIND-06 safety (negative form): adapter.send must NEVER receive a
+  // user_message containing "/ide" during bind. If this ever starts firing,
+  // the CLI would interpret it as a slash command and recursively bind —
+  // exactly the bug the client-side intercept was designed to prevent.
+  it("BIND-06: adapter.send is never called with {type:'user_message'} carrying `/ide` text during bind", async () => {
+    await seedIde({ port: 55556, ideName: "Neovim" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    sendCalls.length = 0;
+
+    await bridge.bindIde("s1", 55556);
+
+    const leaked = sendCalls.filter(
+      (m) =>
+        m.type === "user_message" &&
+        typeof m.content === "string" &&
+        m.content.includes("/ide"),
+    );
+    expect(leaked).toEqual([]);
+  });
+
+  // BIND-07 regression: the CLI binary contains a hardcoded filter (`_35`) that
+  // blocks all MCP tools prefixed `mcp__ide__*` except `getDiagnostics` and
+  // `executeCode`. When we name the MCP server `"ide"`, the CLI prefixes ALL
+  // tools as `mcp__ide__<name>` and the filter strips 8 of 10.
+  //
+  // Fix: use the sanitized ideName (lowercase, alphanumeric only) as the server
+  // key instead of the literal string `"ide"`. Tools then get the prefix
+  // `mcp__<idename>__<tool>` which does NOT match `mcp__ide__*`, so all tools
+  // pass the filter.
+  //
+  // This test asserts:
+  //   (a) The `servers` object does NOT have a key literally named `"ide"`.
+  //   (b) The `servers` object HAS a key equal to the sanitized ideName.
+  //   (c) Different ideName values produce the correct sanitized key (e.g.
+  //       "VS Code" → "vscode", "Zed" → "zed").
+  //
+  // Why (a) matters: if "ide" is ever re-introduced as the key, the CLI filter
+  // silently drops 8 tools with no error — this test is the only guard.
+  it("BIND-07: bindIde uses sanitized ideName (not 'ide') as mcp_set_servers key to bypass CLI tool filter", async () => {
+    // Test with "Neovim" → expected key "neovim"
+    await seedIde({ port: 56001, ideName: "Neovim", authToken: "tok-bind07" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    sendCalls.length = 0;
+
+    await bridge.bindIde("s1", 56001);
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    const servers = mcpCalls[0].servers as Record<string, unknown>;
+
+    // (a) Must NOT use the literal "ide" key — that triggers the CLI's _35 filter
+    // which allows only getDiagnostics and executeCode from mcp__ide__* tools.
+    expect(servers.ide).toBeUndefined();
+
+    // (b) Must use the sanitized ideName prefixed with "companionide"
+    // (BIND-08 namespace). "Neovim" → "companion-ide-neovim"
+    const expectedKey = "companion-ide-neovim";
+    expect(servers[expectedKey]).toBeDefined();
+    expect(servers[expectedKey]).toMatchObject({
+      type: "ws-ide",
+      ideName: "Neovim",
+      authToken: "tok-bind07",
+    });
+    // Must ALSO not use the bare sanitized name — that collides with user
+    // MCP servers (see BIND-08 for the namespace rationale).
+    expect(servers["neovim"]).toBeUndefined();
+  });
+
+  // Issue #2 (codex adversarial review): bindIde must treat a rejecting
+  // adapter.send (returns false) as a failure. The guard previously only
+  // checked `session.backendAdapter !== null` — a Codex adapter whose
+  // transport is disconnected can be attached yet reject sends, producing
+  // a split-brain where UI says "bound" but the CLI never learned.
+  it("Issue #2: bindIde returns error and does NOT mutate state when adapter.send returns false", async () => {
+    await seedIde({ port: 60001, ideName: "Neovim" });
+
+    // Build a fake adapter whose send() always returns false. isConnected
+    // optionally lies true — the bridge must still trust the send() return.
+    const sendCalls: any[] = [];
+    const adapter = {
+      isConnected: () => true,
+      send: (msg: any) => {
+        sendCalls.push(msg);
+        return false; // transport rejected the write
+      },
+      disconnect: async () => {},
+      onBrowserMessage: () => {},
+      onSessionMeta: () => {},
+      onDisconnect: () => {},
+      onInitError: () => {},
+    };
+
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    browser.send.mockClear();
+
+    const result = await bridge.bindIde("s1", 60001);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/backend|adapter|not connected/i);
+
+    // State MUST NOT be mutated — no split-brain binding on the server.
+    const session = bridge.getSession("s1")!;
+    expect(session.state.ideBinding).toBeFalsy();
+
+    // No session_update broadcast carrying ideBinding went out.
+    const broadcasts = browser.send.mock.calls
+      .map(([arg]: [string]) => JSON.parse(arg))
+      .filter((m: any) => m.type === "session_update" && m.session?.ideBinding);
+    expect(broadcasts).toHaveLength(0);
+  });
+
+  // Issue #2: also check the isConnected=false branch — adapter present
+  // but its underlying transport is down. Bridge must return error.
+  it("Issue #2: bindIde returns error when adapter.isConnected() is false", async () => {
+    await seedIde({ port: 60002, ideName: "Neovim" });
+
+    const sendCalls: any[] = [];
+    const adapter = {
+      isConnected: () => false, // transport-level disconnected
+      send: (_msg: any) => {
+        sendCalls.push(_msg);
+        return true;
+      },
+      disconnect: async () => {},
+      onBrowserMessage: () => {},
+      onSessionMeta: () => {},
+      onDisconnect: () => {},
+      onInitError: () => {},
+    };
+
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    const result = await bridge.bindIde("s1", 60002);
+    expect(result.ok).toBe(false);
+
+    // Bridge MUST NOT call send() on a disconnected adapter for the bind path.
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(0);
+
+    const session = bridge.getSession("s1")!;
+    expect(session.state.ideBinding).toBeFalsy();
+  });
+
+  it("BIND-07b: sanitized server key handles multi-word and mixed-case ideName", async () => {
+    // "VS Code" → "vscode" (spaces stripped, lowercased)
+    await seedIde({ port: 56002, ideName: "VS Code", authToken: "tok-bind07b" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s2");
+    bridge.attachBackendAdapter("s2", adapter, "claude");
+    sendCalls.length = 0;
+
+    await bridge.bindIde("s2", 56002);
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    const servers = mcpCalls[0].servers as Record<string, unknown>;
+
+    expect(servers.ide).toBeUndefined();
+    expect(servers["companion-ide-vscode"]).toBeDefined();
+    expect(servers["companion-ide-vscode"]).toMatchObject({ ideName: "VS Code" });
+  });
+
+  // ─── BIND-08: `companionide` prefix namespacing (cubic PR #652 round-3 P1) ─
+  //
+  // Context: the MCP server key used to be the bare sanitized ideName (e.g.
+  // `"neovim"`), which shared a namespace with user-configured dynamic MCP
+  // servers. A user who had already registered an MCP server named `"neovim"`
+  // via McpPanel would see bindIde overwrite it, and unbindIde delete it —
+  // silent data loss.
+  //
+  // Fix: prefix the server key with `"companionide"`. The sanitization guard
+  // (BIND-07 empty-name) still runs against the TAIL, so `"!?"` → empty tail
+  // is rejected (the prefix alone is not a valid key).
+  //
+  // The three BIND-08 tests below pin:
+  //   (a) bindIde preserves a user's `"neovim"` entry (key collision avoided);
+  //   (b) unbindIde targets `"companion-ide-neovim"` in deleteKeys, leaving the
+  //       user's `"neovim"` entry untouched;
+  //   (c) empty-tail ideNames still reject with "invalid IDE name" — the
+  //       `companionide` prefix alone is NOT a usable key.
+
+  it("BIND-08a: bindIde preserves a user's identically-named MCP server (namespace collision)", async () => {
+    // User had already configured a dynamic MCP server literally named "neovim"
+    // via McpPanel. If the IDE bind reuses the same key it would clobber this.
+    await seedIde({ port: 41001, ideName: "Neovim", authToken: "tok-bind08a" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    const userNeovimConfig = {
+      type: "stdio" as const,
+      command: "/usr/bin/user-neovim",
+      args: ["--some", "flag"],
+    };
+    bridge.injectMcpSetServers("s1", {
+      neovim: userNeovimConfig as any,
+    });
+
+    sendCalls.length = 0;
+    const result = await bridge.bindIde("s1", 41001);
+    expect(result).toEqual({ ok: true });
+
+    const session = bridge.getSession("s1")!;
+    // The user's `"neovim"` must be preserved byte-for-byte.
+    expect(session.dynamicMcpServers.neovim).toMatchObject(userNeovimConfig);
+    // The IDE entry lives under the namespaced key.
+    expect(session.dynamicMcpServers["companion-ide-neovim"]).toMatchObject({
+      type: "ws-ide",
+      ideName: "Neovim",
+      authToken: "tok-bind08a",
+    });
+
+    // On the wire (Claude full-replace): BOTH keys must be present in servers.
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    expect(mcpCalls[0].servers.neovim).toMatchObject(userNeovimConfig);
+    expect(mcpCalls[0].servers["companion-ide-neovim"]).toMatchObject({
+      ideName: "Neovim",
+    });
+  });
+
+  it("BIND-08b: unbindIde targets the companion-ide-prefixed key only; user's identically-named MCP server is preserved", async () => {
+    await seedIde({ port: 41002, ideName: "Neovim", authToken: "tok-bind08b" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "codex"); // codex path uses deleteKeys
+
+    const userNeovimConfig = {
+      type: "stdio" as const,
+      command: "/usr/bin/user-neovim",
+    };
+    bridge.injectMcpSetServers("s1", {
+      neovim: userNeovimConfig as any,
+    });
+
+    await bridge.bindIde("s1", 41002);
+    sendCalls.length = 0;
+
+    const result = await bridge.unbindIde("s1");
+    expect(result).toEqual({ ok: true });
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    // Codex deleteKeys: ONLY the namespaced key, never the user's bare "neovim".
+    expect(mcpCalls[0].deleteKeys).toEqual(["companion-ide-neovim"]);
+
+    // The mirror's user entry is still there after unbind.
+    const session = bridge.getSession("s1")!;
+    expect(session.dynamicMcpServers.neovim).toMatchObject(userNeovimConfig);
+    // The IDE entry was dropped from the mirror.
+    expect(session.dynamicMcpServers["companion-ide-neovim"]).toBeUndefined();
+  });
+
+  it("BIND-08c: empty-sanitized-tail ideNames still reject — `companion-ide-` prefix alone is NOT a valid key", async () => {
+    // "!?" sanitizes to "" — with or without the prefix we must reject, else
+    // every all-punctuation lockfile would collide under one bare "companion-ide-"
+    // key across different IDE processes.
+    await seedIde({ port: 41003, ideName: "!?", authToken: "tok-bind08c" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    sendCalls.length = 0;
+
+    const result = await bridge.bindIde("s1", 41003);
+    expect(result).toEqual({ ok: false, error: "invalid IDE name" });
+
+    // No wire traffic, no state mutation, no mirror pollution.
+    expect(sendCalls.filter((m) => m.type === "mcp_set_servers")).toHaveLength(0);
+    const session = bridge.getSession("s1")!;
+    expect(session.state.ideBinding).toBeFalsy();
+    expect(session.dynamicMcpServers["companion-ide-"]).toBeUndefined();
+  });
+
+  // ─── BIND-08d: structural-separator key disjointness (codex round-4 review) ─
+  //
+  // Context: the previous fix wrote the IDE entry under
+  // `companionide${sanitized}` — e.g. `companionideneovim`. That still shared
+  // a sanitization namespace with user input: a user could register a dynamic
+  // MCP server literally named `"companion-ide-neovim"` (sanitizes to itself),
+  // and bindIde would overwrite it / unbindIde would delete it — the same
+  // silent data-loss bug, just moved to a less-likely name.
+  //
+  // Fix: use `companion-ide-${sanitized}` — the two hyphens are STRUCTURAL
+  // separators that our sanitization (`[^a-z0-9]`) strips from any user
+  // ideName, so no user-generated key can collide with our namespaced keys.
+  // The post-sanitization keyspace for IDE entries is `companion-ide-[a-z0-9]+`,
+  // which is provably disjoint from anything our sanitizer can emit.
+  //
+  // This test uses the OLD broken collision case (`companionideneovim`) as
+  // the user entry — under the previous fix this would fail; under the new
+  // structural-separator fix it MUST pass.
+  it("BIND-08d: structural hyphen separator — user entry literally named `companionideneovim` is preserved", async () => {
+    // User pre-registered an MCP server with the exact name that the PREVIOUS
+    // fix used as the IDE key. Under the old code this is a direct collision;
+    // under the structural-hyphen fix it is just another user key, distinct
+    // from `companion-ide-neovim`.
+    await seedIde({ port: 41004, ideName: "Neovim", authToken: "tok-bind08d" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    const userEntryConfig = {
+      type: "stdio" as const,
+      command: "/usr/bin/user-companionideneovim",
+      args: ["--user"],
+    };
+    // Note: this key would be the OLD broken collision; the new key must be
+    // structurally disjoint so it survives bind/unbind.
+    bridge.injectMcpSetServers("s1", {
+      companionideneovim: userEntryConfig as any,
+    });
+
+    sendCalls.length = 0;
+    const bindResult = await bridge.bindIde("s1", 41004);
+    expect(bindResult).toEqual({ ok: true });
+
+    const session = bridge.getSession("s1")!;
+    // The user's `companionideneovim` must survive — previous fix would have
+    // overwritten this; the structural-separator fix leaves it alone.
+    expect(session.dynamicMcpServers.companionideneovim).toMatchObject(userEntryConfig);
+    // The IDE entry lives under the new structurally-disjoint key.
+    expect(session.dynamicMcpServers["companion-ide-neovim"]).toMatchObject({
+      type: "ws-ide",
+      ideName: "Neovim",
+      authToken: "tok-bind08d",
+    });
+
+    // Claude full-replace wire payload must carry BOTH keys.
+    const bindCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(bindCalls).toHaveLength(1);
+    expect(bindCalls[0].servers.companionideneovim).toMatchObject(userEntryConfig);
+    expect(bindCalls[0].servers["companion-ide-neovim"]).toMatchObject({
+      ideName: "Neovim",
+    });
+
+    // Now unbind and assert the user entry is STILL preserved — previous fix
+    // would have deleted it in the Codex path.
+    sendCalls.length = 0;
+    // Swap to Codex to exercise the deleteKeys path for unbindIde.
+    bridge.attachBackendAdapter("s1", adapter, "codex");
+    // Re-bind under Codex so unbind has something to tear down on this backend.
+    await bridge.bindIde("s1", 41004);
+    sendCalls.length = 0;
+
+    const unbindResult = await bridge.unbindIde("s1");
+    expect(unbindResult).toEqual({ ok: true });
+
+    const unbindCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(unbindCalls).toHaveLength(1);
+    // Codex deleteKeys must ONLY target the structurally-namespaced key,
+    // never the user's bare `companionideneovim`.
+    expect(unbindCalls[0].deleteKeys).toEqual(["companion-ide-neovim"]);
+    expect(session.dynamicMcpServers.companionideneovim).toMatchObject(userEntryConfig);
+    expect(session.dynamicMcpServers["companion-ide-neovim"]).toBeUndefined();
+  });
+
+  // Codex round-2 issue #1: unbindIde must mirror bindIde's adapter guard.
+  //
+  // Context: bindIde already refuses to mutate state when the adapter is
+  // disconnected or send() returns false, so the UI "bound" state and the
+  // CLI MCP registry never diverge. unbindIde used to unconditionally clear
+  // `session.state.ideBinding` and broadcast `ideBinding: null` even when
+  // the tear-down mcp_set_servers could not be delivered. Result: UI says
+  // "unbound", CLI still has the IDE MCP server registered — split-brain.
+  //
+  // Fix: if a binding exists, require (a) adapter attached, (b) isConnected()
+  // true, and (c) send() returns true. Only then clear state and broadcast.
+  // Any failure short-circuits with {ok:false, error: "backend not connected"}.
+  //
+  // These three tests pin the new contract. They deliberately mirror the
+  // Issue #2 bindIde tests above so the two paths cannot silently regress
+  // in isolation.
+  it("Issue #1: unbindIde returns error and does NOT clear ideBinding when adapter.send returns false", async () => {
+    await seedIde({ port: 61001, ideName: "Neovim" });
+
+    // First bind with a healthy adapter so state.ideBinding is populated.
+    const { adapter: goodAdapter } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", goodAdapter, "claude");
+    await bridge.bindIde("s1", 61001);
+    expect(bridge.getSession("s1")!.state.ideBinding?.port).toBe(61001);
+
+    // Swap in a rejecting adapter — isConnected lies true, but send returns
+    // false. The bridge must trust the send() return (same pattern as bindIde).
+    const badSendCalls: any[] = [];
+    const badAdapter = {
+      isConnected: () => true,
+      send: (msg: any) => {
+        badSendCalls.push(msg);
+        return false; // transport rejected the write
+      },
+      disconnect: async () => {},
+      onBrowserMessage: () => {},
+      onSessionMeta: () => {},
+      onDisconnect: () => {},
+      onInitError: () => {},
+    };
+    bridge.attachBackendAdapter("s1", badAdapter, "claude");
+    browser.send.mockClear();
+
+    const result = await bridge.unbindIde("s1");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/backend|adapter|not connected/i);
+
+    // CRITICAL: ideBinding must NOT be cleared on send failure — otherwise
+    // UI says "unbound" while the CLI still has the MCP entry (split-brain).
+    const session = bridge.getSession("s1")!;
+    expect(session.state.ideBinding?.port).toBe(61001);
+
+    // No session_update broadcast carrying ideBinding:null went out.
+    const broadcasts = browser.send.mock.calls
+      .map(([arg]: [string]) => JSON.parse(arg))
+      .filter(
+        (m: any) =>
+          m.type === "session_update" &&
+          m.session &&
+          Object.prototype.hasOwnProperty.call(m.session, "ideBinding") &&
+          m.session.ideBinding === null,
+      );
+    expect(broadcasts).toHaveLength(0);
+  });
+
+  it("Issue #1: unbindIde returns error when adapter.isConnected() is false (binding preserved)", async () => {
+    await seedIde({ port: 61002, ideName: "Neovim" });
+
+    // Bind with a healthy adapter first so there IS a binding to tear down.
+    const { adapter: goodAdapter } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", goodAdapter, "claude");
+    await bridge.bindIde("s1", 61002);
+    expect(bridge.getSession("s1")!.state.ideBinding?.port).toBe(61002);
+
+    // Swap in an adapter whose transport is disconnected.
+    const badSendCalls: any[] = [];
+    const badAdapter = {
+      isConnected: () => false,
+      send: (msg: any) => {
+        badSendCalls.push(msg);
+        return true;
+      },
+      disconnect: async () => {},
+      onBrowserMessage: () => {},
+      onSessionMeta: () => {},
+      onDisconnect: () => {},
+      onInitError: () => {},
+    };
+    bridge.attachBackendAdapter("s1", badAdapter, "claude");
+    browser.send.mockClear();
+
+    const result = await bridge.unbindIde("s1");
+    expect(result.ok).toBe(false);
+
+    // Bridge MUST NOT call send() on a disconnected adapter.
+    expect(badSendCalls.filter((m) => m.type === "mcp_set_servers")).toHaveLength(0);
+
+    // Binding preserved (split-brain avoidance).
+    const session = bridge.getSession("s1")!;
+    expect(session.state.ideBinding?.port).toBe(61002);
+
+    // No ideBinding:null broadcast.
+    const broadcasts = browser.send.mock.calls
+      .map(([arg]: [string]) => JSON.parse(arg))
+      .filter(
+        (m: any) =>
+          m.type === "session_update" &&
+          m.session &&
+          Object.prototype.hasOwnProperty.call(m.session, "ideBinding") &&
+          m.session.ideBinding === null,
+      );
+    expect(broadcasts).toHaveLength(0);
+  });
+
+  // Idempotency: if no binding is currently set, unbindIde must still
+  // return {ok:true} (it's a no-op) even with a disconnected adapter.
+  // This preserves existing idempotent semantics that the DELETE route
+  // and auto-unbind flow rely on.
+  it("Issue #1: unbindIde is idempotent when no binding exists — returns ok:true even without a connected adapter", async () => {
+    bridge.getOrCreateSession("s1");
+    // No adapter attached and no prior bind — state.ideBinding is falsy.
+
+    const result = await bridge.unbindIde("s1");
+    expect(result).toEqual({ ok: true });
+  });
+
+  // Codex round-3 + round-4: `unbindIde` must drop the IDE's `mcp_servers.<key>`
+  // entry on whichever backend is attached, without silently wiping any OTHER
+  // dynamic MCP servers the user has configured.
+  //
+  // Context (round-3): `servers: {}` alone was a no-op on Codex — its
+  // `config/batchWrite` builds one upsert edit per key, so zero keys = zero
+  // edits. The bridge started sending `deleteKeys: [sanitizedIdeName]` so
+  // Codex translates each deleteKey into a `config/value/write` with
+  // `value: null, mergeStrategy: "replace"`.
+  //
+  // Round-4 Codex review (Issue 1): on Claude, `mcp_set_servers` is a FULL
+  // REPLACE of the dynamic set — an empty `{servers: {}, deleteKeys: […]}`
+  // payload would drop every dynamic server the user had added via McpPanel.
+  // The bridge now branches the wire shape by backend:
+  //
+  //   Claude: servers = `{...session.dynamicMcpServers}` minus IDE key.
+  //           deleteKeys unused (Claude adapter ignores it anyway).
+  //   Codex:  servers = {}, deleteKeys = [sanitizedIdeName] (surgical).
+  //
+  // The sanitization rule (BIND-07) is unchanged on both paths.
+  //
+  // These two tests pin the backend-split contract. The Claude test uses the
+  // dynamicMcpServers mirror being empty as a baseline so the "drop IDE via
+  // omission" behavior is observable. Preservation of OTHER servers is
+  // covered by the dedicated "MCP-merge preservation" tests below.
+  it("unbindIde on Claude drops the IDE by OMITTING it from servers (no deleteKeys — Claude is full-replace)", async () => {
+    // "VS Code" → "vscode" (spaces stripped, lowercased) — same sanitization
+    // as BIND-07b. We pick a multi-word name specifically to prove the
+    // unbind path recomputes the key from ideBinding.ideName, not from
+    // whatever the CLI originally received.
+    await seedIde({ port: 62001, ideName: "VS Code", authToken: "tok-unbind-claude" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    await bridge.bindIde("s1", 62001);
+    sendCalls.length = 0;
+
+    const result = await bridge.unbindIde("s1");
+    expect(result).toEqual({ ok: true });
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    const msg = mcpCalls[0]!;
+
+    // Claude full-replace: the IDE key must NOT appear in `servers` (that's
+    // how we delete it). With no other dynamic servers seeded, the payload
+    // is empty — but the absence of `companionidevscode` is the real
+    // contract here (BIND-08 namespacing).
+    expect(msg.servers["companion-ide-vscode"]).toBeUndefined();
+    expect(msg.servers.vscode).toBeUndefined();
+    // Claude ignores deleteKeys; sending an empty array avoids any chance
+    // of surprise if that contract ever changes.
+    expect(msg.deleteKeys).toEqual([]);
+  });
+
+  // Codex-backed sessions keep the round-3 surgical shape: `servers: {}` plus
+  // `deleteKeys: [sanitizedIdeName]`. The Codex adapter translates each
+  // deleteKey into a `config/value/write` with `value: null, mergeStrategy:
+  // "replace"`. This test pins that shape so a future refactor cannot
+  // accidentally collapse the Claude and Codex payloads back into one.
+  it("unbindIde on Codex backend emits servers:{} with deleteKeys:[sanitizedIdeName]", async () => {
+    await seedIde({ port: 62002, ideName: "Neovim", authToken: "tok-unbind-codex" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "codex");
+
+    await bridge.bindIde("s1", 62002);
+    sendCalls.length = 0;
+
+    const result = await bridge.unbindIde("s1");
+    expect(result).toEqual({ ok: true });
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    expect(mcpCalls[0]!.servers).toEqual({});
+    // BIND-08: the deleteKey is the companion-ide-prefixed form.
+    expect(mcpCalls[0]!.deleteKeys).toEqual(["companion-ide-neovim"]);
+  });
+
+  // ─── MCP-merge preservation (round-4 Codex review, Issue 1) ─────────────────
+  //
+  // Context: Claude's `mcp_set_servers` control_request is a FULL REPLACE of
+  // the dynamic MCP server set — any key omitted from `servers` is dropped.
+  // Before this fix, `bindIde` sent `{ [ideKey]: entry }` alone and `unbindIde`
+  // sent `{}` alone, silently wiping every OTHER dynamic MCP server the user
+  // had configured via the McpPanel (sendMcpSetServers path).
+  //
+  // Fix: ws-bridge now tracks per-session dynamic MCP state by intercepting
+  // every `mcp_set_servers` routed through routeBrowserMessage and merging
+  // updates into `session.dynamicMcpServers`. bindIde/unbindIde derive their
+  // outbound payload from that tracked state so user-added dynamic servers
+  // are preserved across an IDE bind cycle.
+  //
+  // Backend semantics:
+  //   - Claude: merge on the bridge side (full-replace wire protocol).
+  //     bindIde sends `{ ...others, [ideKey]: entry }`; unbindIde sends
+  //     `{ ...others }` (IDE key omitted). No `deleteKeys` on Claude.
+  //   - Codex: the adapter's `config/batchWrite` treats `servers` as independent
+  //     per-key upserts and `deleteKeys` as per-key removals. We therefore keep
+  //     the pre-existing surgical shape: bindIde sends `{ [ideKey]: entry }`
+  //     (upsert only — does NOT touch other keys) and unbindIde sends
+  //     `{ servers: {}, deleteKeys: [ideKey] }` (per-key delete — does NOT
+  //     touch other keys). This preserves the BIND-07 Codex contract while
+  //     avoiding silent data loss.
+
+  it("bindIde on Claude preserves user's other dynamic MCP servers", async () => {
+    await seedIde({ port: 40001, ideName: "Neovim", authToken: "tok-merge-claude-bind" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    // Seed: user has already configured a dynamic MCP server "otherServer"
+    // via McpPanel (which calls sendMcpSetServers). This goes through the
+    // bridge's routeBrowserMessage path so dynamicMcpServers state accumulates.
+    const otherServerConfig = {
+      type: "stdio",
+      command: "/usr/bin/other",
+      args: ["--flag"],
+    };
+    bridge.injectMcpSetServers("s1", {
+      otherServer: otherServerConfig as any,
+    });
+
+    sendCalls.length = 0;
+    const result = await bridge.bindIde("s1", 40001);
+    expect(result).toEqual({ ok: true });
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    const msg = mcpCalls[0]!;
+
+    // BOTH the user's server and the IDE entry must be present on Claude —
+    // full-replace means omission == deletion. The IDE key is the
+    // companion-ide-prefixed form (BIND-08).
+    expect(msg.servers.otherServer).toMatchObject(otherServerConfig);
+    expect(msg.servers["companion-ide-neovim"]).toMatchObject({
+      type: "ws-ide",
+      url: "ws://127.0.0.1:40001",
+      ideName: "Neovim",
+      authToken: "tok-merge-claude-bind",
+      scope: "dynamic",
+    });
+  });
+
+  it("unbindIde on Claude preserves user's other dynamic MCP servers", async () => {
+    await seedIde({ port: 40002, ideName: "Neovim", authToken: "tok-merge-claude-unbind" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    const otherServerConfig = {
+      type: "http",
+      url: "http://example.com/mcp",
+    };
+    bridge.injectMcpSetServers("s1", {
+      otherServer: otherServerConfig as any,
+    });
+
+    await bridge.bindIde("s1", 40002);
+    sendCalls.length = 0;
+
+    const result = await bridge.unbindIde("s1");
+    expect(result).toEqual({ ok: true });
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    const msg = mcpCalls[0]!;
+
+    // otherServer MUST still be present; IDE entry (companion-ide-prefixed,
+    // BIND-08) MUST be gone. Claude ignores `deleteKeys` — the preservation
+    // comes from re-sending otherServer in `servers`.
+    expect(msg.servers.otherServer).toMatchObject(otherServerConfig);
+    expect(msg.servers["companion-ide-neovim"]).toBeUndefined();
+  });
+
+  it("bindIde on Codex upserts only the IDE key (does not touch other dynamic MCP servers)", async () => {
+    await seedIde({ port: 40003, ideName: "Neovim", authToken: "tok-merge-codex-bind" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "codex");
+
+    const otherServerConfig = {
+      type: "stdio",
+      command: "/usr/bin/other",
+    };
+    bridge.injectMcpSetServers("s1", {
+      otherServer: otherServerConfig as any,
+    });
+
+    sendCalls.length = 0;
+    const result = await bridge.bindIde("s1", 40003);
+    expect(result).toEqual({ ok: true });
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    const msg = mcpCalls[0]!;
+
+    // Codex upserts are per-key — the payload must contain ONLY the IDE entry
+    // (BIND-08 companion-ide-prefixed), never the other server (otherwise
+    // we'd be re-upserting it spuriously).
+    expect(msg.servers["companion-ide-neovim"]).toBeDefined();
+    expect(msg.servers.otherServer).toBeUndefined();
+  });
+
+  it("unbindIde on Codex sends deleteKeys:[ideKey] without touching other dynamic MCP servers", async () => {
+    await seedIde({ port: 40004, ideName: "Neovim", authToken: "tok-merge-codex-unbind" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "codex");
+
+    const otherServerConfig = {
+      type: "stdio",
+      command: "/usr/bin/other",
+    };
+    bridge.injectMcpSetServers("s1", {
+      otherServer: otherServerConfig as any,
+    });
+
+    await bridge.bindIde("s1", 40004);
+    sendCalls.length = 0;
+
+    const result = await bridge.unbindIde("s1");
+    expect(result).toEqual({ ok: true });
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    const msg = mcpCalls[0]!;
+
+    // Codex per-key surgical delete: servers empty, deleteKeys = [ideKey]
+    // (BIND-08 companion-ide-prefixed). otherServer MUST NOT appear in either
+    // field — we never want to re-upsert or incidentally delete it during unbind.
+    expect(msg.servers).toEqual({});
+    expect(msg.deleteKeys).toEqual(["companion-ide-neovim"]);
+    expect(msg.servers.otherServer).toBeUndefined();
+  });
+
+  // ─── Round-5 Codex review (BLOCK): stale-queue replay clobbers IDE ──────────
+  //
+  // Scenario that motivated this guard:
+  //   1. Browser sends `mcp_set_servers({foo})` while `adapter.send()` is
+  //      transiently returning false (Codex transport race, or Claude CLI
+  //      disconnect debounce window). The message lands in
+  //      `session.pendingMessages`. `session.dynamicMcpServers` has ALREADY
+  //      been mutated at route time (see `updateDynamicMcpServers`).
+  //   2. User binds an IDE. `bindIde` passes the `adapter.isConnected()`
+  //      guard, reads `session.dynamicMcpServers` (already has `{foo}`), and
+  //      sends merged `{foo, ide}` successfully.
+  //   3. Later, `handleCLIOpen` / next browser message triggers
+  //      `flushQueuedBrowserMessages`. The stale `{foo}` payload is replayed
+  //      verbatim. On Claude (full-replace on the wire) the IDE key is
+  //      dropped — split-brain: UI shows bound, CLI lost the IDE MCP entry.
+  //
+  // Fix: bindIde (and unbindIde) drain any queued browser messages AFTER the
+  // connectivity guard but BEFORE the direct `adapter.send()`, so the
+  // queue's effects land first and our IDE mutation is the last writer.
+  // If the drain fails to fully clear (a retryable message re-queued itself),
+  // treat as not-connected — safer than proceeding with a racing half-queue.
+
+  it("bindIde drains pending browser messages FIRST so a stale mcp_set_servers cannot replay after and clobber the IDE entry (Claude full-replace)", async () => {
+    // Seed an IDE the bind will resolve against.
+    await seedIde({ port: 48001, ideName: "Neovim", authToken: "tok-predrain-claude" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    // Simulate the race: a stale `mcp_set_servers({foo})` is sitting in
+    // session.pendingMessages (it was enqueued earlier when adapter.send()
+    // transiently returned false). The mirror was mutated at route time, so
+    // mirror state here matches what the bridge would have if the message
+    // had been routed normally — pre-drain bindIde would therefore compute
+    // a correct `{foo, ide}` payload, but a later replay would silently
+    // clobber it on Claude's full-replace wire.
+    const session = bridge.getSession("s1")!;
+    const fooConfig = { type: "stdio" as const, command: "/usr/bin/foo" };
+    session.dynamicMcpServers.foo = fooConfig as any;
+    session.pendingMessages.push(
+      JSON.stringify({ type: "mcp_set_servers", servers: { foo: fooConfig } }),
+    );
+
+    sendCalls.length = 0;
+    const result = await bridge.bindIde("s1", 48001);
+    expect(result).toEqual({ ok: true });
+
+    // CALL ORDER is the crux: the drained `{foo}` payload must hit the
+    // adapter FIRST, then bindIde's merged `{foo, neovim}` payload. If the
+    // drain happens AFTER bindIde (current bug), the neovim key gets
+    // clobbered by the replay.
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(2);
+
+    // First call: the drained stale payload — only foo, no IDE key.
+    expect(mcpCalls[0].servers.foo).toBeDefined();
+    expect(mcpCalls[0].servers["companion-ide-neovim"]).toBeUndefined();
+
+    // Second call: bindIde's merged Claude full-replace — BOTH keys present
+    // (IDE key under BIND-08 companion-ide-prefixed form).
+    expect(mcpCalls[1].servers.foo).toBeDefined();
+    expect(mcpCalls[1].servers["companion-ide-neovim"]).toBeDefined();
+    expect(mcpCalls[1].servers["companion-ide-neovim"].ideName).toBe("Neovim");
+
+    // The queue must be empty after bindIde — nothing can replay after us.
+    expect(session.pendingMessages).toHaveLength(0);
+
+    // Session state reflects the bind.
+    expect(session.state.ideBinding).toMatchObject({ port: 48001, ideName: "Neovim" });
+  });
+
+  it("bindIde returns {ok:false, error:'backend not connected'} when the pre-drain cannot fully flush (retryable send failed)", async () => {
+    await seedIde({ port: 48002, ideName: "Neovim", authToken: "tok-predrain-fail" });
+
+    // Adapter that refuses the first send (the queued `mcp_set_servers`),
+    // causing it to be re-queued as a retryable type. The drain's post-check
+    // then sees pendingMessages.length > 0 and short-circuits bindIde
+    // BEFORE any state mutation or browser broadcast.
+    const sendCalls: any[] = [];
+    const adapter = {
+      isConnected: () => true,
+      send: (msg: any) => {
+        sendCalls.push(msg);
+        return false; // every send fails
+      },
+      disconnect: async () => {},
+      onBrowserMessage: () => {},
+      onSessionMeta: () => {},
+      onDisconnect: () => {},
+      onInitError: () => {},
+    };
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter as any, "claude");
+
+    const session = bridge.getSession("s1")!;
+    const fooConfig = { type: "stdio" as const, command: "/usr/bin/foo" };
+    session.dynamicMcpServers.foo = fooConfig as any;
+    session.pendingMessages.push(
+      JSON.stringify({ type: "mcp_set_servers", servers: { foo: fooConfig } }),
+    );
+
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    browser.send.mockClear();
+    sendCalls.length = 0;
+
+    const result = await bridge.bindIde("s1", 48002);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/backend|not connected/i);
+
+    // State must be untouched — no ideBinding set.
+    expect(session.state.ideBinding).toBeFalsy();
+
+    // No session_update ideBinding broadcast — the bind failed before broadcast.
+    const broadcasts = browser.send.mock.calls
+      .map(([arg]: [string]) => JSON.parse(arg))
+      .filter((m: any) => m.type === "session_update" && m.session?.ideBinding);
+    expect(broadcasts).toHaveLength(0);
+
+    // The bindIde's own `mcp_set_servers` must NEVER hit the adapter: we
+    // short-circuited after the failed drain. Only the drain attempt fired.
+    // The IDE key uses the companion-ide-prefixed form (BIND-08).
+    const bindAttempts = sendCalls.filter(
+      (m) => m.type === "mcp_set_servers" && m.servers?.["companion-ide-neovim"],
+    );
+    expect(bindAttempts).toHaveLength(0);
+
+    // The stale message re-queued itself (retryable) so the queue remains
+    // non-empty — that IS the signal the drain post-check reads.
+    expect(session.pendingMessages.length).toBeGreaterThan(0);
+  });
+
+  it("unbindIde drains pending browser messages FIRST so a stale mcp_set_servers cannot replay after and clobber the unbind (Claude full-replace)", async () => {
+    await seedIde({ port: 48003, ideName: "Neovim", authToken: "tok-unbind-predrain" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    // Bind first (so we have something to unbind against).
+    await bridge.bindIde("s1", 48003);
+
+    // Now seed a stale `mcp_set_servers({foo})` payload in the queue +
+    // mirror, mimicking a concurrent McpPanel write whose send transiently
+    // failed. Without the unbind pre-drain, this would replay AFTER unbind
+    // and re-upsert the merged state, potentially re-adding the IDE key.
+    const session = bridge.getSession("s1")!;
+    const fooConfig = { type: "stdio" as const, command: "/usr/bin/foo" };
+    session.dynamicMcpServers.foo = fooConfig as any;
+    session.pendingMessages.push(
+      JSON.stringify({ type: "mcp_set_servers", servers: { foo: fooConfig } }),
+    );
+
+    sendCalls.length = 0;
+    const result = await bridge.unbindIde("s1");
+    expect(result).toEqual({ ok: true });
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(2);
+
+    // First: the drained stale payload — has `foo`. The pre-unbind replay
+    // does not touch the IDE key (that's unbindIde's job).
+    expect(mcpCalls[0].servers.foo).toBeDefined();
+
+    // Second: unbindIde's merge-minus-ide payload — `foo` present (merged
+    // from the mirror the drain just refreshed), IDE entry (BIND-08
+    // companion-ide-prefixed) OMITTED so Claude drops it from the dynamic
+    // registry.
+    expect(mcpCalls[1].servers.foo).toBeDefined();
+    expect(mcpCalls[1].servers["companion-ide-neovim"]).toBeUndefined();
+
+    // Queue is empty; unbind committed.
+    expect(session.pendingMessages).toHaveLength(0);
+    expect(session.state.ideBinding).toBeNull();
+  });
+
+  it("bindIde on Codex also pre-drains queued browser messages BEFORE emitting its per-key upsert", async () => {
+    await seedIde({ port: 48004, ideName: "Neovim", authToken: "tok-predrain-codex" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "codex");
+
+    const session = bridge.getSession("s1")!;
+    const fooConfig = { type: "stdio" as const, command: "/usr/bin/foo" };
+    session.dynamicMcpServers.foo = fooConfig as any;
+    session.pendingMessages.push(
+      JSON.stringify({ type: "mcp_set_servers", servers: { foo: fooConfig } }),
+    );
+
+    sendCalls.length = 0;
+    const result = await bridge.bindIde("s1", 48004);
+    expect(result).toEqual({ ok: true });
+
+    // Two `mcp_set_servers` calls, drain first then bindIde's upsert.
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(2);
+
+    // First: the drained stale payload (carries `foo`).
+    expect(mcpCalls[0].servers.foo).toBeDefined();
+
+    // Second: Codex per-key upsert — ONLY the IDE entry (BIND-08
+    // companion-ide-prefixed), never re-upserting the other mirror keys
+    // (the whole point of per-key on Codex). If the pre-drain accidentally
+    // promoted the Codex branch to full-replace, this assertion would fail.
+    expect(mcpCalls[1].servers["companion-ide-neovim"]).toBeDefined();
+    expect(mcpCalls[1].servers.foo).toBeUndefined();
+
+    expect(session.pendingMessages).toHaveLength(0);
+  });
+
+  // ─── Round-6 Codex review (BLOCK): restore-from-disk mirror/queue split ─────
+  //
+  // `session.pendingMessages` is persisted to disk by session-store, but
+  // `session.dynamicMcpServers` is NOT — on server restart the mirror is
+  // re-initialized to `{}` while the queue still holds pre-restart
+  // `mcp_set_servers` payloads. Round-5's pre-drain fix in `bindIde` avoids
+  // post-bind replay clobber, but a cold restore exposes a second path:
+  //
+  //   1. Pre-drain replays `mcp_set_servers({foo})` to the adapter. The
+  //      adapter now knows `{foo}`. But the mirror is still `{}` because the
+  //      drain path NEVER mutated the mirror before this fix.
+  //   2. bindIde reads the empty mirror, computes `{ide}` alone, sends.
+  //   3. On Claude's full-replace wire, the adapter replaces `{foo}` with
+  //      `{ide}` — `foo` is dropped. Split-brain: UI thinks bound, Claude
+  //      forgot `foo`.
+  //
+  // Fix: `flushQueuedBrowserMessages` now calls `updateDynamicMcpServers`
+  // for each queued `mcp_set_servers` BEFORE forwarding. Idempotent for the
+  // in-process path (mirror already updated at route time), corrective for
+  // the cold-restore path.
+  it("bindIde after restart rebuilds dynamicMcpServers from queued mcp_set_servers BEFORE sending (Claude)", async () => {
+    await seedIde({ port: 48005, ideName: "Neovim", authToken: "tok-restore-claude" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    // Simulate the cold-restore state: queue has the pre-restart payload,
+    // but the mirror was re-initialized to `{}` by session reconstruction.
+    const session = bridge.getSession("s1")!;
+    const fooConfig = { type: "stdio" as const, command: "/usr/bin/foo" };
+    expect(session.dynamicMcpServers).toEqual({});
+    session.pendingMessages.push(
+      JSON.stringify({ type: "mcp_set_servers", servers: { foo: fooConfig } }),
+    );
+
+    sendCalls.length = 0;
+    const result = await bridge.bindIde("s1", 48005);
+    expect(result).toEqual({ ok: true });
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(2);
+
+    // First call (drain replay): carries the queued `{foo}`.
+    expect(mcpCalls[0].servers.foo).toBeDefined();
+    expect(mcpCalls[0].servers["companion-ide-neovim"]).toBeUndefined();
+
+    // Second call (bindIde's merged Claude full-replace): MUST carry BOTH
+    // `foo` (recovered from the queue via the mirror catch-up) AND the IDE
+    // entry (BIND-08 companion-ide-prefixed). If the catch-up were missing,
+    // the mirror would still be `{}` and the payload would be
+    // `{companionideneovim}` alone, clobbering `foo` on the wire.
+    expect(mcpCalls[1].servers.foo).toBeDefined();
+    expect(mcpCalls[1].servers["companion-ide-neovim"]).toBeDefined();
+
+    // Mirror reflects both, ready for subsequent bind/unbind cycles. The
+    // IDE entry lives under the BIND-08 companion-ide-prefixed key.
+    expect(session.dynamicMcpServers.foo).toBeDefined();
+    expect(session.dynamicMcpServers["companion-ide-neovim"]).toBeDefined();
+    expect(session.pendingMessages).toHaveLength(0);
+  });
+
+  it("flushQueuedBrowserMessages applies deleteKeys from queued mcp_set_servers so bindIde merges a clean mirror", async () => {
+    await seedIde({ port: 48006, ideName: "Neovim", authToken: "tok-restore-delete" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    // Cold-restore with a cached `foo` in the mirror AND a queued payload
+    // that deletes `foo`. The mirror catch-up must apply the delete so
+    // bindIde reads a `{}` mirror and emits `{companionideneovim}` alone on
+    // the wire (BIND-08) — NOT `{foo, companionideneovim}` which would
+    // resurrect a deleted server.
+    const session = bridge.getSession("s1")!;
+    const fooConfig = { type: "stdio" as const, command: "/usr/bin/foo" };
+    session.dynamicMcpServers.foo = fooConfig as any;
+    session.pendingMessages.push(
+      JSON.stringify({ type: "mcp_set_servers", servers: {}, deleteKeys: ["foo"] }),
+    );
+
+    sendCalls.length = 0;
+    const result = await bridge.bindIde("s1", 48006);
+    expect(result).toEqual({ ok: true });
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(2);
+
+    // First: drained delete payload replay as-is.
+    expect(mcpCalls[0].deleteKeys).toEqual(["foo"]);
+
+    // Second: bindIde's full-replace — `foo` must NOT appear, the delete
+    // propagated through the mirror catch-up. IDE entry under BIND-08 key.
+    expect(mcpCalls[1].servers.foo).toBeUndefined();
+    expect(mcpCalls[1].servers["companion-ide-neovim"]).toBeDefined();
+
+    // Mirror: foo deleted, IDE entry present (BIND-08 prefixed).
+    expect(session.dynamicMcpServers.foo).toBeUndefined();
+    expect(session.dynamicMcpServers["companion-ide-neovim"]).toBeDefined();
+  });
+
+  // ─── Empty-sanitized-key guard (round-4 Codex review, Issue 2) ──────────────
+  //
+  // Context: `bindIde` previously computed
+  //   `serverKey = ideName.toLowerCase().replace(/[^a-z0-9]/g, "")`
+  // without checking the result. A lockfile with `ideName: "!?"` would
+  // yield `serverKey === ""` and cause the CLI/Codex to register an
+  // `mcp_servers.""` orphan. `unbindIde`'s empty-key guard would then
+  // refuse to delete it (deleteKeys: []), leaving a permanent orphan
+  // entry in the user's dynamic MCP registry.
+  //
+  // Fix: reject the bind early with {ok:false, error: "invalid IDE name"}
+  // so the route maps to 400 and nothing is sent on the wire. Same shape
+  // as "unknown port" / "backend not connected" errors.
+  it("bindIde rejects lockfiles with non-alphanumeric-only ideName (prevents empty-key MCP orphan)", async () => {
+    // "!?" sanitizes to "" — classic empty-key trap.
+    await seedIde({ port: 40099, ideName: "!?", authToken: "tok-invalid-name" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    sendCalls.length = 0;
+
+    const result = await bridge.bindIde("s1", 40099);
+    expect(result).toEqual({ ok: false, error: "invalid IDE name" });
+
+    // No mcp_set_servers must be sent — the fix must short-circuit BEFORE
+    // any adapter write. Same principle as the "unknown port" guard.
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(0);
+
+    // Session state must be untouched — no ideBinding mutation.
+    const session = bridge.getSession("s1")!;
+    expect(session.state.ideBinding).toBeFalsy();
+  });
+
+  // ─── cubic-ai review (PR #652, Issue 1): browser mcp_set_servers after IDE bind ─
+  //
+  // Context: Claude's `mcp_set_servers` is FULL REPLACE on the wire. After
+  // `bindIde` merges the IDE entry into session.dynamicMcpServers and sends
+  // a merged `{...others, [ideKey]: entry}` payload, the user can later edit
+  // MCP servers via McpPanel — that sends a NEW `mcp_set_servers` from the
+  // browser. Before this fix, that browser-originated payload was forwarded
+  // verbatim to Claude, DROPPING the IDE entry (because the browser had no
+  // reason to include it). Result: split-brain — UI says bound, Claude lost
+  // the IDE MCP server, tools disappear.
+  //
+  // Fix: for Claude ONLY, in `routeBrowserMessage`'s `mcp_set_servers` branch,
+  // inject the active IDE entry (from `session.dynamicMcpServers[ideKey]`)
+  // into `msg.servers` BEFORE mirror update + adapter.send, unless the user
+  // explicitly opts in to delete the IDE key via `deleteKeys`. Codex path is
+  // per-key upsert (not full-replace), so no injection needed.
+  it("Claude: browser mcp_set_servers preserves active IDE entry on full-replace", async () => {
+    await seedIde({ port: 59001, ideName: "Neovim", authToken: "tok-preserve" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    // Bind the IDE first — this populates dynamicMcpServers under the
+    // BIND-08 companion-ide-prefixed key.
+    const bindResult = await bridge.bindIde("s1", 59001);
+    expect(bindResult).toEqual({ ok: true });
+    sendCalls.length = 0;
+
+    // User edits MCP via McpPanel — browser sends a full-replace with ONLY
+    // the new server. Pre-fix: this payload was forwarded verbatim, dropping
+    // the IDE entry.
+    const fooConfig = { type: "stdio" as const, command: "/usr/bin/foo" };
+    bridge.handleBrowserMessage(
+      browser,
+      JSON.stringify({ type: "mcp_set_servers", servers: { foo: fooConfig } }),
+    );
+
+    // Adapter must have seen ONE mcp_set_servers — with BOTH the user's new
+    // `foo` AND the merged-in IDE entry (BIND-08 companion-ide-prefixed).
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    expect(mcpCalls[0].servers.foo).toMatchObject(fooConfig);
+    expect(mcpCalls[0].servers["companion-ide-neovim"]).toBeDefined();
+    expect(mcpCalls[0].servers["companion-ide-neovim"]).toMatchObject({
+      type: "ws-ide",
+      ideName: "Neovim",
+    });
+  });
+
+  it("Claude: browser mcp_set_servers with deleteKeys:[ideKey] cannot drop the IDE (reserved-namespace strip supersedes)", async () => {
+    // HISTORICAL CONTEXT (cubic-ai PR #652 Issue 1): earlier contract said
+    // "if the user explicitly sends `deleteKeys: ['companion-ide-neovim']`,
+    // forward it and skip merge re-injection — cleaning up the binding is
+    // bindIde/unbindIde's job, not routeBrowserMessage's."
+    //
+    // NEW CONTRACT (Codex round-5 BLOCK 1, BIND-08f): the reserved
+    // `companion-ide-*` namespace is no longer reachable from the public
+    // `mcp_set_servers` path. Any user-supplied deleteKey matching the
+    // reserved prefix is STRIPPED before the merge-injection check, which
+    // means the Claude merge-injection then sees no user-authored delete,
+    // and re-inserts the IDE entry from the mirror. Net effect: users
+    // cannot remove the bridge-authored IDE entry via the public path —
+    // only bindIde/unbindIde (which bypass this path via adapter.send
+    // directly) may.
+    //
+    // This inverts the previous expectation; see BIND-08f for the canonical
+    // "user attempt to delete is suppressed" assertion.
+    await seedIde({ port: 59002, ideName: "Neovim", authToken: "tok-delete" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    await bridge.bindIde("s1", 59002);
+    sendCalls.length = 0;
+
+    // User attempts to delete the IDE key via deleteKeys.
+    bridge.handleBrowserMessage(
+      browser,
+      JSON.stringify({
+        type: "mcp_set_servers",
+        servers: {},
+        deleteKeys: ["companion-ide-neovim"],
+      }),
+    );
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    // The reserved-key deleteKey was stripped BEFORE reaching the merge
+    // check — Claude merge-injection then re-inserted the IDE entry from
+    // the mirror, so the outbound payload contains the IDE entry and an
+    // empty (or missing-the-reserved-key) deleteKeys.
+    expect(mcpCalls[0].servers["companion-ide-neovim"]).toBeDefined();
+    expect(mcpCalls[0].deleteKeys ?? []).not.toContain("companion-ide-neovim");
+
+    // Binding state is still populated — user attempt to delete the IDE
+    // entry via this path is a no-op at the state level.
+    const session = bridge.getSession("s1")!;
+    expect(session.state.ideBinding).not.toBeNull();
+    // Mirror unchanged — reserved entry survives.
+    expect(session.dynamicMcpServers["companion-ide-neovim"]).toBeDefined();
+  });
+
+  it("Codex: browser mcp_set_servers is unchanged (per-key upsert — no merge injected)", async () => {
+    // Codex's `config/batchWrite` is per-key upsert, not full-replace, so
+    // omitting the IDE key does NOT drop it. Injecting the IDE entry here
+    // would spuriously re-upsert it on every user edit. Contract: Codex
+    // path forwards the browser payload byte-for-byte (minus bridge-level
+    // bookkeeping).
+    await seedIde({ port: 59003, ideName: "Neovim", authToken: "tok-codex" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "codex");
+
+    await bridge.bindIde("s1", 59003);
+    sendCalls.length = 0;
+
+    const fooConfig = { type: "stdio" as const, command: "/usr/bin/foo" };
+    bridge.handleBrowserMessage(
+      browser,
+      JSON.stringify({ type: "mcp_set_servers", servers: { foo: fooConfig } }),
+    );
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    // Codex: payload is forwarded as-is. `foo` is present; IDE key
+    // (BIND-08 companion-ide-prefixed) is NOT (because Codex didn't need it
+    // to be — upserts are independent).
+    expect(mcpCalls[0].servers.foo).toMatchObject(fooConfig);
+    expect(mcpCalls[0].servers["companion-ide-neovim"]).toBeUndefined();
+  });
+
+  it("Claude: browser mcp_set_servers when no IDE is bound is forwarded unchanged", async () => {
+    // Baseline: merge injection only kicks in when an IDE is actively bound.
+    // Without a binding, there is nothing to preserve — forward verbatim.
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    sendCalls.length = 0;
+
+    const fooConfig = { type: "stdio" as const, command: "/usr/bin/foo" };
+    bridge.handleBrowserMessage(
+      browser,
+      JSON.stringify({ type: "mcp_set_servers", servers: { foo: fooConfig } }),
+    );
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    expect(mcpCalls[0].servers).toEqual({ foo: fooConfig });
+  });
+
+  // ─── Codex round-5 BLOCK 1: reserved `companion-ide-*` namespace ─────────
+  //
+  // Context: user-supplied `mcp_set_servers` payloads were forwarded
+  // verbatim. A malicious or accidental payload with a key in our reserved
+  // `companion-ide-*` namespace (e.g. `servers: {"companion-ide-neovim":
+  // {...user-crafted...}}` OR `deleteKeys: ["companion-ide-neovim"]`)
+  // could either clobber or delete a bridge-authored IDE entry — producing
+  // a split-brain (UI says bound; CLI has a user-controlled or missing
+  // MCP entry at the reserved key).
+  //
+  // Fix: routeBrowserMessage strips any keys with the `companion-ide-`
+  // prefix from BOTH `servers` and `deleteKeys` BEFORE the merge injection,
+  // mirror update, and adapter.send. bindIde/unbindIde remain the only
+  // writers allowed to touch that namespace (they bypass routeBrowserMessage
+  // via adapter.send directly, which is intentional).
+
+  it("BIND-08e: user mcp_set_servers cannot write into reserved `companion-ide-*` namespace (stripped before mirror + send)", async () => {
+    // No IDE bind — we only care that a user attempt to occupy the reserved
+    // namespace is rejected (stripped from wire + mirror). Non-reserved keys
+    // must still pass through unchanged.
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    sendCalls.length = 0;
+
+    // User tries to occupy the reserved namespace with a user-controlled
+    // entry AND register a legitimate server at the same time.
+    const userIdeEntry = {
+      type: "stdio" as const,
+      command: "/tmp/evil-ide",
+    };
+    const userMyServer = { type: "stdio" as const, command: "/usr/bin/myserver" };
+    bridge.handleBrowserMessage(
+      browser,
+      JSON.stringify({
+        type: "mcp_set_servers",
+        servers: {
+          "companion-ide-neovim": userIdeEntry,
+          myserver: userMyServer,
+        },
+      }),
+    );
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    // Outbound wire payload: reserved key stripped; non-reserved passes through.
+    expect(mcpCalls[0].servers["companion-ide-neovim"]).toBeUndefined();
+    expect(mcpCalls[0].servers.myserver).toMatchObject(userMyServer);
+
+    // Bridge mirror matches the wire payload — user did NOT register anything
+    // into the reserved namespace; non-reserved key WAS registered.
+    const session = bridge.getSession("s1")!;
+    expect(session.dynamicMcpServers["companion-ide-neovim"]).toBeUndefined();
+    expect(session.dynamicMcpServers.myserver).toMatchObject(userMyServer);
+  });
+
+  it("BIND-08f: user deleteKeys cannot delete a bridge-authored IDE entry via reserved prefix", async () => {
+    // Scenario: IDE is actively bound. A malicious/accidental browser payload
+    // attempts `deleteKeys: ["companion-ide-neovim"]`. The reserved-prefix
+    // stripper must remove that entry from deleteKeys BEFORE the mirror
+    // update and BEFORE the outbound send — so our bridge-authored IDE
+    // registration survives.
+    await seedIde({ port: 59101, ideName: "Neovim", authToken: "tok-bind08f" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+
+    // Bind IDE — this creates a `companion-ide-neovim` entry under our control.
+    const bindResult = await bridge.bindIde("s1", 59101);
+    expect(bindResult).toEqual({ ok: true });
+    sendCalls.length = 0;
+
+    // User tries to nuke the IDE key via deleteKeys. Must be stripped.
+    bridge.handleBrowserMessage(
+      browser,
+      JSON.stringify({
+        type: "mcp_set_servers",
+        servers: {},
+        deleteKeys: ["companion-ide-neovim"],
+      }),
+    );
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    // Outbound wire payload: the user's deleteKeys entry for our reserved key
+    // is stripped. (The claude merge injection may or may not re-add the IDE
+    // entry into servers — we only pin that the reserved delete is suppressed.)
+    expect(mcpCalls[0].deleteKeys).not.toContain("companion-ide-neovim");
+
+    // Bridge mirror still has our IDE entry. User attempt to delete it fails.
+    const session = bridge.getSession("s1")!;
+    expect(session.dynamicMcpServers["companion-ide-neovim"]).toBeDefined();
+    // IDE binding state remains — the user's attack did not tear down the bind.
+    expect(session.state.ideBinding).not.toBeNull();
+  });
+
+  // ─── BIND-08h: defensive invariant at the replay site ──────────────────────
+  //
+  // Context (Codex CONDITIONAL-GO): `routeBrowserMessage` today is the only
+  // entry point that populates `session.pendingMessages` for `mcp_set_servers`,
+  // and it calls `stripReservedIdeKeys` BEFORE enqueue. So today the queue
+  // never contains reserved-namespace keys. But `flushQueuedBrowserMessages`
+  // does not re-sanitize on replay — it trusts the enqueued payload and
+  // pushes it straight into `updateDynamicMcpServers` and `adapter.send`.
+  //
+  // That trust is a one-line-upstream invariant. If ANY future code path
+  // were added that enqueues an unsanitized message (a new adapter hook, a
+  // deserialized-from-disk path, a `Session.pendingMessages.push(...)` from
+  // some other module), the reserved-namespace protection — the whole
+  // reason `companion-ide-*` can't be clobbered via the public MCP path —
+  // would silently disappear on replay.
+  //
+  // Fix: `flushQueuedBrowserMessages` runs `stripReservedIdeKeys` on every
+  // `mcp_set_servers` payload it replays, BEFORE the mirror update AND
+  // BEFORE the adapter.send. Reserved-namespace stripping becomes a
+  // structural invariant at every mirror write site, not a caller contract.
+  //
+  // Test strategy: simulate a hypothetical future bug where an unsanitized
+  // message bypassed `routeBrowserMessage` and landed directly in
+  // `session.pendingMessages`. Trigger the flush via a public seam
+  // (`bindIde`'s pre-drain path, which calls `flushQueuedBrowserMessages`
+  // with reason `ide_bind_predrain`). Assert:
+  //   1. The mirror (`session.dynamicMcpServers`) does NOT contain the
+  //      reserved key after the flush.
+  //   2. The outbound adapter.send does NOT carry the reserved key.
+  //   3. The strip fired a `log.warn`.
+  it("BIND-08h: flushQueuedBrowserMessages re-strips reserved `companion-ide-*` keys on replay", async () => {
+    // Capture log.warn so we can assert the strip fired.
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await seedIde({ port: 59102, ideName: "Neovim", authToken: "tok-bind08h" });
+
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    sendCalls.length = 0;
+
+    // Manually inject an unsanitized `mcp_set_servers` into the queue —
+    // simulates the hypothetical future bug the invariant defends against.
+    // Reserved keys: one in `servers` (attempts to register under the
+    // reserved namespace) and one in `deleteKeys` (attempts to delete a
+    // bridge-authored entry).
+    const session = bridge.getSession("s1")!;
+    const userFoo = { type: "stdio" as const, command: "/usr/bin/foo" };
+    const spoofedIdeEntry = {
+      type: "ws-ide" as const,
+      url: "ws://attacker",
+      ideName: "Spoofed",
+      authToken: "pwned",
+      ideRunningInWindows: false,
+    };
+    session.pendingMessages.push(
+      JSON.stringify({
+        type: "mcp_set_servers",
+        servers: {
+          foo: userFoo,
+          "companion-ide-neovim": spoofedIdeEntry,
+        },
+        deleteKeys: ["companion-ide-other"],
+      }),
+    );
+
+    // Trigger the flush via the `bindIde` pre-drain seam. `bindIde` calls
+    // `flushQueuedBrowserMessages(..., "ide_bind_predrain")` BEFORE its own
+    // merge send, so the queued payload is replayed first.
+    const bindResult = await bridge.bindIde("s1", 59102);
+    expect(bindResult).toEqual({ ok: true });
+
+    // ── Assertion 1: the mirror after the full sequence has exactly ONE
+    // `companion-ide-*` entry — the one `bindIde` wrote. The spoofed
+    // payload's reserved key must have been stripped BEFORE
+    // `updateDynamicMcpServers` ran on the queued payload, so the mirror
+    // was never polluted with `{url: "ws://attacker", authToken: "pwned"}`.
+    const ideEntry = session.dynamicMcpServers["companion-ide-neovim"];
+    expect(ideEntry).toBeDefined();
+    expect(ideEntry).toMatchObject({
+      type: "ws-ide",
+      ideName: "Neovim",
+      url: "ws://127.0.0.1:59102",
+      authToken: "tok-bind08h",
+    });
+    // The user-authored non-reserved entry must still be applied.
+    expect(session.dynamicMcpServers.foo).toMatchObject(userFoo);
+
+    // ── Assertion 2: the outbound REPLAY send (the first `mcp_set_servers`
+    // the adapter received, from `ide_bind_predrain`) must NOT contain the
+    // reserved key in `servers` OR in `deleteKeys`. Pre-fix, the replay
+    // would forward the spoofed payload verbatim.
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls.length).toBeGreaterThanOrEqual(1);
+    const replayCall = mcpCalls[0];
+    expect(replayCall.servers["companion-ide-neovim"]).toBeUndefined();
+    expect(replayCall.servers.foo).toMatchObject(userFoo);
+    expect(replayCall.deleteKeys ?? []).not.toContain("companion-ide-other");
+
+    // ── Assertion 3: the strip logged a warning. Matches the format used
+    // by `routeBrowserMessage`'s strip path for consistency.
+    const warnCalls = warnSpy.mock.calls
+      .map((args) => args.join(" "))
+      .filter((line) => line.includes("companion-ide") || line.includes("reserved"));
+    expect(warnCalls.length).toBeGreaterThan(0);
+
+    warnSpy.mockRestore();
+  });
+
+  it("BIND-08g: prefix match only — `mycompanion-ide-helper` (substring only, not prefix) passes through unchanged", async () => {
+    // Stripping must be PREFIX-MATCH, not SUBSTRING. A user registering a
+    // server with "companion-ide" as a substring somewhere other than the
+    // start of the key is not in our reserved namespace and must pass through.
+    const { adapter, sendCalls } = makeFakeAdapter();
+    bridge.getOrCreateSession("s1");
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    bridge.attachBackendAdapter("s1", adapter, "claude");
+    sendCalls.length = 0;
+
+    const helperConfig = { type: "stdio" as const, command: "/usr/bin/helper" };
+    bridge.handleBrowserMessage(
+      browser,
+      JSON.stringify({
+        type: "mcp_set_servers",
+        servers: { "mycompanion-ide-helper": helperConfig },
+      }),
+    );
+
+    const mcpCalls = sendCalls.filter((m) => m.type === "mcp_set_servers");
+    expect(mcpCalls).toHaveLength(1);
+    // Non-reserved: substring match but NOT prefix — must pass through.
+    expect(mcpCalls[0].servers["mycompanion-ide-helper"]).toMatchObject(helperConfig);
+
+    const session = bridge.getSession("s1")!;
+    expect(session.dynamicMcpServers["mycompanion-ide-helper"]).toMatchObject(helperConfig);
+  });
+});
+
+// ─── IDE list change broadcast (Task 12, DISC-03 UX side) ─────────────────────
+//
+// Pins the contract: when `companionBus` fires `ide:added`, `ide:removed`, or
+// `ide:changed`, ws-bridge broadcasts `{type: "ide_list_changed"}` to EVERY
+// connected browser socket across ALL sessions. The broadcast is payload-free
+// (no sensitive fields leak) — IdePicker instances refetch via REST on receipt.
+describe("IDE list change broadcast (Task 12)", () => {
+  beforeEach(() => {
+    // The outer beforeEach creates a fresh bridge but then calls
+    // companionBus.clear() which wipes out the constructor subscriptions.
+    // Recreate the bridge AFTER clear so the Task 12 subscriptions are live.
+    bridge = new WsBridge();
+    bridge.setStore(store);
+  });
+
+  it("ide:added → every connected browser socket receives one {type: ide_list_changed}", () => {
+    // Two sessions, multiple browsers each — the broadcast must fan out
+    // across sessions, not only to the session the event relates to.
+    const b1a = makeBrowserSocket("s1");
+    const b1b = makeBrowserSocket("s1");
+    const b2 = makeBrowserSocket("s2");
+    bridge.handleBrowserOpen(b1a, "s1");
+    bridge.handleBrowserOpen(b1b, "s1");
+    bridge.handleBrowserOpen(b2, "s2");
+    b1a.send.mockClear();
+    b1b.send.mockClear();
+    b2.send.mockClear();
+
+    companionBus.emit("ide:added", {
+      port: 40001,
+      ideName: "Neovim",
+      workspaceFolders: ["/tmp/proj"],
+      lockfilePath: "/tmp/.claude/ide/40001.lock",
+      generation: 1,
+    });
+
+    for (const browser of [b1a, b1b, b2]) {
+      const listChanges = browser.send.mock.calls
+        .map(([raw]: [string]) => JSON.parse(raw))
+        .filter((m: any) => m.type === "ide_list_changed");
+      expect(listChanges).toHaveLength(1);
+    }
+  });
+
+  it("ide:removed → every browser receives {type: ide_list_changed}", () => {
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    browser.send.mockClear();
+
+    companionBus.emit("ide:removed", {
+      port: 40002,
+      lockfilePath: "/tmp/.claude/ide/40002.lock",
+      generation: 2,
+    });
+
+    const listChanges = browser.send.mock.calls
+      .map(([raw]: [string]) => JSON.parse(raw))
+      .filter((m: any) => m.type === "ide_list_changed");
+    expect(listChanges).toHaveLength(1);
+  });
+
+  it("ide:changed → every browser receives {type: ide_list_changed}", () => {
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    browser.send.mockClear();
+
+    companionBus.emit("ide:changed", {
+      port: 40003,
+      ideName: "VS Code",
+      workspaceFolders: ["/tmp/proj-new"],
+      lockfilePath: "/tmp/.claude/ide/40003.lock",
+      generation: 3,
+    });
+
+    const listChanges = browser.send.mock.calls
+      .map(([raw]: [string]) => JSON.parse(raw))
+      .filter((m: any) => m.type === "ide_list_changed");
+    expect(listChanges).toHaveLength(1);
+  });
+
+  it("broadcast payload is exactly {type: ide_list_changed} — no sensitive fields leak", () => {
+    // The ide:added event carries authToken-adjacent fields (lockfilePath,
+    // port, workspaceFolders, ideName). The browser broadcast must NOT
+    // include any of those — clients refetch through the authenticated
+    // REST endpoint which applies the same trust boundary as discovery.
+    const browser = makeBrowserSocket("s1");
+    bridge.handleBrowserOpen(browser, "s1");
+    browser.send.mockClear();
+
+    companionBus.emit("ide:added", {
+      port: 40004,
+      ideName: "Neovim",
+      workspaceFolders: ["/secret/path"],
+      lockfilePath: "/secret/path/.claude/ide/40004.lock",
+      generation: 4,
+    });
+
+    const listChanges = browser.send.mock.calls
+      .map(([raw]: [string]) => JSON.parse(raw))
+      .filter((m: any) => m.type === "ide_list_changed");
+    expect(listChanges).toHaveLength(1);
+    // Exact-equality assertion is the strongest form — any additional key
+    // (e.g. a payload that copies the event verbatim) fails this test.
+    // `generation` is the ONLY additional field clients use for dedupe —
+    // still no authToken / lockfilePath / workspaceFolders leak.
+    expect(listChanges[0]).toEqual({ type: "ide_list_changed", generation: 4 });
   });
 });

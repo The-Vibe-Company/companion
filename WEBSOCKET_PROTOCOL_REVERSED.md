@@ -1609,3 +1609,92 @@ type ContentBlock =
   | { type: "tool_result"; tool_use_id: string; content: string | ContentBlock[]; is_error?: boolean }
   | { type: "thinking"; thinking: string; budget_tokens?: number };
 ```
+
+---
+
+## IDE Channel
+
+Claude Code integrates with running IDEs (Neovim, Visual Studio Code, Obsidian, Cursor, etc.) via a locally-discovered MCP server exposed by each IDE. Companion reuses the same mechanism the CLI's built-in `/ide` command relies on: a lockfile registry plus the existing `mcp_set_servers` control_request. No new protocol surface is introduced.
+
+### Lockfile Registry (`~/.claude/ide/`)
+
+Each IDE that supports the Claude Code integration writes a lockfile to `~/.claude/ide/`. The filename stem is typically the port the IDE's MCP server is listening on (e.g. `38630.lock`). The file contents are JSON:
+
+```jsonc
+{
+  "pid": 62243,                                 // PID of the IDE process
+  "workspaceFolders": ["/Users/x/repo"],        // one or more absolute paths
+  "ideName": "Neovim",                          // human-readable label
+  "transport": "ws",                            // newer IDEs: "ws" | "sse"
+  "useWebSocket": true,                         // VSCode-style IDEs: boolean
+  "running": true,                              // informational flag
+  "authToken": "ff3fedac-0efb-4608-a003-..."    // bearer token for the MCP server
+}
+```
+
+Either `transport` **or** `useWebSocket` is present (not both, in practice). Consumers should treat unknown fields as forward-compat and ignore them.
+
+Entries whose `pid` is no longer alive are stale and must be pruned before use (a simple `process.kill(pid, 0)` succeeds for live PIDs; `ESRCH` means dead). The diagnostic script at `scripts/probe-ide.ts` demonstrates the full enumeration + prune + payload-preview flow.
+
+### Bind via `mcp_set_servers`
+
+Binding a session to an IDE is a **plain `mcp_set_servers` control_request** — the same message type Companion already uses to push user-configured MCP servers. The adapter at `web/server/claude-adapter.ts :: handleOutgoingMcpSetServers` carries the payload verbatim; the CLI treats the `ide` key as a dynamically-scoped MCP server and wires it up exactly as it does for the CLI's own `/ide` command.
+
+Companion emits, browser-outgoing:
+
+```json
+{
+  "type": "mcp_set_servers",
+  "servers": {
+    "ide": {
+      "type": "ws-ide",
+      "url": "ws://127.0.0.1:38630",
+      "ideName": "Neovim",
+      "authToken": "ff3fedac-0efb-4608-a003-66530036024b",
+      "scope": "dynamic"
+    }
+  }
+}
+```
+
+Which the adapter translates into a CLI `control_request`:
+
+```json
+{
+  "type": "control_request",
+  "request_id": "...",
+  "request": {
+    "subtype": "mcp_set_servers",
+    "servers": { "ide": { ... }, "...otherUserServers": { ... } }
+  }
+}
+```
+
+### MCP Server Types
+
+The CLI accepts two IDE-specific server types (discovered via probe against claude CLI v2.1.112):
+
+| `type` | Derivation | URL scheme |
+|--------|------------|------------|
+| `ws-ide` | `useWebSocket === true` **or** `transport === "ws"` | `ws://127.0.0.1:<port>` |
+| `sse-ide` | otherwise (falls back to SSE) | `http://127.0.0.1:<port>` |
+
+These are peers of the standard `stdio` / `sse` / `ws` MCP types and are scoped with `scope: "dynamic"` so they don't persist across session restarts.
+
+### Merge Semantics (Critical)
+
+Companion must **not** overwrite the session's full MCP servers map when binding. The correct flow is:
+
+1. Read the current `dynamicMcpConfig` from session state (includes any user-configured MCP servers).
+2. Merge `servers.ide = {...}` into that map.
+3. Send the full merged map via `mcp_set_servers`.
+
+Unbinding removes only the `ide` key and re-sends the remainder. See `web/server/ws-bridge.ts :: bindIde / unbindIde`.
+
+### Relationship to the CLI's `/ide` Command
+
+The CLI ships its own `/ide` slash command that performs lockfile discovery and binding internally. Companion intercepts `/ide` client-side (in `Composer.tsx`) and renders a richer picker UI, but the underlying bind mechanism — a `mcp_set_servers` with a dynamically-scoped `ide` server — is identical. The CLI never sees the `/ide` text; it only receives the resulting `mcp_set_servers` control_request.
+
+### Diagnostic
+
+Run `bun scripts/probe-ide.ts` from the repo root to enumerate live lockfiles and preview the exact `mcp_set_servers` payload Companion would emit. Useful for bug reports and verifying that a given IDE is advertising itself correctly.

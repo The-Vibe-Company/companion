@@ -51,4 +51,19 @@ export interface IBackendAdapter {
 
   /** Handle transport-level close (used when WS proxy drops). */
   handleTransportClose?(): void;
+
+  /**
+   * Await-able variant of `mcp_set_servers`. Unlike `send({type: "mcp_set_servers"})`
+   * which returns immediately after enqueuing, this returns only after the backend
+   * has acknowledged the configuration change (or failed). Callers that must not
+   * mutate UI state before the backend has actually applied the change
+   * (e.g. `bindIde`/`unbindIde` in ws-bridge) should prefer this when available.
+   *
+   * Adapters that cannot express async acknowledgement should leave this
+   * undefined; callers fall back to `send()` semantics.
+   */
+  applyMcpSetServers?(
+    servers: Record<string, import("./session-types.js").McpServerConfig>,
+    deleteKeys?: string[],
+  ): Promise<{ ok: true } | { ok: false; error: string }>;
 }

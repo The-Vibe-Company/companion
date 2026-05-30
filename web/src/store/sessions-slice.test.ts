@@ -152,6 +152,60 @@ describe("Session management", () => {
     expect(after.size).toBe(before.size);
   });
 
+  // ─── Task 9 / STATE-02 ────────────────────────────────────────────────────
+  //
+  // Regression guard: the generic `updateSession({ ...existing, ...updates })`
+  // spread is what carries `ideBinding` from a server `session_update`
+  // broadcast through to the React tree. If anyone ever replaces it with a
+  // field-whitelist merge, these tests fail — which is the whole point.
+  //
+  // Both the "bind" (object) and "unbind" (null) transitions are exercised
+  // because ChatView's BIND-05 banner relies on the null state being stored
+  // explicitly (not dropped / treated as undefined).
+
+  it("updateSession: reflects a new ideBinding in the stored session (STATE-02 bind path)", () => {
+    const session = makeSession("s1");
+    useStore.getState().addSession(session);
+
+    const binding = {
+      port: 50001,
+      ideName: "Neovim",
+      workspaceFolders: ["/Users/x/repo"],
+      transport: "ws-ide" as const,
+      boundAt: 1_700_000_000_000,
+      lockfilePath: "/Users/x/.claude/ide/50001.lock",
+    };
+    useStore.getState().updateSession("s1", { ideBinding: binding });
+
+    const stored = useStore.getState().sessions.get("s1")!;
+    expect(stored.ideBinding).toEqual(binding);
+  });
+
+  it("updateSession: explicit null ideBinding propagates (STATE-02 unbind path — required for BIND-05 banner)", () => {
+    const session = makeSession("s1");
+    useStore.getState().addSession(session);
+
+    // First bind…
+    const binding = {
+      port: 50001,
+      ideName: "Neovim",
+      workspaceFolders: ["/Users/x/repo"],
+      transport: "ws-ide" as const,
+      boundAt: 1_700_000_000_000,
+      lockfilePath: "/Users/x/.claude/ide/50001.lock",
+    };
+    useStore.getState().updateSession("s1", { ideBinding: binding });
+    expect(useStore.getState().sessions.get("s1")!.ideBinding).toEqual(binding);
+
+    // …then unbind. Must land as `null` (not undefined) so ChatView can
+    // detect the bound→unbound transition for the BIND-05 disconnect banner.
+    useStore.getState().updateSession("s1", { ideBinding: null });
+    const stored = useStore.getState().sessions.get("s1")!;
+    expect(stored.ideBinding).toBeNull();
+    // Sanity: other fields untouched by the merge.
+    expect(stored.model).toBe(session.model);
+  });
+
   it("removeSession: cleans all maps and clears currentSessionId if removed was current", () => {
     const session = makeSession("s1");
     useStore.getState().addSession(session);

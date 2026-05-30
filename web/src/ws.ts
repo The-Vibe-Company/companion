@@ -6,6 +6,53 @@ import { getPreview } from "./components/ToolBlock.js";
 import type { ToolActivityEntry } from "./store/tasks-slice.js";
 
 const WS_RECONNECT_DELAY_MS = 2000;
+/**
+ * Generation-counter dedupe for `ide_list_changed` broadcasts across multiple
+ * session sockets. The server fans the ping out to every browser socket, so N
+ * connected sessions would otherwise trigger N CustomEvents per discovery
+ * event. The server stamps each broadcast with `generation` — a monotonic
+ * counter from ide-discovery's scan loop. Same generation means the same
+ * underlying scan (dedupe); a newer generation is always a fresh event.
+ *
+ * This is stricter than a time-window dedupe because it preserves legitimate
+ * fast add+remove cycles (e.g. IDE restart) that would be lost under a
+ * 100ms-ish time window. Codex adversarial review (BRITTLE 1) — replaces
+ * `IDE_LIST_CHANGED_DEDUPE_MS`.
+ *
+ * Backward-compat: if the server omits `generation` (legacy or missing field),
+ * we dispatch unconditionally so the UI still refreshes.
+ */
+let lastIdeListChangedGeneration = -1;
+
+function dispatchIdeListChangedByGeneration(generation: number | undefined): void {
+  if (typeof window === "undefined") return;
+  if (typeof generation === "number") {
+    if (generation <= lastIdeListChangedGeneration) return;
+    lastIdeListChangedGeneration = generation;
+  }
+  // Legacy / missing-generation payload → dispatch unconditionally.
+  window.dispatchEvent(new CustomEvent("companion:ide-list-changed"));
+}
+
+/**
+ * Reset the ide_list_changed dedupe counter. Called whenever a session
+ * WebSocket (re-)opens so we survive a full server restart.
+ *
+ * cubic-ai review (PR #652, round 3, P2): the server's monotonic
+ * `scanGeneration` resets to 0/1 on a full Hono process restart. If the
+ * client's counter carried a high-water mark (e.g. 42) from the prior
+ * lifetime, every generation from the new lifetime would be suppressed
+ * until it climbed past 42 — the IDE picker would appear frozen for
+ * minutes after a restart. Resetting on WS open ties the client state
+ * to the connection lifetime, which is the tightest observable signal
+ * we have for "new server process". Transient bounces where the server
+ * is fine are benign: the server re-sends the same generation, which
+ * post-reset is accepted exactly once (one harmless refetch).
+ */
+function resetIdeListChangedDedupe(): void {
+  lastIdeListChangedGeneration = -1;
+}
+
 const sockets = new Map<string, WebSocket>();
 const reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const lastSeqBySession = new Map<string, number>();
@@ -1242,6 +1289,29 @@ function handleParsedMessage(
       break;
     }
 
+    case "ide_list_changed": {
+      // Task 12 (DISC-03 UX side): the server broadcasts this ping whenever
+      // `companionBus` fires ide:added / ide:removed / ide:changed. Fan it
+      // out to any open IdePicker via a DOM CustomEvent so the component
+      // can refetch the authoritative list via REST. We DO NOT refetch
+      // centrally here — only mounted pickers need the list, and they
+      // already own the fetch via `api.getAvailableIdes`.
+      //
+      // cubic-ai review (PR #652): the server broadcasts to EVERY browser
+      // socket across EVERY live session. With N connected sessions in a
+      // tab, this handler fires N times per logical discovery event.
+      //
+      // Codex adversarial review (BRITTLE 1): dedupe by the server-stamped
+      // monotonic `generation` counter, not a time window. Same generation
+      // = same scan (skip). Newer generation = fresh event (always dispatch),
+      // including legitimate fast add+remove cycles (e.g. IDE restart)
+      // that a time-window dedupe would wrongly drop.
+      dispatchIdeListChangedByGeneration(
+        (data as BrowserIncomingMessage & { type: "ide_list_changed"; generation?: number }).generation,
+      );
+      break;
+    }
+
     default: {
       console.debug("[ws] Unhandled message type:", (data as { type: string }).type);
       break;
@@ -1269,6 +1339,16 @@ export function connectSession(sessionId: string) {
     const lastSeq = getLastSeq(sessionId);
     ws.send(JSON.stringify({ type: "session_subscribe", last_seq: lastSeq }));
     flushQueuedOutgoing(sessionId, ws);
+    // Reset ide_list_changed generation dedupe only when this is the FIRST
+    // socket opening (no other sessions connected). A server restart drops
+    // all sockets, so the first reconnect is our tightest signal for "new
+    // server lifetime / generation counter reset". Resetting on every
+    // per-session reconnect while others are still connected would let
+    // duplicate dispatches through (Cubic round-9, P2).
+    const otherConnected = Array.from(sockets.entries()).some(
+      ([id, s]) => id !== sessionId && s.readyState === WebSocket.OPEN,
+    );
+    if (!otherConnected) resetIdeListChangedDedupe();
     // Clear any reconnect timer
     const timer = reconnectTimers.get(sessionId);
     if (timer) {

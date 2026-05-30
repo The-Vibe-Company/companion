@@ -2,6 +2,7 @@ import type { ServerWebSocket } from "bun";
 import type {
   BackendType,
   BrowserIncomingMessage,
+  McpServerConfig,
   PermissionRequest,
   SessionState,
   BufferedBrowserEvent,
@@ -61,6 +62,30 @@ export interface Session {
   stateMachine: SessionStateMachine;
   /** Cleanup function for state machine transition listener — call on session teardown. */
   unsubscribeStateMachine?: () => void;
+  /**
+   * Per-session in-memory mirror of the dynamic MCP server set the bridge has
+   * sent to the backend via `mcp_set_servers`. Bridge-only — NOT persisted to
+   * disk (the CLI is relaunched fresh on restart and the dynamic set is lost
+   * anyway). Updated in two places:
+   *
+   *   1. `routeBrowserMessage` when it sees a `mcp_set_servers` flowing from
+   *      browsers / programmatic injectors — we apply `deleteKeys` first,
+   *      then upsert `servers`. This mirrors what the backend just received.
+   *   2. `bindIde` / `unbindIde` after their own `adapter.send` succeeds.
+   *
+   * Read by `bindIde` / `unbindIde` to derive the Claude merged payload so
+   * other user-configured dynamic MCP servers are not silently wiped by
+   * the full-replace semantics of Claude's `mcp_set_servers` control_request.
+   */
+  dynamicMcpServers: Record<string, McpServerConfig>;
+  /**
+   * Set true during the async window of `bindIde`/`unbindIde` between the
+   * pre-bind queue drain and the `applyMcpSetServers` acknowledgement.
+   * While set, `routeBrowserMessage` queues incoming `mcp_set_servers`
+   * messages instead of forwarding them, preventing a concurrent user
+   * payload from clobbering the IDE entry on Claude's full-replace wire.
+   */
+  ideBindInProgress?: boolean;
 }
 
 export type GitSessionKey =

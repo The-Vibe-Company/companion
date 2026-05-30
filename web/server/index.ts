@@ -33,6 +33,7 @@ import { authenticateManagedWebSocket } from "./ws-auth.js";
 import { LinearAgentBridge } from "./linear-agent-bridge.js";
 import { NoVncProxy } from "./novnc-proxy.js";
 
+import { startIdeDiscovery } from "./ide-discovery.js";
 import { startPeriodicCheck, setServiceMode } from "./update-checker.js";
 import { imagePullManager } from "./image-pull-manager.js";
 import { restoreIfNeeded as restoreTailscaleFunnel, cleanup as cleanupTailscaleFunnel } from "./tailscale-manager.js";
@@ -329,6 +330,9 @@ console.log(`  Browser WebSocket: ws://localhost:${server.port}/ws/browser/:sess
 if (process.env.NODE_ENV !== "production") {
   console.log("Dev mode: frontend at http://localhost:5174");
 }
+
+// ── IDE discovery — watches ~/.claude/ide/*.lock for running IDEs ───────────
+startIdeDiscovery();
 
 // ── Cron scheduler ──────────────────────────────────────────────────────────
 cronScheduler.startAll();

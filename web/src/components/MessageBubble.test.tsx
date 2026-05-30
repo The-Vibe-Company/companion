@@ -412,8 +412,12 @@ describe("MessageBubble - streaming", () => {
 // ─── ThinkingBlock edge cases ───────────────────────────────────────────────
 
 describe("MessageBubble - ThinkingBlock", () => {
-  it("shows 'No thinking text captured.' for empty thinking content", () => {
-    // When thinking text is empty/whitespace, the block shows fallback text
+  it("renders null for empty thinking content", () => {
+    // Claude Opus 4.7 returns thinking blocks with empty text + non-empty signature
+    // by design (Anthropic docs: display defaults to "omitted"). The ThinkingBlock
+    // should render nothing rather than a misleading "No thinking text captured."
+    // fallback. We verify both that no fallback string appears and that the
+    // ThinkingBlock's characteristic italic markdown wrapper is absent.
     const msg = makeMessage({
       role: "assistant",
       content: "",
@@ -421,9 +425,11 @@ describe("MessageBubble - ThinkingBlock", () => {
         { type: "thinking", thinking: "   " },
       ],
     });
-    render(<MessageBubble message={msg} />);
+    const { container } = render(<MessageBubble message={msg} />);
 
-    expect(screen.getByText("No thinking text captured.")).toBeTruthy();
+    expect(screen.queryByText("No thinking text captured.")).toBeNull();
+    // ThinkingBlock uses .markdown-body.italic as its wrapper — should not exist.
+    expect(container.querySelector(".markdown-body.italic")).toBeNull();
   });
 
   it("does not show 'Show more' for short thinking content", () => {

@@ -28,6 +28,7 @@ import { registerSettingsRoutes } from "./routes/settings-routes.js";
 import { registerTailscaleRoutes } from "./routes/tailscale-routes.js";
 import { registerGitRoutes } from "./routes/git-routes.js";
 import { registerSystemRoutes } from "./routes/system-routes.js";
+import { registerIdeSessionRoutes } from "./routes/ide-session-routes.js";
 import { isRecordingHubEnabled } from "./recording-hub/hub-config.js";
 import { registerHubRoutes } from "./recording-hub/hub-routes.js";
 import { registerLinearRoutes, fetchLinearTeamStates } from "./routes/linear-routes.js";
@@ -1140,6 +1141,11 @@ export function createRoutes(
     orchestrator.unarchiveSession(id);
     return c.json({ ok: true });
   });
+
+  // ─── IDE binding (Task 7 — API-03, API-04) ──────────────────
+  // Registered via a dedicated helper next to the archive routes; the
+  // handlers delegate entirely to wsBridge.bindIde / wsBridge.unbindIde.
+  registerIdeSessionRoutes(api, { wsBridge });
 
   // ─── Recording Management ──────────────────────────────────
 

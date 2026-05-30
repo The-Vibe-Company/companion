@@ -24,6 +24,7 @@ function makeDedupSession(): Session {
     processedClientMessageIdSet: new Set(),
     lastCliActivityTs: Date.now(),
     stateMachine: new SessionStateMachine("test-session"),
+    dynamicMcpServers: {},
   };
 }
 

@@ -1,7 +1,7 @@
 // Typed event map for the Companion internal event bus.
 // Each key is a namespaced event name; values are the payload passed to handlers.
 
-import type { BrowserIncomingMessage } from "./session-types.js";
+import type { BrowserIncomingMessage, IdeBinding } from "./session-types.js";
 import type { CodexAdapter } from "./codex-adapter.js";
 import type { SessionPhase } from "./session-state-machine.js";
 
@@ -61,4 +61,35 @@ export interface CompanionEventMap {
 
   /** A result (turn completion) was processed and broadcast to browsers. */
   "message:result": { sessionId: string; message: BrowserIncomingMessage };
+
+  // ── IDE discovery / binding ────────────────────────────────────────
+
+  /** A new IDE lockfile appeared under ~/.claude/ide/. */
+  "ide:added": {
+    port: number;
+    ideName: string;
+    workspaceFolders: string[];
+    lockfilePath: string;
+    /**
+     * Monotonic scan generation from ide-discovery. Used by ws-bridge to
+     * stamp the browser-facing `ide_list_changed` broadcast so clients can
+     * deduplicate fan-out by generation instead of a brittle time window.
+     */
+    generation: number;
+  };
+
+  /** An IDE lockfile was removed or its PID is no longer alive. */
+  "ide:removed": { port: number; lockfilePath: string; generation: number };
+
+  /** An IDE lockfile was modified (e.g. workspaceFolders changed). */
+  "ide:changed": {
+    port: number;
+    ideName: string;
+    workspaceFolders: string[];
+    lockfilePath: string;
+    generation: number;
+  };
+
+  /** A session's IDE binding changed (bind, unbind, or auto-unbind). */
+  "ide:binding-changed": { sessionId: string; binding: IdeBinding | null };
 }

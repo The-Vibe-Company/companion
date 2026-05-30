@@ -146,7 +146,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   companionBus.clear();
   delete process.env.COMPANION_CONTAINER_SDK_HOST;
-  delete process.env.COMPANION_FORCE_BYPASS_IN_CONTAINER;
   // Default to stdio for most tests; WS launcher behavior is covered explicitly below.
   process.env.COMPANION_CODEX_TRANSPORT = "stdio";
   tempDir = mkdtempSync(join(tmpdir(), "launcher-test-"));
@@ -208,12 +207,12 @@ describe("launch", () => {
   });
 
   it("passes --model when provided", () => {
-    launcher.launch({ model: "claude-opus-4-20250514", cwd: "/tmp" });
+    launcher.launch({ model: "claude-opus-4-7", cwd: "/tmp" });
 
     const [cmdAndArgs] = mockSpawn.mock.calls[0];
     const modelIdx = cmdAndArgs.indexOf("--model");
     expect(modelIdx).toBeGreaterThan(-1);
-    expect(cmdAndArgs[modelIdx + 1]).toBe("claude-opus-4-20250514");
+    expect(cmdAndArgs[modelIdx + 1]).toBe("claude-opus-4-7");
   });
 
   it("passes --permission-mode when provided", () => {
@@ -231,7 +230,7 @@ describe("launch", () => {
     }
   });
 
-  it("downgrades bypassPermissions to acceptEdits for containerized Claude sessions", () => {
+  it("preserves bypassPermissions for containerized sessions (container IS the sandbox)", () => {
     launcher.launch({
       cwd: "/tmp/project",
       permissionMode: "bypassPermissions",
@@ -243,8 +242,7 @@ describe("launch", () => {
     // With bash -lc wrapping, CLI args are in the last element as a single string
     const bashCmd = cmdAndArgs[cmdAndArgs.length - 1];
     expect(bashCmd).toContain("--permission-mode");
-    expect(bashCmd).toContain("acceptEdits");
-    expect(bashCmd).not.toContain("bypassPermissions");
+    expect(bashCmd).toContain("bypassPermissions");
   });
 
   it("downgrades bypassPermissions to acceptEdits when host launcher runs as root", () => {

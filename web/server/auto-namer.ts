@@ -1,4 +1,4 @@
-import { DEFAULT_ANTHROPIC_MODEL, getSettings } from "./settings-manager.js";
+import { DEFAULT_ANTHROPIC_MODEL, getSettings, supportsSamplingParams } from "./settings-manager.js";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
@@ -51,7 +51,7 @@ export async function generateSessionTitle(
             content: userPrompt,
           },
         ],
-        temperature: 0.2,
+        ...(supportsSamplingParams(model) ? { temperature: 0.2 } : {}),
       }),
       signal: controller.signal,
     });

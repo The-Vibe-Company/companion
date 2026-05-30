@@ -8,6 +8,21 @@ import { countFileLines } from "./fs-utils.js";
 const DEFAULT_MAX_LINES = 1_000_000;
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Redact IDE `authToken` values from a raw protocol payload before it lands
+ * on disk. `mcp_set_servers` carries the IDE's auth token and that payload
+ * is otherwise stripped from browser + session-store paths; recordings must
+ * not become the one place where it leaks.
+ *
+ * Regex-based so it works on any JSON depth without parsing, and so a
+ * malformed payload still gets redacted rather than written verbatim.
+ */
+const AUTH_TOKEN_PATTERN = /"authToken"\s*:\s*"[^"\\]*(?:\\.[^"\\]*)*"/g;
+export function redactAuthTokens(raw: string): string {
+  if (!raw || raw.indexOf("authToken") === -1) return raw;
+  return raw.replace(AUTH_TOKEN_PATTERN, '"authToken":"[REDACTED]"');
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface RecordingHeader {
@@ -90,7 +105,7 @@ export class SessionRecorder {
     const entry: RecordingEntry = {
       ts: Date.now(),
       dir,
-      raw,
+      raw: redactAuthTokens(raw),
       ch: channel,
     };
     try {

@@ -409,6 +409,51 @@ export class ClaudeAdapter implements IBackendAdapter {
     return true;
   }
 
+  /**
+   * Await-able entry point for `mcp_set_servers` — resolves when the CLI
+   * sends a matching `control_response` (success) or rejects via `{ok: false}`
+   * on explicit error. Parallel to Codex adapter's `applyMcpSetServers`.
+   *
+   * Claude's NDJSON `control_response` protocol is the only acknowledgement
+   * we get; there is no separate backend-apply signal. Callers that must
+   * not commit UI state before the CLI has ack'd the config change should
+   * prefer this over `send({type: "mcp_set_servers"})`.
+   */
+  async applyMcpSetServers(
+    servers: Record<string, import("./session-types.js").McpServerConfig>,
+    _deleteKeys?: string[],
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
+    if (!this.isConnected()) return { ok: false, error: "backend not connected" };
+    return new Promise((resolve) => {
+      let requestId: string | undefined;
+      const timer = setTimeout(() => {
+        if (requestId !== undefined) {
+          this.pendingControlRequests.delete(requestId);
+        }
+        resolve({ ok: false, error: "mcp_set_servers timeout" });
+      }, 10_000);
+      requestId = this.sendControlRequest(
+        { subtype: "mcp_set_servers", servers },
+        {
+          subtype: "mcp_set_servers",
+          resolve: (response: unknown) => {
+            clearTimeout(timer);
+            const r = response as { subtype?: string; error?: string } | undefined;
+            if (r?.error) resolve({ ok: false, error: r.error });
+            else resolve({ ok: true });
+          },
+        },
+      );
+      if (!requestId) {
+        clearTimeout(timer);
+        resolve({ ok: false, error: "failed to send control request" });
+        return;
+      }
+      // Same refresh-after-delay as the fire-and-forget path.
+      setTimeout(() => this.handleOutgoingMcpGetStatus(), 2000);
+    });
+  }
+
   private handleOutgoingEndSession(reason?: string): boolean {
     this.sendControlRequest({ subtype: "end_session", ...(reason ? { reason } : {}) });
     return true;
@@ -774,6 +819,10 @@ export class ClaudeAdapter implements IBackendAdapter {
       console.warn(
         `[claude-adapter] Control request ${pending.subtype} failed: ${msg.response.error}`,
       );
+      // Issue #5 (cubic-ai PR #652): Resolve with the error response so
+      // callers (e.g. applyMcpSetServers) can surface the actual CLI error
+      // instead of falling through to a misleading timeout.
+      pending.resolve(msg.response);
       return;
     }
     pending.resolve(msg.response.response ?? {});
@@ -826,11 +875,13 @@ export class ClaudeAdapter implements IBackendAdapter {
 
   /**
    * Send a control_request to the CLI and optionally track the pending response.
+   * Returns the generated request ID so callers with local timeouts can
+   * unregister the pending entry before the map grows without bound.
    */
   private sendControlRequest(
     request: Record<string, unknown>,
     onResponse?: { subtype: string; resolve: (response: unknown) => void },
-  ): void {
+  ): string {
     const requestId = randomUUID();
     if (onResponse) {
       this.pendingControlRequests.set(requestId, onResponse);
@@ -841,6 +892,7 @@ export class ClaudeAdapter implements IBackendAdapter {
       request,
     });
     this.sendToBackend(ndjson);
+    return requestId;
   }
 
   /**

@@ -35,6 +35,7 @@ function makeMockSession(overrides: Partial<Session["state"]> = {}): Session {
     processedClientMessageIdSet: new Set(),
     lastCliActivityTs: Date.now(),
     stateMachine: new SessionStateMachine("test-session"),
+    dynamicMcpServers: {},
   };
 }
 

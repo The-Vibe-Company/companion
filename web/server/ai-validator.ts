@@ -1,4 +1,4 @@
-import { getSettings, DEFAULT_ANTHROPIC_MODEL } from "./settings-manager.js";
+import { getSettings, DEFAULT_ANTHROPIC_MODEL, supportsSamplingParams } from "./settings-manager.js";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const AI_TIMEOUT_MS = 5_000;
@@ -186,7 +186,7 @@ export async function aiEvaluate(
         messages: [
           { role: "user", content: userPrompt },
         ],
-        temperature: 0,
+        ...(supportsSamplingParams(model) ? { temperature: 0 } : {}),
       }),
       signal: controller.signal,
     });

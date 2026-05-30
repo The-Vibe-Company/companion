@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { Hono } from "hono";
 import type { CliLauncher } from "../cli-launcher.js";
 import type { WsBridge } from "../ws-bridge.js";
@@ -12,6 +13,11 @@ import {
 import { refreshServiceDefinition } from "../service.js";
 import { getSettings } from "../settings-manager.js";
 import { imagePullManager } from "../image-pull-manager.js";
+import {
+  listAvailableIdes,
+  type DiscoveredIde,
+} from "../ide-discovery.js";
+import { matchIdesForCwd, type IdeCandidate } from "../ide-matcher.js";
 
 export function registerSystemRoutes(
   api: Hono,
@@ -211,6 +217,53 @@ export function registerSystemRoutes(
     if (!terminalId) return c.json({ error: "terminalId is required" }, 400);
     deps.terminalManager.kill(terminalId);
     return c.json({ ok: true });
+  });
+
+  // ─── IDE discovery ────────────────────────────────────────────────────
+  //
+  // API-01 / API-02: expose the live IDE list to the browser.
+  // - Without `cwd`: ordered by `lockfileMtime` desc (most recent first).
+  // - With `cwd=<path>`: ranked via `matchIdesForCwd` (longest-prefix match
+  //   across `workspaceFolders`, mtime as tiebreak).
+  //
+  // BIND-03 on the wire: `authToken` is NEVER included in the response.
+  // It lives in memory inside `ide-discovery` and is only read at bind time.
+  api.get("/ide/available", (c) => {
+    const cwdParam = c.req.query("cwd");
+    const candidates: DiscoveredIde[] = listAvailableIdes();
+
+    const ordered: IdeCandidate[] = (() => {
+      // Project to IdeCandidate (drops authToken from the ranking shape).
+      const asCandidates: IdeCandidate[] = candidates.map((ide) => ({
+        port: ide.port,
+        ideName: ide.ideName,
+        workspaceFolders: ide.workspaceFolders,
+        transport: ide.transport,
+        lockfilePath: ide.lockfilePath,
+        lockfileMtime: ide.lockfileMtime,
+      }));
+
+      if (cwdParam && cwdParam.length > 0) {
+        return matchIdesForCwd(path.resolve(cwdParam), asCandidates);
+      }
+      // No cwd → fallback: mtime desc. (This is also what matchIdesForCwd falls
+      // back to when no folder matches, but we avoid invoking the matcher so
+      // an empty / unset cwd doesn't silently change behavior.)
+      return asCandidates.sort(
+        (a, b) => b.lockfileMtime - a.lockfileMtime,
+      );
+    })();
+
+    // Final wire shape — strips authToken explicitly by construction.
+    const body = ordered.map((ide) => ({
+      port: ide.port,
+      ideName: ide.ideName,
+      workspaceFolders: ide.workspaceFolders,
+      transport: ide.transport,
+      lockfilePath: ide.lockfilePath,
+      lockfileMtime: ide.lockfileMtime,
+    }));
+    return c.json(body);
   });
 
   api.post("/sessions/:id/message", async (c) => {

@@ -317,7 +317,30 @@ export type BrowserOutgoingMessage =
   | { type: "mcp_get_status"; client_msg_id?: string }
   | { type: "mcp_toggle"; serverName: string; enabled: boolean; client_msg_id?: string }
   | { type: "mcp_reconnect"; serverName: string; client_msg_id?: string }
-  | { type: "mcp_set_servers"; servers: Record<string, McpServerConfig>; client_msg_id?: string }
+  | {
+      type: "mcp_set_servers";
+      servers: Record<string, McpServerConfig>;
+      /**
+       * Explicit per-key removal signal. Used by `unbindIde` to delete a
+       * previously-upserted MCP server entry. Needed because Codex's
+       * `config/batchWrite` treats `servers: {}` as zero upserts with NO
+       * deletions — an empty record can never express "remove this key".
+       *
+       * Semantics:
+       *   - Codex adapter: for each name in `deleteKeys`, issues a
+       *     `config/value/write` with `value: null, mergeStrategy: "replace"`
+       *     (reusing the pattern at codex-adapter.ts:1478 for invalid-transport
+       *     cleanup). Executes BEFORE `servers` upserts so a single
+       *     `mcp_set_servers` with both fields is well-defined.
+       *   - Claude adapter: IGNORED at the adapter layer. Claude's upstream
+       *     `mcp_set_servers` control_request already clears dynamic entries
+       *     that aren't present in `servers`, so an empty `servers: {}` is a
+       *     full replacement. Stripping `deleteKeys` keeps the wire payload
+       *     compliant with the Claude SDK schema.
+       */
+      deleteKeys?: string[];
+      client_msg_id?: string;
+    }
   | { type: "set_ai_validation"; aiValidationEnabled?: boolean | null; aiValidationAutoApprove?: boolean | null; aiValidationAutoDeny?: boolean | null; client_msg_id?: string }
   | { type: "end_session"; reason?: string; client_msg_id?: string }
   | { type: "stop_task"; task_id: string; client_msg_id?: string }
@@ -360,7 +383,17 @@ export type BrowserIncomingMessageBase =
   | { type: "session_phase"; phase: SessionPhase; previousPhase: SessionPhase }
   | { type: "prompt_suggestion"; suggestions: string[] }
   | { type: "streamlined_text"; text: string }
-  | { type: "streamlined_tool_use_summary"; tool_summary: string };
+  | { type: "streamlined_tool_use_summary"; tool_summary: string }
+  // Broadcast to all browsers when the available-IDE list changes (add/remove/update).
+  // IdePicker instances refetch `GET /api/ide/available` on receipt.
+  //
+  // `generation` is a monotonic counter sourced from ide-discovery's
+  // `scanGeneration`. The client uses it to deduplicate fan-out across
+  // multiple session sockets receiving the same server broadcast: the same
+  // generation means the same underlying discovery scan. A newer generation
+  // is always a fresh event — including legitimate fast add+remove cycles
+  // (e.g. IDE restart) that would be lost under a time-window dedupe.
+  | { type: "ide_list_changed"; generation?: number };
 
 export type BrowserIncomingMessage = BrowserIncomingMessageBase & { seq?: number };
 
@@ -374,6 +407,34 @@ export interface BufferedBrowserEvent {
 // ─── Session State ────────────────────────────────────────────────────────────
 
 export type BackendType = "claude" | "codex";
+
+/**
+ * Binding between a Companion session and a running IDE (via ~/.claude/ide/ lockfile).
+ *
+ * Tri-state semantics on `SessionState.ideBinding`:
+ *   - `undefined` — never set (e.g. Codex session or freshly created Claude session)
+ *   - `null`      — explicitly unbound (BIND-04: lockfile disappeared, FE detects transition)
+ *   - `IdeBinding` — active binding
+ *
+ * `authToken` is present at runtime but NEVER persisted to disk (see Task 8 /
+ * session-store.ts). It is re-read from the lockfile on next bind operation.
+ */
+export interface IdeBinding {
+  /** TCP port from lockfile filename or inside JSON. */
+  port: number;
+  /** Human-readable IDE name, e.g. "Neovim", "Visual Studio Code". */
+  ideName: string;
+  /** Absolute workspace roots reported by the IDE. */
+  workspaceFolders: string[];
+  /** Transport advertised in the lockfile. */
+  transport: "ws-ide" | "sse-ide";
+  /** Auth token from lockfile — runtime only, never persisted. */
+  authToken?: string;
+  /** Epoch milliseconds when the binding was established. */
+  boundAt: number;
+  /** Absolute path to the source `.lock` file. */
+  lockfilePath: string;
+}
 
 export interface SessionState {
   session_id: string;
@@ -428,6 +489,11 @@ export interface SessionState {
   aiValidationAutoDeny?: boolean | null;
   /** If this session is linked to a Linear agent session */
   linearSessionId?: string;
+  /**
+   * Active IDE binding, or explicit-unbind state. See `IdeBinding` docstring
+   * for the tri-state semantics (undefined vs null vs object).
+   */
+  ideBinding?: IdeBinding | null;
 }
 
 // ─── MCP Types ───────────────────────────────────────────────────────────────

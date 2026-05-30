@@ -57,6 +57,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     processedClientMessageIdSet: new Set(),
     lastCliActivityTs: Date.now(),
     stateMachine: new SessionStateMachine("test-session"),
+    dynamicMcpServers: {},
     ...overrides,
   };
 }

@@ -1027,10 +1027,11 @@ describe("Control request/response flow", () => {
     expect(browserMessageCb).not.toHaveBeenCalled();
   });
 
-  it("error control response logs warning and doesn't call resolve", () => {
-    // When the CLI responds with an error control_response, the adapter
-    // should log a warning and NOT call the resolve callback. The pending
-    // request should be cleaned up.
+  it("error control response logs warning and resolves the pending callback with the error", () => {
+    // Issue #5 (cubic-ai PR #652): When the CLI responds with an error
+    // control_response, the adapter should log a warning AND call
+    // pending.resolve() with the error response so callers like
+    // applyMcpSetServers can surface the actual error instead of timing out.
     uuidCounter = 200;
     adapter.send({ type: "mcp_get_status" });
 
@@ -1051,10 +1052,56 @@ describe("Control request/response flow", () => {
     // console.warn should have been called with the error
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining("mcp_status failed"),
-      // Note: console.warn is a mock, we just check the first arg
     );
-    // No mcp_status should have been emitted
-    expect(browserMessageCb).not.toHaveBeenCalled();
+    // The resolve callback IS called with the error response object.
+    // For mcp_status, the resolve handler extracts mcpServers (undefined
+    // on error responses), falls through to an empty array, and emits
+    // mcp_status with servers: [].
+    expect(browserMessageCb).toHaveBeenCalledOnce();
+    const msg = browserMessageCb.mock.calls[0][0];
+    expect(msg.type).toBe("mcp_status");
+    expect(msg.servers).toEqual([]);
+  });
+
+  // Issue #5 (cubic-ai PR #652 review): applyMcpSetServers cannot surface
+  // explicit CLI control errors because handleControlResponse swallows
+  // subtype === "error" responses. The resolve callback is never called,
+  // causing the 10s timeout to fire with a misleading "mcp_set_servers
+  // timeout" error message instead of the actual CLI error text.
+  //
+  // Fix: error responses should call pending.resolve() with the error
+  // response object so applyMcpSetServers can extract and surface the
+  // real error message.
+  it("applyMcpSetServers surfaces CLI error instead of timing out", async () => {
+    // Send an mcp_set_servers request via applyMcpSetServers and simulate
+    // an error response from the CLI. The promise should resolve promptly
+    // with the actual error, NOT fall through to the 10s timeout.
+    uuidCounter = 400;
+    const resultPromise = adapter.applyMcpSetServers({ "test-server": { command: "echo", args: [] } as any });
+
+    // Extract the request_id from the sent control_request
+    const sentRaw = (ws.send.mock.calls[0][0] as string).trim();
+    const sent = JSON.parse(sentRaw);
+    const requestId = sent.request_id;
+
+    // Simulate CLI error response
+    const errorResponse = JSON.stringify({
+      type: "control_response",
+      response: {
+        subtype: "error",
+        request_id: requestId,
+        error: "Server configuration invalid",
+      },
+    });
+    adapter.handleRawMessage(errorResponse);
+
+    // The promise should resolve promptly (not wait for the 10s timeout)
+    const result = await resultPromise;
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      // The error message should contain the actual CLI error, not "timeout"
+      expect(result.error).toContain("Server configuration invalid");
+    }
   });
 
   it("pending control request is removed after successful resolution", () => {

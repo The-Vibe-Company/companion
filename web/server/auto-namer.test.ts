@@ -3,6 +3,11 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 vi.mock("./settings-manager.js", () => ({
   DEFAULT_ANTHROPIC_MODEL: "claude-sonnet-4-6",
   getSettings: vi.fn(),
+  supportsSamplingParams: (model: string) => {
+    const m = model.trim().toLowerCase();
+    if (m === "opus") return false;
+    return !m.startsWith("claude-opus-4-7");
+  },
 }));
 
 import { generateSessionTitle } from "./auto-namer.js";
@@ -248,5 +253,60 @@ describe("generateSessionTitle", () => {
     const [, req] = mockFetch.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(String(req.body)) as { max_tokens: number };
     expect(body.max_tokens).toBe(256);
+  });
+
+  // Regression: Opus 4.7 removed `temperature`/`top_p`/`top_k` — sending any
+  // of them returns 400. auto-namer hits the Anthropic API directly, so the
+  // request body must omit `temperature` when the configured model is 4.7.
+  it("omits temperature when model is claude-opus-4-7", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      ...vi.mocked(settingsManager.getSettings)(),
+      anthropicModel: "claude-opus-4-7",
+    });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ content: [{ type: "text", text: "Title" }] }),
+    });
+
+    await generateSessionTitle("Fix login", "ignored");
+
+    const [, req] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(req.body)) as Record<string, unknown>;
+    expect(body).not.toHaveProperty("temperature");
+    expect(body.model).toBe("claude-opus-4-7");
+  });
+
+  it("omits temperature when model is the 'opus' short alias", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      ...vi.mocked(settingsManager.getSettings)(),
+      anthropicModel: "opus",
+    });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ content: [{ type: "text", text: "Title" }] }),
+    });
+
+    await generateSessionTitle("Fix login", "ignored");
+
+    const [, req] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(req.body)) as Record<string, unknown>;
+    expect(body).not.toHaveProperty("temperature");
+  });
+
+  it("still sends temperature for sonnet/haiku/older opus", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      ...vi.mocked(settingsManager.getSettings)(),
+      anthropicModel: "claude-sonnet-4-6",
+    });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ content: [{ type: "text", text: "Title" }] }),
+    });
+
+    await generateSessionTitle("Fix login", "ignored");
+
+    const [, req] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(req.body)) as { temperature?: number };
+    expect(body.temperature).toBe(0.2);
   });
 });

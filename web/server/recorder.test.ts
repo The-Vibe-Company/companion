@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { SessionRecorder, RecorderManager } from "./recorder.js";
+import { SessionRecorder, RecorderManager, redactAuthTokens } from "./recorder.js";
 
 let tempDir: string;
 
@@ -160,6 +160,71 @@ describe("SessionRecorder", () => {
     rec.close();
     // lineCount doesn't change after close
     expect(rec.lineCount).toBe(6);
+  });
+
+  // IDE authToken redaction — token is stripped from browser payloads and
+  // session-store via stripAuthToken(), but raw transport messages also
+  // carry it in `mcp_set_servers`. Recordings must not become the one
+  // place the token survives on disk.
+  it("redacts IDE authToken values before writing to disk", () => {
+    const rec = new SessionRecorder("sess", "claude", "/cwd", tempDir);
+    const raw = JSON.stringify({
+      type: "control_request",
+      request: {
+        subtype: "mcp_set_servers",
+        servers: {
+          ide: {
+            type: "ws-ide",
+            url: "ws://127.0.0.1:38630",
+            ideName: "Neovim",
+            authToken: "ff3fedac-0efb-4608-a003-66530036024b",
+            scope: "dynamic",
+          },
+        },
+      },
+    });
+    rec.record("out", raw, "cli");
+    const content = readFileSync(rec.filePath, "utf-8");
+    expect(content).not.toContain("ff3fedac-0efb-4608-a003-66530036024b");
+    // The `raw` field is JSON-stringified inside the entry, so quotes are
+    // escaped. Parse the entry back out and inspect the inner payload.
+    const entryLine = content.trim().split("\n").at(-1)!;
+    const entry = JSON.parse(entryLine) as { raw: string };
+    const inner = JSON.parse(entry.raw);
+    expect(inner.request.servers.ide.authToken).toBe("[REDACTED]");
+    expect(inner.request.servers.ide.ideName).toBe("Neovim");
+    expect(inner.request.servers.ide.url).toBe("ws://127.0.0.1:38630");
+    rec.close();
+  });
+});
+
+describe("redactAuthTokens", () => {
+  it("leaves payloads without authToken untouched (fast path)", () => {
+    const raw = '{"type":"user","message":{"content":"hi"}}';
+    expect(redactAuthTokens(raw)).toBe(raw);
+  });
+
+  it("redacts authToken at any nesting depth", () => {
+    const raw = '{"a":{"b":{"authToken":"secret-123"}},"c":"ok"}';
+    expect(redactAuthTokens(raw)).toBe(
+      '{"a":{"b":{"authToken":"[REDACTED]"}},"c":"ok"}',
+    );
+  });
+
+  it("handles multiple authToken occurrences", () => {
+    const raw = '{"a":{"authToken":"s1"},"b":{"authToken":"s2"}}';
+    expect(redactAuthTokens(raw)).toBe(
+      '{"a":{"authToken":"[REDACTED]"},"b":{"authToken":"[REDACTED]"}}',
+    );
+  });
+
+  it("handles escaped characters in token value", () => {
+    const raw = '{"authToken":"a\\"b\\\\c"}';
+    expect(redactAuthTokens(raw)).toBe('{"authToken":"[REDACTED]"}');
+  });
+
+  it("is a no-op on empty / null-ish input", () => {
+    expect(redactAuthTokens("")).toBe("");
   });
 });
 

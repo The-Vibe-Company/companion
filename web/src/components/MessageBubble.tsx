@@ -383,6 +383,10 @@ function ToolGroupBlock({ name, items }: { name: string; items: ToolGroupItem[] 
 function ThinkingBlock({ text }: { text: string }) {
   const normalized = text.trim();
   const [expanded, setExpanded] = useState(false);
+  // Claude Opus 4.7 returns thinking blocks with empty text + non-empty signature
+  // by design (display defaults to "omitted"). Skip rendering rather than showing
+  // a misleading "No thinking text captured." fallback.
+  if (!normalized) return null;
   const lines = normalized.split("\n");
   const isLong = lines.length > 8 || normalized.length > 600;
   const displayed = isLong && !expanded
@@ -406,7 +410,7 @@ function ThinkingBlock({ text }: { text: string }) {
             ),
           }}
         >
-          {displayed || "No thinking text captured."}
+          {displayed}
         </Markdown>
       </div>
       {isLong && !expanded && (
