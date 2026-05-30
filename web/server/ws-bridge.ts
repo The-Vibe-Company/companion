@@ -174,9 +174,16 @@ export class WsBridge {
         pendingPermissions: new Map(p.pendingPermissions || []),
         messageHistory: p.messageHistory || [],
         pendingMessages: p.pendingMessages || [],
-        nextEventSeq: p.nextEventSeq && p.nextEventSeq > 0 ? p.nextEventSeq : 1,
-        eventBuffer: Array.isArray(p.eventBuffer) ? p.eventBuffer : [],
-        lastAckSeq: typeof p.lastAckSeq === "number" ? p.lastAckSeq : 0,
+        // Bump nextEventSeq past any browser-cached seq from previous server
+        // instances. During crash loops the server may send sequenced events
+        // that advance the browser's last_seq beyond the persisted value (the
+        // debounced session write may not flush before the crash). Bumping by
+        // EVENT_BUFFER_LIMIT ensures new events are always accepted.
+        nextEventSeq: (p.nextEventSeq && p.nextEventSeq > 0 ? p.nextEventSeq : 1) + EVENT_BUFFER_LIMIT,
+        // Clear stale event buffer — handleBrowserOpen sends full
+        // message_history, and new events will use the bumped seq range.
+        eventBuffer: [],
+        lastAckSeq: 0,
         processedClientMessageIds: Array.isArray(p.processedClientMessageIds) ? p.processedClientMessageIds : [],
         processedClientMessageIdSet: new Set(
           Array.isArray(p.processedClientMessageIds) ? p.processedClientMessageIds : [],
@@ -907,6 +914,17 @@ export class WsBridge {
     for (const perm of session.pendingPermissions.values()) {
       this.sendToBrowser(ws, { type: "permission_request", request: perm });
     }
+
+    // Send authoritative session_phase so the browser has correct state
+    // machine phase immediately (e.g. "terminated" for restored sessions
+    // after server restart). Without this, the browser relies on sequenced
+    // session_phase events which can be dropped if the browser's cached
+    // last_seq exceeds the server's nextEventSeq after a crash loop.
+    this.sendToBrowser(ws, {
+      type: "session_phase",
+      phase: session.stateMachine.phase,
+      previousPhase: session.stateMachine.phase,
+    });
 
     // Notify if backend is not connected and request relaunch.
     // Treat an attached adapter as "alive" during init — `isConnected()`
