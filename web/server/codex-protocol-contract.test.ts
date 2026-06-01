@@ -62,6 +62,7 @@ describe("Codex protocol compatibility (offline snapshot)", () => {
       "turn/start",
       "turn/interrupt",
       "account/rateLimits/read",
+      "skills/extraRoots/set",
     ]) {
       expect(methods).toContain(method);
     }

@@ -73,10 +73,13 @@ function sanitizeSpawnArgsForLog(args: string[]): string {
   return out.join(" ");
 }
 
-function parseExtraSkillRootsFromEnv(raw?: string): string[] {
+export function parseExtraSkillRootsFromEnv(raw?: string): string[] {
   if (!raw) return [];
+  // Use ';' when present so Windows path lists like
+  // C:\a\skills;D:\b\skills do not get split on drive-letter colons.
+  const separator = raw.includes(";") ? ";" : ":";
   return raw
-    .split(":")
+    .split(separator)
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 }

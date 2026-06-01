@@ -70,7 +70,7 @@ vi.mock("node:fs", async (importOriginal) => {
 // ─── Imports (after mocks) ───────────────────────────────────────────────────
 
 import { SessionStore } from "./session-store.js";
-import { CliLauncher } from "./cli-launcher.js";
+import { CliLauncher, parseExtraSkillRootsFromEnv } from "./cli-launcher.js";
 import { companionBus } from "./event-bus.js";
 
 // ─── Bun.spawn mock ─────────────────────────────────────────────────────────
@@ -510,6 +510,19 @@ describe("launch", () => {
     expect(mockSpawn).not.toHaveBeenCalled();
   });
 
+});
+
+describe("parseExtraSkillRootsFromEnv", () => {
+  it("parses colon-separated roots for POSIX values", () => {
+    expect(parseExtraSkillRootsFromEnv("/a/skills:/b/skills")).toEqual(["/a/skills", "/b/skills"]);
+  });
+
+  it("parses semicolon-separated roots for Windows values without splitting drive letters", () => {
+    expect(parseExtraSkillRootsFromEnv("C:\\agents\\skills;D:\\project\\.agents\\skills")).toEqual([
+      "C:\\agents\\skills",
+      "D:\\project\\.agents\\skills",
+    ]);
+  });
 });
 
 // ─── state management ────────────────────────────────────────────────────────

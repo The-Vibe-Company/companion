@@ -1,7 +1,7 @@
 Codex protocol snapshot used by offline compatibility tests.
 
 Source repository: `https://github.com/openai/codex`
-Source commit: `8a94430bb273623be42b68f144f1ab1df343bb53`
+Source commit: `cf0911076f234e0219bd8d61dd3bc2f80a2df287`
 
 Copied files (stored as `.txt` snapshots to avoid TypeScript import resolution in this repo):
 - `codex-rs/app-server-protocol/schema/typescript/ClientRequest.ts` -> `ClientRequest.ts.txt`
