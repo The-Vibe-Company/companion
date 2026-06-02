@@ -1,0 +1,4 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "ignoreCommand": "echo 'Companion is now a Go control-plane CLI; skipping Vercel preview deploy.' && exit 0"
+}

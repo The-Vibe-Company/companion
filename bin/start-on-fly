@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+log() {
+    printf '[hermes-fly] %s\n' "$*"
+}
+
+die() {
+    log "error: $*"
+    exit 1
+}
+
+auth_key="${TS_AUTHKEY:-${TAILSCALE_AUTHKEY:-}}"
+if [ -z "$auth_key" ]; then
+    die "set TS_AUTHKEY as a Fly secret before deploying"
+fi
+
+hostname="${TS_HOSTNAME:-${FLY_APP_NAME:-hermes-fly}}"
+socket="${TAILSCALE_SOCKET:-/var/run/tailscale/tailscaled.sock}"
+state_dir="${TAILSCALE_STATE_DIR:-/opt/data/tailscale}"
+runtime_home="${HERMES_HOME:-/opt/data/hermes}"
+
+export PATH="/command:${PATH}"
+export HERMES_HOME="$runtime_home"
+export HOME="$runtime_home"
+
+mkdir -p \
+    "$(dirname "$socket")" \
+    "$state_dir" \
+    /run/s6/container_environment \
+    /var/cache/tailscale \
+    "$runtime_home" \
+    /opt/data/.granite \
+    /opt/data/vaults
+chown hermes:hermes /opt/data "$runtime_home" /opt/data/.granite /opt/data/vaults 2>/dev/null || true
+
+if [ -x /opt/hermes/docker/stage2-hook.sh ]; then
+    log "running Hermes container bootstrap"
+    /opt/hermes/docker/stage2-hook.sh
+fi
+
+if [ -f /run/s6/container_environment/AGENT_BROWSER_EXECUTABLE_PATH ]; then
+    export AGENT_BROWSER_EXECUTABLE_PATH="$(cat /run/s6/container_environment/AGENT_BROWSER_EXECUTABLE_PATH)"
+fi
+
+log "starting tailscaled for ${hostname}"
+tailscaled_extra_args=()
+if [ -n "${TAILSCALED_EXTRA_ARGS:-}" ]; then
+    read -r -a tailscaled_extra_args <<< "$TAILSCALED_EXTRA_ARGS"
+fi
+
+tailscaled \
+    --state="${state_dir}/tailscaled.state" \
+    --socket="$socket" \
+    "${tailscaled_extra_args[@]}" &
+
+for _ in $(seq 1 50); do
+    if [ -S "$socket" ]; then
+        break
+    fi
+    sleep 0.1
+done
+
+if [ ! -S "$socket" ]; then
+    die "tailscaled did not create ${socket}"
+fi
+
+tailscale_extra_args=()
+if [ -n "${TS_EXTRA_ARGS:-}" ]; then
+    read -r -a tailscale_extra_args <<< "$TS_EXTRA_ARGS"
+fi
+
+tailscale --socket="$socket" up \
+    --auth-key="$auth_key" \
+    --hostname="$hostname" \
+    --accept-dns="${TS_ACCEPT_DNS:-false}" \
+    "${tailscale_extra_args[@]}"
+
+if [ "${HERMES_DASHBOARD_ENABLED:-true}" = "true" ] && [ "${HERMES_DASHBOARD_MODE:-serve}" = "serve" ]; then
+    port="${HERMES_DASHBOARD_PORT:-9119}"
+    log "configuring Tailscale Serve for dashboard port ${port}"
+
+    if tailscale --socket="$socket" serve --yes --bg "$port"; then
+        tailscale --socket="$socket" serve status || true
+    else
+        log "Tailscale Serve setup failed; enable HTTPS certificates in the tailnet or use HERMES_DASHBOARD_MODE=tailnet-port"
+    fi
+fi
+
+ln -sf /opt/hermes/.venv/bin/hermes /usr/local/bin/hermes
+
+cd "$runtime_home"
+
+if [ -x /command/s6-setuidgid ]; then
+    exec /command/s6-setuidgid hermes /usr/local/bin/hermes-fly-run-process "$@"
+fi
+
+exec /usr/local/bin/hermes-fly-run-process "$@"

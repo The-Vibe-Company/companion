@@ -1,0 +1,614 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+log() {
+    printf '[hermes-fly] %s\n' "$*"
+}
+
+child_pids=()
+main_pid=""
+
+select_python() {
+    if [ -n "${HERMES_PYTHON:-}" ] && [ -x "$HERMES_PYTHON" ]; then
+        printf '%s\n' "$HERMES_PYTHON"
+    elif [ -x /opt/hermes/.venv/bin/python ]; then
+        printf '%s\n' /opt/hermes/.venv/bin/python
+    elif command -v python3 >/dev/null 2>&1; then
+        command -v python3
+    else
+        command -v python
+    fi
+}
+
+PYTHON_BIN="$(select_python)"
+
+add_child() {
+    child_pids+=("$1")
+}
+
+stop_children() {
+    if [ -n "$main_pid" ] && kill -0 "$main_pid" 2>/dev/null; then
+        kill -TERM "$main_pid" 2>/dev/null || true
+    fi
+
+    for pid in "${child_pids[@]}"; do
+        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+            kill -TERM "$pid" 2>/dev/null || true
+        fi
+    done
+}
+
+json_default_env() {
+    "$PYTHON_BIN" - <<'PY'
+import json
+import os
+import shlex
+
+cfg = json.loads(os.environ.get("GRANITE_DEFAULT_VAULT_JSON") or "{}")
+defaults = {
+    "enabled": True,
+    "path": "/opt/data/.granite",
+    "name": "Companion Vault",
+    "mcp_enabled": True,
+    "mcp_name": "granite",
+    "mcp_role": "write",
+    "sync_serve": True,
+    "sync_port": 8765,
+    "write_serve": True,
+    "write_port": 3321,
+    "sync_interval": 30,
+}
+cfg = {**defaults, **cfg}
+
+def value(key):
+    raw = cfg[key]
+    if isinstance(raw, bool):
+        return "true" if raw else "false"
+    return str(raw)
+
+for key in defaults:
+    env_key = "DEFAULT_VAULT_" + key.upper()
+    print(f"{env_key}={shlex.quote(value(key))}")
+PY
+}
+
+write_connection_rows() {
+    "$PYTHON_BIN" - <<'PY'
+import json
+import os
+import sys
+
+connections = json.loads(os.environ.get("GRANITE_VAULT_CONNECTIONS_JSON") or "[]")
+sep = "\x1f"
+fields = [
+    "name",
+    "mode",
+    "mcp_name",
+    "host",
+    "url",
+    "local_path",
+    "sync_port",
+    "sync_interval",
+    "remote_name",
+    "token_secret_name",
+    "write_port",
+    "role",
+    "direction",
+    "mcp_role",
+]
+
+for connection in connections:
+    row = []
+    for field in fields:
+        row.append(str(connection.get(field, "")).replace(sep, " ").replace("\n", " "))
+    sys.stdout.write(sep.join(row) + "\n")
+PY
+}
+
+configure_hermes_model() {
+    "$PYTHON_BIN" - <<'PY'
+from pathlib import Path
+import json
+import os
+import stat
+import sys
+import yaml
+
+model_cfg = json.loads(os.environ.get("HERMES_MODEL_JSON") or "{}")
+if not model_cfg or model_cfg.get("enabled", True) is False:
+    sys.exit(0)
+
+home = Path(os.environ.get("HERMES_HOME") or "/opt/data/hermes")
+config_path = home / "config.yaml"
+env_path = home / ".env"
+config_path.parent.mkdir(parents=True, exist_ok=True)
+
+if config_path.exists():
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+else:
+    config = {}
+
+model = config.get("model")
+if not isinstance(model, dict):
+    model = {}
+
+for source, target in [
+    ("provider", "provider"),
+    ("default", "default"),
+    ("base_url", "base_url"),
+]:
+    value = model_cfg.get(source)
+    if value:
+        model[target] = str(value)
+
+config["model"] = model
+config_path.write_text(
+    yaml.safe_dump(config, sort_keys=False, allow_unicode=False),
+    encoding="utf-8",
+)
+
+provider_env = {
+    "anthropic": "ANTHROPIC_API_KEY",
+    "google": "GOOGLE_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
+    "xai": "XAI_API_KEY",
+}
+
+env_updates = {}
+provider = str(model_cfg.get("provider") or "").lower()
+secret_name = model_cfg.get("api_key_secret_name")
+api_key_env = model_cfg.get("api_key_env") or provider_env.get(provider)
+if secret_name and api_key_env and os.environ.get(str(secret_name)):
+    env_updates[str(api_key_env)] = os.environ[str(secret_name)]
+
+for env_name, env_secret_name in (model_cfg.get("secrets") or {}).items():
+    if os.environ.get(str(env_secret_name)):
+        env_updates[str(env_name)] = os.environ[str(env_secret_name)]
+
+if env_updates:
+    existing = {}
+    order = []
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            if not line or line.lstrip().startswith("#") or "=" not in line:
+                order.append((None, line))
+                continue
+            key, value = line.split("=", 1)
+            existing[key] = value
+            order.append((key, line))
+
+    for key, value in env_updates.items():
+        existing[key] = value
+        if all(item_key != key for item_key, _ in order):
+            order.append((key, ""))
+
+    lines = []
+    for key, raw in order:
+        if key is None:
+            lines.append(raw)
+        elif key in existing:
+            lines.append(f"{key}={existing[key]}")
+            del existing[key]
+    for key, value in existing.items():
+        lines.append(f"{key}={value}")
+
+    env_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    env_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
+PY
+}
+
+configure_hermes_identity() {
+    "$PYTHON_BIN" - <<'PY'
+from pathlib import Path
+import json
+import os
+import sys
+
+identity_cfg = json.loads(os.environ.get("HERMES_IDENTITY_JSON") or "{}")
+if not identity_cfg or identity_cfg.get("enabled", True) is False:
+    sys.exit(0)
+
+soul = str(identity_cfg.get("soul") or "")
+if not soul.strip():
+    sys.exit(0)
+
+home = Path(os.environ.get("HERMES_HOME") or "/opt/data/hermes")
+soul_path = home / "SOUL.md"
+home.mkdir(parents=True, exist_ok=True)
+
+overwrite = bool(identity_cfg.get("overwrite", True))
+if soul_path.exists() and not overwrite:
+    sys.exit(0)
+
+soul_path.write_text(soul.rstrip() + "\n", encoding="utf-8")
+PY
+}
+
+update_vault_name() {
+    vault_path="$1"
+    vault_name="$2"
+
+    "$PYTHON_BIN" - "$vault_path/granite.yml" "$vault_name" <<'PY'
+from pathlib import Path
+import json
+import sys
+
+path = Path(sys.argv[1])
+value = json.dumps(sys.argv[2])
+lines = path.read_text(encoding="utf-8").splitlines()
+for index, line in enumerate(lines):
+    if line.startswith("vault_name:"):
+        lines[index] = f"vault_name: {value}"
+        break
+else:
+    lines.insert(0, f"vault_name: {value}")
+path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+}
+
+ensure_default_vault() {
+    vault_path="$1"
+    vault_name="$2"
+
+    if [ "$vault_path" != "/opt/data/.granite" ]; then
+        log "default Granite vault path must be /opt/data/.granite for now; got ${vault_path}"
+        return 2
+    fi
+
+    if [ ! -f "$vault_path/granite.yml" ]; then
+        log "initializing default Granite vault at ${vault_path}"
+        if [ -n "${GRANITE_TEMPLATE:-}" ]; then
+            HOME=/opt/data granite init --template "$GRANITE_TEMPLATE"
+        else
+            HOME=/opt/data granite init
+        fi
+    fi
+
+    if [ -f "$vault_path/granite.yml" ]; then
+        update_vault_name "$vault_path" "$vault_name"
+    fi
+}
+
+ensure_hermes_config() {
+    config_path="${HERMES_HOME:-/opt/data}/config.yaml"
+    if [ ! -f "$config_path" ]; then
+        log "Hermes config not found at ${config_path}; cannot configure Granite MCP"
+        return 1
+    fi
+}
+
+add_granite_stdio_mcp() {
+    name="$1"
+    vault_path="$2"
+    role="${3:-write}"
+    config_path="${HERMES_HOME:-/opt/data}/config.yaml"
+
+    ensure_hermes_config || return 0
+
+    log "configuring Hermes MCP ${name} (${role}) -> ${vault_path}"
+    "$PYTHON_BIN" - "$config_path" "$name" "$vault_path" "$role" <<'PY'
+from pathlib import Path
+import sys
+import yaml
+
+config_path = Path(sys.argv[1])
+name = sys.argv[2]
+vault = sys.argv[3]
+role = sys.argv[4]
+config = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+servers = config.setdefault("mcp_servers", {})
+servers[name] = {
+    "command": "granite",
+    "args": ["mcp", "--vault", vault, "--role", role],
+}
+config_path.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=False), encoding="utf-8")
+PY
+}
+
+add_granite_http_mcp() {
+    name="$1"
+    url="$2"
+    token_env="$3"
+    config_path="${HERMES_HOME:-/opt/data}/config.yaml"
+
+    ensure_hermes_config || return 0
+
+    log "configuring Hermes MCP ${name} -> ${url}"
+    "$PYTHON_BIN" - "$config_path" "$name" "$url" "$token_env" <<'PY'
+from pathlib import Path
+import sys
+import yaml
+
+config_path = Path(sys.argv[1])
+name = sys.argv[2]
+url = sys.argv[3]
+token_env = sys.argv[4]
+config = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+servers = config.setdefault("mcp_servers", {})
+server = {"url": url}
+if token_env:
+    server["headers"] = {"Authorization": f"Bearer ${{{token_env}}}"}
+servers[name] = server
+config_path.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=False), encoding="utf-8")
+PY
+}
+
+resolve_tailnet_url() {
+    host="$1"
+    port="$2"
+    path="${3:-}"
+
+    if [ -z "$host" ]; then
+        return 1
+    fi
+
+    log "resolving ${host} through Tailscale"
+    ip="$(
+        tailscale --socket="${TAILSCALE_SOCKET:-/var/run/tailscale/tailscaled.sock}" ip -4 "$host" | head -n 1
+    )"
+    if [ -z "$ip" ]; then
+        log "could not resolve Tailscale host ${host}"
+        return 2
+    fi
+
+    printf 'http://%s:%s%s\n' "$ip" "$port" "$path"
+}
+
+start_default_vault_services() {
+    if [ "${DEFAULT_VAULT_SYNC_SERVE:-true}" = "true" ]; then
+        log "starting default Granite sync server on 0.0.0.0:${DEFAULT_VAULT_SYNC_PORT}"
+        granite sync serve --vault "$DEFAULT_VAULT_PATH" --host 0.0.0.0 --port "$DEFAULT_VAULT_SYNC_PORT" &
+        add_child "$!"
+    fi
+
+    if [ "${DEFAULT_VAULT_WRITE_SERVE:-true}" = "true" ]; then
+        log "starting default Granite write MCP on 0.0.0.0:${DEFAULT_VAULT_WRITE_PORT}"
+        granite mcp \
+            --vault "$DEFAULT_VAULT_PATH" \
+            --transport http \
+            --role write \
+            --host 0.0.0.0 \
+            --port "$DEFAULT_VAULT_WRITE_PORT" \
+            --json-response &
+        add_child "$!"
+    fi
+}
+
+configure_sync_connection() {
+    name="$1"
+    mcp_name="$2"
+    host="$3"
+    url="$4"
+    local_path="$5"
+    sync_port="$6"
+    sync_interval="$7"
+    remote_name="$8"
+    token_secret_name="$9"
+    role="${10:-read}"
+    direction="${11:-}"
+    mcp_role="${12:-}"
+
+    if [ -z "$local_path" ]; then
+        local_path="/opt/data/vaults/${name}"
+    fi
+    if [ -z "$sync_port" ]; then
+        sync_port="8765"
+    fi
+    if [ -z "$sync_interval" ]; then
+        sync_interval="30"
+    fi
+    if [ -z "$remote_name" ]; then
+        remote_name="$name"
+    fi
+    if [ "$role" != "read" ] && [ "$role" != "write" ]; then
+        log "sync vault connection ${name} has invalid role=${role}; expected read or write"
+        return 2
+    fi
+    if [ -z "$direction" ]; then
+        if [ "$role" = "read" ]; then
+            direction="pull"
+        else
+            direction="run"
+        fi
+    fi
+    if [ "$direction" != "pull" ] && [ "$direction" != "run" ]; then
+        log "sync vault connection ${name} has invalid direction=${direction}; expected pull or run"
+        return 2
+    fi
+    if [ "$role" = "read" ] && [ "$direction" != "pull" ]; then
+        log "sync vault connection ${name} cannot use direction=${direction} with role=read"
+        return 2
+    fi
+    if [ -z "$mcp_role" ]; then
+        mcp_role="$role"
+    fi
+    if [ "$mcp_role" != "read" ] && [ "$mcp_role" != "write" ]; then
+        log "sync vault connection ${name} has invalid mcp_role=${mcp_role}; expected read or write"
+        return 2
+    fi
+    if [ "$role" = "read" ] && [ "$mcp_role" = "write" ]; then
+        log "sync vault connection ${name} cannot expose a write MCP for a read sync grant"
+        return 2
+    fi
+
+    token="${!token_secret_name:-}"
+    if [ -z "$token" ]; then
+        log "sync vault connection ${name} requires ${token_secret_name}"
+        return 2
+    fi
+
+    mkdir -p "$local_path"
+
+    if [ -z "$url" ]; then
+        url="$(resolve_tailnet_url "$host" "$sync_port")"
+    fi
+
+    granite sync remote rm --vault "$local_path" "$remote_name" >/dev/null 2>&1 || true
+    granite sync remote add --vault "$local_path" "$remote_name" "$url" --token "$token"
+
+    if [ "$direction" = "pull" ]; then
+        log "pulling initial Granite sync for ${name}"
+        granite sync pull --vault "$local_path" "$remote_name" --token "$token" || true
+    else
+        log "running initial bidirectional Granite sync for ${name}"
+        granite sync run --vault "$local_path" "$remote_name" --token "$token" || true
+    fi
+
+    if [ -f "$local_path/granite.yml" ]; then
+        add_granite_stdio_mcp "$mcp_name" "$local_path" "$mcp_role"
+    else
+        log "sync connection ${name} has no granite.yml yet; MCP will be available after a successful pull"
+    fi
+
+    log "starting Granite sync watch for ${name} (${direction})"
+    granite sync watch --vault "$local_path" "$remote_name" --interval "$sync_interval" --direction "$direction" &
+    add_child "$!"
+}
+
+configure_write_connection() {
+    name="$1"
+    mcp_name="$2"
+    host="$3"
+    url="$4"
+    token_secret_name="$5"
+    write_port="$6"
+
+    if [ -z "$write_port" ]; then
+        write_port="3321"
+    fi
+
+    token="${!token_secret_name:-}"
+    if [ -n "$token_secret_name" ] && [ -z "$token" ]; then
+        log "write vault connection ${name} requires ${token_secret_name}"
+        return 2
+    fi
+
+    if [ -z "$url" ]; then
+        url="$(resolve_tailnet_url "$host" "$write_port" "/mcp")"
+    fi
+
+    add_granite_http_mcp "$mcp_name" "$url" "$token_secret_name"
+}
+
+configure_vault_connections() {
+    connections_file="/tmp/hermes-vault-connections.tsv"
+    write_connection_rows > "$connections_file"
+
+    while IFS=$'\037' read -r name mode mcp_name host url local_path sync_port sync_interval remote_name token_secret_name write_port role direction mcp_role; do
+        [ -n "$name" ] || continue
+
+        case "$mode" in
+            sync)
+                configure_sync_connection \
+                    "$name" "$mcp_name" "$host" "$url" "$local_path" "$sync_port" \
+                    "$sync_interval" "$remote_name" "$token_secret_name" "$role" "$direction" "$mcp_role"
+                ;;
+            write)
+                configure_write_connection "$name" "$mcp_name" "$host" "$url" "$token_secret_name" "$write_port"
+                ;;
+            *)
+                log "unknown vault connection mode ${mode} for ${name}"
+                return 2
+                ;;
+        esac
+    done < "$connections_file"
+}
+
+bootstrap_granite() {
+    if [ "${GRANITE_ENABLED:-true}" != "true" ]; then
+        log "Granite disabled"
+        return
+    fi
+
+    if ! command -v granite >/dev/null 2>&1; then
+        log "granite CLI not found; skipping Granite bootstrap"
+        return
+    fi
+
+    eval "$(json_default_env)"
+
+    if [ "${DEFAULT_VAULT_ENABLED:-true}" = "true" ]; then
+        export GRANITE_VAULT="$DEFAULT_VAULT_PATH"
+        ensure_default_vault "$DEFAULT_VAULT_PATH" "$DEFAULT_VAULT_NAME"
+
+        if [ "${DEFAULT_VAULT_MCP_ENABLED:-true}" = "true" ]; then
+            add_granite_stdio_mcp "$DEFAULT_VAULT_MCP_NAME" "$DEFAULT_VAULT_PATH" "$DEFAULT_VAULT_MCP_ROLE"
+        fi
+
+        start_default_vault_services
+    else
+        log "default Granite vault disabled"
+    fi
+
+    configure_vault_connections
+}
+
+start_dashboard() {
+    enabled="${HERMES_DASHBOARD_ENABLED:-true}"
+    if [ "$enabled" != "true" ]; then
+        log "dashboard disabled"
+        return
+    fi
+
+    mode="${HERMES_DASHBOARD_MODE:-serve}"
+    port="${HERMES_DASHBOARD_PORT:-9119}"
+    insecure="${HERMES_DASHBOARD_INSECURE:-false}"
+
+    case "$mode" in
+        serve|tailnet-port)
+            if [ -n "${HERMES_DASHBOARD_HOST:-}" ]; then
+                host="$HERMES_DASHBOARD_HOST"
+            else
+                host="0.0.0.0"
+            fi
+            ;;
+        off)
+            log "dashboard mode is off"
+            return
+            ;;
+        *)
+            log "unknown HERMES_DASHBOARD_MODE=${mode}; expected serve, tailnet-port, or off"
+            return 2
+            ;;
+    esac
+
+    args=(dashboard --host "$host" --port "$port" --no-open)
+    if [ "$insecure" = "true" ] || [ "$insecure" = "1" ] || [ "$insecure" = "yes" ]; then
+        args+=(--insecure)
+    fi
+
+    log "starting dashboard on ${host}:${port}"
+    hermes "${args[@]}" &
+    add_child "$!"
+}
+
+run_main() {
+    if [ "$#" -eq 0 ]; then
+        set -- gateway run
+    fi
+
+    if command -v "$1" >/dev/null 2>&1; then
+        "$@"
+    else
+        hermes "$@"
+    fi
+}
+
+trap 'stop_children' INT TERM
+
+configure_hermes_model
+configure_hermes_identity
+bootstrap_granite
+start_dashboard
+run_main "$@" &
+main_pid="$!"
+
+set +e
+wait "$main_pid"
+status="$?"
+set -e
+
+stop_children
+exit "$status"

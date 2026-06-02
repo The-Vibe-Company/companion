@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+log() {
+    printf '[companion-open-webui] %s\n' "$*"
+}
+
+die() {
+    log "error: $*"
+    exit 1
+}
+
+auth_key="${TS_AUTHKEY:-${TAILSCALE_AUTHKEY:-}}"
+if [ -z "$auth_key" ]; then
+    die "set TS_AUTHKEY as a Fly secret before deploying"
+fi
+
+hostname="${OPEN_WEBUI_TS_HOSTNAME:-${TS_HOSTNAME:-${FLY_APP_NAME:-companion-open-webui}}}"
+socket="${TAILSCALE_SOCKET:-/var/run/tailscale/tailscaled.sock}"
+state_dir="${TAILSCALE_STATE_DIR:-/app/backend/data/tailscale}"
+port="${PORT:-8080}"
+
+mkdir -p \
+    "$(dirname "$socket")" \
+    "$state_dir" \
+    /app/backend/data/cache \
+    /app/backend/data
+
+log "starting tailscaled for ${hostname}"
+tailscaled_extra_args=()
+if [ -n "${TAILSCALED_EXTRA_ARGS:-}" ]; then
+    read -r -a tailscaled_extra_args <<< "$TAILSCALED_EXTRA_ARGS"
+fi
+
+tailscaled \
+    --state="${state_dir}/tailscaled.state" \
+    --socket="$socket" \
+    "${tailscaled_extra_args[@]}" &
+
+for _ in $(seq 1 50); do
+    if [ -S "$socket" ]; then
+        break
+    fi
+    sleep 0.1
+done
+
+if [ ! -S "$socket" ]; then
+    die "tailscaled did not create ${socket}"
+fi
+
+tailscale_extra_args=()
+if [ -n "${TS_EXTRA_ARGS:-}" ]; then
+    read -r -a tailscale_extra_args <<< "$TS_EXTRA_ARGS"
+fi
+
+tailscale --socket="$socket" up \
+    --auth-key="$auth_key" \
+    --hostname="$hostname" \
+    --accept-dns="${TS_ACCEPT_DNS:-false}" \
+    "${tailscale_extra_args[@]}"
+
+if [ "${OPEN_WEBUI_TAILSCALE_SERVE:-true}" = "true" ]; then
+    log "configuring Tailscale Serve for Open WebUI port ${port}"
+    if tailscale --socket="$socket" serve --yes --bg "$port"; then
+        tailscale --socket="$socket" serve status || true
+    else
+        log "Tailscale Serve setup failed; enable HTTPS certificates in the tailnet or use the tailnet port directly"
+    fi
+fi
+
+cd /app/backend
+
+if [ "$#" -eq 0 ]; then
+    set -- bash start.sh
+fi
+
+exec "$@"

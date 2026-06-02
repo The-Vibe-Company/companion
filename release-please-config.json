@@ -1,24 +1,10 @@
 {
   "packages": {
     ".": {
-      "package-name": "the-companion",
-      "release-type": "node",
-      "changelog-path": "CHANGELOG.md",
-      "bump-minor-pre-major": true,
-      "extra-files": ["web/package.json"],
-      "changelog-sections": [
-        { "type": "feat", "section": "Features" },
-        { "type": "fix", "section": "Bug Fixes" },
-        { "type": "perf", "section": "Performance Improvements" },
-        { "type": "revert", "section": "Reverts" },
-        { "type": "refactor", "section": "Code Refactoring", "hidden": false },
-        { "type": "chore", "section": "Miscellaneous Chores", "hidden": true },
-        { "type": "docs", "section": "Documentation", "hidden": true },
-        { "type": "style", "section": "Styles", "hidden": true },
-        { "type": "test", "section": "Tests", "hidden": true },
-        { "type": "build", "section": "Build System", "hidden": true },
-        { "type": "ci", "section": "Continuous Integration", "hidden": true }
-      ]
+      "release-type": "simple",
+      "package-name": "companion",
+      "include-component-in-tag": false,
+      "include-v-in-tag": true
     }
   }
 }

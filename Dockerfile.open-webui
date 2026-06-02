@@ -1,0 +1,28 @@
+FROM docker.io/tailscale/tailscale:stable AS tailscale
+FROM ghcr.io/open-webui/open-webui:main
+
+USER root
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates iptables && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=tailscale /usr/local/bin/tailscale /usr/local/bin/tailscale
+COPY --from=tailscale /usr/local/bin/tailscaled /usr/local/bin/tailscaled
+
+COPY --chmod=0755 bin/start-open-webui-on-fly /usr/local/bin/companion-open-webui-start
+
+ENV PORT=8080
+ENV ENABLE_OPENAI_API=true
+ENV ENABLE_OLLAMA_API=false
+ENV ENABLE_PERSISTENT_CONFIG=false
+ENV OPEN_WEBUI_TAILSCALE_SERVE=true
+ENV TAILSCALE_STATE_DIR=/app/backend/data/tailscale
+ENV TS_ACCEPT_DNS=true
+ENV HF_HOME=/app/backend/data/cache/huggingface
+ENV SENTENCE_TRANSFORMERS_HOME=/app/backend/data/cache/sentence-transformers
+ENV TIKTOKEN_CACHE_DIR=/app/backend/data/cache/tiktoken
+ENV USER_AGENT=CompanionOpenWebUI/1.0
+
+ENTRYPOINT ["/usr/local/bin/companion-open-webui-start"]
+CMD ["bash", "start.sh"]

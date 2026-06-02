@@ -1,0 +1,113 @@
+[defaults]
+region = "cdg"
+volume_name = "data"
+volume_size_gb = 3
+memory = "4gb"
+cpus = 2
+dashboard_mode = "serve"
+dashboard_host = "0.0.0.0"
+dashboard_insecure = true
+dashboard_port = 9119
+granite_enabled = true
+tailscale_authkey_secret_name = "TS_AUTHKEY"
+ts_extra_args = "--netfilter-mode=off"
+
+[defaults.model]
+enabled = true
+provider = "openrouter"
+default = "google/gemini-3.5-flash"
+base_url = "https://openrouter.ai/api/v1"
+api_key_secret_name = "OPENROUTER_API_KEY"
+api_key_env = "OPENROUTER_API_KEY"
+
+[defaults.api_server]
+enabled = true
+host = "0.0.0.0"
+port = 8642
+
+[open_webui]
+enabled = true
+id = "open-webui"
+fly_app = "tvc-companion-webui"
+tailscale_hostname = "companion-webui"
+region = "cdg"
+volume_name = "open_webui_data"
+volume_size_gb = 5
+memory = "4gb"
+cpus = 2
+port = 8080
+name = "Companion"
+tailscale_serve = true
+tailscale_accept_dns = true
+tailscale_authkey_secret_name = "TS_AUTHKEY"
+webui_secret_key_secret_name = "WEBUI_SECRET_KEY"
+openai_api_keys_secret_name = "OPENAI_API_KEYS"
+ts_extra_args = "--netfilter-mode=off"
+
+[defaults.default_vault]
+enabled = true
+path = "/opt/data/.granite"
+mcp_enabled = true
+mcp_name = "granite"
+mcp_role = "write"
+sync_serve = true
+sync_port = 8765
+write_serve = true
+write_port = 3321
+sync_interval = 30
+
+[[agents]]
+id = "companion-test"
+fly_app = "tvc-companion-test"
+tailscale_hostname = "companion-test"
+
+[agents.default_vault]
+name = "Companion Test"
+
+[[agents]]
+id = "companion-lab"
+fly_app = "tvc-companion-lab"
+tailscale_hostname = "companion-lab"
+
+[agents.default_vault]
+name = "Companion Lab"
+
+[[agents]]
+id = "victor"
+fly_app = "tvc-companion-victor"
+tailscale_hostname = "victor"
+
+[agents.default_vault]
+name = "Victor"
+
+[agents.identity]
+enabled = true
+path = "identities/victor/SOUL.md"
+overwrite = true
+
+[[agents]]
+id = "writer"
+fly_app = "tvc-companion-writer"
+tailscale_hostname = "companion-writer"
+
+[agents.default_vault]
+enabled = true
+name = "Companion Writer"
+sync_serve = false
+write_serve = false
+
+[agents.api_server]
+open_webui_enabled = false
+
+[[agents.vault_connections]]
+name = "companion-test"
+mode = "sync"
+role = "write"
+host = "companion-test"
+sync_port = 8765
+token_secret_name = "GRANITE_COMPANION_TEST_WRITE_TOKEN"
+mcp_name = "granite_companion_test"
+
+# For a pull-only replica, change this connection to:
+# role = "read"
+# token_secret_name = "GRANITE_COMPANION_TEST_READ_TOKEN"

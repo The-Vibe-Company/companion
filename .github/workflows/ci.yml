@@ -6,93 +6,78 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
-  quality:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
         with:
-          fetch-depth: 0
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        working-directory: web
-        run: bun install
-
-      - name: Dead code guard (unused locals/params)
-        working-directory: web
-        run: bun run deadcode:check
-
-      - name: DRY guard (duplicate code threshold)
-        working-directory: web
-        run: bun run dry:check
-
-  test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        working-directory: web
-        run: bun install
-
-      - name: Typecheck
-        working-directory: web
-        run: bun run typecheck
-
-      - name: Codex protocol contract (offline)
-        working-directory: web
-        run: bun run test:codex-contract
+          go-version-file: go.mod
+          cache: true
 
       - name: Run tests
-        working-directory: web
-        run: bun run test
+        run: go test ./...
 
-      - name: Build frontend
-        working-directory: web
-        run: bun run build
+      - name: Validate shell scripts
+        run: |
+          sh -n install.sh
+          bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly
+
+      - name: Verify installable CLI package
+        run: |
+          set -euo pipefail
+          bin_dir="$(mktemp -d)"
+          GOBIN="$bin_dir" go install ./cmd/companion
+          "$bin_dir/companion" version
+
+      - name: Validate sample config
+        run: go run ./cmd/companion validate --config companion.toml
+
+      - name: Render plan
+        run: go run ./cmd/companion plan --config companion.toml
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build release archive
         env:
-          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
-          VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST || 'https://us.i.posthog.com' }}
-
-  platform:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        working-directory: platform
-        run: bun install
-
-      - name: Typecheck
-        working-directory: platform
-        run: bun run typecheck
-
-      - name: Run tests
-        working-directory: platform
-        run: bun run test
-
-      - name: Build
-        working-directory: platform
-        run: bun run build
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ci-${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          CGO_ENABLED=0 go build \
+            -trimpath \
+            -ldflags="-s -w -X github.com/The-Vibe-Company/companion/internal/version.Version=${VERSION}" \
+            -o dist/companion \
+            ./cmd/companion
+          tar -C dist -czf "dist/companion_${GOOS}_${GOARCH}.tar.gz" companion
+          sha256sum "dist/companion_${GOOS}_${GOARCH}.tar.gz" > "dist/companion_${GOOS}_${GOARCH}.tar.gz.sha256"

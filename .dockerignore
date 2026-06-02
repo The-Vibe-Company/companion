@@ -1,0 +1,7 @@
+fly.*.toml
+bin/__pycache__/
+.companion/
+.env
+/companion
+.git/
+.DS_Store
