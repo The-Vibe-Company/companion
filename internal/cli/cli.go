@@ -100,7 +100,7 @@ token_env = "FLY_API_TOKEN"
 # mode = "api"
 # api_base_url = "http://127.0.0.1:3001/fly/v1"
 
-[tailscale.tvc]
+[tailscale.default]
 api_key_env = "TAILSCALE_API_KEY"
 auth_key_secret = "TS_AUTHKEY"
 # mode = "api"
@@ -154,10 +154,10 @@ sync_interval = 30
 enabled = true
 id = "open-webui"
 runtime = "fly.default"
-network = "tailscale.tvc"
+network = "tailscale.default"
 lifecycle = "present"
 protect = true
-fly_app = "tvc-companion-webui"
+fly_app = "example-companion-webui"
 tailscale_hostname = "companion-webui"
 region = "cdg"
 volume_name = "open_webui_data"
@@ -173,23 +173,23 @@ webui_secret_key_secret_name = "WEBUI_SECRET_KEY"
 openai_api_keys_secret_name = "OPENAI_API_KEYS"
 ts_extra_args = "--netfilter-mode=off"
 `,
-				filepath.Join("agents", "victor.toml"): `[agent]
-id = "victor"
+				filepath.Join("agents", "sample.toml"): `[agent]
+id = "sample"
 runtime = "fly.default"
-network = "tailscale.tvc"
+network = "tailscale.default"
 model_provider = "openrouter.default"
 lifecycle = "present"
 protect = true
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
-identity = "identities/victor/SOUL.md"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
+identity = "identities/sample/SOUL.md"
 
 [default_vault]
 enabled = true
-name = "Victor"
+name = "Sample Agent"
 mcp_role = "write"
 `,
-				filepath.Join("identities", "victor", "SOUL.md"): identityTemplate("Victor"),
+				filepath.Join("identities", "sample", "SOUL.md"): identityTemplate("Sample Agent"),
 			}
 			for name, contents := range files {
 				path := filepath.Join(root, name)
@@ -294,7 +294,7 @@ func providerRefForImport(ws *workspace.Workspace, address importer.Address) str
 		if ws.Config.OpenWebUI.Enabled {
 			return ws.Config.OpenWebUI.Network
 		}
-		return "tailscale.tvc"
+		return "tailscale.default"
 	}
 	if address.Group == "agent" || address.Group == "agent_data" || address.Group == "default" {
 		if agent, err := selectSingleAgent(ws.Config, address.Name); err == nil {
@@ -1420,7 +1420,7 @@ func humanNameFromID(id string) string {
 func identityTemplate(name string) string {
 	return fmt.Sprintf(`# %s Identity
 
-You are %s, a Hermes companion agent operated by The Vibe Company.
+You are %s, a Hermes companion agent operated by its workspace owner.
 
 ## Baseline
 - Be direct, calm, and technically precise.

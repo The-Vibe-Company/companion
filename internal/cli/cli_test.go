@@ -18,16 +18,16 @@ import (
 func TestImportAndStateListCommands(t *testing.T) {
 	root := t.TempDir()
 	writeTestWorkspace(t, root, map[string]string{
-		"companion-test": `
+		"example-peer": `
 [agent]
-id = "companion-test"
-fly_app = "tvc-companion-test"
-tailscale_hostname = "companion-test"
+id = "example-peer"
+fly_app = "example-peer-app"
+tailscale_hostname = "example-peer"
 `,
 	})
 
 	importCmd := NewRootCommand()
-	importCmd.SetArgs([]string{"--workspace", root, "import", "fly_app.agent.companion-test", "tvc-companion-test", "--attrs", "region=cdg"})
+	importCmd.SetArgs([]string{"--workspace", root, "import", "fly_app.agent.example-peer", "example-peer-app", "--attrs", "region=cdg"})
 	if err := importCmd.Execute(); err != nil {
 		t.Fatalf("import command: %v", err)
 	}
@@ -39,7 +39,7 @@ tailscale_hostname = "companion-test"
 	if err := listCmd.Execute(); err != nil {
 		t.Fatalf("state list command: %v", err)
 	}
-	if !strings.Contains(output.String(), "fly_app.agent.companion-test -> tvc-companion-test") {
+	if !strings.Contains(output.String(), "fly_app.agent.example-peer -> example-peer-app") {
 		t.Fatalf("unexpected state output: %s", output.String())
 	}
 }
@@ -119,11 +119,11 @@ func TestAppEnvLoadsEnvFileAndShellOverrides(t *testing.T) {
 func TestValidateProvidersRequiresCredentials(t *testing.T) {
 	root := t.TempDir()
 	writeTestWorkspace(t, root, map[string]string{
-		"victor": `
+		"sample": `
 [agent]
-id = "victor"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
 `,
 	})
 	for _, key := range []string{"FLY_API_TOKEN", "TAILSCALE_API_KEY", "TS_AUTHKEY", "OPENROUTER_API_KEY"} {
@@ -146,11 +146,11 @@ tailscale_hostname = "victor"
 func TestValidateProvidersAcceptsFlyCLIAuth(t *testing.T) {
 	root := t.TempDir()
 	writeTestWorkspace(t, root, map[string]string{
-		"victor": `
+		"sample": `
 [agent]
-id = "victor"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
 `,
 	})
 	for _, key := range []string{"FLY_API_TOKEN", "TAILSCALE_API_KEY"} {
@@ -159,7 +159,7 @@ tailscale_hostname = "victor"
 	t.Setenv("TS_AUTHKEY", "tailscale-auth-key")
 	t.Setenv("OPENROUTER_API_KEY", "openrouter-key")
 	runner := &execx.FakeRunner{Responses: map[string]execx.Result{
-		"fly auth whoami": {Stdout: "stan@example.com\n"},
+		"fly auth whoami": {Stdout: "developer@example.test\n"},
 	}}
 	cmd := newRootCommand(runner)
 	cmd.SetArgs([]string{"--workspace", root, "validate", "--providers"})
@@ -171,11 +171,11 @@ tailscale_hostname = "victor"
 func TestValidateProvidersRequiresFlyTokenInAPIMode(t *testing.T) {
 	root := t.TempDir()
 	writeTestWorkspace(t, root, map[string]string{
-		"victor": `
+		"sample": `
 [agent]
-id = "victor"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
 `,
 	})
 	writeTestFile(t, root, "providers.toml", `[fly.default]
@@ -183,7 +183,7 @@ mode = "api"
 region = "cdg"
 token_env = "FLY_API_TOKEN"
 
-[tailscale.tvc]
+[tailscale.default]
 tailnet = "tailnet.ts.net"
 auth_key_secret = "TS_AUTHKEY"
 
@@ -197,7 +197,7 @@ api_key_env = "OPENROUTER_API_KEY"
 	t.Setenv("TS_AUTHKEY", "tailscale-auth-key")
 	t.Setenv("OPENROUTER_API_KEY", "openrouter-key")
 	runner := &execx.FakeRunner{Responses: map[string]execx.Result{
-		"fly auth whoami": {Stdout: "stan@example.com\n"},
+		"fly auth whoami": {Stdout: "developer@example.test\n"},
 	}}
 	cmd := newRootCommand(runner)
 	cmd.SetArgs([]string{"--workspace", root, "validate", "--providers"})
@@ -216,36 +216,36 @@ api_key_env = "OPENROUTER_API_KEY"
 func TestIdentityInitAndRenderCommands(t *testing.T) {
 	root := t.TempDir()
 	writeTestWorkspace(t, root, map[string]string{
-		"victor": `
+		"sample": `
 [agent]
-id = "victor"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
 
 [default_vault]
-name = "Victor"
+name = "Sample Agent"
 `,
 	})
 
 	initCmd := NewRootCommand()
-	initCmd.SetArgs([]string{"--workspace", root, "identity", "init", "victor", "--name", "Victor"})
+	initCmd.SetArgs([]string{"--workspace", root, "identity", "init", "sample", "--name", "Sample Agent"})
 	if err := initCmd.Execute(); err != nil {
 		t.Fatalf("identity init: %v", err)
 	}
 
-	identityPath := filepath.Join(root, "identities", "victor", "SOUL.md")
+	identityPath := filepath.Join(root, "identities", "sample", "SOUL.md")
 	data, err := os.ReadFile(identityPath)
 	if err != nil {
 		t.Fatalf("read identity file: %v", err)
 	}
-	if !strings.Contains(string(data), "You are Victor") {
+	if !strings.Contains(string(data), "You are Sample Agent") {
 		t.Fatalf("unexpected identity file: %s", string(data))
 	}
-	agentData, err := os.ReadFile(filepath.Join(root, "agents", "victor.toml"))
+	agentData, err := os.ReadFile(filepath.Join(root, "agents", "sample.toml"))
 	if err != nil {
 		t.Fatalf("read agent config: %v", err)
 	}
-	for _, want := range []string{`identity = "identities/victor/SOUL.md"`} {
+	for _, want := range []string{`identity = "identities/sample/SOUL.md"`} {
 		if !strings.Contains(string(agentData), want) {
 			t.Fatalf("agent config missing %q:\n%s", want, string(agentData))
 		}
@@ -254,37 +254,37 @@ name = "Victor"
 	renderCmd := NewRootCommand()
 	var output bytes.Buffer
 	renderCmd.SetOut(&output)
-	renderCmd.SetArgs([]string{"--workspace", root, "identity", "render", "victor"})
+	renderCmd.SetArgs([]string{"--workspace", root, "identity", "render", "sample"})
 	if err := renderCmd.Execute(); err != nil {
 		t.Fatalf("identity render: %v", err)
 	}
-	if !strings.Contains(output.String(), "You are Victor") {
+	if !strings.Contains(output.String(), "You are Sample Agent") {
 		t.Fatalf("unexpected render output: %s", output.String())
 	}
 }
 
 func TestHydrateAgentIdentityReadsRelativePath(t *testing.T) {
 	root := t.TempDir()
-	path := filepath.Join(root, "identities", "victor", "SOUL.md")
+	path := filepath.Join(root, "identities", "sample", "SOUL.md")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir identity dir: %v", err)
 	}
-	if err := os.WriteFile(path, []byte("# Victor\n\nYou are Victor.\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("# Sample Agent\n\nYou are Sample Agent.\n"), 0o644); err != nil {
 		t.Fatalf("write identity: %v", err)
 	}
 
 	agent, err := (&app{rootDir: root}).hydrateAgentIdentity(config.Agent{
-		ID: "victor",
+		ID: "sample",
 		Identity: config.Identity{
 			Enabled:   true,
-			Path:      "identities/victor/SOUL.md",
+			Path:      "identities/sample/SOUL.md",
 			Overwrite: true,
 		},
 	})
 	if err != nil {
 		t.Fatalf("hydrate identity: %v", err)
 	}
-	if agent.Identity.Soul != "# Victor\n\nYou are Victor.\n" {
+	if agent.Identity.Soul != "# Sample Agent\n\nYou are Sample Agent.\n" {
 		t.Fatalf("unexpected hydrated soul: %q", agent.Identity.Soul)
 	}
 }
@@ -292,22 +292,22 @@ func TestHydrateAgentIdentityReadsRelativePath(t *testing.T) {
 func TestIdentityRenderErrorsWhenFileIsMissing(t *testing.T) {
 	root := t.TempDir()
 	writeTestWorkspace(t, root, map[string]string{
-		"victor": `
+		"sample": `
 [agent]
-id = "victor"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
-identity = "identities/victor/SOUL.md"
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
+identity = "identities/sample/SOUL.md"
 `,
 	})
 
 	cmd := NewRootCommand()
-	cmd.SetArgs([]string{"--workspace", root, "identity", "render", "victor"})
+	cmd.SetArgs([]string{"--workspace", root, "identity", "render", "sample"})
 	err := cmd.Execute()
 	if err == nil {
 		t.Fatalf("expected missing identity file error")
 	}
-	if !strings.Contains(err.Error(), "read identity for agent victor") {
+	if !strings.Contains(err.Error(), "read identity for agent sample") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -315,28 +315,28 @@ identity = "identities/victor/SOUL.md"
 func TestUpdateAgentIdentityConfigReplacesOnlyTargetAgent(t *testing.T) {
 	root := t.TempDir()
 	writeTestWorkspace(t, root, map[string]string{
-		"companion-test": `
+		"example-peer": `
 [agent]
-id = "companion-test"
-fly_app = "tvc-companion-test"
-tailscale_hostname = "companion-test"
-identity = "identities/companion-test/SOUL.md"
+id = "example-peer"
+fly_app = "example-peer-app"
+tailscale_hostname = "example-peer"
+identity = "identities/example-peer/SOUL.md"
 
 [identity]
 overwrite = true
 `,
-		"victor": `
+		"sample": `
 [agent]
-id = "victor"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
-identity = "old/victor/SOUL.md"
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
+identity = "old/sample/SOUL.md"
 
 [identity]
 overwrite = true
 
 [default_vault]
-name = "Victor"
+name = "Sample Agent"
 `,
 	})
 
@@ -344,29 +344,29 @@ name = "Victor"
 	if err != nil {
 		t.Fatalf("load workspace: %v", err)
 	}
-	if err := updateAgentIdentityConfig(ws, "victor", "identities/victor/SOUL.md", false); err != nil {
+	if err := updateAgentIdentityConfig(ws, "sample", "identities/sample/SOUL.md", false); err != nil {
 		t.Fatalf("update identity config: %v", err)
 	}
 	updated, err := workspace.Load(root)
 	if err != nil {
 		t.Fatalf("load updated config: %v", err)
 	}
-	test, err := selectSingleAgent(updated.Config, "companion-test")
+	test, err := selectSingleAgent(updated.Config, "example-peer")
 	if err != nil {
-		t.Fatalf("select companion-test: %v", err)
+		t.Fatalf("select example-peer: %v", err)
 	}
-	if test.Identity.Path != "identities/companion-test/SOUL.md" || !test.Identity.Overwrite {
-		t.Fatalf("unexpected companion-test identity: %#v", test.Identity)
+	if test.Identity.Path != "identities/example-peer/SOUL.md" || !test.Identity.Overwrite {
+		t.Fatalf("unexpected example-peer identity: %#v", test.Identity)
 	}
-	victor, err := selectSingleAgent(updated.Config, "victor")
+	sample, err := selectSingleAgent(updated.Config, "sample")
 	if err != nil {
-		t.Fatalf("select victor: %v", err)
+		t.Fatalf("select sample: %v", err)
 	}
-	if victor.Identity.Path != "identities/victor/SOUL.md" || victor.Identity.Overwrite {
-		t.Fatalf("unexpected victor identity: %#v", victor.Identity)
+	if sample.Identity.Path != "identities/sample/SOUL.md" || sample.Identity.Overwrite {
+		t.Fatalf("unexpected sample identity: %#v", sample.Identity)
 	}
-	if victor.DefaultVault.Name != "Victor" {
-		t.Fatalf("expected default vault table to be preserved, got %#v", victor.DefaultVault)
+	if sample.DefaultVault.Name != "Sample Agent" {
+		t.Fatalf("expected default vault table to be preserved, got %#v", sample.DefaultVault)
 	}
 }
 
@@ -389,7 +389,7 @@ vaults = "vaults/*.toml"
 region = "cdg"
 token_env = "FLY_API_TOKEN"
 
-[tailscale.tvc]
+[tailscale.default]
 tailnet = "tailnet.ts.net"
 api_key_env = "TAILSCALE_API_KEY"
 auth_key_secret = "TS_AUTHKEY"

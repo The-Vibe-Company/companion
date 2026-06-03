@@ -19,7 +19,7 @@ func ParseAddress(raw string) (Address, error) {
 	raw = strings.TrimSpace(raw)
 	parts := strings.Split(raw, ".")
 	if len(parts) != 2 && len(parts) != 3 {
-		return Address{}, fmt.Errorf("resource address must look like fly_app.agent.victor or openwebui_config.main")
+		return Address{}, fmt.Errorf("resource address must look like fly_app.agent.sample or openwebui_config.main")
 	}
 	for _, part := range parts {
 		if !addressPartPattern.MatchString(part) {

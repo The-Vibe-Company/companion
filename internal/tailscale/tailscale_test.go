@@ -38,7 +38,7 @@ func TestDeleteDeviceUsesTailscaleAPI(t *testing.T) {
 func TestDevicesPreferPayloadIDOverPeerMapKey(t *testing.T) {
 	provider := New(&execx.FakeRunner{Responses: map[string]execx.Result{
 		"tailscale status --json": {Stdout: `{"Peer":{
-			"nodekey:abc":{"ID":"nShortID","HostName":"companion-test","DNSName":"companion-test.tail.ts.net."}
+			"nodekey:abc":{"ID":"nShortID","HostName":"example-peer","DNSName":"example-peer.tail.ts.net."}
 		}}`},
 	}})
 	devices, err := provider.Devices(context.Background())

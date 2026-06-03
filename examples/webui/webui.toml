@@ -2,11 +2,11 @@
 enabled = true
 id = "open-webui"
 runtime = "fly.default"
-network = "tailscale.tvc"
+network = "tailscale.default"
 lifecycle = "present"
 protect = true
-fly_app = "tvc-companion-webui"
-tailscale_hostname = "companion-webui"
+fly_app = "example-companion-webui"
+tailscale_hostname = "example-webui"
 region = "cdg"
 volume_name = "open_webui_data"
 volume_size_gb = 5

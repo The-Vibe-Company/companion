@@ -3,11 +3,11 @@ package importer
 import "testing"
 
 func TestParseAddress(t *testing.T) {
-	address, err := ParseAddress("fly_app.agent.companion-test")
+	address, err := ParseAddress("fly_app.agent.example-peer")
 	if err != nil {
 		t.Fatalf("parse address: %v", err)
 	}
-	if address.Type != "fly_app" || address.Group != "agent" || address.Name != "companion-test" {
+	if address.Type != "fly_app" || address.Group != "agent" || address.Name != "example-peer" {
 		t.Fatalf("unexpected address: %#v", address)
 	}
 }
@@ -23,7 +23,7 @@ func TestParseSingletonAddress(t *testing.T) {
 }
 
 func TestParseAddressRejectsInvalidShape(t *testing.T) {
-	for _, raw := range []string{"fly_app", "Fly_App.agent.companion-test", "fly_app.", "fly_app.agent."} {
+	for _, raw := range []string{"fly_app", "Fly_App.agent.example-peer", "fly_app.", "fly_app.agent."} {
 		if _, err := ParseAddress(raw); err == nil {
 			t.Fatalf("expected %q to be rejected", raw)
 		}

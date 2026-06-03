@@ -38,12 +38,11 @@ providers.toml
 defaults.toml
 webui.toml
 agents/
-  victor.toml
-  writer.toml
+  example-agent.toml
 vaults/
   shared.toml
 identities/
-  victor/SOUL.md
+  example-agent/SOUL.md
 .env
 .companion/
   state.sqlite
@@ -58,7 +57,9 @@ companion init --workspace ./companion
 
 Ready-to-copy examples live in `examples/minimal` and `examples/webui`.
 
-Validate from the workspace:
+The repository root is not a live workspace. Keep real fleet configuration, provider orgs/tailnets, app names, identities, vault links, and `.env` files under `.local/` or outside the repository. Public examples should stay anonymized.
+
+Validate from a workspace:
 
 ```bash
 companion validate --workspace .
@@ -67,7 +68,7 @@ companion validate --workspace .
 `companion.toml` is only the index:
 
 ```toml
-workspace = "tvc-companion"
+workspace = "example-companion"
 
 [backend.local]
 state = ".companion/state.sqlite"
@@ -86,15 +87,15 @@ Providers define where resources live and which environment variables hold crede
 
 ```toml
 [fly.default]
-org = "personal"
+org = "example-org"
 region = "cdg"
 token_env = "FLY_API_TOKEN"
 # mode = "cli" is the default. In CLI mode, either fly auth login or FLY_API_TOKEN works.
 # Use mode = "api" for API-backed tests or future live API runs; then FLY_API_TOKEN is required.
 # api_base_url = "http://127.0.0.1:3001/fly/v1"
 
-[tailscale.tvc]
-tailnet = "tail5f910b.ts.net"
+[tailscale.default]
+tailnet = "example.ts.net"
 api_key_env = "TAILSCALE_API_KEY"
 auth_key_secret = "TS_AUTHKEY"
 # mode = "cli" is the default. In CLI mode, TAILSCALE_API_KEY is only needed for API-only actions such as cleanup.
@@ -125,7 +126,7 @@ Do not alternate between multiple workspace/state/env directories for the same f
 
 ![Companion technical architecture](docs/assets/companion-architecture.png)
 
-Companion resolves provider refs like `fly.default`, `tailscale.tvc`, and `openrouter.default` into typed clients:
+Companion resolves provider refs like `fly.default`, `tailscale.default`, and `openrouter.default` into typed clients:
 
 - Fly provider: apps, volumes, secrets, and machines read/create/update/delete.
 - Tailscale provider: device list/delete, with auth-key hooks reserved for later.
@@ -148,19 +149,19 @@ One agent is one small file:
 
 ```toml
 [agent]
-id = "victor"
+id = "example-agent"
 runtime = "fly.default"
-network = "tailscale.tvc"
+network = "tailscale.default"
 model_provider = "openrouter.default"
 lifecycle = "present"
 protect = true
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
-identity = "identities/victor/SOUL.md"
+fly_app = "example-companion-agent"
+tailscale_hostname = "example-agent"
+identity = "identities/example-agent/SOUL.md"
 
 [default_vault]
 enabled = true
-name = "Victor"
+name = "Example Agent"
 mcp_role = "write"
 ```
 
@@ -177,25 +178,25 @@ companion plan --workspace .
 Preview one resource or agent family:
 
 ```bash
-companion plan fly_app.agent.victor --workspace .
-companion plan victor --workspace .
+companion plan fly_app.agent.example-agent --workspace .
+companion plan example-agent --workspace .
 ```
 
 Apply:
 
 ```bash
 companion apply --workspace .
-companion apply victor --workspace .
+companion apply example-agent --workspace .
 ```
 
 Plan output is resource-oriented:
 
 ```text
-+ create fly_app.agent.writer tvc-companion-writer
-= no-op fly_volume.agent_data.victor vol_xxx
-~ update fly_secrets.agent.victor API_SERVER_KEY,OPENROUTER_API_KEY
-! drift tailscale_device.agent.writer missing writer
-- delete fly_app.agent.old tvc-companion-old
++ create fly_app.agent.example-agent example-companion-agent
+= no-op fly_volume.agent_data.example-agent vol_xxx
+~ update fly_secrets.agent.example-agent API_SERVER_KEY,OPENROUTER_API_KEY
+! drift tailscale_device.agent.example-agent missing example-agent
+- delete fly_app.agent.old example-companion-old
 ```
 
 Generated Fly TOML is written under `.companion/generated/`.
@@ -225,8 +226,8 @@ State is stored in `.companion/state.sqlite`. It is evidence, not desired config
 
 ```bash
 companion state list --workspace .
-companion state show fly_app.agent.victor --workspace .
-companion state rm fly_app.agent.victor --workspace .
+companion state show fly_app.agent.example-agent --workspace .
+companion state rm fly_app.agent.example-agent --workspace .
 ```
 
 ### How This Is Like Terraform
@@ -240,20 +241,20 @@ The main difference is scope: Companion is purpose-built for Hermes fleets, Gran
 Import an existing resource into observed state:
 
 ```bash
-companion import fly_app.agent.victor tvc-companion-victor --workspace .
-companion import fly_volume.agent_data.victor vol_xxx --attrs app=tvc-companion-victor --workspace .
+companion import fly_app.agent.example-agent example-companion-agent --workspace .
+companion import fly_volume.agent_data.example-agent vol_xxx --attrs app=example-companion-agent --workspace .
 ```
 
 Destroy is explicit:
 
 ```bash
-companion destroy fly_app.agent.victor --confirm victor --workspace .
+companion destroy fly_app.agent.example-agent --confirm example-agent --workspace .
 ```
 
 Persistent data requires both data flags:
 
 ```bash
-companion destroy fly_volume.agent_data.victor --confirm victor --destroy-data --backup-first --workspace .
+companion destroy fly_volume.agent_data.example-agent --confirm example-agent --destroy-data --backup-first --workspace .
 ```
 
 Removing a file does not delete the remote resource. Missing desired resources become orphans until you import, remove state, set `lifecycle = "absent"`, or run an explicit destroy.
@@ -265,13 +266,13 @@ Hermes uses `SOUL.md` as the identity layer. Companion keeps the source file in 
 Create a starter identity:
 
 ```bash
-companion identity init victor --name Victor --workspace .
+companion identity init example-agent --name "Example Agent" --workspace .
 ```
 
 Render the identity that will be deployed:
 
 ```bash
-companion identity render victor --workspace .
+companion identity render example-agent --workspace .
 ```
 
 ## Granite Vaults
@@ -281,7 +282,7 @@ Every agent can have a default Granite vault:
 ```toml
 [default_vault]
 enabled = true
-name = "Victor"
+name = "Example Agent"
 mcp_enabled = true
 mcp_role = "write"
 sync_serve = true
@@ -292,12 +293,12 @@ An agent can connect to another agent vault:
 
 ```toml
 [[vault_connections]]
-name = "companion-test"
+name = "shared-vault"
 mode = "sync"
 role = "write"
-host = "companion-test"
-token_secret_name = "GRANITE_COMPANION_TEST_WRITE_TOKEN"
-mcp_name = "granite_companion_test"
+host = "shared-vault"
+token_secret_name = "GRANITE_SHARED_VAULT_WRITE_TOKEN"
+mcp_name = "granite_shared_vault"
 ```
 
 Use `mode = "write"` for HTTP MCP write access. Use `mode = "sync"` for Granite sync remotes.
@@ -324,7 +325,7 @@ Read one value:
 
 ```bash
 companion output open_webui_url --raw --workspace .
-companion output agents.victor.dashboard_url --raw --workspace .
+companion output agents.example-agent.dashboard_url --raw --workspace .
 companion output open_webui_backends --format json --workspace .
 ```
 
@@ -353,8 +354,8 @@ Routes:
 go test ./...
 sh -n install.sh
 bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly
-go run ./cmd/companion validate --workspace .
-go run ./cmd/companion plan --workspace .
+go run ./cmd/companion validate --workspace examples/minimal
+go run ./cmd/companion plan --workspace examples/minimal
 ```
 
 Provider e2e tests run as part of `go test ./...`. They use local `httptest.Server` mocks for Fly, Tailscale, and OpenRouter, plus a fake rollout runner. No real credentials or external APIs are required.
@@ -367,10 +368,10 @@ mode = "api"
 api_base_url = "http://127.0.0.1:3001/fly/v1"
 token_env = "FLY_API_TOKEN"
 
-[tailscale.tvc]
+[tailscale.default]
 mode = "api"
 api_base_url = "http://127.0.0.1:3001/tailscale"
-tailnet = "tail5f910b.ts.net"
+tailnet = "example.ts.net"
 api_key_env = "TAILSCALE_API_KEY"
 auth_key_secret = "TS_AUTHKEY"
 

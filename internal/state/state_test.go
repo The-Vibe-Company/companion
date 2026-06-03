@@ -14,8 +14,8 @@ func TestImportResourceIsIdempotentByDesiredAddress(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	first := Resource{Address: "fly_app.agent.companion-test", Class: "managed", ProviderRef: "fly.default", ExternalID: "old", ObservedJSON: "{}"}
-	second := Resource{Address: "fly_app.agent.companion-test", Class: "managed", ProviderRef: "fly.default", ExternalID: "new", ObservedJSON: `{"region":"cdg"}`}
+	first := Resource{Address: "fly_app.agent.example-peer", Class: "managed", ProviderRef: "fly.default", ExternalID: "old", ObservedJSON: "{}"}
+	second := Resource{Address: "fly_app.agent.example-peer", Class: "managed", ProviderRef: "fly.default", ExternalID: "new", ObservedJSON: `{"region":"cdg"}`}
 	if err := store.ImportResource(ctx, first); err != nil {
 		t.Fatalf("import first: %v", err)
 	}

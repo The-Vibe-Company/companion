@@ -20,9 +20,9 @@ func TestNewSetBuildsAPIProvidersAndValidatesModels(t *testing.T) {
 			Model: config.RawModel{Enabled: boolPtr(true), Default: strPtr("google/gemini-3.5-flash")},
 		},
 		Agents: []config.RawAgent{{
-			ID:                strPtr("victor"),
-			FlyApp:            strPtr("tvc-companion-victor"),
-			TailscaleHostname: strPtr("victor"),
+			ID:                strPtr("sample"),
+			FlyApp:            strPtr("example-companion-sample"),
+			TailscaleHostname: strPtr("sample"),
 			ModelProvider:     strPtr("openrouter.default"),
 		}},
 	})
@@ -39,7 +39,7 @@ func TestNewSetBuildsAPIProvidersAndValidatesModels(t *testing.T) {
 				APIBaseURL: server.FlyBaseURL(),
 				TokenEnv:   "FLY_API_TOKEN",
 			}},
-			Tailscale: map[string]workspace.TailscaleProvider{"tvc": {
+			Tailscale: map[string]workspace.TailscaleProvider{"default": {
 				Mode:       "api",
 				APIBaseURL: server.TailscaleBaseURL(),
 				Tailnet:    "tail.ts.net",
@@ -62,7 +62,7 @@ func TestNewSetBuildsAPIProvidersAndValidatesModels(t *testing.T) {
 	if _, err := set.FlyFor("fly.default"); err != nil {
 		t.Fatalf("fly provider: %v", err)
 	}
-	if _, err := set.TailscaleFor("tailscale.tvc"); err != nil {
+	if _, err := set.TailscaleFor("tailscale.default"); err != nil {
 		t.Fatalf("tailscale provider: %v", err)
 	}
 	if err := set.ValidateModels(context.Background(), cfg); err != nil {
@@ -79,9 +79,9 @@ func TestValidateModelsReportsMissingModel(t *testing.T) {
 			Model: config.RawModel{Enabled: boolPtr(true), Default: strPtr("google/gemini-3.5-flash")},
 		},
 		Agents: []config.RawAgent{{
-			ID:                strPtr("victor"),
-			FlyApp:            strPtr("tvc-companion-victor"),
-			TailscaleHostname: strPtr("victor"),
+			ID:                strPtr("sample"),
+			FlyApp:            strPtr("example-companion-sample"),
+			TailscaleHostname: strPtr("sample"),
 			ModelProvider:     strPtr("openrouter.default"),
 		}},
 	})

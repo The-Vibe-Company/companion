@@ -11,7 +11,7 @@ func TestOpenWebUIRenderMultipleBackends(t *testing.T) {
 	cfg := config.OpenWebUI{
 		Enabled:                    true,
 		ID:                         "open-webui",
-		FlyApp:                     "tvc-companion-webui",
+		FlyApp:                     "example-companion-webui",
 		TailscaleHostname:          "companion-webui",
 		Region:                     "cdg",
 		VolumeName:                 "open_webui_data",
@@ -96,20 +96,20 @@ func TestAgentRenderUsesEmptyVaultConnectionArray(t *testing.T) {
 
 func TestAgentRenderIncludesIdentityJSON(t *testing.T) {
 	toml, err := AgentFlyTOML(config.Agent{
-		ID:                         "victor",
-		FlyApp:                     "victor",
+		ID:                         "sample",
+		FlyApp:                     "sample",
 		Region:                     "cdg",
 		VolumeName:                 "data",
 		Memory:                     "1gb",
 		CPUs:                       1,
-		TailscaleHostname:          "victor",
+		TailscaleHostname:          "sample",
 		TailscaleAuthKeySecretName: "TS_AUTHKEY",
 		DashboardHost:              "0.0.0.0",
 		DashboardMode:              "serve",
 		DashboardPort:              9119,
 		Identity: config.Identity{
 			Enabled:   true,
-			Soul:      "# Victor\n\nYou are direct.",
+			Soul:      "# Sample Agent\n\nYou are direct.",
 			Overwrite: true,
 		},
 	})
@@ -118,7 +118,7 @@ func TestAgentRenderIncludesIdentityJSON(t *testing.T) {
 	}
 	for _, want := range []string{
 		`HERMES_IDENTITY_JSON = "{\"enabled\":true`,
-		`\"soul\":\"# Victor\\n\\nYou are direct.\"`,
+		`\"soul\":\"# Sample Agent\\n\\nYou are direct.\"`,
 		`\"overwrite\":true}`,
 	} {
 		if !strings.Contains(toml, want) {
@@ -129,13 +129,13 @@ func TestAgentRenderIncludesIdentityJSON(t *testing.T) {
 
 func TestAgentRenderOmitsDisabledIdentity(t *testing.T) {
 	toml, err := AgentFlyTOML(config.Agent{
-		ID:                         "victor",
-		FlyApp:                     "victor",
+		ID:                         "sample",
+		FlyApp:                     "sample",
 		Region:                     "cdg",
 		VolumeName:                 "data",
 		Memory:                     "1gb",
 		CPUs:                       1,
-		TailscaleHostname:          "victor",
+		TailscaleHostname:          "sample",
 		TailscaleAuthKeySecretName: "TS_AUTHKEY",
 		DashboardHost:              "0.0.0.0",
 		DashboardMode:              "serve",

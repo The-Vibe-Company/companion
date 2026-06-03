@@ -14,8 +14,8 @@ func TestAPIProviderListsAndDeletesDevices(t *testing.T) {
 	defer server.Close()
 	server.SetTailscaleDevices([]tailscale.Device{{
 		ID:       "dev-1",
-		HostName: "victor",
-		DNSName:  "victor.tail.ts.net.",
+		HostName: "sample",
+		DNSName:  "sample.tail.ts.net.",
 		Online:   true,
 		IP:       "100.64.0.1",
 	}})
@@ -25,7 +25,7 @@ func TestAPIProviderListsAndDeletesDevices(t *testing.T) {
 	if err != nil {
 		t.Fatalf("devices: %v", err)
 	}
-	if len(devices) != 1 || devices[0].HostName != "victor" || devices[0].IP != "100.64.0.1" {
+	if len(devices) != 1 || devices[0].HostName != "sample" || devices[0].IP != "100.64.0.1" {
 		t.Fatalf("unexpected devices: %#v", devices)
 	}
 	if len(server.TailscaleAuthHeaders) == 0 || !strings.HasPrefix(server.TailscaleAuthHeaders[0], "Basic ") {

@@ -20,9 +20,9 @@ func TestMockProviderE2EApplyIsIdempotentAndRedactsState(t *testing.T) {
 	server := providertest.New()
 	defer server.Close()
 	server.SetTailscaleDevices([]tailscale.Device{{
-		ID:       "dev-victor",
-		HostName: "victor",
-		DNSName:  "victor.tail.ts.net.",
+		ID:       "dev-sample",
+		HostName: "sample",
+		DNSName:  "sample.tail.ts.net.",
 		Online:   true,
 		IP:       "100.64.0.10",
 	}, {
@@ -52,7 +52,7 @@ func TestMockProviderE2EApplyIsIdempotentAndRedactsState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build plan: %v", err)
 	}
-	if !strings.Contains(plan.String(), "+ create fly_app.agent.victor tvc-companion-victor") {
+	if !strings.Contains(plan.String(), "+ create fly_app.agent.sample example-companion-sample") {
 		t.Fatalf("expected create app plan, got:\n%s", plan.String())
 	}
 	_, err = Apply(context.Background(), ws, store, providers, Options{Root: ws.Root, GeneratedDir: filepath.Join(ws.Root, ".companion", "generated"), Env: env})
@@ -62,14 +62,14 @@ func TestMockProviderE2EApplyIsIdempotentAndRedactsState(t *testing.T) {
 	if len(server.Apps) != 2 {
 		t.Fatalf("expected agent and webui apps, got %#v", server.Apps)
 	}
-	if got := len(server.Apps["tvc-companion-victor"].Volumes); got != 1 {
+	if got := len(server.Apps["example-companion-sample"].Volumes); got != 1 {
 		t.Fatalf("expected one agent volume, got %d", got)
 	}
-	if got := len(server.Apps["tvc-companion-webui"].Volumes); got != 1 {
+	if got := len(server.Apps["example-companion-webui"].Volumes); got != 1 {
 		t.Fatalf("expected one webui volume, got %d", got)
 	}
-	if !server.Apps["tvc-companion-victor"].Secrets["API_SERVER_KEY"] || !server.Apps["tvc-companion-webui"].Secrets["OPENAI_API_KEYS"] {
-		t.Fatalf("expected secret names to be stored, got agent=%#v webui=%#v", server.Apps["tvc-companion-victor"].Secrets, server.Apps["tvc-companion-webui"].Secrets)
+	if !server.Apps["example-companion-sample"].Secrets["API_SERVER_KEY"] || !server.Apps["example-companion-webui"].Secrets["OPENAI_API_KEYS"] {
+		t.Fatalf("expected secret names to be stored, got agent=%#v webui=%#v", server.Apps["example-companion-sample"].Secrets, server.Apps["example-companion-webui"].Secrets)
 	}
 	if len(runner.Calls) != 2 {
 		t.Fatalf("expected two rollout calls, got %#v", runner.Calls)
@@ -78,7 +78,7 @@ func TestMockProviderE2EApplyIsIdempotentAndRedactsState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read webui config: %v", err)
 	}
-	if !strings.Contains(string(webuiConfig), "http://victor.tail.ts.net:8642/v1") {
+	if !strings.Contains(string(webuiConfig), "http://sample.tail.ts.net:8642/v1") {
 		t.Fatalf("webui config did not use tailscale DNS:\n%s", string(webuiConfig))
 	}
 	resources, err := store.ListResources(context.Background())
@@ -94,7 +94,7 @@ func TestMockProviderE2EApplyIsIdempotentAndRedactsState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second apply: %v", err)
 	}
-	if got := len(server.Apps["tvc-companion-victor"].Volumes); got != 1 {
+	if got := len(server.Apps["example-companion-sample"].Volumes); got != 1 {
 		t.Fatalf("second apply duplicated volume, got %d", got)
 	}
 	if len(runner.Calls) != 2 {
@@ -105,8 +105,8 @@ func TestMockProviderE2EApplyIsIdempotentAndRedactsState(t *testing.T) {
 func TestMockProviderE2EReportsDuplicateVolumeDrift(t *testing.T) {
 	server := providertest.New()
 	defer server.Close()
-	server.AddVolume("tvc-companion-victor", flyVolume("vol_old", "data", 3, ""))
-	server.AddVolume("tvc-companion-victor", flyVolume("vol_attached", "data", 3, "machine"))
+	server.AddVolume("example-companion-sample", flyVolume("vol_old", "data", 3, ""))
+	server.AddVolume("example-companion-sample", flyVolume("vol_attached", "data", 3, "machine"))
 	root := writeMockWorkspace(t, server)
 	ws, err := workspace.Load(root)
 	if err != nil {
@@ -121,11 +121,11 @@ func TestMockProviderE2EReportsDuplicateVolumeDrift(t *testing.T) {
 	if err != nil {
 		t.Fatalf("provider set: %v", err)
 	}
-	plan, err := BuildPlan(context.Background(), ws, store, providers, Options{Root: ws.Root, Targets: []string{"fly_volume.agent_data.victor"}})
+	plan, err := BuildPlan(context.Background(), ws, store, providers, Options{Root: ws.Root, Targets: []string{"fly_volume.agent_data.sample"}})
 	if err != nil {
 		t.Fatalf("build plan: %v", err)
 	}
-	if !strings.Contains(plan.String(), "! drift fly_volume.agent_data.victor duplicate volume reused vol_attached") {
+	if !strings.Contains(plan.String(), "! drift fly_volume.agent_data.sample duplicate volume reused vol_attached") {
 		t.Fatalf("expected duplicate drift, got:\n%s", plan.String())
 	}
 }
@@ -151,7 +151,7 @@ api_base_url = "`+server.FlyBaseURL()+`"
 token_env = "FLY_API_TOKEN"
 region = "cdg"
 
-[tailscale.tvc]
+[tailscale.default]
 mode = "api"
 api_base_url = "`+server.TailscaleBaseURL()+`"
 tailnet = "tail.ts.net"
@@ -189,8 +189,8 @@ mcp_role = "write"
 enabled = true
 id = "open-webui"
 runtime = "fly.default"
-network = "tailscale.tvc"
-fly_app = "tvc-companion-webui"
+network = "tailscale.default"
+fly_app = "example-companion-webui"
 tailscale_hostname = "companion-webui"
 volume_name = "open_webui_data"
 volume_size_gb = 5
@@ -198,13 +198,13 @@ webui_secret_key_secret_name = "WEBUI_SECRET_KEY"
 openai_api_keys_secret_name = "OPENAI_API_KEYS"
 tailscale_authkey_secret_name = "TS_AUTHKEY"
 `)
-	writeResourceTestFile(t, root, "agents/victor.toml", `[agent]
-id = "victor"
+	writeResourceTestFile(t, root, "agents/sample.toml", `[agent]
+id = "sample"
 runtime = "fly.default"
-network = "tailscale.tvc"
+network = "tailscale.default"
 model_provider = "openrouter.default"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
 `)
 	return root
 }

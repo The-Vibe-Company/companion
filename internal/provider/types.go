@@ -84,7 +84,7 @@ func Static(flyProvider FlyRuntime, tsProvider TailscaleNetwork, rollout Rollout
 	return Set{
 		Fly:        map[string]FlyRuntime{"fly.default": flyProvider},
 		Rollout:    map[string]RolloutRunner{"fly.default": rollout},
-		Tailscale:  map[string]TailscaleNetwork{"tailscale.tvc": tsProvider},
+		Tailscale:  map[string]TailscaleNetwork{"tailscale.default": tsProvider},
 		OpenRouter: map[string]ModelCatalog{},
 	}
 }

@@ -1,3 +1,4 @@
 .companion/
+.local/
 /companion
 .env

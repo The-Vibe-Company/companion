@@ -8,28 +8,25 @@ import (
 )
 
 func TestLoadRepositoryWorkspaceShape(t *testing.T) {
-	ws, err := Load(filepath.Join("..", ".."))
+	ws, err := Load(filepath.Join("..", "..", "examples", "minimal"))
 	if err != nil {
-		t.Fatalf("load repository workspace: %v", err)
+		t.Fatalf("load example workspace: %v", err)
 	}
-	if ws.Name != "tvc-companion" {
+	if ws.Name != "companion-minimal" {
 		t.Fatalf("unexpected workspace name: %s", ws.Name)
 	}
-	if len(ws.Config.Agents) != 4 {
-		t.Fatalf("expected 4 agents, got %d", len(ws.Config.Agents))
+	if len(ws.Config.Agents) != 1 {
+		t.Fatalf("expected 1 agent, got %d", len(ws.Config.Agents))
 	}
-	if !ws.Config.OpenWebUI.Enabled || ws.Config.OpenWebUI.Runtime != "fly.default" {
+	if ws.Config.OpenWebUI.Enabled {
 		t.Fatalf("unexpected open webui config: %#v", ws.Config.OpenWebUI)
 	}
-	victor := ws.Config.Agents[2]
-	if victor.ID != "victor" || !victor.Identity.Enabled || victor.Identity.Path != "identities/victor/SOUL.md" {
-		t.Fatalf("unexpected victor identity: %#v", victor)
+	agent := ws.Config.Agents[0]
+	if agent.ID != "example-agent" || agent.FlyApp != "example-companion-agent" {
+		t.Fatalf("unexpected example agent: %#v", agent)
 	}
-	if ws.AgentFiles["victor"] == "" {
-		t.Fatalf("expected victor agent file mapping")
-	}
-	if len(ws.Vaults) != 1 || ws.Vaults[0].ID != "shared" {
-		t.Fatalf("expected shared vault file, got %#v", ws.Vaults)
+	if ws.AgentFiles["example-agent"] == "" {
+		t.Fatalf("expected example agent file mapping")
 	}
 }
 
@@ -43,14 +40,14 @@ func TestLoadFailsOnMissingCompanionTOML(t *testing.T) {
 func TestLoadFailsOnDuplicateAgentIDs(t *testing.T) {
 	root := t.TempDir()
 	writeWorkspaceFile(t, root, "agents/a.toml", `[agent]
-id = "victor"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
 `)
 	writeWorkspaceFile(t, root, "agents/b.toml", `[agent]
-id = "victor"
-fly_app = "tvc-companion-victor-2"
-tailscale_hostname = "victor-2"
+id = "sample"
+fly_app = "example-companion-sample-2"
+tailscale_hostname = "example-agent-2"
 `)
 	writeMinimalWorkspace(t, root)
 	_, err := Load(root)
@@ -62,11 +59,11 @@ tailscale_hostname = "victor-2"
 func TestLoadFailsOnUnknownProviderRef(t *testing.T) {
 	root := t.TempDir()
 	writeMinimalWorkspace(t, root)
-	writeWorkspaceFile(t, root, "agents/victor.toml", `[agent]
-id = "victor"
+	writeWorkspaceFile(t, root, "agents/sample.toml", `[agent]
+id = "sample"
 runtime = "fly.missing"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
 `)
 	_, err := Load(root)
 	if err == nil || !strings.Contains(err.Error(), "unknown runtime provider fly.missing") {
@@ -82,7 +79,7 @@ mode = "api"
 api_base_url = "http://127.0.0.1:3001/fly/v1"
 token_env = "FLY_API_TOKEN"
 
-[tailscale.tvc]
+[tailscale.default]
 mode = "api"
 tailnet = "tail.ts.net"
 api_base_url = "http://127.0.0.1:3001/tailscale"
@@ -93,10 +90,10 @@ auth_key_secret = "TS_AUTHKEY"
 api_base_url = "http://127.0.0.1:3001/openrouter/api/v1"
 api_key_env = "OPENROUTER_API_KEY"
 `)
-	writeWorkspaceFile(t, root, "agents/victor.toml", `[agent]
-id = "victor"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
+	writeWorkspaceFile(t, root, "agents/sample.toml", `[agent]
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
 `)
 	ws, err := Load(root)
 	if err != nil {
@@ -105,22 +102,60 @@ tailscale_hostname = "victor"
 	if ws.Providers.Fly["default"].Mode != "api" || ws.Providers.Fly["default"].APIBaseURL == "" {
 		t.Fatalf("unexpected fly provider: %#v", ws.Providers.Fly["default"])
 	}
-	if ws.Providers.Tailscale["tvc"].Mode != "api" || ws.Providers.Tailscale["tvc"].APIBaseURL == "" {
-		t.Fatalf("unexpected tailscale provider: %#v", ws.Providers.Tailscale["tvc"])
+	if ws.Providers.Tailscale["default"].Mode != "api" || ws.Providers.Tailscale["default"].APIBaseURL == "" {
+		t.Fatalf("unexpected tailscale provider: %#v", ws.Providers.Tailscale["default"])
 	}
 	if ws.Providers.OpenRouter["default"].APIBaseURL == "" {
 		t.Fatalf("unexpected openrouter provider: %#v", ws.Providers.OpenRouter["default"])
 	}
 }
 
+func TestLoadPreservesLegacyTailscaleDefaultWhenNetworkOmitted(t *testing.T) {
+	root := t.TempDir()
+	writeMinimalWorkspace(t, root)
+	writeWorkspaceFile(t, root, "providers.toml", `[fly.default]
+region = "cdg"
+token_env = "FLY_API_TOKEN"
+
+[tailscale.tvc]
+api_key_env = "TAILSCALE_API_KEY"
+auth_key_secret = "TS_AUTHKEY"
+
+[openrouter.default]
+base_url = "https://openrouter.ai/api/v1"
+api_key_env = "OPENROUTER_API_KEY"
+`)
+	writeWorkspaceFile(t, root, "webui.toml", `[open_webui]
+enabled = true
+runtime = "fly.default"
+fly_app = "example-companion-webui"
+tailscale_hostname = "example-webui"
+`)
+	writeWorkspaceFile(t, root, "agents/sample.toml", `[agent]
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
+`)
+	ws, err := Load(root)
+	if err != nil {
+		t.Fatalf("load legacy workspace: %v", err)
+	}
+	if ws.Config.Agents[0].Network != "tailscale.tvc" {
+		t.Fatalf("expected legacy agent network, got %s", ws.Config.Agents[0].Network)
+	}
+	if ws.Config.OpenWebUI.Network != "tailscale.tvc" {
+		t.Fatalf("expected legacy open webui network, got %s", ws.Config.OpenWebUI.Network)
+	}
+}
+
 func TestLoadFailsOnWrongProviderKind(t *testing.T) {
 	root := t.TempDir()
 	writeMinimalWorkspace(t, root)
-	writeWorkspaceFile(t, root, "agents/victor.toml", `[agent]
-id = "victor"
+	writeWorkspaceFile(t, root, "agents/sample.toml", `[agent]
+id = "sample"
 runtime = "openrouter.default"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
 `)
 	_, err := Load(root)
 	if err == nil || !strings.Contains(err.Error(), "runtime must reference a fly provider") {
@@ -131,10 +166,10 @@ tailscale_hostname = "victor"
 func TestLoadFailsOnAbsoluteIdentityPath(t *testing.T) {
 	root := t.TempDir()
 	writeMinimalWorkspace(t, root)
-	writeWorkspaceFile(t, root, "agents/victor.toml", `[agent]
-id = "victor"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
+	writeWorkspaceFile(t, root, "agents/sample.toml", `[agent]
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
 identity = "/tmp/SOUL.md"
 `)
 	_, err := Load(root)
@@ -146,10 +181,10 @@ identity = "/tmp/SOUL.md"
 func TestLoadFailsOnDuplicateVaultIDs(t *testing.T) {
 	root := t.TempDir()
 	writeMinimalWorkspace(t, root)
-	writeWorkspaceFile(t, root, "agents/victor.toml", `[agent]
-id = "victor"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
+	writeWorkspaceFile(t, root, "agents/sample.toml", `[agent]
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
 `)
 	writeWorkspaceFile(t, root, "vaults/a.toml", `[vault]
 id = "shared"
@@ -181,7 +216,7 @@ vaults = "vaults/*.toml"
 region = "cdg"
 token_env = "FLY_API_TOKEN"
 
-[tailscale.tvc]
+[tailscale.default]
 api_key_env = "TAILSCALE_API_KEY"
 auth_key_secret = "TS_AUTHKEY"
 

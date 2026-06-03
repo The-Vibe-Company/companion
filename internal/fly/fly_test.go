@@ -46,9 +46,9 @@ func TestSecretNames(t *testing.T) {
 
 func TestCreateAppUsesConfiguredOrg(t *testing.T) {
 	runner := &execx.FakeRunner{Responses: map[string]execx.Result{
-		"fly apps create app --org personal": {},
+		"fly apps create app --org example-org": {},
 	}}
-	provider := NewWithOrg(runner, "personal")
+	provider := NewWithOrg(runner, "example-org")
 	if err := provider.CreateApp(context.Background(), "app"); err != nil {
 		t.Fatalf("create app: %v", err)
 	}

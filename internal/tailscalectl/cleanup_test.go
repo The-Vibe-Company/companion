@@ -9,15 +9,15 @@ import (
 
 func TestPlanCleanupDeletesOnlyOfflineDuplicates(t *testing.T) {
 	plan := PlanCleanup([]config.Agent{{
-		ID:                "companion-test",
-		TailscaleHostname: "companion-test",
+		ID:                "example-peer",
+		TailscaleHostname: "example-peer",
 	}}, []tailscale.Device{
-		{ID: "offline-canonical", HostName: "companion-test", DNSName: "companion-test.tail.ts.net.", Online: false},
-		{ID: "active-suffix", HostName: "companion-test", DNSName: "companion-test-2.tail.ts.net.", Online: true},
+		{ID: "offline-canonical", HostName: "example-peer", DNSName: "example-peer.tail.ts.net.", Online: false},
+		{ID: "active-suffix", HostName: "example-peer", DNSName: "example-peer-2.tail.ts.net.", Online: true},
 		{ID: "other", HostName: "other", DNSName: "other.tail.ts.net.", Online: false},
 	})
-	if plan.Keep["companion-test"].ID != "active-suffix" {
-		t.Fatalf("expected active device to be kept, got %#v", plan.Keep["companion-test"])
+	if plan.Keep["example-peer"].ID != "active-suffix" {
+		t.Fatalf("expected active device to be kept, got %#v", plan.Keep["example-peer"])
 	}
 	if len(plan.Candidates) != 1 {
 		t.Fatalf("expected one candidate, got %#v", plan.Candidates)

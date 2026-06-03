@@ -19,15 +19,15 @@ func TestNormalizeSampleConfigShape(t *testing.T) {
 		},
 		OpenWebUI: RawOpenWebUI{Enabled: boolPtr(true), TailscaleAcceptDNS: boolPtr(true)},
 		Agents: []RawAgent{
-			{ID: strPtr("companion-test"), FlyApp: strPtr("tvc-companion-test"), TailscaleHostname: strPtr("companion-test")},
-			{ID: strPtr("companion-lab"), FlyApp: strPtr("tvc-companion-lab"), TailscaleHostname: strPtr("companion-lab")},
+			{ID: strPtr("example-peer"), FlyApp: strPtr("example-peer-app"), TailscaleHostname: strPtr("example-peer")},
+			{ID: strPtr("example-lab"), FlyApp: strPtr("example-lab-app"), TailscaleHostname: strPtr("example-lab")},
 			{
-				ID:                strPtr("victor"),
-				FlyApp:            strPtr("tvc-companion-victor"),
-				TailscaleHostname: strPtr("victor"),
-				Identity:          RawIdentity{Path: strPtr("identities/victor/SOUL.md")},
+				ID:                strPtr("sample"),
+				FlyApp:            strPtr("example-companion-sample"),
+				TailscaleHostname: strPtr("sample"),
+				Identity:          RawIdentity{Path: strPtr("identities/sample/SOUL.md")},
 			},
-			{ID: strPtr("writer"), FlyApp: strPtr("tvc-companion-writer"), TailscaleHostname: strPtr("companion-writer")},
+			{ID: strPtr("secondary"), FlyApp: strPtr("example-secondary-app"), TailscaleHostname: strPtr("example-secondary")},
 		},
 	})
 	if err != nil {
@@ -36,15 +36,15 @@ func TestNormalizeSampleConfigShape(t *testing.T) {
 	if len(cfg.Agents) != 4 {
 		t.Fatalf("expected 4 agents, got %d", len(cfg.Agents))
 	}
-	victor := cfg.Agents[2]
-	if victor.ID != "victor" {
-		t.Fatalf("unexpected third agent: %s", victor.ID)
+	sample := cfg.Agents[2]
+	if sample.ID != "sample" {
+		t.Fatalf("unexpected third agent: %s", sample.ID)
 	}
-	if !victor.APIServer.Enabled {
+	if !sample.APIServer.Enabled {
 		t.Fatalf("expected api server inherited from defaults")
 	}
-	if !victor.Identity.Enabled || victor.Identity.Path != "identities/victor/SOUL.md" {
-		t.Fatalf("expected victor identity config, got %#v", victor.Identity)
+	if !sample.Identity.Enabled || sample.Identity.Path != "identities/sample/SOUL.md" {
+		t.Fatalf("expected sample identity config, got %#v", sample.Identity)
 	}
 	if !cfg.OpenWebUI.Enabled || !cfg.OpenWebUI.TailscaleAcceptDNS {
 		t.Fatalf("expected enabled open webui with tailscale dns")

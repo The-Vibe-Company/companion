@@ -15,13 +15,13 @@ import (
 
 func TestGraphJSON(t *testing.T) {
 	cfg := &config.Config{Agents: []config.Agent{{
-		ID: "writer",
+		ID: "secondary",
 		DefaultVault: config.DefaultVault{
 			Enabled: true,
 			MCPRole: "write",
 		},
 		VaultConnections: []config.VaultConnection{{
-			Name: "companion-test",
+			Name: "example-peer",
 			Mode: "sync",
 			Role: "write",
 		}},

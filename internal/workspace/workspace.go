@@ -169,6 +169,7 @@ func Load(root string) (*Workspace, error) {
 	if err != nil {
 		return nil, err
 	}
+	applyLegacyTailscaleDefault(&raw, providers)
 	cfg, err := config.Normalize(raw)
 	if err != nil {
 		return nil, err
@@ -184,6 +185,46 @@ func Load(root string) (*Workspace, error) {
 		VaultFiles: vaultFiles,
 	}
 	return ws, ws.Validate()
+}
+
+func applyLegacyTailscaleDefault(raw *config.RawConfig, providers Providers) {
+	if providers.Has("tailscale.default") || !providers.Has("tailscale.tvc") {
+		return
+	}
+	for i := range raw.Agents {
+		if raw.Agents[i].Network == nil {
+			network := "tailscale.tvc"
+			raw.Agents[i].Network = &network
+		}
+	}
+	if raw.OpenWebUI.Network == nil && rawOpenWebUIConfigured(raw.OpenWebUI) {
+		network := "tailscale.tvc"
+		raw.OpenWebUI.Network = &network
+	}
+}
+
+func rawOpenWebUIConfigured(raw config.RawOpenWebUI) bool {
+	return raw.Enabled != nil ||
+		raw.ID != nil ||
+		raw.Runtime != nil ||
+		raw.Lifecycle != nil ||
+		raw.Protect != nil ||
+		raw.FlyApp != nil ||
+		raw.TailscaleHostname != nil ||
+		raw.Region != nil ||
+		raw.VolumeName != nil ||
+		raw.VolumeSizeGB != nil ||
+		raw.Memory != nil ||
+		raw.CPUs != nil ||
+		raw.Port != nil ||
+		raw.Name != nil ||
+		raw.TailscaleServe != nil ||
+		raw.TailscaleAcceptDNS != nil ||
+		raw.TailscaleAuthKeySecretName != nil ||
+		raw.WebUISecretKeySecretName != nil ||
+		raw.OpenAIAPIKeysSecretName != nil ||
+		raw.TSExtraArgs != nil ||
+		raw.TailscaledExtraArgs != nil
 }
 
 func (r *rootFile) defaults(workspaceName string) {
@@ -293,7 +334,7 @@ func loadProviders(root, pattern string) (Providers, error) {
 		providers.Fly = map[string]FlyProvider{"default": {Region: "cdg", TokenEnv: "FLY_API_TOKEN"}}
 	}
 	if providers.Tailscale == nil {
-		providers.Tailscale = map[string]TailscaleProvider{"tvc": {APIKeyEnv: "TAILSCALE_API_KEY", AuthKeySecret: "TS_AUTHKEY"}}
+		providers.Tailscale = map[string]TailscaleProvider{"default": {APIKeyEnv: "TAILSCALE_API_KEY", AuthKeySecret: "TS_AUTHKEY"}}
 	}
 	if providers.OpenRouter == nil {
 		providers.OpenRouter = map[string]OpenRouterProvider{"default": {BaseURL: "https://openrouter.ai/api/v1", APIKeyEnv: "OPENROUTER_API_KEY"}}

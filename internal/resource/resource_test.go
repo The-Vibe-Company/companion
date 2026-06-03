@@ -22,13 +22,13 @@ func TestCompileAgentAndOpenWebUIResources(t *testing.T) {
 	}
 	byAddress := graph.ByAddress()
 	wants := map[string]string{
-		"fly_app.agent.victor":           ClassManaged,
-		"fly_volume.agent_data.victor":   ClassManaged,
-		"fly_secrets.agent.victor":       ClassManaged,
-		"fly_config.agent.victor":        ClassManaged,
-		"rollout.agent.victor":           ClassAction,
-		"tailscale_device.agent.victor":  ClassObserved,
-		"granite_vault.default.victor":   ClassObserved,
+		"fly_app.agent.sample":           ClassManaged,
+		"fly_volume.agent_data.sample":   ClassManaged,
+		"fly_secrets.agent.sample":       ClassManaged,
+		"fly_config.agent.sample":        ClassManaged,
+		"rollout.agent.sample":           ClassAction,
+		"tailscale_device.agent.sample":  ClassObserved,
+		"granite_vault.default.sample":   ClassObserved,
 		"openwebui_config.main":          ClassDerived,
 		"fly_app.openwebui.main":         ClassManaged,
 		"fly_volume.openwebui_data.main": ClassManaged,
@@ -52,14 +52,14 @@ func TestTargetedSelectIncludesDependenciesInStableOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compile: %v", err)
 	}
-	selected := graph.Select([]string{"rollout.agent.victor"}, nil)
+	selected := graph.Select([]string{"rollout.agent.sample"}, nil)
 	got := addresses(selected.Resources)
 	want := []string{
-		"fly_app.agent.victor",
-		"fly_volume.agent_data.victor",
-		"fly_secrets.agent.victor",
-		"fly_config.agent.victor",
-		"rollout.agent.victor",
+		"fly_app.agent.sample",
+		"fly_volume.agent_data.sample",
+		"fly_secrets.agent.sample",
+		"fly_config.agent.sample",
+		"rollout.agent.sample",
 	}
 	if len(got) != len(want) {
 		t.Fatalf("selected addresses: got %#v want %#v", got, want)
@@ -79,13 +79,13 @@ func TestBuildPlanBlocksProtectedVolumeDestroy(t *testing.T) {
 		"tailscale status --json": {Stdout: `{"Peer":{}}`},
 	}}), flyProvider), Options{
 		Root:           ws.Root,
-		DestroyTargets: []string{"fly_volume.agent_data.victor"},
+		DestroyTargets: []string{"fly_volume.agent_data.sample"},
 	})
 	if err != nil {
 		t.Fatalf("build plan: %v", err)
 	}
 	for _, change := range plan.Changes {
-		if change.Address == "fly_volume.agent_data.victor" {
+		if change.Address == "fly_volume.agent_data.sample" {
 			if change.Kind != "!" || change.Action != "blocked" {
 				t.Fatalf("expected protected block, got %#v", change)
 			}
@@ -102,7 +102,7 @@ func TestMarkOrphanUpdatesObservedStateWithoutDeleting(t *testing.T) {
 		Address:      "fly_app.agent.old",
 		Class:        ClassManaged,
 		ProviderRef:  "fly.default",
-		ExternalID:   "tvc-companion-old",
+		ExternalID:   "example-companion-old",
 		Status:       "ready",
 		ObservedJSON: "{}",
 	}); err != nil {
@@ -115,7 +115,7 @@ func TestMarkOrphanUpdatesObservedStateWithoutDeleting(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get resource: %v", err)
 	}
-	if !ok || resource.ExternalID != "tvc-companion-old" {
+	if !ok || resource.ExternalID != "example-companion-old" {
 		t.Fatalf("expected resource to remain in state, got %#v", resource)
 	}
 	if resource.Status != "orphan" {
@@ -146,9 +146,9 @@ func testWorkspace(t *testing.T) *workspace.Workspace {
 		},
 		OpenWebUI: config.RawOpenWebUI{Enabled: boolPtr(true)},
 		Agents: []config.RawAgent{{
-			ID:                strPtr("victor"),
-			FlyApp:            strPtr("tvc-companion-victor"),
-			TailscaleHostname: strPtr("victor"),
+			ID:                strPtr("sample"),
+			FlyApp:            strPtr("example-companion-sample"),
+			TailscaleHostname: strPtr("sample"),
 		}},
 	})
 	if err != nil {

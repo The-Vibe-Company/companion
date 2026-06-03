@@ -18,9 +18,9 @@ func TestCLIProviderMockE2E(t *testing.T) {
 	server := providertest.New()
 	defer server.Close()
 	server.SetTailscaleDevices([]tailscale.Device{{
-		ID:       "dev-victor",
-		HostName: "victor",
-		DNSName:  "victor.tail.ts.net.",
+		ID:       "dev-sample",
+		HostName: "sample",
+		DNSName:  "sample.tail.ts.net.",
 		Online:   true,
 	}, {
 		ID:       "dev-webui",
@@ -62,7 +62,7 @@ WEBUI_SECRET_KEY=webui-secret
 	if err != nil {
 		t.Fatalf("plan: %v\n%s", err, planOutput)
 	}
-	if !strings.Contains(planOutput, `"address": "fly_app.agent.victor"`) {
+	if !strings.Contains(planOutput, `"address": "fly_app.agent.sample"`) {
 		t.Fatalf("unexpected plan output: %s", planOutput)
 	}
 	if strings.Contains(planOutput, "api-secret") || strings.Contains(planOutput, "openrouter-secret") {
@@ -99,7 +99,7 @@ WEBUI_SECRET_KEY=webui-secret
 			t.Fatalf("state leaked secret value: %#v", resource)
 		}
 	}
-	destroyOutput, err := runCompanionForTest(runner, "--workspace", root, "destroy", "fly_volume.agent_data.victor", "--confirm", "victor")
+	destroyOutput, err := runCompanionForTest(runner, "--workspace", root, "destroy", "fly_volume.agent_data.sample", "--confirm", "sample")
 	if err == nil {
 		t.Fatalf("expected protected data destroy error, got output %s", destroyOutput)
 	}
@@ -139,7 +139,7 @@ api_base_url = "`+server.FlyBaseURL()+`"
 token_env = "FLY_API_TOKEN"
 region = "cdg"
 
-[tailscale.tvc]
+[tailscale.default]
 mode = "api"
 api_base_url = "`+server.TailscaleBaseURL()+`"
 tailnet = "tail.ts.net"
@@ -177,8 +177,8 @@ mcp_role = "write"
 enabled = true
 id = "open-webui"
 runtime = "fly.default"
-network = "tailscale.tvc"
-fly_app = "tvc-companion-webui"
+network = "tailscale.default"
+fly_app = "example-companion-webui"
 tailscale_hostname = "companion-webui"
 volume_name = "open_webui_data"
 volume_size_gb = 5
@@ -187,13 +187,13 @@ openai_api_keys_secret_name = "OPENAI_API_KEYS"
 tailscale_authkey_secret_name = "TS_AUTHKEY"
 tailscale_serve = true
 `)
-	writeCLIProviderTestFile(t, root, "agents/victor.toml", `[agent]
-id = "victor"
+	writeCLIProviderTestFile(t, root, "agents/sample.toml", `[agent]
+id = "sample"
 runtime = "fly.default"
-network = "tailscale.tvc"
+network = "tailscale.default"
 model_provider = "openrouter.default"
-fly_app = "tvc-companion-victor"
-tailscale_hostname = "victor"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
 `)
 	return root
 }
