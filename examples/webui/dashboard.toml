@@ -7,7 +7,7 @@ fly_app = "example-companion-dashboard"
 tailscale_hostname = "companion-dashboard"
 port = 9300
 refresh_interval = 30
-# Smallest Fly machine on purpose: stateless, no volume, scales to zero.
+# Smallest Fly machine on purpose: stateless, no volume, tailnet-only.
 memory = "256mb"
 cpus = 1
 tailscale_serve = true

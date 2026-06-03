@@ -173,7 +173,8 @@ func OpenWebUIFlyTOML(cfg config.OpenWebUI, connections []config.OpenWebUIConnec
 
 // DashboardFlyTOML renders the Fly config for the dedicated status dashboard.
 // The dashboard is stateless: no [[mounts]] block, and the smallest possible
-// machine. It scales to zero when idle and is reached only over Tailscale.
+// machine. It declares no Fly HTTP service, so it is reached only over
+// Tailscale Serve.
 func DashboardFlyTOML(cfg config.Dashboard) (string, error) {
 	if !cfg.Enabled {
 		return "", fmt.Errorf("dashboard is disabled in the workspace")
@@ -211,13 +212,6 @@ func DashboardFlyTOML(cfg config.Dashboard) (string, error) {
 		"",
 		"[processes]",
 		fmt.Sprintf("  app = %s", quote(process)),
-		"",
-		// Scale to zero when idle; the dashboard is on-demand and cheap to wake.
-		"[http_service]",
-		fmt.Sprintf("  internal_port = %d", cfg.Port),
-		`  auto_stop_machines = "stop"`,
-		"  auto_start_machines = true",
-		"  min_machines_running = 0",
 		"",
 		"[[vm]]",
 		`  cpu_kind = "shared"`,

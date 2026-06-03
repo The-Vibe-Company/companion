@@ -1,7 +1,7 @@
 # Optional dedicated status dashboard.
 #
 # When enabled, `companion apply` deploys a tiny, stateless Fly app (smallest
-# machine, no volume, scales to zero) reachable only over Tailscale. It polls
+# machine, no volume, no public Fly HTTP service) reachable only over Tailscale. It polls
 # every service in the fleet and serves a live status page. apply keeps its
 # topology (the services + URLs to poll) in sync with this workspace, so adding
 # an agent and re-applying updates the dashboard automatically.

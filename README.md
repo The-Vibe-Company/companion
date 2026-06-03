@@ -359,7 +359,7 @@ cpus = 1
 tailscale_serve = true
 ```
 
-`companion apply` then deploys the dashboard as a tiny, stateless Fly app (smallest machine, no volume, scales to zero when idle) that holds read-only Fly/Tailscale tokens as Fly secrets and polls the fleet on a timer. The set of services and URLs it polls is a non-secret topology manifest (`.companion/generated/fleet.json`) that apply keeps in sync: `dashboard_config.main` carries the topology fingerprint, so adding or changing an agent and re-applying redeploys the dashboard with the refreshed targets — no manual rebuild. This mirrors how `openwebui_config.main` keeps Open WebUI's backend URLs current.
+`companion apply` then deploys the dashboard as a tiny, stateless Fly app (smallest machine, no volume, no public Fly HTTP service) that holds read-only Fly/Tailscale tokens as Fly secrets and polls the fleet on a timer. The set of services and URLs it polls is a non-secret topology manifest (`.companion/generated/fleet.json`) that apply keeps in sync: `dashboard_config.main` carries the topology fingerprint, so adding or changing an agent and re-applying redeploys the dashboard with the refreshed targets — no manual rebuild. This mirrors how `openwebui_config.main` keeps Open WebUI's backend URLs current.
 
 The deployed image is built from `Dockerfile.dashboard` (the `companion` binary + Tailscale + `fleet.json`). To run it on your own server instead, `git clone` the repo and `go build ./cmd/companion`, then run `companion dashboard --manifest <fleet.json>` with `FLY_API_TOKEN`/`TAILSCALE_API_KEY` in the environment.
 

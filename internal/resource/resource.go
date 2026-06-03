@@ -388,7 +388,7 @@ func planResource(ctx context.Context, ws *workspace.Workspace, store *state.Sto
 			resource.DesiredHash = hash
 		}
 		if resource.Dashboard != nil {
-			hash, _, err := hashDashboardTopology(ws, devices)
+			hash, err := hashDashboardConfig(ws, devices)
 			if err != nil {
 				return Change{}, err
 			}
@@ -402,7 +402,7 @@ func planResource(ctx context.Context, ws *workspace.Workspace, store *state.Sto
 	case "openwebui_config":
 		return planOpenWebUIConfig(ctx, ws, store, devices, resource)
 	case "dashboard_config":
-		hash, _, err := hashDashboardTopology(ws, devices)
+		hash, err := hashDashboardConfig(ws, devices)
 		if err != nil {
 			return Change{}, err
 		}
@@ -486,7 +486,7 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 			if err != nil {
 				return err
 			}
-			hash, _, err := hashDashboardTopology(ws, devices)
+			hash, err := hashDashboardConfig(ws, devices)
 			if err != nil {
 				return err
 			}
@@ -531,7 +531,7 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 		if err != nil {
 			return err
 		}
-		hash, _, err := hashDashboardTopology(ws, devices)
+		hash, err := hashDashboardConfig(ws, devices)
 		if err != nil {
 			return err
 		}
@@ -709,6 +709,21 @@ func hashDashboardTopology(ws *workspace.Workspace, devices []tailscale.Device) 
 		return "", status.FleetTopology{}, err
 	}
 	return hashValue(string(data)), topo, nil
+}
+
+func hashDashboardConfig(ws *workspace.Workspace, devices []tailscale.Device) (string, error) {
+	topologyHash, _, err := hashDashboardTopology(ws, devices)
+	if err != nil {
+		return "", err
+	}
+	toml, err := render.DashboardFlyTOML(ws.Config.Dashboard)
+	if err != nil {
+		return "", err
+	}
+	return hashMap(map[string]any{
+		"fly_toml": toml,
+		"topology": topologyHash,
+	}), nil
 }
 
 func dashboardProviderSummary(ws *workspace.Workspace) status.ProviderSummary {
