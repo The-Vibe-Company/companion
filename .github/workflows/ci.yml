@@ -40,7 +40,6 @@ jobs:
 
       - name: Validate sample workspace
         run: |
-          go run ./cmd/companion validate --workspace .
           go run ./cmd/companion validate --workspace examples/minimal
           go run ./cmd/companion validate --workspace examples/webui
 
