@@ -851,20 +851,23 @@ body.legacy th {
   font-size: var(--t-xs);
 }
 
-.grid {
+/* Scoped to body.legacy: the dashboard has its own .muted, drift <pre>, and
+   never uses .grid/.card/<code>. Leaving these global let the legacy typography
+   and <pre>/<code> chrome bleed into the dashboard. */
+body.legacy .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.75rem;
 }
-.card {
+body.legacy .card {
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-radius: var(--r);
   padding: 0.875rem;
 }
-.muted { color: var(--text-faint); font-size: var(--t-sm); }
+body.legacy .muted { color: var(--text-faint); font-size: var(--t-sm); }
 
-pre {
+body.legacy pre {
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-radius: var(--r);
@@ -875,7 +878,7 @@ pre {
   font-size: var(--t-xs);
   line-height: 1.6;
 }
-code {
+body.legacy code {
   background: var(--panel-2);
   border-radius: 4px;
   padding: 0.125rem 0.3rem;
