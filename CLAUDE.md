@@ -21,7 +21,7 @@ Use these commands for normal validation:
 ```bash
 go test ./...
 sh -n install.sh
-bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly
+bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly bin/start-dashboard-on-fly
 go run ./cmd/companion validate --workspace examples/minimal
 go run ./cmd/companion plan --workspace examples/minimal
 ```
@@ -29,8 +29,10 @@ go run ./cmd/companion plan --workspace examples/minimal
 For dashboard work, use:
 
 ```bash
-go run ./cmd/companion serve --addr 127.0.0.1:8787 --workspace examples/minimal
+go run ./cmd/companion dashboard --addr 127.0.0.1:8787 --workspace examples/minimal
 ```
+
+The `dashboard` command (alias: `serve`) live-polls the fleet and serves a status UI embedded via `go:embed`. Enabling `[dashboard]` in a workspace deploys it as its own tiny, stateless Fly app behind Tailscale; `apply` keeps its `fleet.json` topology in sync via `dashboard_config.main`.
 
 ## Claude-Specific Notes
 

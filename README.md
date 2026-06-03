@@ -120,6 +120,7 @@ companion.toml
 providers.toml
 defaults.toml
 webui.toml
+dashboard.toml
 agents/
   example-agent.toml
 vaults/
@@ -216,7 +217,7 @@ Ready-to-copy examples live in `examples/minimal` and `examples/webui`.
 | Apply one agent | `companion apply example-agent --workspace .` |
 | Print fleet outputs | `companion output --workspace .` |
 | Read one output | `companion output open_webui_url --raw --workspace .` |
-| Run the local dashboard | `companion serve --addr 127.0.0.1:8787 --workspace .` |
+| Run the status dashboard | `companion dashboard --addr 127.0.0.1:8787 --workspace .` |
 
 Plan output is resource-oriented:
 
@@ -232,7 +233,9 @@ Dashboard routes:
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Fleet overview |
+| `/` | Live fleet status page (auto-refreshing) |
+| `/api/status` | Status snapshot JSON |
+| `/healthz` | Liveness probe |
 | `/agents` | Agent table |
 | `/agents/<id>` | Agent detail |
 | `/graph` | Vault connection graph |
@@ -256,6 +259,10 @@ fly_app.openwebui.main
 fly_volume.openwebui_data.main
 fly_secrets.openwebui.main
 rollout.openwebui.main
+dashboard_config.main
+fly_app.dashboard.main
+fly_secrets.dashboard.main
+rollout.dashboard.main
 ```
 
 State is evidence, not desired config:
@@ -327,6 +334,34 @@ companion apply openwebui --workspace .
 ```
 
 If an agent does not set `api_server.open_webui_url` or `api_server.open_webui_host`, Companion resolves the current Tailscale DNS name and injects it into `OPENAI_API_BASE_URLS`.
+
+## Status Dashboard
+
+`companion dashboard` serves a live status view of the whole fleet — one page that shows every agent and the Open WebUI, with health, Tailscale presence, Fly machine state, model, and a drift summary. The UI is embedded in the binary (`go:embed`), so there is no separate build step. Run it locally against a workspace:
+
+```bash
+companion dashboard --addr 127.0.0.1:8787 --workspace .
+```
+
+`serve` is kept as an alias. The page polls `/api/status` (JSON) on an interval; `/healthz` is a liveness probe.
+
+You can also deploy it on its own dedicated instance, reachable only over Tailscale, by enabling `[dashboard]` in the workspace:
+
+```toml
+[dashboard]
+enabled = true
+fly_app = "example-companion-dashboard"
+tailscale_hostname = "companion-dashboard"
+port = 9300
+refresh_interval = 30
+memory = "256mb"   # smallest Fly machine; the dashboard is stateless
+cpus = 1
+tailscale_serve = true
+```
+
+`companion apply` then deploys the dashboard as a tiny, stateless Fly app (smallest machine, no volume, scales to zero when idle) that holds read-only Fly/Tailscale tokens as Fly secrets and polls the fleet on a timer. The set of services and URLs it polls is a non-secret topology manifest (`.companion/generated/fleet.json`) that apply keeps in sync: `dashboard_config.main` carries the topology fingerprint, so adding or changing an agent and re-applying redeploys the dashboard with the refreshed targets — no manual rebuild. This mirrors how `openwebui_config.main` keeps Open WebUI's backend URLs current.
+
+The deployed image is built from `Dockerfile.dashboard` (the `companion` binary + Tailscale + `fleet.json`). To run it on your own server instead, `git clone` the repo and `go build ./cmd/companion`, then run `companion dashboard --manifest <fleet.json>` with `FLY_API_TOKEN`/`TAILSCALE_API_KEY` in the environment.
 
 ## Development
 

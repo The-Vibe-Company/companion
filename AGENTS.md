@@ -28,10 +28,10 @@ The previous Companion web UI is archived under `archived/legacy-companion/`. Do
 ```bash
 go test ./...
 sh -n install.sh
-bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly
+bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly bin/start-dashboard-on-fly
 go run ./cmd/companion validate --workspace examples/minimal
 go run ./cmd/companion plan --workspace examples/minimal
-go run ./cmd/companion serve --addr 127.0.0.1:8787 --workspace examples/minimal
+go run ./cmd/companion dashboard --addr 127.0.0.1:8787 --workspace examples/minimal
 ```
 
 Provider e2e tests should use local mocks through `mode = "api"` and `api_base_url`. Do not hit live Fly, Tailscale, or OpenRouter resources unless the user explicitly asks for a live operation.
