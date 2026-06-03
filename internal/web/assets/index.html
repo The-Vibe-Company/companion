@@ -3,80 +3,96 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Companion · Fleet Status</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <title>Companion · Fleet</title>
   <link rel="stylesheet" href="/assets/dashboard.css">
 </head>
 <body data-interval="{{.IntervalSec}}" data-workspace="{{.Workspace}}">
-  <div class="grain" aria-hidden="true"></div>
 
-  <header class="hero">
-    <div class="hero__bar">
-      <div class="wordmark">
-        <span class="wordmark__dot"></span>
-        Companion
-      </div>
-      <div class="hero__meta">
-        <span class="pill" id="conn-pill" role="status"><span class="pill__dot"></span><span id="conn-text">connecting…</span></span>
-        <span class="hero__ws" id="workspace-name"></span>
-      </div>
+  <header class="topbar">
+    <div class="topbar__left">
+      <span class="wordmark">Companion</span>
+      <span class="topbar__sep" aria-hidden="true"></span>
+      <span class="topbar__ws" id="workspace-name"></span>
     </div>
-    <h1 class="hero__title">Fleet status</h1>
-    <p class="hero__tagline">Secure fleets of task-optimized AI agents — tools, memory, and private access. Live over Tailscale.</p>
+    <div class="topbar__right">
+      <span class="conn" id="conn-pill" role="status" aria-live="polite">
+        <span class="conn__dot" aria-hidden="true"></span>
+        <span id="conn-text">connecting</span>
+      </span>
+      <span class="topbar__updated" id="updated">updated --:--:--</span>
+      <span class="topbar__refresh" id="refresh-note"></span>
+    </div>
   </header>
 
   <main class="wrap">
-    <section class="stats" id="stats" aria-live="polite" aria-label="Fleet health summary">
-      <article class="stat stat--total"><div class="stat__num" id="stat-total">—</div><div class="stat__label">Services</div></article>
-      <article class="stat stat--ok"><div class="stat__num" id="stat-healthy">—</div><div class="stat__label">Healthy</div></article>
-      <article class="stat stat--warn"><div class="stat__num" id="stat-degraded">—</div><div class="stat__label">Degraded</div></article>
-      <article class="stat stat--down"><div class="stat__num" id="stat-down">—</div><div class="stat__label">Down</div></article>
+
+    <div class="filters" role="radiogroup" aria-label="Filter services by health">
+      <button class="seg is-active" type="button" data-filter="all" role="radio" aria-checked="true">
+        <span class="seg__label">All</span><span class="seg__count" id="count-all">0</span>
+      </button>
+      <button class="seg" type="button" data-filter="ok" role="radio" aria-checked="false">
+        <span class="seg__swatch seg__swatch--ok" aria-hidden="true"></span>
+        <span class="seg__label">Healthy</span><span class="seg__count" id="count-healthy">0</span>
+      </button>
+      <button class="seg" type="button" data-filter="degraded" role="radio" aria-checked="false">
+        <span class="seg__swatch seg__swatch--degraded" aria-hidden="true"></span>
+        <span class="seg__label">Degraded</span><span class="seg__count" id="count-degraded">0</span>
+      </button>
+      <button class="seg" type="button" data-filter="down" role="radio" aria-checked="false">
+        <span class="seg__swatch seg__swatch--down" aria-hidden="true"></span>
+        <span class="seg__label">Down</span><span class="seg__count" id="count-down">0</span>
+      </button>
+      <span class="sr-only" id="filter-status" role="status" aria-live="polite"></span>
+    </div>
+
+    <section class="list" aria-label="Fleet agents">
+      <div class="list__head" role="row">
+        <span class="col col-status" role="columnheader">Status</span>
+        <span class="col col-name" role="columnheader">Service</span>
+        <span class="col col-url" role="columnheader">URL</span>
+        <span class="col col-net" role="columnheader">Tailnet</span>
+        <span class="col col-machine" role="columnheader">Machine</span>
+        <span class="col col-http" role="columnheader">HTTP</span>
+        <span class="col col-model" role="columnheader">Model</span>
+      </div>
+      <div class="list__body" id="services-body">
+        <div class="state state--loading" id="state-loading">
+          <div class="skel-rows" aria-hidden="true">
+            <span class="skel-row"></span><span class="skel-row"></span><span class="skel-row"></span>
+          </div>
+          <p class="state__text">Waiting for first poll</p>
+        </div>
+      </div>
     </section>
 
-    <section class="panel">
-      <div class="panel__head">
-        <h2>Services</h2>
-        <span class="panel__hint" id="updated">—</span>
-      </div>
-      <div class="table-wrap">
-        <table class="services">
-          <thead>
-            <tr>
-              <th class="col-status" scope="col"><span class="sr-only">Health</span></th>
-              <th scope="col">Service</th>
-              <th scope="col">Kind</th>
-              <th scope="col">Host</th>
-              <th scope="col">Machine</th>
-              <th class="col-center" scope="col">Tailnet</th>
-              <th scope="col">Model</th>
-              <th class="col-center" scope="col">HTTP</th>
-            </tr>
-          </thead>
-          <tbody id="services-body">
-            <tr class="empty"><td colspan="8">Waiting for first poll…</td></tr>
-          </tbody>
-        </table>
-      </div>
+    <section class="drift" id="drift" aria-label="Configuration drift">
+      <button class="drift__toggle" type="button" id="drift-toggle" aria-expanded="false" aria-controls="drift-panel">
+        <span class="drift__chev" aria-hidden="true"></span>
+        <span class="drift__title">Drift</span>
+        <span class="drift__badge" id="drift-badge">clean</span>
+      </button>
+      <pre class="drift__panel" id="drift-panel" hidden>No drift report.</pre>
     </section>
 
-    <section class="panel panel--drift">
-      <div class="panel__head">
-        <h2>Drift</h2>
-        <span class="badge" id="drift-badge">—</span>
-      </div>
-      <pre class="drift" id="drift-text">No drift report.</pre>
-    </section>
   </main>
 
-  <footer class="foot">
-    <span>Companion control plane</span>
-    <span class="foot__sep">·</span>
-    <a href="/api/status">/api/status</a>
-    <span class="foot__sep">·</span>
-    <span id="refresh-note"></span>
-  </footer>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden tabindex="-1">
+    <header class="drawer__head">
+      <div class="drawer__heading">
+        <h2 class="drawer__title" id="drawer-title">Service</h2>
+        <span class="status-pill" id="drawer-pill"><span class="status-pill__dot"></span><span id="drawer-pill-text">unknown</span></span>
+      </div>
+      <button class="drawer__close" type="button" id="drawer-close" aria-label="Close detail">
+        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+          <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </header>
+    <div class="drawer__body" id="drawer-body"></div>
+    <footer class="drawer__foot" id="drawer-foot"></footer>
+  </aside>
 
   <script src="/assets/dashboard.js"></script>
 </body>
