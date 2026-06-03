@@ -38,8 +38,8 @@ jobs:
           GOBIN="$bin_dir" go install ./cmd/companion
           "$bin_dir/companion" version
 
-      - name: Validate sample config
-        run: go run ./cmd/companion validate --config companion.toml
+      - name: Validate sample workspace
+        run: go run ./cmd/companion validate --workspace .
 
       - name: Build Hermes Docker image
         run: docker build -f Dockerfile .

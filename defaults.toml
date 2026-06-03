@@ -1,0 +1,38 @@
+[defaults]
+region = "cdg"
+volume_name = "data"
+volume_size_gb = 3
+memory = "4gb"
+cpus = 2
+dashboard_mode = "serve"
+dashboard_host = "0.0.0.0"
+dashboard_insecure = true
+dashboard_port = 9119
+granite_enabled = true
+tailscale_authkey_secret_name = "TS_AUTHKEY"
+ts_extra_args = "--netfilter-mode=off"
+
+[defaults.model]
+enabled = true
+provider = "openrouter"
+default = "google/gemini-3.5-flash"
+base_url = "https://openrouter.ai/api/v1"
+api_key_secret_name = "OPENROUTER_API_KEY"
+api_key_env = "OPENROUTER_API_KEY"
+
+[defaults.api_server]
+enabled = true
+host = "0.0.0.0"
+port = 8642
+
+[defaults.default_vault]
+enabled = true
+path = "/opt/data/.granite"
+mcp_enabled = true
+mcp_name = "granite"
+mcp_role = "write"
+sync_serve = true
+sync_port = 8765
+write_serve = true
+write_port = 3321
+sync_interval = 30

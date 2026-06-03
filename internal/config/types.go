@@ -45,6 +45,11 @@ type RawDefaults struct {
 
 type RawAgent struct {
 	ID                         *string              `toml:"id"`
+	Runtime                    *string              `toml:"runtime"`
+	Network                    *string              `toml:"network"`
+	ModelProvider              *string              `toml:"model_provider"`
+	Lifecycle                  *string              `toml:"lifecycle"`
+	Protect                    *bool                `toml:"protect"`
 	FlyApp                     *string              `toml:"fly_app"`
 	TailscaleHostname          *string              `toml:"tailscale_hostname"`
 	Region                     *string              `toml:"region"`
@@ -134,6 +139,10 @@ type RawVaultConnection struct {
 type RawOpenWebUI struct {
 	Enabled                    *bool   `toml:"enabled"`
 	ID                         *string `toml:"id"`
+	Runtime                    *string `toml:"runtime"`
+	Network                    *string `toml:"network"`
+	Lifecycle                  *string `toml:"lifecycle"`
+	Protect                    *bool   `toml:"protect"`
 	FlyApp                     *string `toml:"fly_app"`
 	TailscaleHostname          *string `toml:"tailscale_hostname"`
 	Region                     *string `toml:"region"`
@@ -182,6 +191,11 @@ type Defaults struct {
 
 type Agent struct {
 	ID                         string            `json:"id"`
+	Runtime                    string            `json:"runtime"`
+	Network                    string            `json:"network"`
+	ModelProvider              string            `json:"model_provider"`
+	Lifecycle                  string            `json:"lifecycle"`
+	Protect                    bool              `json:"protect"`
 	FlyApp                     string            `json:"fly_app"`
 	TailscaleHostname          string            `json:"tailscale_hostname"`
 	Region                     string            `json:"region"`
@@ -269,6 +283,10 @@ type VaultConnection struct {
 type OpenWebUI struct {
 	Enabled                    bool   `json:"enabled"`
 	ID                         string `json:"id"`
+	Runtime                    string `json:"runtime"`
+	Network                    string `json:"network"`
+	Lifecycle                  string `json:"lifecycle"`
+	Protect                    bool   `json:"protect"`
 	FlyApp                     string `json:"fly_app"`
 	TailscaleHostname          string `json:"tailscale_hostname"`
 	Region                     string `json:"region"`
@@ -308,24 +326,6 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 	return cfg, nil
-}
-
-func ImportFleet(source, destination string) error {
-	cfg, err := Load(source)
-	if err != nil {
-		return err
-	}
-	if err := cfg.Validate(); err != nil {
-		return err
-	}
-	data, err := os.ReadFile(source)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(destination, data, 0o644)
 }
 
 func Normalize(raw RawConfig) (*Config, error) {
@@ -371,6 +371,18 @@ func (c *Config) Validate() error {
 		}
 		if agent.DashboardMode != "serve" && agent.DashboardMode != "tailnet-port" && agent.DashboardMode != "off" {
 			return fmt.Errorf("agent %s dashboard_mode must be serve, tailnet-port, or off", agent.ID)
+		}
+		if agent.Lifecycle != "present" && agent.Lifecycle != "absent" {
+			return fmt.Errorf("agent %s lifecycle must be present or absent", agent.ID)
+		}
+		if agent.Runtime == "" || !strings.Contains(agent.Runtime, ".") {
+			return fmt.Errorf("agent %s runtime must look like provider.name", agent.ID)
+		}
+		if agent.Network == "" || !strings.Contains(agent.Network, ".") {
+			return fmt.Errorf("agent %s network must look like provider.name", agent.ID)
+		}
+		if agent.ModelProvider == "" || !strings.Contains(agent.ModelProvider, ".") {
+			return fmt.Errorf("agent %s model_provider must look like provider.name", agent.ID)
 		}
 		if agent.Model.Enabled && agent.Model.Default == "" {
 			return fmt.Errorf("agent %s model.default is required when model is enabled", agent.ID)
@@ -423,6 +435,15 @@ func (c *Config) Validate() error {
 		}
 		if err := validatePort("open_webui.port", c.OpenWebUI.Port); err != nil {
 			return err
+		}
+		if c.OpenWebUI.Lifecycle != "present" && c.OpenWebUI.Lifecycle != "absent" {
+			return fmt.Errorf("open_webui.lifecycle must be present or absent")
+		}
+		if c.OpenWebUI.Runtime == "" || !strings.Contains(c.OpenWebUI.Runtime, ".") {
+			return fmt.Errorf("open_webui.runtime must look like provider.name")
+		}
+		if c.OpenWebUI.Network == "" || !strings.Contains(c.OpenWebUI.Network, ".") {
+			return fmt.Errorf("open_webui.network must look like provider.name")
 		}
 		for key, value := range map[string]string{
 			"tailscale_authkey_secret_name": c.OpenWebUI.TailscaleAuthKeySecretName,
@@ -513,6 +534,11 @@ func normalizeAgent(defaults Defaults, raw RawAgent) (Agent, error) {
 	}
 	agent := Agent{
 		ID:                         id,
+		Runtime:                    stringValue(raw.Runtime, "fly.default"),
+		Network:                    stringValue(raw.Network, "tailscale.tvc"),
+		ModelProvider:              stringValue(raw.ModelProvider, "openrouter.default"),
+		Lifecycle:                  stringValue(raw.Lifecycle, "present"),
+		Protect:                    boolValue(raw.Protect, true),
 		FlyApp:                     stringValue(raw.FlyApp, ""),
 		TailscaleHostname:          stringValue(raw.TailscaleHostname, ""),
 		Region:                     stringValue(raw.Region, defaults.Region),
@@ -680,6 +706,10 @@ func normalizeOpenWebUI(raw RawOpenWebUI, defaults Defaults) OpenWebUI {
 	return OpenWebUI{
 		Enabled:                    boolValue(raw.Enabled, false),
 		ID:                         stringValue(raw.ID, "open-webui"),
+		Runtime:                    stringValue(raw.Runtime, "fly.default"),
+		Network:                    stringValue(raw.Network, "tailscale.tvc"),
+		Lifecycle:                  stringValue(raw.Lifecycle, "present"),
+		Protect:                    boolValue(raw.Protect, true),
 		FlyApp:                     stringValue(raw.FlyApp, "tvc-companion-webui"),
 		TailscaleHostname:          stringValue(raw.TailscaleHostname, "companion-webui"),
 		Region:                     stringValue(raw.Region, defaults.Region),

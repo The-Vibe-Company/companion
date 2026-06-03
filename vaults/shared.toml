@@ -1,0 +1,7 @@
+[vault]
+id = "shared"
+lifecycle = "present"
+
+[vault.default]
+enabled = true
+role = "write"

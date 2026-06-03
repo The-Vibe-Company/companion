@@ -1,0 +1,22 @@
+[open_webui]
+enabled = true
+id = "open-webui"
+runtime = "fly.default"
+network = "tailscale.tvc"
+lifecycle = "present"
+protect = true
+fly_app = "tvc-companion-webui"
+tailscale_hostname = "companion-webui"
+region = "cdg"
+volume_name = "open_webui_data"
+volume_size_gb = 5
+memory = "4gb"
+cpus = 2
+port = 8080
+name = "Companion"
+tailscale_serve = true
+tailscale_accept_dns = true
+tailscale_authkey_secret_name = "TS_AUTHKEY"
+webui_secret_key_secret_name = "WEBUI_SECRET_KEY"
+openai_api_keys_secret_name = "OPENAI_API_KEYS"
+ts_extra_args = "--netfilter-mode=off"

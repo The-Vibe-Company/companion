@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -20,6 +21,7 @@ type Runner interface {
 
 type ShellRunner struct {
 	Dir string
+	Env map[string]string
 }
 
 func (r ShellRunner) Run(ctx context.Context, command []string) (Result, error) {
@@ -29,6 +31,12 @@ func (r ShellRunner) Run(ctx context.Context, command []string) (Result, error) 
 	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
 	if r.Dir != "" {
 		cmd.Dir = r.Dir
+	}
+	if len(r.Env) > 0 {
+		cmd.Env = os.Environ()
+		for key, value := range r.Env {
+			cmd.Env = append(cmd.Env, key+"="+value)
+		}
 	}
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

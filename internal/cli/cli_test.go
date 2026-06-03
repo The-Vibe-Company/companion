@@ -12,15 +12,22 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/execx"
 	"github.com/The-Vibe-Company/companion/internal/fly"
 	"github.com/The-Vibe-Company/companion/internal/render"
-	"github.com/The-Vibe-Company/companion/internal/state"
-	"github.com/The-Vibe-Company/companion/internal/tailscale"
+	"github.com/The-Vibe-Company/companion/internal/workspace"
 )
 
 func TestImportAndStateListCommands(t *testing.T) {
-	statePath := filepath.Join(t.TempDir(), "state.sqlite")
+	root := t.TempDir()
+	writeTestWorkspace(t, root, map[string]string{
+		"companion-test": `
+[agent]
+id = "companion-test"
+fly_app = "tvc-companion-test"
+tailscale_hostname = "companion-test"
+`,
+	})
 
 	importCmd := NewRootCommand()
-	importCmd.SetArgs([]string{"--state", statePath, "import", "fly_app.companion-test", "tvc-companion-test", "--attrs", "region=cdg"})
+	importCmd.SetArgs([]string{"--workspace", root, "import", "fly_app.agent.companion-test", "tvc-companion-test", "--attrs", "region=cdg"})
 	if err := importCmd.Execute(); err != nil {
 		t.Fatalf("import command: %v", err)
 	}
@@ -28,11 +35,11 @@ func TestImportAndStateListCommands(t *testing.T) {
 	listCmd := NewRootCommand()
 	var output bytes.Buffer
 	listCmd.SetOut(&output)
-	listCmd.SetArgs([]string{"--state", statePath, "state", "list"})
+	listCmd.SetArgs([]string{"--workspace", root, "state", "list"})
 	if err := listCmd.Execute(); err != nil {
 		t.Fatalf("state list command: %v", err)
 	}
-	if !strings.Contains(output.String(), "fly_app.companion-test -> tvc-companion-test") {
+	if !strings.Contains(output.String(), "fly_app.agent.companion-test -> tvc-companion-test") {
 		t.Fatalf("unexpected state output: %s", output.String())
 	}
 }
@@ -62,72 +69,6 @@ func TestAgentSecretsCanReuseExistingFlySecrets(t *testing.T) {
 	}
 	if strings.Join(reused, ",") != strings.Join(render.RequiredAgentSecrets(agent), ",") {
 		t.Fatalf("unexpected reused secrets: %#v", reused)
-	}
-}
-
-func TestRecordAgentResourcesUpsertsObservedState(t *testing.T) {
-	store, err := state.Open(filepath.Join(t.TempDir(), "state.sqlite"))
-	if err != nil {
-		t.Fatalf("open state: %v", err)
-	}
-	defer store.Close()
-
-	flyRunner := &execx.FakeRunner{Responses: map[string]execx.Result{
-		"fly volumes list -a tvc-companion-victor --json": {Stdout: `[{
-			"id":"vol_victor",
-			"name":"data",
-			"state":"created",
-			"size_gb":3,
-			"region":"cdg",
-			"attached_machine_id":"machine_victor"
-		}]`},
-	}}
-	tsRunner := &execx.FakeRunner{Responses: map[string]execx.Result{
-		"tailscale status --json": {Stdout: `{"Peer":{"node:1":{
-			"ID":"node_1",
-			"HostName":"victor",
-			"DNSName":"victor.tailnet.ts.net.",
-			"Online":true,
-			"TailscaleIPs":["100.64.0.10"]
-		}}}`},
-	}}
-
-	agent := config.Agent{
-		ID:                "victor",
-		FlyApp:            "tvc-companion-victor",
-		TailscaleHostname: "victor",
-		Region:            "cdg",
-		VolumeName:        "data",
-		VolumeSizeGB:      3,
-		Memory:            "4gb",
-		CPUs:              2,
-	}
-	if err := recordAgentResources(context.Background(), store, fly.New(flyRunner), tailscale.New(tsRunner), agent, ".companion/generated/fly.victor.toml"); err != nil {
-		t.Fatalf("record agent resources: %v", err)
-	}
-
-	resources, err := store.ListResources(context.Background())
-	if err != nil {
-		t.Fatalf("list resources: %v", err)
-	}
-	if len(resources) != 3 {
-		t.Fatalf("expected app, volume, and tailscale device, got %#v", resources)
-	}
-	seen := map[string]string{}
-	for _, resource := range resources {
-		seen[resource.Provider+"_"+resource.Kind+"."+resource.DesiredID] = resource.ExternalID
-		if strings.Contains(resource.AttrsJSON, "secret") {
-			t.Fatalf("state attrs should not contain secrets: %#v", resource)
-		}
-	}
-	if seen["fly_app.victor"] != "tvc-companion-victor" {
-		t.Fatalf("missing fly app resource: %#v", seen)
-	}
-	if seen["fly_volume.victor-data"] != "vol_victor" {
-		t.Fatalf("missing fly volume resource: %#v", seen)
-	}
-	if seen["tailscale_device.victor"] != "node_1" {
-		t.Fatalf("missing tailscale device resource: %#v", seen)
 	}
 }
 
@@ -177,21 +118,20 @@ func TestAppEnvLoadsEnvFileAndShellOverrides(t *testing.T) {
 
 func TestIdentityInitAndRenderCommands(t *testing.T) {
 	root := t.TempDir()
-	configPath := filepath.Join(root, "companion.toml")
-	if err := os.WriteFile(configPath, []byte(`
-[[agents]]
+	writeTestWorkspace(t, root, map[string]string{
+		"victor": `
+[agent]
 id = "victor"
 fly_app = "tvc-companion-victor"
 tailscale_hostname = "victor"
 
-[agents.default_vault]
+[default_vault]
 name = "Victor"
-`), 0o644); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
+`,
+	})
 
 	initCmd := NewRootCommand()
-	initCmd.SetArgs([]string{"--root", root, "--config", configPath, "identity", "init", "victor", "--name", "Victor"})
+	initCmd.SetArgs([]string{"--workspace", root, "identity", "init", "victor", "--name", "Victor"})
 	if err := initCmd.Execute(); err != nil {
 		t.Fatalf("identity init: %v", err)
 	}
@@ -204,24 +144,20 @@ name = "Victor"
 	if !strings.Contains(string(data), "You are Victor") {
 		t.Fatalf("unexpected identity file: %s", string(data))
 	}
-	configData, err := os.ReadFile(configPath)
+	agentData, err := os.ReadFile(filepath.Join(root, "agents", "victor.toml"))
 	if err != nil {
-		t.Fatalf("read config: %v", err)
+		t.Fatalf("read agent config: %v", err)
 	}
-	for _, want := range []string{
-		"[agents.identity]",
-		`path = "identities/victor/SOUL.md"`,
-		"overwrite = true",
-	} {
-		if !strings.Contains(string(configData), want) {
-			t.Fatalf("config missing %q:\n%s", want, string(configData))
+	for _, want := range []string{`identity = "identities/victor/SOUL.md"`} {
+		if !strings.Contains(string(agentData), want) {
+			t.Fatalf("agent config missing %q:\n%s", want, string(agentData))
 		}
 	}
 
 	renderCmd := NewRootCommand()
 	var output bytes.Buffer
 	renderCmd.SetOut(&output)
-	renderCmd.SetArgs([]string{"--root", root, "--config", configPath, "identity", "render", "victor"})
+	renderCmd.SetArgs([]string{"--workspace", root, "identity", "render", "victor"})
 	if err := renderCmd.Execute(); err != nil {
 		t.Fatalf("identity render: %v", err)
 	}
@@ -258,22 +194,18 @@ func TestHydrateAgentIdentityReadsRelativePath(t *testing.T) {
 
 func TestIdentityRenderErrorsWhenFileIsMissing(t *testing.T) {
 	root := t.TempDir()
-	configPath := filepath.Join(root, "companion.toml")
-	if err := os.WriteFile(configPath, []byte(`
-[[agents]]
+	writeTestWorkspace(t, root, map[string]string{
+		"victor": `
+[agent]
 id = "victor"
 fly_app = "tvc-companion-victor"
 tailscale_hostname = "victor"
-
-[agents.identity]
-enabled = true
-path = "identities/victor/SOUL.md"
-`), 0o644); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
+identity = "identities/victor/SOUL.md"
+`,
+	})
 
 	cmd := NewRootCommand()
-	cmd.SetArgs([]string{"--root", root, "--config", configPath, "identity", "render", "victor"})
+	cmd.SetArgs([]string{"--workspace", root, "identity", "render", "victor"})
 	err := cmd.Execute()
 	if err == nil {
 		t.Fatalf("expected missing identity file error")
@@ -285,49 +217,51 @@ path = "identities/victor/SOUL.md"
 
 func TestUpdateAgentIdentityConfigReplacesOnlyTargetAgent(t *testing.T) {
 	root := t.TempDir()
-	configPath := filepath.Join(root, "companion.toml")
-	if err := os.WriteFile(configPath, []byte(`
-[[agents]]
+	writeTestWorkspace(t, root, map[string]string{
+		"companion-test": `
+[agent]
 id = "companion-test"
 fly_app = "tvc-companion-test"
 tailscale_hostname = "companion-test"
+identity = "identities/companion-test/SOUL.md"
 
-[agents.identity]
-enabled = true
-path = "identities/companion-test/SOUL.md"
+[identity]
 overwrite = true
-
-[[agents]]
+`,
+		"victor": `
+[agent]
 id = "victor"
 fly_app = "tvc-companion-victor"
 tailscale_hostname = "victor"
+identity = "old/victor/SOUL.md"
 
-[agents.identity]
-enabled = true
-path = "old/victor/SOUL.md"
+[identity]
 overwrite = true
 
-[agents.default_vault]
+[default_vault]
 name = "Victor"
-`), 0o644); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
+`,
+	})
 
-	if err := updateAgentIdentityConfig(configPath, "victor", "identities/victor/SOUL.md", false); err != nil {
+	ws, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("load workspace: %v", err)
+	}
+	if err := updateAgentIdentityConfig(ws, "victor", "identities/victor/SOUL.md", false); err != nil {
 		t.Fatalf("update identity config: %v", err)
 	}
-	cfg, err := config.Load(configPath)
+	updated, err := workspace.Load(root)
 	if err != nil {
 		t.Fatalf("load updated config: %v", err)
 	}
-	test, err := selectSingleAgent(cfg, "companion-test")
+	test, err := selectSingleAgent(updated.Config, "companion-test")
 	if err != nil {
 		t.Fatalf("select companion-test: %v", err)
 	}
 	if test.Identity.Path != "identities/companion-test/SOUL.md" || !test.Identity.Overwrite {
 		t.Fatalf("unexpected companion-test identity: %#v", test.Identity)
 	}
-	victor, err := selectSingleAgent(cfg, "victor")
+	victor, err := selectSingleAgent(updated.Config, "victor")
 	if err != nil {
 		t.Fatalf("select victor: %v", err)
 	}
@@ -336,5 +270,66 @@ name = "Victor"
 	}
 	if victor.DefaultVault.Name != "Victor" {
 		t.Fatalf("expected default vault table to be preserved, got %#v", victor.DefaultVault)
+	}
+}
+
+func writeTestWorkspace(t *testing.T, root string, agents map[string]string) {
+	t.Helper()
+	files := map[string]string{
+		"companion.toml": `workspace = "test-companion"
+
+[backend.local]
+state = ".companion/state.sqlite"
+
+[load]
+providers = "providers.toml"
+defaults = "defaults.toml"
+webui = "webui.toml"
+agents = "agents/*.toml"
+vaults = "vaults/*.toml"
+`,
+		"providers.toml": `[fly.default]
+region = "cdg"
+token_env = "FLY_API_TOKEN"
+
+[tailscale.tvc]
+tailnet = "tailnet.ts.net"
+api_key_env = "TAILSCALE_API_KEY"
+auth_key_secret = "TS_AUTHKEY"
+
+[openrouter.default]
+base_url = "https://openrouter.ai/api/v1"
+api_key_env = "OPENROUTER_API_KEY"
+`,
+		"defaults.toml": `[defaults]
+region = "cdg"
+
+[defaults.model]
+enabled = false
+
+[defaults.api_server]
+enabled = true
+open_webui_enabled = true
+`,
+		"webui.toml": `[open_webui]
+enabled = false
+`,
+	}
+	for path, content := range files {
+		writeTestFile(t, root, path, content)
+	}
+	for id, content := range agents {
+		writeTestFile(t, root, filepath.Join("agents", id+".toml"), content)
+	}
+}
+
+func writeTestFile(t *testing.T, root, path, content string) {
+	t.Helper()
+	fullPath := filepath.Join(root, filepath.FromSlash(path))
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", path, err)
+	}
+	if err := os.WriteFile(fullPath, []byte(strings.TrimSpace(content)+"\n"), 0o644); err != nil {
+		t.Fatalf("write %s: %v", path, err)
 	}
 }

@@ -89,6 +89,17 @@ func (p Provider) CreateApp(ctx context.Context, app string) error {
 	return nil
 }
 
+func (p Provider) DeleteApp(ctx context.Context, app string) error {
+	result, err := p.Runner.Run(ctx, []string{"fly", "apps", "destroy", app, "--yes"})
+	if err != nil {
+		return err
+	}
+	if result.ExitCode != 0 && !strings.Contains(strings.ToLower(result.Stderr+result.Stdout), "could not find app") {
+		return fmt.Errorf("fly apps destroy failed: %s", strings.TrimSpace(result.Stderr+result.Stdout))
+	}
+	return nil
+}
+
 func (p Provider) ListVolumes(ctx context.Context, app string) ([]Volume, error) {
 	result, err := p.Runner.Run(ctx, []string{"fly", "volumes", "list", "-a", app, "--json"})
 	if err != nil {
@@ -160,6 +171,21 @@ func (p Provider) EnsureVolume(ctx context.Context, app, name, region string, si
 		return "", fmt.Errorf("fly volumes create failed: %s", strings.TrimSpace(result.Stderr))
 	}
 	return fmt.Sprintf("+ create volume %s", name), nil
+}
+
+func (p Provider) DeleteVolume(ctx context.Context, app, volumeID string) error {
+	result, err := p.Runner.Run(ctx, []string{"fly", "volumes", "destroy", volumeID, "-a", app, "--yes"})
+	if err != nil {
+		return err
+	}
+	if result.ExitCode != 0 {
+		text := strings.ToLower(result.Stderr + result.Stdout)
+		if strings.Contains(text, "not found") || strings.Contains(text, "no volume") {
+			return nil
+		}
+		return fmt.Errorf("fly volumes destroy failed: %s", strings.TrimSpace(result.Stderr+result.Stdout))
+	}
+	return nil
 }
 
 func (p Provider) SetSecrets(ctx context.Context, app string, secrets map[string]string) error {

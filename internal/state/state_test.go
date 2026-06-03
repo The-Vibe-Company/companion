@@ -14,8 +14,8 @@ func TestImportResourceIsIdempotentByDesiredAddress(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	first := Resource{Provider: "fly", Kind: "app", DesiredID: "companion-test", ExternalID: "old", AttrsJSON: "{}"}
-	second := Resource{Provider: "fly", Kind: "app", DesiredID: "companion-test", ExternalID: "new", AttrsJSON: `{"region":"cdg"}`}
+	first := Resource{Address: "fly_app.agent.companion-test", Class: "managed", ProviderRef: "fly.default", ExternalID: "old", ObservedJSON: "{}"}
+	second := Resource{Address: "fly_app.agent.companion-test", Class: "managed", ProviderRef: "fly.default", ExternalID: "new", ObservedJSON: `{"region":"cdg"}`}
 	if err := store.ImportResource(ctx, first); err != nil {
 		t.Fatalf("import first: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestImportResourceIsIdempotentByDesiredAddress(t *testing.T) {
 	if resources[0].ExternalID != "new" {
 		t.Fatalf("expected updated external id, got %q", resources[0].ExternalID)
 	}
-	if resources[0].AttrsJSON != `{"region":"cdg"}` {
-		t.Fatalf("expected updated attrs, got %q", resources[0].AttrsJSON)
+	if resources[0].ObservedJSON != `{"region":"cdg"}` {
+		t.Fatalf("expected updated attrs, got %q", resources[0].ObservedJSON)
 	}
 }

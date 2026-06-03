@@ -17,12 +17,16 @@ type Store struct {
 }
 
 type Resource struct {
-	Provider   string
-	Kind       string
-	DesiredID  string
-	ExternalID string
-	AttrsJSON  string
-	ObservedAt time.Time
+	Address          string
+	Class            string
+	ProviderRef      string
+	ExternalID       string
+	Status           string
+	DesiredHash      string
+	ObservedJSON     string
+	Protected        bool
+	LastTransitionAt time.Time
+	LastError        string
 }
 
 func Open(path string) (*Store, error) {
@@ -49,18 +53,26 @@ func (s *Store) Close() error {
 }
 
 func (s *Store) EnsureSchema(ctx context.Context) error {
+	if old, err := s.hasOldResourceSchema(ctx); err != nil {
+		return err
+	} else if old {
+		if _, err := s.DB.ExecContext(ctx, `DROP TABLE resources`); err != nil {
+			return err
+		}
+	}
 	statements := []string{
 		`CREATE TABLE IF NOT EXISTS resources (
-			provider TEXT NOT NULL,
-			kind TEXT NOT NULL,
-			desired_id TEXT NOT NULL,
+			address TEXT PRIMARY KEY,
+			class TEXT NOT NULL,
+			provider_ref TEXT NOT NULL,
 			external_id TEXT NOT NULL,
-			attrs_json TEXT NOT NULL,
-			observed_at TEXT NOT NULL,
-			PRIMARY KEY (provider, kind, desired_id, external_id)
+			status TEXT NOT NULL,
+			desired_hash TEXT NOT NULL,
+			observed_json TEXT NOT NULL,
+			protected INTEGER NOT NULL,
+			last_transition_at TEXT NOT NULL,
+			last_error TEXT NOT NULL
 		)`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS resources_desired_idx
-		 ON resources(provider, kind, desired_id)`,
 		`CREATE TABLE IF NOT EXISTS events (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			timestamp TEXT NOT NULL,
@@ -86,52 +98,96 @@ func (s *Store) EnsureSchema(ctx context.Context) error {
 	return nil
 }
 
+func (s *Store) hasOldResourceSchema(ctx context.Context) (bool, error) {
+	rows, err := s.DB.QueryContext(ctx, `PRAGMA table_info(resources)`)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	seen := map[string]bool{}
+	for rows.Next() {
+		var cid int
+		var name string
+		var typ string
+		var notNull int
+		var dflt sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &dflt, &pk); err != nil {
+			return false, err
+		}
+		seen[name] = true
+	}
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
+	if len(seen) == 0 {
+		return false, nil
+	}
+	return !seen["address"], nil
+}
+
 func (s *Store) UpsertResource(ctx context.Context, resource Resource) error {
-	if resource.ObservedAt.IsZero() {
-		resource.ObservedAt = time.Now().UTC()
+	if resource.LastTransitionAt.IsZero() {
+		resource.LastTransitionAt = time.Now().UTC()
+	}
+	if resource.Status == "" {
+		resource.Status = "ready"
+	}
+	if resource.ObservedJSON == "" {
+		resource.ObservedJSON = "{}"
 	}
 	_, err := s.DB.ExecContext(
 		ctx,
-		`INSERT INTO resources(provider, kind, desired_id, external_id, attrs_json, observed_at)
-		 VALUES (?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(provider, kind, desired_id)
-		 DO UPDATE SET external_id=excluded.external_id, attrs_json=excluded.attrs_json, observed_at=excluded.observed_at`,
-		resource.Provider,
-		resource.Kind,
-		resource.DesiredID,
+		`INSERT INTO resources(address, class, provider_ref, external_id, status, desired_hash, observed_json, protected, last_transition_at, last_error)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(address)
+		 DO UPDATE SET class=excluded.class, provider_ref=excluded.provider_ref, external_id=excluded.external_id,
+		 status=excluded.status, desired_hash=excluded.desired_hash, observed_json=excluded.observed_json,
+		 protected=excluded.protected, last_transition_at=excluded.last_transition_at, last_error=excluded.last_error`,
+		resource.Address,
+		resource.Class,
+		resource.ProviderRef,
 		resource.ExternalID,
-		resource.AttrsJSON,
-		resource.ObservedAt.Format(time.RFC3339),
+		resource.Status,
+		resource.DesiredHash,
+		resource.ObservedJSON,
+		boolInt(resource.Protected),
+		resource.LastTransitionAt.Format(time.RFC3339),
+		resource.LastError,
 	)
 	return err
 }
 
 func (s *Store) ImportResource(ctx context.Context, resource Resource) error {
-	if resource.ObservedAt.IsZero() {
-		resource.ObservedAt = time.Now().UTC()
+	if resource.Status == "" {
+		resource.Status = "ready"
 	}
-	_, err := s.DB.ExecContext(
+	return s.UpsertResource(ctx, resource)
+}
+
+func (s *Store) GetResource(ctx context.Context, address string) (Resource, bool, error) {
+	row := s.DB.QueryRowContext(
 		ctx,
-		`INSERT INTO resources(provider, kind, desired_id, external_id, attrs_json, observed_at)
-		 VALUES (?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(provider, kind, desired_id)
-		 DO UPDATE SET external_id=excluded.external_id, attrs_json=excluded.attrs_json, observed_at=excluded.observed_at`,
-		resource.Provider,
-		resource.Kind,
-		resource.DesiredID,
-		resource.ExternalID,
-		resource.AttrsJSON,
-		resource.ObservedAt.Format(time.RFC3339),
+		`SELECT address, class, provider_ref, external_id, status, desired_hash, observed_json, protected, last_transition_at, last_error
+		 FROM resources WHERE address=?`,
+		address,
 	)
-	return err
+	resource, err := scanResource(row)
+	if err == sql.ErrNoRows {
+		return Resource{}, false, nil
+	}
+	if err != nil {
+		return Resource{}, false, err
+	}
+	return resource, true, nil
 }
 
 func (s *Store) ListResources(ctx context.Context) ([]Resource, error) {
 	rows, err := s.DB.QueryContext(
 		ctx,
-		`SELECT provider, kind, desired_id, external_id, attrs_json, observed_at
+		`SELECT address, class, provider_ref, external_id, status, desired_hash, observed_json, protected, last_transition_at, last_error
 		 FROM resources
-		 ORDER BY provider, kind, desired_id, external_id`,
+		 ORDER BY address`,
 	)
 	if err != nil {
 		return nil, err
@@ -140,25 +196,18 @@ func (s *Store) ListResources(ctx context.Context) ([]Resource, error) {
 
 	resources := []Resource{}
 	for rows.Next() {
-		var resource Resource
-		var observedAt string
-		if err := rows.Scan(
-			&resource.Provider,
-			&resource.Kind,
-			&resource.DesiredID,
-			&resource.ExternalID,
-			&resource.AttrsJSON,
-			&observedAt,
-		); err != nil {
+		resource, err := scanResource(rows)
+		if err != nil {
 			return nil, err
-		}
-		parsed, err := time.Parse(time.RFC3339, observedAt)
-		if err == nil {
-			resource.ObservedAt = parsed
 		}
 		resources = append(resources, resource)
 	}
 	return resources, rows.Err()
+}
+
+func (s *Store) RemoveResource(ctx context.Context, address string) error {
+	_, err := s.DB.ExecContext(ctx, `DELETE FROM resources WHERE address=?`, address)
+	return err
 }
 
 func (s *Store) RecordEvent(ctx context.Context, command, subject, level, message string, attrs any) error {
@@ -211,6 +260,35 @@ func (s *Store) FinishApply(ctx context.Context, id int64, status string) error 
 	return err
 }
 
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func scanResource(row scanner) (Resource, error) {
+	var resource Resource
+	var protected int
+	var transition string
+	if err := row.Scan(
+		&resource.Address,
+		&resource.Class,
+		&resource.ProviderRef,
+		&resource.ExternalID,
+		&resource.Status,
+		&resource.DesiredHash,
+		&resource.ObservedJSON,
+		&protected,
+		&transition,
+		&resource.LastError,
+	); err != nil {
+		return Resource{}, err
+	}
+	resource.Protected = protected != 0
+	if parsed, err := time.Parse(time.RFC3339, transition); err == nil {
+		resource.LastTransitionAt = parsed
+	}
+	return resource, nil
+}
+
 func marshalAttrs(attrs any) (string, error) {
 	if attrs == nil {
 		return "{}", nil
@@ -220,4 +298,11 @@ func marshalAttrs(attrs any) (string, error) {
 		return "", fmt.Errorf("marshal attrs: %w", err)
 	}
 	return string(data), nil
+}
+
+func boolInt(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
 }

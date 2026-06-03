@@ -6,42 +6,30 @@ import (
 	"strings"
 )
 
-var (
-	resourceTypePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
-	resourceIDPattern   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.:-]*$`)
-)
+var addressPartPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
 
 type Address struct {
-	Raw       string
-	Type      string
-	Provider  string
-	Kind      string
-	DesiredID string
+	Raw   string
+	Type  string
+	Group string
+	Name  string
 }
 
 func ParseAddress(raw string) (Address, error) {
 	raw = strings.TrimSpace(raw)
-	resourceType, desiredID, ok := strings.Cut(raw, ".")
-	if !ok || resourceType == "" || desiredID == "" {
-		return Address{}, fmt.Errorf("resource address must look like fly_app.companion-test")
+	parts := strings.Split(raw, ".")
+	if len(parts) != 2 && len(parts) != 3 {
+		return Address{}, fmt.Errorf("resource address must look like fly_app.agent.victor or openwebui_config.main")
 	}
-	provider, kind, ok := strings.Cut(resourceType, "_")
-	if !ok || provider == "" || kind == "" {
-		return Address{}, fmt.Errorf("resource type must look like provider_kind")
+	for _, part := range parts {
+		if !addressPartPattern.MatchString(part) {
+			return Address{}, fmt.Errorf("resource address part %q must use lowercase letters, numbers, dashes, or underscores", part)
+		}
 	}
-	if !resourceTypePattern.MatchString(resourceType) {
-		return Address{}, fmt.Errorf("resource type %q must use lowercase letters, numbers, dashes, or underscores", resourceType)
+	if len(parts) == 2 {
+		return Address{Raw: raw, Type: parts[0], Name: parts[1]}, nil
 	}
-	if !resourceIDPattern.MatchString(desiredID) {
-		return Address{}, fmt.Errorf("desired id %q must use letters, numbers, dashes, underscores, dots, or colons", desiredID)
-	}
-	return Address{
-		Raw:       raw,
-		Type:      resourceType,
-		Provider:  provider,
-		Kind:      kind,
-		DesiredID: desiredID,
-	}, nil
+	return Address{Raw: raw, Type: parts[0], Group: parts[1], Name: parts[2]}, nil
 }
 
 func ParseAttrs(values []string) (map[string]string, error) {
@@ -57,6 +45,9 @@ func ParseAttrs(values []string) (map[string]string, error) {
 	return attrs, nil
 }
 
-func FormatAddress(provider, kind, desiredID string) string {
-	return provider + "_" + kind + "." + desiredID
+func FormatAddress(resourceType, group, name string) string {
+	if group == "" {
+		return resourceType + "." + name
+	}
+	return resourceType + "." + group + "." + name
 }

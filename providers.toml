@@ -1,0 +1,13 @@
+[fly.default]
+org = "the-vibe-company"
+region = "cdg"
+token_env = "FLY_API_TOKEN"
+
+[tailscale.tvc]
+tailnet = "tail5f910b.ts.net"
+api_key_env = "TAILSCALE_API_KEY"
+auth_key_secret = "TS_AUTHKEY"
+
+[openrouter.default]
+base_url = "https://openrouter.ai/api/v1"
+api_key_env = "OPENROUTER_API_KEY"

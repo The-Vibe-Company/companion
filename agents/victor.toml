@@ -1,0 +1,16 @@
+[agent]
+id = "victor"
+runtime = "fly.default"
+network = "tailscale.tvc"
+model_provider = "openrouter.default"
+lifecycle = "present"
+protect = true
+fly_app = "tvc-companion-victor"
+tailscale_hostname = "victor"
+identity = "identities/victor/SOUL.md"
+
+[default_vault]
+name = "Victor"
+
+[identity]
+overwrite = true

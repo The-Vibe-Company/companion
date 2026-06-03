@@ -1,14 +1,37 @@
 package config
 
 import (
-	"path/filepath"
 	"testing"
 )
 
-func TestLoadSampleConfigShape(t *testing.T) {
-	cfg, err := Load(filepath.Join("..", "..", "companion.toml"))
+func TestNormalizeSampleConfigShape(t *testing.T) {
+	cfg, err := Normalize(RawConfig{
+		Defaults: RawDefaults{
+			APIServer: RawAPIServer{Enabled: boolPtr(true), Host: strPtr("0.0.0.0"), Port: intPtr(8642)},
+			Model: RawModel{
+				Enabled:          boolPtr(true),
+				Provider:         strPtr("openrouter"),
+				Default:          strPtr("google/gemini-3.5-flash"),
+				BaseURL:          strPtr("https://openrouter.ai/api/v1"),
+				APIKeySecretName: strPtr("OPENROUTER_API_KEY"),
+				APIKeyEnv:        strPtr("OPENROUTER_API_KEY"),
+			},
+		},
+		OpenWebUI: RawOpenWebUI{Enabled: boolPtr(true), TailscaleAcceptDNS: boolPtr(true)},
+		Agents: []RawAgent{
+			{ID: strPtr("companion-test"), FlyApp: strPtr("tvc-companion-test"), TailscaleHostname: strPtr("companion-test")},
+			{ID: strPtr("companion-lab"), FlyApp: strPtr("tvc-companion-lab"), TailscaleHostname: strPtr("companion-lab")},
+			{
+				ID:                strPtr("victor"),
+				FlyApp:            strPtr("tvc-companion-victor"),
+				TailscaleHostname: strPtr("victor"),
+				Identity:          RawIdentity{Path: strPtr("identities/victor/SOUL.md")},
+			},
+			{ID: strPtr("writer"), FlyApp: strPtr("tvc-companion-writer"), TailscaleHostname: strPtr("companion-writer")},
+		},
+	})
 	if err != nil {
-		t.Fatalf("load sample config: %v", err)
+		t.Fatalf("normalize sample config: %v", err)
 	}
 	if len(cfg.Agents) != 4 {
 		t.Fatalf("expected 4 agents, got %d", len(cfg.Agents))

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -22,19 +21,19 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/outputs"
 	"github.com/The-Vibe-Company/companion/internal/plan"
 	"github.com/The-Vibe-Company/companion/internal/render"
+	"github.com/The-Vibe-Company/companion/internal/resource"
 	"github.com/The-Vibe-Company/companion/internal/state"
 	"github.com/The-Vibe-Company/companion/internal/tailscale"
 	"github.com/The-Vibe-Company/companion/internal/tailscalectl"
 	"github.com/The-Vibe-Company/companion/internal/vaultops"
 	"github.com/The-Vibe-Company/companion/internal/version"
 	"github.com/The-Vibe-Company/companion/internal/web"
+	"github.com/The-Vibe-Company/companion/internal/workspace"
 )
 
 type app struct {
-	configPath string
-	statePath  string
-	rootDir    string
-	envFile    string
+	rootDir string
+	envFile string
 }
 
 func NewRootCommand() *cobra.Command {
@@ -45,19 +44,17 @@ func NewRootCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	cmd.PersistentFlags().StringVar(&a.configPath, "config", "companion.toml", "desired Companion config")
-	cmd.PersistentFlags().StringVar(&a.statePath, "state", ".companion/state.sqlite", "observed state SQLite path")
-	cmd.PersistentFlags().StringVar(&a.rootDir, "root", ".", "working root for generated artifacts")
+	cmd.PersistentFlags().StringVar(&a.rootDir, "workspace", ".", "Companion workspace directory")
 	cmd.PersistentFlags().StringVar(&a.envFile, "env-file", ".env", "secret env file; shell variables override file values")
 
-	cmd.AddCommand(a.importFleetCommand())
+	cmd.AddCommand(a.initCommand())
+	cmd.AddCommand(a.fmtCommand())
 	cmd.AddCommand(a.resourceImportCommand())
 	cmd.AddCommand(a.validateCommand())
 	cmd.AddCommand(a.planCommand())
 	cmd.AddCommand(a.applyCommand())
-	cmd.AddCommand(a.applyWebUICommand())
+	cmd.AddCommand(a.destroyCommand())
 	cmd.AddCommand(a.statusCommand())
-	cmd.AddCommand(a.driftCommand())
 	cmd.AddCommand(a.graphCommand())
 	cmd.AddCommand(a.identityCommand())
 	cmd.AddCommand(a.outputCommand())
@@ -69,26 +66,152 @@ func NewRootCommand() *cobra.Command {
 	return cmd
 }
 
-func (a *app) importFleetCommand() *cobra.Command {
-	var out string
-	cmd := &cobra.Command{
-		Use:   "import-fleet <legacy-fleet.toml>",
-		Short: "Import a legacy hermes-fleet TOML into companion.toml",
-		Args:  cobra.ExactArgs(1),
+func (a *app) initCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "init",
+		Short: "Create a folder-based Companion workspace",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			destination := out
-			if destination == "" {
-				destination = a.configPath
+			root := a.rootDir
+			if root == "" {
+				root = "."
 			}
-			if err := config.ImportFleet(args[0], destination); err != nil {
-				return err
+			files := map[string]string{
+				"companion.toml": `workspace = "companion"
+
+[backend.local]
+state = ".companion/state.sqlite"
+
+[load]
+providers = "providers.toml"
+defaults = "defaults.toml"
+webui = "webui.toml"
+agents = "agents/*.toml"
+vaults = "vaults/*.toml"
+`,
+				"providers.toml": `[fly.default]
+region = "cdg"
+token_env = "FLY_API_TOKEN"
+
+[tailscale.tvc]
+api_key_env = "TAILSCALE_API_KEY"
+auth_key_secret = "TS_AUTHKEY"
+
+[openrouter.default]
+base_url = "https://openrouter.ai/api/v1"
+api_key_env = "OPENROUTER_API_KEY"
+`,
+				"defaults.toml": `[defaults]
+region = "cdg"
+volume_name = "data"
+volume_size_gb = 3
+memory = "4gb"
+cpus = 2
+dashboard_mode = "serve"
+dashboard_host = "0.0.0.0"
+dashboard_insecure = true
+dashboard_port = 9119
+granite_enabled = true
+tailscale_authkey_secret_name = "TS_AUTHKEY"
+ts_extra_args = "--netfilter-mode=off"
+
+[defaults.model]
+enabled = true
+provider = "openrouter"
+default = "google/gemini-3.5-flash"
+base_url = "https://openrouter.ai/api/v1"
+api_key_secret_name = "OPENROUTER_API_KEY"
+api_key_env = "OPENROUTER_API_KEY"
+
+[defaults.api_server]
+enabled = true
+host = "0.0.0.0"
+port = 8642
+
+[defaults.default_vault]
+enabled = true
+path = "/opt/data/.granite"
+mcp_enabled = true
+mcp_name = "granite"
+mcp_role = "write"
+sync_serve = true
+sync_port = 8765
+write_serve = true
+write_port = 3321
+sync_interval = 30
+`,
+				"webui.toml": `[open_webui]
+enabled = true
+id = "open-webui"
+runtime = "fly.default"
+network = "tailscale.tvc"
+lifecycle = "present"
+protect = true
+fly_app = "tvc-companion-webui"
+tailscale_hostname = "companion-webui"
+region = "cdg"
+volume_name = "open_webui_data"
+volume_size_gb = 5
+memory = "4gb"
+cpus = 2
+port = 8080
+name = "Companion"
+tailscale_serve = true
+tailscale_accept_dns = true
+tailscale_authkey_secret_name = "TS_AUTHKEY"
+webui_secret_key_secret_name = "WEBUI_SECRET_KEY"
+openai_api_keys_secret_name = "OPENAI_API_KEYS"
+ts_extra_args = "--netfilter-mode=off"
+`,
+				filepath.Join("agents", "victor.toml"): `[agent]
+id = "victor"
+runtime = "fly.default"
+network = "tailscale.tvc"
+model_provider = "openrouter.default"
+lifecycle = "present"
+protect = true
+fly_app = "tvc-companion-victor"
+tailscale_hostname = "victor"
+identity = "identities/victor/SOUL.md"
+
+[default_vault]
+enabled = true
+name = "Victor"
+mcp_role = "write"
+`,
+				filepath.Join("identities", "victor", "SOUL.md"): identityTemplate("Victor"),
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", destination)
+			for name, contents := range files {
+				path := filepath.Join(root, name)
+				if _, err := os.Stat(path); err == nil {
+					return fmt.Errorf("%s already exists", path)
+				} else if err != nil && !os.IsNotExist(err) {
+					return err
+				}
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					return err
+				}
+				if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+					return err
+				}
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "initialized Companion workspace in %s\n", root)
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&out, "out", "", "destination config path")
-	return cmd
+}
+
+func (a *app) fmtCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "fmt",
+		Short: "Validate workspace TOML formatting",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if _, err := a.workspace(); err != nil {
+				return err
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), "workspace toml ok")
+			return nil
+		},
+	}
 }
 
 func (a *app) resourceImportCommand() *cobra.Command {
@@ -114,25 +237,30 @@ func (a *app) resourceImportCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("marshal attrs: %w", err)
 			}
-			store, err := state.Open(a.statePath)
+			ws, err := a.workspace()
+			if err != nil {
+				return err
+			}
+			store, err := state.Open(ws.StatePath)
 			if err != nil {
 				return err
 			}
 			defer store.Close()
 			resource := state.Resource{
-				Provider:   address.Provider,
-				Kind:       address.Kind,
-				DesiredID:  address.DesiredID,
-				ExternalID: externalID,
-				AttrsJSON:  string(attrsJSON),
+				Address:      address.Raw,
+				Class:        "managed",
+				ProviderRef:  providerRefForImport(ws, address),
+				ExternalID:   externalID,
+				Status:       "ready",
+				ObservedJSON: string(attrsJSON),
 			}
 			if err := store.ImportResource(cmd.Context(), resource); err != nil {
 				return err
 			}
 			if err := store.RecordEvent(cmd.Context(), "import", address.Raw, "info", "imported resource", map[string]string{
-				"provider":    address.Provider,
-				"kind":        address.Kind,
-				"desired_id":  address.DesiredID,
+				"type":        address.Type,
+				"group":       address.Group,
+				"name":        address.Name,
 				"external_id": externalID,
 			}); err != nil {
 				return err
@@ -145,15 +273,44 @@ func (a *app) resourceImportCommand() *cobra.Command {
 	return cmd
 }
 
+func providerRefForImport(ws *workspace.Workspace, address importer.Address) string {
+	if address.Type == "tailscale_device" {
+		if address.Group == "agent" {
+			if agent, err := selectSingleAgent(ws.Config, address.Name); err == nil {
+				return agent.Network
+			}
+		}
+		if ws.Config.OpenWebUI.Enabled {
+			return ws.Config.OpenWebUI.Network
+		}
+		return "tailscale.tvc"
+	}
+	if address.Group == "agent" || address.Group == "agent_data" || address.Group == "default" {
+		if agent, err := selectSingleAgent(ws.Config, address.Name); err == nil {
+			return agent.Runtime
+		}
+	}
+	if strings.Contains(address.Raw, "openwebui") || address.Type == "openwebui_config" {
+		if ws.Config.OpenWebUI.Enabled {
+			return ws.Config.OpenWebUI.Runtime
+		}
+	}
+	if strings.HasPrefix(address.Type, "fly_") || address.Type == "rollout" || address.Type == "granite_vault" {
+		return "fly.default"
+	}
+	return address.Type
+}
+
 func (a *app) validateCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "validate",
-		Short: "Validate companion.toml",
+		Short: "Validate the Companion workspace",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := a.load()
+			ws, err := a.workspace()
 			if err != nil {
 				return err
 			}
+			cfg := ws.Config
 			for _, agent := range cfg.Agents {
 				identity := "disabled"
 				if agent.Identity.Enabled {
@@ -165,14 +322,14 @@ func (a *app) validateCommand() *cobra.Command {
 						return err
 					}
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "%s: ok fly_app=%s tailscale=%s dashboard=%s:%d api=%t:%d identity=%s\n", agent.ID, agent.FlyApp, agent.TailscaleHostname, agent.DashboardMode, agent.DashboardPort, agent.APIServer.Enabled, agent.APIServer.Port, identity)
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: ok runtime=%s network=%s fly_app=%s tailscale=%s lifecycle=%s identity=%s\n", agent.ID, agent.Runtime, agent.Network, agent.FlyApp, agent.TailscaleHostname, agent.Lifecycle, identity)
 			}
 			if cfg.OpenWebUI.Enabled {
 				ids := []string{}
 				for _, connection := range cfg.OpenWebUIConnections() {
 					ids = append(ids, connection.AgentID)
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "%s: ok fly_app=%s tailscale=%s connections=%s\n", cfg.OpenWebUI.ID, cfg.OpenWebUI.FlyApp, cfg.OpenWebUI.TailscaleHostname, strings.Join(ids, ","))
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: ok runtime=%s network=%s fly_app=%s tailscale=%s connections=%s\n", cfg.OpenWebUI.ID, cfg.OpenWebUI.Runtime, cfg.OpenWebUI.Network, cfg.OpenWebUI.FlyApp, cfg.OpenWebUI.TailscaleHostname, strings.Join(ids, ","))
 			}
 			return nil
 		},
@@ -180,19 +337,72 @@ func (a *app) validateCommand() *cobra.Command {
 }
 
 func (a *app) planCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "plan [agent-id...]",
-		Short: "Print the desired vs observed change plan",
+	var formatJSON bool
+	cmd := &cobra.Command{
+		Use:   "plan [address...]",
+		Short: "Print the desired vs observed resource plan",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := a.load()
+			ws, err := a.workspace()
 			if err != nil {
 				return err
 			}
-			agents, err := cfg.SelectAgents(args)
+			store, err := state.Open(ws.StatePath)
 			if err != nil {
 				return err
 			}
-			report, err := plan.Build(cmd.Context(), cfg, agents, a.fly(), a.tailscale())
+			defer store.Close()
+			env, err := a.env()
+			if err != nil {
+				return err
+			}
+			report, err := resource.BuildPlan(cmd.Context(), ws, store, a.flyWithEnv(env), a.tailscaleWithEnv(env), resource.Options{
+				Root:         ws.Root,
+				GeneratedDir: filepath.Join(ws.Root, ".companion", "generated"),
+				Targets:      args,
+			})
+			if err != nil {
+				return err
+			}
+			if formatJSON {
+				data, err := report.JSON()
+				if err != nil {
+					return err
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), string(data))
+			} else {
+				fmt.Fprintln(cmd.OutOrStdout(), report.String())
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&formatJSON, "json", false, "print plan as JSON")
+	return cmd
+}
+
+func (a *app) applyCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "apply [address...]",
+		Short: "Apply the Companion resource plan",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ws, err := a.workspace()
+			if err != nil {
+				return err
+			}
+			env, err := a.env()
+			if err != nil {
+				return err
+			}
+			store, err := state.Open(ws.StatePath)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+			report, err := resource.Apply(cmd.Context(), ws, store, a.flyWithEnv(env), a.tailscaleWithEnv(env), resource.Options{
+				Root:         ws.Root,
+				GeneratedDir: filepath.Join(ws.Root, ".companion", "generated"),
+				Env:          env,
+				Targets:      args,
+			})
 			if err != nil {
 				return err
 			}
@@ -200,110 +410,53 @@ func (a *app) planCommand() *cobra.Command {
 			return nil
 		},
 	}
-}
-
-func (a *app) applyCommand() *cobra.Command {
-	var reuseExistingSecrets bool
-	cmd := &cobra.Command{
-		Use:   "apply [agent-id...]",
-		Short: "Apply one or more Companion agents",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := a.load()
-			if err != nil {
-				return err
-			}
-			agents, err := cfg.SelectAgents(args)
-			if err != nil {
-				return err
-			}
-			store, err := state.Open(a.statePath)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
-			report, err := plan.Build(cmd.Context(), cfg, agents, a.fly(), a.tailscale())
-			if err != nil {
-				return err
-			}
-			applyID, err := store.StartApply(cmd.Context(), report)
-			if err != nil {
-				return err
-			}
-			status := "failed"
-			defer func() {
-				_ = store.FinishApply(context.Background(), applyID, status)
-			}()
-			for _, agent := range agents {
-				if err := a.applyAgent(cmd, store, agent, reuseExistingSecrets); err != nil {
-					return err
-				}
-			}
-			status = "succeeded"
-			return nil
-		},
-	}
-	cmd.Flags().BoolVar(&reuseExistingSecrets, "reuse-existing-secrets", false, "allow deploy when required Fly secrets already exist")
 	return cmd
 }
 
-func (a *app) applyWebUICommand() *cobra.Command {
-	var reuseExistingSecrets bool
+func (a *app) destroyCommand() *cobra.Command {
+	var confirm string
+	var destroyData bool
+	var backupFirst bool
 	cmd := &cobra.Command{
-		Use:   "apply-webui",
-		Short: "Apply the shared Open WebUI frontend",
+		Use:   "destroy <address>",
+		Short: "Destroy a managed resource with explicit confirmation",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := a.load()
+			ws, err := a.workspace()
 			if err != nil {
 				return err
 			}
-			if !cfg.OpenWebUI.Enabled {
-				return fmt.Errorf("open_webui is disabled in companion.toml")
+			if confirm == "" || !strings.Contains(args[0], confirm) {
+				return fmt.Errorf("destroy requires --confirm with part of the resource address")
 			}
-			connections := deps.OpenWebUIConnections(cmd.Context(), cfg, a.tailscale())
-			tomlData, err := render.OpenWebUIFlyTOML(cfg.OpenWebUI, connections)
-			if err != nil {
-				return err
-			}
-			path, err := a.writeGenerated("fly."+cfg.OpenWebUI.ID+".toml", tomlData)
-			if err != nil {
-				return err
-			}
-			store, err := state.Open(a.statePath)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
-			provider := a.fly()
 			env, err := a.env()
 			if err != nil {
 				return err
 			}
-			values, err := openWebUISecrets(cmd.Context(), provider, cfg.OpenWebUI, connections, reuseExistingSecrets, env)
+			store, err := state.Open(ws.StatePath)
 			if err != nil {
 				return err
 			}
-			if err := provider.CreateApp(cmd.Context(), cfg.OpenWebUI.FlyApp); err != nil {
-				return err
-			}
-			message, err := provider.EnsureVolume(cmd.Context(), cfg.OpenWebUI.FlyApp, cfg.OpenWebUI.VolumeName, cfg.OpenWebUI.Region, cfg.OpenWebUI.VolumeSizeGB)
+			defer store.Close()
+			report, err := resource.Apply(cmd.Context(), ws, store, a.flyWithEnv(env), a.tailscaleWithEnv(env), resource.Options{
+				Root:                  ws.Root,
+				GeneratedDir:          filepath.Join(ws.Root, ".companion", "generated"),
+				Env:                   env,
+				DestroyTargets:        args,
+				AllowProtectedDestroy: true,
+				DestroyData:           destroyData,
+				BackupFirst:           backupFirst,
+			})
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), message)
-			printSecretsAction(cmd, cfg.OpenWebUI.FlyApp, values, reusedSecretNames(values, render.RequiredOpenWebUIFlySecrets(cfg.OpenWebUI)))
-			if err := provider.SetSecrets(cmd.Context(), cfg.OpenWebUI.FlyApp, values); err != nil {
-				return err
-			}
-			if err := provider.Deploy(cmd.Context(), cfg.OpenWebUI.FlyApp, path); err != nil {
-				return err
-			}
-			if err := recordOpenWebUIResources(cmd.Context(), store, provider, a.tailscale(), cfg.OpenWebUI, path); err != nil {
-				return err
-			}
-			return store.RecordEvent(cmd.Context(), "apply-webui", cfg.OpenWebUI.ID, "info", "applied open webui", map[string]string{"config": path})
+			fmt.Fprintln(cmd.OutOrStdout(), report.String())
+			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&reuseExistingSecrets, "reuse-existing-secrets", false, "allow deploy when required Fly secrets already exist")
+	cmd.Flags().StringVar(&confirm, "confirm", "", "required confirmation token")
+	cmd.Flags().BoolVar(&destroyData, "destroy-data", false, "allow destroying persistent data resources")
+	cmd.Flags().BoolVar(&backupFirst, "backup-first", false, "confirm persistent data was backed up first")
 	return cmd
 }
 
@@ -320,8 +473,12 @@ func (a *app) statusCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			env, err := a.env()
+			if err != nil {
+				return err
+			}
 			client := hermes.New()
-			devices, _ := a.tailscale().Devices(cmd.Context())
+			devices, _ := a.tailscaleWithEnv(env).Devices(cmd.Context())
 			for _, agent := range agents {
 				if !agent.APIServer.Enabled {
 					fmt.Fprintf(cmd.OutOrStdout(), "%s api=disabled\n", agent.ID)
@@ -335,25 +492,6 @@ func (a *app) statusCommand() *cobra.Command {
 					fmt.Fprintf(cmd.OutOrStdout(), "%s health=error url=%s detail=%s status=%d\n", agent.ID, health.URL, health.Error, health.Status)
 				}
 			}
-			return nil
-		},
-	}
-}
-
-func (a *app) driftCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "drift",
-		Short: "Report observed drift",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := a.load()
-			if err != nil {
-				return err
-			}
-			report, err := plan.Drift(cmd.Context(), cfg, a.fly(), a.tailscale())
-			if err != nil {
-				return err
-			}
-			fmt.Fprintln(cmd.OutOrStdout(), report.String())
 			return nil
 		},
 	}
@@ -401,7 +539,11 @@ func (a *app) outputCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fleetOutputs := outputs.Build(cmd.Context(), cfg, a.fly(), a.tailscale())
+			env, err := a.env()
+			if err != nil {
+				return err
+			}
+			fleetOutputs := outputs.Build(cmd.Context(), cfg, a.flyWithEnv(env), a.tailscaleWithEnv(env))
 			var value any = fleetOutputs
 			if len(args) == 1 {
 				value, err = outputs.Lookup(fleetOutputs, args[0])
@@ -473,10 +615,11 @@ func (a *app) identityInitCommand() *cobra.Command {
 		Short: "Create a local SOUL.md file and attach it to an agent",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := a.load()
+			ws, err := a.workspace()
 			if err != nil {
 				return err
 			}
+			cfg := ws.Config
 			agent, err := selectSingleAgent(cfg, args[0])
 			if err != nil {
 				return err
@@ -491,7 +634,7 @@ func (a *app) identityInitCommand() *cobra.Command {
 				name = humanNameFromID(agent.ID)
 			}
 
-			destination := filepath.Join(a.rootDir, filepath.FromSlash(path))
+			destination := filepath.Join(ws.Root, filepath.FromSlash(path))
 			if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 				return err
 			}
@@ -503,11 +646,11 @@ func (a *app) identityInitCommand() *cobra.Command {
 			if err := os.WriteFile(destination, []byte(identityTemplate(name)), 0o644); err != nil {
 				return err
 			}
-			if err := updateAgentIdentityConfig(a.configPath, agent.ID, path, overwrite); err != nil {
+			if err := updateAgentIdentityConfig(ws, agent.ID, path, overwrite); err != nil {
 				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", destination)
-			fmt.Fprintf(cmd.OutOrStdout(), "updated %s agent=%s identity.path=%s\n", a.configPath, agent.ID, path)
+			fmt.Fprintf(cmd.OutOrStdout(), "updated agent=%s identity=%s\n", agent.ID, path)
 			return nil
 		},
 	}
@@ -558,8 +701,12 @@ func (a *app) serveCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			env, err := a.env()
+			if err != nil {
+				return err
+			}
 			fmt.Fprintf(cmd.OutOrStdout(), "serving Companion dashboard at http://%s\n", addr)
-			return web.Serve(cmd.Context(), addr, cfg, a.fly(), a.tailscale())
+			return web.Serve(cmd.Context(), addr, cfg, a.flyWithEnv(env), a.tailscaleWithEnv(env))
 		},
 	}
 	cmd.Flags().StringVar(&addr, "addr", "127.0.0.1:8787", "listen address")
@@ -583,6 +730,8 @@ func (a *app) stateCommand() *cobra.Command {
 		Short: "Inspect local observed state",
 	}
 	cmd.AddCommand(a.stateListCommand())
+	cmd.AddCommand(a.stateShowCommand())
+	cmd.AddCommand(a.stateRemoveCommand())
 	return cmd
 }
 
@@ -676,7 +825,11 @@ func (a *app) vaultBackupCommand() *cobra.Command {
 			if destination == "" {
 				destination = filepath.Join(a.rootDir, ".companion", "backups")
 			}
-			result, err := vaultops.Backup(cmd.Context(), a.fly(), agent, destination, time.Now().UTC())
+			env, err := a.env()
+			if err != nil {
+				return err
+			}
+			result, err := vaultops.Backup(cmd.Context(), a.flyWithEnv(env), agent, destination, time.Now().UTC())
 			if err != nil {
 				return err
 			}
@@ -706,7 +859,11 @@ func (a *app) vaultRestoreCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			result, err := vaultops.Restore(cmd.Context(), a.fly(), agent, args[1], time.Now().UTC())
+			env, err := a.env()
+			if err != nil {
+				return err
+			}
+			result, err := vaultops.Restore(cmd.Context(), a.flyWithEnv(env), agent, args[1], time.Now().UTC())
 			if err != nil {
 				return err
 			}
@@ -723,7 +880,11 @@ func (a *app) stateListCommand() *cobra.Command {
 		Use:   "list",
 		Short: "List imported and observed resources",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := state.Open(a.statePath)
+			ws, err := a.workspace()
+			if err != nil {
+				return err
+			}
+			store, err := state.Open(ws.StatePath)
 			if err != nil {
 				return err
 			}
@@ -738,14 +899,15 @@ func (a *app) stateListCommand() *cobra.Command {
 			}
 			for _, resource := range resources {
 				observedAt := "unknown"
-				if !resource.ObservedAt.IsZero() {
-					observedAt = resource.ObservedAt.UTC().Format(time.RFC3339)
+				if !resource.LastTransitionAt.IsZero() {
+					observedAt = resource.LastTransitionAt.UTC().Format(time.RFC3339)
 				}
 				fmt.Fprintf(
 					cmd.OutOrStdout(),
-					"%s -> %s observed=%s\n",
-					importer.FormatAddress(resource.Provider, resource.Kind, resource.DesiredID),
+					"%s -> %s status=%s observed=%s\n",
+					resource.Address,
 					resource.ExternalID,
+					resource.Status,
 					observedAt,
 				)
 			}
@@ -754,165 +916,60 @@ func (a *app) stateListCommand() *cobra.Command {
 	}
 }
 
-func (a *app) applyAgent(cmd *cobra.Command, store *state.Store, agent config.Agent, reuseExistingSecrets bool) error {
-	var err error
-	agent, err = a.hydrateAgentIdentity(agent)
-	if err != nil {
-		return err
+func (a *app) stateShowCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "show <address>",
+		Short: "Show one observed resource",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ws, err := a.workspace()
+			if err != nil {
+				return err
+			}
+			store, err := state.Open(ws.StatePath)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+			resource, ok, err := store.GetResource(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return fmt.Errorf("resource %s not found in state", args[0])
+			}
+			data, err := json.MarshalIndent(resource, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), string(data))
+			return nil
+		},
 	}
-	provider := a.fly()
-	env, err := a.env()
-	if err != nil {
-		return err
-	}
-	secrets, reused, err := agentSecrets(cmd.Context(), provider, agent, reuseExistingSecrets, env)
-	if err != nil {
-		return err
-	}
-	tomlData, err := render.AgentFlyTOML(agent)
-	if err != nil {
-		return err
-	}
-	path, err := a.writeGenerated("fly."+agent.ID+".toml", tomlData)
-	if err != nil {
-		return err
-	}
-	if err := provider.CreateApp(cmd.Context(), agent.FlyApp); err != nil {
-		return err
-	}
-	message, err := provider.EnsureVolume(cmd.Context(), agent.FlyApp, agent.VolumeName, agent.Region, agent.VolumeSizeGB)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), message)
-	printSecretsAction(cmd, agent.FlyApp, secrets, reused)
-	if err := provider.SetSecrets(cmd.Context(), agent.FlyApp, secrets); err != nil {
-		return err
-	}
-	if err := provider.Deploy(cmd.Context(), agent.FlyApp, path); err != nil {
-		return err
-	}
-	if err := recordAgentResources(cmd.Context(), store, provider, a.tailscale(), agent, path); err != nil {
-		return err
-	}
-	return store.RecordEvent(cmd.Context(), "apply", agent.ID, "info", "applied agent", map[string]string{"config": path})
 }
 
-func recordAgentResources(ctx context.Context, store *state.Store, provider fly.Provider, tsProvider tailscale.Provider, agent config.Agent, configPath string) error {
-	if store == nil {
-		return nil
+func (a *app) stateRemoveCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "rm <address>",
+		Short: "Remove one resource from local state only",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ws, err := a.workspace()
+			if err != nil {
+				return err
+			}
+			store, err := state.Open(ws.StatePath)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+			if err := store.RemoveResource(cmd.Context(), args[0]); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "removed %s from state\n", args[0])
+			return nil
+		},
 	}
-	if err := upsertObservedResource(ctx, store, "fly", "app", agent.ID, agent.FlyApp, map[string]any{
-		"config":   configPath,
-		"region":   agent.Region,
-		"memory":   agent.Memory,
-		"cpus":     agent.CPUs,
-		"hostname": agent.TailscaleHostname,
-	}); err != nil {
-		return err
-	}
-	if err := recordVolumeResource(ctx, store, provider, agent.ID+"-"+agent.VolumeName, agent.FlyApp, agent.VolumeName); err != nil {
-		return err
-	}
-	return recordTailscaleResource(ctx, store, tsProvider, agent.ID, agent.TailscaleHostname)
-}
-
-func recordOpenWebUIResources(ctx context.Context, store *state.Store, provider fly.Provider, tsProvider tailscale.Provider, webui config.OpenWebUI, configPath string) error {
-	if store == nil {
-		return nil
-	}
-	if err := upsertObservedResource(ctx, store, "fly", "app", webui.ID, webui.FlyApp, map[string]any{
-		"config":   configPath,
-		"region":   webui.Region,
-		"memory":   webui.Memory,
-		"cpus":     webui.CPUs,
-		"hostname": webui.TailscaleHostname,
-	}); err != nil {
-		return err
-	}
-	if err := recordVolumeResource(ctx, store, provider, webui.ID+"-"+webui.VolumeName, webui.FlyApp, webui.VolumeName); err != nil {
-		return err
-	}
-	return recordTailscaleResource(ctx, store, tsProvider, webui.ID, webui.TailscaleHostname)
-}
-
-func recordVolumeResource(ctx context.Context, store *state.Store, provider fly.Provider, desiredID, app, volumeName string) error {
-	volumes, err := provider.ListVolumes(ctx, app)
-	if err != nil {
-		return err
-	}
-	selected, _, ok := fly.SelectVolume(volumes, volumeName)
-	if !ok {
-		return nil
-	}
-	return upsertObservedResource(ctx, store, "fly", "volume", desiredID, selected.ID, map[string]any{
-		"app":                 app,
-		"name":                selected.Name,
-		"region":              selected.Region,
-		"size_gb":             selected.SizeGB,
-		"state":               selected.State,
-		"attached_machine_id": selected.AttachedMachineID,
-	})
-}
-
-func recordTailscaleResource(ctx context.Context, store *state.Store, tsProvider tailscale.Provider, desiredID, hostname string) error {
-	devices, err := tsProvider.Devices(ctx)
-	if err != nil {
-		return err
-	}
-	device, ok := selectedTailscaleDevice(devices, hostname)
-	if !ok {
-		return nil
-	}
-	externalID := device.ID
-	if externalID == "" {
-		externalID = device.DNSName
-	}
-	if externalID == "" {
-		externalID = device.HostName
-	}
-	return upsertObservedResource(ctx, store, "tailscale", "device", desiredID, externalID, map[string]any{
-		"hostname":  device.HostName,
-		"dns_name":  strings.TrimSuffix(device.DNSName, "."),
-		"online":    device.Online,
-		"ip":        device.IP,
-		"created":   device.Created,
-		"last_seen": device.LastSeen,
-	})
-}
-
-func selectedTailscaleDevice(devices []tailscale.Device, hostname string) (tailscale.Device, bool) {
-	matches := tailscale.FindByHostname(devices, hostname)
-	if len(matches) == 0 {
-		return tailscale.Device{}, false
-	}
-	sort.SliceStable(matches, func(i, j int) bool {
-		if matches[i].Online != matches[j].Online {
-			return matches[i].Online
-		}
-		if matches[i].DNSName != matches[j].DNSName {
-			return matches[i].DNSName < matches[j].DNSName
-		}
-		return matches[i].ID < matches[j].ID
-	})
-	return matches[0], true
-}
-
-func upsertObservedResource(ctx context.Context, store *state.Store, provider, kind, desiredID, externalID string, attrs map[string]any) error {
-	if externalID == "" {
-		return nil
-	}
-	data, err := json.Marshal(attrs)
-	if err != nil {
-		return err
-	}
-	return store.UpsertResource(ctx, state.Resource{
-		Provider:   provider,
-		Kind:       kind,
-		DesiredID:  desiredID,
-		ExternalID: externalID,
-		AttrsJSON:  string(data),
-	})
 }
 
 func (a *app) hydrateAgentIdentity(agent config.Agent) (config.Agent, error) {
@@ -1047,11 +1104,15 @@ func reusedSecretNames(values map[string]string, required []string) []string {
 }
 
 func (a *app) load() (*config.Config, error) {
-	cfg, err := config.Load(a.configPath)
+	ws, err := a.workspace()
 	if err != nil {
 		return nil, err
 	}
-	return cfg, cfg.Validate()
+	return ws.Config, nil
+}
+
+func (a *app) workspace() (*workspace.Workspace, error) {
+	return workspace.Load(a.rootDir)
 }
 
 func (a *app) env() (map[string]string, error) {
@@ -1084,24 +1145,16 @@ func (a *app) fly() fly.Provider {
 	return fly.New(execx.ShellRunner{Dir: a.rootDir})
 }
 
+func (a *app) flyWithEnv(env map[string]string) fly.Provider {
+	return fly.New(execx.ShellRunner{Dir: a.rootDir, Env: env})
+}
+
 func (a *app) tailscale() tailscale.Provider {
 	return tailscale.New(execx.ShellRunner{Dir: a.rootDir})
 }
 
-func (a *app) generatedDir() string {
-	return filepath.Join(a.rootDir, ".companion", "generated")
-}
-
-func (a *app) writeGenerated(name, contents string) (string, error) {
-	dir := a.generatedDir()
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", err
-	}
-	path := filepath.Join(dir, name)
-	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
-		return "", err
-	}
-	return path, nil
+func (a *app) tailscaleWithEnv(env map[string]string) tailscale.Provider {
+	return tailscale.New(execx.ShellRunner{Dir: a.rootDir, Env: env})
 }
 
 func getenvMap() map[string]string {
@@ -1115,73 +1168,96 @@ func getenvMap() map[string]string {
 	return values
 }
 
-func updateAgentIdentityConfig(configPath, agentID, identityPath string, overwrite bool) error {
-	data, err := os.ReadFile(configPath)
+func updateAgentIdentityConfig(ws *workspace.Workspace, agentID, identityPath string, overwrite bool) error {
+	agentPath, ok := ws.AgentFiles[agentID]
+	if !ok {
+		return fmt.Errorf("agent %s file not found in workspace", agentID)
+	}
+	data, err := os.ReadFile(agentPath)
 	if err != nil {
 		return err
 	}
 	text := strings.ReplaceAll(string(data), "\r\n", "\n")
 	lines := strings.Split(text, "\n")
-
-	start, end := -1, len(lines)
-	currentAgentStart := -1
+	agentStart, agentEnd := -1, len(lines)
 	for i, line := range lines {
-		if strings.TrimSpace(line) == "[[agents]]" {
-			if start != -1 {
-				end = i
-				break
-			}
-			currentAgentStart = i
-			continue
-		}
-		if currentAgentStart == -1 {
-			continue
-		}
-		if tomlStringValue(line, "id") == agentID {
-			start = currentAgentStart
-		}
-	}
-	if start == -1 {
-		return fmt.Errorf("agent %s not found in %s", agentID, configPath)
-	}
-
-	block := append([]string(nil), lines[start:end]...)
-	identityStart, identityEnd := -1, len(block)
-	for i, line := range block {
 		trimmed := strings.TrimSpace(line)
-		if trimmed == "[agents.identity]" {
-			identityStart = i
+		if trimmed == "[agent]" {
+			agentStart = i
 			continue
 		}
-		if identityStart != -1 && i > identityStart && strings.HasPrefix(trimmed, "[") {
-			identityEnd = i
+		if agentStart != -1 && i > agentStart && strings.HasPrefix(trimmed, "[") {
+			agentEnd = i
 			break
 		}
 	}
-
-	replacement := []string{
-		"",
-		"[agents.identity]",
-		"enabled = true",
-		fmt.Sprintf("path = %s", tomlQuote(identityPath)),
-		fmt.Sprintf("overwrite = %t", overwrite),
+	if agentStart == -1 {
+		return fmt.Errorf("%s is missing [agent]", agentPath)
 	}
-
-	if identityStart != -1 {
-		if identityStart > 0 && strings.TrimSpace(block[identityStart-1]) == "" {
-			identityStart--
+	identityLine := fmt.Sprintf("identity = %s", tomlQuote(identityPath))
+	replaced := false
+	for i := agentStart + 1; i < agentEnd; i++ {
+		if strings.HasPrefix(strings.TrimSpace(lines[i]), "identity = ") {
+			lines[i] = identityLine
+			replaced = true
+			break
 		}
-		block = append(block[:identityStart], append(replacement, block[identityEnd:]...)...)
-	} else {
-		insertAt := len(block)
-		for insertAt > 0 && strings.TrimSpace(block[insertAt-1]) == "" {
-			insertAt--
-		}
-		block = append(block[:insertAt], append(replacement, block[insertAt:]...)...)
 	}
+	if !replaced {
+		insertAt := agentEnd
+		lines = append(lines[:insertAt], append([]string{identityLine}, lines[insertAt:]...)...)
+	}
+	lines = updateIdentityTable(lines, overwrite)
+	return os.WriteFile(agentPath, []byte(strings.Join(lines, "\n")), 0o644)
+}
 
-	lines = append(lines[:start], append(block, lines[end:]...)...)
-	return os.WriteFile(configPath, []byte(strings.Join(lines, "\n")), 0o644)
+func updateIdentityTable(lines []string, overwrite bool) []string {
+	tableStart, tableEnd := -1, len(lines)
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "[identity]" {
+			tableStart = i
+			continue
+		}
+		if tableStart != -1 && i > tableStart && strings.HasPrefix(trimmed, "[") {
+			tableEnd = i
+			break
+		}
+	}
+	if tableStart == -1 {
+		if overwrite {
+			return lines
+		}
+		return append(strings.Split(strings.TrimRight(strings.Join(lines, "\n"), "\n"), "\n"),
+			"",
+			"[identity]",
+			"enabled = true",
+			"overwrite = false",
+			"",
+		)
+	}
+	updates := map[string]string{
+		"enabled":   "enabled = true",
+		"overwrite": fmt.Sprintf("overwrite = %t", overwrite),
+	}
+	seen := map[string]bool{}
+	for i := tableStart + 1; i < tableEnd; i++ {
+		trimmed := strings.TrimSpace(lines[i])
+		for key, value := range updates {
+			if strings.HasPrefix(trimmed, key+" = ") {
+				lines[i] = value
+				seen[key] = true
+			}
+		}
+	}
+	insertAt := tableEnd
+	for _, key := range []string{"enabled", "overwrite"} {
+		if !seen[key] {
+			lines = append(lines[:insertAt], append([]string{updates[key]}, lines[insertAt:]...)...)
+			insertAt++
+		}
+	}
+	return lines
 }
 
 func tomlStringValue(line, key string) string {

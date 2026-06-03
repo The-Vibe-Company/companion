@@ -1,21 +1,8 @@
 # Companion
 
-Companion is a Go control plane for deploying and operating persistent Hermes agents.
+Companion is a Go control plane for a fleet of persistent Hermes agents.
 
-It turns a `companion.toml` fleet file into Fly.io apps, Tailscale identities, Granite vaults, Hermes `SOUL.md` identities, Open WebUI backends, observed state, drift reports, and Terraform-style outputs.
-
-## What Companion Manages
-
-- Hermes agents deployed on Fly.io.
-- Stable Tailscale hostnames for each agent.
-- Per-agent default Granite vaults.
-- Cross-agent Granite vault connections in write or sync mode.
-- Hermes identity files through `SOUL.md`.
-- A shared Open WebUI frontend generated from the enabled Hermes API servers.
-- Local observed state in SQLite.
-- Plan/apply/status/drift workflows for the fleet.
-
-`companion.toml` is the desired source of truth. `.companion/state.sqlite` stores observed facts only. Generated Fly TOML lives under `.companion/generated/`.
+It works from a folder workspace: short TOML files describe providers, defaults, agents, identities, Granite vault links, and the shared Open WebUI. Companion compiles that desired state into typed resources, compares it with observed Fly/Tailscale state, writes local Fly TOML artifacts, applies changes idempotently, and records evidence in SQLite.
 
 ## Install
 
@@ -27,141 +14,227 @@ curl -fsSL https://raw.githubusercontent.com/The-Vibe-Company/companion/main/ins
 
 The installer downloads the right binary for macOS or Linux and installs it to `~/.local/bin/companion` by default.
 
-If the repository is private, pass a GitHub token with repository read access:
-
-```bash
-curl -fsSL \
-  -H "Authorization: Bearer $GITHUB_TOKEN" \
-  https://raw.githubusercontent.com/The-Vibe-Company/companion/main/install.sh \
-  | GITHUB_TOKEN="$GITHUB_TOKEN" sh
-```
-
 Install a specific release:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/The-Vibe-Company/companion/main/install.sh | COMPANION_VERSION=v0.1.0 sh
 ```
 
-Install somewhere else:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/The-Vibe-Company/companion/main/install.sh | BINDIR=/usr/local/bin sh
-```
-
-Then run:
-
-```bash
-companion version
-companion validate --config companion.toml
-```
-
-Runtime requirements for live `plan`, `apply`, `status`, `drift`, and dashboard drift checks:
-
-- `flyctl`
-- `tailscale`
-
-Developer fallback from source:
+Developer install from source:
 
 ```bash
 go install github.com/The-Vibe-Company/companion/cmd/companion@main
 ```
 
-If the repository is private on your machine, make Go use GitHub authentication for this repo:
+## Workspace
 
-```bash
-GOPRIVATE=github.com/The-Vibe-Company/companion go install github.com/The-Vibe-Company/companion/cmd/companion@main
+A Companion workspace is a directory:
+
+```text
+companion.toml
+providers.toml
+defaults.toml
+webui.toml
+agents/
+  victor.toml
+  writer.toml
+vaults/
+  shared.toml
+identities/
+  victor/SOUL.md
+.env
+.companion/
+  state.sqlite
+  generated/
 ```
 
-Run from the repository root:
+Create one:
 
 ```bash
-go run ./cmd/companion validate --config companion.toml
+companion init --workspace ./companion
 ```
 
-For real deploys, create a local secret file:
+Validate from the workspace:
+
+```bash
+companion validate --workspace .
+```
+
+`companion.toml` is only the index:
+
+```toml
+workspace = "tvc-companion"
+
+[backend.local]
+state = ".companion/state.sqlite"
+
+[load]
+providers = "providers.toml"
+defaults = "defaults.toml"
+webui = "webui.toml"
+agents = "agents/*.toml"
+vaults = "vaults/*.toml"
+```
+
+## Providers
+
+Providers define where resources live and which environment variables hold credentials:
+
+```toml
+[fly.default]
+org = "the-vibe-company"
+region = "cdg"
+token_env = "FLY_API_TOKEN"
+
+[tailscale.tvc]
+tailnet = "tail5f910b.ts.net"
+api_key_env = "TAILSCALE_API_KEY"
+auth_key_secret = "TS_AUTHKEY"
+
+[openrouter.default]
+base_url = "https://openrouter.ai/api/v1"
+api_key_env = "OPENROUTER_API_KEY"
+```
+
+Secrets are read from `.env` and then from the shell environment. Shell values win. Companion prints secret names only, never secret values.
 
 ```bash
 cp .env.example .env
 $EDITOR .env
 ```
 
-Secrets are read from `.env` by default. Exported shell variables override `.env`. CLI output prints secret names only, never secret values.
+## Agents
 
-## Fleet Config
-
-A minimal agent:
+One agent is one small file:
 
 ```toml
-[[agents]]
+[agent]
 id = "victor"
+runtime = "fly.default"
+network = "tailscale.tvc"
+model_provider = "openrouter.default"
+lifecycle = "present"
+protect = true
 fly_app = "tvc-companion-victor"
 tailscale_hostname = "victor"
+identity = "identities/victor/SOUL.md"
 
-[agents.default_vault]
+[default_vault]
+enabled = true
 name = "Victor"
+role = "write"
 ```
 
-Useful defaults live under `[defaults]`, `[defaults.model]`, `[defaults.api_server]`, and `[defaults.default_vault]`.
+Use `lifecycle = "absent"` to request deletion. Protected data resources still require explicit destroy flags.
 
-## Deploy an Agent
+## Plan And Apply
 
-Preview the desired changes:
+Preview everything:
 
 ```bash
-go run ./cmd/companion plan victor --config companion.toml
+companion plan --workspace .
 ```
 
-Apply one agent:
+Preview one resource or agent family:
 
 ```bash
-go run ./cmd/companion apply victor --config companion.toml
+companion plan fly_app.agent.victor --workspace .
+companion plan victor --workspace .
 ```
 
-Apply all agents:
+Apply:
 
 ```bash
-go run ./cmd/companion apply --config companion.toml
+companion apply --workspace .
+companion apply victor --workspace .
 ```
 
-If Fly already has the required secrets and you do not want to keep local secret values:
+Plan output is resource-oriented:
+
+```text
++ create fly_app.agent.writer tvc-companion-writer
+= no-op fly_volume.agent_data.victor vol_xxx
+~ update fly_secrets.agent.victor API_SERVER_KEY,OPENROUTER_API_KEY
+! drift tailscale_device.agent.writer missing writer
+- delete fly_app.agent.old tvc-companion-old
+```
+
+Generated Fly TOML is written under `.companion/generated/`.
+
+## Resource Model
+
+V1 resources include:
+
+```text
+fly_app.agent.<id>
+fly_volume.agent_data.<id>
+fly_secrets.agent.<id>
+fly_config.agent.<id>
+rollout.agent.<id>
+tailscale_device.agent.<id>
+granite_vault.default.<id>
+openwebui_config.main
+fly_app.openwebui.main
+fly_volume.openwebui_data.main
+fly_secrets.openwebui.main
+rollout.openwebui.main
+```
+
+Managed resources can be created, updated, and explicitly destroyed. Observed resources are read for drift. Derived resources are computed locally. Action resources run idempotent rollouts.
+
+State is stored in `.companion/state.sqlite`. It is evidence, not desired config.
 
 ```bash
-go run ./cmd/companion apply victor --config companion.toml --reuse-existing-secrets
+companion state list --workspace .
+companion state show fly_app.agent.victor --workspace .
+companion state rm fly_app.agent.victor --workspace .
 ```
+
+## Import And Destroy
+
+Import an existing resource into observed state:
+
+```bash
+companion import fly_app.agent.victor tvc-companion-victor --workspace .
+companion import fly_volume.agent_data.victor vol_xxx --attrs app=tvc-companion-victor --workspace .
+```
+
+Destroy is explicit:
+
+```bash
+companion destroy fly_app.agent.victor --confirm victor --workspace .
+```
+
+Persistent data requires both data flags:
+
+```bash
+companion destroy fly_volume.agent_data.victor --confirm victor --destroy-data --backup-first --workspace .
+```
+
+Removing a file does not delete the remote resource. Missing desired resources become orphans until you import, remove state, set `lifecycle = "absent"`, or run an explicit destroy.
 
 ## Hermes Identity
 
-Hermes uses `SOUL.md` as the primary identity layer. Companion keeps identity files locally and installs them into `$HERMES_HOME/SOUL.md` during deploy.
+Hermes uses `SOUL.md` as the identity layer. Companion keeps the source file in the workspace and installs it during rollout.
 
 Create a starter identity:
 
 ```bash
-go run ./cmd/companion identity init victor --name Victor --config companion.toml
+companion identity init victor --name Victor --workspace .
 ```
 
-Render what will be installed:
+Render the identity that will be deployed:
 
 ```bash
-go run ./cmd/companion identity render victor --config companion.toml
+companion identity render victor --workspace .
 ```
-
-Config shape:
-
-```toml
-[agents.identity]
-enabled = true
-path = "identities/victor/SOUL.md"
-overwrite = true
-```
-
-Set `overwrite = false` if the running agent may keep a manually edited remote `SOUL.md`.
 
 ## Granite Vaults
 
-Each agent can have a default Granite vault:
+Every agent can have a default Granite vault:
 
 ```toml
-[agents.default_vault]
+[default_vault]
 enabled = true
 name = "Victor"
 mcp_enabled = true
@@ -170,10 +243,10 @@ sync_serve = true
 write_serve = true
 ```
 
-An agent can also connect to another agent's vault:
+An agent can connect to another agent vault:
 
 ```toml
-[[agents.vault_connections]]
+[[vault_connections]]
 name = "companion-test"
 mode = "sync"
 role = "write"
@@ -186,52 +259,38 @@ Use `mode = "write"` for HTTP MCP write access. Use `mode = "sync"` for Granite 
 
 ## Open WebUI
 
-Companion generates Open WebUI backend config from enabled Hermes API servers.
-
-Deploy the shared WebUI:
+The shared WebUI is derived from enabled Hermes API servers and deployed through the same resource engine:
 
 ```bash
-go run ./cmd/companion apply-webui --config companion.toml
-```
-
-Print its URL and configured backends:
-
-```bash
-go run ./cmd/companion output open_webui_url --raw --config companion.toml
-go run ./cmd/companion output open_webui_backends --format json --config companion.toml
+companion apply openwebui --workspace .
 ```
 
 If an agent does not set `api_server.open_webui_url` or `api_server.open_webui_host`, Companion resolves the current Tailscale DNS name and injects it into `OPENAI_API_BASE_URLS`.
 
 ## Outputs
 
-Companion exposes Terraform-style outputs:
+Print all outputs:
 
 ```bash
-go run ./cmd/companion output --config companion.toml
-go run ./cmd/companion output agents.victor.dashboard_url --raw --config companion.toml
-go run ./cmd/companion output --format json --config companion.toml
+companion output --workspace .
 ```
 
-Outputs include agent app names, Tailscale hosts, API URLs, dashboard URLs, Open WebUI URL, and Open WebUI backend definitions.
-
-## Status, Drift, and Graph
+Read one value:
 
 ```bash
-go run ./cmd/companion status --config companion.toml
-go run ./cmd/companion drift --config companion.toml
-go run ./cmd/companion graph --format text --config companion.toml
-go run ./cmd/companion graph --format json --config companion.toml
+companion output open_webui_url --raw --workspace .
+companion output agents.victor.dashboard_url --raw --workspace .
+companion output open_webui_backends --format json --workspace .
 ```
 
-`status` checks Hermes health. `drift` compares desired config to observed Fly and Tailscale state. `graph` renders agent-to-vault relationships.
+Outputs include app names, Tailscale hostnames, API URLs, dashboard URLs, Open WebUI URL, and backend definitions.
 
-## Local Dashboard
+## Dashboard
 
-Companion ships a small server-rendered dashboard:
+Run the local dashboard:
 
 ```bash
-go run ./cmd/companion serve --addr 127.0.0.1:8787 --config companion.toml
+companion serve --addr 127.0.0.1:8787 --workspace .
 ```
 
 Routes:
@@ -243,72 +302,18 @@ Routes:
 - `/graph?format=json` graph JSON
 - `/drift` drift report
 
-## State Import
-
-Import existing provider resources into local observed state without changing desired config:
-
-```bash
-go run ./cmd/companion import fly_app.companion-test tvc-companion-test --config companion.toml
-go run ./cmd/companion import fly_volume.companion-test-data vol_xxx --attrs app=tvc-companion-test
-go run ./cmd/companion import tailscale_device.companion-test companion-test-2
-go run ./cmd/companion state list
-```
-
-Import addresses use `provider_kind.desired-id`. Re-importing the same address updates the external id instead of creating a duplicate state entry.
-
-`apply` also records observed Fly apps, Fly volumes, and matching Tailscale devices after a successful deploy. State is operational evidence only; it never creates or changes desired config.
-
-## Vault Backups
-
-Back up and restore default Granite vaults from the running Fly machine:
-
-```bash
-go run ./cmd/companion vault backup companion-test --config companion.toml
-go run ./cmd/companion vault restore companion-test .companion/backups/companion-test-granite-YYYYMMDDTHHMMSSZ.tgz --config companion.toml --yes
-```
-
-Restore moves the previous remote vault aside before extraction.
-
-## Tailscale Cleanup
-
-Dry-run cleanup of old duplicate Tailscale devices:
-
-```bash
-go run ./cmd/companion tailscale cleanup --config companion.toml
-```
-
-Apply cleanup with the Tailscale API:
-
-```bash
-go run ./cmd/companion tailscale cleanup --config companion.toml --apply
-```
-
-`TAILSCALE_API_KEY` must be present in `.env` or the shell environment for deletion.
-
 ## Development
 
 ```bash
 go test ./...
-bash -n bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly
-go run ./cmd/companion validate --config companion.toml
-go run ./cmd/companion plan --config companion.toml
+sh -n install.sh
+bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly
+go run ./cmd/companion validate --workspace .
+go run ./cmd/companion plan --workspace .
 ```
 
-Tests cover config normalization, identity handling, Fly TOML rendering, Open WebUI backend generation, provider parsing, state persistence, Tailscale cleanup, outputs, and vault backup/restore command behavior.
-
-## Releases
-
-Release Please manages version PRs, changelog updates, tags, and GitHub Releases from conventional commits.
-
-When a Release Please PR is merged, the release workflow builds and uploads:
-
-- `companion_linux_amd64.tar.gz`
-- `companion_linux_arm64.tar.gz`
-- `companion_darwin_amd64.tar.gz`
-- `companion_darwin_arm64.tar.gz`
-
-Each archive contains a single `companion` binary. The top-level `install.sh` script downloads these assets from the latest release.
+Release Please manages version PRs, changelog updates, tags, and GitHub Releases. Release assets contain a single `companion` binary for Linux and macOS.
 
 ## Legacy Note
 
-The previous Companion web UI codebase is archived at `archived/legacy-companion/`. It is kept as a historical snapshot while the root of this repository moves to the Hermes fleet control plane.
+The previous Companion web UI codebase is archived at `archived/legacy-companion/`.
