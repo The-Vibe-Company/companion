@@ -4,9 +4,11 @@ This file provides guidance to Claude Code, Codex, and other coding agents when 
 
 ## Product Direction
 
-Companion is now a Go control plane for a fleet of persistent Hermes agents.
+Companion is a Go control plane for easily managing fleets of persistent Hermes agents and the tools around them.
 
-Treat the root repository as infrastructure and operations software, not as the old browser UI for Claude Code or Codex. A Companion workspace is a folder of small TOML files that describe desired state for providers, defaults, agents, identities, Granite vaults, and Open WebUI. Companion compiles that desired state into typed resources, compares it with observed Fly/Tailscale/OpenRouter state, writes generated Fly TOML, applies changes idempotently, and records evidence in SQLite.
+The product vision is simple: a user should be able to define task-optimized agents, give them durable memory through Granite, share selected memory between agents, run each agent in a secure isolated environment, and control access through Tailscale VPN. Companion should make it practical to spin up a personal fleet, deploy a fleet for a client, or hand someone a workspace they can use to launch their own agent fleet without bespoke operations work.
+
+Treat the root repository as infrastructure and operations software, not as the old browser UI for Claude Code or Codex. A Companion workspace is a folder of small TOML files that describe desired state for providers, defaults, agents, identities, tools, Granite vaults, secure networking, and Open WebUI. Companion compiles that desired state into typed resources, compares it with observed Fly/Tailscale/OpenRouter state, writes generated Fly TOML, applies changes idempotently, and records evidence in SQLite.
 
 The previous Companion web UI is archived under `archived/legacy-companion/`. Do not extend or revive that code unless the user explicitly asks to work on the archive.
 
