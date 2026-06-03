@@ -204,6 +204,9 @@
 
     btn.addEventListener("click", function () { openDrawer(svc, btn); });
     btn.addEventListener("keydown", function (ev) {
+      // Only act on keys aimed at the row itself. Enter/Space on the nested
+      // copy button must copy, not also open the drawer via this bubbled event.
+      if (ev.target !== btn) return;
       if (ev.key === "Enter" || ev.key === " " || ev.key === "Spacebar") {
         ev.preventDefault();
         openDrawer(svc, btn);
