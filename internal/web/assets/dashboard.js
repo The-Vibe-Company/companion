@@ -347,11 +347,16 @@
 
   // Mark the pill stale once the freshest payload we hold ages past
   // staleAfterMs, even if the control plane stays reachable (frozen state).
+  // The delay is measured from the payload's age, not from now: a poll that
+  // keeps returning the same frozen generated_at must not keep re-arming a
+  // full-length timer (every poll < staleAfterMs) and so never fire.
   function scheduleStaleCheck() {
     if (staleTimer) clearTimeout(staleTimer);
+    var ageMs = Date.now() - state.lastGeneratedAt;
+    var delayMs = Math.max(0, staleAfterMs - ageMs) + 250;
     staleTimer = setTimeout(function () {
       if (Date.now() - state.lastGeneratedAt >= staleAfterMs) setConn(false);
-    }, staleAfterMs + 250);
+    }, delayMs);
   }
 
   // ---- drawer ------------------------------------------------------------
