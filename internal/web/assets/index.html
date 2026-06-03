@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Companion · Fleet Status</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/dashboard.css">
+</head>
+<body data-interval="{{.IntervalSec}}" data-workspace="{{.Workspace}}">
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="hero">
+    <div class="hero__bar">
+      <div class="wordmark">
+        <span class="wordmark__dot"></span>
+        Companion
+      </div>
+      <div class="hero__meta">
+        <span class="pill" id="conn-pill" role="status"><span class="pill__dot"></span><span id="conn-text">connecting…</span></span>
+        <span class="hero__ws" id="workspace-name"></span>
+      </div>
+    </div>
+    <h1 class="hero__title">Fleet status</h1>
+    <p class="hero__tagline">Secure fleets of task-optimized AI agents — tools, memory, and private access. Live over Tailscale.</p>
+  </header>
+
+  <main class="wrap">
+    <section class="stats" id="stats" aria-live="polite" aria-label="Fleet health summary">
+      <article class="stat stat--total"><div class="stat__num" id="stat-total">—</div><div class="stat__label">Services</div></article>
+      <article class="stat stat--ok"><div class="stat__num" id="stat-healthy">—</div><div class="stat__label">Healthy</div></article>
+      <article class="stat stat--warn"><div class="stat__num" id="stat-degraded">—</div><div class="stat__label">Degraded</div></article>
+      <article class="stat stat--down"><div class="stat__num" id="stat-down">—</div><div class="stat__label">Down</div></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2>Services</h2>
+        <span class="panel__hint" id="updated">—</span>
+      </div>
+      <div class="table-wrap">
+        <table class="services">
+          <thead>
+            <tr>
+              <th class="col-status" scope="col"><span class="sr-only">Health</span></th>
+              <th scope="col">Service</th>
+              <th scope="col">Kind</th>
+              <th scope="col">Host</th>
+              <th scope="col">Machine</th>
+              <th class="col-center" scope="col">Tailnet</th>
+              <th scope="col">Model</th>
+              <th class="col-center" scope="col">HTTP</th>
+            </tr>
+          </thead>
+          <tbody id="services-body">
+            <tr class="empty"><td colspan="8">Waiting for first poll…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel panel--drift">
+      <div class="panel__head">
+        <h2>Drift</h2>
+        <span class="badge" id="drift-badge">—</span>
+      </div>
+      <pre class="drift" id="drift-text">No drift report.</pre>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>Companion control plane</span>
+    <span class="foot__sep">·</span>
+    <a href="/api/status">/api/status</a>
+    <span class="foot__sep">·</span>
+    <span id="refresh-note"></span>
+  </footer>
+
+  <script src="/assets/dashboard.js"></script>
+</body>
+</html>

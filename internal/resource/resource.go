@@ -18,6 +18,7 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/provider"
 	"github.com/The-Vibe-Company/companion/internal/render"
 	"github.com/The-Vibe-Company/companion/internal/state"
+	"github.com/The-Vibe-Company/companion/internal/status"
 	"github.com/The-Vibe-Company/companion/internal/tailscale"
 	"github.com/The-Vibe-Company/companion/internal/workspace"
 )
@@ -41,6 +42,7 @@ type Resource struct {
 	DependsOn   []string          `json:"depends_on,omitempty"`
 	Agent       *config.Agent     `json:"-"`
 	OpenWebUI   *config.OpenWebUI `json:"-"`
+	Dashboard   *config.Dashboard `json:"-"`
 	Desired     map[string]any    `json:"desired,omitempty"`
 }
 
@@ -131,6 +133,19 @@ func Compile(ws *workspace.Workspace, root string) (Graph, error) {
 			Resource{Address: "fly_volume.openwebui_data.main", Type: "fly_volume", Class: ClassManaged, ProviderRef: webui.Runtime, DesiredHash: hashMap(map[string]any{"app": webui.FlyApp, "name": webui.VolumeName, "region": webui.Region, "size_gb": webui.VolumeSizeGB}), Protected: true, Absent: absent, DependsOn: []string{"fly_app.openwebui.main"}, OpenWebUI: &webui},
 			Resource{Address: "fly_secrets.openwebui.main", Type: "fly_secrets", Class: ClassManaged, ProviderRef: webui.Runtime, DesiredHash: hashValue(webui.FlyApp), Protected: webui.Protect, Absent: absent, DependsOn: []string{"fly_app.openwebui.main", "openwebui_config.main"}, OpenWebUI: &webui},
 			Resource{Address: "rollout.openwebui.main", Type: "rollout", Class: ClassAction, ProviderRef: webui.Runtime, DesiredHash: hashValue(webui.FlyApp), Protected: webui.Protect, Absent: absent, DependsOn: []string{"fly_app.openwebui.main", "fly_volume.openwebui_data.main", "fly_secrets.openwebui.main", "openwebui_config.main"}, OpenWebUI: &webui},
+		)
+	}
+	if ws.Config.Dashboard.Enabled {
+		dash := ws.Config.Dashboard
+		absent := dash.Lifecycle == "absent"
+		// No fly_volume: the dashboard is stateless. dashboard_config.main holds
+		// the fleet topology fingerprint, so adding/changing an agent re-triggers
+		// rollout.dashboard.main on the next apply (same pattern as openwebui_config).
+		resources = append(resources,
+			Resource{Address: "dashboard_config.main", Type: "dashboard_config", Class: ClassDerived, ProviderRef: dash.Runtime, DesiredHash: hashValue(dash.FlyApp), Protected: dash.Protect, Absent: absent, Dashboard: &dash},
+			Resource{Address: "fly_app.dashboard.main", Type: "fly_app", Class: ClassManaged, ProviderRef: dash.Runtime, ExternalID: dash.FlyApp, DesiredHash: hashValue(dash.FlyApp), Protected: dash.Protect, Absent: absent, Dashboard: &dash, Desired: map[string]any{"app": dash.FlyApp}},
+			Resource{Address: "fly_secrets.dashboard.main", Type: "fly_secrets", Class: ClassManaged, ProviderRef: dash.Runtime, DesiredHash: hashStringSlice(render.RequiredDashboardFlySecrets(dash)), Protected: dash.Protect, Absent: absent, DependsOn: []string{"fly_app.dashboard.main"}, Dashboard: &dash, Desired: map[string]any{"names": render.RequiredDashboardFlySecrets(dash)}},
+			Resource{Address: "rollout.dashboard.main", Type: "rollout", Class: ClassAction, ProviderRef: dash.Runtime, DesiredHash: hashValue(dash.FlyApp), Protected: dash.Protect, Absent: absent, DependsOn: []string{"fly_app.dashboard.main", "fly_secrets.dashboard.main", "dashboard_config.main"}, Dashboard: &dash},
 		)
 	}
 	graph := Graph{Resources: resources, byAddress: map[string]Resource{}}
@@ -372,6 +387,13 @@ func planResource(ctx context.Context, ws *workspace.Workspace, store *state.Sto
 			}
 			resource.DesiredHash = hash
 		}
+		if resource.Dashboard != nil {
+			hash, _, err := hashDashboardTopology(ws, devices)
+			if err != nil {
+				return Change{}, err
+			}
+			resource.DesiredHash = hash
+		}
 		return planByHash(ctx, store, resource, "deploy")
 	case "tailscale_device":
 		return planTailscaleDevice(resource, devices), nil
@@ -379,6 +401,13 @@ func planResource(ctx context.Context, ws *workspace.Workspace, store *state.Sto
 		return change("=", "no-op", resource, "configured"), nil
 	case "openwebui_config":
 		return planOpenWebUIConfig(ctx, ws, store, devices, resource)
+	case "dashboard_config":
+		hash, _, err := hashDashboardTopology(ws, devices)
+		if err != nil {
+			return Change{}, err
+		}
+		resource.DesiredHash = hash
+		return planByHash(ctx, store, resource, "render")
 	default:
 		return Change{}, fmt.Errorf("unknown resource type %s", resource.Type)
 	}
@@ -452,6 +481,17 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 			}
 			resource.DesiredHash = hash
 		}
+		if resource.Dashboard != nil {
+			devices, err := providers.AllDevices(ctx)
+			if err != nil {
+				return err
+			}
+			hash, _, err := hashDashboardTopology(ws, devices)
+			if err != nil {
+				return err
+			}
+			resource.DesiredHash = hash
+		}
 		configPath := generatedPath(opts, resource)
 		rolloutProvider, err := providers.RolloutFor(resource.ProviderRef)
 		if err != nil {
@@ -477,6 +517,21 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 			return err
 		}
 		hash, err := hashOpenWebUIConfig(*resource.OpenWebUI, deps.OpenWebUIConnectionsForDevices(ws.Config, devices))
+		if err != nil {
+			return err
+		}
+		resource.DesiredHash = hash
+		path, err := writeConfig(ctx, ws, providers, resource, opts)
+		if err != nil {
+			return err
+		}
+		return upsertReady(ctx, store, resource, path, map[string]any{"path": path})
+	case "dashboard_config":
+		devices, err := providers.AllDevices(ctx)
+		if err != nil {
+			return err
+		}
+		hash, _, err := hashDashboardTopology(ws, devices)
 		if err != nil {
 			return err
 		}
@@ -597,9 +652,12 @@ func upsertReady(ctx context.Context, store *state.Store, resource Resource, ext
 func writeConfig(ctx context.Context, ws *workspace.Workspace, providers provider.Set, resource Resource, opts Options) (string, error) {
 	var data string
 	var err error
-	if resource.Agent != nil {
+	switch {
+	case resource.Agent != nil:
 		data, err = render.AgentFlyTOML(*resource.Agent)
-	} else {
+	case resource.Dashboard != nil:
+		data, err = render.DashboardFlyTOML(*resource.Dashboard)
+	default:
 		devices, tsErr := providers.AllDevices(ctx)
 		if tsErr != nil {
 			return "", tsErr
@@ -616,7 +674,61 @@ func writeConfig(ctx context.Context, ws *workspace.Workspace, providers provide
 	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
 		return "", err
 	}
+	// The dashboard also needs the non-secret fleet topology manifest next to
+	// its Fly config so the rollout's Docker build can ship it.
+	if resource.Dashboard != nil {
+		if err := writeDashboardManifest(ctx, ws, providers, path); err != nil {
+			return "", err
+		}
+	}
 	return path, nil
+}
+
+// writeDashboardManifest builds the live fleet topology and writes fleet.json
+// alongside the generated Fly config.
+func writeDashboardManifest(ctx context.Context, ws *workspace.Workspace, providers provider.Set, configPath string) error {
+	devices, err := providers.AllDevices(ctx)
+	if err != nil {
+		return err
+	}
+	topo := status.BuildTopology(ws.Name, ws.Config, devices, dashboardProviderSummary(ws), time.Now())
+	data, err := topo.JSON()
+	if err != nil {
+		return err
+	}
+	manifestPath := filepath.Join(filepath.Dir(configPath), "fleet.json")
+	return os.WriteFile(manifestPath, data, 0o644)
+}
+
+// hashDashboardTopology fingerprints the fleet topology (ignoring the generated
+// timestamp) so the dashboard redeploys only when the fleet actually changes.
+func hashDashboardTopology(ws *workspace.Workspace, devices []tailscale.Device) (string, status.FleetTopology, error) {
+	topo := status.BuildTopology(ws.Name, ws.Config, devices, dashboardProviderSummary(ws), time.Time{})
+	data, err := topo.JSON()
+	if err != nil {
+		return "", status.FleetTopology{}, err
+	}
+	return hashValue(string(data)), topo, nil
+}
+
+func dashboardProviderSummary(ws *workspace.Workspace) status.ProviderSummary {
+	dash := ws.Config.Dashboard
+	summary := status.ProviderSummary{}
+	if _, name, ok := strings.Cut(dash.Runtime, "."); ok {
+		if fp, ok := ws.Providers.Fly[name]; ok {
+			summary.FlyOrg = fp.Org
+			summary.FlyAPIBaseURL = fp.APIBaseURL
+			summary.FlyTokenEnv = fp.TokenEnv
+		}
+	}
+	if _, name, ok := strings.Cut(dash.Network, "."); ok {
+		if tp, ok := ws.Providers.Tailscale[name]; ok {
+			summary.Tailnet = tp.Tailnet
+			summary.TailscaleAPIBaseURL = tp.APIBaseURL
+			summary.TailscaleAPIKeyEnv = tp.APIKeyEnv
+		}
+	}
+	return summary
 }
 
 func generatedPath(opts Options, resource Resource) string {
@@ -630,6 +742,9 @@ func generatedPath(opts Options, resource Resource) string {
 	}
 	if resource.OpenWebUI != nil {
 		name = "fly." + resource.OpenWebUI.ID
+	}
+	if resource.Dashboard != nil {
+		name = "fly." + resource.Dashboard.ID
 	}
 	return filepath.Join(dir, name+".toml")
 }
@@ -679,6 +794,9 @@ func requiredSecretNames(resource Resource) []string {
 	if resource.OpenWebUI != nil {
 		return render.RequiredOpenWebUIFlySecrets(*resource.OpenWebUI)
 	}
+	if resource.Dashboard != nil {
+		return render.RequiredDashboardFlySecrets(*resource.Dashboard)
+	}
 	return nil
 }
 
@@ -688,6 +806,9 @@ func resourceFlyApp(resource Resource) string {
 	}
 	if resource.OpenWebUI != nil {
 		return resource.OpenWebUI.FlyApp
+	}
+	if resource.Dashboard != nil {
+		return resource.Dashboard.FlyApp
 	}
 	if value, ok := resource.Desired["app"].(string); ok {
 		return value

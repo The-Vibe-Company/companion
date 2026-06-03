@@ -198,6 +198,51 @@ id = "shared"
 	}
 }
 
+func TestLoadDashboardFromFile(t *testing.T) {
+	root := t.TempDir()
+	writeMinimalWorkspace(t, root)
+	writeWorkspaceFile(t, root, "agents/sample.toml", `[agent]
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
+`)
+	writeWorkspaceFile(t, root, "dashboard.toml", `[dashboard]
+enabled = true
+fly_app = "example-companion-dashboard"
+tailscale_hostname = "companion-dashboard"
+`)
+	ws, err := Load(root)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if !ws.Config.Dashboard.Enabled {
+		t.Fatalf("expected dashboard enabled from dashboard.toml")
+	}
+	if ws.Config.Dashboard.FlyApp != "example-companion-dashboard" {
+		t.Fatalf("unexpected dashboard fly_app: %s", ws.Config.Dashboard.FlyApp)
+	}
+}
+
+func TestLoadFailsOnUnknownDashboardProvider(t *testing.T) {
+	root := t.TempDir()
+	writeMinimalWorkspace(t, root)
+	writeWorkspaceFile(t, root, "agents/sample.toml", `[agent]
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
+`)
+	writeWorkspaceFile(t, root, "dashboard.toml", `[dashboard]
+enabled = true
+runtime = "fly.missing"
+fly_app = "example-companion-dashboard"
+tailscale_hostname = "companion-dashboard"
+`)
+	_, err := Load(root)
+	if err == nil || !strings.Contains(err.Error(), "unknown runtime provider fly.missing") {
+		t.Fatalf("expected unknown dashboard provider error, got %v", err)
+	}
+}
+
 func writeMinimalWorkspace(t *testing.T, root string) {
 	t.Helper()
 	writeWorkspaceFile(t, root, "companion.toml", `workspace = "test"

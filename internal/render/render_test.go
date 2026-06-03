@@ -45,6 +45,82 @@ func TestOpenWebUIRenderMultipleBackends(t *testing.T) {
 	}
 }
 
+func TestDashboardRenderSmallestStatelessMachine(t *testing.T) {
+	cfg := config.Dashboard{
+		Enabled:                    true,
+		ID:                         "dashboard",
+		FlyApp:                     "example-companion-dashboard",
+		TailscaleHostname:          "companion-dashboard",
+		Region:                     "cdg",
+		Memory:                     "256mb",
+		CPUs:                       1,
+		Port:                       9300,
+		Name:                       "Companion",
+		RefreshInterval:            30,
+		TailscaleServe:             true,
+		TailscaleAcceptDNS:         true,
+		TailscaleAuthKeySecretName: "TS_AUTHKEY",
+		FlyTokenSecretName:         "FLY_API_TOKEN",
+		TailscaleAPIKeySecretName:  "TAILSCALE_API_KEY",
+	}
+	toml, err := DashboardFlyTOML(cfg)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	for _, want := range []string{
+		`dockerfile = "../../Dockerfile.dashboard"`,
+		`memory = "256mb"`,
+		"cpus = 1",
+		`cpu_kind = "shared"`,
+		`auto_stop_machines = "stop"`,
+		"min_machines_running = 0",
+		`COMPANION_FLEET_MANIFEST = "/workspace/fleet.json"`,
+		"companion dashboard --manifest /workspace/fleet.json --interval 30s",
+	} {
+		if !strings.Contains(toml, want) {
+			t.Fatalf("missing %q in\n%s", want, toml)
+		}
+	}
+	if strings.Contains(toml, "[[mounts]]") {
+		t.Fatalf("dashboard must be stateless (no [[mounts]]):\n%s", toml)
+	}
+	if !strings.Contains(toml, "[[vm]]") {
+		t.Fatalf("dashboard must declare a [[vm]] sizing block:\n%s", toml)
+	}
+
+	// Optional Tailscale tuning args propagate into the [env] block.
+	cfg.TSExtraArgs = "--netfilter-mode=off"
+	cfg.TailscaledExtraArgs = "--tun=userspace-networking"
+	toml, err = DashboardFlyTOML(cfg)
+	if err != nil {
+		t.Fatalf("render with extra args: %v", err)
+	}
+	for _, want := range []string{
+		`TS_EXTRA_ARGS = "--netfilter-mode=off"`,
+		`TAILSCALED_EXTRA_ARGS = "--tun=userspace-networking"`,
+	} {
+		if !strings.Contains(toml, want) {
+			t.Fatalf("missing %q in\n%s", want, toml)
+		}
+	}
+
+	secrets := RequiredDashboardFlySecrets(cfg)
+	for _, name := range []string{"TS_AUTHKEY", "FLY_API_TOKEN", "TAILSCALE_API_KEY"} {
+		if !containsString(secrets, name) {
+			t.Fatalf("expected required secret %q in %v", name, secrets)
+		}
+	}
+}
+
+func containsString(values []string, target string) bool {
+	for _, v := range values {
+		if v == target {
+			return true
+		}
+	}
+	return false
+}
+
 func TestSecretValuesRedactedSeparately(t *testing.T) {
 	cfg := config.OpenWebUI{
 		TailscaleAuthKeySecretName: "TS_AUTHKEY",

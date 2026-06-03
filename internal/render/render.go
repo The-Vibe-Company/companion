@@ -171,6 +171,73 @@ func OpenWebUIFlyTOML(cfg config.OpenWebUI, connections []config.OpenWebUIConnec
 	return strings.Join(lines, "\n"), nil
 }
 
+// DashboardFlyTOML renders the Fly config for the dedicated status dashboard.
+// The dashboard is stateless: no [[mounts]] block, and the smallest possible
+// machine. It scales to zero when idle and is reached only over Tailscale.
+func DashboardFlyTOML(cfg config.Dashboard) (string, error) {
+	if !cfg.Enabled {
+		return "", fmt.Errorf("dashboard is disabled in the workspace")
+	}
+	env := map[string]string{
+		"PORT":                      strconv.Itoa(cfg.Port),
+		"DASHBOARD_TS_HOSTNAME":     cfg.TailscaleHostname,
+		"DASHBOARD_TAILSCALE_SERVE": envBool(cfg.TailscaleServe),
+		"TS_ACCEPT_DNS":             envBool(cfg.TailscaleAcceptDNS),
+		"TAILSCALE_STATE_DIR":       "/tmp/tailscale",
+		"COMPANION_DASHBOARD_NAME":  cfg.Name,
+		"COMPANION_FLEET_MANIFEST":  "/workspace/fleet.json",
+	}
+	if cfg.TSExtraArgs != "" {
+		env["TS_EXTRA_ARGS"] = cfg.TSExtraArgs
+	}
+	if cfg.TailscaledExtraArgs != "" {
+		env["TAILSCALED_EXTRA_ARGS"] = cfg.TailscaledExtraArgs
+	}
+
+	process := fmt.Sprintf("companion dashboard --manifest /workspace/fleet.json --interval %ds", cfg.RefreshInterval)
+	lines := []string{
+		fmt.Sprintf("app = %s", quote(cfg.FlyApp)),
+		fmt.Sprintf("primary_region = %s", quote(cfg.Region)),
+		`kill_signal = "SIGTERM"`,
+		"kill_timeout = 30",
+		"",
+		"[build]",
+		`  dockerfile = "../../Dockerfile.dashboard"`,
+		"",
+		"[env]",
+	}
+	appendEnv(&lines, env)
+	lines = append(lines,
+		"",
+		"[processes]",
+		fmt.Sprintf("  app = %s", quote(process)),
+		"",
+		// Scale to zero when idle; the dashboard is on-demand and cheap to wake.
+		"[http_service]",
+		fmt.Sprintf("  internal_port = %d", cfg.Port),
+		`  auto_stop_machines = "stop"`,
+		"  auto_start_machines = true",
+		"  min_machines_running = 0",
+		"",
+		"[[vm]]",
+		`  cpu_kind = "shared"`,
+		fmt.Sprintf("  memory = %s", quote(cfg.Memory)),
+		fmt.Sprintf("  cpus = %d", cfg.CPUs),
+		"",
+	)
+	return strings.Join(lines, "\n"), nil
+}
+
+// RequiredDashboardFlySecrets lists the read-only tokens the dashboard machine
+// needs as Fly secrets. The topology manifest itself is non-secret.
+func RequiredDashboardFlySecrets(cfg config.Dashboard) []string {
+	return unique([]string{
+		cfg.TailscaleAuthKeySecretName,
+		cfg.FlyTokenSecretName,
+		cfg.TailscaleAPIKeySecretName,
+	})
+}
+
 func RequiredAgentSecrets(agent config.Agent) []string {
 	names := []string{agent.TailscaleAuthKeySecretName}
 	if agent.Model.APIKeySecretName != "" {

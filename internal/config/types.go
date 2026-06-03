@@ -18,6 +18,7 @@ var (
 type RawConfig struct {
 	Defaults  RawDefaults  `toml:"defaults"`
 	OpenWebUI RawOpenWebUI `toml:"open_webui"`
+	Dashboard RawDashboard `toml:"dashboard"`
 	Agents    []RawAgent   `toml:"agents"`
 }
 
@@ -161,9 +162,34 @@ type RawOpenWebUI struct {
 	TailscaledExtraArgs        *string `toml:"tailscaled_extra_args"`
 }
 
+type RawDashboard struct {
+	Enabled                    *bool   `toml:"enabled"`
+	ID                         *string `toml:"id"`
+	Runtime                    *string `toml:"runtime"`
+	Network                    *string `toml:"network"`
+	Lifecycle                  *string `toml:"lifecycle"`
+	Protect                    *bool   `toml:"protect"`
+	FlyApp                     *string `toml:"fly_app"`
+	TailscaleHostname          *string `toml:"tailscale_hostname"`
+	Region                     *string `toml:"region"`
+	Memory                     *string `toml:"memory"`
+	CPUs                       *int    `toml:"cpus"`
+	Port                       *int    `toml:"port"`
+	Name                       *string `toml:"name"`
+	RefreshInterval            *int    `toml:"refresh_interval"`
+	TailscaleServe             *bool   `toml:"tailscale_serve"`
+	TailscaleAcceptDNS         *bool   `toml:"tailscale_accept_dns"`
+	TailscaleAuthKeySecretName *string `toml:"tailscale_authkey_secret_name"`
+	FlyTokenSecretName         *string `toml:"fly_token_secret_name"`
+	TailscaleAPIKeySecretName  *string `toml:"tailscale_api_key_secret_name"`
+	TSExtraArgs                *string `toml:"ts_extra_args"`
+	TailscaledExtraArgs        *string `toml:"tailscaled_extra_args"`
+}
+
 type Config struct {
 	Defaults  Defaults  `json:"defaults"`
 	OpenWebUI OpenWebUI `json:"open_webui"`
+	Dashboard Dashboard `json:"dashboard"`
 	Agents    []Agent   `json:"agents"`
 }
 
@@ -312,6 +338,34 @@ type OpenWebUIConnection struct {
 	KeySecretName string `json:"key_secret_name"`
 }
 
+// Dashboard describes the optional dedicated status dashboard deployment. It is
+// stateless (no volume): it polls the fleet over Tailscale + provider APIs and
+// renders a live status view. apply keeps its topology in sync with the
+// workspace, like open_webui keeps its backend URLs in sync.
+type Dashboard struct {
+	Enabled                    bool   `json:"enabled"`
+	ID                         string `json:"id"`
+	Runtime                    string `json:"runtime"`
+	Network                    string `json:"network"`
+	Lifecycle                  string `json:"lifecycle"`
+	Protect                    bool   `json:"protect"`
+	FlyApp                     string `json:"fly_app"`
+	TailscaleHostname          string `json:"tailscale_hostname"`
+	Region                     string `json:"region"`
+	Memory                     string `json:"memory"`
+	CPUs                       int    `json:"cpus"`
+	Port                       int    `json:"port"`
+	Name                       string `json:"name"`
+	RefreshInterval            int    `json:"refresh_interval"`
+	TailscaleServe             bool   `json:"tailscale_serve"`
+	TailscaleAcceptDNS         bool   `json:"tailscale_accept_dns"`
+	TailscaleAuthKeySecretName string `json:"tailscale_authkey_secret_name"`
+	FlyTokenSecretName         string `json:"fly_token_secret_name"`
+	TailscaleAPIKeySecretName  string `json:"tailscale_api_key_secret_name"`
+	TSExtraArgs                string `json:"ts_extra_args,omitempty"`
+	TailscaledExtraArgs        string `json:"tailscaled_extra_args,omitempty"`
+}
+
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -337,6 +391,7 @@ func Normalize(raw RawConfig) (*Config, error) {
 	cfg := &Config{
 		Defaults:  defaults,
 		OpenWebUI: normalizeOpenWebUI(raw.OpenWebUI, defaults),
+		Dashboard: normalizeDashboard(raw.Dashboard, defaults),
 	}
 	for _, rawAgent := range raw.Agents {
 		agent, err := normalizeAgent(defaults, rawAgent)
@@ -452,6 +507,41 @@ func (c *Config) Validate() error {
 		} {
 			if !envRE.MatchString(value) {
 				return fmt.Errorf("open_webui.%s must be an environment variable name", key)
+			}
+		}
+	}
+	if c.Dashboard.Enabled {
+		for key, value := range map[string]string{
+			"id":                 c.Dashboard.ID,
+			"fly_app":            c.Dashboard.FlyApp,
+			"tailscale_hostname": c.Dashboard.TailscaleHostname,
+		} {
+			if !nameRE.MatchString(value) {
+				return fmt.Errorf("dashboard.%s=%q must use lowercase letters, numbers, and hyphens", key, value)
+			}
+		}
+		if err := validatePort("dashboard.port", c.Dashboard.Port); err != nil {
+			return err
+		}
+		if c.Dashboard.Lifecycle != "present" && c.Dashboard.Lifecycle != "absent" {
+			return fmt.Errorf("dashboard.lifecycle must be present or absent")
+		}
+		if c.Dashboard.Runtime == "" || !strings.Contains(c.Dashboard.Runtime, ".") {
+			return fmt.Errorf("dashboard.runtime must look like provider.name")
+		}
+		if c.Dashboard.Network == "" || !strings.Contains(c.Dashboard.Network, ".") {
+			return fmt.Errorf("dashboard.network must look like provider.name")
+		}
+		if c.Dashboard.RefreshInterval < 5 {
+			return fmt.Errorf("dashboard.refresh_interval must be at least 5 seconds")
+		}
+		for key, value := range map[string]string{
+			"tailscale_authkey_secret_name": c.Dashboard.TailscaleAuthKeySecretName,
+			"fly_token_secret_name":         c.Dashboard.FlyTokenSecretName,
+			"tailscale_api_key_secret_name": c.Dashboard.TailscaleAPIKeySecretName,
+		} {
+			if !envRE.MatchString(value) {
+				return fmt.Errorf("dashboard.%s must be an environment variable name", key)
 			}
 		}
 	}
@@ -729,6 +819,37 @@ func normalizeOpenWebUI(raw RawOpenWebUI, defaults Defaults) OpenWebUI {
 	}
 }
 
+func normalizeDashboard(raw RawDashboard, defaults Defaults) Dashboard {
+	if !rawDashboardSet(raw) {
+		return Dashboard{Enabled: false}
+	}
+	return Dashboard{
+		Enabled:           boolValue(raw.Enabled, false),
+		ID:                stringValue(raw.ID, "dashboard"),
+		Runtime:           stringValue(raw.Runtime, "fly.default"),
+		Network:           stringValue(raw.Network, "tailscale.default"),
+		Lifecycle:         stringValue(raw.Lifecycle, "present"),
+		Protect:           boolValue(raw.Protect, true),
+		FlyApp:            stringValue(raw.FlyApp, "example-companion-dashboard"),
+		TailscaleHostname: stringValue(raw.TailscaleHostname, "companion-dashboard"),
+		Region:            stringValue(raw.Region, defaults.Region),
+		// Smallest Fly machine on purpose: the dashboard is stateless and only
+		// polls + serves a status page.
+		Memory:                     stringValue(raw.Memory, "256mb"),
+		CPUs:                       intValue(raw.CPUs, 1),
+		Port:                       intValue(raw.Port, 9300),
+		Name:                       stringValue(raw.Name, "Companion"),
+		RefreshInterval:            intValue(raw.RefreshInterval, 30),
+		TailscaleServe:             boolValue(raw.TailscaleServe, true),
+		TailscaleAcceptDNS:         boolValue(raw.TailscaleAcceptDNS, true),
+		TailscaleAuthKeySecretName: stringValue(raw.TailscaleAuthKeySecretName, defaults.TailscaleAuthKeySecretName),
+		FlyTokenSecretName:         stringValue(raw.FlyTokenSecretName, "FLY_API_TOKEN"),
+		TailscaleAPIKeySecretName:  stringValue(raw.TailscaleAPIKeySecretName, "TAILSCALE_API_KEY"),
+		TSExtraArgs:                stringValue(raw.TSExtraArgs, defaults.TSExtraArgs),
+		TailscaledExtraArgs:        stringValue(raw.TailscaledExtraArgs, ""),
+	}
+}
+
 func validateConnection(agentID string, conn VaultConnection) error {
 	if conn.Name == "" || !nameRE.MatchString(conn.Name) {
 		return fmt.Errorf("agent %s has invalid vault connection name: %q", agentID, conn.Name)
@@ -850,6 +971,10 @@ func rawAPIServerSet(raw RawAPIServer) bool {
 
 func rawIdentitySet(raw RawIdentity) bool {
 	return raw.Enabled != nil || raw.Path != nil || raw.Soul != nil || raw.Overwrite != nil
+}
+
+func rawDashboardSet(raw RawDashboard) bool {
+	return raw.Enabled != nil || raw.ID != nil || raw.Runtime != nil || raw.Network != nil || raw.Lifecycle != nil || raw.Protect != nil || raw.FlyApp != nil || raw.TailscaleHostname != nil || raw.Region != nil || raw.Memory != nil || raw.CPUs != nil || raw.Port != nil || raw.Name != nil || raw.RefreshInterval != nil || raw.TailscaleServe != nil || raw.TailscaleAcceptDNS != nil || raw.TailscaleAuthKeySecretName != nil || raw.FlyTokenSecretName != nil || raw.TailscaleAPIKeySecretName != nil || raw.TSExtraArgs != nil || raw.TailscaledExtraArgs != nil
 }
 
 func rawOpenWebUISet(raw RawOpenWebUI) bool {

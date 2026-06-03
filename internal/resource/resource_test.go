@@ -162,6 +162,105 @@ func testWorkspace(t *testing.T) *workspace.Workspace {
 	}
 }
 
+func TestCompileDashboardResources(t *testing.T) {
+	ws := dashboardWorkspace(t, "sample")
+	graph, err := Compile(ws, ws.Root)
+	if err != nil {
+		t.Fatalf("compile: %v", err)
+	}
+	byAddress := graph.ByAddress()
+	wants := map[string]string{
+		"dashboard_config.main":      ClassDerived,
+		"fly_app.dashboard.main":     ClassManaged,
+		"fly_secrets.dashboard.main": ClassManaged,
+		"rollout.dashboard.main":     ClassAction,
+	}
+	for address, class := range wants {
+		resource, ok := byAddress[address]
+		if !ok {
+			t.Fatalf("missing resource %s", address)
+		}
+		if resource.Class != class {
+			t.Fatalf("resource %s class: got %s want %s", address, resource.Class, class)
+		}
+	}
+	// The dashboard is stateless: it must not declare a volume.
+	if _, ok := byAddress["fly_volume.dashboard.main"]; ok {
+		t.Fatalf("dashboard must be stateless (no fly_volume)")
+	}
+	rollout := byAddress["rollout.dashboard.main"]
+	for _, dep := range []string{"fly_app.dashboard.main", "fly_secrets.dashboard.main", "dashboard_config.main"} {
+		if !containsString(rollout.DependsOn, dep) {
+			t.Fatalf("rollout.dashboard.main missing dependency %s (deps=%v)", dep, rollout.DependsOn)
+		}
+	}
+}
+
+func TestDashboardTopologyHashGating(t *testing.T) {
+	one := dashboardWorkspace(t, "research")
+	two := dashboardWorkspace(t, "research", "writer")
+
+	h1, _, err := hashDashboardTopology(one, nil)
+	if err != nil {
+		t.Fatalf("hash one: %v", err)
+	}
+	h2, _, err := hashDashboardTopology(two, nil)
+	if err != nil {
+		t.Fatalf("hash two: %v", err)
+	}
+	if h1 == h2 {
+		t.Fatalf("topology hash should change when an agent is added (apply must redeploy the dashboard)")
+	}
+	// Deterministic and timestamp-independent: re-hashing the same fleet matches.
+	h1again, _, err := hashDashboardTopology(one, nil)
+	if err != nil {
+		t.Fatalf("hash one again: %v", err)
+	}
+	if h1 != h1again {
+		t.Fatalf("topology hash must be deterministic and exclude the generated timestamp")
+	}
+}
+
+func dashboardWorkspace(t *testing.T, agentIDs ...string) *workspace.Workspace {
+	t.Helper()
+	root := t.TempDir()
+	agents := make([]config.RawAgent, 0, len(agentIDs))
+	for _, id := range agentIDs {
+		agents = append(agents, config.RawAgent{ID: strPtr(id), FlyApp: strPtr("co-" + id), TailscaleHostname: strPtr(id)})
+	}
+	cfg, err := config.Normalize(config.RawConfig{
+		Defaults: config.RawDefaults{
+			Model: config.RawModel{
+				Enabled:          boolPtr(true),
+				Default:          strPtr("google/gemini-3.5-flash"),
+				APIKeySecretName: strPtr("OPENROUTER_API_KEY"),
+				APIKeyEnv:        strPtr("OPENROUTER_API_KEY"),
+			},
+			APIServer: config.RawAPIServer{Enabled: boolPtr(true), OpenWebUIEnabled: boolPtr(true)},
+		},
+		Dashboard: config.RawDashboard{Enabled: boolPtr(true)},
+		Agents:    agents,
+	})
+	if err != nil {
+		t.Fatalf("normalize config: %v", err)
+	}
+	return &workspace.Workspace{
+		Root:      root,
+		Name:      "test",
+		StatePath: filepath.Join(root, ".companion", "state.sqlite"),
+		Config:    cfg,
+	}
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
+}
+
 func openTestState(t *testing.T) *state.Store {
 	t.Helper()
 	store, err := state.Open(filepath.Join(t.TempDir(), "state.sqlite"))

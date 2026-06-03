@@ -77,6 +77,7 @@ type loadConfig struct {
 	Providers string `toml:"providers"`
 	Defaults  string `toml:"defaults"`
 	WebUI     string `toml:"webui"`
+	Dashboard string `toml:"dashboard"`
 	Agents    string `toml:"agents"`
 	Vaults    string `toml:"vaults"`
 }
@@ -87,6 +88,10 @@ type defaultsFile struct {
 
 type webUIFile struct {
 	OpenWebUI config.RawOpenWebUI `toml:"open_webui"`
+}
+
+type dashboardFile struct {
+	Dashboard config.RawDashboard `toml:"dashboard"`
 }
 
 type agentFile struct {
@@ -159,6 +164,9 @@ func Load(root string) (*Workspace, error) {
 		return nil, err
 	}
 	if err := loadWebUI(absRoot, rootConfig.Load.WebUI, &raw); err != nil {
+		return nil, err
+	}
+	if err := loadDashboard(absRoot, rootConfig.Load.Dashboard, &raw); err != nil {
 		return nil, err
 	}
 	agentFiles, err := loadAgents(absRoot, rootConfig.Load.Agents, &raw)
@@ -243,6 +251,9 @@ func (r *rootFile) defaults(workspaceName string) {
 	if r.Load.WebUI == "" {
 		r.Load.WebUI = "webui.toml"
 	}
+	if r.Load.Dashboard == "" {
+		r.Load.Dashboard = "dashboard.toml"
+	}
 	if r.Load.Agents == "" {
 		r.Load.Agents = "agents/*.toml"
 	}
@@ -287,6 +298,20 @@ func (w *Workspace) Validate() error {
 		}
 		if !w.Providers.Has(w.Config.OpenWebUI.Network) {
 			return fmt.Errorf("open_webui references unknown network provider %s", w.Config.OpenWebUI.Network)
+		}
+	}
+	if w.Config.Dashboard.Enabled {
+		if !strings.HasPrefix(w.Config.Dashboard.Runtime, "fly.") {
+			return fmt.Errorf("dashboard runtime must reference a fly provider")
+		}
+		if !w.Providers.Has(w.Config.Dashboard.Runtime) {
+			return fmt.Errorf("dashboard references unknown runtime provider %s", w.Config.Dashboard.Runtime)
+		}
+		if !strings.HasPrefix(w.Config.Dashboard.Network, "tailscale.") {
+			return fmt.Errorf("dashboard network must reference a tailscale provider")
+		}
+		if !w.Providers.Has(w.Config.Dashboard.Network) {
+			return fmt.Errorf("dashboard references unknown network provider %s", w.Config.Dashboard.Network)
 		}
 	}
 	seenVaults := map[string]bool{}
@@ -422,6 +447,15 @@ func loadWebUI(root, pattern string, raw *config.RawConfig) error {
 		return err
 	}
 	raw.OpenWebUI = file.OpenWebUI
+	return nil
+}
+
+func loadDashboard(root, pattern string, raw *config.RawConfig) error {
+	var file dashboardFile
+	if err := readOptionalTOML(filepath.Join(root, filepath.FromSlash(pattern)), &file); err != nil {
+		return err
+	}
+	raw.Dashboard = file.Dashboard
 	return nil
 }
 

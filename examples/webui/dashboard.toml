@@ -1,0 +1,13 @@
+# Dedicated status dashboard for the fleet, deployed as its own tiny Fly app
+# behind Tailscale. apply keeps its polling targets in sync with this workspace.
+
+[dashboard]
+enabled = true
+fly_app = "example-companion-dashboard"
+tailscale_hostname = "companion-dashboard"
+port = 9300
+refresh_interval = 30
+# Smallest Fly machine on purpose: stateless, no volume, scales to zero.
+memory = "256mb"
+cpus = 1
+tailscale_serve = true

@@ -24,6 +24,7 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/render"
 	"github.com/The-Vibe-Company/companion/internal/resource"
 	"github.com/The-Vibe-Company/companion/internal/state"
+	"github.com/The-Vibe-Company/companion/internal/status"
 	"github.com/The-Vibe-Company/companion/internal/tailscale"
 	"github.com/The-Vibe-Company/companion/internal/tailscalectl"
 	"github.com/The-Vibe-Company/companion/internal/vaultops"
@@ -67,7 +68,7 @@ func newRootCommand(runner execx.Runner) *cobra.Command {
 	cmd.AddCommand(a.stateCommand())
 	cmd.AddCommand(a.tailscaleCommand())
 	cmd.AddCommand(a.vaultCommand())
-	cmd.AddCommand(a.serveCommand())
+	cmd.AddCommand(a.dashboardCommand())
 	cmd.AddCommand(a.versionCommand())
 	return cmd
 }
@@ -91,6 +92,7 @@ state = ".companion/state.sqlite"
 providers = "providers.toml"
 defaults = "defaults.toml"
 webui = "webui.toml"
+dashboard = "dashboard.toml"
 agents = "agents/*.toml"
 vaults = "vaults/*.toml"
 `,
@@ -172,6 +174,18 @@ tailscale_authkey_secret_name = "TS_AUTHKEY"
 webui_secret_key_secret_name = "WEBUI_SECRET_KEY"
 openai_api_keys_secret_name = "OPENAI_API_KEYS"
 ts_extra_args = "--netfilter-mode=off"
+`,
+				"dashboard.toml": `# Dedicated status dashboard. Deployed as a tiny, stateless Fly app behind
+# Tailscale; apply keeps its polling targets in sync with this workspace.
+[dashboard]
+enabled = false
+fly_app = "example-companion-dashboard"
+tailscale_hostname = "companion-dashboard"
+port = 9300
+refresh_interval = 30
+memory = "256mb"
+cpus = 1
+tailscale_serve = true
 `,
 				filepath.Join("agents", "sample.toml"): `[agent]
 id = "sample"
@@ -787,48 +801,145 @@ func (a *app) identityRenderCommand() *cobra.Command {
 	}
 }
 
-func (a *app) serveCommand() *cobra.Command {
+func (a *app) dashboardCommand() *cobra.Command {
 	var addr string
+	var manifest string
+	var interval time.Duration
 	cmd := &cobra.Command{
-		Use:   "serve",
-		Short: "Serve the local Companion dashboard",
+		Use:     "dashboard",
+		Short:   "Serve the Companion status dashboard",
+		Aliases: []string{"serve"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := a.load()
-			if err != nil {
-				return err
-			}
 			env, err := a.env()
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "serving Companion dashboard at http://%s\n", addr)
-			ws, err := a.workspace()
-			if err != nil {
-				return err
+			addr = dashboardAddr(addr)
+			if manifest != "" {
+				return a.runDashboardManifest(cmd, addr, manifest, interval, env)
 			}
-			providers, err := a.providerSet(ws, env)
-			if err != nil {
-				return err
-			}
-			flyProvider, err := providers.FlyFor(cfg.OpenWebUI.Runtime)
-			if err != nil && len(cfg.Agents) > 0 {
-				flyProvider, err = providers.FlyFor(cfg.Agents[0].Runtime)
-			}
-			if err != nil {
-				return err
-			}
-			tsProvider, err := providers.TailscaleFor(cfg.OpenWebUI.Network)
-			if err != nil && len(cfg.Agents) > 0 {
-				tsProvider, err = providers.TailscaleFor(cfg.Agents[0].Network)
-			}
-			if err != nil {
-				return err
-			}
-			return web.Serve(cmd.Context(), addr, cfg, flyProvider, tsProvider)
+			return a.runDashboardWorkspace(cmd, addr, interval, env)
 		},
 	}
-	cmd.Flags().StringVar(&addr, "addr", "127.0.0.1:8787", "listen address")
+	cmd.Flags().StringVar(&addr, "addr", "127.0.0.1:8787", "listen address (PORT env wins when set)")
+	cmd.Flags().StringVar(&manifest, "manifest", "", "poll a generated fleet.json topology instead of the live workspace")
+	cmd.Flags().DurationVar(&interval, "interval", 30*time.Second, "status refresh interval")
 	return cmd
+}
+
+// dashboardAddr lets the deployed container bind to Fly's injected PORT without
+// templating the value into the generated config.
+func dashboardAddr(addr string) string {
+	if port := os.Getenv("PORT"); port != "" {
+		return "0.0.0.0:" + port
+	}
+	return addr
+}
+
+func (a *app) runDashboardWorkspace(cmd *cobra.Command, addr string, interval time.Duration, env map[string]string) error {
+	ws, err := a.workspace()
+	if err != nil {
+		return err
+	}
+	cfg := ws.Config
+	providers, err := a.providerSet(ws, env)
+	if err != nil {
+		return err
+	}
+	// Resolve the Fly/Tailscale providers used for polling, preferring the
+	// dashboard's own provider refs, then Open WebUI's, then the first agent's.
+	runtimeRefs, networkRefs := dashboardProviderRefs(cfg)
+	flyProvider, err := firstFlyProvider(providers, runtimeRefs)
+	if err != nil {
+		return err
+	}
+	tsProvider, err := firstTailscaleProvider(providers, networkRefs)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "serving Companion dashboard at http://%s\n", addr)
+	src := status.WorkspaceSource{
+		Workspace: ws.Name,
+		Config:    cfg,
+		Fly:       flyProvider,
+		Tailscale: tsProvider,
+	}
+	return web.Serve(cmd.Context(), addr, src, interval, cfg, flyProvider, tsProvider)
+}
+
+func (a *app) runDashboardManifest(cmd *cobra.Command, addr, manifestPath string, interval time.Duration, env map[string]string) error {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return err
+	}
+	topo, err := status.ParseTopology(data)
+	if err != nil {
+		return err
+	}
+	flyProvider := fly.NewAPI(topo.Providers.FlyAPIBaseURL, env[firstNonEmptyString(topo.Providers.FlyTokenEnv, "FLY_API_TOKEN")], topo.Providers.FlyOrg)
+	tsProvider := tailscale.NewAPI(topo.Providers.TailscaleAPIBaseURL, env[firstNonEmptyString(topo.Providers.TailscaleAPIKeyEnv, "TAILSCALE_API_KEY")], topo.Providers.Tailnet)
+	fmt.Fprintf(cmd.OutOrStdout(), "serving Companion dashboard at http://%s (manifest %s)\n", addr, manifestPath)
+	src := status.ManifestSource{Topology: topo, Fly: flyProvider, Tailscale: tsProvider}
+	return web.Serve(cmd.Context(), addr, src, interval, nil, nil, nil)
+}
+
+func firstNonEmptyString(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+// dashboardProviderRefs returns candidate Fly runtime refs and Tailscale
+// network refs in preference order: the dashboard's own providers, then Open
+// WebUI's, then the first agent's. This keeps polling correct when the
+// dashboard runs with a different provider than (or without) Open WebUI.
+func dashboardProviderRefs(cfg *config.Config) (runtimeRefs, networkRefs []string) {
+	if cfg.Dashboard.Enabled {
+		runtimeRefs = append(runtimeRefs, cfg.Dashboard.Runtime)
+		networkRefs = append(networkRefs, cfg.Dashboard.Network)
+	}
+	if cfg.OpenWebUI.Enabled {
+		runtimeRefs = append(runtimeRefs, cfg.OpenWebUI.Runtime)
+		networkRefs = append(networkRefs, cfg.OpenWebUI.Network)
+	}
+	if len(cfg.Agents) > 0 {
+		runtimeRefs = append(runtimeRefs, cfg.Agents[0].Runtime)
+		networkRefs = append(networkRefs, cfg.Agents[0].Network)
+	}
+	return runtimeRefs, networkRefs
+}
+
+func firstFlyProvider(providers provider.Set, refs []string) (provider.FlyRuntime, error) {
+	var err error
+	for _, ref := range refs {
+		var fp provider.FlyRuntime
+		fp, err = providers.FlyFor(ref)
+		if err == nil {
+			return fp, nil
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	return providers.FlyFor("")
+}
+
+func firstTailscaleProvider(providers provider.Set, refs []string) (provider.TailscaleNetwork, error) {
+	var err error
+	for _, ref := range refs {
+		var tp provider.TailscaleNetwork
+		tp, err = providers.TailscaleFor(ref)
+		if err == nil {
+			return tp, nil
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	return providers.TailscaleFor("")
 }
 
 func (a *app) versionCommand() *cobra.Command {

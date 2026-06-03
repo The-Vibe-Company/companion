@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -161,6 +162,69 @@ func TestIdentityEnabledRequiresPathOrSoul(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatalf("expected enabled identity without path or soul to be rejected")
+	}
+}
+
+func TestDashboardDisabledWhenUnset(t *testing.T) {
+	cfg, err := Normalize(RawConfig{
+		Agents: []RawAgent{{ID: strPtr("sample"), FlyApp: strPtr("example-companion-sample"), TailscaleHostname: strPtr("sample")}},
+	})
+	if err != nil {
+		t.Fatalf("normalize: %v", err)
+	}
+	if cfg.Dashboard.Enabled {
+		t.Fatalf("dashboard should be disabled when no [dashboard] block is present")
+	}
+}
+
+func TestDashboardNormalizationDefaults(t *testing.T) {
+	cfg, err := Normalize(RawConfig{
+		Dashboard: RawDashboard{Enabled: boolPtr(true)},
+		Agents:    []RawAgent{{ID: strPtr("sample"), FlyApp: strPtr("example-companion-sample"), TailscaleHostname: strPtr("sample")}},
+	})
+	if err != nil {
+		t.Fatalf("normalize: %v", err)
+	}
+	d := cfg.Dashboard
+	if !d.Enabled {
+		t.Fatalf("dashboard should be enabled")
+	}
+	checks := map[string]bool{
+		"id":                 d.ID == "dashboard",
+		"runtime":            d.Runtime == "fly.default",
+		"network":            d.Network == "tailscale.default",
+		"memory_smallest":    d.Memory == "256mb",
+		"cpus":               d.CPUs == 1,
+		"port":               d.Port == 9300,
+		"refresh_interval":   d.RefreshInterval == 30,
+		"fly_token_secret":   d.FlyTokenSecretName == "FLY_API_TOKEN",
+		"ts_api_key_secret":  d.TailscaleAPIKeySecretName == "TAILSCALE_API_KEY",
+		"ts_authkey_default": d.TailscaleAuthKeySecretName == "TS_AUTHKEY",
+	}
+	for name, ok := range checks {
+		if !ok {
+			t.Fatalf("dashboard default %s incorrect: %#v", name, d)
+		}
+	}
+}
+
+func TestDashboardValidationRejectsBadRefreshInterval(t *testing.T) {
+	_, err := Normalize(RawConfig{
+		Dashboard: RawDashboard{Enabled: boolPtr(true), RefreshInterval: intPtr(1)},
+		Agents:    []RawAgent{{ID: strPtr("sample"), FlyApp: strPtr("example-companion-sample"), TailscaleHostname: strPtr("sample")}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "refresh_interval") {
+		t.Fatalf("expected refresh_interval validation error, got %v", err)
+	}
+}
+
+func TestDashboardValidationRejectsBadFlyApp(t *testing.T) {
+	_, err := Normalize(RawConfig{
+		Dashboard: RawDashboard{Enabled: boolPtr(true), FlyApp: strPtr("Invalid_App")},
+		Agents:    []RawAgent{{ID: strPtr("sample"), FlyApp: strPtr("example-companion-sample"), TailscaleHostname: strPtr("sample")}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "dashboard.fly_app") {
+		t.Fatalf("expected dashboard.fly_app validation error, got %v", err)
 	}
 }
 
