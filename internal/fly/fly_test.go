@@ -44,6 +44,19 @@ func TestSecretNames(t *testing.T) {
 	}
 }
 
+func TestCreateAppUsesConfiguredOrg(t *testing.T) {
+	runner := &execx.FakeRunner{Responses: map[string]execx.Result{
+		"fly apps create app --org personal": {},
+	}}
+	provider := NewWithOrg(runner, "personal")
+	if err := provider.CreateApp(context.Background(), "app"); err != nil {
+		t.Fatalf("create app: %v", err)
+	}
+	if len(runner.Calls) != 1 {
+		t.Fatalf("expected one call, got %#v", runner.Calls)
+	}
+}
+
 func TestDeployUsesRemoteBuildAndWaitsForRollout(t *testing.T) {
 	runner := &execx.FakeRunner{Responses: map[string]execx.Result{
 		"fly deploy . -a app -c fly.toml --ha=false --remote-only": {},

@@ -12,6 +12,7 @@ import (
 
 type Provider struct {
 	Runner execx.Runner
+	Org    string
 }
 
 type Volume struct {
@@ -67,6 +68,10 @@ func New(runner execx.Runner) Provider {
 	return Provider{Runner: runner}
 }
 
+func NewWithOrg(runner execx.Runner, org string) Provider {
+	return Provider{Runner: runner, Org: org}
+}
+
 func (p Provider) AppExists(ctx context.Context, app string) (bool, error) {
 	result, err := p.Runner.Run(ctx, []string{"fly", "status", "-a", app})
 	if err != nil {
@@ -79,7 +84,11 @@ func (p Provider) AppExists(ctx context.Context, app string) (bool, error) {
 }
 
 func (p Provider) CreateApp(ctx context.Context, app string) error {
-	result, err := p.Runner.Run(ctx, []string{"fly", "apps", "create", app})
+	command := []string{"fly", "apps", "create", app}
+	if p.Org != "" {
+		command = append(command, "--org", p.Org)
+	}
+	result, err := p.Runner.Run(ctx, command)
 	if err != nil {
 		return err
 	}

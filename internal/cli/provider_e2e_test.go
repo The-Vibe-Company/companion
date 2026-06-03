@@ -55,6 +55,9 @@ WEBUI_SECRET_KEY=webui-secret
 	if !strings.Contains(validateOutput, "providers: ok") {
 		t.Fatalf("unexpected validate output: %s", validateOutput)
 	}
+	if !strings.Contains(validateOutput, "credentials: ok") {
+		t.Fatalf("unexpected validate output: %s", validateOutput)
+	}
 	planOutput, err := runCompanionForTest(runner, "--workspace", root, "plan", "--json")
 	if err != nil {
 		t.Fatalf("plan: %v\n%s", err, planOutput)

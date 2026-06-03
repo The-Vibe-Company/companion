@@ -57,7 +57,7 @@ func NewSet(ws *workspace.Workspace, env map[string]string, runner execx.Runner)
 	}
 	for name, cfg := range ws.Providers.Fly {
 		ref := "fly." + name
-		shell := fly.New(runner)
+		shell := fly.NewWithOrg(runner, cfg.Org)
 		if cfg.Mode == "api" {
 			set.Fly[ref] = fly.NewAPI(cfg.APIBaseURL, env[cfg.TokenEnv], cfg.Org)
 		} else {

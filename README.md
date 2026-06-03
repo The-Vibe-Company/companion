@@ -110,6 +110,14 @@ cp .env.example .env
 $EDITOR .env
 ```
 
+By default, `--env-file .env` is resolved relative to `--workspace`. For live operations, keep the `.env` next to the `companion.toml` that owns the state, or pass one explicit absolute path:
+
+```bash
+companion plan --workspace . --env-file /path/to/live/.env
+```
+
+Do not alternate between multiple workspace/state/env directories for the same fleet unless you are deliberately migrating state.
+
 ### Provider Architecture
 
 Companion resolves provider refs like `fly.default`, `tailscale.tvc`, and `openrouter.default` into typed clients:
@@ -127,7 +135,7 @@ Provider-backed model validation is opt-in:
 companion validate --providers --workspace .
 ```
 
-This keeps normal validation fast and local while still letting CI or local mocks verify model availability.
+This checks the provider credential env vars first, then verifies configured OpenRouter models. Normal validation stays fast and local.
 
 ## Agents
 

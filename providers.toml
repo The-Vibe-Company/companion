@@ -1,5 +1,5 @@
 [fly.default]
-org = "the-vibe-company"
+org = "personal"
 region = "cdg"
 token_env = "FLY_API_TOKEN"
 # mode = "api"

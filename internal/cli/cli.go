@@ -312,6 +312,28 @@ func providerRefForImport(ws *workspace.Workspace, address importer.Address) str
 	return address.Type
 }
 
+func workspaceProviderRefs(ws *workspace.Workspace) []string {
+	seen := map[string]bool{}
+	refs := []string{}
+	add := func(ref string) {
+		if ref == "" || seen[ref] {
+			return
+		}
+		seen[ref] = true
+		refs = append(refs, ref)
+	}
+	for _, agent := range ws.Config.Agents {
+		add(agent.Runtime)
+		add(agent.Network)
+		add(agent.ModelProvider)
+	}
+	if ws.Config.OpenWebUI.Enabled {
+		add(ws.Config.OpenWebUI.Runtime)
+		add(ws.Config.OpenWebUI.Network)
+	}
+	return refs
+}
+
 func (a *app) validateCommand() *cobra.Command {
 	var validateProviders bool
 	cmd := &cobra.Command{
@@ -348,6 +370,9 @@ func (a *app) validateCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
+				if err := provider.New(ws, env).ValidateCredentials(workspaceProviderRefs(ws)...); err != nil {
+					return err
+				}
 				providers, err := a.providerSet(ws, env)
 				if err != nil {
 					return err
@@ -355,6 +380,7 @@ func (a *app) validateCommand() *cobra.Command {
 				if err := providers.ValidateModels(cmd.Context(), cfg); err != nil {
 					return err
 				}
+				fmt.Fprintln(cmd.OutOrStdout(), "credentials: ok")
 				fmt.Fprintln(cmd.OutOrStdout(), "providers: ok")
 			}
 			return nil

@@ -116,6 +116,30 @@ func TestAppEnvLoadsEnvFileAndShellOverrides(t *testing.T) {
 	}
 }
 
+func TestValidateProvidersRequiresCredentials(t *testing.T) {
+	root := t.TempDir()
+	writeTestWorkspace(t, root, map[string]string{
+		"victor": `
+[agent]
+id = "victor"
+fly_app = "tvc-companion-victor"
+tailscale_hostname = "victor"
+`,
+	})
+	for _, key := range []string{"FLY_API_TOKEN", "TAILSCALE_API_KEY", "TS_AUTHKEY", "OPENROUTER_API_KEY"} {
+		t.Setenv(key, "")
+	}
+	cmd := NewRootCommand()
+	cmd.SetArgs([]string{"--workspace", root, "validate", "--providers"})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("expected missing credential error")
+	}
+	if !strings.Contains(err.Error(), "FLY_API_TOKEN") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestIdentityInitAndRenderCommands(t *testing.T) {
 	root := t.TempDir()
 	writeTestWorkspace(t, root, map[string]string{
