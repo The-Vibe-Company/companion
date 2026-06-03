@@ -1,6 +1,7 @@
 fly.*.toml
 bin/__pycache__/
 .companion/
+archived/
 .env
 /companion
 .git/

@@ -41,8 +41,11 @@ jobs:
       - name: Validate sample config
         run: go run ./cmd/companion validate --config companion.toml
 
-      - name: Render plan
-        run: go run ./cmd/companion plan --config companion.toml
+      - name: Build Hermes Docker image
+        run: docker build -f Dockerfile .
+
+      - name: Build Open WebUI Docker image
+        run: docker build -f Dockerfile.open-webui .
 
   build:
     runs-on: ubuntu-latest

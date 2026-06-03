@@ -13,6 +13,10 @@ import (
 
 func OpenWebUIConnections(ctx context.Context, cfg *config.Config, tsProvider tailscale.Provider) []config.OpenWebUIConnection {
 	devices, _ := tsProvider.Devices(ctx)
+	return OpenWebUIConnectionsForDevices(cfg, devices)
+}
+
+func OpenWebUIConnectionsForDevices(cfg *config.Config, devices []tailscale.Device) []config.OpenWebUIConnection {
 	connections := []config.OpenWebUIConnection{}
 	for _, agent := range cfg.Agents {
 		api := agent.APIServer

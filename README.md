@@ -55,7 +55,7 @@ companion version
 companion validate --config companion.toml
 ```
 
-Runtime requirements for real deploys:
+Runtime requirements for live `plan`, `apply`, `status`, `drift`, and dashboard drift checks:
 
 - `flyctl`
 - `tailscale`
@@ -255,6 +255,8 @@ go run ./cmd/companion state list
 ```
 
 Import addresses use `provider_kind.desired-id`. Re-importing the same address updates the external id instead of creating a duplicate state entry.
+
+`apply` also records observed Fly apps, Fly volumes, and matching Tailscale devices after a successful deploy. State is operational evidence only; it never creates or changes desired config.
 
 ## Vault Backups
 

@@ -12,6 +12,8 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/execx"
 	"github.com/The-Vibe-Company/companion/internal/fly"
 	"github.com/The-Vibe-Company/companion/internal/render"
+	"github.com/The-Vibe-Company/companion/internal/state"
+	"github.com/The-Vibe-Company/companion/internal/tailscale"
 )
 
 func TestImportAndStateListCommands(t *testing.T) {
@@ -60,6 +62,72 @@ func TestAgentSecretsCanReuseExistingFlySecrets(t *testing.T) {
 	}
 	if strings.Join(reused, ",") != strings.Join(render.RequiredAgentSecrets(agent), ",") {
 		t.Fatalf("unexpected reused secrets: %#v", reused)
+	}
+}
+
+func TestRecordAgentResourcesUpsertsObservedState(t *testing.T) {
+	store, err := state.Open(filepath.Join(t.TempDir(), "state.sqlite"))
+	if err != nil {
+		t.Fatalf("open state: %v", err)
+	}
+	defer store.Close()
+
+	flyRunner := &execx.FakeRunner{Responses: map[string]execx.Result{
+		"fly volumes list -a tvc-companion-victor --json": {Stdout: `[{
+			"id":"vol_victor",
+			"name":"data",
+			"state":"created",
+			"size_gb":3,
+			"region":"cdg",
+			"attached_machine_id":"machine_victor"
+		}]`},
+	}}
+	tsRunner := &execx.FakeRunner{Responses: map[string]execx.Result{
+		"tailscale status --json": {Stdout: `{"Peer":{"node:1":{
+			"ID":"node_1",
+			"HostName":"victor",
+			"DNSName":"victor.tailnet.ts.net.",
+			"Online":true,
+			"TailscaleIPs":["100.64.0.10"]
+		}}}`},
+	}}
+
+	agent := config.Agent{
+		ID:                "victor",
+		FlyApp:            "tvc-companion-victor",
+		TailscaleHostname: "victor",
+		Region:            "cdg",
+		VolumeName:        "data",
+		VolumeSizeGB:      3,
+		Memory:            "4gb",
+		CPUs:              2,
+	}
+	if err := recordAgentResources(context.Background(), store, fly.New(flyRunner), tailscale.New(tsRunner), agent, ".companion/generated/fly.victor.toml"); err != nil {
+		t.Fatalf("record agent resources: %v", err)
+	}
+
+	resources, err := store.ListResources(context.Background())
+	if err != nil {
+		t.Fatalf("list resources: %v", err)
+	}
+	if len(resources) != 3 {
+		t.Fatalf("expected app, volume, and tailscale device, got %#v", resources)
+	}
+	seen := map[string]string{}
+	for _, resource := range resources {
+		seen[resource.Provider+"_"+resource.Kind+"."+resource.DesiredID] = resource.ExternalID
+		if strings.Contains(resource.AttrsJSON, "secret") {
+			t.Fatalf("state attrs should not contain secrets: %#v", resource)
+		}
+	}
+	if seen["fly_app.victor"] != "tvc-companion-victor" {
+		t.Fatalf("missing fly app resource: %#v", seen)
+	}
+	if seen["fly_volume.victor-data"] != "vol_victor" {
+		t.Fatalf("missing fly volume resource: %#v", seen)
+	}
+	if seen["tailscale_device.victor"] != "node_1" {
+		t.Fatalf("missing tailscale device resource: %#v", seen)
 	}
 }
 

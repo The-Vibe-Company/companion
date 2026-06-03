@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -24,8 +25,8 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/state"
 	"github.com/The-Vibe-Company/companion/internal/tailscale"
 	"github.com/The-Vibe-Company/companion/internal/tailscalectl"
-	"github.com/The-Vibe-Company/companion/internal/version"
 	"github.com/The-Vibe-Company/companion/internal/vaultops"
+	"github.com/The-Vibe-Company/companion/internal/version"
 	"github.com/The-Vibe-Company/companion/internal/web"
 )
 
@@ -191,7 +192,10 @@ func (a *app) planCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			report := plan.Build(cmd.Context(), cfg, agents, a.fly(), a.tailscale())
+			report, err := plan.Build(cmd.Context(), cfg, agents, a.fly(), a.tailscale())
+			if err != nil {
+				return err
+			}
 			fmt.Fprintln(cmd.OutOrStdout(), report.String())
 			return nil
 		},
@@ -217,7 +221,10 @@ func (a *app) applyCommand() *cobra.Command {
 				return err
 			}
 			defer store.Close()
-			report := plan.Build(cmd.Context(), cfg, agents, a.fly(), a.tailscale())
+			report, err := plan.Build(cmd.Context(), cfg, agents, a.fly(), a.tailscale())
+			if err != nil {
+				return err
+			}
 			applyID, err := store.StartApply(cmd.Context(), report)
 			if err != nil {
 				return err
@@ -290,6 +297,9 @@ func (a *app) applyWebUICommand() *cobra.Command {
 			if err := provider.Deploy(cmd.Context(), cfg.OpenWebUI.FlyApp, path); err != nil {
 				return err
 			}
+			if err := recordOpenWebUIResources(cmd.Context(), store, provider, a.tailscale(), cfg.OpenWebUI, path); err != nil {
+				return err
+			}
 			return store.RecordEvent(cmd.Context(), "apply-webui", cfg.OpenWebUI.ID, "info", "applied open webui", map[string]string{"config": path})
 		},
 	}
@@ -339,7 +349,10 @@ func (a *app) driftCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			report := plan.Drift(cmd.Context(), cfg, a.fly(), a.tailscale())
+			report, err := plan.Drift(cmd.Context(), cfg, a.fly(), a.tailscale())
+			if err != nil {
+				return err
+			}
 			fmt.Fprintln(cmd.OutOrStdout(), report.String())
 			return nil
 		},
@@ -779,7 +792,127 @@ func (a *app) applyAgent(cmd *cobra.Command, store *state.Store, agent config.Ag
 	if err := provider.Deploy(cmd.Context(), agent.FlyApp, path); err != nil {
 		return err
 	}
+	if err := recordAgentResources(cmd.Context(), store, provider, a.tailscale(), agent, path); err != nil {
+		return err
+	}
 	return store.RecordEvent(cmd.Context(), "apply", agent.ID, "info", "applied agent", map[string]string{"config": path})
+}
+
+func recordAgentResources(ctx context.Context, store *state.Store, provider fly.Provider, tsProvider tailscale.Provider, agent config.Agent, configPath string) error {
+	if store == nil {
+		return nil
+	}
+	if err := upsertObservedResource(ctx, store, "fly", "app", agent.ID, agent.FlyApp, map[string]any{
+		"config":   configPath,
+		"region":   agent.Region,
+		"memory":   agent.Memory,
+		"cpus":     agent.CPUs,
+		"hostname": agent.TailscaleHostname,
+	}); err != nil {
+		return err
+	}
+	if err := recordVolumeResource(ctx, store, provider, agent.ID+"-"+agent.VolumeName, agent.FlyApp, agent.VolumeName); err != nil {
+		return err
+	}
+	return recordTailscaleResource(ctx, store, tsProvider, agent.ID, agent.TailscaleHostname)
+}
+
+func recordOpenWebUIResources(ctx context.Context, store *state.Store, provider fly.Provider, tsProvider tailscale.Provider, webui config.OpenWebUI, configPath string) error {
+	if store == nil {
+		return nil
+	}
+	if err := upsertObservedResource(ctx, store, "fly", "app", webui.ID, webui.FlyApp, map[string]any{
+		"config":   configPath,
+		"region":   webui.Region,
+		"memory":   webui.Memory,
+		"cpus":     webui.CPUs,
+		"hostname": webui.TailscaleHostname,
+	}); err != nil {
+		return err
+	}
+	if err := recordVolumeResource(ctx, store, provider, webui.ID+"-"+webui.VolumeName, webui.FlyApp, webui.VolumeName); err != nil {
+		return err
+	}
+	return recordTailscaleResource(ctx, store, tsProvider, webui.ID, webui.TailscaleHostname)
+}
+
+func recordVolumeResource(ctx context.Context, store *state.Store, provider fly.Provider, desiredID, app, volumeName string) error {
+	volumes, err := provider.ListVolumes(ctx, app)
+	if err != nil {
+		return err
+	}
+	selected, _, ok := fly.SelectVolume(volumes, volumeName)
+	if !ok {
+		return nil
+	}
+	return upsertObservedResource(ctx, store, "fly", "volume", desiredID, selected.ID, map[string]any{
+		"app":                 app,
+		"name":                selected.Name,
+		"region":              selected.Region,
+		"size_gb":             selected.SizeGB,
+		"state":               selected.State,
+		"attached_machine_id": selected.AttachedMachineID,
+	})
+}
+
+func recordTailscaleResource(ctx context.Context, store *state.Store, tsProvider tailscale.Provider, desiredID, hostname string) error {
+	devices, err := tsProvider.Devices(ctx)
+	if err != nil {
+		return err
+	}
+	device, ok := selectedTailscaleDevice(devices, hostname)
+	if !ok {
+		return nil
+	}
+	externalID := device.ID
+	if externalID == "" {
+		externalID = device.DNSName
+	}
+	if externalID == "" {
+		externalID = device.HostName
+	}
+	return upsertObservedResource(ctx, store, "tailscale", "device", desiredID, externalID, map[string]any{
+		"hostname":  device.HostName,
+		"dns_name":  strings.TrimSuffix(device.DNSName, "."),
+		"online":    device.Online,
+		"ip":        device.IP,
+		"created":   device.Created,
+		"last_seen": device.LastSeen,
+	})
+}
+
+func selectedTailscaleDevice(devices []tailscale.Device, hostname string) (tailscale.Device, bool) {
+	matches := tailscale.FindByHostname(devices, hostname)
+	if len(matches) == 0 {
+		return tailscale.Device{}, false
+	}
+	sort.SliceStable(matches, func(i, j int) bool {
+		if matches[i].Online != matches[j].Online {
+			return matches[i].Online
+		}
+		if matches[i].DNSName != matches[j].DNSName {
+			return matches[i].DNSName < matches[j].DNSName
+		}
+		return matches[i].ID < matches[j].ID
+	})
+	return matches[0], true
+}
+
+func upsertObservedResource(ctx context.Context, store *state.Store, provider, kind, desiredID, externalID string, attrs map[string]any) error {
+	if externalID == "" {
+		return nil
+	}
+	data, err := json.Marshal(attrs)
+	if err != nil {
+		return err
+	}
+	return store.UpsertResource(ctx, state.Resource{
+		Provider:   provider,
+		Kind:       kind,
+		DesiredID:  desiredID,
+		ExternalID: externalID,
+		AttrsJSON:  string(data),
+	})
 }
 
 func (a *app) hydrateAgentIdentity(agent config.Agent) (config.Agent, error) {

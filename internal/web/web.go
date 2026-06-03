@@ -63,7 +63,11 @@ func Serve(ctx context.Context, addr string, cfg *config.Config, flyProvider fly
 		renderPage(w, "graph", pageData{Title: "Graph", Config: cfg, Graph: graph})
 	})
 	mux.HandleFunc("/drift", func(w http.ResponseWriter, r *http.Request) {
-		report := plan.Drift(r.Context(), cfg, flyProvider, tsProvider)
+		report, err := plan.Drift(r.Context(), cfg, flyProvider, tsProvider)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
 		renderPage(w, "drift", pageData{Title: "Drift", Config: cfg, Drift: report})
 	})
 

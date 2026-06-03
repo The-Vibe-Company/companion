@@ -3,6 +3,7 @@ package plan
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -67,8 +68,53 @@ func TestBuildNoOpsOpenWebUIWhenBackendsMatch(t *testing.T) {
 	tsRunner := &execx.FakeRunner{Responses: map[string]execx.Result{
 		"tailscale status --json": {Stdout: `{}`},
 	}}
-	report := Build(context.Background(), cfg, cfg.Agents, fly.New(flyRunner), tailscale.New(tsRunner))
+	report, err := Build(context.Background(), cfg, cfg.Agents, fly.New(flyRunner), tailscale.New(tsRunner))
+	if err != nil {
+		t.Fatalf("build plan: %v", err)
+	}
 	if !strings.Contains(report.String(), "= no-op open-webui backends agent") {
 		t.Fatalf("expected open-webui no-op, got:\n%s", report.String())
+	}
+}
+
+func TestBuildReturnsProviderErrors(t *testing.T) {
+	cfg := &config.Config{Agents: []config.Agent{{
+		ID:         "agent",
+		FlyApp:     "agent",
+		VolumeName: "data",
+	}}}
+	flyRunner := &execx.FakeRunner{Errors: map[string]error{
+		"fly status -a agent": errors.New("fly unavailable"),
+	}}
+	tsRunner := &execx.FakeRunner{Responses: map[string]execx.Result{
+		"tailscale status --json": {Stdout: `{}`},
+	}}
+	_, err := Build(context.Background(), cfg, cfg.Agents, fly.New(flyRunner), tailscale.New(tsRunner))
+	if err == nil {
+		t.Fatalf("expected provider error")
+	}
+	if !strings.Contains(err.Error(), "inspect fly app agent") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDriftReturnsTailscaleErrors(t *testing.T) {
+	cfg := &config.Config{Agents: []config.Agent{{
+		ID:         "agent",
+		FlyApp:     "agent",
+		VolumeName: "data",
+	}}}
+	flyRunner := &execx.FakeRunner{Responses: map[string]execx.Result{
+		"fly volumes list -a agent --json": {Stdout: `[]`},
+	}}
+	tsRunner := &execx.FakeRunner{Errors: map[string]error{
+		"tailscale status --json": errors.New("tailscale unavailable"),
+	}}
+	_, err := Drift(context.Background(), cfg, fly.New(flyRunner), tailscale.New(tsRunner))
+	if err == nil {
+		t.Fatalf("expected tailscale error")
+	}
+	if !strings.Contains(err.Error(), "inspect tailscale devices") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

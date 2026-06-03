@@ -61,11 +61,20 @@ func Quote(command []string) string {
 
 type FakeRunner struct {
 	Responses map[string]Result
+	Errors    map[string]error
 	Calls     [][]string
 }
 
 func (r *FakeRunner) Run(_ context.Context, command []string) (Result, error) {
 	r.Calls = append(r.Calls, append([]string(nil), command...))
+	if r.Errors != nil {
+		if err, ok := r.Errors[strings.Join(command, "\x00")]; ok {
+			return Result{}, err
+		}
+		if err, ok := r.Errors[Quote(command)]; ok {
+			return Result{}, err
+		}
+	}
 	if r.Responses == nil {
 		return Result{}, nil
 	}

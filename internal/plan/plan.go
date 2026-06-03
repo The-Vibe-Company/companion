@@ -33,16 +33,27 @@ func (r Report) String() string {
 	return strings.Join(lines, "\n")
 }
 
-func Build(ctx context.Context, cfg *config.Config, agents []config.Agent, flyProvider fly.Provider, tsProvider tailscale.Provider) Report {
+func Build(ctx context.Context, cfg *config.Config, agents []config.Agent, flyProvider fly.Provider, tsProvider tailscale.Provider) (Report, error) {
+	devices, err := tsProvider.Devices(ctx)
+	if err != nil {
+		return Report{}, fmt.Errorf("inspect tailscale devices: %w", err)
+	}
+
 	var actions []Action
 	for _, agent := range agents {
-		exists, _ := flyProvider.AppExists(ctx, agent.FlyApp)
+		exists, err := flyProvider.AppExists(ctx, agent.FlyApp)
+		if err != nil {
+			return Report{}, fmt.Errorf("inspect fly app %s: %w", agent.FlyApp, err)
+		}
 		if exists {
 			actions = append(actions, Action{Kind: "=", Subject: "no-op", Message: "fly app " + agent.FlyApp})
 		} else {
 			actions = append(actions, Action{Kind: "+", Subject: "create", Message: "fly app " + agent.FlyApp})
 		}
-		volumes, _ := flyProvider.ListVolumes(ctx, agent.FlyApp)
+		volumes, err := flyProvider.ListVolumes(ctx, agent.FlyApp)
+		if err != nil {
+			return Report{}, fmt.Errorf("inspect fly volumes for %s: %w", agent.FlyApp, err)
+		}
 		selected, matches, ok := fly.SelectVolume(volumes, agent.VolumeName)
 		if !ok {
 			actions = append(actions, Action{Kind: "+", Subject: "create", Message: fmt.Sprintf("volume %s", agent.VolumeName)})
@@ -55,7 +66,7 @@ func Build(ctx context.Context, cfg *config.Config, agents []config.Agent, flyPr
 		}
 	}
 	if cfg.OpenWebUI.Enabled && len(agents) == len(cfg.Agents) {
-		connections := deps.OpenWebUIConnections(ctx, cfg, tsProvider)
+		connections := deps.OpenWebUIConnectionsForDevices(cfg, devices)
 		ids := make([]string, 0, len(connections))
 		baseURLs := make([]string, 0, len(connections))
 		for _, connection := range connections {
@@ -64,16 +75,18 @@ func Build(ctx context.Context, cfg *config.Config, agents []config.Agent, flyPr
 		}
 		desired := strings.Join(baseURLs, ";")
 		observed := ""
-		if machines, err := flyProvider.ListMachines(ctx, cfg.OpenWebUI.FlyApp); err == nil {
-			observed = openWebUIBaseURLs(machines)
+		machines, err := flyProvider.ListMachines(ctx, cfg.OpenWebUI.FlyApp)
+		if err != nil {
+			return Report{}, fmt.Errorf("inspect open-webui machines for %s: %w", cfg.OpenWebUI.FlyApp, err)
 		}
+		observed = openWebUIBaseURLs(machines)
 		if observed == desired {
 			actions = append(actions, Action{Kind: "=", Subject: "no-op", Message: "open-webui backends " + strings.Join(ids, ",")})
 		} else {
 			actions = append(actions, Action{Kind: "~", Subject: "update", Message: "open-webui backends " + strings.Join(ids, ",")})
 		}
 	}
-	if devices, err := tsProvider.Devices(ctx); err == nil && len(devices) > 0 {
+	if len(devices) > 0 {
 		for _, agent := range agents {
 			matches := tailscale.FindByHostname(devices, agent.TailscaleHostname)
 			if len(matches) == 0 {
@@ -81,7 +94,7 @@ func Build(ctx context.Context, cfg *config.Config, agents []config.Agent, flyPr
 			}
 		}
 	}
-	return Report{Actions: actions}
+	return Report{Actions: actions}, nil
 }
 
 func openWebUIBaseURLs(machines []fly.Machine) string {
@@ -98,10 +111,13 @@ func openWebUIBaseURLs(machines []fly.Machine) string {
 	return ""
 }
 
-func Drift(ctx context.Context, cfg *config.Config, flyProvider fly.Provider, tsProvider tailscale.Provider) Report {
+func Drift(ctx context.Context, cfg *config.Config, flyProvider fly.Provider, tsProvider tailscale.Provider) (Report, error) {
 	var actions []Action
 	for _, agent := range cfg.Agents {
-		volumes, _ := flyProvider.ListVolumes(ctx, agent.FlyApp)
+		volumes, err := flyProvider.ListVolumes(ctx, agent.FlyApp)
+		if err != nil {
+			return Report{}, fmt.Errorf("inspect fly volumes for %s: %w", agent.FlyApp, err)
+		}
 		selected, matches, ok := fly.SelectVolume(volumes, agent.VolumeName)
 		if ok && len(matches) > 1 {
 			actions = append(actions, Action{Kind: "!", Subject: "drift", Message: fmt.Sprintf("duplicate volume %s reused %s", agent.VolumeName, selected.ID)})
@@ -110,7 +126,11 @@ func Drift(ctx context.Context, cfg *config.Config, flyProvider fly.Provider, ts
 			actions = append(actions, Action{Kind: "!", Subject: "drift", Message: fmt.Sprintf("tailscale hostname %s actual %s", agent.TailscaleHostname, agent.APIServer.OpenWebUIHost)})
 		}
 	}
-	if devices, err := tsProvider.Devices(ctx); err == nil && len(devices) > 0 {
+	devices, err := tsProvider.Devices(ctx)
+	if err != nil {
+		return Report{}, fmt.Errorf("inspect tailscale devices: %w", err)
+	}
+	if len(devices) > 0 {
 		for _, agent := range cfg.Agents {
 			matches := tailscale.FindByHostname(devices, agent.TailscaleHostname)
 			if len(matches) > 1 {
@@ -118,7 +138,7 @@ func Drift(ctx context.Context, cfg *config.Config, flyProvider fly.Provider, ts
 			}
 		}
 	}
-	return Report{Actions: actions}
+	return Report{Actions: actions}, nil
 }
 
 type Graph struct {
