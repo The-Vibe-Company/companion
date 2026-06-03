@@ -39,7 +39,10 @@ jobs:
           "$bin_dir/companion" version
 
       - name: Validate sample workspace
-        run: go run ./cmd/companion validate --workspace .
+        run: |
+          go run ./cmd/companion validate --workspace .
+          go run ./cmd/companion validate --workspace examples/minimal
+          go run ./cmd/companion validate --workspace examples/webui
 
       - name: Build Hermes Docker image
         run: docker build -f Dockerfile .

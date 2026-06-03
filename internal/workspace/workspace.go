@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -36,20 +37,25 @@ type Providers struct {
 }
 
 type FlyProvider struct {
-	Org      string `toml:"org" json:"org"`
-	Region   string `toml:"region" json:"region"`
-	TokenEnv string `toml:"token_env" json:"token_env"`
+	Org        string `toml:"org" json:"org"`
+	Region     string `toml:"region" json:"region"`
+	TokenEnv   string `toml:"token_env" json:"token_env"`
+	Mode       string `toml:"mode" json:"mode"`
+	APIBaseURL string `toml:"api_base_url" json:"api_base_url"`
 }
 
 type TailscaleProvider struct {
 	Tailnet       string `toml:"tailnet" json:"tailnet"`
 	APIKeyEnv     string `toml:"api_key_env" json:"api_key_env"`
 	AuthKeySecret string `toml:"auth_key_secret" json:"auth_key_secret"`
+	Mode          string `toml:"mode" json:"mode"`
+	APIBaseURL    string `toml:"api_base_url" json:"api_base_url"`
 }
 
 type OpenRouterProvider struct {
-	BaseURL   string `toml:"base_url" json:"base_url"`
-	APIKeyEnv string `toml:"api_key_env" json:"api_key_env"`
+	BaseURL    string `toml:"base_url" json:"base_url"`
+	APIBaseURL string `toml:"api_base_url" json:"api_base_url"`
+	APIKeyEnv  string `toml:"api_key_env" json:"api_key_env"`
 }
 
 type Vault struct {
@@ -293,24 +299,71 @@ func loadProviders(root, pattern string) (Providers, error) {
 		providers.OpenRouter = map[string]OpenRouterProvider{"default": {BaseURL: "https://openrouter.ai/api/v1", APIKeyEnv: "OPENROUTER_API_KEY"}}
 	}
 	for name, provider := range providers.Fly {
+		provider.Mode = defaultProviderMode(provider.Mode)
 		if provider.TokenEnv != "" && !envNameRE.MatchString(provider.TokenEnv) {
 			return providers, fmt.Errorf("fly.%s token_env must be an environment variable name", name)
 		}
+		if err := validateProviderMode("fly."+name, provider.Mode); err != nil {
+			return providers, err
+		}
+		if err := validateProviderURL("fly."+name, provider.APIBaseURL); err != nil {
+			return providers, err
+		}
+		providers.Fly[name] = provider
 	}
 	for name, provider := range providers.Tailscale {
+		provider.Mode = defaultProviderMode(provider.Mode)
 		if provider.APIKeyEnv != "" && !envNameRE.MatchString(provider.APIKeyEnv) {
 			return providers, fmt.Errorf("tailscale.%s api_key_env must be an environment variable name", name)
 		}
 		if provider.AuthKeySecret != "" && !envNameRE.MatchString(provider.AuthKeySecret) {
 			return providers, fmt.Errorf("tailscale.%s auth_key_secret must be an environment variable name", name)
 		}
+		if err := validateProviderMode("tailscale."+name, provider.Mode); err != nil {
+			return providers, err
+		}
+		if err := validateProviderURL("tailscale."+name, provider.APIBaseURL); err != nil {
+			return providers, err
+		}
+		providers.Tailscale[name] = provider
 	}
 	for name, provider := range providers.OpenRouter {
 		if provider.APIKeyEnv != "" && !envNameRE.MatchString(provider.APIKeyEnv) {
 			return providers, fmt.Errorf("openrouter.%s api_key_env must be an environment variable name", name)
 		}
+		if err := validateProviderURL("openrouter."+name, firstNonEmpty(provider.APIBaseURL, provider.BaseURL)); err != nil {
+			return providers, err
+		}
 	}
 	return providers, nil
+}
+
+func defaultProviderMode(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	if value == "" {
+		return "cli"
+	}
+	return value
+}
+
+func validateProviderMode(ref, mode string) error {
+	switch mode {
+	case "cli", "api":
+		return nil
+	default:
+		return fmt.Errorf("%s mode must be cli or api", ref)
+	}
+}
+
+func validateProviderURL(ref, value string) error {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	parsed, err := url.Parse(value)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return fmt.Errorf("%s api_base_url must be an absolute URL", ref)
+	}
+	return nil
 }
 
 func loadDefaults(root, pattern string, raw *config.RawConfig) error {
@@ -437,6 +490,15 @@ func stringValue(value *string, fallback string) string {
 		return fallback
 	}
 	return *value
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func readOptionalTOML(path string, target any) error {

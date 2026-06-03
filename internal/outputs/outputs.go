@@ -14,6 +14,14 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/tailscale"
 )
 
+type FlyReader interface {
+	ListMachines(ctx context.Context, app string) ([]fly.Machine, error)
+}
+
+type TailscaleReader interface {
+	Devices(ctx context.Context) ([]tailscale.Device, error)
+}
+
 type Fleet struct {
 	AgentIDValues     []string         `json:"agent_ids"`
 	Agents            map[string]Agent `json:"agents"`
@@ -85,7 +93,7 @@ type Backend struct {
 	KeySecretName string `json:"key_secret_name"`
 }
 
-func Build(ctx context.Context, cfg *config.Config, flyProvider fly.Provider, tsProvider tailscale.Provider) Fleet {
+func Build(ctx context.Context, cfg *config.Config, flyProvider FlyReader, tsProvider TailscaleReader) Fleet {
 	devices, _ := tsProvider.Devices(ctx)
 	fleet := Fleet{
 		Agents: map[string]Agent{},
@@ -104,7 +112,7 @@ func Build(ctx context.Context, cfg *config.Config, flyProvider fly.Provider, ts
 	return fleet
 }
 
-func buildAgent(ctx context.Context, agent config.Agent, devices []tailscale.Device, flyProvider fly.Provider) Agent {
+func buildAgent(ctx context.Context, agent config.Agent, devices []tailscale.Device, flyProvider FlyReader) Agent {
 	host, device := resolvedHost(devices, agent.TailscaleHostname)
 	output := Agent{
 		ID:                agent.ID,
@@ -189,7 +197,7 @@ func buildVaultConnections(connections []config.VaultConnection) []VaultConnecti
 	return output
 }
 
-func buildOpenWebUI(ctx context.Context, cfg config.OpenWebUI, connections []config.OpenWebUIConnection, devices []tailscale.Device, flyProvider fly.Provider) OpenWebUI {
+func buildOpenWebUI(ctx context.Context, cfg config.OpenWebUI, connections []config.OpenWebUIConnection, devices []tailscale.Device, flyProvider FlyReader) OpenWebUI {
 	host, device := resolvedHost(devices, cfg.TailscaleHostname)
 	output := OpenWebUI{
 		Enabled:           cfg.Enabled,
@@ -224,7 +232,7 @@ func buildBackends(connections []config.OpenWebUIConnection) []Backend {
 	return backends
 }
 
-func selectedMachine(ctx context.Context, provider fly.Provider, app string) (fly.Machine, bool) {
+func selectedMachine(ctx context.Context, provider FlyReader, app string) (fly.Machine, bool) {
 	machines, err := provider.ListMachines(ctx, app)
 	if err != nil {
 		return fly.Machine{}, false

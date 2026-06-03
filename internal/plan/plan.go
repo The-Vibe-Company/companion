@@ -9,6 +9,7 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/config"
 	"github.com/The-Vibe-Company/companion/internal/deps"
 	"github.com/The-Vibe-Company/companion/internal/fly"
+	"github.com/The-Vibe-Company/companion/internal/provider"
 	"github.com/The-Vibe-Company/companion/internal/tailscale"
 )
 
@@ -33,7 +34,7 @@ func (r Report) String() string {
 	return strings.Join(lines, "\n")
 }
 
-func Build(ctx context.Context, cfg *config.Config, agents []config.Agent, flyProvider fly.Provider, tsProvider tailscale.Provider) (Report, error) {
+func Build(ctx context.Context, cfg *config.Config, agents []config.Agent, flyProvider provider.FlyRuntime, tsProvider provider.TailscaleNetwork) (Report, error) {
 	devices, err := tsProvider.Devices(ctx)
 	if err != nil {
 		return Report{}, fmt.Errorf("inspect tailscale devices: %w", err)
@@ -111,7 +112,7 @@ func openWebUIBaseURLs(machines []fly.Machine) string {
 	return ""
 }
 
-func Drift(ctx context.Context, cfg *config.Config, flyProvider fly.Provider, tsProvider tailscale.Provider) (Report, error) {
+func Drift(ctx context.Context, cfg *config.Config, flyProvider provider.FlyRuntime, tsProvider provider.TailscaleNetwork) (Report, error) {
 	var actions []Action
 	for _, agent := range cfg.Agents {
 		volumes, err := flyProvider.ListVolumes(ctx, agent.FlyApp)

@@ -8,9 +8,8 @@ import (
 
 	"github.com/The-Vibe-Company/companion/internal/config"
 	"github.com/The-Vibe-Company/companion/internal/deps"
-	"github.com/The-Vibe-Company/companion/internal/fly"
 	"github.com/The-Vibe-Company/companion/internal/plan"
-	"github.com/The-Vibe-Company/companion/internal/tailscale"
+	"github.com/The-Vibe-Company/companion/internal/provider"
 )
 
 type pageData struct {
@@ -22,7 +21,7 @@ type pageData struct {
 	Connections []config.OpenWebUIConnection
 }
 
-func Serve(ctx context.Context, addr string, cfg *config.Config, flyProvider fly.Provider, tsProvider tailscale.Provider) error {
+func Serve(ctx context.Context, addr string, cfg *config.Config, flyProvider provider.FlyRuntime, tsProvider provider.TailscaleNetwork) error {
 	mux := http.NewServeMux()
 	server := &http.Server{Addr: addr, Handler: mux}
 

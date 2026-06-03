@@ -1,0 +1,27 @@
+[defaults]
+region = "cdg"
+volume_name = "data"
+volume_size_gb = 3
+
+[defaults.model]
+enabled = true
+default = "google/gemini-3.5-flash"
+api_key_secret_name = "OPENROUTER_API_KEY"
+api_key_env = "OPENROUTER_API_KEY"
+
+[defaults.api_server]
+enabled = true
+open_webui_enabled = true
+host = "0.0.0.0"
+port = 8642
+key_secret_name = "API_SERVER_KEY"
+
+[defaults.default_vault]
+enabled = true
+name = "Default"
+mcp_enabled = true
+mcp_role = "write"
+sync_serve = true
+sync_port = 8765
+write_serve = true
+write_port = 3321

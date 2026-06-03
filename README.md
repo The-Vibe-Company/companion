@@ -54,6 +54,8 @@ Create one:
 companion init --workspace ./companion
 ```
 
+Ready-to-copy examples live in `examples/minimal` and `examples/webui`.
+
 Validate from the workspace:
 
 ```bash
@@ -85,15 +87,20 @@ Providers define where resources live and which environment variables hold crede
 org = "the-vibe-company"
 region = "cdg"
 token_env = "FLY_API_TOKEN"
+# mode = "cli" is the default. Use mode = "api" for API-backed tests or future live API runs.
+# api_base_url = "http://127.0.0.1:3001/fly/v1"
 
 [tailscale.tvc]
 tailnet = "tail5f910b.ts.net"
 api_key_env = "TAILSCALE_API_KEY"
 auth_key_secret = "TS_AUTHKEY"
+# mode = "cli" is the default.
+# api_base_url = "http://127.0.0.1:3001/tailscale"
 
 [openrouter.default]
 base_url = "https://openrouter.ai/api/v1"
 api_key_env = "OPENROUTER_API_KEY"
+# api_base_url can override base_url for local mocks.
 ```
 
 Secrets are read from `.env` and then from the shell environment. Shell values win. Companion prints secret names only, never secret values.
@@ -102,6 +109,25 @@ Secrets are read from `.env` and then from the shell environment. Shell values w
 cp .env.example .env
 $EDITOR .env
 ```
+
+### Provider Architecture
+
+Companion resolves provider refs like `fly.default`, `tailscale.tvc`, and `openrouter.default` into typed clients:
+
+- Fly provider: apps, volumes, secrets, and machines read/create/update/delete.
+- Tailscale provider: device list/delete, with auth-key hooks reserved for later.
+- OpenRouter provider: model catalog validation through `/models`.
+- Rollout provider: deploy action only, currently `fly deploy` through an injectable runner.
+
+`rollout.*` intentionally stays separate from CRUD. Building images, pushing them, and updating Fly Machines atomically is not the same operation as creating an app or extending a volume. Until Companion owns that full image/machine lifecycle, rollout remains an action resource backed by `fly deploy`.
+
+Provider-backed model validation is opt-in:
+
+```bash
+companion validate --providers --workspace .
+```
+
+This keeps normal validation fast and local while still letting CI or local mocks verify model availability.
 
 ## Agents
 
@@ -122,7 +148,7 @@ identity = "identities/victor/SOUL.md"
 [default_vault]
 enabled = true
 name = "Victor"
-role = "write"
+mcp_role = "write"
 ```
 
 Use `lifecycle = "absent"` to request deletion. Protected data resources still require explicit destroy flags.
@@ -189,6 +215,12 @@ companion state list --workspace .
 companion state show fly_app.agent.victor --workspace .
 companion state rm fly_app.agent.victor --workspace .
 ```
+
+### How This Is Like Terraform
+
+The workspace files are desired state. The SQLite state maps resource addresses to remote IDs and observed facts. Providers refresh/read remote objects. `plan` compares desired, observed, and state. `apply` calls CRUD operations or action runners. `import` binds existing remote resources to state without creating config.
+
+The main difference is scope: Companion is purpose-built for Hermes fleets, Granite vaults, Tailscale DNS, Fly apps, and Open WebUI backends instead of being a general infrastructure language.
 
 ## Import And Destroy
 
@@ -311,6 +343,30 @@ bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-
 go run ./cmd/companion validate --workspace .
 go run ./cmd/companion plan --workspace .
 ```
+
+Provider e2e tests run as part of `go test ./...`. They use local `httptest.Server` mocks for Fly, Tailscale, and OpenRouter, plus a fake rollout runner. No real credentials or external APIs are required.
+
+The mock provider path is configured with `mode = "api"` and `api_base_url` in a temporary workspace:
+
+```toml
+[fly.default]
+mode = "api"
+api_base_url = "http://127.0.0.1:3001/fly/v1"
+token_env = "FLY_API_TOKEN"
+
+[tailscale.tvc]
+mode = "api"
+api_base_url = "http://127.0.0.1:3001/tailscale"
+tailnet = "tail5f910b.ts.net"
+api_key_env = "TAILSCALE_API_KEY"
+auth_key_secret = "TS_AUTHKEY"
+
+[openrouter.default]
+api_base_url = "http://127.0.0.1:3001/openrouter/api/v1"
+api_key_env = "OPENROUTER_API_KEY"
+```
+
+Live provider tests are intentionally not enabled in CI. If they are added later, they should be gated behind an explicit environment variable such as `COMPANION_LIVE_PROVIDER_TESTS=1`.
 
 Release Please manages version PRs, changelog updates, tags, and GitHub Releases. Release assets contain a single `companion` binary for Linux and macOS.
 

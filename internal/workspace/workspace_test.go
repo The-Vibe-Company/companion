@@ -74,6 +74,45 @@ tailscale_hostname = "victor"
 	}
 }
 
+func TestLoadProviderAPIBaseURLsAndModes(t *testing.T) {
+	root := t.TempDir()
+	writeMinimalWorkspace(t, root)
+	writeWorkspaceFile(t, root, "providers.toml", `[fly.default]
+mode = "api"
+api_base_url = "http://127.0.0.1:3001/fly/v1"
+token_env = "FLY_API_TOKEN"
+
+[tailscale.tvc]
+mode = "api"
+tailnet = "tail.ts.net"
+api_base_url = "http://127.0.0.1:3001/tailscale"
+api_key_env = "TAILSCALE_API_KEY"
+auth_key_secret = "TS_AUTHKEY"
+
+[openrouter.default]
+api_base_url = "http://127.0.0.1:3001/openrouter/api/v1"
+api_key_env = "OPENROUTER_API_KEY"
+`)
+	writeWorkspaceFile(t, root, "agents/victor.toml", `[agent]
+id = "victor"
+fly_app = "tvc-companion-victor"
+tailscale_hostname = "victor"
+`)
+	ws, err := Load(root)
+	if err != nil {
+		t.Fatalf("load workspace: %v", err)
+	}
+	if ws.Providers.Fly["default"].Mode != "api" || ws.Providers.Fly["default"].APIBaseURL == "" {
+		t.Fatalf("unexpected fly provider: %#v", ws.Providers.Fly["default"])
+	}
+	if ws.Providers.Tailscale["tvc"].Mode != "api" || ws.Providers.Tailscale["tvc"].APIBaseURL == "" {
+		t.Fatalf("unexpected tailscale provider: %#v", ws.Providers.Tailscale["tvc"])
+	}
+	if ws.Providers.OpenRouter["default"].APIBaseURL == "" {
+		t.Fatalf("unexpected openrouter provider: %#v", ws.Providers.OpenRouter["default"])
+	}
+}
+
 func TestLoadFailsOnWrongProviderKind(t *testing.T) {
 	root := t.TempDir()
 	writeMinimalWorkspace(t, root)

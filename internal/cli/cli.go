@@ -20,6 +20,7 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/importer"
 	"github.com/The-Vibe-Company/companion/internal/outputs"
 	"github.com/The-Vibe-Company/companion/internal/plan"
+	"github.com/The-Vibe-Company/companion/internal/provider"
 	"github.com/The-Vibe-Company/companion/internal/render"
 	"github.com/The-Vibe-Company/companion/internal/resource"
 	"github.com/The-Vibe-Company/companion/internal/state"
@@ -34,10 +35,15 @@ import (
 type app struct {
 	rootDir string
 	envFile string
+	runner  execx.Runner
 }
 
 func NewRootCommand() *cobra.Command {
-	a := &app{}
+	return newRootCommand(nil)
+}
+
+func newRootCommand(runner execx.Runner) *cobra.Command {
+	a := &app{runner: runner}
 	cmd := &cobra.Command{
 		Use:           "companion",
 		Short:         "Manage the Companion Hermes fleet",
@@ -91,14 +97,19 @@ vaults = "vaults/*.toml"
 				"providers.toml": `[fly.default]
 region = "cdg"
 token_env = "FLY_API_TOKEN"
+# mode = "api"
+# api_base_url = "http://127.0.0.1:3001/fly/v1"
 
 [tailscale.tvc]
 api_key_env = "TAILSCALE_API_KEY"
 auth_key_secret = "TS_AUTHKEY"
+# mode = "api"
+# api_base_url = "http://127.0.0.1:3001/tailscale"
 
 [openrouter.default]
 base_url = "https://openrouter.ai/api/v1"
 api_key_env = "OPENROUTER_API_KEY"
+# api_base_url = "http://127.0.0.1:3001/openrouter/api/v1"
 `,
 				"defaults.toml": `[defaults]
 region = "cdg"
@@ -302,7 +313,8 @@ func providerRefForImport(ws *workspace.Workspace, address importer.Address) str
 }
 
 func (a *app) validateCommand() *cobra.Command {
-	return &cobra.Command{
+	var validateProviders bool
+	cmd := &cobra.Command{
 		Use:   "validate",
 		Short: "Validate the Companion workspace",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -331,9 +343,25 @@ func (a *app) validateCommand() *cobra.Command {
 				}
 				fmt.Fprintf(cmd.OutOrStdout(), "%s: ok runtime=%s network=%s fly_app=%s tailscale=%s connections=%s\n", cfg.OpenWebUI.ID, cfg.OpenWebUI.Runtime, cfg.OpenWebUI.Network, cfg.OpenWebUI.FlyApp, cfg.OpenWebUI.TailscaleHostname, strings.Join(ids, ","))
 			}
+			if validateProviders {
+				env, err := a.env()
+				if err != nil {
+					return err
+				}
+				providers, err := a.providerSet(ws, env)
+				if err != nil {
+					return err
+				}
+				if err := providers.ValidateModels(cmd.Context(), cfg); err != nil {
+					return err
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), "providers: ok")
+			}
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&validateProviders, "providers", false, "validate provider-backed model catalogs")
+	return cmd
 }
 
 func (a *app) planCommand() *cobra.Command {
@@ -355,7 +383,11 @@ func (a *app) planCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			report, err := resource.BuildPlan(cmd.Context(), ws, store, a.flyWithEnv(env), a.tailscaleWithEnv(env), resource.Options{
+			providers, err := a.providerSet(ws, env)
+			if err != nil {
+				return err
+			}
+			report, err := resource.BuildPlan(cmd.Context(), ws, store, providers, resource.Options{
 				Root:         ws.Root,
 				GeneratedDir: filepath.Join(ws.Root, ".companion", "generated"),
 				Targets:      args,
@@ -397,7 +429,11 @@ func (a *app) applyCommand() *cobra.Command {
 				return err
 			}
 			defer store.Close()
-			report, err := resource.Apply(cmd.Context(), ws, store, a.flyWithEnv(env), a.tailscaleWithEnv(env), resource.Options{
+			providers, err := a.providerSet(ws, env)
+			if err != nil {
+				return err
+			}
+			report, err := resource.Apply(cmd.Context(), ws, store, providers, resource.Options{
 				Root:         ws.Root,
 				GeneratedDir: filepath.Join(ws.Root, ".companion", "generated"),
 				Env:          env,
@@ -438,7 +474,11 @@ func (a *app) destroyCommand() *cobra.Command {
 				return err
 			}
 			defer store.Close()
-			report, err := resource.Apply(cmd.Context(), ws, store, a.flyWithEnv(env), a.tailscaleWithEnv(env), resource.Options{
+			providers, err := a.providerSet(ws, env)
+			if err != nil {
+				return err
+			}
+			report, err := resource.Apply(cmd.Context(), ws, store, providers, resource.Options{
 				Root:                  ws.Root,
 				GeneratedDir:          filepath.Join(ws.Root, ".companion", "generated"),
 				Env:                   env,
@@ -478,7 +518,15 @@ func (a *app) statusCommand() *cobra.Command {
 				return err
 			}
 			client := hermes.New()
-			devices, _ := a.tailscaleWithEnv(env).Devices(cmd.Context())
+			ws, err := a.workspace()
+			if err != nil {
+				return err
+			}
+			providers, err := a.providerSet(ws, env)
+			if err != nil {
+				return err
+			}
+			devices, _ := providers.AllDevices(cmd.Context())
 			for _, agent := range agents {
 				if !agent.APIServer.Enabled {
 					fmt.Fprintf(cmd.OutOrStdout(), "%s api=disabled\n", agent.ID)
@@ -543,7 +591,29 @@ func (a *app) outputCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fleetOutputs := outputs.Build(cmd.Context(), cfg, a.flyWithEnv(env), a.tailscaleWithEnv(env))
+			ws, err := a.workspace()
+			if err != nil {
+				return err
+			}
+			providers, err := a.providerSet(ws, env)
+			if err != nil {
+				return err
+			}
+			flyProvider, err := providers.FlyFor(cfg.OpenWebUI.Runtime)
+			if err != nil && len(cfg.Agents) > 0 {
+				flyProvider, err = providers.FlyFor(cfg.Agents[0].Runtime)
+			}
+			if err != nil {
+				return err
+			}
+			tsProvider, err := providers.TailscaleFor(cfg.OpenWebUI.Network)
+			if err != nil && len(cfg.Agents) > 0 {
+				tsProvider, err = providers.TailscaleFor(cfg.Agents[0].Network)
+			}
+			if err != nil {
+				return err
+			}
+			fleetOutputs := outputs.Build(cmd.Context(), cfg, flyProvider, tsProvider)
 			var value any = fleetOutputs
 			if len(args) == 1 {
 				value, err = outputs.Lookup(fleetOutputs, args[0])
@@ -706,7 +776,29 @@ func (a *app) serveCommand() *cobra.Command {
 				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "serving Companion dashboard at http://%s\n", addr)
-			return web.Serve(cmd.Context(), addr, cfg, a.flyWithEnv(env), a.tailscaleWithEnv(env))
+			ws, err := a.workspace()
+			if err != nil {
+				return err
+			}
+			providers, err := a.providerSet(ws, env)
+			if err != nil {
+				return err
+			}
+			flyProvider, err := providers.FlyFor(cfg.OpenWebUI.Runtime)
+			if err != nil && len(cfg.Agents) > 0 {
+				flyProvider, err = providers.FlyFor(cfg.Agents[0].Runtime)
+			}
+			if err != nil {
+				return err
+			}
+			tsProvider, err := providers.TailscaleFor(cfg.OpenWebUI.Network)
+			if err != nil && len(cfg.Agents) > 0 {
+				tsProvider, err = providers.TailscaleFor(cfg.Agents[0].Network)
+			}
+			if err != nil {
+				return err
+			}
+			return web.Serve(cmd.Context(), addr, cfg, flyProvider, tsProvider)
 		},
 	}
 	cmd.Flags().StringVar(&addr, "addr", "127.0.0.1:8787", "listen address")
@@ -1115,6 +1207,10 @@ func (a *app) workspace() (*workspace.Workspace, error) {
 	return workspace.Load(a.rootDir)
 }
 
+func (a *app) providerSet(ws *workspace.Workspace, env map[string]string) (provider.Set, error) {
+	return provider.NewSet(ws, env, a.runnerWithEnv(env))
+}
+
 func (a *app) env() (map[string]string, error) {
 	path := a.envFile
 	if path != "" && !filepath.IsAbs(path) {
@@ -1142,19 +1238,26 @@ func selectSingleAgent(cfg *config.Config, id string) (config.Agent, error) {
 }
 
 func (a *app) fly() fly.Provider {
-	return fly.New(execx.ShellRunner{Dir: a.rootDir})
+	return fly.New(a.runnerWithEnv(nil))
 }
 
 func (a *app) flyWithEnv(env map[string]string) fly.Provider {
-	return fly.New(execx.ShellRunner{Dir: a.rootDir, Env: env})
+	return fly.New(a.runnerWithEnv(env))
 }
 
 func (a *app) tailscale() tailscale.Provider {
-	return tailscale.New(execx.ShellRunner{Dir: a.rootDir})
+	return tailscale.New(a.runnerWithEnv(nil))
 }
 
 func (a *app) tailscaleWithEnv(env map[string]string) tailscale.Provider {
-	return tailscale.New(execx.ShellRunner{Dir: a.rootDir, Env: env})
+	return tailscale.New(a.runnerWithEnv(env))
+}
+
+func (a *app) runnerWithEnv(env map[string]string) execx.Runner {
+	if a.runner != nil {
+		return a.runner
+	}
+	return execx.ShellRunner{Dir: a.rootDir, Env: env}
 }
 
 func getenvMap() map[string]string {

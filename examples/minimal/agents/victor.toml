@@ -1,0 +1,14 @@
+[agent]
+id = "victor"
+runtime = "fly.default"
+network = "tailscale.tvc"
+model_provider = "openrouter.default"
+lifecycle = "present"
+protect = true
+fly_app = "tvc-companion-victor"
+tailscale_hostname = "victor"
+
+[default_vault]
+enabled = true
+name = "Victor"
+mcp_role = "write"

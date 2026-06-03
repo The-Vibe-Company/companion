@@ -8,6 +8,7 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/config"
 	"github.com/The-Vibe-Company/companion/internal/execx"
 	"github.com/The-Vibe-Company/companion/internal/fly"
+	"github.com/The-Vibe-Company/companion/internal/provider"
 	"github.com/The-Vibe-Company/companion/internal/state"
 	"github.com/The-Vibe-Company/companion/internal/tailscale"
 	"github.com/The-Vibe-Company/companion/internal/workspace"
@@ -73,9 +74,10 @@ func TestTargetedSelectIncludesDependenciesInStableOrder(t *testing.T) {
 func TestBuildPlanBlocksProtectedVolumeDestroy(t *testing.T) {
 	ws := testWorkspace(t)
 	store := openTestState(t)
-	plan, err := BuildPlan(context.Background(), ws, store, fly.New(&execx.FakeRunner{}), tailscale.New(&execx.FakeRunner{Responses: map[string]execx.Result{
+	flyProvider := fly.New(&execx.FakeRunner{})
+	plan, err := BuildPlan(context.Background(), ws, store, provider.Static(flyProvider, tailscale.New(&execx.FakeRunner{Responses: map[string]execx.Result{
 		"tailscale status --json": {Stdout: `{"Peer":{}}`},
-	}}), Options{
+	}}), flyProvider), Options{
 		Root:           ws.Root,
 		DestroyTargets: []string{"fly_volume.agent_data.victor"},
 	})

@@ -15,6 +15,7 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/config"
 	"github.com/The-Vibe-Company/companion/internal/deps"
 	"github.com/The-Vibe-Company/companion/internal/fly"
+	"github.com/The-Vibe-Company/companion/internal/provider"
 	"github.com/The-Vibe-Company/companion/internal/render"
 	"github.com/The-Vibe-Company/companion/internal/state"
 	"github.com/The-Vibe-Company/companion/internal/tailscale"
@@ -139,19 +140,19 @@ func Compile(ws *workspace.Workspace, root string) (Graph, error) {
 	return graph, nil
 }
 
-func BuildPlan(ctx context.Context, ws *workspace.Workspace, store *state.Store, flyProvider fly.Provider, tsProvider tailscale.Provider, opts Options) (Plan, error) {
+func BuildPlan(ctx context.Context, ws *workspace.Workspace, store *state.Store, providers provider.Set, opts Options) (Plan, error) {
 	graph, err := Compile(ws, defaultRoot(opts.Root, ws.Root))
 	if err != nil {
 		return Plan{}, err
 	}
 	selected := graph.Select(opts.Targets, opts.DestroyTargets)
-	devices, err := tsProvider.Devices(ctx)
+	devices, err := providers.AllDevices(ctx)
 	if err != nil {
 		return Plan{}, fmt.Errorf("inspect tailscale devices: %w", err)
 	}
 	changes := []Change{}
 	for _, resource := range selected.Resources {
-		change, err := planResource(ctx, ws, store, flyProvider, devices, resource, opts)
+		change, err := planResource(ctx, ws, store, providers, devices, resource, opts)
 		if err != nil {
 			return Plan{}, err
 		}
@@ -175,8 +176,8 @@ func BuildPlan(ctx context.Context, ws *workspace.Workspace, store *state.Store,
 	return Plan{Changes: changes}, nil
 }
 
-func Apply(ctx context.Context, ws *workspace.Workspace, store *state.Store, flyProvider fly.Provider, tsProvider tailscale.Provider, opts Options) (Plan, error) {
-	plan, err := BuildPlan(ctx, ws, store, flyProvider, tsProvider, opts)
+func Apply(ctx context.Context, ws *workspace.Workspace, store *state.Store, providers provider.Set, opts Options) (Plan, error) {
+	plan, err := BuildPlan(ctx, ws, store, providers, opts)
 	if err != nil {
 		return plan, err
 	}
@@ -212,7 +213,18 @@ func Apply(ctx context.Context, ws *workspace.Workspace, store *state.Store, fly
 			}
 			continue
 		}
-		if err := applyResource(ctx, ws, store, flyProvider, tsProvider, resource, opts); err != nil {
+		if contains(opts.DestroyTargets, resource.Address) {
+			if err := deleteResource(ctx, store, providers, resource, opts); err != nil {
+				_ = store.UpsertResource(ctx, state.Resource{
+					Address: resource.Address, Class: resource.Class, ProviderRef: resource.ProviderRef,
+					ExternalID: resource.ExternalID, Status: "failed", DesiredHash: resource.DesiredHash,
+					ObservedJSON: "{}", Protected: resource.Protected, LastError: err.Error(),
+				})
+				return plan, err
+			}
+			continue
+		}
+		if err := applyResource(ctx, ws, store, providers, resource, opts); err != nil {
 			_ = store.UpsertResource(ctx, state.Resource{
 				Address: resource.Address, Class: resource.Class, ProviderRef: resource.ProviderRef,
 				ExternalID: resource.ExternalID, Status: "failed", DesiredHash: resource.DesiredHash,
@@ -300,7 +312,7 @@ func (g Graph) addDependencies(address string, targetSet map[string]bool) {
 	}
 }
 
-func planResource(ctx context.Context, ws *workspace.Workspace, store *state.Store, flyProvider fly.Provider, devices []tailscale.Device, resource Resource, opts Options) (Change, error) {
+func planResource(ctx context.Context, ws *workspace.Workspace, store *state.Store, providers provider.Set, devices []tailscale.Device, resource Resource, opts Options) (Change, error) {
 	if contains(opts.DestroyTargets, resource.Address) || resource.Absent {
 		if resource.Class == ClassObserved || resource.Class == ClassDerived {
 			return Change{Kind: "=", Action: "no-op", Address: resource.Address, Class: resource.Class, Message: "not managed"}, nil
@@ -312,6 +324,10 @@ func planResource(ctx context.Context, ws *workspace.Workspace, store *state.Sto
 	}
 	switch resource.Type {
 	case "fly_app":
+		flyProvider, err := providers.FlyFor(resource.ProviderRef)
+		if err != nil {
+			return Change{}, err
+		}
 		exists, err := flyProvider.AppExists(ctx, resourceFlyApp(resource))
 		if err != nil {
 			return Change{}, err
@@ -321,6 +337,10 @@ func planResource(ctx context.Context, ws *workspace.Workspace, store *state.Sto
 		}
 		return change("=", "no-op", resource, resourceFlyApp(resource)), nil
 	case "fly_volume":
+		flyProvider, err := providers.FlyFor(resource.ProviderRef)
+		if err != nil {
+			return Change{}, err
+		}
 		volume, matches, ok, err := readVolume(ctx, flyProvider, resource)
 		if err != nil {
 			return Change{}, err
@@ -337,6 +357,10 @@ func planResource(ctx context.Context, ws *workspace.Workspace, store *state.Sto
 		}
 		return change("=", "no-op", resource, volume.ID), nil
 	case "fly_secrets":
+		flyProvider, err := providers.FlyFor(resource.ProviderRef)
+		if err != nil {
+			return Change{}, err
+		}
 		return planSecrets(ctx, flyProvider, resource)
 	case "fly_config":
 		return planByHash(ctx, store, resource, "render")
@@ -360,17 +384,25 @@ func planResource(ctx context.Context, ws *workspace.Workspace, store *state.Sto
 	}
 }
 
-func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.Store, flyProvider fly.Provider, tsProvider tailscale.Provider, resource Resource, opts Options) error {
+func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.Store, providers provider.Set, resource Resource, opts Options) error {
 	if resource.Absent {
-		return deleteResource(ctx, store, flyProvider, resource, opts)
+		return deleteResource(ctx, store, providers, resource, opts)
 	}
 	switch resource.Type {
 	case "fly_app":
+		flyProvider, err := providers.FlyFor(resource.ProviderRef)
+		if err != nil {
+			return err
+		}
 		if err := flyProvider.CreateApp(ctx, resourceFlyApp(resource)); err != nil {
 			return err
 		}
 		return upsertReady(ctx, store, resource, resourceFlyApp(resource), map[string]any{"app": resourceFlyApp(resource)})
 	case "fly_volume":
+		flyProvider, err := providers.FlyFor(resource.ProviderRef)
+		if err != nil {
+			return err
+		}
 		app := resourceFlyApp(resource)
 		if _, err := flyProvider.EnsureVolume(ctx, app, resourceVolumeName(resource), resourceRegion(resource), desiredSizeGB(resource)); err != nil {
 			return err
@@ -390,7 +422,11 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 		}
 		return upsertReady(ctx, store, resource, externalID, attrs)
 	case "fly_secrets":
-		values, names, err := secretValues(ctx, ws, tsProvider, resource, opts.Env)
+		flyProvider, err := providers.FlyFor(resource.ProviderRef)
+		if err != nil {
+			return err
+		}
+		values, names, err := secretValues(ctx, ws, providers, resource, opts.Env)
 		if err != nil {
 			return err
 		}
@@ -399,14 +435,14 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 		}
 		return upsertReady(ctx, store, resource, resourceFlyApp(resource), map[string]any{"names": names})
 	case "fly_config":
-		path, err := writeConfig(ctx, ws, tsProvider, resource, opts)
+		path, err := writeConfig(ctx, ws, providers, resource, opts)
 		if err != nil {
 			return err
 		}
 		return upsertReady(ctx, store, resource, path, map[string]any{"path": path})
 	case "rollout":
 		if resource.OpenWebUI != nil {
-			devices, err := tsProvider.Devices(ctx)
+			devices, err := providers.AllDevices(ctx)
 			if err != nil {
 				return err
 			}
@@ -417,12 +453,16 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 			resource.DesiredHash = hash
 		}
 		configPath := generatedPath(opts, resource)
-		if err := flyProvider.Deploy(ctx, resourceFlyApp(resource), configPath); err != nil {
+		rolloutProvider, err := providers.RolloutFor(resource.ProviderRef)
+		if err != nil {
+			return err
+		}
+		if err := rolloutProvider.Deploy(ctx, resourceFlyApp(resource), configPath); err != nil {
 			return err
 		}
 		return upsertReady(ctx, store, resource, resourceFlyApp(resource), map[string]any{"config": configPath})
 	case "tailscale_device":
-		devices, err := tsProvider.Devices(ctx)
+		devices, err := providers.Devices(ctx, resource.ProviderRef)
 		if err != nil {
 			return err
 		}
@@ -432,7 +472,7 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 		}
 		return upsertReady(ctx, store, resource, firstNonEmpty(device.ID, device.DNSName, device.HostName), map[string]any{"dns_name": strings.TrimSuffix(device.DNSName, "."), "online": device.Online, "ip": device.IP})
 	case "openwebui_config":
-		devices, err := tsProvider.Devices(ctx)
+		devices, err := providers.AllDevices(ctx)
 		if err != nil {
 			return err
 		}
@@ -441,7 +481,7 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 			return err
 		}
 		resource.DesiredHash = hash
-		path, err := writeConfig(ctx, ws, tsProvider, resource, opts)
+		path, err := writeConfig(ctx, ws, providers, resource, opts)
 		if err != nil {
 			return err
 		}
@@ -451,18 +491,26 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 	}
 }
 
-func deleteResource(ctx context.Context, store *state.Store, flyProvider fly.Provider, resource Resource, opts Options) error {
+func deleteResource(ctx context.Context, store *state.Store, providers provider.Set, resource Resource, opts Options) error {
 	if resource.Protected && !opts.AllowProtectedDestroy {
 		return fmt.Errorf("%s is protected", resource.Address)
 	}
 	switch resource.Type {
 	case "fly_app":
+		flyProvider, err := providers.FlyFor(resource.ProviderRef)
+		if err != nil {
+			return err
+		}
 		if err := flyProvider.DeleteApp(ctx, resourceFlyApp(resource)); err != nil {
 			return err
 		}
 	case "fly_volume":
 		if !opts.DestroyData || !opts.BackupFirst {
 			return fmt.Errorf("%s requires --destroy-data --backup-first", resource.Address)
+		}
+		flyProvider, err := providers.FlyFor(resource.ProviderRef)
+		if err != nil {
+			return err
 		}
 		volume, _, ok, err := readVolume(ctx, flyProvider, resource)
 		if err != nil {
@@ -477,7 +525,7 @@ func deleteResource(ctx context.Context, store *state.Store, flyProvider fly.Pro
 	return store.RemoveResource(ctx, resource.Address)
 }
 
-func planSecrets(ctx context.Context, flyProvider fly.Provider, resource Resource) (Change, error) {
+func planSecrets(ctx context.Context, flyProvider provider.FlyRuntime, resource Resource) (Change, error) {
 	existing, err := flyProvider.SecretNames(ctx, resourceFlyApp(resource))
 	if err != nil {
 		return Change{}, err
@@ -546,13 +594,13 @@ func upsertReady(ctx context.Context, store *state.Store, resource Resource, ext
 	})
 }
 
-func writeConfig(ctx context.Context, ws *workspace.Workspace, tsProvider tailscale.Provider, resource Resource, opts Options) (string, error) {
+func writeConfig(ctx context.Context, ws *workspace.Workspace, providers provider.Set, resource Resource, opts Options) (string, error) {
 	var data string
 	var err error
 	if resource.Agent != nil {
 		data, err = render.AgentFlyTOML(*resource.Agent)
 	} else {
-		devices, tsErr := tsProvider.Devices(ctx)
+		devices, tsErr := providers.AllDevices(ctx)
 		if tsErr != nil {
 			return "", tsErr
 		}
@@ -586,7 +634,7 @@ func generatedPath(opts Options, resource Resource) string {
 	return filepath.Join(dir, name+".toml")
 }
 
-func readVolume(ctx context.Context, flyProvider fly.Provider, resource Resource) (fly.Volume, []fly.Volume, bool, error) {
+func readVolume(ctx context.Context, flyProvider provider.FlyRuntime, resource Resource) (fly.Volume, []fly.Volume, bool, error) {
 	volumes, err := flyProvider.ListVolumes(ctx, resourceFlyApp(resource))
 	if err != nil {
 		return fly.Volume{}, nil, false, err
@@ -595,12 +643,12 @@ func readVolume(ctx context.Context, flyProvider fly.Provider, resource Resource
 	return selected, matches, ok, nil
 }
 
-func secretValues(ctx context.Context, ws *workspace.Workspace, tsProvider tailscale.Provider, resource Resource, env map[string]string) (map[string]string, []string, error) {
+func secretValues(ctx context.Context, ws *workspace.Workspace, providers provider.Set, resource Resource, env map[string]string) (map[string]string, []string, error) {
 	required := requiredSecretNames(resource)
 	values := map[string]string{}
 	missing := []string{}
 	if resource.OpenWebUI != nil {
-		devices, err := tsProvider.Devices(ctx)
+		devices, err := providers.AllDevices(ctx)
 		if err != nil {
 			return nil, nil, err
 		}

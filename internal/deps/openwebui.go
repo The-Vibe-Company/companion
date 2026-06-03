@@ -11,7 +11,11 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/tailscale"
 )
 
-func OpenWebUIConnections(ctx context.Context, cfg *config.Config, tsProvider tailscale.Provider) []config.OpenWebUIConnection {
+type TailscaleDeviceProvider interface {
+	Devices(ctx context.Context) ([]tailscale.Device, error)
+}
+
+func OpenWebUIConnections(ctx context.Context, cfg *config.Config, tsProvider TailscaleDeviceProvider) []config.OpenWebUIConnection {
 	devices, _ := tsProvider.Devices(ctx)
 	return OpenWebUIConnectionsForDevices(cfg, devices)
 }
