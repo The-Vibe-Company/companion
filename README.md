@@ -4,6 +4,8 @@ Companion is a Go control plane for a fleet of persistent Hermes agents.
 
 It works from a folder workspace: short TOML files describe providers, defaults, agents, identities, Granite vault links, and the shared Open WebUI. Companion compiles that desired state into typed resources, compares it with observed Fly/Tailscale state, writes local Fly TOML artifacts, applies changes idempotently, and records evidence in SQLite.
 
+![Companion product overview](docs/assets/companion-product.png)
+
 ## Install
 
 Install the CLI from the latest GitHub Release:
@@ -120,6 +122,8 @@ companion plan --workspace . --env-file /path/to/live/.env
 Do not alternate between multiple workspace/state/env directories for the same fleet unless you are deliberately migrating state.
 
 ### Provider Architecture
+
+![Companion technical architecture](docs/assets/companion-architecture.png)
 
 Companion resolves provider refs like `fly.default`, `tailscale.tvc`, and `openrouter.default` into typed clients:
 
