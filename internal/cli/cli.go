@@ -370,7 +370,7 @@ func (a *app) validateCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				if err := provider.New(ws, env).ValidateCredentials(workspaceProviderRefs(ws)...); err != nil {
+				if err := provider.New(ws, env).ValidateCredentialsWithRunner(cmd.Context(), a.runnerWithEnv(env), workspaceProviderRefs(ws)...); err != nil {
 					return err
 				}
 				providers, err := a.providerSet(ws, env)

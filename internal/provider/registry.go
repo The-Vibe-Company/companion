@@ -1,9 +1,11 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"github.com/The-Vibe-Company/companion/internal/execx"
 	"github.com/The-Vibe-Company/companion/internal/workspace"
 )
 
@@ -32,10 +34,14 @@ func (r Registry) RequiredCredentials() []Credential {
 		credentials = append(credentials, Credential{Name: name, Present: r.Env[name] != ""})
 	}
 	for _, provider := range r.Workspace.Providers.Fly {
-		add(provider.TokenEnv)
+		if provider.Mode == "api" {
+			add(provider.TokenEnv)
+		}
 	}
 	for _, provider := range r.Workspace.Providers.Tailscale {
-		add(provider.APIKeyEnv)
+		if provider.Mode == "api" {
+			add(provider.APIKeyEnv)
+		}
 		add(provider.AuthKeySecret)
 	}
 	for _, provider := range r.Workspace.Providers.OpenRouter {
@@ -45,8 +51,15 @@ func (r Registry) RequiredCredentials() []Credential {
 }
 
 func (r Registry) ValidateCredentials(refs ...string) error {
+	return r.ValidateCredentialsWithRunner(context.Background(), nil, refs...)
+}
+
+func (r Registry) ValidateCredentialsWithRunner(ctx context.Context, runner execx.Runner, refs ...string) error {
 	missing := []string{}
+	authErrors := []string{}
 	seen := map[string]bool{}
+	flyCLIChecked := false
+	flyCLIOK := false
 	addMissing := func(name string) {
 		if name != "" && r.Env[name] == "" && !seen[name] {
 			seen[name] = true
@@ -64,13 +77,32 @@ func (r Registry) ValidateCredentials(refs ...string) error {
 			if !ok {
 				return fmt.Errorf("unknown fly provider %s", ref)
 			}
-			addMissing(provider.TokenEnv)
+			if provider.Mode == "api" {
+				addMissing(provider.TokenEnv)
+				break
+			}
+			if provider.TokenEnv != "" && r.Env[provider.TokenEnv] != "" {
+				break
+			}
+			if !flyCLIChecked {
+				flyCLIOK = flyCLIAuthenticated(ctx, runner)
+				flyCLIChecked = true
+			}
+			if !flyCLIOK && len(authErrors) == 0 {
+				if provider.TokenEnv != "" {
+					authErrors = append(authErrors, fmt.Sprintf("authenticate Fly with fly auth login or set %s", provider.TokenEnv))
+				} else {
+					authErrors = append(authErrors, "authenticate Fly with fly auth login")
+				}
+			}
 		case "tailscale":
 			provider, ok := r.Workspace.Providers.Tailscale[name]
 			if !ok {
 				return fmt.Errorf("unknown tailscale provider %s", ref)
 			}
-			addMissing(provider.APIKeyEnv)
+			if provider.Mode == "api" {
+				addMissing(provider.APIKeyEnv)
+			}
 			addMissing(provider.AuthKeySecret)
 		case "openrouter":
 			provider, ok := r.Workspace.Providers.OpenRouter[name]
@@ -82,8 +114,21 @@ func (r Registry) ValidateCredentials(refs ...string) error {
 			return fmt.Errorf("unknown provider kind %s", kind)
 		}
 	}
+	var parts []string
 	if len(missing) > 0 {
-		return fmt.Errorf("set %s in .env or your local environment before apply", strings.Join(missing, ", "))
+		parts = append(parts, fmt.Sprintf("set %s in .env or your local environment", strings.Join(missing, ", ")))
+	}
+	parts = append(parts, authErrors...)
+	if len(parts) > 0 {
+		return fmt.Errorf("%s before apply", strings.Join(parts, "; "))
 	}
 	return nil
+}
+
+func flyCLIAuthenticated(ctx context.Context, runner execx.Runner) bool {
+	if runner == nil {
+		return false
+	}
+	result, err := runner.Run(ctx, []string{"fly", "auth", "whoami"})
+	return err == nil && result.ExitCode == 0
 }

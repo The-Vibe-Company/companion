@@ -129,14 +129,87 @@ tailscale_hostname = "victor"
 	for _, key := range []string{"FLY_API_TOKEN", "TAILSCALE_API_KEY", "TS_AUTHKEY", "OPENROUTER_API_KEY"} {
 		t.Setenv(key, "")
 	}
-	cmd := NewRootCommand()
+	runner := &execx.FakeRunner{Responses: map[string]execx.Result{
+		"fly auth whoami": {ExitCode: 1},
+	}}
+	cmd := newRootCommand(runner)
 	cmd.SetArgs([]string{"--workspace", root, "validate", "--providers"})
 	err := cmd.Execute()
 	if err == nil {
 		t.Fatalf("expected missing credential error")
 	}
+	if !strings.Contains(err.Error(), "fly auth login") || !strings.Contains(err.Error(), "TS_AUTHKEY") || !strings.Contains(err.Error(), "OPENROUTER_API_KEY") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateProvidersAcceptsFlyCLIAuth(t *testing.T) {
+	root := t.TempDir()
+	writeTestWorkspace(t, root, map[string]string{
+		"victor": `
+[agent]
+id = "victor"
+fly_app = "tvc-companion-victor"
+tailscale_hostname = "victor"
+`,
+	})
+	for _, key := range []string{"FLY_API_TOKEN", "TAILSCALE_API_KEY"} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("TS_AUTHKEY", "tailscale-auth-key")
+	t.Setenv("OPENROUTER_API_KEY", "openrouter-key")
+	runner := &execx.FakeRunner{Responses: map[string]execx.Result{
+		"fly auth whoami": {Stdout: "stan@example.com\n"},
+	}}
+	cmd := newRootCommand(runner)
+	cmd.SetArgs([]string{"--workspace", root, "validate", "--providers"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("validate providers: %v", err)
+	}
+}
+
+func TestValidateProvidersRequiresFlyTokenInAPIMode(t *testing.T) {
+	root := t.TempDir()
+	writeTestWorkspace(t, root, map[string]string{
+		"victor": `
+[agent]
+id = "victor"
+fly_app = "tvc-companion-victor"
+tailscale_hostname = "victor"
+`,
+	})
+	writeTestFile(t, root, "providers.toml", `[fly.default]
+mode = "api"
+region = "cdg"
+token_env = "FLY_API_TOKEN"
+
+[tailscale.tvc]
+tailnet = "tailnet.ts.net"
+auth_key_secret = "TS_AUTHKEY"
+
+[openrouter.default]
+base_url = "https://openrouter.ai/api/v1"
+api_key_env = "OPENROUTER_API_KEY"
+`)
+	for _, key := range []string{"FLY_API_TOKEN", "TAILSCALE_API_KEY"} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("TS_AUTHKEY", "tailscale-auth-key")
+	t.Setenv("OPENROUTER_API_KEY", "openrouter-key")
+	runner := &execx.FakeRunner{Responses: map[string]execx.Result{
+		"fly auth whoami": {Stdout: "stan@example.com\n"},
+	}}
+	cmd := newRootCommand(runner)
+	cmd.SetArgs([]string{"--workspace", root, "validate", "--providers"})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("expected missing API token error")
+	}
 	if !strings.Contains(err.Error(), "FLY_API_TOKEN") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(runner.Calls) != 0 {
+		t.Fatalf("api mode should not use fly cli auth, got %#v", runner.Calls)
 	}
 }
 

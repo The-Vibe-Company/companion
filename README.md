@@ -84,17 +84,18 @@ Providers define where resources live and which environment variables hold crede
 
 ```toml
 [fly.default]
-org = "the-vibe-company"
+org = "personal"
 region = "cdg"
 token_env = "FLY_API_TOKEN"
-# mode = "cli" is the default. Use mode = "api" for API-backed tests or future live API runs.
+# mode = "cli" is the default. In CLI mode, either fly auth login or FLY_API_TOKEN works.
+# Use mode = "api" for API-backed tests or future live API runs; then FLY_API_TOKEN is required.
 # api_base_url = "http://127.0.0.1:3001/fly/v1"
 
 [tailscale.tvc]
 tailnet = "tail5f910b.ts.net"
 api_key_env = "TAILSCALE_API_KEY"
 auth_key_secret = "TS_AUTHKEY"
-# mode = "cli" is the default.
+# mode = "cli" is the default. In CLI mode, TAILSCALE_API_KEY is only needed for API-only actions such as cleanup.
 # api_base_url = "http://127.0.0.1:3001/tailscale"
 
 [openrouter.default]
@@ -135,7 +136,7 @@ Provider-backed model validation is opt-in:
 companion validate --providers --workspace .
 ```
 
-This checks the provider credential env vars first, then verifies configured OpenRouter models. Normal validation stays fast and local.
+This checks provider access first, then verifies configured OpenRouter models. In the default Fly CLI mode, an existing `fly auth login` session is enough; `FLY_API_TOKEN` becomes mandatory only when the Fly provider uses `mode = "api"`.
 
 ## Agents
 
