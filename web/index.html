@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Companion Console</title>
+    <!--
+      Token sentinels. The Go console replaces %%CONSOLE_TOKEN%% with the
+      per-process session token when it serves this file in production. In dev
+      the Vite-served HTML keeps the literal sentinel and the API client falls
+      back to GET /api/console/session.
+    -->
+    <meta name="console-token" content="%%CONSOLE_TOKEN%%" />
+    <script>
+      window.__CONSOLE_TOKEN__ = "%%CONSOLE_TOKEN%%";
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# build-console-ui builds the Companion Console SPA (web/) and copies the
+# emitted bundle into internal/console/assets/ so it is embedded by the Go
+# console via //go:embed.
+#
+# The embed contract (see internal/console/console.go) is:
+#   - fs.ReadFile(assets, "assets/index.html")  -> internal/console/assets/index.html
+#   - fs.Sub(assets, "assets") served at /assets -> internal/console/assets/assets/*
+# Vite emits exactly this shape under web/dist (index.html + assets/<hashed>.js,.css),
+# so the bundle is mirrored verbatim. The built index.html keeps the
+# %%CONSOLE_TOKEN%% / %%CONSOLE_WORKSPACE%% sentinels the Go server injects at
+# serve time.
+#
+# A plain `go build ./...` (e.g. in CI) embeds whatever is committed at
+# internal/console/assets/index.html. This script is the production step that
+# replaces that placeholder with the real SPA; it is intentionally NOT run by a
+# bare `go build`, so CI stays green on the committed placeholder.
+set -Eeuo pipefail
+
+log() {
+    printf '[build-console-ui] %s\n' "$*"
+}
+
+die() {
+    log "error: $*"
+    exit 1
+}
+
+# Resolve the repository root from this script's location so the build works
+# from any working directory without relying on `cd` at the call site.
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
+repo_root="$(cd -- "${script_dir}/.." >/dev/null 2>&1 && pwd -P)"
+
+web_dir="${repo_root}/web"
+dist_dir="${web_dir}/dist"
+assets_dir="${repo_root}/internal/console/assets"
+
+command -v npm >/dev/null 2>&1 || die "npm is required but was not found on PATH"
+[ -f "${web_dir}/package.json" ] || die "missing ${web_dir}/package.json (run from a checkout with the console UI)"
+
+# Ensure dependencies are present. CI installs them separately, but a local
+# invocation of this script should self-heal a missing node_modules.
+if [ ! -d "${web_dir}/node_modules" ]; then
+    if [ -f "${web_dir}/package-lock.json" ]; then
+        log "installing web dependencies (npm ci)"
+        npm --prefix "${web_dir}" ci
+    else
+        log "installing web dependencies (npm install)"
+        npm --prefix "${web_dir}" install
+    fi
+fi
+
+log "building console UI (npm --prefix web run build)"
+npm --prefix "${web_dir}" run build
+
+[ -f "${dist_dir}/index.html" ] || die "vite build did not emit ${dist_dir}/index.html"
+[ -d "${dist_dir}/assets" ] || die "vite build did not emit ${dist_dir}/assets"
+
+# Copy into the embed dir only after a successful build so a failed build never
+# leaves the embedded UI half-written. Clear prior build output first so stale
+# hashed bundles do not accumulate inside the embed, then mirror web/dist.
+log "syncing build into ${assets_dir}"
+mkdir -p "${assets_dir}/assets"
+rm -rf "${assets_dir}/assets"
+cp -R "${dist_dir}/assets" "${assets_dir}/assets"
+cp "${dist_dir}/index.html" "${assets_dir}/index.html"
+
+# Guard the embed contract: the copied index.html must reference the hashed
+# bundle (i.e. be the real SPA, not the placeholder) and must keep the token
+# sentinel the Go server injects at serve time.
+grep -Eq '/assets/.*\.(js|css)' "${assets_dir}/index.html" \
+    || die "embedded index.html does not reference a hashed asset bundle"
+grep -q '%%CONSOLE_TOKEN%%' "${assets_dir}/index.html" \
+    || die "embedded index.html is missing the %%CONSOLE_TOKEN%% sentinel"
+
+log "done: console UI embedded at ${assets_dir}"

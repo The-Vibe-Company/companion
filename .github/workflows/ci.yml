@@ -44,7 +44,7 @@ jobs:
       - name: Validate shell scripts
         run: |
           sh -n install.sh
-          bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly bin/start-dashboard-on-fly
+          bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly bin/start-dashboard-on-fly bin/build-console-ui
 
       - name: Verify installable CLI package
         run: |
@@ -63,6 +63,29 @@ jobs:
 
       - name: Build Open WebUI Docker image
         run: docker build -f Dockerfile.open-webui .
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install console UI dependencies
+        run: npm --prefix web ci
+
+      - name: Typecheck console UI
+        run: npm --prefix web run typecheck
+
+      - name: Build console UI
+        run: npm --prefix web run build
+
+      - name: Test console UI
+        run: npm --prefix web run test
 
   build:
     runs-on: ubuntu-latest

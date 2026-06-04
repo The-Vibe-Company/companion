@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+/*
+  Companion Console theme.
+
+  Dark-mode-first, neutral slate surfaces with a single indigo/violet accent.
+  Tokens live here as CSS variables and are surfaced to Tailwind via @theme so
+  utilities like `bg-surface`, `text-muted`, `border-line`, and `text-accent`
+  stay consistent and there are no scattered inline hex values.
+*/
+
+@theme {
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, "Cascadia Code",
+    monospace;
+
+  /* Neutral slate surfaces (dark-first). */
+  --color-canvas: oklch(0.16 0.012 265);
+  --color-surface: oklch(0.2 0.014 265);
+  --color-surface-raised: oklch(0.24 0.016 265);
+  --color-line: oklch(0.32 0.014 265);
+  --color-line-strong: oklch(0.42 0.016 265);
+
+  --color-fg: oklch(0.96 0.005 265);
+  --color-muted: oklch(0.72 0.012 265);
+  --color-faint: oklch(0.56 0.012 265);
+
+  /* Single accent: indigo/violet. */
+  --color-accent: oklch(0.62 0.17 277);
+  --color-accent-fg: oklch(0.98 0.01 277);
+  --color-accent-muted: oklch(0.5 0.13 277);
+
+  /* Semantic states. */
+  --color-ok: oklch(0.72 0.16 156);
+  --color-warn: oklch(0.78 0.15 78);
+  --color-danger: oklch(0.64 0.2 25);
+
+  --radius-md: 0.5rem;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-canvas);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Visible, accent-colored focus ring for keyboard users. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Honor reduced-motion for any transitions/animations we add. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
