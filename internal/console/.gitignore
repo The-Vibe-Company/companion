@@ -1,0 +1,4 @@
+# Built SPA bundles synced in by bin/build-console-ui for production images.
+# The committed assets/index.html placeholder is what a bare `go build` embeds;
+# the real hashed JS/CSS are generated artifacts and must not be committed.
+/assets/assets/

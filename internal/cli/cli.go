@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/The-Vibe-Company/companion/internal/config"
+	"github.com/The-Vibe-Company/companion/internal/console"
 	"github.com/The-Vibe-Company/companion/internal/deps"
 	"github.com/The-Vibe-Company/companion/internal/envfile"
 	"github.com/The-Vibe-Company/companion/internal/execx"
@@ -69,6 +70,7 @@ func newRootCommand(runner execx.Runner) *cobra.Command {
 	cmd.AddCommand(a.tailscaleCommand())
 	cmd.AddCommand(a.vaultCommand())
 	cmd.AddCommand(a.dashboardCommand())
+	cmd.AddCommand(a.consoleCommand())
 	cmd.AddCommand(a.versionCommand())
 	return cmd
 }
@@ -840,6 +842,43 @@ func (a *app) dashboardCommand() *cobra.Command {
 // dashboardAddr lets the deployed container bind to Fly's injected PORT without
 // templating the value into the generated config.
 func dashboardAddr(addr string) string {
+	if port := os.Getenv("PORT"); port != "" {
+		return "0.0.0.0:" + port
+	}
+	return addr
+}
+
+func (a *app) consoleCommand() *cobra.Command {
+	var addr string
+	var devUI string
+	cmd := &cobra.Command{
+		Use:   "console",
+		Short: "Serve the Companion console (local fleet admin UI + API)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			env, err := a.env()
+			if err != nil {
+				return err
+			}
+			addr = consoleAddr(addr)
+			opts := console.Options{
+				WorkspaceDir: a.rootDir,
+				EnvFile:      a.envFile,
+				Env:          env,
+				Runner:       a.runnerWithEnv(env),
+				DevUI:        devUI,
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "serving Companion console at http://%s\n", addr)
+			return console.Serve(cmd.Context(), addr, opts)
+		},
+	}
+	cmd.Flags().StringVar(&addr, "addr", "127.0.0.1:8788", "listen address (PORT env wins when set)")
+	cmd.Flags().StringVar(&devUI, "dev-ui", "", "reverse-proxy the UI to this dev origin (e.g. http://127.0.0.1:5173)")
+	return cmd
+}
+
+// consoleAddr mirrors dashboardAddr so a deployed console binds to Fly's
+// injected PORT, while keeping the console's own local default port.
+func consoleAddr(addr string) string {
 	if port := os.Getenv("PORT"); port != "" {
 		return "0.0.0.0:" + port
 	}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Companion Console</title>
+    <!--
+      Committed placeholder. A bare `go build ./...` embeds THIS file via
+      //go:embed, so CI and `go install` stay green without a Node toolchain.
+      `bin/build-console-ui` overwrites it (and internal/console/assets/assets/)
+      with the real Vite-built SPA for production images; those built bundles
+      are gitignored. For local UI development run the Vite dev server and start
+      the console with `--dev-ui http://127.0.0.1:5173`.
+
+      The Go console replaces the token sentinels below at serve time with the
+      per-process session token and workspace name (see handleIndex in
+      console.go). The SPA reads window.__CONSOLE_TOKEN__ to authorize mutating
+      requests; in dev it falls back to GET /api/console/session.
+    -->
+    <meta name="console-token" content="%%CONSOLE_TOKEN%%" />
+    <script>
+      window.__CONSOLE_TOKEN__ = "%%CONSOLE_TOKEN%%";
+    </script>
+  </head>
+  <body data-workspace="%%CONSOLE_WORKSPACE%%">
+    <main style="font-family: system-ui, sans-serif; max-width: 42rem; margin: 4rem auto; padding: 0 1.5rem; line-height: 1.6;">
+      <h1>Companion Console</h1>
+      <p>
+        The console API is running. This is the placeholder shell — the built
+        single-page UI ships in production images and is produced locally by
+        <code>bin/build-console-ui</code>.
+      </p>
+      <p>
+        Mutating calls under <code>/api/console/</code> require the
+        <code>X-Console-Token</code> header to match the injected session token.
+      </p>
+    </main>
+  </body>
+</html>
