@@ -89,6 +89,26 @@ type PlanResponse struct {
 	Hash    string       `json:"hash"`
 	Text    string       `json:"text"`
 	Changes []PlanChange `json:"changes"`
+	// RequiresProtectedConfirm is true when the plan destroys (or is blocked from
+	// destroying) a protected resource, so the UI must collect an explicit
+	// confirmation before apply.
+	RequiresProtectedConfirm bool `json:"requires_protected_confirm"`
+	// RequiresDestroyData is true when the plan destroys a Fly volume, so the UI
+	// must collect a separate persistent-data confirmation.
+	RequiresDestroyData bool `json:"requires_destroy_data"`
+}
+
+// PlanRequest is the optional body of POST /api/console/plan. The destroy
+// confirmations default to false, so an absent body plans safely: protected
+// resources marked for destruction show as blocked rather than being removed.
+type PlanRequest struct {
+	// AllowProtectedDestroy permits destroying resources marked protect=true (the
+	// default for agents); without it a lifecycle="absent" agent's resources are
+	// reported as blocked.
+	AllowProtectedDestroy bool `json:"allow_protected_destroy"`
+	// DestroyData permits destroying persistent data (Fly volumes). The console
+	// always pairs it with a backup-first acknowledgement.
+	DestroyData bool `json:"destroy_data"`
 }
 
 // ApplyRequest is the body of POST /api/console/apply.

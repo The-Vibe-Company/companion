@@ -96,6 +96,8 @@ function planResponse(over: Partial<PlanResponse> = {}): PlanResponse {
         protected: false,
       },
     ],
+    requires_protected_confirm: false,
+    requires_destroy_data: false,
     ...over,
   };
 }

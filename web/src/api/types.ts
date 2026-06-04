@@ -93,6 +93,26 @@ export interface PlanResponse {
   hash: string;
   text: string;
   changes: PlanChange[];
+  /**
+   * True when the plan destroys (or is blocked from destroying) a protected
+   * resource, so the UI must collect an explicit confirmation before apply.
+   */
+  requires_protected_confirm: boolean;
+  /**
+   * True when the plan destroys a Fly volume, so the UI must collect a separate
+   * persistent-data confirmation (the server always backs up first).
+   */
+  requires_destroy_data: boolean;
+}
+
+/**
+ * Optional body of POST /api/console/plan. The destroy confirmations default to
+ * false, so a plain plan reports protected destructions as blocked rather than
+ * performing them.
+ */
+export interface PlanOptions {
+  allowProtectedDestroy?: boolean;
+  destroyData?: boolean;
 }
 
 /** Body of POST /api/console/apply. */

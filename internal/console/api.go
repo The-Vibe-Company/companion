@@ -269,6 +269,14 @@ func (s *Server) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {
 // against current state and providers, cache the plan hash, and return
 // PlanResponse. The cached hash is what a subsequent apply must echo back.
 func (s *Server) handlePlan(w http.ResponseWriter, r *http.Request) {
+	// Optional body carries the destroy confirmations; an absent body plans safely
+	// (protected destructions are reported as blocked rather than performed).
+	var req PlanRequest
+	if err := decodeJSONOptional(r, &req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
 	ws, err := s.loadWorkspace()
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, err.Error())
@@ -292,7 +300,7 @@ func (s *Server) handlePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	plan, err := resource.BuildPlan(r.Context(), ws, store, providers, s.planOptions(ws, env))
+	plan, err := resource.BuildPlan(r.Context(), ws, store, providers, s.planOptions(ws, env, req.AllowProtectedDestroy, req.DestroyData))
 	if err != nil {
 		writeJSONError(w, http.StatusBadGateway, err.Error())
 		return
@@ -304,12 +312,15 @@ func (s *Server) handlePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hash := hashBytes(planJSON)
-	s.setPlanHash(hash)
+	s.setPlan(hash, req.AllowProtectedDestroy, req.DestroyData)
 
+	protectedConfirm, destroyData := planDestroyFlags(plan.Changes)
 	writeJSON(w, http.StatusOK, PlanResponse{
-		Hash:    hash,
-		Text:    plan.String(),
-		Changes: planChanges(plan.Changes),
+		Hash:                     hash,
+		Text:                     plan.String(),
+		Changes:                  planChanges(plan.Changes),
+		RequiresProtectedConfirm: protectedConfirm,
+		RequiresDestroyData:      destroyData,
 	})
 }
 
@@ -323,7 +334,7 @@ func (s *Server) handleApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	latest := s.planHash()
+	latest, allowProtectedDestroy, destroyData := s.currentPlan()
 	if latest == "" {
 		writeJSONError(w, http.StatusConflict, "no current plan: run plan before apply")
 		return
@@ -333,7 +344,7 @@ func (s *Server) handleApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, ok := s.runner.Start(s.applyRun())
+	id, ok := s.runner.Start(s.applyRun(allowProtectedDestroy, destroyData))
 	if !ok {
 		writeJSONError(w, http.StatusConflict, "an apply is already in progress")
 		return
@@ -342,9 +353,10 @@ func (s *Server) handleApply(w http.ResponseWriter, r *http.Request) {
 }
 
 // applyRun returns the function the OperationRunner executes for an apply. It
-// reloads the workspace, state, and providers fresh, runs resource.Apply, and
-// reports the addresses that actually mutated plus the canonical plan JSON.
-func (s *Server) applyRun() func(ctx context.Context) (changed []string, planJSON []byte, err error) {
+// reloads the workspace, state, and providers fresh, runs resource.Apply with the
+// destroy confirmations the cached plan was computed under, and reports the
+// addresses that actually mutated plus the canonical plan JSON.
+func (s *Server) applyRun(allowProtectedDestroy, destroyData bool) func(ctx context.Context) (changed []string, planJSON []byte, err error) {
 	return func(ctx context.Context) ([]string, []byte, error) {
 		ws, err := s.loadWorkspace()
 		if err != nil {
@@ -365,7 +377,7 @@ func (s *Server) applyRun() func(ctx context.Context) (changed []string, planJSO
 			return nil, nil, err
 		}
 
-		plan, err := resource.Apply(ctx, ws, store, providers, s.planOptions(ws, env))
+		plan, err := resource.Apply(ctx, ws, store, providers, s.planOptions(ws, env, allowProtectedDestroy, destroyData))
 		planJSON, jerr := plan.JSON()
 		if jerr != nil && err == nil {
 			err = jerr
@@ -446,13 +458,44 @@ func (s *Server) handleAgentLogs(w http.ResponseWriter, r *http.Request) {
 // --- shared helpers -------------------------------------------------------
 
 // planOptions builds the resource Options used for both plan and apply so the
-// two stay consistent (same generated dir and env).
-func (s *Server) planOptions(ws *workspace.Workspace, env map[string]string) resource.Options {
-	return resource.Options{
-		Root:         ws.Root,
-		GeneratedDir: filepath.Join(ws.Root, ".companion", "generated"),
-		Env:          env,
+// two stay consistent (same generated dir, env, and destroy confirmations). The
+// destroy flags default to false: a plain plan/apply reports protected
+// destructions as blocked rather than performing them.
+func (s *Server) planOptions(ws *workspace.Workspace, env map[string]string, allowProtectedDestroy, destroyData bool) resource.Options {
+	opts := resource.Options{
+		Root:                  ws.Root,
+		GeneratedDir:          filepath.Join(ws.Root, ".companion", "generated"),
+		Env:                   env,
+		AllowProtectedDestroy: allowProtectedDestroy,
 	}
+	if destroyData {
+		// The engine refuses to destroy a persistent-data resource (a Fly volume)
+		// unless DestroyData AND BackupFirst are both set; pair them so the console
+		// always takes a backup before removing data.
+		opts.DestroyData = true
+		opts.BackupFirst = true
+	}
+	return opts
+}
+
+// planDestroyFlags inspects a computed plan and reports whether it needs the
+// operator's destroy confirmations: protectedConfirm when a protected resource is
+// being destroyed or is blocked pending confirmation, and destroyData when a Fly
+// volume is being destroyed (which additionally needs the data acknowledgement).
+func planDestroyFlags(changes []resource.Change) (protectedConfirm, destroyData bool) {
+	for _, c := range changes {
+		// "!" = blocked, "-" = delete. Both indicate a destruction intent.
+		if c.Kind != "!" && c.Kind != "-" {
+			continue
+		}
+		if c.Protected {
+			protectedConfirm = true
+		}
+		if strings.HasPrefix(c.Address, "fly_volume.") {
+			destroyData = true
+		}
+	}
+	return protectedConfirm, destroyData
 }
 
 // reloadValidated re-loads the workspace from disk. workspace.Load already runs
@@ -711,18 +754,23 @@ func hashBytes(b []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// setPlanHash records the latest computed plan hash under the server mutex.
-func (s *Server) setPlanHash(hash string) {
+// setPlan records the latest computed plan hash and the destroy confirmations it
+// was computed with, under the server mutex. Apply replays these exact options so
+// the operator can only apply the plan they actually reviewed.
+func (s *Server) setPlan(hash string, allowProtectedDestroy, destroyData bool) {
 	s.mu.Lock()
 	s.latestPlanHash = hash
+	s.latestAllowProtectedDestroy = allowProtectedDestroy
+	s.latestDestroyData = destroyData
 	s.mu.Unlock()
 }
 
-// planHash returns the most recently computed plan hash under the server mutex.
-func (s *Server) planHash() string {
+// currentPlan returns the most recently computed plan hash and its destroy
+// confirmations under the server mutex.
+func (s *Server) currentPlan() (hash string, allowProtectedDestroy, destroyData bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.latestPlanHash
+	return s.latestPlanHash, s.latestAllowProtectedDestroy, s.latestDestroyData
 }
 
 // rfc3339 is the timestamp layout used for operation times in API responses.

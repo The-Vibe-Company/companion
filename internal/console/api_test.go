@@ -669,3 +669,62 @@ func TestCreateAgentRollbackRemovesOrphanSoul(t *testing.T) {
 		t.Fatalf("rolled-back create left an orphan SOUL.md (stat err = %v)", err)
 	}
 }
+
+func hasBlockedChange(changes []PlanChange) bool {
+	for _, c := range changes {
+		if c.Kind == "!" {
+			return true
+		}
+	}
+	return false
+}
+
+// TestPlanBlocksProtectedDestroyUntilConfirmed verifies the destroy-confirmation
+// flow: marking a protected agent absent makes a plain plan report its managed
+// resources as blocked (requiring explicit confirmation), and re-planning with
+// the destroy confirmations turns those blocks into real deletes.
+func TestPlanBlocksProtectedDestroyUntilConfirmed(t *testing.T) {
+	root := seededWorkspace(t)
+	srv := newTestServer(t, root, &execx.FakeRunner{})
+
+	// Mark the protected agent absent so its managed resources are slated for
+	// destruction.
+	del := do(t, srv, http.MethodDelete, "/api/console/agents/example-agent", nil, srv.Token())
+	if del.Code != http.StatusOK {
+		t.Fatalf("delete (mark absent) = %d: %s", del.Code, del.Body.String())
+	}
+
+	// A plain plan reports the protected destroys as blocked and asks for explicit
+	// confirmation; it must not silently destroy anything.
+	rec := do(t, srv, http.MethodPost, "/api/console/plan", PlanRequest{}, srv.Token())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("plan = %d: %s", rec.Code, rec.Body.String())
+	}
+	var p PlanResponse
+	decode(t, rec, &p)
+	if !p.RequiresProtectedConfirm {
+		t.Fatalf("plan should require protected confirmation; changes=%+v", p.Changes)
+	}
+	if !hasBlockedChange(p.Changes) {
+		t.Fatalf("plan should contain a blocked (!) change before confirmation:\n%s", p.Text)
+	}
+	if !p.RequiresDestroyData {
+		t.Fatalf("plan destroying a fly_volume should require the persistent-data confirmation")
+	}
+
+	// Confirming unblocks the destroy: re-plan with both confirmations and the
+	// blocked items become real deletes, with a distinct hash.
+	rec2 := do(t, srv, http.MethodPost, "/api/console/plan",
+		PlanRequest{AllowProtectedDestroy: true, DestroyData: true}, srv.Token())
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("confirmed plan = %d: %s", rec2.Code, rec2.Body.String())
+	}
+	var p2 PlanResponse
+	decode(t, rec2, &p2)
+	if hasBlockedChange(p2.Changes) {
+		t.Fatalf("confirmed plan must not contain blocked changes:\n%s", p2.Text)
+	}
+	if p2.Hash == p.Hash {
+		t.Fatalf("confirmed plan hash should differ from the blocked plan hash")
+	}
+}

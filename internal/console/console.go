@@ -87,6 +87,11 @@ type Server struct {
 
 	mu             sync.Mutex
 	latestPlanHash string
+	// latestAllowProtectedDestroy / latestDestroyData capture the destroy
+	// confirmations the cached plan was computed with, so apply replays exactly
+	// the plan the operator reviewed rather than trusting flags re-sent at apply.
+	latestAllowProtectedDestroy bool
+	latestDestroyData           bool
 
 	// writeMu serializes workspace-mutating handlers (create/update/delete) so
 	// their read-modify-write-validate-rollback sequences cannot interleave.
@@ -426,4 +431,17 @@ func decodeJSON(r *http.Request, v any) error {
 	dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 	dec.DisallowUnknownFields()
 	return dec.Decode(v)
+}
+
+// decodeJSONOptional behaves like decodeJSON but treats an empty request body as
+// "no fields set", leaving v at its zero value. Used for endpoints whose body is
+// optional, such as plan, whose destroy confirmations default to false.
+func decodeJSONOptional(r *http.Request, v any) error {
+	if err := decodeJSON(r, v); err != nil {
+		if err == io.EOF {
+			return nil
+		}
+		return err
+	}
+	return nil
 }

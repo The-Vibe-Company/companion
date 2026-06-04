@@ -135,7 +135,9 @@ export default function AgentDetailPage() {
           id={id}
           agent={agent}
           onSaved={refresh}
-          onDeleted={() => navigate("/")}
+          // After marking the agent absent, land on Plan & Apply where the
+          // protected-destroy confirmation actually carries it out.
+          onDeleted={() => navigate("/plan")}
         />
       )}
     </>

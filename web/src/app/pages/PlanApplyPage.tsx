@@ -96,6 +96,12 @@ export default function PlanApplyPage() {
   const [applyError, setApplyError] = useState<unknown>(null);
   const [operationId, setOperationId] = useState<string | null>(null);
 
+  // --- Destroy confirmations (drive the plan request) ---------------------
+  // Off by default, so a plain plan reports protected destructions as blocked
+  // rather than performing them. Toggling either re-plans with the new scope.
+  const [allowProtectedDestroy, setAllowProtectedDestroy] = useState(false);
+  const [destroyData, setDestroyData] = useState(false);
+
   // --- Apply history (polled, refreshed on completion) --------------------
   const {
     data: applies,
@@ -104,24 +110,46 @@ export default function PlanApplyPage() {
     refresh: refreshApplies,
   } = usePolling<ApplyHistoryEntry[]>(() => listApplies(), 0, []);
 
-  const runPlan = useCallback(async () => {
-    setPlanning(true);
-    setPlanError(null);
-    // A fresh plan invalidates any prior apply intent: the old hash is stale,
-    // so reset the confirmation gate, the apply error, and any tracked op.
-    setConfirmed(false);
-    setApplyError(null);
-    setOperationId(null);
-    try {
-      const result = await plan();
-      setPlanResult(result);
-    } catch (err) {
-      setPlanError(err);
-      setPlanResult(null);
-    } finally {
-      setPlanning(false);
-    }
-  }, []);
+  const runPlan = useCallback(
+    async (flags?: { allowProtectedDestroy: boolean; destroyData: boolean }) => {
+      const effective = flags ?? { allowProtectedDestroy, destroyData };
+      setPlanning(true);
+      setPlanError(null);
+      // A fresh plan invalidates any prior apply intent: the old hash is stale,
+      // so reset the confirmation gate, the apply error, and any tracked op.
+      setConfirmed(false);
+      setApplyError(null);
+      setOperationId(null);
+      try {
+        const result = await plan(effective);
+        setPlanResult(result);
+      } catch (err) {
+        setPlanError(err);
+        setPlanResult(null);
+      } finally {
+        setPlanning(false);
+      }
+    },
+    [allowProtectedDestroy, destroyData],
+  );
+
+  // Toggling a destroy confirmation re-plans immediately with the new scope, so
+  // the rendered diff (and the hash apply is bound to) always reflect exactly
+  // what apply will do.
+  const onToggleProtected = useCallback(
+    (next: boolean) => {
+      setAllowProtectedDestroy(next);
+      void runPlan({ allowProtectedDestroy: next, destroyData });
+    },
+    [runPlan, destroyData],
+  );
+  const onToggleDestroyData = useCallback(
+    (next: boolean) => {
+      setDestroyData(next);
+      void runPlan({ allowProtectedDestroy, destroyData: next });
+    },
+    [runPlan, allowProtectedDestroy],
+  );
 
   const runApply = useCallback(async () => {
     if (!planResult || !confirmed) return;
@@ -150,10 +178,20 @@ export default function PlanApplyPage() {
 
   const hasPlan = planResult !== null;
   const hasChanges = (planResult?.changes.length ?? 0) > 0;
-  // Apply is only meaningful with a current plan, an explicit confirmation, and
-  // no apply already in flight (button or tracked operation).
+  const hasBlocked = (planResult?.changes ?? []).some((c) => c.kind === "!");
+  const needsProtected = planResult?.requires_protected_confirm ?? false;
+  const needsData = planResult?.requires_destroy_data ?? false;
+  // A destructive plan is "ready" once every required confirmation is given and
+  // the plan no longer reports blocked resources.
+  const destroyReady =
+    !hasBlocked &&
+    (!needsProtected || allowProtectedDestroy) &&
+    (!needsData || destroyData);
+  // Apply is only meaningful with a current plan, an explicit confirmation, no
+  // apply already in flight, and — for destructive plans — every destroy
+  // confirmation satisfied.
   const applyDisabled =
-    !hasPlan || !confirmed || applying || operationId !== null;
+    !hasPlan || !confirmed || applying || operationId !== null || !destroyReady;
 
   return (
     <>
@@ -214,6 +252,38 @@ export default function PlanApplyPage() {
           )}
         </Card>
 
+        {/* Destroy confirmation ------------------------------------------ */}
+        {hasPlan && needsProtected && (
+          <Card
+            title="Destroy confirmation"
+            description="This plan removes protected resources. Confirm explicitly to unblock them."
+          >
+            <div className="space-y-4 rounded-md border border-danger/40 bg-danger/10 px-4 py-3">
+              <p className="text-xs text-danger">
+                Protected resources (Fly app, volume, secrets, config, rollout)
+                are blocked by default. Destroying them is irreversible — to back
+                out, set the agent’s lifecycle back to “present” and re-plan.
+              </p>
+              <Toggle
+                label="Destroy protected resources"
+                hint="Allows removing resources marked protect = true."
+                checked={allowProtectedDestroy}
+                onChange={onToggleProtected}
+                disabled={planning || applying || operationId !== null}
+              />
+              {needsData && (
+                <Toggle
+                  label="Also destroy persistent data (Fly volumes)"
+                  hint="A backup is taken before the volume is removed."
+                  checked={destroyData}
+                  onChange={onToggleDestroyData}
+                  disabled={planning || applying || operationId !== null}
+                />
+              )}
+            </div>
+          </Card>
+        )}
+
         {/* Apply --------------------------------------------------------- */}
         {hasPlan && (
           <Card
@@ -258,9 +328,11 @@ export default function PlanApplyPage() {
                 >
                   Apply plan
                 </Button>
-                {!confirmed && operationId === null && (
+                {operationId === null && !applying && applyDisabled && (
                   <span className="text-xs text-faint">
-                    Tick the confirmation to enable apply.
+                    {!destroyReady
+                      ? "Resolve the destroy confirmations above to enable apply."
+                      : "Tick the confirmation to enable apply."}
                   </span>
                 )}
               </div>

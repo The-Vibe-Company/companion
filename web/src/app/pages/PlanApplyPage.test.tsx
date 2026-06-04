@@ -27,6 +27,7 @@ import type {
   ApplyHistoryEntry,
   ApplyResponse,
   OperationStatus,
+  PlanOptions,
   PlanResponse,
 } from "../../api/types";
 import PlanApplyPage from "./PlanApplyPage";
@@ -70,6 +71,8 @@ function planResponse(over: Partial<PlanResponse> = {}): PlanResponse {
         protected: false,
       },
     ],
+    requires_protected_confirm: false,
+    requires_destroy_data: false,
     ...over,
   };
 }
@@ -290,5 +293,76 @@ describe("PlanApplyPage", () => {
       expect(screen.getByRole("button", { name: /apply plan/i })).toBeDisabled(),
     );
     expect(screen.getByRole("switch")).not.toBeChecked();
+  });
+
+  it("gates a protected destroy behind the destroy confirmations, then applies", async () => {
+    // Model the backend: with no destroy flag the protected resources are
+    // blocked; once allowProtectedDestroy is set they become real deletes.
+    mockPlan.mockImplementation(async (opts?: PlanOptions) => {
+      const allow = opts?.allowProtectedDestroy ?? false;
+      return planResponse({
+        hash: allow ? "destroy-hash" : "blocked-hash",
+        text: "destroy example-agent",
+        changes: [
+          {
+            kind: allow ? "-" : "!",
+            action: allow ? "delete" : "blocked",
+            address: "fly_app.example-agent",
+            message: "",
+            protected: true,
+          },
+          {
+            kind: allow ? "-" : "!",
+            action: allow ? "delete" : "blocked",
+            address: "fly_volume.agent_data.example-agent",
+            message: "",
+            protected: true,
+          },
+        ],
+        requires_protected_confirm: true,
+        requires_destroy_data: true,
+      });
+    });
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: /run plan/i }));
+    await screen.findByText("fly_app.example-agent");
+
+    const applyButton = () =>
+      screen.getByRole("button", { name: /apply plan/i });
+
+    // The danger zone appears (its protected-destroy switch) and apply is blocked.
+    expect(
+      screen.getByRole("switch", { name: /destroy protected resources/i }),
+    ).toBeInTheDocument();
+    expect(applyButton()).toBeDisabled();
+
+    // "I understand" alone is not enough while protected resources are blocked.
+    await user.click(
+      screen.getByRole("switch", { name: /applies changes to the live fleet/i }),
+    );
+    expect(applyButton()).toBeDisabled();
+
+    // Allow protected destroy: re-plans to real deletes, but the volume still
+    // needs the persistent-data confirmation, so apply stays disabled.
+    await user.click(
+      screen.getByRole("switch", { name: /destroy protected resources/i }),
+    );
+    await waitFor(() => expect(applyButton()).toBeDisabled());
+
+    // Allow persistent-data destruction, then re-confirm (re-planning reset the
+    // gate) — every confirmation is now satisfied.
+    await user.click(screen.getByRole("switch", { name: /persistent data/i }));
+    await user.click(
+      screen.getByRole("switch", { name: /applies changes to the live fleet/i }),
+    );
+
+    await waitFor(() => expect(applyButton()).toBeEnabled());
+    await user.click(applyButton());
+
+    // Apply uses the confirmed-plan hash — the destroy plan the operator saw.
+    expect(mockApply).toHaveBeenCalledWith("destroy-hash");
   });
 });

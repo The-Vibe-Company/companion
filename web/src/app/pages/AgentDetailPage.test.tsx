@@ -97,6 +97,7 @@ function renderPage(id = AGENT_ID) {
       <Routes>
         <Route path="/agents/:id" element={<AgentDetailPage />} />
         <Route path="/" element={<div>Agents list</div>} />
+        <Route path="/plan" element={<div>Plan and apply</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -265,6 +266,8 @@ describe("AgentDetailPage", () => {
           protected: false,
         },
       ],
+      requires_protected_confirm: false,
+      requires_destroy_data: false,
     };
     mockPlan.mockResolvedValue(planResp);
     const applyResp: ApplyResponse = { operation_id: "op-1" };
@@ -307,7 +310,13 @@ describe("AgentDetailPage", () => {
 
   it("does not offer apply when the plan has no changes", async () => {
     const user = userEvent.setup();
-    mockPlan.mockResolvedValue({ hash: "h", text: "", changes: [] });
+    mockPlan.mockResolvedValue({
+      hash: "h",
+      text: "",
+      changes: [],
+      requires_protected_confirm: false,
+      requires_destroy_data: false,
+    });
     renderPage();
 
     await user.click(await screen.findByRole("button", { name: /plan changes/i }));
@@ -333,10 +342,11 @@ describe("AgentDetailPage", () => {
     ).toBeInTheDocument();
     expect(mockDeleteAgent).not.toHaveBeenCalled();
 
-    // Confirm -> deleteAgent(id) and navigation back to the list.
+    // Confirm -> deleteAgent(id) and navigation to Plan & apply, where the
+    // protected-destroy confirmation actually carries out the destruction.
     await user.click(within(dialog).getByRole("button", { name: /mark absent/i }));
     await waitFor(() => expect(mockDeleteAgent).toHaveBeenCalledWith(AGENT_ID));
-    expect(await screen.findByText("Agents list")).toBeInTheDocument();
+    expect(await screen.findByText("Plan and apply")).toBeInTheDocument();
   });
 
   it("can cancel the delete without calling deleteAgent", async () => {

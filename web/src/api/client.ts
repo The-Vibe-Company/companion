@@ -24,6 +24,7 @@ import type {
   ApplyResponse,
   LogsResponse,
   OperationStatus,
+  PlanOptions,
   PlanResponse,
   StatusSnapshot,
   WorkspaceInfo,
@@ -238,9 +239,16 @@ export function deleteAgent(id: string): Promise<AgentDetail> {
   return mutateJSON<AgentDetail>("DELETE", `/agents/${encodeURIComponent(id)}`);
 }
 
-/** POST /api/console/plan -> PlanResponse */
-export function plan(): Promise<PlanResponse> {
-  return mutateJSON<PlanResponse>("POST", "/plan");
+/**
+ * POST /api/console/plan -> PlanResponse. The destroy confirmations default to
+ * false, so a plain plan reports protected destructions as blocked. Pass
+ * { allowProtectedDestroy, destroyData } to compute (and later apply) a destroy.
+ */
+export function plan(opts: PlanOptions = {}): Promise<PlanResponse> {
+  return mutateJSON<PlanResponse>("POST", "/plan", {
+    allow_protected_destroy: opts.allowProtectedDestroy ?? false,
+    destroy_data: opts.destroyData ?? false,
+  });
 }
 
 /** POST /api/console/apply -> 202 ApplyResponse (409 on stale hash / in-flight) */
