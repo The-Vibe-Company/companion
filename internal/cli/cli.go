@@ -366,11 +366,20 @@ func (a *app) validateCommand() *cobra.Command {
 					if agent.Identity.Path != "" {
 						identity = agent.Identity.Path
 					}
+				}
+				companionSoul := "disabled"
+				if agent.CompanionSoul.Enabled {
+					companionSoul = "inline"
+					if agent.CompanionSoul.Path != "" {
+						companionSoul = agent.CompanionSoul.Path
+					}
+				}
+				if agent.Identity.Enabled || agent.CompanionSoul.Enabled {
 					if _, err := a.hydrateAgentIdentity(agent); err != nil {
 						return err
 					}
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "%s: ok runtime=%s network=%s fly_app=%s tailscale=%s lifecycle=%s identity=%s\n", agent.ID, agent.Runtime, agent.Network, agent.FlyApp, agent.TailscaleHostname, agent.Lifecycle, identity)
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: ok runtime=%s network=%s fly_app=%s tailscale=%s lifecycle=%s identity=%s companion_soul=%s\n", agent.ID, agent.Runtime, agent.Network, agent.FlyApp, agent.TailscaleHostname, agent.Lifecycle, identity, companionSoul)
 			}
 			if cfg.OpenWebUI.Enabled {
 				ids := []string{}
@@ -789,11 +798,12 @@ func (a *app) identityRenderCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if !agent.Identity.Enabled {
-				return fmt.Errorf("agent %s identity is disabled", agent.ID)
+			identity, ok := render.EffectiveAgentIdentity(agent)
+			if !ok {
+				return fmt.Errorf("agent %s identity and companion_soul are disabled", agent.ID)
 			}
-			fmt.Fprint(cmd.OutOrStdout(), agent.Identity.Soul)
-			if !strings.HasSuffix(agent.Identity.Soul, "\n") {
+			fmt.Fprint(cmd.OutOrStdout(), identity.Soul)
+			if !strings.HasSuffix(identity.Soul, "\n") {
 				fmt.Fprintln(cmd.OutOrStdout())
 			}
 			return nil
@@ -1202,24 +1212,34 @@ func (a *app) stateRemoveCommand() *cobra.Command {
 }
 
 func (a *app) hydrateAgentIdentity(agent config.Agent) (config.Agent, error) {
-	if !agent.Identity.Enabled {
-		return agent, nil
+	if agent.Identity.Enabled && strings.TrimSpace(agent.Identity.Soul) == "" {
+		if agent.Identity.Path == "" {
+			return agent, fmt.Errorf("agent %s identity requires path or soul", agent.ID)
+		}
+		path := agent.Identity.Path
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(a.rootDir, filepath.FromSlash(path))
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return agent, fmt.Errorf("read identity for agent %s: %w", agent.ID, err)
+		}
+		agent.Identity.Soul = string(data)
 	}
-	if strings.TrimSpace(agent.Identity.Soul) != "" {
-		return agent, nil
+	if agent.CompanionSoul.Enabled && strings.TrimSpace(agent.CompanionSoul.Text) == "" {
+		if agent.CompanionSoul.Path == "" {
+			return agent, fmt.Errorf("agent %s companion_soul requires path or text", agent.ID)
+		}
+		path := agent.CompanionSoul.Path
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(a.rootDir, filepath.FromSlash(path))
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return agent, fmt.Errorf("read companion_soul for agent %s: %w", agent.ID, err)
+		}
+		agent.CompanionSoul.Text = string(data)
 	}
-	if agent.Identity.Path == "" {
-		return agent, fmt.Errorf("agent %s identity requires path or soul", agent.ID)
-	}
-	path := agent.Identity.Path
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(a.rootDir, filepath.FromSlash(path))
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return agent, fmt.Errorf("read identity for agent %s: %w", agent.ID, err)
-	}
-	agent.Identity.Soul = string(data)
 	return agent, nil
 }
 

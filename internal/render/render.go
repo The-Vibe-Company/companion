@@ -27,12 +27,8 @@ func AgentFlyTOML(agent config.Agent) (string, error) {
 		return "", err
 	}
 	identityJSON := ""
-	if agent.Identity.Enabled {
-		identityJSON, err = compactJSON(config.Identity{
-			Enabled:   agent.Identity.Enabled,
-			Soul:      agent.Identity.Soul,
-			Overwrite: agent.Identity.Overwrite,
-		})
+	if identity, ok := EffectiveAgentIdentity(agent); ok {
+		identityJSON, err = compactJSON(identity)
 		if err != nil {
 			return "", err
 		}
@@ -101,6 +97,34 @@ func AgentFlyTOML(agent config.Agent) (string, error) {
 		"",
 	)
 	return strings.Join(lines, "\n"), nil
+}
+
+func EffectiveAgentIdentity(agent config.Agent) (config.Identity, bool) {
+	soul := ""
+	if agent.Identity.Enabled {
+		soul = strings.TrimRight(agent.Identity.Soul, "\n")
+	}
+	if agent.CompanionSoul.Enabled {
+		companionSoul := strings.TrimRight(agent.CompanionSoul.Text, "\n")
+		if strings.TrimSpace(companionSoul) != "" {
+			if strings.TrimSpace(soul) != "" {
+				soul += "\n\n"
+			}
+			soul += companionSoul
+		}
+	}
+	if strings.TrimSpace(soul) == "" {
+		return config.Identity{}, false
+	}
+	overwrite := agent.Identity.Overwrite
+	if !agent.Identity.Enabled && agent.Identity.Path == "" && agent.Identity.Soul == "" {
+		overwrite = true
+	}
+	return config.Identity{
+		Enabled:   true,
+		Soul:      soul,
+		Overwrite: overwrite,
+	}, true
 }
 
 func OpenWebUIFlyTOML(cfg config.OpenWebUI, connections []config.OpenWebUIConnection) (string, error) {

@@ -81,6 +81,7 @@ The CI gates are `go test ./...`, `go test -race ./...`, shell syntax checks, in
 
 - Companion workspaces are folders containing `companion.toml`, `providers.toml`, `defaults.toml`, optional `webui.toml`, `agents/*.toml`, `vaults/*.toml`, and identities.
 - The repository root is not a live Companion workspace. Use `examples/minimal` and `examples/webui` for public examples, and `.local/` or an external path for real fleets.
+- Use `[defaults.companion_soul]` for fleet-wide Hermes identity additions that must be appended to every rendered `SOUL.md`, such as Granite memory discipline. Keep agent-specific `SOUL.md` files focused on the agent identity; do not duplicate the global block into every file. Agents can opt out with `[companion_soul] enabled = false`.
 
 Use `lifecycle = "absent"` for desired deletion. Persistent data requires explicit destroy flags and backup intent.
 

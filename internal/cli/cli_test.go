@@ -310,6 +310,13 @@ func TestHydrateAgentIdentityReadsRelativePath(t *testing.T) {
 	if err := os.WriteFile(path, []byte("# Sample Agent\n\nYou are Sample Agent.\n"), 0o644); err != nil {
 		t.Fatalf("write identity: %v", err)
 	}
+	companionSoulPath := filepath.Join(root, "identities", "companion-soul.md")
+	if err := os.MkdirAll(filepath.Dir(companionSoulPath), 0o755); err != nil {
+		t.Fatalf("mkdir companion soul dir: %v", err)
+	}
+	if err := os.WriteFile(companionSoulPath, []byte("## Companion Memory\n\nAlways capture durable knowledge in Granite.\n"), 0o644); err != nil {
+		t.Fatalf("write companion soul: %v", err)
+	}
 
 	agent, err := (&app{rootDir: root}).hydrateAgentIdentity(config.Agent{
 		ID: "sample",
@@ -318,12 +325,70 @@ func TestHydrateAgentIdentityReadsRelativePath(t *testing.T) {
 			Path:      "identities/sample/SOUL.md",
 			Overwrite: true,
 		},
+		CompanionSoul: config.CompanionSoul{
+			Enabled: true,
+			Path:    "identities/companion-soul.md",
+		},
 	})
 	if err != nil {
 		t.Fatalf("hydrate identity: %v", err)
 	}
 	if agent.Identity.Soul != "# Sample Agent\n\nYou are Sample Agent.\n" {
 		t.Fatalf("unexpected hydrated soul: %q", agent.Identity.Soul)
+	}
+	if agent.CompanionSoul.Text != "## Companion Memory\n\nAlways capture durable knowledge in Granite.\n" {
+		t.Fatalf("unexpected hydrated companion soul: %q", agent.CompanionSoul.Text)
+	}
+}
+
+func TestIdentityRenderIncludesInheritedCompanionSoul(t *testing.T) {
+	root := t.TempDir()
+	writeTestWorkspace(t, root, map[string]string{
+		"sample": `
+[agent]
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
+`,
+	})
+	writeTestFile(t, root, "defaults.toml", `[defaults]
+region = "cdg"
+
+[defaults.model]
+enabled = false
+
+[defaults.api_server]
+enabled = true
+open_webui_enabled = true
+
+[defaults.companion_soul]
+path = "identities/companion-soul.md"
+`)
+	writeTestFile(t, root, "identities/companion-soul.md", `## Companion Memory
+
+Always capture durable knowledge in Granite.
+`)
+
+	cmd := NewRootCommand()
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetArgs([]string{"--workspace", root, "identity", "render", "sample"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("identity render: %v", err)
+	}
+	if output.String() != "## Companion Memory\n\nAlways capture durable knowledge in Granite.\n" {
+		t.Fatalf("unexpected render output: %q", output.String())
+	}
+
+	validateCmd := NewRootCommand()
+	output.Reset()
+	validateCmd.SetOut(&output)
+	validateCmd.SetArgs([]string{"--workspace", root, "validate"})
+	if err := validateCmd.Execute(); err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	if !strings.Contains(output.String(), "identity=disabled companion_soul=identities/companion-soul.md") {
+		t.Fatalf("validate output should expose inherited companion soul, got: %s", output.String())
 	}
 }
 

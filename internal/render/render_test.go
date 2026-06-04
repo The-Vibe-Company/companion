@@ -204,6 +204,70 @@ func TestAgentRenderIncludesIdentityJSON(t *testing.T) {
 	}
 }
 
+func TestAgentRenderAppendsCompanionSoulToIdentityJSON(t *testing.T) {
+	toml, err := AgentFlyTOML(config.Agent{
+		ID:                         "sample",
+		FlyApp:                     "sample",
+		Region:                     "cdg",
+		VolumeName:                 "data",
+		Memory:                     "1gb",
+		CPUs:                       1,
+		TailscaleHostname:          "sample",
+		TailscaleAuthKeySecretName: "TS_AUTHKEY",
+		DashboardHost:              "0.0.0.0",
+		DashboardMode:              "serve",
+		DashboardPort:              9119,
+		Identity: config.Identity{
+			Enabled:   true,
+			Soul:      "# Sample Agent\n\nYou are direct.\n",
+			Overwrite: true,
+		},
+		CompanionSoul: config.CompanionSoul{
+			Enabled: true,
+			Text:    "## Companion Memory\n\nAlways capture durable knowledge in Granite.\n",
+		},
+	})
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	want := `\"soul\":\"# Sample Agent\\n\\nYou are direct.\\n\\n## Companion Memory\\n\\nAlways capture durable knowledge in Granite.\"`
+	if !strings.Contains(toml, want) {
+		t.Fatalf("companion soul was not appended after identity, missing %q in\n%s", want, toml)
+	}
+}
+
+func TestAgentRenderCreatesIdentityFromCompanionSoul(t *testing.T) {
+	toml, err := AgentFlyTOML(config.Agent{
+		ID:                         "sample",
+		FlyApp:                     "sample",
+		Region:                     "cdg",
+		VolumeName:                 "data",
+		Memory:                     "1gb",
+		CPUs:                       1,
+		TailscaleHostname:          "sample",
+		TailscaleAuthKeySecretName: "TS_AUTHKEY",
+		DashboardHost:              "0.0.0.0",
+		DashboardMode:              "serve",
+		DashboardPort:              9119,
+		CompanionSoul: config.CompanionSoul{
+			Enabled: true,
+			Text:    "## Companion Memory\n\nAlways capture durable knowledge in Granite.",
+		},
+	})
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	for _, want := range []string{
+		`HERMES_IDENTITY_JSON = "{\"enabled\":true`,
+		`\"soul\":\"## Companion Memory\\n\\nAlways capture durable knowledge in Granite.\"`,
+		`\"overwrite\":true}`,
+	} {
+		if !strings.Contains(toml, want) {
+			t.Fatalf("missing %q in\n%s", want, toml)
+		}
+	}
+}
+
 func TestAgentRenderOmitsDisabledIdentity(t *testing.T) {
 	toml, err := AgentFlyTOML(config.Agent{
 		ID:                         "sample",
@@ -220,6 +284,10 @@ func TestAgentRenderOmitsDisabledIdentity(t *testing.T) {
 		Identity: config.Identity{
 			Enabled: false,
 			Soul:    "# Should not be rendered",
+		},
+		CompanionSoul: config.CompanionSoul{
+			Enabled: false,
+			Text:    "# Should not be rendered either",
 		},
 	})
 	if err != nil {

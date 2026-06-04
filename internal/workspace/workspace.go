@@ -100,6 +100,7 @@ type agentFile struct {
 	APIServer        config.RawAPIServer         `toml:"api_server"`
 	DefaultVault     config.RawDefaultVault      `toml:"default_vault"`
 	Identity         config.RawIdentity          `toml:"identity"`
+	CompanionSoul    config.RawCompanionSoul     `toml:"companion_soul"`
 	VaultConnection  []config.RawVaultConnection `toml:"vault_connections"`
 	VaultConnections []config.RawVaultConnection `toml:"vault_connection"`
 }
@@ -284,6 +285,9 @@ func (w *Workspace) Validate() error {
 		}
 		if agent.Identity.Enabled && filepath.IsAbs(agent.Identity.Path) {
 			return fmt.Errorf("agent %s identity path must be relative to the workspace", agent.ID)
+		}
+		if agent.CompanionSoul.Enabled && filepath.IsAbs(agent.CompanionSoul.Path) {
+			return fmt.Errorf("agent %s companion_soul path must be relative to the workspace", agent.ID)
 		}
 	}
 	if w.Config.OpenWebUI.Enabled {
@@ -546,6 +550,7 @@ func (f agentFile) toRawAgent() config.RawAgent {
 		TailscaledExtraArgs:        f.Agent.TailscaledExtraArgs,
 		GraniteTemplate:            f.Agent.GraniteTemplate,
 		Identity:                   identity,
+		CompanionSoul:              f.CompanionSoul,
 		Model:                      f.Model,
 		APIServer:                  f.APIServer,
 		DefaultVault:               f.DefaultVault,

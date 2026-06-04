@@ -165,6 +165,63 @@ func TestIdentityEnabledRequiresPathOrSoul(t *testing.T) {
 	}
 }
 
+func TestCompanionSoulDefaultsOverridesAndDisable(t *testing.T) {
+	cfg, err := Normalize(RawConfig{
+		Defaults: RawDefaults{
+			CompanionSoul: RawCompanionSoul{Path: strPtr("identities/companion-soul.md")},
+		},
+		Agents: []RawAgent{
+			{ID: strPtr("agent-a"), FlyApp: strPtr("agent-a"), TailscaleHostname: strPtr("agent-a")},
+			{ID: strPtr("agent-b"), FlyApp: strPtr("agent-b"), TailscaleHostname: strPtr("agent-b"), CompanionSoul: RawCompanionSoul{
+				Text: strPtr("Use Granite for durable memory."),
+			}},
+			{ID: strPtr("agent-c"), FlyApp: strPtr("agent-c"), TailscaleHostname: strPtr("agent-c"), CompanionSoul: RawCompanionSoul{
+				Enabled: boolPtr(false),
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("normalize: %v", err)
+	}
+	if !cfg.Agents[0].CompanionSoul.Enabled || cfg.Agents[0].CompanionSoul.Path != "identities/companion-soul.md" {
+		t.Fatalf("expected inherited companion soul path, got %#v", cfg.Agents[0].CompanionSoul)
+	}
+	if !cfg.Agents[1].CompanionSoul.Enabled || cfg.Agents[1].CompanionSoul.Path != "identities/companion-soul.md" || cfg.Agents[1].CompanionSoul.Text != "Use Granite for durable memory." {
+		t.Fatalf("expected companion soul text override to keep inherited path, got %#v", cfg.Agents[1].CompanionSoul)
+	}
+	if cfg.Agents[2].CompanionSoul.Enabled {
+		t.Fatalf("expected agent companion soul to be disabled, got %#v", cfg.Agents[2].CompanionSoul)
+	}
+}
+
+func TestCompanionSoulRejectsAbsolutePath(t *testing.T) {
+	_, err := Normalize(RawConfig{
+		Agents: []RawAgent{{
+			ID:                strPtr("agent-a"),
+			FlyApp:            strPtr("agent-a"),
+			TailscaleHostname: strPtr("agent-a"),
+			CompanionSoul:     RawCompanionSoul{Path: strPtr("/tmp/companion-soul.md")},
+		}},
+	})
+	if err == nil {
+		t.Fatalf("expected absolute companion_soul path to be rejected")
+	}
+}
+
+func TestCompanionSoulEnabledRequiresPathOrText(t *testing.T) {
+	_, err := Normalize(RawConfig{
+		Agents: []RawAgent{{
+			ID:                strPtr("agent-a"),
+			FlyApp:            strPtr("agent-a"),
+			TailscaleHostname: strPtr("agent-a"),
+			CompanionSoul:     RawCompanionSoul{Enabled: boolPtr(true)},
+		}},
+	})
+	if err == nil {
+		t.Fatalf("expected enabled companion_soul without path or text to be rejected")
+	}
+}
+
 func TestDashboardDisabledWhenUnset(t *testing.T) {
 	cfg, err := Normalize(RawConfig{
 		Agents: []RawAgent{{ID: strPtr("sample"), FlyApp: strPtr("example-companion-sample"), TailscaleHostname: strPtr("sample")}},

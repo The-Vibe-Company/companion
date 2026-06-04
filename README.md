@@ -303,6 +303,20 @@ companion identity init example-agent --name "Example Agent" --workspace .
 companion identity render example-agent --workspace .
 ```
 
+Use `companion_soul` for fleet-wide identity rules that must be appended to every agent `SOUL.md`, for example a shared Granite memory policy:
+
+```toml
+[defaults.companion_soul]
+path = "identities/companion-soul.md"
+```
+
+Agents can opt out without changing their own identity file:
+
+```toml
+[companion_soul]
+enabled = false
+```
+
 Every agent can have a default Granite vault:
 
 ```toml

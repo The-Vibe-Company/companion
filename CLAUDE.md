@@ -52,6 +52,7 @@ Expected CI gates are `go test ./...`, `go test -race ./...`, shell syntax check
 - Do not run live provider mutations unless the user explicitly asks for them.
 - Keep secrets private: print names only, never values.
 - Keep real workspace config private under `.local/` or outside the repo.
+- Use `[defaults.companion_soul]` for fleet-wide Hermes `SOUL.md` additions such as Granite memory rules; it is appended after each agent identity and can be disabled per agent with `[companion_soul] enabled = false`.
 - Preserve idempotency and explicit destroy semantics.
 - Run `gofmt` on touched Go files and add focused Go tests for behavior changes.
 - Use commitzen for commits and PR titles, for example `fix(state): preserve imported resource attrs`.

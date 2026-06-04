@@ -23,25 +23,26 @@ type RawConfig struct {
 }
 
 type RawDefaults struct {
-	Region                     *string         `toml:"region"`
-	VolumeName                 *string         `toml:"volume_name"`
-	VolumeSizeGB               *int            `toml:"volume_size_gb"`
-	Memory                     *string         `toml:"memory"`
-	CPUs                       *int            `toml:"cpus"`
-	DashboardMode              *string         `toml:"dashboard_mode"`
-	DashboardHost              *string         `toml:"dashboard_host"`
-	DashboardInsecure          *bool           `toml:"dashboard_insecure"`
-	DashboardPort              *int            `toml:"dashboard_port"`
-	GraniteEnabled             *bool           `toml:"granite_enabled"`
-	TailscaleAuthKeySecretName *string         `toml:"tailscale_authkey_secret_name"`
-	TailscaleAcceptDNS         *bool           `toml:"tailscale_accept_dns"`
-	TSExtraArgs                *string         `toml:"ts_extra_args"`
-	TailscaledExtraArgs        *string         `toml:"tailscaled_extra_args"`
-	GraniteTemplate            *string         `toml:"granite_template"`
-	Identity                   RawIdentity     `toml:"identity"`
-	Model                      RawModel        `toml:"model"`
-	APIServer                  RawAPIServer    `toml:"api_server"`
-	DefaultVault               RawDefaultVault `toml:"default_vault"`
+	Region                     *string          `toml:"region"`
+	VolumeName                 *string          `toml:"volume_name"`
+	VolumeSizeGB               *int             `toml:"volume_size_gb"`
+	Memory                     *string          `toml:"memory"`
+	CPUs                       *int             `toml:"cpus"`
+	DashboardMode              *string          `toml:"dashboard_mode"`
+	DashboardHost              *string          `toml:"dashboard_host"`
+	DashboardInsecure          *bool            `toml:"dashboard_insecure"`
+	DashboardPort              *int             `toml:"dashboard_port"`
+	GraniteEnabled             *bool            `toml:"granite_enabled"`
+	TailscaleAuthKeySecretName *string          `toml:"tailscale_authkey_secret_name"`
+	TailscaleAcceptDNS         *bool            `toml:"tailscale_accept_dns"`
+	TSExtraArgs                *string          `toml:"ts_extra_args"`
+	TailscaledExtraArgs        *string          `toml:"tailscaled_extra_args"`
+	GraniteTemplate            *string          `toml:"granite_template"`
+	Identity                   RawIdentity      `toml:"identity"`
+	CompanionSoul              RawCompanionSoul `toml:"companion_soul"`
+	Model                      RawModel         `toml:"model"`
+	APIServer                  RawAPIServer     `toml:"api_server"`
+	DefaultVault               RawDefaultVault  `toml:"default_vault"`
 }
 
 type RawAgent struct {
@@ -69,6 +70,7 @@ type RawAgent struct {
 	TailscaledExtraArgs        *string              `toml:"tailscaled_extra_args"`
 	GraniteTemplate            *string              `toml:"granite_template"`
 	Identity                   RawIdentity          `toml:"identity"`
+	CompanionSoul              RawCompanionSoul     `toml:"companion_soul"`
 	Model                      RawModel             `toml:"model"`
 	APIServer                  RawAPIServer         `toml:"api_server"`
 	DefaultVault               RawDefaultVault      `toml:"default_vault"`
@@ -80,6 +82,12 @@ type RawIdentity struct {
 	Path      *string `toml:"path"`
 	Soul      *string `toml:"soul"`
 	Overwrite *bool   `toml:"overwrite"`
+}
+
+type RawCompanionSoul struct {
+	Enabled *bool   `toml:"enabled"`
+	Path    *string `toml:"path"`
+	Text    *string `toml:"text"`
 }
 
 type RawModel struct {
@@ -194,25 +202,26 @@ type Config struct {
 }
 
 type Defaults struct {
-	Region                     string       `json:"region"`
-	VolumeName                 string       `json:"volume_name"`
-	VolumeSizeGB               int          `json:"volume_size_gb"`
-	Memory                     string       `json:"memory"`
-	CPUs                       int          `json:"cpus"`
-	DashboardMode              string       `json:"dashboard_mode"`
-	DashboardHost              string       `json:"dashboard_host"`
-	DashboardInsecure          bool         `json:"dashboard_insecure"`
-	DashboardPort              int          `json:"dashboard_port"`
-	GraniteEnabled             bool         `json:"granite_enabled"`
-	TailscaleAuthKeySecretName string       `json:"tailscale_authkey_secret_name"`
-	TailscaleAcceptDNS         bool         `json:"tailscale_accept_dns"`
-	TSExtraArgs                string       `json:"ts_extra_args,omitempty"`
-	TailscaledExtraArgs        string       `json:"tailscaled_extra_args,omitempty"`
-	GraniteTemplate            string       `json:"granite_template,omitempty"`
-	Identity                   Identity     `json:"identity"`
-	Model                      Model        `json:"model"`
-	APIServer                  APIServer    `json:"api_server"`
-	DefaultVault               DefaultVault `json:"default_vault"`
+	Region                     string        `json:"region"`
+	VolumeName                 string        `json:"volume_name"`
+	VolumeSizeGB               int           `json:"volume_size_gb"`
+	Memory                     string        `json:"memory"`
+	CPUs                       int           `json:"cpus"`
+	DashboardMode              string        `json:"dashboard_mode"`
+	DashboardHost              string        `json:"dashboard_host"`
+	DashboardInsecure          bool          `json:"dashboard_insecure"`
+	DashboardPort              int           `json:"dashboard_port"`
+	GraniteEnabled             bool          `json:"granite_enabled"`
+	TailscaleAuthKeySecretName string        `json:"tailscale_authkey_secret_name"`
+	TailscaleAcceptDNS         bool          `json:"tailscale_accept_dns"`
+	TSExtraArgs                string        `json:"ts_extra_args,omitempty"`
+	TailscaledExtraArgs        string        `json:"tailscaled_extra_args,omitempty"`
+	GraniteTemplate            string        `json:"granite_template,omitempty"`
+	Identity                   Identity      `json:"identity"`
+	CompanionSoul              CompanionSoul `json:"companion_soul"`
+	Model                      Model         `json:"model"`
+	APIServer                  APIServer     `json:"api_server"`
+	DefaultVault               DefaultVault  `json:"default_vault"`
 }
 
 type Agent struct {
@@ -240,6 +249,7 @@ type Agent struct {
 	TailscaledExtraArgs        string            `json:"tailscaled_extra_args,omitempty"`
 	GraniteTemplate            string            `json:"granite_template,omitempty"`
 	Identity                   Identity          `json:"identity"`
+	CompanionSoul              CompanionSoul     `json:"companion_soul"`
 	Model                      Model             `json:"model"`
 	APIServer                  APIServer         `json:"api_server"`
 	DefaultVault               DefaultVault      `json:"default_vault"`
@@ -251,6 +261,12 @@ type Identity struct {
 	Path      string `json:"path,omitempty"`
 	Soul      string `json:"soul,omitempty"`
 	Overwrite bool   `json:"overwrite"`
+}
+
+type CompanionSoul struct {
+	Enabled bool   `json:"enabled"`
+	Path    string `json:"path,omitempty"`
+	Text    string `json:"text,omitempty"`
 }
 
 type Model struct {
@@ -472,6 +488,14 @@ func (c *Config) Validate() error {
 				return fmt.Errorf("agent %s identity.path must be relative to the Companion root", agent.ID)
 			}
 		}
+		if agent.CompanionSoul.Enabled {
+			if strings.TrimSpace(agent.CompanionSoul.Path) == "" && strings.TrimSpace(agent.CompanionSoul.Text) == "" {
+				return fmt.Errorf("agent %s companion_soul requires path or text when enabled", agent.ID)
+			}
+			if filepath.IsAbs(agent.CompanionSoul.Path) {
+				return fmt.Errorf("agent %s companion_soul.path must be relative to the Companion root", agent.ID)
+			}
+		}
 		for _, conn := range agent.VaultConnections {
 			if err := validateConnection(agent.ID, conn); err != nil {
 				return err
@@ -614,6 +638,7 @@ func normalizeDefaults(raw RawDefaults) Defaults {
 	defaults.APIServer = normalizeAPIServer(nil, raw.APIServer, "")
 	defaults.DefaultVault = normalizeDefaultVault(nil, raw.DefaultVault, "")
 	defaults.Identity = normalizeIdentity(nil, raw.Identity)
+	defaults.CompanionSoul = normalizeCompanionSoul(nil, raw.CompanionSoul)
 	return defaults
 }
 
@@ -657,6 +682,7 @@ func normalizeAgent(defaults Defaults, raw RawAgent) (Agent, error) {
 	agent.APIServer = normalizeAPIServer(&defaults.APIServer, raw.APIServer, id)
 	agent.DefaultVault = normalizeDefaultVault(&defaults.DefaultVault, raw.DefaultVault, id)
 	agent.Identity = normalizeIdentity(&defaults.Identity, raw.Identity)
+	agent.CompanionSoul = normalizeCompanionSoul(&defaults.CompanionSoul, raw.CompanionSoul)
 	agent.VaultConnections = normalizeVaultConnections(raw.VaultConnections)
 	return agent, nil
 }
@@ -678,6 +704,24 @@ func normalizeIdentity(base *Identity, raw RawIdentity) Identity {
 	identity.Soul = stringValue(raw.Soul, identity.Soul)
 	identity.Overwrite = boolValue(raw.Overwrite, identity.Overwrite)
 	return identity
+}
+
+func normalizeCompanionSoul(base *CompanionSoul, raw RawCompanionSoul) CompanionSoul {
+	soul := CompanionSoul{Enabled: false}
+	if base != nil {
+		soul = *base
+	}
+	if base == nil && !rawCompanionSoulSet(raw) {
+		return soul
+	}
+	enabledFallback := soul.Enabled
+	if rawCompanionSoulSet(raw) && raw.Enabled == nil {
+		enabledFallback = true
+	}
+	soul.Enabled = boolValue(raw.Enabled, enabledFallback)
+	soul.Path = stringValue(raw.Path, soul.Path)
+	soul.Text = stringValue(raw.Text, soul.Text)
+	return soul
 }
 
 func normalizeModel(base *Model, raw RawModel, _ string) Model {
@@ -971,6 +1015,10 @@ func rawAPIServerSet(raw RawAPIServer) bool {
 
 func rawIdentitySet(raw RawIdentity) bool {
 	return raw.Enabled != nil || raw.Path != nil || raw.Soul != nil || raw.Overwrite != nil
+}
+
+func rawCompanionSoulSet(raw RawCompanionSoul) bool {
+	return raw.Enabled != nil || raw.Path != nil || raw.Text != nil
 }
 
 func rawDashboardSet(raw RawDashboard) bool {

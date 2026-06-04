@@ -178,6 +178,53 @@ identity = "/tmp/SOUL.md"
 	}
 }
 
+func TestLoadCompanionSoulDefaultsAndAgentDisable(t *testing.T) {
+	root := t.TempDir()
+	writeMinimalWorkspace(t, root)
+	writeWorkspaceFile(t, root, "defaults.toml", `[defaults]
+region = "cdg"
+
+[defaults.model]
+enabled = false
+
+[defaults.companion_soul]
+path = "identities/companion-soul.md"
+`)
+	writeWorkspaceFile(t, root, "agents/enabled.toml", `[agent]
+id = "enabled"
+fly_app = "example-companion-enabled"
+tailscale_hostname = "enabled"
+`)
+	writeWorkspaceFile(t, root, "agents/disabled.toml", `[agent]
+id = "disabled"
+fly_app = "example-companion-disabled"
+tailscale_hostname = "disabled"
+
+[companion_soul]
+enabled = false
+`)
+	ws, err := Load(root)
+	if err != nil {
+		t.Fatalf("load workspace: %v", err)
+	}
+	byID := map[string]struct {
+		enabled bool
+		path    string
+	}{}
+	for _, agent := range ws.Config.Agents {
+		byID[agent.ID] = struct {
+			enabled bool
+			path    string
+		}{enabled: agent.CompanionSoul.Enabled, path: agent.CompanionSoul.Path}
+	}
+	if !byID["enabled"].enabled || byID["enabled"].path != "identities/companion-soul.md" {
+		t.Fatalf("expected enabled agent to inherit companion soul, got %#v", ws.Config.Agents)
+	}
+	if byID["disabled"].enabled {
+		t.Fatalf("expected disabled agent to opt out, got %#v", ws.Config.Agents)
+	}
+}
+
 func TestLoadFailsOnDuplicateVaultIDs(t *testing.T) {
 	root := t.TempDir()
 	writeMinimalWorkspace(t, root)

@@ -71,6 +71,38 @@ func TestTargetedSelectIncludesDependenciesInStableOrder(t *testing.T) {
 	}
 }
 
+func TestAgentConfigHashIncludesCompanionSoul(t *testing.T) {
+	agent := config.Agent{
+		ID:                         "sample",
+		FlyApp:                     "sample",
+		Region:                     "cdg",
+		VolumeName:                 "data",
+		Memory:                     "1gb",
+		CPUs:                       1,
+		TailscaleHostname:          "sample",
+		TailscaleAuthKeySecretName: "TS_AUTHKEY",
+		DashboardHost:              "0.0.0.0",
+		DashboardMode:              "serve",
+		DashboardPort:              9119,
+		CompanionSoul: config.CompanionSoul{
+			Enabled: true,
+			Text:    "Always capture durable knowledge in Granite.",
+		},
+	}
+	before, err := hashAgentConfig(agent)
+	if err != nil {
+		t.Fatalf("hash before: %v", err)
+	}
+	agent.CompanionSoul.Text = "Always capture decisions and durable knowledge in Granite."
+	after, err := hashAgentConfig(agent)
+	if err != nil {
+		t.Fatalf("hash after: %v", err)
+	}
+	if before == after {
+		t.Fatalf("expected companion soul text to affect agent config hash")
+	}
+}
+
 func TestBuildPlanBlocksProtectedVolumeDestroy(t *testing.T) {
 	ws := testWorkspace(t)
 	store := openTestState(t)

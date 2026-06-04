@@ -865,21 +865,34 @@ func desiredSizeGB(resource Resource) int {
 }
 
 func hydrateAgentIdentity(root string, agent config.Agent) (config.Agent, error) {
-	if !agent.Identity.Enabled || agent.Identity.Soul != "" {
-		return agent, nil
+	if agent.Identity.Enabled && strings.TrimSpace(agent.Identity.Soul) == "" {
+		path := agent.Identity.Path
+		if path == "" {
+			return agent, fmt.Errorf("agent %s identity requires path or soul", agent.ID)
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(root, filepath.FromSlash(path))
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return agent, fmt.Errorf("read identity for agent %s: %w", agent.ID, err)
+		}
+		agent.Identity.Soul = string(data)
 	}
-	path := agent.Identity.Path
-	if path == "" {
-		return agent, nil
+	if agent.CompanionSoul.Enabled && strings.TrimSpace(agent.CompanionSoul.Text) == "" {
+		path := agent.CompanionSoul.Path
+		if path == "" {
+			return agent, fmt.Errorf("agent %s companion_soul requires path or text", agent.ID)
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(root, filepath.FromSlash(path))
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return agent, fmt.Errorf("read companion_soul for agent %s: %w", agent.ID, err)
+		}
+		agent.CompanionSoul.Text = string(data)
 	}
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(root, filepath.FromSlash(path))
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return agent, fmt.Errorf("read identity for agent %s: %w", agent.ID, err)
-	}
-	agent.Identity.Soul = string(data)
 	return agent, nil
 }
 
