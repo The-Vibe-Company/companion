@@ -221,6 +221,47 @@ func TestDashboardTopologyHashGating(t *testing.T) {
 	}
 }
 
+func TestDashboardTopologyHashTracksResolvedUserURLs(t *testing.T) {
+	ws := dashboardWorkspace(t, "research")
+	ws.Config.OpenWebUI = config.OpenWebUI{
+		Enabled:           true,
+		ID:                "open-webui",
+		Runtime:           "fly.default",
+		Network:           "tailscale.default",
+		FlyApp:            "co-webui",
+		TailscaleHostname: "companion-webui",
+		Port:              8080,
+		TailscaleServe:    true,
+	}
+
+	missingHash, missingTopo, err := hashDashboardTopology(ws, nil)
+	if err != nil {
+		t.Fatalf("hash missing devices: %v", err)
+	}
+	resolvedHash, resolvedTopo, err := hashDashboardTopology(ws, []tailscale.Device{
+		{HostName: "research", DNSName: "research.tail.ts.net.", Online: true},
+		{HostName: "companion-webui", DNSName: "companion-webui.tail.ts.net.", Online: true},
+	})
+	if err != nil {
+		t.Fatalf("hash resolved devices: %v", err)
+	}
+	if missingHash == resolvedHash {
+		t.Fatalf("topology hash should change when user-facing dashboard URLs become resolvable")
+	}
+	if missingTopo.Services[0].URL != "" || missingTopo.Services[1].URL != "" {
+		t.Fatalf("missing devices should not invent display URLs: %#v", missingTopo.Services)
+	}
+	if resolvedTopo.Services[0].URL != "https://research.tail.ts.net/" {
+		t.Fatalf("agent URL should be in dashboard topology, got %#v", resolvedTopo.Services[0])
+	}
+	if resolvedTopo.Services[1].Kind != "openwebui" || resolvedTopo.Services[1].URL != "https://companion-webui.tail.ts.net/" {
+		t.Fatalf("support WebUI URL should be in dashboard topology, got %#v", resolvedTopo.Services[1])
+	}
+	if resolvedTopo.Services[1].HealthURL != "https://companion-webui.tail.ts.net/health" {
+		t.Fatalf("support WebUI health probe should be in dashboard topology, got %#v", resolvedTopo.Services[1])
+	}
+}
+
 func dashboardWorkspace(t *testing.T, agentIDs ...string) *workspace.Workspace {
 	t.Helper()
 	root := t.TempDir()

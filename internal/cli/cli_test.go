@@ -116,6 +116,44 @@ func TestAppEnvLoadsEnvFileAndShellOverrides(t *testing.T) {
 	}
 }
 
+func TestPlanCommandDoesNotPrintSecretValues(t *testing.T) {
+	root := t.TempDir()
+	writeTestWorkspace(t, root, map[string]string{
+		"sample": `
+[agent]
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
+`,
+	})
+	writeTestFile(t, root, ".env", `
+TS_AUTHKEY = "tailscale-auth-secret"
+API_SERVER_KEY = "api-server-secret"
+FLY_API_TOKEN = "fly-token-secret"
+TAILSCALE_API_KEY = "tailscale-api-secret"
+`)
+	runner := &execx.FakeRunner{Responses: map[string]execx.Result{
+		"tailscale status --json": {Stdout: `{"Peer":{}}`},
+	}}
+	cmd := newRootCommand(runner)
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetArgs([]string{"--workspace", root, "--env-file", ".env", "plan"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("plan command: %v", err)
+	}
+	for _, secretValue := range []string{"tailscale-auth-secret", "api-server-secret", "fly-token-secret", "tailscale-api-secret"} {
+		if strings.Contains(output.String(), secretValue) {
+			t.Fatalf("plan output leaked secret value %q:\n%s", secretValue, output.String())
+		}
+	}
+	for _, secretName := range []string{"TS_AUTHKEY", "API_SERVER_KEY"} {
+		if !strings.Contains(output.String(), secretName) {
+			t.Fatalf("plan output should mention missing/reused secret name %q, got:\n%s", secretName, output.String())
+		}
+	}
+}
+
 func TestValidateProvidersRequiresCredentials(t *testing.T) {
 	root := t.TempDir()
 	writeTestWorkspace(t, root, map[string]string{

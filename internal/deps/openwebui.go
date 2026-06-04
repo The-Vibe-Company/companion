@@ -58,6 +58,43 @@ func AgentAPIBaseURL(agent config.Agent, devices []tailscale.Device) string {
 	return fmt.Sprintf("http://%s:%d", host, api.Port)
 }
 
+func AgentDashboardURL(agent config.Agent, devices []tailscale.Device) string {
+	host := TailscaleDNSName(devices, agent.TailscaleHostname)
+	if host == "" {
+		return ""
+	}
+	switch agent.DashboardMode {
+	case "serve":
+		return "https://" + host + "/"
+	case "tailnet-port":
+		return fmt.Sprintf("http://%s:%d", host, agent.DashboardPort)
+	default:
+		return ""
+	}
+}
+
+func OpenWebUIURL(cfg config.OpenWebUI, devices []tailscale.Device) string {
+	host := TailscaleDNSName(devices, cfg.TailscaleHostname)
+	if host == "" {
+		return ""
+	}
+	if cfg.TailscaleServe {
+		return "https://" + host + "/"
+	}
+	return fmt.Sprintf("http://%s:%d", host, cfg.Port)
+}
+
+func OpenWebUIHealthURL(cfg config.OpenWebUI, devices []tailscale.Device) string {
+	host := TailscaleDNSName(devices, cfg.TailscaleHostname)
+	if host == "" {
+		return ""
+	}
+	if cfg.TailscaleServe {
+		return "https://" + host + "/health"
+	}
+	return fmt.Sprintf("http://%s:%d/health", host, cfg.Port)
+}
+
 func TailscaleDNSName(devices []tailscale.Device, hostname string) string {
 	matches := tailscale.FindByHostname(devices, hostname)
 	if len(matches) == 0 {

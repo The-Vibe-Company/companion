@@ -88,3 +88,13 @@ func TestListMachinesParsesFlyImageRefObject(t *testing.T) {
 		t.Fatalf("unexpected machines: %#v", machines)
 	}
 }
+
+func TestDeleteVolumeIgnoresAlreadyMissingRemoteVolume(t *testing.T) {
+	runner := &execx.FakeRunner{Responses: map[string]execx.Result{
+		"fly volumes destroy vol-missing -a app --yes": {ExitCode: 1, Stderr: "Error: no volume found"},
+	}}
+	provider := New(runner)
+	if err := provider.DeleteVolume(context.Background(), "app", "vol-missing"); err != nil {
+		t.Fatalf("delete missing volume should be idempotent: %v", err)
+	}
+}

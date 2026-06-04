@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 )
@@ -34,5 +35,52 @@ func TestImportResourceIsIdempotentByDesiredAddress(t *testing.T) {
 	}
 	if resources[0].ObservedJSON != `{"region":"cdg"}` {
 		t.Fatalf("expected updated attrs, got %q", resources[0].ObservedJSON)
+	}
+}
+
+func TestOpenReplacesLegacyResourceSchema(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.sqlite")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("open raw sqlite: %v", err)
+	}
+	if _, err := db.Exec(`CREATE TABLE resources (id TEXT PRIMARY KEY, attrs_json TEXT NOT NULL)`); err != nil {
+		t.Fatalf("create legacy resources table: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO resources(id, attrs_json) VALUES ('legacy', '{}')`); err != nil {
+		t.Fatalf("insert legacy resource: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close raw sqlite: %v", err)
+	}
+
+	store, err := Open(path)
+	if err != nil {
+		t.Fatalf("open migrated state: %v", err)
+	}
+	defer store.Close()
+
+	resources, err := store.ListResources(context.Background())
+	if err != nil {
+		t.Fatalf("list migrated resources: %v", err)
+	}
+	if len(resources) != 0 {
+		t.Fatalf("legacy resources should be dropped during schema replacement, got %#v", resources)
+	}
+	if err := store.UpsertResource(context.Background(), Resource{
+		Address:      "fly_app.agent.sample",
+		Class:        "managed",
+		ProviderRef:  "fly.default",
+		ExternalID:   "co-sample",
+		ObservedJSON: "{}",
+	}); err != nil {
+		t.Fatalf("upsert after migration: %v", err)
+	}
+	resource, ok, err := store.GetResource(context.Background(), "fly_app.agent.sample")
+	if err != nil {
+		t.Fatalf("get migrated resource: %v", err)
+	}
+	if !ok || resource.ExternalID != "co-sample" {
+		t.Fatalf("state schema did not accept new resource contract: ok=%v resource=%#v", ok, resource)
 	}
 }

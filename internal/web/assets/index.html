@@ -45,6 +45,10 @@
       <span class="sr-only" id="filter-status" role="status" aria-live="polite"></span>
     </div>
 
+    <div class="section-title">
+      <span>Agents</span>
+    </div>
+
     <section class="list" aria-label="Fleet agents">
       <div class="list__head" role="row">
         <span class="col col-status" role="columnheader">Status</span>
@@ -62,6 +66,25 @@
           </div>
           <p class="state__text">Waiting for first poll</p>
         </div>
+      </div>
+    </section>
+
+    <section class="support-section" id="support-section" aria-label="Support services" hidden>
+      <div class="section-title">
+        <span>Support</span>
+        <span class="section-count" id="support-count">0</span>
+      </div>
+      <div class="list list--support">
+        <div class="list__head" role="row">
+          <span class="col col-status" role="columnheader">Status</span>
+          <span class="col col-name" role="columnheader">Service</span>
+          <span class="col col-url" role="columnheader">URL</span>
+          <span class="col col-net" role="columnheader">Tailnet</span>
+          <span class="col col-machine" role="columnheader">Machine</span>
+          <span class="col col-http" role="columnheader">HTTP</span>
+          <span class="col col-model" role="columnheader">Model</span>
+        </div>
+        <div class="list__body" id="support-body"></div>
       </div>
     </section>
 

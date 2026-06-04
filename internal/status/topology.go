@@ -27,6 +27,7 @@ type Target struct {
 	FlyApp            string `json:"fly_app,omitempty"`
 	ProviderRef       string `json:"provider_ref,omitempty"`
 	TailscaleHostname string `json:"tailscale_hostname,omitempty"`
+	URL               string `json:"url,omitempty"`
 	HealthURL         string `json:"health_url,omitempty"`
 	Model             string `json:"model,omitempty"`
 	Vault             string `json:"vault,omitempty"`
@@ -74,6 +75,7 @@ func BuildTopology(workspaceName string, cfg *config.Config, devices []tailscale
 			FlyApp:            agent.FlyApp,
 			ProviderRef:       agent.Runtime,
 			TailscaleHostname: agent.TailscaleHostname,
+			URL:               deps.AgentDashboardURL(agent, devices),
 			Model:             agent.Model.Default,
 			Vault:             agent.DefaultVault.Name,
 		}
@@ -89,6 +91,8 @@ func BuildTopology(workspaceName string, cfg *config.Config, devices []tailscale
 			FlyApp:            cfg.OpenWebUI.FlyApp,
 			ProviderRef:       cfg.OpenWebUI.Runtime,
 			TailscaleHostname: cfg.OpenWebUI.TailscaleHostname,
+			URL:               deps.OpenWebUIURL(cfg.OpenWebUI, devices),
+			HealthURL:         deps.OpenWebUIHealthURL(cfg.OpenWebUI, devices),
 		})
 	}
 	return topo

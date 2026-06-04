@@ -121,7 +121,7 @@ func collectTarget(ctx context.Context, client *http.Client, target Target, devi
 		Kind:   target.Kind,
 		FlyApp: target.FlyApp,
 		Host:   target.TailscaleHostname,
-		URL:    target.HealthURL,
+		URL:    target.URL,
 		Model:  target.Model,
 		Vault:  target.Vault,
 		Health: HealthUnknown,

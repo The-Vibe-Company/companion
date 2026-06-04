@@ -38,17 +38,39 @@ func Serve(ctx context.Context, addr string, src status.Source, interval time.Du
 	poller := status.NewPoller(src, interval)
 	go poller.Run(ctx)
 
+	handler, err := newDashboardHandler(poller, interval, cfg, flyProvider, tsProvider)
+	if err != nil {
+		return err
+	}
+	server := &http.Server{Addr: addr, Handler: handler}
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- server.ListenAndServe()
+	}()
+	select {
+	case <-ctx.Done():
+		_ = server.Shutdown(context.Background())
+		return ctx.Err()
+	case err := <-errCh:
+		if err == http.ErrServerClosed {
+			return nil
+		}
+		return err
+	}
+}
+
+func newDashboardHandler(poller *status.Poller, interval time.Duration, cfg *config.Config, flyProvider provider.FlyRuntime, tsProvider provider.TailscaleNetwork) (http.Handler, error) {
 	mux := http.NewServeMux()
-	server := &http.Server{Addr: addr, Handler: mux}
 
 	staticFS, err := fs.Sub(assets, "assets")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	indexTpl, err := template.ParseFS(assets, "assets/index.html")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -122,20 +144,7 @@ func Serve(ctx context.Context, addr string, src status.Source, interval time.Du
 		}
 	}
 
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- server.ListenAndServe()
-	}()
-	select {
-	case <-ctx.Done():
-		_ = server.Shutdown(context.Background())
-		return ctx.Err()
-	case err := <-errCh:
-		if err == http.ErrServerClosed {
-			return nil
-		}
-		return err
-	}
+	return mux, nil
 }
 
 func renderPage(w http.ResponseWriter, name string, data pageData) {

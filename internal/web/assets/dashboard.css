@@ -235,6 +235,39 @@ body {
   overflow: hidden;
 }
 
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0 0.45rem;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.section-count {
+  min-width: 1.35rem;
+  height: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-3);
+  background: var(--panel-2);
+}
+
+.support-section {
+  margin-top: 1rem;
+}
+
+.support-section[hidden] {
+  display: none;
+}
+
 .list__head {
   display: grid;
   grid-template-columns: 116px minmax(140px, 1.4fr) minmax(180px, 2fr) 92px 96px 64px minmax(120px, 1.2fr);

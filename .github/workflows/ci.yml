@@ -26,6 +26,21 @@ jobs:
       - name: Run tests
         run: go test ./...
 
+      - name: Run race tests
+        run: go test -race ./...
+
+      - name: Check coverage floor
+        run: |
+          set -euo pipefail
+          go test -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out | awk '/^total:/ {
+            gsub("%", "", $3)
+            if (($3 + 0) < 55) {
+              printf("coverage %.1f%% is below required 55.0%%\n", $3)
+              exit 1
+            }
+          }'
+
       - name: Validate shell scripts
         run: |
           sh -n install.sh

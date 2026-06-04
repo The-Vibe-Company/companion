@@ -18,6 +18,9 @@
     updated: document.getElementById("updated"),
     refreshNote: document.getElementById("refresh-note"),
     listBody: document.getElementById("services-body"),
+    supportSection: document.getElementById("support-section"),
+    supportBody: document.getElementById("support-body"),
+    supportCount: document.getElementById("support-count"),
     countAll: document.getElementById("count-all"),
     countHealthy: document.getElementById("count-healthy"),
     countDegraded: document.getElementById("count-degraded"),
@@ -234,6 +237,14 @@
     return healthOf(svc) === state.filter;
   }
 
+  function agentServices() {
+    return state.services.filter(function (svc) { return svc.kind === "agent"; });
+  }
+
+  function supportServices() {
+    return state.services.filter(function (svc) { return svc.kind !== "agent"; });
+  }
+
   // Problems-first ordering: a DOWN agent surfaces at the top of the single
   // flat list at a glance (the brief's core scene). Secondary sort is a
   // stable pass on the incoming order so equal-health rows keep their order.
@@ -254,18 +265,19 @@
   function renderList() {
     var bodyEl = els.listBody;
     bodyEl.textContent = "";
+    var agents = agentServices();
 
     // Empty state — distinct from the loading skeleton. Only reached once a
     // poll has succeeded with zero services (the skeleton is replaced here,
     // never stacked, because textContent above clears the node first).
-    if (!state.services.length) {
+    if (!agents.length) {
       var empty = el("div", "state state--empty");
-      empty.appendChild(el("p", "state__text", "No services in this fleet yet."));
+      empty.appendChild(el("p", "state__text", "No agents in this fleet yet."));
       bodyEl.appendChild(empty);
       return;
     }
 
-    var shown = sortProblemsFirst(state.services.filter(applyFilter));
+    var shown = sortProblemsFirst(agents.filter(applyFilter));
     if (!shown.length) {
       var none = el("div", "state state--empty");
       none.appendChild(el("p", "state__text", "No " + (STATUS_LABEL[state.filter] || "matching").toLowerCase() + " services."));
@@ -278,18 +290,32 @@
     bodyEl.appendChild(frag);
   }
 
+  function renderSupport() {
+    var support = supportServices();
+    if (!els.supportSection || !els.supportBody) return;
+    els.supportSection.hidden = support.length === 0;
+    els.supportBody.textContent = "";
+    if (els.supportCount) els.supportCount.textContent = support.length;
+    if (!support.length) return;
+
+    var frag = document.createDocumentFragment();
+    sortProblemsFirst(support).forEach(function (svc) { frag.appendChild(buildRow(svc)); });
+    els.supportBody.appendChild(frag);
+  }
+
   function renderCounts() {
     // Count by exact health so each chip equals the rows its filter shows. The
     // server summary folds "unknown" into "degraded", which would make the
     // Degraded chip disagree with the Degraded filter (and skew "All" never).
-    els.countAll.textContent = state.services.length;
+    var agents = agentServices();
+    els.countAll.textContent = agents.length;
     els.countHealthy.textContent = countBy("ok");
     els.countDegraded.textContent = countBy("degraded");
     els.countDown.textContent = countBy("down");
   }
 
   function countBy(h) {
-    return state.services.reduce(function (n, svc) { return n + (healthOf(svc) === h ? 1 : 0); }, 0);
+    return agentServices().reduce(function (n, svc) { return n + (healthOf(svc) === h ? 1 : 0); }, 0);
   }
 
   function renderDrift(data) {
@@ -313,6 +339,7 @@
 
     renderCounts();
     renderList();
+    renderSupport();
     announceFilter();
     renderDrift(data);
 
@@ -470,7 +497,7 @@
     state.open = true;
 
     // selection highlight
-    var rows = els.listBody.querySelectorAll(".row");
+    var rows = document.querySelectorAll(".list__body .row");
     Array.prototype.forEach.call(rows, function (r) {
       r.classList.toggle("is-selected", r.dataset.id === svc.id);
     });
@@ -507,7 +534,7 @@
     if (reduceMotion) finish();
     else setTimeout(finish, 200);
 
-    var rows = els.listBody.querySelectorAll(".row.is-selected");
+    var rows = document.querySelectorAll(".list__body .row.is-selected");
     Array.prototype.forEach.call(rows, function (r) { r.classList.remove("is-selected"); });
 
     // Return focus to the originating row. A poll may have rebuilt the list
@@ -520,7 +547,7 @@
     if (prev && document.contains(prev) && typeof prev.focus === "function") {
       prev.focus();
     } else if (prevId) {
-      var rebuilt = els.listBody.querySelector('.row[data-id="' + (window.CSS && CSS.escape ? CSS.escape(prevId) : prevId) + '"]');
+      var rebuilt = document.querySelector('.list__body .row[data-id="' + (window.CSS && CSS.escape ? CSS.escape(prevId) : prevId) + '"]');
       if (rebuilt) rebuilt.focus();
     }
   }
@@ -549,7 +576,7 @@
   // active filter and its result count are also announced via a live region.
   function announceFilter() {
     if (!els.filterStatus) return;
-    var shown = state.services.filter(applyFilter).length;
+    var shown = agentServices().filter(applyFilter).length;
     var label = STATUS_LABEL[state.filter];
     var name = state.filter === "all" ? "all" : (label ? label.toLowerCase() : state.filter);
     els.filterStatus.textContent =

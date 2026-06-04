@@ -49,6 +49,34 @@ Provider e2e tests should use local mocks through `mode = "api"` and `api_base_u
 - Run `gofmt` on touched Go files.
 - Add focused Go tests for changed planning, config, provider, state, render, CLI, or output behavior.
 
+## Testing Standard
+
+Tests in this repository must prove product behavior, not implementation trivia. A good test describes an observable Companion contract: TOML normalization, workspace loading, resource graph shape, idempotent plans, generated Fly TOML, provider API parsing, SQLite evidence, CLI output, dashboard JSON, or secret redaction.
+
+Weak tests are not acceptable. Do not add tests that only check `err == nil`, mirror the implementation, mock the unit under test, assert no meaningful behavior, or use snapshots/golden files without a real output contract.
+
+Use the established hermetic patterns:
+
+- Table-driven tests for config variants, provider responses, URL modes, lifecycle states, and error cases.
+- `t.TempDir()` for workspaces, generated files, and SQLite state.
+- `httptest` for external HTTP APIs.
+- `execx.FakeRunner` for Fly/Tailscale CLI behavior.
+- Local provider mocks for e2e-style apply/plan tests.
+- `t.Helper()` for fixture builders and assertion helpers.
+- Regression tests for fixed bugs, especially idempotency, deletion safety, URL computation, and secret redaction.
+- No live Fly, Tailscale, or OpenRouter calls unless the user explicitly requests live operations.
+
+Coverage expectations by area:
+
+- `internal/config`, `internal/workspace`, `internal/envfile`: defaults, validation failures, overrides, path safety, and public example workspaces.
+- `internal/resource`, `internal/plan`, `internal/state`: stable graphs, idempotence, drift, explicit deletion, protected resources, and SQLite writes/migrations.
+- `internal/render`, `internal/hermes`, `internal/outputs`, `internal/deps`: deterministic generated artifacts, redacted secrets, correct URLs/dependencies, and no invented runtime URLs.
+- `internal/fly`, `internal/tailscale`, `internal/openrouter`, `internal/tailscalectl`: API/CLI parsing, auth headers, provider errors, offline/duplicate states, and safe deletion targeting.
+- `internal/cli`: temporary-workspace command flows, useful errors, provider-mock apply/plan, and no secret values in stdout/stderr.
+- `internal/web`, `internal/status`: `/api/status` contract, health rollups, agent/support separation, embedded assets, and user links kept separate from health probes.
+
+The CI gates are `go test ./...`, `go test -race ./...`, shell syntax checks, installable CLI verification, public workspace validation, Docker builds, and a global coverage floor. Treat coverage as a regression guard, not a substitute for meaningful assertions.
+
 ## Workspace Semantics
 
 - Companion workspaces are folders containing `companion.toml`, `providers.toml`, `defaults.toml`, optional `webui.toml`, `agents/*.toml`, `vaults/*.toml`, and identities.

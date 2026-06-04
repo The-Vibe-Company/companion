@@ -34,6 +34,18 @@ go run ./cmd/companion dashboard --addr 127.0.0.1:8787 --workspace examples/mini
 
 The `dashboard` command (alias: `serve`) live-polls the fleet and serves a status UI embedded via `go:embed`. Enabling `[dashboard]` in a workspace deploys it as its own tiny, stateless Fly app behind Tailscale; `apply` keeps its `fleet.json` topology in sync via `dashboard_config.main`.
 
+## Testing Standard
+
+Follow `AGENTS.md` as the source of truth. Every change should add or update tests that prove Companion's observable behavior: config contracts, workspace loading, planning/idempotence, resource/state evidence, provider parsing, render output, CLI UX, dashboard API, and secret redaction.
+
+Do not add weak tests. Avoid tests that only check `err == nil`, duplicate implementation logic, mock the code being tested, or snapshot output that is not a real public/generated contract.
+
+Use hermetic patterns: table-driven cases, `t.TempDir()` for files and state, `httptest` for external HTTP, `execx.FakeRunner` for CLI integrations, local provider mocks for e2e flows, and `t.Helper()` for fixtures. Never call live Fly, Tailscale, or OpenRouter unless the user explicitly requested a live operation.
+
+When touching a subsystem, cover its product invariants: config defaults/validation, resource graph stability, explicit destroy semantics, protected resources, deterministic generated TOML/scripts, provider auth/error parsing, SQLite persistence/migration behavior, CLI output without secrets, and dashboard `/api/status` links/health/support grouping.
+
+Expected CI gates are `go test ./...`, `go test -race ./...`, shell syntax checks, installable CLI verification, public workspace validation, Docker builds, and a global coverage floor. Coverage is only a regression guard; meaningful assertions remain required.
+
 ## Claude-Specific Notes
 
 - Prefer the repository's Go/TOML patterns over the archived TypeScript web UI patterns.
