@@ -178,7 +178,18 @@ func (s *Server) assetHandler() http.Handler {
 	if s.devProxy != nil {
 		return s.devProxy
 	}
-	return http.StripPrefix("/assets/", http.FileServer(http.FS(s.assets)))
+	return staticAssetHandler(s.assets)
+}
+
+// staticAssetHandler serves the embedded SPA bundle. The embedded FS mirrors the
+// Vite dist that bin/build-console-ui syncs in: an index.html beside a nested
+// assets/ directory holding the hashed bundle, and the SPA requests that bundle
+// at /assets/<hash>.{js,css}. Because the FS already contains the assets/
+// subtree, the request path maps straight onto it. We deliberately do NOT
+// StripPrefix("/assets/") here: stripping it drops the very directory that holds
+// the hashed bundle, which would 404 every asset and render a blank page.
+func staticAssetHandler(fsys fs.FS) http.Handler {
+	return http.FileServer(http.FS(fsys))
 }
 
 // withSessionToken enforces the per-process session token on every mutating
