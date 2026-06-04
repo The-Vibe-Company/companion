@@ -17,6 +17,11 @@ const (
 	OpFailed    = "failed"
 )
 
+// maxRetainedOps bounds how many operations the runner keeps for polling via Get.
+// Applies are infrequent and only the most recent matter to the UI, so older
+// operations are evicted to keep memory bounded on a long-lived console process.
+const maxRetainedOps = 100
+
 // OperationRunner serializes apply operations: at most one apply is active at a
 // time. Start launches the supplied run function in a goroutine and tracks its
 // Operation by id; callers poll Get for progress. The injected clock keeps
@@ -34,6 +39,9 @@ type OperationRunner struct {
 	mu     sync.Mutex
 	active bool
 	ops    map[string]*Operation
+	// order records id insertion order so the oldest operations can be evicted
+	// once retention exceeds maxRetainedOps.
+	order []string
 }
 
 // NewOperationRunner builds an OperationRunner. A nil clock defaults to
@@ -86,6 +94,8 @@ func (r *OperationRunner) Start(fn func(ctx context.Context) (changed []string, 
 	}
 	r.active = true
 	r.ops[id] = op
+	r.order = append(r.order, id)
+	r.evictLocked()
 	r.mu.Unlock()
 
 	go r.run(id, fn)
@@ -137,6 +147,17 @@ func (r *OperationRunner) Get(id string) (Operation, bool) {
 		return Operation{}, false
 	}
 	return *op, true
+}
+
+// evictLocked drops the oldest operations once retention exceeds maxRetainedOps.
+// The just-appended id is the active operation, so eviction from the front never
+// removes an in-flight one. The caller must hold r.mu.
+func (r *OperationRunner) evictLocked() {
+	for len(r.order) > maxRetainedOps {
+		oldest := r.order[0]
+		r.order = r.order[1:]
+		delete(r.ops, oldest)
+	}
 }
 
 // randomID returns a short hex operation id from crypto/rand.

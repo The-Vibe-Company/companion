@@ -640,3 +640,32 @@ func waitForOperation(t *testing.T, srv *Server, id, want string) OperationStatu
 	t.Fatalf("operation %s did not reach %q in time", id, want)
 	return OperationStatus{}
 }
+
+// TestCreateAgentRollbackRemovesOrphanSoul verifies that when a create writes a
+// SOUL.md but the resulting workspace fails to validate, BOTH the agent file and
+// the orphan SOUL.md are rolled back. The agent passes the writer's build-time
+// name checks but references an undefined fly provider, which only the post-write
+// workspace reload rejects — exercising the soul-rollback path.
+func TestCreateAgentRollbackRemovesOrphanSoul(t *testing.T) {
+	root := seededWorkspace(t)
+	srv := newTestServer(t, root, &execx.FakeRunner{})
+
+	in := AgentInput{
+		ID:                "broken",
+		FlyApp:            "broken-app",
+		TailscaleHostname: "broken",
+		Runtime:           "fly.doesnotexist", // valid shape; undefined provider -> reload fails
+		Soul:              "You are broken.",
+	}
+	rec := do(t, srv, http.MethodPost, "/api/console/agents", in, srv.Token())
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("create with undefined provider = %d, want 400: %s", rec.Code, rec.Body.String())
+	}
+
+	if _, err := os.Stat(filepath.Join(root, "agents", "broken.toml")); !os.IsNotExist(err) {
+		t.Fatalf("rolled-back create left an agent file (stat err = %v)", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "identities", "broken", "SOUL.md")); !os.IsNotExist(err) {
+		t.Fatalf("rolled-back create left an orphan SOUL.md (stat err = %v)", err)
+	}
+}

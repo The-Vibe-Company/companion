@@ -19,6 +19,12 @@ import (
 // Sub-tables use the config.Raw* layer (pointer fields) so unset optional keys
 // are omitted entirely: an all-nil Raw struct marshals to nothing under the
 // `omitempty` tag, keeping generated files minimal and faithful.
+//
+// The struct mirrors workspace.agentFile field-for-field (including the dual
+// vault-connection spellings the loader accepts) so an unmarshal -> mutate ->
+// marshal round-trip preserves EVERY key Companion understands. That fidelity is
+// what makes update and delete non-destructive for hand-authored files that use
+// fields the console form does not surface.
 type agentTOMLFile struct {
 	Agent            agentTOMLTable              `toml:"agent"`
 	Model            config.RawModel             `toml:"model,omitempty"`
@@ -27,25 +33,41 @@ type agentTOMLFile struct {
 	Identity         config.RawIdentity          `toml:"identity,omitempty"`
 	CompanionSoul    config.RawCompanionSoul     `toml:"companion_soul,omitempty"`
 	VaultConnections []config.RawVaultConnection `toml:"vault_connections,omitempty"`
+	// VaultConnectionsAlt captures the singular `[[vault_connection]]` spelling
+	// the loader also accepts, so neither form is dropped on round-trip.
+	VaultConnectionsAlt []config.RawVaultConnection `toml:"vault_connection,omitempty"`
 }
 
-// agentTOMLTable is the [agent] table written by the console. It uses pointer
-// fields so optional keys can be omitted from the generated TOML. IdentityPath
-// maps to the `identity = "..."` shorthand the workspace loader promotes into
-// the [identity] table (see workspace.agentFile.toRawAgent).
+// agentTOMLTable is the [agent] table. It mirrors workspace.rawAgentTable in full
+// (pointer fields so unset keys stay omitted) so that reading an existing agent
+// file and writing it back preserves every [agent] key — not just the handful
+// the console form edits. IdentityPath maps to the `identity = "..."` shorthand
+// the workspace loader promotes into the [identity] table.
 type agentTOMLTable struct {
-	ID                *string `toml:"id"`
-	Runtime           *string `toml:"runtime,omitempty"`
-	Network           *string `toml:"network,omitempty"`
-	ModelProvider     *string `toml:"model_provider,omitempty"`
-	Lifecycle         *string `toml:"lifecycle,omitempty"`
-	Protect           *bool   `toml:"protect,omitempty"`
-	FlyApp            *string `toml:"fly_app,omitempty"`
-	TailscaleHostname *string `toml:"tailscale_hostname,omitempty"`
-	IdentityPath      *string `toml:"identity,omitempty"`
-	Region            *string `toml:"region,omitempty"`
-	Memory            *string `toml:"memory,omitempty"`
-	CPUs              *int    `toml:"cpus,omitempty"`
+	ID                         *string `toml:"id"`
+	Runtime                    *string `toml:"runtime,omitempty"`
+	Network                    *string `toml:"network,omitempty"`
+	ModelProvider              *string `toml:"model_provider,omitempty"`
+	Lifecycle                  *string `toml:"lifecycle,omitempty"`
+	Protect                    *bool   `toml:"protect,omitempty"`
+	FlyApp                     *string `toml:"fly_app,omitempty"`
+	TailscaleHostname          *string `toml:"tailscale_hostname,omitempty"`
+	IdentityPath               *string `toml:"identity,omitempty"`
+	Region                     *string `toml:"region,omitempty"`
+	VolumeName                 *string `toml:"volume_name,omitempty"`
+	VolumeSizeGB               *int    `toml:"volume_size_gb,omitempty"`
+	Memory                     *string `toml:"memory,omitempty"`
+	CPUs                       *int    `toml:"cpus,omitempty"`
+	DashboardMode              *string `toml:"dashboard_mode,omitempty"`
+	DashboardHost              *string `toml:"dashboard_host,omitempty"`
+	DashboardInsecure          *bool   `toml:"dashboard_insecure,omitempty"`
+	DashboardPort              *int    `toml:"dashboard_port,omitempty"`
+	GraniteEnabled             *bool   `toml:"granite_enabled,omitempty"`
+	TailscaleAuthKeySecretName *string `toml:"tailscale_authkey_secret_name,omitempty"`
+	TailscaleAcceptDNS         *bool   `toml:"tailscale_accept_dns,omitempty"`
+	TSExtraArgs                *string `toml:"ts_extra_args,omitempty"`
+	TailscaledExtraArgs        *string `toml:"tailscaled_extra_args,omitempty"`
+	GraniteTemplate            *string `toml:"granite_template,omitempty"`
 }
 
 // Console-managed defaults mirror examples/minimal so a freshly created agent
@@ -98,42 +120,73 @@ func (w *TomlWriter) SoulPath(id string) string {
 	return filepath.Join(w.root, "identities", id, "SOUL.md")
 }
 
-// BuildAgentFile converts an AgentInput into the faithful per-file TOML struct,
-// applying console defaults (mirroring examples/minimal) for omitted optional
-// fields. It validates the id, fly_app, and tailscale_hostname by reusing the
-// config package's normalization+validation rather than duplicating its regex.
-// It does not touch the filesystem.
+// BuildAgentFile converts an AgentInput into a fresh per-file TOML struct for a
+// NEW agent, applying console defaults (mirroring examples/minimal) for omitted
+// optional fields. It does not touch the filesystem.
 func (w *TomlWriter) BuildAgentFile(in AgentInput) (agentTOMLFile, error) {
-	id := strings.TrimSpace(in.ID)
+	var file agentTOMLFile
+	if err := applyInput(&file, in); err != nil {
+		return agentTOMLFile{}, err
+	}
+	return file, nil
+}
+
+// MergeAgentFile loads the existing agents/<id>.toml and overlays the AgentInput
+// projection onto it, PRESERVING every field the console form does not model —
+// volume sizing, dashboard/granite settings, secret-name references, [api_server],
+// [[vault_connections]], and any other [agent] key. This is the update path: the
+// structured form edits the fields it shows without discarding the rest of a
+// hand-authored file. The id is authoritative (callers pass the path id).
+func (w *TomlWriter) MergeAgentFile(id string, in AgentInput) (agentTOMLFile, error) {
 	if err := validateID(id); err != nil {
 		return agentTOMLFile{}, err
 	}
-
-	runtime := firstNonEmpty(in.Runtime, defaultRuntime)
-	network := firstNonEmpty(in.Network, defaultNetwork)
-	modelProvider := firstNonEmpty(in.ModelProvider, defaultModelProvider)
-	lifecycle := firstNonEmpty(in.Lifecycle, defaultLifecycle)
-	flyApp := firstNonEmpty(in.FlyApp, id)
-	tailscaleHostname := firstNonEmpty(in.TailscaleHostname, id)
-
-	// Reuse config validation for the three name-shaped fields. Building a real
-	// one-agent config exercises the same nameRE / lifecycle / provider-shape
-	// checks the loader applies, so the writer rejects exactly what Load would.
-	if err := validateAgentNames(id, flyApp, tailscaleHostname, runtime, network, modelProvider, lifecycle); err != nil {
+	data, err := os.ReadFile(w.AgentPath(id))
+	if err != nil {
+		return agentTOMLFile{}, fmt.Errorf("read agent %s: %w", id, err)
+	}
+	var file agentTOMLFile
+	if err := toml.Unmarshal(data, &file); err != nil {
+		return agentTOMLFile{}, fmt.Errorf("parse agent %s: %w", id, err)
+	}
+	in.ID = id
+	if err := applyInput(&file, in); err != nil {
 		return agentTOMLFile{}, err
 	}
+	return file, nil
+}
 
-	file := agentTOMLFile{
-		Agent: agentTOMLTable{
-			ID:                strPtr(id),
-			Runtime:           strPtr(runtime),
-			Network:           strPtr(network),
-			ModelProvider:     strPtr(modelProvider),
-			Lifecycle:         strPtr(lifecycle),
-			FlyApp:            strPtr(flyApp),
-			TailscaleHostname: strPtr(tailscaleHostname),
-		},
+// applyInput overlays the structured AgentInput fields onto file in place. Core
+// fields fall back to the file's current value, then to the console default, so
+// the overlay is correct for both a fresh struct (create) and an existing one
+// (update). Optional fields are applied only when provided, so an update never
+// wipes a field the form left blank. Name-shaped fields are validated by reusing
+// config.Normalize, so the writer rejects exactly what workspace.Load would.
+func applyInput(file *agentTOMLFile, in AgentInput) error {
+	id := strings.TrimSpace(in.ID)
+	if err := validateID(id); err != nil {
+		return err
 	}
+
+	runtime := firstNonEmpty(in.Runtime, ptrVal(file.Agent.Runtime), defaultRuntime)
+	network := firstNonEmpty(in.Network, ptrVal(file.Agent.Network), defaultNetwork)
+	modelProvider := firstNonEmpty(in.ModelProvider, ptrVal(file.Agent.ModelProvider), defaultModelProvider)
+	lifecycle := firstNonEmpty(in.Lifecycle, ptrVal(file.Agent.Lifecycle), defaultLifecycle)
+	flyApp := firstNonEmpty(in.FlyApp, ptrVal(file.Agent.FlyApp), id)
+	tailscaleHostname := firstNonEmpty(in.TailscaleHostname, ptrVal(file.Agent.TailscaleHostname), id)
+
+	if err := validateAgentNames(id, flyApp, tailscaleHostname, runtime, network, modelProvider, lifecycle); err != nil {
+		return err
+	}
+
+	file.Agent.ID = strPtr(id)
+	file.Agent.Runtime = strPtr(runtime)
+	file.Agent.Network = strPtr(network)
+	file.Agent.ModelProvider = strPtr(modelProvider)
+	file.Agent.Lifecycle = strPtr(lifecycle)
+	file.Agent.FlyApp = strPtr(flyApp)
+	file.Agent.TailscaleHostname = strPtr(tailscaleHostname)
+
 	if v := strings.TrimSpace(in.Region); v != "" {
 		file.Agent.Region = strPtr(v)
 	}
@@ -167,7 +220,7 @@ func (w *TomlWriter) BuildAgentFile(in AgentInput) (agentTOMLFile, error) {
 		file.CompanionSoul.Enabled = boolPtr(*in.CompanionSoulEnabled)
 	}
 
-	return file, nil
+	return nil
 }
 
 // WriteAgent marshals the agent file to agents/<id>.toml, backing up any
@@ -261,6 +314,24 @@ func (w *TomlWriter) RemoveAgent(id string) error {
 	if err := os.Remove(w.AgentPath(id)); err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	return nil
+}
+
+// RemoveSoul deletes identities/<id>/SOUL.md and, when it becomes empty, the
+// identities/<id>/ directory. It rolls back a SOUL.md freshly written for a
+// create that then failed validation (one with no prior backup to restore).
+// Missing files are tolerated.
+func (w *TomlWriter) RemoveSoul(id string) error {
+	if err := validateID(id); err != nil {
+		return err
+	}
+	soul := w.SoulPath(id)
+	if err := os.Remove(soul); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	// Best-effort: drop the now-empty identities/<id>/ directory. A non-empty
+	// directory makes os.Remove fail, which we intentionally ignore.
+	_ = os.Remove(filepath.Dir(soul))
 	return nil
 }
 
@@ -367,3 +438,12 @@ func firstNonEmpty(values ...string) string {
 func strPtr(v string) *string { return &v }
 func boolPtr(v bool) *bool    { return &v }
 func intPtr(v int) *int       { return &v }
+
+// ptrVal dereferences a *string, returning "" for nil. Used by applyInput to
+// fall back to a file's existing value when the input omits a field.
+func ptrVal(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}

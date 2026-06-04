@@ -412,3 +412,137 @@ func TestTOMLWriterRemoveAgentRollsBackCreate(t *testing.T) {
 		t.Fatalf("RemoveAgent (missing) = %v, want nil", err)
 	}
 }
+
+// richAgentTOML is a hand-authored agent file that uses fields the console form
+// does NOT model (volume sizing, dashboard/granite settings, [api_server],
+// [[vault_connections]]). The writer must preserve all of them across a
+// structured update and a lifecycle=absent delete.
+const richAgentTOML = `[agent]
+id = "rich"
+runtime = "fly.default"
+network = "tailscale.default"
+model_provider = "openrouter.default"
+lifecycle = "present"
+fly_app = "rich-app"
+tailscale_hostname = "rich"
+memory = "2gb"
+volume_size_gb = 7
+dashboard_mode = "serve"
+granite_enabled = true
+ts_extra_args = "--netfilter-mode=off"
+
+[api_server]
+enabled = true
+port = 8642
+
+[[vault_connections]]
+name = "shared"
+mode = "write"
+host = "vault.local"
+`
+
+func writeRawAgent(t *testing.T, w *TomlWriter, id, content string) {
+	t.Helper()
+	p := w.AgentPath(id)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatalf("mkdir agents: %v", err)
+	}
+	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", p, err)
+	}
+}
+
+func readFileString(t *testing.T, p string) string {
+	t.Helper()
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatalf("read %s: %v", p, err)
+	}
+	return string(b)
+}
+
+// preservedKeys are the unmodeled tokens that must survive a console update or
+// delete of richAgentTOML. We assert on key names and distinctive values rather
+// than exact rendering, so the check is spacing/quote-agnostic.
+var preservedKeys = []string{
+	"volume_size_gb", "dashboard_mode", "granite_enabled",
+	"ts_extra_args", "api_server", "8642", "vault_connections", "vault.local",
+}
+
+func TestTOMLWriterUpdatePreservesUnmodeledFields(t *testing.T) {
+	root := t.TempDir()
+	w := NewTomlWriter(root, fixedClock(testStamp))
+	writeRawAgent(t, w, "rich", richAgentTOML)
+
+	// Edit only memory through the structured form.
+	file, err := w.MergeAgentFile("rich", AgentInput{ID: "rich", Memory: "4gb"})
+	if err != nil {
+		t.Fatalf("MergeAgentFile: %v", err)
+	}
+	if _, err := w.WriteAgent("rich", file); err != nil {
+		t.Fatalf("WriteAgent: %v", err)
+	}
+
+	out := readFileString(t, w.AgentPath("rich"))
+	if !strings.Contains(out, "4gb") {
+		t.Fatalf("update did not apply memory=4gb:\n%s", out)
+	}
+	if strings.Contains(out, "2gb") {
+		t.Fatalf("update left the stale memory value:\n%s", out)
+	}
+	for _, want := range preservedKeys {
+		if !strings.Contains(out, want) {
+			t.Fatalf("update dropped unmodeled field %q:\n%s", want, out)
+		}
+	}
+	// The merged file must still parse as a valid agent file.
+	var parsed agentTOMLFile
+	if err := toml.Unmarshal([]byte(out), &parsed); err != nil {
+		t.Fatalf("merged file does not re-parse: %v", err)
+	}
+}
+
+func TestTOMLWriterDeletePreservesUnmodeledFields(t *testing.T) {
+	root := t.TempDir()
+	w := NewTomlWriter(root, fixedClock(testStamp))
+	writeRawAgent(t, w, "rich", richAgentTOML)
+
+	if _, err := w.SetLifecycleAbsent("rich"); err != nil {
+		t.Fatalf("SetLifecycleAbsent: %v", err)
+	}
+
+	out := readFileString(t, w.AgentPath("rich"))
+	if !strings.Contains(out, "absent") {
+		t.Fatalf("delete did not set lifecycle=absent:\n%s", out)
+	}
+	for _, want := range preservedKeys {
+		if !strings.Contains(out, want) {
+			t.Fatalf("delete dropped unmodeled field %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestTOMLWriterRemoveSoulDropsFileAndEmptyDir(t *testing.T) {
+	root := t.TempDir()
+	w := NewTomlWriter(root, fixedClock(testStamp))
+
+	if _, err := w.WriteSoul("gamma", "You are gamma."); err != nil {
+		t.Fatalf("WriteSoul: %v", err)
+	}
+	if _, err := os.Stat(w.SoulPath("gamma")); err != nil {
+		t.Fatalf("soul not written: %v", err)
+	}
+	if err := w.RemoveSoul("gamma"); err != nil {
+		t.Fatalf("RemoveSoul: %v", err)
+	}
+	if _, err := os.Stat(w.SoulPath("gamma")); !os.IsNotExist(err) {
+		t.Fatalf("soul file not removed, stat err = %v", err)
+	}
+	if _, err := os.Stat(filepath.Dir(w.SoulPath("gamma"))); !os.IsNotExist(err) {
+		t.Fatalf("empty identity dir not removed, stat err = %v", err)
+	}
+	// Removing a missing soul is tolerated.
+	if err := w.RemoveSoul("gamma"); err != nil {
+		t.Fatalf("RemoveSoul (missing) = %v, want nil", err)
+	}
+}

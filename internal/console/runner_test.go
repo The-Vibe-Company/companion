@@ -264,3 +264,29 @@ func jsonRoundTrips(t *testing.T, raw json.RawMessage) {
 		t.Fatalf("PlanJSON is not valid JSON: %v", err)
 	}
 }
+
+// TestRunnerEvictsOldestOperations guards the bounded retention: after more than
+// maxRetainedOps applies, the oldest operations are evicted while the newest stay
+// retrievable, so a long-lived console does not grow ops without bound.
+func TestRunnerEvictsOldestOperations(t *testing.T) {
+	r := NewOperationRunner(nil)
+	ids := make([]string, 0, maxRetainedOps+10)
+	for i := 0; i < maxRetainedOps+10; i++ {
+		id, ok := r.Start(func(ctx context.Context) ([]string, []byte, error) {
+			return nil, nil, nil
+		})
+		if !ok {
+			t.Fatalf("Start %d returned ok=false (runner wedged)", i)
+		}
+		// Wait for completion so active clears before the next Start.
+		waitForState(t, r, id, OpSucceeded)
+		ids = append(ids, id)
+	}
+
+	if _, ok := r.Get(ids[0]); ok {
+		t.Fatalf("oldest operation should have been evicted")
+	}
+	if _, ok := r.Get(ids[len(ids)-1]); !ok {
+		t.Fatalf("newest operation should be retained")
+	}
+}

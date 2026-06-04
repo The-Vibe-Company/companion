@@ -10,6 +10,7 @@ package console
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"embed"
 	"encoding/hex"
 	"encoding/json"
@@ -86,6 +87,10 @@ type Server struct {
 
 	mu             sync.Mutex
 	latestPlanHash string
+
+	// writeMu serializes workspace-mutating handlers (create/update/delete) so
+	// their read-modify-write-validate-rollback sequences cannot interleave.
+	writeMu sync.Mutex
 }
 
 // NewServer builds a console Server: it generates the session token, applies
@@ -198,7 +203,9 @@ func staticAssetHandler(fsys fs.FS) http.Handler {
 func (s *Server) withSessionToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if isMutating(r.Method) && strings.HasPrefix(r.URL.Path, "/api/console/") {
-			if r.Header.Get("X-Console-Token") != s.token {
+			provided := r.Header.Get("X-Console-Token")
+			// Constant-time compare so a wrong token cannot be inferred by timing.
+			if subtle.ConstantTimeCompare([]byte(provided), []byte(s.token)) != 1 {
 				writeJSONError(w, http.StatusForbidden, "invalid or missing console session token")
 				return
 			}

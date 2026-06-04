@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -93,6 +94,12 @@ func (s *Server) handleCreateAgent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := strings.TrimSpace(in.ID)
+
+	// Serialize workspace mutations so two concurrent edits cannot interleave
+	// their read-modify-write-validate-rollback sequences.
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+
 	// Best-effort duplicate check: when the workspace already loads, reject a
 	// colliding id. A workspace that does not yet load (e.g. it has no agents,
 	// which Companion's "at least one agent" rule rejects) is allowed here so the
@@ -110,23 +117,31 @@ func (s *Server) handleCreateAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Write the optional SOUL.md first (so identity resolves on reload), then the
-	// agent TOML. Both are fresh creates here, so rollback is a file removal.
+	// agent TOML. Track the soul so a failed create rolls it back too.
+	soulWritten := false
+	var soulBackup string
 	if strings.TrimSpace(in.Soul) != "" {
-		if _, err := s.writer.WriteSoul(id, in.Soul); err != nil {
+		soulBackup, err = s.writer.WriteSoul(id, in.Soul)
+		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		soulWritten = true
 	}
 	if _, err := s.writer.WriteAgent(id, file); err != nil {
+		s.rollbackSoul(id, soulBackup, soulWritten)
 		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	reloaded, err := s.reloadValidated()
 	if err != nil {
-		// Roll back the create: remove the just-written agent file so the broken
-		// edit never persists in the workspace.
-		_ = s.writer.RemoveAgent(id)
+		// Roll back the create: remove the just-written agent file AND the soul so
+		// no half-written edit (and no orphan SOUL.md) persists in the workspace.
+		if rerr := s.writer.RemoveAgent(id); rerr != nil {
+			log.Printf("console: create rollback (remove agent %s) failed: %v", id, rerr)
+		}
+		s.rollbackSoul(id, soulBackup, soulWritten)
 		writeJSONError(w, http.StatusBadRequest, "workspace validation failed: "+err.Error())
 		return
 	}
@@ -153,6 +168,9 @@ func (s *Server) handleUpdateAgent(w http.ResponseWriter, r *http.Request) {
 	// The path id is authoritative; ignore any divergent body id.
 	in.ID = id
 
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+
 	ws, err := s.loadWorkspace()
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, err.Error())
@@ -163,12 +181,16 @@ func (s *Server) handleUpdateAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, err := s.writer.BuildAgentFile(in)
+	// Merge the form fields onto the EXISTING file so keys the console form does
+	// not model (volume sizing, dashboard/granite settings, [api_server],
+	// [[vault_connections]]) survive the update instead of being dropped.
+	file, err := s.writer.MergeAgentFile(id, in)
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
+	soulWritten := false
 	var soulBackup string
 	if strings.TrimSpace(in.Soul) != "" {
 		soulBackup, err = s.writer.WriteSoul(id, in.Soul)
@@ -176,20 +198,21 @@ func (s *Server) handleUpdateAgent(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		soulWritten = true
 	}
 	agentBackup, err := s.writer.WriteAgent(id, file)
 	if err != nil {
-		s.rollback(soulBackup)
+		s.rollbackSoul(id, soulBackup, soulWritten)
 		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	reloaded, err := s.reloadValidated()
 	if err != nil {
-		// Restore both files from their backups so a rejected edit leaves the
-		// workspace exactly as it was.
+		// Restore the prior agent file and undo the soul write so a rejected edit
+		// leaves the workspace exactly as it was.
 		s.rollback(agentBackup)
-		s.rollback(soulBackup)
+		s.rollbackSoul(id, soulBackup, soulWritten)
 		writeJSONError(w, http.StatusBadRequest, "workspace validation failed: "+err.Error())
 		return
 	}
@@ -207,6 +230,9 @@ func (s *Server) handleUpdateAgent(w http.ResponseWriter, r *http.Request) {
 // 200 + AgentDetail.
 func (s *Server) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 
 	ws, err := s.loadWorkspace()
 	if err != nil {
@@ -436,13 +462,32 @@ func (s *Server) reloadValidated() (*workspace.Workspace, error) {
 	return s.loadWorkspace()
 }
 
-// rollback restores files from a backup dir, best effort. A blank dir (a fresh
-// create with no prior file) is a no-op.
+// rollback restores files from a backup dir. A blank dir (a fresh create with no
+// prior file) is a no-op. A restore failure is logged, not surfaced, since the
+// caller is already returning the triggering error.
 func (s *Server) rollback(backupDir string) {
 	if backupDir == "" {
 		return
 	}
-	_ = s.writer.Restore(backupDir)
+	if err := s.writer.Restore(backupDir); err != nil {
+		log.Printf("console: rollback (restore %s) failed: %v", backupDir, err)
+	}
+}
+
+// rollbackSoul undoes a SOUL.md write: it restores the prior file from its backup
+// when one existed, otherwise removes a freshly created soul (and its now-empty
+// identity directory). Failures are logged, not surfaced.
+func (s *Server) rollbackSoul(id, backupDir string, written bool) {
+	switch {
+	case backupDir != "":
+		if err := s.writer.Restore(backupDir); err != nil {
+			log.Printf("console: soul rollback (restore) failed for %s: %v", id, err)
+		}
+	case written:
+		if err := s.writer.RemoveSoul(id); err != nil {
+			log.Printf("console: soul rollback (remove) failed for %s: %v", id, err)
+		}
+	}
 }
 
 // snapshotByID indexes the latest status snapshot services by id for agent
