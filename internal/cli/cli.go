@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/outputs"
 	"github.com/The-Vibe-Company/companion/internal/plan"
 	"github.com/The-Vibe-Company/companion/internal/provider"
+	"github.com/The-Vibe-Company/companion/internal/registry"
 	"github.com/The-Vibe-Company/companion/internal/render"
 	"github.com/The-Vibe-Company/companion/internal/resource"
 	"github.com/The-Vibe-Company/companion/internal/state"
@@ -56,6 +58,7 @@ func newRootCommand(runner execx.Runner) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&a.envFile, "env-file", ".env", "secret env file; shell variables override file values")
 
 	cmd.AddCommand(a.initCommand())
+	cmd.AddCommand(a.workspaceCommand())
 	cmd.AddCommand(a.fmtCommand())
 	cmd.AddCommand(a.resourceImportCommand())
 	cmd.AddCommand(a.validateCommand())
@@ -71,18 +74,52 @@ func newRootCommand(runner execx.Runner) *cobra.Command {
 	cmd.AddCommand(a.vaultCommand())
 	cmd.AddCommand(a.dashboardCommand())
 	cmd.AddCommand(a.consoleCommand())
+	cmd.AddCommand(a.controlPlaneCommand())
 	cmd.AddCommand(a.versionCommand())
 	return cmd
 }
 
 func (a *app) initCommand() *cobra.Command {
-	return &cobra.Command{
+	var controlPlane bool
+	var noDeploy bool
+	var flyApp string
+	var tailscaleHostname string
+	var region string
+	var tailnet string
+	var flyTokenEnv string
+	var tailscaleAPIKeyEnv string
+	var tailscaleAuthKeySecret string
+	var openRouterAPIKeyEnv string
+	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Create a folder-based Companion workspace",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			root := a.rootDir
 			if root == "" {
 				root = "."
+			}
+			if region == "" {
+				region = "cdg"
+			}
+			if flyTokenEnv == "" {
+				flyTokenEnv = "FLY_API_TOKEN"
+			}
+			if tailscaleAPIKeyEnv == "" {
+				tailscaleAPIKeyEnv = "TAILSCALE_API_KEY"
+			}
+			if tailscaleAuthKeySecret == "" {
+				tailscaleAuthKeySecret = "TS_AUTHKEY"
+			}
+			if openRouterAPIKeyEnv == "" {
+				openRouterAPIKeyEnv = "OPENROUTER_API_KEY"
+			}
+			if controlPlane {
+				if flyApp == "" {
+					flyApp = "companion-control-plane"
+				}
+				if tailscaleHostname == "" {
+					tailscaleHostname = "companion-control-plane"
+				}
 			}
 			files := map[string]string{
 				"companion.toml": `workspace = "companion"
@@ -95,6 +132,7 @@ providers = "providers.toml"
 defaults = "defaults.toml"
 webui = "webui.toml"
 dashboard = "dashboard.toml"
+control_plane = "control-plane.toml"
 agents = "agents/*.toml"
 vaults = "vaults/*.toml"
 `,
@@ -207,6 +245,41 @@ mcp_role = "write"
 `,
 				filepath.Join("identities", "sample", "SOUL.md"): identityTemplate("Sample Agent"),
 			}
+			if controlPlane {
+				files["providers.toml"] = fmt.Sprintf(`[fly.default]
+region = %q
+token_env = %q
+mode = "api"
+
+[tailscale.default]
+tailnet = %q
+api_key_env = %q
+auth_key_secret = %q
+mode = "api"
+
+[openrouter.default]
+base_url = "https://openrouter.ai/api/v1"
+api_key_env = %q
+`, region, flyTokenEnv, tailnet, tailscaleAPIKeyEnv, tailscaleAuthKeySecret, openRouterAPIKeyEnv)
+				files["control-plane.toml"] = fmt.Sprintf(`[control_plane]
+enabled = true
+fly_app = %q
+tailscale_hostname = %q
+region = %q
+volume_name = "companion_workspace"
+volume_size_gb = 3
+memory = "512mb"
+cpus = 1
+port = 8788
+tailscale_serve = true
+tailscale_accept_dns = true
+tailscale_authkey_secret_name = %q
+fly_token_secret_name = %q
+tailscale_api_key_secret_name = %q
+openrouter_api_key_secret_name = %q
+ts_extra_args = "--netfilter-mode=off"
+`, flyApp, tailscaleHostname, region, tailscaleAuthKeySecret, flyTokenEnv, tailscaleAPIKeyEnv, openRouterAPIKeyEnv)
+			}
 			for name, contents := range files {
 				path := filepath.Join(root, name)
 				if _, err := os.Stat(path); err == nil {
@@ -221,7 +294,185 @@ mcp_role = "write"
 					return err
 				}
 			}
+			ws, err := workspace.Load(root)
+			if err != nil {
+				return err
+			}
+			record := registry.WorkspaceRecord{Name: ws.Name, Path: ws.Root}
+			if ws.Config.ControlPlane.Enabled {
+				record.ControlPlaneApp = ws.Config.ControlPlane.FlyApp
+				record.TailscaleHostname = ws.Config.ControlPlane.TailscaleHostname
+			}
+			if err := registry.Upsert(record, true); err != nil {
+				return err
+			}
 			fmt.Fprintf(cmd.OutOrStdout(), "initialized Companion workspace in %s\n", root)
+			fmt.Fprintf(cmd.OutOrStdout(), "registered workspace %s\n", ws.Name)
+			if controlPlane && !noDeploy {
+				previousRoot := a.rootDir
+				a.rootDir = root
+				defer func() { a.rootDir = previousRoot }()
+				env, err := a.env()
+				if err != nil {
+					return err
+				}
+				if err := requireControlPlaneDeployContext(env); err != nil {
+					return err
+				}
+				store, err := state.Open(ws.StatePath)
+				if err != nil {
+					return err
+				}
+				defer store.Close()
+				providers, err := a.providerSet(ws, env)
+				if err != nil {
+					return err
+				}
+				report, err := resource.Apply(cmd.Context(), ws, store, providers, resource.Options{
+					Root:         ws.Root,
+					GeneratedDir: generatedDirFor(ws, env),
+					Env:          env,
+					Targets:      []string{"control_plane"},
+				})
+				if err != nil {
+					return err
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), report.String())
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&controlPlane, "control-plane", false, "initialize and optionally deploy a Fly-hosted control plane")
+	cmd.Flags().BoolVar(&noDeploy, "no-deploy", false, "write and register the control-plane workspace without deploying it")
+	cmd.Flags().StringVar(&flyApp, "control-plane-app", "", "Fly app name for --control-plane")
+	cmd.Flags().StringVar(&tailscaleHostname, "control-plane-hostname", "", "Tailscale hostname for --control-plane")
+	cmd.Flags().StringVar(&region, "region", "cdg", "Fly region for generated resources")
+	cmd.Flags().StringVar(&tailnet, "tailnet", "", "Tailscale tailnet name for API mode")
+	cmd.Flags().StringVar(&flyTokenEnv, "fly-token-env", "FLY_API_TOKEN", "environment/Fly secret name for the Fly token")
+	cmd.Flags().StringVar(&tailscaleAPIKeyEnv, "tailscale-api-key-env", "TAILSCALE_API_KEY", "environment/Fly secret name for the Tailscale API key")
+	cmd.Flags().StringVar(&tailscaleAuthKeySecret, "tailscale-authkey-secret", "TS_AUTHKEY", "environment/Fly secret name for the Tailscale auth key")
+	cmd.Flags().StringVar(&openRouterAPIKeyEnv, "openrouter-api-key-env", "OPENROUTER_API_KEY", "environment/Fly secret name for the OpenRouter API key")
+	return cmd
+}
+
+func (a *app) workspaceCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "workspace",
+		Short: "Manage registered Companion workspaces",
+	}
+	cmd.AddCommand(a.workspaceListCommand())
+	cmd.AddCommand(a.workspaceAddCommand())
+	cmd.AddCommand(a.workspaceUseCommand())
+	cmd.AddCommand(a.workspaceCurrentCommand())
+	cmd.AddCommand(a.workspaceRemoveCommand())
+	return cmd
+}
+
+func (a *app) workspaceListCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List registered Companion workspaces",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			reg, err := registry.Load()
+			if err != nil {
+				return err
+			}
+			if len(reg.Workspaces) == 0 {
+				fmt.Fprintln(cmd.OutOrStdout(), "no registered workspaces")
+				return nil
+			}
+			for _, record := range reg.Workspaces {
+				marker := " "
+				if record.Name == reg.Current {
+					marker = "*"
+				}
+				detail := record.Path
+				if record.ControlPlaneApp != "" {
+					detail += " control_plane=" + record.ControlPlaneApp
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "%s %s %s\n", marker, record.Name, detail)
+			}
+			return nil
+		},
+	}
+}
+
+func (a *app) workspaceAddCommand() *cobra.Command {
+	var path string
+	var setCurrent bool
+	cmd := &cobra.Command{
+		Use:   "add <name>",
+		Short: "Register a Companion workspace",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if path == "" {
+				path = a.rootDir
+			}
+			ws, err := workspace.Load(path)
+			if err != nil {
+				return err
+			}
+			record := registry.WorkspaceRecord{Name: args[0], Path: ws.Root}
+			if ws.Config.ControlPlane.Enabled {
+				record.ControlPlaneApp = ws.Config.ControlPlane.FlyApp
+				record.TailscaleHostname = ws.Config.ControlPlane.TailscaleHostname
+			}
+			if err := registry.Upsert(record, setCurrent); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "registered workspace %s -> %s\n", record.Name, ws.Root)
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&path, "path", "", "workspace path (defaults to --workspace)")
+	cmd.Flags().BoolVar(&setCurrent, "current", true, "make this the current workspace")
+	return cmd
+}
+
+func (a *app) workspaceUseCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "use <name>",
+		Short: "Set the current Companion workspace",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := registry.Use(args[0]); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "current workspace: %s\n", args[0])
+			return nil
+		},
+	}
+}
+
+func (a *app) workspaceCurrentCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "current",
+		Short: "Print the current Companion workspace",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			record, ok, err := registry.Current()
+			if err != nil {
+				return err
+			}
+			if !ok {
+				fmt.Fprintln(cmd.OutOrStdout(), "no current workspace")
+				return nil
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", record.Name, record.Path)
+			return nil
+		},
+	}
+}
+
+func (a *app) workspaceRemoveCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "remove <name>",
+		Short: "Remove a workspace from the local registry",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := registry.Remove(args[0]); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "removed workspace %s\n", args[0])
 			return nil
 		},
 	}
@@ -347,6 +598,14 @@ func workspaceProviderRefs(ws *workspace.Workspace) []string {
 		add(ws.Config.OpenWebUI.Runtime)
 		add(ws.Config.OpenWebUI.Network)
 	}
+	if ws.Config.Dashboard.Enabled {
+		add(ws.Config.Dashboard.Runtime)
+		add(ws.Config.Dashboard.Network)
+	}
+	if ws.Config.ControlPlane.Enabled {
+		add(ws.Config.ControlPlane.Runtime)
+		add(ws.Config.ControlPlane.Network)
+	}
 	return refs
 }
 
@@ -389,6 +648,9 @@ func (a *app) validateCommand() *cobra.Command {
 					ids = append(ids, connection.AgentID)
 				}
 				fmt.Fprintf(cmd.OutOrStdout(), "%s: ok runtime=%s network=%s fly_app=%s tailscale=%s connections=%s\n", cfg.OpenWebUI.ID, cfg.OpenWebUI.Runtime, cfg.OpenWebUI.Network, cfg.OpenWebUI.FlyApp, cfg.OpenWebUI.TailscaleHostname, strings.Join(ids, ","))
+			}
+			if cfg.ControlPlane.Enabled {
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: ok runtime=%s network=%s fly_app=%s tailscale=%s lifecycle=%s workspace=/workspace\n", cfg.ControlPlane.ID, cfg.ControlPlane.Runtime, cfg.ControlPlane.Network, cfg.ControlPlane.FlyApp, cfg.ControlPlane.TailscaleHostname, cfg.ControlPlane.Lifecycle)
 			}
 			if validateProviders {
 				env, err := a.env()
@@ -440,7 +702,7 @@ func (a *app) planCommand() *cobra.Command {
 			}
 			report, err := resource.BuildPlan(cmd.Context(), ws, store, providers, resource.Options{
 				Root:         ws.Root,
-				GeneratedDir: filepath.Join(ws.Root, ".companion", "generated"),
+				GeneratedDir: generatedDirFor(ws, env),
 				Targets:      args,
 			})
 			if err != nil {
@@ -486,7 +748,7 @@ func (a *app) applyCommand() *cobra.Command {
 			}
 			report, err := resource.Apply(cmd.Context(), ws, store, providers, resource.Options{
 				Root:         ws.Root,
-				GeneratedDir: filepath.Join(ws.Root, ".companion", "generated"),
+				GeneratedDir: generatedDirFor(ws, env),
 				Env:          env,
 				Targets:      args,
 			})
@@ -531,7 +793,7 @@ func (a *app) destroyCommand() *cobra.Command {
 			}
 			report, err := resource.Apply(cmd.Context(), ws, store, providers, resource.Options{
 				Root:                  ws.Root,
-				GeneratedDir:          filepath.Join(ws.Root, ".companion", "generated"),
+				GeneratedDir:          generatedDirFor(ws, env),
 				Env:                   env,
 				DestroyTargets:        args,
 				AllowProtectedDestroy: true,
@@ -874,6 +1136,214 @@ func (a *app) consoleCommand() *cobra.Command {
 	cmd.Flags().StringVar(&addr, "addr", "127.0.0.1:8788", "listen address (PORT env wins when set)")
 	cmd.Flags().StringVar(&devUI, "dev-ui", "", "reverse-proxy the UI to this dev origin (e.g. http://127.0.0.1:5173)")
 	return cmd
+}
+
+func (a *app) controlPlaneCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "control-plane",
+		Short: "Manage the Fly-hosted Companion control plane",
+	}
+	cmd.AddCommand(a.controlPlaneStatusCommand())
+	cmd.AddCommand(a.controlPlaneUpgradeCommand())
+	cmd.AddCommand(a.controlPlaneExportCommand())
+	cmd.AddCommand(a.controlPlaneSSHCommand())
+	return cmd
+}
+
+func (a *app) controlPlaneStatusCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "Show control-plane runtime status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ws, err := a.workspace()
+			if err != nil {
+				return err
+			}
+			cp := ws.Config.ControlPlane
+			if !cp.Enabled {
+				return fmt.Errorf("control_plane is disabled in this workspace")
+			}
+			env, err := a.env()
+			if err != nil {
+				return err
+			}
+			machines, err := a.flyWithEnv(env).ListMachines(cmd.Context(), cp.FlyApp)
+			if err != nil {
+				return err
+			}
+			machine, ok := fly.SelectStartedMachine(machines)
+			stateText := "missing"
+			versionText := "unknown"
+			if ok {
+				stateText = machine.State
+				versionText = firstNonEmptyString(machine.ImageRef.Tag, machine.ImageRef.Digest, machine.Config.Image, "unknown")
+			}
+			lastApply := "unknown"
+			store, err := state.Open(ws.StatePath)
+			if err == nil {
+				if observed, ok, getErr := store.GetResource(cmd.Context(), "rollout.control_plane.main"); getErr == nil && ok && !observed.LastTransitionAt.IsZero() {
+					lastApply = observed.LastTransitionAt.Format(time.RFC3339)
+				}
+				_ = store.Close()
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "app=%s state=%s tailscale=%s workspace=/workspace version=%s last_apply=%s\n", cp.FlyApp, stateText, cp.TailscaleHostname, versionText, lastApply)
+			return nil
+		},
+	}
+}
+
+func (a *app) controlPlaneUpgradeCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "upgrade",
+		Short: "Redeploy the control plane from this checkout",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ws, err := a.workspace()
+			if err != nil {
+				return err
+			}
+			cp := ws.Config.ControlPlane
+			if !cp.Enabled {
+				return fmt.Errorf("control_plane is disabled in this workspace")
+			}
+			env, err := a.env()
+			if err != nil {
+				return err
+			}
+			if err := requireControlPlaneDeployContext(env); err != nil {
+				return err
+			}
+			configPath, err := resource.WriteControlPlaneArtifacts(ws, resource.Options{
+				Root:         ws.Root,
+				GeneratedDir: generatedDirFor(ws, env),
+			})
+			if err != nil {
+				return err
+			}
+			if err := a.flyWithEnv(env).Deploy(cmd.Context(), cp.FlyApp, configPath); err != nil {
+				return err
+			}
+			store, err := state.Open(ws.StatePath)
+			if err == nil {
+				_ = store.UpsertResource(cmd.Context(), state.Resource{
+					Address:      "rollout.control_plane.main",
+					Class:        resource.ClassAction,
+					ProviderRef:  cp.Runtime,
+					ExternalID:   cp.FlyApp,
+					Status:       "ready",
+					ObservedJSON: `{"config":"` + configPath + `"}`,
+					Protected:    cp.Protect,
+				})
+				_ = store.Close()
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "upgraded control plane %s\n", cp.FlyApp)
+			return nil
+		},
+	}
+}
+
+func (a *app) controlPlaneExportCommand() *cobra.Command {
+	var output string
+	cmd := &cobra.Command{
+		Use:   "export",
+		Short: "Download a backup of the remote control-plane workspace",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ws, err := a.workspace()
+			if err != nil {
+				return err
+			}
+			cp := ws.Config.ControlPlane
+			if !cp.Enabled {
+				return fmt.Errorf("control_plane is disabled in this workspace")
+			}
+			if output == "" {
+				output = filepath.Join(ws.Root, ".companion", "control-plane-workspace.tgz")
+			}
+			env, err := a.env()
+			if err != nil {
+				return err
+			}
+			flyProvider := a.flyWithEnv(env)
+			machineID, err := startedMachineID(cmd.Context(), flyProvider, cp.FlyApp)
+			if err != nil {
+				return err
+			}
+			if _, err := flyProvider.SSHConsole(cmd.Context(), cp.FlyApp, machineID, "tar -C /workspace -czf /tmp/companion-workspace.tgz ."); err != nil {
+				return err
+			}
+			if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
+				return err
+			}
+			if err := flyProvider.SFTPGet(cmd.Context(), cp.FlyApp, machineID, "/tmp/companion-workspace.tgz", output); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "exported control-plane workspace to %s\n", output)
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&output, "output", "", "local archive path")
+	return cmd
+}
+
+func (a *app) controlPlaneSSHCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "ssh [command]",
+		Short: "Open a Fly SSH session to the control plane",
+		Args:  cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ws, err := a.workspace()
+			if err != nil {
+				return err
+			}
+			cp := ws.Config.ControlPlane
+			if !cp.Enabled {
+				return fmt.Errorf("control_plane is disabled in this workspace")
+			}
+			env, err := a.env()
+			if err != nil {
+				return err
+			}
+			if len(args) > 0 {
+				flyProvider := a.flyWithEnv(env)
+				machineID, err := startedMachineID(cmd.Context(), flyProvider, cp.FlyApp)
+				if err != nil {
+					return err
+				}
+				result, err := flyProvider.SSHConsole(cmd.Context(), cp.FlyApp, machineID, strings.Join(args, " "))
+				if result.Stdout != "" {
+					fmt.Fprint(cmd.OutOrStdout(), result.Stdout)
+				}
+				if result.Stderr != "" {
+					fmt.Fprint(cmd.ErrOrStderr(), result.Stderr)
+				}
+				return err
+			}
+			if a.runner != nil {
+				_, err := a.runnerWithEnv(env).Run(cmd.Context(), []string{"fly", "ssh", "console", "-a", cp.FlyApp})
+				return err
+			}
+			sshCmd := exec.CommandContext(cmd.Context(), "fly", "ssh", "console", "-a", cp.FlyApp)
+			sshCmd.Stdin = os.Stdin
+			sshCmd.Stdout = os.Stdout
+			sshCmd.Stderr = os.Stderr
+			sshCmd.Env = os.Environ()
+			for key, value := range env {
+				sshCmd.Env = append(sshCmd.Env, key+"="+value)
+			}
+			return sshCmd.Run()
+		},
+	}
+}
+
+func startedMachineID(ctx context.Context, flyProvider fly.Provider, app string) (string, error) {
+	machines, err := flyProvider.ListMachines(ctx, app)
+	if err != nil {
+		return "", err
+	}
+	machine, ok := fly.SelectStartedMachine(machines)
+	if !ok {
+		return "", fmt.Errorf("no Fly machine found for %s", app)
+	}
+	return machine.ID, nil
 }
 
 // consoleAddr mirrors dashboardAddr so a deployed console binds to Fly's
@@ -1400,7 +1870,11 @@ func (a *app) load() (*config.Config, error) {
 }
 
 func (a *app) workspace() (*workspace.Workspace, error) {
-	return workspace.Load(a.rootDir)
+	root, err := a.resolveWorkspaceRoot()
+	if err != nil {
+		return nil, err
+	}
+	return workspace.Load(root)
 }
 
 func (a *app) providerSet(ws *workspace.Workspace, env map[string]string) (provider.Set, error) {
@@ -1408,9 +1882,13 @@ func (a *app) providerSet(ws *workspace.Workspace, env map[string]string) (provi
 }
 
 func (a *app) env() (map[string]string, error) {
+	root, err := a.resolveWorkspaceRoot()
+	if err != nil {
+		root = a.rootDir
+	}
 	path := a.envFile
 	if path != "" && !filepath.IsAbs(path) {
-		path = filepath.Join(a.rootDir, path)
+		path = filepath.Join(root, path)
 	}
 	values, err := envfile.LoadOptional(path)
 	if err != nil {
@@ -1418,6 +1896,11 @@ func (a *app) env() (map[string]string, error) {
 	}
 	for key, value := range getenvMap() {
 		values[key] = value
+	}
+	if values["COMPANION_DEPLOY_CONTEXT"] == "" {
+		if deployContext := defaultDeployContext(root); deployContext != "" {
+			values["COMPANION_DEPLOY_CONTEXT"] = deployContext
+		}
 	}
 	return values, nil
 }
@@ -1453,7 +1936,74 @@ func (a *app) runnerWithEnv(env map[string]string) execx.Runner {
 	if a.runner != nil {
 		return a.runner
 	}
-	return execx.ShellRunner{Dir: a.rootDir, Env: env}
+	root, err := a.resolveWorkspaceRoot()
+	if err != nil {
+		root = a.rootDir
+	}
+	if deployContext := env["COMPANION_DEPLOY_CONTEXT"]; deployContext != "" {
+		root = deployContext
+	}
+	return execx.ShellRunner{Dir: root, Env: env}
+}
+
+func (a *app) resolveWorkspaceRoot() (string, error) {
+	root := a.rootDir
+	if root == "" {
+		root = "."
+	}
+	if _, err := os.Stat(filepath.Join(root, "companion.toml")); err == nil {
+		return root, nil
+	} else if err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
+	if root == "." {
+		record, ok, err := registry.Current()
+		if err != nil {
+			return "", err
+		}
+		if ok {
+			return record.Path, nil
+		}
+	}
+	return root, nil
+}
+
+func generatedDirFor(ws *workspace.Workspace, env map[string]string) string {
+	if deployContext := env["COMPANION_DEPLOY_CONTEXT"]; deployContext != "" {
+		return filepath.Join(deployContext, ".companion", "generated")
+	}
+	return filepath.Join(ws.Root, ".companion", "generated")
+}
+
+func defaultDeployContext(workspaceRoot string) string {
+	candidates := []string{}
+	if cwd, err := os.Getwd(); err == nil {
+		candidates = append(candidates, cwd)
+	}
+	candidates = append(candidates, workspaceRoot)
+	for _, candidate := range candidates {
+		if candidate == "" {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(candidate, "Dockerfile.control-plane")); err == nil {
+			return candidate
+		}
+	}
+	return ""
+}
+
+func requireControlPlaneDeployContext(env map[string]string) error {
+	deployContext := env["COMPANION_DEPLOY_CONTEXT"]
+	if deployContext == "" {
+		return fmt.Errorf("control-plane deploy requires COMPANION_DEPLOY_CONTEXT or running from a Companion checkout with Dockerfile.control-plane")
+	}
+	if _, err := os.Stat(filepath.Join(deployContext, "Dockerfile.control-plane")); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("control-plane deploy context %s is missing Dockerfile.control-plane", deployContext)
+		}
+		return err
+	}
+	return nil
 }
 
 func getenvMap() map[string]string {

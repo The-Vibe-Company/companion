@@ -58,12 +58,18 @@ func NewSet(ws *workspace.Workspace, env map[string]string, runner execx.Runner)
 	for name, cfg := range ws.Providers.Fly {
 		ref := "fly." + name
 		shell := fly.NewWithOrg(runner, cfg.Org)
+		rolloutRunner := runner
+		if deployContext := env["COMPANION_DEPLOY_CONTEXT"]; deployContext != "" {
+			if _, ok := runner.(execx.ShellRunner); ok {
+				rolloutRunner = execx.ShellRunner{Dir: deployContext, Env: env}
+			}
+		}
 		if cfg.Mode == "api" {
 			set.Fly[ref] = fly.NewAPI(cfg.APIBaseURL, env[cfg.TokenEnv], cfg.Org)
 		} else {
 			set.Fly[ref] = shell
 		}
-		set.Rollout[ref] = shell
+		set.Rollout[ref] = fly.NewWithOrg(rolloutRunner, cfg.Org)
 	}
 	for name, cfg := range ws.Providers.Tailscale {
 		ref := "tailscale." + name

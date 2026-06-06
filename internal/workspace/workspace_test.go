@@ -270,6 +270,32 @@ tailscale_hostname = "companion-dashboard"
 	}
 }
 
+func TestLoadControlPlaneFromFile(t *testing.T) {
+	root := t.TempDir()
+	writeMinimalWorkspace(t, root)
+	writeWorkspaceFile(t, root, "agents/sample.toml", `[agent]
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
+`)
+	writeWorkspaceFile(t, root, "control-plane.toml", `[control_plane]
+enabled = true
+fly_app = "example-companion-control-plane"
+tailscale_hostname = "companion-control-plane"
+volume_name = "companion_workspace"
+`)
+	ws, err := Load(root)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if !ws.Config.ControlPlane.Enabled {
+		t.Fatalf("expected control plane enabled from control-plane.toml")
+	}
+	if ws.Config.ControlPlane.FlyApp != "example-companion-control-plane" {
+		t.Fatalf("unexpected control plane fly_app: %s", ws.Config.ControlPlane.FlyApp)
+	}
+}
+
 func TestLoadFailsOnUnknownDashboardProvider(t *testing.T) {
 	root := t.TempDir()
 	writeMinimalWorkspace(t, root)

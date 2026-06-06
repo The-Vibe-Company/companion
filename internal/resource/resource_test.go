@@ -228,6 +228,42 @@ func TestCompileDashboardResources(t *testing.T) {
 	}
 }
 
+func TestCompileControlPlaneResources(t *testing.T) {
+	ws := controlPlaneWorkspace(t)
+	graph, err := Compile(ws, ws.Root)
+	if err != nil {
+		t.Fatalf("compile: %v", err)
+	}
+	byAddress := graph.ByAddress()
+	wants := map[string]string{
+		"control_plane_config.main":               ClassDerived,
+		"fly_app.control_plane.main":              ClassManaged,
+		"fly_volume.control_plane_workspace.main": ClassManaged,
+		"fly_secrets.control_plane.main":          ClassManaged,
+		"rollout.control_plane.main":              ClassAction,
+		"tailscale_device.control_plane.main":     ClassObserved,
+	}
+	for address, class := range wants {
+		resource, ok := byAddress[address]
+		if !ok {
+			t.Fatalf("missing resource %s", address)
+		}
+		if resource.Class != class {
+			t.Fatalf("resource %s class: got %s want %s", address, resource.Class, class)
+		}
+	}
+	volume := byAddress["fly_volume.control_plane_workspace.main"]
+	if !volume.Protected {
+		t.Fatalf("control-plane workspace volume must be protected")
+	}
+	rollout := byAddress["rollout.control_plane.main"]
+	for _, dep := range []string{"fly_app.control_plane.main", "fly_volume.control_plane_workspace.main", "fly_secrets.control_plane.main", "control_plane_config.main"} {
+		if !containsString(rollout.DependsOn, dep) {
+			t.Fatalf("rollout.control_plane.main missing dependency %s (deps=%v)", dep, rollout.DependsOn)
+		}
+	}
+}
+
 func TestDashboardTopologyHashGating(t *testing.T) {
 	one := dashboardWorkspace(t, "research")
 	two := dashboardWorkspace(t, "research", "writer")
@@ -313,6 +349,28 @@ func dashboardWorkspace(t *testing.T, agentIDs ...string) *workspace.Workspace {
 		},
 		Dashboard: config.RawDashboard{Enabled: boolPtr(true)},
 		Agents:    agents,
+	})
+	if err != nil {
+		t.Fatalf("normalize config: %v", err)
+	}
+	return &workspace.Workspace{
+		Root:      root,
+		Name:      "test",
+		StatePath: filepath.Join(root, ".companion", "state.sqlite"),
+		Config:    cfg,
+	}
+}
+
+func controlPlaneWorkspace(t *testing.T) *workspace.Workspace {
+	t.Helper()
+	root := t.TempDir()
+	cfg, err := config.Normalize(config.RawConfig{
+		ControlPlane: config.RawControlPlane{
+			Enabled:           boolPtr(true),
+			FlyApp:            strPtr("co-control-plane"),
+			TailscaleHostname: strPtr("companion-control-plane"),
+		},
+		Agents: []config.RawAgent{{ID: strPtr("sample"), FlyApp: strPtr("co-sample"), TailscaleHostname: strPtr("sample")}},
 	})
 	if err != nil {
 		t.Fatalf("normalize config: %v", err)

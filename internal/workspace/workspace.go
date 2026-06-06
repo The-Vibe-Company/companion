@@ -70,16 +70,18 @@ type rootFile struct {
 			State string `toml:"state"`
 		} `toml:"local"`
 	} `toml:"backend"`
-	Load loadConfig `toml:"load"`
+	Load         loadConfig             `toml:"load"`
+	ControlPlane config.RawControlPlane `toml:"control_plane"`
 }
 
 type loadConfig struct {
-	Providers string `toml:"providers"`
-	Defaults  string `toml:"defaults"`
-	WebUI     string `toml:"webui"`
-	Dashboard string `toml:"dashboard"`
-	Agents    string `toml:"agents"`
-	Vaults    string `toml:"vaults"`
+	Providers    string `toml:"providers"`
+	Defaults     string `toml:"defaults"`
+	WebUI        string `toml:"webui"`
+	Dashboard    string `toml:"dashboard"`
+	ControlPlane string `toml:"control_plane"`
+	Agents       string `toml:"agents"`
+	Vaults       string `toml:"vaults"`
 }
 
 type defaultsFile struct {
@@ -92,6 +94,10 @@ type webUIFile struct {
 
 type dashboardFile struct {
 	Dashboard config.RawDashboard `toml:"dashboard"`
+}
+
+type controlPlaneFile struct {
+	ControlPlane config.RawControlPlane `toml:"control_plane"`
 }
 
 type agentFile struct {
@@ -160,7 +166,7 @@ func Load(root string) (*Workspace, error) {
 	if err != nil {
 		return nil, err
 	}
-	raw := config.RawConfig{}
+	raw := config.RawConfig{ControlPlane: rootConfig.ControlPlane}
 	if err := loadDefaults(absRoot, rootConfig.Load.Defaults, &raw); err != nil {
 		return nil, err
 	}
@@ -168,6 +174,9 @@ func Load(root string) (*Workspace, error) {
 		return nil, err
 	}
 	if err := loadDashboard(absRoot, rootConfig.Load.Dashboard, &raw); err != nil {
+		return nil, err
+	}
+	if err := loadControlPlane(absRoot, rootConfig.Load.ControlPlane, &raw); err != nil {
 		return nil, err
 	}
 	agentFiles, err := loadAgents(absRoot, rootConfig.Load.Agents, &raw)
@@ -255,6 +264,9 @@ func (r *rootFile) defaults(workspaceName string) {
 	if r.Load.Dashboard == "" {
 		r.Load.Dashboard = "dashboard.toml"
 	}
+	if r.Load.ControlPlane == "" {
+		r.Load.ControlPlane = "control-plane.toml"
+	}
 	if r.Load.Agents == "" {
 		r.Load.Agents = "agents/*.toml"
 	}
@@ -316,6 +328,20 @@ func (w *Workspace) Validate() error {
 		}
 		if !w.Providers.Has(w.Config.Dashboard.Network) {
 			return fmt.Errorf("dashboard references unknown network provider %s", w.Config.Dashboard.Network)
+		}
+	}
+	if w.Config.ControlPlane.Enabled {
+		if !strings.HasPrefix(w.Config.ControlPlane.Runtime, "fly.") {
+			return fmt.Errorf("control_plane runtime must reference a fly provider")
+		}
+		if !w.Providers.Has(w.Config.ControlPlane.Runtime) {
+			return fmt.Errorf("control_plane references unknown runtime provider %s", w.Config.ControlPlane.Runtime)
+		}
+		if !strings.HasPrefix(w.Config.ControlPlane.Network, "tailscale.") {
+			return fmt.Errorf("control_plane network must reference a tailscale provider")
+		}
+		if !w.Providers.Has(w.Config.ControlPlane.Network) {
+			return fmt.Errorf("control_plane references unknown network provider %s", w.Config.ControlPlane.Network)
 		}
 	}
 	seenVaults := map[string]bool{}
@@ -460,6 +486,15 @@ func loadDashboard(root, pattern string, raw *config.RawConfig) error {
 		return err
 	}
 	raw.Dashboard = file.Dashboard
+	return nil
+}
+
+func loadControlPlane(root, pattern string, raw *config.RawConfig) error {
+	var file controlPlaneFile
+	if err := readOptionalTOML(filepath.Join(root, filepath.FromSlash(pattern)), &file); err != nil {
+		return err
+	}
+	raw.ControlPlane = file.ControlPlane
 	return nil
 }
 

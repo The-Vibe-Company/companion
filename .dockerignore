@@ -1,8 +1,10 @@
 fly.*.toml
 bin/__pycache__/
+web/node_modules/
 .companion/*
 !.companion/generated/
 !.companion/generated/fleet.json
+!.companion/generated/**
 archived/
 .env
 /companion

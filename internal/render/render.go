@@ -246,6 +246,58 @@ func DashboardFlyTOML(cfg config.Dashboard) (string, error) {
 	return strings.Join(lines, "\n"), nil
 }
 
+func ControlPlaneFlyTOML(cfg config.ControlPlane) (string, error) {
+	if !cfg.Enabled {
+		return "", fmt.Errorf("control_plane is disabled in the workspace")
+	}
+	env := map[string]string{
+		"COMPANION_CONTROL_PLANE_NAME":      cfg.Name,
+		"COMPANION_CONTROL_PLANE_SEED":      "/seed",
+		"COMPANION_CONTROL_PLANE_WORKSPACE": "/workspace",
+		"CONTROL_PLANE_TAILSCALE_SERVE":     envBool(cfg.TailscaleServe),
+		"CONTROL_PLANE_TS_HOSTNAME":         cfg.TailscaleHostname,
+		"PORT":                              strconv.Itoa(cfg.Port),
+		"TAILSCALE_STATE_DIR":               "/workspace/.tailscale",
+		"TS_ACCEPT_DNS":                     envBool(cfg.TailscaleAcceptDNS),
+	}
+	if cfg.TSExtraArgs != "" {
+		env["TS_EXTRA_ARGS"] = cfg.TSExtraArgs
+	}
+	if cfg.TailscaledExtraArgs != "" {
+		env["TAILSCALED_EXTRA_ARGS"] = cfg.TailscaledExtraArgs
+	}
+
+	process := "companion --workspace /workspace console"
+	lines := []string{
+		fmt.Sprintf("app = %s", quote(cfg.FlyApp)),
+		fmt.Sprintf("primary_region = %s", quote(cfg.Region)),
+		`kill_signal = "SIGTERM"`,
+		"kill_timeout = 30",
+		"",
+		"[build]",
+		`  dockerfile = "../../Dockerfile.control-plane"`,
+		"",
+		"[env]",
+	}
+	appendEnv(&lines, env)
+	lines = append(lines,
+		"",
+		"[processes]",
+		fmt.Sprintf("  app = %s", quote(process)),
+		"",
+		"[[mounts]]",
+		fmt.Sprintf("  source = %s", quote(cfg.VolumeName)),
+		`  destination = "/workspace"`,
+		"",
+		"[[vm]]",
+		`  cpu_kind = "shared"`,
+		fmt.Sprintf("  memory = %s", quote(cfg.Memory)),
+		fmt.Sprintf("  cpus = %d", cfg.CPUs),
+		"",
+	)
+	return strings.Join(lines, "\n"), nil
+}
+
 // RequiredDashboardFlySecrets lists the read-only tokens the dashboard machine
 // needs as Fly secrets. The topology manifest itself is non-secret.
 func RequiredDashboardFlySecrets(cfg config.Dashboard) []string {
@@ -253,6 +305,15 @@ func RequiredDashboardFlySecrets(cfg config.Dashboard) []string {
 		cfg.TailscaleAuthKeySecretName,
 		cfg.FlyTokenSecretName,
 		cfg.TailscaleAPIKeySecretName,
+	})
+}
+
+func RequiredControlPlaneFlySecrets(cfg config.ControlPlane) []string {
+	return unique([]string{
+		cfg.TailscaleAuthKeySecretName,
+		cfg.FlyTokenSecretName,
+		cfg.TailscaleAPIKeySecretName,
+		cfg.OpenRouterAPIKeySecretName,
 	})
 }
 

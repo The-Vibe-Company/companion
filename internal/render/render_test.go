@@ -113,6 +113,55 @@ func TestDashboardRenderSmallestStatelessMachine(t *testing.T) {
 	}
 }
 
+func TestControlPlaneRenderPersistentTailnetOnlyConsole(t *testing.T) {
+	cfg := config.ControlPlane{
+		Enabled:                    true,
+		ID:                         "control-plane",
+		FlyApp:                     "example-companion-control-plane",
+		TailscaleHostname:          "companion-control-plane",
+		Region:                     "cdg",
+		VolumeName:                 "companion_workspace",
+		VolumeSizeGB:               3,
+		Memory:                     "512mb",
+		CPUs:                       1,
+		Port:                       8788,
+		Name:                       "Companion",
+		TailscaleServe:             true,
+		TailscaleAcceptDNS:         true,
+		TailscaleAuthKeySecretName: "TS_AUTHKEY",
+		FlyTokenSecretName:         "FLY_API_TOKEN",
+		TailscaleAPIKeySecretName:  "TAILSCALE_API_KEY",
+		OpenRouterAPIKeySecretName: "OPENROUTER_API_KEY",
+	}
+	toml, err := ControlPlaneFlyTOML(cfg)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	for _, want := range []string{
+		`dockerfile = "../../Dockerfile.control-plane"`,
+		`CONTROL_PLANE_TS_HOSTNAME = "companion-control-plane"`,
+		`COMPANION_CONTROL_PLANE_WORKSPACE = "/workspace"`,
+		`companion --workspace /workspace console`,
+		`source = "companion_workspace"`,
+		`destination = "/workspace"`,
+		`memory = "512mb"`,
+		`cpus = 1`,
+	} {
+		if !strings.Contains(toml, want) {
+			t.Fatalf("missing %q in\n%s", want, toml)
+		}
+	}
+	if strings.Contains(toml, "[http_service]") {
+		t.Fatalf("control plane must be tailnet-only (no Fly http_service):\n%s", toml)
+	}
+	secrets := RequiredControlPlaneFlySecrets(cfg)
+	for _, name := range []string{"TS_AUTHKEY", "FLY_API_TOKEN", "TAILSCALE_API_KEY", "OPENROUTER_API_KEY"} {
+		if !containsString(secrets, name) {
+			t.Fatalf("expected required secret %q in %v", name, secrets)
+		}
+	}
+}
+
 func containsString(values []string, target string) bool {
 	for _, v := range values {
 		if v == target {

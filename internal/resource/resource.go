@@ -31,19 +31,20 @@ const (
 )
 
 type Resource struct {
-	Address     string            `json:"address"`
-	Type        string            `json:"type"`
-	Class       string            `json:"class"`
-	ProviderRef string            `json:"provider_ref"`
-	ExternalID  string            `json:"external_id,omitempty"`
-	DesiredHash string            `json:"desired_hash"`
-	Protected   bool              `json:"protected"`
-	Absent      bool              `json:"absent"`
-	DependsOn   []string          `json:"depends_on,omitempty"`
-	Agent       *config.Agent     `json:"-"`
-	OpenWebUI   *config.OpenWebUI `json:"-"`
-	Dashboard   *config.Dashboard `json:"-"`
-	Desired     map[string]any    `json:"desired,omitempty"`
+	Address      string               `json:"address"`
+	Type         string               `json:"type"`
+	Class        string               `json:"class"`
+	ProviderRef  string               `json:"provider_ref"`
+	ExternalID   string               `json:"external_id,omitempty"`
+	DesiredHash  string               `json:"desired_hash"`
+	Protected    bool                 `json:"protected"`
+	Absent       bool                 `json:"absent"`
+	DependsOn    []string             `json:"depends_on,omitempty"`
+	Agent        *config.Agent        `json:"-"`
+	OpenWebUI    *config.OpenWebUI    `json:"-"`
+	Dashboard    *config.Dashboard    `json:"-"`
+	ControlPlane *config.ControlPlane `json:"-"`
+	Desired      map[string]any       `json:"desired,omitempty"`
 }
 
 type Graph struct {
@@ -148,6 +149,22 @@ func Compile(ws *workspace.Workspace, root string) (Graph, error) {
 			Resource{Address: "rollout.dashboard.main", Type: "rollout", Class: ClassAction, ProviderRef: dash.Runtime, DesiredHash: hashValue(dash.FlyApp), Protected: dash.Protect, Absent: absent, DependsOn: []string{"fly_app.dashboard.main", "fly_secrets.dashboard.main", "dashboard_config.main"}, Dashboard: &dash},
 		)
 	}
+	if ws.Config.ControlPlane.Enabled {
+		control := ws.Config.ControlPlane
+		absent := control.Lifecycle == "absent"
+		configHash, err := hashControlPlaneConfig(control)
+		if err != nil {
+			return Graph{}, err
+		}
+		resources = append(resources,
+			Resource{Address: "control_plane_config.main", Type: "control_plane_config", Class: ClassDerived, ProviderRef: control.Runtime, DesiredHash: configHash, Protected: control.Protect, Absent: absent, ControlPlane: &control},
+			Resource{Address: "fly_app.control_plane.main", Type: "fly_app", Class: ClassManaged, ProviderRef: control.Runtime, ExternalID: control.FlyApp, DesiredHash: hashValue(control.FlyApp), Protected: control.Protect, Absent: absent, ControlPlane: &control, Desired: map[string]any{"app": control.FlyApp}},
+			Resource{Address: "fly_volume.control_plane_workspace.main", Type: "fly_volume", Class: ClassManaged, ProviderRef: control.Runtime, DesiredHash: hashMap(map[string]any{"app": control.FlyApp, "name": control.VolumeName, "region": control.Region, "size_gb": control.VolumeSizeGB}), Protected: true, Absent: absent, DependsOn: []string{"fly_app.control_plane.main"}, ControlPlane: &control, Desired: map[string]any{"app": control.FlyApp, "name": control.VolumeName}},
+			Resource{Address: "fly_secrets.control_plane.main", Type: "fly_secrets", Class: ClassManaged, ProviderRef: control.Runtime, DesiredHash: hashStringSlice(render.RequiredControlPlaneFlySecrets(control)), Protected: control.Protect, Absent: absent, DependsOn: []string{"fly_app.control_plane.main"}, ControlPlane: &control, Desired: map[string]any{"names": render.RequiredControlPlaneFlySecrets(control)}},
+			Resource{Address: "rollout.control_plane.main", Type: "rollout", Class: ClassAction, ProviderRef: control.Runtime, DesiredHash: configHash, Protected: control.Protect, Absent: absent, DependsOn: []string{"fly_app.control_plane.main", "fly_volume.control_plane_workspace.main", "fly_secrets.control_plane.main", "control_plane_config.main"}, ControlPlane: &control},
+			Resource{Address: "tailscale_device.control_plane.main", Type: "tailscale_device", Class: ClassObserved, ProviderRef: control.Network, DesiredHash: hashValue(control.TailscaleHostname), Protected: control.Protect, Absent: absent, DependsOn: []string{"rollout.control_plane.main"}, ControlPlane: &control},
+		)
+	}
 	graph := Graph{Resources: resources, byAddress: map[string]Resource{}}
 	for _, resource := range resources {
 		graph.byAddress[resource.Address] = resource
@@ -250,6 +267,22 @@ func Apply(ctx context.Context, ws *workspace.Workspace, store *state.Store, pro
 	}
 	status = "succeeded"
 	return plan, nil
+}
+
+func WriteControlPlaneArtifacts(ws *workspace.Workspace, opts Options) (string, error) {
+	if !ws.Config.ControlPlane.Enabled {
+		return "", fmt.Errorf("control_plane is disabled in the workspace")
+	}
+	resource := Resource{
+		Address:      "control_plane_config.main",
+		Type:         "control_plane_config",
+		Class:        ClassDerived,
+		ProviderRef:  ws.Config.ControlPlane.Runtime,
+		DesiredHash:  hashValue(ws.Config.ControlPlane.FlyApp),
+		Protected:    ws.Config.ControlPlane.Protect,
+		ControlPlane: &ws.Config.ControlPlane,
+	}
+	return writeConfig(context.Background(), ws, provider.Set{}, resource, opts)
 }
 
 func markOrphan(ctx context.Context, store *state.Store, change Change) error {
@@ -394,6 +427,13 @@ func planResource(ctx context.Context, ws *workspace.Workspace, store *state.Sto
 			}
 			resource.DesiredHash = hash
 		}
+		if resource.ControlPlane != nil {
+			hash, err := hashControlPlaneConfig(*resource.ControlPlane)
+			if err != nil {
+				return Change{}, err
+			}
+			resource.DesiredHash = hash
+		}
 		return planByHash(ctx, store, resource, "deploy")
 	case "tailscale_device":
 		return planTailscaleDevice(resource, devices), nil
@@ -403,6 +443,13 @@ func planResource(ctx context.Context, ws *workspace.Workspace, store *state.Sto
 		return planOpenWebUIConfig(ctx, ws, store, devices, resource)
 	case "dashboard_config":
 		hash, err := hashDashboardConfig(ws, devices)
+		if err != nil {
+			return Change{}, err
+		}
+		resource.DesiredHash = hash
+		return planByHash(ctx, store, resource, "render")
+	case "control_plane_config":
+		hash, err := hashControlPlaneConfig(*resource.ControlPlane)
 		if err != nil {
 			return Change{}, err
 		}
@@ -492,6 +539,13 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 			}
 			resource.DesiredHash = hash
 		}
+		if resource.ControlPlane != nil {
+			hash, err := hashControlPlaneConfig(*resource.ControlPlane)
+			if err != nil {
+				return err
+			}
+			resource.DesiredHash = hash
+		}
 		configPath := generatedPath(opts, resource)
 		rolloutProvider, err := providers.RolloutFor(resource.ProviderRef)
 		if err != nil {
@@ -506,7 +560,7 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 		if err != nil {
 			return err
 		}
-		device, ok := selectedTailscaleDevice(devices, resource.Agent.TailscaleHostname)
+		device, ok := selectedTailscaleDevice(devices, resourceTailscaleHostname(resource))
 		if !ok {
 			return nil
 		}
@@ -532,6 +586,17 @@ func applyResource(ctx context.Context, ws *workspace.Workspace, store *state.St
 			return err
 		}
 		hash, err := hashDashboardConfig(ws, devices)
+		if err != nil {
+			return err
+		}
+		resource.DesiredHash = hash
+		path, err := writeConfig(ctx, ws, providers, resource, opts)
+		if err != nil {
+			return err
+		}
+		return upsertReady(ctx, store, resource, path, map[string]any{"path": path})
+	case "control_plane_config":
+		hash, err := hashControlPlaneConfig(*resource.ControlPlane)
 		if err != nil {
 			return err
 		}
@@ -613,9 +678,10 @@ func planByHash(ctx context.Context, store *state.Store, resource Resource, acti
 }
 
 func planTailscaleDevice(resource Resource, devices []tailscale.Device) Change {
-	matches := tailscale.FindByHostname(devices, resource.Agent.TailscaleHostname)
+	hostname := resourceTailscaleHostname(resource)
+	matches := tailscale.FindByHostname(devices, hostname)
 	if len(matches) == 0 {
-		return Change{Kind: "!", Action: "drift", Address: resource.Address, Class: resource.Class, ProviderRef: resource.ProviderRef, Message: "missing " + resource.Agent.TailscaleHostname, DesiredHash: resource.DesiredHash, Protected: resource.Protected}
+		return Change{Kind: "!", Action: "drift", Address: resource.Address, Class: resource.Class, ProviderRef: resource.ProviderRef, Message: "missing " + hostname, DesiredHash: resource.DesiredHash, Protected: resource.Protected}
 	}
 	if len(matches) > 1 {
 		return Change{Kind: "!", Action: "drift", Address: resource.Address, Class: resource.Class, ProviderRef: resource.ProviderRef, ExternalID: matches[0].ID, Message: "multiple devices", DesiredHash: resource.DesiredHash, Protected: resource.Protected}
@@ -657,6 +723,8 @@ func writeConfig(ctx context.Context, ws *workspace.Workspace, providers provide
 		data, err = render.AgentFlyTOML(*resource.Agent)
 	case resource.Dashboard != nil:
 		data, err = render.DashboardFlyTOML(*resource.Dashboard)
+	case resource.ControlPlane != nil:
+		data, err = render.ControlPlaneFlyTOML(*resource.ControlPlane)
 	default:
 		devices, tsErr := providers.AllDevices(ctx)
 		if tsErr != nil {
@@ -681,7 +749,78 @@ func writeConfig(ctx context.Context, ws *workspace.Workspace, providers provide
 			return "", err
 		}
 	}
+	if resource.ControlPlane != nil {
+		if err := writeControlPlaneSeed(ws, filepath.Join(filepath.Dir(path), "control-plane-seed")); err != nil {
+			return "", err
+		}
+	}
 	return path, nil
+}
+
+func writeControlPlaneSeed(ws *workspace.Workspace, seedDir string) error {
+	if err := os.RemoveAll(seedDir); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(seedDir, 0o755); err != nil {
+		return err
+	}
+	for _, name := range []string{"companion.toml", "providers.toml", "defaults.toml", "webui.toml", "dashboard.toml", "control-plane.toml"} {
+		if err := copyIfExists(filepath.Join(ws.Root, name), filepath.Join(seedDir, name)); err != nil {
+			return err
+		}
+	}
+	for _, dir := range []string{"agents", "identities", "vaults"} {
+		src := filepath.Join(ws.Root, dir)
+		if _, err := os.Stat(src); err == nil {
+			if err := copyDir(src, filepath.Join(seedDir, dir)); err != nil {
+				return err
+			}
+		} else if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func copyIfExists(src, dst string) error {
+	info, err := os.Stat(src)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return copyDir(src, dst)
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, info.Mode().Perm())
+}
+
+func copyDir(src, dst string) error {
+	return filepath.WalkDir(src, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if entry.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		if entry.Type().IsRegular() {
+			return copyIfExists(path, target)
+		}
+		return nil
+	})
 }
 
 // writeDashboardManifest builds the live fleet topology and writes fleet.json
@@ -726,6 +865,14 @@ func hashDashboardConfig(ws *workspace.Workspace, devices []tailscale.Device) (s
 	}), nil
 }
 
+func hashControlPlaneConfig(cfg config.ControlPlane) (string, error) {
+	toml, err := render.ControlPlaneFlyTOML(cfg)
+	if err != nil {
+		return "", err
+	}
+	return hashValue(toml), nil
+}
+
 func dashboardProviderSummary(ws *workspace.Workspace) status.ProviderSummary {
 	dash := ws.Config.Dashboard
 	summary := status.ProviderSummary{}
@@ -760,6 +907,9 @@ func generatedPath(opts Options, resource Resource) string {
 	}
 	if resource.Dashboard != nil {
 		name = "fly." + resource.Dashboard.ID
+	}
+	if resource.ControlPlane != nil {
+		name = "fly." + resource.ControlPlane.ID
 	}
 	return filepath.Join(dir, name+".toml")
 }
@@ -812,6 +962,9 @@ func requiredSecretNames(resource Resource) []string {
 	if resource.Dashboard != nil {
 		return render.RequiredDashboardFlySecrets(*resource.Dashboard)
 	}
+	if resource.ControlPlane != nil {
+		return render.RequiredControlPlaneFlySecrets(*resource.ControlPlane)
+	}
 	return nil
 }
 
@@ -824,6 +977,9 @@ func resourceFlyApp(resource Resource) string {
 	}
 	if resource.Dashboard != nil {
 		return resource.Dashboard.FlyApp
+	}
+	if resource.ControlPlane != nil {
+		return resource.ControlPlane.FlyApp
 	}
 	if value, ok := resource.Desired["app"].(string); ok {
 		return value
@@ -838,6 +994,9 @@ func resourceVolumeName(resource Resource) string {
 	if resource.OpenWebUI != nil {
 		return resource.OpenWebUI.VolumeName
 	}
+	if resource.ControlPlane != nil {
+		return resource.ControlPlane.VolumeName
+	}
 	if value, ok := resource.Desired["name"].(string); ok {
 		return value
 	}
@@ -851,6 +1010,9 @@ func resourceRegion(resource Resource) string {
 	if resource.OpenWebUI != nil {
 		return resource.OpenWebUI.Region
 	}
+	if resource.ControlPlane != nil {
+		return resource.ControlPlane.Region
+	}
 	return "cdg"
 }
 
@@ -861,7 +1023,26 @@ func desiredSizeGB(resource Resource) int {
 	if resource.OpenWebUI != nil {
 		return resource.OpenWebUI.VolumeSizeGB
 	}
+	if resource.ControlPlane != nil {
+		return resource.ControlPlane.VolumeSizeGB
+	}
 	return 1
+}
+
+func resourceTailscaleHostname(resource Resource) string {
+	if resource.Agent != nil {
+		return resource.Agent.TailscaleHostname
+	}
+	if resource.OpenWebUI != nil {
+		return resource.OpenWebUI.TailscaleHostname
+	}
+	if resource.Dashboard != nil {
+		return resource.Dashboard.TailscaleHostname
+	}
+	if resource.ControlPlane != nil {
+		return resource.ControlPlane.TailscaleHostname
+	}
+	return ""
 }
 
 func hydrateAgentIdentity(root string, agent config.Agent) (config.Agent, error) {

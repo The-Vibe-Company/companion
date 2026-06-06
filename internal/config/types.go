@@ -16,10 +16,11 @@ var (
 )
 
 type RawConfig struct {
-	Defaults  RawDefaults  `toml:"defaults"`
-	OpenWebUI RawOpenWebUI `toml:"open_webui"`
-	Dashboard RawDashboard `toml:"dashboard"`
-	Agents    []RawAgent   `toml:"agents"`
+	Defaults     RawDefaults     `toml:"defaults"`
+	OpenWebUI    RawOpenWebUI    `toml:"open_webui"`
+	Dashboard    RawDashboard    `toml:"dashboard"`
+	ControlPlane RawControlPlane `toml:"control_plane"`
+	Agents       []RawAgent      `toml:"agents"`
 }
 
 type RawDefaults struct {
@@ -194,11 +195,38 @@ type RawDashboard struct {
 	TailscaledExtraArgs        *string `toml:"tailscaled_extra_args"`
 }
 
+type RawControlPlane struct {
+	Enabled                    *bool   `toml:"enabled"`
+	ID                         *string `toml:"id"`
+	Runtime                    *string `toml:"runtime"`
+	Network                    *string `toml:"network"`
+	Lifecycle                  *string `toml:"lifecycle"`
+	Protect                    *bool   `toml:"protect"`
+	FlyApp                     *string `toml:"fly_app"`
+	TailscaleHostname          *string `toml:"tailscale_hostname"`
+	Region                     *string `toml:"region"`
+	VolumeName                 *string `toml:"volume_name"`
+	VolumeSizeGB               *int    `toml:"volume_size_gb"`
+	Memory                     *string `toml:"memory"`
+	CPUs                       *int    `toml:"cpus"`
+	Port                       *int    `toml:"port"`
+	Name                       *string `toml:"name"`
+	TailscaleServe             *bool   `toml:"tailscale_serve"`
+	TailscaleAcceptDNS         *bool   `toml:"tailscale_accept_dns"`
+	TailscaleAuthKeySecretName *string `toml:"tailscale_authkey_secret_name"`
+	FlyTokenSecretName         *string `toml:"fly_token_secret_name"`
+	TailscaleAPIKeySecretName  *string `toml:"tailscale_api_key_secret_name"`
+	OpenRouterAPIKeySecretName *string `toml:"openrouter_api_key_secret_name"`
+	TSExtraArgs                *string `toml:"ts_extra_args"`
+	TailscaledExtraArgs        *string `toml:"tailscaled_extra_args"`
+}
+
 type Config struct {
-	Defaults  Defaults  `json:"defaults"`
-	OpenWebUI OpenWebUI `json:"open_webui"`
-	Dashboard Dashboard `json:"dashboard"`
-	Agents    []Agent   `json:"agents"`
+	Defaults     Defaults     `json:"defaults"`
+	OpenWebUI    OpenWebUI    `json:"open_webui"`
+	Dashboard    Dashboard    `json:"dashboard"`
+	ControlPlane ControlPlane `json:"control_plane"`
+	Agents       []Agent      `json:"agents"`
 }
 
 type Defaults struct {
@@ -382,6 +410,35 @@ type Dashboard struct {
 	TailscaledExtraArgs        string `json:"tailscaled_extra_args,omitempty"`
 }
 
+// ControlPlane describes the persistent Companion admin app. Unlike the
+// stateless dashboard, it mounts a workspace volume and runs the mutable console
+// API that can edit TOML and run plan/apply from inside the tailnet.
+type ControlPlane struct {
+	Enabled                    bool   `json:"enabled"`
+	ID                         string `json:"id"`
+	Runtime                    string `json:"runtime"`
+	Network                    string `json:"network"`
+	Lifecycle                  string `json:"lifecycle"`
+	Protect                    bool   `json:"protect"`
+	FlyApp                     string `json:"fly_app"`
+	TailscaleHostname          string `json:"tailscale_hostname"`
+	Region                     string `json:"region"`
+	VolumeName                 string `json:"volume_name"`
+	VolumeSizeGB               int    `json:"volume_size_gb"`
+	Memory                     string `json:"memory"`
+	CPUs                       int    `json:"cpus"`
+	Port                       int    `json:"port"`
+	Name                       string `json:"name"`
+	TailscaleServe             bool   `json:"tailscale_serve"`
+	TailscaleAcceptDNS         bool   `json:"tailscale_accept_dns"`
+	TailscaleAuthKeySecretName string `json:"tailscale_authkey_secret_name"`
+	FlyTokenSecretName         string `json:"fly_token_secret_name"`
+	TailscaleAPIKeySecretName  string `json:"tailscale_api_key_secret_name"`
+	OpenRouterAPIKeySecretName string `json:"openrouter_api_key_secret_name,omitempty"`
+	TSExtraArgs                string `json:"ts_extra_args,omitempty"`
+	TailscaledExtraArgs        string `json:"tailscaled_extra_args,omitempty"`
+}
+
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -405,9 +462,10 @@ func Normalize(raw RawConfig) (*Config, error) {
 
 	defaults := normalizeDefaults(raw.Defaults)
 	cfg := &Config{
-		Defaults:  defaults,
-		OpenWebUI: normalizeOpenWebUI(raw.OpenWebUI, defaults),
-		Dashboard: normalizeDashboard(raw.Dashboard, defaults),
+		Defaults:     defaults,
+		OpenWebUI:    normalizeOpenWebUI(raw.OpenWebUI, defaults),
+		Dashboard:    normalizeDashboard(raw.Dashboard, defaults),
+		ControlPlane: normalizeControlPlane(raw.ControlPlane, defaults),
 	}
 	for _, rawAgent := range raw.Agents {
 		agent, err := normalizeAgent(defaults, rawAgent)
@@ -567,6 +625,41 @@ func (c *Config) Validate() error {
 			if !envRE.MatchString(value) {
 				return fmt.Errorf("dashboard.%s must be an environment variable name", key)
 			}
+		}
+	}
+	if c.ControlPlane.Enabled {
+		for key, value := range map[string]string{
+			"id":                 c.ControlPlane.ID,
+			"fly_app":            c.ControlPlane.FlyApp,
+			"tailscale_hostname": c.ControlPlane.TailscaleHostname,
+		} {
+			if !nameRE.MatchString(value) {
+				return fmt.Errorf("control_plane.%s=%q must use lowercase letters, numbers, and hyphens", key, value)
+			}
+		}
+		if err := validatePort("control_plane.port", c.ControlPlane.Port); err != nil {
+			return err
+		}
+		if c.ControlPlane.Lifecycle != "present" && c.ControlPlane.Lifecycle != "absent" {
+			return fmt.Errorf("control_plane.lifecycle must be present or absent")
+		}
+		if c.ControlPlane.Runtime == "" || !strings.Contains(c.ControlPlane.Runtime, ".") {
+			return fmt.Errorf("control_plane.runtime must look like provider.name")
+		}
+		if c.ControlPlane.Network == "" || !strings.Contains(c.ControlPlane.Network, ".") {
+			return fmt.Errorf("control_plane.network must look like provider.name")
+		}
+		for key, value := range map[string]string{
+			"tailscale_authkey_secret_name": c.ControlPlane.TailscaleAuthKeySecretName,
+			"fly_token_secret_name":         c.ControlPlane.FlyTokenSecretName,
+			"tailscale_api_key_secret_name": c.ControlPlane.TailscaleAPIKeySecretName,
+		} {
+			if !envRE.MatchString(value) {
+				return fmt.Errorf("control_plane.%s must be an environment variable name", key)
+			}
+		}
+		if c.ControlPlane.OpenRouterAPIKeySecretName != "" && !envRE.MatchString(c.ControlPlane.OpenRouterAPIKeySecretName) {
+			return fmt.Errorf("control_plane.openrouter_api_key_secret_name must be an environment variable name")
 		}
 	}
 	return nil
@@ -894,6 +987,37 @@ func normalizeDashboard(raw RawDashboard, defaults Defaults) Dashboard {
 	}
 }
 
+func normalizeControlPlane(raw RawControlPlane, defaults Defaults) ControlPlane {
+	if !rawControlPlaneSet(raw) {
+		return ControlPlane{Enabled: false}
+	}
+	return ControlPlane{
+		Enabled:                    boolValue(raw.Enabled, false),
+		ID:                         stringValue(raw.ID, "control-plane"),
+		Runtime:                    stringValue(raw.Runtime, "fly.default"),
+		Network:                    stringValue(raw.Network, "tailscale.default"),
+		Lifecycle:                  stringValue(raw.Lifecycle, "present"),
+		Protect:                    boolValue(raw.Protect, true),
+		FlyApp:                     stringValue(raw.FlyApp, "example-companion-control-plane"),
+		TailscaleHostname:          stringValue(raw.TailscaleHostname, "companion-control-plane"),
+		Region:                     stringValue(raw.Region, defaults.Region),
+		VolumeName:                 stringValue(raw.VolumeName, "companion_workspace"),
+		VolumeSizeGB:               intValue(raw.VolumeSizeGB, 3),
+		Memory:                     stringValue(raw.Memory, "512mb"),
+		CPUs:                       intValue(raw.CPUs, 1),
+		Port:                       intValue(raw.Port, 8788),
+		Name:                       stringValue(raw.Name, "Companion"),
+		TailscaleServe:             boolValue(raw.TailscaleServe, true),
+		TailscaleAcceptDNS:         boolValue(raw.TailscaleAcceptDNS, true),
+		TailscaleAuthKeySecretName: stringValue(raw.TailscaleAuthKeySecretName, defaults.TailscaleAuthKeySecretName),
+		FlyTokenSecretName:         stringValue(raw.FlyTokenSecretName, "FLY_API_TOKEN"),
+		TailscaleAPIKeySecretName:  stringValue(raw.TailscaleAPIKeySecretName, "TAILSCALE_API_KEY"),
+		OpenRouterAPIKeySecretName: stringValue(raw.OpenRouterAPIKeySecretName, "OPENROUTER_API_KEY"),
+		TSExtraArgs:                stringValue(raw.TSExtraArgs, defaults.TSExtraArgs),
+		TailscaledExtraArgs:        stringValue(raw.TailscaledExtraArgs, ""),
+	}
+}
+
 func validateConnection(agentID string, conn VaultConnection) error {
 	if conn.Name == "" || !nameRE.MatchString(conn.Name) {
 		return fmt.Errorf("agent %s has invalid vault connection name: %q", agentID, conn.Name)
@@ -1023,6 +1147,10 @@ func rawCompanionSoulSet(raw RawCompanionSoul) bool {
 
 func rawDashboardSet(raw RawDashboard) bool {
 	return raw.Enabled != nil || raw.ID != nil || raw.Runtime != nil || raw.Network != nil || raw.Lifecycle != nil || raw.Protect != nil || raw.FlyApp != nil || raw.TailscaleHostname != nil || raw.Region != nil || raw.Memory != nil || raw.CPUs != nil || raw.Port != nil || raw.Name != nil || raw.RefreshInterval != nil || raw.TailscaleServe != nil || raw.TailscaleAcceptDNS != nil || raw.TailscaleAuthKeySecretName != nil || raw.FlyTokenSecretName != nil || raw.TailscaleAPIKeySecretName != nil || raw.TSExtraArgs != nil || raw.TailscaledExtraArgs != nil
+}
+
+func rawControlPlaneSet(raw RawControlPlane) bool {
+	return raw.Enabled != nil || raw.ID != nil || raw.Runtime != nil || raw.Network != nil || raw.Lifecycle != nil || raw.Protect != nil || raw.FlyApp != nil || raw.TailscaleHostname != nil || raw.Region != nil || raw.VolumeName != nil || raw.VolumeSizeGB != nil || raw.Memory != nil || raw.CPUs != nil || raw.Port != nil || raw.Name != nil || raw.TailscaleServe != nil || raw.TailscaleAcceptDNS != nil || raw.TailscaleAuthKeySecretName != nil || raw.FlyTokenSecretName != nil || raw.TailscaleAPIKeySecretName != nil || raw.OpenRouterAPIKeySecretName != nil || raw.TSExtraArgs != nil || raw.TailscaledExtraArgs != nil
 }
 
 func rawOpenWebUISet(raw RawOpenWebUI) bool {

@@ -377,12 +377,37 @@ tailscale_serve = true
 
 The deployed image is built from `Dockerfile.dashboard` (the `companion` binary + Tailscale + `fleet.json`). To run it on your own server instead, `git clone` the repo and `go build ./cmd/companion`, then run `companion dashboard --manifest <fleet.json>` with `FLY_API_TOKEN`/`TAILSCALE_API_KEY` in the environment.
 
+## Control Plane
+
+The control plane is the mutable, Tailscale-only Companion admin app. It runs `companion console` on Fly, mounts a persistent `/workspace` volume, and uses the same workspace/state engine as the local CLI. Bootstrap a new control-plane workspace locally:
+
+```bash
+companion init --control-plane --workspace ./my-fleet \
+  --control-plane-app my-companion-control \
+  --control-plane-hostname companion-control \
+  --tailnet example.ts.net
+```
+
+The generated TOML stores only secret names such as `FLY_API_TOKEN`, `TAILSCALE_API_KEY`, `TS_AUTHKEY`, and `OPENROUTER_API_KEY`; set the corresponding values in your shell or `.env` before deploying. Use `--no-deploy` to write and register the workspace without creating Fly resources.
+
+The local CLI tracks multiple workspaces in `~/.companion/workspaces.json`:
+
+```bash
+companion workspace list
+companion workspace use my-fleet
+companion control-plane status
+companion control-plane upgrade
+companion control-plane export --output ./control-plane-workspace.tgz
+```
+
+`control-plane upgrade` redeploys the same Fly app from the current checkout while preserving the Fly volume, secrets, and SQLite state.
+
 ## Development
 
 ```bash
 go test ./...
 sh -n install.sh
-bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly
+bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly bin/start-dashboard-on-fly bin/start-control-plane-on-fly bin/build-console-ui
 go run ./cmd/companion validate --workspace examples/minimal
 go run ./cmd/companion plan --workspace examples/minimal
 ```

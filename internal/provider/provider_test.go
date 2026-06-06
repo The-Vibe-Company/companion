@@ -7,6 +7,7 @@ import (
 
 	"github.com/The-Vibe-Company/companion/internal/config"
 	"github.com/The-Vibe-Company/companion/internal/execx"
+	"github.com/The-Vibe-Company/companion/internal/fly"
 	"github.com/The-Vibe-Company/companion/internal/providertest"
 	"github.com/The-Vibe-Company/companion/internal/workspace"
 )
@@ -67,6 +68,32 @@ func TestNewSetBuildsAPIProvidersAndValidatesModels(t *testing.T) {
 	}
 	if err := set.ValidateModels(context.Background(), cfg); err != nil {
 		t.Fatalf("validate models: %v", err)
+	}
+}
+
+func TestNewSetUsesDeployContextForRollouts(t *testing.T) {
+	workspaceRoot := t.TempDir()
+	deployContext := t.TempDir()
+	ws := &workspace.Workspace{
+		Root: workspaceRoot,
+		Providers: workspace.Providers{
+			Fly: map[string]workspace.FlyProvider{"default": {Region: "cdg"}},
+		},
+	}
+	set, err := NewSet(ws, map[string]string{"COMPANION_DEPLOY_CONTEXT": deployContext}, execx.ShellRunner{Dir: workspaceRoot})
+	if err != nil {
+		t.Fatalf("new set: %v", err)
+	}
+	rollout, ok := set.Rollout["fly.default"].(fly.Provider)
+	if !ok {
+		t.Fatalf("rollout provider type = %T, want fly.Provider", set.Rollout["fly.default"])
+	}
+	runner, ok := rollout.Runner.(execx.ShellRunner)
+	if !ok {
+		t.Fatalf("rollout runner type = %T, want execx.ShellRunner", rollout.Runner)
+	}
+	if runner.Dir != deployContext {
+		t.Fatalf("rollout runner dir = %q, want deploy context %q", runner.Dir, deployContext)
 	}
 }
 

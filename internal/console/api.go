@@ -462,9 +462,13 @@ func (s *Server) handleAgentLogs(w http.ResponseWriter, r *http.Request) {
 // destroy flags default to false: a plain plan/apply reports protected
 // destructions as blocked rather than performing them.
 func (s *Server) planOptions(ws *workspace.Workspace, env map[string]string, allowProtectedDestroy, destroyData bool) resource.Options {
+	generatedDir := filepath.Join(ws.Root, ".companion", "generated")
+	if deployContext := env["COMPANION_DEPLOY_CONTEXT"]; deployContext != "" {
+		generatedDir = filepath.Join(deployContext, ".companion", "generated")
+	}
 	opts := resource.Options{
 		Root:                  ws.Root,
-		GeneratedDir:          filepath.Join(ws.Root, ".companion", "generated"),
+		GeneratedDir:          generatedDir,
 		Env:                   env,
 		AllowProtectedDestroy: allowProtectedDestroy,
 	}

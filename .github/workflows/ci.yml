@@ -44,7 +44,7 @@ jobs:
       - name: Validate shell scripts
         run: |
           sh -n install.sh
-          bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly bin/start-dashboard-on-fly bin/build-console-ui
+          bash -n install.sh bin/start-on-fly bin/run-hermes-process bin/start-open-webui-on-fly bin/start-dashboard-on-fly bin/start-control-plane-on-fly bin/build-console-ui
 
       - name: Verify installable CLI package
         run: |

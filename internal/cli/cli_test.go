@@ -11,6 +11,7 @@ import (
 	"github.com/The-Vibe-Company/companion/internal/config"
 	"github.com/The-Vibe-Company/companion/internal/execx"
 	"github.com/The-Vibe-Company/companion/internal/fly"
+	"github.com/The-Vibe-Company/companion/internal/registry"
 	"github.com/The-Vibe-Company/companion/internal/render"
 	"github.com/The-Vibe-Company/companion/internal/workspace"
 )
@@ -113,6 +114,88 @@ func TestAppEnvLoadsEnvFileAndShellOverrides(t *testing.T) {
 	}
 	if values["OPENROUTER_API_KEY"] != "quoted-value" {
 		t.Fatalf("expected quoted .env value, got %q", values["OPENROUTER_API_KEY"])
+	}
+}
+
+func TestInitControlPlaneWritesWorkspaceAndRegistryWithoutSecrets(t *testing.T) {
+	root := t.TempDir()
+	companionHome := t.TempDir()
+	t.Setenv("COMPANION_HOME", companionHome)
+	t.Setenv("FLY_API_TOKEN", "fly-secret-value")
+	t.Setenv("TAILSCALE_API_KEY", "tailscale-api-secret-value")
+	t.Setenv("TS_AUTHKEY", "tailscale-auth-secret-value")
+
+	cmd := NewRootCommand()
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetArgs([]string{
+		"--workspace", root,
+		"init",
+		"--control-plane",
+		"--no-deploy",
+		"--control-plane-app", "stan-companion-control",
+		"--control-plane-hostname", "stan-companion",
+		"--tailnet", "tailnet.example",
+	})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init control plane: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "control-plane.toml"))
+	if err != nil {
+		t.Fatalf("read control-plane.toml: %v", err)
+	}
+	text := string(data)
+	for _, want := range []string{
+		`enabled = true`,
+		`fly_app = "stan-companion-control"`,
+		`tailscale_hostname = "stan-companion"`,
+		`fly_token_secret_name = "FLY_API_TOKEN"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("control-plane.toml missing %q:\n%s", want, text)
+		}
+	}
+	for _, secretValue := range []string{"fly-secret-value", "tailscale-api-secret-value", "tailscale-auth-secret-value"} {
+		if strings.Contains(text, secretValue) {
+			t.Fatalf("control-plane.toml leaked secret value %q:\n%s", secretValue, text)
+		}
+	}
+	current, ok, err := registry.Current()
+	if err != nil {
+		t.Fatalf("registry current: %v", err)
+	}
+	if !ok || current.Path != root || current.ControlPlaneApp != "stan-companion-control" {
+		t.Fatalf("unexpected registry current: %#v ok=%v", current, ok)
+	}
+}
+
+func TestWorkspaceRegistryResolvesCurrentWorkspace(t *testing.T) {
+	root := t.TempDir()
+	companionHome := t.TempDir()
+	t.Setenv("COMPANION_HOME", companionHome)
+	writeTestWorkspace(t, root, map[string]string{
+		"sample": `
+[agent]
+id = "sample"
+fly_app = "example-companion-sample"
+tailscale_hostname = "sample"
+`,
+	})
+	if err := registry.Upsert(registry.WorkspaceRecord{Name: "registered", Path: root}, true); err != nil {
+		t.Fatalf("registry upsert: %v", err)
+	}
+	runner := &execx.FakeRunner{Responses: map[string]execx.Result{
+		"tailscale status --json": {Stdout: `{"Peer":{}}`},
+	}}
+	cmd := newRootCommand(runner)
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetArgs([]string{"plan"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("plan through registry: %v", err)
+	}
+	if !strings.Contains(output.String(), "fly_app.agent.sample") {
+		t.Fatalf("expected plan to use registered workspace, got:\n%s", output.String())
 	}
 }
 
