@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0](https://github.com/The-Vibe-Company/companion/compare/v0.2.0...v0.3.0) (2026-06-06)
+
+
+### Features
+
+* **console:** Companion Web Console v1 ([#671](https://github.com/The-Vibe-Company/companion/issues/671)) ([9005574](https://github.com/The-Vibe-Company/companion/commit/900557406087116564707dad35810b0383de6020))
+* **control-plane:** add Fly-hosted companion control plane ([#672](https://github.com/The-Vibe-Company/companion/issues/672)) ([90804d3](https://github.com/The-Vibe-Company/companion/commit/90804d3d86371184c0854bed40fb13a0013853ca))
+* **dashboard:** deployable fleet status dashboard over Tailscale ([#665](https://github.com/The-Vibe-Company/companion/issues/665)) ([bb05c5c](https://github.com/The-Vibe-Company/companion/commit/bb05c5c2cd15c4c7fa6c1f145525d106aed8b3ae))
+* **dashboard:** Linear-grade fleet UI with agent detail drawer ([#668](https://github.com/The-Vibe-Company/companion/issues/668)) ([8749f78](https://github.com/The-Vibe-Company/companion/commit/8749f783a7d3176441c11e1853fedc197f567b06))
+* **identity:** add companion soul defaults ([f004b26](https://github.com/The-Vibe-Company/companion/commit/f004b26cfa6bff634a5358ea8443a6b4f0739dff))
+
+
+### Bug Fixes
+
+* **dashboard:** keep Fly dashboard tailnet-only ([#667](https://github.com/The-Vibe-Company/companion/issues/667)) ([6e2cc87](https://github.com/The-Vibe-Company/companion/commit/6e2cc87dc4686efb7a314c05621925008fd72dc1))
+
 ## [0.2.0](https://github.com/The-Vibe-Company/companion/compare/v0.1.0...v0.2.0) (2026-06-03)
 
 
