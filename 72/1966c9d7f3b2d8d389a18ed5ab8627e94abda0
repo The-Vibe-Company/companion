@@ -1,0 +1,80 @@
+docs/design.md
+  s_f8eb1ed0519395::t_78d36a2e25878b 704-708,896-902,1693-1695
+  s_f8eb1ed0519395::t_6b7f9755d4d8c3 1146-1150
+  s_f8eb1ed0519395::t_21fd5a63a7970a 1101-1105
+  s_f8eb1ed0519395::t_d574a56a734999 903-907
+packages/core/src/billing.ts
+  s_f8eb1ed0519395::t_7676d4c1bf3b8d 404-408,436,446
+  s_f8eb1ed0519395::t_e186c0adaf3cc2 409
+apps/api/test/integration/projectPromptQueue.integration.test.ts
+  s_f8eb1ed0519395::t_90db07b18289e1 3,6-9,22,491-601,603-607
+  s_f8eb1ed0519395::t_caa821fc040e71 360-386,422-453
+  s_f8eb1ed0519395::t_2778655eed6054 387,403,454,470
+  s_f8eb1ed0519395::t_357ed014a5db45 14,17,322-359,405-421,472-490,602
+  s_f8eb1ed0519395::t_41ec5316413792 388-402,404,455-469,471
+apps/api/test/integration/runtimeRoleGrants.integration.test.ts
+  s_f8eb1ed0519395::t_d06a5061f6b6ee 20-21,40-41,580-786
+  s_f8eb1ed0519395::t_6f2b9f779526d8 787-788
+apps/api/test/integration/rls.integration.test.ts
+  s_f8eb1ed0519395::t_4062054f555d40 2385-2565
+  s_f8eb1ed0519395::t_b7186c9c2c197a 753-758,780-781
+  s_f8eb1ed0519395::t_dfa42bc1545c02 206
+  s_f8eb1ed0519395::t_c5f2a6780f1ee1 46,641-642,686-719
+  s_f8eb1ed0519395::t_630bbbfa0bdf47 2938-2954
+scripts/ci-container-smoke.sh
+  s_f8eb1ed0519395::t_a4af6c5edbb137 43,66,68,70-72,74,79,90-91,111-112
+apps/web/src/components/projects/ProjectsApp.tsx
+  s_f8eb1ed0519395::t_6b056e18fad9de 1428-1431,1497-1499,1810,1865,1869,1876,1883,1896-1898,2316,2392
+packages/core/src/projectJobs.ts
+  s_f8eb1ed0519395::t_2598cbd32b02fd 4833-4870
+apps/api/test/integration/projectListProjection.integration.test.ts
+  s_f8eb1ed0519395::t_fb533a4256c59d 1-38,41-161,164-401,403-417,421-440
+  s_f8eb1ed0519395::t_e478e082750d17 39-40,162-163,402,418-420
+docs/testing.md
+  s_f8eb1ed0519395::t_e85cc5ed9fb926 30-31
+  s_f8eb1ed0519395::t_db5632fc82da64 28
+  s_f8eb1ed0519395::t_78d36a2e25878b 38,47
+deploy/railway/README.md
+  s_f8eb1ed0519395::t_e41e747f1858bf 169-171,179-182
+apps/web/src/components/projects/ProjectsApp.test.ts
+  s_f8eb1ed0519395::t_6b056e18fad9de 1445-1506
+packages/db/drizzle/0057_project_runtime_process_identity.sql
+  s_f8eb1ed0519395::t_b5f2c5e0fef9ce 1-129
+apps/web/src/components/projects/ProjectDialogs.tsx
+  s_f8eb1ed0519395::t_6a2b78c676299a 354-362
+apps/web/src/components/projects/ProjectDialogs.test.ts
+  s_f8eb1ed0519395::t_6a2b78c676299a 18-22,161-220
+  s_f8eb1ed0519395::t_9240f6fc13887c 221-223
+packages/core/src/projects.ts
+  s_f8eb1ed0519395::t_0abb94b67f4c58 3-15,67-74,464,552,840-919,921-932,934-997
+  s_f8eb1ed0519395::t_38e86749578245 314-343,1282-1286,1288,1345-1348
+  s_f8eb1ed0519395::t_ef996a5ddb6983 2644-2647,3562-3565
+  s_f8eb1ed0519395::t_19d041309108eb 1474-1489
+  s_f8eb1ed0519395::t_71a29b870d32da 2
+packages/db/drizzle/meta/_journal.json
+  s_872b5a803e0c02::t_96181936a308ec 403-409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "721966c9d7f3b2d8d389a18ed5ab8627e94abda0",
+  "prompts": {},
+  "sessions": {
+    "s_872b5a803e0c02": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f95ae-8601-7791-bf0c-08ed00568533",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_f8eb1ed0519395": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9008-a5c1-7a70-93bc-0ad5f1f4136b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
