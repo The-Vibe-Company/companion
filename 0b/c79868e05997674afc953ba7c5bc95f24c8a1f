@@ -1,0 +1,270 @@
+.agents/skills/ship-pr-dev/references/readiness-gates.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-105
+docs/design.md
+  s_5097b6d34853d4::t_c152abb9ea5668 1324
+  s_5097b6d34853d4::t_88c97931a687c3 1325-1328
+  s_5097b6d34853d4::t_cc1d86e5b3ecc5 905-906
+.agents/skills/review-code-dev/references/output-contract.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-378
+.agents/skills/review-code-dev/SKILL.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-225
+.agents/skills/design-frontend-dev/reference/optimize.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-258
+.agents/skills/ship-pr-dev/references/pr-template.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-76
+.agents/skills/ship-pr-dev/SKILL.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-185
+apps/web/src/components/runs/RunChatView.tsx
+  s_5097b6d34853d4::t_65de92d409fc2f 251,257,273-275,280,282,469-470,498
+  s_5097b6d34853d4::t_03038aa5beb8f8 117-119,252-256,258-262,264-265,268-270,276-279,281,323-325
+  s_5097b6d34853d4::t_1f7dbea30357df 97-104
+  s_5097b6d34853d4::t_2ea0286280a5a7 263,266,271-272
+  s_5097b6d34853d4::t_80cebe2fe25c5d 267
+  s_5097b6d34853d4::t_40200872d8e5ae 397-399,463-468,838,898-928
+packages/companion-skill/skill/scripts/test_bootstrap.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 90-96,99,121-167,465-515,618-619,622-876
+  s_5097b6d34853d4::t_cd6261f979905a 877
+.agents/skills/design-frontend-dev/reference/layout.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-145
+.agents/skills/review-code-dev/references/subagent-briefs.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-305
+.agents/skills/review-code-dev/scripts/collect_review_context.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-536
+apps/web/src/components/runs/RunChatView.test.ts
+  s_5097b6d34853d4::t_65de92d409fc2f 233,237,250-257
+  s_5097b6d34853d4::t_fef53fb8765f9f 319,331,333
+  s_5097b6d34853d4::t_ba5c5563de9a8d 281-307,309-318,320,327-330,332,334-344
+  s_5097b6d34853d4::t_a67c0a7dbe1457 308,321-326
+  s_5097b6d34853d4::t_40200872d8e5ae 219-232,234-236,238-249,258-280
+.agents/skills/review-code-dev/scripts/test_parse_review_findings.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-27
+.agents/skills/review-code-dev/agents/openai.yaml
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-4
+.agents/skills/design-frontend-dev/reference/harden.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-347
+.agents/skills/review-code-dev/scripts/prepare_review_run.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-180
+.agents/skills/review-code-dev/references/reviewers/frontend.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-48
+.agents/skills/ship-pr-dev/scripts/collect_ship_context.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-212
+.agents/skills/review-code-dev/scripts/test_collect_review_context.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-269
+.agents/skills/design-frontend-dev/reference/clarify.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-288
+.agents/skills/review-code-dev/references/reviewers/performance.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-28
+.agents/skills/design-frontend-dev/reference/quieter.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-99
+.agents/skills/design-frontend-dev/SOURCE.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-26
+packages/db/src/schema.ts
+  s_5097b6d34853d4::t_12a0d3e2ab7203 1596
+.agents/skills/review-code-dev/evals/evals.json
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-80
+packages/core/test/runSweeper.test.ts
+  s_5097b6d34853d4::t_e69dab8739b232 30
+.agents/skills/design-frontend-dev/reference/bolder.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-113
+packages/companion-skill/skill/evals/evals.json
+  s_5097b6d34853d4::t_a4633dbf0a459d 122-146
+.gitleaksignore
+  s_5097b6d34853d4::t_a4633dbf0a459d 22-24
+apps/worker/src/runRuntimeReconciler.ts
+  s_5097b6d34853d4::t_65de92d409fc2f 115-134
+  s_5097b6d34853d4::t_e4db62626dc88a 114,135-142,145-147,163,186-196
+  s_5097b6d34853d4::t_c152abb9ea5668 17
+  s_5097b6d34853d4::t_3f076339e8566a 18-24,246
+  s_5097b6d34853d4::t_ec755a2d6209fb 83-93,229,241-242
+  s_5097b6d34853d4::t_bf81d2833197ee 102-103,143-144,164-185
+.agents/skills/design-frontend-dev/reference/onboard.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-234
+packages/companion-skill/skill/scripts/bootstrap.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 6-9,27,159,227-232,235,238-239,242-250,254
+packages/db/drizzle/0053_sandbox_lifecycle_v2.sql
+  s_5097b6d34853d4::t_66c168de2fd410 426-463
+  s_5097b6d34853d4::t_21f4248645b934 193-203,211-231
+  s_5097b6d34853d4::t_ec755a2d6209fb 301-314,324-328,333-366
+  s_5097b6d34853d4::t_12a0d3e2ab7203 8
+  s_5097b6d34853d4::t_e56cd4ebccc778 317-320
+  s_5097b6d34853d4::t_fe944c7b9b195c 136-137,205-209,235,254,256-257,268,270
+  s_5097b6d34853d4::t_3dd105a95927b1 184-188,315-316,321-323,329-332
+.agents/skills/review-code-dev/references/review-playbook.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-155
+.agents/skills/review-code-dev/references/reviewers/tests.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-28
+.agents/skills/ship-pr-dev/scripts/prepare_ship_run.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-53
+packages/companion-skill/skill/scripts/bootstrap_update.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 14,21-28,92-105,116-213,221,223-232,234-237,248-252,254-259,261-268,270-277,281-292,296-306,319-339,344-360,363,370,372-373
+packages/companion-skill/skill/scripts/test_sync_companion.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-94
+.agents/skills/ship-pr-dev/scripts/test_collect_ship_context.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-152
+.agents/skills/design-frontend-dev/LICENSE
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-191
+packages/sandbox/src/vercel.ts
+  s_5097b6d34853d4::t_66c168de2fd410 323-325,338-339,341,343-348
+  s_5097b6d34853d4::t_45626d1a6bdde8 316,322,349-359
+  s_5097b6d34853d4::t_40228eccd76fe0 340,342
+apps/worker/src/runSupervisor.test.ts
+  s_5097b6d34853d4::t_d463ae0bd17cf6 27,90-93,95-97,99-100
+  s_5097b6d34853d4::t_d3ed2a61a6ed19 23,50-67
+  s_5097b6d34853d4::t_4356e53c516131 94,98
+  s_5097b6d34853d4::t_2fe624ab079339 15,68-89
+.agents/skills/design-frontend-dev/reference/typeset.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-271
+packages/companion-skill/skill/companion.json
+  s_5097b6d34853d4::t_a4633dbf0a459d 8,23,37-52,383
+.agents/skills/design-frontend-dev/reference/audit.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-133
+.agents/skills/design-frontend-dev/reference/delight.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-302
+.agents/skills/review-code-dev/scripts/test_prepare_review_run.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-29
+packages/companion-skill/skill/companion.integrity.json
+  s_5097b6d34853d4::t_08535ffe25fe6d 3-4,10
+  s_5097b6d34853d4::t_a4633dbf0a459d 5-6,8,16
+.agents/skills/design-frontend-dev/reference/brand.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-108
+.agents/skills/design-frontend-dev/reference/adapt.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-311
+.agents/skills/design-frontend-dev/reference/distill.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-111
+.agents/skills/review-code-dev/references/reviewers/api-contract.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-29
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_5097b6d34853d4::t_08535ffe25fe6d 142
+apps/worker/src/runSupervisor.ts
+  s_5097b6d34853d4::t_3dd105a95927b1 697-698,845,895,899,2289,2309-2311
+  s_5097b6d34853d4::t_9d0b1de26474c0 2093,2117
+  s_5097b6d34853d4::t_220055c17fe11c 2135-2147
+  s_5097b6d34853d4::t_eab2ec97355307 2163,2181
+  s_5097b6d34853d4::t_d463ae0bd17cf6 345-366,640,900-901,913-928,930-932,979,987,998-1001,1003-1009,1038,1044,1256
+  s_5097b6d34853d4::t_bf06e80b1abb85 236-237
+  s_5097b6d34853d4::t_841613f862347b 1002,2173-2175,2177-2178
+  s_5097b6d34853d4::t_f0f71398339502 1067,1073
+  s_5097b6d34853d4::t_ea1b79290376c7 844,867,1111-1112,1116-1119,1121-1140,1145,1174,1214-1255
+  s_5097b6d34853d4::t_ab434443656ddc 1948,2164-2172,2176,2179-2180,2301-2308,2954
+  s_5097b6d34853d4::t_81ef99ac3d02e5 57,902-912,929,1060,1065-1066,1068-1072,1074-1075
+  s_5097b6d34853d4::t_65de92d409fc2f 2085-2087
+  s_5097b6d34853d4::t_d3ed2a61a6ed19 597-602,627-639
+  s_5097b6d34853d4::t_b0bfe2196d99bb 587-596
+  s_5097b6d34853d4::t_a87ce4b6697e4d 641
+  s_5097b6d34853d4::t_46e5dfa42f5507 1257
+.agents/skills/design-frontend-dev/reference/critique.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-59
+.agents/skills/ship-pr-dev/references/workflow.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-162
+.agents/skills/review-code-dev/references/reviewers/security.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-29
+.agents/skills/ship-pr-dev/evals/evals.json
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-40
+.agents/skills/ship-pr-dev/companion.json
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-85
+packages/companion-skill/skill/scripts/sync_companion.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-86
+.agents/skills/design-frontend-dev/reference/overdrive.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-130
+.agents/skills/design-frontend-dev/reference/shape.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-165
+.agents/skills/review-code-dev/references/reviewers/architecture.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-29
+.agents/skills/design-frontend-dev/companion.json
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-57
+.agents/skills/ship-pr-dev/references/review-board.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-72
+apps/api/test/integration/runsDb.integration.test.ts
+  s_5097b6d34853d4::t_e56cd4ebccc778 2423-2428
+  s_5097b6d34853d4::t_094e252b988e7c 2383-2409
+  s_5097b6d34853d4::t_a823edbe2dca28 2277,2281-2282,2284-2287,2358-2359
+  s_5097b6d34853d4::t_4a33fd6ff80070 495,2361-2382
+apps/web/src/components/skills/useSkillDrag.ts
+  s_5097b6d34853d4::t_be3b844403efb8 242-246
+.agents/skills/design-frontend-dev/evals/evals.json
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-20
+.agents/skills/design-frontend-dev/reference/product.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-60
+.agents/skills/design-frontend-dev/SKILL.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-143
+.agents/skills/review-code-dev/references/finding-rubric.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-99
+.agents/skills/ship-pr-dev/scripts/review_dependency.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-59
+.agents/skills/design-frontend-dev/reference/polish.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-236
+.agents/skills/review-code-dev/references/review-intelligence.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-113
+apps/web/src/components/org/SettingsApp.test.ts
+  s_5097b6d34853d4::t_a4633dbf0a459d 4-5,17,25
+packages/companion-skill/client/storage.ts
+  s_5097b6d34853d4::t_a4633dbf0a459d 124-133
+apps/worker/src/runRuntimeReconciler.test.ts
+  s_5097b6d34853d4::t_e4db62626dc88a 43-62
+  s_5097b6d34853d4::t_c152abb9ea5668 41-42
+  s_5097b6d34853d4::t_1ed4e9c5d26d39 65-96
+  s_5097b6d34853d4::t_b09216fc093b5c 4,23-39
+  s_5097b6d34853d4::t_3f076339e8566a 6,40,63-64
+  s_5097b6d34853d4::t_65de92d409fc2f 172-201
+.agents/skills/review-code-dev/references/local-review-rules.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-50
+apps/api/src/modelPreferencesRoute.test.ts
+  s_5097b6d34853d4::t_a4633dbf0a459d 1,5-6,34-63,83-85
+.agents/skills/design-frontend-dev/reference/interaction-design.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-189
+apps/api/src/localSkills.test.ts
+  s_5097b6d34853d4::t_a4633dbf0a459d 81,191-193,223-224
+  s_5097b6d34853d4::t_3801cbcbee88f5 134-137
+packages/core/src/billing.ts
+  s_5097b6d34853d4::t_b0bfe2196d99bb 606,608,610,638-640
+  s_5097b6d34853d4::t_65de92d409fc2f 662-668,670-671
+  s_5097b6d34853d4::t_8321fda58710c9 613-616,621-626
+  s_5097b6d34853d4::t_56cf53f4e0e940 618-620,627-629
+packages/core/src/runJobs.ts
+  s_5097b6d34853d4::t_21f4248645b934 1847-1858
+  s_5097b6d34853d4::t_611bcd3bf3e1ec 528-591
+  s_5097b6d34853d4::t_65de92d409fc2f 1085-1086
+  s_5097b6d34853d4::t_c507cd9c9a46b8 1275-1281
+  s_5097b6d34853d4::t_12a0d3e2ab7203 1470,2684-2688,2739-2741
+.agents/skills/review-code-dev/references/reviewers/red-team.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-30
+.agents/skills/design-frontend-dev/reference/colorize.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-245
+.agents/skills/review-code-dev/scripts/parse_review_findings.py
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-83
+.agents/skills/design-frontend-dev/reference/animate.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-201
+.agents/skills/review-code-dev/references/reviewers/data-migration.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-28
+apps/web/package.json
+  s_5097b6d34853d4::t_a4633dbf0a459d 23,37
+packages/db/runtime-role-grants.sql
+  s_5097b6d34853d4::t_ec755a2d6209fb 83
+packages/companion-skill/skill/SKILL.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 150-157,1079-1088,1092-1094,1097-1109
+.agents/skills/review-code-dev/references/reviewers/backend.md
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-29
+packages/sandbox/src/vercel.test.ts
+  s_5097b6d34853d4::t_45626d1a6bdde8 98-114
+  s_5097b6d34853d4::t_66c168de2fd410 56,61,74-97
+.agents/skills/review-code-dev/companion.json
+  s_5097b6d34853d4::t_a4633dbf0a459d 1-136
+pnpm-lock.yaml
+  s_5097b6d34853d4::t_3fc4a4315b7be6 87,162-163,199-200,310,325,1434-1439,1687-1688,1693-1694,1696-1697,1699-1700,1705-1706,1711-1712,1717-1718,1723-1724,1729-1730,1735-1736,1741-1742,2078-2079,2140-2141,2144,2148-2149,2155-2156,2161-2162,2165-2166,2171-2172,2178-2179,2182-2183,2188-2189,2195-2196,2475-2476,2681-2682,2998-3001,3014-3015,3033-3034,3072-3073,3097-3098,3340-3341,3462-3463,3536-3539,3963-3967,3984-3985,4005-4006,4059-4060,5272,5276,5699-5703,5928,5932,5935,5937,5941,5944,5947,5950,5953,5956,5959,5962,6289,6354,6357-6361,6363,6370,6372-6375,6382,6384-6385,6391,6393-6394,6396,6400,6402-6404,6412,6414,6416-6419,6422,6429,6431-6434,6440,6442,6505,6739,6783,6805,6909,7111-7117,7132-7133,7158,7179,7215,7217-7219,7344,7346,7348-7349,7353,7383,7387,7391,7398,7409,7421,7433,7457,7715,7719-7720,7722,7725,7880,7935,7956-7959,8579-8580,8589,8591,8593,8599-8606,8614,8684,8686,8774,8962,9051,9732
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "0bc79868e05997674afc953ba7c5bc95f24c8a1f",
+  "prompts": {},
+  "sessions": {
+    "s_5097b6d34853d4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8e48-f114-7053-bd9c-66c16dd3ac93",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

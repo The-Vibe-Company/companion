@@ -1,0 +1,100 @@
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_ec8cb00509b591::t_5b325f9be383a0 49,54,119-133,301,315-316,512-514,545
+packages/companion-skill/skill/companion.integrity.json
+  s_ec8cb00509b591::t_ffb2f5ca6942b4 11,13
+  s_ec8cb00509b591::t_1d6900029ad4aa 3
+  s_ec8cb00509b591::t_aa8e73e439067a 14
+  s_ec8cb00509b591::t_6eaf6d43a30da4 4,6,10,18,21
+packages/companion-skill/skill/scripts/secrets_runtime.py
+  s_ec8cb00509b591::t_b239acd62327e3 19,226,248,250-251,256-267,285-293,296
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_ec8cb00509b591::t_cd48b0df176692 40-45,74,79,84-86,95-99,111-114,131-134,137,139
+  s_ec8cb00509b591::t_a7e6f72a73e63f 420,590,593,1178
+  s_ec8cb00509b591::t_98e93ad7311a9e 448
+  s_ec8cb00509b591::t_e5c20462623298 517-553
+  s_ec8cb00509b591::t_a22485742520a2 455,464-465,467-468,471-515
+  s_ec8cb00509b591::t_fa21815af21dc9 120-126
+  s_ec8cb00509b591::t_1d961bb6583724 667,683-709
+  s_ec8cb00509b591::t_7a8865e33153d3 516
+  s_ec8cb00509b591::t_e07b6c76904465 710
+packages/companion-skill/client/safe-install.test.ts
+  s_ec8cb00509b591::t_bd7daf390d2651 1,185
+  s_ec8cb00509b591::t_0ec3e8d7ac74de 3,187-194
+  s_ec8cb00509b591::t_cd48b0df176692 7-11,168-184,186,195-196
+apps/api/src/companionSkillPackage.ts
+  s_ec8cb00509b591::t_efb1eb90a12b51 123
+packages/companion-skill/skill/SKILL.md
+  s_ec8cb00509b591::t_a22485742520a2 518-523,536-537
+  s_ec8cb00509b591::t_0a823c015ce22e 1125
+  s_ec8cb00509b591::t_cb13df20efc26d 5,151-157,345-348,354-361,508,538,554-557
+apps/web/src/components/skills/InstallDialog.test.ts
+  s_ec8cb00509b591::t_fad4f936a865ff 23-26
+  s_ec8cb00509b591::t_08587cb69385a3 1-22,27-75
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_ec8cb00509b591::t_00d6df049b90e0 15,401-403,405,418-419,846-849,893-897
+  s_ec8cb00509b591::t_7968c2ef2de9d1 28,404
+  s_ec8cb00509b591::t_ed34d583325790 704-734
+  s_ec8cb00509b591::t_0ec3e8d7ac74de 612
+  s_ec8cb00509b591::t_6196f909e3838b 735-741
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_ec8cb00509b591::t_6eaf6d43a30da4 3-4,7,13,35-36,46,53-54,56,59,64-68,70-71,86,90,92,94,96,100-101,104,107-108,112,116,118-120,135,137,141-142,144
+packages/companion-skill/client/safe-install.ts
+  s_ec8cb00509b591::t_cd48b0df176692 36,327,330,351,367,385
+apps/web/src/components/skills/UploadDialog.tsx
+  s_ec8cb00509b591::t_5b325f9be383a0 59,64,1827
+apps/web/src/app/s/[token]/PublicSkillActions.tsx
+  s_ec8cb00509b591::t_5b325f9be383a0 59
+packages/companion-skill/skill/scripts/install_skill.py
+  s_ec8cb00509b591::t_a22485742520a2 104-117,124-141,143-152,155-160,162-168,174-176,183-193,196,216,253-257,344,764-766,768
+  s_ec8cb00509b591::t_fa21815af21dc9 118-123,767
+  s_ec8cb00509b591::t_b239acd62327e3 590-597,606
+  s_ec8cb00509b591::t_e5c20462623298 627
+  s_ec8cb00509b591::t_0c13723987e4fc 6-7
+  s_ec8cb00509b591::t_9a36fe32ce6eda 25,142,161,346
+  s_ec8cb00509b591::t_0ec3e8d7ac74de 5,10,730-731,733
+  s_ec8cb00509b591::t_6196f909e3838b 52,780
+  s_ec8cb00509b591::t_615449deebb75d 153-154
+  s_ec8cb00509b591::t_cd48b0df176692 716
+  s_ec8cb00509b591::t_3e122069993eb9 732
+packages/companion-skill/skill/scripts/tools.schema.json
+  s_ec8cb00509b591::t_cd48b0df176692 5,53,58
+packages/companion-skill/skill/companion.json
+  s_ec8cb00509b591::t_0ec3e8d7ac74de 8,394
+  s_ec8cb00509b591::t_cb13df20efc26d 4,30-37
+apps/web/src/app/s/[token]/PublicSkillActions.test.ts
+  s_ec8cb00509b591::t_5b325f9be383a0 55-57
+packages/companion-skill/skill/scripts/tools.json
+  s_ec8cb00509b591::t_cd48b0df176692 22-27
+apps/web/src/components/skills/LocalSkillsView.test.ts
+  s_ec8cb00509b591::t_5b325f9be383a0 97,101,137-159
+  s_ec8cb00509b591::t_2f9635ae96ca47 160-161
+packages/companion-skill/skill/scripts/bootstrap.py
+  s_ec8cb00509b591::t_0ec3e8d7ac74de 114
+docs/design.md
+  s_ec8cb00509b591::t_cb13df20efc26d 257-260
+DESIGN.md
+  s_ec8cb00509b591::t_5b325f9be383a0 255
+apps/api/src/localSkills.test.ts
+  s_ec8cb00509b591::t_0a823c015ce22e 51,128-130
+  s_ec8cb00509b591::t_efb1eb90a12b51 153,155
+packages/companion-skill/skill/reference/api.md
+  s_ec8cb00509b591::t_cb13df20efc26d 486-491
+docs/product.md
+  s_ec8cb00509b591::t_cb13df20efc26d 129-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7ed0e6264596fb8c5494da3a24f36a217d6c8e93",
+  "prompts": {},
+  "sessions": {
+    "s_ec8cb00509b591": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa2c5-8142-7051-9481-a8b4dac7e4e9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

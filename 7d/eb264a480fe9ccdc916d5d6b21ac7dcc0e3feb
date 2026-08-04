@@ -1,0 +1,24 @@
+packages/sandbox/src/projectVercel.ts
+  s_f06c39b4a24239::t_d2e8883239f06b 52-54,57,158
+packages/sandbox/src/projectVercel.test.ts
+  s_f06c39b4a24239::t_b37a37f00de67b 4,704
+  s_f06c39b4a24239::t_304ae32daf1d46 32-54,707-760,763-764
+  s_f06c39b4a24239::t_d2e8883239f06b 3,27,677-703,705-706,761-762
+  s_f06c39b4a24239::t_aef02162884289 765
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7deb264a480fe9ccdc916d5d6b21ac7dcc0e3feb",
+  "prompts": {},
+  "sessions": {
+    "s_f06c39b4a24239": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa884-4ab8-7901-9edc-690c395aa98c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
