@@ -1,0 +1,31 @@
+AGENTS.md
+  s_c2b62088293697::t_6928702eef674c 1-30
+CLAUDE.md
+  s_c2b62088293697::t_99ca3bfee16a95 1
+CONTRIBUTING.md
+  s_c2b62088293697::t_8bd2b5014e4bbb 4,24
+README.md
+  s_c2b62088293697::t_e40533569c2ffc 154
+docs/product.md
+  s_c2b62088293697::t_c7ae08beaa8571 220
+packages/companion-skill/AGENTS.md
+  s_c2b62088293697::t_953077b687c7f4 1-10
+packages/companion-skill/CLAUDE.md
+  s_c2b62088293697::t_190c6efa24e539 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "54592a9979401ff942e3e8252ed0bba632489912",
+  "prompts": {},
+  "sessions": {
+    "s_c2b62088293697": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fcc64-18cf-7212-80a8-0fb7f11e5885",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
