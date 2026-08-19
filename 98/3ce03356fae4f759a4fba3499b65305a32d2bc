@@ -1,0 +1,133 @@
+packages/db/src/schema.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 788-792
+packages/box-runtime/src/companionPiBrokerSource.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 6
+packages/box-runtime/src/boxMaintenanceClient.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 828,831,847-849,853
+  s_ddcdf633c08ffa::t_b9adfe5db53b63 24,28,844
+docs/companions-runtime.md
+  s_ddcdf633c08ffa::t_30bca245af3e3c 331-336
+apps/web/src/components/companions/CompanionPlugins.tsx
+  s_ddcdf633c08ffa::t_30bca245af3e3c 20,291,298,353,357,362,364-371,379,440-447,492-497,499-502,507,540
+apps/web/src/components/assistant-ui/thread.tsx
+  s_ddcdf633c08ffa::t_30bca245af3e3c 37-40
+apps/runtime/src/companionPurge.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 290-315,323-325,327-328,332,334-365,370,375-397
+  s_ddcdf633c08ffa::t_e517902906d6bb 398
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 2265-2382
+apps/web/src/components/companions/CompanionTranscript.tsx
+  s_ddcdf633c08ffa::t_30bca245af3e3c 24,97-99,109-111,232,234,236-239,246,252-271,373-374,392-395,429-430,503-507,553,615-639,657-658,666-668,672,674,676,682,685-686,854-856,951-963
+docs/design.md
+  s_ddcdf633c08ffa::t_30bca245af3e3c 257-258
+packages/contracts/src/companions.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 933-943,973-977
+  s_ddcdf633c08ffa::t_afc0ca1a21ce26 978-979
+packages/companion-runtime/src/operations.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 124-282,378-453
+  s_ddcdf633c08ffa::t_39df2523e3fb6a 454
+packages/companion-skill/skill/companion.json
+  s_ddcdf633c08ffa::t_30bca245af3e3c 4,31-38
+apps/web/src/components/companions/transcriptMessages.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 51-54,153-154,336-337,363-364
+packages/companion-runtime/src/engine.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 1197-1258,1440-1460
+apps/web/src/components/companions/CompanionsApp.list.client.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 704-705,764-765
+apps/runtime/src/boxAdapters.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 186-196
+packages/companion-runtime/src/types.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 200-216
+packages/companion-skill/skill/companion.integrity.json
+  s_ddcdf633c08ffa::t_30bca245af3e3c 3-4,10,22
+apps/web/src/components/companions/CompanionThread.tsx
+  s_ddcdf633c08ffa::t_30bca245af3e3c 439-440
+apps/web/src/styles/companions.css
+  s_ddcdf633c08ffa::t_30bca245af3e3c 164,167,176-239,337-339,345-359,363,369,371-372,377-385,394,397,403-409,411,414-415,418,2175
+apps/runtime/src/companionPurge.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 520-525,537,548-552,559
+apps/api/src/localSkills.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 51,129,131,135-139
+apps/web/src/components/companions/PluginMark.tsx
+  s_ddcdf633c08ffa::t_3b9961222a1a77 1-66
+apps/web/src/components/companions/CompanionsApp.wake.client.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 209-210,240-241
+apps/web/src/components/companions/transcript.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 30-31
+apps/web/src/components/org/primitives.tsx
+  s_ddcdf633c08ffa::t_30bca245af3e3c 31,90
+packages/companion-runtime/src/engine.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 214-219,224-251
+  s_ddcdf633c08ffa::t_5a18450637c5f6 252-253
+packages/box-runtime/src/companionPiBrokerCore.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 545-546,623-657
+  s_ddcdf633c08ffa::t_5ba6dc885e6227 658-659
+packages/companion-runtime/src/ports.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 37,116-120
+  s_ddcdf633c08ffa::t_dfa48b93d6073b 121-122
+apps/web/src/lib/companions.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 372
+apps/web/src/components/companions/CompanionsApp.tsx
+  s_ddcdf633c08ffa::t_30bca245af3e3c 168-169,1082-1094
+apps/web/src/components/companions/CompanionsApp.send.client.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 150-151,166-167,236-237,286-287
+apps/runtime/src/boxAdapters.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 377-401
+apps/web/src/components/companions/CompanionTranscript.client.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 97-126,137-138,194-197,213-214,1131-1177
+  s_ddcdf633c08ffa::t_80b5d8b63af020 1178
+apps/runtime/src/production.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 385
+apps/web/src/components/companions/CompanionThread.client.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 575-576,633-634,650-651,692-693,737-738
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_ddcdf633c08ffa::t_30bca245af3e3c 142
+packages/companion-skill/skill/SKILL.md
+  s_ddcdf633c08ffa::t_30bca245af3e3c 1371
+apps/web/src/components/companions/CompanionPlugins.client.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 139,143-146,155-157,166-167,190-193,262-266
+packages/contracts/test/companions.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 395-421
+packages/box-runtime/src/boxMaintenanceClient.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 1099,1103
+  s_ddcdf633c08ffa::t_0d9592708fe1d6 1098
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 756-762,2880-2941
+  s_ddcdf633c08ffa::t_8e89f28cb3ea40 2942-2945
+apps/web/src/components/companions/CompanionThread.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 125-126,141-142,275-276,511-512,527-528,557-558,585-586,640-641,684-685,729-730,761-762,777-778
+packages/companion-runtime/src/test/fixtures.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 599,615,665-668,747
+apps/web/src/styles/companions.mobile.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 315-322,326
+packages/box-runtime/src/companionPiBrokerCore.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 294-321,707-712
+  s_ddcdf633c08ffa::t_798bb9afbadba1 713-714
+packages/db/drizzle/0108_companion_turn_stop.sql
+  s_ddcdf633c08ffa::t_3b9961222a1a77 1-1859
+packages/companion-runtime/src/operations.ts
+  s_ddcdf633c08ffa::t_d764ded99d580b 897-898
+  s_ddcdf633c08ffa::t_30bca245af3e3c 240,243-244
+apps/api/test/integration/companionRuntimeV2.integration.test.ts
+  s_ddcdf633c08ffa::t_4f6d4480b04439 956,959
+packages/companion-runtime/src/health.ts
+  s_ddcdf633c08ffa::t_d4c3a973120d0d 103
+apps/web/src/components/companions/transcriptMessages.test.ts
+  s_ddcdf633c08ffa::t_30bca245af3e3c 60-61,216-227,549-561
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "983ce03356fae4f759a4fba3499b65305a32d2bc",
+  "prompts": {},
+  "sessions": {
+    "s_ddcdf633c08ffa": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fe4cca102ffe0BI7s5uh64DAQe",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
