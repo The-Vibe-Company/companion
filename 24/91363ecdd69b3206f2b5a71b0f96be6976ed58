@@ -1,0 +1,30 @@
+package.json
+  s_de21e6620b3a0d::t_1d139cb1dadd51 40,42
+  s_de21e6620b3a0d::t_3b5bc6701a3339 65
+  s_de21e6620b3a0d::t_3e485e5f805dd4 46
+  s_de21e6620b3a0d::t_6aa0d525c3d895 64
+scripts/box-runtime-change-e2e.test.ts
+  s_de21e6620b3a0d::t_1d139cb1dadd51 1-73
+scripts/box-runtime-change-e2e.ts
+  s_de21e6620b3a0d::t_3e485e5f805dd4 36-40,45,154
+  s_de21e6620b3a0d::t_e4f93aeeeff489 2-3,8,10-13,30-35,41-44,46-48,93-100,105,135,142-143,150-153,158-174,226-227,231,236,300-301,316,320,328-329,332-333,335,339-342,346,350-352,356-361
+  s_de21e6620b3a0d::t_1d139cb1dadd51 22-29
+pnpm-lock.yaml
+  s_de21e6620b3a0d::t_65ddeb788ce071 44-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "2491363ecdd69b3206f2b5a71b0f96be6976ed58",
+  "prompts": {},
+  "sessions": {
+    "s_de21e6620b3a0d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0206f-702f-7150-bb36-9635caa26a82",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
