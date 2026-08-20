@@ -1,0 +1,21 @@
+packages/box-runtime/src/boxRuntimeChangeE2E.test.ts
+  s_7891504e0dabc0::t_23c9082f9dd032 46,54
+scripts/box-runtime-change-e2e.ts
+  s_7891504e0dabc0::t_23c9082f9dd032 148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "e56d4a8871fd22f56d99504abbb664ee5d3021db",
+  "prompts": {},
+  "sessions": {
+    "s_7891504e0dabc0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a020d1-eea8-75c2-b63d-cc75f1a22de8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
