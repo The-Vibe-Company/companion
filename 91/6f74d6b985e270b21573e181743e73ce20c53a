@@ -1,0 +1,36 @@
+packages/box-sim/src/commandShims.ts
+  s_619366f77a5469::t_c754ceabf38248 22,327-331,442-472,476-490,999-1000,1020
+  s_619366f77a5469::t_e02309bf99783b 473-475
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_619366f77a5469::t_8dba9414513891 106-107,715-726
+  s_619366f77a5469::t_e965cb12a41968 652-653,909-910,938,970-971,975-976,1026,1069,1094,1135
+  s_e798a173b69b10::t_e3daf30dfeacd2 727
+packages/box-sim/test/commandShims.test.ts
+  s_619366f77a5469::t_3a7bf8f9aa52e2 32-35,160-163,165-171,174-216
+  s_619366f77a5469::t_e02309bf99783b 164,172-173
+  s_619366f77a5469::t_b0572303c7e64a 217-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "916f74d6b985e270b21573e181743e73ce20c53a",
+  "prompts": {},
+  "sessions": {
+    "s_619366f77a5469": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a025cb-9880-7a70-b5e1-2e71191aa00d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_e798a173b69b10": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fda377ca5ffeVXY3D3Z3Gx1T8R",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
