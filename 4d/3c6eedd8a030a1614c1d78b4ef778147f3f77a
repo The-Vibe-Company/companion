@@ -1,0 +1,39 @@
+apps/api/src/companionRoutes.ts
+  s_dc54c688235219::t_44ca40b04795eb 228,264,274,316,326,336,347,351,354,360,403,411,428,430,437,915,1214,1220,1264,1317
+apps/web/src/components/companions/CompanionTranscript.tsx
+  s_dc54c688235219::t_44ca40b04795eb 175,355,570
+apps/web/src/components/companions/CompanionsApp.tsx
+  s_dc54c688235219::t_39797da2368806 100-103,106,386
+  s_dc54c688235219::t_44ca40b04795eb 105,233,308,332,797,807
+packages/core/src/companions.ts
+  s_dc54c688235219::t_c37e3b1e4e26ef 38
+  s_dc54c688235219::t_44ca40b04795eb 40,42,47,50,295,353,938,948
+apps/web/src/components/companions/CompanionSettings.tsx
+  s_dc54c688235219::t_44ca40b04795eb 125,353,391
+packages/core/test/companionRuntimeApi.test.ts
+  s_dc54c688235219::t_44ca40b04795eb 15
+apps/web/src/lib/companions.ts
+  s_dc54c688235219::t_44ca40b04795eb 74
+apps/web/src/components/companions/CompanionSettings.client.test.ts
+  s_dc54c688235219::t_44ca40b04795eb 22,24,33,217,219,241
+apps/web/src/components/companions/CompanionThread.tsx
+  s_dc54c688235219::t_44ca40b04795eb 320
+packages/contracts/src/companions.ts
+  s_dc54c688235219::t_44ca40b04795eb 871,875,899,901
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "4d3c6eedd8a030a1614c1d78b4ef778147f3f77a",
+  "prompts": {},
+  "sessions": {
+    "s_dc54c688235219": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdb0c7a83ffeGhW6CDgZqlyjxb",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
