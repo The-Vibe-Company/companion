@@ -1,0 +1,102 @@
+packages/companion-runtime/src/retry.test.ts
+  s_1026becb22a2d9::t_f725f2ed5c300f 2,6-14,16-17
+  s_1026becb22a2d9::t_4caea6c2a02aab 15
+apps/api/src/runtimeRoleGrants.test.ts
+  s_1026becb22a2d9::t_602310959329de 95-103
+packages/db/src/runtimeRole.ts
+  s_1026becb22a2d9::t_602310959329de 40,59
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_1026becb22a2d9::t_ccacc50a1bb6aa 102,1126-1129,1138-1175,1199-1202
+docs/companions-runtime.md
+  s_1026becb22a2d9::t_7903d4d89a8f2a 239-247
+packages/companion-runtime/src/operations.test.ts
+  s_1026becb22a2d9::t_c6cd616b080db1 1223,1225-1253
+  s_1026becb22a2d9::t_b497ebd6a36451 1254-1276,1278-1281,1287,1290-1291
+  s_1026becb22a2d9::t_aabb0d8bb81ff1 425,447-450,456-463,466,497-499,1187-1208,1211-1222,1295,1298-1303,1308-1313
+  s_1026becb22a2d9::t_3f3d6aa9dd1ab8 1224
+packages/companion-runtime/src/leaseSession.ts
+  s_1026becb22a2d9::t_3083f45044d8dc 258-268
+  s_1026becb22a2d9::t_340bb380cf44b2 308
+docs/design.md
+  s_1026becb22a2d9::t_7903d4d89a8f2a 151-159
+packages/companion-runtime/src/engine.ts
+  s_1026becb22a2d9::t_340bb380cf44b2 1-2,91,314,320-324
+  s_1026becb22a2d9::t_3083f45044d8dc 116-119
+packages/companion-runtime/src/store.ts
+  s_1026becb22a2d9::t_340bb380cf44b2 196
+  s_1026becb22a2d9::t_3083f45044d8dc 125,627,1086-1095
+  s_c380c92b54397a::t_6e74eb6bf0b584 1096-1097
+docs/testing.md
+  s_1026becb22a2d9::t_7903d4d89a8f2a 111-114,123-126
+  s_c380c92b54397a::t_0fd34955d4fd96 127
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_1026becb22a2d9::t_602310959329de 310,2004,2025
+  s_1026becb22a2d9::t_ae3cbbd165afd2 545-546,554,2042-2128
+  s_1026becb22a2d9::t_b5c4f6236c6d31 558,561-562,564,574,577
+  s_de1b4e37520b4c::t_7d7e2aa0c9058b 2129-2131
+packages/db/drizzle/0114_companion_delete_resume.sql
+  s_1026becb22a2d9::t_630b7cfaab5718 1-266
+packages/companion-runtime/src/test/fixtures.ts
+  s_1026becb22a2d9::t_3083f45044d8dc 282,644-646
+  s_1026becb22a2d9::t_2980e76425c9c5 647-648
+apps/api/test/integration/deleteResumeMigration.integration.test.ts
+  s_1026becb22a2d9::t_342aa4ff3e2de4 256-258,263,274
+  s_1026becb22a2d9::t_9c92c0bc5aec19 259-261,277-280,286-312
+  s_1026becb22a2d9::t_b497ebd6a36451 34,118,157-161,184-189,238-244,266-273,281-285
+  s_1026becb22a2d9::t_c207b178cb41d0 85-90
+  s_1026becb22a2d9::t_fbe2476b31db1f 1-33,35-84,91-117,119-135,144-156,162-183,190-237,245-247,262,264-265,275-276,313-314
+  s_1026becb22a2d9::t_47975b1e36d04a 136-143
+  s_1026becb22a2d9::t_8190c302e850f8 248-255
+packages/companion-runtime/src/operations.ts
+  s_1026becb22a2d9::t_b6bea8735a5130 1009
+  s_1026becb22a2d9::t_f725f2ed5c300f 15-18
+  s_1026becb22a2d9::t_f6fef11a375d58 1002-1004,1007-1008,1010-1013,1018
+  s_1026becb22a2d9::t_f8f658e544b5f7 14
+packages/companion-runtime/src/handler.ts
+  s_1026becb22a2d9::t_3083f45044d8dc 5-6
+  s_1026becb22a2d9::t_340bb380cf44b2 14-15,18
+packages/companion-runtime/src/store.test.ts
+  s_1026becb22a2d9::t_602310959329de 44-74
+  s_1026becb22a2d9::t_340bb380cf44b2 1-2
+packages/db/runtime-role-grants.sql
+  s_1026becb22a2d9::t_f261d39296209c 580-593
+packages/companion-runtime/src/retry.ts
+  s_1026becb22a2d9::t_101d3f58b75515 31-35
+  s_1026becb22a2d9::t_b6bea8735a5130 83-84
+  s_1026becb22a2d9::t_f725f2ed5c300f 85-86
+  s_1026becb22a2d9::t_67107219aa918c 36
+packages/db/drizzle/meta/_journal.json
+  s_c380c92b54397a::t_b85830d7af2b8f 802-808
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "16a56d19bcfad315bcb5de9e73dfcfb97aec966c",
+  "prompts": {},
+  "sessions": {
+    "s_1026becb22a2d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a024f1-5b74-7c20-bd06-a3b1219bd9e7",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_c380c92b54397a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdc3ddc17ffezxTu8EehJXWW97",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_de1b4e37520b4c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdb6c6a37ffeJaoR53ENjcMXar",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
