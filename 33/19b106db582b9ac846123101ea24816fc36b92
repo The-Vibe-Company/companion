@@ -1,0 +1,35 @@
+packages/box-sim/src/commandShims.ts
+  s_de1b4e37520b4c::t_ad2a23672358b1 29
+  s_de1b4e37520b4c::t_feb8663dacc012 374-376
+  s_de1b4e37520b4c::t_a17df8f1591544 985-994
+packages/companion-runtime/src/piEvents.test.ts
+  s_de1b4e37520b4c::t_75fd007c614e34 816
+packages/companion-skill/skill/companion.integrity.json
+  s_de1b4e37520b4c::t_89c3092c80493e 4
+  s_de1b4e37520b4c::t_bd9bfb79faf7db 3
+packages/box-sim/src/pi-process.mjs
+  s_de1b4e37520b4c::t_63ff4e5adad522 308
+apps/api/src/localSkills.test.ts
+  s_de1b4e37520b4c::t_5079dac22a9c0e 51
+packages/companion-skill/skill/companion.json
+  s_de1b4e37520b4c::t_bd9bfb79faf7db 35
+  s_de1b4e37520b4c::t_89c3092c80493e 36
+packages/companion-skill/skill/SKILL.md
+  s_de1b4e37520b4c::t_bd9bfb79faf7db 1377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "3319b106db582b9ac846123101ea24816fc36b92",
+  "prompts": {},
+  "sessions": {
+    "s_de1b4e37520b4c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdb6c6a37ffeJaoR53ENjcMXar",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
