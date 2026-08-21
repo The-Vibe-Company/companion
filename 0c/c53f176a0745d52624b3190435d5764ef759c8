@@ -1,0 +1,82 @@
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_dc54c688235219::t_febc09a3254eec 102,106-107,652-653,715-727,909-910,938,970-971,975-976,1026,1069,1094,1135,1143-1146,1155-1192,1208,1216-1219
+docs/testing.md
+  s_dc54c688235219::t_febc09a3254eec 111-114,123-126
+  s_dc54c688235219::t_cf1f25ecd7b0e6 127
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_dc54c688235219::t_febc09a3254eec 247-265,2384-2388,2423-2478,2632,2634,2637,2639-2645,2648,2650,2721-2722,2735-2748,2750-2770,3179-3194,3212
+packages/companion-runtime/src/leaseSession.ts
+  s_dc54c688235219::t_febc09a3254eec 258-268,308
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_dc54c688235219::t_febc09a3254eec 310,545-546,554,558,561-562,564,574,577,2004,2025,2042-2128
+  s_dc54c688235219::t_feddd8f83b78d0 2129-2131
+packages/box-sim/test/commandShims.test.ts
+  s_dc54c688235219::t_febc09a3254eec 32-35,160-216
+  s_dc54c688235219::t_ab5c10aa2f7f8d 217-218
+packages/companion-runtime/src/engine.ts
+  s_dc54c688235219::t_febc09a3254eec 1-2,91,116-119,314,320-324
+packages/companion-runtime/src/operations.test.ts
+  s_dc54c688235219::t_febc09a3254eec 425,447-450,456-463,466,497-499,1187-1208,1211-1276,1278-1281,1287,1290-1291,1295,1298-1303,1308-1313
+packages/companion-runtime/src/operations.ts
+  s_dc54c688235219::t_febc09a3254eec 15-18,31-34,343,1006-1008,1011-1017,1022
+  s_dc54c688235219::t_5c1e4665a293af 14
+packages/companion-runtime/src/store.test.ts
+  s_dc54c688235219::t_febc09a3254eec 1-2,44-74
+packages/companion-runtime/src/test/fixtures.ts
+  s_dc54c688235219::t_febc09a3254eec 282,644-646
+  s_dc54c688235219::t_c9692c50a11183 647-648
+packages/db/drizzle/0114_companion_delete_resume.sql
+  s_dc54c688235219::t_febc09a3254eec 1-266
+packages/companion-runtime/src/retry.ts
+  s_dc54c688235219::t_febc09a3254eec 31-36,83-86
+packages/db/runtime-role-grants.sql
+  s_dc54c688235219::t_febc09a3254eec 580-593
+packages/db/src/runtimeRole.ts
+  s_dc54c688235219::t_febc09a3254eec 40,59
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_dc54c688235219::t_febc09a3254eec 327-335,337,909-911,944-997
+  s_dc54c688235219::t_48bc5195fd88b0 998
+packages/companion-runtime/src/store.ts
+  s_dc54c688235219::t_febc09a3254eec 125,196,627,1086-1095
+  s_dc54c688235219::t_7aa672b4a05c8c 1096-1097
+docs/companions-runtime.md
+  s_dc54c688235219::t_febc09a3254eec 246-254
+packages/companion-runtime/src/retry.test.ts
+  s_dc54c688235219::t_febc09a3254eec 2,6-17
+apps/api/src/runtimeRoleGrants.test.ts
+  s_dc54c688235219::t_febc09a3254eec 95-103
+docs/design.md
+  s_dc54c688235219::t_febc09a3254eec 151-159
+packages/box-sim/src/commandShims.ts
+  s_dc54c688235219::t_febc09a3254eec 22,327-331,442-490,999-1000,1020
+apps/api/test/integration/deleteResumeMigration.integration.test.ts
+  s_dc54c688235219::t_febc09a3254eec 1-314
+packages/companion-runtime/src/handler.ts
+  s_dc54c688235219::t_febc09a3254eec 5-6,14-15,18
+packages/db/drizzle/meta/_journal.json
+  s_116590b30c13cb::t_8d88a453beaf17 806-814
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "0cc53f176a0745d52624b3190435d5764ef759c8",
+  "prompts": {},
+  "sessions": {
+    "s_116590b30c13cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a025e4-5e1b-7372-9794-9f3d9ecddadd",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_dc54c688235219": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdb0c7a83ffeGhW6CDgZqlyjxb",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
