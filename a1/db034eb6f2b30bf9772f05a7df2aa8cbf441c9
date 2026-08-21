@@ -1,0 +1,85 @@
+scripts/box-startup-research/controller.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-1426
+scripts/summarize-box-runtime-benchmark.mjs
+  s_7891504e0dabc0::t_130c6b25714782 8,11,13-19,57-93
+scripts/box-startup-research/policy.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-98
+docs/testing.md
+  s_7891504e0dabc0::t_130c6b25714782 139-184
+docs/companions-runtime.md
+  s_7891504e0dabc0::t_130c6b25714782 716-757
+packages/box-runtime/src/boxMaintenanceClient.ts
+  s_7891504e0dabc0::t_130c6b25714782 211,519
+scripts/box-startup-research/policy.test.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-72
+scripts/box-startup-research/evaluator-integrity.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-32
+scripts/update-pr-box-e2e-report.test.mjs
+  s_7891504e0dabc0::t_130c6b25714782 39
+apps/runtime/src/production.ts
+  s_7891504e0dabc0::t_130c6b25714782 182-194
+scripts/box-startup-research/program.md
+  s_7891504e0dabc0::t_130c6b25714782 1-80
+scripts/box-startup-research/provider-proxy.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-585
+scripts/box-startup-research/bake-image.ts
+  s_7891504e0dabc0::t_130c6b25714782 1-132
+scripts/box-runtime-change-e2e.ts
+  s_7891504e0dabc0::t_ccd352a868bc7b 21-22,467,491-501,524-527,533-535
+  s_7891504e0dabc0::t_130c6b25714782 19-20,53-55,58-60,75-77,282-292,297-304,306,342-348,358,391,394-396,424-428,436-444,502,581,591-597,599-601
+  s_7891504e0dabc0::t_6757fbf11e2eef 523
+packages/box-runtime/src/companionRuntimeImage.test.ts
+  s_7891504e0dabc0::t_130c6b25714782 53-73
+scripts/box-startup-research/cleanup.ts
+  s_7891504e0dabc0::t_130c6b25714782 1-159
+package.json
+  s_7891504e0dabc0::t_130c6b25714782 47-48
+scripts/box-startup-research/contracts.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-337
+docs/design.md
+  s_7891504e0dabc0::t_130c6b25714782 348-368
+scripts/box-startup-research/cleanup.test.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-53
+scripts/box-startup-research/controller.test.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-330
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_7891504e0dabc0::t_130c6b25714782 289-335
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_7891504e0dabc0::t_130c6b25714782 52-66,1677,1679,1690,1692-1693,1719,1721,1733,1737-1748,2551,2558,2633-2634,2658-2672,2675,2683,2989-3004
+scripts/box-startup-research/conductor-client.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-233
+scripts/summarize-box-runtime-benchmark.test.mjs
+  s_7891504e0dabc0::t_130c6b25714782 11,14,16-22,24-40,50-51,70,72,74-80,82-98
+scripts/box-startup-research/benchmark.test.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-130
+scripts/box-startup-research/contracts.test.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-80
+scripts/box-startup-research/benchmark.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-531
+scripts/box-startup-research/provider-proxy.test.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-300
+scripts/update-pr-box-e2e-report.mjs
+  s_7891504e0dabc0::t_130c6b25714782 13-17,19-23,28-35,37,39,46-47,49,52-58
+scripts/verify-change.mjs
+  s_7891504e0dabc0::t_130c6b25714782 21-27
+packages/box-runtime/src/companionRuntimeImage.ts
+  s_7891504e0dabc0::t_130c6b25714782 40-41,83-84,86-91,97-98
+scripts/box-startup-research/conductor-client.test.mjs
+  s_7891504e0dabc0::t_130c6b25714782 1-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "a1db034eb6f2b30bf9772f05a7df2aa8cbf441c9",
+  "prompts": {},
+  "sessions": {
+    "s_7891504e0dabc0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a020d1-eea8-75c2-b63d-cc75f1a22de8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
