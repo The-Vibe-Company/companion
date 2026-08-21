@@ -1,0 +1,105 @@
+packages/core/src/companionTriggerWebhookRegistration.ts
+  s_a42cd2db59a76d::t_8ed981253b7d5a 81-90
+  s_a42cd2db59a76d::t_cf99060dfef192 72,74-75,78
+  s_a42cd2db59a76d::t_6f9f717051eeba 126-127
+  s_c380c92b54397a::t_e50cada21b60af 79-80
+packages/box-runtime/src/companionPermissionBroker.ts
+  s_a42cd2db59a76d::t_ff91e78d3a0f9f 41
+packages/core/src/companionPluginTriggerKeys.ts
+  s_a42cd2db59a76d::t_8fa25543294f7e 99,101-102
+packages/core/src/companionTriggersApi.ts
+  s_a42cd2db59a76d::t_edff5b73e9b574 422,425,430
+  s_a42cd2db59a76d::t_41fd238e10d7dd 357
+  s_a42cd2db59a76d::t_1c72a5a39d6cd0 416,419-421,423,431-433,435-436,439
+  s_a42cd2db59a76d::t_c64dcd233e8385 84-85
+  s_a42cd2db59a76d::t_db27e8aa38272c 88
+  s_a42cd2db59a76d::t_65b87b1e921057 86-87
+  s_a42cd2db59a76d::t_1dc8ed53bf031c 30,32
+  s_a42cd2db59a76d::t_76365de7d5c436 20-26,33-35,37-38
+apps/api/src/companionRoutes.ts
+  s_a42cd2db59a76d::t_7e2732d616dabb 267,277
+  s_a42cd2db59a76d::t_b6dcce1f05bd03 309,315-321,331-332
+  s_a42cd2db59a76d::t_3e0fd6effaac0a 419
+  s_a42cd2db59a76d::t_02fdc2f9c58289 417-418,422-425,427
+  s_a42cd2db59a76d::t_5be92366be83f9 351,354
+  s_a42cd2db59a76d::t_73b62f24cce779 352-353
+  s_a42cd2db59a76d::t_f0f16052665ab8 346-350,362,364-367,369-370,374-375
+  s_a42cd2db59a76d::t_5fb55029f7cb19 355-361
+  s_a42cd2db59a76d::t_ab1f43edac3e99 1331-1332
+  s_a42cd2db59a76d::t_4cf9fc599bf346 1382,1384-1386
+  s_a42cd2db59a76d::t_315fe9a07e5fc2 1285,1287
+  s_a42cd2db59a76d::t_d0072a9a43d125 1383
+  s_a42cd2db59a76d::t_07dc653200e6f9 231
+  s_a42cd2db59a76d::t_6885c52ea5e567 441-442,447-448
+  s_a42cd2db59a76d::t_c11a58ee731f54 1330
+  s_a42cd2db59a76d::t_20e8e9b1cf9873 945-946
+packages/contracts/src/companions.ts
+  s_a42cd2db59a76d::t_8cf365aa2f8c1f 928
+  s_a42cd2db59a76d::t_76893fafe9cc22 930
+  s_a42cd2db59a76d::t_01aadd98de9af9 935-938
+  s_a42cd2db59a76d::t_48d79f925521f3 901,905,917
+apps/api/test/integration/companionTriggers.integration.test.ts
+  s_a42cd2db59a76d::t_3a1e70bb67b1cd 744,747
+  s_a42cd2db59a76d::t_82597a838b748c 865,870
+  s_a42cd2db59a76d::t_01d9059c52d057 895,900
+  s_a42cd2db59a76d::t_43fee9009a260f 889
+  s_a42cd2db59a76d::t_3ba5efad86a637 776,779
+  s_a42cd2db59a76d::t_f51ed23751b35e 728
+  s_a42cd2db59a76d::t_ce5f332390971b 51-55,57,59-62,64-65,70-71
+  s_a42cd2db59a76d::t_0b5f33dfa894f5 296
+  s_a42cd2db59a76d::t_ca97b11bdf47a2 3
+  s_619366f77a5469::t_87c1c361b1c35d 72
+packages/core/src/companionPluginOAuth.ts
+  s_a42cd2db59a76d::t_e2c270a9507f32 138
+  s_a42cd2db59a76d::t_2e2d207a854e11 182
+  s_a42cd2db59a76d::t_986af06cf05b42 566-568,571-573
+  s_a42cd2db59a76d::t_79cdb585faf5c0 360,366-367,369-371,374-375,383
+  s_a42cd2db59a76d::t_352571fde14583 301-303
+  s_a42cd2db59a76d::t_130cd41038f1f2 2,7-17
+  s_a42cd2db59a76d::t_5ca28b473ea3bc 124
+  s_a42cd2db59a76d::t_38bf4f98788714 430,442-443
+  s_a42cd2db59a76d::t_a8e2dfe91f1aeb 180-181,184
+  s_a42cd2db59a76d::t_ddea6b5f39e875 340-343,347
+  s_a42cd2db59a76d::t_873532bb321cac 508-509,516,520,522,527-528
+  s_a42cd2db59a76d::t_20615766c7f3af 564-565
+  s_a42cd2db59a76d::t_a1c2f55c9a9be8 161
+  s_a42cd2db59a76d::t_fad0f0502012bc 125,128,130-134,137,139-141
+  s_a42cd2db59a76d::t_c8e27a95d35fe7 129
+  s_a42cd2db59a76d::t_7914ffd71ee79b 227
+  s_a42cd2db59a76d::t_64c25574ac860e 498,502-503
+  s_a42cd2db59a76d::t_00e38cf09ab619 512-515,519,521
+  s_a42cd2db59a76d::t_256c0d2e1c1f76 382
+  s_619366f77a5469::t_69ac0362410469 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "e26ca02901038d0c2013a8b5e9c7aa964ab5ed2c",
+  "prompts": {},
+  "sessions": {
+    "s_619366f77a5469": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a025cb-9880-7a70-b5e1-2e71191aa00d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_a42cd2db59a76d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fda3f1f1affe9Ocg3jhvB6Nmtp",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_c380c92b54397a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdc3ddc17ffezxTu8EehJXWW97",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
