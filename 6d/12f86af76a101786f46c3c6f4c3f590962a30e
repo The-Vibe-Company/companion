@@ -1,0 +1,93 @@
+.github/workflows/ci.yml
+  s_dc54c688235219::t_5dc44203ecf072 78
+packages/contracts/src/companions.ts
+  s_dc54c688235219::t_5dc44203ecf072 250-255,674-711,718-724,743,765,767-781,939,943,955,966,968,973-976
+docs/design.md
+  s_dc54c688235219::t_5dc44203ecf072 341-342
+scripts/anti-slop-targets.mjs
+  s_dc54c688235219::t_5dc44203ecf072 19-21
+packages/companion-runtime/src/piEvents.test.ts
+  s_dc54c688235219::t_5dc44203ecf072 13-22,60,313,362,429,461,700,810,820,919,924-925,929-931,1155,1178,1267
+packages/contracts/test/companions.test.ts
+  s_dc54c688235219::t_5dc44203ecf072 1067,1103
+README.md
+  s_dc54c688235219::t_5dc44203ecf072 136
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_dc54c688235219::t_5dc44203ecf072 29,513-514,541-543,2797-2825
+apps/api/src/companionRoutes.ts
+  s_dc54c688235219::t_5dc44203ecf072 77-78,94,231,267,277,309,315-321,331-332,346-362,364-367,369-370,374-375,417-419,422-425,427,441-442,447-448,704-724,946-947,1064,1088,1129-1168,1287,1289,1332-1334,1384-1388
+apps/api/test/integration/companionTriggers.integration.test.ts
+  s_dc54c688235219::t_5dc44203ecf072 3,18,20-21,25,51-55,57,59-62,64-65,70-72,106,155-185,296,407-460,692-916,923,1048-1049
+packages/box-runtime/src/companionPermissionBroker.ts
+  s_dc54c688235219::t_5dc44203ecf072 13,41,71,158,163,170-178,403,408-409,417-418,426-452,463-465
+packages/box-runtime/src/companionPluginSkills.test.ts
+  s_dc54c688235219::t_5dc44203ecf072 1-31
+docs/testing.md
+  s_dc54c688235219::t_5dc44203ecf072 138-142
+packages/core/src/index.ts
+  s_dc54c688235219::t_5dc44203ecf072 19-20
+packages/companion-skill/skill/SKILL.md
+  s_dc54c688235219::t_5dc44203ecf072 27-29,1377
+docs/runbooks/companions-runtime.md
+  s_dc54c688235219::t_5dc44203ecf072 4,27-28,162-165,175
+packages/companion-skill/skill/companion.json
+  s_dc54c688235219::t_5dc44203ecf072 4,31-47
+docs/PRD.md
+  s_dc54c688235219::t_5dc44203ecf072 179-180
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_dc54c688235219::t_5dc44203ecf072 3-5,7-8,12-13,17,19,22,27,31,35-37,46,49,53-54,56,59,64-71,73,86,90,92,94,96,100-101,104-105,107-108,111-112,114-116,118-120,125,135,137,139,141-144
+deploy/railway/README.md
+  s_dc54c688235219::t_5dc44203ecf072 240-242,258
+packages/box-sim/src/pi-process.mjs
+  s_dc54c688235219::t_5dc44203ecf072 308,493-499,560-561
+packages/db/drizzle/0115_companion_trigger_plugin_gate.sql
+  s_dc54c688235219::t_5dc44203ecf072 1-179
+packages/companion-skill/skill/companion.integrity.json
+  s_dc54c688235219::t_5dc44203ecf072 3-4,10,22
+packages/core/src/companionTriggersApi.ts
+  s_dc54c688235219::t_5dc44203ecf072 5,13,20-26,30,32-35,37-38,79-88,121,130,133,142,159,171,174,184,357,416,419-423,425,430-433,435-436,439
+packages/db/drizzle/0117_companion_plugin_trigger_keys.sql
+  s_dc54c688235219::t_5dc44203ecf072 1-169
+packages/db/runtime-role-grants.sql
+  s_dc54c688235219::t_5dc44203ecf072 641-654
+packages/box-sim/src/commandShims.ts
+  s_dc54c688235219::t_5dc44203ecf072 30,380-382,1039-1047
+  s_dc54c688235219::t_ce0f59441a7eaf 1048
+packages/core/src/companionPluginOAuth.ts
+  s_dc54c688235219::t_5dc44203ecf072 2,7-18,44,124-125,128-134,137-141,161,180-182,184,227,301-303,340-343,347,360,366-367,369-371,374-375,382-383,430,442-443,498,502-503,508-509,512-516,519-522,527-528,564-568,571-573
+packages/box-runtime/src/companionPluginSkills.ts
+  s_dc54c688235219::t_5dc44203ecf072 1-101
+packages/core/src/companionPluginTriggerKeys.ts
+  s_dc54c688235219::t_5dc44203ecf072 1-115
+packages/db/drizzle/0116_companion_trigger_target.sql
+  s_dc54c688235219::t_5dc44203ecf072 1-702
+apps/api/src/localSkills.test.ts
+  s_dc54c688235219::t_5dc44203ecf072 51,60,133,333
+packages/db/src/schema.ts
+  s_dc54c688235219::t_5dc44203ecf072 567-571,593-597,1711-1736
+  s_dc54c688235219::t_667d45616cfce6 1737-1739
+packages/core/src/companionTriggerWebhookRegistration.ts
+  s_dc54c688235219::t_5dc44203ecf072 1-548
+docs/companions-runtime.md
+  s_dc54c688235219::t_5dc44203ecf072 239-240,419-426,469-487,514-524,746-748,768-769
+packages/box-runtime/src/companionPermissionBroker.test.ts
+  s_dc54c688235219::t_5dc44203ecf072 1,92-112
+packages/db/drizzle/meta/_journal.json
+  s_dc54c688235219::t_f7bcc5145f2aef 813-835
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "6d12f86af76a101786f46c3c6f4c3f590962a30e",
+  "prompts": {},
+  "sessions": {
+    "s_dc54c688235219": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdb0c7a83ffeGhW6CDgZqlyjxb",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
