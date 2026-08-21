@@ -1,0 +1,74 @@
+packages/core/test/companionPluginOAuth.test.ts
+  s_cb1d07a18658c9::t_9d960f1a3516d1 9,13-19,22,41,61-96,98-99,109,132-133,136,145,149,158,160,169,172,185,188,199,202,221,224,237,241,249,268,272,276,293,297,307,320
+apps/web/src/components/companions/CompanionPlugins.client.test.ts
+  s_cb1d07a18658c9::t_9d960f1a3516d1 7-19,50,63-80,92,137,156,165-166,170,177-178,206,223-226,233-234,240-243,250-251,268,273
+packages/box-runtime/src/companionPermissionBroker.test.ts
+  s_cb1d07a18658c9::t_9d960f1a3516d1 1-5,53-56
+packages/contracts/test/companionPluginCatalog.test.ts
+  s_cb1d07a18658c9::t_9d960f1a3516d1 9,22-26
+apps/web/src/styles/companions.css
+  s_cb1d07a18658c9::t_9d960f1a3516d1 206-219
+packages/db/drizzle/0118_conductor_config_proposal.sql
+  s_cb1d07a18658c9::t_9d960f1a3516d1 1-32
+apps/web/src/components/companions/CompanionTriggers.tsx
+  s_cb1d07a18658c9::t_9d960f1a3516d1 16-29,31,35,40,47,64-65,115-118,140,147,166,183,204,327
+apps/web/src/components/companions/CompanionPlugins.tsx
+  s_cb1d07a18658c9::t_9d960f1a3516d1 22-33,43,48,67,114,193,262,267,289,405,410,470,519,569,581
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_cb1d07a18658c9::t_9d960f1a3516d1 11,1260
+packages/companion-skill/skill/SKILL.md
+  s_cb1d07a18658c9::t_eb81cbf6d4fef2 1377
+  s_cb1d07a18658c9::t_9d960f1a3516d1 24
+apps/api/src/localSkills.test.ts
+  s_cb1d07a18658c9::t_eb81cbf6d4fef2 51
+  s_cb1d07a18658c9::t_9d960f1a3516d1 137-141
+apps/web/src/components/companions/PluginMark.tsx
+  s_cb1d07a18658c9::t_9d960f1a3516d1 8,15-17,21-24,40
+apps/web/src/components/companions/CompanionTriggers.client.test.ts
+  s_cb1d07a18658c9::t_9d960f1a3516d1 7,9-14,16-19,34,63,71-101,159,161,178,180,197,202-204,207-208,210,230,232,247,249,255,257
+packages/box-runtime/src/companionPermissionBroker.ts
+  s_cb1d07a18658c9::t_9d960f1a3516d1 498,500
+CLAUDE.md
+  s_cb1d07a18658c9::t_9d960f1a3516d1 65-67
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_cb1d07a18658c9::t_9d960f1a3516d1 3554-3557
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_cb1d07a18658c9::t_9d960f1a3516d1 8,546
+packages/companion-skill/skill/companion.integrity.json
+  s_cb1d07a18658c9::t_b4f127c3ba30a1 3-4,10,22
+packages/contracts/src/companions.ts
+  s_cb1d07a18658c9::t_9d960f1a3516d1 510
+packages/core/src/companionPluginOAuth.ts
+  s_cb1d07a18658c9::t_9d960f1a3516d1 24,58-67,271-273
+packages/companion-skill/skill/companion.json
+  s_cb1d07a18658c9::t_eb81cbf6d4fef2 4,32
+  s_cb1d07a18658c9::t_9d960f1a3516d1 44-45
+  s_cb1d07a18658c9::t_764024dc989041 41-43
+  s_cb1d07a18658c9::t_7666e361546836 46-48
+  s_cb1d07a18658c9::t_537a9d184ae8f5 40
+DESIGN.md
+  s_cb1d07a18658c9::t_9d960f1a3516d1 262
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_cb1d07a18658c9::t_b4f127c3ba30a1 142
+packages/contracts/src/companionPluginCatalog.ts
+  s_cb1d07a18658c9::t_9d960f1a3516d1 12,23,48-52
+  s_cb1d07a18658c9::t_c1c517b674f188 53
+packages/db/drizzle/meta/_journal.json
+  s_cb1d07a18658c9::t_4f06bfe614ecbe 834-842,846
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "2f16174ebcd3c8d3a3e976313437935c76a32a81",
+  "prompts": {},
+  "sessions": {
+    "s_cb1d07a18658c9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02631-5e86-7cc1-ab7f-10e24378bddb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
