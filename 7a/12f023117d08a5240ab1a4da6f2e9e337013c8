@@ -1,5 +1,6 @@
 packages/companion-skill/skill/companion.json
   s_ace935731f442b::t_de3224d16f9f28 31,33-39
+  s_ace935731f442b::t_edc13a617bd5e3 4,32
 packages/contracts/src/companions.ts
   s_29c0dc93283147::t_0cd42785742e96 472
   s_ace935731f442b::t_024e09d9c65bd4 906,918
@@ -20,6 +21,7 @@ apps/web/src/components/companions/PluginMark.tsx
   s_ace935731f442b::t_55eeb4eba658d1 8,17,21-24,40
 apps/api/src/localSkills.test.ts
   s_ace935731f442b::t_379031a2e82af4 130-131,139
+  s_ace935731f442b::t_edc13a617bd5e3 51,137-138,140-141
 apps/web/src/styles/companions.css
   s_29c0dc93283147::t_86062b0f9c3ca8 206-219
 packages/contracts/test/companionPluginCatalog.test.ts
@@ -31,6 +33,7 @@ packages/core/src/companionPluginOAuth.ts
   s_ace935731f442b::t_21fd8b316605aa 354-356
   s_29c0dc93283147::t_e780106b7a1069 58-62,64-67
   s_ace935731f442b::t_152fa4531651ca 15
+  s_ace935731f442b::t_05e96311870a70 63,271-273
 packages/core/test/companionPluginOAuth.test.ts
   s_ace935731f442b::t_9319d1613a249f 9,13-19,22,41,62,81,98-99,109,132-133,136,145,149,158,160,169,172,185,188,199,202,221,224,237,241,249,268,272,276,293,297,307,320
   s_ace935731f442b::t_a10ee5b90cf880 61,63-80,82-96
@@ -42,6 +45,30 @@ apps/web/src/components/companions/CompanionPlugins.tsx
   s_ace935731f442b::t_7ccc55295b9734 405,410,470,569,581
 DESIGN.md
   s_ace935731f442b::t_6d7130e534939d 262
+packages/box-runtime/src/companionPermissionBroker.ts
+  s_ace935731f442b::t_440f6daebe1c0f 498,500
+packages/companion-skill/skill/companion.integrity.json
+  s_ace935731f442b::t_b5f329b245760d 4,10,22
+  s_ace935731f442b::t_7c558d18827730 3
+packages/companion-skill/skill/SKILL.md
+  s_ace935731f442b::t_440f6daebe1c0f 24
+  s_ace935731f442b::t_edc13a617bd5e3 1377
+apps/web/src/components/companions/CompanionTriggers.client.test.ts
+  s_ace935731f442b::t_895b325dafa055 32
+  s_ace935731f442b::t_cce868101542df 33
+  s_ace935731f442b::t_85969cf8f59df9 71-101,159,161,178,180,197,202-204,207-208,210,230,232,247,249,255,257
+  s_ace935731f442b::t_3b416cba6bf38f 7,9-14,16-19,63
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_ace935731f442b::t_440f6daebe1c0f 8,546
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_ace935731f442b::t_440f6daebe1c0f 11,1260
+packages/box-runtime/src/companionPermissionBroker.test.ts
+  s_ace935731f442b::t_440f6daebe1c0f 1-5,53-56
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_ace935731f442b::t_b5f329b245760d 142
+apps/web/src/components/companions/CompanionTriggers.tsx
+  s_ace935731f442b::t_0901668e4f71e5 31,35
+  s_ace935731f442b::t_ed9467e95f7799 16-29,40,47,64-65,115-118,140,147,166,183,204,327
 ---
 {
   "schema_version": "authorship/3.0.0",
