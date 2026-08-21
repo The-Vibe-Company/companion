@@ -1,0 +1,72 @@
+packages/companion-runtime/src/store.test.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 1-2,44-74
+docs/companions-runtime.md
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 239-247
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 102,1126-1129,1138-1175,1199-1202
+packages/db/runtime-role-grants.sql
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 580-593
+packages/companion-runtime/src/retry.test.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 2,6-17
+apps/api/test/integration/deleteResumeMigration.integration.test.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 1-314
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 310,545-546,554,558,561-562,564,574,577,2004,2025,2042-2128
+  s_de1b4e37520b4c::t_b5de06f73f67cf 2129-2131
+packages/companion-runtime/src/operations.test.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 425,447-450,456-463,466,497-499,1187-1208,1211-1276,1278-1281,1287,1290-1291,1295,1298-1303,1308-1313
+packages/db/src/runtimeRole.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 40,59
+docs/design.md
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 151-159
+packages/companion-runtime/src/retry.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 31-36,83-86
+packages/companion-runtime/src/leaseSession.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 258-268,308
+packages/companion-runtime/src/store.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 125,196,627,1086-1095
+  s_de1b4e37520b4c::t_4ba0426d00fa3a 1096-1097
+packages/companion-runtime/src/handler.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 5-6,14-15,18
+packages/companion-runtime/src/test/fixtures.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 282,644-646
+  s_de1b4e37520b4c::t_30424a75cb04fd 647-648
+apps/api/src/runtimeRoleGrants.test.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 95-103
+docs/testing.md
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 111-114,123-126
+  s_de1b4e37520b4c::t_efa965b81c2376 127
+packages/companion-runtime/src/operations.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 15-18,1002-1004,1007-1013,1018
+  s_de1b4e37520b4c::t_2cde7cb3f05964 14
+packages/db/drizzle/0114_companion_delete_resume.sql
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 1-266
+packages/companion-runtime/src/engine.ts
+  s_de1b4e37520b4c::t_c0d5fc3a8ff637 1-2,91,116-119,314,320-324
+packages/db/drizzle/0116_companion_trigger_target.sql
+  s_c380c92b54397a::t_8a814528c2abd7 1-702
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "a6db4e1f06af7685e1d0f423f85a6f8e104f3d7b",
+  "prompts": {},
+  "sessions": {
+    "s_c380c92b54397a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdc3ddc17ffezxTu8EehJXWW97",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_de1b4e37520b4c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdb6c6a37ffeJaoR53ENjcMXar",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
