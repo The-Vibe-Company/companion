@@ -1,0 +1,35 @@
+scripts/anti-slop-targets.mjs
+  s_de1b4e37520b4c::t_51a36f8d78ef33 19-21
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_de1b4e37520b4c::t_8113f812e9546d 3-5,7-8,12-13,17,19,22,27,31,35-37,46,49,53-54,56,59,64-71,73,86,90,92,94,96,100-101,104-105,107-108,111-112,114-116,118-120,125,135,137,139,141-144
+packages/box-sim/src/pi-process.mjs
+  s_de1b4e37520b4c::t_63a86093d2c082 560-561
+  s_de1b4e37520b4c::t_c8b6c20ca9e9c3 493-499
+apps/api/src/localSkills.test.ts
+  s_de1b4e37520b4c::t_0d9d6147f602b8 60,133,333
+packages/companion-skill/skill/companion.integrity.json
+  s_de1b4e37520b4c::t_8113f812e9546d 10
+packages/companion-runtime/src/piEvents.test.ts
+  s_de1b4e37520b4c::t_1d8d8613894098 929-930
+  s_de1b4e37520b4c::t_bcbf409119f041 461
+  s_de1b4e37520b4c::t_a0ccb413c2fc91 18,20-22,60,313,362,429,700,810,919,1155,1178,1267
+  s_de1b4e37520b4c::t_0d9503af7520bf 14-17
+  s_de1b4e37520b4c::t_497b2ee14ae9a5 13,19
+  s_de1b4e37520b4c::t_446c1c8a82db67 924-925,931
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "a0592b5eeb5c032ee2be8dd3735adf5688455cbb",
+  "prompts": {},
+  "sessions": {
+    "s_de1b4e37520b4c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdb6c6a37ffeJaoR53ENjcMXar",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
