@@ -1,0 +1,114 @@
+apps/web/src/components/companions/NewCompanionDialog.tsx
+  s_dc54c688235219::t_be544598c75352 14-18
+  s_dc54c688235219::t_65670384b260e5 49
+  s_dc54c688235219::t_b9f8cfbbead018 137
+  s_dc54c688235219::t_6774817b8cb5c4 74
+packages/core/src/companions.ts
+  s_dc54c688235219::t_03dd2ceda663fc 289-294
+packages/core/src/companionRuntimeApi.ts
+  s_dc54c688235219::t_1083670131171b 309-310
+  s_dc54c688235219::t_c95dcee63da1c0 477
+  s_dc54c688235219::t_c8123f006a10d4 352-356
+  s_dc54c688235219::t_94ed36398d4f7c 311
+  s_dc54c688235219::t_20867c485c4eed 340-341,359
+apps/web/src/styles/companions.css
+  s_dc54c688235219::t_0c38858e128eff 1098,1104-1140
+  s_dc54c688235219::t_a052b8de5be228 1143-1168
+  s_dc54c688235219::t_b23ee4d6815a76 1089,1092,1170-1172,1195-1202,1204,1206-1216,1219-1298
+  s_dc54c688235219::t_2af812877c6e5a 1081
+  s_dc54c688235219::t_44cb33f8d0e8d4 1169,1173-1194
+  s_dc54c688235219::t_81499913a7a783 1094-1097,1099-1103,1141-1142
+  s_c380c92b54397a::t_4c5c8b58711eaf 1090-1091,1093
+apps/web/src/components/companions/CompanionsApp.tsx
+  s_dc54c688235219::t_d74ef5f4ed3e2e 1620
+  s_dc54c688235219::t_2b6c2523abcefc 1553
+  s_dc54c688235219::t_40b487d5149676 67
+apps/web/src/components/companions/CompanionSettings.tsx
+  s_dc54c688235219::t_9b099a9bb8410a 28
+  s_dc54c688235219::t_bd30dc0c341a3c 351-355
+  s_dc54c688235219::t_b29e5ac26ebb95 124-129
+  s_dc54c688235219::t_81a9780f6ba6c0 511-522
+  s_dc54c688235219::t_b12405d6327d8d 381,388-393
+packages/core/test/companionRuntimeApi.test.ts
+  s_dc54c688235219::t_da0b45f1ad0bc8 15
+packages/db/src/schema.ts
+  s_dc54c688235219::t_ffd5d546d9711f 482-497
+  s_dc54c688235219::t_a3e023a679619c 15
+  s_dc54c688235219::t_ae73ea9c6e1a2c 426-433
+apps/api/src/companionRoutes.ts
+  s_dc54c688235219::t_e7093c327a6907 479
+  s_dc54c688235219::t_655d6e57492cfc 909
+apps/web/src/components/companions/CompanionIcon.tsx
+  s_dc54c688235219::t_ddbfa38ac8edda 3-5
+  s_dc54c688235219::t_ed681de117bb11 66-68
+  s_dc54c688235219::t_a0e52708e9ab65 99-101
+  s_dc54c688235219::t_c6c8cd17dbd14e 19
+  s_dc54c688235219::t_bc4edbfcfd1e56 1-2,6-18,20-65,69-98,102-141
+apps/web/src/components/companions/CompanionIconPicker.tsx
+  s_dc54c688235219::t_6c9684bd176d7a 98-99
+  s_dc54c688235219::t_bfe7e748a4d903 34-35
+  s_dc54c688235219::t_d90b6b03c52e41 1-2,5-33,44,48-56,83-85,87-90,92-95,97,100-109,111-114,116-126,128-131,133-143,145-148,150-160
+  s_dc54c688235219::t_3066c65b64699b 36-43,45-47,57-82,86
+  s_dc54c688235219::t_90f65c02fcbf95 91,96,110,115,127,132,144,149
+  s_dc54c688235219::t_77ca4a96864671 3-4
+apps/web/src/components/companions/CompanionSettings.client.test.ts
+  s_dc54c688235219::t_bea4c728beab11 236
+apps/web/src/components/companions/CompanionThread.tsx
+  s_dc54c688235219::t_e27711b5d4b7f4 251-253
+  s_dc54c688235219::t_999df00d9b09a9 341
+  s_dc54c688235219::t_8c988be9bd6aa4 17
+  s_dc54c688235219::t_f92e0c2ff31edb 18
+packages/db/drizzle/0114_companion_icons.sql
+  s_dc54c688235219::t_99729bd318991c 356-362
+  s_dc54c688235219::t_a5c5f94b327670 158,220-221,339
+  s_dc54c688235219::t_ae994707b67601 1-16,24-157,159-219,222-338,340-355
+  s_dc54c688235219::t_6203f2aea955d2 17-23
+packages/db/runtime-role-grants.sql
+  s_dc54c688235219::t_1b32e9c8b77621 420,423
+apps/api/src/runtimeRoleGrants.test.ts
+  s_dc54c688235219::t_0aabecea590d1d 118
+apps/web/src/components/companions/CompanionTranscript.tsx
+  s_dc54c688235219::t_dc6454cbec0e9f 662
+  s_dc54c688235219::t_3b84cb8065f3a8 771,778
+  s_dc54c688235219::t_024c29a6fcaffc 686
+  s_dc54c688235219::t_a7973965d8c114 94-95
+  s_dc54c688235219::t_c1b658a01cc4ae 41
+docs/companions-runtime.md
+  s_dc54c688235219::t_46465a45ac7233 90-96
+apps/web/src/lib/companions.ts
+  s_dc54c688235219::t_2cc561cf74bfec 75
+docs/design.md
+  s_dc54c688235219::t_626e09a03c13a2 296-301
+packages/contracts/src/companions.ts
+  s_dc54c688235219::t_ffef5e14284915 180-184,186-212
+  s_dc54c688235219::t_19d3a28444dccd 1254
+  s_dc54c688235219::t_7b3e346ee626ec 1279,1287-1288
+  s_dc54c688235219::t_4202115a5d87dc 301-305
+  s_dc54c688235219::t_788a761d7df7e5 185
+packages/db/drizzle/meta/_journal.json
+  s_dc54c688235219::t_15059ca95e4c3b 802-808,811
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "a2b6843537acb0ede307acbfd686101dc37927e8",
+  "prompts": {},
+  "sessions": {
+    "s_c380c92b54397a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdc3ddc17ffezxTu8EehJXWW97",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_dc54c688235219": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdb0c7a83ffeGhW6CDgZqlyjxb",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
