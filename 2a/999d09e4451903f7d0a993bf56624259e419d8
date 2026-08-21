@@ -1,0 +1,23 @@
+apps/api/test/integration/companionRuntimeV2.integration.test.ts
+  s_dc54c688235219::t_d55d18eea1fe35 822,1187,1234,1266,1275,1630,1632
+apps/web/src/components/companions/CompanionTriggers.client.test.ts
+  s_dc54c688235219::t_8c613477e14877 38
+  s_dc54c688235219::t_d55d18eea1fe35 15,23,74,174,180,182,184
+  s_dc54c688235219::t_972fbdbc695224 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "2a999d09e4451903f7d0a993bf56624259e419d8",
+  "prompts": {},
+  "sessions": {
+    "s_dc54c688235219": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdb0c7a83ffeGhW6CDgZqlyjxb",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
