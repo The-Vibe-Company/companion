@@ -1,0 +1,48 @@
+apps/ios/README.md
+  s_68e46211249862::t_9434aa309563b6 54
+  s_68e46211249862::t_a0b761223992af 34-38,42-49,51-53,55-56
+  s_68e46211249862::t_448cc662f78d5e 39-41,50
+scripts/ios-release.test.mjs
+  s_68e46211249862::t_a0b761223992af 1-22,24,26-30,35-51,59,61,72
+  s_68e46211249862::t_d82a7e7fa9a3eb 73-86
+  s_68e46211249862::t_9434aa309563b6 25,33-34,56-57
+  s_68e46211249862::t_448cc662f78d5e 23,31-32,52-55,58,62-71
+  s_68e46211249862::t_f242ca430228a2 60
+apps/ios/Config/ExportOptions.plist
+  s_68e46211249862::t_448cc662f78d5e 12-19
+.github/workflows/ios-testflight.yml
+  s_68e46211249862::t_a0b761223992af 1-27,50-54,57,65-72
+  s_68e46211249862::t_f242ca430228a2 56
+  s_68e46211249862::t_448cc662f78d5e 28-45,47-49,55,58-64
+  s_68e46211249862::t_9434aa309563b6 46
+docs/DEPLOYER-MOBILE-TESTFLIGHT.md
+  s_68e46211249862::t_448cc662f78d5e 38-41,58
+  s_68e46211249862::t_a0b761223992af 3-4,6-7,26,29-30,32,34-37,51-57,59-60,82-83
+  s_68e46211249862::t_9434aa309563b6 28,48-50
+apps/ios/Companion/Support/Info.plist
+  s_68e46211249862::t_d82a7e7fa9a3eb 67-68
+apps/ios/scripts/release.sh
+  s_68e46211249862::t_9434aa309563b6 13,81-82,89-90
+  s_68e46211249862::t_a0b761223992af 1-10,12,14-65,72-79,83-88,91-93
+  s_68e46211249862::t_448cc662f78d5e 11,66-71,80
+.github/workflows/ci.yml
+  s_68e46211249862::t_a0b761223992af 79
+scripts/verify-change.mjs
+  s_68e46211249862::t_a0b761223992af 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "6cfce41607490fcc7c8c4d2cca4a4254e0286f95",
+  "prompts": {},
+  "sessions": {
+    "s_68e46211249862": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a032bb-5679-7861-8015-911efdaf7973",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
