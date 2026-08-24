@@ -1,0 +1,51 @@
+scripts/ci-scope.mjs
+  s_68e46211249862::t_096e37c91fb3d2 17,182-195
+scripts/ios-e2e-fixture.test.mjs
+  s_68e46211249862::t_00f817915bbc8a 8
+  s_68e46211249862::t_3528dde7227241 3,62-99
+  s_68e46211249862::t_1c3ecdc56d6800 101-124
+  s_68e46211249862::t_b4e45abe7bbd5a 1-2,4-7,9-61,100
+scripts/ios-e2e-fixture.mjs
+  s_68e46211249862::t_1c3ecdc56d6800 8,71-79,81,112
+  s_68e46211249862::t_391ff5ad8a3eaa 1-7,9-16,18-70,80,82-111,113-119,121-165
+  s_68e46211249862::t_bce6561d6df061 120
+  s_68e46211249862::t_00f817915bbc8a 17
+scripts/ci-scope.test.mjs
+  s_68e46211249862::t_096e37c91fb3d2 21,68-74
+scripts/verify-change.mjs
+  s_68e46211249862::t_f2449eb7cb5abc 20
+scripts/ci-gate.test.mjs
+  s_68e46211249862::t_88502dfa3f45a5 74-76
+  s_68e46211249862::t_096e37c91fb3d2 14,22,67-73
+  s_68e46211249862::t_790b0a6a34c1ef 77
+docs/DEPLOYER-MOBILE-TESTFLIGHT.md
+  s_68e46211249862::t_a3cc1d239751cc 58-63
+  s_68e46211249862::t_1c3ecdc56d6800 64-65
+scripts/ci-gate.mjs
+  s_68e46211249862::t_096e37c91fb3d2 12,35
+.github/workflows/ci.yml
+  s_68e46211249862::t_b4e45abe7bbd5a 79
+  s_68e46211249862::t_096e37c91fb3d2 46,169-217,729
+.github/workflows/ios-e2e.yml
+  s_68e46211249862::t_ab6e810951d0ea 60,70
+  s_68e46211249862::t_5cc4ada3ce987b 1-29,31-59,61-69,71-95
+  s_68e46211249862::t_10ef111c9f846d 30
+scripts/ios-devx.test.mjs
+  s_68e46211249862::t_012dac4c26e1dd 125-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "1d6fba31844cd001d864ef428243b90bdac43381",
+  "prompts": {},
+  "sessions": {
+    "s_68e46211249862": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a032bb-5679-7861-8015-911efdaf7973",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}
