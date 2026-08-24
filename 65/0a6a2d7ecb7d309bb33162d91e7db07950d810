@@ -1,0 +1,35 @@
+apps/ios/README.md
+  s_4bb21447327294::t_35046388d2f958 61-63
+  s_4bb21447327294::t_5a9898a17eb1ac 55-56
+  s_4bb21447327294::t_c83df4522a3750 57-60
+scripts/ios-release.test.mjs
+  s_4bb21447327294::t_e8677933762038 156-157,160
+  s_4bb21447327294::t_35c906ab884e6c 14,17,28-40,148-155,158-159,165,178-179,181-182,184-186
+  s_4bb21447327294::t_fbf116b8aca1be 2-13,20-22,41-82,84-142,145-147,163,166,169-171,173-177,180,183,187-191
+scripts/ios-testflight-scope.mjs
+  s_4bb21447327294::t_c83df4522a3750 1-51
+docs/DEPLOYER-MOBILE-TESTFLIGHT.md
+  s_4bb21447327294::t_c83df4522a3750 36,41-44
+  s_4bb21447327294::t_5a9898a17eb1ac 32-35,37-40
+.github/workflows/ios-testflight.yml
+  s_4bb21447327294::t_c83df4522a3750 13,34-42,46,53-55
+  s_4bb21447327294::t_5a9898a17eb1ac 4-8,21-33,43-45,47-52,56,59-61,67-78
+.github/workflows/ci.yml
+  s_4bb21447327294::t_c83df4522a3750 67-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "650a6a2d7ecb7d309bb33162d91e7db07950d810",
+  "prompts": {},
+  "sessions": {
+    "s_4bb21447327294": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03534-eea2-7ec0-9cb3-c22ff4a69e55",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
