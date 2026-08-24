@@ -1,0 +1,182 @@
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionKitTests.swift
+  s_33d1e59913c65f::t_bbc65526e21fe7 47-62,196,207
+  s_33d1e59913c65f::t_80bc3d8f564020 26-46,87,180-195,197-206,208-275,288-291,294
+  s_33d1e59913c65f::t_92d1ec1eeccdfe 276-287
+  s_33d1e59913c65f::t_a093cd16f33b45 292,295-325
+  s_33d1e59913c65f::t_b2d8db14580c9e 88-105
+  s_33d1e59913c65f::t_d9db664debc13a 293
+apps/ios/Companion/Screens/CompanionPluginOAuthBrowser.swift
+  s_33d1e59913c65f::t_afcb74b09a4097 131-132,137,139
+  s_33d1e59913c65f::t_077193fc714e74 1-25,27-130,133-136,138,140-206
+  s_33d1e59913c65f::t_a3d728abd16684 26
+apps/ios/Companion/Screens/PluginManagementView.swift
+  s_33d1e59913c65f::t_a2e81f287e568e 531
+  s_33d1e59913c65f::t_63568aa1f122a5 4-37,46,78-84,86-87,118-124,146-214,218-220,222,230-232,243,246-262,282-396,398
+  s_33d1e59913c65f::t_825c541ea17b53 627,638
+  s_33d1e59913c65f::t_af1a68a51899f5 1-3,38-45,47-77,85,88-117,125-145,215-217,221,223-229,233-242,244-245,263-281,397,399-530,532-626,628-637,639-642
+.claude/skills/ios-product-dev/SOURCE.md
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-15
+apps/ios/Companion/Screens/ProviderManagementView.swift
+  s_33d1e59913c65f::t_ce5cf474595d1f 223,236,248,506,520,541,565
+  s_33d1e59913c65f::t_fe8539e65876c3 11,29,70,74-75,232,244
+  s_33d1e59913c65f::t_75fc2e911ea109 1-10,12,14-28,30-54,56-62,64,66,77-113,115-201,203-222,224-231,233-235,237-243,245-247,249-250,261-264,266-268,270-282,284,286-289,295-318,320-327,329-340,342-489,493-496,498,504-505,507-519,521-525,529-534,540,542-546,550-555,561-564,566-569,584,587-612,614-623,626-633
+  s_33d1e59913c65f::t_3cc43e5ac0a143 65,67-69,71-73,76,256-260,269,285,576-583,586
+  s_33d1e59913c65f::t_7fab3ce4c5d940 265
+  s_33d1e59913c65f::t_cd0291750a3a07 613,624-625
+  s_33d1e59913c65f::t_4e0218d30c5a07 319,328,341,490-492,497,499-503,526-528,535-539,547-549,556-560,570-575,585
+  s_33d1e59913c65f::t_4ede3f0612cc38 13,55,63,114,202,251-255,283,290-294
+.agents/skills/ios-product-dev/SOURCE.md
+  s_33d1e59913c65f::t_c70e393f4103a5 1-15
+.agents/skills/swiftui-expert-dev/SOURCE.md
+  s_33d1e59913c65f::t_c08953c5275d80 1-12
+.claude/skills/ios-product-dev/SKILL.md
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-97
+.claude/skills/ios-product-dev/evals/evals.json
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-25
+apps/ios/Companion/Screens/ChatView.swift
+  s_33d1e59913c65f::t_fe8539e65876c3 265-268,300,447,450-454
+  s_33d1e59913c65f::t_1b1acf9e2d4e76 6,23-26,28,30-38,43-45,47-50,55-62,64-79,86,96-100,103,105-106,108-119,121-128,130-139,142-163,165-167,169-179,181,186,189-199,201-223,229,231-237,240-245,269,301-302,351,353-364,367-372,374-377,380,383-420,424-446,448-449,455-456,469-477,481,483-486,488,490
+  s_33d1e59913c65f::t_3cc43e5ac0a143 8,17-21,27,39-42,46,51-54,101-102,104,107,120,129,140-141,164,168,200,238-239,273-299
+  s_33d1e59913c65f::t_80718e69f459ef 352
+apps/ios/Companion/Screens/GlassChatDemoView.swift
+  s_33d1e59913c65f::t_a28ebf4c0be88d 1-9,12-52,54-68,70-93,104-108,119-127,142-197,262-263,273-317
+  s_33d1e59913c65f::t_40ee08188b7989 10-11,69,94-103,109-118,128-141,198-261,264-272
+  s_33d1e59913c65f::t_afc4cb9f7bfeb3 53
+apps/ios/Companion/Support/GoogleSignInCoordinator.swift
+  s_33d1e59913c65f::t_40ee08188b7989 39-46
+.claude/skills/swiftui-expert-dev/companion.json
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-39
+apps/ios/Companion/DesignSystem/Colors.swift
+  s_33d1e59913c65f::t_9c31191673d4b3 4-17
+apps/ios/Companion/Screens/LoginView.swift
+  s_33d1e59913c65f::t_4e49d2ee19726d 18-32,34,43-45,73,76,137-138,144,197
+.claude/skills/xcodebuildmcp-cli/SKILL.md
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-81
+apps/ios/Companion/Screens/BootstrapView.swift
+  s_33d1e59913c65f::t_4e49d2ee19726d 8-16,18-25,27-34,36-38
+.agents/skills/swiftui-expert-dev/companion.json
+  s_33d1e59913c65f::t_c08953c5275d80 1-39
+apps/ios/Companion/DesignSystem/ManagementComponents.swift
+  s_33d1e59913c65f::t_348d5dfc8fc4ca 1,3-116,131-155
+  s_33d1e59913c65f::t_ce5cf474595d1f 2,156-159
+  s_33d1e59913c65f::t_fe8539e65876c3 117-130
+apps/ios/Config/Shared.xcconfig
+  s_33d1e59913c65f::t_7280775aeabf31 7
+.agents/skills/xcodebuildmcp-cli/evals/evals.json
+  s_33d1e59913c65f::t_8cc033e61901c8 1-25
+.claude/skills/xcodebuildmcp-cli/evals/evals.json
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-25
+apps/ios/Companion/Screens/CompanionListView.swift
+  s_33d1e59913c65f::t_517d14c37c2c4e 12-14,36-39,44-50,61-64,67-72,141-155
+  s_33d1e59913c65f::t_9307a09ba44fcb 8,18-27,32-33,35,42-43,51-58,65-66,84-140,156-158,160-166,193-215,218-232,235-240,244,246-250,253-270
+docs/companions-runtime.md
+  s_33d1e59913c65f::t_f7b390a2f9b470 766-767,773
+  s_33d1e59913c65f::t_92d1ec1eeccdfe 774-779
+apps/ios/CompanionKit/Sources/CompanionKit/APIClient.swift
+  s_33d1e59913c65f::t_4478b13cf9615f 326,408,445
+  s_33d1e59913c65f::t_e1670cc1d539e3 40-55,66,191-314,334-342,368-370,372-378,386-395
+  s_33d1e59913c65f::t_b0daa37afdf925 315-325,327-333,396,409-414,446-478
+  s_33d1e59913c65f::t_c477d3a376a994 397
+  s_33d1e59913c65f::t_d2ff1162704ff2 479
+.claude/skills/xcodebuildmcp-cli/LICENSE
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-21
+.agents/skills/ios-product-dev/companion.json
+  s_33d1e59913c65f::t_c70e393f4103a5 1-41
+.agents/skills/ios-product-dev/evals/evals.json
+  s_33d1e59913c65f::t_c70e393f4103a5 1-25
+apps/ios/CompanionKit/Sources/CompanionKit/SessionStore.swift
+  s_33d1e59913c65f::t_b0daa37afdf925 283-297
+  s_33d1e59913c65f::t_d17d9e22a15a9b 157-282,298-307
+.agents/skills/ios-product-dev/SKILL.md
+  s_33d1e59913c65f::t_c70e393f4103a5 1-97
+.agents/skills/xcodebuildmcp-cli/LICENSE
+  s_33d1e59913c65f::t_8cc033e61901c8 1-21
+apps/ios/Companion/Screens/CreateCompanionView.swift
+  s_33d1e59913c65f::t_28b24748f61285 170,172,174,176,179,188-209,225-230,267-278,281,283,285-305,310-324
+  s_33d1e59913c65f::t_950bf9aeaeefb4 1-169,171,173,175,177-178,180-186,210-224,231-266,279-280,282,284,306-309,325-408
+  s_33d1e59913c65f::t_f7967a86934c55 187
+.claude/skills/xcodebuildmcp-cli/SOURCE.md
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-12
+apps/ios/Companion/DesignSystem/GlassComponents.swift
+  s_33d1e59913c65f::t_139bb31b7b6c3d 1-5,7-51,53-55,98-99,101-371
+  s_33d1e59913c65f::t_80718e69f459ef 6
+  s_33d1e59913c65f::t_1973b0efc1829e 52,56-97,100
+.claude/skills/swiftui-expert-dev/SKILL.md
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-109
+apps/ios/CompanionUITests/CompanionUITests.swift
+  s_33d1e59913c65f::t_76b822c09058e3 45
+  s_33d1e59913c65f::t_337dd2ba357939 71-76,81-82
+  s_33d1e59913c65f::t_afc4cb9f7bfeb3 18,20,23-33
+  s_33d1e59913c65f::t_3783a03af92b3e 35-44,46-48,51-52,58-59,64-66,69-70,83-84,86-88
+  s_33d1e59913c65f::t_22c3000f85fa3d 53-57
+  s_33d1e59913c65f::t_42c21bc0cfa18f 49-50
+  s_33d1e59913c65f::t_f7d919cc9e48f9 60-63,77-80,85
+  s_33d1e59913c65f::t_cccc023cb86f03 67-68
+  s_33d1e59913c65f::t_1f2a3d2d935704 89
+.agents/skills/xcodebuildmcp-cli/SKILL.md
+  s_33d1e59913c65f::t_8cc033e61901c8 1-81
+apps/ios/AGENTS.md
+  s_33d1e59913c65f::t_26486b0fa00cdb 9-12
+  s_33d1e59913c65f::t_7280775aeabf31 3
+.agents/skills/swiftui-expert-dev/evals/evals.json
+  s_33d1e59913c65f::t_c08953c5275d80 1-25
+.claude/skills/ios-product-dev/companion.json
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-41
+scripts/ios-devx.test.mjs
+  s_33d1e59913c65f::t_26486b0fa00cdb 115-137
+  s_33d1e59913c65f::t_717f05b3bb323d 52
+apps/ios/Companion/Navigation/RootView.swift
+  s_33d1e59913c65f::t_2206d3fef08132 15-16,31
+  s_33d1e59913c65f::t_99567aea9a6cb0 12-14,19-28,33-43,66-75
+  s_33d1e59913c65f::t_3783a03af92b3e 17-18,29-30,32
+DESIGN.md
+  s_33d1e59913c65f::t_7280775aeabf31 289-295,471
+.claude/skills/swiftui-expert-dev/evals/evals.json
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-25
+.agents/skills/xcodebuildmcp-cli/SOURCE.md
+  s_33d1e59913c65f::t_8cc033e61901c8 1-12
+.claude/skills/swiftui-expert-dev/SOURCE.md
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-12
+apps/ios/CompanionKit/Sources/CompanionKit/Models.swift
+  s_33d1e59913c65f::t_655fc31c808c86 86,104-117,135
+  s_33d1e59913c65f::t_586e8749648b7d 143-372
+apps/ios/README.md
+  s_33d1e59913c65f::t_7280775aeabf31 3,48
+  s_33d1e59913c65f::t_26486b0fa00cdb 16-17,24-29
+  s_33d1e59913c65f::t_92d1ec1eeccdfe 20-23
+  s_33d1e59913c65f::t_2206d3fef08132 49-51
+  s_33d1e59913c65f::t_f7b390a2f9b470 18-19
+.claude/skills/xcodebuildmcp-cli/companion.json
+  s_33d1e59913c65f::t_dd1bed7e47eef6 1-39
+.agents/skills/swiftui-expert-dev/SKILL.md
+  s_33d1e59913c65f::t_c08953c5275d80 1-109
+apps/ios/Companion/Screens/GlassManagementDemoView.swift
+  s_33d1e59913c65f::t_337dd2ba357939 40,208-212,216-231,233-234,239,338-351,354
+  s_33d1e59913c65f::t_3783a03af92b3e 1-5,22-32,34-35,38-39,41-42,47-102,107-108,112-113,117-119,126,133-158,181-207,213-215,232,235-238,240-244,270,293-337,352-353,363-380
+  s_33d1e59913c65f::t_76b822c09058e3 36-37,120-125,127-132,245-269,271-292
+  s_33d1e59913c65f::t_34e753640d7f54 6-21,33,103-106,109-111,114-116,159-180,355-362
+  s_33d1e59913c65f::t_2206d3fef08132 43-46
+.agents/skills/xcodebuildmcp-cli/companion.json
+  s_33d1e59913c65f::t_8cc033e61901c8 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "6125ccfba429889f7d0d5c250a7c3e2b7ef49bed",
+  "prompts": {},
+  "humans": {
+    "h_ecee222750141d": {
+      "author": "StanGirard <stan@quivr.app>"
+    }
+  },
+  "sessions": {
+    "s_33d1e59913c65f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03435-f03d-7790-81e8-e853f0268ae4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
