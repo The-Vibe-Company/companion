@@ -1,0 +1,78 @@
+apps/runtime/src/server.test.ts
+  s_19291756971291::t_b10d8b1421318e 72
+  s_19291756971291::t_c5b222f98c5800 151-185
+  s_19291756971291::t_35f00eadd1fe1b 48-53
+packages/companion-runtime/src/operations.ts
+  s_19291756971291::t_c83a15b5c0c5ad 588-595
+  s_19291756971291::t_823ce4ff1f7105 581-583
+apps/runtime/src/composition.test.ts
+  s_19291756971291::t_56c61b13f56f03 22
+apps/runtime/src/production.ts
+  s_19291756971291::t_9cc7c3690e6f1e 220-222,224-225,233-235
+  s_19291756971291::t_02e385fb120b14 346,353-358
+  s_19291756971291::t_3de14ed4d10e33 41
+  s_19291756971291::t_f1bf7e2ae442b7 302
+  s_19291756971291::t_ced48ae3f0e99b 271-272
+  s_19291756971291::t_3337c808e8595e 210,213,223
+  s_19291756971291::t_25a4f3997d9103 125,131
+apps/runtime/src/config.ts
+  s_19291756971291::t_d9c1d3357b96fe 278-285
+  s_19291756971291::t_845e883327b0cd 34-38
+  s_19291756971291::t_79baef225866a4 140-143
+apps/runtime/src/imageBuilderSupervisor.test.ts
+  s_19291756971291::t_254c281fd13e9d 2-22,26-42,46-48,51-89
+  s_19291756971291::t_c8e7a51fca2f4c 24,44
+  s_19291756971291::t_e27333e85481c2 1
+  s_19291756971291::t_f99123a27a6d75 23,25
+  s_19291756971291::t_6884a5b1e1e63f 43,45,49-50
+apps/runtime/src/imageBuilderSupervisor.ts
+  s_19291756971291::t_94eeb93705092c 71-77,90-91
+  s_19291756971291::t_0f97d75d11b2fc 1
+  s_19291756971291::t_c80f77f133fc26 2-70,78-89,92-129
+packages/companion-runtime/src/ports.ts
+  s_19291756971291::t_06342ccbcb665c 59-64
+apps/runtime/src/boxAdapters.ts
+  s_19291756971291::t_64855eefad039b 75-82
+  s_19291756971291::t_644ba5e458fdbd 10,19-23,26-49
+  s_19291756971291::t_54be5e31e2b280 105,108-112,114-116,121-132
+  s_19291756971291::t_4b343b6659a6ad 154-158
+  s_19291756971291::t_f3f7b6e41aa6aa 50
+apps/runtime/src/imageBuildWorker.ts
+  s_19291756971291::t_67584fbf4bb063 30-35,37
+  s_19291756971291::t_9c7ad1a68da3a5 74
+  s_19291756971291::t_bc7c4211a2cf9b 270-275,280
+  s_19291756971291::t_2f7b31b8c68612 15
+docs/companion-image-pipeline.md
+  s_19291756971291::t_4523a6ef5921c2 115-130
+apps/runtime/src/imageBuildWorker.test.ts
+  s_19291756971291::t_c9e95d64f737e5 431-483
+apps/runtime/src/composition.ts
+  s_19291756971291::t_e5d43b336abdc5 29-30
+  s_19291756971291::t_613b61aa5d37c7 54
+  s_19291756971291::t_4fbcb577597f62 13
+apps/runtime/src/boxAdapters.test.ts
+  s_19291756971291::t_d73b439fae82db 224
+  s_19291756971291::t_361a4ce5de34bd 9-10
+  s_19291756971291::t_9d919f1055f9d1 297-456
+apps/runtime/src/server.ts
+  s_19291756971291::t_05fe65acdfad05 159-163,165-169
+  s_19291756971291::t_a4d68e89b81dd6 164
+  s_19291756971291::t_f7b9f94b1109f8 32-39,43-44
+  s_19291756971291::t_c477a83efc8d79 170-171,178,185-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "86e342d4404413bc5e769eb411931762fa8e7f0c",
+  "prompts": {},
+  "sessions": {
+    "s_19291756971291": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b5a09f-280f-4836-8c4a-95f531ff8703",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
