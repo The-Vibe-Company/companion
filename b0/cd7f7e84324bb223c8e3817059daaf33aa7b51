@@ -1,0 +1,33 @@
+.agents/skills/debug-companions-prod/scripts/prodlib.py
+  s_19291756971291::t_77d79d1664c393 233-239
+.claude/skills/debug-companions-prod/scripts/railway_status.py
+  s_19291756971291::t_14b050e8763987 28-31,33,41
+.claude/skills/debug-companions-prod/scripts/prodlib.py
+  s_19291756971291::t_77d79d1664c393 233-239
+.agents/skills/debug-companions-prod/scripts/railway_status.py
+  s_19291756971291::t_14b050e8763987 28-31,33,41
+.agents/skills/debug-companions-prod/references/railway-api.md
+  s_19291756971291::t_eaa092ec90c11c 125-142
+.agents/skills/debug-companions-prod/scripts/db_query.py
+  s_19291756971291::t_58329ccf49ad7f 293-320,345-348,351
+.claude/skills/debug-companions-prod/references/railway-api.md
+  s_19291756971291::t_0bc944ed11789b 125-142
+.claude/skills/debug-companions-prod/scripts/db_query.py
+  s_19291756971291::t_ff1a2021ce6558 293-320,345-348,351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b0cd7f7e84324bb223c8e3817059daaf33aa7b51",
+  "prompts": {},
+  "sessions": {
+    "s_19291756971291": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b5a09f-280f-4836-8c4a-95f531ff8703",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
