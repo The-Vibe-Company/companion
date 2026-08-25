@@ -1,0 +1,179 @@
+packages/box-runtime/scripts/generate-companion-box-agent.mjs
+  s_19291756971291::t_b743664b0889e0 1-66
+packages/companion-runtime/src/ports.ts
+  s_19291756971291::t_8dcd8ea9767218 201-206
+packages/companion-runtime/src/settings.ts
+  s_19291756971291::t_f432abe1d7bc53 132
+packages/db/drizzle/0124_companion_box_agent_endpoint.sql
+  s_19291756971291::t_9b30eb0453ceb0 1-181
+packages/box-runtime/src/companionBoxAgent.ts
+  s_19291756971291::t_1e1d5294311bd7 1-34
+apps/runtime/src/production.test.ts
+  s_19291756971291::t_63778951aa2409 227
+  s_19291756971291::t_d86ca586663a54 201
+packages/box-sim/src/simulator.ts
+  s_19291756971291::t_45fae20dd4cef5 202
+  s_19291756971291::t_6ff8944fdbc74d 251-260
+  s_19291756971291::t_389cd5ad678701 324
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_19291756971291::t_457004d93f48e3 1682
+  s_19291756971291::t_ef9b77f663a435 1710-1712,2849-2851,2886-2888
+  s_19291756971291::t_832fad87dc5f71 83-103
+  s_19291756971291::t_cabc844ec7745f 1130-1155,3752
+  s_19291756971291::t_deb34f6097a926 3
+  s_19291756971291::t_62f7f1f5b7cd5a 3119-3127
+  s_19291756971291::t_8672e2564b3c06 3617
+  s_19291756971291::t_8e33ffc3172569 2023
+  s_19291756971291::t_de5a2c2700a2cb 1642-1661,1663-1681,1683-1685
+  s_19291756971291::t_d56867a586e08c 3651-3653,3668-3670,3673-3676,3680,3688-3751
+  s_19291756971291::t_c3c181ec243759 1397
+  s_19291756971291::t_ddead88916176a 894
+  s_19291756971291::t_b8dcafb85996df 1363-1372
+  s_19291756971291::t_6f9f59ac5ff680 1662
+  s_19291756971291::t_65c3480ffef635 2081
+  s_19291756971291::t_30271358d4d161 3032-3033
+  s_19291756971291::t_eee5b0c9cfc379 2527
+  s_19291756971291::t_74f1f29a038d15 54-60
+  s_19291756971291::t_86b508ac831290 53
+  s_19291756971291::t_8dbfd691f7eba7 3753
+packages/box-sim/test/agentListener.test.ts
+  s_19291756971291::t_74c6effb2f93df 1
+  s_19291756971291::t_7e16e9f3905f4a 2-305
+packages/companion-runtime/src/settings.test.ts
+  s_19291756971291::t_986e2f9e1f5a53 117,197
+docs/companions-runtime.md
+  s_19291756971291::t_63883865d61239 799-801
+  s_19291756971291::t_3a7a28ba0ab553 893-896
+  s_19291756971291::t_e12d840555a818 327-344
+packages/box-sim/test/boxRuntimeAdapter.test.ts
+  s_19291756971291::t_75aab336a87d08 1-2
+  s_19291756971291::t_cf45f9dbfad36f 163-192
+  s_19291756971291::t_dcf03058ef50e0 3
+  s_19291756971291::t_c35b4dd3506909 249,263
+  s_19291756971291::t_ce0b71c2c68b31 200-201,206,210,221
+deploy/railway/README.md
+  s_19291756971291::t_46e57fca0ab851 106-111
+apps/runtime/src/materialPipeline.test.ts
+  s_19291756971291::t_7e6906e8476133 237-246,251-284,289-308
+  s_19291756971291::t_a5d39a0778e20e 285-288
+  s_19291756971291::t_b3267b0a9b168b 3
+  s_19291756971291::t_a712093ca8eca6 215
+  s_19291756971291::t_2cace3db8c2d37 247-250
+packages/box-runtime/src/companionBoxAgentSource.ts
+  s_19291756971291::t_4d48423c58ce03 1-8
+apps/runtime/src/config.ts
+  s_19291756971291::t_a9041740c22fbd 286-292
+  s_19291756971291::t_4bec3dee4a7809 151
+  s_19291756971291::t_fe8b643dbdb1ea 40-45
+packages/box-sim/src/cli.ts
+  s_19291756971291::t_ab640da57cf3bd 25
+  s_19291756971291::t_2191deb47c2e80 42
+  s_19291756971291::t_7b6aa6437667b5 3-4,7
+  s_19291756971291::t_fbe56bc8ef8535 26,36-40,46-48
+  s_19291756971291::t_290d714740ec47 9-15
+  s_19291756971291::t_24e4c13bd4b3b0 8
+packages/box-runtime/src/companionBoxAgentExecutable.ts
+  s_19291756971291::t_d0a842db7c55af 1-69
+packages/companion-runtime/src/store.test.ts
+  s_19291756971291::t_b4283889e244dd 405,408-413
+packages/box-sim/test/commandShims.test.ts
+  s_19291756971291::t_e23f5453f2604e 58-66
+packages/box-runtime/package.json
+  s_19291756971291::t_8b58e3b8a55530 14-15,17
+packages/db/src/schema.ts
+  s_19291756971291::t_221889354fe11e 909-912
+  s_19291756971291::t_a8e8375b12e26c 818-822
+apps/runtime/src/production.ts
+  s_19291756971291::t_b0e5f1c6b37f13 322
+packages/box-runtime/src/index.ts
+  s_19291756971291::t_0853004ccd2fc3 6
+packages/companion-runtime/src/operations.test.ts
+  s_19291756971291::t_986e2f9e1f5a53 733,881,936
+packages/box-runtime/src/companionBoxAgentStaging.test.ts
+  s_19291756971291::t_6a4d5b375a6ce6 1-53
+packages/box-sim/src/server.ts
+  s_19291756971291::t_b51c0b9407f12e 700-945,947,955-973
+  s_19291756971291::t_ace1b5184fb94e 31-34,42-43
+  s_19291756971291::t_63e1d23b215451 984-987,989-990,996-1003
+  s_19291756971291::t_a4c57f42aa1cb6 1-2
+  s_19291756971291::t_d4674765a389d8 176-183
+  s_19291756971291::t_adaedcafff20a4 3,8
+  s_19291756971291::t_c433c0a7a2286a 974
+packages/box-runtime/src/companionBoxAgentCore.test.ts
+  s_19291756971291::t_5ae469bc8f5d41 28
+  s_19291756971291::t_090b3e73d69ded 2-6,8,10-27,29-40,42-45,49,51-67,69-396
+  s_19291756971291::t_bd7ad5c9e0a0fa 9
+  s_19291756971291::t_3029d3d478a898 41,46-48,50,68
+  s_19291756971291::t_8d9de5e051139d 1
+  s_19291756971291::t_a09893eed8ca0d 7
+packages/box-runtime/src/companionBoxAgentCore.ts
+  s_19291756971291::t_4e9916402f8256 1
+  s_19291756971291::t_3c86a2c6a99b72 164
+  s_19291756971291::t_99918346964e6c 2-163,165-459,461-499
+  s_19291756971291::t_b9581b05ee6df9 460
+.env.example
+  s_19291756971291::t_be290b59638c5c 82-86
+apps/runtime/src/composition.test.ts
+  s_19291756971291::t_b9da26d38448bc 23
+packages/companion-runtime/src/store.ts
+  s_19291756971291::t_03436103758e94 905,912-913,915-921
+  s_19291756971291::t_1edeedbaaedfe9 81-82
+scripts/companions-env-defaults.mjs
+  s_19291756971291::t_dcfeab3423758b 37
+apps/api/src/runtimeRoleGrants.test.ts
+  s_19291756971291::t_ba75df8bd3a684 92
+apps/runtime/src/materialPipeline.ts
+  s_19291756971291::t_6abb57e52c5fc6 29
+  s_19291756971291::t_2fd9373fb306dd 214-232
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_19291756971291::t_ef4fbe0775efa6 547,2792-2793,2970-2971
+  s_19291756971291::t_9232f4f8eea26f 578
+  s_19291756971291::t_cbf942ea89f44d 2802-2817
+packages/box-runtime/src/companionRuntimeImage.ts
+  s_19291756971291::t_f456c36e0d46b2 3
+  s_19291756971291::t_e773323d5adfa2 11
+  s_19291756971291::t_eb2885a7d2c96c 68-69
+packages/box-sim/src/commandShims.ts
+  s_19291756971291::t_b837d8d3f052fd 746-761,765-766,768-775
+  s_19291756971291::t_9011d0cf7ce88a 151-162
+  s_19291756971291::t_6965314bc4c9ab 384-388
+  s_19291756971291::t_870832c085de66 3
+  s_19291756971291::t_757c68e3792ffb 1230-1231
+  s_19291756971291::t_3e5c71e1917511 762-764,767
+  s_19291756971291::t_5aa144316a4ecb 18
+  s_19291756971291::t_db942dd5177a6b 193-194
+  s_19291756971291::t_91a8b6018e4f50 74
+packages/db/runtime-role-grants.sql
+  s_19291756971291::t_d7eeceaa65d2bd 617-618
+  s_b9e810f1c271bf::t_bf1bee2037e13e 620,624
+packages/companion-runtime/src/operations.ts
+  s_19291756971291::t_79605c55fddea0 407
+packages/db/drizzle/meta/_journal.json
+  s_19291756971291::t_17d6effb41d09a 872-878
+packages/db/src/runtimeRole.ts
+  s_19291756971291::t_6f15713a51280a 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "c623bbff29acffb5f6e8076b8a13d0081ccf0d0b",
+  "prompts": {},
+  "sessions": {
+    "s_19291756971291": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b5a09f-280f-4836-8c4a-95f531ff8703",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_b9e810f1c271bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a914f8ace223de931",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
