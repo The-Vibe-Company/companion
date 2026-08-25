@@ -1,0 +1,29 @@
+packages/companion-skill/skill/companion.integrity.json
+  s_19291756971291::t_26a44fbf22d5d3 4,22
+  s_19291756971291::t_9178fe8c6aa316 10
+  s_19291756971291::t_3f0523576622c3 3
+apps/api/src/localSkills.test.ts
+  s_19291756971291::t_6e0ace184e7e39 51,130
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_19291756971291::t_9178fe8c6aa316 3-5,7-8,10-14,17-19,22,27,29,31-37,39,46,49-50,53-54,56-57,59,64-71,73,86,90,92,94,96,100-101,104,107-108,111-112,114-116,118-120,125,132,134-135,137,139,141-144
+packages/companion-skill/skill/companion.json
+  s_19291756971291::t_26a44fbf22d5d3 4,8,31-38,756
+packages/companion-skill/skill/SKILL.md
+  s_19291756971291::t_4f27528e7de0bc 1377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "61b0103df3b8b695e85e7e837c46b2360e29483c",
+  "prompts": {},
+  "sessions": {
+    "s_19291756971291": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b5a09f-280f-4836-8c4a-95f531ff8703",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
