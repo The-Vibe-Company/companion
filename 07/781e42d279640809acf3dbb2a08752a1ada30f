@@ -1,0 +1,135 @@
+packages/companion-runtime/src/attempt.ts
+  s_19291756971291::t_05b2633182c8d6 433,435-437
+apps/runtime/package.json
+  s_19291756971291::t_84e0f16263af08 29
+packages/box-runtime/src/companionBoxAgentClient.test.ts
+  s_19291756971291::t_04b849492b61c3 2-255
+  s_19291756971291::t_9e221023db96b0 1
+apps/runtime/src/materialPipeline.ts
+  s_19291756971291::t_a1b0b09633aba2 119-136
+  s_19291756971291::t_0897a10c2ecacc 75-85
+  s_19291756971291::t_3109f19ff058ba 33
+  s_19291756971291::t_0516272a6def05 232-241
+apps/runtime/src/directBoxTransport.sim.test.ts
+  s_19291756971291::t_4d1b2f66208db4 2-16,19-92,94,98-132,135-143,151-199,210-221,223-283
+  s_19291756971291::t_9171a1f82734e3 1
+  s_19291756971291::t_5616a96cd537bf 17-18
+  s_19291756971291::t_5d5da2a213606e 93,95-97
+  s_19291756971291::t_43b9551bfe862c 133-134,144-150
+  s_19291756971291::t_45e1d381afeaa2 200-207,209,222
+  s_19291756971291::t_9faafc8ff32186 208
+packages/companion-runtime/src/test/fixtures.ts
+  s_19291756971291::t_9634f313065d5f 267-268
+packages/companion-runtime/src/index.ts
+  s_19291756971291::t_0206b7b64067fb 43
+deploy/railway/README.md
+  s_19291756971291::t_d7d3a4e55173ab 109-114
+packages/box-runtime/src/index.ts
+  s_19291756971291::t_bdeb8a75a91865 7
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_19291756971291::t_00b69de5ae29aa 4426
+  s_19291756971291::t_e31dfcf883a218 4447-4450
+  s_19291756971291::t_1a0156ffee3d63 88-90
+  s_19291756971291::t_cf2cf59e1c3004 1335-1441
+  s_19291756971291::t_32e7253e81323a 4319
+packages/companion-runtime/src/store.test.ts
+  s_19291756971291::t_502497c30ac67d 135-138,228-231,317-320,352-355,387-390
+  s_19291756971291::t_b824b605abba51 149-150,156-211
+packages/companion-runtime/src/types.ts
+  s_19291756971291::t_4dc7b987b1c821 393-405
+apps/runtime/src/directBoxTransport.ts
+  s_19291756971291::t_c6011708053a0f 229
+  s_19291756971291::t_255eb275e4dafc 355,361-363
+  s_19291756971291::t_4f70b174b4e85b 2-15,17-20,26-125,154-163,166-170,178-180,186-228,230-354,356-360,364-457
+  s_19291756971291::t_272a01d3effd2d 1
+  s_19291756971291::t_38078f3928f234 16,21-25
+  s_19291756971291::t_ea961612b2732f 126-153,164-165,171-177,181-185
+apps/runtime/src/materialPipeline.attachments.test.ts
+  s_19291756971291::t_6692e8d45e9a8e 49-50
+  s_19291756971291::t_c9665fef6aa02e 1
+apps/runtime/src/production.test.ts
+  s_19291756971291::t_0e83bef5122616 258-319,322-327
+  s_19291756971291::t_2b0c8bfdc432ff 320-321
+  s_19291756971291::t_fefca06401b38e 230-231
+apps/runtime/src/config.ts
+  s_19291756971291::t_de4dcc3c4717ef 41-45
+docs/companions-runtime.md
+  s_19291756971291::t_74f6a91c501c19 817-822
+  s_19291756971291::t_4dfbd1cfb02dfa 888-894
+  s_19291756971291::t_fc2e34d251b810 343-358
+apps/runtime/src/production.ts
+  s_19291756971291::t_ea65f7a74fae11 37-39
+  s_19291756971291::t_61f99a32dca5e8 304-313,317-320
+  s_19291756971291::t_60dc3df97af7a1 257-262,268-277
+  s_19291756971291::t_d9d9bfd02b5de6 36
+packages/db/drizzle/0125_companion_agent_endpoint_read.sql
+  s_19291756971291::t_30efb7a5b3197d 1-351
+.env.example
+  s_19291756971291::t_9d86c6f9d7e012 84-87
+packages/box-runtime/src/companionBoxAgentClient.ts
+  s_19291756971291::t_401891d323ee68 247,253,258,260-263
+  s_19291756971291::t_1a282b7c9bf22c 2-142,148-174,177-188,196-239,241-246,249,252,254-257,259,264-266,268-278,281,283-289,291-292,294-323
+  s_19291756971291::t_38407e44851569 143-147
+  s_19291756971291::t_04ac7fbf0e8d81 189-195
+  s_19291756971291::t_052643fe005153 1
+  s_19291756971291::t_2aece01e3b78be 240
+  s_19291756971291::t_390156b7625843 175-176
+  s_19291756971291::t_4c7580baee4fc8 248,250-251
+  s_19291756971291::t_71f2584df7cc6c 267
+  s_19291756971291::t_c7ebf3dd120018 279-280,282
+  s_19291756971291::t_2024fa9157ed13 290,293
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_19291756971291::t_a5a5441864ff92 453-455
+  s_19291756971291::t_2c4c056bc803ce 904-908
+  s_19291756971291::t_c6135a3c7cff26 493-495
+packages/companion-runtime/src/ports.ts
+  s_19291756971291::t_a8b504141c638c 323-328
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_19291756971291::t_c50d5f38f0393c 4638-4652,4658-4661,4664-4667,4676-4681
+apps/runtime/src/directBoxTransport.test.ts
+  s_19291756971291::t_5b8fff74f0ae51 8
+  s_19291756971291::t_2373aca8ae8dd2 98,102-104
+  s_19291756971291::t_ff84e8210c7316 1-7,9-97,99-101,105-487
+packages/companion-runtime/src/store.ts
+  s_19291756971291::t_0c068b7f443efe 346-367,435
+  s_19291756971291::t_d932baa6f6eaee 806-807
+  s_19291756971291::t_7b7442577a408f 426-427,431-434
+  s_7aafcf718e0556::t_7b01e010b1aa6e 436
+apps/runtime/src/materialPipeline.test.ts
+  s_19291756971291::t_aab699a1951455 5
+  s_19291756971291::t_6c435435efd874 344-347
+  s_19291756971291::t_bedb422ba88756 436
+  s_19291756971291::t_18562b9980cd76 450
+  s_19291756971291::t_3db13470554d04 81-82
+  s_19291756971291::t_a4bcd5dd2a3c7b 312-343,348-435,437-449,451-456
+packages/companion-runtime/src/engine.test.ts
+  s_19291756971291::t_f167e647c1b91d 189-210
+packages/db/drizzle/meta/_journal.json
+  s_19291756971291::t_7933636729b5ac 879-885
+pnpm-lock.yaml
+  s_19291756971291::t_b739b0c29706ae 58,196-198,7430,10177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "07781e42d279640809acf3dbb2a08752a1ada30f",
+  "prompts": {},
+  "sessions": {
+    "s_19291756971291": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b5a09f-280f-4836-8c4a-95f531ff8703",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_7aafcf718e0556": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03902-36e5-78b0-9bae-2f243028f5d1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
