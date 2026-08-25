@@ -1,0 +1,83 @@
+packages/companion-runtime/src/engine.ts
+  s_19291756971291::t_3f42d498949dc7 100-110
+  s_19291756971291::t_58ff75c0f7425d 19
+packages/companion-runtime/src/scheduler.test.ts
+  s_19291756971291::t_1a31e9a9c83a48 364-427
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_19291756971291::t_933ed2afeb3d6e 665-727
+  s_19291756971291::t_b090eb0af78c4c 379
+packages/companion-runtime/src/leaseSession.ts
+  s_19291756971291::t_79b0e1ab184b8a 239,401,405-462
+  s_19291756971291::t_9ad0e2fe788ed1 20-34
+  s_19291756971291::t_b4aaba1115c66b 180-181,191-237
+  s_19291756971291::t_c351a042e0bc35 86-88,96-100,107
+  s_19291756971291::t_07f2eb7be65910 238
+  s_19291756971291::t_55be7724a9dc80 240
+  s_19291756971291::t_2e590599b5b5b5 463
+packages/companion-runtime/src/health.ts
+  s_19291756971291::t_032e68c8618b3a 89-100,105
+  s_19291756971291::t_1fd57f9eb4e77e 208-210
+packages/companion-runtime/src/attempt.ts
+  s_19291756971291::t_0e7635f16fb472 19
+  s_19291756971291::t_7e3419262de6ff 664-668,677,679
+packages/box-runtime/src/boxMaintenanceClient.ts
+  s_19291756971291::t_196a61772c4d11 598-604
+  s_19291756971291::t_8c4b318b3643e0 642-648
+apps/runtime/src/database.ts
+  s_19291756971291::t_ab94e2e98ffb4e 31
+  s_19291756971291::t_ca628c01f3ac35 17-30,32-33,37-40,42-46
+packages/companion-runtime/src/engine.test.ts
+  s_19291756971291::t_c6dcf52415f939 1648-1650,1665-1700
+  s_19291756971291::t_3cdcdaf70261b9 216,218-221
+  s_19291756971291::t_8638d9f85ff0e0 1701-1702
+packages/companion-runtime/src/leaseSession.test.ts
+  s_19291756971291::t_41591827c4f89f 3,7,15-42
+  s_19291756971291::t_00cc3b71145ac5 93-162
+apps/runtime/src/server.test.ts
+  s_19291756971291::t_7aa433a9eaaba7 107-125
+apps/runtime/src/production.ts
+  s_19291756971291::t_4390052269320b 182
+  s_19291756971291::t_300011c20ae3fb 167
+apps/runtime/src/database.test.ts
+  s_19291756971291::t_1255f6e469b92c 3-9
+  s_19291756971291::t_b1093bf09f5a0f 30-54
+apps/runtime/src/server.ts
+  s_19291756971291::t_6814992fb5f9ad 13-21
+  s_19291756971291::t_ee57a4d7fb9f87 138-142
+packages/companion-runtime/src/scheduler.ts
+  s_19291756971291::t_e034aff85b662f 192,196,200,207-218
+  s_19291756971291::t_36219a12f597f6 55,58,69-70,80
+  s_19291756971291::t_6cd34b6d0a752e 151,161
+  s_19291756971291::t_616f0cec8eb545 239
+  s_af4e7a5164cc07::t_50a66af884dc0b 219-220
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_19291756971291::t_bdefca2b29b55c 1885
+  s_19291756971291::t_feef545f9796f3 1890-1898,1908,1918-1923,1933-1938,1941-1943,1945-1951,1957-1961,1967-1977
+  s_19291756971291::t_0af9ce7261990f 8
+  s_19291756971291::t_059c82416cbc48 1952-1956
+  s_19291756971291::t_eb54fe38b0f800 1962-1966
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "e78d33a7718297b92cc80599d3e8ddc6c0f32aa0",
+  "prompts": {},
+  "sessions": {
+    "s_19291756971291": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b5a09f-280f-4836-8c4a-95f531ff8703",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_af4e7a5164cc07": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0386f-42d8-77f2-a4ad-7b03ed59b813",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
