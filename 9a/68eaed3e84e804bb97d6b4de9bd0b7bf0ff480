@@ -1,0 +1,55 @@
+packages/companion-runtime/src/scheduler.ts
+  s_19291756971291::t_adacfcd21c0af5 1-2,10,12
+packages/companion-runtime/src/leaseSession.ts
+  s_19291756971291::t_adacfcd21c0af5 1-2,18
+packages/companion-runtime/src/attempt.ts
+  s_19291756971291::t_adacfcd21c0af5 19,668
+packages/box-runtime/src/boxMaintenanceClient.ts
+  s_19291756971291::t_adacfcd21c0af5 1,11,16
+packages/companion-runtime/src/settings.ts
+  s_19291756971291::t_adacfcd21c0af5 1-2,11
+packages/companion-runtime/src/piEvents.ts
+  s_19291756971291::t_adacfcd21c0af5 3,272
+apps/runtime/src/config.ts
+  s_19291756971291::t_adacfcd21c0af5 4,9,11-13,16,27-28
+packages/companion-runtime/src/operations.ts
+  s_19291756971291::t_adacfcd21c0af5 3-4,31,38-39
+apps/api/test/integration/companionRuntimeBudgets.integration.test.ts
+  s_19291756971291::t_b3629aaae55d0b 1-29,31-46,52-61,63-76,78,80-82,105-111,118-120,127-135,139-140,142-148,156-191,193,198-206
+  s_19291756971291::t_bb520e52551126 30,47-51,62,77,79,83-104,112-117,121-126,149-155
+  s_19291756971291::t_dedeeb4c20fc02 136-138,141,192,194-197
+packages/contracts/src/companionBudgets.ts
+  s_19291756971291::t_a9d672e407ace5 1-256
+packages/box-runtime/src/companionPermissionBroker.ts
+  s_19291756971291::t_adacfcd21c0af5 9,21
+apps/runtime/src/boxAdapters.ts
+  s_19291756971291::t_adacfcd21c0af5 9,316
+packages/contracts/src/companions.ts
+  s_19291756971291::t_adacfcd21c0af5 3-4,430,438
+packages/box-runtime/src/companionRuntimeBaker.ts
+  s_19291756971291::t_adacfcd21c0af5 2-3,13
+packages/companion-runtime/src/store.ts
+  s_19291756971291::t_adacfcd21c0af5 28,33
+packages/contracts/test/companionBudgets.test.ts
+  s_19291756971291::t_cd81393979ade4 1-199
+packages/companion-runtime/src/types.ts
+  s_19291756971291::t_adacfcd21c0af5 3-4,12
+packages/contracts/src/index.ts
+  s_19291756971291::t_09b592cbae258b 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "9a68eaed3e84e804bb97d6b4de9bd0b7bf0ff480",
+  "prompts": {},
+  "sessions": {
+    "s_19291756971291": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b5a09f-280f-4836-8c4a-95f531ff8703",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
