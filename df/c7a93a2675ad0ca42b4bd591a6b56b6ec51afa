@@ -1,0 +1,124 @@
+packages/box-runtime/src/companionPermissionBroker.test.ts
+  s_9d31551fef8e5d::t_42af00af231efd 24,26
+  s_9d31551fef8e5d::t_b2959010bc0657 25,95
+.agents/skills/debug-companions-prod/references/triage-playbook.md
+  s_9d31551fef8e5d::t_e43cbac41605e8 28,72-74
+  s_9d31551fef8e5d::t_a3b726ecd7b83d 40,42-44
+docs/runbooks/companions-runtime.md
+  s_9d31551fef8e5d::t_81870624507df8 237-240
+  s_9d31551fef8e5d::t_a3b726ecd7b83d 232-236
+packages/companion-skill/skill/SKILL.md
+  s_9d31551fef8e5d::t_b7fb6c59707516 1377
+.agents/skills/debug-companions-prod/SKILL.md
+  s_9d31551fef8e5d::t_b2e29002b1a6a1 5
+  s_9d31551fef8e5d::t_e43cbac41605e8 110-113,123,125,139-140,154-156
+  s_9d31551fef8e5d::t_a3b726ecd7b83d 134,136-138
+packages/db/src/schema.ts
+  s_9d31551fef8e5d::t_42af00af231efd 1000
+  s_9d31551fef8e5d::t_d34c9b72a5b8a4 1549
+apps/api/src/localSkills.test.ts
+  s_9d31551fef8e5d::t_7c5bd216779600 130
+  s_9d31551fef8e5d::t_b7fb6c59707516 51
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_9d31551fef8e5d::t_ea3a00ad0ba4c3 632-633
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_9d31551fef8e5d::t_dabe917a909eb9 2373,2415,2426
+  s_9d31551fef8e5d::t_203b374eea521d 2435-2440,2454-2470
+  s_9d31551fef8e5d::t_88cce116b25d21 5248-5251
+  s_9d31551fef8e5d::t_f705b175282423 2441-2453
+  s_9d31551fef8e5d::t_85af9c58cae5c4 2303-2309
+  s_9d31551fef8e5d::t_10617d1690d0fd 2289-2290
+  s_9d31551fef8e5d::t_3a337d869ae03e 2280-2288,2291-2302,2310-2325,2342-2346,2357-2371,2405-2408,2411-2414,2416,2420,2427,2434,2471-2475,5243-5244,5252-5256,5259-5260
+  s_9d31551fef8e5d::t_1605d8381b0da0 2374-2404
+  s_9d31551fef8e5d::t_c476236c753a05 2279,2326-2341,2347-2356,2409-2410,2417-2419,2421-2425,2428-2433
+  s_9d31551fef8e5d::t_7e433cea22e992 2372
+packages/db/drizzle/meta/_journal.json
+  s_9d31551fef8e5d::t_6369bb4a1a91eb 907-913
+packages/db/drizzle/0129_companion_decision_waits.sql
+  s_9d31551fef8e5d::t_42af00af231efd 1-66,257-280
+  s_9d31551fef8e5d::t_ca973b113732fd 103-118,127-128,130-132,137-143,146-147,201-256
+  s_9d31551fef8e5d::t_8c32b77ed70cc2 119-126,129,133-136,144-145,148-200
+  s_9d31551fef8e5d::t_60f50b851ff7b5 67-102
+packages/companion-skill/skill/companion.integrity.json
+  s_9d31551fef8e5d::t_2bee48b18a32f3 3
+  s_9d31551fef8e5d::t_d5c18dc4c60a92 4
+  s_9d31551fef8e5d::t_3975f51e821379 22
+  s_9d31551fef8e5d::t_8f3a99f1d16ef4 10
+apps/web/src/components/companions/DecisionToolCard.tsx
+  s_9d31551fef8e5d::t_30025d4363765c 8,70,308-309
+  s_9d31551fef8e5d::t_8317f410217fac 46,53,55,62,71
+  s_9d31551fef8e5d::t_9e5e0fbed54ec1 310
+packages/contracts/src/companions.ts
+  s_9d31551fef8e5d::t_d34c9b72a5b8a4 498,505
+packages/box-runtime/src/companionBoxAgentSource.ts
+  s_9d31551fef8e5d::t_6685babddaab12 6
+docs/design.md
+  s_9d31551fef8e5d::t_e43cbac41605e8 147
+  s_9d31551fef8e5d::t_a3b726ecd7b83d 141-146
+docs/PRD.md
+  s_9d31551fef8e5d::t_a3b726ecd7b83d 120-123
+  s_9d31551fef8e5d::t_e43cbac41605e8 119
+.claude/skills/debug-companions-prod/references/triage-playbook.md
+  s_9d31551fef8e5d::t_a3b726ecd7b83d 40,42-44
+  s_9d31551fef8e5d::t_e43cbac41605e8 28,72-74
+docs/testing.md
+  s_9d31551fef8e5d::t_a3b726ecd7b83d 156-158
+  s_9d31551fef8e5d::t_e43cbac41605e8 118-121,159-160
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_9d31551fef8e5d::t_829e3a691349e4 1072-1076
+  s_9d31551fef8e5d::t_c3064761d64ba7 1023-1071
+apps/api/test/integration/skillsHubOnlyMigration.integration.test.ts
+  s_9d31551fef8e5d::t_2cda7dcf4566ab 51-52
+packages/box-sim/src/pi-process.mjs
+  s_9d31551fef8e5d::t_b2959010bc0657 236,264,295,326
+packages/contracts/src/companionBudgets.ts
+  s_9d31551fef8e5d::t_b2e29002b1a6a1 22
+  s_9d31551fef8e5d::t_42af00af231efd 46,50,163
+  s_9d31551fef8e5d::t_b2959010bc0657 47-49,77
+apps/web/src/components/companions/CompanionTranscript.client.test.ts
+  s_9d31551fef8e5d::t_30025d4363765c 742-755
+docs/companions-runtime.md
+  s_9d31551fef8e5d::t_a3b726ecd7b83d 488-493
+  s_9d31551fef8e5d::t_e43cbac41605e8 530
+packages/contracts/test/companionBudgets.test.ts
+  s_9d31551fef8e5d::t_b2959010bc0657 50-52
+packages/companion-skill/skill/companion.json
+  s_9d31551fef8e5d::t_d77fbf85cfc364 4,31-34,36-38
+  s_9d31551fef8e5d::t_7c5bd216779600 35
+.claude/skills/debug-companions-prod/SKILL.md
+  s_9d31551fef8e5d::t_b2e29002b1a6a1 5
+  s_9d31551fef8e5d::t_e43cbac41605e8 110-113,123,125,139-140,154-156
+  s_9d31551fef8e5d::t_a3b726ecd7b83d 134,136-138
+.claude/skills/debug-companions-prod/evals/evals.json
+  s_9d31551fef8e5d::t_7c5bd216779600 13
+.agents/skills/debug-companions-prod/evals/evals.json
+  s_9d31551fef8e5d::t_7c5bd216779600 13
+packages/contracts/test/companions.test.ts
+  s_9d31551fef8e5d::t_d34c9b72a5b8a4 530-544
+packages/companion-runtime/src/piEvents.test.ts
+  s_9d31551fef8e5d::t_b2959010bc0657 801,808
+DESIGN.md
+  s_9d31551fef8e5d::t_e43cbac41605e8 403
+  s_9d31551fef8e5d::t_a3b726ecd7b83d 404-407
+packages/box-runtime/src/companionPermissionBroker.ts
+  s_9d31551fef8e5d::t_42af00af231efd 213
+  s_9d31551fef8e5d::t_b2959010bc0657 20,212,262-265
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_9d31551fef8e5d::t_0353c2007088c6 142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "dfc7a93a2675ad0ca42b4bd591a6b56b6ec51afa",
+  "prompts": {},
+  "sessions": {
+    "s_9d31551fef8e5d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03cac-832f-7c13-9c6a-0dcb84d6dd37",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}
