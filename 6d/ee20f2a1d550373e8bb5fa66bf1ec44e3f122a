@@ -1,0 +1,38 @@
+docs/testing.md
+  s_951653655748d0::t_2b9427deaeb1b1 189-191
+  s_951653655748d0::t_98c2ec89127356 188,192-194
+scripts/ios-devx.test.mjs
+  s_951653655748d0::t_98c2ec89127356 184,251,257-259,271,273-274,354,363-365,372-377
+  s_951653655748d0::t_2dedaca18a2feb 357-361
+  s_951653655748d0::t_2b9427deaeb1b1 366-371
+CLAUDE.md
+  s_951653655748d0::t_2b9427deaeb1b1 147-150
+  s_951653655748d0::t_98c2ec89127356 146,151
+.github/workflows/ci.yml
+  s_951653655748d0::t_2b9427deaeb1b1 179-180
+  s_951653655748d0::t_98c2ec89127356 168,189,192,196
+scripts/ci-scope.test.mjs
+  s_951653655748d0::t_bf1c3a249690ff 72-74
+apps/ios/README.md
+  s_951653655748d0::t_98c2ec89127356 127,129,134-135
+  s_951653655748d0::t_2b9427deaeb1b1 128,130-131
+apps/ios/AGENTS.md
+  s_951653655748d0::t_98c2ec89127356 9,12-13
+  s_951653655748d0::t_2b9427deaeb1b1 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "6dee20f2a1d550373e8bb5fa66bf1ec44e3f122a",
+  "prompts": {},
+  "sessions": {
+    "s_951653655748d0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04357-e129-7612-8769-0facab416915",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
