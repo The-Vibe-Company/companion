@@ -1,0 +1,29 @@
+packages/companion-runtime/src/attempt.ts
+  s_d9452bb9c80cdb::t_45aa40fddadfd0 423-425,551
+packages/companion-runtime/src/engine.test.ts
+  s_d9452bb9c80cdb::t_d7b9a250bf82a2 18,927,977,1024,1063,1649
+packages/companion-runtime/src/store.test.ts
+  s_d9452bb9c80cdb::t_91e1a0f8b84c1f 185-209
+packages/companion-runtime/src/store.ts
+  s_d9452bb9c80cdb::t_fc1e575e66c4db 915-919
+packages/companion-runtime/src/test/fixtures.ts
+  s_d9452bb9c80cdb::t_965779b7c5d599 45
+packages/companion-runtime/src/types.ts
+  s_d9452bb9c80cdb::t_abe4e48012f02b 390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d3645d0d61faa7c36064e0175c31b4480ce3b26a",
+  "prompts": {},
+  "sessions": {
+    "s_d9452bb9c80cdb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a048de-a578-7b90-8ac9-3409ef87f00c",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
