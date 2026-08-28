@@ -1,0 +1,23 @@
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_6decb4249a38b7::t_1fcc1e4ef151cc 2134-2136
+  s_6decb4249a38b7::t_39f92e1995e886 2130-2133,2137
+  s_6decb4249a38b7::t_0b67b3f34e5dc8 2138-2139
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_6decb4249a38b7::t_0b67b3f34e5dc8 1576-1584
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8b6d5f661f59d666ad37704f011b84d66e1ef36c",
+  "prompts": {},
+  "sessions": {
+    "s_6decb4249a38b7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0492b-1b66-7771-b16f-18c2ccefa3c2",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
