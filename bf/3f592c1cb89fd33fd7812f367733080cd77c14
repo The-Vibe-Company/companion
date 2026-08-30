@@ -1,0 +1,41 @@
+packages/companion-runtime/src/attempt.ts
+  s_bf8bc1238c3dc4::t_f3b10c4c6a0139 25-29,217,220
+  s_bf8bc1238c3dc4::t_568c4c1cca59bb 211-216,218-219,221-229,240,532,549,856,1116
+packages/companion-runtime/src/retry.ts
+  s_bf8bc1238c3dc4::t_33e5e1b6a02506 92
+  s_bf8bc1238c3dc4::t_568c4c1cca59bb 49-51,93-96
+  s_bf8bc1238c3dc4::t_f3b10c4c6a0139 3-4,53-54,61-64,104-116
+packages/companion-runtime/src/decision.ts
+  s_bf8bc1238c3dc4::t_00e62489deda65 20-24,37
+  s_bf8bc1238c3dc4::t_f3b10c4c6a0139 10,76-92
+docs/runbooks/companions-runtime.md
+  s_bf8bc1238c3dc4::t_e8842f6cb757f5 336-341
+packages/companion-runtime/src/engine.test.ts
+  s_bf8bc1238c3dc4::t_568c4c1cca59bb 1036-1081,1178-1237
+  s_bf8bc1238c3dc4::t_f3b10c4c6a0139 1082-1112,1239-1277,2399-2418
+  s_bf8bc1238c3dc4::t_4419dc73fd3800 1238
+  s_bf8bc1238c3dc4::t_bead42f3b1e1b4 2419
+docs/companions-runtime.md
+  s_bf8bc1238c3dc4::t_e8842f6cb757f5 271-275
+packages/companion-runtime/src/retry.test.ts
+  s_bf8bc1238c3dc4::t_f3b10c4c6a0139 2-6,96
+  s_bf8bc1238c3dc4::t_568c4c1cca59bb 79-95,97-112
+docs/design.md
+  s_bf8bc1238c3dc4::t_e8842f6cb757f5 192-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bf3f592c1cb89fd33fd7812f367733080cd77c14",
+  "prompts": {},
+  "sessions": {
+    "s_bf8bc1238c3dc4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a052ab-d55e-76a2-9ce5-b9cf4cf9d667",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
