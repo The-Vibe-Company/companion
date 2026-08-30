@@ -1,0 +1,21 @@
+packages/db/drizzle/0145_companion_routine_queue_cleanup.sql
+  s_c83f7f76779ae6::t_ab9cb9fc79abd0 453,471-506,546-548,636-638,652
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_c83f7f76779ae6::t_ab9cb9fc79abd0 3692-3746,5953-5962
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6e7c66a1d73abe70f1e1aba7569bdbdaff5fa2c5",
+  "prompts": {},
+  "sessions": {
+    "s_c83f7f76779ae6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05337-3d7c-72a3-861d-289a8dcf66f3",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
