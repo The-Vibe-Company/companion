@@ -1,0 +1,19 @@
+scripts/dev-ios-live.sh
+  s_c60462d1de76ae::t_a8e77e24dcdacd 46-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b9a58d1e809352a02f4ebd680dd3c194a16d894a",
+  "prompts": {},
+  "sessions": {
+    "s_c60462d1de76ae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05338-2009-7450-903d-4583ea2dd294",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
