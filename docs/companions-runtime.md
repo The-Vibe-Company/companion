@@ -1346,12 +1346,14 @@ fell back to exec;
 comparison. Neither may ever contain the hosted URL, the proxy token, the bearer, or any response
 payload.
 
-When `SENTRY_DSN` is configured, every expurgated runtime warning/error record and every structured
-timing record with `ok: false` is mirrored to Sentry with stable `runtime.event` and `operation`
-tags. API 5xx failures, worker supervisor/claim failures, web request failures, and process startup
-failures use the same operation-tagged grouping discipline. Before-send sanitizers remove request
-bodies, headers, cookies, and OAuth/query material; runtime records are expurgated before they are
-mirrored. Provider payloads and plaintext credentials never enter these capture paths.
+When `SENTRY_DSN` is configured, expurgated runtime error records are mirrored to Sentry with stable
+`runtime.event` and `operation` tags, at most once per event key every 15 minutes in each runtime
+process. Runtime warnings and structured timings—including failed provider-call timings—remain in
+the complete JSON process log without becoming individual Sentry events. API 5xx failures, worker
+supervisor/claim failures, web request failures, and process startup failures use the same
+operation-tagged grouping discipline. Before-send sanitizers remove request bodies, headers,
+cookies, and OAuth/query material; runtime records are expurgated before they are mirrored. Provider
+payloads and plaintext credentials never enter these capture paths.
 
 Acceptance bounds:
 

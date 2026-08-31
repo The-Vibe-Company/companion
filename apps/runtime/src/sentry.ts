@@ -49,6 +49,14 @@ type RuntimeLogCapture = (
   expurgatedRecord: string,
 ) => void;
 
+/**
+ * Sentry is the alerting boundary; the JSON process log remains the complete diagnostic stream.
+ * Keep one repeated error group visible without turning a tight runtime retry/takeover loop into an
+ * event storm. This is deliberately process-local: replicas remain independent and a deploy may
+ * emit one fresh event per key.
+ */
+export const SENTRY_RUNTIME_ERROR_COOLDOWN_MS = 15 * 60_000;
+
 function captureRuntimeLog(
   level: "info" | "warn" | "error",
   event: string,
@@ -71,23 +79,27 @@ function captureRecord(capture: RuntimeLogCapture, level: "info" | "warn" | "err
   capture(level, event, expurgatedRecord);
 }
 
-/** Mirror every expurgated warning/error and failed timing record into Sentry. */
+/** Mirror expurgated errors into Sentry, at most once per runtime event key per cooldown. */
 export function createSentryRuntimeProcessLog(
   log: RuntimeProcessLog,
   capture: RuntimeLogCapture = captureRuntimeLog,
+  now: () => number = Date.now,
 ): RuntimeProcessLog {
+  const lastCapturedAt = new Map<string, number>();
   return {
     error(record) {
       log.error(record);
+      const previous = lastCapturedAt.get(record.event);
+      const current = now();
+      if (previous !== undefined && current - previous < SENTRY_RUNTIME_ERROR_COOLDOWN_MS) return;
+      lastCapturedAt.set(record.event, current);
       captureRecord(capture, "error", record);
     },
     warn(record) {
       log.warn(record);
-      captureRecord(capture, "warn", record);
     },
     info(record) {
       log.info(record);
-      if (record.ok === false) captureRecord(capture, "info", record);
     },
   };
 }
