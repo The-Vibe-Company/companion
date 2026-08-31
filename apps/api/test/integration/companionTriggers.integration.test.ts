@@ -1496,4 +1496,216 @@ describe("Companion triggers over the real database", () => {
       message: "Unable to apply the trigger proposal. Please try again.",
     });
   });
+
+  it("recovers unavailable proposal account ids without crossing the approver boundary", async () => {
+    const [ownerProviderAccount] = await integrationDb
+      .select({ id: schema.companionTriggerProviderAccounts.id })
+      .from(schema.companionTriggerProviderAccounts)
+      .where(and(
+        eq(schema.companionTriggerProviderAccounts.orgId, fixture.orgA),
+        eq(schema.companionTriggerProviderAccounts.ownerId, fixture.owner.id),
+        eq(schema.companionTriggerProviderAccounts.provider, "github"),
+      ));
+    expect(ownerProviderAccount).toBeDefined();
+
+    const developerProviderAccount = await saveCompanionTriggerProviderAccount({
+      actor: fixture.developer,
+      orgId: fixture.orgA,
+      account: { provider: "github", label: "Developer GitHub", credential: "developer-token" },
+      masterKey,
+      database: integrationDb,
+    });
+    const otherTenantProviderAccount = await saveCompanionTriggerProviderAccount({
+      actor: fixture.outsider,
+      orgId: fixture.orgB,
+      account: { provider: "github", label: "Other tenant GitHub", credential: "tenant-token" },
+      masterKey,
+      database: integrationDb,
+    });
+    const unrelatedRequestId = randomUUID();
+    const requests = [
+      {
+        key: `trigger-unavailable-${randomUUID()}`,
+        name: "Unavailable proposal account",
+        providerAccountId: unrelatedRequestId,
+      },
+      {
+        key: `trigger-valid-${randomUUID()}`,
+        name: "Valid historical account",
+        providerAccountId: ownerProviderAccount!.id,
+      },
+      {
+        key: `trigger-other-member-${randomUUID()}`,
+        name: "Other member account",
+        providerAccountId: developerProviderAccount.id,
+      },
+      {
+        key: `trigger-other-tenant-${randomUUID()}`,
+        name: "Other tenant account",
+        providerAccountId: otherTenantProviderAccount.id,
+      },
+      {
+        key: `trigger-ambiguous-${randomUUID()}`,
+        name: "Ambiguous account fallback",
+        providerAccountId: unrelatedRequestId,
+      },
+    ];
+    const turnId = randomUUID();
+    const attemptId = randomUUID();
+    const clientMessageId = randomUUID();
+    await integrationSql`
+      insert into companion_threads(org_id, companion_id, next_ordinal, last_message_at)
+      values (${fixture.orgA}::uuid, ${companionId}::uuid, ${requests.length + 1}, now())
+      on conflict (companion_id) do update
+      set next_ordinal = ${requests.length + 1}, updated_at = now()
+    `;
+    await integrationSql`
+      insert into companion_transcript_entries(
+        org_id, companion_id, event_id, ordinal, role, content, author_id
+      ) values (
+        ${fixture.orgA}::uuid, ${companionId}::uuid, ${`msg:${clientMessageId}`},
+        0, 'user', 'Set up GitHub triggers', ${fixture.owner.id}
+      )
+    `;
+    await integrationSql`
+      insert into companion_turns(
+        id, org_id, companion_id, client_message_id, message_event_id,
+        queue_sequence, actor_id, client_surface, status,
+        inactivity_deadline_at, absolute_deadline_at
+      ) values (
+        ${turnId}::uuid, ${fixture.orgA}::uuid, ${companionId}::uuid,
+        ${clientMessageId}::uuid, ${`msg:${clientMessageId}`}, 1,
+        ${fixture.owner.id}, 'web', 'needs_input',
+        now() + interval '10 minutes', now() + interval '2 hours'
+      )
+    `;
+    await integrationSql`
+      insert into companion_turn_attempts(
+        id, org_id, companion_id, turn_id, attempt_number, actor_id,
+        runtime_generation, settings_revision, skills_revision, model_id,
+        provider_ids, provider_credential_refs, selected_skill_ids,
+        selected_mcp_account_ids, mcp_credential_refs,
+        status, checkpoint, dispatch_state, command_id,
+        dispatch_accepted_at, pi_invocation_id, last_activity_at
+      ) values (
+        ${attemptId}::uuid, ${fixture.orgA}::uuid, ${companionId}::uuid, ${turnId}::uuid,
+        1, ${fixture.owner.id}, 1, 1, 1, 'claude-opus-4-8',
+        ${JSON.stringify(["anthropic"])}::jsonb,
+        ${JSON.stringify([{ provider_id: "anthropic", credential_generation: randomUUID(), credential_version: 1 }])}::jsonb,
+        ${JSON.stringify([])}::jsonb, ${JSON.stringify([])}::jsonb, ${JSON.stringify([])}::jsonb,
+        'needs_input', 'needs_input', 'accepted', ${randomUUID()}::uuid,
+        now(), ${`pi-${attemptId}`}, now()
+      )
+    `;
+    for (const [index, request] of requests.entries()) {
+      const proposal = {
+        kind: "trigger",
+        name: request.name,
+        prompt: `Handle ${request.name}.`,
+        mode: "relay",
+        provider: "github",
+        provider_account_id: request.providerAccountId,
+        target: { repo: "acme/demo", events: ["push"] },
+      };
+      await integrationSql`
+        insert into companion_decision_deliveries(
+          org_id, companion_id, turn_id, attempt_id,
+          request_key, request_kind, expires_at, proposal
+        ) values (
+          ${fixture.orgA}::uuid, ${companionId}::uuid, ${turnId}::uuid, ${attemptId}::uuid,
+          ${request.key}, 'trigger_proposal', now() + interval '10 minutes',
+          ${JSON.stringify(proposal)}::jsonb
+        )
+      `;
+      const decision = {
+        request_id: request.key,
+        kind: "trigger",
+        name: "propose_trigger",
+        title: `Create ${request.name}`,
+        detail: request.name,
+        status: "pending",
+        answer: null,
+        decided_by_id: null,
+        decided_by_name: null,
+        decided_at: null,
+        expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+        proposal,
+      };
+      await integrationSql`
+        insert into companion_transcript_entries(
+          org_id, companion_id, event_id, ordinal, role, content, decision
+        ) values (
+          ${fixture.orgA}::uuid, ${companionId}::uuid, ${`decision:${request.key}`},
+          ${index + 1}, 'decision', ${decision.title}, ${JSON.stringify(decision)}::jsonb
+        )
+      `;
+    }
+
+    for (const request of [requests[0]!, requests[2]!, requests[3]!]) {
+      await asActor(fixture.owner, (database) => answerCompanionTriggerDecisionV2({
+        orgId: fixture.orgA,
+        companionId,
+        requestId: request.key,
+        decision: "allow",
+        database,
+      }));
+    }
+
+    await saveCompanionTriggerProviderAccount({
+      actor: fixture.owner,
+      orgId: fixture.orgA,
+      account: { provider: "github", label: "Secondary GitHub", credential: "secondary-token" },
+      masterKey,
+      database: integrationDb,
+    });
+    // A valid historical choice remains authoritative even after fallback becomes ambiguous.
+    await asActor(fixture.owner, (database) => answerCompanionTriggerDecisionV2({
+      orgId: fixture.orgA,
+      companionId,
+      requestId: requests[1]!.key,
+      decision: "allow",
+      database,
+    }));
+    const recovered = await asActor(fixture.owner, (database) => listCompanionTriggersV2({
+      orgId: fixture.orgA,
+      companionId,
+      database,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+    }));
+    expect(recovered).toHaveLength(4);
+    expect(recovered.every((trigger) =>
+      trigger.provider_account_id === ownerProviderAccount!.id)).toBe(true);
+
+    await expect(asActor(fixture.owner, (database) => answerCompanionTriggerDecisionV2({
+      orgId: fixture.orgA,
+      companionId,
+      requestId: requests[4]!.key,
+      decision: "allow",
+      database,
+    }))).rejects.toMatchObject({
+      name: CompanionTriggerDecisionUpdateError.name,
+      code: "trigger_update_failed",
+      httpStatus: 400,
+    });
+    const [ambiguousDelivery] = await integrationDb
+      .select({ status: schema.companionDecisionDeliveries.decisionStatus })
+      .from(schema.companionDecisionDeliveries)
+      .where(eq(schema.companionDecisionDeliveries.requestKey, requests[4]!.key));
+    expect(ambiguousDelivery).toEqual({ status: "pending" });
+    expect(await asActor(fixture.owner, (database) => listCompanionTriggersV2({
+      orgId: fixture.orgA,
+      companionId,
+      database,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+    }))).toHaveLength(4);
+
+    await expectSqlState(asActor(fixture.owner, (database) => createCompanionTriggerV2({
+      orgId: fixture.orgA,
+      companionId,
+      ...draft("Direct invalid account"),
+      providerAccountId: unrelatedRequestId,
+      database,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+    })), "42501");
+  });
 });

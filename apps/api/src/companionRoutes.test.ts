@@ -183,6 +183,30 @@ const triggerProviderAccount = {
   updated_at: NOW,
 };
 
+const proposedGithubTrigger = {
+  id: TRIGGER_ID,
+  companion_id: COMPANION_ID,
+  name: "CI failed on main",
+  prompt: "Investigate the failing workflow.",
+  mode: "relay" as const,
+  provider: "github" as const,
+  provider_account_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  target: { repo: "acme/widgets", events: ["push"] },
+  registration_status: "unregistered" as const,
+  remote_hook_id: null,
+  remote_hook_account_id: null,
+  last_registration_error: null,
+  enabled: true,
+  webhook_url: `http://127.0.0.1:3000/v1/hooks/triggers/${TRIGGER_ID}/${TRIGGER_SECRET}`,
+  last_fired_at: null,
+  last_error_code: null,
+  last_error_message: null,
+  last_error_at: null,
+  consecutive_failures: 0,
+  created_at: NOW,
+  updated_at: NOW,
+};
+
 const turn = {
   id: TURN_ID,
   companion_id: COMPANION_ID,
@@ -1827,6 +1851,13 @@ describe("Companions Runtime v2 API", () => {
   });
 
   it("applies trigger proposals through the dedicated answer path", async () => {
+    const createdTrigger = { ...proposedGithubTrigger };
+    const registeredTrigger = {
+      ...createdTrigger,
+      registration_status: "registered" as const,
+      remote_hook_id: "42",
+      remote_hook_account_id: createdTrigger.provider_account_id,
+    };
     coreMocks.getCompanionDecisionV2.mockResolvedValue({
       requestKey: "trigger-1",
       requestKind: "trigger_proposal",
@@ -1840,6 +1871,14 @@ describe("Companions Runtime v2 API", () => {
       },
       expiresAt: NOW,
     });
+    coreMocks.answerCompanionTriggerDecisionV2.mockResolvedValueOnce({ trigger_id: TRIGGER_ID });
+    coreMocks.listCompanionTriggersV2
+      .mockResolvedValueOnce([createdTrigger])
+      .mockResolvedValueOnce([registeredTrigger]);
+    coreMocks.registerCompanionTriggerWebhookV2.mockResolvedValueOnce({
+      status: "registered",
+      remote_hook_id: "42",
+    });
     const response = await appWithRoutes().request(
       jsonPost(`/v1/companions/${COMPANION_ID}/decisions/trigger-1`, {
         action: "allow",
@@ -1852,9 +1891,56 @@ describe("Companions Runtime v2 API", () => {
       requestId: "trigger-1",
       decision: "allow",
     }));
+    expect(coreMocks.registerCompanionTriggerWebhookV2).toHaveBeenCalledWith(expect.objectContaining({
+      companionId: COMPANION_ID,
+      triggerId: TRIGGER_ID,
+    }));
     expect(coreMocks.answerCompanionConfigDecisionV2).not.toHaveBeenCalled();
     expect(coreMocks.answerCompanionRoutineDecisionV2).not.toHaveBeenCalled();
     expect(coreMocks.answerCompanionDecisionV2).not.toHaveBeenCalled();
+  });
+
+  it("accepts a trigger proposal when provider registration is durably failed", async () => {
+    const failedTrigger = {
+      ...proposedGithubTrigger,
+      registration_status: "failed" as const,
+      remote_hook_account_id: proposedGithubTrigger.provider_account_id,
+      last_registration_error: "github rejected the webhook (403)",
+    };
+    coreMocks.getCompanionDecisionV2.mockResolvedValue({
+      requestKey: "trigger-registration-failure",
+      requestKind: "trigger_proposal",
+      decisionStatus: "pending",
+      proposal: {
+        kind: "trigger",
+        name: proposedGithubTrigger.name,
+        prompt: proposedGithubTrigger.prompt,
+        mode: proposedGithubTrigger.mode,
+        provider: proposedGithubTrigger.provider,
+      },
+      expiresAt: NOW,
+    });
+    coreMocks.answerCompanionTriggerDecisionV2.mockResolvedValueOnce({ trigger_id: TRIGGER_ID });
+    coreMocks.listCompanionTriggersV2
+      .mockResolvedValueOnce([proposedGithubTrigger])
+      .mockResolvedValueOnce([failedTrigger]);
+    coreMocks.registerCompanionTriggerWebhookV2.mockResolvedValueOnce({
+      status: "failed",
+      error: failedTrigger.last_registration_error,
+    });
+
+    const response = await appWithRoutes().request(
+      jsonPost(`/v1/companions/${COMPANION_ID}/decisions/trigger-registration-failure`, {
+        action: "allow",
+      }),
+    );
+
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toEqual({ thread: projectedThread });
+    expect(coreMocks.listCompanionTriggersV2).toHaveBeenCalledTimes(2);
+    expect(coreMocks.registerCompanionTriggerWebhookV2).toHaveBeenCalledWith(expect.objectContaining({
+      triggerId: TRIGGER_ID,
+    }));
   });
 
   it("bounds trigger proposal persistence failures without reflecting SQL diagnostics", async () => {

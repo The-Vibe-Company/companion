@@ -399,7 +399,6 @@ export default function companionPermissionBroker(pi: ExtensionAPI) {
       prompt: Type.String({ description: "The prompt the Companion will run on each webhook event" }),
       mode: Type.Optional(Type.String({ description: "notify to inform only, or relay for the main Companion to act; defaults to relay" })),
       provider: Type.Optional(Type.String({ description: "webhook, linear, github, sentry, or custom; defaults to webhook" })),
-      provider_account_id: Type.Optional(Type.String({ description: "Member-scoped trigger provider account UUID only when selecting among multiple eligible accounts" })),
       repo: Type.Optional(Type.String({ description: "github only: repository as owner/repo the webhook watches" })),
       organization: Type.Optional(Type.String({ description: "sentry only: organization slug" })),
       project: Type.Optional(Type.String({ description: "sentry only: project slug" })),
@@ -412,9 +411,6 @@ export default function companionPermissionBroker(pi: ExtensionAPI) {
       const prompt = typeof params.prompt === "string" ? params.prompt.trim() : "";
       const provider = typeof params.provider === "string" ? params.provider.trim().toLowerCase() : "webhook";
       const mode = typeof params.mode === "string" ? params.mode.trim().toLowerCase() : "relay";
-      const providerAccountId = typeof params.provider_account_id === "string"
-        ? params.provider_account_id.trim().toLowerCase()
-        : "";
       const repo = typeof params.repo === "string" ? params.repo.trim() : "";
       const organization = typeof params.organization === "string" ? params.organization.trim() : "";
       const project = typeof params.project === "string" ? params.project.trim() : "";
@@ -426,9 +422,9 @@ export default function companionPermissionBroker(pi: ExtensionAPI) {
           details: { proposal: null, confirmed: null },
         };
       }
-      if (!["notify", "relay"].includes(mode) || (providerAccountId && !UUID_PATTERN.test(providerAccountId))) {
+      if (!["notify", "relay"].includes(mode)) {
         return {
-          content: [{ type: "text", text: "Error: propose_trigger mode or provider_account_id is invalid" }],
+          content: [{ type: "text", text: "Error: propose_trigger mode is invalid" }],
           details: { proposal: null, confirmed: null },
         };
       }
@@ -485,7 +481,6 @@ export default function companionPermissionBroker(pi: ExtensionAPI) {
       }
       const proposal = {
         kind: "trigger", name, prompt, mode, provider,
-        ...(providerAccountId ? { provider_account_id: providerAccountId } : {}),
         ...(target ? { target } : {}),
       };
       if (!ctx.hasUI) {

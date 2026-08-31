@@ -735,8 +735,9 @@ function companionConfigInstructions(includeCatalog: boolean): string {
     "  Keep its optional human-facing summary to one short sentence with no setup or process narration.",
     "  Approval creates it after this turn ends, so a proposed routine never fires in the turn that proposed it.",
     "- propose_trigger proposes a named webhook trigger with notify or relay mode. For GitHub include",
-    "  the repo and narrow events to watch. Approval creates the trigger and registers it remotely with",
-    "  the selected held credential; never ask the person to paste a URL or use a provider console.",
+    "  the repo and narrow events to watch. Never pass or invent a provider account id: approval resolves",
+    "  the approving member's eligible held credential, creates the trigger, and registers it remotely;",
+    "  never ask the person to paste a URL or use a provider console.",
     `- request_plugin_connection asks for a supported plugin connection (${COMPANION_CONFIG_PROPOSAL_CONNECT_PROVIDERS.join(", ")}) that does not exist yet.`,
     "  The person finishes it in the web UI; propose attaching it on a later turn.",
   ].join("\n");

@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { RuntimeServiceConfig } from "./config";
 import {
   RUNTIME_DB_STATEMENT_TIMEOUT_MS,
-  RuntimeDatabaseRoleError,
   runtimeDatabasePoolOptions,
   verifyRuntimeDatabaseRole,
 } from "./database";
@@ -77,33 +76,37 @@ describe("runtime database role verification", () => {
   });
 
   it.each([
-    ["a different login", { currentRole: "companion_api" }],
-    ["a superuser", { isSuperuser: true }],
-    ["a BYPASSRLS role", { bypassesRls: true }],
-    ["an inheriting role", { inheritsPrivileges: true }],
-    ["a role membership", { hasMemberships: true }],
-    ["database CREATE", { hasDatabaseCreatePrivilege: true }],
-    ["public schema CREATE", { hasPublicSchemaCreatePrivilege: true }],
-    ["database or schema ownership", { ownsDatabaseOrSchema: true }],
-    ["relation ownership", { ownsRelations: true }],
-    ["function or type ownership", { ownsFunctionsOrTypes: true }],
-    ["a partial protected schema", { protectedRelationCount: 9 }],
-    ["direct public relation access", { hasPublicRelationPrivileges: true }],
-    ["a missing required function grant", { requiredFunctionsReady: false }],
-    ["required function ownership", { ownsRequiredFunctions: true }],
-    ["an extra definer grant", { hasUnexpectedDefinerGrant: true }],
-  ])("rejects %s", async (_label, override) => {
+    ["a different login", { currentRole: "companion_api" }, "login_mismatch"],
+    ["a superuser", { isSuperuser: true }, "unsafe_role_attributes"],
+    ["a BYPASSRLS role", { bypassesRls: true }, "unsafe_role_attributes"],
+    ["an inheriting role", { inheritsPrivileges: true }, "unsafe_role_attributes"],
+    ["a role membership", { hasMemberships: true }, "role_membership"],
+    ["database CREATE", { hasDatabaseCreatePrivilege: true }, "create_privilege"],
+    ["public schema CREATE", { hasPublicSchemaCreatePrivilege: true }, "create_privilege"],
+    ["database or schema ownership", { ownsDatabaseOrSchema: true }, "object_ownership"],
+    ["relation ownership", { ownsRelations: true }, "object_ownership"],
+    ["function or type ownership", { ownsFunctionsOrTypes: true }, "object_ownership"],
+    ["a partial protected schema", { protectedRelationCount: 9 }, "release_schema_incomplete"],
+    ["a missing required function grant", { requiredFunctionsReady: false }, "release_schema_incomplete"],
+    ["direct public relation access", { hasPublicRelationPrivileges: true }, "relation_privilege"],
+    ["required function ownership", { ownsRequiredFunctions: true }, "required_function_ownership"],
+    ["an extra definer grant", { hasUnexpectedDefinerGrant: true }, "unexpected_function_grant"],
+  ])("rejects %s with a safe reason", async (_label, override, failure) => {
     // SAFETY: The test double implements the single `unsafe` method consumed by the verifier.
     await expect(verifyRuntimeDatabaseRole({
       unsafe: vi.fn(async () => [{ ...validProfile, ...override }]),
-    } as never, "companion_runtime_v2")).rejects.toBeInstanceOf(RuntimeDatabaseRoleError);
+    } as never, "companion_runtime_v2")).rejects.toMatchObject({
+      name: "RuntimeDatabaseRoleError",
+      failure,
+      stableCode: `runtime_database_role_${failure}`,
+    });
   });
 
   it("fails closed for a missing profile", async () => {
     // SAFETY: The test double implements the single `unsafe` method consumed by the verifier.
     await expect(verifyRuntimeDatabaseRole({
       unsafe: vi.fn(async () => []),
-    } as never, "companion_runtime_v2")).rejects.toBeInstanceOf(RuntimeDatabaseRoleError);
+    } as never, "companion_runtime_v2")).rejects.toMatchObject({ failure: "profile_unavailable" });
   });
 
   it("fails closed for a partial profile", async () => {
@@ -111,7 +114,9 @@ describe("runtime database role verification", () => {
     // SAFETY: The test double implements the single `unsafe` method consumed by the verifier.
     await expect(verifyRuntimeDatabaseRole({
       unsafe: vi.fn(async () => [partial]),
-    } as never, "companion_runtime_v2")).rejects.toBeInstanceOf(RuntimeDatabaseRoleError);
+    } as never, "companion_runtime_v2")).rejects.toMatchObject({
+      failure: "role_membership",
+    });
   });
 
   it("does not include connection or role values in a mismatch error", async () => {

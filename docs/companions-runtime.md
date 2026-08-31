@@ -584,7 +584,10 @@ message is counted as unknown. Trigger definitions are autonomous and are not ga
 plugin merely to exist. Remote registration uses a member-scoped trigger-provider account that is
 available to every Companion the member can operate; it never depends on the Companion's MCP
 attachment selection. OAuth-backed accounts reuse the matching MCP credential in place. One
-eligible account defaults silently and multiple accounts require `provider_account_id`.
+eligible account defaults silently. Pi never supplies or invents a provider-account id: approval
+resolves authority under the approving member. A valid id from an older pending proposal remains
+usable, while an unavailable legacy id is treated as absent; multiple eligible accounts stay
+fail-closed and require the member to choose through the trigger editor.
 Owner/Editor approval
 runs `companion_api_answer_trigger_decision`,
 which creates the trigger with a fresh server-side id and secret under the approver's authority and
@@ -796,7 +799,9 @@ credentials are used only for remote registration. Trigger-provider accounts are
 member scope and become available to every Companion without an attach step. GitHub and Sentry
 reuse the member's MCP OAuth credential in place (GitHub's classic OAuth grant includes
 `admin:repo_hook`); exactly one eligible account is selected silently, while multiple accounts
-require an explicit `provider_account_id`. A disconnected, revoked, or
+require an explicit `provider_account_id` through the direct trigger editor/API. Hosted Pi
+`propose_trigger` never supplies that internal id; the approval path resolves the approver's sole
+eligible account and refuses an ambiguous choice. A disconnected, revoked, or
 legacy insufficient-scope token produces `registration_status = failed`, never a second credential
 prompt. Disconnect preserves dependent triggers as `unregistered`; it never silently reattaches a
 tool account. Linear keeps the minimal separate encrypted webhook key because its current MCP grant does

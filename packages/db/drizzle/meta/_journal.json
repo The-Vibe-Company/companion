@@ -1044,6 +1044,13 @@
       "when": 1792602400000,
       "tag": "0148_companion_trigger_prepare_result",
       "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1792688800000,
+      "tag": "0149_companion_trigger_proposal_account_fallback",
+      "breakpoints": true
     }
   ]
 }
