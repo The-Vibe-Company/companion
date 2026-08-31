@@ -1350,10 +1350,11 @@ comparison. Neither may ever contain the hosted URL, the proxy token, the bearer
 payload.
 
 When `SENTRY_DSN` is configured, expurgated runtime error records are captured as Sentry events with
-stable `runtime.event` and `operation` tags. Operational warnings and structured timing records with
-`ok: false` remain in the process log and are attached as Sentry breadcrumbs, so repeated fallback
-or retry signals provide context without creating one issue event per log line. API 5xx failures,
-worker supervisor/claim failures, web request failures, and process startup failures use the same
+stable `runtime.event` and `operation` tags, at most once per event key every 15 minutes in each
+runtime process. Operational warnings and structured timing records with `ok: false` remain in the
+complete JSON process log and are attached as Sentry breadcrumbs, so repeated fallback or retry
+signals provide context without creating individual Sentry events. API 5xx failures, worker
+supervisor/claim failures, web request failures, and process startup failures use the same
 operation-tagged grouping discipline. Before-send sanitizers remove request bodies, headers,
 cookies, and OAuth/query material; runtime records are expurgated before they enter either capture
 path. Provider payloads and plaintext credentials never enter them.

@@ -55,6 +55,14 @@ type RuntimeLogBreadcrumb = (
   expurgatedRecord: string,
 ) => void;
 
+/**
+ * Sentry is the alerting boundary; the JSON process log remains the complete diagnostic stream.
+ * Keep one repeated error group visible without turning a tight runtime retry/takeover loop into an
+ * event storm. This is deliberately process-local: replicas remain independent and a deploy may
+ * emit one fresh event per key.
+ */
+export const SENTRY_RUNTIME_ERROR_COOLDOWN_MS = 15 * 60_000;
+
 function captureRuntimeLog(
   level: "info" | "warn" | "error",
   event: string,
@@ -94,15 +102,23 @@ function captureRecord<TLevel extends string>(
   capture(level, event, expurgatedRecord);
 }
 
-/** Capture errors as Sentry events; retain operational warnings and failed timings as breadcrumbs. */
+/**
+ * Rate-limit error events; retain operational warnings and failed timings as breadcrumbs.
+ */
 export function createSentryRuntimeProcessLog(
   log: RuntimeProcessLog,
   capture: RuntimeLogCapture = captureRuntimeLog,
   breadcrumb: RuntimeLogBreadcrumb = captureRuntimeBreadcrumb,
+  now: () => number = Date.now,
 ): RuntimeProcessLog {
+  const lastCapturedAt = new Map<string, number>();
   return {
     error(record) {
       log.error(record);
+      const previous = lastCapturedAt.get(record.event);
+      const current = now();
+      if (previous !== undefined && current - previous < SENTRY_RUNTIME_ERROR_COOLDOWN_MS) return;
+      lastCapturedAt.set(record.event, current);
       captureRecord(capture, "error", record);
     },
     warn(record) {

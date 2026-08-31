@@ -2106,9 +2106,15 @@ describe("RuntimeEngine attempts", () => {
     const claim = attemptClaim();
     const store = new MemoryRuntimeStore({ authorization: attemptAuthorization(claim) });
     const ports = fakePorts(store);
+    const records: Record<string, unknown>[] = [];
     const engine = new RuntimeEngine(engineDependencies({
       store,
       ports,
+      log: {
+        error(record) { records.push({ level: "error", ...record }); },
+        warn(record) { records.push({ level: "warn", ...record }); },
+        info(record) { records.push({ level: "info", ...record }); },
+      },
       materialProvider: {
         getMaterial: async () => {
           store.renewReturnsNull = true;
@@ -2123,6 +2129,11 @@ describe("RuntimeEngine attempts", () => {
     // terminal the new holder cannot see, so abandoning is still the only safe move.
     expect(result.outcome).toBe("fence_lost");
     expect(store.settlements).toEqual([]);
+    expect(records).toEqual([expect.objectContaining({
+      level: "warn",
+      event: "runtime.work.fence_lost",
+      reason: "lease_fence_lost",
+    })]);
   });
 
   it("abandons when the harvest commit itself is indeterminate", async () => {
@@ -2758,6 +2769,34 @@ describe("RuntimeEngine process error logs", () => {
           message: "settings claim has an impossible nullable shape",
         })],
       }),
+    })]);
+  });
+
+  it("keeps a rejected successful settlement at error severity", async () => {
+    const claim = attemptClaim({
+      checkpoint: "agent_settled",
+      checkpointSequence: 8n,
+      attemptStatus: "running",
+      turnStatus: "running",
+      dispatchState: "accepted",
+      eventCursor: 4n,
+      inactivityDeadlineAt: new Date("2026-08-16T12:10:00.000Z"),
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: attemptAuthorization(claim),
+      material: attemptMaterial({ hasVisibleOutput: true }),
+    });
+    store.settle = async () => false;
+    const captured = capturingLog();
+    const engine = new RuntimeEngine(engineDependencies({ store, log: captured.log }));
+
+    const result = await engine.execute(claim);
+
+    expect(result.outcome).toBe("fence_lost");
+    expect(captured.records).toEqual([expect.objectContaining({
+      level: "error",
+      event: "runtime.work.fence_lost",
+      reason: "settle_rejected",
     })]);
   });
 });
