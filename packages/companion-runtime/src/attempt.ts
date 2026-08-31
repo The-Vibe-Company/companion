@@ -281,7 +281,9 @@ async function repairMainBrokerBeforeDispatch(
       restartPiWhenUnchanged: true,
     });
   } catch (error) {
-    if (mustAbandonRuntimeExecution(error)) throw error;
+    if (mustAbandonRuntimeExecution(error) || errorHasStableCode(error, "pi_start_failed")) {
+      throw error;
+    }
     throw new RuntimeInvariantError({
       code: state.layoutCurrent ? "pi_not_idle" : "pi_layout_stale",
       message: state.layoutCurrent
@@ -421,10 +423,13 @@ function requiredRoutineInvocationId(authorizationValue: RuntimeAuthorization): 
 }
 
 function isRoutineInvocationMismatch(error: unknown): boolean {
+  return errorHasStableCode(error, "routine_session_invocation_mismatch");
+}
+
+function errorHasStableCode(error: unknown, stableCode: string): boolean {
   if (!error || typeof error !== "object") return false;
   const value = error as { code?: unknown; stableCode?: unknown };
-  return value.code === "routine_session_invocation_mismatch"
-    || value.stableCode === "routine_session_invocation_mismatch";
+  return value.code === stableCode || value.stableCode === stableCode;
 }
 
 async function ackRoutineEvents(

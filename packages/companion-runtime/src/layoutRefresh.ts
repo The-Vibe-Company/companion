@@ -34,13 +34,16 @@ export async function refreshWarmCompanionLayout(input: {
     return { applied: refresh.applied, restartedPi: false, piInvocationId: currentInvocationId };
   }
   try {
+    const deadlineAt = input.authorization.coldStartDeadlineAt
+      ?? input.authorization.absoluteDeadlineAt
+      ?? undefined;
     const started = await retryIdempotentLifecycle({
       call: "restart_pi",
       clock: input.deps.clock,
       jitter: input.deps.jitter,
       signal: input.session.signal,
       operation: async () => await input.session.external(async (signal) =>
-        await input.deps.pi.restartPiDaemon({ boxId, signal })),
+        await input.deps.pi.restartPiDaemon({ boxId, deadlineAt, signal })),
     });
     if (started.state !== "idle" || !started.invocationId) {
       await invalidateLayoutAfterFailedRecycle(input, boxId);

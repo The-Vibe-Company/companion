@@ -217,6 +217,66 @@ describe("narrow AsciiBoxCompanionRuntime", () => {
     expect(commands[0]?.timeoutSeconds).toBe(120);
   });
 
+  it("reserves the durable deadline for Pi diagnostics and returns a stable start failure", async () => {
+    const commands: Array<{ command: string; timeoutSeconds: number }> = [];
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-08-16T12:00:00.000Z").getTime());
+    vi.stubGlobal("fetch", vi.fn(async (_rawUrl: string | URL | Request, init?: RequestInit) => {
+      const body = parseBoxTestBody(init?.body);
+      const command = requiredText(body, "command");
+      const timeoutSeconds = requiredNumber(body, "timeoutSeconds");
+      commands.push({ command, timeoutSeconds });
+      if (command.includes("for companion_pi_probe")) {
+        return response(commandResult("activating\ncompanion-pi-broker-unready\n"));
+      }
+      if (command.includes("systemctl --user status --no-pager")) {
+        return response(commandResult(
+          "companion-pi-status Active: activating (auto-restart)\n"
+          + "companion-pi-restarts 4\n"
+          + "companion-pi-stderr model provider rejected startup\n",
+        ));
+      }
+      throw new Error("unexpected Box command");
+    }));
+    const runtime = new AsciiBoxCompanionRuntime({
+      COMPANION_BOX_API_KEY: "box_test",
+      COMPANION_PI_DAEMON_ACTIVE_TIMEOUT_MS: "180000",
+    });
+
+    await expect(runtime.restartPiDaemon({
+      boxId: "bx_23456789",
+      deadlineAt: new Date("2026-08-16T12:03:00.000Z"),
+    })).rejects.toMatchObject({
+      status: 409,
+      stableCode: "pi_start_failed",
+      message: expect.stringContaining("restarts: 4"),
+    });
+
+    expect(commands).toHaveLength(2);
+    expect(commands[0]?.command).toContain("seq 1 1190");
+    expect(commands[0]?.timeoutSeconds).toBe(124);
+    expect(commands[1]?.timeoutSeconds).toBe(30);
+  });
+
+  it("fails before Box contact when the durable deadline cannot preserve diagnostics", async () => {
+    const fetch = vi.fn();
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-08-16T12:00:00.000Z").getTime());
+    vi.stubGlobal("fetch", fetch);
+    const runtime = new AsciiBoxCompanionRuntime({
+      COMPANION_BOX_API_KEY: "box_test",
+      COMPANION_PI_DAEMON_ACTIVE_TIMEOUT_MS: "180000",
+    });
+
+    await expect(runtime.restartPiDaemon({
+      boxId: "bx_23456789",
+      deadlineAt: new Date("2026-08-16T12:00:50.000Z"),
+    })).rejects.toMatchObject({
+      status: 409,
+      stableCode: "pi_start_failed",
+      message: expect.stringContaining("deadline leaves no bounded Pi start window"),
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it.each(["archived", "archiving"] as const)(
     "archives an already %s Box with one GET and no rejected cleanup command",
     async (state) => {

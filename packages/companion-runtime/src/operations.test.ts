@@ -77,12 +77,14 @@ describe("runtime lifecycle operations", () => {
       let starts = 0;
       let restarts = 0;
       let boxRestarts = 0;
+      const restartDeadlines: Array<Date | undefined> = [];
       ports.pi.startPiDaemon = async () => {
         starts += 1;
         return { state: "idle", invocationId: PI_INVOCATION_ID };
       };
-      ports.pi.restartPiDaemon = async () => {
+      ports.pi.restartPiDaemon = async (input) => {
         restarts += 1;
+        restartDeadlines.push(input.deadlineAt);
         return { state: "idle", invocationId: PI_INVOCATION_ID };
       };
       ports.box.stopExistingBox = async () => { boxRestarts += 1; };
@@ -92,6 +94,7 @@ describe("runtime lifecycle operations", () => {
       expect(result.outcome).toBe("succeeded");
       expect(starts).toBe(0);
       expect(restarts).toBe(1);
+      expect(restartDeadlines).toEqual([new Date("2026-08-16T12:03:00.000Z")]);
       expect(boxRestarts).toBe(0);
       expect(store.authorization.piInvocationId).toBe(PI_INVOCATION_ID);
     },

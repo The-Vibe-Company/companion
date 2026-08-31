@@ -224,7 +224,11 @@ persistent `~/.companion/runtime/tmp`; `/tmp` is not used because Box discards i
 activation and broker-socket readiness run inside one bounded Box command. Starting separate status
 commands while a restored image is paging in materially delays Pi, so the control plane performs no
 concurrent readiness polling. The same command returns the systemd/broker invocation id, so start
-does not issue a second broker-state command.
+does not issue a second broker-state command. The readiness wait is clipped to the durable cold-start
+or operation deadline with a 45-second tail reserve: 30 seconds for the follow-up systemd/Pi
+diagnostic command, ten seconds of Box transport allowance, and five seconds for fenced failure
+settlement. A daemon that remains unready therefore persists `pi_start_failed` with the available
+expurgated diagnostic instead of being masked by the enclosing deadline.
 
 Before every Box interaction, runtime re-evaluates:
 

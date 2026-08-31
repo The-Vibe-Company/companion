@@ -73,6 +73,11 @@ describe("companion budget invariants", () => {
     expect(base.boxRequestTimeoutMs).toBeLessThan(base.operationDeadlineMs);
   });
 
+  it("Pi diagnostics retain transport and settlement time before lifecycle expiry", () => {
+    expect(base.piDaemonDiagnosticReserveMs).toBeGreaterThan(base.boxRequestTimeoutMs);
+    expect(base.piDaemonDiagnosticReserveMs).toBeLessThan(base.coldStartDeadlineMs);
+  });
+
   it("layout install fits inside one operation", () => {
     expect(base.layoutInstallBudgetMs).toBeLessThan(base.operationDeadlineMs);
   });
