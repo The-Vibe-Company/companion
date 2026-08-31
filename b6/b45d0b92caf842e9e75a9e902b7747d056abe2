@@ -1,0 +1,65 @@
+packages/companion-runtime/src/layoutRefresh.ts
+  s_0f6d530a905938::t_77c4b3df3c5049 37-39,46
+packages/companion-runtime/src/engine.test.ts
+  s_0f6d530a905938::t_77c4b3df3c5049 284-286,408-431,433
+  s_c29ac40617bb75::t_3e1681df3f11c8 432,434-435
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_0f6d530a905938::t_77c4b3df3c5049 285-287,1040,1044,3175,4312,4315-4334,4338-4351,4427-4429,5034-5038,5045-5049
+packages/companion-runtime/src/attempt.ts
+  s_0f6d530a905938::t_77c4b3df3c5049 426-429,432
+  s_0f6d530a905938::t_8714c8ef896f24 284-286
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_0f6d530a905938::t_77c4b3df3c5049 220-279
+apps/api/src/localSkills.test.ts
+  s_0f6d530a905938::t_8cd24c67d02779 51,130-132
+docs/companions-runtime.md
+  s_0f6d530a905938::t_9b51ee3c1d4260 227-231
+docs/design.md
+  s_0f6d530a905938::t_f90df36ba00c38 518-521
+packages/box-runtime/src/companionBoxAgentSource.ts
+  s_0f6d530a905938::t_10841bb8cd04c8 6
+packages/companion-runtime/src/operations.test.ts
+  s_0f6d530a905938::t_e7f71d10372a9a 80,85,87,97
+packages/companion-runtime/src/operations.ts
+  s_0f6d530a905938::t_ec2a488510992e 498-502,758-762,1007
+packages/companion-runtime/src/ports.ts
+  s_0f6d530a905938::t_c15ab9f483ae1a 173,177
+packages/companion-runtime/src/settings.ts
+  s_0f6d530a905938::t_ec1a225fe566e1 139-143
+packages/companion-skill/skill/SKILL.md
+  s_0f6d530a905938::t_0f352c1dd5f33b 1387
+packages/companion-skill/skill/companion.integrity.json
+  s_0f6d530a905938::t_53049cee7f1add 3-4,10,22
+packages/companion-skill/skill/companion.json
+  s_0f6d530a905938::t_5559b5837c99eb 4,31-39
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_0f6d530a905938::t_0f55468a3c6cde 142
+packages/contracts/src/companionBudgets.ts
+  s_0f6d530a905938::t_ee83e47a89f103 54-59,85-87,248-249
+packages/contracts/test/companionBudgets.test.ts
+  s_0f6d530a905938::t_e81be70c3f7af5 76-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b6b45d0b92caf842e9e75a9e902b7747d056abe2",
+  "prompts": {},
+  "sessions": {
+    "s_0f6d530a905938": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a057bf-7f50-70d1-a3eb-f80ec02706e3",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_c29ac40617bb75": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05827-ddaa-7cb2-9bb4-9cd4965cc3c4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
