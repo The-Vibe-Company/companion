@@ -1,0 +1,3039 @@
+.env.example
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-257
+docs/product.md
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-126
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionKitTests.swift
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-3266
+apps/ios/CompanionUITests/CompanionUITests.swift
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-2088
+package.json
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-73
+docs/vision.md
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-50
+docs/PRD.md
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-230
+apps/ios/Companion/Screens/GlassChatDemoView.swift
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-571
+README.md
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 3-6,8-11,13,15-22,24,27-36,39-41,43-45,47,49,52-55,58-62,64-66,68,70-73,76-81,83-84,87-88,90,92-93,96-97,100-102,104-106,109-114,116-117,119-120,122-125,128-131,133-138,140-142,144,147-152,155-158,160
+docs/ios-design.md
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-61
+scripts/dev-conductor.sh
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-920
+DESIGN.md
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-241,245,247-250,252,254-259,261,263,265,267-269,271-274,276,278-286,288-291,293-299,301,303,305,307-309,311-526
+docs/design.md
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-685
+CLAUDE.md
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1-185
+.agents/skills/capture-learning-tools/SKILL.md
+  s_f0bb92c41dd97a::t_22c51ed91287c7 1-152
+.agents/skills/capture-learning-tools/companion.json
+  s_f0bb92c41dd97a::t_ced594b859de9a 1-50
+.agents/skills/capture-learning-tools/evals/evals.json
+  s_f0bb92c41dd97a::t_bd03f6e1a51a63 1-29
+.agents/skills/capture-learning-tools/references/agent-instructions.md
+  s_f0bb92c41dd97a::t_909e33d42bcece 1-71
+.agents/skills/capture-learning-tools/references/ci-policy.md
+  s_f0bb92c41dd97a::t_40b8337d03d759 1-84
+.agents/skills/capture-learning-tools/references/conversation-analysis.md
+  s_f0bb92c41dd97a::t_5afa93c2e16cb7 1-44
+.agents/skills/capture-learning-tools/references/cross-agent-linking.md
+  s_f0bb92c41dd97a::t_2bdfa1cea48ae1 1-56
+.agents/skills/capture-learning-tools/references/examples.md
+  s_f0bb92c41dd97a::t_4a8e7b29c98e37 1-61
+.agents/skills/capture-learning-tools/references/non-technical-mode.md
+  s_f0bb92c41dd97a::t_4c509d1b0171e8 1-36
+.agents/skills/capture-learning-tools/references/project-memory.md
+  s_f0bb92c41dd97a::t_a1f13a3f5cfa9c 1-46
+.agents/skills/capture-learning-tools/references/promotion-matrix.md
+  s_f0bb92c41dd97a::t_fea7925216dba6 1-44
+.agents/skills/capture-learning-tools/references/testing-policy.md
+  s_f0bb92c41dd97a::t_435e1a4a46a8ea 1-57
+.agents/skills/capture-learning-tools/scripts/classify_learning.py
+  s_f0bb92c41dd97a::t_4757fe58de820a 1-72
+.agents/skills/capture-learning-tools/scripts/inspect_ci_surface.py
+  s_f0bb92c41dd97a::t_31cf231118a3a8 1-115
+.agents/skills/capture-learning-tools/scripts/inspect_project_guidance.py
+  s_f0bb92c41dd97a::t_2f54ab1869f9d2 1-137
+.agents/skills/debug-companions-prod/SKILL.md
+  s_f0bb92c41dd97a::t_8f794d18b30263 1-243
+.agents/skills/debug-companions-prod/companion.json
+  s_f0bb92c41dd97a::t_4ced40a6a8f2ac 1-57
+.agents/skills/debug-companions-prod/evals/evals.json
+  s_f0bb92c41dd97a::t_360f4db5ebf282 1-29
+.agents/skills/debug-companions-prod/references/railway-api.md
+  s_f0bb92c41dd97a::t_56bc5064dd1829 1-142
+.agents/skills/debug-companions-prod/references/redaction.md
+  s_f0bb92c41dd97a::t_bd9f0560843241 1-62
+.agents/skills/debug-companions-prod/references/triage-playbook.md
+  s_f0bb92c41dd97a::t_fb3b78624aa1da 1-117
+.agents/skills/debug-companions-prod/scripts/box_get.py
+  s_f0bb92c41dd97a::t_843b0c8b9b6a28 1-61
+.agents/skills/debug-companions-prod/scripts/box_list.py
+  s_f0bb92c41dd97a::t_95912b47176246 1-166
+.agents/skills/debug-companions-prod/scripts/db_query.py
+  s_f0bb92c41dd97a::t_add70a4e4ddf26 1-380
+.agents/skills/debug-companions-prod/scripts/prodlib.py
+  s_f0bb92c41dd97a::t_c216a452127bbf 1-280
+.agents/skills/debug-companions-prod/scripts/railway_logs.py
+  s_f0bb92c41dd97a::t_92cabe8af550cc 1-254
+.agents/skills/debug-companions-prod/scripts/railway_restart.py
+  s_f0bb92c41dd97a::t_d23b33dbd4174e 1-127
+.agents/skills/debug-companions-prod/scripts/railway_status.py
+  s_f0bb92c41dd97a::t_693bb0e0d2008e 1-251
+.agents/skills/debug-companions-prod/scripts/test_box.py
+  s_f0bb92c41dd97a::t_0ce807a520eed3 1-168
+.agents/skills/debug-companions-prod/scripts/test_db_query.py
+  s_f0bb92c41dd97a::t_dbd2304278b46e 1-134
+.agents/skills/debug-companions-prod/scripts/test_prodlib.py
+  s_f0bb92c41dd97a::t_5a9da6544efbfe 1-224
+.agents/skills/debug-companions-prod/scripts/test_railway.py
+  s_f0bb92c41dd97a::t_e7bb7118e35048 1-204
+.agents/skills/design-frontend-dev/LICENSE
+  s_f0bb92c41dd97a::t_295bf5ff530599 1-191
+.agents/skills/design-frontend-dev/SKILL.md
+  s_f0bb92c41dd97a::t_732553102d5731 1-143
+.agents/skills/design-frontend-dev/SOURCE.md
+  s_f0bb92c41dd97a::t_9f6eedff6c32a8 1-26
+.agents/skills/design-frontend-dev/companion.json
+  s_f0bb92c41dd97a::t_02f743306475c3 1-48
+.agents/skills/design-frontend-dev/evals/evals.json
+  s_f0bb92c41dd97a::t_58df58be637c24 1-20
+.agents/skills/design-frontend-dev/reference/adapt.md
+  s_f0bb92c41dd97a::t_45e1a23d277238 1-311
+.agents/skills/design-frontend-dev/reference/animate.md
+  s_f0bb92c41dd97a::t_0825c673226a9a 1-201
+.agents/skills/design-frontend-dev/reference/audit.md
+  s_f0bb92c41dd97a::t_854babb417656d 1-133
+.agents/skills/design-frontend-dev/reference/bolder.md
+  s_f0bb92c41dd97a::t_27917211686d2f 1-113
+.agents/skills/design-frontend-dev/reference/brand.md
+  s_f0bb92c41dd97a::t_009de7b10dfe35 1-108
+.agents/skills/design-frontend-dev/reference/clarify.md
+  s_f0bb92c41dd97a::t_b7bbe053cd5ad2 1-288
+.agents/skills/design-frontend-dev/reference/colorize.md
+  s_f0bb92c41dd97a::t_4b2bb7b33fe36c 1-245
+.agents/skills/design-frontend-dev/reference/critique.md
+  s_f0bb92c41dd97a::t_8f8c0463d162a6 1-59
+.agents/skills/design-frontend-dev/reference/delight.md
+  s_f0bb92c41dd97a::t_a9a940769fdf85 1-302
+.agents/skills/design-frontend-dev/reference/distill.md
+  s_f0bb92c41dd97a::t_6a1341e188161e 1-111
+.agents/skills/design-frontend-dev/reference/harden.md
+  s_f0bb92c41dd97a::t_fc25e2d38f1e0a 1-347
+.agents/skills/design-frontend-dev/reference/interaction-design.md
+  s_f0bb92c41dd97a::t_756e6e03c72f57 1-189
+.agents/skills/design-frontend-dev/reference/layout.md
+  s_f0bb92c41dd97a::t_1fe52e95427dfa 1-161
+.agents/skills/design-frontend-dev/reference/onboard.md
+  s_f0bb92c41dd97a::t_21ec233120f985 1-234
+.agents/skills/design-frontend-dev/reference/optimize.md
+  s_f0bb92c41dd97a::t_138fcf410d8e29 1-258
+.agents/skills/design-frontend-dev/reference/overdrive.md
+  s_f0bb92c41dd97a::t_3cd84f1e9a190e 1-130
+.agents/skills/design-frontend-dev/reference/polish.md
+  s_f0bb92c41dd97a::t_d48c9b62dac5e6 1-236
+.agents/skills/design-frontend-dev/reference/product.md
+  s_f0bb92c41dd97a::t_067b51edecfc23 1-60
+.agents/skills/design-frontend-dev/reference/quieter.md
+  s_f0bb92c41dd97a::t_b832d836ecff5c 1-99
+.agents/skills/design-frontend-dev/reference/shape.md
+  s_f0bb92c41dd97a::t_e333b9dc2144f9 1-165
+.agents/skills/design-frontend-dev/reference/typeset.md
+  s_f0bb92c41dd97a::t_7671ba4c2df55a 1-279
+.agents/skills/ios-product-dev/SKILL.md
+  s_f0bb92c41dd97a::t_69901e37e274cc 1-97
+.agents/skills/ios-product-dev/SOURCE.md
+  s_f0bb92c41dd97a::t_84461055a89b0c 1-15
+.agents/skills/ios-product-dev/companion.json
+  s_f0bb92c41dd97a::t_7f52df6d26554e 1-41
+.agents/skills/ios-product-dev/evals/evals.json
+  s_f0bb92c41dd97a::t_737ea131d58115 1-25
+.agents/skills/review-code-dev/SKILL.md
+  s_f0bb92c41dd97a::t_2adf509fac5600 1-134
+.agents/skills/review-code-dev/agents/openai.yaml
+  s_f0bb92c41dd97a::t_20da33d3faea40 1-4
+.agents/skills/review-code-dev/companion.json
+  s_f0bb92c41dd97a::t_4ee66282354866 1-84
+.agents/skills/review-code-dev/evals/evals.json
+  s_f0bb92c41dd97a::t_12c1d6ec026595 1-105
+.agents/skills/review-code-dev/references/finding-rubric.md
+  s_f0bb92c41dd97a::t_cd94f4daaf6faa 1-99
+.agents/skills/review-code-dev/references/local-review-rules.md
+  s_f0bb92c41dd97a::t_4b48119e65f7d3 1-50
+.agents/skills/review-code-dev/references/output-contract.md
+  s_f0bb92c41dd97a::t_c31b8eeab7c443 1-375
+.agents/skills/review-code-dev/references/review-intelligence.md
+  s_f0bb92c41dd97a::t_4365ce5c17384f 1-113
+.agents/skills/review-code-dev/references/review-playbook.md
+  s_f0bb92c41dd97a::t_3c547fbf2c013f 1-155
+.agents/skills/review-code-dev/references/reviewers/api-contract.md
+  s_f0bb92c41dd97a::t_82504ec343004d 1-29
+.agents/skills/review-code-dev/references/reviewers/architecture.md
+  s_f0bb92c41dd97a::t_3df58ac91bb267 1-29
+.agents/skills/review-code-dev/references/reviewers/backend.md
+  s_f0bb92c41dd97a::t_5bd6f09fd91013 1-29
+.agents/skills/review-code-dev/references/reviewers/data-migration.md
+  s_f0bb92c41dd97a::t_b2ca0ac78ba141 1-28
+.agents/skills/review-code-dev/references/reviewers/frontend.md
+  s_f0bb92c41dd97a::t_86260a4b959da5 1-48
+.agents/skills/review-code-dev/references/reviewers/performance.md
+  s_f0bb92c41dd97a::t_9aea2c268b35b3 1-28
+.agents/skills/review-code-dev/references/reviewers/red-team.md
+  s_f0bb92c41dd97a::t_446565c665a964 1-30
+.agents/skills/review-code-dev/references/reviewers/security.md
+  s_f0bb92c41dd97a::t_d25bbe6ab520a9 1-29
+.agents/skills/review-code-dev/references/reviewers/tests.md
+  s_f0bb92c41dd97a::t_0c76e66b9847fd 1-28
+.agents/skills/review-code-dev/references/subagent-briefs.md
+  s_f0bb92c41dd97a::t_2f9ff7e3dce420 1-335
+.agents/skills/review-code-dev/scripts/.gitignore
+  s_f0bb92c41dd97a::t_13407fe8d16ed5 1-2
+.agents/skills/review-code-dev/scripts/collect_review_context.py
+  s_f0bb92c41dd97a::t_906dedce1017eb 1-418
+.agents/skills/review-code-dev/scripts/parse_review_findings.py
+  s_f0bb92c41dd97a::t_368c57e6d7b78e 1-81
+.agents/skills/review-code-dev/scripts/prepare_review_run.py
+  s_f0bb92c41dd97a::t_2f5ba0a11fca07 1-137
+.agents/skills/review-code-dev/scripts/test_veille_pr_state.py
+  s_f0bb92c41dd97a::t_84c41bd4cd4e4a 1-56
+.agents/skills/review-code-dev/scripts/veille_pr_state.py
+  s_f0bb92c41dd97a::t_d8b7354aead77c 1-228
+.agents/skills/ship-pr-dev/SKILL.md
+  s_f0bb92c41dd97a::t_790761e1555c01 1-143
+.agents/skills/ship-pr-dev/companion.json
+  s_f0bb92c41dd97a::t_bc75a04de324ca 1-76
+.agents/skills/ship-pr-dev/evals/evals.json
+  s_f0bb92c41dd97a::t_904a3dc709a035 1-70
+.agents/skills/ship-pr-dev/references/agent-routing.md
+  s_f0bb92c41dd97a::t_6374d89ab00990 1-122
+.agents/skills/ship-pr-dev/references/pr-template.md
+  s_f0bb92c41dd97a::t_d490fbb0b8d9b8 1-75
+.agents/skills/ship-pr-dev/references/readiness-gates.md
+  s_f0bb92c41dd97a::t_04e2e1f69cf1da 1-93
+.agents/skills/ship-pr-dev/references/workflow.md
+  s_f0bb92c41dd97a::t_48d7eada340d5f 1-64
+.agents/skills/ship-pr-dev/scripts/.gitignore
+  s_f0bb92c41dd97a::t_2c4f3261c76f8e 1-2
+.agents/skills/ship-pr-dev/scripts/collect_ship_context.py
+  s_f0bb92c41dd97a::t_2db9efbc1c976f 1-217
+.agents/skills/ship-pr-dev/scripts/prepare_ship_run.py
+  s_f0bb92c41dd97a::t_0a1bae2273943c 1-91
+.agents/skills/ship-pr-dev/scripts/test_collect_ship_context.py
+  s_f0bb92c41dd97a::t_74a80e39d493ce 1-66
+.agents/skills/swiftui-expert-dev/SKILL.md
+  s_f0bb92c41dd97a::t_3292d2890cfff1 1-109
+.agents/skills/swiftui-expert-dev/SOURCE.md
+  s_f0bb92c41dd97a::t_303175a43fa707 1-12
+.agents/skills/swiftui-expert-dev/companion.json
+  s_f0bb92c41dd97a::t_d66b437b9ffc33 1-39
+.agents/skills/swiftui-expert-dev/evals/evals.json
+  s_f0bb92c41dd97a::t_b48916606da458 1-25
+.agents/skills/xcodebuildmcp-cli/LICENSE
+  s_f0bb92c41dd97a::t_b696d51a3c1df1 1-21
+.agents/skills/xcodebuildmcp-cli/SKILL.md
+  s_f0bb92c41dd97a::t_0b55e77e4c229c 1-81
+.agents/skills/xcodebuildmcp-cli/SOURCE.md
+  s_f0bb92c41dd97a::t_e573527f8c0456 1-12
+.agents/skills/xcodebuildmcp-cli/companion.json
+  s_f0bb92c41dd97a::t_aa6453d2ab3253 1-39
+.agents/skills/xcodebuildmcp-cli/evals/evals.json
+  s_f0bb92c41dd97a::t_0bd2d8dc3daf85 1-25
+.claude/skills/capture-learning-tools/SKILL.md
+  s_f0bb92c41dd97a::t_db2fd1b2ca5dcc 1-152
+.claude/skills/capture-learning-tools/companion.json
+  s_f0bb92c41dd97a::t_1f211439619e7f 1-50
+.claude/skills/capture-learning-tools/evals/evals.json
+  s_f0bb92c41dd97a::t_cab5afef189a2e 1-29
+.claude/skills/capture-learning-tools/references/agent-instructions.md
+  s_f0bb92c41dd97a::t_e514f72c9a6846 1-71
+.claude/skills/capture-learning-tools/references/ci-policy.md
+  s_f0bb92c41dd97a::t_b0b9c97a8d1df8 1-84
+.claude/skills/capture-learning-tools/references/conversation-analysis.md
+  s_f0bb92c41dd97a::t_110c92fc6c5478 1-44
+.claude/skills/capture-learning-tools/references/cross-agent-linking.md
+  s_f0bb92c41dd97a::t_183fefb0226b6c 1-56
+.claude/skills/capture-learning-tools/references/examples.md
+  s_f0bb92c41dd97a::t_ce1d047fdaa270 1-61
+.claude/skills/capture-learning-tools/references/non-technical-mode.md
+  s_f0bb92c41dd97a::t_3cc12a73db6563 1-36
+.claude/skills/capture-learning-tools/references/project-memory.md
+  s_f0bb92c41dd97a::t_fa01935dd90505 1-46
+.claude/skills/capture-learning-tools/references/promotion-matrix.md
+  s_f0bb92c41dd97a::t_8274a9da5a99a6 1-44
+.claude/skills/capture-learning-tools/references/testing-policy.md
+  s_f0bb92c41dd97a::t_a740360db0a076 1-57
+.claude/skills/capture-learning-tools/scripts/classify_learning.py
+  s_f0bb92c41dd97a::t_2e518f78729e19 1-72
+.claude/skills/capture-learning-tools/scripts/inspect_ci_surface.py
+  s_f0bb92c41dd97a::t_7a48624d27f3b5 1-115
+.claude/skills/capture-learning-tools/scripts/inspect_project_guidance.py
+  s_f0bb92c41dd97a::t_6b02116d004537 1-137
+.claude/skills/debug-companions-prod/SKILL.md
+  s_f0bb92c41dd97a::t_8897f73b42f1b1 1-305
+.claude/skills/debug-companions-prod/companion.json
+  s_f0bb92c41dd97a::t_a0cdfd928a9844 1-57
+.claude/skills/debug-companions-prod/evals/evals.json
+  s_f0bb92c41dd97a::t_4688697848903c 1-29
+.claude/skills/debug-companions-prod/references/railway-api.md
+  s_f0bb92c41dd97a::t_338e309e0d53ee 1-160
+.claude/skills/debug-companions-prod/references/redaction.md
+  s_f0bb92c41dd97a::t_4999880d32c54b 1-62
+.claude/skills/debug-companions-prod/references/triage-playbook.md
+  s_f0bb92c41dd97a::t_45456796beee16 1-117
+.claude/skills/debug-companions-prod/scripts/box_get.py
+  s_f0bb92c41dd97a::t_da590bde1c1c18 1-61
+.claude/skills/debug-companions-prod/scripts/box_list.py
+  s_f0bb92c41dd97a::t_7ab5c6dec1bdcf 1-166
+.claude/skills/debug-companions-prod/scripts/db_query.py
+  s_f0bb92c41dd97a::t_4e0ce81b1c2a19 1-562
+.claude/skills/debug-companions-prod/scripts/prodlib.py
+  s_f0bb92c41dd97a::t_b6f31718ef8f07 1-280
+.claude/skills/debug-companions-prod/scripts/railway_logs.py
+  s_f0bb92c41dd97a::t_18d54ece1e5f4e 1-312
+.claude/skills/debug-companions-prod/scripts/railway_restart.py
+  s_f0bb92c41dd97a::t_e2d1da77d3b9c9 1-127
+.claude/skills/debug-companions-prod/scripts/railway_status.py
+  s_f0bb92c41dd97a::t_c9635f9c6a16ef 1-251
+.claude/skills/debug-companions-prod/scripts/test_box.py
+  s_f0bb92c41dd97a::t_08634787866eba 1-168
+.claude/skills/debug-companions-prod/scripts/test_db_query.py
+  s_f0bb92c41dd97a::t_a69c111bf3d67e 1-134
+.claude/skills/debug-companions-prod/scripts/test_prodlib.py
+  s_f0bb92c41dd97a::t_78ecd6d4f6f3a9 1-224
+.claude/skills/debug-companions-prod/scripts/test_railway.py
+  s_f0bb92c41dd97a::t_0f946e8833585a 1-257
+.claude/skills/design-frontend-dev/LICENSE
+  s_f0bb92c41dd97a::t_fd7ed82bea06fd 1-191
+.claude/skills/design-frontend-dev/SKILL.md
+  s_f0bb92c41dd97a::t_3752d10a169ba1 1-143
+.claude/skills/design-frontend-dev/SOURCE.md
+  s_f0bb92c41dd97a::t_11fb652453a039 1-26
+.claude/skills/design-frontend-dev/companion.json
+  s_f0bb92c41dd97a::t_908ca1b392f51a 1-48
+.claude/skills/design-frontend-dev/evals/evals.json
+  s_f0bb92c41dd97a::t_a7de2b8f70d383 1-20
+.claude/skills/design-frontend-dev/reference/adapt.md
+  s_f0bb92c41dd97a::t_bda419e18be796 1-311
+.claude/skills/design-frontend-dev/reference/animate.md
+  s_f0bb92c41dd97a::t_3488295a9aa0f7 1-201
+.claude/skills/design-frontend-dev/reference/audit.md
+  s_f0bb92c41dd97a::t_6341326f9d48ad 1-133
+.claude/skills/design-frontend-dev/reference/bolder.md
+  s_f0bb92c41dd97a::t_36d5af17528e5c 1-113
+.claude/skills/design-frontend-dev/reference/brand.md
+  s_f0bb92c41dd97a::t_121b81f977baee 1-108
+.claude/skills/design-frontend-dev/reference/clarify.md
+  s_f0bb92c41dd97a::t_4ec9c301caf8d9 1-288
+.claude/skills/design-frontend-dev/reference/colorize.md
+  s_f0bb92c41dd97a::t_41e1f4a2556eec 1-245
+.claude/skills/design-frontend-dev/reference/critique.md
+  s_f0bb92c41dd97a::t_1154bdebb08cb3 1-59
+.claude/skills/design-frontend-dev/reference/delight.md
+  s_f0bb92c41dd97a::t_020a5bd9f8ae32 1-302
+.claude/skills/design-frontend-dev/reference/distill.md
+  s_f0bb92c41dd97a::t_23a5b6cf2f7510 1-111
+.claude/skills/design-frontend-dev/reference/harden.md
+  s_f0bb92c41dd97a::t_23aac746a0d3da 1-347
+.claude/skills/design-frontend-dev/reference/interaction-design.md
+  s_f0bb92c41dd97a::t_2a022237f5cd17 1-189
+.claude/skills/design-frontend-dev/reference/layout.md
+  s_f0bb92c41dd97a::t_c02b7636648278 1-161
+.claude/skills/design-frontend-dev/reference/onboard.md
+  s_f0bb92c41dd97a::t_d5e5a6a8d28510 1-234
+.claude/skills/design-frontend-dev/reference/optimize.md
+  s_f0bb92c41dd97a::t_f47dd3218969f3 1-258
+.claude/skills/design-frontend-dev/reference/overdrive.md
+  s_f0bb92c41dd97a::t_99b9f71d528d87 1-130
+.claude/skills/design-frontend-dev/reference/polish.md
+  s_f0bb92c41dd97a::t_2804baaacf85fb 1-236
+.claude/skills/design-frontend-dev/reference/product.md
+  s_f0bb92c41dd97a::t_bf9d73dbcb431c 1-60
+.claude/skills/design-frontend-dev/reference/quieter.md
+  s_f0bb92c41dd97a::t_a4f331bb25c4b2 1-99
+.claude/skills/design-frontend-dev/reference/shape.md
+  s_f0bb92c41dd97a::t_5970ceb2bfdf57 1-165
+.claude/skills/design-frontend-dev/reference/typeset.md
+  s_f0bb92c41dd97a::t_ce15c8b179b6ad 1-279
+.claude/skills/ios-product-dev/SKILL.md
+  s_f0bb92c41dd97a::t_7e284394f1390f 1-97
+.claude/skills/ios-product-dev/SOURCE.md
+  s_f0bb92c41dd97a::t_13b3c7e10a5efb 1-15
+.claude/skills/ios-product-dev/companion.json
+  s_f0bb92c41dd97a::t_c50d702cd16f4a 1-41
+.claude/skills/ios-product-dev/evals/evals.json
+  s_f0bb92c41dd97a::t_544f4db386081d 1-25
+.claude/skills/review-code-dev/SKILL.md
+  s_f0bb92c41dd97a::t_cde71406271e7c 1-134
+.claude/skills/review-code-dev/agents/openai.yaml
+  s_f0bb92c41dd97a::t_7f1cb36e1141b4 1-4
+.claude/skills/review-code-dev/companion.json
+  s_f0bb92c41dd97a::t_9b6a5765fff4fe 1-84
+.claude/skills/review-code-dev/evals/evals.json
+  s_f0bb92c41dd97a::t_acc6d7694ae074 1-105
+.claude/skills/review-code-dev/references/finding-rubric.md
+  s_f0bb92c41dd97a::t_3d00c351207a7b 1-99
+.claude/skills/review-code-dev/references/local-review-rules.md
+  s_f0bb92c41dd97a::t_2608f2445ea6d2 1-50
+.claude/skills/review-code-dev/references/output-contract.md
+  s_f0bb92c41dd97a::t_3f90623efbf258 1-375
+.claude/skills/review-code-dev/references/review-intelligence.md
+  s_f0bb92c41dd97a::t_7b944b7e09d47d 1-113
+.claude/skills/review-code-dev/references/review-playbook.md
+  s_f0bb92c41dd97a::t_6f930b2e72a7a4 1-155
+.claude/skills/review-code-dev/references/reviewers/api-contract.md
+  s_f0bb92c41dd97a::t_01d2b2ed8a4805 1-29
+.claude/skills/review-code-dev/references/reviewers/architecture.md
+  s_f0bb92c41dd97a::t_f9a43c93f452c0 1-29
+.claude/skills/review-code-dev/references/reviewers/backend.md
+  s_f0bb92c41dd97a::t_9ab54a8df9c6c6 1-29
+.claude/skills/review-code-dev/references/reviewers/data-migration.md
+  s_f0bb92c41dd97a::t_048554868a599e 1-28
+.claude/skills/review-code-dev/references/reviewers/frontend.md
+  s_f0bb92c41dd97a::t_acd769f7cb2484 1-48
+.claude/skills/review-code-dev/references/reviewers/performance.md
+  s_f0bb92c41dd97a::t_c0249f7670c7ef 1-28
+.claude/skills/review-code-dev/references/reviewers/red-team.md
+  s_f0bb92c41dd97a::t_9929e4570a92b5 1-30
+.claude/skills/review-code-dev/references/reviewers/security.md
+  s_f0bb92c41dd97a::t_75fbcb039589a8 1-29
+.claude/skills/review-code-dev/references/reviewers/tests.md
+  s_f0bb92c41dd97a::t_115b0b22bd9136 1-28
+.claude/skills/review-code-dev/references/subagent-briefs.md
+  s_f0bb92c41dd97a::t_321c6430642c11 1-335
+.claude/skills/review-code-dev/scripts/.gitignore
+  s_f0bb92c41dd97a::t_6a6393f1dde873 1-2
+.claude/skills/review-code-dev/scripts/collect_review_context.py
+  s_f0bb92c41dd97a::t_132749e39378e2 1-418
+.claude/skills/review-code-dev/scripts/parse_review_findings.py
+  s_f0bb92c41dd97a::t_2e7b63ba28bfba 1-81
+.claude/skills/review-code-dev/scripts/prepare_review_run.py
+  s_f0bb92c41dd97a::t_13ca99f2d351d7 1-137
+.claude/skills/review-code-dev/scripts/test_veille_pr_state.py
+  s_f0bb92c41dd97a::t_f491d8eaee4edf 1-56
+.claude/skills/review-code-dev/scripts/veille_pr_state.py
+  s_f0bb92c41dd97a::t_d203797e398417 1-228
+.claude/skills/ship-pr-dev/SKILL.md
+  s_f0bb92c41dd97a::t_03018797a83a8a 1-143
+.claude/skills/ship-pr-dev/companion.json
+  s_f0bb92c41dd97a::t_ed141e8cdf7995 1-76
+.claude/skills/ship-pr-dev/evals/evals.json
+  s_f0bb92c41dd97a::t_7e072119e2f0e7 1-70
+.claude/skills/ship-pr-dev/references/agent-routing.md
+  s_f0bb92c41dd97a::t_2f2f79382c34ed 1-122
+.claude/skills/ship-pr-dev/references/pr-template.md
+  s_f0bb92c41dd97a::t_500a300b4466ec 1-75
+.claude/skills/ship-pr-dev/references/readiness-gates.md
+  s_f0bb92c41dd97a::t_10604f6baec0cc 1-93
+.claude/skills/ship-pr-dev/references/workflow.md
+  s_f0bb92c41dd97a::t_904ca30da4d8e0 1-64
+.claude/skills/ship-pr-dev/scripts/.gitignore
+  s_f0bb92c41dd97a::t_c0a8b3dc0745a7 1-2
+.claude/skills/ship-pr-dev/scripts/collect_ship_context.py
+  s_f0bb92c41dd97a::t_57f71c2864f373 1-217
+.claude/skills/ship-pr-dev/scripts/prepare_ship_run.py
+  s_f0bb92c41dd97a::t_e0e092fc701d40 1-91
+.claude/skills/ship-pr-dev/scripts/test_collect_ship_context.py
+  s_f0bb92c41dd97a::t_e0c2b5972447b1 1-66
+.claude/skills/swiftui-expert-dev/SKILL.md
+  s_f0bb92c41dd97a::t_d695da9c9902cc 1-109
+.claude/skills/swiftui-expert-dev/SOURCE.md
+  s_f0bb92c41dd97a::t_79abc7b932269b 1-12
+.claude/skills/swiftui-expert-dev/companion.json
+  s_f0bb92c41dd97a::t_d61a1da77ab67a 1-39
+.claude/skills/swiftui-expert-dev/evals/evals.json
+  s_f0bb92c41dd97a::t_07c584dbd63a58 1-25
+.claude/skills/xcodebuildmcp-cli/LICENSE
+  s_f0bb92c41dd97a::t_edf1676d691f64 1-21
+.claude/skills/xcodebuildmcp-cli/SKILL.md
+  s_f0bb92c41dd97a::t_1842acc6b24c89 1-81
+.claude/skills/xcodebuildmcp-cli/SOURCE.md
+  s_f0bb92c41dd97a::t_1457e607ffac28 1-12
+.claude/skills/xcodebuildmcp-cli/companion.json
+  s_f0bb92c41dd97a::t_d24e6b084bf70a 1-39
+.claude/skills/xcodebuildmcp-cli/evals/evals.json
+  s_f0bb92c41dd97a::t_b6ce3466c81f77 1-25
+.conductor/settings.toml
+  s_f0bb92c41dd97a::t_8f4574fa857624 1-27
+.dockerignore
+  s_f0bb92c41dd97a::t_8733da5d0768fe 1-24
+.gitattributes
+  s_f0bb92c41dd97a::t_d5acbdf197118e 1-2
+.github/dependabot.yml
+  s_f0bb92c41dd97a::t_658cbd92b77b6b 1-30
+.github/workflows/ci.yml
+  s_f0bb92c41dd97a::t_69c80e28ba2766 5,7-8,13-16,18-25,28-29,31-44,46-47,49,51-62,64-68,71-105,108-111,113-119,122-210,212-216,218-278,280-284,286-306,308-312,314-324,326-336,338-339,341-345,347-348,350-351,353-358,360-363,365-366,368-384,386-390,392-393,395-405,407-408,410-417,419-645
+.github/workflows/ios-e2e.yml
+  s_f0bb92c41dd97a::t_338dca9f2251ad 1-92
+.github/workflows/ios-testflight.yml
+  s_f0bb92c41dd97a::t_88472623cef9b6 1-153
+.github/workflows/pi-bundle.yml
+  s_f0bb92c41dd97a::t_1b1387d9d5f806 1-81
+.gitignore
+  s_f0bb92c41dd97a::t_2a47525e7d5e2c 1-23,25-47
+.gitleaks.toml
+  s_f0bb92c41dd97a::t_924df0501eda7f 1-16
+.gitleaksignore
+  s_f0bb92c41dd97a::t_b3e9979f9e8643 1-31
+.nvmrc
+  s_f0bb92c41dd97a::t_6744fc3e4298e1 1
+AGENTS.md
+  s_f0bb92c41dd97a::t_ee9cc138ae89a0 1
+CONTRIBUTING.md
+  s_f0bb92c41dd97a::t_f1815e4e711cb4 1-44
+LICENSE
+  s_f0bb92c41dd97a::t_a7db78fd4365da 3
+SECURITY.md
+  s_f0bb92c41dd97a::t_6c837b4553491c 1-17
+apps/api/package.json
+  s_f0bb92c41dd97a::t_c0cbb8a4ad647c 1-59
+apps/api/scripts/copy-migrations.cjs
+  s_f0bb92c41dd97a::t_e4f48f0032eb7d 1-33
+apps/api/src/agentAuthRoutes.test.ts
+  s_f0bb92c41dd97a::t_e038d6e337fd4c 1-157
+apps/api/src/agentAuthRoutes.ts
+  s_f0bb92c41dd97a::t_c87e78f71ab1bc 1-676
+apps/api/src/billingPreviewRoute.test.ts
+  s_f0bb92c41dd97a::t_38f8eaa8fee0db 1-116
+apps/api/src/companionPluginsThe361.test.ts
+  s_f0bb92c41dd97a::t_4b47e5cadd2997 1-97
+apps/api/src/companionRoutes.test.ts
+  s_f0bb92c41dd97a::t_5c3d64e492e6fe 1-2371
+apps/api/src/companionRoutes.ts
+  s_f0bb92c41dd97a::t_ae3e15a38c4bba 1-2691
+apps/api/src/companionSkillSync.test.ts
+  s_f0bb92c41dd97a::t_3993fa4c9c3615 1-83
+apps/api/src/companionSkillSync.ts
+  s_f0bb92c41dd97a::t_e719aa7de4fd27 1-25
+apps/api/src/companionSkillsThe360.test.ts
+  s_f0bb92c41dd97a::t_3a305d59a21c54 1-144
+apps/api/src/companionTranscriptionDiagnostics.test.ts
+  s_f0bb92c41dd97a::t_e6a237183df134 1-96
+apps/api/src/companionTranscriptionDiagnostics.ts
+  s_f0bb92c41dd97a::t_680be986edc759 1-89
+apps/api/src/companionTranscriptionRoute.test.ts
+  s_f0bb92c41dd97a::t_2974acb06ad0f7 1-219
+apps/api/src/context.test.ts
+  s_f0bb92c41dd97a::t_471e22ce8276fd 1-229
+apps/api/src/context.ts
+  s_f0bb92c41dd97a::t_f2785446ecaea8 1-248
+apps/api/src/cutover.test.ts
+  s_f0bb92c41dd97a::t_9656cdbe0f884b 1-54
+apps/api/src/cutover.ts
+  s_f0bb92c41dd97a::t_f7560d3553d55a 1-469
+apps/api/src/githubRoutes.test.ts
+  s_f0bb92c41dd97a::t_b5f7f0b52714b7 1-263
+apps/api/src/index.ts
+  s_f0bb92c41dd97a::t_bcf8b4835e8183 1-4009
+apps/api/src/localSkills.test.ts
+  s_f0bb92c41dd97a::t_b1654c7708e0bc 1-475
+apps/api/src/migrate.test.ts
+  s_f0bb92c41dd97a::t_97f212e8876e30 1-419
+apps/api/src/migrate.ts
+  s_f0bb92c41dd97a::t_bf0801226a0f77 1-512
+apps/api/src/runtimeDesktopClient.test.ts
+  s_f0bb92c41dd97a::t_7f195c0ae495d0 1-195
+apps/api/src/runtimeDesktopClient.ts
+  s_f0bb92c41dd97a::t_202be2a542002d 1-140
+apps/api/src/runtimeRoleGrants.test.ts
+  s_f0bb92c41dd97a::t_de1162bd56af75 1-402
+apps/api/src/seed-demo-catalog.test.ts
+  s_f0bb92c41dd97a::t_af0c8c765208be 1-147
+apps/api/src/seed-demo-catalog.ts
+  s_f0bb92c41dd97a::t_3b335461299f49 1-384
+apps/api/src/seed-test-user.ts
+  s_f0bb92c41dd97a::t_6790d1f7d1f0fb 1-514
+apps/api/src/sentry.ts
+  s_f0bb92c41dd97a::t_a84e402da6fe91 1-44
+apps/api/src/sentrySanitize.test.ts
+  s_f0bb92c41dd97a::t_070288ff2ac6df 1-27
+apps/api/src/sentrySanitize.ts
+  s_f0bb92c41dd97a::t_180380390546be 1-58
+apps/api/src/skillCompanionManifest.test.ts
+  s_f0bb92c41dd97a::t_a4db9a0b3519f7 1-156
+apps/api/src/skillCompanionManifest.ts
+  s_f0bb92c41dd97a::t_4b71f1a35c7a24 1-68
+apps/api/src/skillFileContentRoute.test.ts
+  s_f0bb92c41dd97a::t_f7d2d79ca7acd6 1-968
+apps/api/src/skillInstall.test.ts
+  s_f0bb92c41dd97a::t_e537952cda73c2 1-88
+apps/api/src/skillListQuery.test.ts
+  s_f0bb92c41dd97a::t_e037741a453338 1-47
+apps/api/src/skillListQuery.ts
+  s_f0bb92c41dd97a::t_5e550d42fb6106 1-29
+apps/api/src/skillListRoute.test.ts
+  s_f0bb92c41dd97a::t_f1541069c85ab8 1-991
+apps/api/src/skillPublishGuards.test.ts
+  s_f0bb92c41dd97a::t_4f0f79d5dfe90f 1-165
+apps/api/src/skillPublishGuards.ts
+  s_f0bb92c41dd97a::t_e5f91db1c2ae35 1-98
+apps/api/src/skillPublishRoute.test.ts
+  s_f0bb92c41dd97a::t_803d0f1739a76c 1-649
+apps/api/src/trpc.test.ts
+  s_f0bb92c41dd97a::t_e882a8fea7cfaa 1-18
+apps/api/src/trpc.ts
+  s_f0bb92c41dd97a::t_d19e36576a876d 1-42
+apps/api/src/whoamiRoute.test.ts
+  s_f0bb92c41dd97a::t_46ca1e14f4c798 1-205
+apps/api/test/integration/agentAuthApproval.integration.test.ts
+  s_f0bb92c41dd97a::t_958effd555ff0d 1-251
+apps/api/test/integration/agentAuthCompatibility.integration.test.ts
+  s_f0bb92c41dd97a::t_fb20005b0781ad 1-468
+apps/api/test/integration/agentDelegation.integration.test.ts
+  s_f0bb92c41dd97a::t_0b3b4f07259968 1-217
+apps/api/test/integration/companionBoxUnshareMigration.integration.test.ts
+  s_f0bb92c41dd97a::t_af93865253edc0 1-159
+apps/api/test/integration/companionMemberState.integration.test.ts
+  s_f0bb92c41dd97a::t_13c1b15675c9d4 1-289
+apps/api/test/integration/companionPlugins.integration.test.ts
+  s_f0bb92c41dd97a::t_420064b1e89ef0 1-321
+apps/api/test/integration/companionPurge.integration.test.ts
+  s_f0bb92c41dd97a::t_41f7bbb7392729 1-941
+apps/api/test/integration/companionRoutines.integration.test.ts
+  s_f0bb92c41dd97a::t_a05fdbf69d7713 1-1464
+apps/api/test/integration/companionRuntimeBudgets.integration.test.ts
+  s_f0bb92c41dd97a::t_2a2cc04d0efc72 1-208
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_f0bb92c41dd97a::t_4e6179a400a128 1-7547
+apps/api/test/integration/companionRuntimeV2.integration.test.ts
+  s_f0bb92c41dd97a::t_268a54b19b50aa 1-7978
+apps/api/test/integration/companionSections.integration.test.ts
+  s_f0bb92c41dd97a::t_6619f6aa7a7a96 1-385
+apps/api/test/integration/companionTriggers.integration.test.ts
+  s_f0bb92c41dd97a::t_86342bbefa5305 1-1499
+apps/api/test/integration/deferredSkillUpdateMigration.integration.test.ts
+  s_f0bb92c41dd97a::t_6c8938579e722d 1-251
+apps/api/test/integration/deleteResumeMigration.integration.test.ts
+  s_f0bb92c41dd97a::t_c370bd2e1f6ab4 1-314
+apps/api/test/integration/gettingStarted.integration.test.ts
+  s_f0bb92c41dd97a::t_3a1b63fd5f5944 1-310
+apps/api/test/integration/labelLifecycle.integration.test.ts
+  s_f0bb92c41dd97a::t_9889a39633403c 1-243
+apps/api/test/integration/memberTimezone.integration.test.ts
+  s_f0bb92c41dd97a::t_5ce689030351d4 1-42
+apps/api/test/integration/migrationOwner.integration.test.ts
+  s_f0bb92c41dd97a::t_7336baff228561 1-91
+apps/api/test/integration/preTenantRls.integration.test.ts
+  s_f0bb92c41dd97a::t_d2c1e75d536828 1-712
+apps/api/test/integration/publicSkillRelease.integration.test.ts
+  s_f0bb92c41dd97a::t_106c4b4ada3aa7 1-515
+apps/api/test/integration/removeSkillStarsMigration.integration.test.ts
+  s_f0bb92c41dd97a::t_08baddc610e267 1-168
+apps/api/test/integration/rls.integration.test.ts
+  s_f0bb92c41dd97a::t_2acc702ab2931a 1-364
+apps/api/test/integration/runtimeCutoverMigration.integration.test.ts
+  s_f0bb92c41dd97a::t_41e2bd05dfa4a7 1-664
+apps/api/test/integration/secretLifecycle.integration.test.ts
+  s_f0bb92c41dd97a::t_2863d24d3611d9 1-431
+apps/api/test/integration/seedDemoCatalog.integration.test.ts
+  s_f0bb92c41dd97a::t_ec1b73daac54d0 1-224
+apps/api/test/integration/skillDatabases.integration.test.ts
+  s_f0bb92c41dd97a::t_36a63315d5f033 1-1357
+apps/api/test/integration/skillGroupPreferenceMigration.integration.test.ts
+  s_f0bb92c41dd97a::t_4c20049a29db10 1-116
+apps/api/test/integration/skillLifecycle.integration.test.ts
+  s_f0bb92c41dd97a::t_714948f5f3ebc4 1-318
+apps/api/test/integration/skillSidebarOrderPreferenceMigration.integration.test.ts
+  s_f0bb92c41dd97a::t_31674cee208dd8 1-137
+apps/api/test/integration/skillTransferTicket.integration.test.ts
+  s_f0bb92c41dd97a::t_2d5d81cf97a2be 1-594
+apps/api/test/integration/skillsHubCutover.integration.test.ts
+  s_f0bb92c41dd97a::t_f1ebded25ad53d 1-230
+apps/api/test/integration/skillsHubOnlyCutoverMigration.integration.test.ts
+  s_f0bb92c41dd97a::t_2ac0e95b740f15 1-102
+apps/api/test/integration/skillsHubOnlyMigration.integration.test.ts
+  s_f0bb92c41dd97a::t_fe430e69d8d754 1-73
+apps/api/test/integration/testDatabase.ts
+  s_f0bb92c41dd97a::t_48a1ef504f842f 1-202
+apps/api/test/integration/tokenRefresh.integration.test.ts
+  s_f0bb92c41dd97a::t_2fb35dd0a1eed2 1-161
+apps/api/tsconfig.json
+  s_f0bb92c41dd97a::t_ff329e0717e98d 1-9
+apps/api/tsconfig.test.json
+  s_f0bb92c41dd97a::t_04a969005abfe8 1-9
+apps/api/tsup.config.ts
+  s_f0bb92c41dd97a::t_c5b43d240f0293 1-37
+apps/api/vitest.config.ts
+  s_f0bb92c41dd97a::t_da8b02ae088318 1-11
+apps/api/vitest.integration.config.ts
+  s_f0bb92c41dd97a::t_2ac9758bfd6fed 1-14
+apps/ios/.gitignore
+  s_f0bb92c41dd97a::t_b30afb5fcaa044 1-62
+apps/ios/AGENTS.md
+  s_f0bb92c41dd97a::t_530af824a216c2 1-32
+apps/ios/Companion.xcodeproj/project.pbxproj
+  s_f0bb92c41dd97a::t_294113b8d56327 1-644
+apps/ios/Companion.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+  s_f0bb92c41dd97a::t_c540478c5170d6 1-7
+apps/ios/Companion.xcodeproj/xcshareddata/xcschemes/Companion.xcscheme
+  s_f0bb92c41dd97a::t_d414dfaaf1e354 1-102
+apps/ios/Companion.xcworkspace/contents.xcworkspacedata
+  s_f0bb92c41dd97a::t_539352041924be 1-13
+apps/ios/Companion/Companion.xctestplan
+  s_f0bb92c41dd97a::t_b1dee114a8502f 1-35
+apps/ios/Companion/CompanionApp.swift
+  s_f0bb92c41dd97a::t_1f40afb11ff37d 1-14
+apps/ios/Companion/DesignSystem/CharacterMark.swift
+  s_f0bb92c41dd97a::t_eebbc3a91db170 1-3
+apps/ios/Companion/DesignSystem/Colors.swift
+  s_f0bb92c41dd97a::t_892446dd6ddfcf 1-24
+apps/ios/Companion/DesignSystem/CompanionAvatar.swift
+  s_f0bb92c41dd97a::t_44dbe5c9be081d 1-23
+apps/ios/Companion/DesignSystem/CompanionIconGallery.swift
+  s_f0bb92c41dd97a::t_37de833d27eca8 1-120
+apps/ios/Companion/DesignSystem/CompanionStatusDot.swift
+  s_f0bb92c41dd97a::t_1c6a80c6a5400c 1-3
+apps/ios/Companion/DesignSystem/GlassComponents.swift
+  s_f0bb92c41dd97a::t_2ca15a81af1994 1-134
+apps/ios/Companion/DesignSystem/ManagementComponents.swift
+  s_f0bb92c41dd97a::t_e8c1ab49a6078c 1-166
+apps/ios/Companion/DesignSystem/SheetComponents.swift
+  s_f0bb92c41dd97a::t_26ccfd3fcdbabd 1-230
+apps/ios/Companion/Navigation/AppRouter.swift
+  s_f0bb92c41dd97a::t_4e96742dd58232 1-8
+apps/ios/Companion/Navigation/RootView.swift
+  s_f0bb92c41dd97a::t_d25a72b3c03dc7 1-232
+apps/ios/Companion/Screens/BootstrapView.swift
+  s_f0bb92c41dd97a::t_ecfe295e0dfaa8 1-45
+apps/ios/Companion/Screens/ChatAttachmentViews.swift
+  s_f0bb92c41dd97a::t_4de329e2e0a4e4 1-385
+apps/ios/Companion/Screens/ChatComposer.swift
+  s_f0bb92c41dd97a::t_3f827cf6e1a45e 1-528
+apps/ios/Companion/Screens/ChatView.swift
+  s_f0bb92c41dd97a::t_788bda0d390002 1-2535
+apps/ios/Companion/Screens/CompanionAppearanceDemoView.swift
+  s_f0bb92c41dd97a::t_4bab9b21b9edad 1-79
+apps/ios/Companion/Screens/CompanionComputerView.swift
+  s_f0bb92c41dd97a::t_712167a8ba1e64 1-310
+apps/ios/Companion/Screens/CompanionDecisionCard.swift
+  s_f0bb92c41dd97a::t_81e54e18cbd395 1-505
+apps/ios/Companion/Screens/CompanionDecisionDemoView.swift
+  s_f0bb92c41dd97a::t_f3a6229d8bc3a0 1-100
+apps/ios/Companion/Screens/CompanionDetailDemo.swift
+  s_f0bb92c41dd97a::t_4e545ee40b26f7 1-380
+apps/ios/Companion/Screens/CompanionDetailResourceSections.swift
+  s_f0bb92c41dd97a::t_4d65fe535cd7a6 1-1302
+apps/ios/Companion/Screens/CompanionDetailView.swift
+  s_f0bb92c41dd97a::t_cbd9b48a52ba26 1-1405
+apps/ios/Companion/Screens/CompanionIconCatalogDemoView.swift
+  s_f0bb92c41dd97a::t_f0bb51bf5cd9ed 1-112
+apps/ios/Companion/Screens/CompanionIdentityEditorView.swift
+  s_f0bb92c41dd97a::t_3cd46920f70f73 1-230
+apps/ios/Companion/Screens/CompanionInterruptedTurnDemoView.swift
+  s_f0bb92c41dd97a::t_978db1a4d5f28c 1-124
+apps/ios/Companion/Screens/CompanionInterruptedTurnNotice.swift
+  s_f0bb92c41dd97a::t_74b1939a6f454d 1-221
+apps/ios/Companion/Screens/CompanionListView.swift
+  s_f0bb92c41dd97a::t_963cdf1969e091 1-1366
+apps/ios/Companion/Screens/CompanionQueuedMessagesDemoView.swift
+  s_f0bb92c41dd97a::t_c6edaefb26a6b0 1-190
+apps/ios/Companion/Screens/CompanionQueuedMessagesView.swift
+  s_f0bb92c41dd97a::t_ef9ce1d812dd09 1-423
+apps/ios/Companion/Screens/CompanionResourceEditorViews.swift
+  s_f0bb92c41dd97a::t_1e1bfdd4dd9175 1-538
+apps/ios/Companion/Screens/CompanionRoutineHistoryView.swift
+  s_f0bb92c41dd97a::t_8565043ed11e9b 1-816
+apps/ios/Companion/Screens/CompanionTranscriptWindowDemoView.swift
+  s_f0bb92c41dd97a::t_f46b39ba7796be 1-394
+apps/ios/Companion/Screens/CompanionTriggerHistoryView.swift
+  s_f0bb92c41dd97a::t_d95f629aed368b 1-333
+apps/ios/Companion/Screens/CreateCompanionView.swift
+  s_f0bb92c41dd97a::t_825d8f8a9e19b0 1-553
+apps/ios/Companion/Screens/GlassManagementDemoView.swift
+  s_f0bb92c41dd97a::t_70101f328c5299 1-401
+apps/ios/Companion/Screens/LoginView.swift
+  s_f0bb92c41dd97a::t_26524671c3ffd4 1-293
+apps/ios/Companion/Screens/MarkdownMessageView.swift
+  s_f0bb92c41dd97a::t_4608f9d78a2235 1-1141
+apps/ios/Companion/Screens/MarkdownTableDemoView.swift
+  s_f0bb92c41dd97a::t_e5f643c746cbc6 1-108
+apps/ios/Companion/Screens/MemberSettingsView.swift
+  s_f0bb92c41dd97a::t_59905b18a433be 1-461
+apps/ios/Companion/Screens/PluginCatalogSheet.swift
+  s_f0bb92c41dd97a::t_a4b75dda94f216 1-720
+apps/ios/Companion/Screens/PluginManagementView.swift
+  s_f0bb92c41dd97a::t_637b4b7bb3b80c 1-805
+apps/ios/Companion/Screens/ProviderManagementView.swift
+  s_f0bb92c41dd97a::t_ca01b83617a992 1-631
+apps/ios/Companion/Screens/ToolRunCard.swift
+  s_f0bb92c41dd97a::t_58e7e845b310cd 1-464
+apps/ios/Companion/Screens/VoiceTranscriptionStatusView.swift
+  s_f0bb92c41dd97a::t_90adfc936ba728 1-121
+apps/ios/Companion/Support/AppConfig.swift
+  s_f0bb92c41dd97a::t_edc0ceef719e9e 1-32
+apps/ios/Companion/Support/Assets.xcassets/AppIcon.appiconset/Contents.json
+  s_f0bb92c41dd97a::t_835e6e83039cbf 1-14
+apps/ios/Companion/Support/Assets.xcassets/CompanionMark.imageset/Contents.json
+  s_f0bb92c41dd97a::t_14c1bd5f5acb2d 1-16
+apps/ios/Companion/Support/Assets.xcassets/CompanionMark.imageset/companion-mark.svg
+  s_f0bb92c41dd97a::t_bd9b259dcbd179 1-5
+apps/ios/Companion/Support/Assets.xcassets/Contents.json
+  s_f0bb92c41dd97a::t_c75397bf6dd091 1-6
+apps/ios/Companion/Support/Assets.xcassets/GoogleMark.imageset/Contents.json
+  s_f0bb92c41dd97a::t_f2eb86168bfbe4 1-15
+apps/ios/Companion/Support/Assets.xcassets/GoogleMark.imageset/google-mark.svg
+  s_f0bb92c41dd97a::t_3aeb035b8933fa 1-6
+apps/ios/Companion/Support/Assets.xcassets/LaunchCanvas.colorset/Contents.json
+  s_f0bb92c41dd97a::t_3341cf23a534a7 1-20
+apps/ios/Companion/Support/CompanionPerformanceTelemetry.swift
+  s_f0bb92c41dd97a::t_da8414eca2c9b7 1-106
+apps/ios/Companion/Support/ExternalOAuthCoordinator.swift
+  s_f0bb92c41dd97a::t_9c9e860ab840f6 1-200
+apps/ios/Companion/Support/ExternalURLLauncher.swift
+  s_f0bb92c41dd97a::t_d7a206010f2405 1-16
+apps/ios/Companion/Support/Info.plist
+  s_f0bb92c41dd97a::t_273d107472271b 1-79
+apps/ios/Companion/Support/MessageInteractionSupport.swift
+  s_f0bb92c41dd97a::t_785d54220d18a4 1-123
+apps/ios/Companion/Support/NavigationSwipeBackSupport.swift
+  s_f0bb92c41dd97a::t_c2025621f84a98 1-243
+apps/ios/Companion/Support/NotificationCoordinator.swift
+  s_f0bb92c41dd97a::t_bb8f203b1e7356 1-178
+apps/ios/Companion/Support/VoiceTranscriptionController.swift
+  s_f0bb92c41dd97a::t_e42178982c4cb8 1-311
+apps/ios/CompanionKit/Package.swift
+  s_f0bb92c41dd97a::t_f17830b7cd3345 1-27
+apps/ios/CompanionKit/Sources/CompanionKit/APIClient.swift
+  s_f0bb92c41dd97a::t_2fd44e3046daf5 1-1689
+apps/ios/CompanionKit/Sources/CompanionKit/Attachments.swift
+  s_f0bb92c41dd97a::t_fead75909039d9 1-174
+apps/ios/CompanionKit/Sources/CompanionKit/CharacterMark.swift
+  s_f0bb92c41dd97a::t_b2326d114150cf 1-92
+apps/ios/CompanionKit/Sources/CompanionKit/CharacterMarkGeometry.swift
+  s_f0bb92c41dd97a::t_226d053d4bec81 1-133
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionAppearance.swift
+  s_f0bb92c41dd97a::t_aa8d04974088d5 1-66
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionChatPresentation.swift
+  s_f0bb92c41dd97a::t_a511f9063309e6 1-124
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionKit.swift
+  s_f0bb92c41dd97a::t_14ec67e125b40e 1-3
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionLinkPolicy.swift
+  s_f0bb92c41dd97a::t_5eb2d0ad36a4d6 1-55
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionLocalCache.swift
+  s_f0bb92c41dd97a::t_543fdc06f34a45 1-353
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionMessageLinkDetector.swift
+  s_f0bb92c41dd97a::t_2d84b99d731e01 1-39
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionNotificationInvalidation.swift
+  s_f0bb92c41dd97a::t_c6ed364747cea5 1-153
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionOAuthCallbackPolicy.swift
+  s_f0bb92c41dd97a::t_4bf8ead2004643 1-122
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionRosterState.swift
+  s_f0bb92c41dd97a::t_9892cd68c4c500 1-206
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionSheetModels.swift
+  s_f0bb92c41dd97a::t_096e68991e588f 1-432
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionStatusDot.swift
+  s_f0bb92c41dd97a::t_13153a6128fd57 1-57
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionStatusIndicator.swift
+  s_f0bb92c41dd97a::t_740236544c0f56 1-58
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionSync.swift
+  s_f0bb92c41dd97a::t_84e43c56edc87b 1-146
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionTheme.swift
+  s_f0bb92c41dd97a::t_6679dbf960198b 1-169
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionThreadCoordination.swift
+  s_f0bb92c41dd97a::t_75745887c3c970 1-797
+apps/ios/CompanionKit/Sources/CompanionKit/MemberTimezone.swift
+  s_f0bb92c41dd97a::t_7445d8daf81f0e 1-71
+apps/ios/CompanionKit/Sources/CompanionKit/Models.swift
+  s_f0bb92c41dd97a::t_10c2d073f961b2 1-2559
+apps/ios/CompanionKit/Sources/CompanionKit/SessionStore.swift
+  s_f0bb92c41dd97a::t_db91548381db23 1-1379
+apps/ios/CompanionKit/Sources/CompanionKit/VoiceTranscription.swift
+  s_f0bb92c41dd97a::t_edd614ec28e1e0 1-25
+apps/ios/CompanionKit/Sources/CompanionNotificationAvatar/CompanionNotificationAvatar.swift
+  s_f0bb92c41dd97a::t_d67bef38a6b3f7 1-175
+apps/ios/CompanionKit/Tests/CompanionKitTests/AvatarRequestTests.swift
+  s_f0bb92c41dd97a::t_836953b65682f7 1-64
+apps/ios/CompanionKit/Tests/CompanionKitTests/CharacterMarkGeometryTests.swift
+  s_f0bb92c41dd97a::t_ba18413650d246 1-69
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionChatPresentationTests.swift
+  s_f0bb92c41dd97a::t_add50983185951 1-109
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionDesktopTests.swift
+  s_f0bb92c41dd97a::t_617e81d021b5f1 1-108
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionLocalCacheTests.swift
+  s_f0bb92c41dd97a::t_c4500ba464e5f7 1-1094
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionNotificationInvalidationTests.swift
+  s_f0bb92c41dd97a::t_879ad6330733a0 1-268
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionSectionStoreTests.swift
+  s_f0bb92c41dd97a::t_7c9c281e21365d 1-85
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionSheetModelsTests.swift
+  s_f0bb92c41dd97a::t_8ef73a70bec10b 1-413
+apps/ios/CompanionKit/Tests/CompanionKitTests/MemberTimezoneTests.swift
+  s_f0bb92c41dd97a::t_d1f5f40aa7af15 1-319
+apps/ios/CompanionKit/Tests/CompanionKitTests/RoutineHistoryTests.swift
+  s_f0bb92c41dd97a::t_532ad6207056d4 1-175
+apps/ios/CompanionKit/Tests/CompanionKitTests/VoiceTranscriptionTests.swift
+  s_f0bb92c41dd97a::t_b4be405fba485c 1-96
+apps/ios/CompanionKit/Tests/CompanionNotificationAvatarTests/CompanionNotificationAvatarTests.swift
+  s_f0bb92c41dd97a::t_c7127c51884826 1-105
+apps/ios/CompanionNotificationService/Info.plist
+  s_f0bb92c41dd97a::t_360f4cf7c9912a 1-31
+apps/ios/CompanionNotificationService/NotificationService.swift
+  s_f0bb92c41dd97a::t_b9b107e49225b4 1-107
+apps/ios/Config/Companion.entitlements
+  s_f0bb92c41dd97a::t_bcced44884606b 1-14
+apps/ios/Config/Debug.xcconfig
+  s_f0bb92c41dd97a::t_0e62e12730af26 1-6
+apps/ios/Config/ExportOptions.plist
+  s_f0bb92c41dd97a::t_cae8088ce8d0fb 1-25
+apps/ios/Config/Release.xcconfig
+  s_f0bb92c41dd97a::t_c112e82a210121 1-7
+apps/ios/Config/Shared.xcconfig
+  s_f0bb92c41dd97a::t_3094055258e380 1-11
+apps/ios/Config/Tests.xcconfig
+  s_f0bb92c41dd97a::t_d59a09d766f4ba 1-14
+apps/ios/README.md
+  s_f0bb92c41dd97a::t_e9fffcf4ebbb7d 1-361
+apps/ios/scripts/dev-conductor.sh
+  s_f0bb92c41dd97a::t_56ddfdb370619f 1-61
+apps/ios/scripts/release.sh
+  s_f0bb92c41dd97a::t_f6e7a47e5c4f77 1-95
+apps/macos/CompanionMac.xcodeproj/project.pbxproj
+  s_f0bb92c41dd97a::t_f49f1e9b194cb2 1-493
+apps/macos/CompanionMac.xcodeproj/xcshareddata/xcschemes/CompanionMac.xcscheme
+  s_f0bb92c41dd97a::t_04a1d0423673e4 1-97
+apps/macos/CompanionMac/AppConfig.swift
+  s_f0bb92c41dd97a::t_6f600c7c39d2fc 1-33
+apps/macos/CompanionMac/CompanionMac.entitlements
+  s_f0bb92c41dd97a::t_21a06bba959108 1-12
+apps/macos/CompanionMac/CompanionMacApp.swift
+  s_f0bb92c41dd97a::t_d817b0bb86302b 1-117
+apps/macos/CompanionMac/Info.plist
+  s_f0bb92c41dd97a::t_b19f01d0d4a9d7 1-35
+apps/macos/CompanionMac/MacChatView.swift
+  s_f0bb92c41dd97a::t_2f9dbc17b75a99 1-1066
+apps/macos/CompanionMac/MacDesignSystem.swift
+  s_f0bb92c41dd97a::t_a16c1549ca1b23 1-145
+apps/macos/CompanionMac/MacDesktopWindow.swift
+  s_f0bb92c41dd97a::t_e92a2b5f158b09 1-273
+apps/macos/CompanionMac/MacGoogleAuthentication.swift
+  s_f0bb92c41dd97a::t_b46517be7903ad 1-56
+apps/macos/CompanionMac/MacInspectorView.swift
+  s_f0bb92c41dd97a::t_16e5d8ebe62cec 1-860
+apps/macos/CompanionMac/MacLoginView.swift
+  s_f0bb92c41dd97a::t_e54f524189850c 1-157
+apps/macos/CompanionMac/MacProjection.swift
+  s_f0bb92c41dd97a::t_e761cc36f2a754 1-43
+apps/macos/CompanionMac/MacRootView.swift
+  s_f0bb92c41dd97a::t_f6ccbaf8e562cf 1-104
+apps/macos/CompanionMac/MacSettingsViews.swift
+  s_f0bb92c41dd97a::t_90dde6543229a9 1-1035
+apps/macos/CompanionMac/MacWorkspaceView.swift
+  s_f0bb92c41dd97a::t_eb6c844ece92a0 1-783
+apps/macos/CompanionMacTests/MacProjectionTests.swift
+  s_f0bb92c41dd97a::t_bad3e189f931b9 1-90
+apps/macos/README.md
+  s_f0bb92c41dd97a::t_e9b87bb4c02f42 1-50
+apps/runtime/package.json
+  s_f0bb92c41dd97a::t_f8bf459466af76 1-36
+apps/runtime/src/application.test.ts
+  s_f0bb92c41dd97a::t_db83df7c16d31f 1-164
+apps/runtime/src/application.ts
+  s_f0bb92c41dd97a::t_5dd4e2c7fba60d 1-153
+apps/runtime/src/boxAdapters.test.ts
+  s_f0bb92c41dd97a::t_bf4167e039d650 1-823
+apps/runtime/src/boxAdapters.ts
+  s_f0bb92c41dd97a::t_250859911a123f 1-453
+apps/runtime/src/companionPurge.test.ts
+  s_f0bb92c41dd97a::t_a93c0cb052f731 1-417
+apps/runtime/src/companionPurge.ts
+  s_f0bb92c41dd97a::t_af4bf644bc7e90 1-800
+apps/runtime/src/composition.test.ts
+  s_f0bb92c41dd97a::t_dfa605095163cd 1-81
+apps/runtime/src/composition.ts
+  s_f0bb92c41dd97a::t_adcc69a870a53e 1-77
+apps/runtime/src/config.test.ts
+  s_f0bb92c41dd97a::t_835aa16bbe37ef 1-146
+apps/runtime/src/config.ts
+  s_f0bb92c41dd97a::t_64619009555f6e 1-343
+apps/runtime/src/database.test.ts
+  s_f0bb92c41dd97a::t_4c8af9a8653e96 1-130
+apps/runtime/src/database.ts
+  s_f0bb92c41dd97a::t_0ab80fb34c92b6 1-56
+apps/runtime/src/desktop.test.ts
+  s_f0bb92c41dd97a::t_847b865bf891fb 1-113
+apps/runtime/src/desktop.ts
+  s_f0bb92c41dd97a::t_63afdf0dff86f3 1-139
+apps/runtime/src/directBoxTransport.sim.test.ts
+  s_f0bb92c41dd97a::t_fd2d7f4cfacad5 1-348
+apps/runtime/src/directBoxTransport.test.ts
+  s_f0bb92c41dd97a::t_9211ef33d08dc7 1-757
+apps/runtime/src/directBoxTransport.ts
+  s_f0bb92c41dd97a::t_b2dc3c887b57bf 1-774
+apps/runtime/src/imageBuildWorker.test.ts
+  s_f0bb92c41dd97a::t_467685ae116132 1-484
+apps/runtime/src/imageBuildWorker.ts
+  s_f0bb92c41dd97a::t_f768f9d4daf23a 1-365
+apps/runtime/src/imageBuilderSupervisor.test.ts
+  s_f0bb92c41dd97a::t_055e3288ee1e5b 1-89
+apps/runtime/src/imageBuilderSupervisor.ts
+  s_f0bb92c41dd97a::t_3bd26724e21eae 1-129
+apps/runtime/src/index.ts
+  s_f0bb92c41dd97a::t_19966ccb787920 1-12
+apps/runtime/src/materialPipeline.attachments.test.ts
+  s_f0bb92c41dd97a::t_05f5e2c0f51893 1-322
+apps/runtime/src/materialPipeline.test.ts
+  s_f0bb92c41dd97a::t_e1f90a82199fc3 1-681
+apps/runtime/src/materialPipeline.ts
+  s_f0bb92c41dd97a::t_778d81915a5907 1-510
+apps/runtime/src/piBundlePresigner.test.ts
+  s_f0bb92c41dd97a::t_c8e07f9b0e7c0d 1-84
+apps/runtime/src/piBundlePresigner.ts
+  s_f0bb92c41dd97a::t_b9a68a300ebf07 1-61
+apps/runtime/src/process.test.ts
+  s_f0bb92c41dd97a::t_72a8535b475c20 1-80
+apps/runtime/src/process.ts
+  s_f0bb92c41dd97a::t_110b8a39a8b454 1-50
+apps/runtime/src/production.test.ts
+  s_f0bb92c41dd97a::t_754efb3bf5dea0 1-328
+apps/runtime/src/production.ts
+  s_f0bb92c41dd97a::t_c159f148413342 1-475
+apps/runtime/src/resourceMaterial.test.ts
+  s_f0bb92c41dd97a::t_e3e1ba9a315cd5 1-700
+apps/runtime/src/resourceMaterial.ts
+  s_f0bb92c41dd97a::t_119b17963be914 1-425
+apps/runtime/src/schedulerAdapter.test.ts
+  s_f0bb92c41dd97a::t_7f417f50e0c12e 1-43
+apps/runtime/src/schedulerAdapter.ts
+  s_f0bb92c41dd97a::t_7432b957a71c92 1-38
+apps/runtime/src/sentry.test.ts
+  s_f0bb92c41dd97a::t_cdf330c071ec3d 1-81
+apps/runtime/src/sentry.ts
+  s_f0bb92c41dd97a::t_e7ad70f068518c 1-95
+apps/runtime/src/sentrySanitize.ts
+  s_f0bb92c41dd97a::t_50418b16dbfd11 1-58
+apps/runtime/src/server.test.ts
+  s_f0bb92c41dd97a::t_ea2cc3382e7979 1-426
+apps/runtime/src/server.ts
+  s_f0bb92c41dd97a::t_fa4d3ebb18b6b5 1-456
+apps/runtime/src/startupLog.test.ts
+  s_f0bb92c41dd97a::t_f02aed47fa9004 1-21
+apps/runtime/src/startupLog.ts
+  s_f0bb92c41dd97a::t_dd16095d9a405c 1-15
+apps/runtime/test/integration/companionPurgeCommand.integration.test.ts
+  s_f0bb92c41dd97a::t_4d1b6b9e8b004a 1-213
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_f0bb92c41dd97a::t_a1a733b09da317 1-1542
+apps/runtime/tsconfig.json
+  s_f0bb92c41dd97a::t_b34e8d45a1b605 1-5
+apps/runtime/tsconfig.test.json
+  s_f0bb92c41dd97a::t_212a738b57ad43 1-14
+apps/runtime/tsup.config.ts
+  s_f0bb92c41dd97a::t_fc1f1ddf736878 1-44
+apps/runtime/vitest.config.ts
+  s_f0bb92c41dd97a::t_f8e965fefcfc4b 1-11
+apps/runtime/vitest.integration.config.ts
+  s_f0bb92c41dd97a::t_ef6a35a8f6bdd4 1-14
+apps/web/.eslintrc.json
+  s_f0bb92c41dd97a::t_09bf0a99b767a9 1-6
+apps/web/components.json
+  s_f0bb92c41dd97a::t_85f6fc8bdc7340 1-21
+apps/web/next-env.d.ts
+  s_f0bb92c41dd97a::t_69a49127610a6c 1-6
+apps/web/next.config.ts
+  s_f0bb92c41dd97a::t_c933fa350c7ae7 1-58
+apps/web/package.json
+  s_f0bb92c41dd97a::t_b010ec4caef69c 1-50
+apps/web/postcss.config.mjs
+  s_f0bb92c41dd97a::t_14c125de41b139 1-22
+apps/web/public/.well-known/apple-app-site-association
+  s_f0bb92c41dd97a::t_fcbae38ff6bda7 1-17
+apps/web/sentry.client.config.ts
+  s_f0bb92c41dd97a::t_cfdea82afaf069 1-18
+apps/web/sentry.edge.config.ts
+  s_f0bb92c41dd97a::t_c7f793d3888b2d 1-19
+apps/web/sentry.server.config.ts
+  s_f0bb92c41dd97a::t_6b3752b407207f 1-19
+apps/web/sentry.shared.ts
+  s_f0bb92c41dd97a::t_74cc28d6abc2c4 1-62
+apps/web/src/app/(app)/@settings/(.)settings/loading.tsx
+  s_f0bb92c41dd97a::t_208adee1ed50c1 1-50
+apps/web/src/app/(app)/@settings/(.)settings/page.tsx
+  s_f0bb92c41dd97a::t_66fe50c8a5ee4c 1-45
+apps/web/src/app/(app)/@settings/default.tsx
+  s_f0bb92c41dd97a::t_c0f8b7aebdee2b 1-3
+apps/web/src/app/(app)/companion-setup/page.tsx
+  s_f0bb92c41dd97a::t_45009f80e8c40a 1-11
+apps/web/src/app/(app)/companions/[id]/settings/page.tsx
+  s_f0bb92c41dd97a::t_2be26f579400e8 1-12
+apps/web/src/app/(app)/companions/loading.tsx
+  s_f0bb92c41dd97a::t_69f4ffe7e2bbf6 1-50
+apps/web/src/app/(app)/companions/page.test.ts
+  s_f0bb92c41dd97a::t_73db20079d9f07 1-259
+apps/web/src/app/(app)/companions/page.tsx
+  s_f0bb92c41dd97a::t_bbadb9a546b217 1-133
+apps/web/src/app/(app)/companionsNavigationAccess.test.ts
+  s_f0bb92c41dd97a::t_04e619c4d80809 1-107
+apps/web/src/app/(app)/error.tsx
+  s_f0bb92c41dd97a::t_c06abfd8f7d1cc 1-37
+apps/web/src/app/(app)/layout.tsx
+  s_f0bb92c41dd97a::t_f7134577c0ef17 1-23
+apps/web/src/app/(app)/onboarding/page.tsx
+  s_f0bb92c41dd97a::t_a450017a81ebf8 1-41
+apps/web/src/app/(app)/secrets/page.tsx
+  s_f0bb92c41dd97a::t_9eeff37df778aa 1-82
+apps/web/src/app/(app)/settings/loading.tsx
+  s_f0bb92c41dd97a::t_2bb6341ed8effe 1-38
+apps/web/src/app/(app)/settings/page.tsx
+  s_f0bb92c41dd97a::t_98379336b1d941 1-15
+apps/web/src/app/(app)/skills/page.tsx
+  s_f0bb92c41dd97a::t_f2291e70f15060 1-105
+apps/web/src/app/(auth)/login/LoginForm.tsx
+  s_f0bb92c41dd97a::t_24c2f0ac58044c 1-915
+apps/web/src/app/(auth)/login/page.tsx
+  s_f0bb92c41dd97a::t_6e1847a739984d 1-50
+apps/web/src/app/PostHogProvider.tsx
+  s_f0bb92c41dd97a::t_6cee940e4672cf 1-26
+apps/web/src/app/device/capabilities/DeviceCapabilitiesApproval.test.ts
+  s_f0bb92c41dd97a::t_c877467a602475 1-118
+apps/web/src/app/device/capabilities/DeviceCapabilitiesApproval.tsx
+  s_f0bb92c41dd97a::t_1e5c63bfbd3f94 1-215
+apps/web/src/app/device/capabilities/page.tsx
+  s_f0bb92c41dd97a::t_17ec1dc706b2f8 1-35
+apps/web/src/app/global-error.tsx
+  s_f0bb92c41dd97a::t_853f3ebd823d91 1-60
+apps/web/src/app/globals.css
+  s_f0bb92c41dd97a::t_14129e38cad35e 1-30
+apps/web/src/app/join/[token]/page.tsx
+  s_f0bb92c41dd97a::t_8940664c9ae2f5 1-12
+apps/web/src/app/layout.tsx
+  s_f0bb92c41dd97a::t_6d896d47b3b2d0 1-55
+apps/web/src/app/page.test.ts
+  s_f0bb92c41dd97a::t_a116553da55cb8 1-86
+apps/web/src/app/page.tsx
+  s_f0bb92c41dd97a::t_5b8ee12967d34f 1-11
+apps/web/src/app/privacy/page.test.ts
+  s_f0bb92c41dd97a::t_17f7eac160a9d0 1-54
+apps/web/src/app/privacy/page.tsx
+  s_f0bb92c41dd97a::t_38971d78a09ccc 1-111
+apps/web/src/app/s/[token]/PublicSkillActions.test.ts
+  s_f0bb92c41dd97a::t_a498541cd72de9 1-128
+apps/web/src/app/s/[token]/PublicSkillActions.tsx
+  s_f0bb92c41dd97a::t_9c7cb0364b414c 1-162
+apps/web/src/app/s/[token]/go/route.test.ts
+  s_f0bb92c41dd97a::t_137c1ee3c7f7ec 1-73
+apps/web/src/app/s/[token]/go/route.ts
+  s_f0bb92c41dd97a::t_324a1cb946854e 1-57
+apps/web/src/app/s/[token]/opengraph-image.tsx
+  s_f0bb92c41dd97a::t_f2f7b16f0c9bd1 1-98
+apps/web/src/app/s/[token]/page.tsx
+  s_f0bb92c41dd97a::t_615f02d41ac055 1-147
+apps/web/src/app/s/[token]/preview.test.ts
+  s_f0bb92c41dd97a::t_893746438c74d1 1-35
+apps/web/src/app/s/[token]/preview.ts
+  s_f0bb92c41dd97a::t_a133d88e501aba 1-56
+apps/web/src/app/v1/auth/forgot-password/route.ts
+  s_f0bb92c41dd97a::t_928f06af3fc922 1-26
+apps/web/src/app/v1/auth/google/route.test.ts
+  s_f0bb92c41dd97a::t_09190beb2ad43a 1-80
+apps/web/src/app/v1/auth/google/route.ts
+  s_f0bb92c41dd97a::t_f495900c019d98 1-55
+apps/web/src/app/v1/auth/logout/route.test.ts
+  s_f0bb92c41dd97a::t_b04554ebf4a6dc 1-66
+apps/web/src/app/v1/auth/logout/route.ts
+  s_f0bb92c41dd97a::t_e9d3616cee25ac 1-71
+apps/web/src/app/v1/auth/reset-password/route.ts
+  s_f0bb92c41dd97a::t_123dc9442ed694 1-45
+apps/web/src/app/v1/auth/signin/route.test.ts
+  s_f0bb92c41dd97a::t_02651192e4ba54 1-101
+apps/web/src/app/v1/auth/signin/route.ts
+  s_f0bb92c41dd97a::t_62f080564f93c0 1-37
+apps/web/src/app/v1/auth/signup/route.test.ts
+  s_f0bb92c41dd97a::t_0404d1ddf4e33b 1-76
+apps/web/src/app/v1/auth/signup/route.ts
+  s_f0bb92c41dd97a::t_385b929e272ea2 1-37
+apps/web/src/app/v1/auth/verify-email/route.test.ts
+  s_f0bb92c41dd97a::t_c37e0fed9f3068 1-78
+apps/web/src/app/v1/auth/verify-email/route.ts
+  s_f0bb92c41dd97a::t_bba6d59c969174 1-37
+apps/web/src/app/v1/auth/verify-email/send/route.ts
+  s_f0bb92c41dd97a::t_1c9e8f3f28088a 1-27
+apps/web/src/components/Icon.tsx
+  s_f0bb92c41dd97a::t_fa708340a9f094 1-251
+apps/web/src/components/ResourceList.tsx
+  s_f0bb92c41dd97a::t_3b030fe6dbf0fa 1-128
+apps/web/src/components/UserAvatar.tsx
+  s_f0bb92c41dd97a::t_309fdd40fc67ee 1-40
+apps/web/src/components/assistant-ui/markdown-text.tsx
+  s_f0bb92c41dd97a::t_d186cc72a55a10 1-333
+apps/web/src/components/assistant-ui/reasoning.tsx
+  s_f0bb92c41dd97a::t_ef6884856e7abb 1-195
+apps/web/src/components/assistant-ui/thread.tsx
+  s_f0bb92c41dd97a::t_70c43d4ca80e3a 1-248
+apps/web/src/components/assistant-ui/tooltip-icon-button.tsx
+  s_f0bb92c41dd97a::t_2cf476245424c0 1-48
+apps/web/src/components/auth/SessionKeepAlive.test.ts
+  s_f0bb92c41dd97a::t_b0b0ed128da3c6 1-65
+apps/web/src/components/auth/SessionKeepAlive.tsx
+  s_f0bb92c41dd97a::t_f2304a6c71267b 1-40
+apps/web/src/components/branding.tsx
+  s_f0bb92c41dd97a::t_502662cea75871 1-119
+apps/web/src/components/cds.tsx
+  s_f0bb92c41dd97a::t_18e97f2831b2b7 1-96
+apps/web/src/components/companions/AttachmentCard.tsx
+  s_f0bb92c41dd97a::t_e7b0ca01434914 1-103
+apps/web/src/components/companions/CompanionActionsMenu.tsx
+  s_f0bb92c41dd97a::t_a9fbfc7380268c 1-263
+apps/web/src/components/companions/CompanionContext.test.ts
+  s_f0bb92c41dd97a::t_fa8340986c628f 1-189
+apps/web/src/components/companions/CompanionContext.tsx
+  s_f0bb92c41dd97a::t_f9e69f084422ac 1-258
+apps/web/src/components/companions/CompanionIcon.tsx
+  s_f0bb92c41dd97a::t_d82cea9af09240 1-145
+apps/web/src/components/companions/CompanionIconPicker.tsx
+  s_f0bb92c41dd97a::t_100dc7918ab06d 1-160
+apps/web/src/components/companions/CompanionPluginPicker.tsx
+  s_f0bb92c41dd97a::t_06b8dce688d23d 1-93
+apps/web/src/components/companions/CompanionPlugins.client.test.ts
+  s_f0bb92c41dd97a::t_40967fe3fa6f7c 1-331
+apps/web/src/components/companions/CompanionPlugins.tsx
+  s_f0bb92c41dd97a::t_40071185b3dc6a 1-612
+apps/web/src/components/companions/CompanionProviderModelPicker.tsx
+  s_f0bb92c41dd97a::t_8b05aa39a52d2b 1-134
+apps/web/src/components/companions/CompanionProvidersDialog.client.test.ts
+  s_f0bb92c41dd97a::t_b241c6eec4323b 1-250
+apps/web/src/components/companions/CompanionProvidersDialog.tsx
+  s_f0bb92c41dd97a::t_1d2fe56287ed8a 1-421
+apps/web/src/components/companions/CompanionRoutineHistory.client.test.ts
+  s_f0bb92c41dd97a::t_a7333a67b3e828 1-380
+apps/web/src/components/companions/CompanionRoutineHistory.tsx
+  s_f0bb92c41dd97a::t_838a6bcb8fe36b 1-597
+apps/web/src/components/companions/CompanionRoutines.client.test.ts
+  s_f0bb92c41dd97a::t_6def4cdc0e5138 1-218
+apps/web/src/components/companions/CompanionRoutines.tsx
+  s_f0bb92c41dd97a::t_ad5f7712d112bd 1-324
+apps/web/src/components/companions/CompanionSettings.client.test.ts
+  s_f0bb92c41dd97a::t_230c0390d97c6d 1-685
+apps/web/src/components/companions/CompanionSettings.tsx
+  s_f0bb92c41dd97a::t_839fe238982ef8 1-787
+apps/web/src/components/companions/CompanionSkillPicker.tsx
+  s_f0bb92c41dd97a::t_b80f3da7c86665 1-100
+apps/web/src/components/companions/CompanionSkillsSyncStatus.client.test.ts
+  s_f0bb92c41dd97a::t_4c1dcf3f324319 1-111
+apps/web/src/components/companions/CompanionSkillsSyncStatus.tsx
+  s_f0bb92c41dd97a::t_23781623559968 1-54
+apps/web/src/components/companions/CompanionThread.client.test.ts
+  s_f0bb92c41dd97a::t_ce4cf706db4157 1-1526
+apps/web/src/components/companions/CompanionThread.test.ts
+  s_f0bb92c41dd97a::t_e3e73b1bc8204f 1-835
+apps/web/src/components/companions/CompanionThread.tsx
+  s_f0bb92c41dd97a::t_458ac04d5690e2 1-608
+apps/web/src/components/companions/CompanionTranscript.client.test.ts
+  s_f0bb92c41dd97a::t_61e4662df82e8f 1-1341
+apps/web/src/components/companions/CompanionTranscript.tsx
+  s_f0bb92c41dd97a::t_8c4d020a9ec53b 1-1189
+apps/web/src/components/companions/CompanionTriggerHistory.client.test.ts
+  s_f0bb92c41dd97a::t_d0e5cead8fa773 1-89
+apps/web/src/components/companions/CompanionTriggerHistory.tsx
+  s_f0bb92c41dd97a::t_0179eda4654725 1-417
+apps/web/src/components/companions/CompanionTriggerHistoryTypes.ts
+  s_f0bb92c41dd97a::t_2e55c00d1b65a7 1-40
+apps/web/src/components/companions/CompanionTriggerProvidersDialog.client.test.ts
+  s_f0bb92c41dd97a::t_ea31668485784a 1-153
+apps/web/src/components/companions/CompanionTriggerProvidersDialog.tsx
+  s_f0bb92c41dd97a::t_ae9098edcb9af1 1-361
+apps/web/src/components/companions/CompanionTriggerTypes.ts
+  s_f0bb92c41dd97a::t_07c877b2351226 1-29
+apps/web/src/components/companions/CompanionTriggers.client.test.ts
+  s_f0bb92c41dd97a::t_3e9c762fb2153a 1-485
+apps/web/src/components/companions/CompanionTriggers.tsx
+  s_f0bb92c41dd97a::t_db74b229dc601c 1-781
+apps/web/src/components/companions/CompanionsApp.desktop.client.test.ts
+  s_f0bb92c41dd97a::t_a6e19aef302ac9 1-774
+apps/web/src/components/companions/CompanionsApp.list.client.test.ts
+  s_f0bb92c41dd97a::t_e46bdc8802b35a 1-1053
+apps/web/src/components/companions/CompanionsApp.pending.client.test.ts
+  s_f0bb92c41dd97a::t_cf3810b1e2035f 1-361
+apps/web/src/components/companions/CompanionsApp.prewarm.client.test.ts
+  s_f0bb92c41dd97a::t_e482941cdbd2c7 1-258
+apps/web/src/components/companions/CompanionsApp.reconnect.client.test.ts
+  s_f0bb92c41dd97a::t_639aaec4a8d935 1-252
+apps/web/src/components/companions/CompanionsApp.send.client.test.ts
+  s_f0bb92c41dd97a::t_dbf8838a3cb9cf 1-664
+apps/web/src/components/companions/CompanionsApp.test.ts
+  s_f0bb92c41dd97a::t_66d7b524aa7a50 1-277
+apps/web/src/components/companions/CompanionsApp.tsx
+  s_f0bb92c41dd97a::t_4dc50ce89dbb7b 1-1538
+apps/web/src/components/companions/CompanionsApp.wake.client.test.ts
+  s_f0bb92c41dd97a::t_72452b209e12a5 1-424
+apps/web/src/components/companions/DecisionToolCard.tsx
+  s_f0bb92c41dd97a::t_f16e9fb59dfb4b 1-366
+apps/web/src/components/companions/NewCompanionDialog.client.test.ts
+  s_f0bb92c41dd97a::t_eb321a42ecc4d6 1-132
+apps/web/src/components/companions/NewCompanionDialog.test.ts
+  s_f0bb92c41dd97a::t_786831385bc602 1-134
+apps/web/src/components/companions/NewCompanionDialog.tsx
+  s_f0bb92c41dd97a::t_7050e21a96767d 1-170
+apps/web/src/components/companions/OptionMultiSelect.client.test.ts
+  s_f0bb92c41dd97a::t_a1f43ee78b62e7 1-147
+apps/web/src/components/companions/OptionMultiSelect.tsx
+  s_f0bb92c41dd97a::t_88aa53452fe322 1-209
+apps/web/src/components/companions/PluginMark.tsx
+  s_f0bb92c41dd97a::t_e1785b6b575bc3 1-76
+apps/web/src/components/companions/RelativeTime.tsx
+  s_f0bb92c41dd97a::t_f2719dee782196 1-22
+apps/web/src/components/companions/ShareCompanionDialog.tsx
+  s_f0bb92c41dd97a::t_c5b82928a322ec 1-92
+apps/web/src/components/companions/ToolRunCard.tsx
+  s_f0bb92c41dd97a::t_024be5816bdcd9 1-153
+apps/web/src/components/companions/decisionActions.ts
+  s_f0bb92c41dd97a::t_0bfbe0fbee972a 1-39
+apps/web/src/components/companions/status.test.ts
+  s_f0bb92c41dd97a::t_411856552509e7 1-34
+apps/web/src/components/companions/status.ts
+  s_f0bb92c41dd97a::t_bf709e43024c10 1-59
+apps/web/src/components/companions/transcript.test.ts
+  s_f0bb92c41dd97a::t_8b00809004d819 1-220
+apps/web/src/components/companions/transcript.ts
+  s_f0bb92c41dd97a::t_986fe8afb8b0cc 1-103
+apps/web/src/components/companions/transcriptMessages.test.ts
+  s_f0bb92c41dd97a::t_aa55ca67200356 1-629
+apps/web/src/components/companions/transcriptMessages.ts
+  s_f0bb92c41dd97a::t_5efc021171814c 1-403
+apps/web/src/components/companions/useVisualViewportPin.test.ts
+  s_f0bb92c41dd97a::t_0cca37adab4c81 1-89
+apps/web/src/components/companions/useVisualViewportPin.ts
+  s_f0bb92c41dd97a::t_47fc2ed61b602f 1-155
+apps/web/src/components/landing/LandingPage.test.ts
+  s_f0bb92c41dd97a::t_6a39fa6b80f0c9 1-179
+apps/web/src/components/landing/LandingPage.tsx
+  s_f0bb92c41dd97a::t_27e875f5b6c469 1-736
+apps/web/src/components/onboarding/OnboardingFlow.tsx
+  s_f0bb92c41dd97a::t_07ce6a95763c75 1-238
+apps/web/src/components/onboarding/screens.tsx
+  s_f0bb92c41dd97a::t_525c3608c75bca 1-634
+apps/web/src/components/org/AcceptInvite.tsx
+  s_f0bb92c41dd97a::t_6cb24330291f12 1-55
+apps/web/src/components/org/ApiKeysPane.tsx
+  s_f0bb92c41dd97a::t_7b79e3b7a4a508 1-222
+apps/web/src/components/org/BillingPane.client.test.ts
+  s_f0bb92c41dd97a::t_d9c87327c686db 1-158
+apps/web/src/components/org/BillingPane.test.ts
+  s_f0bb92c41dd97a::t_154af1c3d8d308 1-171
+apps/web/src/components/org/BillingPane.tsx
+  s_f0bb92c41dd97a::t_31581577b3353e 1-296
+apps/web/src/components/org/ConnectedAgentsPane.test.ts
+  s_f0bb92c41dd97a::t_13144b3f724ad6 1-128
+apps/web/src/components/org/ConnectedAgentsPane.tsx
+  s_f0bb92c41dd97a::t_2431fd8f103ff0 1-218
+apps/web/src/components/org/GitHubPane.test.ts
+  s_f0bb92c41dd97a::t_decbe7c94cba86 1-644
+apps/web/src/components/org/GitHubPane.tsx
+  s_f0bb92c41dd97a::t_928f7e64a6200e 1-509
+apps/web/src/components/org/GitHubSkillsPanel.tsx
+  s_f0bb92c41dd97a::t_9ba2d6b6121334 1-331
+apps/web/src/components/org/InvitationsPane.tsx
+  s_f0bb92c41dd97a::t_c10c8fc8a1f38d 1-106
+apps/web/src/components/org/MembersPane.tsx
+  s_f0bb92c41dd97a::t_a0b61456a9ce68 1-113
+apps/web/src/components/org/Onboarding.tsx
+  s_f0bb92c41dd97a::t_c1863a6015f793 1-171
+apps/web/src/components/org/OrgSwitcher.tsx
+  s_f0bb92c41dd97a::t_bc872cbcff35ff 1-86
+apps/web/src/components/org/PreferencesPane.tsx
+  s_f0bb92c41dd97a::t_16ca062f7a0dc2 1-143
+apps/web/src/components/org/ProfilePane.tsx
+  s_f0bb92c41dd97a::t_8811aa7a14abe8 1-210
+apps/web/src/components/org/RoleSelect.tsx
+  s_f0bb92c41dd97a::t_66f75683e2a291 1-82
+apps/web/src/components/org/SettingsApp.test.ts
+  s_f0bb92c41dd97a::t_0301b1c0298a2a 1-114
+apps/web/src/components/org/SettingsApp.tsx
+  s_f0bb92c41dd97a::t_a5c7457ae51b58 1-537
+apps/web/src/components/org/SettingsDrawer.tsx
+  s_f0bb92c41dd97a::t_3cb9e3a19e8c42 1-199
+apps/web/src/components/org/SettingsSidebar.tsx
+  s_f0bb92c41dd97a::t_1cf1ebf82555e9 1-200
+apps/web/src/components/org/SettingsView.tsx
+  s_f0bb92c41dd97a::t_1b1f2996f05114 1-123
+apps/web/src/components/org/WorkspaceAvatar.tsx
+  s_f0bb92c41dd97a::t_5088d0b46aaf10 1-39
+apps/web/src/components/org/WorkspaceGeneralPane.tsx
+  s_f0bb92c41dd97a::t_12df858f4df0a4 1-228
+apps/web/src/components/org/WorkspaceLoadError.test.ts
+  s_f0bb92c41dd97a::t_c3e61ddd9a7e77 1-37
+apps/web/src/components/org/WorkspaceLoadError.tsx
+  s_f0bb92c41dd97a::t_8eb6af1031c20f 1-53
+apps/web/src/components/org/WorkspaceLogoPicker.tsx
+  s_f0bb92c41dd97a::t_5557f517019630 1-341
+apps/web/src/components/org/dialogs.tsx
+  s_f0bb92c41dd97a::t_0735b725f014e1 1-78
+apps/web/src/components/org/model.ts
+  s_f0bb92c41dd97a::t_b1f716ba6ae8ae 1-189
+apps/web/src/components/org/paneKit.tsx
+  s_f0bb92c41dd97a::t_bf723ffd850ae9 1-188
+apps/web/src/components/org/primitives.tsx
+  s_f0bb92c41dd97a::t_f39ccf5eb4c9c7 1-108
+apps/web/src/components/org/roles.ts
+  s_f0bb92c41dd97a::t_7d4b1537ab0c26 1-21
+apps/web/src/components/org/useOrgActions.ts
+  s_f0bb92c41dd97a::t_9f3288034fa219 1-64
+apps/web/src/components/secrets/SecretsApp.test.ts
+  s_f0bb92c41dd97a::t_5d141fb05db43c 1-267
+apps/web/src/components/secrets/SecretsApp.tsx
+  s_f0bb92c41dd97a::t_cfd911c4debc24 1-510
+apps/web/src/components/secrets/SkillSecretConfiguration.test.ts
+  s_f0bb92c41dd97a::t_ff8984fa161dbb 1-132
+apps/web/src/components/secrets/SkillSecretConfiguration.tsx
+  s_f0bb92c41dd97a::t_43276e9bb72cb6 1-114
+apps/web/src/components/secrets/VaultSecretField.tsx
+  s_f0bb92c41dd97a::t_5779c2c1e72347 1-248
+apps/web/src/components/skills/ArchivedListView.test.ts
+  s_f0bb92c41dd97a::t_5c7e4ecbc3c1e3 1-63
+apps/web/src/components/skills/ArchivedListView.tsx
+  s_f0bb92c41dd97a::t_9297a1f83be6d9 1-135
+apps/web/src/components/skills/CommandPalette.tsx
+  s_f0bb92c41dd97a::t_84122f9f6e089d 1-205
+apps/web/src/components/skills/DependenciesTab.test.ts
+  s_f0bb92c41dd97a::t_0097d74e1d1ff2 1-142
+apps/web/src/components/skills/DependenciesTab.tsx
+  s_f0bb92c41dd97a::t_969678411f1e07 1-356
+apps/web/src/components/skills/DetailView.test.ts
+  s_f0bb92c41dd97a::t_da966d7fda4aa9 1-285
+apps/web/src/components/skills/DetailView.tsx
+  s_f0bb92c41dd97a::t_156fdf063d570b 1-671
+apps/web/src/components/skills/FilterMenu.tsx
+  s_f0bb92c41dd97a::t_3b7bb318f5a579 1-96
+apps/web/src/components/skills/GettingStartedCard.test.ts
+  s_f0bb92c41dd97a::t_cdd83890368655 1-298
+apps/web/src/components/skills/GettingStartedCard.tsx
+  s_f0bb92c41dd97a::t_176e02b6028899 1-259
+apps/web/src/components/skills/InstallDialog.test.ts
+  s_f0bb92c41dd97a::t_fbbd6d583437f5 1-138
+apps/web/src/components/skills/ListView.test.ts
+  s_f0bb92c41dd97a::t_51dbe28fc6cd72 1-566
+apps/web/src/components/skills/ListView.tsx
+  s_f0bb92c41dd97a::t_ac9c216c6c2cf4 1-673
+apps/web/src/components/skills/LocalSkillsView.test.ts
+  s_f0bb92c41dd97a::t_1bf0ae42be6f0d 1-305
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_f0bb92c41dd97a::t_413967d1c53dd9 1-824
+apps/web/src/components/skills/PublicReleaseDialog.tsx
+  s_f0bb92c41dd97a::t_71fa3eda3d2cd9 1-169
+apps/web/src/components/skills/ShareDialog.tsx
+  s_f0bb92c41dd97a::t_1c9a00c40e7094 1-155
+apps/web/src/components/skills/Sidebar.test.ts
+  s_f0bb92c41dd97a::t_167157f3f36b97 1-259
+apps/web/src/components/skills/Sidebar.tsx
+  s_f0bb92c41dd97a::t_d944ce083fcbf6 1-1221
+apps/web/src/components/skills/SkillDatabaseTab.test.ts
+  s_f0bb92c41dd97a::t_8d8a986d5778b6 1-530
+apps/web/src/components/skills/SkillDatabaseTab.tsx
+  s_f0bb92c41dd97a::t_f6ac9081f90918 1-996
+apps/web/src/components/skills/SkillPanel.test.ts
+  s_f0bb92c41dd97a::t_a02b23fffefc52 1-198
+apps/web/src/components/skills/SkillPanel.tsx
+  s_f0bb92c41dd97a::t_ece333fbe6bbb2 1-214
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_f0bb92c41dd97a::t_98ed9e41528b64 1-2211
+apps/web/src/components/skills/SkillsApp.tsx
+  s_f0bb92c41dd97a::t_48594680a1591e 1-1983
+apps/web/src/components/skills/UploadDialog.tsx
+  s_f0bb92c41dd97a::t_04afde6fbd7b39 1-2016
+apps/web/src/components/skills/blocks.tsx
+  s_f0bb92c41dd97a::t_85e32cdcf5876d 1-114
+apps/web/src/components/skills/detailParts.test.ts
+  s_f0bb92c41dd97a::t_652cd23dba64d8 1-191
+apps/web/src/components/skills/detailParts.tsx
+  s_f0bb92c41dd97a::t_4702053226799d 1-541
+apps/web/src/components/skills/discussion.tsx
+  s_f0bb92c41dd97a::t_38715941131e15 1-606
+apps/web/src/components/skills/dragGeometry.test.ts
+  s_f0bb92c41dd97a::t_58ed3230692f41 1-168
+apps/web/src/components/skills/dragGeometry.ts
+  s_f0bb92c41dd97a::t_e6d24dbb3ee3b3 1-127
+apps/web/src/components/skills/fileFormat.test.ts
+  s_f0bb92c41dd97a::t_7daf455c38d0f9 1-31
+apps/web/src/components/skills/fileFormat.ts
+  s_f0bb92c41dd97a::t_f8b19e9b8b5fdc 1-217
+apps/web/src/components/skills/fileview.test.ts
+  s_f0bb92c41dd97a::t_2da81abab82db3 1-108
+apps/web/src/components/skills/fileview.tsx
+  s_f0bb92c41dd97a::t_f99a9521348f1d 1-467
+apps/web/src/components/skills/filters.test.ts
+  s_f0bb92c41dd97a::t_d6fff0e5940092 1-141
+apps/web/src/components/skills/filters.ts
+  s_f0bb92c41dd97a::t_a92d6423d81b9a 1-50
+apps/web/src/components/skills/listGrouping.test.ts
+  s_f0bb92c41dd97a::t_89a2887f1025fe 1-290
+apps/web/src/components/skills/listGrouping.ts
+  s_f0bb92c41dd97a::t_1026512fe0057c 1-242
+apps/web/src/components/skills/markdown.test.ts
+  s_f0bb92c41dd97a::t_e6da92bcd6066d 1-102
+apps/web/src/components/skills/markdown.tsx
+  s_f0bb92c41dd97a::t_62b5a73a271c3b 1-204
+apps/web/src/components/skills/prompts.ts
+  s_f0bb92c41dd97a::t_37750fcaeda5c8 1-31
+apps/web/src/components/skills/route.test.ts
+  s_f0bb92c41dd97a::t_6b20455e479ddc 1-169
+apps/web/src/components/skills/route.ts
+  s_f0bb92c41dd97a::t_f3820458b3132e 1-167
+apps/web/src/components/skills/sidebarTree.test.ts
+  s_f0bb92c41dd97a::t_b4a1f1c0a4184b 1-71
+apps/web/src/components/skills/sidebarTree.ts
+  s_f0bb92c41dd97a::t_f1184ba0a9f75b 1-157
+apps/web/src/components/skills/skillActions.test.ts
+  s_f0bb92c41dd97a::t_0215813a14e6e6 1-201
+apps/web/src/components/skills/skillActions.ts
+  s_f0bb92c41dd97a::t_bc5b8987aecdc5 1-131
+apps/web/src/components/skills/updateFlow.test.ts
+  s_f0bb92c41dd97a::t_6f5abc20d394ad 1-293
+apps/web/src/components/skills/useSkillDrag.ts
+  s_f0bb92c41dd97a::t_f962feeca42eb5 1-253
+apps/web/src/components/ui/button.tsx
+  s_f0bb92c41dd97a::t_fbaec3006c22e4 1-64
+apps/web/src/components/ui/collapsible.tsx
+  s_f0bb92c41dd97a::t_68eb447591a1de 1-33
+apps/web/src/components/ui/tooltip.tsx
+  s_f0bb92c41dd97a::t_681f8bcb45304d 1-57
+apps/web/src/instrumentation.ts
+  s_f0bb92c41dd97a::t_c84f7a9dbce336 1-13
+apps/web/src/lib/agentAuth.ts
+  s_f0bb92c41dd97a::t_7dcadbba8105a0 1-78
+apps/web/src/lib/apiClient.test.ts
+  s_f0bb92c41dd97a::t_f413d49c23204a 1-83
+apps/web/src/lib/apiClient.ts
+  s_f0bb92c41dd97a::t_9499d63fd1d162 1-105
+apps/web/src/lib/apiServer.test.ts
+  s_f0bb92c41dd97a::t_6d5d2f33d1ff36 1-39
+apps/web/src/lib/apiServer.ts
+  s_f0bb92c41dd97a::t_240456a69bb8e9 1-103
+apps/web/src/lib/authProxy.ts
+  s_f0bb92c41dd97a::t_f89e675eaa2268 1-87
+apps/web/src/lib/authRouteStates.test.ts
+  s_f0bb92c41dd97a::t_eede136152697d 1-72
+apps/web/src/lib/companionAttachments.test.ts
+  s_f0bb92c41dd97a::t_a7a5fa6b1096b7 1-89
+apps/web/src/lib/companionProviderSettingsCache.test.ts
+  s_f0bb92c41dd97a::t_008de4e4452e34 1-170
+apps/web/src/lib/companionProviderSettingsCache.ts
+  s_f0bb92c41dd97a::t_e2d654eac3ded0 1-123
+apps/web/src/lib/companionSkillGate.ts
+  s_f0bb92c41dd97a::t_344edaf961f03c 1-2
+apps/web/src/lib/companions.routineHistory.test.ts
+  s_f0bb92c41dd97a::t_6ef510efbae21e 1-48
+apps/web/src/lib/companions.ts
+  s_f0bb92c41dd97a::t_ab6dd8f0a4e07d 1-711
+apps/web/src/lib/currentOrg.ts
+  s_f0bb92c41dd97a::t_a599d6a71f77ed 1-27
+apps/web/src/lib/format.ts
+  s_f0bb92c41dd97a::t_15a1c23e30feab 1-54
+apps/web/src/lib/github.ts
+  s_f0bb92c41dd97a::t_7755125a151981 1-74
+apps/web/src/lib/onboarding.test.ts
+  s_f0bb92c41dd97a::t_fdb4a1bcbd54d8 1-46
+apps/web/src/lib/onboarding.ts
+  s_f0bb92c41dd97a::t_d3e0aefa69c215 1-82
+apps/web/src/lib/org.test.ts
+  s_f0bb92c41dd97a::t_a19b5f9cbed456 1-22
+apps/web/src/lib/org.ts
+  s_f0bb92c41dd97a::t_48ef5266d59df0 1-175
+apps/web/src/lib/queries.ts
+  s_f0bb92c41dd97a::t_d80cc78850ca87 1-484
+apps/web/src/lib/secrets.ts
+  s_f0bb92c41dd97a::t_dba7e2fce6f879 1-66
+apps/web/src/lib/serverAuth.test.ts
+  s_f0bb92c41dd97a::t_2dc2bbea5b90b9 1-67
+apps/web/src/lib/serverAuth.ts
+  s_f0bb92c41dd97a::t_3076068327dd19 1-43
+apps/web/src/lib/settingsClient.test.ts
+  s_f0bb92c41dd97a::t_78e8c88f723caf 1-13
+apps/web/src/lib/settingsClient.ts
+  s_f0bb92c41dd97a::t_5b9c392420c460 1-44
+apps/web/src/lib/settingsData.test.ts
+  s_f0bb92c41dd97a::t_6e2ecee19bd422 1-168
+apps/web/src/lib/settingsData.ts
+  s_f0bb92c41dd97a::t_93a4603a3ee38f 1-92
+apps/web/src/lib/settingsViewModel.ts
+  s_f0bb92c41dd97a::t_2a209550e6bc78 1-149
+apps/web/src/lib/skillDatabaseQueries.test.ts
+  s_f0bb92c41dd97a::t_a2466a46ae9fb8 1-20
+apps/web/src/lib/skillDatabaseQueries.ts
+  s_f0bb92c41dd97a::t_2627d740f836c6 1-70
+apps/web/src/lib/theme.ts
+  s_f0bb92c41dd97a::t_63a816b6db4b33 1-101
+apps/web/src/lib/timezones.ts
+  s_f0bb92c41dd97a::t_b37860be844a76 1-22
+apps/web/src/lib/types.test.ts
+  s_f0bb92c41dd97a::t_8aebfd9dd67191 1-93
+apps/web/src/lib/types.ts
+  s_f0bb92c41dd97a::t_b4defb9e01517c 1-192
+apps/web/src/lib/utils.ts
+  s_f0bb92c41dd97a::t_bf2e0498f4200d 1-11
+apps/web/src/middleware.test.ts
+  s_f0bb92c41dd97a::t_92be9cfe50e8d3 1-75
+apps/web/src/middleware.ts
+  s_f0bb92c41dd97a::t_1cfba5506fce07 1-75
+apps/web/src/styles/app.css
+  s_f0bb92c41dd97a::t_d3dffeb0141d2f 1-390
+apps/web/src/styles/auth.css
+  s_f0bb92c41dd97a::t_fd21c9da76ea8b 1-237
+apps/web/src/styles/cds.css
+  s_f0bb92c41dd97a::t_a7d77da33f8f54 1-155
+apps/web/src/styles/chat.css
+  s_f0bb92c41dd97a::t_4f54c28d2c7aa0 1-201
+apps/web/src/styles/companions.css
+  s_f0bb92c41dd97a::t_a4e9ac98a73265 1-3226
+apps/web/src/styles/companions.mobile.test.ts
+  s_f0bb92c41dd97a::t_ab3f1102a54c75 1-389
+apps/web/src/styles/deps.css
+  s_f0bb92c41dd97a::t_0ce9c9a2d36953 1-190
+apps/web/src/styles/landing.css
+  s_f0bb92c41dd97a::t_709b5bb516d642 1-686
+apps/web/src/styles/mobile-form-controls.test.ts
+  s_f0bb92c41dd97a::t_30b3eb534d6f17 1-87
+apps/web/src/styles/onboarding.css
+  s_f0bb92c41dd97a::t_2a6291ffc25e72 1-332
+apps/web/src/styles/org.css
+  s_f0bb92c41dd97a::t_fe126a8a72197e 1-240
+apps/web/src/styles/secrets.css
+  s_f0bb92c41dd97a::t_b3b232d1053b29 1-162
+apps/web/src/styles/settings.css
+  s_f0bb92c41dd97a::t_e460dbd91aecac 1-853
+apps/web/src/styles/share.css
+  s_f0bb92c41dd97a::t_dfe0f490cc9738 1-319
+apps/web/src/styles/skill-databases.css
+  s_f0bb92c41dd97a::t_7b233d5ba90d86 1-606
+apps/web/src/styles/skills.css
+  s_f0bb92c41dd97a::t_da14e6813f9312 1-1767
+apps/web/src/styles/tokens.css
+  s_f0bb92c41dd97a::t_faf634ee9a6d33 1-236
+apps/web/src/styles/upload.css
+  s_f0bb92c41dd97a::t_307addc610081c 1-323
+apps/web/test/nextConfig.test.ts
+  s_f0bb92c41dd97a::t_589d5da0ccf50b 1-25
+apps/web/test/sentry.shared.test.ts
+  s_f0bb92c41dd97a::t_a22f6ffa446d46 1-39
+apps/web/test/setup.ts
+  s_f0bb92c41dd97a::t_b03c06272818e2 1-35
+apps/web/tsconfig.json
+  s_f0bb92c41dd97a::t_d67f233fbce26f 1-38
+apps/web/vitest.config.ts
+  s_f0bb92c41dd97a::t_9e9b60fba0a6fb 1-19
+apps/worker/package.json
+  s_f0bb92c41dd97a::t_46362d5f19826d 1-33
+apps/worker/src/apnsSupervisor.test.ts
+  s_f0bb92c41dd97a::t_f5214c8a0aadc8 1-161
+apps/worker/src/apnsSupervisor.ts
+  s_f0bb92c41dd97a::t_f508930f5ae96e 1-364
+apps/worker/src/billingSupervisor.test.ts
+  s_f0bb92c41dd97a::t_9c1d75de3ad551 1-226
+apps/worker/src/billingSupervisor.ts
+  s_f0bb92c41dd97a::t_99f02635283bcc 1-144
+apps/worker/src/githubSupervisor.test.ts
+  s_f0bb92c41dd97a::t_a97318f4055eb2 1-326
+apps/worker/src/githubSupervisor.ts
+  s_f0bb92c41dd97a::t_719b09d01b4881 1-299
+apps/worker/src/index.ts
+  s_f0bb92c41dd97a::t_1a86d585dd2174 1-44
+apps/worker/src/notificationText.test.ts
+  s_f0bb92c41dd97a::t_5f175d8d704ef2 1-81
+apps/worker/src/notificationText.ts
+  s_f0bb92c41dd97a::t_a07c9143c7134d 1-75
+apps/worker/src/routineSupervisor.test.ts
+  s_f0bb92c41dd97a::t_3aae29f5c66fd3 1-98
+apps/worker/src/routineSupervisor.ts
+  s_f0bb92c41dd97a::t_8c8548e09b6d66 1-141
+apps/worker/src/sentry.ts
+  s_f0bb92c41dd97a::t_f10860b6bdb3c7 1-40
+apps/worker/src/sentrySanitize.ts
+  s_f0bb92c41dd97a::t_fffdc4005d8a48 1-58
+apps/worker/src/skillDatabaseCleanup.test.ts
+  s_f0bb92c41dd97a::t_32cb6faaa714f9 1-100
+apps/worker/src/skillDatabaseCleanup.ts
+  s_f0bb92c41dd97a::t_1a2872ed80c39e 1-99
+apps/worker/src/supervisors.test.ts
+  s_f0bb92c41dd97a::t_2401cf89dccc89 1-47
+apps/worker/src/supervisors.ts
+  s_f0bb92c41dd97a::t_5de561e0f7daef 1-70
+apps/worker/tsconfig.json
+  s_f0bb92c41dd97a::t_a686e405796375 1-5
+apps/worker/tsup.config.ts
+  s_f0bb92c41dd97a::t_616f8df319576f 1-14
+cli/README.md
+  s_f0bb92c41dd97a::t_39f51da2f3bb5b 1-62
+cli/package.json
+  s_f0bb92c41dd97a::t_c1ec8ccb9abd5b 1-33
+cli/src/commands/auth.ts
+  s_f0bb92c41dd97a::t_9f09d2f6e8dcda 1-94
+cli/src/commands/skills.test.ts
+  s_f0bb92c41dd97a::t_43b6dd4573e600 1-252
+cli/src/commands/skills.ts
+  s_f0bb92c41dd97a::t_c71550e712dc09 1-424
+cli/src/index.ts
+  s_f0bb92c41dd97a::t_bcff6fe4d97901 1-163
+cli/src/lib/client.test.ts
+  s_f0bb92c41dd97a::t_5a29dfab291677 1-40
+cli/src/lib/client.ts
+  s_f0bb92c41dd97a::t_7f2044a6c631b3 1-48
+cli/src/lib/config.ts
+  s_f0bb92c41dd97a::t_f7a1bc63d57714 1-31
+cli/src/lib/errors.ts
+  s_f0bb92c41dd97a::t_13f8cbe28d97bc 1-10
+cli/src/lib/lockfile.ts
+  s_f0bb92c41dd97a::t_48a51c6ee9b2a6 1-38
+cli/src/lib/output.ts
+  s_f0bb92c41dd97a::t_56d712a54f1bc7 1-57
+cli/src/lib/paths.ts
+  s_f0bb92c41dd97a::t_8b348c2b119906 1-13
+cli/src/lib/registry.ts
+  s_f0bb92c41dd97a::t_aea204e6256074 1-67
+cli/src/lib/session.ts
+  s_f0bb92c41dd97a::t_ec3977fff95854 1-34
+cli/tsconfig.json
+  s_f0bb92c41dd97a::t_2c23b32a99d331 1-9
+cli/tsup.config.ts
+  s_f0bb92c41dd97a::t_060ed33eeaaeb8 1-12
+deploy/railway/Dockerfile.backend
+  s_f0bb92c41dd97a::t_a2f36bbf6409e7 1-61
+deploy/railway/Dockerfile.web
+  s_f0bb92c41dd97a::t_61fe0a98e27695 1-67
+deploy/railway/README.md
+  s_f0bb92c41dd97a::t_33c68ba4438840 1-318
+deploy/railway/api.railway.json
+  s_f0bb92c41dd97a::t_ab12bcc2a48910 1-27
+deploy/railway/release.railway.json
+  s_f0bb92c41dd97a::t_119945aaee01b0 1-23
+deploy/railway/runtime.railway.json
+  s_f0bb92c41dd97a::t_0bd28dac0c4de0 1-34
+deploy/railway/web.railway.json
+  s_f0bb92c41dd97a::t_68b1fdfeeca6e9 1-31
+deploy/railway/worker.railway.json
+  s_f0bb92c41dd97a::t_5b7c175efab8c0 1-29
+deploy/slack/manifest.send.yaml
+  s_f0bb92c41dd97a::t_c67c653f0b4b79 1-21
+docker-compose.yml
+  s_f0bb92c41dd97a::t_5711e6a996b80e 1-58
+docs/DEPLOYER-MOBILE-TESTFLIGHT.md
+  s_f0bb92c41dd97a::t_a1ebbb7bdc09b1 1-92
+docs/companion-image-pipeline.md
+  s_f0bb92c41dd97a::t_9245ac2de7d5c9 1-209
+docs/companions-runtime.md
+  s_f0bb92c41dd97a::t_1539ebba216c31 1-1385
+docs/integrations/slack.md
+  s_f0bb92c41dd97a::t_e7f61851346624 1-54
+docs/routine-pi-context-substrate.md
+  s_f0bb92c41dd97a::t_e9d95fbf7f7497 1-279
+docs/runbooks/companions-runtime.md
+  s_f0bb92c41dd97a::t_0b408940acc92b 1-430
+docs/runbooks/routine-isolation-cutover.md
+  s_f0bb92c41dd97a::t_a40fe365c649ea 1-242
+docs/testing.md
+  s_f0bb92c41dd97a::t_3b9f558d00e6c3 1-319
+e2e/critical-flows.spec.ts
+  s_f0bb92c41dd97a::t_c4cacd55bc3ccd 1-247
+examples/skills/incident-summary/SKILL.md
+  s_f0bb92c41dd97a::t_d18487f9ea98dd 1-16
+examples/skills/incident-summary/companion.json
+  s_f0bb92c41dd97a::t_270431d860141a 1-26
+examples/skills/incident-summary/scripts/summarize.py
+  s_f0bb92c41dd97a::t_196f73dbcf9b4d 1-6
+oxlint.config.ts
+  s_f0bb92c41dd97a::t_a2700d22e1a5b2 1-42
+packages/auth/package.json
+  s_f0bb92c41dd97a::t_0fe1f78b41eb01 1-30
+packages/auth/src/agent-auth-origin.test.ts
+  s_f0bb92c41dd97a::t_e4d6015cf800a9 1-115
+packages/auth/src/agent-auth-origin.ts
+  s_f0bb92c41dd97a::t_16cfaee56ae8e3 1-189
+packages/auth/src/agent-auth.test.ts
+  s_f0bb92c41dd97a::t_7ba008a1ac305a 1-348
+packages/auth/src/agent-auth.ts
+  s_f0bb92c41dd97a::t_ee596261f2eebb 1-294
+packages/auth/src/index.ts
+  s_f0bb92c41dd97a::t_c832faac40981a 1-395
+packages/auth/src/mobile-auth.test.ts
+  s_f0bb92c41dd97a::t_f93b546840a656 1-26
+packages/auth/src/mobile-auth.ts
+  s_f0bb92c41dd97a::t_be42968b1be1a9 1-11
+packages/auth/src/postgres-secondary-storage.test.ts
+  s_f0bb92c41dd97a::t_4fdf47b80289a6 1-32
+packages/auth/src/postgres-secondary-storage.ts
+  s_f0bb92c41dd97a::t_021d6fc07f27d7 1-112
+packages/auth/tsconfig.json
+  s_f0bb92c41dd97a::t_da5ed8ca905ef8 1-9
+packages/billing/package.json
+  s_f0bb92c41dd97a::t_b6dd55c36ac59b 1-20
+packages/billing/src/index.ts
+  s_f0bb92c41dd97a::t_b1652df5a4c8e7 1-334
+packages/billing/test/stripeGateway.test.ts
+  s_f0bb92c41dd97a::t_e5a753cd5d8ab7 1-262
+packages/billing/tsconfig.json
+  s_f0bb92c41dd97a::t_fa287349b68ca4 1-5
+packages/box-lab/README.md
+  s_f0bb92c41dd97a::t_de81231aba454a 1-89
+packages/box-lab/assets/Containerfile
+  s_f0bb92c41dd97a::t_d739b29da76ca7 1-33
+packages/box-lab/package.json
+  s_f0bb92c41dd97a::t_5ef21cc2d3d415 1-33
+packages/box-lab/src/cli.ts
+  s_f0bb92c41dd97a::t_26a407f5d3876b 1-151
+packages/box-lab/src/cliLifecycle.ts
+  s_f0bb92c41dd97a::t_8ec2f2a85c6b04 1-20
+packages/box-lab/src/cliOptions.ts
+  s_f0bb92c41dd97a::t_da7132eeb546de 1-45
+packages/box-lab/src/config.ts
+  s_f0bb92c41dd97a::t_4335490237e950 1-101
+packages/box-lab/src/driver.ts
+  s_f0bb92c41dd97a::t_64fe7618eb859a 1-84
+packages/box-lab/src/factory.ts
+  s_f0bb92c41dd97a::t_5f000823bdf78f 1-25
+packages/box-lab/src/fakeModel.ts
+  s_f0bb92c41dd97a::t_667ec8546945e9 1-108
+packages/box-lab/src/guestCommand.ts
+  s_f0bb92c41dd97a::t_640b6ce1776fd4 1-137
+packages/box-lab/src/index.ts
+  s_f0bb92c41dd97a::t_1cf70c602c8feb 1-11
+packages/box-lab/src/lab.ts
+  s_f0bb92c41dd97a::t_d7b0647c430e6d 1-769
+packages/box-lab/src/limaDriver.ts
+  s_f0bb92c41dd97a::t_7fa28d3098c408 1-450
+packages/box-lab/src/ociSystemdDriver.ts
+  s_f0bb92c41dd97a::t_42f593090782a3 1-434
+packages/box-lab/src/process.ts
+  s_f0bb92c41dd97a::t_5ad8308b95c432 1-191
+packages/box-lab/src/processIdentity.ts
+  s_f0bb92c41dd97a::t_8ea2738859ab5b 1-264
+packages/box-lab/src/reset.ts
+  s_f0bb92c41dd97a::t_46badf6a13f935 1-43
+packages/box-lab/src/server.ts
+  s_f0bb92c41dd97a::t_f1d1e1851ea18d 1-346
+packages/box-lab/src/smoke.ts
+  s_f0bb92c41dd97a::t_3b0731a222027a 1-890
+packages/box-lab/src/smokeDispatcher.ts
+  s_f0bb92c41dd97a::t_6fb07b6709f430 1-43
+packages/box-lab/src/state.ts
+  s_f0bb92c41dd97a::t_96bd03bc7612d9 1-136
+packages/box-lab/src/workspaceLock.ts
+  s_f0bb92c41dd97a::t_fc33bee362e3a1 1-241
+packages/box-lab/test/cliLifecycle.test.ts
+  s_f0bb92c41dd97a::t_08600f6adb0cc2 1-144
+packages/box-lab/test/cliOptions.test.ts
+  s_f0bb92c41dd97a::t_99887d8242be3e 1-66
+packages/box-lab/test/config.test.ts
+  s_f0bb92c41dd97a::t_de205575d12533 1-65
+packages/box-lab/test/driver.test.ts
+  s_f0bb92c41dd97a::t_08966695cef480 1-620
+packages/box-lab/test/fakeDriver.ts
+  s_f0bb92c41dd97a::t_3ad5e83d956a4d 1-93
+packages/box-lab/test/fakeModel.test.ts
+  s_f0bb92c41dd97a::t_6028f12160c06b 1-116
+packages/box-lab/test/lifecycle.test.ts
+  s_f0bb92c41dd97a::t_095a048fbd5f0b 1-637
+packages/box-lab/test/process.test.ts
+  s_f0bb92c41dd97a::t_5053e8df2f1a94 1-138
+packages/box-lab/test/processIdentity.test.ts
+  s_f0bb92c41dd97a::t_a879bf9a59a689 1-158
+packages/box-lab/test/reset.test.ts
+  s_f0bb92c41dd97a::t_fd80c57448c47f 1-130
+packages/box-lab/test/server.test.ts
+  s_f0bb92c41dd97a::t_4ea2cf8a3d6a2c 1-195
+packages/box-lab/test/smoke.test.ts
+  s_f0bb92c41dd97a::t_67635296accade 1-95
+packages/box-lab/test/smokeDispatcher.test.ts
+  s_f0bb92c41dd97a::t_2e5834651d3fd9 1-119
+packages/box-lab/test/workspaceLock.test.ts
+  s_f0bb92c41dd97a::t_649f7786fce415 1-241
+packages/box-lab/tsconfig.json
+  s_f0bb92c41dd97a::t_f4de5f418ca9c4 1-7
+packages/box-lab/vitest.config.ts
+  s_f0bb92c41dd97a::t_42121a8bad0868 1-8
+packages/box-runtime/package.json
+  s_f0bb92c41dd97a::t_c909d0fb152458 1-30
+packages/box-runtime/scripts/generate-companion-box-agent.mjs
+  s_f0bb92c41dd97a::t_351ea5537126a1 1-66
+packages/box-runtime/scripts/generate-companion-pi-broker.mjs
+  s_f0bb92c41dd97a::t_111941991d52b1 1-76
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_f0bb92c41dd97a::t_dcadd98653a9fa 1-2615
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_f0bb92c41dd97a::t_d58b2e9b39051d 1-5768
+packages/box-runtime/src/boxMaintenanceClient.test.ts
+  s_f0bb92c41dd97a::t_d54bcaa7b9d5a9 1-1084
+packages/box-runtime/src/boxMaintenanceClient.ts
+  s_f0bb92c41dd97a::t_90db1c749d3b8a 1-1274
+packages/box-runtime/src/boxRuntimeChangeE2E.test.ts
+  s_f0bb92c41dd97a::t_fdb5caa33ac82f 1-169
+packages/box-runtime/src/companionBoxAgent.ts
+  s_f0bb92c41dd97a::t_d352af9ccd1262 1-34
+packages/box-runtime/src/companionBoxAgentClient.test.ts
+  s_f0bb92c41dd97a::t_083f36ef7188a6 1-412
+packages/box-runtime/src/companionBoxAgentClient.ts
+  s_f0bb92c41dd97a::t_edd0d6dd75b548 1-662
+packages/box-runtime/src/companionBoxAgentCore.test.ts
+  s_f0bb92c41dd97a::t_577aa3ea292089 1-537
+packages/box-runtime/src/companionBoxAgentCore.ts
+  s_f0bb92c41dd97a::t_2929abcd3b1ff5 1-854
+packages/box-runtime/src/companionBoxAgentExecutable.ts
+  s_f0bb92c41dd97a::t_c99e4ba5543e58 1-77
+packages/box-runtime/src/companionBoxAgentSource.ts
+  s_f0bb92c41dd97a::t_c33382163398b7 1-8
+packages/box-runtime/src/companionBoxAgentStaging.test.ts
+  s_f0bb92c41dd97a::t_b469237d5198bb 1-53
+packages/box-runtime/src/companionMcpGateway.test.ts
+  s_f0bb92c41dd97a::t_ef5a3673c7fc3a 1-569
+packages/box-runtime/src/companionMcpGateway.ts
+  s_f0bb92c41dd97a::t_d47e604b602374 1-745
+packages/box-runtime/src/companionPermissionBroker.test.ts
+  s_f0bb92c41dd97a::t_8f866a9566544e 1-144
+packages/box-runtime/src/companionPermissionBroker.ts
+  s_f0bb92c41dd97a::t_88c781e70ec314 1-572
+packages/box-runtime/src/companionPiBroker.ts
+  s_f0bb92c41dd97a::t_5dff11a349c620 1-42
+packages/box-runtime/src/companionPiBrokerCore.test.ts
+  s_f0bb92c41dd97a::t_2f94ddaf797d92 1-959
+packages/box-runtime/src/companionPiBrokerCore.ts
+  s_f0bb92c41dd97a::t_c46bd1709cb6a5 1-1358
+packages/box-runtime/src/companionPiBrokerExecutable.ts
+  s_f0bb92c41dd97a::t_597d7c6b36d953 1-449
+packages/box-runtime/src/companionPiBrokerSource.test.ts
+  s_f0bb92c41dd97a::t_f9d3228afe0b2c 1-646
+packages/box-runtime/src/companionPiBrokerSource.ts
+  s_f0bb92c41dd97a::t_9a99e8e6abb276 1-8
+packages/box-runtime/src/companionPiInjection.test.ts
+  s_f0bb92c41dd97a::t_8757f63c1447f9 1-118
+packages/box-runtime/src/companionPiInjection.ts
+  s_f0bb92c41dd97a::t_c4d30e98cb77db 1-223
+packages/box-runtime/src/companionPiModels.test.ts
+  s_f0bb92c41dd97a::t_05c0d916a29daf 1-50
+packages/box-runtime/src/companionPiModels.ts
+  s_f0bb92c41dd97a::t_f0b535afc357b7 1-59
+packages/box-runtime/src/companionPiRoutineSession.ts
+  s_f0bb92c41dd97a::t_28abc0d35411da 1-103
+packages/box-runtime/src/companionPluginSkills.test.ts
+  s_f0bb92c41dd97a::t_4acd827c6c530f 1-51
+packages/box-runtime/src/companionPluginSkills.ts
+  s_f0bb92c41dd97a::t_05634a8795f043 1-191
+packages/box-runtime/src/companionRuntimeBaker.test.ts
+  s_f0bb92c41dd97a::t_fb67425af7cb96 1-372
+packages/box-runtime/src/companionRuntimeBaker.ts
+  s_f0bb92c41dd97a::t_2c205700c79b66 1-344
+packages/box-runtime/src/companionRuntimeError.ts
+  s_f0bb92c41dd97a::t_13ed227ef73ae6 1-57
+packages/box-runtime/src/companionRuntimeImage.test.ts
+  s_f0bb92c41dd97a::t_dbb2b16c9728cb 1-102
+packages/box-runtime/src/companionRuntimeImage.ts
+  s_f0bb92c41dd97a::t_4497d2581ababd 1-142
+packages/box-runtime/src/index.ts
+  s_f0bb92c41dd97a::t_3b2a6a45cdb3ac 1-13
+packages/box-runtime/src/piBundle.ts
+  s_f0bb92c41dd97a::t_febf20dd49a297 1-149
+packages/box-runtime/tsconfig.json
+  s_f0bb92c41dd97a::t_5802e154d15537 1-7
+packages/box-runtime/vitest.config.ts
+  s_f0bb92c41dd97a::t_3f64c2bfc3b201 1-13
+packages/box-sim/README.md
+  s_f0bb92c41dd97a::t_b448e789aa70b8 1-16
+packages/box-sim/fixtures/box/README.md
+  s_f0bb92c41dd97a::t_ea79e8770fdc2c 1-9
+packages/box-sim/fixtures/box/captured-unauthorized.json
+  s_f0bb92c41dd97a::t_b9a9fb624bb242 1
+packages/box-sim/fixtures/box/official-delete-accepted.json
+  s_f0bb92c41dd97a::t_e922d81c5b0948 1
+packages/box-sim/fixtures/box/official-deletion-completed.json
+  s_f0bb92c41dd97a::t_2018c7383a9589 1
+packages/box-sim/fixtures/box/provenance.json
+  s_f0bb92c41dd97a::t_b4242ce1a49424 1-40
+packages/box-sim/fixtures/pi/README.md
+  s_f0bb92c41dd97a::t_b1750687c75253 1-15
+packages/box-sim/fixtures/pi/captured-get-state-0.84.2.jsonl
+  s_f0bb92c41dd97a::t_9f9ed73bc782b3 1
+packages/box-sim/fixtures/pi/captured-openai-completions-tool-events-0.84.2.jsonl
+  s_f0bb92c41dd97a::t_8a5927258584c6 1-4
+packages/box-sim/fixtures/pi/official-commands.jsonl
+  s_f0bb92c41dd97a::t_0fb17e2b7f77a0 1-3
+packages/box-sim/fixtures/pi/official-events.jsonl
+  s_f0bb92c41dd97a::t_8f55107060bee0 1-15
+packages/box-sim/fixtures/pi/official-extension-ui.jsonl
+  s_f0bb92c41dd97a::t_d25ab6853ebadd 1-2
+packages/box-sim/fixtures/pi/official-responses.jsonl
+  s_f0bb92c41dd97a::t_2a71721f3f6a2d 1-2
+packages/box-sim/fixtures/pi/provenance.json
+  s_f0bb92c41dd97a::t_9931625beaff1c 1-84
+packages/box-sim/fixtures/pi/synthetic-faults.json
+  s_f0bb92c41dd97a::t_05c451b776c530 1-32
+packages/box-sim/package.json
+  s_f0bb92c41dd97a::t_102b1168167550 1-31
+packages/box-sim/src/cli.ts
+  s_f0bb92c41dd97a::t_fb062e756fb130 1-70
+packages/box-sim/src/commandShims.ts
+  s_f0bb92c41dd97a::t_d1af30a39a6eb0 1-1576
+packages/box-sim/src/index.ts
+  s_f0bb92c41dd97a::t_2c4e7cdccce25a 1-6
+packages/box-sim/src/pi-process.mjs
+  s_f0bb92c41dd97a::t_5bd1289676a7ce 1-634
+packages/box-sim/src/piController.ts
+  s_f0bb92c41dd97a::t_d6b6825045d88d 1-473
+packages/box-sim/src/protocol.ts
+  s_f0bb92c41dd97a::t_9a6c79bdb5f3b6 1-217
+packages/box-sim/src/scenarios.ts
+  s_f0bb92c41dd97a::t_921a65cba7f7f4 1-135
+packages/box-sim/src/server.ts
+  s_f0bb92c41dd97a::t_b9071c65b25146 1-1220
+packages/box-sim/src/simulator.ts
+  s_f0bb92c41dd97a::t_c3518d0ee8b62a 1-877
+packages/box-sim/test/agentListener.test.ts
+  s_f0bb92c41dd97a::t_b3e2039a25fc07 1-305
+packages/box-sim/test/boxContractFixtures.test.ts
+  s_f0bb92c41dd97a::t_797d25a4349719 1-60
+packages/box-sim/test/boxRuntimeAdapter.test.ts
+  s_f0bb92c41dd97a::t_b28b6a9a92738a 1-323
+packages/box-sim/test/commandShims.test.ts
+  s_f0bb92c41dd97a::t_4d15f9e4617db6 1-797
+packages/box-sim/test/contractFixtures.test.ts
+  s_f0bb92c41dd97a::t_b139de0d65f029 1-189
+packages/box-sim/test/faults.test.ts
+  s_f0bb92c41dd97a::t_b71cfd4d7a3e01 1-102
+packages/box-sim/test/fixtures/delayed-close-child.mjs
+  s_f0bb92c41dd97a::t_8cf6d611abba73 1-13
+packages/box-sim/test/fixtures/pi-unterminated.mjs
+  s_f0bb92c41dd97a::t_1b13ff91bd1a2b 1
+packages/box-sim/test/piProcess.test.ts
+  s_f0bb92c41dd97a::t_80b0e7f5d02c05 1-553
+packages/box-sim/test/server.test.ts
+  s_f0bb92c41dd97a::t_d007fe47098bf6 1-531
+packages/box-sim/tsconfig.json
+  s_f0bb92c41dd97a::t_30c9e055e7e70e 1-7
+packages/box-sim/vitest.config.ts
+  s_f0bb92c41dd97a::t_503531dcc43ec9 1-10
+packages/companion-runtime/package.json
+  s_f0bb92c41dd97a::t_b9bf9f122a71ed 1-21
+packages/companion-runtime/src/attempt.ts
+  s_f0bb92c41dd97a::t_fa2b0c627e1ad7 1-1605
+packages/companion-runtime/src/attemptPromptContext.test.ts
+  s_f0bb92c41dd97a::t_c533c748e8ce5e 1-20
+packages/companion-runtime/src/clock.ts
+  s_f0bb92c41dd97a::t_2552521db2cf62 1-31
+packages/companion-runtime/src/credentialRedaction.ts
+  s_f0bb92c41dd97a::t_23f31d17a00152 1-38
+packages/companion-runtime/src/decision.ts
+  s_f0bb92c41dd97a::t_b1a1b69410787c 1-175
+packages/companion-runtime/src/desktopAuth.test.ts
+  s_f0bb92c41dd97a::t_110c74928f3c70 1-99
+packages/companion-runtime/src/desktopAuth.ts
+  s_f0bb92c41dd97a::t_08360e7d9a124d 1-73
+packages/companion-runtime/src/engine.test.ts
+  s_f0bb92c41dd97a::t_ba25d847adc3ac 1-2964
+packages/companion-runtime/src/engine.ts
+  s_f0bb92c41dd97a::t_bd9e9bfe8c8ea7 1-421
+packages/companion-runtime/src/errors.test.ts
+  s_f0bb92c41dd97a::t_8f36f48ec52549 1-71
+packages/companion-runtime/src/errors.ts
+  s_f0bb92c41dd97a::t_b71a0d8e2af05a 1-229
+packages/companion-runtime/src/executionControl.ts
+  s_f0bb92c41dd97a::t_c37d13cb2ff96d 1-24
+packages/companion-runtime/src/handler.ts
+  s_f0bb92c41dd97a::t_e6060646e04f10 1-20
+packages/companion-runtime/src/health.ts
+  s_f0bb92c41dd97a::t_d916b5d2f26eca 1-215
+packages/companion-runtime/src/imageRegistry.test.ts
+  s_f0bb92c41dd97a::t_a7a8e2678fcc66 1-261
+packages/companion-runtime/src/imageRegistry.ts
+  s_f0bb92c41dd97a::t_438f50cad672ab 1-246
+packages/companion-runtime/src/index.test.ts
+  s_f0bb92c41dd97a::t_9b29a840b1b5c2 1-17
+packages/companion-runtime/src/index.ts
+  s_f0bb92c41dd97a::t_912514220028ed 1-117
+packages/companion-runtime/src/layoutRefresh.test.ts
+  s_f0bb92c41dd97a::t_bc3716a61933a2 1-140
+packages/companion-runtime/src/layoutRefresh.ts
+  s_f0bb92c41dd97a::t_9bbdd870895f57 1-69
+packages/companion-runtime/src/leaseSession.test.ts
+  s_f0bb92c41dd97a::t_b9d1dd89e9f59a 1-163
+packages/companion-runtime/src/leaseSession.ts
+  s_f0bb92c41dd97a::t_0dde3e734086f7 1-510
+packages/companion-runtime/src/logging.test.ts
+  s_f0bb92c41dd97a::t_cc02561164b210 1-78
+packages/companion-runtime/src/logging.ts
+  s_f0bb92c41dd97a::t_2a662060c249de 1-191
+packages/companion-runtime/src/operations.test.ts
+  s_f0bb92c41dd97a::t_7831e57533e6ae 1-1522
+packages/companion-runtime/src/operations.ts
+  s_f0bb92c41dd97a::t_ee9584d2fe1472 1-1198
+packages/companion-runtime/src/piEvents.test.ts
+  s_f0bb92c41dd97a::t_3cfddb823a4ebc 1-1697
+packages/companion-runtime/src/piEvents.ts
+  s_f0bb92c41dd97a::t_d77311963559d5 1-1227
+packages/companion-runtime/src/ports.ts
+  s_f0bb92c41dd97a::t_baad10d68352e7 1-432
+packages/companion-runtime/src/projectionRedaction.ts
+  s_f0bb92c41dd97a::t_66a2e62d6c5b3c 1-44
+packages/companion-runtime/src/retry.test.ts
+  s_f0bb92c41dd97a::t_4639ea98f6551c 1-163
+packages/companion-runtime/src/retry.ts
+  s_f0bb92c41dd97a::t_2dfa0b71ae16b9 1-116
+packages/companion-runtime/src/scheduler.test.ts
+  s_f0bb92c41dd97a::t_69f854ad429ae0 1-452
+packages/companion-runtime/src/scheduler.ts
+  s_f0bb92c41dd97a::t_50d8ba7f605af7 1-282
+packages/companion-runtime/src/settings.test.ts
+  s_f0bb92c41dd97a::t_bca3db6c9f61e1 1-244
+packages/companion-runtime/src/settings.ts
+  s_f0bb92c41dd97a::t_06c067f81a96a2 1-162
+packages/companion-runtime/src/settingsActivation.test.ts
+  s_f0bb92c41dd97a::t_b102f1935bd51f 1-34
+packages/companion-runtime/src/settingsActivation.ts
+  s_f0bb92c41dd97a::t_944377bd7a194e 1-89
+packages/companion-runtime/src/store.test.ts
+  s_f0bb92c41dd97a::t_05a8c458887df6 1-714
+packages/companion-runtime/src/store.ts
+  s_f0bb92c41dd97a::t_0f504b1dbb7000 1-1315
+packages/companion-runtime/src/test/fixtures.ts
+  s_f0bb92c41dd97a::t_e13a9fa4b26b2a 1-995
+packages/companion-runtime/src/types.test.ts
+  s_f0bb92c41dd97a::t_e3d7739a416197 1-220
+packages/companion-runtime/src/types.ts
+  s_f0bb92c41dd97a::t_35fb73e5992dc9 1-936
+packages/companion-runtime/tsconfig.json
+  s_f0bb92c41dd97a::t_3171cd5b182246 1-7
+packages/companion-skill/client/approval.test.ts
+  s_f0bb92c41dd97a::t_bff7841b535751 1-37
+packages/companion-skill/client/approval.ts
+  s_f0bb92c41dd97a::t_a709017b598a5b 1-38
+packages/companion-skill/client/auth-mode.test.ts
+  s_f0bb92c41dd97a::t_b56700ea5a605d 1-44
+packages/companion-skill/client/auth-mode.ts
+  s_f0bb92c41dd97a::t_23bbcc12b4afe8 1-36
+packages/companion-skill/client/bundle.test.ts
+  s_f0bb92c41dd97a::t_a80ed1aee3cae0 1-406
+packages/companion-skill/client/index.ts
+  s_f0bb92c41dd97a::t_a7cb942701419b 1-781
+packages/companion-skill/client/operations.test.ts
+  s_f0bb92c41dd97a::t_3d92cbdd68bf93 1-85
+packages/companion-skill/client/operations.ts
+  s_f0bb92c41dd97a::t_6c77c7778d0420 1-110
+packages/companion-skill/client/safe-install.test.ts
+  s_f0bb92c41dd97a::t_e218140d7d7f0f 1-317
+packages/companion-skill/client/safe-install.ts
+  s_f0bb92c41dd97a::t_ff682fa8ebb556 1-518
+packages/companion-skill/client/storage.test.ts
+  s_f0bb92c41dd97a::t_0fc73e02f4bfe5 1-174
+packages/companion-skill/client/storage.ts
+  s_f0bb92c41dd97a::t_84705b72bd6435 1-378
+packages/companion-skill/package.json
+  s_f0bb92c41dd97a::t_b82407f8d077ff 1-39
+packages/companion-skill/scripts/check-agent-client.mjs
+  s_f0bb92c41dd97a::t_2a4e4559a6ca8d 1-42
+packages/companion-skill/scripts/check-version-bump.mjs
+  s_f0bb92c41dd97a::t_1c787fe3a118d0 1-131
+packages/companion-skill/scripts/update-integrity.mjs
+  s_f0bb92c41dd97a::t_ed673546520fac 1-64
+packages/companion-skill/skill/SKILL.md
+  s_f0bb92c41dd97a::t_f32591bbc9302e 1-1395
+packages/companion-skill/skill/companion.integrity.json
+  s_f0bb92c41dd97a::t_6af6c7bedb1413 1-23
+packages/companion-skill/skill/companion.json
+  s_f0bb92c41dd97a::t_5125b4e3369272 1-1140
+packages/companion-skill/skill/evals/evals.json
+  s_f0bb92c41dd97a::t_4399ee1dcaf133 1-224
+packages/companion-skill/skill/reference/api.md
+  s_f0bb92c41dd97a::t_bf87c282557718 1-942
+packages/companion-skill/skill/scripts/bootstrap.py
+  s_f0bb92c41dd97a::t_984e687e2eabd9 1-327
+packages/companion-skill/skill/scripts/bootstrap_integrity.py
+  s_f0bb92c41dd97a::t_6c97a439290bfd 1-169
+packages/companion-skill/skill/scripts/bootstrap_update.py
+  s_f0bb92c41dd97a::t_2a30dfe8a08f0d 1-373
+packages/companion-skill/skill/scripts/check_updates.py
+  s_f0bb92c41dd97a::t_4e8154b523e9be 1-15
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_f0bb92c41dd97a::t_a6814f2985222f 1-144
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_f0bb92c41dd97a::t_76d4205ab7dfbf 1-1148
+packages/companion-skill/skill/scripts/create_secret.py
+  s_f0bb92c41dd97a::t_36b7685cf2ccef 1-94
+packages/companion-skill/skill/scripts/install_skill.py
+  s_f0bb92c41dd97a::t_206e43139d49a8 1-927
+packages/companion-skill/skill/scripts/onboarding_scan.py
+  s_f0bb92c41dd97a::t_82eb0378a01e19 1-407
+packages/companion-skill/skill/scripts/secrets_runtime.py
+  s_f0bb92c41dd97a::t_15d36f63cae08a 1-426
+packages/companion-skill/skill/scripts/skill_guard.py
+  s_f0bb92c41dd97a::t_399768579abb73 1-813
+packages/companion-skill/skill/scripts/sync_companion.py
+  s_f0bb92c41dd97a::t_2f1bdb3e902e5e 1-86
+packages/companion-skill/skill/scripts/sync_secrets.py
+  s_f0bb92c41dd97a::t_7a08c8d6ce5dde 1-126
+packages/companion-skill/skill/scripts/test_bootstrap.py
+  s_f0bb92c41dd97a::t_67244c9822ef3d 1-956
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_f0bb92c41dd97a::t_cc6e01cbf28b8e 1-1362
+packages/companion-skill/skill/scripts/test_onboarding_scan.py
+  s_f0bb92c41dd97a::t_9c3e6166053444 1-296
+packages/companion-skill/skill/scripts/test_secrets_runtime.py
+  s_f0bb92c41dd97a::t_c6b5d46a7b6827 1-296
+packages/companion-skill/skill/scripts/test_skill_guard.py
+  s_f0bb92c41dd97a::t_e7f8c89461d5b8 1-406
+packages/companion-skill/skill/scripts/test_sync_companion.py
+  s_f0bb92c41dd97a::t_3203a5d2a70fc2 1-94
+packages/companion-skill/skill/scripts/tools.json
+  s_f0bb92c41dd97a::t_5955930047994f 1-43
+packages/companion-skill/skill/scripts/tools.schema.json
+  s_f0bb92c41dd97a::t_4aa78809261093 1-75
+packages/companion-skill/src/index.ts
+  s_f0bb92c41dd97a::t_63855f0cf9ba85 1-86
+packages/companion-skill/src/package.ts
+  s_f0bb92c41dd97a::t_95ecf5f0d77527 1-209
+packages/companion-skill/tsconfig.json
+  s_f0bb92c41dd97a::t_73d4775f29c9db 1-8
+packages/companion-skill/tsup.config.ts
+  s_f0bb92c41dd97a::t_35ec783e8274f4 1-18
+packages/contracts/package.json
+  s_f0bb92c41dd97a::t_3ad3c2e3efafb1 1-24
+packages/contracts/schemas/companion-manifest.v2.schema.json
+  s_f0bb92c41dd97a::t_e5487d8cb9d530 1-214
+packages/contracts/src/agentOperations.ts
+  s_f0bb92c41dd97a::t_5e3a147c5526f6 1-210
+packages/contracts/src/avatar.ts
+  s_f0bb92c41dd97a::t_7798c8c19acfab 1-57
+packages/contracts/src/billing.ts
+  s_f0bb92c41dd97a::t_e7de70f103e5fa 1-119
+packages/contracts/src/companionBudgets.ts
+  s_f0bb92c41dd97a::t_81d92edfca4431 1-264
+packages/contracts/src/companionManifest.ts
+  s_f0bb92c41dd97a::t_76e8e034a3171f 1-409
+packages/contracts/src/companionManifestJsonSchema.ts
+  s_f0bb92c41dd97a::t_afb41040abe49d 1-3
+packages/contracts/src/companionPluginCatalog.ts
+  s_f0bb92c41dd97a::t_15e1eb27ab31cf 1-90
+packages/contracts/src/companionRuntime.ts
+  s_f0bb92c41dd97a::t_bfb460720d9186 1-306
+packages/contracts/src/companionToolKinds.ts
+  s_f0bb92c41dd97a::t_84a3df6375aaca 1-53
+packages/contracts/src/companions.ts
+  s_f0bb92c41dd97a::t_9f2db8b0cbf074 1-2217
+packages/contracts/src/frontmatter.ts
+  s_f0bb92c41dd97a::t_be13aa941aa009 1-215
+packages/contracts/src/gettingStarted.ts
+  s_f0bb92c41dd97a::t_183a17dbdd4200 1-27
+packages/contracts/src/github.ts
+  s_f0bb92c41dd97a::t_3b04ebce05b6e3 1-143
+packages/contracts/src/index.ts
+  s_f0bb92c41dd97a::t_96961ce617ad18 1-26
+packages/contracts/src/labels.ts
+  s_f0bb92c41dd97a::t_3b0c41816539ee 1-235
+packages/contracts/src/localSkills.ts
+  s_f0bb92c41dd97a::t_2e24642464a440 1-102
+packages/contracts/src/lockfile.ts
+  s_f0bb92c41dd97a::t_de1b6ae105141a 1-47
+packages/contracts/src/notifications.ts
+  s_f0bb92c41dd97a::t_27c5bc16574277 1-38
+packages/contracts/src/onboarding.ts
+  s_f0bb92c41dd97a::t_c9694b7ffac0be 1-38
+packages/contracts/src/orgSettings.ts
+  s_f0bb92c41dd97a::t_4b5921720c1627 1-179
+packages/contracts/src/personalLabels.ts
+  s_f0bb92c41dd97a::t_9c170b0b865fb7 1-38
+packages/contracts/src/preferences.ts
+  s_f0bb92c41dd97a::t_8aed8e6578bc34 1-47
+packages/contracts/src/scope.ts
+  s_f0bb92c41dd97a::t_729976946afc97 1-49
+packages/contracts/src/secrets.ts
+  s_f0bb92c41dd97a::t_cc5acc355ab6ed 1-206
+packages/contracts/src/skill.ts
+  s_f0bb92c41dd97a::t_170fbd1a0f10bd 1-525
+packages/contracts/src/skillDatabase.ts
+  s_f0bb92c41dd97a::t_b1670cace114e7 1-452
+packages/contracts/src/token.ts
+  s_f0bb92c41dd97a::t_e46d957e297890 1-108
+packages/contracts/src/validation.ts
+  s_f0bb92c41dd97a::t_fd4d321b2e0dd0 1-46
+packages/contracts/test/agentOperations.test.ts
+  s_f0bb92c41dd97a::t_d36653649c035a 1-61
+packages/contracts/test/companionAttachments.test.ts
+  s_f0bb92c41dd97a::t_b1987352db13b1 1-172
+packages/contracts/test/companionBudgets.test.ts
+  s_f0bb92c41dd97a::t_b64d24e4e1c122 1-196
+packages/contracts/test/companionManifest.test.ts
+  s_f0bb92c41dd97a::t_90989aef9a6e28 1-210
+packages/contracts/test/companionPluginCatalog.test.ts
+  s_f0bb92c41dd97a::t_59d6aec3159b60 1-51
+packages/contracts/test/companionRuntime.test.ts
+  s_f0bb92c41dd97a::t_0aad8580f776ed 1-163
+packages/contracts/test/companionTranscription.test.ts
+  s_f0bb92c41dd97a::t_40980d5633bd5c 1-68
+packages/contracts/test/companions.test.ts
+  s_f0bb92c41dd97a::t_0c64de2775f37d 1-1414
+packages/contracts/test/gettingStarted.test.ts
+  s_f0bb92c41dd97a::t_0219e7aafd51ee 1-63
+packages/contracts/test/github.test.ts
+  s_f0bb92c41dd97a::t_b7027786488c1d 1-30
+packages/contracts/test/labels.test.ts
+  s_f0bb92c41dd97a::t_b3a35cb2ac4a63 1-234
+packages/contracts/test/localSkills.test.ts
+  s_f0bb92c41dd97a::t_faad5043331851 1-58
+packages/contracts/test/onboarding.test.ts
+  s_f0bb92c41dd97a::t_e44fcc56d2ff09 1-51
+packages/contracts/test/orgSettings.test.ts
+  s_f0bb92c41dd97a::t_b8859b92ae8764 1-165
+packages/contracts/test/secrets.test.ts
+  s_f0bb92c41dd97a::t_048dd51fc08830 1-77
+packages/contracts/test/skillDatabase.test.ts
+  s_f0bb92c41dd97a::t_261c0593899605 1-213
+packages/contracts/test/skillDependencies.test.ts
+  s_f0bb92c41dd97a::t_8acc2c8ef7d57b 1-170
+packages/contracts/test/skillListModifiers.test.ts
+  s_f0bb92c41dd97a::t_61832999c681b2 1-74
+packages/contracts/test/skillRename.test.ts
+  s_f0bb92c41dd97a::t_e011f6e717d0d8 1-41
+packages/contracts/test/token.test.ts
+  s_f0bb92c41dd97a::t_ee685e2e7840f5 1-30
+packages/contracts/test/tokenRefresh.test.ts
+  s_f0bb92c41dd97a::t_f1450aeea49636 1-36
+packages/contracts/tsconfig.json
+  s_f0bb92c41dd97a::t_178f98ae2db95d 1-7
+packages/contracts/vitest.config.ts
+  s_f0bb92c41dd97a::t_9903999237fe68 1-7
+packages/core/package.json
+  s_f0bb92c41dd97a::t_c067b730514c0f 1-32
+packages/core/src/authz.ts
+  s_f0bb92c41dd97a::t_bcfb8c8a89a882 1-132
+packages/core/src/avatar.ts
+  s_f0bb92c41dd97a::t_9f5cb2a1e7b90a 1-36
+packages/core/src/billing.ts
+  s_f0bb92c41dd97a::t_54ddecf6763c41 1-297
+packages/core/src/billingService.ts
+  s_f0bb92c41dd97a::t_8549bfa3d2d0b7 1-395
+packages/core/src/companionMcpBroker.ts
+  s_f0bb92c41dd97a::t_7c9215ef2ee3a5 1-239
+packages/core/src/companionNotifications.ts
+  s_f0bb92c41dd97a::t_3f78859f5edd0b 1-175
+packages/core/src/companionPluginOAuth.ts
+  s_f0bb92c41dd97a::t_db59e1110c4afc 1-783
+packages/core/src/companionPluginTriggerKeys.ts
+  s_f0bb92c41dd97a::t_a6154943326901 1-123
+packages/core/src/companionProviderCatalog.ts
+  s_f0bb92c41dd97a::t_5c4117dcd28753 1-194
+packages/core/src/companionProviderOAuth.ts
+  s_f0bb92c41dd97a::t_13b14ed293a182 1-336
+packages/core/src/companionRoutineFireId.ts
+  s_f0bb92c41dd97a::t_a22f0637f4f5b4 1-34
+packages/core/src/companionRoutines.ts
+  s_f0bb92c41dd97a::t_034a77ff6eb536 1-77
+packages/core/src/companionRoutinesApi.ts
+  s_f0bb92c41dd97a::t_a239e9efbd66a7 1-470
+packages/core/src/companionRuntimeApi.ts
+  s_f0bb92c41dd97a::t_db81c2a9f81555 1-985
+packages/core/src/companionRuntimeCredentials.ts
+  s_f0bb92c41dd97a::t_f4f51db1635f2c 1-235
+packages/core/src/companionRuntimeErrors.ts
+  s_f0bb92c41dd97a::t_fe4a5f59a680bf 1-69
+packages/core/src/companionSections.ts
+  s_f0bb92c41dd97a::t_8c593306fb0b5f 1-131
+packages/core/src/companionSync.ts
+  s_f0bb92c41dd97a::t_6c7a83a6fe7e84 1-510
+packages/core/src/companionTriggerFireId.ts
+  s_f0bb92c41dd97a::t_ce6c702e6bbab7 1-15
+packages/core/src/companionTriggerProviderAccounts.ts
+  s_f0bb92c41dd97a::t_014744ceafa289 1-197
+packages/core/src/companionTriggerWebhookRegistration.ts
+  s_f0bb92c41dd97a::t_1ad3dddda63252 1-1006
+packages/core/src/companionTriggersApi.ts
+  s_f0bb92c41dd97a::t_e1141ad90f7603 1-602
+packages/core/src/companions.ts
+  s_f0bb92c41dd97a::t_057acd00915b13 1-1382
+packages/core/src/deploymentRelease.ts
+  s_f0bb92c41dd97a::t_c78440ca4cadf0 1-29
+packages/core/src/domainAccess.ts
+  s_f0bb92c41dd97a::t_549833f73fc0d3 1-168
+packages/core/src/email-domains.ts
+  s_f0bb92c41dd97a::t_309d05c8f8b692 1-38
+packages/core/src/featureFlags.ts
+  s_f0bb92c41dd97a::t_e9c794479a3e14 1-97
+packages/core/src/free-email-domains.d.ts
+  s_f0bb92c41dd97a::t_5d80c39cc1b09b 1-5
+packages/core/src/gettingStarted.ts
+  s_f0bb92c41dd97a::t_2e68122a4d8672 1-240
+packages/core/src/githubSync.ts
+  s_f0bb92c41dd97a::t_fdb8e2c0a21d27 1-965
+packages/core/src/index.ts
+  s_f0bb92c41dd97a::t_ea47b6b84cab2c 1-30
+packages/core/src/labels.ts
+  s_f0bb92c41dd97a::t_fe7ba6ec63dace 1-487
+packages/core/src/onboarding.ts
+  s_f0bb92c41dd97a::t_93019541867b59 1-198
+packages/core/src/personalLabels.ts
+  s_f0bb92c41dd97a::t_01d56ba24ee1d9 1-346
+packages/core/src/preTenant.ts
+  s_f0bb92c41dd97a::t_9ba1334e1b2fb8 1-394
+packages/core/src/secrets.ts
+  s_f0bb92c41dd97a::t_774fcabe93a795 1-939
+packages/core/src/secretsCrypto.ts
+  s_f0bb92c41dd97a::t_2edfc65c5cdf2f 1-183
+packages/core/src/services.ts
+  s_f0bb92c41dd97a::t_d21f66cb021dfe 1-4887
+packages/core/src/skillDatabaseCleanup.ts
+  s_f0bb92c41dd97a::t_00086a539327ff 1-48
+packages/core/src/skillDatabaseRuntime.ts
+  s_f0bb92c41dd97a::t_02ac60a99082b5 1-67
+packages/core/src/skillDatabases.ts
+  s_f0bb92c41dd97a::t_23a0fba4f87edd 1-1120
+packages/core/test/authz.test.ts
+  s_f0bb92c41dd97a::t_53c5cc48fe3526 1-210
+packages/core/test/billing.test.ts
+  s_f0bb92c41dd97a::t_723c23832f889e 1-70
+packages/core/test/billingPreview.test.ts
+  s_f0bb92c41dd97a::t_3759ce7bdb4edb 1-110
+packages/core/test/companionLastMessage.test.ts
+  s_f0bb92c41dd97a::t_caa1003066d267 1-357
+packages/core/test/companionMcpBroker.test.ts
+  s_f0bb92c41dd97a::t_c8079b6f3ddf9e 1-377
+packages/core/test/companionPluginOAuth.test.ts
+  s_f0bb92c41dd97a::t_a6895d46f93fcc 1-616
+packages/core/test/companionProviderCatalog.test.ts
+  s_f0bb92c41dd97a::t_4d6be35ed83afa 1-177
+packages/core/test/companionProviderOAuth.test.ts
+  s_f0bb92c41dd97a::t_1e824293e30cb4 1-173
+packages/core/test/companionProviderSupplement.test.ts
+  s_f0bb92c41dd97a::t_4edf6b64811df3 1-93
+packages/core/test/companionRoutines.test.ts
+  s_f0bb92c41dd97a::t_700448a54f69c3 1-49
+packages/core/test/companionRuntimeApi.test.ts
+  s_f0bb92c41dd97a::t_57abbacd8da43a 1-358
+packages/core/test/companionRuntimeCredentials.test.ts
+  s_f0bb92c41dd97a::t_dbe10c98577e8b 1-250
+packages/core/test/companionRuntimeErrors.test.ts
+  s_f0bb92c41dd97a::t_aa1f5712a556a2 1-87
+packages/core/test/companionSync.test.ts
+  s_f0bb92c41dd97a::t_ecf4a438ba58b4 1-408
+packages/core/test/companionThreadProjection.test.ts
+  s_f0bb92c41dd97a::t_3cd2fc8b1b1579 1-225
+packages/core/test/companionTranscription.test.ts
+  s_f0bb92c41dd97a::t_c63b69d2b6a08c 1-211
+packages/core/test/companionTriggers.test.ts
+  s_f0bb92c41dd97a::t_fe60c2ee65e2d2 1-133
+packages/core/test/deploymentRelease.test.ts
+  s_f0bb92c41dd97a::t_c4c2a407e169fa 1-41
+packages/core/test/email-domains.test.ts
+  s_f0bb92c41dd97a::t_c60495a4f580ba 1-43
+packages/core/test/featureFlags.test.ts
+  s_f0bb92c41dd97a::t_95b069bf61975a 1-163
+packages/core/test/filterPreferences.test.ts
+  s_f0bb92c41dd97a::t_988c4fd2615a7d 1-171
+packages/core/test/gettingStarted.test.ts
+  s_f0bb92c41dd97a::t_a1f1104c7de6ce 1-44
+packages/core/test/githubSync.test.ts
+  s_f0bb92c41dd97a::t_923b450a78036d 1-195
+packages/core/test/onboarding.test.ts
+  s_f0bb92c41dd97a::t_03432d88a2b261 1-123
+packages/core/test/preTenantBilling.test.ts
+  s_f0bb92c41dd97a::t_ca95e689dcc1c6 1-41
+packages/core/test/publicSkillRelease.test.ts
+  s_f0bb92c41dd97a::t_af348efbaad087 1-259
+packages/core/test/publicSkillTransferTicket.test.ts
+  s_f0bb92c41dd97a::t_4d3b54c0242808 1-178
+packages/core/test/secretsCrypto.test.ts
+  s_f0bb92c41dd97a::t_d39ca890370fbd 1-69
+packages/core/test/settings.test.ts
+  s_f0bb92c41dd97a::t_e73cc4e0a67ff6 1-674
+packages/core/test/skillComments.test.ts
+  s_f0bb92c41dd97a::t_7972c572c3155b 1-489
+packages/core/test/skillDependencies.test.ts
+  s_f0bb92c41dd97a::t_f22e5e2849aef7 1-22
+packages/core/test/skillDependencyRename.test.ts
+  s_f0bb92c41dd97a::t_d61d621dff1dd4 1-344
+packages/core/test/skillListModifiers.test.ts
+  s_f0bb92c41dd97a::t_5f33dee6d1f604 1-187
+packages/core/test/skillPublicPreview.test.ts
+  s_f0bb92c41dd97a::t_5926dbbdb565e6 1-126
+packages/core/test/skillRename.test.ts
+  s_f0bb92c41dd97a::t_99e66f28da06c3 1-247
+packages/core/test/skillSearchQuery.test.ts
+  s_f0bb92c41dd97a::t_b3e692332e50a9 1-30
+packages/core/test/skillVersions.test.ts
+  s_f0bb92c41dd97a::t_0ad4b2bff33ba2 1-73
+packages/core/test/tokenRefresh.test.ts
+  s_f0bb92c41dd97a::t_8f90512fcac088 1-147
+packages/core/tsconfig.json
+  s_f0bb92c41dd97a::t_25257a36a0f8a5 1-7
+packages/core/vitest.config.ts
+  s_f0bb92c41dd97a::t_11b9afa5232912 1-7
+packages/db/drizzle.config.ts
+  s_f0bb92c41dd97a::t_02f666f7c01d69 1-13
+packages/db/drizzle/0000_rapid_mephisto.sql
+  s_f0bb92c41dd97a::t_f03c0af793e4e0 1-208
+packages/db/drizzle/0001_sparkling_squadron_sinister.sql
+  s_f0bb92c41dd97a::t_44548973684f19 1-14
+packages/db/drizzle/0002_colorful_trauma.sql
+  s_f0bb92c41dd97a::t_ace8fb66794615 1
+packages/db/drizzle/0003_narrow_pending_invitations.sql
+  s_f0bb92c41dd97a::t_2b66e7a8cd2420 1-2
+packages/db/drizzle/0004_lightweight_tenant_rls.sql
+  s_f0bb92c41dd97a::t_42ecda7129cf39 1-50
+packages/db/drizzle/0005_api_tokens.sql
+  s_f0bb92c41dd97a::t_599f1cfc13493a 1-45
+packages/db/drizzle/0006_first_gambit.sql
+  s_f0bb92c41dd97a::t_ae51596891cbe6 1-22
+packages/db/drizzle/0007_onboarding.sql
+  s_f0bb92c41dd97a::t_11be5d6184aee3 1-11
+packages/db/drizzle/0008_verify_existing_users.sql
+  s_f0bb92c41dd97a::t_a46c0c439a97a3 1-5
+packages/db/drizzle/0009_settings_team_description.sql
+  s_f0bb92c41dd97a::t_04233de0d803bc 1
+packages/db/drizzle/0010_skill_comment_threads.sql
+  s_f0bb92c41dd97a::t_d3e0276ef5623a 1-6
+packages/db/drizzle/0011_everyone_skill_visibility.sql
+  s_f0bb92c41dd97a::t_3b922cb98c7cee 1-75
+packages/db/drizzle/0012_skill_owner_team.sql
+  s_f0bb92c41dd97a::t_3b71f9d68362ef 1-4
+packages/db/drizzle/0013_local_skill_installs.sql
+  s_f0bb92c41dd97a::t_4a030be4907447 1-18
+packages/db/drizzle/0014_skill_dependencies.sql
+  s_f0bb92c41dd97a::t_fb8d269fbdf872 1-25
+packages/db/drizzle/0015_skill_dependency_org_fks.sql
+  s_f0bb92c41dd97a::t_97295bae06935d 1-5
+packages/db/drizzle/0016_skill_installs.sql
+  s_f0bb92c41dd97a::t_188b1de0ada498 1-21
+packages/db/drizzle/0017_organization_domains.sql
+  s_f0bb92c41dd97a::t_fdb1ff66b91d7c 1-32
+packages/db/drizzle/0018_skill_version_body.sql
+  s_f0bb92c41dd97a::t_81feeccdda34c0 1-3
+packages/db/drizzle/0019_skill_comment_images.sql
+  s_f0bb92c41dd97a::t_7d53074084ba22 1-21
+packages/db/drizzle/0020_skill_owner_only.sql
+  s_f0bb92c41dd97a::t_c9fe2a95baf505 1-78
+packages/db/drizzle/0021_labels.sql
+  s_f0bb92c41dd97a::t_083d4f71daf7a5 1-48
+packages/db/drizzle/0022_drop_skill_ownership.sql
+  s_f0bb92c41dd97a::t_d3e3faff726d0d 1-32
+packages/db/drizzle/0023_drop_teams.sql
+  s_f0bb92c41dd97a::t_e893665e813b5d 1-9
+packages/db/drizzle/0024_drop_owner_filter_prefs.sql
+  s_f0bb92c41dd97a::t_ce0d352ee1c67e 1-12
+packages/db/drizzle/0025_label_display_names.sql
+  s_f0bb92c41dd97a::t_b9ac28a287bd76 1
+packages/db/drizzle/0026_personal_skills.sql
+  s_f0bb92c41dd97a::t_50b9bfbda86d5f 1-13
+packages/db/drizzle/0027_personal_labels.sql
+  s_f0bb92c41dd97a::t_1f2d3961043908 1-52
+packages/db/drizzle/0028_skill_share_token.sql
+  s_f0bb92c41dd97a::t_4ea4e92ff45975 1-9
+packages/db/drizzle/0029_skill_display_name.sql
+  s_f0bb92c41dd97a::t_3961cda830cb12 1
+packages/db/drizzle/0030_user_avatar.sql
+  s_f0bb92c41dd97a::t_e7bf8a47e917df 1
+packages/db/drizzle/0031_org_skill_naming_policy.sql
+  s_f0bb92c41dd97a::t_57804d1286a2cb 1
+packages/db/drizzle/0032_billing.sql
+  s_f0bb92c41dd97a::t_d928ee82d240ef 1-56
+packages/db/drizzle/0033_personal_shared_secrets.sql
+  s_f0bb92c41dd97a::t_e781419b1eca43 1-268
+packages/db/drizzle/0034_skill_runs.sql
+  s_f0bb92c41dd97a::t_91119dc1d52157 1-1149
+packages/db/drizzle/0035_runtime_credentials.sql
+  s_f0bb92c41dd97a::t_bc9d4d445a71dd 1-182
+packages/db/drizzle/0036_model_preferences.sql
+  s_f0bb92c41dd97a::t_e9187512623307 1-36
+packages/db/drizzle/0037_reactivate_runs.sql
+  s_f0bb92c41dd97a::t_16df57a11700b0 1-202
+packages/db/drizzle/0038_skill_run_prompt_attachments.sql
+  s_f0bb92c41dd97a::t_40ca3525e433f5 1-301
+packages/db/drizzle/0039_run_prewarms.sql
+  s_f0bb92c41dd97a::t_cbe295e346811b 1-236
+packages/db/drizzle/0040_sandbox_usage.sql
+  s_f0bb92c41dd97a::t_e7297f17b8c001 1-52
+packages/db/drizzle/0041_run_artifacts.sql
+  s_f0bb92c41dd97a::t_fdccbda56d2ad6 1-246
+packages/db/drizzle/0042_run_prompt_queue_stop.sql
+  s_f0bb92c41dd97a::t_7fbf44352a1d98 1-504
+packages/db/drizzle/0043_run_prompt_dispatch_barrier.sql
+  s_f0bb92c41dd97a::t_c3b7a726b5fc8f 1-473
+packages/db/drizzle/0044_remove_skill_stars.sql
+  s_f0bb92c41dd97a::t_472cd5ffcac0ac 1-45
+packages/db/drizzle/0045_github_skill_sync.sql
+  s_f0bb92c41dd97a::t_007c569ea90738 1-123
+packages/db/drizzle/0046_api_token_refresh.sql
+  s_f0bb92c41dd97a::t_e3fb33618f1af6 1-33
+packages/db/drizzle/0047_skill_group_preference.sql
+  s_f0bb92c41dd97a::t_8a63ee46330c58 1-46
+packages/db/drizzle/0048_skill_sidebar_order_preference.sql
+  s_f0bb92c41dd97a::t_c7b54a95a76e57 1-2
+packages/db/drizzle/0049_authenticated_public_releases.sql
+  s_f0bb92c41dd97a::t_f55303b942035c 1-536
+packages/db/drizzle/0050_agent_auth_identity.sql
+  s_f0bb92c41dd97a::t_1343514ad969f1 1-257
+packages/db/drizzle/0051_run_file_previews.sql
+  s_f0bb92c41dd97a::t_cc58f78465cf9b 1-227
+packages/db/drizzle/0052_run_file_preview_function_repair.sql
+  s_f0bb92c41dd97a::t_b0bda96b7329a3 1-101
+packages/db/drizzle/0053_sandbox_lifecycle_v2.sql
+  s_f0bb92c41dd97a::t_fb687f78896e62 1-463
+packages/db/drizzle/0054_projects.sql
+  s_f0bb92c41dd97a::t_32a39c3c17636c 1-2444
+packages/db/drizzle/0055_public_skill_ticket_clock_skew.sql
+  s_f0bb92c41dd97a::t_456e3164728ddc 1-86
+packages/db/drizzle/0056_project_prompt_file_reconciliation.sql
+  s_f0bb92c41dd97a::t_0a94777e887888 1-243
+packages/db/drizzle/0057_project_runtime_process_identity.sql
+  s_f0bb92c41dd97a::t_7262269055706a 1-129
+packages/db/drizzle/0058_project_workspace_retry_backoff.sql
+  s_f0bb92c41dd97a::t_6dc88d8f72d9b3 1-246
+packages/db/drizzle/0059_getting_started_states.sql
+  s_f0bb92c41dd97a::t_afde402a60ad96 1-40
+packages/db/drizzle/0060_skill_databases.sql
+  s_f0bb92c41dd97a::t_6a4d035629191f 1-334
+packages/db/drizzle/0061_skill_database_realm_shares.sql
+  s_f0bb92c41dd97a::t_4bf3eb99e2978d 1-217
+packages/db/drizzle/0062_agent_delegation_tokens.sql
+  s_f0bb92c41dd97a::t_ce421791f400eb 1-218
+packages/db/drizzle/0063_skills_hub_only.sql
+  s_f0bb92c41dd97a::t_2ad7d2c944fb07 1-193
+packages/db/drizzle/0064_companion_box_runtime.sql
+  s_f0bb92c41dd97a::t_75bac9c5fb4f54 1-96
+packages/db/drizzle/0065_companion_providers.sql
+  s_f0bb92c41dd97a::t_31918a83980301 1-121
+packages/db/drizzle/0066_companion_sharing.sql
+  s_f0bb92c41dd97a::t_f3387d00a6154a 1-281
+packages/db/drizzle/0067_companion_persona.sql
+  s_f0bb92c41dd97a::t_15dd7c3fab61ab 1-5
+packages/db/drizzle/0068_companion_threads.sql
+  s_f0bb92c41dd97a::t_78bb15cb4cc76a 1-112
+packages/db/drizzle/0069_companion_transcript_author.sql
+  s_f0bb92c41dd97a::t_537c8f87659148 1-5
+packages/db/drizzle/0070_companion_runtime_error.sql
+  s_f0bb92c41dd97a::t_e215b54785c267 1-5
+packages/db/drizzle/0071_companion_mcp_accounts.sql
+  s_f0bb92c41dd97a::t_785a513672eaa0 1-90
+packages/db/drizzle/0072_drop_companion_member_access.sql
+  s_f0bb92c41dd97a::t_b852687f358319 1-114
+packages/db/drizzle/0073_companion_runtime_pools.sql
+  s_f0bb92c41dd97a::t_30dcfd8c4be619 1-195
+packages/db/drizzle/0074_companion_box_runtime_restore.sql
+  s_f0bb92c41dd97a::t_069fec35fe8119 1-98
+packages/db/drizzle/0075_companion_box_unshare.sql
+  s_f0bb92c41dd97a::t_49962e6b86e552 1-28
+packages/db/drizzle/0076_companion_model.sql
+  s_f0bb92c41dd97a::t_f1297518cf697f 1-15
+packages/db/drizzle/0077_companion_tool_runs.sql
+  s_f0bb92c41dd97a::t_659078669ad4cf 1-55
+packages/db/drizzle/0078_companion_skills.sql
+  s_f0bb92c41dd97a::t_714dbd5b9f4265 1-93
+packages/db/drizzle/0079_companion_mcp_attach.sql
+  s_f0bb92c41dd97a::t_35f64786ff593b 1-8
+packages/db/drizzle/0080_companion_decisions.sql
+  s_f0bb92c41dd97a::t_4353cce9980c23 1-15
+packages/db/drizzle/0081_companion_member_state.sql
+  s_f0bb92c41dd97a::t_e27df3bc230655 1-94
+packages/db/drizzle/0082_companion_transcript_reasoning.sql
+  s_f0bb92c41dd97a::t_ed410b77cdd279 1-18
+packages/db/drizzle/0083_companion_skills_sync.sql
+  s_f0bb92c41dd97a::t_70f9c1d3e38048 1-19
+packages/db/drizzle/0084_companion_timeout_recovery.sql
+  s_f0bb92c41dd97a::t_82cf2f1045d0a2 1-151
+packages/db/drizzle/0085_companion_timeout_restart.sql
+  s_f0bb92c41dd97a::t_90954831937422 1-14
+packages/db/drizzle/0086_companion_tool_timeout_v2.sql
+  s_f0bb92c41dd97a::t_b72c46d4b26671 1-171
+packages/db/drizzle/0087_companion_reconciler.sql
+  s_f0bb92c41dd97a::t_7cfe86095cc355 1-297
+packages/db/drizzle/0088_companion_delivery_lease.sql
+  s_f0bb92c41dd97a::t_c103cf19c0eaf3 1-697
+packages/db/drizzle/0089_legacy_companion_purge.sql
+  s_f0bb92c41dd97a::t_1fe30ad34afaff 1-337
+packages/db/drizzle/0090_companion_runtime_v2.sql
+  s_f0bb92c41dd97a::t_679d27a25243f2 1-5835
+packages/db/drizzle/0091_companion_runtime_executor.sql
+  s_f0bb92c41dd97a::t_1f5bf890bf6158 1-1704
+packages/db/drizzle/0092_companion_runtime_api.sql
+  s_f0bb92c41dd97a::t_08d3471d803ae7 1-1856
+packages/db/drizzle/0093_companion_runtime_desktop_replay.sql
+  s_f0bb92c41dd97a::t_9415d919a0c04e 1-87
+packages/db/drizzle/0094_companion_runtime_cutover.sql
+  s_f0bb92c41dd97a::t_f3e3e89b193bbc 1-540
+packages/db/drizzle/0095_companion_runtime_desktop_replay_recovery.sql
+  s_f0bb92c41dd97a::t_0cf8173427c6de 1-276
+packages/db/drizzle/0096_companion_runtime_settings_claim_revisions.sql
+  s_f0bb92c41dd97a::t_3731eed46095a3 1-1289
+packages/db/drizzle/0097_companion_runtime_warm_send_dispatch.sql
+  s_f0bb92c41dd97a::t_fbbf47c2aaa38f 1-164
+packages/db/drizzle/0098_companion_message_attachments.sql
+  s_f0bb92c41dd97a::t_6da15d3b9388fc 1-844
+packages/db/drizzle/0099_companion_attempt_outputs.sql
+  s_f0bb92c41dd97a::t_697208c5ff3f41 1-302
+packages/db/drizzle/0100_companion_config_proposal.sql
+  s_f0bb92c41dd97a::t_3fd05cf0be6f9f 1-1019
+packages/db/drizzle/0101_companion_answer_config_decision.sql
+  s_f0bb92c41dd97a::t_6fbc674535f9da 1-392
+packages/db/drizzle/0102_companion_config_catalog.sql
+  s_f0bb92c41dd97a::t_0225f551ba0838 1-164
+packages/db/drizzle/0103_companion_hub_tokens.sql
+  s_f0bb92c41dd97a::t_9a8c2882d28210 1-38
+packages/db/drizzle/0104_companion_mint_hub_token.sql
+  s_f0bb92c41dd97a::t_3577ddebf0847d 1-176
+packages/db/drizzle/0105_companion_subagent_tool_runs.sql
+  s_f0bb92c41dd97a::t_0a591cc87a1310 1-589
+packages/db/drizzle/0106_companion_routines.sql
+  s_f0bb92c41dd97a::t_e0f882996d2255 1-2114
+packages/db/drizzle/0107_companion_answer_routine_decision.sql
+  s_f0bb92c41dd97a::t_57ef54c831f01a 1-227
+packages/db/drizzle/0108_companion_turn_stop.sql
+  s_f0bb92c41dd97a::t_d01d2432dbba87 1-1859
+packages/db/drizzle/0109_companion_runtime_health_identity.sql
+  s_f0bb92c41dd97a::t_5cb9f0a87cc02b 1-530
+packages/db/drizzle/0110_companion_material_snapshot_expiry.sql
+  s_f0bb92c41dd97a::t_9dca8c68eeb417 1-1036
+packages/db/drizzle/0111_companion_triggers.sql
+  s_f0bb92c41dd97a::t_155da167c8452a 1-2109
+packages/db/drizzle/0112_companion_answer_trigger_decision.sql
+  s_f0bb92c41dd97a::t_eeaeb1d9d73acb 1-224
+packages/db/drizzle/0113_defer_skill_updates_to_pi_stop.sql
+  s_f0bb92c41dd97a::t_993980fbf3866b 1-808
+packages/db/drizzle/0114_companion_delete_resume.sql
+  s_f0bb92c41dd97a::t_4eba0958254096 1-266
+packages/db/drizzle/0115_companion_trigger_plugin_gate.sql
+  s_f0bb92c41dd97a::t_db2255824f47e0 1-179
+packages/db/drizzle/0116_companion_trigger_target.sql
+  s_f0bb92c41dd97a::t_d8acd28e08628c 1-702
+packages/db/drizzle/0117_companion_plugin_trigger_keys.sql
+  s_f0bb92c41dd97a::t_785ea4837bb54a 1-169
+packages/db/drizzle/0118_conductor_config_proposal.sql
+  s_f0bb92c41dd97a::t_f69852551129c1 1-32
+packages/db/drizzle/0119_companion_icons.sql
+  s_f0bb92c41dd97a::t_f39ea301e5c975 1-362
+packages/db/drizzle/0120_companion_mcp_token_broker.sql
+  s_f0bb92c41dd97a::t_93586ffc486d84 1-315
+packages/db/drizzle/0121_companion_mcp_selection_lock.sql
+  s_f0bb92c41dd97a::t_407e560ce765c3 1-103
+packages/db/drizzle/0122_companion_image_registry.sql
+  s_f0bb92c41dd97a::t_93100dc67d4ab2 1-40
+packages/db/drizzle/0123_companion_image_registry_access.sql
+  s_f0bb92c41dd97a::t_f1eb306b4a7db8 1-293
+packages/db/drizzle/0124_companion_notifications.sql
+  s_f0bb92c41dd97a::t_9ae87c43817af7 1-732
+packages/db/drizzle/0125_companion_box_agent_endpoint.sql
+  s_f0bb92c41dd97a::t_b8c34139ab6f32 1-181
+packages/db/drizzle/0126_companion_agent_endpoint_read.sql
+  s_f0bb92c41dd97a::t_e075077b5ed114 1-351
+packages/db/drizzle/0127_companion_dispatch_resolution.sql
+  s_f0bb92c41dd97a::t_02c98a298856f3 1-150
+packages/db/drizzle/0128_companion_retry_absent_box.sql
+  s_f0bb92c41dd97a::t_5c59d61a276389 1-478
+packages/db/drizzle/0129_companion_decision_waits.sql
+  s_f0bb92c41dd97a::t_ee7bca892ba1be 1-280
+packages/db/drizzle/0130_companion_expired_denial.sql
+  s_f0bb92c41dd97a::t_75236d5078b744 1-60
+packages/db/drizzle/0131_companion_notification_avatar.sql
+  s_f0bb92c41dd97a::t_cda27b52e33b4b 1-175
+packages/db/drizzle/0132_member_timezone.sql
+  s_f0bb92c41dd97a::t_ddda11b058138d 1-128
+packages/db/drizzle/0133_companion_tool_identity.sql
+  s_f0bb92c41dd97a::t_c5eafbf01a5520 1-29
+packages/db/drizzle/0134_slack_gmail_config_proposal.sql
+  s_f0bb92c41dd97a::t_8f3a88e1f9a28d 1-32
+packages/db/drizzle/0135_companion_routine_run_history.sql
+  s_f0bb92c41dd97a::t_8d07c009c8e843 1-585
+packages/db/drizzle/0136_companion_sections.sql
+  s_f0bb92c41dd97a::t_104ed81969911f 1-443
+packages/db/drizzle/0137_companion_routine_isolation.sql
+  s_f0bb92c41dd97a::t_bcbe22c8622f77 1-889
+packages/db/drizzle/0138_companion_routine_cancel_identity.sql
+  s_f0bb92c41dd97a::t_c2b4f5d50ba513 1-154
+packages/db/drizzle/0139_companion_routine_parallel_scheduling.sql
+  s_f0bb92c41dd97a::t_0e20771494cb0f 1-796
+packages/db/drizzle/0140_companion_routine_notify_projection.sql
+  s_f0bb92c41dd97a::t_a60b0800be8f40 1-142
+packages/db/drizzle/0141_companion_routine_proposal_upsert.sql
+  s_f0bb92c41dd97a::t_3cbe1ac3a5fbf4 1-354
+packages/db/drizzle/0142_companion_thread_sync_projection.sql
+  s_f0bb92c41dd97a::t_a21cdad57df37c 1-76
+packages/db/drizzle/0143_companion_delete_routine_preemption.sql
+  s_f0bb92c41dd97a::t_d0a4caceb0c435 1-255
+packages/db/drizzle/0144_companion_routine_lane_failure_accounting.sql
+  s_f0bb92c41dd97a::t_97f426456c8b64 1-187
+packages/db/drizzle/0145_companion_routine_queue_cleanup.sql
+  s_f0bb92c41dd97a::t_27926bdf0c5228 1-705
+packages/db/drizzle/0146_companion_restart_box_checkpoint.sql
+  s_f0bb92c41dd97a::t_c2a1177c8ec672 1-31
+packages/db/drizzle/0147_companion_trigger_v2_engine.sql
+  s_f0bb92c41dd97a::t_05df0d32665254 1-972
+packages/db/drizzle/0148_companion_trigger_prepare_result.sql
+  s_f0bb92c41dd97a::t_8ac199f6ff6c9a 1-105
+packages/db/drizzle/meta/0000_snapshot.json
+  s_f0bb92c41dd97a::t_796a0b374120d6 1-1506
+packages/db/drizzle/meta/0001_snapshot.json
+  s_f0bb92c41dd97a::t_ab1674da894a67 1-1595
+packages/db/drizzle/meta/0002_snapshot.json
+  s_f0bb92c41dd97a::t_dbb44e51d9dc1d 1-1611
+packages/db/drizzle/meta/0006_snapshot.json
+  s_f0bb92c41dd97a::t_316b0f397abd3d 1-1852
+packages/db/drizzle/meta/0131_snapshot.json
+  s_f0bb92c41dd97a::t_b2cb33c2d08b4a 1-1852
+packages/db/drizzle/meta/_journal.json
+  s_f0bb92c41dd97a::t_4d187f02463f02 1-1049
+packages/db/package.json
+  s_f0bb92c41dd97a::t_1a1791108c8e57 1-27
+packages/db/runtime-role-grants.sql
+  s_f0bb92c41dd97a::t_92b0257b2d89ab 1-1378
+packages/db/src/ids.ts
+  s_f0bb92c41dd97a::t_d24470e7b12d8e 1-15
+packages/db/src/index.ts
+  s_f0bb92c41dd97a::t_45ecde97eeeb27 1-37
+packages/db/src/runtimeRole.ts
+  s_f0bb92c41dd97a::t_82fd13577a0324 1-206
+packages/db/src/schema.ts
+  s_f0bb92c41dd97a::t_0a68fbd9ff134c 1-3617
+packages/db/src/seed.ts
+  s_f0bb92c41dd97a::t_ea01e17f66aa64 1-47
+packages/db/tsconfig.json
+  s_f0bb92c41dd97a::t_51ca130bc44328 1-9
+packages/email/package.json
+  s_f0bb92c41dd97a::t_c0bef6b7709e21 1-21
+packages/email/src/index.ts
+  s_f0bb92c41dd97a::t_3b18398663c6f8 1-171
+packages/email/test/email.test.ts
+  s_f0bb92c41dd97a::t_816eaa83702797 1-10
+packages/email/test/index.test.ts
+  s_f0bb92c41dd97a::t_5bad7cbd84a39c 1-43
+packages/email/tsconfig.json
+  s_f0bb92c41dd97a::t_c05fd297b7ad73 1-8
+packages/github/package.json
+  s_f0bb92c41dd97a::t_a1289d7d9b2688 1-21
+packages/github/src/index.test.ts
+  s_f0bb92c41dd97a::t_e0c2836ed90d76 1-885
+packages/github/src/index.ts
+  s_f0bb92c41dd97a::t_ffd26acbd6fc8b 1-910
+packages/github/tsconfig.json
+  s_f0bb92c41dd97a::t_401a63dc5c0155 1-5
+packages/github/vitest.config.ts
+  s_f0bb92c41dd97a::t_2f1e5364320ec1 1-16
+packages/skilldb/package.json
+  s_f0bb92c41dd97a::t_8e21a39f3f3e91 1-24
+packages/skilldb/src/index.ts
+  s_f0bb92c41dd97a::t_cdb5acaefd581b 1-273
+packages/skilldb/src/worker.mjs
+  s_f0bb92c41dd97a::t_455ef039745963 1-304
+packages/skilldb/test/runtime.test.ts
+  s_f0bb92c41dd97a::t_858d073f928232 1-523
+packages/skilldb/tsconfig.json
+  s_f0bb92c41dd97a::t_1c84710a87958e 1-7
+packages/skills/package.json
+  s_f0bb92c41dd97a::t_729b22084679c3 1-26
+packages/skills/src/archive.ts
+  s_f0bb92c41dd97a::t_5f8305875f0086 1-822
+packages/skills/src/checksum.ts
+  s_f0bb92c41dd97a::t_066d3d594c7bc6 1-14
+packages/skills/src/constants.ts
+  s_f0bb92c41dd97a::t_fbcb3aecf42332 1-40
+packages/skills/src/frontmatter.ts
+  s_f0bb92c41dd97a::t_01cbca4e3e16a7 1-171
+packages/skills/src/index.ts
+  s_f0bb92c41dd97a::t_d398b8348b40a7 1-10
+packages/skills/src/manifest.ts
+  s_f0bb92c41dd97a::t_e16b0b653cce30 1-202
+packages/skills/src/pack.ts
+  s_f0bb92c41dd97a::t_779b4bd405e16d 1-76
+packages/skills/src/semver.ts
+  s_f0bb92c41dd97a::t_a7f4e69eca3390 1-122
+packages/skills/src/unpack.ts
+  s_f0bb92c41dd97a::t_59cb8b58aa3382 1-84
+packages/skills/src/validateSkill.ts
+  s_f0bb92c41dd97a::t_5f00bc4e827bbd 1-356
+packages/skills/src/zip.ts
+  s_f0bb92c41dd97a::t_45c2b9bcd1a3e6 1-217
+packages/skills/test/extractArchiveEntryBuffers.test.ts
+  s_f0bb92c41dd97a::t_93c9663f47965f 1-47
+packages/skills/test/extractArchiveFiles.test.ts
+  s_f0bb92c41dd97a::t_9136db40aa0ed2 1-265
+packages/skills/test/helpers.ts
+  s_f0bb92c41dd97a::t_d4cf900c4db1ad 1-84
+packages/skills/test/requirements.test.ts
+  s_f0bb92c41dd97a::t_d305116c7734fd 1-111
+packages/skills/test/secretSlots.test.ts
+  s_f0bb92c41dd97a::t_8e04d3adc6fbc6 1-27
+packages/skills/test/semver.test.ts
+  s_f0bb92c41dd97a::t_90d8999b353a6e 1-40
+packages/skills/test/validateSkill.test.ts
+  s_f0bb92c41dd97a::t_f06f748901951f 1-621
+packages/skills/test/zip.test.ts
+  s_f0bb92c41dd97a::t_af4dcc14dd576e 1-192
+packages/skills/tsconfig.json
+  s_f0bb92c41dd97a::t_d82440a4d5c2f9 1-8
+packages/skills/vitest.config.ts
+  s_f0bb92c41dd97a::t_ea5c5b4f51e8c3 1-7
+packages/storage/package.json
+  s_f0bb92c41dd97a::t_596664a90447f4 1-22
+packages/storage/src/index.ts
+  s_f0bb92c41dd97a::t_b89ba93145caae 1-537
+packages/storage/test/storage.test.ts
+  s_f0bb92c41dd97a::t_9d10af4a786d62 1-368
+packages/storage/tsconfig.json
+  s_f0bb92c41dd97a::t_35f2522d1fc822 1-8
+playwright.config.ts
+  s_f0bb92c41dd97a::t_c7a65347ff805b 1-17
+pnpm-lock.yaml
+  s_f0bb92c41dd97a::t_6da1d9829566f2 1-13606
+pnpm-workspace.yaml
+  s_f0bb92c41dd97a::t_2acf5325ddec61 1-4
+scripts/agent-browser-box-center.mjs
+  s_f0bb92c41dd97a::t_721b48e552675d 1-29
+scripts/agent-browser-box-center.test.mjs
+  s_f0bb92c41dd97a::t_bf8717573314a1 1-23
+scripts/agent-browser-smoke.sh
+  s_f0bb92c41dd97a::t_233fa2d52d5931 1-616
+scripts/anti-slop-targets.mjs
+  s_f0bb92c41dd97a::t_de5268e5afca63 1-33
+scripts/box-lab.sh
+  s_f0bb92c41dd97a::t_288c411882cc7a 1-35
+scripts/box-runtime-change-e2e.ts
+  s_f0bb92c41dd97a::t_54ef15b8c0ce9b 1-619
+scripts/build-pi-bundle.sh
+  s_f0bb92c41dd97a::t_96f11092ba4678 1-105
+scripts/check-pi-bundle-artifact.ts
+  s_f0bb92c41dd97a::t_98a328781d4b05 1-77
+scripts/ci-api-smoke.sh
+  s_f0bb92c41dd97a::t_339a841acb3f3c 1-45
+scripts/ci-container-smoke.sh
+  s_f0bb92c41dd97a::t_e364c809f2cdd7 1-187
+scripts/ci-create-db-roles.sh
+  s_f0bb92c41dd97a::t_c0f9cb7ae7ae32 1-45
+scripts/ci-gate.mjs
+  s_f0bb92c41dd97a::t_24af577d84269c 1-63
+scripts/ci-gate.test.mjs
+  s_f0bb92c41dd97a::t_f98aa0b5526269 1-72
+scripts/ci-playwright-policy.mjs
+  s_f0bb92c41dd97a::t_0ca98eee4bf690 1-45
+scripts/ci-playwright-policy.test.mjs
+  s_f0bb92c41dd97a::t_77283a8845e67b 1-36
+scripts/ci-rsc-smoke.sh
+  s_f0bb92c41dd97a::t_f735b383e7e7ab 1-208
+scripts/ci-runtime-integration.sh
+  s_f0bb92c41dd97a::t_3268ade3ffc7f1 1-33
+scripts/ci-scope.mjs
+  s_f0bb92c41dd97a::t_46ee2edc66885c 1-251
+scripts/ci-scope.test.mjs
+  s_f0bb92c41dd97a::t_7ebf95624aca0a 1-230
+scripts/companions-env-defaults.mjs
+  s_f0bb92c41dd97a::t_db547d813f8b10 1-115
+scripts/companions-env-defaults.test.mjs
+  s_f0bb92c41dd97a::t_c664a7b20cf703 1-62
+scripts/dev-environment.sh
+  s_f0bb92c41dd97a::t_a2150076b34f36 1-41
+scripts/dev-ios-live.sh
+  s_f0bb92c41dd97a::t_593d123677ac12 1-104
+scripts/dev-process.sh
+  s_f0bb92c41dd97a::t_fd58ea30869389 1-133
+scripts/dev-runtime-mode.sh
+  s_f0bb92c41dd97a::t_f567fc2e0f4a71 1-56
+scripts/dev-runtime.sh
+  s_f0bb92c41dd97a::t_d84737203400e6 1-113
+scripts/dev-stack-check.sh
+  s_f0bb92c41dd97a::t_5b6859db301ba0 1-886
+scripts/dev-stack.sh
+  s_f0bb92c41dd97a::t_2d1a7f14ab1bae 1-641
+scripts/dev-worker.sh
+  s_f0bb92c41dd97a::t_55a08ff962faba 1-5
+scripts/disposable-db-roles.sql
+  s_f0bb92c41dd97a::t_752959089f18a8 1-41
+scripts/ensure-skill-bucket.mjs
+  s_f0bb92c41dd97a::t_2cd85601dbdc06 1-35
+scripts/ios-devx.test.mjs
+  s_f0bb92c41dd97a::t_ab38280aae96b6 1-1193
+scripts/ios-e2e-fixture.mjs
+  s_f0bb92c41dd97a::t_ed20da3fc736f2 1-165
+scripts/ios-e2e-fixture.test.mjs
+  s_f0bb92c41dd97a::t_702d4de7532f79 1-124
+scripts/ios-local-live.mjs
+  s_f0bb92c41dd97a::t_52e2f095b68a70 1-211
+scripts/ios-local-live.test.mjs
+  s_f0bb92c41dd97a::t_5ae5d02e971d1c 1-250
+scripts/ios-release.test.mjs
+  s_f0bb92c41dd97a::t_214ab06df20b10 1-245
+scripts/ios-testflight-scope.mjs
+  s_f0bb92c41dd97a::t_079e3463679e7f 1-51
+scripts/lint-anti-slop.integration.test.mjs
+  s_f0bb92c41dd97a::t_42c8bf4de0d02e 1-93
+scripts/lint-anti-slop.mjs
+  s_f0bb92c41dd97a::t_a7c946e9d32994 1-65
+scripts/lint-anti-slop.test.mjs
+  s_f0bb92c41dd97a::t_2e5683676420e2 1-109
+scripts/macos-devx.test.mjs
+  s_f0bb92c41dd97a::t_40bd2b3d18e724 1-113
+scripts/og/og-preview.html
+  s_f0bb92c41dd97a::t_db270dd13f0a27 1-58
+scripts/print-pi-bundle-manifest.ts
+  s_f0bb92c41dd97a::t_52861bcfd73164 1-26
+scripts/railway-config.test.mjs
+  s_f0bb92c41dd97a::t_fae1e2b3110422 1-50
+scripts/rsc-smoke.mjs
+  s_f0bb92c41dd97a::t_d7f9cf1ef17035 1-159
+scripts/run-skill-guards.sh
+  s_f0bb92c41dd97a::t_91e9cb7b2a3c09 1-26
+scripts/setup-conductor.sh
+  s_f0bb92c41dd97a::t_a2c65a0d5f68c6 1-20
+scripts/summarize-box-runtime-benchmark.mjs
+  s_f0bb92c41dd97a::t_b264c5be755a68 1-119
+scripts/summarize-box-runtime-benchmark.test.mjs
+  s_f0bb92c41dd97a::t_d8b1446ab6522d 1-106
+scripts/upload-pi-bundle.mjs
+  s_f0bb92c41dd97a::t_e901d4a4c6a889 1-65
+scripts/verify-change.mjs
+  s_f0bb92c41dd97a::t_d0f62c2599510f 1-398
+scripts/verify-change.test.mjs
+  s_f0bb92c41dd97a::t_adc668ea61507a 1-303
+scripts/wait-http-ready.mjs
+  s_f0bb92c41dd97a::t_70392101f56905 1-73
+scripts/wait-http-ready.test.mjs
+  s_f0bb92c41dd97a::t_6b632c51280ebc 1-45
+tools/oxlint/anti-slop/LICENSE
+  s_f0bb92c41dd97a::t_7c90d509c3ed1b 1-21
+tools/oxlint/anti-slop/README.md
+  s_f0bb92c41dd97a::t_e19ae980a26a47 1-9
+tools/oxlint/anti-slop/index.ts
+  s_f0bb92c41dd97a::t_c11b8027336971 1-41
+tools/oxlint/anti-slop/rules/no-chained-type-assertions.ts
+  s_f0bb92c41dd97a::t_239dd12d8cefa1 1-77
+tools/oxlint/anti-slop/rules/no-conditional-empty-object-spread.ts
+  s_f0bb92c41dd97a::t_eafef3043912fe 1-49
+tools/oxlint/anti-slop/rules/no-known-value-widening.ts
+  s_f0bb92c41dd97a::t_c576277a60e1a5 1-247
+tools/oxlint/anti-slop/rules/no-module-mocking.ts
+  s_f0bb92c41dd97a::t_55849fd5130089 1-91
+tools/oxlint/anti-slop/rules/no-object-parameters.ts
+  s_f0bb92c41dd97a::t_b4b12245cc52d4 1-126
+tools/oxlint/anti-slop/rules/no-reflect-apply.ts
+  s_f0bb92c41dd97a::t_2f70a24c6a877f 1-28
+tools/oxlint/anti-slop/rules/no-reflect-get.ts
+  s_f0bb92c41dd97a::t_49d3cbb530e43a 1-28
+tools/oxlint/anti-slop/rules/no-runtime-typeof.ts
+  s_f0bb92c41dd97a::t_c06c44e62e27b7 1-67
+tools/oxlint/anti-slop/rules/no-shape-in-symbol-names.ts
+  s_f0bb92c41dd97a::t_888797bbff8e38 1-39
+tools/oxlint/anti-slop/rules/no-unknown-parameters.ts
+  s_f0bb92c41dd97a::t_6c49997b79d6e4 1-83
+tools/oxlint/anti-slop/rules/no-unknown-returns.ts
+  s_f0bb92c41dd97a::t_1c23d566014f67 1-115
+tools/oxlint/anti-slop/rules/no-unknown-type-aliases.ts
+  s_f0bb92c41dd97a::t_a5b55d913e576a 1-70
+tools/oxlint/anti-slop/rules/no-unsafe-dictionary-type.ts
+  s_f0bb92c41dd97a::t_68a20a6d06e2cc 1-134
+tools/oxlint/anti-slop/rules/no-widen-then-assert.ts
+  s_f0bb92c41dd97a::t_dd4b5c3ec5f68a 1-366
+tools/oxlint/anti-slop/rules/require-safety-comment-for-type-assertion.ts
+  s_f0bb92c41dd97a::t_a60ed599f92ad3 1-62
+tools/oxlint/anti-slop/shared/dictionary-types.ts
+  s_f0bb92c41dd97a::t_6c5455a5aa2f27 1-502
+tools/oxlint/anti-slop/shared/lexical-type-parameters.ts
+  s_f0bb92c41dd97a::t_e268c7f675f2eb 1-61
+tools/oxlint/anti-slop/shared/reflect-method.ts
+  s_f0bb92c41dd97a::t_a9486d0a95f7a8 1-35
+tsconfig.base.json
+  s_f0bb92c41dd97a::t_e41d7d4301ed27 1-24
+turbo.json
+  s_f0bb92c41dd97a::t_061162960db509 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "587eedf7a7c766923c8a8e4f630a4a03c214097f",
+  "prompts": {},
+  "sessions": {
+    "s_f0bb92c41dd97a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a053b1-ae4d-7d90-b249-abaed7d75310",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
