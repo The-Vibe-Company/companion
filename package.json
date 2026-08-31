@@ -67,7 +67,7 @@
     "concurrently": "^9.2.1",
     "oxlint": "1.79.0",
     "turbo": "^2.3.3",
-    "typescript": "^5.7.2",
+    "typescript": "^7.0.2",
     "zod": "^4.0.0"
   }
 }
