@@ -13,7 +13,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.744.0",
+    "@aws-sdk/client-s3": "^3.1120.0",
     "@companion/box-runtime": "workspace:*",
     "@companion/companion-runtime": "workspace:*",
     "@companion/companion-skill": "workspace:*",
@@ -22,7 +22,7 @@
     "@companion/db": "workspace:*",
     "@companion/skills": "workspace:*",
     "@companion/storage": "workspace:*",
-    "@sentry/node": "^10.70.0",
+    "@sentry/node": "^10.71.0",
     "postgres": "^3.4.5"
   },
   "devDependencies": {

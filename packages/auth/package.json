@@ -13,12 +13,12 @@
   "dependencies": {
     "@auth/agent": "0.6.2",
     "@better-auth/agent-auth": "0.6.2",
-    "@better-auth/drizzle-adapter": "^1.6.23",
-    "@better-auth/expo": "1.6.23",
+    "@better-auth/drizzle-adapter": "^1.7.2",
+    "@better-auth/expo": "1.7.2",
     "@companion/contracts": "workspace:*",
     "@companion/db": "workspace:*",
     "@companion/email": "workspace:*",
-    "better-auth": "^1.6.23",
+    "better-auth": "^1.7.2",
     "zod": "^4.0.0"
   },
   "devDependencies": {
