@@ -1,0 +1,21 @@
+internal/console/console.go
+  s_aca63502688e80::t_2efd4949e3c4e8 181-192
+internal/console/console_static_test.go
+  s_aca63502688e80::t_10f0eb0eeaf669 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "ab361e754cc5aa448a95d01aa8b272088eb514c8",
+  "prompts": {},
+  "sessions": {
+    "s_aca63502688e80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9d6e67c-702e-499f-ae73-ff0b1bce8016",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Claude <noreply@anthropic.com>"
+    }
+  }
+}

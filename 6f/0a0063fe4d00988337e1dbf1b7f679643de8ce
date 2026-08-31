@@ -1,0 +1,33 @@
+providers.toml
+  s_6165187e0b29ee::t_a4231d4839ffbb 2
+internal/fly/fly.go
+  s_6165187e0b29ee::t_a04a3a3d5413d6 15,71-74,87-91
+internal/fly/fly_test.go
+  s_6165187e0b29ee::t_3975da4ab85151 47-59
+internal/cli/cli.go
+  s_6165187e0b29ee::t_d0bf3dc9717e9c 315-336,373-375,383
+internal/cli/cli_test.go
+  s_6165187e0b29ee::t_e40f532e711157 119-142
+internal/provider/types.go
+  s_6165187e0b29ee::t_66f16d4c4b8390 60
+internal/cli/provider_e2e_test.go
+  s_6165187e0b29ee::t_3ccaf2dd35429a 58-60
+README.md
+  s_6165187e0b29ee::t_a698801bf030c3 113-120,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f0a0063fe4d00988337e1dbf1b7f679643de8ce",
+  "prompts": {},
+  "sessions": {
+    "s_6165187e0b29ee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e7405-b4c9-76e0-918c-62df53b822df",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

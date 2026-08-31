@@ -1,0 +1,26 @@
+internal/config/config_test.go
+  s_6165187e0b29ee::t_72cb49cb76ea99 1-146
+README.md
+  s_6165187e0b29ee::t_7fdac19eb291a8 28,31,34,36-40,43-44
+  s_6165187e0b29ee::t_d2028ebfd33130 1,3,5,7,9-16,18-27,46,48-49,52,54-57,59,61,63,65-69,71-72,75,77,79,82-85,87-88,91,94,97-108,110,113-114,116-125,128-163,165,168,170-173,175,177,179-264,266,268,270
+.dockerignore
+  s_6165187e0b29ee::t_4b215bc3b2426c 1-7
+.github/workflows/ci.yml
+  s_6165187e0b29ee::t_618518a63bb2d3 10,15,17-18,21,23-24,26-27,29-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1225d39d4fe29ecba5809578605ee420bb679dd2",
+  "prompts": {},
+  "sessions": {
+    "s_6165187e0b29ee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e7405-b4c9-76e0-918c-62df53b822df",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
