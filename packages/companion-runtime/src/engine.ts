@@ -151,6 +151,11 @@ export class RuntimeEngine {
           outcome: "fence_lost",
           reason: error instanceof LeaseRenewalError ? "lease_renewal_failed" : "lease_fence_lost",
           thrown: error,
+          // A rejected stale fence is the safety mechanism working: the replacement executor owns
+          // recovery and this holder must abandon without settlement. A renewal failure is still an
+          // error because it means the heartbeat exhausted its lease runway without an authoritative
+          // takeover result.
+          level: error instanceof LeaseFenceLostError ? "warn" : "error",
         });
         return this.#result(claim, "fence_lost");
       }

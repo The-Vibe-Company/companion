@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RuntimeLogRecord, RuntimeProcessLog } from "@companion/companion-runtime";
-import { captureRuntimeException, createSentryRuntimeProcessLog } from "./sentry";
+import {
+  captureRuntimeException,
+  createSentryRuntimeProcessLog,
+  SENTRY_RUNTIME_ERROR_COOLDOWN_MS,
+} from "./sentry";
 
 type RuntimeLogCapture = (
   level: "info" | "warn" | "error",
@@ -17,7 +21,7 @@ describe("runtime Sentry process log", () => {
     vi.clearAllMocks();
   });
 
-  it("keeps the JSON sink and mirrors warnings and errors", () => {
+  it("keeps every JSON record but mirrors only errors", () => {
     const base: RuntimeProcessLog = {
       error: vi.fn(),
       warn: vi.fn(),
@@ -33,12 +37,12 @@ describe("runtime Sentry process log", () => {
 
     expect(base.warn).toHaveBeenCalledWith(warning);
     expect(base.error).toHaveBeenCalledWith(failure);
-    expect(capture).toHaveBeenNthCalledWith(1, "warn", warning.event, JSON.stringify(warning));
-    expect(capture).toHaveBeenNthCalledWith(2, "error", failure.event, JSON.stringify(failure));
+    expect(capture).toHaveBeenCalledWith("error", failure.event, JSON.stringify(failure));
+    expect(capture).toHaveBeenCalledTimes(1);
   });
 
-  it("passes timing records to the Sentry capture boundary", () => {
-    const base: RuntimeProcessLog = { error() {}, warn() {}, info() {} };
+  it("keeps failed provider timings in JSON without creating Sentry issues", () => {
+    const base: RuntimeProcessLog = { error() {}, warn() {}, info: vi.fn() };
     const capture = vi.fn();
     const log = createSentryRuntimeProcessLog(base, capture);
     const timing = record("runtime.box.provider_call", { ok: false });
@@ -47,8 +51,31 @@ describe("runtime Sentry process log", () => {
     log.info(timing);
     log.info(success);
 
-    expect(capture).toHaveBeenCalledWith("info", timing.event, JSON.stringify(timing));
-    expect(capture).toHaveBeenCalledTimes(1);
+    expect(base.info).toHaveBeenNthCalledWith(1, timing);
+    expect(base.info).toHaveBeenNthCalledWith(2, success);
+    expect(capture).not.toHaveBeenCalled();
+  });
+
+  it("rate-limits repeated errors by runtime event while preserving distinct groups", () => {
+    const base: RuntimeProcessLog = { error: vi.fn(), warn() {}, info() {} };
+    const capture = vi.fn();
+    let current = 1_000;
+    const log = createSentryRuntimeProcessLog(base, capture, () => current);
+    const fenceLost = record("runtime.work.fence_lost");
+    const claimLoop = record("runtime.claim_loop.error");
+
+    log.error(fenceLost);
+    current += SENTRY_RUNTIME_ERROR_COOLDOWN_MS - 1;
+    log.error(fenceLost);
+    log.error(claimLoop);
+    current += 1;
+    log.error(fenceLost);
+
+    expect(base.error).toHaveBeenCalledTimes(4);
+    expect(capture).toHaveBeenCalledTimes(3);
+    expect(capture).toHaveBeenNthCalledWith(1, "error", fenceLost.event, JSON.stringify(fenceLost));
+    expect(capture).toHaveBeenNthCalledWith(2, "error", claimLoop.event, JSON.stringify(claimLoop));
+    expect(capture).toHaveBeenNthCalledWith(3, "error", fenceLost.event, JSON.stringify(fenceLost));
   });
 
   it("expurgates records before sending them to the telemetry capture boundary", () => {
