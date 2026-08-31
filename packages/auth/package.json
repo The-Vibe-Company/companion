@@ -19,7 +19,7 @@
     "@companion/db": "workspace:*",
     "@companion/email": "workspace:*",
     "better-auth": "^1.6.23",
-    "zod": "^4.0.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@auth/agent-cli": "0.5.1",
