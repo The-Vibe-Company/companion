@@ -3,6 +3,9 @@
 Companion is a native SwiftUI app for iOS 26 and later. It replaces the former Expo client and
 keeps the existing `dev.companion.mobile` App Store Connect identity.
 
+The canonical source repository for the native app is
+[`The-Vibe-Company/companion`](https://github.com/The-Vibe-Company/companion).
+
 The iOS app is another complete Companion client, not a reduced mobile product. It uses the same
 `/v1` API and is intended to reach feature parity with the current browser experience, including
 Skills, Plugins, MCP connections, files, routines, triggers, sharing, settings, and every Companion
