@@ -1276,7 +1276,12 @@ describe("Companion trigger contracts", () => {
       summary: "Wake me when CI on main fails",
       proposal,
     }).proposal.name).toBe("CI failed on main");
-    // Pi never names a secret, a URL, or anything else beyond the four allowed keys.
+    // The legacy account field remains readable during rollout, but Pi no longer emits it.
+    expect(companionTriggerProposalSchema.parse({
+      ...proposal,
+      provider_account_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    }).provider_account_id).toBe("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+    // Pi never names a secret, a URL, or any other unrecognized key.
     expect(() => companionTriggerProposalSchema.parse({
       kind: "trigger",
       name: "CI failed on main",

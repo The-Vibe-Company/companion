@@ -574,7 +574,9 @@ middleware, gated on the feature flag, and capped at 1 MB; the URL secret is com
 the user controls. First-party creation registers supported remote webhooks with a member-scoped
 trigger-provider connection that is available to every Companion without an attachment step. OAuth
 connections reuse the existing encrypted MCP credential in place; manual URL copying is only the
-fallback for sources with no registration API.
+fallback for sources with no registration API. Pi trigger proposals carry no provider-account id:
+approval resolves the approving member's sole eligible connection, tolerates unavailable ids only
+for legacy pending proposals, and refuses to choose when several accounts are eligible.
 The route persists an isolated validation run as the immutable Companion Owner through
 `companion_api_fire_trigger` and never contacts Box or Pi. Runtime evaluates the bounded untrusted
 payload against the trigger prompt in a disposable Pi session with only `surface_to_main` enabled;

@@ -1062,6 +1062,7 @@ export const companionTriggerDraftSchema = z.object({
   prompt: companionTriggerPromptSchema,
   mode: companionTriggerModeSchema.default("relay"),
   provider: companionTriggerProviderSchema.default("webhook"),
+  /** Legacy broker field retained so already-pending proposals remain answerable after rollout. */
   provider_account_id: z.string().uuid().nullable().optional(),
   target: z.lazy(() => companionTriggerTargetSchema).nullable().optional(),
   enabled: z.boolean().default(true),

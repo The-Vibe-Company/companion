@@ -115,7 +115,9 @@ describe("Companion Pi interaction extension", () => {
     expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).not.toContain("PLUGIN_TRIGGER_PROVIDERS");
     expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).not.toContain("hasAttachedPlugin");
     expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
-      .toContain("provider_account_id: Type.Optional");
+      .not.toContain("provider_account_id: Type.Optional");
+    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
+      .not.toContain("params.provider_account_id");
     expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
       .toContain("Companion creates the trigger and registers the provider webhook end-to-end");
   });

@@ -125,8 +125,9 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
   member-scoped trigger-provider account. That authority is immediately available to every
   Companion the member can operate and is never attached through `selected_mcp_account_ids`.
   OAuth-backed accounts reuse the existing MCP credential in place. One eligible account is
-  selected silently; multiple accounts require
-  `provider_account_id`. `manual` plus the platform URL is only the exceptional fallback for a
+  selected silently. Pi never invents or sends `provider_account_id`; approval resolves the
+  approving member's sole eligible account and fails closed if several exist. The direct trigger
+  editor/API requires an explicit account for that ambiguous case. `manual` plus the platform URL is only the exceptional fallback for a
   source without a registration API. Users never paste URLs or secrets in the primary flow.
 - `POST /v1/hooks/triggers/:triggerId/:secret` is registered before session middleware, capped at
   1 MB, and compares the server-generated secret with `timingSafeEqual`. There is deliberately no
