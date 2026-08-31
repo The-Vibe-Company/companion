@@ -17,14 +17,15 @@ describe("runtime Sentry process log", () => {
     vi.clearAllMocks();
   });
 
-  it("keeps the JSON sink and mirrors warnings and errors", () => {
+  it("keeps the JSON sink, captures errors, and breadcrumbs operational warnings", () => {
     const base: RuntimeProcessLog = {
       error: vi.fn(),
       warn: vi.fn(),
       info: vi.fn(),
     };
     const capture = vi.fn();
-    const log = createSentryRuntimeProcessLog(base, capture);
+    const breadcrumb = vi.fn();
+    const log = createSentryRuntimeProcessLog(base, capture, breadcrumb);
     const warning = record("lease.renew.failed");
     const failure = record("runtime.claim_loop.error");
 
@@ -33,22 +34,25 @@ describe("runtime Sentry process log", () => {
 
     expect(base.warn).toHaveBeenCalledWith(warning);
     expect(base.error).toHaveBeenCalledWith(failure);
-    expect(capture).toHaveBeenNthCalledWith(1, "warn", warning.event, JSON.stringify(warning));
-    expect(capture).toHaveBeenNthCalledWith(2, "error", failure.event, JSON.stringify(failure));
+    expect(breadcrumb).toHaveBeenCalledWith("warning", warning.event, JSON.stringify(warning));
+    expect(capture).toHaveBeenCalledWith("error", failure.event, JSON.stringify(failure));
+    expect(capture).toHaveBeenCalledTimes(1);
   });
 
-  it("passes timing records to the Sentry capture boundary", () => {
+  it("passes failed timing records to the Sentry breadcrumb boundary", () => {
     const base: RuntimeProcessLog = { error() {}, warn() {}, info() {} };
     const capture = vi.fn();
-    const log = createSentryRuntimeProcessLog(base, capture);
+    const breadcrumb = vi.fn();
+    const log = createSentryRuntimeProcessLog(base, capture, breadcrumb);
     const timing = record("runtime.box.provider_call", { ok: false });
     const success = record("runtime.box.provider_call", { ok: true });
 
     log.info(timing);
     log.info(success);
 
-    expect(capture).toHaveBeenCalledWith("info", timing.event, JSON.stringify(timing));
-    expect(capture).toHaveBeenCalledTimes(1);
+    expect(breadcrumb).toHaveBeenCalledWith("warning", timing.event, JSON.stringify(timing));
+    expect(breadcrumb).toHaveBeenCalledTimes(1);
+    expect(capture).not.toHaveBeenCalled();
   });
 
   it("expurgates records before sending them to the telemetry capture boundary", () => {

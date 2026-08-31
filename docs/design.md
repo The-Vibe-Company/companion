@@ -205,6 +205,10 @@ Lifecycle and broker-observation calls that are known idempotent retry network, 
 failures up to five times with jittered 1/2/5/10/30-second backoff. Observation-only broker state
 and journal reads also retry `409` while the provider is temporarily transitioning the Box. Every
 attempt revalidates the lease before Box contact. Prompt and decision writes never use this path.
+When the direct hosted-agent endpoint fails, runtime stays on the safe exec fallback and re-probes
+only through broker state with bounded exponential backoff. Reading the same durable endpoint on a
+later claim preserves that suspect state; only a newer staging observation or a successful probe
+clears it.
 Epoch predicates prevent an expired executor from committing after a
 replacement claims the work, but database fencing never pretends to fence a provider side effect.
 

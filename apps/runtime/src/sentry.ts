@@ -49,6 +49,12 @@ type RuntimeLogCapture = (
   expurgatedRecord: string,
 ) => void;
 
+type RuntimeLogBreadcrumb = (
+  level: "info" | "warning",
+  event: string,
+  expurgatedRecord: string,
+) => void;
+
 function captureRuntimeLog(
   level: "info" | "warn" | "error",
   event: string,
@@ -65,16 +71,34 @@ function captureRuntimeLog(
   });
 }
 
-function captureRecord(capture: RuntimeLogCapture, level: "info" | "warn" | "error", record: RuntimeLogRecord): void {
+function captureRuntimeBreadcrumb(
+  level: "info" | "warning",
+  event: string,
+  expurgatedRecord: string,
+): void {
+  Sentry.addBreadcrumb({
+    category: "runtime",
+    level,
+    message: event,
+    data: { runtime_record: expurgatedRecord },
+  });
+}
+
+function captureRecord<TLevel extends string>(
+  capture: (level: TLevel, event: string, expurgatedRecord: string) => void,
+  level: TLevel,
+  record: RuntimeLogRecord,
+): void {
   const event = expurgateRuntimeMessage(record.event, "runtime.event");
   const expurgatedRecord = expurgateRuntimeMessage(JSON.stringify(record), "{}");
   capture(level, event, expurgatedRecord);
 }
 
-/** Mirror every expurgated warning/error and failed timing record into Sentry. */
+/** Capture errors as Sentry events; retain operational warnings and failed timings as breadcrumbs. */
 export function createSentryRuntimeProcessLog(
   log: RuntimeProcessLog,
   capture: RuntimeLogCapture = captureRuntimeLog,
+  breadcrumb: RuntimeLogBreadcrumb = captureRuntimeBreadcrumb,
 ): RuntimeProcessLog {
   return {
     error(record) {
@@ -83,11 +107,11 @@ export function createSentryRuntimeProcessLog(
     },
     warn(record) {
       log.warn(record);
-      captureRecord(capture, "warn", record);
+      captureRecord(breadcrumb, "warning", record);
     },
     info(record) {
       log.info(record);
-      if (record.ok === false) captureRecord(capture, "info", record);
+      if (record.ok === false) captureRecord(breadcrumb, "warning", record);
     },
   };
 }

@@ -411,7 +411,10 @@ base64 command chunks. Every structured payload is validated against the exec tr
 
 The facade in `apps/runtime` is the single ambiguity-safety point. Idempotent reads, ACKs, file
 staging, and outbox operations may fall back to exec for that one call and mark a failed endpoint
-suspect. Prompt dispatch never does so after a direct write may have started: the broker fsyncs an
+suspect. A suspect endpoint stays on exec while broker-state probes retry it with bounded
+exponential backoff from ten seconds to five minutes. Re-reading the same durable endpoint on a
+later claim preserves that state; only a newer staging observation or a successful probe clears it.
+Prompt dispatch never does so after a direct write may have started: the broker fsyncs an
 invocation-scoped `{attempt_id, command_id, fingerprint, ACK cursor}` ledger entry before answering;
 runtime polls `dispatch_status` and may resend only the byte-identical command id for at most 30
 seconds. Every prompt also carries the Pi invocation observed idle before the write intent; the
@@ -1346,12 +1349,14 @@ fell back to exec;
 comparison. Neither may ever contain the hosted URL, the proxy token, the bearer, or any response
 payload.
 
-When `SENTRY_DSN` is configured, every expurgated runtime warning/error record and every structured
-timing record with `ok: false` is mirrored to Sentry with stable `runtime.event` and `operation`
-tags. API 5xx failures, worker supervisor/claim failures, web request failures, and process startup
-failures use the same operation-tagged grouping discipline. Before-send sanitizers remove request
-bodies, headers, cookies, and OAuth/query material; runtime records are expurgated before they are
-mirrored. Provider payloads and plaintext credentials never enter these capture paths.
+When `SENTRY_DSN` is configured, expurgated runtime error records are captured as Sentry events with
+stable `runtime.event` and `operation` tags. Operational warnings and structured timing records with
+`ok: false` remain in the process log and are attached as Sentry breadcrumbs, so repeated fallback
+or retry signals provide context without creating one issue event per log line. API 5xx failures,
+worker supervisor/claim failures, web request failures, and process startup failures use the same
+operation-tagged grouping discipline. Before-send sanitizers remove request bodies, headers,
+cookies, and OAuth/query material; runtime records are expurgated before they enter either capture
+path. Provider payloads and plaintext credentials never enter them.
 
 Acceptance bounds:
 

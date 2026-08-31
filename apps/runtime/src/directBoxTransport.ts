@@ -41,10 +41,11 @@ export interface DirectAgentEndpoint extends CompanionBoxAgentEndpointCredential
 export const DIRECT_ENDPOINT_FRESHNESS_MS = COMPANION_BUDGETS_BASE.boxWarmTtlSeconds * 1_000;
 /**
  * How long a suspect endpoint rests before the next brokerState call re-probes it. Keeps the
- * re-probe cheap under the exec fallback cadence (~2 state calls/s) without abandoning the
- * endpoint: one bounded direct attempt per cooldown, not one per loop iteration.
+ * initial re-probe cheap under the exec fallback cadence (~2 state calls/s) without abandoning the
+ * endpoint. Repeated failures back off from this floor to five minutes.
  */
 export const DIRECT_SUSPECT_REPROBE_COOLDOWN_MS = 10_000;
+export const DIRECT_SUSPECT_REPROBE_MAX_COOLDOWN_MS = 5 * 60_000;
 /** Shadow mode compares at most once per Box per interval — the per-claim budget approximated. */
 export const DIRECT_SHADOW_COMPARE_INTERVAL_MS = 60_000;
 const DEFAULT_EVENT_POLL_INTERVAL_MS = 500;
@@ -53,6 +54,7 @@ const MAX_REGISTRY_ENTRIES = 4_096;
 interface RegistryEntry {
   endpoint: DirectAgentEndpoint;
   suspectAtMs: number | null;
+  suspectFailures: number;
 }
 
 /**
@@ -71,10 +73,17 @@ export class DirectBoxEndpointRegistry {
   register(boxId: string, endpoint: DirectAgentEndpoint): void {
     const existing = this.#entries.get(boxId);
     // Latest observation wins: a stale material row read after a fresh staging must not roll the
-    // endpoint (and its rotated bearer) backwards.
+    // endpoint (and its rotated bearer) backwards. An equal observation is the same durable
+    // endpoint being read by another claim, so it must not erase its fallback/backoff state.
     if (existing && existing.endpoint.observedAt.getTime() > endpoint.observedAt.getTime()) return;
+    const sameObservation = existing
+      && existing.endpoint.observedAt.getTime() === endpoint.observedAt.getTime();
     this.#entries.delete(boxId);
-    this.#entries.set(boxId, { endpoint, suspectAtMs: null });
+    this.#entries.set(boxId, {
+      endpoint,
+      suspectAtMs: sameObservation ? existing.suspectAtMs : null,
+      suspectFailures: sameObservation ? existing.suspectFailures : 0,
+    });
     this.#prune();
   }
 
@@ -96,19 +105,29 @@ export class DirectBoxEndpointRegistry {
 
   markSuspect(boxId: string): void {
     const entry = this.#entries.get(boxId);
-    if (entry) entry.suspectAtMs = this.#now();
+    if (entry) {
+      entry.suspectAtMs = this.#now();
+      entry.suspectFailures = Math.min(entry.suspectFailures + 1, 32);
+    }
   }
 
   clearSuspect(boxId: string): void {
     const entry = this.#entries.get(boxId);
-    if (entry) entry.suspectAtMs = null;
+    if (entry) {
+      entry.suspectAtMs = null;
+      entry.suspectFailures = 0;
+    }
   }
 
-  /** A suspect endpoint is retried on the next brokerState call once the cooldown has passed. */
+  /** A suspect endpoint is retried on brokerState after its bounded exponential cooldown. */
   reprobeDue(boxId: string): boolean {
-    const suspectAtMs = this.#entries.get(boxId)?.suspectAtMs;
-    if (suspectAtMs === null || suspectAtMs === undefined) return false;
-    return this.#now() - suspectAtMs >= DIRECT_SUSPECT_REPROBE_COOLDOWN_MS;
+    const entry = this.#entries.get(boxId);
+    if (!entry || entry.suspectAtMs === null) return false;
+    const cooldownMs = Math.min(
+      DIRECT_SUSPECT_REPROBE_MAX_COOLDOWN_MS,
+      DIRECT_SUSPECT_REPROBE_COOLDOWN_MS * (2 ** Math.max(0, entry.suspectFailures - 1)),
+    );
+    return this.#now() - entry.suspectAtMs >= cooldownMs;
   }
 
   #prune(): void {

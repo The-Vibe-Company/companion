@@ -227,6 +227,38 @@ describe("createDirectRuntimePiControl (on)", () => {
     expect(exec.readBrokerEvents).not.toHaveBeenCalled();
   });
 
+  it("backs off repeated probes and preserves fallback state for the same durable endpoint", async () => {
+    let nowMs = 1_000_000;
+    const failing = vi.fn(async () => {
+      throw new CompanionBoxAgentRequestError("agent_http_error", 500);
+    });
+    const calls = agentCalls({ brokerState: failing });
+    const { facade, exec, records, registry, endpoint } = harness({ calls, nowMs: () => nowMs });
+
+    await facade.pi.brokerState({ boxId: BOX_ID, signal });
+    nowMs += DIRECT_SUSPECT_REPROBE_COOLDOWN_MS;
+    await facade.pi.brokerState({ boxId: BOX_ID, signal });
+    expect(failing).toHaveBeenCalledTimes(2);
+
+    // A later claim reading the same durable observation must not make it look healthy again.
+    registry.register(BOX_ID, endpoint);
+    nowMs += DIRECT_SUSPECT_REPROBE_COOLDOWN_MS;
+    await facade.pi.brokerState({ boxId: BOX_ID, signal });
+    expect(failing).toHaveBeenCalledTimes(2);
+    expect(exec.brokerState).toHaveBeenCalledTimes(3);
+
+    // The second failure doubled the recovery interval; the next probe is due after 20 seconds.
+    nowMs += DIRECT_SUSPECT_REPROBE_COOLDOWN_MS;
+    await facade.pi.brokerState({ boxId: BOX_ID, signal });
+    expect(failing).toHaveBeenCalledTimes(3);
+    expect(records).toHaveLength(3);
+
+    // A genuinely newer staging observation is allowed to probe immediately.
+    registry.register(BOX_ID, { ...endpoint, observedAt: new Date(nowMs + 1) });
+    await facade.pi.brokerState({ boxId: BOX_ID, signal });
+    expect(failing).toHaveBeenCalledTimes(4);
+  });
+
   it("does not mark the endpoint suspect on a broker-relayed failure", async () => {
     const brokerDown = agentCalls({
       readEvents: vi.fn(async () => {
