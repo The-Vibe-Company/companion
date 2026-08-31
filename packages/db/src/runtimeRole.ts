@@ -1,9 +1,43 @@
 import type { Sql } from "postgres";
 
+export type RuntimeDatabaseRoleFailure =
+  | "profile_unavailable"
+  | "login_mismatch"
+  | "unsafe_role_attributes"
+  | "role_membership"
+  | "create_privilege"
+  | "object_ownership"
+  | "release_schema_incomplete"
+  | "relation_privilege"
+  | "required_function_ownership"
+  | "unexpected_function_grant";
+
+const RUNTIME_DATABASE_ROLE_MESSAGES = {
+  profile_unavailable: "Runtime database role verification returned no complete profile",
+  login_mismatch:
+    "Runtime database connection authenticated as a different role than DATABASE_COMPANION_RUNTIME_URL",
+  unsafe_role_attributes:
+    "Runtime database role must be LOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT",
+  role_membership: "Runtime database role must not have any role memberships",
+  create_privilege: "Runtime database role must not have database or public schema CREATE",
+  object_ownership: "Runtime database role must not own database objects",
+  release_schema_incomplete:
+    "Runtime database is not ready for this release; apply its migrations and runtime grants before starting apps/runtime",
+  relation_privilege: "Runtime database role must not have direct public relation privileges",
+  required_function_ownership: "Runtime database role must not own runtime functions",
+  unexpected_function_grant:
+    "Runtime database role has an unexpected SECURITY DEFINER grant; reapply the runtime grants",
+} satisfies Record<RuntimeDatabaseRoleFailure, string>;
+
 export class RuntimeDatabaseRoleError extends Error {
-  constructor() {
-    super("Runtime database connection does not use the configured dedicated role");
+  readonly failure: RuntimeDatabaseRoleFailure;
+  readonly stableCode: string;
+
+  constructor(failure: RuntimeDatabaseRoleFailure) {
+    super(RUNTIME_DATABASE_ROLE_MESSAGES[failure]);
     this.name = "RuntimeDatabaseRoleError";
+    this.failure = failure;
+    this.stableCode = `runtime_database_role_${failure}`;
   }
 }
 
@@ -182,25 +216,40 @@ export async function verifyRuntimeDatabaseRole(
 ): Promise<void> {
   const rows = await sql.unsafe<RuntimeRoleProfile[]>(RUNTIME_ROLE_PROFILE_SQL);
   const profile = rows[0];
+  if (rows.length !== 1 || !profile) {
+    throw new RuntimeDatabaseRoleError("profile_unavailable");
+  }
+  if (profile.currentRole !== expectedRole) {
+    throw new RuntimeDatabaseRoleError("login_mismatch");
+  }
   if (
-    rows.length !== 1
-    || profile?.currentRole !== expectedRole
-    || profile.canLogin !== true
+    profile.canLogin !== true
     || profile.isSuperuser !== false
     || profile.bypassesRls !== false
     || profile.inheritsPrivileges !== false
-    || profile.hasMemberships !== false
-    || profile.hasDatabaseCreatePrivilege !== false
+  ) throw new RuntimeDatabaseRoleError("unsafe_role_attributes");
+  if (profile.hasMemberships !== false) {
+    throw new RuntimeDatabaseRoleError("role_membership");
+  }
+  if (
+    profile.hasDatabaseCreatePrivilege !== false
     || profile.hasPublicSchemaCreatePrivilege !== false
-    || profile.ownsDatabaseOrSchema !== false
+  ) throw new RuntimeDatabaseRoleError("create_privilege");
+  if (
+    profile.ownsDatabaseOrSchema !== false
     || profile.ownsRelations !== false
     || profile.ownsFunctionsOrTypes !== false
-    || profile.protectedRelationCount !== 14
-    || profile.hasPublicRelationPrivileges !== false
-    || profile.requiredFunctionsReady !== true
-    || profile.ownsRequiredFunctions !== false
-    || profile.hasUnexpectedDefinerGrant !== false
-  ) {
-    throw new RuntimeDatabaseRoleError();
+  ) throw new RuntimeDatabaseRoleError("object_ownership");
+  if (profile.protectedRelationCount !== 14 || profile.requiredFunctionsReady !== true) {
+    throw new RuntimeDatabaseRoleError("release_schema_incomplete");
+  }
+  if (profile.hasPublicRelationPrivileges !== false) {
+    throw new RuntimeDatabaseRoleError("relation_privilege");
+  }
+  if (profile.ownsRequiredFunctions !== false) {
+    throw new RuntimeDatabaseRoleError("required_function_ownership");
+  }
+  if (profile.hasUnexpectedDefinerGrant !== false) {
+    throw new RuntimeDatabaseRoleError("unexpected_function_grant");
   }
 }

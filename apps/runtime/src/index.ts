@@ -1,12 +1,19 @@
+/* oxlint-disable anti-slop/no-unknown-parameters -- This is the process-level rejected-promise boundary; startup reporting normalizes the value before any sink receives it. */
 import "./sentry";
 import { captureRuntimeException, Sentry } from "./sentry";
 import { runRuntimeUntilSignal } from "./process";
 import { buildProductionRuntimeService } from "./production";
-import { logRuntimeStartupFailure } from "./startupLog";
+import { handleRuntimeStartupFailure, logRuntimeStartupFailure } from "./startupLog";
 
-void runRuntimeUntilSignal({ build: buildProductionRuntimeService }).catch(async (error: unknown) => {
-  captureRuntimeException(error);
-  logRuntimeStartupFailure(error);
-  await Sentry.flush(2000);
-  process.exitCode = 1;
-});
+void runRuntimeUntilSignal({ build: buildProductionRuntimeService }).catch((error: unknown) =>
+  handleRuntimeStartupFailure(error, {
+    capture: captureRuntimeException,
+    flush: async () => {
+      await Sentry.flush(2000);
+    },
+    log: logRuntimeStartupFailure,
+    setExitCode: (code) => {
+      process.exitCode = code;
+    },
+  }),
+);

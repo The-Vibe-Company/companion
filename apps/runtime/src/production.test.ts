@@ -12,6 +12,7 @@ import type {
 } from "@companion/companion-runtime";
 
 import type { RuntimeDatabase } from "./database";
+import { RuntimeDatabaseRoleError } from "./database";
 import {
   buildProductionRuntimeService,
   type RuntimeArchiveStorage,
@@ -51,6 +52,24 @@ function database(): RuntimeDatabase {
 }
 
 describe("production runtime composition", () => {
+  it("closes the pool and constructs no service when database role verification refuses startup", async () => {
+    const db = database();
+    const failure = new RuntimeDatabaseRoleError("login_mismatch");
+    vi.mocked(db.verifyRole).mockRejectedValue(failure);
+    const createStore = vi.fn(() => ({} as RuntimeStore));
+
+    await expect(buildProductionRuntimeService({
+      env: {
+        DATABASE_COMPANION_RUNTIME_URL: databaseUrl,
+        COMPANION_COMPANIONS_ENABLED: "false",
+      },
+      factories: { createDatabase: () => db, createStore },
+    })).rejects.toBe(failure);
+
+    expect(createStore).not.toHaveBeenCalled();
+    expect(db.close).toHaveBeenCalledOnce();
+  });
+
   it("verifies the runtime role but constructs no external client on the kill-switch path", async () => {
     const db = database();
     const store = {} as RuntimeStore;
