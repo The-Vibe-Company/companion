@@ -1,0 +1,21 @@
+apps/web/src/components/companions/CompanionTranscript.tsx
+  s_7a32b7067b94c9::t_fee6c4c831f1e0 1038-1067,1167-1168
+apps/web/src/components/companions/CompanionThread.client.test.ts
+  s_7a32b7067b94c9::t_eefdc1c542ab37 1410-1526
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "09e0b7b58763bb6c3cd088a8489bf285be72c485",
+  "prompts": {},
+  "sessions": {
+    "s_7a32b7067b94c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba622ebc-6ca5-4ece-bb67-3b8e65150046",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
