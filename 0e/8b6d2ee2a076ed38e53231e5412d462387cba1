@@ -61,6 +61,7 @@ packages/core/src/companionRuntimeApi.ts
   s_b50daf2a4fe223::t_9fd6d1e57ce236 915
 apps/api/test/integration/companionSelfHealMigration.integration.test.ts
   s_42072119452844::t_6e86f27b00e14b 1-82,84-172,174-251
+  s_42072119452844::t_aac8dea2933eec 83,173
 docs/design.md
   s_42072119452844::t_7bcae67633da6f 151-153,164-167,303-306,394-401,541-544,609-611
   s_42072119452844::t_fc22542f81edcf 109,245-247
@@ -89,6 +90,8 @@ apps/ios/CompanionKit/Sources/CompanionKit/CompanionSync.swift
   s_42072119452844::t_6d235614bf49ee 208
 packages/companion-skill/skill/companion.integrity.json
   s_42072119452844::t_a1b8438865d15b 10
+  s_42072119452844::t_0cfd0a7a900ce0 3-4
+  s_42072119452844::t_aac8dea2933eec 22
 apps/api/test/integration/skillsHubOnlyMigration.integration.test.ts
   s_42072119452844::t_b15967435cff8d 54-56
 apps/ios/CompanionKit/Sources/CompanionKit/CompanionLocalCache.swift
@@ -116,6 +119,7 @@ apps/web/src/lib/companions.threadSync.test.ts
   s_42072119452844::t_058776483dacb3 5-6,53-58,71,83-84
 packages/companion-skill/skill/companion.json
   s_42072119452844::t_649e48a1877b85 31,33-39
+  s_42072119452844::t_aac8dea2933eec 4,32
 apps/ios/CompanionKit/Sources/CompanionKit/SessionStore.swift
   s_42072119452844::t_aa54d4646d11b2 1110-1119,1131,1136-1153,1160,1163-1166,1173,1193,1195-1201,1203,1205-1213,1215-1216,1242-1249,1260,1265
   s_42072119452844::t_a0020ca3e3e8d8 1188,1194,1202,1204
@@ -144,6 +148,7 @@ docs/product.md
   s_42072119452844::t_6140d2acc724d1 65-68,86-89
 packages/companion-skill/skill/SKILL.md
   s_42072119452844::t_5f202fff1fe9d9 44-49
+  s_42072119452844::t_aac8dea2933eec 1395
 packages/companion-runtime/src/operations.ts
   s_42072119452844::t_384259cf1144fc 874-875,880,899,918,1056,1093
   s_42072119452844::t_ae0e18d9d9afc7 746-759
@@ -200,6 +205,7 @@ docs/runbooks/routine-isolation-cutover.md
   s_42072119452844::t_a61257624b1a5f 215,218-219,223-224,236-238
 apps/api/src/localSkills.test.ts
   s_42072119452844::t_dfa64ac957c95e 130-132
+  s_42072119452844::t_aac8dea2933eec 51,137-142
 apps/web/src/components/companions/CompanionThread.tsx
   s_42072119452844::t_f1b1bbd697fdaf 109-113,151-155,399-411,439-441
   s_42072119452844::t_c56651277cd303 3,47,50,52,55,58-59,65-69,415
