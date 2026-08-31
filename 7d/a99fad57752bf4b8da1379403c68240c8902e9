@@ -1,0 +1,57 @@
+packages/box-runtime/src/companionPermissionBroker.test.ts
+  s_b50daf2a4fe223::t_24fc306a9dc686 118-120
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_b50daf2a4fe223::t_24fc306a9dc686 738-740
+packages/db/drizzle/0149_companion_trigger_proposal_account_fallback.sql
+  s_b50daf2a4fe223::t_580205510d6233 1-99
+docs/design.md
+  s_b50daf2a4fe223::t_916259986e587f 577-579
+packages/contracts/test/companions.test.ts
+  s_b50daf2a4fe223::t_1cd45159eff0d2 1279-1284
+packages/box-runtime/src/companionPermissionBroker.ts
+  s_b50daf2a4fe223::t_24fc306a9dc686 425,427
+docs/companions-runtime.md
+  s_b50daf2a4fe223::t_45bb50f7694baf 584-587,799-801
+packages/companion-skill/skill/SKILL.md
+  s_b50daf2a4fe223::t_45bb50f7694baf 30-32
+  s_b50daf2a4fe223::t_1ec66dd3d1aa82 1389
+packages/companion-skill/skill/companion.json
+  s_b50daf2a4fe223::t_45bb50f7694baf 4,31-38
+packages/companion-skill/skill/companion.integrity.json
+  s_b50daf2a4fe223::t_964ad9cacb479f 3
+  s_b50daf2a4fe223::t_029dd48b684a72 4,22
+packages/box-runtime/src/companionPluginSkills.ts
+  s_b50daf2a4fe223::t_24fc306a9dc686 22-24
+apps/api/src/companionRoutes.test.ts
+  s_b50daf2a4fe223::t_4704bd47168e21 186-209,1854,1897,1903-1943
+  s_b50daf2a4fe223::t_55b619b4530647 1855-1860,1874-1881,1894-1896
+  s_b50daf2a4fe223::t_7b1d0fad3c61ce 1944-1945
+apps/api/src/localSkills.test.ts
+  s_b50daf2a4fe223::t_1ec66dd3d1aa82 51,130-132
+docs/PRD.md
+  s_b50daf2a4fe223::t_45bb50f7694baf 128-130
+apps/api/test/integration/companionTriggers.integration.test.ts
+  s_b50daf2a4fe223::t_c9d763f5f75b47 1518-1524,1541-1545,1675,1682,1693,1700
+  s_b50daf2a4fe223::t_adb4ebc295804c 1499-1517,1525-1540,1546-1643,1645-1652,1669-1674,1676-1681,1683-1692,1694-1699,1701-1710
+  s_b50daf2a4fe223::t_ca3762dc512403 1644,1653-1668
+packages/contracts/src/companions.ts
+  s_b50daf2a4fe223::t_24fc306a9dc686 1065
+packages/db/drizzle/meta/_journal.json
+  s_b50daf2a4fe223::t_9f4ca7a58f91ec 1047-1053
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7da99fad57752bf4b8da1379403c68240c8902e9",
+  "prompts": {},
+  "sessions": {
+    "s_b50daf2a4fe223": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05873-d4b6-73e3-92f6-6323b57b18db",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
