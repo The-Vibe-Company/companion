@@ -26,13 +26,17 @@ public struct CompanionRosterSnapshot: Codable, Equatable, Sendable {
 }
 
 public struct CompanionThreadSnapshot: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public let schemaVersion: Int
     public let cursor: String?
     public let thread: CompanionThread
     /// The on-device copy is a bounded tail, not an assertion that older history is complete.
     public let isPartial: Bool
+    public let olderCursor: String?
+    /// Server evidence used to rebuild collapsed routine-notification disclosures after deltas.
+    /// Optional keeps snapshots written by the previous schema readable during app upgrades.
+    public let notifyReturns: [CompanionRoutineNotifyReturn]?
     public let syncedAt: Date
 
     public init(
@@ -40,13 +44,17 @@ public struct CompanionThreadSnapshot: Codable, Equatable, Sendable {
         cursor: String?,
         thread: CompanionThread,
         isPartial: Bool = false,
-        syncedAt: Date = .now
+        syncedAt: Date = .now,
+        olderCursor: String? = nil,
+        notifyReturns: [CompanionRoutineNotifyReturn]? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.cursor = cursor
         self.thread = thread
         self.isPartial = isPartial
         self.syncedAt = syncedAt
+        self.olderCursor = olderCursor
+        self.notifyReturns = notifyReturns
     }
 }
 
@@ -59,7 +67,7 @@ public protocol CompanionSnapshotCache: Sendable {
 }
 
 extension CompanionThreadSnapshot {
-    static let maximumCachedEntryCount = 250
+    static let maximumCachedEntryCount = 150
 
     /// Cached content is presentation-only. A fresh server response is required before any
     /// mutation control can become active again.
@@ -72,7 +80,9 @@ extension CompanionThreadSnapshot {
                 canSend: false
             ),
             isPartial: isPartial,
-            syncedAt: syncedAt
+            syncedAt: syncedAt,
+            olderCursor: olderCursor,
+            notifyReturns: notifyReturns
         )
     }
 
@@ -80,7 +90,9 @@ extension CompanionThreadSnapshot {
         cursor: String?,
         thread: CompanionThread,
         isPartial: Bool = false,
-        syncedAt: Date = .now
+        syncedAt: Date = .now,
+        olderCursor: String? = nil,
+        notifyReturns: [CompanionRoutineNotifyReturn]? = nil
     ) -> Self {
         let sortedEntries = thread.entries.sorted {
             $0.ordinal == $1.ordinal ? $0.eventID < $1.eventID : $0.ordinal < $1.ordinal
@@ -90,7 +102,9 @@ extension CompanionThreadSnapshot {
             cursor: cursor,
             thread: thread.copy(entries: cachedEntries),
             isPartial: isPartial || cachedEntries.count < sortedEntries.count,
-            syncedAt: syncedAt
+            syncedAt: syncedAt,
+            olderCursor: olderCursor,
+            notifyReturns: notifyReturns
         )
     }
 }
@@ -232,7 +246,9 @@ public final class SQLiteCompanionSnapshotCache: CompanionSnapshotCache, @unchec
             cursor: snapshot.cursor,
             thread: snapshot.thread,
             isPartial: snapshot.isPartial,
-            syncedAt: snapshot.syncedAt
+            syncedAt: snapshot.syncedAt,
+            olderCursor: snapshot.olderCursor,
+            notifyReturns: snapshot.notifyReturns
         )
         let payload = try encoder.encode(persistedSnapshot)
         guard payload.count <= Self.maximumThreadBytes else { throw CacheError.tooLarge }

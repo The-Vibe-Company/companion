@@ -64,8 +64,10 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 - Turn states are
   `queued → starting → dispatching → running ↔ needs_input → succeeded|failed|interrupted|cancelled`.
   One attempt is active per Companion; later turns remain ordered in PostgreSQL.
-- Retry requires a new `retry_id`, creates a new attempt on the same turn, and warns that earlier
-  external effects may have succeeded. Cancel settles an interrupted turn and releases the queue.
+- An ambiguous occurrence is never replayed. Runtime creates one internal recovery operation,
+  terminates the exact Pi invocation, preserves the original error, marks the occurrence
+  `auto_abandoned`, and releases its lane. The compatibility Retry request observes that same
+  recovery; Cancel remains the active/queued stop path.
 - A dedicated `apps/runtime` service is the only Box/Pi lifecycle owner. Durable operations,
   checkpoints, leases, and attempt epochs let another replica continue after a crash without
   accepting stale settlements.
@@ -156,7 +158,9 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 - Unknown Pi events are counted and ignored. Only explicitly supported terminal event shapes settle
   a turn; malformed or oversized lines advance safely without storing their raw content.
 - A missing acknowledgement after a possible prompt write is `interrupted` and never auto-replayed.
-  A proven negative acknowledgement may be retried under the lifecycle retry policy.
+  Its exact Pi invocation is cleaned automatically with bounded backoff, after which the occurrence
+  is `auto_abandoned` and later work continues. A proven negative acknowledgement may be retried
+  under the lifecycle retry policy.
 - Ten minutes without correlated activity stalls a running turn; the inactivity clock pauses while
   a blocking human decision is in `needs_input`. After ten minutes without an answer, or sooner when
   the member sends another message, Pi receives a cancelled response and chooses a safe fallback or
@@ -225,7 +229,7 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 
 - Unit, real PostgreSQL, simulator fault-injection, and browser suites in `docs/testing.md` pass.
 - The full API + worker + runtime + web + Box/Pi simulator topology passes cold send, image,
-  decision, stop/wake, takeover, interruption, Retry/Cancel, and permanent deletion scenarios.
+  decision, stop/wake, takeover, automatic interruption recovery, and permanent deletion scenarios.
 - No P0/P1 runtime incident is open, and the purge report contains no owned legacy resource before
   legacy orchestration removal.
 - `pnpm verify:change` and every printed PostgreSQL, container, dependency, and browser gate pass.

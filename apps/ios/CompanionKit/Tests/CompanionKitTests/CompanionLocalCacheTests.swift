@@ -225,6 +225,19 @@ private final class RejectedThreadCursorURLProtocol: URLProtocol, @unchecked Sen
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
+        if request.url?.path.hasSuffix("/thread-window") == true {
+            let payload = #"{"thread":{"companion_id":"22222222-2222-4222-8222-222222222222","viewer_id":"user-1","read_only":false,"can_send":true,"transcription_available":true,"active_turn":null,"queued_count":0,"interrupted_turn":null},"entries":[],"older_cursor":null,"sync_cursor":"transport-safe","notify_returns":[]}"#
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: Data(payload.utf8))
+            client?.urlProtocolDidFinishLoading(self)
+            return
+        }
         let cursor = URLComponents(
             url: request.url!,
             resolvingAgainstBaseURL: false
@@ -242,6 +255,93 @@ private final class RejectedThreadCursorURLProtocol: URLProtocol, @unchecked Sen
             statusCode: statusCode,
             httpVersion: nil,
             headerFields: cursor == nil ? ["Content-Type": "application/json"] : nil
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(payload.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+}
+
+private final class PagedThreadSyncURLProtocol: URLProtocol, @unchecked Sendable {
+    private static let lock = NSLock()
+    private nonisolated(unsafe) static var requestedURLs: [URL] = []
+
+    static func reset() {
+        lock.lock()
+        requestedURLs = []
+        lock.unlock()
+    }
+
+    static var capturedURLs: [URL] {
+        lock.lock()
+        defer { lock.unlock() }
+        return requestedURLs
+    }
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        let url = request.url!
+        Self.lock.lock()
+        Self.requestedURLs.append(url)
+        Self.lock.unlock()
+        let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        let cursor = query.first(where: { $0.name == "cursor" })?.value
+        let before = query.first(where: { $0.name == "before" })?.value
+        let payload: String
+        if url.path.hasSuffix("/thread-window"), before == "older-one" {
+            payload = Self.windowPayload(
+                entries: Self.entry(ordinal: 0),
+                olderCursor: nil,
+                syncCursor: "sync-3"
+            )
+        } else if url.path.hasSuffix("/thread-window") {
+            payload = Self.windowPayload(
+                entries: "\(Self.entry(ordinal: 1)),\(Self.entry(ordinal: 2))",
+                olderCursor: "older-one",
+                syncCursor: "sync-1"
+            )
+        } else if url.path.hasSuffix("/thread-delta"), cursor == "sync-1" {
+            payload = Self.deltaPayload(entry: Self.entry(ordinal: 3), cursor: "sync-2", hasMore: true)
+        } else if url.path.hasSuffix("/thread-delta"), cursor == "sync-2" {
+            payload = Self.deltaPayload(entry: Self.entry(ordinal: 4), cursor: "sync-3", hasMore: false)
+        } else {
+            finish(statusCode: 404, payload: #"{"code":"not_found","message":"Unexpected request"}"#)
+            return
+        }
+        finish(statusCode: 200, payload: payload)
+    }
+
+    private static func entry(ordinal: Int) -> String {
+        #"{"event_id":"event:\#(ordinal)","ordinal":\#(ordinal),"role":"assistant","content":"Message \#(ordinal)","reasoning":null,"author_id":null,"author_name":null,"decision":null,"tool":null,"routine":null,"turn_id":null,"queued":false,"attachments":[],"created_at":"2026-08-29T00:00:00Z"}"#
+    }
+
+    private static func metadata() -> String {
+        #"{"companion_id":"22222222-2222-4222-8222-222222222222","viewer_id":"user-1","read_only":false,"can_send":true,"transcription_available":true,"active_turn":null,"queued_count":0,"interrupted_turn":null}"#
+    }
+
+    private static func windowPayload(
+        entries: String,
+        olderCursor: String?,
+        syncCursor: String
+    ) -> String {
+        let older = olderCursor.map { "\"\($0)\"" } ?? "null"
+        return #"{"thread":\#(metadata()),"entries":[\#(entries)],"older_cursor":\#(older),"sync_cursor":"\#(syncCursor)","notify_returns":[]}"#
+    }
+
+    private static func deltaPayload(entry: String, cursor: String, hasMore: Bool) -> String {
+        #"{"cursor":"\#(cursor)","reset_entries":false,"changed_entries":[\#(entry)],"deleted_event_ids":[],"thread":\#(metadata()),"has_more":\#(hasMore),"notify_returns":[]}"#
+    }
+
+    private func finish(statusCode: Int, payload: String) {
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: Data(payload.utf8))
@@ -489,8 +589,8 @@ func sqliteCachePersistsRestoresScopesAndBoundedThreadTail() throws {
     )
     let restored = try #require(restoredSnapshot)
     #expect(restored.isPartial)
-    #expect(restored.thread.entries.count == 250)
-    #expect(restored.thread.entries.first?.ordinal == 50)
+    #expect(restored.thread.entries.count == 150)
+    #expect(restored.thread.entries.first?.ordinal == 150)
 }
 
 @Test
@@ -521,6 +621,74 @@ func threadDeltaKeepsFullLiveHistoryAndResetsExceptionalHistory() throws {
     #expect(live.thread.entries.count == 300)
     #expect(live.thread.entries.first?.ordinal == 0)
     #expect(live.thread.entries.last?.ordinal == 299)
+}
+
+@Test
+func threadWindowsAndDeltasPreserveRoutineNotifyGroupingEvidence() throws {
+    let routineID = "33333333-3333-4333-8333-333333333333"
+    let firstRunID = "44444444-4444-4444-8444-444444444444"
+    let secondRunID = "55555555-5555-4555-8555-555555555555"
+    let thread = try companionThread(entries: [])
+    let metadata = CompanionThreadMetadata(
+        companionID: thread.companionID,
+        viewerID: thread.viewerID,
+        readOnly: thread.readOnly,
+        canSend: thread.canSend,
+        transcriptionAvailable: thread.transcriptionAvailable,
+        activeTurn: thread.activeTurn,
+        queuedCount: thread.queuedCount,
+        interruptedTurn: thread.interruptedTurn
+    )
+    let firstEntries = routineNotifyPair(
+        routineID: routineID,
+        routineName: "Daily report",
+        runID: firstRunID,
+        ordinal: 0
+    )
+    let firstReturn = CompanionRoutineNotifyReturn(
+        runID: firstRunID,
+        routineID: routineID,
+        routineName: "Daily report",
+        mainEntryEventID: firstEntries[1].eventID
+    )
+    let initial = CompanionThreadWindow(
+        thread: metadata,
+        entries: firstEntries,
+        olderCursor: nil,
+        syncCursor: "sync-1",
+        notifyReturns: [firstReturn]
+    ).snapshot()
+    #expect(initial.thread.entries.count == 2)
+    #expect(initial.thread.entries.last?.routineNotifyGroup == nil)
+
+    let secondEntries = routineNotifyPair(
+        routineID: routineID,
+        routineName: "Daily report",
+        runID: secondRunID,
+        ordinal: 2
+    )
+    let secondReturn = CompanionRoutineNotifyReturn(
+        runID: secondRunID,
+        routineID: routineID,
+        routineName: "Daily report",
+        mainEntryEventID: secondEntries[1].eventID
+    )
+    let merged = CompanionThreadDelta(
+        cursor: "sync-2",
+        resetEntries: false,
+        changedEntries: secondEntries,
+        deletedEventIDs: [],
+        thread: metadata,
+        notifyReturns: [secondReturn]
+    ).applying(to: initial)
+
+    #expect(merged.thread.entries.count == 2)
+    let group = try #require(merged.thread.entries.last?.routineNotifyGroup)
+    #expect(group.routineID == routineID)
+    #expect(group.routineName == "Daily report")
+    #expect(group.totalCount == 2)
+    #expect(group.hiddenEntries.map(\.eventID) == firstEntries.map(\.eventID))
+    #expect(Set(merged.notifyReturns?.map(\.runID) ?? []) == Set([firstRunID, secondRunID]))
 }
 
 @Test @MainActor
@@ -797,7 +965,7 @@ func cachedThreadRemainsRenderableWhileDeltaSynchronizationIsInFlight() async th
     // The request has reached the transport and is deliberately suspended. Cached content remains
     // the projection, so ChatView's loader predicate stays false throughout revalidation.
     #expect(!projection.needsBlockingLoader)
-    #expect(store.cachedThread(companionID: cached.thread.companionID)?.thread.entries.count == 250)
+    #expect(store.cachedThread(companionID: cached.thread.companionID)?.thread.entries.count == 150)
     #expect(URLComponents(
         url: try #require(SuspendedThreadSyncURLProtocol.capturedURL),
         resolvingAgainstBaseURL: false
@@ -881,10 +1049,77 @@ func rejectedThreadCursorRetriesOnceWithoutCursor() async throws {
         )
 
         let synchronization = try await store.synchronizeThread(companionID: companionID)
-        #expect(RejectedThreadCursorURLProtocol.capturedCursors == ["short-cursor", nil])
+        #expect(RejectedThreadCursorURLProtocol.capturedCursors == ["short-cursor"])
         #expect(synchronization.value.cursor == "transport-safe")
         #expect(synchronization.value.thread.entries.isEmpty)
     }
+}
+
+@Test
+func compatibilityThreadCallDrainsEveryOlderWindow() async throws {
+    PagedThreadSyncURLProtocol.reset()
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PagedThreadSyncURLProtocol.self]
+    let client = APIClient(
+        baseURL: URL(string: "https://example.test")!,
+        session: URLSession(configuration: configuration),
+        initialAuthority: testSession()
+    )
+
+    let thread = try await client.thread(
+        companionID: "22222222-2222-4222-8222-222222222222"
+    )
+
+    #expect(thread.entries.map(\.ordinal) == [0, 1, 2])
+    let urls = PagedThreadSyncURLProtocol.capturedURLs
+    #expect(urls.count == 2)
+    #expect(URLComponents(url: urls[1], resolvingAgainstBaseURL: false)?
+        .queryItems?.contains(URLQueryItem(name: "before", value: "older-one")) == true)
+}
+
+@Test @MainActor
+func pagedThreadBootstrapDrainsDeltasAndLoadsOlderHistory() async throws {
+    PagedThreadSyncURLProtocol.reset()
+    let session = testSession()
+    let companionID = "22222222-2222-4222-8222-222222222222"
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PagedThreadSyncURLProtocol.self]
+    let client = APIClient(
+        baseURL: URL(string: "https://example.test")!,
+        session: URLSession(configuration: configuration),
+        initialAuthority: session
+    )
+    let store = SessionStore(
+        apiURL: URL(string: "https://example.test")!,
+        storage: FixedSessionStorage(data: try JSONEncoder().encode(session)),
+        apiClient: client
+    )
+
+    let bootstrap = try await store.synchronizeThread(companionID: companionID)
+    #expect(bootstrap.value.cursor == "sync-1")
+    #expect(bootstrap.value.olderCursor == "older-one")
+    #expect(bootstrap.value.thread.entries.map(\.ordinal) == [1, 2])
+
+    let drained = try await store.synchronizeThread(companionID: companionID)
+    #expect(drained.value.cursor == "sync-3")
+    #expect(drained.value.thread.entries.map(\.ordinal) == [1, 2, 3, 4])
+
+    let history = try #require(try await store.loadOlderThreadWindow(companionID: companionID))
+    #expect(history.value.cursor == "sync-3")
+    #expect(history.value.olderCursor == nil)
+    #expect(history.value.thread.entries.map(\.ordinal) == [0, 1, 2, 3, 4])
+
+    let urls = PagedThreadSyncURLProtocol.capturedURLs
+    #expect(urls.count == 4)
+    #expect(urls[0].path.hasSuffix("/thread-window"))
+    #expect(URLComponents(url: urls[0], resolvingAgainstBaseURL: false)?
+        .queryItems?.contains(URLQueryItem(name: "limit", value: "50")) == true)
+    #expect(URLComponents(url: urls[1], resolvingAgainstBaseURL: false)?
+        .queryItems?.contains(URLQueryItem(name: "cursor", value: "sync-1")) == true)
+    #expect(URLComponents(url: urls[2], resolvingAgainstBaseURL: false)?
+        .queryItems?.contains(URLQueryItem(name: "cursor", value: "sync-2")) == true)
+    #expect(URLComponents(url: urls[3], resolvingAgainstBaseURL: false)?
+        .queryItems?.contains(URLQueryItem(name: "before", value: "older-one")) == true)
 }
 
 @Test
@@ -1087,6 +1322,50 @@ private func transcriptEntry(ordinal: Int) throws -> TranscriptEntry {
       "attachments":[],"created_at":"2026-08-29T00:00:00Z"
     }
     """#)
+}
+
+private func routineNotifyPair(
+    routineID: String,
+    routineName: String,
+    runID: String,
+    ordinal: Int
+) -> [TranscriptEntry] {
+    [
+        TranscriptEntry(
+            eventID: "routine:\(runID)",
+            ordinal: ordinal,
+            role: "user",
+            content: routineName,
+            reasoning: nil,
+            authorID: nil,
+            authorName: nil,
+            decision: nil,
+            tool: nil,
+            routine: CompanionTranscriptRoutineOrigin(id: routineID, name: routineName, runID: runID),
+            routineNotifyGroup: nil,
+            turnID: runID,
+            queued: false,
+            attachments: [],
+            createdAt: "2026-08-29T00:00:00Z"
+        ),
+        TranscriptEntry(
+            eventID: "return:\(runID)",
+            ordinal: ordinal + 1,
+            role: "assistant",
+            content: "Done",
+            reasoning: nil,
+            authorID: nil,
+            authorName: nil,
+            decision: nil,
+            tool: nil,
+            routine: nil,
+            routineNotifyGroup: nil,
+            turnID: runID,
+            queued: false,
+            attachments: [],
+            createdAt: "2026-08-29T00:00:01Z"
+        ),
+    ]
 }
 
 private func decodeFixture<Value: Decodable>(_ json: String) throws -> Value {

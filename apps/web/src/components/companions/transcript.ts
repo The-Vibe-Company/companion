@@ -71,9 +71,9 @@ export function composerHint(input: {
   const queued = input.thread?.queued_count ?? 0;
   if (interrupted) {
     const waiting = queued > 0
-      ? ` ${queued} later message${queued === 1 ? " is" : "s are"} queued behind it.`
-      : "";
-    return `Retry or cancel the interrupted turn to continue.${waiting}`;
+      ? ` ${queued} message${queued === 1 ? " is" : "s are"} saved and queued.`
+      : " New messages remain available.";
+    return `Automatic Pi cleanup is in progress; the interrupted occurrence will not be replayed.${waiting}`;
   }
 
   const active = input.thread?.active_turn;

@@ -1016,6 +1016,8 @@ export const companionTurns = pgTable(
     actorId: text("actor_id").notNull(),
     clientSurface: companionClientSurfaceEnum("client_surface").notNull(),
     status: companionTurnStatusEnum("status").notNull().default("queued"),
+    /** Terminal interruption cleanup outcome; the original safe error remains intact. */
+    resolution: text("resolution"),
     coldStartDeadlineAt: timestamp("cold_start_deadline_at", { withTimezone: true }),
     inactivityDeadlineAt: timestamp("inactivity_deadline_at", { withTimezone: true }),
     absoluteDeadlineAt: timestamp("absolute_deadline_at", { withTimezone: true }),
@@ -1065,12 +1067,16 @@ export const companionTurns = pgTable(
     queued: index("companion_turns_queue_idx").on(t.companionId, t.queueSequence).where(sql`${t.status} = 'queued'`),
     queuedRoutineExpiry: index("companion_turns_queued_routine_expiry_idx").on(t.createdAt, t.queueSequence, t.id).where(sql`${t.status} = 'queued' and (${t.routineSnapshotId} is not null or ${t.routineName} is not null)`),
     deadline: index("companion_turns_deadline_idx").on(t.coldStartDeadlineAt, t.inactivityDeadlineAt, t.absoluteDeadlineAt).where(sql`${t.status} in ('starting','dispatching','running','needs_input')`),
+    autoAbandonedMetrics: index("companion_turns_auto_abandoned_metrics_idx")
+      .on(t.updatedAt)
+      .where(sql`${t.resolution} = 'auto_abandoned'`),
     runtimeInstanceFk: foreignKey({ columns: [t.orgId, t.companionId], foreignColumns: [companionRuntimeInstances.orgId, companionRuntimeInstances.companionId], name: "companion_turns_runtime_instance_fk" }).onDelete("cascade"),
     queueSequenceCheck: check("companion_turns_queue_sequence_check", sql`${t.queueSequence} >= 1`),
     messageEventCheck: check("companion_turns_message_event_check", sql`${t.messageEventId} = 'msg:' || ${t.clientMessageId}::text`),
     actorCheck: check("companion_turns_actor_check", sql`char_length(${t.actorId}) between 1 and 200 and ${t.actorId} !~ E'[\\n\\r]'`),
     deadlineCheck: check("companion_turns_deadline_check", sql`(${t.coldStartDeadlineAt} is null or ${t.coldStartDeadlineAt} >= ${t.createdAt}) and (${t.status} <> 'needs_input' or ${t.inactivityDeadlineAt} is null) and ((${t.status} in ('queued','cancelled') and ${t.inactivityDeadlineAt} is null and ${t.absoluteDeadlineAt} is null) or (${t.status} <> 'queued' and ${t.absoluteDeadlineAt} is not null and (${t.inactivityDeadlineAt} is null or ${t.absoluteDeadlineAt} >= ${t.inactivityDeadlineAt})))`),
     terminalCheck: check("companion_turns_terminal_check", sql`(${t.status} in ('succeeded','failed','interrupted','cancelled')) = (${t.settledAt} is not null)`),
+    resolutionCheck: check("companion_turns_resolution_check", sql`${t.resolution} is null or (${t.resolution} = 'auto_abandoned' and ${t.status} = 'interrupted')`),
     errorCheck: check("companion_turns_error_check", sql`((${t.lastErrorCode} is null) = (${t.lastErrorMessage} is null)) and (((${t.lastErrorCode} is null) = (${t.lastErrorAction} is null)) or (${t.status} = 'cancelled' and ${t.routineName} is not null and ${t.lastErrorCode} is not null and ${t.lastErrorAction} = 'none')) and (${t.lastErrorCode} is null or ${t.lastErrorCode} ~ '^[a-z][a-z0-9_]{0,63}$') and (${t.lastErrorMessage} is null or (char_length(${t.lastErrorMessage}) <= 500 and ${t.lastErrorMessage} !~ E'[\\n\\r]')) and (${t.status} not in ('failed','interrupted') or ${t.lastErrorCode} is not null) and (${t.status} not in ('succeeded','cancelled') or ${t.lastErrorCode} is null or (${t.status} = 'cancelled' and ${t.routineName} is not null and ${t.lastErrorAction} = 'none'))`),
     messageEvent: index("companion_turns_message_event_idx").on(t.companionId, t.messageEventId),
     routineOriginCheck: check("companion_turns_routine_origin_check", sql`(${t.routineId} is null or ${t.routineName} is not null) and (${t.routineName} is null or (char_length(${t.routineName}) between 1 and 80 and ${t.routineName} !~ E'[\\n\\r]'))`),
@@ -1304,7 +1310,13 @@ export const companionOperations = pgTable(
     queueSequenceUnique: unique("companion_operations_queue_sequence_uq").on(t.companionId, t.queueSequence),
     oneRunning: uniqueIndex("companion_operations_one_running_uq").on(t.companionId).where(sql`${t.status} = 'running'`),
     pending: index("companion_operations_pending_idx").on(t.availableAt, t.queueSequence, t.companionId).where(sql`${t.status} in ('pending','running')`),
+    recoveryMetrics: index("companion_operations_recovery_metrics_idx")
+      .on(t.createdAt)
+      .where(sql`${t.kind} = 'restart_pi' and ${t.trigger} = 'recovery' and ${t.status} in ('pending','running')`),
     providerOperationUnique: uniqueIndex("companion_operations_provider_operation_uq").on(t.providerOperationId).where(sql`${t.providerOperationId} is not null`),
+    oneRecoveryPerTurn: uniqueIndex("companion_operations_one_recovery_per_turn_uq")
+      .on(t.companionId, t.sourceTurnId)
+      .where(sql`${t.kind} = 'restart_pi' and ${t.trigger} = 'recovery'`),
     runtimeInstanceFk: foreignKey({ columns: [t.orgId, t.companionId], foreignColumns: [companionRuntimeInstances.orgId, companionRuntimeInstances.companionId], name: "companion_operations_runtime_instance_fk" }).onDelete("cascade"),
     sourceTurnFk: foreignKey({ columns: [t.orgId, t.companionId, t.sourceTurnId], foreignColumns: [companionTurns.orgId, companionTurns.companionId, companionTurns.id], name: "companion_operations_source_turn_fk" }).onDelete("restrict"),
     queueSequenceCheck: check("companion_operations_queue_sequence_check", sql`${t.queueSequence} >= 1 and ${t.turnQueueCutoff} >= 0`),
@@ -1594,6 +1606,8 @@ export const companionThreads = pgTable(
       .references(() => companions.id, { onDelete: "cascade" }),
     /** Next transcript ordinal to hand out; monotonic, so concurrent sends cannot collide. */
     nextOrdinal: integer("next_ordinal").notNull().default(0),
+    /** Monotonic watermark for every change affecting this thread's public projection. */
+    projectionSequence: bigint("projection_sequence", { mode: "bigint" }).notNull().default(0n),
     lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
     createdAt: now(),
     updatedAt: updatedAt(),
@@ -1605,6 +1619,10 @@ export const companionThreads = pgTable(
       name: "companion_threads_companion_fk",
     }),
     nonnegativeNextOrdinal: check("companion_threads_next_ordinal_check", sql`${t.nextOrdinal} >= 0`),
+    nonnegativeProjectionSequence: check(
+      "companion_threads_projection_sequence_check",
+      sql`${t.projectionSequence} >= 0`,
+    ),
   }),
 );
 
@@ -1712,6 +1730,8 @@ export const companionTranscriptEntries = pgTable(
       .references(() => companions.id, { onDelete: "cascade" }),
     eventId: text("event_id").notNull(),
     ordinal: integer("ordinal").notNull(),
+    /** Latest thread projection change that created or touched this entry. */
+    projectionSequence: bigint("projection_sequence", { mode: "bigint" }).notNull().default(1n),
     role: companionTranscriptRoleEnum("role").notNull(),
     content: text("content").notNull(),
     /**
@@ -1768,9 +1788,17 @@ export const companionTranscriptEntries = pgTable(
     }).onDelete("cascade"),
     turn: index("companion_transcript_entries_turn_idx").on(t.orgId, t.companionId, t.turnId).where(sql`${t.turnId} is not null`),
     ordered: unique("companion_transcript_entries_ordinal_uq").on(t.companionId, t.ordinal),
+    projectionSequenceUnique: uniqueIndex("companion_transcript_entries_projection_sequence_uq")
+      .on(t.companionId, t.projectionSequence),
+    projectionChanges: index("companion_transcript_entries_projection_changes_idx")
+      .on(t.orgId, t.companionId, t.projectionSequence),
     nonnegativeOrdinal: check(
       "companion_transcript_entries_ordinal_check",
       sql`${t.ordinal} >= 0`,
+    ),
+    positiveProjectionSequence: check(
+      "companion_transcript_entries_projection_sequence_check",
+      sql`${t.projectionSequence} >= 1`,
     ),
     boundedContent: check(
       "companion_transcript_entries_content_check",

@@ -491,6 +491,40 @@ BEGIN
           'public.companion_api_sync_thread(uuid,uuid)'::regprocedure
         ];
       END IF;
+      IF pg_catalog.to_regprocedure('public.companion_api_read_recovery(uuid,uuid)') IS NOT NULL THEN
+        companion_api_functions := companion_api_functions || ARRAY[
+          'public.companion_api_read_recovery(uuid,uuid)'::regprocedure,
+          'public.companion_api_list_recoveries(uuid)'::regprocedure
+        ];
+        internal_runtime_functions := internal_runtime_functions || ARRAY[
+          'public.companion_runtime_ensure_turn_recovery(uuid,uuid,uuid)'::regprocedure,
+          'public.companion_runtime_enqueue_interrupted_recovery()'::regprocedure,
+          'public.companion_runtime_settle_recovery_operation()'::regprocedure
+        ];
+        companion_runtime_functions := companion_runtime_functions || ARRAY[
+          'public.companion_runtime_recovery_metrics()'::regprocedure
+        ];
+      END IF;
+      IF pg_catalog.to_regprocedure(
+        'public.companion_api_read_thread_window(uuid,uuid,integer,integer,boolean)'
+      ) IS NOT NULL THEN
+        companion_api_functions := companion_api_functions || ARRAY[
+          'public.companion_api_read_thread_window(uuid,uuid,integer,integer,boolean)'::regprocedure,
+          'public.companion_api_read_thread_projection_sequence(uuid,uuid)'::regprocedure,
+          'public.companion_api_read_thread_changes(uuid,uuid,bigint,integer)'::regprocedure
+        ];
+        internal_runtime_functions := internal_runtime_functions || ARRAY[
+          'public.companion_thread_allocate_projection_sequence(uuid,uuid)'::regprocedure,
+          'public.companion_thread_sequence_entry()'::regprocedure,
+          'public.companion_thread_touch_turn_entry()'::regprocedure,
+          'public.companion_thread_touch_attachment_entry()'::regprocedure,
+          'public.companion_thread_touch_routine_return()'::regprocedure,
+          'public.companion_api_thread_entry_visible(public.companion_transcript_entries)'::regprocedure,
+          'public.companion_api_thread_entry_json(public.companion_transcript_entries)'::regprocedure,
+          'public.companion_api_routine_notify_returns_window(uuid,uuid,text[])'::regprocedure,
+          'public.companion_api_thread_metadata(uuid,uuid,boolean)'::regprocedure
+        ];
+      END IF;
       IF pg_catalog.to_regprocedure('public.companion_api_list_sections(uuid)') IS NOT NULL THEN
         companion_api_functions := companion_api_functions || ARRAY[
           'public.companion_api_list_sections(uuid)'::regprocedure,

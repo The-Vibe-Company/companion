@@ -48,7 +48,7 @@ describe("companion skill package + row", () => {
     const pkg = await getCompanionSkillPackage();
     expect(pkg.key).toBe("companion");
     expect(pkg.checksum).toMatch(/^sha256:[0-9a-f]{64}$/);
-    expect(pkg.version).toBe("1.101.0");
+    expect(pkg.version).toBe("1.102.0");
     expect(pkg.sizeBytes).toBeGreaterThan(0);
     expect(pkg.integrity.packageChecksum).toBe(pkg.checksum);
     expect(pkg.integrity.files["SKILL.md"]).toMatch(/^sha256:[0-9a-f]{64}$/);
@@ -127,13 +127,19 @@ describe("companion skill package + row", () => {
       desc: "Create or repair manifest v2 with identity, env/secrets, dependency ids, notes, commands, and changelog.",
     });
     const changelog = row.changes.join("\n");
-    expect(changelog).toContain("provider-account UUIDs");
-    expect(changelog).toContain("approving member's sole eligible connection");
-    expect(changelog).toContain("fail-closed selection");
+    expect(changelog).toContain("protocol-5 automatic Pi recovery");
+    expect(changelog).toContain("bounded thread-window bootstrap");
+    expect(changelog).toContain("routine recovery remains lane-local");
     // SAFETY: the bundled manifest is the repo's own companion.json, whose metadata.changelog shape the manifest schema fixes.
     const manifest = JSON.parse(await readFile(join(companionSkillDir(), "companion.json"), "utf8")) as {
       metadata?: { changelog?: Array<{ version?: string; changes?: string[] }> };
     };
+    const triggerAccountChanges = manifest.metadata?.changelog
+      ?.find((entry) => entry.version === "1.101.0")
+      ?.changes?.join("\n") ?? "";
+    expect(triggerAccountChanges).toContain("provider-account UUIDs");
+    expect(triggerAccountChanges).toContain("approving member's sole eligible connection");
+    expect(triggerAccountChanges).toContain("fail-closed selection");
     const slackChanges = manifest.metadata?.changelog
       ?.find((entry) => entry.version === "1.92.0")
       ?.changes?.join("\n") ?? "";

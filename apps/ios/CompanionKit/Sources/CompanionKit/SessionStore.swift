@@ -1073,8 +1073,18 @@ public final class SessionStore {
 
     public func thread(companionID: String) async throws -> CompanionThread {
         do {
-            let thread = try await client.thread(companionID: companionID)
-            retainCompleteThread(thread, companionID: companionID)
+            let snapshot = try await synchronizeThread(
+                companionID: companionID,
+                markRead: true
+            ).value
+            // Preserve the historical complete-thread contract for external callers. First-party
+            // chat surfaces use synchronizeThread/loadOlderThreadWindow and never pay this drain.
+            let thread: CompanionThread
+            if snapshot.isPartial {
+                thread = try await client.thread(companionID: companionID)
+            } else {
+                thread = snapshot.thread
+            }
             await persistRollingAuthority()
             return thread
         } catch let error as APIError where error.status == 401 {
@@ -1097,7 +1107,16 @@ public final class SessionStore {
         let baseline = liveThreadSnapshots[companionID]
             ?? (try? cache?.thread(scope: scope, companionID: companionID))
         let requestCursor = Self.transportSafeThreadCursor(baseline?.cursor)
-        let response: CompanionSyncMeasurement<CompanionThreadDelta>
+        if requestCursor == nil {
+            return try await bootstrapThreadWindow(
+                companionID: companionID,
+                scope: scope,
+                generation: generation,
+                sessionScopeGeneration: capturedSessionScopeGeneration,
+                markRead: markRead
+            )
+        }
+        var response: CompanionSyncMeasurement<CompanionThreadDelta>
         let responseBaseline: CompanionThreadSnapshot?
         do {
             response = try await authenticated(
@@ -1109,34 +1128,49 @@ public final class SessionStore {
                     cursor: requestCursor
                 )
             }
-            responseBaseline = requestCursor == nil ? nil : baseline
+            responseBaseline = baseline
         } catch let error as APIError where Self.shouldRetryThreadSyncWithoutCursor(
             error,
             requestCursor: requestCursor
         ) {
-            response = try await authenticated(
-                expectedScope: scope,
-                expectedSessionScopeGeneration: capturedSessionScopeGeneration
-            ) {
-                try await client.synchronizeCompanionThread(
-                    companionID: companionID,
-                    cursor: nil
-                )
-            }
-            responseBaseline = nil
+            return try await bootstrapThreadWindow(
+                companionID: companionID,
+                scope: scope,
+                generation: generation,
+                sessionScopeGeneration: capturedSessionScopeGeneration,
+                markRead: markRead
+            )
         }
         guard threadSyncGenerations[companionID] == generation,
               capturedSessionScopeGeneration == sessionScopeGeneration,
               currentSession.flatMap(Self.cacheScope(for:)) == scope else {
             throw CancellationError()
         }
-        let snapshot = response.value.applying(to: responseBaseline)
+        var snapshot = response.value.applying(to: responseBaseline)
+        var receivedBytes = response.receivedBytes
+        var networkMilliseconds = response.networkMilliseconds
+        var receivedChanges = !response.value.changedEntries.isEmpty
+        while response.value.hasMore == true {
+            response = try await authenticated(
+                expectedScope: scope,
+                expectedSessionScopeGeneration: capturedSessionScopeGeneration
+            ) {
+                try await client.synchronizeCompanionThread(
+                    companionID: companionID,
+                    cursor: snapshot.cursor
+                )
+            }
+            snapshot = response.value.applying(to: snapshot)
+            receivedBytes += response.receivedBytes
+            networkMilliseconds += response.networkMilliseconds
+            receivedChanges = receivedChanges || !response.value.changedEntries.isEmpty
+        }
         let rosterMarksUnread = initialRosterSnapshot?.companions.first {
             $0.id == companionID
         }?.unread == true
         let shouldMarkRead = markRead && (
             responseBaseline == nil
-                || !response.value.changedEntries.isEmpty
+                || receivedChanges
                 || (rosterMarksUnread && !companionsMarkedRead.contains(companionID))
         )
         if shouldMarkRead,
@@ -1151,10 +1185,68 @@ public final class SessionStore {
            }) != nil {
             companionsMarkedRead.insert(companionID)
         }
+        let committedSnapshot = snapshot
         if let cache {
             // A bounded top-level tail can still exceed the byte cap when one projected routine
             // group owns many hidden entries. Keep the complete fresh thread in memory even when
             // that optional offline snapshot cannot be written.
+            try? await Task.detached(priority: .utility) {
+                try cache.saveThread(committedSnapshot, scope: scope, companionID: companionID)
+            }.value
+        }
+        guard threadSyncGenerations[companionID] == generation,
+              capturedSessionScopeGeneration == sessionScopeGeneration,
+              currentSession.flatMap(Self.cacheScope(for:)) == scope else {
+            throw CancellationError()
+        }
+        liveThreadSnapshots[companionID] = committedSnapshot
+        return CompanionSyncMeasurement(
+            value: committedSnapshot,
+            receivedBytes: receivedBytes,
+            networkMilliseconds: networkMilliseconds
+        )
+    }
+
+    private func bootstrapThreadWindow(
+        companionID: String,
+        scope: String,
+        generation: Int,
+        sessionScopeGeneration capturedSessionScopeGeneration: Int,
+        markRead: Bool
+    ) async throws -> CompanionSyncMeasurement<CompanionThreadSnapshot> {
+        let snapshot: CompanionThreadSnapshot
+        let receivedBytes: Int
+        let networkMilliseconds: Double
+        do {
+            let response = try await authenticated(
+                expectedScope: scope,
+                expectedSessionScopeGeneration: capturedSessionScopeGeneration
+            ) {
+                try await client.companionThreadWindow(companionID: companionID)
+            }
+            snapshot = response.value.snapshot()
+            receivedBytes = response.receivedBytes
+            networkMilliseconds = response.networkMilliseconds
+        } catch let error as APIError where error.status == 404
+            || (error.status == 500 && error.code == "invalid_response") {
+            // Rolling deploy: an older API has only the legacy full bootstrap on thread-delta.
+            let response = try await authenticated(
+                expectedScope: scope,
+                expectedSessionScopeGeneration: capturedSessionScopeGeneration
+            ) {
+                try await client.synchronizeCompanionThread(companionID: companionID, cursor: nil)
+            }
+            snapshot = response.value.applying(to: nil)
+            receivedBytes = response.receivedBytes
+            networkMilliseconds = response.networkMilliseconds
+        }
+        guard threadSyncGenerations[companionID] == generation,
+              capturedSessionScopeGeneration == sessionScopeGeneration,
+              currentSession.flatMap(Self.cacheScope(for:)) == scope else {
+            throw CancellationError()
+        }
+        if markRead { companionsMarkedRead.insert(companionID) }
+        if let cache {
             try? await Task.detached(priority: .utility) {
                 try cache.saveThread(snapshot, scope: scope, companionID: companionID)
             }.value
@@ -1165,6 +1257,64 @@ public final class SessionStore {
             throw CancellationError()
         }
         liveThreadSnapshots[companionID] = snapshot
+        return CompanionSyncMeasurement(
+            value: snapshot,
+            receivedBytes: receivedBytes,
+            networkMilliseconds: networkMilliseconds
+        )
+    }
+
+    public func loadOlderThreadWindow(
+        companionID: String
+    ) async throws -> CompanionSyncMeasurement<CompanionThreadSnapshot>? {
+        guard let session = currentSession,
+              let scope = Self.cacheScope(for: session) else {
+            throw APIError(status: 401, code: "unauthorized", message: "Sign in again to continue.")
+        }
+        guard let baseline = liveThreadSnapshots[companionID]
+                ?? ((try? cache?.thread(scope: scope, companionID: companionID)) ?? nil),
+              let before = baseline.olderCursor else { return nil }
+        let capturedSessionScopeGeneration = sessionScopeGeneration
+        let response = try await authenticated(
+            expectedScope: scope,
+            expectedSessionScopeGeneration: capturedSessionScopeGeneration
+        ) {
+            try await client.companionThreadWindow(companionID: companionID, before: before)
+        }
+        guard capturedSessionScopeGeneration == sessionScopeGeneration,
+              currentSession.flatMap(Self.cacheScope(for:)) == scope else {
+            throw CancellationError()
+        }
+        var byID = Dictionary(
+            uniqueKeysWithValues: companionExpandedRoutineNotifyEntries(
+                baseline.thread.entries
+            ).map { ($0.eventID, $0) }
+        )
+        response.value.entries.forEach { byID[$0.eventID] = $0 }
+        let ordered = byID.values.sorted {
+            $0.ordinal == $1.ordinal ? $0.eventID < $1.eventID : $0.ordinal < $1.ordinal
+        }
+        let mergedNotifyReturns = companionMergedRoutineNotifyReturns(
+            existing: baseline.notifyReturns ?? [],
+            changed: response.value.notifyReturns,
+            entries: ordered
+        )
+        let snapshot = CompanionThreadSnapshot(
+            cursor: baseline.cursor,
+            thread: response.value.thread.thread(entries: companionCollapsedRoutineNotifyEntries(
+                ordered,
+                notifyReturns: mergedNotifyReturns
+            )),
+            isPartial: response.value.olderCursor != nil,
+            olderCursor: response.value.olderCursor,
+            notifyReturns: mergedNotifyReturns
+        )
+        liveThreadSnapshots[companionID] = snapshot
+        if let cache {
+            try? await Task.detached(priority: .utility) {
+                try cache.saveThread(snapshot, scope: scope, companionID: companionID)
+            }.value
+        }
         return CompanionSyncMeasurement(
             value: snapshot,
             receivedBytes: response.receivedBytes,

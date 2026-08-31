@@ -215,9 +215,9 @@ Run API + worker + runtime + web + migrated PostgreSQL + Box/Pi simulator and pr
   issuing provider `DELETE`; other shared lifecycle/settings/health work remains routine-quiescent;
 - a prompt response lost after Pi ACK is recovered from the fsynced ledger with the same
   `command_id`, including after executor takeover, and produces exactly one Pi prompt; missing,
-  conflicting, or invocation-mismatched ledger proof yields `interrupted`, blocks later turns, and
-  proves the replacement Pi received no prompt before that mismatch was classified;
-  Retry/Cancel each release it by their documented path;
+  conflicting, or invocation-mismatched ledger proof yields `interrupted`, proves the replacement
+  Pi received no prompt, enqueues one idempotent recovery, auto-abandons the occurrence after exact
+  cleanup, and releases later turns without replay;
 - Viewer, list, thread, and cross-tenant requests produce zero Box calls.
 
 Inject failure before and after create, Box ready, Pi ready, prompt write, ACK, event projection,
@@ -260,11 +260,11 @@ APP_URL=http://127.0.0.1:<port> pnpm browser:smoke
 ```
 
 Changed Companion paths need focused manual `agent-browser` checks. Verify truthful status,
-PostgreSQL-only Viewer reads, queue count, input-needed cards, interrupted Retry/Cancel copy, explicit
-Full Box confirmation, attachment chips and inline images inside the message they belong to, a
+PostgreSQL-only Viewer reads, queue count, input-needed cards, automatic interruption recovery copy,
+an always-mounted composer, explicit Full Box confirmation, attachment chips and inline images inside the message they belong to, a
 routine fire that shows `Routine: <name>` with the prompt hidden in the thread and on the list row,
 a context-panel routine create,
-an interrupted routine run whose history drawer offers Retry/Cancel only to Owner/Editor,
+an interrupted routine run whose history shows recovery without blocking the main chat,
 and no excluded voice, multi-Bot, harness, deployment, or file-library chrome.
 
 ## Change verification

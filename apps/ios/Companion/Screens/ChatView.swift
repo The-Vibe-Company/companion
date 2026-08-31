@@ -1521,21 +1521,36 @@ struct ChatView: View {
         refreshGate.invalidate()
         if !expandedWindow.hasEarlierEntries, historyIsPartial {
             do {
-                let completeThread: CompanionThread
+                let olderThread: CompanionThread
+                let olderIsPartial: Bool
                 if let services {
-                    completeThread = try await services.thread(companion.id)
+                    olderThread = try await services.thread(companion.id)
+                    olderIsPartial = false
                 } else {
-                    completeThread = try await sessionStore.thread(companionID: companion.id)
+                    guard let page = try await sessionStore.loadOlderThreadWindow(
+                        companionID: companion.id
+                    ) else {
+                        historyIsPartial = false
+                        loadingEarlier = false
+                        return
+                    }
+                    olderThread = page.value.thread
+                    olderIsPartial = page.value.isPartial
+                    CompanionPerformanceTelemetry.syncCompleted(
+                        surface: "thread-history",
+                        bytes: page.receivedBytes,
+                        milliseconds: page.networkMilliseconds
+                    )
                 }
                 guard thread?.entries == snapshot.entries else {
                     loadingEarlier = false
                     return
                 }
-                snapshot = completeThread
-                historyIsPartial = false
-                threadProjection.update(completeThread)
+                snapshot = olderThread
+                historyIsPartial = olderIsPartial
+                threadProjection.update(olderThread)
                 expandedWindow.revealCompleteHistory(
-                    totalCount: transcriptEntries(in: completeThread).count
+                    totalCount: transcriptEntries(in: olderThread).count
                 )
             } catch {
                 self.error = error.localizedDescription

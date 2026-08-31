@@ -218,7 +218,7 @@ describe("CompanionsApp when thread polls stop answering", () => {
     const container = await openThread();
     await wait(4);
     const readsBeforeDrop = api.fetchMock.mock.calls
-      .filter(([url]) => String(url).endsWith("/thread")).length;
+      .filter(([url]) => String(url).includes("/thread")).length;
 
     api.drop();
     // Second-by-second so each failed poll's state lands before the next timer fires, the way real
@@ -226,7 +226,7 @@ describe("CompanionsApp when thread polls stop answering", () => {
     for (let second = 0; second < 60; second += 1) await wait(1);
     expect(reconnecting(container)).toContain("Reconnecting");
     const readsWhileDown = api.fetchMock.mock.calls
-      .filter(([url]) => String(url).endsWith("/thread")).length - readsBeforeDrop;
+      .filter(([url]) => String(url).includes("/thread")).length - readsBeforeDrop;
 
     // Sixty seconds at the live cadence would be ~30 requests; the backed-off cadence stays in the
     // single digits without ever stopping entirely.

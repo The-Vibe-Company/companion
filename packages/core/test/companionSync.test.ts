@@ -10,7 +10,11 @@ import type {
 import {
   buildCompanionRosterSync,
   buildCompanionThreadDelta,
+  buildCompanionThreadSequenceCursor,
+  buildCompanionThreadWindowCursor,
   CompanionSyncCursorError,
+  readCompanionThreadSequenceCursor,
+  readCompanionThreadWindowCursor,
 } from "../src/companionSync";
 
 const ORG_ID = "11111111-1111-4111-8111-111111111111";
@@ -404,5 +408,45 @@ describe("Companion stateless sync projections", () => {
       companionId: COMPANION_ID,
       thread: thread(entries),
     })).toThrow(CompanionSyncCursorError);
+  });
+
+  it("round-trips bounded v2 sequence and history cursors only in their tenant scope", () => {
+    const sequenceCursor = buildCompanionThreadSequenceCursor({
+      orgId: ORG_ID,
+      actorId: OWNER_ID,
+      companionId: COMPANION_ID,
+      sequence: 9_007_199_254_740_993n,
+    });
+    expect(sequenceCursor.length).toBeLessThan(1_000);
+    expect(readCompanionThreadSequenceCursor({
+      cursor: sequenceCursor,
+      orgId: ORG_ID,
+      actorId: OWNER_ID,
+      companionId: COMPANION_ID,
+    })).toBe(9_007_199_254_740_993n);
+
+    const windowCursor = buildCompanionThreadWindowCursor({
+      orgId: ORG_ID,
+      actorId: OWNER_ID,
+      companionId: COMPANION_ID,
+      beforeOrdinal: 1_950,
+    });
+    expect(readCompanionThreadWindowCursor({
+      cursor: windowCursor,
+      orgId: ORG_ID,
+      actorId: OWNER_ID,
+      companionId: COMPANION_ID,
+    })).toBe(1_950);
+
+    for (const scope of [
+      { orgId: SECOND_COMPANION_ID, actorId: OWNER_ID, companionId: COMPANION_ID },
+      { orgId: ORG_ID, actorId: "viewer-2", companionId: COMPANION_ID },
+      { orgId: ORG_ID, actorId: OWNER_ID, companionId: SECOND_COMPANION_ID },
+    ]) {
+      expect(() => readCompanionThreadSequenceCursor({ cursor: sequenceCursor, ...scope }))
+        .toThrow(CompanionSyncCursorError);
+      expect(() => readCompanionThreadWindowCursor({ cursor: windowCursor, ...scope }))
+        .toThrow(CompanionSyncCursorError);
+    }
   });
 });

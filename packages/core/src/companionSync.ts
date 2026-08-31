@@ -61,7 +61,7 @@ const rosterCursorSchema = z.object({
   projection_digest: digestSchema,
 }).strict();
 
-const threadCursorSchema = z.object({
+const legacyThreadCursorSchema = z.object({
   v: z.literal(COMPANION_SYNC_CURSOR_VERSION),
   kind: z.literal("thread"),
   org_id: z.string().uuid(),
@@ -77,10 +77,37 @@ const threadCursorSchema = z.object({
   projection_digest: digestSchema,
 }).strict();
 
-const cursorPayloadSchema = z.discriminatedUnion("kind", [rosterCursorSchema, threadCursorSchema]);
+const threadSequenceCursorSchema = z.object({
+  v: z.literal(2),
+  kind: z.literal("thread"),
+  org_id: z.string().uuid(),
+  actor_id: actorIdSchema,
+  companion_id: z.string().uuid(),
+  sequence: z.string().regex(/^(0|[1-9][0-9]*)$/),
+  projection_digest: digestSchema,
+}).strict();
+
+const threadWindowCursorSchema = z.object({
+  v: z.literal(1),
+  kind: z.literal("thread_window"),
+  org_id: z.string().uuid(),
+  actor_id: actorIdSchema,
+  companion_id: z.string().uuid(),
+  before_ordinal: z.number().int().nonnegative(),
+  projection_digest: digestSchema,
+}).strict();
+
+const cursorPayloadSchema = z.union([
+  rosterCursorSchema,
+  legacyThreadCursorSchema,
+  threadSequenceCursorSchema,
+  threadWindowCursorSchema,
+]);
 type RosterCursor = z.infer<typeof rosterCursorSchema>;
-type ThreadCursor = z.infer<typeof threadCursorSchema>;
-type CursorPayload = RosterCursor | ThreadCursor;
+type LegacyThreadCursor = z.infer<typeof legacyThreadCursorSchema>;
+type ThreadSequenceCursor = z.infer<typeof threadSequenceCursorSchema>;
+type ThreadWindowCursor = z.infer<typeof threadWindowCursorSchema>;
+type CursorPayload = RosterCursor | LegacyThreadCursor | ThreadSequenceCursor | ThreadWindowCursor;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -197,7 +224,7 @@ function decodeCursor(
       cursor.kind !== expected.kind
       || cursor.org_id !== expected.orgId
       || cursor.actor_id !== expected.actorId
-      || (cursor.kind === "thread" && cursor.companion_id !== expected.companionId)
+      || (cursor.kind !== "roster" && cursor.companion_id !== expected.companionId)
     ) {
       throw new CompanionSyncCursorError();
     }
@@ -214,7 +241,7 @@ function decodeCursor(
       }) !== cursor.projection_digest) {
         throw new CompanionSyncCursorError();
       }
-    } else {
+    } else if (cursor.kind === "thread" && cursor.v === COMPANION_SYNC_CURSOR_VERSION) {
       assertThreadRecords(cursor.entries);
       if (cursor.prefix_count + cursor.entries.length !== cursor.entry_count) {
         throw new CompanionSyncCursorError();
@@ -228,6 +255,20 @@ function decodeCursor(
       }) !== cursor.projection_digest) {
         throw new CompanionSyncCursorError();
       }
+    } else if (cursor.kind === "thread") {
+      if (companionSyncDigest({
+        org_id: cursor.org_id,
+        actor_id: cursor.actor_id,
+        companion_id: cursor.companion_id,
+        sequence: cursor.sequence,
+      }) !== cursor.projection_digest) throw new CompanionSyncCursorError();
+    } else if (companionSyncDigest({
+      org_id: cursor.org_id,
+      actor_id: cursor.actor_id,
+      companion_id: cursor.companion_id,
+      before_ordinal: cursor.before_ordinal,
+    }) !== cursor.projection_digest) {
+      throw new CompanionSyncCursorError();
     }
     return cursor;
   } catch (error) {
@@ -344,6 +385,81 @@ function threadCursor(input: {
   });
 }
 
+export function buildCompanionThreadSequenceCursor(input: {
+  orgId: string;
+  actorId: string;
+  companionId: string;
+  sequence: bigint;
+}): string {
+  if (input.sequence < 0n) throw new CompanionSyncCursorError();
+  const binding = {
+    org_id: input.orgId,
+    actor_id: input.actorId,
+    companion_id: input.companionId,
+    sequence: input.sequence.toString(),
+  };
+  return encodeCursor({
+    v: 2,
+    kind: "thread",
+    ...binding,
+    projection_digest: companionSyncDigest(binding),
+  });
+}
+
+export function readCompanionThreadSequenceCursor(input: {
+  cursor: string;
+  orgId: string;
+  actorId: string;
+  companionId: string;
+}): bigint | null {
+  const cursor = decodeCursor(input.cursor, {
+    kind: "thread",
+    orgId: input.orgId,
+    actorId: input.actorId,
+    companionId: input.companionId,
+  });
+  return cursor.kind === "thread" && cursor.v === 2 ? BigInt(cursor.sequence) : null;
+}
+
+export function buildCompanionThreadWindowCursor(input: {
+  orgId: string;
+  actorId: string;
+  companionId: string;
+  beforeOrdinal: number;
+}): string {
+  if (!Number.isSafeInteger(input.beforeOrdinal) || input.beforeOrdinal < 0) {
+    throw new CompanionSyncCursorError();
+  }
+  const binding = {
+    org_id: input.orgId,
+    actor_id: input.actorId,
+    companion_id: input.companionId,
+    before_ordinal: input.beforeOrdinal,
+  };
+  return encodeCursor({
+    v: 1,
+    kind: "thread_window",
+    ...binding,
+    projection_digest: companionSyncDigest(binding),
+  });
+}
+
+export function readCompanionThreadWindowCursor(input: {
+  cursor: string;
+  orgId: string;
+  actorId: string;
+  companionId: string;
+}): number {
+  const cursor = decodeCursor(input.cursor, {
+    kind: "thread_window",
+    orgId: input.orgId,
+    actorId: input.actorId,
+    companionId: input.companionId,
+  });
+  if (cursor.kind !== "thread_window") throw new CompanionSyncCursorError();
+  return cursor.before_ordinal;
+}
+
 function changedRosterItems<T extends { id: string }>(
   current: readonly T[],
   prior: readonly { id: string; digest: string }[] | undefined,
@@ -458,7 +574,7 @@ export function buildCompanionThreadDelta(input: {
         companionId: input.companionId,
       })
     : undefined;
-  const previousThread = previous?.kind === "thread" ? previous : undefined;
+  const previousThread = previous?.kind === "thread" && previous.v === 1 ? previous : undefined;
   const metadata = withoutThreadEntries(input.thread);
   const orderedEntries = [...input.thread.entries].sort(
     (left, right) => left.ordinal - right.ordinal || compareStrings(left.event_id, right.event_id),

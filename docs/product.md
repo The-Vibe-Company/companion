@@ -62,9 +62,10 @@ slash-separated, multi-assigned, and may exist without skills.
 8. When Companions are enabled, create a named Companion with one connected provider/model, selected
    Skills, and selected member MCP accounts; send work and leave while it continues.
 9. Return to a durable thread that truthfully shows queued, active, input-needed, completed, failed,
-   interrupted, or cancelled work, and explicitly Retry or Cancel an ambiguous attempt. Native iOS
-   restores the latest roster and bounded transcript tail locally so returning to the product stays
-   immediate and readable offline while fresh authority and projection deltas arrive.
+   interrupted, automatically abandoned, or cancelled work. An ambiguous occurrence is never
+   replayed: Companion cleans up its exact Pi invocation and releases the queue automatically.
+   Native iOS restores the latest roster and bounded transcript tail locally so returning to the
+   product stays immediate and readable offline while fresh authority and projection deltas arrive.
 10. See and create routine schedules, open each run's private transcript from its compact chat
     marker, and distinguish terminal relay, notify, no-output, and error outcomes on web and native
     Apple clients. Time references render in the member's stored timezone.
@@ -82,9 +83,10 @@ resources, and owns every provider side effect.
 Sending is the only normal wake path. There is no Wake button and no keystroke prewarm. Pi must be
 idle before main dispatch, only one attempt may be active per lane, and queued turns preserve lane
 order. One isolated routine attempt may run alongside one ordinary main attempt. An attempt
-without a provable Pi acknowledgement becomes `interrupted` and is never replayed automatically.
-Retry creates a new attempt; Cancel releases the queue. Full Box restart is always an explicit,
-confirmed Editor/Owner action. Automatic repair may recycle Pi only.
+without a provable Pi acknowledgement becomes `interrupted` and is never replayed. Protocol 5
+automatically terminates its exact Pi invocation, marks that occurrence `auto_abandoned`, and
+continues the lane; cleanup retries with bounded backoff without blocking chat. Full Box restart is
+always an explicit, confirmed Editor/Owner action. Automatic repair may recycle Pi only.
 
 Provider connections and member MCP accounts are envelope-encrypted and survive the one-time legacy
 Companion purge. Old Companions, Boxes, transcripts, runtime rows, pools, and leases do not migrate.

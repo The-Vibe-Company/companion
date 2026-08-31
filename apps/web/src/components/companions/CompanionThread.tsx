@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   Companion,
   CompanionDesktop,
@@ -10,7 +10,6 @@ import type {
   CompanionTranscriptEntry,
   CompanionTrigger,
 } from "@companion/contracts";
-import { ApiFetchError } from "@/lib/apiClient";
 import { Icon } from "../Icon";
 import { CompanionContext, type CompanionContextSkill } from "./CompanionContext";
 import { CompanionTranscript } from "./CompanionTranscript";
@@ -45,147 +44,29 @@ export interface CompanionContextPanel {
 
 function InterruptedTurnNotice({
   turn,
-  latestOperation,
-  canAct,
-  onRetry,
-  onCancel,
+  recovery,
 }: {
   turn: NonNullable<Thread["interrupted_turn"]>;
-  latestOperation: Companion["runtime"]["latest_operation"];
-  canAct: boolean;
-  onRetry: (turnId: string, retryId: string) => Promise<CompanionOperation>;
-  onCancel: (turnId: string) => Promise<void>;
+  recovery: Companion["runtime"]["recovery"];
 }) {
-  const titleId = useId();
-  const errorRef = useRef<HTMLParagraphElement>(null);
-  const retryIdRef = useRef<string | null>(null);
-  const [action, setAction] = useState<"retry" | "cancel" | null>(null);
-  const [acceptedRetry, setAcceptedRetry] = useState<CompanionOperation | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  useEffect(() => {
-    retryIdRef.current = null;
-    setAction(null);
-    setAcceptedRetry(null);
-    setActionError(null);
-  }, [turn.id, turn.latest_attempt?.id]);
-
-  useEffect(() => {
-    if (actionError) errorRef.current?.focus();
-  }, [actionError]);
-
-  const latestRetryOperation = latestOperation
-    && (latestOperation.kind === "start" || latestOperation.kind === "restart_pi")
-    && latestOperation.source_turn_id === turn.id
-    ? latestOperation
-    : null;
-
-  useEffect(() => {
-    if (!latestRetryOperation
-      || !["failed", "interrupted", "cancelled"].includes(latestRetryOperation.status)) return;
-    retryIdRef.current = null;
-    if (acceptedRetry?.id === latestRetryOperation.id) setAcceptedRetry(null);
-  }, [acceptedRetry?.id, latestRetryOperation, turn.id]);
-
-  const retry = async () => {
-    if (!canAct || action) return;
-    const retryId = retryIdRef.current ?? crypto.randomUUID();
-    retryIdRef.current = retryId;
-    setAction("retry");
-    setActionError(null);
-    try {
-      setAcceptedRetry(await onRetry(turn.id, retryId));
-    } catch (cause) {
-      setActionError(cause instanceof Error ? cause.message : "This turn could not be retried.");
-    } finally {
-      setAction(null);
-    }
-  };
-
-  const cancel = async () => {
-    if (!canAct || action) return;
-    setAction("cancel");
-    setActionError(null);
-    try {
-      await onCancel(turn.id);
-    } catch (cause) {
-      setActionError(cause instanceof ApiFetchError && cause.status === 409
-        ? "The retry has already started, so it cannot be cancelled now. Wait for the turn to refresh."
-        : cause instanceof Error ? cause.message : "This turn could not be cancelled.");
-      setAction(null);
-    }
-  };
-
-  const durableRetry = latestRetryOperation;
-  const retryOperation = acceptedRetry && acceptedRetry.id !== durableRetry?.id
-    ? acceptedRetry
-    : durableRetry ?? acceptedRetry;
-  const retryPending = retryOperation?.status === "pending" || retryOperation?.status === "running";
-  const retryFailure = retryOperation
-    && (retryOperation.status === "failed" || retryOperation.status === "interrupted")
-    ? retryOperation.error?.message ?? (retryOperation.kind === "start"
-      ? "The Companion could not start. Retry or cancel this turn."
-      : "Pi could not restart. Retry or cancel this turn.")
-    : null;
+  const recoveringThisTurn = recovery?.turn_id === turn.id;
 
   return (
-    <section
-      className="chat-interruption"
-      aria-labelledby={titleId}
-      aria-busy={action !== null || undefined}
-    >
+    <section className="chat-interruption" aria-label="Automatic runtime recovery">
       <Icon name="alert-triangle" size={18} />
       <div className="chat-interruption__body">
-        <div role="alert" aria-labelledby={titleId}>
-          <h2 id={titleId}>Turn interrupted</h2>
+        <div role="alert">
+          <h2>Turn interrupted</h2>
           <p>
             {turn.error?.message ?? "The runtime lost a confirmed outcome for this turn."} External
             actions may already have succeeded.
           </p>
         </div>
-        {!canAct ? (
-          <p className="chat-interruption__status">
-            An Owner or Editor must retry or cancel this turn before the queue can continue.
-          </p>
-        ) : (
-          <>
-            {retryPending ? (
-              <p className="chat-interruption__status" role="status">
-                {retryOperation.kind === "start"
-                  ? "Retry accepted. The Companion will start before this turn runs again."
-                  : "Retry accepted. Pi will restart before this turn runs again."}
-              </p>
-            ) : null}
-            <div className="chat-interruption__actions">
-              {!retryPending ? (
-                <button
-                  type="button"
-                  className="cds-btn cds-btn--primary cds-btn--sm"
-                  disabled={action !== null}
-                  onClick={() => void retry()}
-                >
-                  {action === "retry" ? "Requesting retry…" : "Retry turn"}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="cds-btn cds-btn--secondary cds-btn--sm"
-                disabled={action !== null}
-                onClick={() => void cancel()}
-              >
-                {action === "cancel" ? "Cancelling…" : "Cancel turn"}
-              </button>
-            </div>
-          </>
-        )}
-        {retryFailure ? (
-          <p className="chat-interruption__error" role="alert">{retryFailure}</p>
-        ) : null}
-        {actionError ? (
-          <p ref={errorRef} className="chat-interruption__error" role="alert" tabIndex={-1}>
-            {actionError}
-          </p>
-        ) : null}
+        <p className="chat-interruption__status" role="status">
+          {recoveringThisTurn && recovery?.status === "running"
+            ? "Pi cleanup is running automatically. This occurrence will not be replayed."
+            : "Pi cleanup is queued automatically. This occurrence will not be replayed."}
+        </p>
       </div>
     </section>
   );
@@ -225,6 +106,11 @@ export function CompanionThread({
   contextModels = [],
   lastReadOrdinal,
   openedThroughOrdinal,
+  hasOlderMessages = false,
+  loadingOlderMessages = false,
+  onLoadOlderMessages,
+  unseenNewMessages = 0,
+  onShowLatestMessages,
   onBack,
   onSend,
   onSettings,
@@ -262,6 +148,11 @@ export function CompanionThread({
   lastReadOrdinal?: number | null;
   /** The last ordinal the thread held when it was opened, so the divider stays where reading did. */
   openedThroughOrdinal?: number | null;
+  hasOlderMessages?: boolean;
+  loadingOlderMessages?: boolean;
+  onLoadOlderMessages?: () => Promise<void> | void;
+  unseenNewMessages?: number;
+  onShowLatestMessages?: () => Promise<void> | void;
   onBack: () => void;
   onSend: (content: string, clientMessageId: string, files: readonly File[]) => Promise<boolean>;
   /** Null for a Viewer: read-only settings remain available from the workspace list, not the thread. */
@@ -309,11 +200,10 @@ export function CompanionThread({
     setRoutineHistory({ routineId: routine.id, runId: null, name: routine.name });
   }, []);
   const openRoutineRun = useCallback((routine: NonNullable<CompanionTranscriptEntry["routine"]>) => {
-    if (!routine.run_id) return;
     routineHistoryOpenerRef.current = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
-    setRoutineHistory({ routineId: routine.id, runId: routine.run_id, name: routine.name });
+    setRoutineHistory({ routineId: routine.id, runId: routine.run_id ?? null, name: routine.name });
   }, []);
   const openTriggerHistory = useCallback((trigger: CompanionTriggerV2) => {
     if (!contextTriggerHistoryApi) return;
@@ -364,7 +254,7 @@ export function CompanionThread({
     return () => window.cancelAnimationFrame(frame);
   }, [routineHistory, triggerHistory]);
 
-  // Once Retry or Cancel releases the blocked turn, return keyboard users to the place work resumes.
+  // Once automatic recovery releases the occurrence, return keyboard users to the composer.
   useEffect(() => {
     const previous = previousInterruptedIdRef.current;
     previousInterruptedIdRef.current = interruptedTurn?.id ?? null;
@@ -506,13 +396,23 @@ export function CompanionThread({
 
       {notice && <div className="companions-error" role="alert">{notice}</div>}
 
+      {unseenNewMessages > 0 && onShowLatestMessages ? (
+        <div className="companions-thread-notice" role="status">
+          <span>{unseenNewMessages} new {unseenNewMessages === 1 ? "message" : "messages"}</span>
+          <button
+            type="button"
+            className="cds-btn cds-btn--secondary cds-btn--sm"
+            onClick={() => void onShowLatestMessages()}
+          >
+            Show latest
+          </button>
+        </div>
+      ) : null}
+
       {interruptedTurn ? (
         <InterruptedTurnNotice
           turn={interruptedTurn}
-          latestOperation={companion.runtime.latest_operation ?? null}
-          canAct={canSend}
-          onRetry={onRetryInterrupted}
-          onCancel={onCancelInterrupted}
+          recovery={companion.runtime.recovery ?? null}
         />
       ) : null}
 
@@ -536,6 +436,9 @@ export function CompanionThread({
           busy={busy}
           lastReadOrdinal={lastReadOrdinal}
           openedThroughOrdinal={openedThroughOrdinal}
+          hasOlderMessages={hasOlderMessages}
+          loadingOlderMessages={loadingOlderMessages}
+          onLoadOlderMessages={onLoadOlderMessages}
           skills={contextSkills.map((skill) => ({ id: skill.id, label: skill.slug }))}
           plugins={contextPlugins}
           models={contextModels}

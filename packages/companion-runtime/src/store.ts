@@ -32,9 +32,17 @@ import type { RuntimePiProjection } from "./piEvents";
 
 export const RUNTIME_LEASE_SECONDS = COMPANION_BUDGETS_BASE.leaseSeconds;
 
+export interface RuntimeRecoveryMetrics {
+  pendingCount: number;
+  oldestAgeSeconds: number | null;
+  autoAbandonedCount: number;
+}
+
 export interface RuntimeStore {
   ping(): Promise<void>;
   gateStatus(): Promise<GateStatus>;
+  /** Aggregate-only protocol-5 telemetry; optional for test doubles and alternate local stores. */
+  recoveryMetrics?(): Promise<RuntimeRecoveryMetrics>;
   disable(expectedGateEpoch: bigint, actorId: string): Promise<GateStatus>;
   claimWork(input: {
     executorId: string;
@@ -258,6 +266,10 @@ function booleanValue(value: RuntimeSqlValue): boolean | null {
 
 function numberValue(value: RuntimeSqlValue): number | null {
   return Number.isSafeInteger(value) ? Number(value) : null;
+}
+
+function nonnegativeFiniteNumber(value: RuntimeSqlValue): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
 function arrayValue(value: RuntimeSqlValue): RuntimeSqlValue[] | null {
@@ -766,6 +778,28 @@ export class PostgresRuntimeStore implements RuntimeStore {
     });
   }
 
+  async recoveryMetrics(): Promise<RuntimeRecoveryMetrics> {
+    return await mapped(async () => {
+      const rows = await this.sql.unsafe<RuntimeSqlRow[]>(`
+        SELECT pending_recovery_count::double precision AS pending_recovery_count,
+          oldest_recovery_age_seconds,
+          auto_abandoned_count::double precision AS auto_abandoned_count
+        FROM public.companion_runtime_recovery_metrics()
+      `);
+      const row = one(rows, "recovery metrics");
+      const pendingCount = nonnegativeFiniteNumber(row.pending_recovery_count);
+      const autoAbandonedCount = nonnegativeFiniteNumber(row.auto_abandoned_count);
+      const oldestAgeSeconds = row.oldest_recovery_age_seconds === null
+        ? null
+        : nonnegativeFiniteNumber(row.oldest_recovery_age_seconds);
+      if (pendingCount === null || autoAbandonedCount === null
+        || (row.oldest_recovery_age_seconds !== null && oldestAgeSeconds === null)) {
+        throw new RuntimeStoreContractError();
+      }
+      return { pendingCount, oldestAgeSeconds, autoAbandonedCount };
+    });
+  }
+
   async disable(expectedGateEpoch: bigint, actorId: string): Promise<GateStatus> {
     return await mapped(async () => {
       const rows = await this.sql.unsafe<RuntimeSqlRow[]>(`
@@ -786,7 +820,7 @@ export class PostgresRuntimeStore implements RuntimeStore {
       const rows = await this.sql.unsafe<RuntimeSqlRow[]>(`
         SELECT ${CLAIM_COLUMNS}
         FROM public.companion_runtime_claim_work(
-          $1::text, $2::integer, $3::integer, $4::bigint, 4::integer, 1::integer
+          $1::text, $2::integer, $3::integer, $4::bigint, 5::integer, 1::integer
         )
       `, [input.executorId, input.limit, input.leaseSeconds, input.gateEpoch.toString()]);
       return rows.map(decodeRuntimeClaimRow);

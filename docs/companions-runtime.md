@@ -121,21 +121,23 @@ queued → starting → dispatching → running ↔ needs_input
 
 There are two serial execution lanes per Companion: `main` for ordinary turns and `routine` for
 isolated routine-origin turns. At most one attempt is active in each lane, so one main attempt and
-one routine attempt may run together. FIFO ordering and the `interrupted` Retry/Cancel block apply
-within the affected lane; neither lane blocks the other.
+one routine attempt may run together. FIFO ordering applies within each lane. An unresolved
+`interrupted` occurrence owns only its lane until protocol 5's internal Pi cleanup proves terminal;
+then `resolution = auto_abandoned` releases it without replay. A routine recovery never blocks main.
 
 ### Attempt
 
 `companion_turn_attempts` stores one execution try:
 
-- unique `retry_id` for an explicit retry;
+- optional historical `retry_id`; protocol 5 recovery never creates a replacement attempt;
 - runtime claim epoch and Pi invocation id;
 - dispatch-started and acknowledgement facts;
 - correlated event-journal cursor and activity timestamp;
 - terminal result and expurgated error.
 
-The initial attempt is created by runtime when it claims the turn. Retry creates a new attempt on the
-same turn with a new `retry_id`; it never reuses `client_message_id` as an attempt key.
+The attempt is created by runtime when it claims the turn. Historical protocol-4 retries could add
+an attempt with a new `retry_id`; protocol 5 adopts any pending retry as cleanup and never creates a
+replacement attempt or reuses `client_message_id` as an attempt key.
 
 The attempt's durable `started_at` is also the time reference Pi receives for that try. On the first
 authorized material read, a narrow fenced function pins the turn actor's current profile timezone
@@ -290,11 +292,13 @@ Owner/Editor confirmation because it interrupts all Box work. Permanent delete i
 cleanup, never healing; it may preempt an active or interrupted isolated routine, and runtime
 terminates that exact run-scoped Pi invocation before issuing provider DELETE.
 
-Automatic recovery may recycle Pi for a proven daemon/protocol failure. Immediately before a new
+Automatic recovery may recycle Pi for a proven daemon/protocol failure or an interrupted
+occurrence. Immediately before a new
 prompt write intent, this includes one recycle when the broker still reports an active attempt or an
 unacknowledged event tail left by earlier terminal work; runtime re-reads idle state before dispatch
 and otherwise fails with `restart_pi`. It may not invoke Full Box, replace a merely unhealthy Box,
-archive/delete to make a test pass, or discard or replay an interrupted turn.
+or archive/delete to make a test pass. Recovery preserves the interrupted row and original error,
+never replays its prompt, and only marks that occurrence `auto_abandoned` after exact cleanup proof.
 
 ### Test-only Box Lab boundary
 
@@ -422,8 +426,9 @@ checkpoint pins that invocation on the attempt, and the broker rejects a mismatc
 or writing to Pi. An absent ledger after a daemon restart can therefore never authorize replay onto
 the replacement process. A takeover obtains `command_id` plus that pinned invocation through the
 fenced authorization row and performs the same resolution without
-re-staging files. A conflict, missing ledger proof, changed Pi invocation, or
-expired resolution window remains `prompt_dispatch_ambiguous` and blocks the queue. Abort and
+re-staging files. A conflict, missing ledger proof, changed Pi invocation, or expired resolution
+window becomes `prompt_dispatch_ambiguous` and holds its lane only until automatic exact-invocation
+cleanup records `auto_abandoned`. Abort and
 decision delivery retain their existing ambiguous outcome after a possibly-started one-way write;
 they never fall through to a second transport. Every lifecycle command remains exec-only. In
 `shadow`, no productive call is routed: runtime performs one throttled direct health-plus-broker-state
@@ -516,7 +521,7 @@ lease takeover, the new owner acknowledges an already-durable terminal cursor be
 turn, so neither a crash after projection nor a duplicate journal delivery can lose or duplicate the
 terminal result.
 
-## Dispatch ambiguity and Retry/Cancel
+## Dispatch ambiguity and automatic recovery
 
 Dispatch has three relevant outcomes:
 
@@ -526,17 +531,20 @@ Dispatch has three relevant outcomes:
 - **prompt may have been written, no ACK:** attempt and turn become `interrupted` immediately.
 
 The ambiguous case is never automatically replayed, including after lease takeover, Pi restart,
-runtime restart, or a new user message. Later turns stay queued.
+runtime restart, or a new user message. In the interruption transaction, protocol 5 creates one
+idempotent internal `restart_pi` operation with `trigger = recovery` on the affected lane. Runtime
+terminates the captured Pi invocation; an absent Box is a durable negative cleanup proof. Success
+preserves the original error, records `resolution = auto_abandoned`, and releases the lane. Cleanup
+failure returns the same operation to `pending` with exponential backoff capped at five minutes, so
+there is no terminal state requiring human intervention. No cleanup path dispatches the old prompt.
 
-`POST /v1/companions/:id/turns/:turnId/retry` requires a unique `retry_id` and creates a new attempt
-on the same turn. When a usable Box is projected, retry recycles Pi first. When no usable Box is
-projected, the explicit user retry authorizes the ordinary start path, including reconciliation by
-the deterministic generation name before at most one Box creation. The UI warns that earlier
-external effects may already have succeeded. Repeating the same retry request resolves to the same
-lifecycle operation and attempt.
+`POST /v1/companions/:id/turns/:turnId/retry` remains available during rolling deploys. Its unique
+`retry_id` is accepted for wire compatibility, but the function only returns or re-enqueues the same
+internal recovery operation; it never creates a new attempt. The UI warns that earlier external
+effects may already have succeeded and shows cleanup progress without a replay control.
 
 `POST /v1/companions/:id/turns/:turnId/cancel` is the Owner/Editor stop and dequeue path. A
-queued follow-up, an interrupted turn, or an active turn that has not yet written a prompt to Pi
+queued follow-up or an active turn that has not yet written a prompt to Pi
 settles `cancelled` immediately. An active turn that may already be on Pi records
 `cancel_requested_at` and stays active until the executor that holds the lease aborts Pi and
 settles; remaining queued turns then run. Cancel does not claim that prior effects were rolled
@@ -720,19 +728,20 @@ state and attempt-bound invocation are the only Pi identity used by routine obse
 ordinary main turns never inspect or terminate the run-scoped routine broker.
 
 Shared Box lifecycle and staging stays on the main lane and waits for the routine lane to be
-quiescent. An active or interrupted routine therefore prevents Pi recycle, Box restart, settings
-apply, health repair, or other shared lifecycle work from racing its run root. Permanent delete is
-the exception: its claim fences and settles the routine lane, then termination addresses only the
-captured run-scoped invocation before provider deletion. Routine takeover, Retry, Cancel, and
-settlement address only the exact routine invocation and never stop the main Pi. The routine context
+quiescent. An active routine prevents Pi recycle, settings apply, health repair, or other shared
+lifecycle work from racing its run root. An interrupted routine is owned by its lane-local automatic
+recovery and does not block main chat. Explicit Full Box restart and permanent delete may preempt
+and settle the captured routine occurrence, then terminate only its exact run-scoped invocation
+before contacting the provider. Routine takeover, recovery, Cancel, and settlement never stop the
+main Pi. The routine context
 substrate is a pinned read-only view of the main conversation; routine-local memory remains private
 to the run, so concurrency introduces no second writer to parent memory.
 
 The isolated invocation is pinned separately from the main Pi identity at dispatch write intent.
 Runtime validates that pinned value for broker reads, durable projection, terminal acknowledgement,
 and explicit cancellation. If preparation fails before a prompt can have reached Pi, runtime
-terminates the run-scoped process; once dispatch may be ambiguous, it preserves the fail-closed
-Retry/Cancel boundary instead of guessing or replaying.
+terminates the run-scoped process; once dispatch may be ambiguous, it preserves the occurrence and
+original error, then runs exact automatic cleanup instead of guessing or replaying.
 
 Before Box contact, each run also pins the content-addressed main-conversation background specified
 in [Routine Pi context substrate](routine-pi-context-substrate.md). The latest valid main-Pi
@@ -976,8 +985,8 @@ message header. Keeping variable time out of `instructions.txt` preserves the re
 prefix formed by the system prompt and prior transcript. The current user message is already the
 per-turn suffix, so exact seconds do not reduce reusable prefix length and are more useful than an
 hour-rounded value. A takeover of the same attempt reconstructs identical bytes from `started_at`;
-an explicit retry is a new attempt and intentionally receives its new start time. Unset timezone
-falls back to `UTC`.
+automatic recovery does not create a second attempt or time reference. Unset timezone falls back
+to `UTC`.
 
 **Staged instructions.** Every staging composes `~/.companion/runtime/state/instructions.txt` from a
 constant operating brief plus the owner's persona line. The file carries no credential and no member
@@ -1204,22 +1213,25 @@ does—control-plane reads remain PostgreSQL-only, never wake a Box, and keep th
 Native iOS persists the latest authorized roster projection and a bounded transcript tail in a
 member-and-organization-scoped SQLite cache. Launch and chat navigation render those presentation
 snapshots first, including offline, while all mutation controls remain disabled until fresh
-authority arrives. Its recurring and foreground reads use opaque stateless cursors through
-`GET /v1/companions/sync` and `GET /v1/companions/:id/thread-delta`: unchanged rows are omitted,
-deletions are tombstoned, roster order is explicit, changed entries retain ordinal order, and current
-thread metadata is always returned. The cursor contains projection digests rather than message text,
-is bound to organization/member/Companion scope, and keeps six exact tail records plus a digest of
-older history so its query remains below intermediary request-line limits. A rare historical-prefix
-edit produces an explicit replacement projection instead of a gap. Native iOS omits oversized
-legacy cursors and retries a proxy `414`/`431` response once without a cursor. The app keeps the full
-synchronized thread in memory while bounding only its persisted tail. These endpoints may compute
-the current authorized PostgreSQL projection but send only its delta in the ordinary case; they
-never advance unread state, wake, or observe Box or Pi. The visible
-thread clears unread explicitly. Thread synchronization treats `event_id` as entry identity.
-Historical ordinal ties are ordered by event id and preserved in the bounded cursor instead of
-turning a valid refresh into `400`; native iOS retries a server cursor `400` once without the cursor
-as a full replacement sync. APNs invalidation and app foregrounding reuse the same
-synchronization path.
+authority arrives. New clients bootstrap through
+`GET /v1/companions/:id/thread-window?limit=50`; a window contains at most 100 entries and 1 MiB,
+returns at least one oversized entry, and pages older history backwards without advancing unread.
+The initial window carries a directly usable v2 `thread-delta` cursor.
+
+Every visible entry stores the latest monotonic per-thread `projection_sequence`. Entry, attachment,
+decision, tool, turn-status, and routine-return changes advance it; a visibility transition returns
+the event id as a tombstone. `thread-delta` selects only rows after the cursor, caps one response at
+200 changes, and exposes `has_more` so web and CompanionKit drain bursts immediately. An empty poll
+does not aggregate the transcript. The web keeps at most three 50-entry pages mounted, groups only
+routine notifications present in those pages, and opens durable routine history for the rest.
+CompanionKit uses the same window bootstrap while preserving its scoped cache and merge path.
+
+All cursors are bound to organization/member/Companion scope. A v1 digest cursor performs one final
+full compatibility comparison and receives a v2 cursor; legacy clients may still use `/thread` and
+cursorless `/thread-delta` during the rolling deploy. These PostgreSQL-only reads never wake or
+observe Box or Pi. Only opening the initial visible window advances unread; history pages and deltas
+do not. Thread entry identity remains `event_id`, ordered by ordinal then event id. APNs invalidation
+and app foregrounding reuse the same synchronization path.
 
 ### Native Apple clients
 
@@ -1345,6 +1357,12 @@ the latest sweep is stale. Operators must be able to observe queue age, claim la
 attempt duration, lease takeover, deadline settlement, unknown/malformed event counts, canonical and
 duplicate Box discovery, permanent-delete progress, and expurgated failure codes without accessing
 secret payloads.
+
+Protocol 5 emits aggregate-only recovery telemetry once per minute: pending recovery count, oldest
+recovery age, and cumulative `auto_abandoned` count. Thread-window and delta routes emit only numeric
+duration, response-byte, changed-entry, deleted-entry, and `has_more` measurements. No metric label
+accepts an organization, Companion, actor, cursor, event id, URL, transcript value, or provider
+diagnostic.
 
 The direct transport adds two structured process events, both expurgated by construction:
 `runtime.direct_transport.fallback` carries only the operation (broker/event/health, prompt

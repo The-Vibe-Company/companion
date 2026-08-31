@@ -118,8 +118,10 @@ boundary for this incident. Deploy its release migration and the matching runtim
 4. Use the named read-only routine diagnostic to confirm `enabled`, `consecutive_failures`, the next
    fire, and recent run outcomes. Do not infer an abnormal cancellation from a Box-side
    `.cancelled` tombstone alone: exact routine termination writes that marker for normal cleanup too.
-5. If a historical run is still `interrupted`, an Owner/Editor must explicitly Retry or Cancel that
-   run. The migration never resolves ambiguous external effects and never restarts or deletes a Box.
+5. If a historical run is still `interrupted`, verify protocol 5 created its lane-local
+   `restart_pi` recovery. It terminates only the exact run-scoped invocation, never replays the
+   prompt, and never restarts or deletes the Box; the original error remains after
+   `auto_abandoned` releases the lane.
 
 After this migration, successful enqueue no longer clears the streak. A succeeded run clears it;
 only a terminal `failed` run increments it. `interrupted`, `cancelled`, and
@@ -210,16 +212,16 @@ while the main thread gains nothing. `no_output` is a settlement outcome, not a
 Do not accept `failed`, `interrupted`, a duplicate main entry, or a main-Pi dispatch for the notify
 case. Keep the routine disabled while investigating any of those results.
 
-## Clean interrupted and queued validation turns
+## Clean queued validation turns
 
 1. Disable the `Hello World` routine first to stop new cron fires.
-2. In the Companion chat, use **Cancel turn** on the interrupted queue-head notice. Do not choose
-   Retry until the prepare recovery is deployed.
+2. If a turn is interrupted, verify its protocol-5 recovery terminates the exact invocation and
+   reaches `auto_abandoned`; do not replay or rewrite the turn.
 3. Expand the queued-messages card and use **Remove from queue** for each queued `Hello World`
    message. Preserve unrelated owner messages.
 4. If the client action is unavailable, an authorized Owner/Editor may call
-   `POST /v1/companions/<companion-id>/turns/<turn-id>/cancel` with `{}` once per exact queued or
-   interrupted turn. Cancellation is durable and idempotent. Do not edit leases, attempts, or
+   `POST /v1/companions/<companion-id>/turns/<turn-id>/cancel` with `{}` once per exact queued turn.
+   Cancellation is durable and idempotent. Do not edit leases, attempts, recovery operations, or
    routine rows directly.
 5. Confirm the ordered queue is clear before re-enabling the routine.
 
@@ -231,7 +233,9 @@ If isolated routine execution fails after cutover:
    `COMPANION_COMPANIONS_ENABLED=false` consistently on worker and runtime—preferably all four
    product services—and deploy so new work stops and active work reaches the safe interrupted
    checkpoint.
-2. Cancel only the affected interrupted and queued turns through the product/API procedure above.
+2. Cancel only affected queued turns through the product/API procedure above. Interrupted
+   occurrences remain durable and recover automatically after the fixed protocol-5 runtime resumes
+   claims.
 3. Preserve migrations 0137 and 0139 and every durable `routine_isolated` pin. Do not down-migrate, force a
    run onto the legacy main Pi, delete the Box, or use a full Box restart as automatic repair.
 4. Roll forward to a compatible fixed Runtime v2 SHA. Re-run release first if that SHA contains a

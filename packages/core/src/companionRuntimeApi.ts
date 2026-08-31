@@ -12,15 +12,24 @@ import type {
   CompanionOperationKind,
   CompanionShareRole,
   CompanionThread,
+  CompanionThreadDeltaResponse,
+  CompanionThreadMetadata,
+  CompanionThreadWindow,
   CompanionTranscriptEntry,
   CompanionTurn,
+  CompanionRoutineNotifyReturn,
 } from "@companion/contracts";
 import {
+  COMPANION_THREAD_DELTA_MAX_CHANGES,
   companionAttachmentUploadSchema,
   companionDecisionProposalSchema,
   companionOperationSchema,
+  companionRoutineNotifyReturnSchema,
+  companionRuntimeRecoverySchema,
   companionSelectedMcpAccountIdsSchema,
   companionSelectedSkillIdsSchema,
+  companionThreadDeltaResponseSchema,
+  companionThreadWindowSchema,
   companionTranscriptEntrySchema,
   companionTurnSchema,
   type CompanionDecisionProposal,
@@ -40,6 +49,10 @@ import {
 } from "./companions";
 import { companionCatalogModel, getCompanionProviderCatalog } from "./companionProviderCatalog";
 import { COMPANION_SKILLS_SYNC_ERROR_VIEWER_MESSAGE } from "./companionRuntimeErrors";
+import {
+  buildCompanionThreadSequenceCursor,
+  buildCompanionThreadWindowCursor,
+} from "./companionSync";
 
 function rows<T>(result: unknown): T[] {
   return Array.from(result as Iterable<T>);
@@ -100,6 +113,7 @@ type RuntimeReadRow = {
   queued_count: number | string;
   interrupted_turn: unknown;
   latest_operation: unknown;
+  recovery?: unknown;
   is_replying: boolean;
   last_observed_at?: Date | string | null;
 };
@@ -242,6 +256,7 @@ export function projectCompanionRuntimeV2(
           : skillsError
         : null,
       last_observed_at: lastObservedAt,
+      recovery: companionRuntimeRecoverySchema.nullable().parse(row.recovery ?? null),
       latest_operation: projectedOperation(latestOperation, row.access_role === "viewer"),
     },
   };
@@ -262,11 +277,17 @@ export async function readCompanionRuntimeV2(input: {
       ${input.orgId}::uuid, ${input.companionId}::uuid
     )
   `);
+  const recoveryResult = await input.database.execute(sql`
+    select * from public.companion_api_read_recovery(
+      ${input.orgId}::uuid, ${input.companionId}::uuid
+    )
+  `);
   const [runtime] = rows<Omit<RuntimeReadRow,
     "skills_available_revision" | "skills_update_error_message">>(result);
   const [sync] = rows<Pick<RuntimeReadRow,
     "skills_available_revision" | "skills_update_error_message">>(syncResult);
-  const row = runtime && sync ? { ...runtime, ...sync } : null;
+  const [recovery] = rows<Pick<RuntimeReadRow, "recovery">>(recoveryResult);
+  const row = runtime && sync && recovery ? { ...runtime, ...sync, ...recovery } : null;
   if (!row) throw new Error("companion runtime projection is unavailable");
   return row;
 }
@@ -297,6 +318,9 @@ export async function listCompanionsV2(input: {
   const syncResult = await input.database.execute(sql`
     select * from public.companion_api_list_skill_sync(${input.orgId}::uuid)
   `);
+  const recoveryResult = await input.database.execute(sql`
+    select * from public.companion_api_list_recoveries(${input.orgId}::uuid)
+  `);
   const syncs = new Map(rows<Pick<RuntimeReadRow,
     "skills_available_revision" | "skills_update_error_message"> & { companion_id: string }>(
       syncResult,
@@ -305,11 +329,18 @@ export async function listCompanionsV2(input: {
     "skills_available_revision" | "skills_update_error_message"> & { companion_id: string }>(
       result,
     ).map((runtime) => [runtime.companion_id, runtime] as const));
+  const recoveries = new Map(rows<Pick<RuntimeReadRow, "recovery"> & { companion_id: string }>(
+    recoveryResult,
+  ).map((recovery) => [recovery.companion_id, recovery.recovery] as const));
   return companions.map((companion) => {
     const runtime = runtimes.get(companion.id);
     const sync = syncs.get(companion.id);
     if (!runtime || !sync) throw new Error("companion runtime projection is unavailable");
-    return projectCompanionRuntimeV2(companion, { ...runtime, ...sync });
+    return projectCompanionRuntimeV2(companion, {
+      ...runtime,
+      ...sync,
+      recovery: recoveries.get(companion.id) ?? null,
+    });
   });
 }
 
@@ -554,19 +585,7 @@ type ThreadReadRow = {
   routine_notify_returns: unknown;
 };
 
-export type RoutineNotifyReturn = {
-  run_id: string;
-  routine_id: string;
-  routine_name: string;
-  main_entry_event_id: string;
-};
-
-const routineNotifyReturnSchema = z.object({
-  run_id: z.string().uuid(),
-  routine_id: z.string().uuid(),
-  routine_name: z.string().min(1).max(80),
-  main_entry_event_id: z.string().min(1).max(200),
-}).strict();
+export type RoutineNotifyReturn = CompanionRoutineNotifyReturn;
 
 type RoutineNotifyUnit = {
   marker: CompanionTranscriptEntry;
@@ -604,6 +623,7 @@ export function collapseRoutineNotifyEntries(
     collapsed.push(latest.marker, {
       ...latest.update,
       routine_notify_group: {
+        routine_id: latest.routineId,
         routine_name: latest.routineName,
         total_count: open.length,
         hidden_entries: open.slice(0, -1).flatMap((unit) => [unit.marker, unit.update]),
@@ -693,7 +713,9 @@ async function readCompanionThreadProjection(input: {
     .map((entry) => entry.routine !== null && entry.turn_id !== null
       ? { ...entry, routine: { ...entry.routine, run_id: entry.turn_id } }
       : entry);
-  const notifyReturns = z.array(routineNotifyReturnSchema).parse(row.routine_notify_returns);
+  const notifyReturns = z.array(companionRoutineNotifyReturnSchema).parse(
+    row.routine_notify_returns,
+  );
   const entries = collapseRoutineNotifyEntries(visibleEntries, notifyReturns);
   const activeTurn = parseTurn(row.active_turn);
   const interruptedTurn = parseTurn(row.interrupted_turn);
@@ -733,6 +755,180 @@ export async function syncCompanionThreadV2(input: {
   database: Db;
 }): Promise<CompanionThread> {
   return readCompanionThreadProjection({ ...input, markRead: false });
+}
+
+type ThreadWindowReadRow = {
+  access_role: CompanionAccess;
+  entries: unknown;
+  active_turn: unknown;
+  queued_count: number | string;
+  interrupted_turn: unknown;
+  last_message_at: Date | string | null;
+  previous_last_read_ordinal: number | string | null;
+  older_before_ordinal: number | string | null;
+  sync_sequence: number | string | bigint;
+  routine_notify_returns: unknown;
+};
+
+type ThreadChangesReadRow = {
+  access_role: CompanionAccess;
+  changed_entries: unknown;
+  deleted_event_ids: unknown;
+  active_turn: unknown;
+  queued_count: number | string;
+  interrupted_turn: unknown;
+  last_message_at: Date | string | null;
+  last_read_ordinal: number | string | null;
+  next_sequence: number | string | bigint;
+  has_more: boolean;
+  routine_notify_returns: unknown;
+};
+
+function bigintValue(value: number | string | bigint): bigint {
+  if (typeof value === "bigint") return value;
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) {
+    return BigInt(value);
+  }
+  if (typeof value === "string" && /^(0|[1-9][0-9]*)$/.test(value)) {
+    return BigInt(value);
+  }
+  throw new Error("Companion thread projection sequence is invalid");
+}
+
+function companionThreadMetadata(input: {
+  actor: ActorContext;
+  companionId: string;
+  row: Pick<ThreadWindowReadRow,
+    | "access_role"
+    | "active_turn"
+    | "queued_count"
+    | "interrupted_turn"
+    | "last_message_at"
+    | "previous_last_read_ordinal">;
+}): CompanionThreadMetadata {
+  const activeTurn = parseTurn(input.row.active_turn);
+  const interruptedTurn = parseTurn(input.row.interrupted_turn);
+  return {
+    companion_id: input.companionId,
+    viewer_id: input.actor.id,
+    access: input.row.access_role,
+    read_only: input.row.access_role === "viewer",
+    can_send: input.row.access_role !== "viewer",
+    active_turn: activeTurn?.status === "interrupted" ? null : activeTurn,
+    queued_count: integer(input.row.queued_count),
+    interrupted_turn: interruptedTurn?.status === "interrupted" ? interruptedTurn : null,
+    last_message_at: iso(input.row.last_message_at),
+    last_read_ordinal: input.row.previous_last_read_ordinal === null
+      ? null
+      : integer(input.row.previous_last_read_ordinal),
+  };
+}
+
+/** Open one bounded recent/history window. Only the initial window advances this viewer's watermark. */
+export async function readCompanionThreadWindowV2(input: {
+  actor: ActorContext;
+  orgId: string;
+  companionId: string;
+  beforeOrdinal: number | null;
+  limit: number;
+  database: Db;
+}): Promise<CompanionThreadWindow> {
+  const result = await input.database.execute(sql`
+    select * from public.companion_api_read_thread_window(
+      ${input.orgId}::uuid,
+      ${input.companionId}::uuid,
+      ${input.beforeOrdinal}::integer,
+      ${input.limit}::integer,
+      ${input.beforeOrdinal === null}::boolean
+    )
+  `);
+  const [row] = rows<ThreadWindowReadRow>(result);
+  if (!row) throw new Error("Companion thread window projection is unavailable");
+  const entries = z.array(companionTranscriptEntrySchema).parse(row.entries);
+  const sequence = bigintValue(row.sync_sequence);
+  return companionThreadWindowSchema.parse({
+    thread: companionThreadMetadata({ actor: input.actor, companionId: input.companionId, row }),
+    entries,
+    older_cursor: row.older_before_ordinal === null
+      ? null
+      : buildCompanionThreadWindowCursor({
+          orgId: input.orgId,
+          actorId: input.actor.id,
+          companionId: input.companionId,
+          beforeOrdinal: integer(row.older_before_ordinal),
+        }),
+    sync_cursor: buildCompanionThreadSequenceCursor({
+      orgId: input.orgId,
+      actorId: input.actor.id,
+      companionId: input.companionId,
+      sequence,
+    }),
+    notify_returns: z.array(companionRoutineNotifyReturnSchema).parse(
+      row.routine_notify_returns,
+    ),
+  });
+}
+
+/** Read at most 200 changed projections without aggregating the unchanged transcript. */
+export async function readCompanionThreadChangesV2(input: {
+  actor: ActorContext;
+  orgId: string;
+  companionId: string;
+  afterSequence: bigint;
+  database: Db;
+}): Promise<CompanionThreadDeltaResponse> {
+  const result = await input.database.execute(sql`
+    select * from public.companion_api_read_thread_changes(
+      ${input.orgId}::uuid,
+      ${input.companionId}::uuid,
+      ${input.afterSequence.toString()}::bigint,
+      ${COMPANION_THREAD_DELTA_MAX_CHANGES}::integer
+    )
+  `);
+  const [row] = rows<ThreadChangesReadRow>(result);
+  if (!row) throw new Error("Companion thread changes projection is unavailable");
+  const sequence = bigintValue(row.next_sequence);
+  return companionThreadDeltaResponseSchema.parse({
+    cursor: buildCompanionThreadSequenceCursor({
+      orgId: input.orgId,
+      actorId: input.actor.id,
+      companionId: input.companionId,
+      sequence,
+    }),
+    reset_entries: false,
+    changed_entries: z.array(companionTranscriptEntrySchema).parse(row.changed_entries),
+    deleted_event_ids: z.array(z.string().min(1).max(200)).parse(row.deleted_event_ids),
+    thread: companionThreadMetadata({
+      actor: input.actor,
+      companionId: input.companionId,
+      row: {
+        ...row,
+        previous_last_read_ordinal: row.last_read_ordinal,
+      },
+    }),
+    has_more: row.has_more,
+    notify_returns: z.array(companionRoutineNotifyReturnSchema).parse(
+      row.routine_notify_returns,
+    ),
+  });
+}
+
+/** Capture the sequence before a legacy full comparison so a concurrent write cannot be skipped. */
+export async function readCompanionThreadProjectionSequenceV2(input: {
+  actor: ActorContext;
+  orgId: string;
+  companionId: string;
+  database: Db;
+}): Promise<bigint> {
+  const result = await input.database.execute(sql`
+    select public.companion_api_read_thread_projection_sequence(
+      ${input.orgId}::uuid,
+      ${input.companionId}::uuid
+    ) as projection_sequence
+  `);
+  const [row] = rows<{ projection_sequence: number | string | bigint }>(result);
+  if (!row) throw new Error("Companion thread projection sequence is unavailable");
+  return bigintValue(row.projection_sequence);
 }
 
 export async function enqueueCompanionTurnV2(input: {

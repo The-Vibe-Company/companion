@@ -541,12 +541,11 @@ public struct CompanionChatReadingPositionStore: Equatable, Sendable {
     }
 }
 
-/// Tracks the progressively disclosed portion of a complete thread response.
+/// Tracks the progressively disclosed portion of the thread pages currently loaded in memory.
 ///
-/// The thread endpoint intentionally remains unpaginated. This value keeps the client-side
-/// presentation bounded by exposing the newest page first, then adding older entries in fixed
-/// pages when the reader asks for them. Refreshing a growing response preserves the number of
-/// entries the reader has already exposed.
+/// The client opens a bounded recent window and fetches older server pages only when the reader
+/// asks for them. Within the loaded set, this value exposes the newest page first and preserves
+/// the reader's current disclosure across live tail refreshes.
 public struct CompanionTranscriptWindow: Equatable, Sendable {
     public static let defaultPageSize = 50
 
@@ -604,8 +603,7 @@ public struct CompanionTranscriptWindow: Equatable, Sendable {
         }
     }
 
-    /// Replaces a cached partial-history count with the complete server count without treating
-    /// the newly discovered historical prefix as appended tail content.
+    /// Adds a newly loaded historical page without treating its prefix as appended tail content.
     public mutating func revealCompleteHistory(totalCount: Int) {
         let count = max(0, totalCount)
         self.totalCount = count

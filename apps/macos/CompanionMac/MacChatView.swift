@@ -12,6 +12,8 @@ final class CompanionMacChatModel {
     private(set) var companion: CompanionSummary
     private(set) var thread: CompanionThread?
     private(set) var loading = true
+    private(set) var loadingEarlier = false
+    private(set) var historyIsPartial = false
     private(set) var sending = false
     private(set) var errorMessage: String?
     private(set) var actionError: String?
@@ -58,13 +60,18 @@ final class CompanionMacChatModel {
     }
 
     func reload(silently: Bool = false) async {
+        if silently, loadingEarlier { return }
         let generation = projection.beginRefresh()
         if !silently { loading = true }
         do {
-            let next = try await sessionStore.thread(companionID: companion.id)
+            let snapshot = try await sessionStore.synchronizeThread(
+                companionID: companion.id
+            ).value
+            let next = snapshot.thread
             guard projection.accepts(refresh: generation) else { return }
             _ = projection.accept(next, refresh: generation)
             thread = next
+            historyIsPartial = snapshot.isPartial
             errorMessage = nil
             if companion.unread {
                 do {
@@ -84,6 +91,29 @@ final class CompanionMacChatModel {
             }
         }
         loading = false
+    }
+
+    func loadEarlier() async {
+        guard historyIsPartial, !loadingEarlier else { return }
+        loadingEarlier = true
+        defer { loadingEarlier = false }
+        do {
+            guard let page = try await sessionStore.loadOlderThreadWindow(
+                companionID: companion.id
+            ) else {
+                historyIsPartial = false
+                return
+            }
+            projection.replaceAfterMutation(with: page.value.thread)
+            thread = page.value.thread
+            historyIsPartial = page.value.isPartial
+            errorMessage = nil
+        } catch {
+            errorMessage = companionMacErrorMessage(
+                error,
+                fallback: "Earlier messages could not be loaded. Try again."
+            )
+        }
     }
 
     @discardableResult
@@ -296,6 +326,22 @@ struct CompanionMacChatView: View {
                         .frame(maxWidth: 520)
                         .frame(maxWidth: .infinity, minHeight: 180)
                     } else if let thread = model.thread {
+                        if model.historyIsPartial {
+                            Button {
+                                Task { await model.loadEarlier() }
+                            } label: {
+                                if model.loadingEarlier {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Label("Load earlier messages", systemImage: "arrow.up")
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(model.loadingEarlier)
+                            .accessibilityIdentifier("chat.load-earlier")
+                            .frame(maxWidth: .infinity)
+                        }
                         if thread.entries.isEmpty && thread.interruptedTurn == nil && thread.queuedCount == 0 {
                             emptyConversation
                         }

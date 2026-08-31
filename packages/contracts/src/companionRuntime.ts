@@ -78,7 +78,7 @@ const terminalAttemptStatuses = new Set<CompanionTurnAttemptStatus>([
 /** PostgreSQL JSON renders `timestamptz` with an explicit UTC offset rather than always `Z`. */
 const companionRuntimeTimestampSchema = z.string().datetime({ offset: true });
 
-function validateTerminalShape(
+function validateTerminalSettlement(
   value: {
     status: string;
     settled_at: string | null;
@@ -118,7 +118,7 @@ export const companionTurnAttemptSchema = z.object({
   started_at: companionRuntimeTimestampSchema,
   settled_at: companionRuntimeTimestampSchema.nullable(),
 }).strict().superRefine((attempt, context) => {
-  validateTerminalShape(attempt, terminalAttemptStatuses, context);
+  validateTerminalSettlement(attempt, terminalAttemptStatuses, context);
   if ((attempt.dispatch_state === "accepted") !== (attempt.dispatch_accepted_at !== null)) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
@@ -134,6 +134,8 @@ export const companionTurnSchema = z.object({
   companion_id: z.string().uuid(),
   client_message_id: z.string().uuid(),
   status: companionTurnStatusSchema,
+  /** Optional while protocol 5 rolls out; null means no automatic terminal cleanup proof yet. */
+  resolution: z.literal("auto_abandoned").nullable().optional(),
   queue_sequence: z.number().int().positive(),
   latest_attempt: companionTurnAttemptSchema.nullable(),
   /** Server-computed durable replying fact. Clients must not infer it from transcript tails. */
@@ -144,8 +146,15 @@ export const companionTurnSchema = z.object({
   created_at: companionRuntimeTimestampSchema,
   updated_at: companionRuntimeTimestampSchema,
 }).strict().superRefine((turn, context) => {
-  validateTerminalShape(turn, terminalTurnStatuses, context);
+  validateTerminalSettlement(turn, terminalTurnStatuses, context);
   const attempt = turn.latest_attempt;
+  if (turn.resolution === "auto_abandoned" && turn.status !== "interrupted") {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["resolution"],
+      message: "auto_abandoned is valid only for an interrupted turn",
+    });
+  }
   if (attempt !== null && attempt.turn_id !== turn.id) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
@@ -244,7 +253,7 @@ export const companionOperationSchema = z.object({
   started_at: companionRuntimeTimestampSchema.nullable(),
   settled_at: companionRuntimeTimestampSchema.nullable(),
 }).strict().superRefine((operation, context) => {
-  validateTerminalShape(operation, terminalOperationStatuses, context);
+  validateTerminalSettlement(operation, terminalOperationStatuses, context);
 });
 export type CompanionOperation = z.infer<typeof companionOperationSchema>;
 

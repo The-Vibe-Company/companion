@@ -1,7 +1,7 @@
 import { COMPANION_BUDGETS } from "@companion/contracts";
 
 import type { RuntimeClock } from "./clock";
-import type { RuntimeExecutionResult } from "./engine";
+import type { RuntimeExecutionOutcome, RuntimeExecutionResult } from "./engine";
 import { describeThrownError, type RuntimeProcessLog } from "./logging";
 import type { RuntimeClaim } from "./types";
 import { claimFence } from "./leaseSession";
@@ -10,6 +10,14 @@ import { RUNTIME_LEASE_SECONDS, type RuntimeStore } from "./store";
 export const DEFAULT_RUNTIME_SWEEP_INTERVAL_MS = COMPANION_BUDGETS.sweepIntervalMs;
 export const DEFAULT_RUNTIME_CONCURRENCY = 8;
 export const DEFAULT_RUNTIME_DRAIN_TIMEOUT_MS = COMPANION_BUDGETS.shutdownDrainMs;
+export const RUNTIME_RECOVERY_METRICS_INTERVAL_MS = 60_000;
+
+const IMMEDIATE_WAKE_OUTCOMES = new Set<RuntimeExecutionOutcome>([
+  "succeeded",
+  "failed",
+  "interrupted",
+  "cancelled",
+]);
 
 export interface RuntimeSchedulerSnapshot {
   claimLoopAlive: boolean;
@@ -69,6 +77,7 @@ export class RuntimeScheduler {
   #claimLoopErrorStreak = 0;
   #disableApplied = false;
   #gateInterruptionApplied = false;
+  #lastRecoveryMetricsAt: Date | null = null;
   readonly #jitter: () => number;
 
   constructor(input: {
@@ -177,6 +186,7 @@ export class RuntimeScheduler {
         return;
       }
       this.#gateInterruptionApplied = false;
+      await this.#observeRecoveryMetrics();
       const freeSlots = this.#concurrency - this.#active.size;
       if (freeSlots > 0) {
         const claims = await this.#store.claimWork({
@@ -199,8 +209,8 @@ export class RuntimeScheduler {
           const execution = this.#engine.execute(claim);
           this.#active.set(activeKey, execution);
           void execution.then(
-            () => this.#removeActive(activeKey, execution),
-            () => this.#removeActive(activeKey, execution),
+            (result) => this.#removeActive(activeKey, execution, result.outcome),
+            () => this.#removeActive(activeKey, execution, null),
           );
         }
       }
@@ -217,6 +227,33 @@ export class RuntimeScheduler {
         thrown: describeThrownError(error),
       });
       throw error;
+    }
+  }
+
+  async #observeRecoveryMetrics(): Promise<void> {
+    if (!this.#store.recoveryMetrics) return;
+    const now = this.#clock.now();
+    if (this.#lastRecoveryMetricsAt
+      && now.getTime() - this.#lastRecoveryMetricsAt.getTime()
+        < RUNTIME_RECOVERY_METRICS_INTERVAL_MS) return;
+    this.#lastRecoveryMetricsAt = now;
+    try {
+      const metrics = await this.#store.recoveryMetrics();
+      this.#log?.info({
+        ts: this.#clock.now().toISOString(),
+        event: "runtime.recovery.metrics",
+        pendingCount: metrics.pendingCount,
+        oldestAgeSeconds: metrics.oldestAgeSeconds,
+        autoAbandonedCount: metrics.autoAbandonedCount,
+      });
+    } catch (error) {
+      // Telemetry is never a claim gate. A broken metric read is itself expurgated and retried on
+      // the next one-minute observation boundary while normal recovery continues.
+      this.#log?.warn({
+        ts: this.#clock.now().toISOString(),
+        event: "runtime.recovery.metrics_failed",
+        thrown: describeThrownError(error),
+      });
     }
   }
 
@@ -266,11 +303,17 @@ export class RuntimeScheduler {
     }
   }
 
-  #removeActive(activeKey: string, execution: Promise<RuntimeExecutionResult>): void {
+  #removeActive(
+    activeKey: string,
+    execution: Promise<RuntimeExecutionResult>,
+    outcome: RuntimeExecutionOutcome | null,
+  ): void {
     if (this.#active.get(activeKey) !== execution) return;
     this.#active.delete(activeKey);
-    // A completed start operation can have made the queued turn claimable. Interrupt only the
-    // scheduler's recovery sleep; the main shutdown signal and periodic sweep remain unchanged.
+    // A durable terminal result can have made queued work claimable. A release, lost fence,
+    // handoff, or unexpected rejection has not proved that PostgreSQL changed, so the periodic
+    // sweep remains its recovery path instead of immediately reclaiming the same dormant row.
+    if (outcome === null || !IMMEDIATE_WAKE_OUTCOMES.has(outcome)) return;
     if (this.#sleepAbort && !this.#sleepAbort.signal.aborted) {
       this.#sleepAbort.abort();
     } else {

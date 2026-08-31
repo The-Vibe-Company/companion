@@ -10,7 +10,6 @@ import type {
   CompanionThread as Thread,
 } from "@companion/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiFetchError } from "@/lib/apiClient";
 import { CompanionThread, type CompanionContextPanel } from "./CompanionThread";
 import { CHAT_VIEWPORT_SETTLE_MS } from "./useVisualViewportPin";
 
@@ -134,6 +133,9 @@ async function mount(
     onCancelInterrupted?: (turnId: string) => Promise<void>;
     context?: Partial<CompanionContextPanel>;
     contextRoutines?: CompanionRoutine[];
+    hasOlderMessages?: boolean;
+    loadingOlderMessages?: boolean;
+    onLoadOlderMessages?: () => Promise<void> | void;
   } = {},
 ) {
   const container = document.createElement("div");
@@ -150,6 +152,9 @@ async function mount(
       context: contextPanel(overrides.context),
       contextSkills: [],
       contextRoutines: overrides.contextRoutines ?? [],
+      hasOlderMessages: overrides.hasOlderMessages ?? false,
+      loadingOlderMessages: overrides.loadingOlderMessages ?? false,
+      onLoadOlderMessages: overrides.onLoadOlderMessages,
       onBack: () => {},
       orgId: "org-1",
       onSend,
@@ -227,13 +232,6 @@ function sendButton(container: HTMLElement) {
   return container.querySelector("button[aria-label='Send message']") as HTMLButtonElement;
 }
 
-function button(container: HTMLElement, label: string): HTMLButtonElement {
-  const found = [...container.querySelectorAll("button")]
-    .find((candidate) => candidate.textContent?.trim() === label);
-  if (!found) throw new Error(`Button not found: ${label}`);
-  return found;
-}
-
 /** A finger landing on a control, which is the moment iOS starts resolving a tap. */
 function pressed(target: Element) {
   const event = new PointerEvent("pointerdown", { bubbles: true, cancelable: true });
@@ -253,196 +251,86 @@ describe("CompanionThread composer", () => {
   afterEach(() => {
     act(() => roots.splice(0).forEach((root) => root.unmount()));
     document.body.innerHTML = "";
+    vi.restoreAllMocks();
   });
 
-  it("keeps one retry id across a failed interrupted-turn submission and focuses the error", async () => {
-    const retryIds: string[] = [];
-    const onRetryInterrupted = vi.fn(async (_turnId: string, retryId: string) => {
-      retryIds.push(retryId);
-      throw new Error("Retry could not be scheduled.");
-    });
-    const container = await mount(async () => true, {
-      thread: interruptedThread,
-      onRetryInterrupted,
-    });
-    const retry = () => [...container.querySelectorAll("button")]
-      .find((candidate) => candidate.textContent === "Retry turn") as HTMLButtonElement;
-
-    await act(async () => retry().click());
-    const alert = container.querySelector<HTMLElement>(".chat-interruption__error")!;
-    expect(alert.textContent).toContain("Retry could not be scheduled.");
-    expect(document.activeElement).toBe(alert);
-
-    await act(async () => retry().click());
-    expect(retryIds).toHaveLength(2);
-    expect(retryIds[0]).toBe(retryIds[1]);
-    expect(retryIds[0]).toMatch(/^[0-9a-f-]{36}$/);
-  });
-
-  it("keeps Cancel available after an interrupted-turn retry is durably accepted", async () => {
+  it("keeps interrupted work non-blocking and never exposes replay controls", async () => {
+    const onSend = vi.fn(async () => true);
     const onRetryInterrupted = vi.fn(async () => retryOperation);
     const onCancelInterrupted = vi.fn(async () => {});
-    const container = await mount(async () => true, {
+    const container = await mount(onSend, {
       thread: interruptedThread,
       onRetryInterrupted,
       onCancelInterrupted,
     });
-    const retry = [...container.querySelectorAll("button")]
-      .find((candidate) => candidate.textContent === "Retry turn") as HTMLButtonElement;
 
-    await act(async () => retry.click());
+    expect(container.textContent).toContain("Pi cleanup is queued automatically");
+    expect(container.textContent).toContain("will not be replayed");
+    expect(container.textContent).not.toContain("Retry turn");
+    expect(container.textContent).not.toContain("Cancel turn");
+    expect(sendButton(container).disabled).toBe(true);
 
-    expect(onRetryInterrupted).toHaveBeenCalledWith(
-      interruptedThread.interrupted_turn?.id,
+    type(container, "Continue with the next task");
+    expect(sendButton(container).disabled).toBe(false);
+    await send(container);
+
+    expect(onSend).toHaveBeenCalledWith(
+      "Continue with the next task",
       expect.stringMatching(/^[0-9a-f-]{36}$/),
+      [],
     );
-    expect(container.textContent).toContain("Retry accepted. Pi will restart");
-    expect(container.textContent).not.toContain("Retry completed");
-    expect([...container.querySelectorAll("button")]
-      .some((candidate) => candidate.textContent === "Retry turn")).toBe(false);
-    const cancel = [...container.querySelectorAll("button")]
-      .find((candidate) => candidate.textContent === "Cancel turn") as HTMLButtonElement;
-    expect(cancel.disabled).toBe(false);
-
-    await act(async () => cancel.click());
-    expect(onCancelInterrupted).toHaveBeenCalledWith(interruptedThread.interrupted_turn?.id);
+    expect(onRetryInterrupted).not.toHaveBeenCalled();
+    expect(onCancelInterrupted).not.toHaveBeenCalled();
   });
 
-  it("shows the Box start lifecycle when retrying a turn without a usable Box", async () => {
-    const startRetry: CompanionOperation = { ...retryOperation, kind: "start" };
-    const failedCompanion: Companion = {
+  it("reports a running automatic cleanup without unmounting a failed-send draft", async () => {
+    const recoveringCompanion: Companion = {
       ...companion,
       runtime: {
         ...companion.runtime,
-        latest_operation: {
-          ...startRetry,
-          status: "failed",
-          error: null,
+        recovery: {
+          turn_id: interruptedThread.interrupted_turn!.id,
+          lane: "main",
+          status: "running",
         },
       },
     };
-    const { container, poll } = await mountPolling(
-      interruptedThread,
-      async () => startRetry,
-    );
-
-    await act(async () => button(container, "Retry turn").click());
-
-    expect(container.textContent).toContain(
-      "Retry accepted. The Companion will start before this turn runs again.",
-    );
-    expect(container.textContent).not.toContain("Pi will restart");
-    expect([...container.querySelectorAll("button")]
-      .some((candidate) => candidate.textContent === "Retry turn")).toBe(false);
-
-    await poll(interruptedThread, failedCompanion);
-
-    expect(container.textContent).toContain(
-      "The Companion could not start. Retry or cancel this turn.",
-    );
-    expect(button(container, "Retry turn")).toBeTruthy();
-    expect(button(container, "Cancel turn")).toBeTruthy();
-  });
-
-  it("explains when Cancel loses a race with a running retry", async () => {
-    const onCancelInterrupted = vi.fn(async () => {
-      throw new ApiFetchError("Companion turn retry is already running", 409);
-    });
-    const container = await mount(async () => true, {
+    const container = await mount(async () => false, {
+      companion: recoveringCompanion,
       thread: interruptedThread,
-      onRetryInterrupted: async () => retryOperation,
-      onCancelInterrupted,
     });
+    const composer = type(container, "Keep this draft safe");
 
-    const retry = [...container.querySelectorAll("button")]
-      .find((candidate) => candidate.textContent === "Retry turn") as HTMLButtonElement;
-    await act(async () => retry.click());
-    const cancel = [...container.querySelectorAll("button")]
-      .find((candidate) => candidate.textContent === "Cancel turn") as HTMLButtonElement;
-    await act(async () => cancel.click());
+    await send(container);
 
-    const alert = container.querySelector<HTMLElement>(".chat-interruption__error")!;
-    expect(alert.textContent).toContain("retry has already started");
-    expect(alert.textContent).toContain("Wait for the turn to refresh");
-    expect(document.activeElement).toBe(alert);
-    expect([...container.querySelectorAll("button")]
-      .some((candidate) => candidate.textContent === "Cancel turn")).toBe(true);
+    expect(container.textContent).toContain("Pi cleanup is running automatically");
+    expect(composer.value).toBe("Keep this draft safe");
   });
 
-  it("restores Retry and Cancel after an accepted Pi retry fails, then accepts a fresh retry", async () => {
-    const failedCompanion: Companion = {
-      ...companion,
-      runtime: {
-        ...companion.runtime,
-        latest_operation: {
-          id: retryOperation.id,
-          source_turn_id: interruptedThread.interrupted_turn!.id,
-          kind: "restart_pi",
-          status: "failed",
-          error: {
-            code: "pi_crash_loop",
-            message: "Pi could not stay running.",
-            action: "restart_pi",
-          },
-        },
-      },
-    };
-    const retryIds: string[] = [];
-    const onRetryInterrupted = vi.fn(async (_turnId: string, retryId: string) => {
-      retryIds.push(retryId);
-      return {
-        ...retryOperation,
-        id: retryIds.length === 1
-          ? retryOperation.id
-          : "66666666-6666-4666-8666-666666666666",
-        request_id: retryId,
-      };
-    });
-    const { container, poll } = await mountPolling(interruptedThread, onRetryInterrupted);
-
-    await act(async () => button(container, "Retry turn").click());
-    expect(container.textContent).toContain("Retry accepted. Pi will restart");
-
-    await poll(interruptedThread, failedCompanion);
-
-    expect(container.textContent).toContain("Pi could not stay running.");
-    expect(container.querySelector("[role='alert']")?.textContent).toContain("Turn interrupted");
-    const retry = [...container.querySelectorAll("button")]
-      .find((candidate) => candidate.textContent === "Retry turn") as HTMLButtonElement;
-    expect(retry).toBeTruthy();
-    expect([...container.querySelectorAll("button")]
-      .some((candidate) => candidate.textContent === "Cancel turn")).toBe(true);
-
-    await act(async () => retry.click());
-    expect(onRetryInterrupted).toHaveBeenCalledTimes(2);
-    expect(retryIds[1]).not.toBe(retryIds[0]);
-    expect(container.textContent).toContain("Retry accepted. Pi will restart");
-  });
-
-  it("disables both actions while Cancel is pending and focuses a recoverable error", async () => {
-    let rejectCancel: (cause: Error) => void = () => {};
-    const onCancelInterrupted = vi.fn(() => new Promise<void>((_resolve, reject) => {
-      rejectCancel = reject;
-    }));
+  it("anchors the scroll position when an older page is prepended", async () => {
+    let scrollHeight = 1_000;
+    const onLoadOlderMessages = vi.fn(async () => { scrollHeight = 1_400; });
     const container = await mount(async () => true, {
-      thread: interruptedThread,
-      onCancelInterrupted,
+      hasOlderMessages: true,
+      onLoadOlderMessages,
     });
-    const cancel = [...container.querySelectorAll("button")]
-      .find((candidate) => candidate.textContent === "Cancel turn") as HTMLButtonElement;
+    const viewport = container.querySelector<HTMLElement>("[data-slot='aui_thread-viewport']")!;
+    Object.defineProperty(viewport, "scrollHeight", {
+      configurable: true,
+      get: () => scrollHeight,
+    });
+    viewport.scrollTop = 120;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      callback(0);
+      return 1;
+    });
+    const load = [...container.querySelectorAll("button")]
+      .find((candidate) => candidate.textContent === "Load earlier messages")!;
 
-    act(() => cancel.click());
-    expect(onCancelInterrupted).toHaveBeenCalledWith(interruptedThread.interrupted_turn?.id);
-    expect(container.textContent).toContain("Cancelling…");
-    expect([...container.querySelectorAll<HTMLButtonElement>(".chat-interruption__actions button")]
-      .every((candidate) => candidate.disabled)).toBe(true);
+    await act(async () => load.click());
 
-    await act(async () => rejectCancel(new Error("Cancel could not be saved.")));
-    const alert = container.querySelector<HTMLElement>(".chat-interruption__error")!;
-    expect(alert.textContent).toContain("Cancel could not be saved.");
-    expect(document.activeElement).toBe(alert);
-    expect([...container.querySelectorAll("button")]
-      .some((candidate) => candidate.textContent === "Cancel turn")).toBe(true);
+    expect(onLoadOlderMessages).toHaveBeenCalledTimes(1);
+    expect(viewport.scrollTop).toBe(520);
   });
 
   it("keeps the typed message when the send fails", async () => {

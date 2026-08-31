@@ -51,6 +51,8 @@ import {
  */
 
 export type ThreadComponents = {
+  /** First item in the scroller; used by bounded transcripts to page backwards. */
+  HistoryLoader?: ComponentType | undefined;
   /** Above the messages: the loading skeleton, or the note on an empty transcript. */
   Welcome?: ComponentType | undefined;
   /** Below the messages, inside the scroller: the typing indicator. */
@@ -84,13 +86,15 @@ export const Thread: FC<ThreadProps> = ({
   className,
   viewportProps,
 }) => {
-  const { Welcome, Trailer, Footer } = components;
+  const { HistoryLoader, Welcome, Trailer, Footer } = components;
   return (
     <ThreadComponentsContext.Provider value={components}>
       <ThreadPrimitive.Root
         className={cn("aui-scope bg-background flex min-h-0 flex-col", className)}
         // One reading column, the same width ChatGPT settled on, centred inside whatever room the
         // surface around this thread gives it.
+        // SAFETY: React's CSSProperties omits custom properties, while this key is a fixed local
+        // CSS variable rather than caller-controlled style data.
         style={{ ["--thread-max-width" as string]: "44rem" }}
       >
         <ThreadPrimitive.Viewport
@@ -109,6 +113,7 @@ export const Thread: FC<ThreadProps> = ({
         >
           {/* A short conversation rests on the composer instead of floating under the header. */}
           <div className="mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-y-5 pb-2">
+            {HistoryLoader ? <HistoryLoader /> : null}
             {Welcome ? <Welcome /> : null}
             <ThreadPrimitive.Messages>
               {() => <ThreadMessage />}

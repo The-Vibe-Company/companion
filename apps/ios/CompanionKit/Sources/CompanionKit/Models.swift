@@ -387,12 +387,25 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
     }
 
     public struct Runtime: Codable, Hashable, Sendable {
+        public struct Recovery: Codable, Hashable, Sendable {
+            public let turnID: String
+            public let lane: String
+            public let status: String
+
+            enum CodingKeys: String, CodingKey {
+                case turnID = "turn_id"
+                case lane
+                case status
+            }
+        }
+
         public let state: CompanionRuntimeState
         public let daemonState: CompanionDaemonState
         public let replying: Bool
         public let lastError: String?
         public let providerIDs: [String]
         public let latestOperation: CompanionOperationSummary?
+        public let recovery: Recovery?
 
         enum CodingKeys: String, CodingKey {
             case state
@@ -401,6 +414,7 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
             case lastError = "last_error"
             case providerIDs = "provider_ids"
             case latestOperation = "latest_operation"
+            case recovery
         }
 
         public init(from decoder: Decoder) throws {
@@ -414,6 +428,7 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
                 CompanionOperationSummary.self,
                 forKey: .latestOperation
             )
+            recovery = try container.decodeIfPresent(Recovery.self, forKey: .recovery)
         }
 
     }
@@ -2288,6 +2303,60 @@ public struct TranscriptEntry: Codable, Identifiable, Equatable, Sendable {
         attachments = try container.decodeIfPresent([CompanionAttachment].self, forKey: .attachments) ?? []
         createdAt = try container.decode(String.self, forKey: .createdAt)
     }
+
+    func withRoutineNotifyGroup(_ group: CompanionTranscriptRoutineNotifyGroup?) -> Self {
+        Self(
+            eventID: eventID,
+            ordinal: ordinal,
+            role: role,
+            content: content,
+            reasoning: reasoning,
+            authorID: authorID,
+            authorName: authorName,
+            decision: decision,
+            tool: tool,
+            routine: routine,
+            routineNotifyGroup: group,
+            turnID: turnID,
+            queued: queued,
+            attachments: attachments,
+            createdAt: createdAt
+        )
+    }
+
+    init(
+        eventID: String,
+        ordinal: Int,
+        role: String,
+        content: String,
+        reasoning: String?,
+        authorID: String?,
+        authorName: String?,
+        decision: CompanionDecision?,
+        tool: CompanionToolRun?,
+        routine: CompanionTranscriptRoutineOrigin?,
+        routineNotifyGroup: CompanionTranscriptRoutineNotifyGroup?,
+        turnID: String?,
+        queued: Bool,
+        attachments: [CompanionAttachment],
+        createdAt: String
+    ) {
+        self.eventID = eventID
+        self.ordinal = ordinal
+        self.role = role
+        self.content = content
+        self.reasoning = reasoning
+        self.authorID = authorID
+        self.authorName = authorName
+        self.decision = decision
+        self.tool = tool
+        self.routine = routine
+        self.routineNotifyGroup = routineNotifyGroup
+        self.turnID = turnID
+        self.queued = queued
+        self.attachments = attachments
+        self.createdAt = createdAt
+    }
 }
 
 /// The server projection for consecutive routine `notify` returns. Earlier marker/update pairs
@@ -2295,21 +2364,25 @@ public struct TranscriptEntry: Codable, Identifiable, Equatable, Sendable {
 /// The server guarantees that hidden entries use the ordinary transcript shape and never nest a
 /// second group.
 public struct CompanionTranscriptRoutineNotifyGroup: Codable, Equatable, Sendable {
+    public let routineID: String?
     public let routineName: String
     public let totalCount: Int
     public let hiddenEntries: [TranscriptEntry]
 
     public init(
+        routineID: String? = nil,
         routineName: String,
         totalCount: Int,
         hiddenEntries: [TranscriptEntry]
     ) {
+        self.routineID = routineID
         self.routineName = routineName
         self.totalCount = totalCount
         self.hiddenEntries = hiddenEntries
     }
 
     enum CodingKeys: String, CodingKey {
+        case routineID = "routine_id"
         case routineName = "routine_name"
         case totalCount = "total_count"
         case hiddenEntries = "hidden_entries"
@@ -2517,6 +2590,7 @@ public struct CompanionTurn: Codable, Identifiable, Equatable, Sendable {
     public let settledAt: String?
     public let createdAt: String
     public let updatedAt: String
+    public let resolution: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -2531,6 +2605,7 @@ public struct CompanionTurn: Codable, Identifiable, Equatable, Sendable {
         case settledAt = "settled_at"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case resolution
     }
 }
 

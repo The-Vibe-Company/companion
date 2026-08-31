@@ -103,6 +103,9 @@ interface TranscriptChrome {
   canSend: boolean;
   loading: boolean;
   empty: boolean;
+  hasOlderMessages: boolean;
+  loadingOlderMessages: boolean;
+  onLoadOlderMessages?: () => Promise<void> | void;
   replying: boolean;
   stopping: boolean;
   /** True while an Owner/Editor can stop the turn that currently owns Pi. */
@@ -256,6 +259,7 @@ function AssistantFrame({ children }: { children: ReactNode }) {
   const groupedEntry = message?.entries.find((entry) => entry.routine_notify_group != null);
   const notifyGroup = groupedEntry?.routine_notify_group ?? null;
   const expanded = groupedEntry ? expandedRoutineNotifyGroups.has(groupedEntry.event_id) : false;
+  const opensPagedHistory = notifyGroup?.routine_id !== undefined && onOpenRoutineRun !== undefined;
   return (
     <>
       <Separators message={message} />
@@ -265,16 +269,25 @@ function AssistantFrame({ children }: { children: ReactNode }) {
           <button
             type="button"
             className="chat-routine-notify-group"
-            aria-expanded={expanded}
-            onClick={() => onToggleRoutineNotifyGroup(groupedEntry.event_id)}
+            aria-expanded={opensPagedHistory ? undefined : expanded}
+            onClick={() => opensPagedHistory
+              ? onOpenRoutineRun({
+                  id: notifyGroup.routine_id ?? null,
+                  name: notifyGroup.routine_name,
+                  run_id: null,
+                })
+              : onToggleRoutineNotifyGroup(groupedEntry.event_id)}
           >
             <ChevronRightIcon
               aria-hidden="true"
-              className={cn("size-3.5 transition-transform", expanded && "rotate-90")}
+              className={cn(
+                "size-3.5 transition-transform",
+                !opensPagedHistory && expanded && "rotate-90",
+              )}
             />
             {notifyGroup.routine_name} · {notifyGroup.total_count} updates
           </button>
-          {expanded ? (
+          {!opensPagedHistory && expanded ? (
             <div className="chat-routine-notify-history">
               {notifyGroup.hidden_entries.map((entry) => entry.routine ? (
                 entry.routine.run_id && onOpenRoutineRun ? (
@@ -387,12 +400,60 @@ function UploadStatus({ message }: { message: TranscriptMessage | undefined }) {
   );
 }
 
+function HistoryLoader() {
+  const { hasOlderMessages, loadingOlderMessages, onLoadOlderMessages } = useChrome();
+  const markerRef = useRef<HTMLButtonElement>(null);
+  const requestingRef = useRef(false);
+  const load = useCallback(async () => {
+    if (!hasOlderMessages || loadingOlderMessages || requestingRef.current
+      || !onLoadOlderMessages) return;
+    const viewport = markerRef.current?.closest<HTMLElement>("[data-slot='aui_thread-viewport']")
+      ?? null;
+    const previousHeight = viewport?.scrollHeight ?? 0;
+    const previousTop = viewport?.scrollTop ?? 0;
+    requestingRef.current = true;
+    try {
+      await onLoadOlderMessages();
+      window.requestAnimationFrame(() => {
+        if (viewport) viewport.scrollTop = previousTop + viewport.scrollHeight - previousHeight;
+      });
+    } finally {
+      requestingRef.current = false;
+    }
+  }, [hasOlderMessages, loadingOlderMessages, onLoadOlderMessages]);
+
+  useEffect(() => {
+    const marker = markerRef.current;
+    if (!marker || !hasOlderMessages || !("IntersectionObserver" in window)) return;
+    const viewport = marker.closest<HTMLElement>("[data-slot='aui_thread-viewport']");
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) void load();
+    }, { root: viewport, rootMargin: "240px 0px 0px" });
+    observer.observe(marker);
+    return () => observer.disconnect();
+  }, [hasOlderMessages, load]);
+
+  if (!hasOlderMessages) return null;
+  return (
+    <button
+      ref={markerRef}
+      type="button"
+      className="text-muted-foreground mx-auto rounded-full px-3 py-1 text-xs hover:text-foreground"
+      disabled={loadingOlderMessages}
+      onClick={() => void load()}
+    >
+      {loadingOlderMessages ? "Loading earlier messages…" : "Load earlier messages"}
+    </button>
+  );
+}
+
 const TOOL_UIS = {
   [COMPANION_TOOL_NAME]: ToolRunCard,
   [COMPANION_DECISION_TOOL_NAME]: DecisionToolCard,
 };
 
 const THREAD_COMPONENTS = {
+  HistoryLoader,
   Welcome,
   Trailer,
   Footer,
@@ -464,6 +525,9 @@ export function CompanionTranscript({
   busy,
   lastReadOrdinal,
   openedThroughOrdinal,
+  hasOlderMessages = false,
+  loadingOlderMessages = false,
+  onLoadOlderMessages,
   skills = [],
   plugins = [],
   models = [],
@@ -481,6 +545,9 @@ export function CompanionTranscript({
   lastReadOrdinal?: number | null;
   /** The newest ordinal the thread held when it was opened, so the divider cannot chase new arrivals. */
   openedThroughOrdinal?: number | null;
+  hasOlderMessages?: boolean;
+  loadingOlderMessages?: boolean;
+  onLoadOlderMessages?: () => Promise<void> | void;
   /** Library skills this reader can already name. Config cards never take labels from Pi. */
   skills?: readonly DecisionNamedResource[];
   /** Connected plugins this reader can already name. */
@@ -768,6 +835,9 @@ export function CompanionTranscript({
     canSend,
     loading,
     empty,
+    hasOlderMessages,
+    loadingOlderMessages,
+    onLoadOlderMessages,
     replying,
     stopping,
     canStop: canSend && activeTurnId !== null && onStop !== undefined,
@@ -795,11 +865,14 @@ export function CompanionTranscript({
     dequeueingTurnId,
     empty,
     expandedRoutineNotifyGroups,
+    hasOlderMessages,
     hint,
     loading,
+    loadingOlderMessages,
     onAttach,
     onRemoveAttachment,
     onOpenRoutineRun,
+    onLoadOlderMessages,
     onStop,
     replying,
     sendOnPress,

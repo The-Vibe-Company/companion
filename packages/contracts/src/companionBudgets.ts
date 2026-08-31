@@ -164,6 +164,8 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_runtime_checkpoint: ["5 minutes", "10 minutes"],
   // Event retention window + inactivityStallMs re-arm.
   companion_runtime_project_event_batch: ["24 hours", "10 minutes"],
+  // Routine-lane inactivityStallMs re-arm.
+  companion_runtime_project_event_batch_v2: ["10 minutes"],
   // inactivityStallMs re-arm after outputs are recorded.
   companion_runtime_record_attempt_outputs: ["10 minutes"],
   // inactivityStallMs re-armed for both the resumed turn and its delivery bookkeeping.

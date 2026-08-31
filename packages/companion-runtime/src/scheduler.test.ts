@@ -4,6 +4,7 @@ import type { RuntimeExecutionResult } from "./engine";
 import {
   DEFAULT_RUNTIME_CONCURRENCY,
   DEFAULT_RUNTIME_SWEEP_INTERVAL_MS,
+  RUNTIME_RECOVERY_METRICS_INTERVAL_MS,
   RuntimeScheduler,
   type RuntimeEngineControl,
 } from "./scheduler";
@@ -65,6 +66,15 @@ class ImmediatelyCompletingEngine extends HoldingEngine {
       workId: claim.workId,
       companionId: claim.companionId,
     };
+  }
+}
+
+class MetricsRuntimeStore extends MemoryRuntimeStore {
+  metricReads = 0;
+
+  async recoveryMetrics() {
+    this.metricReads += 1;
+    return { pendingCount: 2, oldestAgeSeconds: 31, autoAbandonedCount: 9 };
   }
 }
 
@@ -132,6 +142,47 @@ describe("RuntimeScheduler", () => {
 
     await scheduler.sweepOnce();
     expect(engine.claims).toHaveLength(DEFAULT_RUNTIME_CONCURRENCY);
+  });
+
+  it("emits aggregate recovery metrics once per minute without any tenant identifiers", async () => {
+    const base = attemptClaim();
+    const store = new MetricsRuntimeStore({ authorization: attemptAuthorization(base) });
+    const clock = new TestClock();
+    const records: Record<string, unknown>[] = [];
+    const scheduler = new RuntimeScheduler({
+      store,
+      engine: new HoldingEngine(),
+      clock,
+      executorId: "scheduler-test",
+      claimsEnabled: true,
+      log: {
+        error() {},
+        warn() {},
+        info(record) { records.push(record); },
+      },
+    });
+
+    await scheduler.sweepOnce();
+    await scheduler.sweepOnce();
+    clock.advance(RUNTIME_RECOVERY_METRICS_INTERVAL_MS);
+    await scheduler.sweepOnce();
+
+    expect(store.metricReads).toBe(2);
+    expect(records).toEqual([
+      expect.objectContaining({
+        event: "runtime.recovery.metrics",
+        pendingCount: 2,
+        oldestAgeSeconds: 31,
+        autoAbandonedCount: 9,
+      }),
+      expect.objectContaining({
+        event: "runtime.recovery.metrics",
+        pendingCount: 2,
+        oldestAgeSeconds: 31,
+        autoAbandonedCount: 9,
+      }),
+    ]);
+    expect(records.some((record) => "companionId" in record || "orgId" in record)).toBe(false);
   });
 
   it("interrupts active sessions when another replica has disabled the shared gate", async () => {
@@ -276,6 +327,39 @@ describe("RuntimeScheduler", () => {
     await Promise.resolve();
     await scheduler.shutdown();
   });
+
+  it.each(["released", "fence_lost"] as const)(
+    "leaves a %s claim on the periodic sweep instead of reclaiming it immediately",
+    async (outcome) => {
+      const base = attemptClaim();
+      const store = new MemoryRuntimeStore({ authorization: attemptAuthorization(base) });
+      store.claims.push(numberedClaim(0), numberedClaim(1));
+      const engine = new CompletingEngine();
+      const scheduler = new RuntimeScheduler({
+        store,
+        engine,
+        clock: new BlockingClock(),
+        executorId: "scheduler-test",
+        concurrency: 1,
+        claimsEnabled: true,
+      });
+
+      scheduler.start();
+      while (engine.claims.length < 1) await Promise.resolve();
+      const completed = engine.claims[0]!;
+      engine.completions[0]!({
+        outcome,
+        workKind: completed.workKind,
+        workId: completed.workId,
+        companionId: completed.companionId,
+      });
+      for (let index = 0; index < 10; index += 1) await Promise.resolve();
+
+      expect(engine.claims).toHaveLength(1);
+      scheduler.stopClaims();
+      await scheduler.shutdown();
+    },
+  );
 
   it("retains a wake from an execution that resolves before recovery sleep is installed", async () => {
     const base = attemptClaim();
