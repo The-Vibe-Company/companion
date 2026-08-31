@@ -51,6 +51,12 @@ export interface CompanionBudgetsBase {
   decisionTimeoutMs: number;
   /** One Box provider HTTP call (maintenance client, runtime adapters, lifecycle calls). */
   boxRequestTimeoutMs: number;
+  /**
+   * Time kept ahead of a durable lifecycle deadline after Pi readiness polling. This lets the
+   * runtime read systemd/Pi diagnostics and persist the resulting stable failure before its lease
+   * is cancelled by the enclosing cold-start or operation deadline.
+   */
+  piDaemonDiagnosticReserveMs: number;
   /** Absolute ceiling of one runtime operation (start/stop/restart/settings/delete). */
   operationDeadlineMs: number;
   /** Budget for installing the Pi layout onto a Box during staging. */
@@ -76,6 +82,9 @@ export const COMPANION_BUDGETS_BASE = {
   execToolRunTimeoutMs: 600_000,
   decisionTimeoutMs: 10 * 60 * 1_000,
   boxRequestTimeoutMs: 30_000,
+  // One 30-second diagnostic command, the Box HTTP client's 10-second transport allowance, and
+  // five seconds for durable settlement.
+  piDaemonDiagnosticReserveMs: 45_000,
   operationDeadlineMs: 10 * 60 * 1_000,
   layoutInstallBudgetMs: 300_000,
   provisionalCreateTtlSeconds: 300,
@@ -236,7 +245,8 @@ export const KNOWN_EXCEEDANCES: readonly CompanionBudgetExceedance[] = [
     summary:
       "Nominal cold path box-ready wait (120s default, boxCompanionRuntime.ts COMPANION_BOX_READY_TIMEOUT_MS) "
       + "plus Pi daemon activation (180s, PI_DAEMON_ACTIVE_TIMEOUT_MS) exceeds the 3-minute cold "
-      + "start deadline; a Box that uses its full nominal waits always times the turn out.",
+      + "start deadline; deadline-aware Pi activation must clip its nominal wait and retain the "
+      + "diagnostic reserve until these nominal budgets are retuned.",
     actualMs: 120_000 + 180_000,
     boundMs: COMPANION_BUDGETS_BASE.coldStartDeadlineMs,
     kind: "exceeds",

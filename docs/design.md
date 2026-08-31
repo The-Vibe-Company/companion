@@ -515,7 +515,10 @@ rejected fail-closed.
 
 Persisted runtime failures contain a stable code, an expurgated message no longer than 500
 characters, and an allowed next action. Provider response bodies, raw Pi lines, tokens, auth files,
-signed URL queries, and multiline diagnostics never enter the database or user response.
+signed URL queries, and multiline diagnostics never enter the database or user response. Pi
+readiness polling stops 45 seconds before its durable lifecycle deadline so the bounded systemd/Pi
+diagnostic read and fenced settlement finish before outer cancellation can replace the useful
+`pi_start_failed` error with a generic deadline failure.
 
 ## API and web contract
 

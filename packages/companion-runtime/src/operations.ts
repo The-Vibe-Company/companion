@@ -495,7 +495,11 @@ async function startAndObservePi(context: OperationContext): Promise<void> {
   const startedAt = context.deps.clock.now().getTime();
   const previousInvocationId = requiredAuthorization(context.session).piInvocationId;
   const result = await lifecycle(context, "start_pi", async ({ signal }) =>
-    await context.deps.pi.restartPiDaemon({ boxId: requiredBoxId(context.session), signal }));
+    await context.deps.pi.restartPiDaemon({
+      boxId: requiredBoxId(context.session),
+      deadlineAt: workDeadline(context),
+      signal,
+    }));
   if (
     result.state !== "idle"
     || !result.invocationId
@@ -751,7 +755,11 @@ async function handleRestartPi(context: OperationContext): Promise<RuntimeWorkDi
         break;
       case "restarting_pi":
         await lifecycle(context, "restart_pi", async ({ signal }) =>
-          await context.deps.pi.restartPiDaemon({ boxId: requiredBoxId(context.session), signal }));
+          await context.deps.pi.restartPiDaemon({
+            boxId: requiredBoxId(context.session),
+            deadlineAt: workDeadline(context),
+            signal,
+          }));
         await context.session.checkpoint({ nextCheckpoint: "starting_pi" });
         break;
       case "starting_pi": {
@@ -996,6 +1004,7 @@ async function handleApplySettings(context: OperationContext): Promise<RuntimeWo
           restartPi: async () => await lifecycle(context, "restart_pi", async ({ signal }) =>
             await context.deps.pi.restartPiDaemon({
               boxId: requiredBoxId(context.session),
+              deadlineAt: workDeadline(context),
               signal,
             })),
           observePi: async () => await lifecycle(context, "get_status", async ({ signal }) =>

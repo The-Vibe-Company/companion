@@ -281,6 +281,9 @@ describe("RuntimeEngine attempts", () => {
 
     expect(result.outcome).toBe("succeeded");
     expect(restartPiDaemon).toHaveBeenCalledOnce();
+    expect(restartPiDaemon).toHaveBeenCalledWith(expect.objectContaining({
+      deadlineAt: claim.coldStartDeadlineAt,
+    }));
     expect(ports.promptCalls).toEqual([{ attemptId: ATTEMPT_ID, message: PROMPT_WITH_TURN_CONTEXT }]);
     expect(store.checkpoints).toContainEqual(expect.objectContaining({
       nextCheckpoint: "dispatch_accepted",
@@ -398,6 +401,34 @@ describe("RuntimeEngine attempts", () => {
     expect(ports.promptCalls).toHaveLength(0);
     expect(store.settlements[0]?.error).toMatchObject({
       code: "pi_not_idle",
+      action: "restart_pi",
+    });
+  });
+
+  it("preserves a diagnosed Pi startup failure during dirty-broker repair", async () => {
+    const claim = attemptClaim();
+    const store = new MemoryRuntimeStore({ authorization: attemptAuthorization(claim) });
+    const ports = fakePorts(store);
+    const baseBrokerState = ports.pi.brokerState;
+    ports.pi.brokerState = async (input) => ({
+      ...await baseBrokerState(input),
+      tailCursor: 1n,
+      acknowledgedCursor: 0n,
+    });
+    ports.pi.restartPiDaemon = async () => {
+      throw Object.assign(new Error("Pi daemon is not running after start: service exited"), {
+        stableCode: "pi_start_failed",
+        action: "restart_pi" as const,
+      });
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("failed");
+    expect(ports.promptCalls).toHaveLength(0);
+    expect(store.settlements[0]?.error).toMatchObject({
+      code: "pi_start_failed",
+      message: expect.stringContaining("service exited"),
       action: "restart_pi",
     });
   });

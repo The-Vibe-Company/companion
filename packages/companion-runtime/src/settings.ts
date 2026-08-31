@@ -136,7 +136,11 @@ export async function handleSettings(
       },
       restartPi: async () => await lifecycle("restart_pi", async (signal) => {
         const live = snapshot(context);
-        return await context.deps.pi.restartPiDaemon({ boxId: live.boxId, signal });
+        return await context.deps.pi.restartPiDaemon({
+          boxId: live.boxId,
+          deadlineAt,
+          signal,
+        });
       }),
       observePi: async () => await lifecycle("get_status", async (signal) => {
         const live = snapshot(context);

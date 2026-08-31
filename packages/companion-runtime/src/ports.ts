@@ -170,11 +170,11 @@ export interface RuntimePiRoutineSessionControl {
 
 export interface RuntimePiControl {
   stopPiDaemon(input: { boxId: string; signal: AbortSignal }): Promise<void>;
-  startPiDaemon(input: { boxId: string; signal: AbortSignal }): Promise<{
+  startPiDaemon(input: { boxId: string; deadlineAt?: Date; signal: AbortSignal }): Promise<{
     state: PiObservedState;
     invocationId: string;
   }>;
-  restartPiDaemon(input: { boxId: string; signal: AbortSignal }): Promise<{
+  restartPiDaemon(input: { boxId: string; deadlineAt?: Date; signal: AbortSignal }): Promise<{
     state: PiObservedState;
     invocationId: string;
   }>;

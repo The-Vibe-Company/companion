@@ -282,6 +282,9 @@ const PI_DAEMON_DIAGNOSTIC_LABELS = {
 } as const;
 /** The sentence a failed wait reports, and the room its fragments have left inside the stored line. */
 export const PI_DAEMON_FAILURE_MESSAGE = "Pi daemon is not running after start";
+const BOX_COMMAND_HTTP_ALLOWANCE_SECONDS = 10;
+const PI_DAEMON_ACTIVATION_SHELL_ALLOWANCE_MS = 5_000;
+const PI_DAEMON_ACTIVATION_DISPATCH_MARGIN_MS = 1_000;
 /**
  * What each diagnostic fragment may spend, in the order fragments are allowed to claim it.
  * `companions.last_error` keeps one sanitized line of bounded length, so the fragments have to fit
@@ -1034,11 +1037,11 @@ export interface CompanionBoxRuntimeV2 {
     skillBytesTransferred: number;
   }>;
   /** Pi-only lifecycle controls. None may resume/archive/create the Box. */
-  startPiDaemon(input: { boxId: string; signal?: AbortSignal }): Promise<{
+  startPiDaemon(input: { boxId: string; deadlineAt?: Date; signal?: AbortSignal }): Promise<{
     state: "idle";
     invocationId: string;
   }>;
-  restartPiDaemon(input: { boxId: string; signal?: AbortSignal }): Promise<{
+  restartPiDaemon(input: { boxId: string; deadlineAt?: Date; signal?: AbortSignal }): Promise<{
     state: "idle";
     invocationId: string;
   }>;
@@ -3169,7 +3172,7 @@ export class AsciiBoxCompanionRuntime implements CompanionBoxRuntimeV2 {
     return parseCommandEnvelope(await this.#request<unknown>(
       `/boxes/${encodeURIComponent(boxId)}/commands`,
       requestInit,
-      (timeoutSeconds + 10) * 1_000,
+      (timeoutSeconds + BOX_COMMAND_HTTP_ALLOWANCE_SECONDS) * 1_000,
       this.#stagingSignal ?? null,
       operation,
     ));
@@ -4306,13 +4309,46 @@ fi`,
   async #activatePiDaemon(input: {
     boxId: string;
     restart: boolean;
+    deadlineAt?: Date;
     signal?: AbortSignal;
   }): Promise<{ state: "idle"; invocationId: string }> {
-    const readinessAttempts = Math.max(1, Math.ceil(this.#daemonActiveTimeoutMs / 100));
-    const commandTimeoutSeconds = Math.max(
+    const deadlineCommandBudgetMs = input.deadlineAt
+      ? input.deadlineAt.getTime()
+        - Date.now()
+        - COMPANION_BUDGETS_BASE.piDaemonDiagnosticReserveMs
+        - PI_DAEMON_ACTIVATION_DISPATCH_MARGIN_MS
+      : null;
+    const minimumActivationRequestMs = (
+      BOX_COMMAND_HTTP_ALLOWANCE_SECONDS * 1_000
+      + PI_DAEMON_ACTIVATION_SHELL_ALLOWANCE_MS
+      + 1_000
+    );
+    if (deadlineCommandBudgetMs !== null && deadlineCommandBudgetMs < minimumActivationRequestMs) {
+      throw new BoxRuntimeProviderError(
+        `${PI_DAEMON_FAILURE_MESSAGE}: lifecycle deadline leaves no bounded Pi start window`,
+        409,
+        undefined,
+        "pi_start_failed",
+      );
+    }
+    const normalCommandTimeoutSeconds = Math.max(
       120,
       Math.ceil(this.#daemonActiveTimeoutMs / 1_000) + 5,
     );
+    const commandTimeoutSeconds = deadlineCommandBudgetMs === null
+      ? normalCommandTimeoutSeconds
+      : Math.min(
+        normalCommandTimeoutSeconds,
+        Math.floor(deadlineCommandBudgetMs / 1_000) - BOX_COMMAND_HTTP_ALLOWANCE_SECONDS,
+      );
+    // The command owns five seconds for systemd and shell work around the readiness loop. Its Box
+    // HTTP request can then consume the transport allowance above without touching the diagnostic
+    // reserve or the additional dispatch margin.
+    const readinessBudgetMs = Math.min(
+      this.#daemonActiveTimeoutMs,
+      Math.max(100, commandTimeoutSeconds * 1_000 - PI_DAEMON_ACTIVATION_SHELL_ALLOWANCE_MS),
+    );
+    const readinessAttempts = Math.max(1, Math.ceil(readinessBudgetMs / 100));
     let started: CommandEnvelope;
     try {
       started = await this.#command(
@@ -4388,7 +4424,9 @@ fi`,
     if (daemonState !== "running") {
       throw new BoxRuntimeProviderError(
         `${PI_DAEMON_FAILURE_MESSAGE}${await this.#daemonFailureDetail(input.boxId, input.signal)}`,
-        502,
+        409,
+        undefined,
+        "pi_start_failed",
       );
     }
     const invocationId = labeledDiagnosticLines(
@@ -4993,14 +5031,22 @@ printf 'companion-agent-endpoint %s\\n' "$companion_agent_url"`,
     );
   }
 
-  async startPiDaemon(input: { boxId: string; signal?: AbortSignal }): Promise<{
+  async startPiDaemon(input: {
+    boxId: string;
+    deadlineAt?: Date;
+    signal?: AbortSignal;
+  }): Promise<{
     state: "idle";
     invocationId: string;
   }> {
     return await this.#activatePiDaemon({ ...input, restart: false });
   }
 
-  async restartPiDaemon(input: { boxId: string; signal?: AbortSignal }): Promise<{
+  async restartPiDaemon(input: {
+    boxId: string;
+    deadlineAt?: Date;
+    signal?: AbortSignal;
+  }): Promise<{
     state: "idle";
     invocationId: string;
   }> {
