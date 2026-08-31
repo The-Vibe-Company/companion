@@ -1,0 +1,35 @@
+.claude/skills/debug-companions-prod/scripts/test_railway.py
+  s_7a32b7067b94c9::t_24fb8fb45d8eca 171-174
+  s_7a32b7067b94c9::t_af9683dd55a019 149-170,175-182
+  s_7a32b7067b94c9::t_65c8c414f0a5bc 183-201
+.claude/skills/debug-companions-prod/SKILL.md
+  s_7a32b7067b94c9::t_613cfe92c20f81 158-195,260-263
+  s_7a32b7067b94c9::t_7ef761b5c61370 264
+.claude/skills/debug-companions-prod/references/railway-api.md
+  s_7a32b7067b94c9::t_cdaae88a0ff104 138-139,142-151,159-160
+  s_7a32b7067b94c9::t_59fca4aac1f3c9 106
+  s_7a32b7067b94c9::t_aa2007f5f687e3 152-158
+.claude/skills/debug-companions-prod/scripts/db_query.py
+  s_7a32b7067b94c9::t_075729ec517e41 152-155,174-177,182-189,199-200
+  s_7a32b7067b94c9::t_7b1c10a7e91ad2 150-151,166-167,172-173,178,198,284-324
+  s_7a32b7067b94c9::t_ebbb0ef51c5cd1 325-326
+.claude/skills/debug-companions-prod/scripts/railway_logs.py
+  s_7a32b7067b94c9::t_203a8f37be2426 40,88-99,195-207,212,266-269,280-283
+  s_7a32b7067b94c9::t_d0213372d82f7c 100-115,289-296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f394ff929ed1c8c79e445d48f45b33e0d8bbf495",
+  "prompts": {},
+  "sessions": {
+    "s_7a32b7067b94c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba622ebc-6ca5-4ece-bb67-3b8e65150046",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
