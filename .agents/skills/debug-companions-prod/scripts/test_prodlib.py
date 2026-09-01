@@ -87,10 +87,22 @@ class LoadEnvTest(unittest.TestCase):
         self.addCleanup(os.unlink, handle.name)
         return handle.name
 
-    def test_missing_file_refuses_with_exit_2(self):
+    def test_missing_file_and_environment_refuses_with_exit_2(self):
         with self.assertRaises(SystemExit) as ctx:
-            prodlib.load_env("/nonexistent/companion-prod.env")
+            prodlib.load_env("/nonexistent/companion-prod.env", process_env={})
         self.assertEqual(ctx.exception.code, 2)
+
+    def test_process_environment_works_without_file(self):
+        env = prodlib.load_env(
+            "/nonexistent/companion-prod.env",
+            process_env={
+                "RAILWAY_API_TOKEN": "cloud-token",
+                "RAILWAY_PROJECT_ID": "cloud-project",
+            },
+        )
+        self.assertEqual(env["RAILWAY_API_TOKEN"], "cloud-token")
+        self.assertEqual(env["RAILWAY_PROJECT_ID"], "cloud-project")
+        self.assertEqual(env["COMPANION_BOX_API_BASE"], "https://ascii.dev/api/box/v1")
 
     def test_group_readable_file_refuses_with_exit_2(self):
         path = self._write_env("RAILWAY_API_TOKEN=x\n", 0o640)
@@ -110,11 +122,31 @@ class LoadEnvTest(unittest.TestCase):
             'COMPANION_BOX_API_KEY="boxkey"\n',
             0o600,
         )
-        env = prodlib.load_env(path)
+        env = prodlib.load_env(path, process_env={})
         self.assertEqual(env["RAILWAY_API_TOKEN"], "tok")
         self.assertEqual(env["RAILWAY_PROJECT_ID"], "proj")
         self.assertEqual(env["COMPANION_BOX_API_KEY"], "boxkey")
         self.assertEqual(env["COMPANION_BOX_API_BASE"], "https://ascii.dev/api/box/v1")
+
+    def test_process_environment_overrides_file_and_file_fills_missing_values(self):
+        path = self._write_env(
+            "RAILWAY_API_TOKEN=file-token\n"
+            "RAILWAY_PROJECT_ID=file-project\n"
+            "DEBUG_PROD_ALLOW_RESTART=1\n",
+            0o600,
+        )
+        env = prodlib.load_env(
+            path,
+            process_env={
+                "RAILWAY_API_TOKEN": "cloud-token",
+                "DEBUG_PROD_ALLOW_RESTART": "",
+                "UNRELATED_SECRET": "must-not-be-copied",
+            },
+        )
+        self.assertEqual(env["RAILWAY_API_TOKEN"], "cloud-token")
+        self.assertEqual(env["RAILWAY_PROJECT_ID"], "file-project")
+        self.assertEqual(env["DEBUG_PROD_ALLOW_RESTART"], "")
+        self.assertNotIn("UNRELATED_SECRET", env)
 
     def test_require_refuses_missing_key(self):
         with self.assertRaises(SystemExit) as ctx:

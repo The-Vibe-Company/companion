@@ -3,7 +3,8 @@
 
 Double-gated: it refuses unless BOTH the explicit
 ``--i-know-this-restarts-prod`` flag is passed AND ``DEBUG_PROD_ALLOW_RESTART=1``
-is set in ``~/.companion-prod.env``. It never targets the ``release`` service.
+is set in the process environment or optional credential file. It never targets
+the ``release`` service.
 
 The ``deploymentRestart`` GraphQL mutation shape is UNVERIFIED — see
 references/railway-api.md.
@@ -71,7 +72,8 @@ def check_restart_allowed(
         )
     if allow_restart_env != "1":
         return False, (
-            "DEBUG_PROD_ALLOW_RESTART is not 1 in ~/.companion-prod.env. This "
+            "DEBUG_PROD_ALLOW_RESTART is not 1 in the process environment or "
+            "~/.companion-prod.env. This "
             "second gate exists so a copy-pasted command cannot restart prod; "
             "set it deliberately, run the restart, then unset it"
         )

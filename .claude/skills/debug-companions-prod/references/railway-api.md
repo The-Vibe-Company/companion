@@ -26,9 +26,9 @@ Railway accepts different headers depending on the token kind. The scripts try
    Project-Access-Token: <RAILWAY_API_TOKEN>
    ```
 
-Both use the same `RAILWAY_API_TOKEN` value from `~/.companion-prod.env`; set
-whichever kind you provisioned. A project token is the least-privilege choice
-for this skill.
+Both use the same `RAILWAY_API_TOKEN` value from the process environment or the
+optional `~/.companion-prod.env` fallback. A project token is the
+least-privilege choice for this skill.
 
 ## UNVERIFIED schema — needs one live probe
 

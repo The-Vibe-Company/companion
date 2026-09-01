@@ -103,7 +103,8 @@ def railway_graphql(env: dict, query: str, variables: dict, http=prodlib.http_js
     if _auth_failed(status, payload):
         raise prodlib.ProdToolError(
             "Railway rejected both the Authorization: Bearer and Project-Access-Token "
-            "auth styles. Check RAILWAY_API_TOKEN in ~/.companion-prod.env and see "
+            "auth styles. Check RAILWAY_API_TOKEN in the process environment or "
+            "~/.companion-prod.env and see "
             "references/railway-api.md.",
         )
     if status != 200 or not isinstance(payload, dict):

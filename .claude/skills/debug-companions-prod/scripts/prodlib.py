@@ -4,8 +4,9 @@
 Read-only production debugging support. This module owns the three safety
 contracts every script in this skill relies on:
 
-- credentials come only from ``~/.companion-prod.env`` and the file must be
-  mode 0600 (anything else is a hard refusal, exit 2);
+- credentials come from the process environment first, with
+  ``~/.companion-prod.env`` as an optional local fallback whose mode must be
+  0600 when present;
 - ``redact()`` is applied to every output path, so tokens, signed URLs, and
   database credentials cannot leak into a transcript;
 - secrets are passed to subprocesses via the environment, never argv.
@@ -121,52 +122,58 @@ def print_json(data: object) -> None:
     print(redact(json.dumps(data, indent=2, sort_keys=True, default=str)))
 
 
-# --- credential file ------------------------------------------------------
+# --- credentials ----------------------------------------------------------
 
-def load_env(path: str = ENV_FILE) -> dict:
-    """Load KEY=VALUE lines from the operator credential file.
+def load_env(path: str = ENV_FILE, process_env: dict | None = None) -> dict:
+    """Load allowlisted credentials from the environment and optional file.
 
-    Refuses (exit 2) when the file is missing or its mode is not exactly 0600,
-    so a group- or world-readable credential file is never used.
+    Process variables override file values. A present file must still be mode
+    0600, so a group- or world-readable credential file is never used. A
+    missing file is accepted when at least one allowlisted process variable is
+    present; individual scripts then require only the values they consume.
     """
+    source_env = os.environ if process_env is None else process_env
+    process_values = {key: source_env[key] for key in KNOWN_KEYS if key in source_env}
+    env = dict(DEFAULTS)
     try:
         info = os.stat(path)
     except FileNotFoundError:
-        fail(
-            f"{path} is missing. Create it with KEY=VALUE lines "
-            "(RAILWAY_API_TOKEN, RAILWAY_PROJECT_ID, RAILWAY_ENVIRONMENT_ID, "
-            "COMPANION_BOX_API_KEY, PROD_DATABASE_READ_URL, optional "
-            "COMPANION_BOX_API_BASE and DEBUG_PROD_ALLOW_RESTART) and run "
-            f"chmod 600 {path}. See SKILL.md → Prerequisites.",
-        )
-    mode = stat.S_IMODE(info.st_mode)
-    if mode != 0o600:
-        fail(
-            f"{path} has mode {oct(mode)}; it must be exactly 0600. "
-            f"Run: chmod 600 {path}",
-        )
-    env = dict(DEFAULTS)
-    with open(path, encoding="utf-8") as handle:
-        for line_number, raw_line in enumerate(handle, start=1):
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" not in line:
-                fail(f"{path}:{line_number} is not a KEY=VALUE line")
-            key, _, value = line.partition("=")
-            key = key.strip()
-            value = value.strip()
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
-                value = value[1:-1]
-            if key:
-                env[key] = value
+        if not process_values:
+            fail(
+                "Production debug credentials are unavailable. Set the required "
+                "allowlisted process variables, or create "
+                f"{path} with KEY=VALUE lines and run chmod 600 {path}. "
+                "See SKILL.md → Prerequisites.",
+            )
+    else:
+        mode = stat.S_IMODE(info.st_mode)
+        if mode != 0o600:
+            fail(
+                f"{path} has mode {oct(mode)}; it must be exactly 0600. "
+                f"Run: chmod 600 {path}",
+            )
+        with open(path, encoding="utf-8") as handle:
+            for line_number, raw_line in enumerate(handle, start=1):
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" not in line:
+                    fail(f"{path}:{line_number} is not a KEY=VALUE line")
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip()
+                if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+                    value = value[1:-1]
+                if key in KNOWN_KEYS:
+                    env[key] = value
+    env.update(process_values)
     return env
 
 
 def require(env: dict, key: str) -> str:
     value = env.get(key, "")
     if not value:
-        fail(f"{key} is not set in {ENV_FILE}")
+        fail(f"{key} is not set in the process environment or {ENV_FILE}")
     return value
 
 

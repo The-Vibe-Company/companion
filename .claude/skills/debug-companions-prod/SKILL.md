@@ -50,7 +50,9 @@ From the runbook — these are not negotiable:
 ## Prerequisites
 
 - `psql` on PATH (PostgreSQL 17 client).
-- `~/.companion-prod.env`, mode exactly `0600` (scripts refuse otherwise):
+- Credentials exposed as process variables, as in a Conductor cloud workspace.
+  `~/.companion-prod.env` is an optional local fallback and must be mode exactly
+  `0600` when present:
 
   ```dotenv
   RAILWAY_API_TOKEN=...            # Railway token (bearer or project token)
@@ -66,8 +68,9 @@ From the runbook — these are not negotiable:
   chmod 600 ~/.companion-prod.env
   ```
 
-Values are read only from this file, passed to subprocesses via the
-environment, and never printed or placed in argv.
+Process variables override file values. Only the variables listed above are
+loaded; unrelated process secrets are ignored. Values passed to subprocesses
+stay in the environment and are never printed or placed in argv.
 
 ## First five minutes
 

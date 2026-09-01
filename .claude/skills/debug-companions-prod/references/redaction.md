@@ -50,8 +50,9 @@ Applied in order:
 - `db_query.py decisions` never selects `response_text` (member content).
 - `db_query.py` has no free-SQL mode, so a transcript can never contain an
   ad-hoc `select *` over member data.
-- The credential file `~/.companion-prod.env` is refused unless it is mode
-  `0600`, and its values are never echoed.
+- Process credentials are loaded only from the skill's allowlist. The optional
+  `~/.companion-prod.env` fallback is refused unless it is mode `0600`, and no
+  credential value is ever echoed.
 
 ## Rules for the operator
 
