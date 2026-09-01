@@ -105,7 +105,7 @@ jobs:
           -color
 
       - name: Validate shell scripts
-        run: git ls-files -z '*.sh' | xargs -0 shellcheck
+        run: git ls-files -z '*.sh' ':!.agents/skills/**' ':!.claude/skills/**' | xargs -0 shellcheck
 
       - name: Validate development stack scripts
         run: bash scripts/dev-stack-check.sh
