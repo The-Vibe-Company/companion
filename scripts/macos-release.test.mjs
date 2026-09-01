@@ -160,6 +160,21 @@ test("TestFlight scope includes macOS changes from the complete approved push", 
   assert.equal(testflightScope(macosSha, releaseSha, { cwd: fixtureRoot }).macos, false);
 });
 
+test("TestFlight scope treats its release plumbing as a macOS change", (t) => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), "companion-macos-release-plumbing-test-"));
+  t.after(() => rmSync(fixtureRoot, { force: true, recursive: true }));
+  git(fixtureRoot, ["init", "--quiet"]);
+  commitFixture(fixtureRoot, "README.md", "fixture\n", "initial");
+  const beforeSha = git(fixtureRoot, ["rev-parse", "HEAD"]);
+  const releaseSha = commitFixture(
+    fixtureRoot,
+    ".github/workflows/macos-testflight.yml",
+    "name: fixture\n",
+    "macOS release plumbing",
+  );
+  assert.equal(testflightScope(beforeSha, releaseSha, { cwd: fixtureRoot }).macos, true);
+});
+
 test("the macOS TestFlight workflow releases only a CI-approved main commit", () => {
   const workflow = read(".github/workflows/macos-testflight.yml");
   const ciWorkflow = read(".github/workflows/ci.yml");

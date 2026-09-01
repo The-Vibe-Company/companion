@@ -18,11 +18,20 @@ function gitChangedFiles(beforeSha, releaseSha, { cwd = process.cwd(), exec = ex
     .filter(Boolean);
 }
 
+function isMacosReleaseChange(path) {
+  return (
+    path.startsWith("apps/macos/") ||
+    path === ".github/workflows/macos-testflight.yml" ||
+    path === "scripts/macos-testflight-scope.mjs" ||
+    path === "scripts/macos-release.test.mjs"
+  );
+}
+
 export function testflightScope(beforeSha, releaseSha, options) {
   assertSha("before SHA", beforeSha, { allowZero: true });
   assertSha("release SHA", releaseSha);
   const changedFiles = gitChangedFiles(beforeSha, releaseSha, options);
-  return { changedFiles, macos: changedFiles.some((path) => path.startsWith("apps/macos/")), releaseSha };
+  return { changedFiles, macos: changedFiles.some(isMacosReleaseChange), releaseSha };
 }
 
 function requiredEnv(name) {
