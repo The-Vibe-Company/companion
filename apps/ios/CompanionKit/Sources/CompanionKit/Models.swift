@@ -2443,6 +2443,7 @@ public struct TranscriptEntry: Codable, Identifiable, Equatable, Sendable {
             tool: tool,
             routine: routine,
             routineNotifyGroup: group,
+            delegation: delegation,
             turnID: turnID,
             queued: queued,
             attachments: attachments,
@@ -2462,6 +2463,7 @@ public struct TranscriptEntry: Codable, Identifiable, Equatable, Sendable {
         tool: CompanionToolRun?,
         routine: CompanionTranscriptRoutineOrigin?,
         routineNotifyGroup: CompanionTranscriptRoutineNotifyGroup?,
+        delegation: CompanionTranscriptDelegation? = nil,
         turnID: String?,
         queued: Bool,
         attachments: [CompanionAttachment],
@@ -2478,6 +2480,7 @@ public struct TranscriptEntry: Codable, Identifiable, Equatable, Sendable {
         self.tool = tool
         self.routine = routine
         self.routineNotifyGroup = routineNotifyGroup
+        self.delegation = delegation
         self.turnID = turnID
         self.queued = queued
         self.attachments = attachments

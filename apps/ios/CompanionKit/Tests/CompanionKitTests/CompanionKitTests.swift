@@ -1728,6 +1728,7 @@ func decodesControlDecisionAndDelegationMetadata() throws {
     #expect(proposal.payload["target_name"] == .string("Orbit"))
     #expect(entry.delegation?.companionName == "Orbit")
     #expect(entry.delegation?.direction == .response)
+    #expect(entry.withRoutineNotifyGroup(nil).delegation == entry.delegation)
 }
 
 @Test
