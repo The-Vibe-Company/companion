@@ -1,0 +1,369 @@
+packages/box-runtime/src/companionBoxAgentSource.ts
+  s_fb329f0cad8ae9::t_611372a8204d18 6
+packages/contracts/test/companionRuntime.test.ts
+  s_fb329f0cad8ae9::t_29efc263063ecb 13-14,175-182
+  s_fb329f0cad8ae9::t_99f2ce362b6608 183
+  s_fb329f0cad8ae9::t_b58d420940dc46 129-143
+packages/core/src/companionRoutinesApi.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 13,177-184,190,192-196,215-222,228,232-236
+.agents/skills/debug-companions-prod/evals/evals.json
+  s_fb329f0cad8ae9::t_bc0716557584b1 25
+packages/db/src/runtimeRole.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 77
+  s_fb329f0cad8ae9::t_fc2c48f5e8c98a 78
+docs/product.md
+  s_fb329f0cad8ae9::t_b58d420940dc46 90-93
+  s_fb329f0cad8ae9::t_1f953f351ca5d3 89
+packages/contracts/src/companionRuntime.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 44-46,141,143-144,164-180
+  s_fb329f0cad8ae9::t_48a62ba2d41c6e 311-320
+  s_fb329f0cad8ae9::t_3b8c653c431316 321
+  s_fb329f0cad8ae9::t_5af7f4b2455aa3 43
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 228-255
+packages/companion-runtime/src/operations.ts
+  s_fb329f0cad8ae9::t_c9f3c8bc1e8386 1322,1325-1345
+  s_fb329f0cad8ae9::t_b58d420940dc46 79,81-87,816-981,1348-1353
+  s_fb329f0cad8ae9::t_edb294f381a3a2 1323-1324
+  s_fb329f0cad8ae9::t_97c0146c3d451c 80
+apps/ios/README.md
+  s_fb329f0cad8ae9::t_b58d420940dc46 89-95,268-269
+.agents/skills/debug-companions-prod/scripts/test_db_query.py
+  s_fb329f0cad8ae9::t_389f3417020752 134-135,144
+  s_fb329f0cad8ae9::t_b58d420940dc46 132-133,136-143,145
+apps/web/src/components/companions/CompanionThread.test.ts
+  s_fb329f0cad8ae9::t_db2f82250be305 399-401,418-420
+packages/companion-skill/skill/SKILL.md
+  s_fb329f0cad8ae9::t_372e3b97099229 42-46,1395
+packages/companion-runtime/src/engine.test.ts
+  s_fb329f0cad8ae9::t_35f83c115f273e 2838-2875,2877
+  s_fb329f0cad8ae9::t_ee29b71d126450 2876
+docs/testing.md
+  s_fb329f0cad8ae9::t_a7841d86dc3a50 243-244
+  s_fb329f0cad8ae9::t_4abd6d6e6895d0 223-225,269-270
+packages/companion-runtime/src/operations.test.ts
+  s_fb329f0cad8ae9::t_7cd6f332eade69 1929-1965,1967-2003,2005-2039
+  s_fb329f0cad8ae9::t_b58d420940dc46 6,21-45,799-969,971-1165
+  s_fb329f0cad8ae9::t_4a3f854612681a 1966,2004
+  s_fb329f0cad8ae9::t_3be9284cf144c3 1166
+  s_fb329f0cad8ae9::t_2610c685c2559f 970
+.claude/skills/debug-companions-prod/scripts/test_db_query.py
+  s_fb329f0cad8ae9::t_b58d420940dc46 132-133,136-143,145
+  s_fb329f0cad8ae9::t_389f3417020752 134-135,144
+packages/db/src/schema.ts
+  s_fb329f0cad8ae9::t_c86a928bb7ae60 1616
+  s_fb329f0cad8ae9::t_b58d420940dc46 1614-1615,1617,1648-1650,1667-1672,1679
+  s_fb329f0cad8ae9::t_c9f3c8bc1e8386 1651-1653
+  s_fb329f0cad8ae9::t_09f671ff8cd6b7 1160-1162,1655-1660
+apps/ios/Companion/Screens/MarkdownTableDemoView.swift
+  s_fb329f0cad8ae9::t_b58d420940dc46 78
+docs/companions-runtime.md
+  s_fb329f0cad8ae9::t_f328ace713bc5d 580
+  s_fb329f0cad8ae9::t_76b42bc7e89630 231-236
+  s_fb329f0cad8ae9::t_b4ca43c475c84d 771-776
+  s_fb329f0cad8ae9::t_b58d420940dc46 110-111,126,128-129,143,171,207-208,212-213,253-257,316-321,560-579,1402-1405
+  s_fb329f0cad8ae9::t_a7841d86dc3a50 209-211,1432-1433
+  s_fb329f0cad8ae9::t_bdb20ce3d8c9a0 127,135,142,559,581-583,1401
+packages/companion-runtime/src/types.test.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 204-271
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_fb329f0cad8ae9::t_d484cad01578fe 3-5,7-8,12-13,17,19,22,27,31,35-37,46,49,53-54,56,59,64-71,73,86,90,92,94,96,100-101,104-105,107-108,111-112,114-116,118-120,125,135,137,139,141,143-144
+  s_fb329f0cad8ae9::t_bddbbb0831664d 142
+apps/runtime/src/boxAdapters.test.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 671-692
+apps/ios/CompanionKit/Sources/CompanionKit/Models.swift
+  s_fb329f0cad8ae9::t_b58d420940dc46 769-787,894,910-911,925,941,960,976-977,993,1011,2735,2751
+apps/ios/Companion/Screens/CompanionDetailDemo.swift
+  s_fb329f0cad8ae9::t_b58d420940dc46 197-200,205-206,227,231-232
+packages/box-sim/src/commandShims.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 89,429-431,1495-1517
+apps/runtime/src/production.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 450
+packages/box-sim/test/boxRuntimeAdapter.test.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 116-143
+packages/companion-runtime/src/scheduler.test.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 72-86,159-177,179-181,183-213,233
+  s_fb329f0cad8ae9::t_467b987380a07c 87,89-92,178,182,214-232
+  s_fb329f0cad8ae9::t_a7e13e86f5f6b5 88
+  s_fb329f0cad8ae9::t_1bf6550deff07c 7
+  s_fb329f0cad8ae9::t_ada2904a440225 234-235
+apps/runtime/src/materialPipeline.test.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 144-147
+apps/runtime/src/directBoxTransport.test.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 62
+packages/companion-runtime/src/store.ts
+  s_fb329f0cad8ae9::t_ea84c0355adc4a 815-817
+  s_fb329f0cad8ae9::t_b58d420940dc46 35-42,46-47,767-771,791-814,852
+  s_fb329f0cad8ae9::t_b2bddf7c349976 838
+  s_fb329f0cad8ae9::t_ce15524e61c026 277-280
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionKitTests.swift
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 1866-1867
+  s_fb329f0cad8ae9::t_b58d420940dc46 1821,1854-1855,1863-1864,1868-1885
+  s_fb329f0cad8ae9::t_21c1b57e64487e 1836-1848,1850,1865
+packages/companion-runtime/src/store.test.ts
+  s_fb329f0cad8ae9::t_05f9a0c9cc1f57 114
+  s_fb329f0cad8ae9::t_b58d420940dc46 72-94,106-113
+  s_fb329f0cad8ae9::t_ebb5b0cda4aa0c 101,105,607,614
+packages/db/drizzle/0156_companion_recovery_cleanup_protocol_7.sql
+  s_fb329f0cad8ae9::t_47b7c622aa2deb 704-705,790-791,804-805,818-819
+  s_fb329f0cad8ae9::t_467b987380a07c 1155-1166
+  s_fb329f0cad8ae9::t_a29686a1f756d3 1564-1566
+  s_fb329f0cad8ae9::t_3137e0b455b8fa 2203
+  s_fb329f0cad8ae9::t_49521255491465 1-35,39-40,78-82,89-91,93-370,372-595,624,627-703,706-786,832-840,842-901,903-986,1017-1124,1153,1205-1230,1232-1238,1242-1533,1618-1793,1817-1943,1965,1967-2132,2137-2186,2200-2202,2204-2243,2246-2250,2253-2270,2272-2305,2307
+  s_fb329f0cad8ae9::t_9a281e28d5e525 1125-1152,1167-1204
+  s_fb329f0cad8ae9::t_32536ec89e92d6 625-626,841,902
+  s_fb329f0cad8ae9::t_9491f3604cbbc2 596-623
+  s_fb329f0cad8ae9::t_d1dcf8cc233453 1239-1241
+  s_fb329f0cad8ae9::t_6a8e2c2d719505 2133-2136
+  s_fb329f0cad8ae9::t_1aa53992ab1bc2 371,2244-2245,2251-2252,2271,2306
+  s_fb329f0cad8ae9::t_cf612237cfacc9 787-789,792-803,806-817,820-831
+  s_fb329f0cad8ae9::t_54d8639ba1f895 56-67
+  s_fb329f0cad8ae9::t_7aafc2997d4f98 1578-1586,1794-1816,2187-2199
+  s_fb329f0cad8ae9::t_7b6f3700c655c8 83-88,92
+  s_fb329f0cad8ae9::t_b65990d7175d5f 1534-1563,1567-1577,1587-1617
+  s_fb329f0cad8ae9::t_c7eb1778a46c40 1944-1964,1966
+  s_fb329f0cad8ae9::t_6c96e30516cfe1 36-38
+  s_fb329f0cad8ae9::t_e5267f5f834398 987-1016
+  s_fb329f0cad8ae9::t_10ef3807827938 41-55,68-77
+  s_fb329f0cad8ae9::t_6ae9b0b5c4c2da 1231
+  s_fb329f0cad8ae9::t_f529a62c790ed5 1154
+.claude/skills/debug-companions-prod/SKILL.md
+  s_fb329f0cad8ae9::t_76b42bc7e89630 37,203,216
+  s_fb329f0cad8ae9::t_944b83a7501c00 108-113
+  s_fb329f0cad8ae9::t_a7841d86dc3a50 256
+  s_fb329f0cad8ae9::t_b58d420940dc46 38-40,155-156,194-202,204-206,217-226,229-230,257-258,260-265,272,274,280-284
+packages/companion-runtime/src/ports.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 173-181
+packages/companion-runtime/src/test/fixtures.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 179-182,252-255,777
+apps/ios/Companion/Screens/CompanionDetailView.swift
+  s_fb329f0cad8ae9::t_b58d420940dc46 1253,1259-1269,1284-1290,1303-1309,1313,1319-1321,1329-1341,1346,1348-1349,1367-1371,1410-1430
+  s_fb329f0cad8ae9::t_15d84735fc27bf 1342-1345,1347
+apps/ios/CompanionUITests/CompanionUITests.swift
+  s_fb329f0cad8ae9::t_b58d420940dc46 214,220-224,1702-1704
+  s_fb329f0cad8ae9::t_b732a550a525c1 225-226,228
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionSheetModelsTests.swift
+  s_fb329f0cad8ae9::t_b58d420940dc46 366-391,405-406,422-423,425-426,430-433,438-444,446-447
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_fb329f0cad8ae9::t_8ad2eb78c5b0a6 7082-7100,7129-7133,7139
+  s_fb329f0cad8ae9::t_e29cf989ebaa5b 4761
+  s_fb329f0cad8ae9::t_8bf0e6d9712689 4814
+  s_fb329f0cad8ae9::t_bd41b11d71b4dc 4798,4802,4806,9888,9968,9972-9973,9976,9978,9982-9988,9991-10002,10006-10011,10016-10020,10023-10030,10034-10036,10048-10070,10106
+  s_fb329f0cad8ae9::t_4280612081ed52 4800
+  s_fb329f0cad8ae9::t_6f5c12da203ebf 4648-4750
+  s_fb329f0cad8ae9::t_a418cc77658a38 525,622,625,947,9163,9171,9342
+  s_fb329f0cad8ae9::t_9491f3604cbbc2 9753-9754,9759-9887
+  s_fb329f0cad8ae9::t_115f91c40e250d 1090-1095,1097-1101,1106-1168
+  s_fb329f0cad8ae9::t_4f68af3cfd8913 4753-4755
+  s_fb329f0cad8ae9::t_9c1e8a4ed81eb5 4782
+  s_fb329f0cad8ae9::t_6a8e2c2d719505 8038-8047
+  s_fb329f0cad8ae9::t_6a0ab07d8bef18 4630-4637
+  s_fb329f0cad8ae9::t_8f3a7d2b1f5e09 4787-4788
+  s_fb329f0cad8ae9::t_c2fdcabbb476c7 4803-4805
+  s_fb329f0cad8ae9::t_ef1ffa47865d4a 6875,6878
+  s_fb329f0cad8ae9::t_b58d420940dc46 84-85,113-136,149-150,181-330,521-522,621,624,629-631,807-946,948-1088,1427-1428,1471-1473,1479-1485,1487-1493,1514-1515,4451,4453-4454,4456-4465,4467-4469,4472,4474-4475,4479-4486,4489-4491,4496-4499,4501-4502,4505-4629,4638-4647,4752,4756,4759-4760,4768-4769,4777-4778,4780-4781,4783-4785,4789-4790,4792-4793,4799,4801,4813,4815,4840,4842-4843,4848-4850,4852-4856,7101-7123,9162,9164-9170,9172-9212,9227-9326,9334-9341,9343-9381,9409-9481,9499-9752,9755-9757,9889-9894,9896-9967,9969-9971,9974-9975,9977,10071-10072,10074-10105,10208-10212
+  s_fb329f0cad8ae9::t_35909b3ed333b7 137-148,151-152,154-158
+  s_fb329f0cad8ae9::t_d1dcf8cc233453 9482,9484-9498
+  s_fb329f0cad8ae9::t_160e55b04feded 10021-10022
+  s_fb329f0cad8ae9::t_4506e3f6a84aad 632-661
+  s_fb329f0cad8ae9::t_5942a76018cea8 153,662-670,1096,1102-1105
+  s_fb329f0cad8ae9::t_8223fedfcd66b9 4786,9979-9981
+  s_fb329f0cad8ae9::t_f1123bc00b23d8 4751
+  s_fb329f0cad8ae9::t_c6bc9f95ca5f24 4767
+  s_fb329f0cad8ae9::t_a944c7a36ac8b8 4774-4776
+  s_fb329f0cad8ae9::t_c708bf5641f1a7 4816-4818,4830-4839,4841,4844-4847,4851,4857-4863
+  s_fb329f0cad8ae9::t_a32783b16a2e96 4763-4764
+  s_fb329f0cad8ae9::t_8bc6aa7185d308 4779
+  s_fb329f0cad8ae9::t_1fe129af8747d8 4794-4797
+  s_fb329f0cad8ae9::t_d341ff24e5303c 1089
+  s_fb329f0cad8ae9::t_8c70bed3601ede 4807-4812
+  s_fb329f0cad8ae9::t_36233c3c495b0d 4770
+  s_fb329f0cad8ae9::t_de8316031936bc 9213-9226,9382-9408,10107-10207
+  s_fb329f0cad8ae9::t_7d3677229da902 9327-9333
+  s_fb329f0cad8ae9::t_a29686a1f756d3 4762,4765-4766,4771-4773,9895,9989-9990,10003-10005,10012-10015,10031-10033,10037-10047,10073
+  s_fb329f0cad8ae9::t_fc51568b4ca9b9 4757-4758
+  s_fb329f0cad8ae9::t_d65bf0cbcf8e74 4791
+  s_fb329f0cad8ae9::t_880abb3ddc079f 9483,9758
+.claude/skills/debug-companions-prod/references/triage-playbook.md
+  s_fb329f0cad8ae9::t_b58d420940dc46 10,12,59,69-70,82
+  s_fb329f0cad8ae9::t_76b42bc7e89630 11
+docs/runbooks/routine-isolation-cutover.md
+  s_fb329f0cad8ae9::t_1f953f351ca5d3 121
+  s_fb329f0cad8ae9::t_b4ca43c475c84d 219-222,240-241
+  s_fb329f0cad8ae9::t_b58d420940dc46 122-124,199-201
+apps/ios/Companion/Screens/CompanionInterruptedTurnNotice.swift
+  s_fb329f0cad8ae9::t_b58d420940dc46 11,13,27,31,33-35,46-51,53,55,57,59-75,79
+  s_fb329f0cad8ae9::t_b732a550a525c1 52,54,56,58,80
+apps/ios/Companion/Screens/CompanionRoutineHistoryView.swift
+  s_fb329f0cad8ae9::t_bb3bdad30514f1 916
+  s_f0bb92c41dd97a::t_8565043ed11e9b 555-562,568-573
+  s_fb329f0cad8ae9::t_b58d420940dc46 172-178,318-320,348-353,361-370,387,422,459-465,484,492,730-731,736-767,770-771,785-792,795-797,805-807,809-833,894-898,903,905-915
+  s_fb329f0cad8ae9::t_15d84735fc27bf 354-360,899-902,904
+.agents/skills/debug-companions-prod/SKILL.md
+  s_fb329f0cad8ae9::t_944b83a7501c00 108-113
+  s_fb329f0cad8ae9::t_a7841d86dc3a50 210
+  s_fb329f0cad8ae9::t_b58d420940dc46 38-40,155-156,171-180,183-184,211-212,214-219,226,228
+  s_fb329f0cad8ae9::t_76b42bc7e89630 37,170
+.claude/skills/debug-companions-prod/scripts/db_query.py
+  s_fb329f0cad8ae9::t_389f3417020752 199-203,206-209,286-289,297-300,303-305
+  s_fb329f0cad8ae9::t_b58d420940dc46 152-153,179-186,198,204-205,210-220,285,290-296,301-302,306-308
+apps/api/src/companionRoutes.test.ts
+  s_fb329f0cad8ae9::t_02aefae3392f8e 84,454-457,1709,1711-1713,1716-1725
+packages/companion-runtime/src/engine.ts
+  s_fb329f0cad8ae9::t_c9f3c8bc1e8386 7,198-212
+  s_f0bb92c41dd97a::t_bd9e9bfe8c8ea7 213
+  s_fb329f0cad8ae9::t_35f83c115f273e 425-445
+packages/box-runtime/src/companionPiBrokerSource.ts
+  s_fb329f0cad8ae9::t_611372a8204d18 6
+docs/vision.md
+  s_fb329f0cad8ae9::t_4abd6d6e6895d0 55-57
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_fb329f0cad8ae9::t_66e4c4d086f93c 1371-1377,1617,1632
+  s_fb329f0cad8ae9::t_cbb65413d8f405 1350
+  s_fb329f0cad8ae9::t_dee3d8bd8c4f33 1412
+  s_fb329f0cad8ae9::t_b58d420940dc46 1351-1352,1390-1411,1413-1418,1422-1425,1434-1442,1444-1452,1466,1471-1483,1485-1486,1489-1512,1521-1533,1544-1566,1569-1616,1618-1631,1633-1724
+  s_fb329f0cad8ae9::t_4d6d25bf5281cf 1443,1514-1520
+  s_fb329f0cad8ae9::t_a5c279c0f52fa5 1455-1458,1484
+  s_fb329f0cad8ae9::t_22eb9485466481 1513,1725
+apps/ios/CompanionKit/Tests/CompanionKitTests/RoutineHistoryTests.swift
+  s_fb329f0cad8ae9::t_b58d420940dc46 37-40,45-50,74-75,153-155,165-180
+apps/api/src/companionRoutes.ts
+  s_fb329f0cad8ae9::t_4c5eb8280e63e5 96,202,308,821,2967-2981
+  s_9475bca00e0e5a::t_2efd047d9a7dff 2985
+  s_fb329f0cad8ae9::t_dd7dd4f8812033 2982-2984
+apps/web/src/components/companions/CompanionRoutineHistory.client.test.ts
+  s_fb329f0cad8ae9::t_940e9ad41c5f41 295
+  s_fb329f0cad8ae9::t_b58d420940dc46 70,125-126,146,171,259-262,266,270-291,293-294
+  s_fb329f0cad8ae9::t_6a8e2c2d719505 312-339
+  s_fb329f0cad8ae9::t_4369162ff7e593 265,292
+  s_fb329f0cad8ae9::t_ee271b11a41f74 296-311
+packages/contracts/src/companions.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 9,415-416,428,464-471,2033
+packages/companion-runtime/src/scheduler.ts
+  s_fb329f0cad8ae9::t_9a5b32110a2508 13,80
+  s_fb329f0cad8ae9::t_467b987380a07c 81,190,270-278
+  s_fb329f0cad8ae9::t_b58d420940dc46 234-269,279-280
+apps/web/src/components/companions/CompanionThread.tsx
+  s_fb329f0cad8ae9::t_b58d420940dc46 59,61
+  s_fb329f0cad8ae9::t_ace1fd7a75a604 60,62-65
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionSheetModels.swift
+  s_fb329f0cad8ae9::t_b58d420940dc46 406-426
+apps/web/src/components/companions/CompanionThread.client.test.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 78,263-270,272,284-303,306-308
+  s_fb329f0cad8ae9::t_c7d8c10a0b5918 244,246,278-279,283,304-305
+  s_fb329f0cad8ae9::t_24a3b3f6a381b0 309-310
+packages/core/src/companionRuntimeApi.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 28,122,124-129,569-570,673-682,695-704,729-730,775-776,791-792,819-820,824-828,855-866,872,910-921,926
+  s_fb329f0cad8ae9::t_48a62ba2d41c6e 1156-1176
+  s_fb329f0cad8ae9::t_59cbad56af36c8 1177-1178
+packages/contracts/test/companions.test.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 934-947
+apps/ios/Companion/Screens/CompanionInterruptedTurnDemoView.swift
+  s_fb329f0cad8ae9::t_21c1b57e64487e 29-40
+  s_fb329f0cad8ae9::t_b58d420940dc46 42-43
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_fb329f0cad8ae9::t_143c5dbf3f52a7 5113-5114
+  s_fb329f0cad8ae9::t_b58d420940dc46 1043-1048,2725-2738,4367,4444,5051-5112
+apps/runtime/src/boxAdapters.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 233-235
+packages/companion-skill/skill/companion.integrity.json
+  s_fb329f0cad8ae9::t_bddbbb0831664d 10
+  s_fb329f0cad8ae9::t_2e275825719629 3-4,22
+packages/companion-skill/skill/companion.json
+  s_fb329f0cad8ae9::t_372e3b97099229 4,31-39
+packages/contracts/src/companionBudgets.ts
+  s_fb329f0cad8ae9::t_7fc51d0569d71c 26-29,164-165,202-203,244-245
+  s_fb329f0cad8ae9::t_5ea9b1680ab9a0 176
+packages/db/drizzle/meta/_journal.json
+  s_9475bca00e0e5a::t_a5901e33df5a28 1096-1102
+apps/web/src/components/companions/CompanionRoutineHistory.tsx
+  s_fb329f0cad8ae9::t_6a8e2c2d719505 95-98
+  s_fb329f0cad8ae9::t_4369162ff7e593 78-94,100-101,316-319,331-334,340-344,347-349,353,356,463
+  s_fb329f0cad8ae9::t_ee271b11a41f74 99
+  s_fb329f0cad8ae9::t_15d84735fc27bf 269-276
+  s_fb329f0cad8ae9::t_fac19d2df06628 309
+  s_fb329f0cad8ae9::t_b58d420940dc46 310-311,313-315,320-330,335-339,345-346,350-352,354-355,357,359,462
+  s_fb329f0cad8ae9::t_db2f82250be305 234,312,358
+.claude/skills/debug-companions-prod/evals/evals.json
+  s_fb329f0cad8ae9::t_bc0716557584b1 25
+packages/companion-runtime/src/types.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 47-58,169-178,300-303,713-718,824-827,867-869,875-876,890,896-919
+DESIGN.md
+  s_fb329f0cad8ae9::t_b58d420940dc46 286-293,455-461,514-516
+  s_fb329f0cad8ae9::t_1f953f351ca5d3 517-518
+.claude/skills/debug-companions-prod/scripts/railway_restart.py
+  s_fb329f0cad8ae9::t_b58d420940dc46 43
+  s_fb329f0cad8ae9::t_76b42bc7e89630 42
+CLAUDE.md
+  s_f0bb92c41dd97a::t_39435e94a6e0c3 82
+  s_fb329f0cad8ae9::t_b58d420940dc46 84-86
+  s_fb329f0cad8ae9::t_1f953f351ca5d3 83
+  s_fb329f0cad8ae9::t_5377de23f52b22 145-147
+apps/api/src/localSkills.test.ts
+  s_fb329f0cad8ae9::t_372e3b97099229 51,130-132,138,140-142
+packages/contracts/test/companionBudgets.test.ts
+  s_fb329f0cad8ae9::t_211394e678e74c 169-170,187-189
+docs/PRD.md
+  s_fb329f0cad8ae9::t_4abd6d6e6895d0 68-73,177-181
+  s_fb329f0cad8ae9::t_7aafc2997d4f98 66-67
+  s_fb329f0cad8ae9::t_a7841d86dc3a50 239-240
+.agents/skills/debug-companions-prod/references/triage-playbook.md
+  s_fb329f0cad8ae9::t_b58d420940dc46 10,12,59,69-70,82
+  s_fb329f0cad8ae9::t_76b42bc7e89630 11
+docs/runbooks/companions-runtime.md
+  s_fb329f0cad8ae9::t_b58d420940dc46 25-26,63,69-72,75,77-81,84-85,87,300,320-330,336-337
+  s_fb329f0cad8ae9::t_1f953f351ca5d3 24,299
+  s_fb329f0cad8ae9::t_76b42bc7e89630 62,64-68,76,86
+  s_fb329f0cad8ae9::t_a7841d86dc3a50 73-74,82-83
+.agents/skills/debug-companions-prod/scripts/db_query.py
+  s_fb329f0cad8ae9::t_389f3417020752 119-123,126-129,203-206,214-217,220-222
+  s_fb329f0cad8ae9::t_b58d420940dc46 90,107-114,118,124-125,130-140,202,207-213,218-219,223-225
+  s_fb329f0cad8ae9::t_76b42bc7e89630 91
+packages/companion-runtime/src/retry.ts
+  s_fb329f0cad8ae9::t_b58d420940dc46 13
+docs/design.md
+  s_fb329f0cad8ae9::t_b4ca43c475c84d 323-328
+  s_fb329f0cad8ae9::t_1f953f351ca5d3 214-215
+  s_fb329f0cad8ae9::t_dc0795d262d5bd 566
+  s_fb329f0cad8ae9::t_c9f3c8bc1e8386 563-564
+  s_fb329f0cad8ae9::t_b58d420940dc46 163-171,193,216-217,222-224,263-267,661-663
+  s_fb329f0cad8ae9::t_a7841d86dc3a50 194-196
+.agents/skills/debug-companions-prod/scripts/railway_restart.py
+  s_fb329f0cad8ae9::t_76b42bc7e89630 42
+  s_fb329f0cad8ae9::t_b58d420940dc46 43
+packages/db/runtime-role-grants.sql
+  s_fb329f0cad8ae9::t_9091ad122abbe3 690,696-697,700-701,705-707
+  s_fb329f0cad8ae9::t_b58d420940dc46 691-695,698-699,702-704,708-711
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0446e8964c35135d848f25b5bd365f854488f6c8",
+  "prompts": {},
+  "sessions": {
+    "s_9475bca00e0e5a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05dce-d365-7b10-bc9b-87d7cd82c687",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_f0bb92c41dd97a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a053b1-ae4d-7d90-b249-abaed7d75310",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_fb329f0cad8ae9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05d34-0612-7a91-b1b6-92da44ac9c0f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}
