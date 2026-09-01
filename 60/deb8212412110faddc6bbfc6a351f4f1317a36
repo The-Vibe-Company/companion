@@ -1,0 +1,19 @@
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionLocalCacheTests.swift
+  s_0a79ab0a447eaf::t_a3de78990e07e6 271,273,277,280,1060-1061,1065,1075,1083-1084,1090,1095,1114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "60deb8212412110faddc6bbfc6a351f4f1317a36",
+  "prompts": {},
+  "sessions": {
+    "s_0a79ab0a447eaf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05948-5e4a-7091-856a-4ca47dda3e4e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
