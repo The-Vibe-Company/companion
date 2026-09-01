@@ -1,0 +1,27 @@
+docs/agents/domain.md
+  s_adc6c6562142eb::t_8f400969f7fa91 1-51
+docs/agents/triage-labels.md
+  s_adc6c6562142eb::t_8f400969f7fa91 1-25
+docs/agents/issue-tracker.md
+  s_adc6c6562142eb::t_8f400969f7fa91 1-11,17-22,24,26-106
+  s_adc6c6562142eb::t_2cd03353704dc1 12-16
+  s_adc6c6562142eb::t_f90609512b496d 23,25
+CLAUDE.md
+  s_adc6c6562142eb::t_8f400969f7fa91 186-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7b961482e6685ffe6db08e87b01db52b3e40cda2",
+  "prompts": {},
+  "sessions": {
+    "s_adc6c6562142eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f15a4a36-19ad-4e5a-a29c-f483d0d0a166",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
