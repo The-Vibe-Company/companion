@@ -1,0 +1,21 @@
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_0a79ab0a447eaf::t_b1bac3cfd93974 3-4,7,10-11,13-14,17-19,22,29,31,33-36,46,49-50,53-54,56,59,64-68,70-71,86,90,92,94,96,100-101,104,107-108,112,116,118-120,132,134-135,137,139,141-142,144
+packages/companion-skill/skill/companion.integrity.json
+  s_0a79ab0a447eaf::t_b1bac3cfd93974 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ac56088e1b9b8f637184d6d2e31f8ea65a1303bf",
+  "prompts": {},
+  "sessions": {
+    "s_0a79ab0a447eaf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05948-5e4a-7091-856a-4ca47dda3e4e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
