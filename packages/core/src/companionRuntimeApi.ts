@@ -710,7 +710,10 @@ async function readCompanionThreadProjection(input: {
     entries,
     active_turn: activeTurn?.status === "interrupted" ? null : activeTurn,
     queued_count: queuedCount,
-    interrupted_turn: interruptedTurn?.status === "interrupted" ? interruptedTurn : null,
+    interrupted_turn:
+      interruptedTurn?.status === "interrupted" && interruptedTurn.resolution === null
+        ? interruptedTurn
+        : null,
     last_message_at: iso(row.last_message_at),
     last_read_ordinal: row.previous_last_read_ordinal === null
       ? null
@@ -797,7 +800,10 @@ function companionThreadMetadata(input: {
     can_send: input.row.access_role !== "viewer",
     active_turn: activeTurn?.status === "interrupted" ? null : activeTurn,
     queued_count: integer(input.row.queued_count),
-    interrupted_turn: interruptedTurn?.status === "interrupted" ? interruptedTurn : null,
+    interrupted_turn:
+      interruptedTurn?.status === "interrupted" && interruptedTurn.resolution === null
+        ? interruptedTurn
+        : null,
     last_message_at: iso(input.row.last_message_at),
     last_read_ordinal: input.row.previous_last_read_ordinal === null
       ? null

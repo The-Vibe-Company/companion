@@ -27,9 +27,10 @@ private enum CompanionInterruptedTurnDemoFixtures {
       "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
       "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
       "status":"interrupted","queue_sequence":20,"latest_attempt":null,"replying":false,
-      "error":{"code":"cold_start_deadline_exceeded","message":"The Companion did not start before its deadline.","action":"retry"},
+      "error":{"code":"cold_start_deadline_exceeded","message":"The Companion did not start before its deadline.","action":"none"},
       "state_changed_at":"2026-08-26T05:59:33.505Z","settled_at":"2026-08-26T05:59:33.505Z",
-      "created_at":"2026-08-26T05:55:12.466Z","updated_at":"2026-08-26T05:59:33.505Z"
+      "created_at":"2026-08-26T05:55:12.466Z","updated_at":"2026-08-26T05:59:33.505Z",
+      "resolution":"auto_abandoned"
     }
     """#)
 

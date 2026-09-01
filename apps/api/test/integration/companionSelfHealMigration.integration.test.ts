@@ -1,8 +1,7 @@
 /**
  * Product promise:
- * Protocol 6 makes every interrupted occurrence terminal history. The migration releases old
- * queue locks, retires durable recovery operations, and prevents protocol-5 executors from
- * claiming work under the new rules.
+ * Protocol 6 makes every interrupted occurrence terminal history. The follow-up projection fix
+ * keeps that evidence durable without presenting it as an actionable thread-tail state.
  *
  * Why integrated:
  * This is a deployment-time backfill across transition triggers, partial indexes, lane claims,
@@ -83,7 +82,7 @@ async function asRole<T>(
   return result.value;
 }
 
-describe("0155 terminal interruption protocol-6 upgrade", () => {
+describe("0155 terminal interruption protocol-6 upgrade with 0156 projection repair", () => {
   beforeAll(async () => {
     await adminSql.unsafe(`
       create role ${apiRole} login nosuperuser nobypassrls noinherit;
@@ -187,6 +186,7 @@ describe("0155 terminal interruption protocol-6 upgrade", () => {
     if (!queuedChatTurnId || !queuedRoutineTurnId) throw new Error("queued turn fixture failed");
 
     await applyMigrationFile("0155_companion_interruption_terminal_protocol_6.sql");
+    await applyMigrationFile("0156_companion_main_start_budget_and_interruption_projection.sql");
     await applySplitGrants();
     await upgradeSql`
       select * from public.companion_runtime_enable(
@@ -248,7 +248,7 @@ describe("0155 terminal interruption protocol-6 upgrade", () => {
     });
   });
 
-  it("keeps terminal interruption history in thread window and delta projections", async () => {
+  it("keeps terminal interruption evidence out of actionable thread projections", async () => {
     const [window] = await asRole(apiRole, (tx) => tx<Array<{
       interruptedTurn: { id: string; status: string; resolution: string } | null;
     }>>`
@@ -266,16 +266,8 @@ describe("0155 terminal interruption protocol-6 upgrade", () => {
       )
     `);
 
-    expect(window?.interruptedTurn).toMatchObject({
-      id: interruptedTurnId,
-      status: "interrupted",
-      resolution: "auto_abandoned",
-    });
-    expect(delta?.interruptedTurn).toMatchObject({
-      id: interruptedTurnId,
-      status: "interrupted",
-      resolution: "auto_abandoned",
-    });
+    expect(window?.interruptedTurn).toBeNull();
+    expect(delta?.interruptedTurn).toBeNull();
   });
 
   it("refuses protocol 5 and lets protocol 6 claim the next FIFO turn", async () => {

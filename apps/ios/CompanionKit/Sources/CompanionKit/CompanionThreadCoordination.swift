@@ -178,7 +178,7 @@ public struct CompanionScrollTailSnapshot: Equatable, Sendable {
                 $0.ordinal == $1.ordinal ? $0.eventID < $1.eventID : $0.ordinal < $1.ordinal
             }
             .last
-        self.init(lastEntry: lastEntry, interruptedTurn: thread.interruptedTurn)
+        self.init(lastEntry: lastEntry, interruptedTurn: thread.visibleInterruptedTurn)
     }
 }
 

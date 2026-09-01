@@ -372,7 +372,7 @@ struct ChatView: View {
                                         }
                                     }
 
-                                    if let interruptedTurn = thread?.interruptedTurn {
+                                    if let interruptedTurn = thread?.visibleInterruptedTurn {
                                         CompanionInterruptedTurnNotice(
                                             turn: interruptedTurn,
                                             queuedCount: thread?.queuedCount ?? 0
@@ -1670,7 +1670,7 @@ struct ChatView: View {
         if let pending = pendingMessages.last {
             return "pending-\(pending.id)"
         }
-        if let interruptedTurn = thread?.interruptedTurn {
+        if let interruptedTurn = thread?.visibleInterruptedTurn {
             return "interrupted-\(interruptedTurn.id)"
         }
         return entries.last?.id ?? "bottom"

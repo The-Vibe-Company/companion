@@ -450,11 +450,12 @@ approval. A newer member message ends the wait sooner so Pi can finish safely be
 queued turn runs. Outside `needs_input`, ten minutes without correlated activity always becomes a
 visible terminal outcome; the two-hour absolute ceiling remains authoritative everywhere.
 
-An `interrupted` card explains that delivery became ambiguous, previous external effects may have
-succeeded, the occurrence will not be replayed, and later work continues automatically. It is
-passive for Owner, Editor, and Viewer: no Retry or Cancel action is shown. Stable, expurgated errors
-outside terminal interruptions may offer only their allowed action, such as Restart Pi or Switch
-model. Full Box never appears as an automatic repair in the thread.
+An unresolved legacy `interrupted` card explains that delivery became ambiguous, previous external
+effects may have succeeded, and the occurrence will not be replayed. Protocol-6 interruptions are
+settled `auto_abandoned` immediately and remain durable history without occupying the conversation
+tail; later work continues automatically. Neither state exposes Retry or Cancel. Stable,
+expurgated errors outside terminal interruptions may offer only their allowed action, such as
+Restart Pi or Switch model. Full Box never appears as an automatic repair in the thread.
 
 The transcript keeps day boundaries and one member-private `New` divider, neither inside a turn.
 Loading uses static skeleton lines. A reply keeps Copy as its one ordinary action, always reachable

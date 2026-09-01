@@ -1093,6 +1093,13 @@
       "when": 1793207200000,
       "tag": "0155_companion_interruption_terminal_protocol_6",
       "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1793293600000,
+      "tag": "0156_companion_main_start_budget_and_interruption_projection",
+      "breakpoints": true
     }
   ]
 }

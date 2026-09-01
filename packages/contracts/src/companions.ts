@@ -2018,7 +2018,7 @@ export const companionThreadSchema = z.object({
   active_turn: companionActiveTurnSchema.nullable(),
   /** Exact number of later turns still ordered in PostgreSQL. */
   queued_count: z.number().int().nonnegative(),
-  /** The queue-blocking ambiguous turn that requires explicit Retry or Cancel, if any. */
+  /** An unresolved legacy interruption, if any; terminal auto-abandoned turns are not projected. */
   interrupted_turn: companionInterruptedTurnSchema.nullable(),
   last_message_at: z.string().datetime().nullable(),
   /**

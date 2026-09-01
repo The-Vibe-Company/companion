@@ -730,12 +730,19 @@ ordinary main turns never inspect or terminate the run-scoped routine broker.
 
 Shared Box lifecycle and staging stays on the main lane and waits for the routine lane to be
 quiescent. An active routine prevents Pi recycle, settings apply, health repair, or other shared
-lifecycle work from racing its run root. An interrupted routine is terminal, owns no lane, and does
-not block main chat. Explicit Full Box restart and permanent delete may preempt and settle an active
+lifecycle work from racing its run root. A queued main turn does not acquire its cold-start deadline
+or derived Start operation during that wait; its full three-minute budget begins once routine
+quiescence makes shared lifecycle work schedulable. An interrupted routine is terminal, owns no
+lane, and does not block main chat. Explicit Full Box restart and permanent delete may preempt and settle an active
 routine occurrence, then terminate only its exact run-scoped invocation before contacting the
 provider. Routine takeover, active cancellation, and settlement never stop the main Pi. The routine context
 substrate is a pinned read-only view of the main conversation; routine-local memory remains private
 to the run, so concurrency introduces no second writer to parent memory.
+
+Terminal `auto_abandoned` interruptions remain durable occurrence evidence and notification input,
+but first-party thread and runtime projections return no `interrupted_turn` tail state for them.
+Only an unresolved legacy interruption can occupy that compatibility field; no protocol-6 Retry or
+Cancel boundary exists.
 
 The isolated invocation is pinned separately from the main Pi identity at dispatch write intent.
 Runtime validates that pinned value for broker reads, durable projection, terminal acknowledgement,

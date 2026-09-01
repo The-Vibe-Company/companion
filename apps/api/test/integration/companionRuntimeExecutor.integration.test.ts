@@ -3219,6 +3219,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
         { name: "missing", boxId: "bx_2345678a", surface: "web", materialSurface: null, expires: null },
         { name: "near-expiry", boxId: "bx_2345678b", surface: "web", materialSurface: "web", expires: "2 hours 4 minutes" },
         { name: "native-boundary", boxId: "bx_2345678c", surface: "native_mobile", materialSurface: "web", expires: "6 hours" },
+        { name: "native-near-expiry", boxId: "bx_2345678e", surface: "native_mobile", materialSurface: "native_mobile", expires: "2 hours 4 minutes" },
       ] as const) {
         const [created] = await asApi({
           orgId: ids.orgA,
@@ -3238,7 +3239,8 @@ describe("Companion runtime executor PostgreSQL surface", () => {
           set box_id = ${variant.boxId},
               box_state = 'ready', pi_state = 'idle', pi_invocation_id = 'pi-warm-material',
               disk_layout_version = 14, applied_settings_revision = desired_settings_revision,
-              applied_skills_revision = 1, applied_client_surface = 'web',
+              applied_skills_revision = 1,
+              applied_client_surface = ${variant.surface}::public.companion_client_surface,
               last_observed_at = now()
           where companion_id = ${companionId}::uuid
         `;
@@ -3344,6 +3346,82 @@ describe("Companion runtime executor PostgreSQL surface", () => {
         from companion_operations where id = ${claim.workId}::uuid
       `;
       expect(operation).toMatchObject({ kind: "start", sourceTurnId: expect.any(String) });
+      await release(claim);
+    } finally {
+      if (companionId) await removeCompanion(companionId);
+    }
+  });
+
+  it("claims a warm main turn when installed Skills are ahead of its required revision", async () => {
+    if (!sql) throw new Error("runtime executor database is not initialized");
+    let companionId = "";
+    try {
+      const [created] = await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx<Array<{ companionId: string }>>`
+          select companion_id::text as "companionId"
+          from public.companion_api_create_companion(
+            ${ids.orgA}::uuid, 'Ahead Skills material', null, null, null,
+            '[]'::jsonb, false, '[]'::jsonb
+          )
+        `,
+      });
+      companionId = created?.companionId ?? "";
+      await sql`
+        update companion_runtime_instances instance
+        set box_id = 'bx_2345678f', box_state = 'ready', pi_state = 'idle',
+            pi_invocation_id = 'pi-ahead-skills', disk_layout_version = 14,
+            applied_settings_revision = desired_settings_revision,
+            applied_skills_revision = companion.skills_revision,
+            applied_client_surface = 'web', last_observed_at = now()
+        from companions companion
+        where instance.companion_id = ${companionId}::uuid
+          and companion.org_id = instance.org_id
+          and companion.id = instance.companion_id
+      `;
+      await sql`
+        update companion_runtime_instances
+        set material_client_surface = 'web', material_pi_invocation_id = 'pi-ahead-skills',
+            material_expires_at = now() + interval '6 hours'
+        where companion_id = ${companionId}::uuid
+      `;
+
+      const [enqueued] = await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx: Tx) => tx<Array<{
+          operation: IntegrationJsonObject | null;
+          turn: { id: string };
+        }>>`
+          select operation, turn from public.companion_api_enqueue_turn(
+            ${ids.orgA}::uuid, ${companionId}::uuid, ${randomUUID()}::uuid,
+            'Use the already-installed Skills revision.', 'web', '[]'::jsonb
+          )
+        `,
+      });
+      expect(enqueued?.operation).toBeNull();
+
+      // A deferred Skill publication may advance the installed snapshot while this warm turn is
+      // queued. Refresh the material proof after that activation: ahead-of-required is still warm.
+      await sql`
+        update companion_runtime_instances
+        set applied_skills_revision = applied_skills_revision + 1
+        where companion_id = ${companionId}::uuid
+      `;
+      await sql`
+        update companion_runtime_instances
+        set material_client_surface = 'web', material_pi_invocation_id = pi_invocation_id,
+            material_expires_at = now() + interval '6 hours', last_observed_at = now()
+        where companion_id = ${companionId}::uuid
+      `;
+
+      const claim = await claimWork();
+      expect(claim).toMatchObject({
+        companionId,
+        workKind: "attempt",
+        workId: expect.any(String),
+      });
       await release(claim);
     } finally {
       if (companionId) await removeCompanion(companionId);
@@ -5901,6 +5979,174 @@ describe("Companion runtime executor PostgreSQL surface", () => {
       expect(resumedClaim).toMatchObject({ workKind: "attempt", workId: fixture.attemptId });
       await release(resumedClaim);
     } finally {
+      await removeCompanion(fixture.companionId);
+    }
+  });
+
+  it("preserves the main cold-start budget while an isolated routine owns shared staging", async () => {
+    if (!sql) throw new Error("runtime executor database is not initialized");
+    const fixture = await createCompanion({
+      boxReady: true,
+      selectedSkillIds: [],
+      selectedMcpAccountIds: [],
+    });
+    const routineId = randomUUID();
+    const routineExecutor = `${executorId}-routine-budget`;
+    const mainExecutor = `${executorId}-main-budget`;
+    let routineClaim: Claim | undefined;
+    let mainClaim: Claim | undefined;
+    try {
+      await sql`
+        update companion_runtime_instances
+        set material_pi_invocation_id = pi_invocation_id, material_client_surface = 'web',
+          material_expires_at = now() + interval '6 hours', last_observed_at = now()
+        where companion_id = ${fixture.companionId}::uuid
+      `;
+      const initialMain = await claimWork();
+      await sql`
+        update companion_turn_attempts set status = 'cancelled', settled_at = now()
+        where id = ${fixture.attemptId}::uuid
+      `;
+      await sql`
+        update companion_turns set status = 'cancelled', settled_at = now()
+        where id = ${fixture.turnId}::uuid
+      `;
+      await release(initialMain);
+
+      await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx`
+          select public.companion_api_create_routine(
+            ${ids.orgA}::uuid, ${fixture.companionId}::uuid, ${routineId}::uuid,
+            'Cold-start budget routine', 'Prepare an isolated report.', '0 9 * * *', 'UTC', true,
+            now() + interval '1 hour'
+          )
+        `,
+      });
+      await sql`
+        update companion_routines set next_fire_at = now() - interval '1 second'
+        where id = ${routineId}::uuid
+      `;
+      const [due] = await asWorker((tx) => tx<Array<{ scheduledFor: Date }>>`
+        select scheduled_for as "scheduledFor"
+        from public.companion_claim_due_routines('budget-worker', 1, 60)
+        where routine_id = ${routineId}::uuid
+      `);
+      if (!due) throw new Error("expected the budget routine to become due");
+      const fired = await asWorker((tx) => tx<Array<{ outcome: string }>>`
+        select outcome from public.companion_fire_routine(
+          'budget-worker', ${ids.orgA}::uuid, ${routineId}::uuid, ${randomUUID()}::uuid,
+          ${due.scheduledFor.toISOString()}::timestamptz, now() + interval '1 hour'
+        )
+      `);
+      expect(fired).toEqual([{ outcome: "fired" }]);
+
+      [routineClaim] = await claimWorkRows(1, routineExecutor);
+      expect(routineClaim).toMatchObject({
+        workKind: "attempt",
+        companionId: fixture.companionId,
+      });
+      if (!routineClaim) throw new Error("expected the isolated routine claim");
+
+      const [routineTurn] = await sql<Array<{ turnId: string }>>`
+        select turn_id::text as "turnId"
+        from companion_turn_attempts where id = ${routineClaim.workId}::uuid
+      `;
+      if (!routineTurn) throw new Error("expected the isolated routine turn");
+      await sql`
+        update companion_turns set status = 'running'
+        where id = ${routineTurn.turnId}::uuid
+      `;
+      await sql`
+        update companion_turn_attempts
+        set status = 'running', checkpoint = 'running', dispatch_state = 'accepted',
+          provider_credential_refs = '[]'::jsonb, mcp_credential_refs = '[]'::jsonb,
+          command_id = ${randomUUID()}::uuid,
+          pi_invocation_id = ${`routine:${routineTurn.turnId}:dispatch-v2:budget`},
+          dispatch_accepted_at = now(), last_activity_at = now()
+        where id = ${routineClaim.workId}::uuid
+      `;
+      await sql`
+        update companion_runtime_instances
+        set material_expires_at = null, material_pi_invocation_id = null,
+          material_client_surface = null, pi_state = 'unknown'
+        where companion_id = ${fixture.companionId}::uuid
+      `;
+
+      const [enqueued] = await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx<Array<{ turn: { id: string } }>>`
+          select turn from public.companion_api_enqueue_turn(
+            ${ids.orgA}::uuid, ${fixture.companionId}::uuid, ${randomUUID()}::uuid,
+            'Start after the isolated routine finishes preparing.', 'web', '[]'::jsonb
+          )
+        `,
+      });
+      const mainTurnId = stringValue(enqueued?.turn.id);
+      if (mainTurnId === null) throw new Error("expected the queued main turn");
+
+      // Repeated scheduler passes model high-frequency routine preparation. None may consume the
+      // main turn's three-minute budget before shared Start can be claimed.
+      for (let pass = 0; pass < 4; pass += 1) {
+        expect(await claimWorkRows(1, mainExecutor)).toEqual([]);
+      }
+      const [waiting] = await sql<Array<{
+        coldStartDeadlineAt: Date | null;
+        startCount: number;
+        status: string;
+      }>>`
+        select turn_row.cold_start_deadline_at as "coldStartDeadlineAt",
+          turn_row.status::text as status,
+          count(start_operation.id)::integer as "startCount"
+        from companion_turns turn_row
+        left join companion_operations start_operation
+          on start_operation.source_turn_id = turn_row.id
+          and start_operation.kind = 'start'
+          and start_operation.status in ('pending', 'running')
+        where turn_row.id = ${mainTurnId}::uuid
+        group by turn_row.id
+      `;
+      expect(waiting).toEqual({ coldStartDeadlineAt: null, startCount: 0, status: "queued" });
+
+      await sql`
+        update companion_turn_attempts set status = 'cancelled', settled_at = now()
+        where id = ${routineClaim.workId}::uuid
+      `;
+      await sql`
+        update companion_turns set status = 'cancelled', settled_at = now()
+        where id = ${routineTurn.turnId}::uuid
+      `;
+      await release(routineClaim, routineExecutor);
+      routineClaim = undefined;
+
+      [mainClaim] = await claimWorkRows(1, mainExecutor);
+      expect(mainClaim).toMatchObject({ workKind: "operation", companionId: fixture.companionId });
+      const [started] = await sql<Array<{
+        coldStartDeadlineAt: Date | null;
+        remainingSeconds: number;
+        status: string;
+      }>>`
+        select source_turn.cold_start_deadline_at as "coldStartDeadlineAt",
+          extract(epoch from source_turn.cold_start_deadline_at - now())::integer
+            as "remainingSeconds",
+          source_turn.status::text as status
+        from companion_operations operation
+        join companion_turns source_turn on source_turn.id = operation.source_turn_id
+        where operation.id = ${mainClaim!.workId}::uuid
+      `;
+      expect(started?.coldStartDeadlineAt).not.toBeNull();
+      expect(started?.remainingSeconds).toBeGreaterThanOrEqual(175);
+      expect(started?.status).toBe("queued");
+      expect(await authorizeClaim(mainClaim!, mainExecutor)).toEqual({
+        authorized: true,
+        denialCode: null,
+      });
+    } finally {
+      if (mainClaim) await release(mainClaim, mainExecutor);
+      if (routineClaim) await release(routineClaim, routineExecutor);
+      await sql`delete from companion_routines where companion_id = ${fixture.companionId}::uuid`;
       await removeCompanion(fixture.companionId);
     }
   });

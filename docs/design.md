@@ -188,6 +188,12 @@ sooner, remains an ordinary queued turn, and never supplies an implicit answer. 
 no cold-start deadline until it reaches the head; runtime then decides whether restaging is needed
 and starts the three-minute cold-start window from that decision.
 
+That decision is gated by shared lifecycle availability. While an isolated routine owns its lane,
+material preparation may be revisited but must not stamp a main turn's cold-start deadline or create
+its Start derivative. The three-minute budget begins only after the routine lane is quiescent and
+main Start can enter scheduling; an acknowledged prompt is thereafter governed only by attempt
+deadlines.
+
 The stateless loopback `companion-control` MCP is staged on every ordinary main attempt. Direct
 configuration mutations persist desired state and report `apply_pending`; sensitive mutations
 persist an asynchronous control request and return immediately. Approval applies once in the API

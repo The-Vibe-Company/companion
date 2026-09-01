@@ -624,6 +624,51 @@ func threadDeltaKeepsFullLiveHistoryAndResetsExceptionalHistory() throws {
 }
 
 @Test
+func threadDeltaClearsCachedInterruptedTailAfterServerSettlement() throws {
+    let interrupted: CompanionThread = try decodeFixture(#"""
+    {
+      "companion_id":"22222222-2222-4222-8222-222222222222","viewer_id":"user-1",
+      "read_only":false,"can_send":true,"transcription_available":true,
+      "entries":[],"active_turn":null,"queued_count":0,
+      "interrupted_turn":{
+        "id":"33333333-3333-4333-8333-333333333333",
+        "companion_id":"22222222-2222-4222-8222-222222222222",
+        "client_message_id":"44444444-4444-4444-8444-444444444444",
+        "status":"interrupted","queue_sequence":2,"latest_attempt":null,"replying":false,
+        "error":{"code":"cold_start_deadline_exceeded","message":"Did not start.","action":"retry"},
+        "state_changed_at":"2026-08-29T00:00:00Z","settled_at":"2026-08-29T00:00:00Z",
+        "created_at":"2026-08-29T00:00:00Z","updated_at":"2026-08-29T00:00:00Z"
+      }
+    }
+    """#)
+    #expect(interrupted.visibleInterruptedTurn != nil)
+
+    let delta = CompanionThreadDelta(
+        cursor: "settled-cursor",
+        resetEntries: false,
+        changedEntries: [],
+        deletedEventIDs: [],
+        thread: CompanionThreadMetadata(
+            companionID: interrupted.companionID,
+            viewerID: interrupted.viewerID,
+            readOnly: interrupted.readOnly,
+            canSend: interrupted.canSend,
+            transcriptionAvailable: interrupted.transcriptionAvailable,
+            activeTurn: nil,
+            queuedCount: 0,
+            interruptedTurn: nil
+        )
+    )
+    let merged = delta.applying(to: CompanionThreadSnapshot(
+        cursor: "cached-cursor",
+        thread: interrupted
+    ))
+
+    #expect(merged.thread.interruptedTurn == nil)
+    #expect(merged.thread.visibleInterruptedTurn == nil)
+}
+
+@Test
 func threadWindowsAndDeltasPreserveRoutineNotifyGroupingEvidence() throws {
     let routineID = "33333333-3333-4333-8333-333333333333"
     let firstRunID = "44444444-4444-4444-8444-444444444444"

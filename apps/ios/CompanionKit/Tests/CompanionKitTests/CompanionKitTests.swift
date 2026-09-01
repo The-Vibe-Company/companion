@@ -1818,7 +1818,7 @@ func submitsEveryCompanionDecisionActionThroughTheSharedRoute() async throws {
 }
 
 @Test
-func decodesInterruptedTurnAndItsSafeRecoveryAction() throws {
+func decodesOnlyUnresolvedLegacyInterruptionAsVisible() throws {
     let data = Data(#"""
     {
       "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
@@ -1849,6 +1849,41 @@ func decodesInterruptedTurnAndItsSafeRecoveryAction() throws {
     #expect(thread.interruptedTurn?.status == .interrupted)
     #expect(thread.interruptedTurn?.error?.action == "retry")
     #expect(thread.interruptedTurn?.latestAttempt == nil)
+    #expect(thread.visibleInterruptedTurn?.id == thread.interruptedTurn?.id)
+}
+
+@Test
+func hidesAutoAbandonedInterruptionFromConversationTail() throws {
+    let data = Data(#"""
+    {
+      "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
+      "viewer_id":"owner-1",
+      "read_only":false,
+      "can_send":true,
+      "entries":[],
+      "queued_count":0,
+      "interrupted_turn":{
+        "id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
+        "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "status":"interrupted",
+        "queue_sequence":20,
+        "latest_attempt":null,
+        "replying":false,
+        "error":{"code":"cold_start_deadline_exceeded","message":"The Companion did not start before its deadline.","action":"none"},
+        "state_changed_at":"2026-08-26T05:59:33.505Z",
+        "settled_at":"2026-08-26T05:59:33.505Z",
+        "created_at":"2026-08-26T05:55:12.466Z",
+        "updated_at":"2026-08-26T05:59:33.505Z",
+        "resolution":"auto_abandoned"
+      }
+    }
+    """#.utf8)
+
+    let thread = try JSONDecoder().decode(CompanionThread.self, from: data)
+    #expect(thread.interruptedTurn?.resolution == "auto_abandoned")
+    #expect(thread.visibleInterruptedTurn == nil)
+    #expect(CompanionScrollTailSnapshot(thread: thread).interruptedTurn == nil)
 }
 
 @Test

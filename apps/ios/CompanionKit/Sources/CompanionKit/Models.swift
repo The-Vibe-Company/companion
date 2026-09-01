@@ -2734,6 +2734,15 @@ public struct CompanionThread: Codable, Equatable, Sendable {
     public let queuedCount: Int
     public let interruptedTurn: CompanionTurn?
 
+    /// Only unresolved legacy interruptions can still represent an actionable tail state.
+    /// Protocol-6 interruptions are auto-abandoned and remain durable server history without
+    /// occupying the conversation tail, including when an older cached projection contains one.
+    public var visibleInterruptedTurn: CompanionTurn? {
+        guard interruptedTurn?.status == .interrupted,
+              interruptedTurn?.resolution == nil else { return nil }
+        return interruptedTurn
+    }
+
     enum CodingKeys: String, CodingKey {
         case companionID = "companion_id"
         case viewerID = "viewer_id"
