@@ -7,6 +7,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -118,6 +119,8 @@ test("the native macOS release archives then uploads with an ephemeral API key",
   assert.ok(calls[1].includes(resolve(ROOT, "apps/macos/Config/ExportOptions.plist")));
   assert.equal(readFileSync(join(outputDir, "archive.log"), "utf8"), "stub archive success\n");
   assert.equal(readFileSync(join(outputDir, "export.log"), "utf8"), "stub -exportArchive success\n");
+  assert.equal(statSync(join(outputDir, "archive.log")).mode & 0o044, 0o044);
+  assert.equal(statSync(join(outputDir, "export.log")).mode & 0o044, 0o044);
   assert.deepEqual(keyDirectories, []);
   assert.doesNotMatch(`${result.stdout}${result.stderr}${calls.flat().join(" ")}`, new RegExp(PRIVATE_KEY_FIXTURE));
 });

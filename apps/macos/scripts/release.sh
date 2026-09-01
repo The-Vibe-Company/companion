@@ -44,8 +44,7 @@ if [[ -n "${ASC_KEY_PATH:-}" ]]; then
 elif [[ -n "${ASC_KEY_P8:-}" ]]; then
   KEY_TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/companion-asc-key.XXXXXX")"
   KEY_PATH="$KEY_TEMP_DIR/AuthKey_${ASC_KEY_ID}.p8"
-  umask 077
-  printf '%s\n' "$ASC_KEY_P8" > "$KEY_PATH"
+  (umask 077 && printf '%s\n' "$ASC_KEY_P8" > "$KEY_PATH")
 else
   echo "ASC_KEY_PATH or ASC_KEY_P8 is required" >&2
   exit 1
