@@ -774,6 +774,12 @@ export type CompanionDecisionStatus = z.infer<typeof companionDecisionStatusSche
 
 /** Upper bound stored on `companion_decision_deliveries.proposal` and enforced before projection. */
 export const COMPANION_CONFIG_PROPOSAL_MAX_BYTES = 16_384;
+/**
+ * Control requests wrap routine and trigger drafts whose prompt alone may contain 16,384
+ * characters. JSON escaping can expand one character to six bytes, so keep a separate bounded
+ * envelope large enough for the complete maximum-length draft.
+ */
+export const COMPANION_CONTROL_PROPOSAL_MAX_BYTES = 128 * 1_024;
 /** Each add/remove/attach/detach list is a bounded set of already-known resource ids. */
 export const COMPANION_CONFIG_PROPOSAL_MAX_IDS = 20;
 /** Human-readable confirm copy Pi puts next to the structured proposal. */
@@ -1154,10 +1160,10 @@ export const companionControlProposalSchema = z.object({
   summary: z.string().trim().min(1).max(COMPANION_CONFIG_PROPOSAL_SUMMARY_MAX_CHARACTERS),
   payload: companionControlJsonObjectSchema,
 }).strict().superRefine((proposal, context) => {
-  if (utf8ByteLength(JSON.stringify(proposal)) > COMPANION_CONFIG_PROPOSAL_MAX_BYTES) {
+  if (utf8ByteLength(JSON.stringify(proposal)) > COMPANION_CONTROL_PROPOSAL_MAX_BYTES) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "control proposal exceeds 16 KiB",
+      message: "control proposal exceeds 128 KiB",
     });
   }
 });

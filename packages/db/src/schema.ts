@@ -1242,7 +1242,8 @@ export const companionControlRequests = pgTable(
     ),
     payloadCheck: check(
       "companion_control_requests_payload_check",
-      sql`jsonb_typeof(${t.payload}) = 'object' and octet_length(${t.payload}::text) <= 16384`,
+      // A 16,384-character automation prompt plus JSON escaping and draft metadata remains bounded.
+      sql`jsonb_typeof(${t.payload}) = 'object' and octet_length(${t.payload}::text) <= 131072`,
     ),
     digestCheck: check(
       "companion_control_requests_digest_check",

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   COMPANION_HUB_TOKEN_SCOPES,
   COMPANION_CONFIG_PROPOSAL_MAX_IDS,
+  COMPANION_CONTROL_PROPOSAL_MAX_BYTES,
   COMPANION_LAST_MESSAGE_PREVIEW_MAX_CHARACTERS,
   COMPANION_PROVIDER_CATALOG,
   COMPANION_PROVIDER_SUPPLEMENTARY_MODELS,
@@ -11,6 +12,7 @@ import {
   COMPANION_TRIGGER_PROMPT_MAX_CHARACTERS,
   companionConfigProposalMessageSchema,
   companionConfigProposalSchema,
+  companionControlProposalSchema,
   companionDecisionSchema,
   companionRoutineProposalMessageSchema,
   companionRoutineProposalSchema,
@@ -59,6 +61,31 @@ import { restartCompanionRuntimeInputSchema } from "../src/companionRuntime";
 import { companionToolRunKind } from "../src/companionToolKinds";
 
 describe("Companion provider contracts", () => {
+  it("accepts a maximum-length automation prompt inside a bounded control envelope", () => {
+    const proposal = companionControlProposalSchema.parse({
+      kind: "control",
+      request_kind: "routine_change",
+      action: "create",
+      summary: "Create the routine",
+      payload: {
+        action: "create",
+        draft: {
+          name: "Maximum prompt",
+          prompt: "p".repeat(COMPANION_TRIGGER_PROMPT_MAX_CHARACTERS),
+          cron: "0 9 * * *",
+          timezone: "Europe/Paris",
+        },
+      },
+    });
+
+    expect(Buffer.byteLength(JSON.stringify(proposal), "utf8"))
+      .toBeLessThanOrEqual(COMPANION_CONTROL_PROPOSAL_MAX_BYTES);
+    expect(() => companionControlProposalSchema.parse({
+      ...proposal,
+      payload: { arbitrary: "\0".repeat(22_000) },
+    })).toThrow("control proposal exceeds 128 KiB");
+  });
+
   it("requires ids for existing automation and complete drafts for creation", () => {
     const routineId = "11111111-1111-4111-8111-111111111111";
     const triggerId = "22222222-2222-4222-8222-222222222222";

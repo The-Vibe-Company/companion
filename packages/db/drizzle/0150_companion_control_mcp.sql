@@ -179,6 +179,41 @@ BEGIN
 END $companion_control_full_material_read$;
 --> statement-breakpoint
 
+-- Native settings now stage the same Skills and control material as every first-party client.
+-- Remove the three legacy observe-time branches that required a NULL Skills revision for native
+-- activation; the Runtime can then prove the exact staged revision uniformly on every surface.
+DO $companion_control_full_native_activation$
+DECLARE v_definition text; v_rewritten text;
+  v_old_settings text := $needle$CASE WHEN v_client_surface = 'native_mobile'
+            THEN p_applied_skills_revision IS NOT NULL
+            ELSE p_applied_skills_revision IS DISTINCT FROM v_settings_claim_skills_revision
+          END$needle$;
+  v_new_settings text := $needle$p_applied_skills_revision IS DISTINCT FROM v_settings_claim_skills_revision$needle$;
+  v_old_operation text := $needle$CASE WHEN v_client_surface = 'native_mobile'
+            THEN p_applied_skills_revision IS NOT NULL
+            ELSE p_applied_skills_revision IS DISTINCT FROM v_target_skills_revision
+          END$needle$;
+  v_new_operation text := $needle$p_applied_skills_revision IS DISTINCT FROM v_target_skills_revision$needle$;
+  v_old_checkpoint text := $needle$CASE WHEN v_client_surface = 'native_mobile'
+          THEN p_applied_skills_revision IS NULL
+          ELSE p_applied_skills_revision = v_target_skills_revision
+        END$needle$;
+  v_new_checkpoint text := $needle$p_applied_skills_revision = v_target_skills_revision$needle$;
+BEGIN
+  v_definition:=pg_catalog.pg_get_functiondef(pg_catalog.to_regprocedure(
+    'public.companion_runtime_observe_instance(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,bigint,bigint,text,public.companion_box_observed_state,public.companion_pi_observed_state,text,integer,bigint,integer,timestamp with time zone)'
+  ));
+  IF strpos(v_definition,v_old_settings)=0 OR strpos(v_definition,v_old_operation)=0
+    OR strpos(v_definition,v_old_checkpoint)=0 THEN
+    RAISE EXCEPTION 'native settings activation reduction cannot be removed' USING ERRCODE='55000';
+  END IF;
+  v_rewritten:=replace(v_definition,v_old_settings,v_new_settings);
+  v_rewritten:=replace(v_rewritten,v_old_operation,v_new_operation);
+  v_rewritten:=replace(v_rewritten,v_old_checkpoint,v_new_checkpoint);
+  EXECUTE v_rewritten;
+END $companion_control_full_native_activation$;
+--> statement-breakpoint
+
 CREATE TABLE public.companion_peer_grants (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
@@ -243,7 +278,7 @@ CREATE TABLE public.companion_control_requests (
   CONSTRAINT companion_control_requests_summary_check
     CHECK (char_length(btrim(summary)) BETWEEN 1 AND 300 AND summary !~ E'[\n\r]'),
   CONSTRAINT companion_control_requests_payload_check
-    CHECK (jsonb_typeof(payload) = 'object' AND octet_length(payload::text) <= 16384),
+    CHECK (jsonb_typeof(payload) = 'object' AND octet_length(payload::text) <= 131072),
   CONSTRAINT companion_control_requests_digest_check CHECK (request_digest ~ '^[0-9a-f]{64}$'),
   CONSTRAINT companion_control_requests_access_check CHECK (required_access IN ('owner', 'editor')),
   CONSTRAINT companion_control_requests_result_check CHECK (

@@ -2,7 +2,15 @@
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -2107,7 +2115,33 @@ describe("isolated routine Pi sessions", () => {
       expect(commands.at(-1)).toContain('export INDEX_PATH="$routine_root/qmd/index.sqlite"');
       expect(commands.at(-1)).toContain('export PATH="$routine_root/bin:');
       expect(commands.at(-1)).toContain("unset COMPANION_CONTROL_TOKEN");
-      expect(commands[0]).toContain('if [ -x "$routine_root/tools/bin/qmd" ]; then');
+      const prepareCommand = commands[0];
+      if (!prepareCommand) throw new Error("routine preparation command was not captured");
+      expect(prepareCommand).toContain('if [ -x "$routine_root/tools/bin/qmd" ]; then');
+      expect(prepareCommand).toContain('if [ -L "$routine_root/pi/mcp.json" ]; then');
+
+      const symlinkHome = mkdtempSync(join(tmpdir(), "companion-routine-mcp-symlink-"));
+      const externalMcp = join(symlinkHome, "external-mcp.json");
+      const externalBytes = JSON.stringify({ mcpServers: {
+        [COMPANION_CONTROL_MCP_SERVER_NAME]: { url: "http://127.0.0.1:1/control" },
+      } });
+      try {
+        mkdirSync(join(symlinkHome, ".companion", "pi", "extensions"), { recursive: true });
+        mkdirSync(join(symlinkHome, ".companion", "runtime"), { recursive: true });
+        writeFileSync(externalMcp, externalBytes);
+        symlinkSync(externalMcp, join(symlinkHome, ".companion", "pi", "mcp.json"));
+
+        const rejected = spawnSync("bash", ["-c", prepareCommand], {
+          encoding: "utf8",
+          env: { ...process.env, HOME: symlinkHome, PATH: `${hostToolsBin}:${process.env.PATH ?? ""}` },
+        });
+
+        expect(rejected.status).not.toBe(0);
+        expect(rejected.stderr).toContain("routine-pi-session mcp config is a symlink");
+        expect(readFileSync(externalMcp, "utf8")).toBe(externalBytes);
+      } finally {
+        rmSync(symlinkHome, { recursive: true, force: true });
+      }
 
       const routineRoot = join(boxHome, paths.root);
       const qmd = spawnSync(join(routineRoot, "bin", "qmd"), ["collection", "list"], {
