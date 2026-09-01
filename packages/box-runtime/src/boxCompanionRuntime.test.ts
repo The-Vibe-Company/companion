@@ -2139,6 +2139,7 @@ describe("isolated routine Pi sessions", () => {
         expect(rejected.status).not.toBe(0);
         expect(rejected.stderr).toContain("routine-pi-session mcp config is a symlink");
         expect(readFileSync(externalMcp, "utf8")).toBe(externalBytes);
+        expect(existsSync(join(symlinkHome, paths.root))).toBe(false);
       } finally {
         rmSync(symlinkHome, { recursive: true, force: true });
       }

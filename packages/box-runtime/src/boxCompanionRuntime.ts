@@ -1394,7 +1394,7 @@ trap cleanup_failed_prepare ERR
 mkdir -p "$routine_root/bin" "$routine_root/state" "$routine_root/events" "$routine_root/sessions" "$routine_root/logs" "$routine_root/memory/daily" "$routine_root/memory/recovery" "$routine_root/qmd/config" "$routine_root/tmp" "$routine_root/outbox" "$routine_root/pi" "$routine_root/pi/extensions" "$routine_root/tools"${capabilityCopies}
 if [ -L "$routine_root/pi/mcp.json" ]; then
   echo 'routine-pi-session mcp config is a symlink' >&2
-  exit 1
+  false
 fi
 # qmd discovers project-local configuration before its environment-selected defaults unless an
 # explicit named index is present. Put a private wrapper first on PATH so every pi-memory qmd child
