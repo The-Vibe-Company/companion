@@ -28,6 +28,7 @@ packages/companion-runtime/src/operations.ts
   s_fb329f0cad8ae9::t_97c0146c3d451c 80
 apps/ios/README.md
   s_fb329f0cad8ae9::t_b58d420940dc46 89-93,96,269-270
+  s_fb329f0cad8ae9::t_2874334e89b6a7 94-95
 .agents/skills/debug-companions-prod/scripts/test_db_query.py
   s_fb329f0cad8ae9::t_389f3417020752 134-135,144
   s_fb329f0cad8ae9::t_b58d420940dc46 132-133,136-143,145
@@ -64,6 +65,8 @@ docs/companions-runtime.md
   s_fb329f0cad8ae9::t_b58d420940dc46 110-111,126,128-129,143,171,207-208,212-213,253-257,316-321,560-579,1411-1414
   s_fb329f0cad8ae9::t_a7841d86dc3a50 209-211,1441-1442
   s_fb329f0cad8ae9::t_bdb20ce3d8c9a0 127,135,142,559,581-583,1410
+  s_fb329f0cad8ae9::t_19fa3be125bb13 773-774,785-787
+  s_fb329f0cad8ae9::t_14b473e21576db 232
 packages/companion-runtime/src/types.test.ts
   s_fb329f0cad8ae9::t_b58d420940dc46 204-271
 packages/companion-skill/skill/scripts/companion-agent-client.mjs
@@ -100,6 +103,8 @@ apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionKitTests.swift
   s_f0bb92c41dd97a::t_39435e94a6e0c3 1901-1902
   s_fb329f0cad8ae9::t_b58d420940dc46 1856,1889-1890,1898-1899,1903-1920
   s_fb329f0cad8ae9::t_21c1b57e64487e 1871-1883,1885,1900
+  s_fb329f0cad8ae9::t_1c220ebc7d2838 1855
+  s_fb329f0cad8ae9::t_647af4084e5b8c 1857-1870,1884,1886-1888,1891-1897,1921-1922,1941,1946-1947,1954
 packages/companion-runtime/src/store.test.ts
   s_fb329f0cad8ae9::t_05f9a0c9cc1f57 114
   s_fb329f0cad8ae9::t_b58d420940dc46 72-94,106-113
@@ -184,6 +189,7 @@ apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
   s_fb329f0cad8ae9::t_fc51568b4ca9b9 4837-4838
   s_fb329f0cad8ae9::t_d65bf0cbcf8e74 4871
   s_fb329f0cad8ae9::t_880abb3ddc079f 9731,10006
+  s_fb329f0cad8ae9::t_14b473e21576db 622-624
 .claude/skills/debug-companions-prod/references/triage-playbook.md
   s_fb329f0cad8ae9::t_b58d420940dc46 10,12,59,69-70,82
   s_fb329f0cad8ae9::t_76b42bc7e89630 11
@@ -239,6 +245,7 @@ apps/web/src/components/companions/CompanionRoutineHistory.client.test.ts
   s_fb329f0cad8ae9::t_ee271b11a41f74 296-311
 packages/contracts/src/companions.ts
   s_fb329f0cad8ae9::t_b58d420940dc46 9,415-416,428,464-471
+  s_fb329f0cad8ae9::t_19fa3be125bb13 2033
 packages/companion-runtime/src/scheduler.ts
   s_fb329f0cad8ae9::t_9a5b32110a2508 13,80
   s_fb329f0cad8ae9::t_467b987380a07c 81,190,270-278
@@ -291,6 +298,7 @@ packages/companion-runtime/src/types.ts
 DESIGN.md
   s_fb329f0cad8ae9::t_b58d420940dc46 286-293,457,516-518
   s_fb329f0cad8ae9::t_1f953f351ca5d3 519-520
+  s_fb329f0cad8ae9::t_19fa3be125bb13 455-456,458-463
 .claude/skills/debug-companions-prod/scripts/railway_restart.py
   s_fb329f0cad8ae9::t_b58d420940dc46 43
   s_fb329f0cad8ae9::t_76b42bc7e89630 42
@@ -315,6 +323,7 @@ docs/runbooks/companions-runtime.md
   s_fb329f0cad8ae9::t_1f953f351ca5d3 24,299
   s_fb329f0cad8ae9::t_76b42bc7e89630 65-68,76,86
   s_fb329f0cad8ae9::t_a7841d86dc3a50 73-74,82-83
+  s_fb329f0cad8ae9::t_14b473e21576db 62,64
 .agents/skills/debug-companions-prod/scripts/db_query.py
   s_fb329f0cad8ae9::t_389f3417020752 119-123,126-129,203-206,214-217,220-222
   s_fb329f0cad8ae9::t_b58d420940dc46 90,107-114,118,124-125,130-140,202,207-213,218-219,223-225
@@ -328,12 +337,14 @@ docs/design.md
   s_fb329f0cad8ae9::t_c9f3c8bc1e8386 569-570
   s_fb329f0cad8ae9::t_b58d420940dc46 163-171,193,222-223,228-230,269-273,667-669
   s_fb329f0cad8ae9::t_a7841d86dc3a50 194-196
+  s_fb329f0cad8ae9::t_14b473e21576db 221
 .agents/skills/debug-companions-prod/scripts/railway_restart.py
   s_fb329f0cad8ae9::t_76b42bc7e89630 42
   s_fb329f0cad8ae9::t_b58d420940dc46 43
 packages/db/runtime-role-grants.sql
   s_fb329f0cad8ae9::t_9091ad122abbe3 696-697,700-701,705-707
   s_fb329f0cad8ae9::t_b58d420940dc46 691-695,698-699,702-704,708-711
+  s_fb329f0cad8ae9::t_14b473e21576db 690
 ---
 {
   "schema_version": "authorship/3.0.0",
