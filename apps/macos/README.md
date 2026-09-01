@@ -41,10 +41,16 @@ and `xcodebuild` commands. Changes under `apps/macos/` select the Mac path in th
 Apple Quality job, which tests `CompanionKit` and the `CompanionMac` scheme without booting a
 simulator or running UI tests.
 
-## Distribution follow-up
+## TestFlight distribution
 
-This target is development- and CI-oriented. Public distribution will require a registered macOS
-bundle identifier, Developer ID Application certificate, hardened runtime, App Sandbox/network
-entitlements review, notarization credentials, signed archive/export automation, and Gatekeeper
-validation. Mac App Store/TestFlight distribution, APNs, widgets, and menu bar extras are outside
-this bootstrap.
+Release uses the existing `dev.companion.mobile` identity and App Store Connect record `6804447784`
+so Companion is one multi-platform iOS + macOS app. It keeps the production API pinned to
+`https://api.thecompanion.sh`, enables App Sandbox and hardened runtime, and declares no non-exempt
+encryption. Debug keeps the registered development identity and local API override.
+
+The `Release: macOS TestFlight` workflow archives and uploads only the exact `main` commit already
+approved by CI, and only when that approved push changes `apps/macos/**`. It uses the protected
+`macos-testflight` environment and a dedicated Apple Distribution certificate plus Mac App Store
+provisioning profile. The workflow uploads to App Store Connect; it never submits an App Store
+version for review. See `docs/DEPLOYER-MACOS-TESTFLIGHT.md` for credential setup, reruns, and manual
+verification.

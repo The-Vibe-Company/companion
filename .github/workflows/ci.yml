@@ -82,6 +82,15 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Upload the approved main push range for macOS
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: macos-testflight-scope
+          path: ${{ runner.temp }}/ios-testflight-scope
+          if-no-files-found: error
+          retention-days: 1
+
   hygiene:
     name: Hygiene
     runs-on: ubuntu-latest
@@ -94,7 +103,7 @@ jobs:
           fetch-depth: 0
 
       - name: Test CI scope classifier and local verifier
-        run: node --test scripts/agent-browser-box-center.test.mjs scripts/companions-env-defaults.test.mjs scripts/railway-config.test.mjs scripts/ci-scope.test.mjs scripts/ci-playwright-policy.test.mjs scripts/ci-gate.test.mjs scripts/ios-devx.test.mjs scripts/macos-devx.test.mjs scripts/ios-release.test.mjs scripts/ios-e2e-fixture.test.mjs scripts/ios-local-live.test.mjs scripts/lint-anti-slop.test.mjs scripts/verify-change.test.mjs
+        run: node --test scripts/agent-browser-box-center.test.mjs scripts/companions-env-defaults.test.mjs scripts/railway-config.test.mjs scripts/ci-scope.test.mjs scripts/ci-playwright-policy.test.mjs scripts/ci-gate.test.mjs scripts/ios-devx.test.mjs scripts/macos-devx.test.mjs scripts/ios-release.test.mjs scripts/macos-release.test.mjs scripts/ios-e2e-fixture.test.mjs scripts/ios-local-live.test.mjs scripts/lint-anti-slop.test.mjs scripts/verify-change.test.mjs
 
       - name: Validate GitHub Actions workflows
         run: >-

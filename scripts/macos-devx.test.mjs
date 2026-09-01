@@ -70,6 +70,8 @@ test("the macOS bootstrap keeps credentials, mutations, and native inputs lifecy
   const packageJSON = read("package.json");
   const project = read("apps/macos/CompanionMac.xcodeproj/project.pbxproj");
   const entitlements = read("apps/macos/CompanionMac/CompanionMac.entitlements");
+  const infoPlist = read("apps/macos/CompanionMac/Info.plist");
+  const appIcon = read("apps/macos/CompanionMac/Assets.xcassets/AppIcon.appiconset/Contents.json");
   const models = read("apps/ios/CompanionKit/Sources/CompanionKit/Models.swift");
   const rootView = read("apps/macos/CompanionMac/MacRootView.swift");
   const loginView = read("apps/macos/CompanionMac/MacLoginView.swift");
@@ -85,8 +87,17 @@ test("the macOS bootstrap keeps credentials, mutations, and native inputs lifecy
   assert.ok(deleteFunction, "MacWorkspaceView must keep its delete action");
 
   assert.match(packageJSON, /test:anti-slop[^\n]+scripts\/macos-devx\.test\.mjs/);
-  assert.doesNotMatch(project, /DEVELOPMENT_TEAM = K28B69CWQ7/);
-  assert.doesNotMatch(project, /ASSETCATALOG_COMPILER_(APPICON|GLOBAL_ACCENT)/);
+  assert.match(project, /DEVELOPMENT_TEAM = K28B69CWQ7/);
+  assert.match(project, /ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon/);
+  assert.match(project, /ENABLE_APP_SANDBOX = YES/);
+  assert.match(project, /PRODUCT_BUNDLE_IDENTIFIER = dev\.companion\.mobile;/);
+  assert.match(project, /COMPANION_URL_SCHEME = dev\.companion\.mobile;/);
+  assert.match(project, /COMPANION_URL_SCHEME = dev\.companion\.mobile\.dev;/);
+  assert.match(project, /MARKETING_VERSION = 2\.0\.0;/);
+  assert.match(infoPlist, /<string>Companion \(623507\)<\/string>/);
+  assert.match(infoPlist, /<key>ITSAppUsesNonExemptEncryption<\/key>\s*<false\/>/);
+  assert.match(infoPlist, /public\.app-category\.productivity/);
+  assert.match(appIcon, /AppIcon-1024\.png/);
   assert.match(entitlements, /com\.apple\.security\.files\.user-selected\.read-only/);
   assert.match(models, /enum CompanionDesktopTransport[\s\S]*?case unknown[\s\S]*?Self\(rawValue: value\) \?\? \.unknown/);
   assert.match(rootView, /case \.signedOut:[\s\S]*?bootstrapError != nil[\s\S]*?retryRestore/);

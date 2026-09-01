@@ -46,7 +46,7 @@
     "lint:anti-slop": "node scripts/lint-anti-slop.mjs",
     "typecheck": "turbo run typecheck",
     "test": "pnpm test:anti-slop && TZ=UTC turbo run test",
-    "test:anti-slop": "node --test scripts/lint-anti-slop.test.mjs scripts/lint-anti-slop.integration.test.mjs scripts/macos-devx.test.mjs",
+    "test:anti-slop": "node --test scripts/lint-anti-slop.test.mjs scripts/lint-anti-slop.integration.test.mjs scripts/macos-devx.test.mjs scripts/macos-release.test.mjs",
     "test:coverage": "turbo run coverage",
     "test:integration": "pnpm --filter @companion/api test:integration",
     "test:e2e": "node scripts/ci-playwright-policy.mjs && playwright test",

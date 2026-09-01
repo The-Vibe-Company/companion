@@ -388,12 +388,15 @@
 		F63B431DA66059CAEAAF74F8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = CompanionMac/CompanionMac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				COMPANION_API_URL = "https://api.thecompanion.sh";
-				COMPANION_URL_SCHEME = "companion-mac";
+				COMPANION_URL_SCHEME = dev.companion.mobile;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = K28B69CWQ7;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CompanionMac/Info.plist;
@@ -402,8 +405,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.companion.mac;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.companion.mobile;
 				PRODUCT_MODULE_NAME = CompanionMac;
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -414,12 +417,15 @@
 		F67FBC65B43C0EE8CE43B265 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = CompanionMac/CompanionMac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				COMPANION_API_URL = "http://127.0.0.1:3001";
-				COMPANION_URL_SCHEME = "companion-mac-dev";
+				COMPANION_URL_SCHEME = dev.companion.mobile.dev;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = K28B69CWQ7;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CompanionMac/Info.plist;
@@ -428,8 +434,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.companion.mac.dev;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.companion.mobile.dev;
 				PRODUCT_MODULE_NAME = CompanionMac;
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = complete;
