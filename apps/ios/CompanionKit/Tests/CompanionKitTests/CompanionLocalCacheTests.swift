@@ -268,16 +268,16 @@ private final class PagedThreadSyncURLProtocol: URLProtocol, @unchecked Sendable
     private static let lock = NSLock()
     private nonisolated(unsafe) static var requestedURLs: [URL] = []
 
-    static func reset() {
+    static func reset(host: String) {
         lock.lock()
-        requestedURLs = []
+        requestedURLs.removeAll { $0.host == host }
         lock.unlock()
     }
 
-    static var capturedURLs: [URL] {
+    static func capturedURLs(host: String) -> [URL] {
         lock.lock()
         defer { lock.unlock() }
-        return requestedURLs
+        return requestedURLs.filter { $0.host == host }
     }
 
     override class func canInit(with request: URLRequest) -> Bool { true }
@@ -1057,11 +1057,12 @@ func rejectedThreadCursorRetriesOnceWithoutCursor() async throws {
 
 @Test
 func compatibilityThreadCallDrainsEveryOlderWindow() async throws {
-    PagedThreadSyncURLProtocol.reset()
+    let host = "compatibility-thread.example.test"
+    PagedThreadSyncURLProtocol.reset(host: host)
     let configuration = URLSessionConfiguration.ephemeral
     configuration.protocolClasses = [PagedThreadSyncURLProtocol.self]
     let client = APIClient(
-        baseURL: URL(string: "https://example.test")!,
+        baseURL: URL(string: "https://\(host)")!,
         session: URLSession(configuration: configuration),
         initialAuthority: testSession()
     )
@@ -1071,7 +1072,7 @@ func compatibilityThreadCallDrainsEveryOlderWindow() async throws {
     )
 
     #expect(thread.entries.map(\.ordinal) == [0, 1, 2])
-    let urls = PagedThreadSyncURLProtocol.capturedURLs
+    let urls = PagedThreadSyncURLProtocol.capturedURLs(host: host)
     #expect(urls.count == 2)
     #expect(URLComponents(url: urls[1], resolvingAgainstBaseURL: false)?
         .queryItems?.contains(URLQueryItem(name: "before", value: "older-one")) == true)
@@ -1079,18 +1080,19 @@ func compatibilityThreadCallDrainsEveryOlderWindow() async throws {
 
 @Test @MainActor
 func pagedThreadBootstrapDrainsDeltasAndLoadsOlderHistory() async throws {
-    PagedThreadSyncURLProtocol.reset()
+    let host = "paged-bootstrap.example.test"
+    PagedThreadSyncURLProtocol.reset(host: host)
     let session = testSession()
     let companionID = "22222222-2222-4222-8222-222222222222"
     let configuration = URLSessionConfiguration.ephemeral
     configuration.protocolClasses = [PagedThreadSyncURLProtocol.self]
     let client = APIClient(
-        baseURL: URL(string: "https://example.test")!,
+        baseURL: URL(string: "https://\(host)")!,
         session: URLSession(configuration: configuration),
         initialAuthority: session
     )
     let store = SessionStore(
-        apiURL: URL(string: "https://example.test")!,
+        apiURL: URL(string: "https://\(host)")!,
         storage: FixedSessionStorage(data: try JSONEncoder().encode(session)),
         apiClient: client
     )
@@ -1109,7 +1111,7 @@ func pagedThreadBootstrapDrainsDeltasAndLoadsOlderHistory() async throws {
     #expect(history.value.olderCursor == nil)
     #expect(history.value.thread.entries.map(\.ordinal) == [0, 1, 2, 3, 4])
 
-    let urls = PagedThreadSyncURLProtocol.capturedURLs
+    let urls = PagedThreadSyncURLProtocol.capturedURLs(host: host)
     #expect(urls.count == 4)
     #expect(urls[0].path.hasSuffix("/thread-window"))
     #expect(URLComponents(url: urls[0], resolvingAgainstBaseURL: false)?

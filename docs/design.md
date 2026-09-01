@@ -182,12 +182,18 @@ authorization as soon as its source is skipped; after that main lease is free or
 claim-time reconciliation terminalizes the orphan before choosing later work. Ordinary main turns
 remain independent of routine attempts.
 
-A blocking `ask_user` or `propose_*` decision moves the turn to `needs_input` and clears the
+A blocking `ask_user` decision moves the turn to `needs_input` and clears the
 inactivity deadline. An answer resumes Pi; after ten minutes, absence returns a cancelled response
 so Pi chooses a safe fallback without inferring approval. A newer member message cancels the wait
 sooner, remains an ordinary queued turn, and never supplies an implicit answer. That queued turn has
 no cold-start deadline until it reaches the head; runtime then decides whether restaging is needed
 and starts the three-minute cold-start window from that decision.
+
+The stateless loopback `companion-control` MCP is staged on every ordinary main attempt. Direct
+configuration mutations persist desired state and report `apply_pending`; sensitive mutations
+persist an asynchronous control request and return immediately. Approval applies once in the API
+and may enqueue an ordinary FIFO continuation. Routine and trigger turns never receive this MCP.
+Directed peer grants allow bounded text delegations without introducing a Group or Room aggregate.
 
 ## Dedicated runtime execution
 

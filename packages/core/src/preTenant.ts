@@ -123,6 +123,25 @@ export async function resolvePreTenantMcpBrokerToken(
   return resultRows<PreTenantMcpBrokerTokenRow>(result)[0] ?? null;
 }
 
+export interface PreTenantCompanionControlTokenRow {
+  org_id: string;
+  companion_id: string;
+  actor_id: string;
+  turn_id: string;
+  attempt_id: string;
+}
+
+/** Resolve the loopback-only Companion control capability against the active acknowledged attempt. */
+export async function resolvePreTenantCompanionControlToken(
+  database: Db,
+  tokenHash: string,
+): Promise<PreTenantCompanionControlTokenRow | null> {
+  const result = await database.execute(sql`
+    select * from companion_resolve_control_token(${tokenHash})
+  `);
+  return resultRows<PreTenantCompanionControlTokenRow>(result)[0] ?? null;
+}
+
 export interface PreTenantRefreshableApiTokenRow {
   token_id: string;
   org_id: string;

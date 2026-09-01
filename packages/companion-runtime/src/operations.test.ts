@@ -1188,7 +1188,7 @@ describe("runtime lifecycle operations", () => {
     expect(store.settlements).toEqual([{ terminalStatus: "succeeded" }]);
   });
 
-  it("activates native-mobile settings without publishing a Skills revision", async () => {
+  it("activates native-mobile settings with the same Skills revision as other first-party clients", async () => {
     const claim = operationClaim({
       clientSurface: "native_mobile",
       operationKind: "apply_settings",
@@ -1209,12 +1209,12 @@ describe("runtime lifecycle operations", () => {
     const ports = fakePorts(store);
     ports.resourceStager.stageExistingBox = async (input) => {
       expect(input.clientSurface).toBe("native_mobile");
-      expect(input.targetSkillsRevision).toBeNull();
+      expect(input.targetSkillsRevision).toBe(2);
       return {
         diskLayoutVersion: 14,
         appliedSettingsRevision: input.targetSettingsRevision,
-        appliedSkillsRevision: null,
-        materialExpiresAt: null,
+        appliedSkillsRevision: input.targetSkillsRevision,
+        materialExpiresAt: new Date("2026-08-16T18:00:00.000Z"),
       };
     };
     ports.pi.restartPiDaemon = async () => ({
@@ -1227,16 +1227,16 @@ describe("runtime lifecycle operations", () => {
     expect(result.outcome).toBe("succeeded");
     expect(store.authorization.piInvocationId).toBe("new-native-pi");
     expect(store.authorization.appliedSettingsRevision).toBe(2n);
-    expect(store.authorization.appliedSkillsRevision).toBe(1);
+    expect(store.authorization.appliedSkillsRevision).toBe(2);
     expect(store.observations.at(-1)).toMatchObject({
       piState: "idle",
       piInvocationId: "new-native-pi",
       appliedSettingsRevision: 2n,
+      appliedSkillsRevision: 2,
     });
-    expect(store.observations.at(-1)).not.toHaveProperty("appliedSkillsRevision");
     expect(store.recordedMaterialSnapshots).toEqual([{
       clientSurface: "native_mobile",
-      materialExpiresAt: null,
+      materialExpiresAt: new Date("2026-08-16T18:00:00.000Z"),
       agentEndpoint: null,
     }]);
     expect(store.publishedMaterialSnapshots).toEqual(["new-native-pi"]);

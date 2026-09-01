@@ -97,6 +97,10 @@ export function createRuntimeMaterialPipeline(input: {
     RuntimeWorkMaterial,
     { token: string; expiresAt: Date }
   >();
+  const controlTokensByMaterial = new WeakMap<
+    RuntimeWorkMaterial,
+    { token: string; expiresAt: Date }
+  >();
   const oauthMaterialByMaterial = new WeakMap<RuntimeWorkMaterial, boolean>();
 
   const materialProvider: RuntimeMaterialProvider = {
@@ -118,6 +122,8 @@ export function createRuntimeMaterialPipeline(input: {
         // an unusable capability, but it is never staged or included in material expiry.
         const mcpBrokerToken = await store.mintMcpBrokerToken(fence, RUNTIME_LEASE_SECONDS);
         if (hasOauth && mcpBrokerToken) mcpBrokerTokensByMaterial.set(material, mcpBrokerToken);
+        const controlToken = await store.mintControlToken(fence, RUNTIME_LEASE_SECONDS);
+        if (controlToken) controlTokensByMaterial.set(material, controlToken);
       }
       if (input.registerAgentEndpoint && material.boxId && material.agentEndpoint) {
         try {
@@ -179,25 +185,25 @@ export function createRuntimeMaterialPipeline(input: {
         loadSkillArchive: input.loadSkillArchive,
         signal: stage.signal,
       });
-      const nativeMobile = stage.clientSurface === "native_mobile";
-      const hubCredential = nativeMobile ? undefined : hubTokensByMaterial.get(stage.material);
-      if (!nativeMobile && !hubCredential) {
+      const hubCredential = hubTokensByMaterial.get(stage.material);
+      if (!hubCredential) {
         throw new RuntimeMaterialError("runtime_material_invalid");
       }
       const hasOauth = oauthMaterialByMaterial.get(stage.material) ?? false;
       const mcpBrokerCredential = mcpBrokerTokensByMaterial.get(stage.material);
-      if (!nativeMobile && hasOauth && !mcpBrokerCredential) {
+      if (hasOauth && !mcpBrokerCredential) {
         throw new RuntimeMaterialError("runtime_material_invalid");
       }
-      const materialExpiresAt = nativeMobile
-        ? null
-        : earliestDate(hubCredential?.expiresAt ?? null, mcpBrokerCredential?.expiresAt ?? null);
-      const skills = nativeMobile
-        ? []
-        : [
-          input.bundledSkill,
-          ...resources.skills.filter((skill) => skill.slug !== COMPANION_SKILL_KEY),
-        ];
+      const controlCredential = controlTokensByMaterial.get(stage.material);
+      if (!controlCredential) throw new RuntimeMaterialError("runtime_material_invalid");
+      const materialExpiresAt = earliestDate(
+        earliestDate(hubCredential.expiresAt, mcpBrokerCredential?.expiresAt ?? null),
+        controlCredential.expiresAt,
+      );
+      const skills = [
+        input.bundledSkill,
+        ...resources.skills.filter((skill) => skill.slug !== COMPANION_SKILL_KEY),
+      ];
       // S3 reads and OAuth work above are asynchronous. Recheck the immutable ref tuples at the
       // final side-effect boundary so no local mutation can cross into Box unnoticed.
       assertRuntimeMaterialSnapshot({
@@ -214,22 +220,22 @@ export function createRuntimeMaterialPipeline(input: {
         replaceProviderAuth: true,
         instructions: stage.authorization.persona,
         modelId,
-        mcpCredentials: nativeMobile ? [] : resources.mcpCredentials,
-        mcpAccounts: nativeMobile ? [] : resources.mcpAccounts,
+        mcpCredentials: resources.mcpCredentials,
+        mcpAccounts: resources.mcpAccounts,
         skills,
         preserveSkills: stage.preserveInstalledSkills === true,
-        reuseSkills: !nativeMobile
-          && stage.preserveInstalledSkills !== true
+        reuseSkills: stage.preserveInstalledSkills !== true
           && stage.authorization.appliedSkillsRevision === stage.targetSkillsRevision,
         hubEnv: buildRuntimeHubEnvironment({
-          nativeMobile,
+          nativeMobile: false,
           apiUrl: input.apiUrl,
           orgId: stage.orgId,
           extraEnv: resources.extraEnv,
           hubCredential: hubCredential?.token,
           mcpBrokerCredential: mcpBrokerCredential?.token,
+          controlCredential: controlCredential.token,
         }),
-        configCatalog: nativeMobile ? null : stage.material.configCatalog,
+        configCatalog: stage.material.configCatalog,
         signal: stage.signal,
       });
       // A live staging holds the endpoint in plaintext for exactly this moment: hand it to the
@@ -245,11 +251,9 @@ export function createRuntimeMaterialPipeline(input: {
       return {
         diskLayoutVersion: observed.diskLayoutVersion,
         appliedSettingsRevision: stage.targetSettingsRevision,
-        appliedSkillsRevision: nativeMobile
-          ? null
-          : stage.preserveInstalledSkills
-            ? stage.authorization.appliedSkillsRevision
-            : stage.targetSkillsRevision,
+        appliedSkillsRevision: stage.preserveInstalledSkills
+          ? stage.authorization.appliedSkillsRevision
+          : stage.targetSkillsRevision,
         stagingMode: observed.stagingMode,
         skillBytesTransferred: observed.skillBytesTransferred,
         skillsDigest: observed.skillsDigest,
@@ -489,6 +493,7 @@ function buildRuntimeHubEnvironment(input: {
   extraEnv: RuntimeHubEnvironment;
   hubCredential?: string;
   mcpBrokerCredential?: string;
+  controlCredential?: string;
 }): RuntimeHubEnvironment {
   const environment: RuntimeHubEnvironment = {};
   if (input.nativeMobile) return environment;
@@ -497,6 +502,7 @@ function buildRuntimeHubEnvironment(input: {
   Object.assign(environment, input.extraEnv);
   if (input.hubCredential) environment.COMPANION_DELEGATION_TOKEN = input.hubCredential;
   if (input.mcpBrokerCredential) environment.COMPANION_MCP_BROKER_TOKEN = input.mcpBrokerCredential;
+  if (input.controlCredential) environment.COMPANION_CONTROL_TOKEN = input.controlCredential;
   return environment;
 }
 

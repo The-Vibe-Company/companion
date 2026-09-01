@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type {
   CompanionPluginAccount,
   CompanionPluginCatalogEntry,
+  CompanionPluginOAuthStartInput,
   SaveCompanionPluginInput,
 } from "@companion/contracts";
 import {
@@ -261,11 +262,13 @@ function CatalogConnectDialog({
   orgId,
   api,
   server,
+  controlLink,
   onClose,
 }: {
   orgId: string;
   api: CompanionPluginsApi;
   server: CompanionPluginCatalogEntry;
+  controlLink: { companionId: string; requestId: string } | null;
   onClose: () => void;
 }) {
   const [label, setLabel] = useState("");
@@ -286,10 +289,15 @@ function CatalogConnectDialog({
     setError(null);
     let redirecting = false;
     try {
-      const authorizationUrl = await api.startCompanionPluginOAuth(orgId, {
+      const oauthInput: CompanionPluginOAuthStartInput = {
         server_name: companionPluginOAuthServerNameSchema.parse(server.server_name),
         label: trimmed,
-      });
+      };
+      if (controlLink) {
+        oauthInput.companion_id = controlLink.companionId;
+        oauthInput.control_request_id = controlLink.requestId;
+      }
+      const authorizationUrl = await api.startCompanionPluginOAuth(orgId, oauthInput);
       window.location.assign(authorizationUrl);
       redirecting = true;
     } catch (cause) {
@@ -422,6 +430,7 @@ export function CompanionPlugins({
   const [accounts, setAccounts] = useState(initialAccounts);
   const [adding, setAdding] = useState(false);
   const [connecting, setConnecting] = useState<CompanionPluginCatalogEntry | null>(null);
+  const [controlLink, setControlLink] = useState<{ companionId: string; requestId: string } | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [oauthNotice, setOauthNotice] = useState<{
@@ -431,6 +440,16 @@ export function CompanionPlugins({
 
   useEffect(() => {
     const url = new URL(window.location.href);
+    const requestedProvider = url.searchParams.get("connect");
+    const companionId = url.searchParams.get("control_companion");
+    const requestId = url.searchParams.get("control_request");
+    const requestedServer = requestedProvider
+      ? COMPANION_PLUGIN_CATALOG.find((server) => server.provider === requestedProvider)
+      : undefined;
+    if (requestedServer && companionId && requestId) {
+      setConnecting(requestedServer);
+      setControlLink({ companionId, requestId });
+    }
     if (url.searchParams.get("oauth") === "connected") {
       setOauthNotice({
         tone: "success",
@@ -457,8 +476,21 @@ export function CompanionPlugins({
       url.searchParams.delete("oauth");
       url.searchParams.delete("oauth_error");
       url.searchParams.delete("provider");
+      url.searchParams.delete("connect");
+      url.searchParams.delete("control_companion");
+      url.searchParams.delete("control_request");
       window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
     }
+    return () => {
+      const current = new URL(window.location.href);
+      const before = current.search;
+      current.searchParams.delete("connect");
+      current.searchParams.delete("control_companion");
+      current.searchParams.delete("control_request");
+      if (current.search !== before) {
+        window.history.replaceState(null, "", `${current.pathname}${current.search}${current.hash}`);
+      }
+    };
   }, []);
 
   const groups = useMemo(() => {
@@ -476,6 +508,21 @@ export function CompanionPlugins({
     }
     return counts;
   }, [accounts]);
+
+  const closeConnection = () => {
+    setConnecting(null);
+    setControlLink(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("connect");
+    url.searchParams.delete("control_companion");
+    url.searchParams.delete("control_request");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  };
+
+  const leavePlugins = () => {
+    closeConnection();
+    onBack();
+  };
 
   const remove = async (account: CompanionPluginAccount) => {
     const confirmed = window.confirm(
@@ -502,7 +549,7 @@ export function CompanionPlugins({
     <section className="companions-plugins" aria-labelledby="plugins-title">
       <header className="companions-head companions-plugins__head">
         <div className="companions-plugins__title">
-          <button type="button" className="iconbtn" aria-label="Back to Companions" onClick={onBack}>
+          <button type="button" className="iconbtn" aria-label="Back to Companions" onClick={leavePlugins}>
             <Icon name="arrow-left" size={16} />
           </button>
           <div>
@@ -604,7 +651,8 @@ export function CompanionPlugins({
           orgId={orgId}
           api={api}
           server={connecting}
-          onClose={() => setConnecting(null)}
+          controlLink={controlLink}
+          onClose={closeConnection}
         />
       )}
     </section>

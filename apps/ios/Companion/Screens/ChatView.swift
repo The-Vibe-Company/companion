@@ -160,7 +160,7 @@ struct ChatView: View {
     /// Opens the shared Plugins surface for a decision card that requests a connection.
     /// This is intentionally separate from the chat header, whose only destinations are the
     /// detail pill and the computer action.
-    let onOpenPlugins: () -> Void
+    let onOpenPlugins: (_ provider: String?, _ controlRequestID: String?) -> Void
     let onReadingPositionChange: (CompanionChatReadingPosition) -> Void
     private let readingPosition: CompanionChatReadingPosition?
     private let renderedFromCache: Bool
@@ -208,7 +208,7 @@ struct ChatView: View {
         companion: CompanionSummary,
         initialSnapshot: CompanionThreadSnapshot? = nil,
         readingPosition: CompanionChatReadingPosition? = nil,
-        onOpenPlugins: @escaping () -> Void = {},
+        onOpenPlugins: @escaping (_ provider: String?, _ controlRequestID: String?) -> Void = { _, _ in },
         services: ChatServices? = nil,
         onReadingPositionChange: @escaping (CompanionChatReadingPosition) -> Void = { _ in },
         onDetails: @escaping () -> Void
@@ -985,7 +985,8 @@ struct ChatView: View {
                 ? assistantTailReveal
                 : nil,
             reasoningExpanded: expandedReasoningEventIDs.contains(entry.eventID),
-            canAct: thread?.canSend == true,
+            canAct: thread?.canSend == true
+                && (entry.decision?.requiredAccess != .owner || currentCompanion.access == .owner),
             decisionCatalog: entry.decision == nil ? .empty : decisionCatalog
         )
     }
@@ -2265,7 +2266,7 @@ private struct TranscriptRowView: View, @MainActor Equatable {
     let input: TranscriptRowInput
     let onDecide: @MainActor (CompanionDecisionAction) async throws -> Void
     let onAnswerFocusChange: (Bool) -> Void
-    let onOpenPlugins: () -> Void
+    let onOpenPlugins: (_ provider: String?, _ controlRequestID: String?) -> Void
     let onReasoningExpansionChange: (Bool) -> Void
     let onOpenToolDetails: (ToolRunDetailRoute) -> Void
     let onOpenRoutineRun: (CompanionTranscriptRoutineOrigin) -> Void
@@ -2276,7 +2277,20 @@ private struct TranscriptRowView: View, @MainActor Equatable {
 
     @ViewBuilder
     var body: some View {
-        if let routine = input.entry.routine {
+        if let delegation = input.entry.delegation {
+            VStack(alignment: input.own ? .trailing : .leading, spacing: 6) {
+                Text(delegation.direction == .request ? "Delegated by \(delegation.companionName)" : "Response from \(delegation.companionName)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(CompanionIOSTheme.textSecondary)
+                if let decision = input.entry.decision {
+                    decisionEntry(decision)
+                } else {
+                    ordinaryEntry
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: input.own ? .trailing : .leading)
+            .accessibilityIdentifier("chat.delegation.\(input.entry.eventID)")
+        } else if let routine = input.entry.routine {
             CompanionRoutineOriginMarker(
                 routine: routine,
                 companionID: input.companionID,
@@ -2285,19 +2299,7 @@ private struct TranscriptRowView: View, @MainActor Equatable {
             )
             .accessibilityIdentifier("chat.routine-origin.\(input.entry.eventID)")
         } else if let decision = input.entry.decision {
-            ChatBubbleRowLayout(alignment: .leading) {
-                CompanionDecisionCard(
-                    decision: decision,
-                    companionName: input.companionName,
-                    canAct: input.canAct,
-                    catalog: input.decisionCatalog,
-                    accent: visualTheme.accent,
-                    accentForeground: visualTheme.accentForeground,
-                    onDecide: onDecide,
-                    onOpenPlugins: onOpenPlugins,
-                    onAnswerFocusChange: onAnswerFocusChange
-                )
-            }
+            decisionEntry(decision)
         } else if input.entry.role == "tool", let tool = input.entry.tool {
             ChatBubbleRowLayout(alignment: .leading) {
                 CompanionToolRunCard(tool: tool, eventID: input.entry.eventID) {
@@ -2332,6 +2334,61 @@ private struct TranscriptRowView: View, @MainActor Equatable {
                 attachments: input.entry.attachments
             )
             .accessibilityIdentifier("chat.entry.\(input.entry.eventID)")
+        }
+    }
+
+    @ViewBuilder
+    private var ordinaryEntry: some View {
+        if input.entry.role == "tool", let tool = input.entry.tool {
+            ChatBubbleRowLayout(alignment: .leading) {
+                CompanionToolRunCard(tool: tool, eventID: input.entry.eventID) {
+                    onOpenToolDetails(ToolRunDetailRoute(
+                        id: input.entry.eventID,
+                        tool: tool,
+                        timestamp: timeLabel
+                    ))
+                }
+            }
+        } else {
+            ChatMessageBubble(
+                content: input.entry.content,
+                kind: kind,
+                authorName: input.own
+                    ? nil
+                    : input.entry.authorName
+                        ?? (input.entry.role == "user" ? "Workspace member" : input.companionName),
+                timestamp: timeLabel,
+                queued: input.entry.queued,
+                companionName: input.companionName,
+                companionID: input.companionID,
+                icon: input.companionIcon,
+                markdown: input.markdown,
+                streamingBaseMarkdown: input.tailReveal?.baseMarkdown,
+                streamingDelta: input.tailReveal?.visibleDelta,
+                reasoning: input.entry.role == "assistant" ? input.entry.reasoning : nil,
+                reasoningExpansion: Binding(
+                    get: { input.reasoningExpanded },
+                    set: onReasoningExpansionChange
+                ),
+                attachments: input.entry.attachments
+            )
+            .accessibilityIdentifier("chat.entry.\(input.entry.eventID)")
+        }
+    }
+
+    private func decisionEntry(_ decision: CompanionDecision) -> some View {
+        ChatBubbleRowLayout(alignment: .leading) {
+            CompanionDecisionCard(
+                decision: decision,
+                companionName: input.companionName,
+                canAct: input.canAct,
+                catalog: input.decisionCatalog,
+                accent: visualTheme.accent,
+                accentForeground: visualTheme.accentForeground,
+                onDecide: onDecide,
+                onOpenPlugins: onOpenPlugins,
+                onAnswerFocusChange: onAnswerFocusChange
+            )
         }
     }
 

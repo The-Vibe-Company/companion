@@ -43,7 +43,7 @@ struct CompanionDecisionDemoView: View {
                                     submissionCount += 1
                                     notice = "Submitted \(submissionCount) request: \(decision.requestID): \(action.label)"
                                 },
-                                onOpenPlugins: { notice = "Opened Plugins" },
+                                onOpenPlugins: { _, _ in notice = "Opened Plugins" },
                                 onAnswerFocusChange: { _ in }
                             )
                         }

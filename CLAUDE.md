@@ -132,9 +132,9 @@ its full real-Linux acceptance is slow; run it locally as the final validation a
 - Staged Pi instructions (`composedInstructions()` in `packages/box-runtime`, written to
   `~/.companion/runtime/state/instructions.txt` and passed as `--append-system-prompt`) are how Pi
   learns what this runtime actually provides. A Companion capability is not shipped until that brief
-  names it: web, subagents, memory, files/outbox, skills, plugins, the Skills Hub, ask_user,
-  propose_config, request_plugin_connection, routines (`propose_routine`), and triggers
-  (`propose_trigger`). Interpolate the real
+  names it: web, subagents, memory, files/outbox, skills, plugins, the Skills Hub, ask_user, and the
+  always-available `companion-control` MCP for identity, models, routines, triggers, Pi recycle, and
+  directed delegation. Legacy proposal bridges are transcript-compatible but no longer staged. Interpolate the real
   constants rather than literals. First-party clients share one Companion API and capability
   contract; the iOS app must not request reduced staging through a client-surface discriminator or
   invent mobile-only endpoints. Do not describe a capability the Box does not have. Voice stays in

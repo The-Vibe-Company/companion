@@ -571,45 +571,45 @@ message performs the same fail-closed cancellation immediately, then waits as it
 Neither path can approve a confirmation or proposal. Delivery re-arms inactivity; the attempt's
 existing two-hour absolute deadline remains the outer bound.
 
-A `companion:config:<op>` confirmation with a strict JSON `{summary, proposal}` body projects as
-`request_kind = config_proposal`. The payload cannot name `hub_access`, `can_write_skills`, `name`,
-or `provider_id`, and a message that would require redaction is counted as unknown rather than
-stored. Pi emits these through the staged `propose_config` and `request_plugin_connection` tools.
-Owner/Editor approval runs `companion_api_answer_config_decision`, which applies the patch under the
-approver's authority after the current turn. `connect_plugin` only confirms the request; the human
-finishes the connection in the web Plugins UI. Delivery to Pi uses the same `confirmed` / `cancelled`
-`extension_ui_response` shape as other confirmations.
+`companion-control` is the single product-owned MCP for identity, Skills, models, plugins, routines,
+triggers, Pi recycle, and directed delegation. The Box loopback gateway injects a short-lived
+`cmp_ctl_*` bearer only into the gateway request; Pi never receives it in its environment. Resolution
+requires the exact active, accepted ordinary main attempt and re-evaluates tenant membership and
+Companion access. Routine and trigger attempts are excluded.
 
-Each staging writes a credential-free `config-catalog.json` (≤100 skills and plugins the settings
-actor can already name) so Pi can compose summaries without reading secrets. The iOS app uses this
-same full staging contract.
+Every JSON-RPC call records its attempt id, request id, canonical argument digest, and bounded final
+JSON-RPC response in `companion_control_invocations`. An identical retry returns that exact response;
+reusing the request id with a different tool or arguments fails closed. Raw arguments and provider
+payloads are never copied into the ledger, and every control read redacts signed URLs before its
+response becomes durable.
 
-A `companion:routine:<name>` confirmation with a strict JSON `{summary, proposal}` body projects as
-`request_kind = routine_proposal`. Pi emits these through the staged `propose_routine` tool. The
-payload is name, prompt, cron, and timezone; a redacted or malformed message is counted as unknown.
-Owner/Editor approval runs `companion_api_answer_routine_decision` under the approver's authority
-after the current turn: a same-name proposal (case-insensitive) updates the existing routine in
-place, while a different name creates a new routine.
+Name, short persona, Skill selection, and attachment/detachment of an already-connected member MCP
+account are direct desired-state changes. They return `apply_pending` when runtime must stage the
+new material after the source turn. `companion_restart_pi` durably schedules a Pi-only recycle after
+source settlement; it never restarts the Box. Model changes, OAuth connection, every routine or
+trigger mutation, and peer-grant creation persist `companion_control_requests` and return
+`pending_approval` immediately. The MCP HTTP request never waits for a human.
 
-A `companion:trigger:<name>` confirmation with a strict JSON `{summary, proposal}` body projects as
-`request_kind = trigger_proposal`. Pi emits these through the staged `propose_trigger` tool. The
-payload is name, prompt, mode (`notify` or `relay`), and provider (`webhook`, `linear`, `github`,
-`sentry`, or `custom`), plus provider target metadata
-(`repo`, `organization`, `project`, `events`) when Pi already knows what to watch; a redacted or malformed
-message is counted as unknown. Trigger definitions are autonomous and are not gated on an MCP
-plugin merely to exist. Remote registration uses a member-scoped trigger-provider account that is
-available to every Companion the member can operate; it never depends on the Companion's MCP
-attachment selection. OAuth-backed accounts reuse the matching MCP credential in place. One
-eligible account defaults silently. Pi never supplies or invents a provider-account id: approval
-resolves authority under the approving member. A valid id from an older pending proposal remains
-usable, while an unavailable legacy id is treated as absent; multiple eligible accounts stay
-fail-closed and require the member to choose through the trigger editor.
-Owner/Editor approval
-runs `companion_api_answer_trigger_decision`,
-which creates the trigger with a fresh server-side id and secret under the approver's authority and
-immediately attempts provider registration. Success completes end-to-end; provider rejection
-persists `registration_status = failed` for retry. Users never paste callback URLs or secrets when
-Companion can register through held credentials.
+Approval is Owner/Editor unless the card names Owner-only peer authority. It atomically claims the
+pending request, applies the exact action once, and publishes a durable result. Denial, expiry, or
+lost authority applies nothing. Model and peer approval enqueue an ordinary FIFO continuation.
+Approved OAuth opens the normal client flow; its signed state binds the request and Companion, then
+the callback saves and automatically attaches the new member account before enqueueing its FIFO
+continuation. Global account revocation remains a human settings action.
+
+Routine and trigger request tools cover create, update, enable, disable, and delete; triggers also
+cover secret rotation. Trigger create/update/delete reconciles the provider webhook end to end with
+the approving member's existing encrypted authority. Pi never supplies or invents a provider account
+id. Legacy `propose_config`, `request_plugin_connection`, `propose_routine`, and `propose_trigger`
+cards remain readable for old durable transcripts but are no longer staged Pi tools.
+
+A directed source→target grant is persistent and revocable. Only the source Owner may approve it,
+and that actor plus the source Owner must be able to operate the target. Every send re-evaluates those
+ACLs, forbids self-delegation, and atomically enqueues one ordinary target turn. Delegations are text
+only, bounded to depth four and twenty descendants per root turn. Terminal target results are marked
+in both threads: `notify` surfaces without waking source Pi; `relay` queues a hidden source resume for
+synthesis. Grant revocation blocks new sends but accepted work may finish; a later return-ACL failure
+is durable and leaves the target result intact.
 
 A running attempt has two bounds:
 
@@ -816,8 +816,8 @@ credentials are used only for remote registration. Trigger-provider accounts are
 member scope and become available to every Companion without an attach step. GitHub and Sentry
 reuse the member's MCP OAuth credential in place (GitHub's classic OAuth grant includes
 `admin:repo_hook`); exactly one eligible account is selected silently, while multiple accounts
-require an explicit `provider_account_id` through the direct trigger editor/API. Hosted Pi
-`propose_trigger` never supplies that internal id; the approval path resolves the approver's sole
+require an explicit `provider_account_id` through the direct trigger editor/API. Hosted Pi's
+`companion_request_trigger_change` never supplies that internal id; the approval path resolves the approver's sole
 eligible account and refuses an ambiguous choice. A disconnected, revoked, or
 legacy insufficient-scope token produces `registration_status = failed`, never a second credential
 prompt. Disconnect preserves dependent triggers as `unregistered`; it never silently reattaches a
@@ -828,7 +828,7 @@ the source has no remote-registration API.
 Triggers have no schedule to convert. Web and native iOS format `last_fired_at` in the member's
 stored profile timezone, using their detected device zone only while the profile value is unset.
 
-Create, update, secret rotation, and approved `propose_trigger` reconcile provider registration in
+Create, update, secret rotation, and approved `companion_request_trigger_change` reconcile provider registration in
 the same request. Auto-registerable creation therefore returns synchronously as `registered` or
 `failed`; there is no pending creation response. `unregistered` is the durable disconnected or
 unwired state, while `manual` is reserved for the fallback providers above. Provider rejection is a successful
@@ -1003,10 +1003,10 @@ data. Its delivery contract asks for one short sentence per update, one-word ack
 and therefore owns voice. Pi receives the file as `--append-system-prompt`. It lives at the same path within layout 14, so an
 existing Box gains the current brief at its next staging (`start`, `restart_pi`, `restart_box`, or
 `apply_settings`). `restart_pi` refreshes the same frozen credentials before it recycles the daemon.
-The full brief is the first-party contract. Only already-persisted Expo turns carrying the deprecated
-compatibility discriminator retain the narrowed historical staging behavior; new clients must not
-send that discriminator. Routines, triggers, `propose_routine`, and `propose_trigger` remain
-available in both the full contract and that compatibility path. A flag-off fire is processed by
+The full brief is the first-party contract and names `companion-control`, its direct/asynchronous
+policy, delegation bounds, Skills Hub, plugins, files/outbox, memory, web, subagents, and `ask_user`.
+Only already-persisted Expo turns carrying the deprecated compatibility discriminator retain the
+narrowed historical staging behavior; new clients must not send that discriminator. A flag-off fire is processed by
 the ordinary main Pi session; a newly pinned or already-pinned isolated run remains an ordinary
 durable turn for queueing and exactly-once identity but executes in the run-scoped Pi session above.
 

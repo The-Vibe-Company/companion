@@ -8,7 +8,7 @@ struct CuratedCompanionPlugin: Identifiable, Hashable {
     let detail: String
 }
 
-private let curatedCompanionPlugins = [
+let curatedCompanionPlugins = [
     CuratedCompanionPlugin(
         id: "app.linear/linear",
         provider: "linear",
@@ -306,6 +306,7 @@ struct ConnectCuratedPluginView: View {
     @Environment(ExternalOAuthCoordinator.self) private var externalOAuth
     @Environment(\.dismiss) private var dismiss
     let plugin: CuratedCompanionPlugin
+    let controlRequest: CompanionPluginControlRequest?
     let onConnected: () -> Void
 
     @State private var label = ""
@@ -317,9 +318,11 @@ struct ConnectCuratedPluginView: View {
     init(
         plugin: CuratedCompanionPlugin,
         initialLabel: String? = nil,
+        controlRequest: CompanionPluginControlRequest? = nil,
         onConnected: @escaping () -> Void
     ) {
         self.plugin = plugin
+        self.controlRequest = controlRequest
         self.onConnected = onConnected
         _label = State(initialValue: initialLabel ?? "")
     }
@@ -500,7 +503,9 @@ struct ConnectCuratedPluginView: View {
         do {
             let started = try await sessionStore.startCompanionPluginOAuth(
                 serverName: plugin.id,
-                label: trimmedLabel
+                label: trimmedLabel,
+                companionID: controlRequest?.companionID,
+                controlRequestID: controlRequest?.requestID
             )
             guard generation == oauthGeneration, !cancellationPending else {
                 return

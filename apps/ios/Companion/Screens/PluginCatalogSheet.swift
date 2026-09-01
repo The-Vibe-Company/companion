@@ -1,6 +1,12 @@
 import SwiftUI
 import CompanionKit
 
+struct CompanionPluginControlRequest: Equatable {
+    let provider: String
+    let companionID: String
+    let requestID: String
+}
+
 struct PluginManagementView: View {
     @Environment(SessionStore.self) private var sessionStore
     @Environment(\.dismiss) private var dismiss
@@ -12,9 +18,14 @@ struct PluginManagementView: View {
     @State private var curatedPlugin: CuratedCompanionPlugin?
     @State private var pluginToDisconnect: CompanionPluginAccount?
     private let demoMode: Bool
+    private let controlRequest: CompanionPluginControlRequest?
 
-    init(demoModel: CompanionPluginSheetModel? = nil) {
+    init(
+        demoModel: CompanionPluginSheetModel? = nil,
+        controlRequest: CompanionPluginControlRequest? = nil
+    ) {
         demoMode = demoModel != nil
+        self.controlRequest = controlRequest
         _model = State(initialValue: demoModel ?? CompanionPluginSheetModel(accounts: []))
         _loading = State(initialValue: demoModel == nil)
     }
@@ -104,7 +115,10 @@ struct PluginManagementView: View {
             }
         }
         .sheet(item: $curatedPlugin) { plugin in
-            ConnectCuratedPluginView(plugin: plugin) {
+            ConnectCuratedPluginView(
+                plugin: plugin,
+                controlRequest: controlRequest?.provider == plugin.provider ? controlRequest : nil
+            ) {
                 curatedPlugin = nil
                 success = "\(plugin.title) account connected."
                 Task { await reload() }
@@ -130,6 +144,12 @@ struct PluginManagementView: View {
         .task {
             guard !demoMode else { return }
             await reload()
+            if let controlRequest,
+               let requested = curatedCompanionPlugins.first(where: {
+                   $0.provider == controlRequest.provider
+               }) {
+                curatedPlugin = requested
+            }
         }
     }
 

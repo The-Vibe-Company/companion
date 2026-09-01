@@ -6,9 +6,9 @@ import {
   COMPANION_ATTACHMENT_FILENAME_PATTERN,
   COMPANION_ATTACHMENT_MAX_BYTES,
   COMPANION_BUDGETS_BASE,
-  COMPANION_CONFIG_PROPOSAL_CONNECT_PROVIDERS,
   COMPANION_EXEC_TOOL_RUN_TIMEOUT_MS,
   COMPANION_OUTPUT_ATTACHMENT_MAX_COUNT,
+  COMPANION_CONTROL_MCP_SERVER_NAME,
   COMPANION_ROUTINE_MAX_PER_COMPANION,
   COMPANION_ROUTINE_MIN_INTERVAL_MS,
   COMPANION_TOOL_RUN_TIMEOUT_MS,
@@ -155,7 +155,7 @@ export interface CompanionRuntimeStageTiming {
   ok: boolean;
 }
 
-/** Credential-free snapshot Pi reads before proposing settings. Omitted on native_mobile. */
+/** Credential-free snapshot Pi reads before using the unified control surface. */
 export type CompanionConfigCatalog = {
   companion: {
     model_id: string | null;
@@ -341,12 +341,12 @@ const SKILLS_TREE_REVISION_PATH = ".companion/runtime/state/skills-tree.version"
 const SKILLS_TREE_REUSED_MARKER = "companion-skills-tree-reused";
 const SKILLS_SNAPSHOT_CORRUPT_MARKER = "companion-skills-snapshot-corrupt";
 
-/** Skills a given surface actually receives; `native_mobile` gets none. */
+/** Every first-party surface receives the same selected Skills. */
 function injectedSkillsFor(input: {
   clientSurface: CompanionClientSurface;
   skills: CompanionRuntimeSkill[];
 }): CompanionRuntimeSkill[] {
-  return input.clientSurface === "native_mobile" ? [] : input.skills;
+  return input.skills;
 }
 
 function skillsTreeRevisionOf(skills: CompanionRuntimeSkill[]): string {
@@ -717,36 +717,35 @@ function companionCapabilityInstructions(includeHub: boolean): string {
   return lines.join("\n");
 }
 
-function companionConfigInstructions(includeCatalog: boolean): string {
-  const body = [
-    "# Changing your own configuration",
+function companionControlInstructions(controlAvailable: boolean): string {
+  if (!controlAvailable) return [
+    "# Automation isolation",
     "",
-    "You cannot change your own settings. You can only ask, and you must not describe a change as done",
-    "before it is.",
+    "This routine run cannot use companion-control. It may not change configuration, plugins, routines,",
+    "triggers, Pi, or peer grants, and it may not delegate to another Companion. Finish only the task",
+    "that caused this isolated run.",
+  ].join("\n");
+  return [
+    "# Controlling this Companion",
+    "",
+    "The always-available `companion-control` MCP is the sole product interface for inspecting and",
+    "administering this Companion. Use its exact `companion_*` tools; never edit staged state files.",
     "",
     `- ask_user puts a question to the person and waits up to ${instructionClock(COMPANION_DECISION_TIMEOUT_MS)}. Use it for a decision, a`,
     "  preference, missing information, or sign-off before something consequential.",
     "  No answer means no approval: choose a safe fallback or finish the turn. A newer member message",
     "  may end the wait early and will arrive separately as the next queued turn.",
-    "- propose_config proposes adding or removing skills, attaching or detaching plugins, changing your",
-    "  model, or rewriting your persona line. Approval applies after this turn ends, so a proposed change",
-    "  is never active in the turn that proposed it.",
-    "- propose_routine proposes a named schedule — a prompt, a cron expression, and an IANA timezone.",
-    "  Keep its optional human-facing summary to one short sentence with no setup or process narration.",
-    "  Approval creates it after this turn ends, so a proposed routine never fires in the turn that proposed it.",
-    "- propose_trigger proposes a named webhook trigger with notify or relay mode. For GitHub include",
-    "  the repo and narrow events to watch. Never pass or invent a provider account id: approval resolves",
-    "  the approving member's eligible held credential, creates the trigger, and registers it remotely;",
-    "  never ask the person to paste a URL or use a provider console.",
-    `- request_plugin_connection asks for a supported plugin connection (${COMPANION_CONFIG_PROPOSAL_CONNECT_PROVIDERS.join(", ")}) that does not exist yet.`,
-    "  The person finishes it in the web UI; propose attaching it on a later turn.",
-  ].join("\n");
-  if (!includeCatalog) return body;
-  return [
-    body,
-    "",
-    "~/.companion/runtime/state/config-catalog.json names the skills and plugins you may propose. Read it",
-    "rather than guessing an id.",
+    "- Identity, persona, selected Skills, and attachment of an already-connected plugin are direct.",
+    "  Their result includes `apply_pending` when materialization waits for this turn to settle.",
+    "- Model changes, new OAuth connections, every routine or trigger mutation, and peer grants return",
+    "  `pending_approval`. Do not claim they applied; their durable card is answered asynchronously.",
+    "- `companion_request_trigger_change` registers, reconciles, rotates, and unregisters provider",
+    "  webhooks end-to-end. Never ask",
+    "  the person to paste a callback URL or operate a provider console.",
+    "- `companion_restart_pi` recycles Pi only after this turn settles; it never restarts the Box.",
+    "- Peer messages require a directed grant. Use `notify` to show the peer result without waking this",
+    "  session, or `relay` (the default) to receive a later hidden continuation for synthesis. Delegation",
+    "  is text-only, cannot target yourself, is at most four levels deep and twenty sends per root turn.",
   ].join("\n");
 }
 
@@ -829,17 +828,14 @@ export function parseOutboxManifest(stdout: string): CompanionOutboxEntry[] {
  * word on voice. Composing it here rather than storing it keeps the brief out of every persona, out
  * of the 280-character persona budget, and identical for every Companion on a given surface.
  *
- * `native_mobile` stages no skills, MCP accounts, hub env, or config catalog, so that surface omits
- * the Skills / Plugins / Skills-Hub bullets and the catalog pointer. ask_user / propose_config /
- * propose_routine / propose_trigger stay: the interaction extension is staged for every surface, and
- * routines and triggers fire as ordinary turns on every surface.
+ * Every first-party client stages the same capabilities. The client surface affects presentation,
+ * never the authority or tools Pi receives.
  */
 export function composedInstructions(
   persona?: string | null,
-  clientSurface: CompanionClientSurface = "web",
+  _clientSurface: CompanionClientSurface = "web",
 ): string {
   const written = persona?.trim() ?? "";
-  const includeHub = clientSurface !== "native_mobile";
   const parts = [
     COMPANION_SITUATION_INSTRUCTIONS,
     COMPANION_THREAD_INSTRUCTIONS,
@@ -847,8 +843,8 @@ export function composedInstructions(
     COMPANION_MACHINE_INSTRUCTIONS,
     COMPANION_TURN_INSTRUCTIONS,
     COMPANION_FILES_INSTRUCTIONS,
-    companionCapabilityInstructions(includeHub),
-    companionConfigInstructions(includeHub),
+    companionCapabilityInstructions(true),
+    companionControlInstructions(true),
   ];
   if (written) parts.push(`# This Companion\n\n${written}`);
   return `${parts.join("\n\n")}\n`;
@@ -865,7 +861,7 @@ export function composedRoutineInstructions(persona?: string | null): string {
     COMPANION_TURN_INSTRUCTIONS,
     COMPANION_FILES_INSTRUCTIONS,
     companionCapabilityInstructions(true),
-    companionConfigInstructions(true),
+    companionControlInstructions(false),
   ];
   if (written) parts.push(`# This Companion\n\n${written}`);
   return `${parts.join("\n\n")}\n`;
@@ -1396,6 +1392,10 @@ cleanup_failed_prepare() {
 }
 trap cleanup_failed_prepare ERR
 mkdir -p "$routine_root/bin" "$routine_root/state" "$routine_root/events" "$routine_root/sessions" "$routine_root/logs" "$routine_root/memory/daily" "$routine_root/memory/recovery" "$routine_root/qmd/config" "$routine_root/tmp" "$routine_root/outbox" "$routine_root/pi" "$routine_root/pi/extensions" "$routine_root/tools"${capabilityCopies}
+if [ -L "$routine_root/pi/mcp.json" ]; then
+  echo 'routine-pi-session mcp config is a symlink' >&2
+  false
+fi
 # qmd discovers project-local configuration before its environment-selected defaults unless an
 # explicit named index is present. Put a private wrapper first on PATH so every pi-memory qmd child
 # uses the run-local config and SQLite paths even if the Box command runner starts below .qmd/. qmd
@@ -1428,6 +1428,19 @@ if [ -d "$parent_memory/daily" ] && [ ! -L "$parent_memory/daily" ]; then
   done
 fi
 ${copies}
+if [ -f "$routine_root/pi/mcp.json" ]; then
+  COMPANION_ROUTINE_MCP="$routine_root/pi/mcp.json" \
+  COMPANION_CONTROL_SERVER=${shellQuote(COMPANION_CONTROL_MCP_SERVER_NAME)} node <<'COMPANION_ROUTINE_MCP'
+const fs = require("node:fs");
+const path = process.env.COMPANION_ROUTINE_MCP;
+const server = process.env.COMPANION_CONTROL_SERVER;
+const config = JSON.parse(fs.readFileSync(path, "utf8"));
+if (config && config.mcpServers && typeof config.mcpServers === "object") {
+  delete config.mcpServers[server];
+}
+fs.writeFileSync(path, JSON.stringify(config, null, 2) + "\\n", { mode: 0o600 });
+COMPANION_ROUTINE_MCP
+fi
 chmod 700 "$routine_root" "$routine_root/bin" "$routine_root/state" "$routine_root/events" "$routine_root/sessions" "$routine_root/logs" "$routine_root/memory" "$routine_root/memory/daily" "$routine_root/memory/recovery" "$routine_root/qmd" "$routine_root/qmd/config" "$routine_root/tmp" "$routine_root/outbox" "$routine_root/pi" "$routine_root/pi/extensions" "$routine_root/tools"
 printf '%s\\n' "$expected_invocation" > "$reservation_file"
 chmod 600 "$reservation_file"
@@ -1560,6 +1573,7 @@ mkdir -p "$routine_root/logs" "$journal" "$routine_root/state" "$routine_root/se
 chmod 700 "$routine_root" "$routine_root/state" "$journal" "$routine_root/sessions" "$routine_root/logs" "$routine_root/memory" "$routine_root/qmd" "$routine_root/qmd/config" "$routine_root/tmp" "$routine_root/outbox"
 rm -f "$socket"
 ${providerEnvironment}
+unset COMPANION_CONTROL_TOKEN
 export PATH="$routine_root/bin:$(dirname "$pi_bin"):$HOME/.companion/bin:$routine_root/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PI_CODING_AGENT_DIR="$routine_root/pi"
 export PI_MEMORY_DIR="$routine_root/memory"
@@ -4022,7 +4036,7 @@ fi`,
     probe: { layoutCurrent: boolean; stdout: string };
   }): Promise<{ stagingMode: "refresh" | "skills"; skillBytesTransferred: number; skillsDigest: string }> {
     const injectedSkills = injectedSkillsFor(input);
-    const mcp = buildMcpAdapterInjection(input.mcpAccounts);
+    const mcp = buildMcpAdapterInjection(input.mcpAccounts, true);
     const bundledSkill = injectedSkills.find((skill) => skill.slug === "companion");
     let skillsTreeRevision = skillsTreeRevisionOf(injectedSkills);
     if (input.preserveSkills) {
@@ -4085,7 +4099,7 @@ fi`,
         mode: 0o600,
       });
     }
-    if (input.clientSurface !== "native_mobile" && input.configCatalog) {
+    if (input.configCatalog) {
       controlFiles.push({
         path: ".companion/runtime/state/config-catalog.json",
         content: `${JSON.stringify(input.configCatalog)}\n`,

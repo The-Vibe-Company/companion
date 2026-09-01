@@ -1917,11 +1917,102 @@ public enum CompanionDecisionKind: String, Codable, Equatable, Sendable {
     case config
     case routine
     case trigger
+    case control
     case unknown
 
     public init(from decoder: Decoder) throws {
         let value = try decoder.singleValueContainer().decode(String.self)
         self = Self(rawValue: value) ?? .unknown
+    }
+}
+
+public enum CompanionControlRequestStatus: String, Codable, Equatable, Sendable {
+    case pending
+    case applying
+    case applied
+    case denied
+    case expired
+    case cancelled
+    case failed
+    case unknown
+
+    public init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        self = Self(rawValue: value) ?? .unknown
+    }
+}
+
+public indirect enum CompanionControlJSONValue: Codable, Equatable, Sendable {
+    case null
+    case bool(Bool)
+    case number(Double)
+    case string(String)
+    case array([CompanionControlJSONValue])
+    case object([String: CompanionControlJSONValue])
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() { self = .null }
+        else if let value = try? container.decode(Bool.self) { self = .bool(value) }
+        else if let value = try? container.decode(Double.self) { self = .number(value) }
+        else if let value = try? container.decode(String.self) { self = .string(value) }
+        else if let value = try? container.decode([CompanionControlJSONValue].self) { self = .array(value) }
+        else { self = .object(try container.decode([String: CompanionControlJSONValue].self)) }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .null: try container.encodeNil()
+        case .bool(let value): try container.encode(value)
+        case .number(let value): try container.encode(value)
+        case .string(let value): try container.encode(value)
+        case .array(let value): try container.encode(value)
+        case .object(let value): try container.encode(value)
+        }
+    }
+
+    public var prettyPrintedJSON: String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        guard let data = try? encoder.encode(self),
+              let value = String(data: data, encoding: .utf8) else { return "{}" }
+        return value
+    }
+}
+
+public struct CompanionControlProposal: Codable, Equatable, Sendable {
+    public let requestKind: String
+    public let action: String
+    public let summary: String
+    public let payload: [String: CompanionControlJSONValue]
+
+    enum CodingKeys: String, CodingKey {
+        case kind
+        case requestKind = "request_kind"
+        case action
+        case summary
+        case payload
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        requestKind = try container.decode(String.self, forKey: .requestKind)
+        action = try container.decode(String.self, forKey: .action)
+        summary = try container.decode(String.self, forKey: .summary)
+        payload = try container.decodeIfPresent(
+            [String: CompanionControlJSONValue].self,
+            forKey: .payload
+        ) ?? [:]
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode("control", forKey: .kind)
+        try container.encode(requestKind, forKey: .requestKind)
+        try container.encode(action, forKey: .action)
+        try container.encode(summary, forKey: .summary)
+        try container.encode(payload, forKey: .payload)
     }
 }
 
@@ -2083,6 +2174,7 @@ public enum CompanionDecisionProposal: Codable, Equatable, Sendable {
     case config(CompanionConfigProposal)
     case routine(CompanionRoutineProposal)
     case trigger(CompanionTriggerProposal)
+    case control(CompanionControlProposal)
 
     private enum CodingKeys: String, CodingKey {
         case kind
@@ -2094,6 +2186,7 @@ public enum CompanionDecisionProposal: Codable, Equatable, Sendable {
         case "config": self = .config(try CompanionConfigProposal(from: decoder))
         case "routine": self = .routine(try CompanionRoutineProposal(from: decoder))
         case "trigger": self = .trigger(try CompanionTriggerProposal(from: decoder))
+        case "control": self = .control(try CompanionControlProposal(from: decoder))
         default:
             throw DecodingError.dataCorruptedError(
                 forKey: .kind,
@@ -2108,6 +2201,7 @@ public enum CompanionDecisionProposal: Codable, Equatable, Sendable {
         case .config(let proposal): try proposal.encode(to: encoder)
         case .routine(let proposal): try proposal.encode(to: encoder)
         case .trigger(let proposal): try proposal.encode(to: encoder)
+        case .control(let proposal): try proposal.encode(to: encoder)
         }
     }
 }
@@ -2124,6 +2218,8 @@ public struct CompanionDecision: Codable, Equatable, Sendable {
     public let decidedByName: String?
     public let decidedAt: String?
     public let expiresAt: String
+    public let requiredAccess: CompanionAccess
+    public let controlStatus: CompanionControlRequestStatus?
     public let proposal: CompanionDecisionProposal?
 
     enum CodingKeys: String, CodingKey {
@@ -2138,6 +2234,8 @@ public struct CompanionDecision: Codable, Equatable, Sendable {
         case decidedByName = "decided_by_name"
         case decidedAt = "decided_at"
         case expiresAt = "expires_at"
+        case requiredAccess = "required_access"
+        case controlStatus = "control_status"
         case proposal
     }
 
@@ -2154,9 +2252,34 @@ public struct CompanionDecision: Codable, Equatable, Sendable {
         decidedByName = try container.decodeIfPresent(String.self, forKey: .decidedByName)
         decidedAt = try container.decodeIfPresent(String.self, forKey: .decidedAt)
         expiresAt = try container.decode(String.self, forKey: .expiresAt)
+        requiredAccess = try container.decodeIfPresent(CompanionAccess.self, forKey: .requiredAccess) ?? .editor
+        controlStatus = try container.decodeIfPresent(CompanionControlRequestStatus.self, forKey: .controlStatus)
         proposal = kind == .unknown
             ? nil
             : try container.decodeIfPresent(CompanionDecisionProposal.self, forKey: .proposal)
+    }
+}
+
+public struct CompanionTranscriptDelegation: Codable, Equatable, Sendable {
+    public enum Direction: String, Codable, Equatable, Sendable {
+        case request
+        case response
+    }
+
+    public let id: String
+    public let direction: Direction
+    public let companionID: String?
+    public let companionName: String
+    public let responseMode: CompanionTriggerMode
+    public let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case direction
+        case companionID = "companion_id"
+        case companionName = "companion_name"
+        case responseMode = "response_mode"
+        case status
     }
 }
 
@@ -2257,6 +2380,7 @@ public struct TranscriptEntry: Codable, Identifiable, Equatable, Sendable {
     public let tool: CompanionToolRun?
     public let routine: CompanionTranscriptRoutineOrigin?
     public let routineNotifyGroup: CompanionTranscriptRoutineNotifyGroup?
+    public let delegation: CompanionTranscriptDelegation?
     public let turnID: String?
     public let queued: Bool
     public let attachments: [CompanionAttachment]
@@ -2276,6 +2400,7 @@ public struct TranscriptEntry: Codable, Identifiable, Equatable, Sendable {
         case tool
         case routine
         case routineNotifyGroup = "routine_notify_group"
+        case delegation
         case turnID = "turn_id"
         case queued
         case attachments
@@ -2298,6 +2423,7 @@ public struct TranscriptEntry: Codable, Identifiable, Equatable, Sendable {
             CompanionTranscriptRoutineNotifyGroup.self,
             forKey: .routineNotifyGroup
         )
+        delegation = try container.decodeIfPresent(CompanionTranscriptDelegation.self, forKey: .delegation)
         turnID = try container.decodeIfPresent(String.self, forKey: .turnID)
         queued = try container.decodeIfPresent(Bool.self, forKey: .queued) ?? false
         attachments = try container.decodeIfPresent([CompanionAttachment].self, forKey: .attachments) ?? []
@@ -2317,6 +2443,7 @@ public struct TranscriptEntry: Codable, Identifiable, Equatable, Sendable {
             tool: tool,
             routine: routine,
             routineNotifyGroup: group,
+            delegation: delegation,
             turnID: turnID,
             queued: queued,
             attachments: attachments,
@@ -2336,6 +2463,7 @@ public struct TranscriptEntry: Codable, Identifiable, Equatable, Sendable {
         tool: CompanionToolRun?,
         routine: CompanionTranscriptRoutineOrigin?,
         routineNotifyGroup: CompanionTranscriptRoutineNotifyGroup?,
+        delegation: CompanionTranscriptDelegation? = nil,
         turnID: String?,
         queued: Bool,
         attachments: [CompanionAttachment],
@@ -2352,6 +2480,7 @@ public struct TranscriptEntry: Codable, Identifiable, Equatable, Sendable {
         self.tool = tool
         self.routine = routine
         self.routineNotifyGroup = routineNotifyGroup
+        self.delegation = delegation
         self.turnID = turnID
         self.queued = queued
         self.attachments = attachments

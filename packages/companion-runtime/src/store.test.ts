@@ -590,7 +590,7 @@ describe("PostgresRuntimeStore", () => {
     });
   });
 
-  it("claims only self-healing material protocol 5 and reads the dedicated MCP broker capability", async () => {
+  it("claims only lane-aware self-healing material protocol 5 and reads the dedicated MCP broker capability", async () => {
     const sql = new RecordingSql();
     const expiresAt = new Date("2026-08-16T18:00:00.000Z");
     sql.rows = [];
@@ -605,6 +605,13 @@ describe("PostgresRuntimeStore", () => {
       expiresAt,
     });
     expect(sql.calls[1]?.query).toContain("public.companion_runtime_mint_mcp_broker_token(");
+
+    sql.rows = [{ token: `cmp_ctl_${"b".repeat(48)}`, expires_at: expiresAt }];
+    await expect(store.mintControlToken(fence, 30)).resolves.toEqual({
+      token: `cmp_ctl_${"b".repeat(48)}`,
+      expiresAt,
+    });
+    expect(sql.calls[2]?.query).toContain("public.companion_runtime_mint_control_token(");
   });
 
   it("records and publishes material only through the narrow fenced functions", async () => {

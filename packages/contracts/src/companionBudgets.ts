@@ -158,6 +158,8 @@ export function sqlIntervalToMs(literal: string): number {
  */
 // oxlint-disable-next-line anti-slop/no-known-value-widening -- Named SQL-interval contract indexed by pg function name at test time; the explicit Record IS the owner contract.
 export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly string[]>> = {
+  // Control request approval window.
+  companion_api_create_control_request: ["24 hours"],
   // turnAbsoluteDeadlineMs.
   companion_runtime_claim_work_without_material_guard: ["2 hours"],
   // Accepted activity timestamp skew allowance + inactivityStallMs.
@@ -182,9 +184,10 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_api_enqueue_turn: ["2 minutes", "2 hours 5 minutes"],
   // materialMinTtlMs + snapshot retention.
   companion_runtime_record_material_snapshot: ["2 hours 5 minutes", "7 days"],
-  // hubTokenTtlSeconds.
+  // Runtime-staged credential TTLs.
   companion_runtime_mint_hub_token: ["6 hours"],
   companion_runtime_mint_mcp_broker_token: ["6 hours"],
+  companion_runtime_mint_control_token: ["6 hours"],
   // Settlement lease/backoff windows.
   companion_runtime_settle: ["30 seconds", "30 seconds", "15 seconds"],
   // Health observation windows + coldStartDeadlineMs + leaseSeconds.

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   COMPANION_HUB_TOKEN_SCOPES,
   COMPANION_CONFIG_PROPOSAL_MAX_IDS,
+  COMPANION_CONTROL_PROPOSAL_MAX_BYTES,
   COMPANION_LAST_MESSAGE_PREVIEW_MAX_CHARACTERS,
   COMPANION_PROVIDER_CATALOG,
   COMPANION_PROVIDER_SUPPLEMENTARY_MODELS,
@@ -11,6 +12,7 @@ import {
   COMPANION_TRIGGER_PROMPT_MAX_CHARACTERS,
   companionConfigProposalMessageSchema,
   companionConfigProposalSchema,
+  companionControlProposalSchema,
   companionDecisionSchema,
   companionRoutineProposalMessageSchema,
   companionRoutineProposalSchema,
@@ -19,6 +21,8 @@ import {
   companionRoutineRunDetailQuerySchema,
   companionRoutineRunListQuerySchema,
   companionRoutineRunSummarySchema,
+  companionRequestRoutineChangeInputSchema,
+  companionRequestTriggerChangeInputSchema,
   companionTriggerProposalMessageSchema,
   companionTriggerProposalSchema,
   companionTriggerRunDetailSchema,
@@ -57,6 +61,69 @@ import { restartCompanionRuntimeInputSchema } from "../src/companionRuntime";
 import { companionToolRunKind } from "../src/companionToolKinds";
 
 describe("Companion provider contracts", () => {
+  it("accepts a maximum-length automation prompt inside a bounded control envelope", () => {
+    const proposal = companionControlProposalSchema.parse({
+      kind: "control",
+      request_kind: "routine_change",
+      action: "create",
+      summary: "Create the routine",
+      payload: {
+        action: "create",
+        draft: {
+          name: "Maximum prompt",
+          prompt: "p".repeat(COMPANION_TRIGGER_PROMPT_MAX_CHARACTERS),
+          cron: "0 9 * * *",
+          timezone: "Europe/Paris",
+        },
+      },
+    });
+
+    expect(Buffer.byteLength(JSON.stringify(proposal), "utf8"))
+      .toBeLessThanOrEqual(COMPANION_CONTROL_PROPOSAL_MAX_BYTES);
+    expect(() => companionControlProposalSchema.parse({
+      ...proposal,
+      payload: { arbitrary: "\0".repeat(22_000) },
+    })).toThrow("control proposal exceeds 128 KiB");
+  });
+
+  it("requires ids for existing automation and complete drafts for creation", () => {
+    const routineId = "11111111-1111-4111-8111-111111111111";
+    const triggerId = "22222222-2222-4222-8222-222222222222";
+    const routineDraft = {
+      name: "Morning brief",
+      prompt: "Prepare the daily brief.",
+      cron: "0 9 * * 1-5",
+      timezone: "Europe/Paris",
+    };
+    const triggerDraft = { name: "Issue update", prompt: "Summarize the incoming issue." };
+
+    expect(companionRequestRoutineChangeInputSchema.safeParse({ action: "create" }).success).toBe(false);
+    expect(companionRequestRoutineChangeInputSchema.safeParse({
+      action: "create", draft: { name: "Incomplete" },
+    }).success).toBe(false);
+    expect(companionRequestRoutineChangeInputSchema.safeParse({ action: "update", routine_id: routineId }).success)
+      .toBe(false);
+    expect(companionRequestRoutineChangeInputSchema.safeParse({ action: "enable" }).success).toBe(false);
+    expect(companionRequestRoutineChangeInputSchema.safeParse({ action: "create", draft: routineDraft }).success)
+      .toBe(true);
+    expect(companionRequestRoutineChangeInputSchema.safeParse({
+      action: "update", routine_id: routineId, draft: { prompt: "Updated prompt." },
+    }).success).toBe(true);
+
+    expect(companionRequestTriggerChangeInputSchema.safeParse({ action: "create" }).success).toBe(false);
+    expect(companionRequestTriggerChangeInputSchema.safeParse({
+      action: "create", draft: { name: "Incomplete" },
+    }).success).toBe(false);
+    expect(companionRequestTriggerChangeInputSchema.safeParse({ action: "update", trigger_id: triggerId }).success)
+      .toBe(false);
+    expect(companionRequestTriggerChangeInputSchema.safeParse({ action: "rotate_secret" }).success).toBe(false);
+    expect(companionRequestTriggerChangeInputSchema.safeParse({ action: "create", draft: triggerDraft }).success)
+      .toBe(true);
+    expect(companionRequestTriggerChangeInputSchema.safeParse({
+      action: "disable", trigger_id: triggerId,
+    }).success).toBe(true);
+  });
+
   it("bounds owner sections and requires exact, unique reorder membership", () => {
     expect(createCompanionSectionInputSchema.parse({ name: "  Work  " })).toEqual({ name: "Work" });
     expect(assignCompanionSectionInputSchema.parse({ section_id: null })).toEqual({ section_id: null });

@@ -1077,7 +1077,14 @@
       "idx": 153,
       "version": "7",
       "when": 1793034400000,
-      "tag": "0153_companion_archived_box_recovery",
+      "tag": "0153_companion_control_mcp",
+      "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1793120800000,
+      "tag": "0154_companion_archived_box_recovery",
       "breakpoints": true
     }
   ]

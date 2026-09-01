@@ -18,6 +18,8 @@ export type DecisionNamedResource = { id: string; label: string };
 
 export interface DecisionActions {
   canAct: boolean;
+  access?: "owner" | "editor" | "viewer";
+  companionId: string;
   companionName: string;
   skills: readonly DecisionNamedResource[];
   plugins: readonly DecisionNamedResource[];
@@ -27,6 +29,8 @@ export interface DecisionActions {
 
 export const DecisionActionsContext = createContext<DecisionActions>({
   canAct: false,
+  access: "viewer",
+  companionId: "",
   companionName: "Companion",
   skills: [],
   plugins: [],

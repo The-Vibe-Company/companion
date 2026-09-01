@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
-import type { CompanionMcpAccount } from "@companion/contracts";
+import {
+  COMPANION_CONTROL_MCP_SERVER_NAME,
+  type CompanionMcpAccount,
+} from "@companion/contracts";
 
 export interface CompanionRuntimeSkill {
   slug: string;
@@ -88,10 +91,20 @@ function environmentReference(envKey: string): string {
  */
 export function buildMcpAdapterInjection(
   stagedAccounts: Array<CompanionStagedMcpAccount | CompanionMcpAccount>,
+  includeCompanionControl = false,
 ): CompanionMcpAdapterInjection {
   const mcpServers: Record<string, CompanionMcpServerConfig> = {};
   const metadata: CompanionMcpAccountMetadata[] = [];
   const gatewayAccounts: CompanionMcpGatewayAccount[] = [];
+
+  if (includeCompanionControl) {
+    mcpServers[COMPANION_CONTROL_MCP_SERVER_NAME] = {
+      lifecycle: "eager",
+      directTools: true,
+      url: "${COMPANION_MCP_GATEWAY_ORIGIN}/control",
+      headers: {},
+    };
+  }
 
   for (const candidate of stagedAccounts) {
     const staged: CompanionStagedMcpAccount = "account" in candidate

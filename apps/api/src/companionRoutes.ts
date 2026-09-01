@@ -123,6 +123,16 @@ import {
   companionMcpAccessTokenSchema,
   issueCompanionMcpAccessToken,
   resolveCompanionMcpBrokerAuthorization,
+  resolveCompanionControlAuthorization,
+  CompanionControlAuthorizationError,
+  getCompanionControlRequest,
+  decideCompanionControlRequest,
+  finishCompanionControlRequest,
+  enqueueCompanionControlContinuation,
+  grantCompanionPeerAccess,
+  listCompanionControlPeers,
+  revokeCompanionPeerAccess,
+  updateCompanionControlPlugin,
   registerCompanionNotificationDevice,
   unregisterCompanionNotificationDevice,
   listCompanionSections,
@@ -138,6 +148,7 @@ import {
   COMPANION_TRANSCRIPTION_AUDIO_CONTENT_TYPE,
   COMPANION_TRANSCRIPTION_AUDIO_MAX_BYTES,
   type CompanionAttachmentUpload,
+  type CompanionControlJsonValue,
   type CompanionTrigger,
   type CompanionRuntimeSafeError,
   type CompanionThread,
@@ -154,6 +165,12 @@ import {
   companionRoutineRunDetailQuerySchema,
   companionTriggerRunListQuerySchema,
   companionTriggerRunDetailQuerySchema,
+  companionControlRequestSchema,
+  companionRequestRoutineChangeInputSchema,
+  companionRequestTriggerChangeInputSchema,
+  redactCompanionControlTrigger,
+  companionRoutineDraftSchema,
+  companionTriggerDraftSchema,
   createCompanionTriggerInputSchema,
   createCompanionTriggerProviderAccountInputSchema,
   declaredCompanionAttachmentContentType,
@@ -208,6 +225,7 @@ import {
 } from "./context";
 import { mintCompanionDesktop, RuntimeDesktopClientError } from "./runtimeDesktopClient";
 import { createCompanionTranscriptionDiagnostics } from "./companionTranscriptionDiagnostics";
+import { executeCompanionControlMcp } from "./companionControlMcp";
 import { recordCompanionThreadSyncMetrics } from "./companionThreadSyncMetrics";
 
 const companionIdSchema = z.string().uuid();
@@ -293,6 +311,15 @@ function defaultCompanionRouteDependencies() {
     updateCompanionMemberStateV2,
     updateCompanionV2,
     resolveCompanionMcpBrokerAuthorization,
+    resolveCompanionControlAuthorization,
+    getCompanionControlRequest,
+    decideCompanionControlRequest,
+    finishCompanionControlRequest,
+    enqueueCompanionControlContinuation,
+    grantCompanionPeerAccess,
+    listCompanionControlPeers,
+    revokeCompanionPeerAccess,
+    updateCompanionControlPlugin,
     issueCompanionMcpAccessToken,
     registerCompanionNotificationDevice,
     unregisterCompanionNotificationDevice,
@@ -375,6 +402,8 @@ type CompanionPluginOAuthState = {
   userId: string;
   nonce: string;
   expiresAt: number;
+  companionId?: string;
+  controlRequestId?: string;
 };
 
 type CompanionPluginOAuthFlowEnvelope = {
@@ -457,6 +486,7 @@ function verifyCompanionPluginOAuthState(
     || !parsed.userId
     || !parsed.nonce
     || parsed.expiresAt < Date.now()
+    || ((parsed.companionId === undefined) !== (parsed.controlRequestId === undefined))
   ) {
     throw new Error("expired OAuth state");
   }
@@ -794,6 +824,15 @@ export function registerCompanionRoutes(
     updateCompanionMemberStateV2,
     updateCompanionV2,
     resolveCompanionMcpBrokerAuthorization,
+    resolveCompanionControlAuthorization,
+    getCompanionControlRequest,
+    decideCompanionControlRequest,
+    finishCompanionControlRequest,
+    enqueueCompanionControlContinuation,
+    grantCompanionPeerAccess,
+    listCompanionControlPeers,
+    revokeCompanionPeerAccess,
+    updateCompanionControlPlugin,
     issueCompanionMcpAccessToken,
     registerCompanionNotificationDevice,
     unregisterCompanionNotificationDevice,
@@ -886,6 +925,175 @@ export function registerCompanionRoutes(
     });
   }
 
+  async function applyControlRequest(input: {
+    actor: ReturnType<typeof actorFromContext>;
+    orgId: string;
+    companionId: string;
+    request: Awaited<ReturnType<typeof getCompanionControlRequest>> & {};
+    database: Db;
+  }): Promise<Record<string, CompanionControlJsonValue>> {
+    const request = companionControlRequestSchema.parse(input.request);
+    if (request.kind === "model_change") {
+      const body = z.object({ model_id: z.string().trim().min(1).max(200) }).strict()
+        .parse(request.payload);
+      const companion = await updateCompanionV2({
+        actor: input.actor,
+        orgId: input.orgId,
+        companionId: input.companionId,
+        patch: { model_id: body.model_id },
+        database: input.database,
+      });
+      return { companion_id: companion.id, model_id: companion.model_id, apply_pending: true };
+    }
+    if (request.kind === "plugin_connection") {
+      const body = z.object({
+        provider: z.string().trim().min(1).max(80),
+        reason: z.string().max(280).optional(),
+      }).strict().parse(request.payload);
+      return {
+        provider: body.provider,
+        oauth_required: true,
+        oauth_start_path: "/v1/companion-plugins/oauth/start",
+        companion_id: input.companionId,
+      };
+    }
+    if (request.kind === "peer_access") {
+      const body = z.object({
+        target_companion_id: z.string().uuid(),
+        target_name: z.string().trim().min(1).max(120),
+      }).strict().parse(request.payload);
+      const grant = await grantCompanionPeerAccess({
+        orgId: input.orgId,
+        sourceCompanionId: input.companionId,
+        targetCompanionId: body.target_companion_id,
+        targetName: body.target_name,
+        database: input.database,
+      });
+      return { grant };
+    }
+    if (request.kind === "routine_change") {
+      const body = companionRequestRoutineChangeInputSchema.parse(request.payload);
+      if (body.action === "create") {
+        const draft = companionRoutineDraftSchema.parse(body.draft);
+        const routine = await createCompanionRoutineV2({
+          orgId: input.orgId,
+          companionId: input.companionId,
+          id: request.id,
+          ...draft,
+          database: input.database,
+        });
+        return { routine };
+      }
+      if (!body.routine_id) throw new Error("routine id is required");
+      if (body.action === "delete") {
+        await deleteCompanionRoutineV2({
+          orgId: input.orgId,
+          companionId: input.companionId,
+          routineId: body.routine_id,
+          database: input.database,
+        });
+        return { routine_id: body.routine_id, deleted: true };
+      }
+      const routine = await updateCompanionRoutineV2({
+        orgId: input.orgId,
+        companionId: input.companionId,
+        routineId: body.routine_id,
+        ...(body.action === "enable" ? { enabled: true }
+          : body.action === "disable" ? { enabled: false }
+            : body.draft ?? {}),
+        database: input.database,
+      });
+      return { routine };
+    }
+    const body = companionRequestTriggerChangeInputSchema.parse(request.payload);
+    if (body.action === "create") {
+      const draft = companionTriggerDraftSchema.parse(body.draft);
+      const created = await createCompanionTriggerV2({
+        orgId: input.orgId,
+        companionId: input.companionId,
+        id: request.id,
+        name: draft.name,
+        prompt: draft.prompt,
+        mode: draft.mode,
+        provider: draft.provider,
+        providerAccountId: draft.provider_account_id,
+        target: draft.target ?? null,
+        enabled: draft.enabled,
+        database: input.database,
+        webhookBaseUrl: companionWebhookBaseUrl(env),
+      });
+      return { trigger: redactCompanionControlTrigger(await autoRegisterCompanionTrigger({
+        orgId: input.orgId,
+        companionId: input.companionId,
+        trigger: created,
+        database: input.database,
+      })) };
+    }
+    if (!body.trigger_id) throw new Error("trigger id is required");
+    const current = (await listCompanionTriggersV2({
+      orgId: input.orgId,
+      companionId: input.companionId,
+      database: input.database,
+      webhookBaseUrl: companionWebhookBaseUrl(env),
+    })).find((candidate) => candidate.id === body.trigger_id);
+    if (body.action === "delete") {
+      if (current) await unregisterCompanionTriggerIfWired({
+        orgId: input.orgId,
+        companionId: input.companionId,
+        trigger: current,
+        database: input.database,
+      });
+      await deleteCompanionTriggerV2({
+        orgId: input.orgId,
+        companionId: input.companionId,
+        triggerId: body.trigger_id,
+        database: input.database,
+      });
+      return { trigger_id: body.trigger_id, deleted: true };
+    }
+    if (body.action === "rotate_secret") {
+      const trigger = await rotateCompanionTriggerSecretV2({
+        orgId: input.orgId,
+        companionId: input.companionId,
+        triggerId: body.trigger_id,
+        webhookBaseUrl: companionWebhookBaseUrl(env),
+        database: input.database,
+      });
+      return { trigger: redactCompanionControlTrigger(trigger) };
+    }
+    const registrationChanged = body.action === "update"
+      && body.draft !== undefined
+      && (body.draft.provider !== undefined
+        || body.draft.target !== undefined
+        || body.draft.provider_account_id !== undefined);
+    if (registrationChanged && current) await unregisterCompanionTriggerIfWired({
+      orgId: input.orgId,
+      companionId: input.companionId,
+      trigger: current,
+      database: input.database,
+    });
+    const updated = await updateCompanionTriggerV2({
+      orgId: input.orgId,
+      companionId: input.companionId,
+      triggerId: body.trigger_id,
+      ...(body.action === "enable" ? { enabled: true }
+        : body.action === "disable" ? { enabled: false }
+          : {
+              ...body.draft,
+              providerAccountId: body.draft?.provider_account_id,
+              target: body.draft?.target,
+            }),
+      database: input.database,
+      webhookBaseUrl: companionWebhookBaseUrl(env),
+    });
+    return { trigger: redactCompanionControlTrigger(await autoRegisterCompanionTrigger({
+      orgId: input.orgId,
+      companionId: input.companionId,
+      trigger: updated,
+      database: input.database,
+    })) };
+  }
+
   async function tenant<T>(
     c: Context<{ Variables: ApiVariables }>,
     fn: (input: {
@@ -939,6 +1147,29 @@ export function registerCompanionRoutes(
         return c.json({ error: "MCP authorization could not be refreshed" }, 503);
       }
       return c.json({ error: "MCP authorization is unavailable" }, 400);
+    }
+  });
+
+  app.post("/v1/runtime/companion-control", async (c) => {
+    try {
+      const bearer = bearerFromHeader(c.req.header("authorization"));
+      if (!bearer) throw new CompanionControlAuthorizationError();
+      const authorization = await resolveCompanionControlAuthorization(bearer);
+      if (!authorization) throw new CompanionControlAuthorizationError();
+      const raw = await c.req.json();
+      const result = await withTenantContext({
+        orgId: authorization.orgId,
+        userId: authorization.actorId,
+      }, async (database) => await executeCompanionControlMcp({ raw, authorization, database }));
+      c.header("Cache-Control", "private, no-store");
+      c.header("Pragma", "no-cache");
+      return c.json(result);
+    } catch (error) {
+      c.header("Cache-Control", "private, no-store");
+      if (error instanceof CompanionControlAuthorizationError) {
+        return c.json({ error: "Companion control authorization is unavailable" }, 401);
+      }
+      return c.json({ error: "Companion control request is unavailable" }, 400);
     }
   });
 
@@ -1443,12 +1674,31 @@ export function registerCompanionRoutes(
   app.post("/v1/companion-plugins/oauth/start", async (c) => {
     try {
       const body = companionPluginOAuthStartInputSchema.parse(await c.req.json());
-      const context = await tenant(c, async ({ actor, orgId, database }) => ({
-        actor,
-        orgId,
-        accounts: await listCompanionPlugins({ actor, orgId, database }),
-      }));
       const catalog = COMPANION_PLUGIN_OAUTH_SERVERS[body.server_name];
+      const context = await tenant(c, async ({ actor, orgId, database }) => {
+        if (body.companion_id && body.control_request_id) {
+          const [companion, request] = await Promise.all([
+            getCompanionV2({ actor, orgId, companionId: body.companion_id, database }),
+            getCompanionControlRequest({
+              orgId,
+              companionId: body.companion_id,
+              requestId: body.control_request_id,
+              database,
+            }),
+          ]);
+          if (companion.access === "viewer"
+            || request?.kind !== "plugin_connection"
+            || request.status !== "applied"
+            || request.payload.provider !== catalog.provider) {
+            throw new CompanionAccessForbiddenError();
+          }
+        }
+        return {
+          actor,
+          orgId,
+          accounts: await listCompanionPlugins({ actor, orgId, database }),
+        };
+      });
       if (context.accounts.some((account) =>
         account.provider === catalog.provider
         && account.label.toLocaleLowerCase("en-US") === body.label.toLocaleLowerCase("en-US"))) {
@@ -1456,12 +1706,15 @@ export function registerCompanionRoutes(
       }
       const masterKey = loadSecretsMasterKey(env.COMPANION_SECRETS_MASTER_KEY);
       const nonce = randomUUID();
-      const state = signCompanionPluginOAuthState({
+      const oauthState = {
         orgId: context.orgId,
         userId: context.actor.id,
         nonce,
         expiresAt: Date.now() + COMPANION_PLUGIN_OAUTH_TTL_MS,
-      }, masterKey);
+        companionId: body.companion_id,
+        controlRequestId: body.control_request_id,
+      };
+      const state = signCompanionPluginOAuthState(oauthState, masterKey);
       const redirectUri = companionPluginOAuthRedirectUri(env);
       const started = await beginCompanionPluginOAuth({
         serverName: body.server_name,
@@ -1536,6 +1789,23 @@ export function registerCompanionRoutes(
             label: pending.label,
             database,
           });
+          if (state.companionId && state.controlRequestId) {
+            await updateCompanionControlPlugin({
+              actor,
+              orgId: state.orgId,
+              companionId: state.companionId,
+              accountId: mcpAccount.id,
+              selected: true,
+              database,
+            });
+            await enqueueCompanionControlContinuation({
+              orgId: state.orgId,
+              companionId: state.companionId,
+              requestId: state.controlRequestId,
+              content: `${pending.flow.provider} is now connected and attached. Continue the task using the newly available plugin.`,
+              database,
+            });
+          }
         },
       );
       setCookie(c, "companion_org", state.orgId, {
@@ -2477,6 +2747,34 @@ export function registerCompanionRoutes(
     }
   });
 
+  app.get("/v1/companions/:id/peer-grants", async (c) => {
+    try {
+      const companionId = companionIdSchema.parse(c.req.param("id"));
+      const grants = await tenant(c, async ({ orgId, database }) =>
+        (await listCompanionControlPeers({ orgId, companionId, database }))
+          .filter((peer) => peer.grant_active));
+      return c.json({ grants });
+    } catch (error) {
+      return routeError(c, error);
+    }
+  });
+
+  app.delete("/v1/companions/:id/peer-grants/:targetId", async (c) => {
+    try {
+      const companionId = companionIdSchema.parse(c.req.param("id"));
+      const targetId = companionIdSchema.parse(c.req.param("targetId"));
+      const revoked = await tenant(c, ({ orgId, database }) => revokeCompanionPeerAccess({
+        orgId,
+        sourceCompanionId: companionId,
+        targetCompanionId: targetId,
+        database,
+      }));
+      return c.json({ revoked });
+    } catch (error) {
+      return routeError(c, error);
+    }
+  });
+
   app.post("/v1/companions/:id/decisions/:requestId", async (c) => {
     let proposalDecisionMutation: ProposalDecisionMutation | null = null;
     try {
@@ -2484,6 +2782,73 @@ export function registerCompanionRoutes(
       const requestId = z.string().min(1).max(200).parse(c.req.param("requestId"));
       const body = decideCompanionDecisionInputSchema.parse(await c.req.json());
       const thread = await tenant(c, async ({ actor, orgId, database }) => {
+        const controlId = z.string().uuid().safeParse(requestId);
+        const controlRequest = controlId.success
+          ? await getCompanionControlRequest({
+              orgId,
+              companionId,
+              requestId: controlId.data,
+              database,
+            })
+          : null;
+        if (controlRequest) {
+          if (body.action === "answer") {
+            throw new Error("Companion control requests cannot be answered with free text");
+          }
+          const decided = await decideCompanionControlRequest({
+            orgId,
+            companionId,
+            requestId: controlRequest.id,
+            action: body.action,
+            database,
+          });
+          let completed = decided;
+          if (body.action === "allow" && completed.status === "applying") {
+            try {
+              const result = await applyControlRequest({
+                actor,
+                orgId,
+                companionId,
+                request: decided,
+                database,
+              });
+              completed = await finishCompanionControlRequest({
+                orgId,
+                companionId,
+                requestId: decided.id,
+                result,
+                database,
+              });
+            } catch {
+              completed = await finishCompanionControlRequest({
+                orgId,
+                companionId,
+                requestId: decided.id,
+                error: {
+                  code: "control_apply_failed",
+                  message: "The approved Companion change could not be applied.",
+                },
+                database,
+              });
+            }
+          }
+          if (body.action === "allow" && completed.status === "applied"
+              && (completed.kind === "model_change" || completed.kind === "peer_access")) {
+            await enqueueCompanionControlContinuation({
+              orgId,
+              companionId,
+              requestId: completed.id,
+              content: completed.kind === "model_change"
+                ? "The requested model change was approved and applied. Continue with the updated model configuration."
+                : "The requested peer access was approved. Continue the task with the new delegation permission.",
+              database,
+            });
+          }
+          return projectThreadForHttp(
+            await readCompanionThreadV2({ actor, orgId, companionId, database }),
+            transcriptionAvailable,
+          );
+        }
         const pending = await getCompanionDecisionV2({
           orgId,
           companionId,

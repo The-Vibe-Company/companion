@@ -84,7 +84,8 @@ confirmed, idempotent lifecycle intents whose PostgreSQL-projected queued/stoppi
 state is polled without contacting Box or Pi. Viewer sees the page read-only, including redacted
 unavailable plugin selections, and never receives mutation or restart controls. The
 native thread renders every durable decision request. Owner and Editor can answer `ask_user`,
-approve or deny configuration, routine, and trigger proposals, and handle historical shell/file
+approve or deny asynchronous Companion control changes for models, OAuth, routines, triggers, and
+peer grants, and handle historical shell/file and legacy proposal
 requests without leaving iOS. An interrupted turn is equally explicit: Owner and Editor can retry
 it with a durable idempotency key or cancel it to release later queued messages, while Viewer remains
 read-only. The roster also manages model providers and MCP plugins. Provider

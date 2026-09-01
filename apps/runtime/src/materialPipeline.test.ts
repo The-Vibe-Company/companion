@@ -160,7 +160,9 @@ describe("runtime material provider and Box stager", () => {
     expect(companionHubApiUrl("https://api.example.test/v1/")).toBe("https://api.example.test/v1");
   });
 
-  it("stages OAuth through a dedicated broker capability without exposing an access token", async () => {
+  it.each(["web", "native_mobile"] as const)(
+    "stages the unified OAuth and control capabilities on %s without exposing an access token",
+    async (clientSurface) => {
     const material = workMaterial();
     const catalog = {
       companion: { model_id: "claude-opus-4-8", provider_id: "anthropic", persona: null },
@@ -213,10 +215,11 @@ describe("runtime material provider and Box stager", () => {
       allowBoxCreate: false,
       authorization: {
         ...authorization,
+        clientSurface,
         mcpRefs: [{ account_id: accountId, credential_generation: generation }],
       },
       material,
-      clientSurface: "web",
+      clientSurface,
       targetSettingsRevision: 3n,
       targetSkillsRevision: 4,
       signal: new AbortController().signal,
@@ -230,6 +233,7 @@ describe("runtime material provider and Box stager", () => {
     expect(stageExistingBox).toHaveBeenCalledWith(expect.objectContaining({
       boxId: "bx_23456789",
       runtimeGeneration: 1,
+      clientSurface,
       mcpCredentials: [],
       mcpAccounts: [{
         account: expect.objectContaining({ id: accountId, url: "https://mcp.linear.app/mcp" }),
@@ -241,11 +245,13 @@ describe("runtime material provider and Box stager", () => {
         COMPANION_WORKSPACE_ID: orgId,
         COMPANION_DELEGATION_TOKEN: "cmp_pat_hubtokenfixture000000000000000000000000",
         COMPANION_MCP_BROKER_TOKEN: `cmp_mcp_${"a".repeat(48)}`,
+        COMPANION_CONTROL_TOKEN: `cmp_ctl_${"c".repeat(48)}`,
       },
       configCatalog: catalog,
       signal: expect.any(AbortSignal),
     }));
-  });
+    },
+  );
 
   it("encrypts the staged agent endpoint tokens and surfaces only ciphertext", async () => {
     const nowMs = Date.parse("2027-01-01T00:00:00.000Z");
@@ -676,6 +682,13 @@ type MaterialTestStore = Pick<
 >;
 
 function fakeStore(value: MaterialTestStore): RuntimeStore {
-  // SAFETY: The material pipeline tests exercise only the four material/token store methods.
-  return value as RuntimeStore;
+  // SAFETY: The material pipeline tests exercise only these material/token store methods.
+  const store = Object.create(null) as RuntimeStore;
+  return Object.assign(store, {
+    mintControlToken: vi.fn(async () => ({
+      token: `cmp_ctl_${"c".repeat(48)}`,
+      expiresAt: new Date("2027-01-01T06:00:00.000Z"),
+    })),
+    ...value,
+  });
 }

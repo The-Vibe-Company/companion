@@ -48,4 +48,19 @@ describe("Companion plugin catalog contracts", () => {
       label: " ",
     }).success).toBe(false);
   });
+
+  it("binds control-request OAuth starts to both the request and Companion", () => {
+    const linked = {
+      server_name: "io.github.github/github-mcp-server",
+      label: "work",
+      companion_id: "11111111-1111-4111-8111-111111111111",
+      control_request_id: "22222222-2222-4222-8222-222222222222",
+    } as const;
+    expect(companionPluginOAuthStartInputSchema.parse(linked)).toEqual(linked);
+    expect(companionPluginOAuthStartInputSchema.safeParse({
+      server_name: linked.server_name,
+      label: linked.label,
+      companion_id: linked.companion_id,
+    }).success).toBe(false);
+  });
 });

@@ -69,6 +69,9 @@ slash-separated, multi-assigned, and may exist without skills.
 10. See and create routine schedules, open each run's private transcript from its compact chat
     marker, and distinguish terminal relay, notify, no-output, and error outcomes on web and native
     Apple clients. Time references render in the member's stored timezone.
+11. Let a Companion manage its own allowed configuration through `companion-control`, approve
+    sensitive changes asynchronously, and delegate one bounded text task to an approved peer with
+    the result visible in both durable threads.
 
 ## Hosted Companion boundary
 
@@ -109,13 +112,15 @@ untrusted data.
 
 ## Explicit exclusions
 
-Historical Projects and generic skill runs remain removed. This release adds no multi-Bot
-coordination, group Bot chat, handoffs, proactive jobs, Companion voice conversation/runtime audio, file library, file versioning,
+Historical Projects and generic skill runs remain removed. This release adds no Group/Room model,
+autonomous multi-Bot orchestration, proactive jobs, Companion voice conversation/runtime audio, file library, file versioning,
 artifact surface outside the thread, harness selection, Box-provider marketplace, container catalog,
 deployment management, or generic AI application builder. Scheduled Companion routines are in
 scope: Owner/Editor-gated cron prompts that enqueue ordinary turns. Webhook-fired Companion
 triggers are in scope: Owner/Editor-gated named rules that Companion registers end-to-end with held
-provider credentials, then validates in isolated runs before notifying or relaying. Chat files are
+provider credentials, then validates in isolated runs before notifying or relaying. Directed,
+grant-gated text delegations between existing Companions are also in scope as the bounded
+collaboration primitive beneath any future group experience. Chat files are
 in scope and bounded: images and documents sent with a message, and
 images Pi hands back from a turn. The iOS and macOS apps are complete Companion clients over the
 same API, not reduced product surfaces: Skills, Plugins, MCP connections, files, routines,

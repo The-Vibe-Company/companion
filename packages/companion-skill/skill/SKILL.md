@@ -20,22 +20,20 @@ its dedicated runtime service may stage selected Skills for Pi. Keep that hosted
 from this delegated skill. Agent Auth authorizes external clients to use Skills Hub APIs only; it
 does not authorize Companion chat, turns, decisions, desktop, provider settings, or Box/Pi lifecycle.
 
-A hosted Pi teammate may propose settings with `propose_config` (skills, plugins, model, persona)
-and `request_plugin_connection` (Linear, GitHub, Notion, Conductor, Slack, Gmail, or Sentry), may propose a scheduled routine with
-`propose_routine` (name, prompt, cron, timezone), and may propose a webhook trigger with
-`propose_trigger` (name, prompt, `notify` or `relay` mode, provider, and provider target metadata).
-Trigger definitions are autonomous. A member-scoped trigger-provider connection is immediately
-available to every Companion the member can operate, with no per-Companion attachment step. Where
-possible it references the same encrypted MCP OAuth credential without copying it, defaulting
-silently when exactly one account is eligible. Pi must never invent or pass a provider-account UUID;
-the control plane resolves the approving member's authority and keeps multiple-account ambiguity
-fail-closed. Those tools emit a decision
-card; they never apply changes themselves and
-never touch hub access, name, or provider. Owner/Editor approval in the thread applies after the
-current turn. After a plugin connection is approved, the human finishes it in the web Plugins UI; Pi
-may propose attaching that account on a later turn. After a trigger is approved, Companion registers
-the remote webhook end-to-end; users never paste URLs, secrets, or configure provider consoles when
-held credentials can do it. A proposed trigger never fires in its proposing turn. Webhook payloads
+Every hosted Pi receives the product-owned `companion-control` MCP. It reads and directly updates
+its name, short persona, selected Skills, and already-connected plugin attachments; material changes
+apply after the current turn. Model changes, new OAuth connections, every routine/trigger mutation,
+and directed peer access create durable asynchronous approval cards. OAuth completion attaches the
+new account to the requesting Companion automatically. Trigger changes register, reconcile, rotate,
+or remove the provider webhook end to end with existing encrypted member credentials. Pi never
+receives those credentials or invents a provider-account UUID. `ask_user` is the only remaining
+Pi-local approval bridge; the legacy `propose_config`, `request_plugin_connection`,
+`propose_routine`, and `propose_trigger` tools are not part of new staging.
+
+The same MCP can send a bounded text delegation to an explicitly approved peer Companion. Directed
+grants are persistent and revocable; responses either notify both threads or return to the source Pi
+for synthesis. This is not a Group or Room model, and routines/triggers never receive the control
+MCP, so automations cannot reconfigure themselves or create autonomous cascades. Webhook payloads
 run first in an isolated read-only validator which either stays silent, notifies, or relays one main
 Pi turn. Their hosted operating brief uses terse delivery semantics: one short
 sentence for an update, one word for an acknowledgement, and no process narration or filler; the
@@ -47,7 +45,7 @@ interruption, marks that occurrence `auto_abandoned`, and continues its executio
 human Retry/Cancel gate. Main chat stays available while an isolated routine recovers. First-party
 clients bootstrap only the newest bounded thread window, apply monotonic entry deltas, and page
 older durable history; they never truncate the thread or reset the persistent Box/Pi session.
-Agent Auth clients must not call those tools.
+Agent Auth clients cannot call this runtime-only MCP.
 
 Treat runtime provider/model settings, provider credentials, MCP accounts, and Companion
 Owner/Editor/Viewer sharing as browser-session workspace administration. Never request, read, store,
@@ -57,7 +55,8 @@ settings too; they never change Box/Pi state and are not Skills Hub labels or Ag
 Never use a skill command to
 wake, retry, cancel, restart, stop, or delete a hosted Companion. Scheduled routines are the
 sanctioned wake-on-a-schedule path and webhook triggers are the sanctioned wake-on-an-event path;
-both are gated by Owner/Editor approval rather than by this skill. The control plane never executes package scripts; Pi may consume the selected skill
+their mutations are gated by Owner/Editor approval through `companion-control`, never Agent Auth.
+The control plane never executes package scripts; Pi may consume the selected skill
 instructions inside its isolated Box runtime.
 
 ## Configuration
@@ -1392,7 +1391,7 @@ skills view shows the correct status and version. Report the version from this s
 `companion.json.version`:
 
 ```sh
-printf '%s' '{"action":"api","method":"POST","path":"/local-skills/companion/installed","body":{"version":"1.102.0","agent":"<your assistant name>"}}' \
+printf '%s' '{"action":"api","method":"POST","path":"/local-skills/companion/installed","body":{"version":"1.103.0","agent":"<your assistant name>"}}' \
   | node scripts/companion-agent-client.mjs
 ```
 

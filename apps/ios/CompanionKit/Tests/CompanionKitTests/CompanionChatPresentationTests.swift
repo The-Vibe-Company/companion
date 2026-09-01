@@ -84,6 +84,39 @@ func settledDecisionProjectionCollapsesAndFailsClosed() throws {
     #expect(busy.primaryActionTitle == "Approve")
 }
 
+@Test
+func controlDecisionProjectionKeepsApplyingVisibleAndOwnerOnly() throws {
+    let payload = #"""
+    {
+      "request_id":"11111111-1111-4111-8111-111111111111",
+      "kind":"control",
+      "name":"grant_peer_access",
+      "title":"Allow delegation",
+      "detail":null,
+      "status":"allowed",
+      "answer":null,
+      "decided_by_id":"owner-1",
+      "decided_by_name":"Stan",
+      "decided_at":"2026-08-31T20:01:00Z",
+      "expires_at":"2026-09-01T20:00:00Z",
+      "required_access":"owner",
+      "control_status":"applying",
+      "proposal":{"kind":"control","request_kind":"peer_access","action":"grant_peer_access","summary":"Allow delegation","payload":{}}
+    }
+    """#
+    let applying = try JSONDecoder().decode(CompanionDecision.self, from: Data(payload.utf8))
+    let projection = CompanionDecisionCardProjection(
+        decision: applying,
+        canAct: false,
+        busy: false,
+        answer: ""
+    )
+    #expect(!projection.isCollapsed)
+    #expect(!projection.showsActions)
+    #expect(projection.waitingMessage == nil)
+    #expect(projection.outcome == nil)
+}
+
 private func decision(status: String, kind: String, answer: String? = nil) throws -> CompanionDecision {
     let answerJSON = answer.map { value in
         let data = try! JSONEncoder().encode(value)

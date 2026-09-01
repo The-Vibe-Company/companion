@@ -92,6 +92,16 @@ export const companionDecisionDeliveryStateEnum = pgEnum("companion_decision_del
 export const companionDecisionRequestKindEnum = pgEnum("companion_decision_request_kind", [
   "question", "confirmation", "config_proposal", "routine_proposal", "trigger_proposal",
 ]);
+export const companionControlRequestKindEnum = pgEnum("companion_control_request_kind", [
+  "model_change", "plugin_connection", "routine_change", "trigger_change", "peer_access",
+]);
+export const companionControlRequestStatusEnum = pgEnum("companion_control_request_status", [
+  "pending", "applying", "applied", "denied", "expired", "cancelled", "failed",
+]);
+export const companionDelegationDeliveryStatusEnum = pgEnum(
+  "companion_delegation_delivery_status",
+  ["pending", "delivered", "failed"],
+);
 export const companionDuplicateCleanupStatusEnum = pgEnum("companion_duplicate_cleanup_status", [
   "pending", "delete_requested", "waiting_deleted", "deleted", "already_deleted", "blocked",
 ]);
@@ -565,6 +575,73 @@ export const companions = pgTable(
   }),
 );
 
+/** Directed, Owner-approved authority for one Companion to enqueue work on another. */
+export const companionPeerGrants = pgTable(
+  "companion_peer_grants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    sourceCompanionId: uuid("source_companion_id").notNull(),
+    targetCompanionId: uuid("target_companion_id").notNull(),
+    grantedById: text("granted_by_id").notNull().references(() => user.id, { onDelete: "restrict" }),
+    revokedById: text("revoked_by_id").references(() => user.id, { onDelete: "set null" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: now(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    directedPair: unique("companion_peer_grants_pair_uq").on(
+      t.orgId,
+      t.sourceCompanionId,
+      t.targetCompanionId,
+    ),
+    sourceFk: foreignKey({
+      columns: [t.orgId, t.sourceCompanionId],
+      foreignColumns: [companions.orgId, companions.id],
+      name: "companion_peer_grants_source_fk",
+    }).onDelete("cascade"),
+    targetFk: foreignKey({
+      columns: [t.orgId, t.targetCompanionId],
+      foreignColumns: [companions.orgId, companions.id],
+      name: "companion_peer_grants_target_fk",
+    }).onDelete("cascade"),
+    noSelf: check(
+      "companion_peer_grants_no_self_check",
+      sql`${t.sourceCompanionId} <> ${t.targetCompanionId}`,
+    ),
+  }),
+);
+
+/** Short-lived hash-only capability held by the loopback gateway, never by Pi. */
+export const companionControlTokens = pgTable(
+  "companion_control_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    companionId: uuid("companion_id").notNull(),
+    stagedActorId: text("staged_actor_id").notNull(),
+    tokenPrefix: text("token_prefix").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdAt: now(),
+  },
+  (t) => ({
+    companionFk: foreignKey({
+      columns: [t.orgId, t.companionId],
+      foreignColumns: [companions.orgId, companions.id],
+      name: "companion_control_tokens_companion_fk",
+    }).onDelete("cascade"),
+    actorMembershipFk: foreignKey({
+      columns: [t.orgId, t.stagedActorId],
+      foreignColumns: [memberships.orgId, memberships.userId],
+      name: "companion_control_tokens_actor_membership_fk",
+    }).onDelete("cascade"),
+    expiry: index("companion_control_tokens_expiry_idx").on(t.expiresAt),
+  }),
+);
+
 /**
  * Scheduled Companion prompts. Cron is stored as text and parsed only in TypeScript; SQL never
  * computes the next fire. `next_fire_at` is NULL exactly when the routine is disabled.
@@ -930,6 +1007,8 @@ export const companionRuntimeInstances = pgTable(
     hubTokenId: uuid("hub_token_id").references(() => apiTokens.id, { onDelete: "set null" }),
     /** Current runtime-only MCP token broker capability. Plaintext is returned once at staging. */
     mcpBrokerTokenId: uuid("mcp_broker_token_id"),
+    /** Current product-owned Companion control MCP capability. */
+    controlTokenId: uuid("control_token_id"),
     createdAt: now(),
     updatedAt: updatedAt(),
   },
@@ -939,6 +1018,11 @@ export const companionRuntimeInstances = pgTable(
       columns: [t.mcpBrokerTokenId],
       foreignColumns: [companionMcpBrokerTokens.id],
       name: "companion_runtime_instances_mcp_broker_token_id_fkey",
+    }).onDelete("set null"),
+    controlTokenFk: foreignKey({
+      columns: [t.controlTokenId],
+      foreignColumns: [companionControlTokens.id],
+      name: "companion_runtime_instances_control_token_id_fkey",
     }).onDelete("set null"),
     boxIdUnique: uniqueIndex("companion_runtime_instances_box_id_uq").on(t.boxId).where(sql`${t.boxId} is not null`),
     healthDue: index("companion_runtime_instances_health_due_idx")
@@ -962,13 +1046,9 @@ export const companionRuntimeInstances = pgTable(
       and (${t.materialPiInvocationId} is null or
         (char_length(${t.materialPiInvocationId}) between 1 and 200
           and ${t.materialPiInvocationId} !~ E'[\\n\\r]'))
-      and (${t.materialClientSurface} is null
-        or ${t.materialClientSurface} = 'native_mobile' and ${t.materialExpiresAt} is null
-        or ${t.materialClientSurface} in ('web','mobile_web') and ${t.materialExpiresAt} is not null)
+      and (${t.materialClientSurface} is null or ${t.materialExpiresAt} is not null)
       and ((${t.settingsClaimMaterialClientSurface} is null) = (${t.settingsClaimMaterialStagedAt} is null))
-      and (${t.settingsClaimMaterialStagedAt} is null
-        or ${t.settingsClaimMaterialClientSurface} = 'native_mobile' and ${t.settingsClaimMaterialExpiresAt} is null
-        or ${t.settingsClaimMaterialClientSurface} in ('web','mobile_web') and ${t.settingsClaimMaterialExpiresAt} is not null)
+      and (${t.settingsClaimMaterialStagedAt} is null or ${t.settingsClaimMaterialExpiresAt} is not null)
     `),
     agentEndpointCheck: check("companion_runtime_instances_agent_endpoint_check", sql`
       ((${t.agentHostedUrl} is null) = (${t.agentTokenCiphertext} is null))
@@ -1050,6 +1130,16 @@ export const companionTurns = pgTable(
     triggerName: text("trigger_name"),
     /** Trigger v2 validates in the isolated lane and pins the configured terminal surface mode. */
     triggerMode: text("trigger_mode"),
+    /** Delegation whose request this main-lane turn is executing, if any. */
+    delegationId: uuid("delegation_id").references(
+      (): AnyPgColumn => companionDelegations.id,
+      { onDelete: "set null" },
+    ),
+    /** Delegation result fed back to this Companion for relay synthesis, if any. */
+    delegationReturnId: uuid("delegation_return_id").references(
+      (): AnyPgColumn => companionDelegations.id,
+      { onDelete: "set null" },
+    ),
     /**
      * Set when an Owner/Editor asks to stop an active turn whose prompt may already be on Pi.
      * The executor that holds the lease aborts Pi and settles; the API never contacts Box.
@@ -1086,6 +1176,247 @@ export const companionTurns = pgTable(
     routineSnapshot: index("companion_turns_routine_snapshot_idx").on(t.orgId, t.companionId, t.routineSnapshotId, t.queueSequence, t.id).where(sql`${t.routineSnapshotId} is not null`),
     triggerOriginCheck: check("companion_turns_trigger_origin_check", sql`(${t.triggerId} is null or ${t.triggerName} is not null) and (${t.triggerName} is null or (char_length(${t.triggerName}) between 1 and 80 and ${t.triggerName} !~ E'[\\n\\r]')) and (${t.triggerName} is null or ${t.routineId} is null)`),
     triggerModeCheck: check("companion_turns_trigger_mode_check", sql`(${t.triggerName} is null and ${t.triggerMode} is null) or (${t.triggerName} is not null and ${t.triggerMode} in ('notify', 'relay'))`),
+  }),
+);
+
+/** Durable asynchronous approval created by the product-owned Companion control MCP. */
+export const companionControlRequests = pgTable(
+  "companion_control_requests",
+  {
+    id: uuid("id").primaryKey().notNull(),
+    orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    companionId: uuid("companion_id").notNull(),
+    sourceTurnId: uuid("source_turn_id").notNull(),
+    sourceAttemptId: uuid("source_attempt_id").notNull(),
+    requestedById: text("requested_by_id").notNull(),
+    kind: companionControlRequestKindEnum("kind").notNull(),
+    action: text("action").notNull(),
+    summary: text("summary").notNull(),
+    payload: jsonb("payload").$type<SchemaJsonObject>().notNull(),
+    requestKey: text("request_key").notNull(),
+    requestDigest: text("request_digest").notNull(),
+    requiredAccess: text("required_access").notNull().default("editor"),
+    status: companionControlRequestStatusEnum("status").notNull().default("pending"),
+    decidedById: text("decided_by_id"),
+    result: jsonb("result").$type<SchemaJsonObject>(),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    /** FIFO resume turn created once after an approved change needs Pi to continue. */
+    continuationTurnId: uuid("continuation_turn_id"),
+    createdAt: now(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    idempotency: unique("companion_control_requests_request_key_uq").on(
+      t.companionId,
+      t.sourceAttemptId,
+      t.requestKey,
+    ),
+    companionFk: foreignKey({
+      columns: [t.orgId, t.companionId],
+      foreignColumns: [companions.orgId, companions.id],
+      name: "companion_control_requests_companion_fk",
+    }).onDelete("cascade"),
+    turnFk: foreignKey({
+      columns: [t.orgId, t.companionId, t.sourceTurnId],
+      foreignColumns: [companionTurns.orgId, companionTurns.companionId, companionTurns.id],
+      name: "companion_control_requests_turn_fk",
+    }).onDelete("cascade"),
+    attemptFk: foreignKey({
+      columns: [t.orgId, t.companionId, t.sourceTurnId, t.sourceAttemptId],
+      foreignColumns: [
+        companionTurnAttempts.orgId,
+        companionTurnAttempts.companionId,
+        companionTurnAttempts.turnId,
+        companionTurnAttempts.id,
+      ],
+      name: "companion_control_requests_attempt_fk",
+    }).onDelete("cascade"),
+    pending: index("companion_control_requests_pending_idx")
+      .on(t.companionId, t.createdAt)
+      .where(sql`${t.status} = 'pending'`),
+    actionCheck: check(
+      "companion_control_requests_action_check",
+      sql`${t.action} ~ '^[a-z][a-z0-9_]{0,79}$'`,
+    ),
+    summaryCheck: check(
+      "companion_control_requests_summary_check",
+      sql`char_length(btrim(${t.summary})) between 1 and 300 and ${t.summary} !~ E'[\\n\\r]'`,
+    ),
+    payloadCheck: check(
+      "companion_control_requests_payload_check",
+      // A 16,384-character automation prompt plus JSON escaping and draft metadata remains bounded.
+      sql`jsonb_typeof(${t.payload}) = 'object' and octet_length(${t.payload}::text) <= 131072`,
+    ),
+    digestCheck: check(
+      "companion_control_requests_digest_check",
+      sql`${t.requestDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    accessCheck: check(
+      "companion_control_requests_access_check",
+      sql`${t.requiredAccess} in ('owner', 'editor')`,
+    ),
+    resultCheck: check(
+      "companion_control_requests_result_check",
+      sql`${t.result} is null or (jsonb_typeof(${t.result}) = 'object' and octet_length(${t.result}::text) <= 1048576)`,
+    ),
+    errorCheck: check(
+      "companion_control_requests_error_check",
+      sql`((${t.errorCode} is null) = (${t.errorMessage} is null)) and (${t.errorCode} is null or ${t.errorCode} ~ '^[a-z][a-z0-9_]{0,63}$') and (${t.errorMessage} is null or (char_length(${t.errorMessage}) <= 500 and ${t.errorMessage} !~ E'[\\n\\r]'))`,
+    ),
+  }),
+);
+
+/** JSON-RPC identity ledger. Arguments stay digest-only; the bounded response makes retries exact. */
+export const companionControlInvocations = pgTable(
+  "companion_control_invocations",
+  {
+    id: uuid("id").primaryKey().notNull(),
+    orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    companionId: uuid("companion_id").notNull(),
+    sourceTurnId: uuid("source_turn_id").notNull(),
+    sourceAttemptId: uuid("source_attempt_id").notNull(),
+    requestKey: text("request_key").notNull(),
+    requestDigest: text("request_digest").notNull(),
+    result: jsonb("result"),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: now(),
+  },
+  (t) => ({
+    idempotency: unique("companion_control_invocations_request_key_uq").on(
+      t.companionId,
+      t.sourceAttemptId,
+      t.requestKey,
+    ),
+    resultCheck: check(
+      "companion_control_invocations_result_check",
+      sql`(${t.result} is null) = (${t.finishedAt} is null) and (${t.result} is null or (jsonb_typeof(${t.result}) = 'object' and octet_length(${t.result}::text) <= 1048576))`,
+    ),
+    digestCheck: check(
+      "companion_control_invocations_digest_check",
+      sql`${t.requestDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    attemptFk: foreignKey({
+      columns: [t.orgId, t.companionId, t.sourceTurnId, t.sourceAttemptId],
+      foreignColumns: [
+        companionTurnAttempts.orgId,
+        companionTurnAttempts.companionId,
+        companionTurnAttempts.turnId,
+        companionTurnAttempts.id,
+      ],
+      name: "companion_control_invocations_attempt_fk",
+    }).onDelete("cascade"),
+  }),
+);
+
+/** A Pi recycle requested by the active attempt and enqueued only after that turn settles. */
+export const companionDeferredPiRestarts = pgTable(
+  "companion_deferred_pi_restarts",
+  {
+    id: uuid("id").primaryKey().notNull(),
+    orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    companionId: uuid("companion_id").notNull(),
+    sourceTurnId: uuid("source_turn_id").notNull(),
+    sourceAttemptId: uuid("source_attempt_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    clientSurface: companionClientSurfaceEnum("client_surface").notNull(),
+    status: text("status").notNull().default("pending"),
+    operationId: uuid("operation_id"),
+    createdAt: now(),
+    enqueuedAt: timestamp("enqueued_at", { withTimezone: true }),
+  },
+  (t) => ({
+    companionFk: foreignKey({
+      columns: [t.orgId, t.companionId],
+      foreignColumns: [companions.orgId, companions.id],
+      name: "companion_deferred_pi_restarts_companion_fk",
+    }).onDelete("cascade"),
+    turnFk: foreignKey({
+      columns: [t.orgId, t.companionId, t.sourceTurnId],
+      foreignColumns: [companionTurns.orgId, companionTurns.companionId, companionTurns.id],
+      name: "companion_deferred_pi_restarts_turn_fk",
+    }).onDelete("cascade"),
+    attemptFk: foreignKey({
+      columns: [t.orgId, t.companionId, t.sourceTurnId, t.sourceAttemptId],
+      foreignColumns: [
+        companionTurnAttempts.orgId,
+        companionTurnAttempts.companionId,
+        companionTurnAttempts.turnId,
+        companionTurnAttempts.id,
+      ],
+      name: "companion_deferred_pi_restarts_attempt_fk",
+    }).onDelete("cascade"),
+    statusCheck: check(
+      "companion_deferred_pi_restarts_status_check",
+      sql`${t.status} in ('pending', 'enqueued', 'cancelled')`,
+    ),
+  }),
+);
+
+/** One asynchronous question from a source Companion to a target Companion. */
+export const companionDelegations = pgTable(
+  "companion_delegations",
+  {
+    id: uuid("id").primaryKey().notNull(),
+    orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    sourceCompanionId: uuid("source_companion_id"),
+    sourceCompanionName: text("source_companion_name").notNull(),
+    targetCompanionId: uuid("target_companion_id"),
+    targetCompanionName: text("target_companion_name").notNull(),
+    actorId: text("actor_id").notNull(),
+    sourceTurnId: uuid("source_turn_id").notNull(),
+    sourceAttemptId: uuid("source_attempt_id").notNull(),
+    targetTurnId: uuid("target_turn_id").notNull(),
+    rootTurnId: uuid("root_turn_id").notNull(),
+    parentDelegationId: uuid("parent_delegation_id").references(
+      (): AnyPgColumn => companionDelegations.id,
+      { onDelete: "set null" },
+    ),
+    depth: integer("depth").notNull(),
+    responseMode: companionRoutineSurfaceModeEnum("response_mode").notNull(),
+    status: companionTurnStatusEnum("status").notNull().default("queued"),
+    deliveryStatus: companionDelegationDeliveryStatusEnum("delivery_status").notNull().default("pending"),
+    requestKey: text("request_key").notNull(),
+    requestDigest: text("request_digest").notNull(),
+    sourceResultEventId: text("source_result_event_id"),
+    sourceRelayTurnId: uuid("source_relay_turn_id"),
+    deliveryErrorCode: text("delivery_error_code"),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    createdAt: now(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    // Migration 0150 additionally owns the composite source/target Companion FKs. PostgreSQL's
+    // column-list `ON DELETE SET NULL (companion_id)` keeps the non-null tenant key intact, but
+    // Drizzle's FK builder can only null every local column and therefore cannot encode them here.
+    idempotency: unique("companion_delegations_request_key_uq").on(
+      t.sourceCompanionId,
+      t.sourceAttemptId,
+      t.requestKey,
+    ),
+    targetTurn: unique("companion_delegations_target_turn_uq").on(t.targetTurnId),
+    root: index("companion_delegations_root_idx").on(t.rootTurnId, t.createdAt),
+    depthBounds: check("companion_delegations_depth_check", sql`${t.depth} between 1 and 4`),
+    noSelf: check(
+      "companion_delegations_no_self_check",
+      sql`${t.sourceCompanionId} is null or ${t.targetCompanionId} is null or ${t.sourceCompanionId} <> ${t.targetCompanionId}`,
+    ),
+    digestCheck: check(
+      "companion_delegations_digest_check",
+      sql`${t.requestDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    terminalCheck: check(
+      "companion_delegations_terminal_check",
+      sql`(${t.status} in ('succeeded','failed','interrupted','cancelled')) = (${t.settledAt} is not null)`,
+    ),
+    deliveryErrorCheck: check(
+      "companion_delegations_delivery_error_check",
+      sql`${t.deliveryErrorCode} is null or ${t.deliveryErrorCode} ~ '^[a-z][a-z0-9_]{0,63}$'`,
+    ),
   }),
 );
 
@@ -1327,9 +1658,7 @@ export const companionOperations = pgTable(
     resourceSnapshotCheck: check("companion_operations_resource_snapshot_check", sql`((${t.kind} = 'start' and ${t.clientSurface} is not null and (${t.modelId} is null or (char_length(${t.modelId}) between 1 and 200 and ${t.modelId} !~ E'[\n\r]')) and (${t.persona} is null or char_length(${t.persona}) <= 280) and ${t.canWriteSkills} is not null and jsonb_typeof(${t.providerIds}) = 'array' and jsonb_typeof(${t.selectedSkillIds}) = 'array' and jsonb_typeof(${t.skillRefs}) = 'array' and ${t.skillUpdateSelectedSkillIds} is null and ${t.skillUpdateRefs} is null and jsonb_typeof(${t.selectedMcpAccountIds}) = 'array') or (${t.kind} in ('restart_pi','restart_box','apply_settings') and ${t.clientSurface} is not null and (${t.modelId} is null or (char_length(${t.modelId}) between 1 and 200 and ${t.modelId} !~ E'[\n\r]')) and (${t.persona} is null or char_length(${t.persona}) <= 280) and ${t.canWriteSkills} is not null and jsonb_typeof(${t.providerIds}) = 'array' and jsonb_typeof(${t.selectedSkillIds}) = 'array' and jsonb_typeof(${t.skillRefs}) = 'array' and jsonb_typeof(${t.skillUpdateSelectedSkillIds}) = 'array' and jsonb_typeof(${t.skillUpdateRefs}) = 'array' and jsonb_typeof(${t.selectedMcpAccountIds}) = 'array') or (${t.kind} = 'stop' and ${t.clientSurface} is null and ${t.modelId} is null and ${t.persona} is null and ${t.canWriteSkills} is null and ${t.providerIds} is null and ${t.selectedSkillIds} is null and ${t.skillRefs} is null and jsonb_typeof(${t.skillUpdateSelectedSkillIds}) = 'array' and jsonb_typeof(${t.skillUpdateRefs}) = 'array' and ${t.selectedMcpAccountIds} is null) or (${t.kind} = 'delete' and ${t.clientSurface} is null and ${t.modelId} is null and ${t.persona} is null and ${t.canWriteSkills} is null and ${t.providerIds} is null and ${t.selectedSkillIds} is null and ${t.skillRefs} is null and ${t.skillUpdateSelectedSkillIds} is null and ${t.skillUpdateRefs} is null and ${t.selectedMcpAccountIds} is null))`),
     materialSnapshotCheck: check("companion_operations_material_snapshot_check", sql`
       (${t.materialStagedAt} is not null or ${t.materialExpiresAt} is null)
-      and (${t.materialStagedAt} is null
-        or ${t.clientSurface} = 'native_mobile' and ${t.materialExpiresAt} is null
-        or ${t.clientSurface} in ('web','mobile_web') and ${t.materialExpiresAt} is not null)
+      and (${t.materialStagedAt} is null or ${t.materialExpiresAt} is not null)
     `),
     providerOperationCheck: check("companion_operations_provider_operation_check", sql`${t.providerOperationId} is null or (char_length(${t.providerOperationId}) between 1 and 200 and ${t.providerOperationId} !~ E'[\\n\\r]')`),
     terminalCheck: check("companion_operations_terminal_check", sql`(${t.status} in ('succeeded','failed','interrupted','cancelled')) = (${t.settledAt} is not null)`),
@@ -1712,6 +2041,8 @@ export interface CompanionStoredDecision {
   decided_by_name: string | null;
   decided_at: string | null;
   expires_at: string;
+  required_access?: "owner" | "editor";
+  control_status?: "pending" | "applying" | "applied" | "denied" | "expired" | "cancelled" | "failed" | null;
   proposal: SchemaJsonObject | null;
 }
 
@@ -1772,6 +2103,8 @@ export const companionTranscriptEntries = pgTable(
      * as `routine_name` and masked the same way by every surface outside the thread.
      */
     triggerName: text("trigger_name"),
+    /** Trusted request/result metadata for Companion-to-Companion delegation rendering. */
+    delegation: jsonb("delegation").$type<SchemaJsonObject>(),
     createdAt: now(),
   },
   (t) => ({

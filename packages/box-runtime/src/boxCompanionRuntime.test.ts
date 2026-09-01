@@ -2,13 +2,21 @@
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  COMPANION_CONTROL_MCP_SERVER_NAME,
   COMPANION_EXEC_TOOL_RUN_TIMEOUT_MS,
-  COMPANION_CONFIG_PROPOSAL_CONNECT_PROVIDERS,
   COMPANION_ROUTINE_MAX_PER_COMPANION,
   COMPANION_ROUTINE_MIN_INTERVAL_MS,
   COMPANION_TOOL_RUN_TIMEOUT_MS,
@@ -1603,32 +1611,21 @@ describe("staged Companion instructions", () => {
     expect(composedInstructions(undefined)).not.toContain("# This Companion");
   });
 
-  it("includes Skills Hub and the config catalog on web and mobile_web, not on native_mobile", () => {
-    for (const surface of ["web", "mobile_web"] as const) {
+  it("stages the same Skills Hub and control MCP capabilities on every first-party surface", () => {
+    for (const surface of ["web", "mobile_web", "native_mobile"] as const) {
       const text = composedInstructions(null, surface);
       expect(text).toContain("Skills Hub");
-      expect(text).toContain("config-catalog.json");
+      expect(text).toContain("companion-control");
       expect(text).toContain("- Plugins:");
       expect(text).toContain("- Routines:");
       expect(text).toContain("- Triggers:");
       expect(text).toContain(COMPANION_OUTBOX_INSTRUCTIONS);
       expect(text).toContain("ask_user");
-      expect(text).toContain("propose_config");
-      expect(text).toContain("propose_routine");
-      expect(text).toContain("propose_trigger");
+      expect(text).toContain("companion_request_trigger_change");
+      expect(text).not.toContain("propose_config");
+      expect(text).not.toContain("propose_routine");
+      expect(text).not.toContain("propose_trigger");
     }
-    const native = composedInstructions(null, "native_mobile");
-    expect(native).not.toContain("- The Skills Hub:");
-    expect(native).not.toContain("config-catalog.json");
-    expect(native).not.toContain("- Plugins:");
-    expect(native).not.toContain("- Skills:");
-    expect(native).toContain("- Routines:");
-    expect(native).toContain("- Triggers:");
-    expect(native).toContain(COMPANION_OUTBOX_INSTRUCTIONS);
-    expect(native).toContain("ask_user");
-    expect(native).toContain("propose_config");
-    expect(native).toContain("propose_routine");
-    expect(native).toContain("propose_trigger");
   });
 
   it("interpolates tool-run timeout constants rather than literals", () => {
@@ -1642,7 +1639,6 @@ describe("staged Companion instructions", () => {
     expect(text).toContain(
       `At most ${COMPANION_TRIGGER_MAX_PER_COMPANION} per Companion.`,
     );
-    expect(text).toContain(COMPANION_CONFIG_PROPOSAL_CONNECT_PROVIDERS.join(", "));
   });
 
   it("describes the fixed per-turn time metadata without embedding a changing clock value", () => {
@@ -2042,11 +2038,14 @@ describe("isolated routine Pi sessions", () => {
     const parentDailyBytes = "# 2026-08-28\n\nValidated the routine boundary.\n";
     const paths = companionPiRoutineSessionPaths(runId);
     const parentToolsBin = join(boxHome, ".companion", "tools", "bin");
+    const hostToolsBin = join(boxHome, "host-tools");
     const commands: string[] = [];
     let preparedResult: ReturnType<typeof spawnSync> | null = null;
 
     mkdirSync(join(boxHome, ".companion", "pi", "extensions"), { recursive: true });
     mkdirSync(parentToolsBin, { recursive: true });
+    mkdirSync(hostToolsBin, { recursive: true });
+    writeFileSync(join(hostToolsBin, "flock"), "#!/bin/sh\nexit 0\n", { mode: 0o700 });
     mkdirSync(parentDaily, { recursive: true });
     writeFileSync(
       join(parentToolsBin, "qmd"),
@@ -2055,6 +2054,12 @@ describe("isolated routine Pi sessions", () => {
     );
     writeFileSync(join(parentMemory, "MEMORY.md"), parentMemoryBytes);
     writeFileSync(join(parentDaily, "2026-08-28.md"), parentDailyBytes);
+    writeFileSync(join(boxHome, ".companion", "pi", "mcp.json"), JSON.stringify({
+      mcpServers: {
+        [COMPANION_CONTROL_MCP_SERVER_NAME]: { url: "http://127.0.0.1:1/control" },
+        mail: { url: "http://127.0.0.1:1/mcp/mail" },
+      },
+    }));
 
     try {
       vi.stubGlobal("fetch", vi.fn(async (rawUrl: string | URL | Request, init?: RequestInit) => {
@@ -2067,7 +2072,7 @@ describe("isolated routine Pi sessions", () => {
           if (command.includes("routine-pi-session-prepared")) {
             const result = spawnSync("bash", ["-c", command], {
               encoding: "utf8",
-              env: { ...process.env, HOME: boxHome },
+              env: { ...process.env, HOME: boxHome, PATH: `${hostToolsBin}:${process.env.PATH ?? ""}` },
             });
             preparedResult = result;
             return response(commandResult(result.stdout));
@@ -2092,9 +2097,11 @@ describe("isolated routine Pi sessions", () => {
       // the command's stderr redirect. That benign warning must not hide the preparation exit code.
       expect(preparedResult).toMatchObject({ status: 0 });
       const routineMemory = join(boxHome, paths.root, "memory");
+      const routineMcp = JSON.parse(readFileSync(join(boxHome, paths.root, "pi", "mcp.json"), "utf8"));
       expect(readFileSync(join(routineMemory, "MEMORY.md"), "utf8")).toBe(parentMemoryBytes);
       expect(readFileSync(join(routineMemory, "daily", "2026-08-28.md"), "utf8"))
         .toBe(parentDailyBytes);
+      expect(routineMcp.mcpServers).toEqual({ mail: { url: "http://127.0.0.1:1/mcp/mail" } });
 
       // The routine's memory directory is a copied run-local pin, never a link to the parent. Even
       // if pi-memory writes during the isolated session, the main Pi's authoritative bytes cannot
@@ -2107,7 +2114,35 @@ describe("isolated routine Pi sessions", () => {
       expect(commands.at(-1)).toContain('export QMD_CONFIG_DIR="$routine_root/qmd/config"');
       expect(commands.at(-1)).toContain('export INDEX_PATH="$routine_root/qmd/index.sqlite"');
       expect(commands.at(-1)).toContain('export PATH="$routine_root/bin:');
-      expect(commands[0]).toContain('if [ -x "$routine_root/tools/bin/qmd" ]; then');
+      expect(commands.at(-1)).toContain("unset COMPANION_CONTROL_TOKEN");
+      const prepareCommand = commands[0];
+      if (!prepareCommand) throw new Error("routine preparation command was not captured");
+      expect(prepareCommand).toContain('if [ -x "$routine_root/tools/bin/qmd" ]; then');
+      expect(prepareCommand).toContain('if [ -L "$routine_root/pi/mcp.json" ]; then');
+
+      const symlinkHome = mkdtempSync(join(tmpdir(), "companion-routine-mcp-symlink-"));
+      const externalMcp = join(symlinkHome, "external-mcp.json");
+      const externalBytes = JSON.stringify({ mcpServers: {
+        [COMPANION_CONTROL_MCP_SERVER_NAME]: { url: "http://127.0.0.1:1/control" },
+      } });
+      try {
+        mkdirSync(join(symlinkHome, ".companion", "pi", "extensions"), { recursive: true });
+        mkdirSync(join(symlinkHome, ".companion", "runtime"), { recursive: true });
+        writeFileSync(externalMcp, externalBytes);
+        symlinkSync(externalMcp, join(symlinkHome, ".companion", "pi", "mcp.json"));
+
+        const rejected = spawnSync("bash", ["-c", prepareCommand], {
+          encoding: "utf8",
+          env: { ...process.env, HOME: symlinkHome, PATH: `${hostToolsBin}:${process.env.PATH ?? ""}` },
+        });
+
+        expect(rejected.status).not.toBe(0);
+        expect(rejected.stderr).toContain("routine-pi-session mcp config is a symlink");
+        expect(readFileSync(externalMcp, "utf8")).toBe(externalBytes);
+        expect(existsSync(join(symlinkHome, paths.root))).toBe(false);
+      } finally {
+        rmSync(symlinkHome, { recursive: true, force: true });
+      }
 
       const routineRoot = join(boxHome, paths.root);
       const qmd = spawnSync(join(routineRoot, "bin", "qmd"), ["collection", "list"], {
@@ -2134,10 +2169,13 @@ describe("isolated routine Pi sessions", () => {
 
   it("leaves qmd unavailable when its best-effort installation is absent", async () => {
     const boxHome = mkdtempSync(join(tmpdir(), "companion-routine-no-qmd-"));
+    const hostToolsBin = join(boxHome, "host-tools");
     const paths = companionPiRoutineSessionPaths(runId);
     let preparedResult: ReturnType<typeof spawnSync> | null = null;
 
     mkdirSync(join(boxHome, ".companion", "pi", "extensions"), { recursive: true });
+    mkdirSync(hostToolsBin, { recursive: true });
+    writeFileSync(join(hostToolsBin, "flock"), "#!/bin/sh\nexit 0\n", { mode: 0o700 });
 
     try {
       vi.stubGlobal("fetch", vi.fn(async (rawUrl: string | URL | Request, init?: RequestInit) => {
@@ -2149,7 +2187,7 @@ describe("isolated routine Pi sessions", () => {
           if (command.includes("routine-pi-session-prepared")) {
             const result = spawnSync("bash", ["-c", command], {
               encoding: "utf8",
-              env: { ...process.env, HOME: boxHome },
+              env: { ...process.env, HOME: boxHome, PATH: `${hostToolsBin}:${process.env.PATH ?? ""}` },
             });
             preparedResult = result;
             return response(commandResult(result.stdout));

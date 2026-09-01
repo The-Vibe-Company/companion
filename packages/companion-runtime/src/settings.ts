@@ -21,22 +21,19 @@ function snapshot(context: SettingsContext): {
   authorization: RuntimeAuthorization;
   clientSurface: SettingsRuntimeClaim["clientSurface"];
   settingsRevision: bigint;
-  skillsRevision: number | null;
+  skillsRevision: number;
   boxId: string;
 } {
   const authorization = context.session.authorization;
   const clientSurface = context.claim.clientSurface;
   const settingsRevision = context.claim.targetSettingsRevision;
-  const skillsRevision = clientSurface === "native_mobile"
-    ? null
-    : context.claim.targetSkillsRevision;
+  const skillsRevision = context.claim.targetSkillsRevision;
   if (
     !authorization?.authorized
     || !authorization.boxId
     || authorization.runtimeGeneration !== context.claim.runtimeGeneration
     || authorization.desiredSettingsRevision !== settingsRevision
-    || (clientSurface !== "native_mobile" && authorization.skillsRevision !== skillsRevision)
-    || (clientSurface !== "native_mobile" && skillsRevision === null)
+    || authorization.skillsRevision !== skillsRevision
   ) {
     throw new RuntimeInvariantError({
       code: "settings_snapshot_invalid",

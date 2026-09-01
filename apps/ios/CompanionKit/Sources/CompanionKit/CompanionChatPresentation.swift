@@ -47,6 +47,7 @@ public enum CompanionDecisionCardOutcome: Equatable, Sendable {
     case answered(String)
     case expired
     case cancelled
+    case failed
     case unknown
 
     public var bubbleText: String {
@@ -56,6 +57,7 @@ public enum CompanionDecisionCardOutcome: Equatable, Sendable {
         case .answered(let answer): answer.isEmpty ? "Answered" : answer
         case .expired: "Timed out, denied"
         case .cancelled: "Closed without approval"
+        case .failed: "Approved, but the change could not be applied"
         case .unknown: "Request status unknown"
         }
     }
@@ -81,8 +83,9 @@ public struct CompanionDecisionCardProjection: Equatable, Sendable {
         answer: String
     ) {
         let pending = decision.status == .pending
+            || (decision.kind == .control && decision.controlStatus == .applying)
         isCollapsed = !pending
-        showsActions = pending && canAct && decision.kind != .unknown
+        showsActions = decision.status == .pending && canAct && decision.kind != .unknown
         isInteractive = showsActions && !busy
 
         if showsActions {
@@ -96,12 +99,36 @@ public struct CompanionDecisionCardProjection: Equatable, Sendable {
         primaryActionDisabled = decision.kind == .question
             && answer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
-        if pending && !canAct {
-            waitingMessage = "Waiting for an Owner or Editor"
-        } else if pending && decision.kind == .unknown {
+        if decision.status == .pending && !canAct {
+            waitingMessage = decision.requiredAccess == .owner
+                ? "Waiting for the Owner"
+                : "Waiting for an Owner or Editor"
+        } else if decision.status == .pending && decision.kind == .unknown {
             waitingMessage = "Update Companion to respond to this request."
         } else {
             waitingMessage = nil
+        }
+
+        if decision.kind == .control {
+            switch decision.controlStatus {
+            case .applying:
+                outcome = nil
+            case .applied:
+                outcome = .allowed
+            case .failed:
+                outcome = .failed
+            case .denied:
+                outcome = .denied
+            case .expired:
+                outcome = .expired
+            case .cancelled:
+                outcome = .cancelled
+            case .pending, .none:
+                outcome = decision.status == .pending ? nil : .unknown
+            case .unknown:
+                outcome = .unknown
+            }
+            return
         }
 
         switch decision.status {

@@ -223,15 +223,18 @@ async function main(): Promise<void> {
     invocationId,
   });
   const gatewayToken = process.env.COMPANION_MCP_BROKER_TOKEN ?? "";
+  const controlToken = process.env.COMPANION_CONTROL_TOKEN ?? "";
   const gateway = validationOnly
     ? null
     : await startCompanionMcpGateway({
         configPath: join(root, "state", "mcp-gateway.json"),
         apiUrl: process.env.COMPANION_API_URL ?? "",
         brokerToken: gatewayToken,
+        controlToken,
       });
   const piEnvironment = { ...process.env };
   delete piEnvironment.COMPANION_MCP_BROKER_TOKEN;
+  delete piEnvironment.COMPANION_CONTROL_TOKEN;
   if (gateway) piEnvironment.COMPANION_MCP_GATEWAY_ORIGIN = gateway.origin;
   const transport = new SpawnedPiTransport(piEnvironment);
   const brokerOptions: CompanionPiBrokerOptions = {
