@@ -1,0 +1,19 @@
+.github/workflows/ci.yml
+  s_adc6c6562142eb::t_6b152c03b3c127 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "880ebfbf81108a233d8d2ecf02899cffc4131fc5",
+  "prompts": {},
+  "sessions": {
+    "s_adc6c6562142eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f15a4a36-19ad-4e5a-a29c-f483d0d0a166",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
