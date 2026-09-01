@@ -107,6 +107,8 @@ restarts anything, and they never appear in an operation snapshot or reach Pi.
 - ordered queue position and durable state;
 - inactivity and absolute deadlines;
 - current attempt reference and terminal outcome;
+- optional exact `recovery_status = pending | running | completed | null`, projected identically to
+  Owner, Editor, and Viewer and tolerated as absent during rolling deploys;
 - stable error code, expurgated message (maximum 500 characters), and allowed next action.
 
 The user transcript message and turn are inserted in one transaction. Repeating the same POST returns
@@ -121,23 +123,24 @@ queued → starting → dispatching → running ↔ needs_input
 
 There are two serial execution lanes per Companion: `main` for ordinary turns and `routine` for
 isolated routine-origin turns. At most one attempt is active in each lane, so one main attempt and
-one routine attempt may run together. FIFO ordering applies within each lane. `interrupted` is
-terminal immediately: `resolution = auto_abandoned` releases the lane without replay or a human
-gate. A routine interruption never blocks main or shared lifecycle work.
+one routine attempt may run together. FIFO ordering applies within each lane. An unresolved
+`interrupted` occurrence owns only its lane until protocol 7's internal Pi cleanup proves terminal;
+then `resolution = auto_abandoned` releases it without replay. A routine recovery, including one in
+backoff, never delays an independently warm main-lane message.
 
 ### Attempt
 
 `companion_turn_attempts` stores one execution try:
 
-- optional historical `retry_id`, retained only for attempts created before protocol 6;
+- optional historical `retry_id`; protocol 7 recovery never creates a replacement attempt;
 - runtime claim epoch and Pi invocation id;
 - dispatch-started and acknowledgement facts;
 - correlated event-journal cursor and activity timestamp;
 - terminal result and expurgated error.
 
 The attempt is created by runtime when it claims the turn. Historical protocol-4 retries could add
-an attempt with a new `retry_id`; protocol 6 never creates a replacement attempt for an interruption
-or reuses `client_message_id` as an attempt key.
+an attempt with a new `retry_id`; protocol 7 adopts any pending retry as cleanup and never creates a
+replacement attempt or reuses `client_message_id` as an attempt key.
 
 The attempt's durable `started_at` is also the time reference Pi receives for that try. On the first
 authorized material read, a narrow fenced function pins the turn actor's current profile timezone
@@ -165,7 +168,7 @@ Main-lane work precedence is:
 The routine lane handles a routine decision or active attempt, then the next routine-origin turn.
 Explicit main lifecycle work waits for routine completion before it claims shared Box mutation;
 permanent delete is the exception and may claim first, fence/settle the routine lane, and terminate
-its exact run-scoped Pi invocation before provider deletion. A terminal routine interruption never
+its exact run-scoped Pi invocation before provider deletion. Automatic routine cleanup never
 preempts or recycles the main Pi.
 
 ### Lease
@@ -201,8 +204,13 @@ claim new work within five seconds either way. Completion of a start operation w
 immediately; the two-second sweep remains recovery rather than normal dispatch delay.
 
 Sending is the sole normal wake path. There is no Wake button and no first-keystroke prewarm. A cold
-send moves through durable start/dispatch checkpoints and finishes or fails explicitly within three
-minutes. A successful Pi prompt acknowledgement refreshes the Box TTL to six hours. That TTL is not
+send remains `queued`, with no attempt and no cold-start deadline, until its ordinary `start`
+prerequisite is actually claimed. That first claim starts the fixed three-minute window; takeover
+of the same Start preserves it. A deadline reached before dispatch re-enqueues that same Start with
+bounded backoff, clears its cycle clock, and leaves the source message queued; no prompt or new turn
+is created. Only after Start settles successfully may the claimer create an attempt, and then
+only under fresh positive Box, Pi, and material proof. A successful Pi prompt acknowledgement
+refreshes the Box TTL to six hours. That TTL is not
 credential freshness: before direct warm dispatch, a non-native material snapshot must remain valid
 for the two-hour absolute turn deadline plus five minutes. A missing or shorter expiry creates the
 ordinary `start` operation, which restages and recycles Pi without restarting the Box. Runtime
@@ -220,6 +228,12 @@ persists a `dispatch-v2` invocation reservation, and only then starts the isolat
 start and terminate commands share a run-scoped advisory lock, exact reservation, and cancellation
 tombstone, so a takeover can adopt the same broker while an old queued launch cannot appear after a
 proven termination. Protocol-2 replicas receive no new claims during this rollout.
+Migration 0155 advanced the runtime claim protocol to 6 and temporarily normalized interruptions as
+terminal history. Migration 0157 advances claims to protocol 7 and converges those rows onto durable
+cleanup. Earlier executors may finish a compatible lease already held but cannot claim repaired
+work. The migration generically rearms unresolved and protocol-6 terminal cleanup, preserves live
+running leases, converts legacy terminal proof, creates missing recoveries, and removes cold
+deadlines that were stamped before an unclaimed Start.
 
 The golden runtime image precompiles Jiti's source-hashed Pi extension cache under the Companion's
 persistent `~/.companion/runtime/tmp`; `/tmp` is not used because Box discards it on archive. Pi
@@ -235,6 +249,11 @@ Before every Box interaction, runtime re-evaluates:
 - selected accessible Skills and `can_write_skills` policy;
 - selected MCP accounts still owned and connected by the actor performing the Box interaction;
 - the latest settings revision.
+
+The sole exception is `restart_pi + trigger = recovery`: its cleanup-only authorization validates
+fence and exact source identity but never requests message resources or historical actor authority.
+This exception can only prove an interrupted invocation gone; it cannot dispatch, stage, or make a
+Box lifecycle write beyond exact Pi termination.
 
 The immutable Companion Owner is never a fallback resource owner for an Editor. A decision delivery
 requires both the turn actor and the responder to retain access to every personal resource used by
@@ -294,9 +313,12 @@ and continues the explicit resume path. Permanent delete is Owner-only cleanup, 
 may preempt an active or interrupted isolated routine, and runtime terminates that exact run-scoped
 Pi invocation before issuing provider DELETE.
 
-Automatic preflight repair may recycle Pi for a proven daemon/protocol failure. For an interruption,
-runtime instead attempts one exact, bounded invocation stop before terminal settlement; failure is
-logged but never delays settlement or later work. Immediately before a new
+Normal warm-path repair may recycle Pi for a proven daemon or protocol failure. An interrupted
+occurrence instead uses cleanup-only exact termination: before cleanup, runtime re-observes the
+known Box and persists that provider state. `absent` or `archived` is sufficient negative proof that
+the captured invocation no longer exists, including for an isolated routine; cleanup does not
+resume the Box, stage resources, or start Pi.
+Immediately before a new
 prompt write intent, this includes one recycle when the broker still reports an active attempt or an
 unacknowledged event tail left by earlier terminal work; runtime re-reads idle state before dispatch
 and otherwise fails with `restart_pi`. It may not invoke Full Box, replace a merely unhealthy Box,
@@ -534,15 +556,31 @@ Dispatch has three relevant outcomes:
 - **prompt may have been written, no ACK:** attempt and turn become `interrupted` immediately.
 
 The ambiguous case is never automatically replayed, including after lease takeover, Pi restart,
-runtime restart, or a new user message. Runtime attempts one exact, bounded Pi stop before the
-interruption settlement. Cleanup success or failure preserves the original expurgated error, records
-`resolution = auto_abandoned` plus `last_error_action = none`, and releases the lane immediately.
-There is no durable recovery operation or cleanup backoff. The next ordinary main turn owns normal
-archived-Box resume and recycles a non-idle Pi during preflight; isolated routines/triggers keep their
-run-scoped cleanup boundary.
+runtime restart, or a new user message. In the interruption transaction, protocol 7 creates one
+idempotent internal `restart_pi` operation with `trigger = recovery` on the affected lane. Its
+fenced authorization verifies the gate, tenant, Companion generation, lease, unresolved source
+interruption, source dispatch state, and exact Pi invocation. It deliberately does not load the
+historical actor ACL, model/provider credential, Skill, MCP account, token, attachment, or message
+material.
 
-`POST /v1/companions/:id/turns/:turnId/retry` does not exist. Old clients receive `404`, and
-historical `retry_id` values remain read-only evidence rather than an executable control.
+Runtime re-observes and persists the known Box state before cleanup. An absent or
+provider-archived Box, or a source with no Pi write intent, is terminal negative proof. Routine
+cleanup terminates only the exact run-scoped invocation. Main cleanup uses the captured systemd
+`InvocationID` and returns `terminated`, `already_gone`, or `superseded`, never stopping a newer Pi
+invocation. Success checkpoints `cleanup_complete`, preserves the original error, records
+`resolution = auto_abandoned`, and releases the lane. The legacy `pi_ready` recovery checkpoint is
+accepted as terminal proof during rollout, but new cleanup never stages resources or starts Pi.
+
+Cleanup failure returns the same operation to `pending` with exponential backoff capped at five
+minutes and clears its `started_at`; the next claim receives one fresh, fixed ten-minute cleanup
+budget while takeover of that running cycle preserves the existing deadline. Historical source-turn
+deadlines never constrain cleanup, and each Box/Pi call remains bounded to 30 seconds. Recovery
+never resumes, replaces, archives, or restarts a Box, and never dispatches the old prompt; the next
+ordinary send owns normal archived-Box resume and current-resource staging.
+
+`POST /v1/companions/:id/turns/:turnId/retry` remains a wire-compatibility endpoint. It only observes
+or re-enqueues the exact cleanup operation; it never creates an attempt or replays the prompt. New
+clients expose no Retry control.
 
 `POST /v1/companions/:id/turns/:turnId/cancel` is the Owner/Editor stop and dequeue path. A
 queued follow-up or an active turn that has not yet written a prompt to Pi
@@ -731,18 +769,22 @@ ordinary main turns never inspect or terminate the run-scoped routine broker.
 Shared Box lifecycle and staging stays on the main lane and waits for the routine lane to be
 quiescent. An active routine prevents Pi recycle, settings apply, health repair, or other shared
 lifecycle work from racing its run root. A queued main turn does not acquire its cold-start deadline
-or derived Start operation during that wait; its full three-minute budget begins once routine
-quiescence makes shared lifecycle work schedulable. An interrupted routine is terminal, owns no
-lane, and does not block main chat. Explicit Full Box restart and permanent delete may preempt and settle an active
-routine occurrence, then terminate only its exact run-scoped invocation before contacting the
-provider. Routine takeover, active cancellation, and settlement never stop the main Pi. The routine context
+or derived Start operation during that wait. Once routine quiescence makes shared lifecycle work
+schedulable, the Start may be created, but its full three-minute budget begins only when Runtime
+first claims it. An interrupted routine is terminal in the user history;
+its resource-free recovery retains only the routine lane until exact `cleanup_complete` proof and
+does not block independently warm main chat. Shared lifecycle waits for that proof. Explicit Full
+Box restart and permanent delete may preempt and settle an active routine occurrence, then terminate
+only its exact run-scoped invocation before contacting the provider. Routine takeover, active
+cancellation, and settlement never stop the main Pi. The routine context
 substrate is a pinned read-only view of the main conversation; routine-local memory remains private
 to the run, so concurrency introduces no second writer to parent memory.
 
 Terminal `auto_abandoned` interruptions remain durable occurrence evidence and notification input,
 but first-party thread and runtime projections return no `interrupted_turn` tail state for them.
-Only an unresolved legacy interruption can occupy that compatibility field; no protocol-6 Retry or
-Cancel boundary exists.
+Only an unresolved interruption can occupy that compatibility field. The compatibility Retry
+boundary observes or re-enqueues the same cleanup and never creates an attempt; current clients show
+no Retry or Cancel control.
 
 The isolated invocation is pinned separately from the main Pi identity at dispatch write intent.
 Runtime validates that pinned value for broker reads, durable projection, terminal acknowledgement,
@@ -1365,8 +1407,11 @@ attempt duration, lease takeover, deadline settlement, unknown/malformed event c
 duplicate Box discovery, permanent-delete progress, and expurgated failure codes without accessing
 secret payloads.
 
-Protocol 6 emits no recovery projection or recovery telemetry. Thread-window and delta routes emit
-only numeric duration, response-byte, changed-entry, deleted-entry, and `has_more` measurements. No metric label
+Protocol 7 emits aggregate-only recovery telemetry once per minute: pending recovery count, oldest
+recovery age, count older than 15 minutes, maximum attempt count, and cumulative `auto_abandoned`
+count. A nonzero stalled count emits `runtime.recovery.stalled` as a warning, never as a claim gate
+or a red health check. Thread-window and delta routes emit only numeric
+duration, response-byte, changed-entry, deleted-entry, and `has_more` measurements. No metric label
 accepts an organization, Companion, actor, cursor, event id, URL, transcript value, or provider
 diagnostic.
 
@@ -1393,7 +1438,8 @@ Acceptance bounds:
 - API send acknowledgement under one second outside load for a text send, and transfer time plus
   that same bound for a send carrying files;
 - runtime claim under five seconds;
-- cold start success or explicit failure under three minutes;
+- each cold-start cycle succeeds or re-enqueues explicitly under three minutes without expiring the
+  accepted message;
 - replica takeover under 45 seconds;
 - inactivity settlement under ten minutes plus one sweep;
 - absolute settlement under two hours plus one sweep.

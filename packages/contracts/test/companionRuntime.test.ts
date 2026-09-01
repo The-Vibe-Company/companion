@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-
 import type { CompanionTurn, CompanionTurnAttempt } from "../src/companionRuntime";
 
 import {
@@ -11,6 +10,8 @@ import {
   companionQueuedTurnSchema,
   companionRuntimeSafeErrorSchema,
   companionTurnSchema,
+  retryCompanionTurnAcceptedResponseSchema,
+  retryCompanionTurnInputSchema,
 } from "../src/companionRuntime";
 
 const companionId = "11111111-1111-4111-8111-111111111111";
@@ -125,6 +126,21 @@ describe("Companion Runtime v2 public contracts", () => {
     });
     expect(companionInterruptedTurnSchema.parse(interrupted).error).toEqual(safeError);
     expect(() => companionTurnSchema.parse({ ...interrupted, error: null })).toThrow();
+
+    expect(companionTurnSchema.parse(interrupted).recovery_status).toBeUndefined();
+    expect(companionTurnSchema.parse({
+      ...interrupted,
+      recovery_status: "pending",
+    }).recovery_status).toBe("pending");
+    expect(companionTurnSchema.parse({
+      ...interrupted,
+      recovery_status: "future_cleanup_phase",
+    }).recovery_status).toBeNull();
+    expect(companionTurnSchema.parse({
+      ...interrupted,
+      resolution: "auto_abandoned",
+      recovery_status: "completed",
+    }).recovery_status).toBe("completed");
   });
 
   it("projects lifecycle operations without provider payloads", () => {
@@ -155,5 +171,14 @@ describe("Companion Runtime v2 public contracts", () => {
   it("requires an empty Cancel body", () => {
     expect(cancelCompanionTurnInputSchema.parse({})).toEqual({});
     expect(() => cancelCompanionTurnInputSchema.parse({ rollback: true })).toThrow();
+  });
+
+  it("keeps compatibility Retry strict without defining a new response shape", () => {
+    const retryId = "77777777-7777-4777-8777-777777777777";
+    expect(retryCompanionTurnInputSchema.parse({ retry_id: retryId })).toEqual({
+      retry_id: retryId,
+    });
+    expect(() => retryCompanionTurnInputSchema.parse({ retry_id: retryId, replay: true })).toThrow();
+    expect(retryCompanionTurnAcceptedResponseSchema).toBe(companionOperationAcceptedResponseSchema);
   });
 });

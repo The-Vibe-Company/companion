@@ -169,6 +169,13 @@ struct CompanionRoutineHistoryView: View {
                     .font(.footnote)
                     .foregroundStyle(Color.companionMuted)
                     .fixedSize(horizontal: false, vertical: true)
+                if let recovery = recoveryDescription(run.recoveryStatus, turnStatus: run.status) {
+                    Label(recovery, systemImage: recoverySymbol(run.recoveryStatus))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(recoveryColor(run.recoveryStatus))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("companion.routine-history.recovery.\(run.runID)")
+                }
             }
             Spacer(minLength: 8)
             statusLabel(run.status)
@@ -308,6 +315,9 @@ struct CompanionRoutineHistoryView: View {
             "Status \(statusWord(run.status))",
             outcomeLabel(run),
         ]
+        if let recovery = recoveryDescription(run.recoveryStatus, turnStatus: run.status) {
+            parts.append(recovery)
+        }
         if let message = run.error?.message, !message.isEmpty { parts.append(message) }
         return parts.joined(separator: ". ")
     }
@@ -335,6 +345,29 @@ struct CompanionRoutineHistoryView: View {
         default: return .companionMuted
         }
     }
+
+    private func recoveryDescription(
+        _ recoveryStatus: CompanionRecoveryStatus?,
+        turnStatus: CompanionRoutineRunStatus
+    ) -> String? {
+        switch recoveryStatus {
+        case .pending: return "Cleanup queued; this run will not be replayed"
+        case .running: return "Cleaning up this exact run; it will not be replayed"
+        case .completed: return "Cleanup complete; later messages continue automatically in order"
+        case .unknown: return "Automatic cleanup; this run will not be replayed"
+        case nil: return turnStatus == .interrupted
+            ? "Automatic cleanup; this run will not be replayed"
+            : nil
+        }
+    }
+
+    private func recoverySymbol(_ status: CompanionRecoveryStatus?) -> String {
+        status == .completed ? "checkmark.circle" : "arrow.trianglehead.2.clockwise.rotate.90"
+    }
+
+    private func recoveryColor(_ status: CompanionRecoveryStatus?) -> Color {
+        status == .completed ? .companionSuccess : .companionWarning
+    }
 }
 
 private struct CompanionRoutineRunDetailView: View {
@@ -351,6 +384,7 @@ private struct CompanionRoutineRunDetailView: View {
     @State private var error: String?
     @State private var loadGeneration = 0
     @State private var expandedReasoning: Set<String> = []
+    @State private var recoveryRefreshInFlight = false
 
     var body: some View {
         CompanionBackdrop {
@@ -385,6 +419,7 @@ private struct CompanionRoutineRunDetailView: View {
         .navigationTitle("Routine run")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: runID) { await load() }
+        .task(id: recoveryPollingID) { await pollRecovery() }
         .accessibilityIdentifier("companion.routine-run-detail.\(runID)")
     }
 
@@ -421,6 +456,13 @@ private struct CompanionRoutineRunDetailView: View {
                 }
             }
             statusLabel(run.status)
+            if let recovery = recoveryDescription(run.recoveryStatus, turnStatus: run.status) {
+                Label(recovery, systemImage: recoverySymbol(run.recoveryStatus))
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(recoveryColor(run.recoveryStatus))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("companion.routine-run.recovery")
+            }
             detailValue("Result", outcomeLabel(run))
             detailValue("Created", formattedTimestamp(run.createdAt) ?? run.createdAt)
             if let startedAt = run.startedAt {
@@ -439,7 +481,7 @@ private struct CompanionRoutineRunDetailView: View {
                         .foregroundStyle(Color.companionInk)
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
-                    Text("Code: \(error.code). Action: \(error.action).")
+                    Text("Code: \(error.code).")
                         .font(.caption)
                         .foregroundStyle(Color.companionMuted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -447,7 +489,7 @@ private struct CompanionRoutineRunDetailView: View {
                 .padding(12)
                 .background(Color.companionDanger.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("Error. \(error.message). Code \(error.code). Action \(error.action)")
+                .accessibilityLabel("Error. \(error.message). Code \(error.code)")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -510,15 +552,25 @@ private struct CompanionRoutineRunDetailView: View {
                     Task { await load(entryCursor: run.nextEntryCursor) }
                 } label: {
                     HStack(spacing: 8) {
-                        if loading { ProgressView().controlSize(.small) }
-                        Text(loading ? "Loading…" : "Load more transcript")
+                        if loading || recoveryRefreshInFlight {
+                            ProgressView().controlSize(.small)
+                        }
+                        Text(
+                            loading
+                                ? "Loading…"
+                                : recoveryRefreshInFlight ? "Refreshing…" : "Load more transcript"
+                        )
                     }
                     .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.glass)
                 .tint(Color.companionAccent)
-                .disabled(loading)
-                .accessibilityLabel(loading ? "Loading more transcript" : "Load more transcript")
+                .disabled(loading || recoveryRefreshInFlight)
+                .accessibilityLabel(
+                    loading || recoveryRefreshInFlight
+                        ? "Refreshing routine transcript"
+                        : "Load more transcript"
+                )
                 .accessibilityIdentifier("companion.routine-run.load-more")
             }
         }
@@ -675,16 +727,48 @@ private struct CompanionRoutineRunDetailView: View {
     }
 
     private func sortedEntries(_ entries: [CompanionRoutineRunEntry]) -> [CompanionRoutineRunEntry] {
-        entries.sorted { lhs, rhs in
+        var seen = Set<String>()
+        return entries.filter { seen.insert($0.eventID).inserted }.sorted { lhs, rhs in
             lhs.ordinal == rhs.ordinal ? lhs.eventID < rhs.eventID : lhs.ordinal < rhs.ordinal
         }
     }
 
-    private func load(entryCursor: Int? = nil) async {
+    private var recoveryPollingID: String {
+        "\(runID):\(run?.recoveryStatus?.rawValue ?? "none")"
+    }
+
+    private func pollRecovery() async {
+        guard run?.recoveryStatus?.isActive == true else { return }
+        while !Task.isCancelled {
+            do {
+                try await Task.sleep(for: .seconds(4))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            await load(preservingLoadedEntries: true, quietly: true)
+            guard run?.recoveryStatus?.isActive == true else { return }
+        }
+    }
+
+    private func load(
+        entryCursor: Int? = nil,
+        preservingLoadedEntries: Bool = false,
+        quietly: Bool = false
+    ) async {
+        if quietly {
+            guard !loading, !recoveryRefreshInFlight else { return }
+            recoveryRefreshInFlight = true
+        } else {
+            guard !recoveryRefreshInFlight else { return }
+        }
+        defer {
+            if quietly { recoveryRefreshInFlight = false }
+        }
         loadGeneration &+= 1
         let generation = loadGeneration
-        loading = true
-        error = nil
+        if !quietly { loading = true }
+        if !quietly { error = nil }
         do {
             let page: CompanionRoutineRunDetail
             if let readRun = services?.readRun {
@@ -698,23 +782,19 @@ private struct CompanionRoutineRunDetailView: View {
                 )
             }
             guard !Task.isCancelled, generation == loadGeneration else { return }
-            if entryCursor == nil || run?.runID != page.runID {
+            if entryCursor == nil, preservingLoadedEntries, let current = run,
+               current.runID == page.runID {
+                run = mergedDetail(
+                    metadata: page,
+                    entries: current.internalEntries + page.internalEntries,
+                    nextEntryCursor: current.nextEntryCursor
+                )
+            } else if entryCursor == nil || run?.runID != page.runID {
                 run = page
             } else if let current = run {
-                run = CompanionRoutineRunDetail(
-                    runID: page.runID,
-                    companionID: page.companionID,
-                    routine: page.routine,
-                    status: page.status,
-                    outcome: page.outcome,
-                    surfaceMode: page.surfaceMode,
-                    mainEntryEventID: page.mainEntryEventID,
-                    relayTurnID: page.relayTurnID,
-                    createdAt: page.createdAt,
-                    startedAt: page.startedAt,
-                    settledAt: page.settledAt,
-                    error: page.error,
-                    internalEntries: sortedEntries(current.internalEntries + page.internalEntries),
+                run = mergedDetail(
+                    metadata: page,
+                    entries: current.internalEntries + page.internalEntries,
                     nextEntryCursor: page.nextEntryCursor
                 )
             }
@@ -722,9 +802,35 @@ private struct CompanionRoutineRunDetailView: View {
             return
         } catch {
             guard !Task.isCancelled, generation == loadGeneration else { return }
-            self.error = companionDisplayMessage(error, fallback: "This routine run could not be loaded.")
+            if !quietly {
+                self.error = companionDisplayMessage(error, fallback: "This routine run could not be loaded.")
+            }
         }
-        if generation == loadGeneration { loading = false }
+        if generation == loadGeneration, !quietly { loading = false }
+    }
+
+    private func mergedDetail(
+        metadata: CompanionRoutineRunDetail,
+        entries: [CompanionRoutineRunEntry],
+        nextEntryCursor: Int?
+    ) -> CompanionRoutineRunDetail {
+        CompanionRoutineRunDetail(
+            runID: metadata.runID,
+            companionID: metadata.companionID,
+            routine: metadata.routine,
+            status: metadata.status,
+            outcome: metadata.outcome,
+            surfaceMode: metadata.surfaceMode,
+            mainEntryEventID: metadata.mainEntryEventID,
+            relayTurnID: metadata.relayTurnID,
+            createdAt: metadata.createdAt,
+            startedAt: metadata.startedAt,
+            settledAt: metadata.settledAt,
+            error: metadata.error,
+            internalEntries: sortedEntries(entries),
+            nextEntryCursor: nextEntryCursor,
+            recoveryStatus: metadata.recoveryStatus
+        )
     }
 
     private var displayTimezone: String {
@@ -783,6 +889,29 @@ private struct CompanionRoutineRunDetailView: View {
         case .interrupted, .needsInput: return .companionWarning
         default: return .companionMuted
         }
+    }
+
+    private func recoveryDescription(
+        _ recoveryStatus: CompanionRecoveryStatus?,
+        turnStatus: CompanionRoutineRunStatus
+    ) -> String? {
+        switch recoveryStatus {
+        case .pending: "Automatic cleanup for this exact run is queued. The prompt will not be replayed. Later routine messages resume automatically in order when cleanup finishes."
+        case .running: "Automatic cleanup for this exact run is running. The prompt will not be replayed. Later routine messages resume automatically in order when cleanup finishes."
+        case .completed: "Automatic cleanup for this exact run is complete. The prompt was not replayed. Later routine messages continue automatically in order."
+        case .unknown: "Automatic cleanup for this exact run continues in the background. The prompt will not be replayed. Later routine messages resume automatically in order."
+        case nil: turnStatus == .interrupted
+            ? "Automatic cleanup for this exact run continues in the background. The prompt will not be replayed. Later routine messages resume automatically in order."
+            : nil
+        }
+    }
+
+    private func recoverySymbol(_ status: CompanionRecoveryStatus?) -> String {
+        status == .completed ? "checkmark.circle" : "arrow.trianglehead.2.clockwise.rotate.90"
+    }
+
+    private func recoveryColor(_ status: CompanionRecoveryStatus?) -> Color {
+        status == .completed ? .companionSuccess : .companionWarning
     }
 
     private func toolStatusWord(_ status: CompanionToolRunStatus) -> String {

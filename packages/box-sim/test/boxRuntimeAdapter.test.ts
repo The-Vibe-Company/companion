@@ -113,6 +113,34 @@ describe("production Box runtime v2 against the simulator", () => {
     expect(snapshot?.daemon.unknownCommandDigests).toEqual([]);
   });
 
+  it("terminates only the exact main Pi invocation and leaves a newer one untouched", async () => {
+    const { boxId, runtime, server } = await provision({
+      apiKey: "box_adapter_exact_termination",
+      companionId: "12121212-1212-4212-8212-121212121212",
+      generation: 1,
+    });
+    const machine = server.simulator.commandMachine(boxId);
+    const invocationId = machine.daemon.invocationId!;
+
+    await expect(runtime.terminatePiInvocation({
+      boxId,
+      expectedInvocationId: "ffffffffffffffffffffffffffffffff",
+    })).resolves.toEqual({ outcome: "superseded" });
+    expect(machine.daemon).toMatchObject({ status: "active", invocationId });
+
+    await expect(runtime.terminatePiInvocation({
+      boxId,
+      expectedInvocationId: invocationId,
+    })).resolves.toEqual({ outcome: "terminated" });
+    expect(machine.daemon).toMatchObject({ status: "inactive", invocationId: null });
+
+    await expect(runtime.terminatePiInvocation({
+      boxId,
+      expectedInvocationId: invocationId,
+    })).resolves.toEqual({ outcome: "already_gone" });
+    expect(machine.unknownCommandDigests).toEqual([]);
+  });
+
   it("serves monotonic journal cursors and resumes one correlated ask_user decision", async () => {
     const harness = await provision({
       apiKey: "box_adapter_broker_contract",

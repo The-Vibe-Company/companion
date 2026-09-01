@@ -22,7 +22,7 @@
     {
       "id": 4,
       "prompt": "One Companion has messages piling up and nothing is being answered; the last turn shows as interrupted. Unblock it.",
-      "expected_output": "Runs db_query.py stuck and db_query.py turn for the blocking turn, recognizes an interrupted or dispatch-ambiguous queue head (for example prompt_dispatch_ambiguous), and explains that the queue is released only by an explicit Owner/Editor Retry (new attempt, may recycle Pi, warns earlier external effects may have succeeded) or Cancel in the product. Refuses to mark the attempt queued, clear leases, edit epochs, or delete queued turns.",
+      "expected_output": "Runs db_query.py stuck and db_query.py turn for the blocking turn, recognizes an interrupted or dispatch-ambiguous queue head (for example prompt_dispatch_ambiguous), and inspects its exact restart_pi recovery lane, checkpoint, age, attempt_count, and lease. Explains that protocol 7 never replays the ambiguous prompt: automatic exact-invocation cleanup records auto_abandoned and resumes FIFO; compatibility Retry can only observe or re-enqueue that cleanup and creates no attempt. Refuses to mark the attempt queued, clear leases, edit epochs, delete queued turns, or manually restart/delete the Box.",
       "files": []
     }
   ]

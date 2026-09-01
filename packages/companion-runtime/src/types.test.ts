@@ -201,6 +201,74 @@ describe("runtime SQL row refinement", () => {
     if (claim.workKind === "operation") expect(claim.clientSurface).toBeNull();
   });
 
+  it("accepts a protocol-6 recovery claim without a captured resource snapshot", () => {
+    const claim = decodeRuntimeClaimRow(claimRow({
+      work_kind: "operation",
+      work_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      client_surface: null,
+      checkpoint: "pending",
+      turn_status: "interrupted",
+      attempt_status: null,
+      dispatch_state: "ambiguous",
+      event_cursor: null,
+      unknown_event_count: null,
+      malformed_event_count: null,
+      oversized_event_count: null,
+      operation_kind: "restart_pi",
+      operation_started_at: new Date("2026-08-16T12:00:00.000Z"),
+      operation_attempt_count: 78,
+      target_settings_revision: null,
+      target_skills_revision: null,
+    }));
+
+    expect(claim).toMatchObject({
+      workKind: "operation",
+      operationKind: "restart_pi",
+      clientSurface: null,
+      operationAttemptCount: 78,
+    });
+  });
+
+  it("accepts only an exact resource-free recovery authorization", () => {
+    const row = authorizationRow({
+      authorization_actor_id: null,
+      client_surface: null,
+      model_id: null,
+      persona: null,
+      can_write_skills: null,
+      desired_settings_revision: null,
+      skills_revision: null,
+      work_checkpoint: "pending",
+      turn_status: "interrupted",
+      attempt_status: null,
+      operation_kind: "restart_pi",
+      operation_started_at: new Date("2026-08-16T12:00:00.000Z"),
+      operation_attempt_count: 78,
+      operation_trigger: "recovery",
+      operation_lane: "main",
+      source_dispatch_state: "ambiguous",
+      source_pi_invocation_id: "pi-interrupted",
+      target_settings_revision: null,
+      target_skills_revision: null,
+    });
+
+    expect(decodeRuntimeAuthorizationRow(row, "operation")).toMatchObject({
+      operationTrigger: "recovery",
+      operationLane: "main",
+      sourceDispatchState: "ambiguous",
+      sourcePiInvocationId: "pi-interrupted",
+      authorizationActorId: null,
+      modelId: null,
+    });
+    expect(decodeRuntimeAuthorizationRow({
+      ...row,
+      source_pi_invocation_id: null,
+    }, "operation")).toMatchObject({
+      sourceDispatchState: "ambiguous",
+      sourcePiInvocationId: null,
+    });
+  });
+
   it("keeps Box identity on a stop denial so the executor can abort Pi", () => {
     const authorization = decodeRuntimeAuthorizationRow(authorizationRow({
       authorized: false,

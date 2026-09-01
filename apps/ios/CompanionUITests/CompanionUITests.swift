@@ -211,15 +211,21 @@ final class CompanionUITests: XCTestCase {
     }
 
     @MainActor
-    func testInterruptedTurnDemoKeepsRecoveryPassiveForOwner() throws {
+    func testInterruptedTurnDemoExplainsAutomaticRecoveryWithoutManualActions() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-companion-interruption-demo"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Turn interrupted"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["2 later messages are queued and will continue automatically."].exists)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["chat.interrupted.recovery-status"]
+                .waitForExistence(timeout: 5)
+        )
         XCTAssertTrue(app.staticTexts[
-            "This occurrence is terminal and will not be replayed. Later work continues automatically."
+            "Automatic cleanup for this turn is running. The prompt will not be replayed. Later messages resume automatically in order when cleanup finishes."
+        ].exists)
+        XCTAssertTrue(app.staticTexts[
+            "2 later messages will continue automatically in order."
         ].exists)
         XCTAssertFalse(app.buttons["chat.interrupted.retry"].exists)
         XCTAssertFalse(app.buttons["chat.interrupted.cancel"].exists)
@@ -381,34 +387,6 @@ final class CompanionUITests: XCTestCase {
         remove.tap()
         app.buttons["Remove from queue"].tap()
         XCTAssertEqual(app.buttons["chat.queue.toggle"].label, "2 queued messages")
-    }
-
-    @MainActor
-    func testInterruptedTurnDemoKeepsRecoveryPassiveForEditor() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["-companion-interruption-demo"]
-        app.launch()
-
-        XCTAssertTrue(app.staticTexts["Turn interrupted"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts[
-            "This occurrence is terminal and will not be replayed. Later work continues automatically."
-        ].exists)
-        XCTAssertFalse(app.buttons["chat.interrupted.retry"].exists)
-        XCTAssertFalse(app.buttons["chat.interrupted.cancel"].exists)
-    }
-
-    @MainActor
-    func testInterruptedTurnDemoKeepsViewerReadOnly() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["-companion-interruption-demo"]
-        app.launch()
-
-        XCTAssertTrue(app.staticTexts["Turn interrupted"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts[
-            "This occurrence is terminal and will not be replayed. Later work continues automatically."
-        ].exists)
-        XCTAssertFalse(app.buttons["chat.interrupted.retry"].exists)
-        XCTAssertFalse(app.buttons["chat.interrupted.cancel"].exists)
     }
 
     @MainActor
@@ -1721,6 +1699,9 @@ final class CompanionUITests: XCTestCase {
 
         scrollToButton("companion.details.routine.\(routineID)", in: app).tap()
         let run = scrollToButton("companion.details.routine-run.\(runID)", in: app)
+        XCTAssertTrue(app.descendants(matching: .any)[
+            "companion.details.routine-run.recovery.\(runID)"
+        ].exists)
         run.tap()
         XCTAssertTrue(app.staticTexts["Routine run"].waitForExistence(timeout: 2))
 

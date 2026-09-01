@@ -69,15 +69,47 @@ const fence: LeaseFence = {
 };
 
 describe("PostgresRuntimeStore", () => {
-  it("claims only through the terminal-interruption material and delete-resume protocol guards", async () => {
+  it("reads only aggregate self-heal telemetry through the narrow runtime function", async () => {
+    const sql = new RecordingSql();
+    sql.rows = [{
+      pending_recovery_count: 3,
+      oldest_recovery_age_seconds: 47.5,
+      auto_abandoned_count: 12,
+      stalled_recovery_count: 2,
+      max_recovery_attempt_count: 78,
+    }];
+    const store = new PostgresRuntimeStore(sql);
+
+    await expect(store.recoveryMetrics()).resolves.toEqual({
+      pendingCount: 3,
+      oldestAgeSeconds: 47.5,
+      autoAbandonedCount: 12,
+      stalledCount: 2,
+      maxAttemptCount: 78,
+    });
+    expect(sql.calls[0]?.query).toContain("public.companion_runtime_recovery_metrics()");
+    expect(sql.calls[0]?.query).not.toContain("companion_id");
+  });
+
+  it("claims only through the self-healing material and delete-resume protocol guards", async () => {
     const sql = new RecordingSql();
     const store = new PostgresRuntimeStore(sql);
 
     await store.claimWork({ executorId: "executor-1", limit: 2, leaseSeconds: 30, gateEpoch: 4n });
 
     expect(sql.calls[0]?.query).toContain(
-      "$4::bigint, 6::integer, 1::integer",
+      "$4::bigint, 7::integer, 1::integer",
     );
+  });
+
+  it("reauthorizes through the cleanup-aware protocol-7 contract", async () => {
+    const sql = new RecordingSql();
+    const store = new PostgresRuntimeStore(sql);
+
+    await expect(store.renewAndAuthorize(fence, 30)).resolves.toBeNull();
+
+    expect(sql.calls[0]?.query).toContain("public.companion_runtime_renew_and_authorize_v3(");
+    expect(sql.calls[0]?.query).toContain("source_pi_invocation_id");
   });
 
   it("uses the exact fenced parameter order for accepted delete deferral", async () => {
@@ -572,14 +604,14 @@ describe("PostgresRuntimeStore", () => {
     });
   });
 
-  it("claims only lane-aware terminal-interruption protocol 6 and reads the dedicated MCP broker capability", async () => {
+  it("claims only lane-aware self-healing material protocol 7 and reads the dedicated MCP broker capability", async () => {
     const sql = new RecordingSql();
     const expiresAt = new Date("2026-08-16T18:00:00.000Z");
     sql.rows = [];
     const store = new PostgresRuntimeStore(sql);
 
     await store.claimWork({ executorId: "executor-1", limit: 2, leaseSeconds: 30, gateEpoch: 4n });
-    expect(sql.calls[0]?.query).toContain("$4::bigint, 6::integer");
+    expect(sql.calls[0]?.query).toContain("$4::bigint, 7::integer");
 
     sql.rows = [{ token: `cmp_mcp_${"a".repeat(48)}`, expires_at: expiresAt }];
     await expect(store.mintMcpBrokerToken(fence, 30)).resolves.toEqual({

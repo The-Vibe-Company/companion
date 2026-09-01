@@ -39,8 +39,8 @@ Runbook preconditions before restarting a production service
   checkpoints, and releases or loses its leases; another replica must take
   over within 45 seconds. If that cannot happen, use the kill switch instead.
 - Never restart to "clear" an interrupted or ambiguous turn. Ambiguous work
-  requires an explicit Owner/Editor Retry or Cancel; a restart does not and
-  must not replay it.
+  is released by protocol 7 cleanup of its exact Pi invocation; a service
+  restart does not replace that proof and must not replay the prompt.
 - Never clear lease rows or edit epochs manually around a restart.
 - A restart is not the kill switch. For provider instability, unsafe duplicate
   execution, credential exposure, or broken fencing, fence the database gate

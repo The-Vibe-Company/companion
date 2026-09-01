@@ -396,8 +396,9 @@ describe("CompanionThread", () => {
     expect(markup).toContain("Turn interrupted");
     expect(markup).toContain("Pi acknowledgement was not confirmed.");
     expect(markup).toContain("External actions may already have succeeded.");
-    expect(markup).toContain("This occurrence is terminal and will not be replayed");
-    expect(markup).toContain("Later work continues automatically");
+    expect(markup).toContain("Automatic cleanup for this turn continues in the background");
+    expect(markup).toContain("will not be replayed");
+    expect(markup).toContain("automatically in order");
     expect(markup).not.toContain("Retry turn");
     expect(markup).not.toContain("Cancel turn");
   });
@@ -414,8 +415,9 @@ describe("CompanionThread", () => {
       }),
     });
 
-    expect(markup).toContain("This occurrence is terminal and will not be replayed");
-    expect(markup).toContain("Later work continues automatically");
+    expect(markup).toContain("Automatic cleanup for this turn continues in the background");
+    expect(markup).toContain("will not be replayed");
+    expect(markup).toContain("automatically in order");
     expect(markup).not.toContain("Retry turn");
     expect(markup).not.toContain("Cancel turn");
   });

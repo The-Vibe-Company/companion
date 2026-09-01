@@ -1100,6 +1100,13 @@
       "when": 1793293600000,
       "tag": "0156_companion_main_start_budget_and_interruption_projection",
       "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1793297200000,
+      "tag": "0157_companion_recovery_cleanup_protocol_7",
+      "breakpoints": true
     }
   ]
 }

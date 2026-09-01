@@ -59,6 +59,7 @@ function execBrokerState() {
 function execControl(): RuntimePiControl {
   return {
     stopPiDaemon: vi.fn(async () => undefined),
+    terminatePiInvocation: vi.fn(async () => ({ outcome: "terminated" as const })),
     startPiDaemon: vi.fn(async () => ({ state: "idle" as const, invocationId: "inv-exec" })),
     restartPiDaemon: vi.fn(async () => ({ state: "idle" as const, invocationId: "inv-exec" })),
     piDaemonStatus: vi.fn(async () => ({ state: "idle" as const, invocationId: "inv-exec" })),

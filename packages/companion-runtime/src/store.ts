@@ -32,9 +32,19 @@ import type { RuntimePiProjection } from "./piEvents";
 
 export const RUNTIME_LEASE_SECONDS = COMPANION_BUDGETS_BASE.leaseSeconds;
 
+export interface RuntimeRecoveryMetrics {
+  pendingCount: number;
+  oldestAgeSeconds: number | null;
+  autoAbandonedCount: number;
+  stalledCount: number;
+  maxAttemptCount: number;
+}
+
 export interface RuntimeStore {
   ping(): Promise<void>;
   gateStatus(): Promise<GateStatus>;
+  /** Aggregate-only recovery telemetry; optional for test doubles and alternate local stores. */
+  recoveryMetrics?(): Promise<RuntimeRecoveryMetrics>;
   disable(expectedGateEpoch: bigint, actorId: string): Promise<GateStatus>;
   claimWork(input: {
     executorId: string;
@@ -262,6 +272,10 @@ function booleanValue(value: RuntimeSqlValue): boolean | null {
 
 function numberValue(value: RuntimeSqlValue): number | null {
   return Number.isSafeInteger(value) ? Number(value) : null;
+}
+
+function nonnegativeFiniteNumber(value: RuntimeSqlValue): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
 function arrayValue(value: RuntimeSqlValue): RuntimeSqlValue[] | null {
@@ -750,7 +764,11 @@ const AUTHORIZATION_COLUMNS = `
   decision_request_key,
   decision_response_text,
   command_id,
-  command_pi_invocation_id`;
+  command_pi_invocation_id,
+  operation_trigger,
+  operation_lane,
+  source_dispatch_state,
+  source_pi_invocation_id`;
 
 /** PostgreSQL implementation whose SQL surface consists only of Runtime v2 definer functions. */
 export class PostgresRuntimeStore implements RuntimeStore {
@@ -767,6 +785,33 @@ export class PostgresRuntimeStore implements RuntimeStore {
         FROM public.companion_runtime_gate_status()
       `);
       return decodeGateStatusRow(one(rows, "gate status"));
+    });
+  }
+
+  async recoveryMetrics(): Promise<RuntimeRecoveryMetrics> {
+    return await mapped(async () => {
+      const rows = await this.sql.unsafe<RuntimeSqlRow[]>(`
+        SELECT pending_recovery_count::double precision AS pending_recovery_count,
+          oldest_recovery_age_seconds,
+          auto_abandoned_count::double precision AS auto_abandoned_count,
+          stalled_recovery_count::double precision AS stalled_recovery_count,
+          max_recovery_attempt_count::double precision AS max_recovery_attempt_count
+        FROM public.companion_runtime_recovery_metrics()
+      `);
+      const row = one(rows, "recovery metrics");
+      const pendingCount = nonnegativeFiniteNumber(row.pending_recovery_count);
+      const autoAbandonedCount = nonnegativeFiniteNumber(row.auto_abandoned_count);
+      const stalledCount = nonnegativeFiniteNumber(row.stalled_recovery_count);
+      const maxAttemptCount = nonnegativeFiniteNumber(row.max_recovery_attempt_count);
+      const oldestAgeSeconds = row.oldest_recovery_age_seconds === null
+        ? null
+        : nonnegativeFiniteNumber(row.oldest_recovery_age_seconds);
+      if (pendingCount === null || autoAbandonedCount === null
+        || stalledCount === null || maxAttemptCount === null
+        || (row.oldest_recovery_age_seconds !== null && oldestAgeSeconds === null)) {
+        throw new RuntimeStoreContractError();
+      }
+      return { pendingCount, oldestAgeSeconds, autoAbandonedCount, stalledCount, maxAttemptCount };
     });
   }
 
@@ -790,7 +835,7 @@ export class PostgresRuntimeStore implements RuntimeStore {
       const rows = await this.sql.unsafe<RuntimeSqlRow[]>(`
         SELECT ${CLAIM_COLUMNS}
         FROM public.companion_runtime_claim_work(
-          $1::text, $2::integer, $3::integer, $4::bigint, 6::integer, 1::integer
+          $1::text, $2::integer, $3::integer, $4::bigint, 7::integer, 1::integer
         )
       `, [input.executorId, input.limit, input.leaseSeconds, input.gateEpoch.toString()]);
       return rows.map(decodeRuntimeClaimRow);
@@ -804,7 +849,7 @@ export class PostgresRuntimeStore implements RuntimeStore {
     return await mapped(async () => {
       const rows = await this.sql.unsafe<RuntimeSqlRow[]>(`
         SELECT ${AUTHORIZATION_COLUMNS}
-        FROM public.companion_runtime_renew_and_authorize_v2(
+        FROM public.companion_runtime_renew_and_authorize_v3(
           $1::uuid, $2::uuid, $3::uuid, $4::bigint, $5::bigint,
           $6::text, $7::public.companion_runtime_work_kind, $8::uuid, $9::integer
         )

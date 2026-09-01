@@ -283,12 +283,14 @@ Group, Room, or orchestration chrome.
 Routine history extends the compatibility marker without adding chat chrome. The routine row exposes
 a History action, while a marker carrying `run_id` is a compact clickable control. Both open the same
 right-side drawer: newest runs first, explicit terminal outcome, then the private transcript paged by
-durable ordinal. An interrupted run is terminal history and exposes no Retry or Cancel boundary. Its
-lane is already released, later work continues automatically, and Viewer sees the same passive
-reason without mutation controls. The drawer takes the full chat stage on a phone, traps focus,
-closes with Esc or its scrim,
-and never contacts Box on reads. During the compatibility phase the ordinary assistant reply stays
-in the thread and is referenced as the run's virtual notify result rather than duplicated in history.
+durable ordinal. An interrupted run explains that automatic cleanup terminates only its exact Pi
+invocation, never replays the occurrence, and releases the lane without member action. Owner,
+Editor, and Viewer see the same cleanup status; nobody gets Retry or Cancel controls for a terminal
+interruption. The drawer polls while that exact cleanup is queued or running without discarding
+transcript pages already loaded. It takes the full chat stage on a phone, traps focus, closes with
+Esc or its scrim, and never contacts Box on reads. During the compatibility phase the ordinary
+assistant reply stays in the thread and is referenced as the run's virtual notify result rather
+than duplicated in history.
 
 Routine creation uses the member's saved timezone as the default schedule zone on both responsive
 web and the native Apple clients. Routine next-fire and trigger last-fire instants are displayed in that member
@@ -450,12 +452,15 @@ approval. A newer member message ends the wait sooner so Pi can finish safely be
 queued turn runs. Outside `needs_input`, ten minutes without correlated activity always becomes a
 visible terminal outcome; the two-hour absolute ceiling remains authoritative everywhere.
 
-An unresolved legacy `interrupted` card explains that delivery became ambiguous, previous external
-effects may have succeeded, and the occurrence will not be replayed. Protocol-6 interruptions are
-settled `auto_abandoned` immediately and remain durable history without occupying the conversation
-tail; later work continues automatically. Neither state exposes Retry or Cancel. Stable,
-expurgated errors outside terminal interruptions may offer only their allowed action, such as
-Restart Pi or Switch model. Full Box never appears as an automatic repair in the thread.
+An unresolved `interrupted` card explains that delivery became ambiguous and that previous external
+effects may have succeeded. It shows queued or running automatic cleanup for that exact occurrence,
+states that the prompt will not be replayed, and keeps the composer and its draft available for the
+next FIFO message. Once cleanup is complete, the `auto_abandoned` occurrence remains durable history
+without occupying the conversation tail. There is no Retry or Cancel action on a terminal
+interruption. The compatibility Retry route may still observe or re-enqueue the same cleanup but
+never creates an attempt. Stable, expurgated errors may offer only actions that remain safe for their
+state, such as Restart Pi or Switch model. Full Box never appears as an automatic repair in the
+thread.
 
 The transcript keeps day boundaries and one member-private `New` divider, neither inside a turn.
 Loading uses static skeleton lines. A reply keeps Copy as its one ordinary action, always reachable
@@ -508,8 +513,11 @@ Do:
 - Use slide-over drawers for resource detail.
 - Keep focus states obvious and accessible.
 - Keep motion short, functional, and reduceable.
-- Derive Companion waiting state from durable turns; show Stop only for active work and Remove only
-  for work that is truly queued. Terminal interruptions have no actions.
+- Derive Companion waiting state and exact automatic-cleanup progress from durable turns.
+- Keep the composer available during automatic cleanup and state explicitly that ambiguous work is
+  never replayed.
+- Show Stop only for active work and Remove only for work that is truly queued. Terminal
+  interruptions have no actions.
 
 Don't:
 

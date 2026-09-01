@@ -63,11 +63,14 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
   `(companion_id, client_message_id)`, then returns `202` without contacting Box.
 - Turn states are
   `queued → starting → dispatching → running ↔ needs_input → succeeded|failed|interrupted|cancelled`.
-  One attempt is active per Companion; later turns remain ordered in PostgreSQL.
-- An ambiguous occurrence is never replayed. Runtime attempts one exact, bounded Pi stop before
-  settlement, preserves the original error, marks the occurrence `auto_abandoned`, and releases its
-  lane even if cleanup fails. Retry does not exist; Cancel remains the active/queued stop path and
-  rejects terminal interruptions without mutation.
+  One attempt is active in each `main` or `routine` lane; later turns remain FIFO within their lane
+  in PostgreSQL.
+- An ambiguous occurrence is never replayed. Protocol 7 enqueues resource-independent cleanup of
+  only the captured Pi invocation, preserves the original error, and marks the occurrence
+  `auto_abandoned` only after durable `cleanup_complete` proof. Cleanup retries automatically with
+  bounded backoff; first-party clients expose no Retry/Cancel controls for the interruption. The
+  compatibility Retry route only observes or re-enqueues the same cleanup and never creates an
+  attempt. Cancel remains the active/queued stop path.
 - A dedicated `apps/runtime` service is the only Box/Pi lifecycle owner. Durable operations,
   checkpoints, leases, and attempt epochs let another replica continue after a crash without
   accepting stale settlements.
@@ -171,10 +174,11 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
   the sole active attempt with events through `agent_settled`.
 - Unknown Pi events are counted and ignored. Only explicitly supported terminal event shapes settle
   a turn; malformed or oversized lines advance safely without storing their raw content.
-- A missing acknowledgement after a possible prompt write is terminal `interrupted` and never
-  auto-replayed. Runtime attempts one exact bounded stop before settlement; success or failure still
-  records `auto_abandoned` and later work continues immediately. A proven negative acknowledgement
-  may be retried under the lifecycle retry policy before ambiguity is declared.
+- A missing acknowledgement after a possible prompt write becomes `interrupted` and is never
+  auto-replayed. Runtime records the exact invocation and retries cleanup until it has durable
+  negative or termination proof; it does not load message resources, restage Pi, or restart the
+  Box. A proven negative acknowledgement may be retried under the lifecycle retry policy before
+  ambiguity is declared.
 - Ten minutes without correlated activity stalls a running turn; the inactivity clock pauses while
   a blocking human decision is in `needs_input`. After ten minutes without an answer, or sooner when
   the member sends another message, Pi receives a cancelled response and chooses a safe fallback or
@@ -232,7 +236,8 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 
 - Skills Hub publication, install, GitHub sync, and Skill Database reliability remain unchanged.
 - Send acknowledgement is under one second outside load; runtime claims work within five seconds.
-- Cold start finishes or fails explicitly within three minutes.
+- Each cold-start cycle finishes or re-enqueues explicitly within three minutes; a provider delay
+  before dispatch does not expire the accepted message.
 - A stalled attempt settles within ten minutes plus one sweep; absolute deadline settles within two
   hours plus one sweep.
 - Runtime takeover completes within 45 seconds after a replica dies.

@@ -166,10 +166,10 @@ describe("SQL budget contract", () => {
     const contract = COMPANION_SQL_BUDGET_CONTRACT;
     expect(contract.companion_runtime_claim_work_without_material_guard?.map(sqlIntervalToMs))
       .toContain(base.turnAbsoluteDeadlineMs);
+    expect(contract.companion_runtime_claim_work_without_material_guard?.map(sqlIntervalToMs))
+      .toContain(base.coldStartDeadlineMs);
     expect(contract.companion_runtime_checkpoint?.map(sqlIntervalToMs))
       .toContain(base.inactivityStallMs);
-    expect(contract.companion_runtime_prepare_queued_turn_material?.map(sqlIntervalToMs))
-      .toContain(base.coldStartDeadlineMs);
     expect(contract.companion_runtime_prepare_queued_turn_material?.map(sqlIntervalToMs))
       .toContain(budgets.materialMinTtlMs);
     expect(contract.companion_api_enqueue_turn?.map(sqlIntervalToMs))
@@ -184,8 +184,9 @@ describe("SQL budget contract", () => {
       .toContain(base.leaseSeconds * 1_000);
     expect(contract.companion_runtime_observe_instance?.map(sqlIntervalToMs))
       .toContain(base.coldStartDeadlineMs);
-    expect(contract.companion_runtime_assign_operation_intent?.map(sqlIntervalToMs))
-      .toEqual([base.coldStartDeadlineMs, base.coldStartDeadlineMs]);
+    expect(contract.companion_runtime_assign_operation_intent).toBeUndefined();
+    expect(contract.companion_runtime_recovery_metrics?.map(sqlIntervalToMs))
+      .toEqual([15 * 60_000]);
     expect(contract.companion_fire_routine?.map(sqlIntervalToMs))
       .toEqual([COMPANION_ROUTINE_MISSED_GRACE_MS]);
     expect(contract.companion_runtime_expire_queued_routine_turns?.map(sqlIntervalToMs))

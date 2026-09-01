@@ -220,9 +220,9 @@ Run API + worker + runtime + web + migrated PostgreSQL + Box/Pi simulator and pr
   issuing provider `DELETE`; other shared lifecycle/settings/health work remains routine-quiescent;
 - a prompt response lost after Pi ACK is recovered from the fsynced ledger with the same
   `command_id`, including after executor takeover, and produces exactly one Pi prompt; missing,
-  conflicting, or invocation-mismatched ledger proof yields terminal `interrupted`, attempts one
-  exact bounded cleanup before settlement, auto-abandons even if cleanup fails, and releases later
-  turns without replay;
+  conflicting, or invocation-mismatched ledger proof yields `interrupted`, enqueues one durable
+  cleanup of the exact captured invocation, auto-abandons only after `cleanup_complete`, and
+  releases later same-lane turns without replay;
 - Viewer, list, thread, and cross-tenant requests produce zero Box calls.
 
 Inject failure before and after create, Box ready, Pi ready, prompt write, ACK, event projection,
@@ -240,7 +240,8 @@ newest eligible failed delete with a retained provider operation id.
 - A completed lifecycle operation wakes the next claim immediately; test the two-second sweep only
   as recovery.
 - Lease: 30 seconds, renewed every ten seconds; takeover under 45 seconds.
-- Cold start: terminal success or explicit failure under three minutes.
+- Cold start: success or an explicit bounded requeue under three minutes per cycle; a timeout before
+  dispatch leaves the same message queued with no attempt and a fresh next-cycle budget.
 - Human decision window: ten minutes; a newer member message ends it sooner. Both paths deliver a
   fail-closed cancellation to Pi, pause inactivity throughout `needs_input`, and never grant an
   approval.
@@ -265,8 +266,8 @@ APP_URL=http://127.0.0.1:<port> pnpm browser:smoke
 ```
 
 Changed Companion paths need focused manual `agent-browser` checks. Verify truthful status,
-PostgreSQL-only Viewer reads, queue count, input-needed cards, terminal interruption continuation copy,
-an always-mounted composer, explicit Full Box confirmation, attachment chips and inline images inside the message they belong to, a
+PostgreSQL-only Viewer reads, queue count, input-needed cards, automatic exact-cleanup status and
+no-replay copy, an always-mounted composer, explicit Full Box confirmation, attachment chips and inline images inside the message they belong to, a
 routine fire that shows `Routine: <name>` with the prompt hidden in the thread and on the list row,
 a context-panel routine create,
 an interrupted routine run whose history is passive and does not block the main chat,

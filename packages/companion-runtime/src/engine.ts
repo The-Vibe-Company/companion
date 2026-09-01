@@ -4,6 +4,7 @@ import { handleAttempt } from "./attempt";
 import { handleDecision } from "./decision";
 import {
   AmbiguousExternalEffectError,
+  RuntimeInvariantError,
   RuntimeShutdownError,
   denialRuntimeError,
   safeErrorFromUnknown,
@@ -193,6 +194,22 @@ export class RuntimeEngine {
           }
           throw denialError;
         }
+      }
+      if (
+        error instanceof RuntimeInvariantError
+        && error.stableCode === "cold_start_deadline_exceeded"
+        && claim.workKind === "operation"
+        && claim.operationKind === "start"
+        && claim.turnId !== null
+      ) {
+        return await this.#finishSettlement(claim, session, {
+          terminalStatus: "interrupted",
+          error: safeErrorFromUnknown(error, {
+            code: "cold_start_deadline_exceeded",
+            message: "The Companion did not start before its deadline.",
+            action: "retry",
+          }),
+        }, error);
       }
       if (error instanceof AmbiguousExternalEffectError) {
         return await this.#finishSettlement(claim, session, {
@@ -405,7 +422,27 @@ export class RuntimeEngine {
     }
     const settled = await session.settle(terminalSettlement);
     const outcome = settled ? terminalSettlement.terminalStatus : "fence_lost";
-    if (!settled || terminalSettlement.terminalStatus !== "succeeded") {
+    const coldStartRequeued = settled
+      && claim.workKind === "operation"
+      && claim.operationKind === "start"
+      && claim.turnId !== null
+      && terminalSettlement.terminalStatus === "interrupted"
+      && terminalSettlement.error?.code === "cold_start_deadline_exceeded";
+    if (coldStartRequeued) {
+      // Protocol 7 atomically re-arms this exact Start and leaves its source turn queued. Keep the
+      // existing interrupted scheduler wake, but do not report a terminal interruption that never
+      // became durable. This event contains only stable routing/counter fields.
+      this.#deps.log?.warn({
+        ts: this.#deps.clock.now().toISOString(),
+        event: "runtime.work.start_requeued",
+        companionId: claim.companionId,
+        workKind: claim.workKind,
+        workId: claim.workId,
+        operationKind: claim.operationKind,
+        operationAttemptCount: claim.operationAttemptCount,
+        reason: "cold_start_deadline_exceeded",
+      });
+    } else if (!settled || terminalSettlement.terminalStatus !== "succeeded") {
       this.#logFailure({
         claim,
         session,

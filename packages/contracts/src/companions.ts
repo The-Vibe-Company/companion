@@ -6,6 +6,7 @@ import {
   companionActiveTurnSchema,
   companionInterruptedTurnSchema,
   companionLatestOperationSchema,
+  companionRecoveryStatusSchema,
   companionRuntimeSafeErrorSchema,
   companionTurnStatusSchema,
   companionTurnSchema,
@@ -411,6 +412,8 @@ const companionRoutineRunFields = {
   surface_mode: companionRoutineSurfaceModeSchema.nullable(),
   main_entry_event_id: z.string().min(1).max(200).nullable(),
   relay_turn_id: z.string().uuid().nullable(),
+  /** Exact automatic cleanup status for this run; optional during rolling deploys. */
+  recovery_status: companionRecoveryStatusSchema.nullable().catch(null).optional(),
   ...companionRoutineRunTimestamps,
   error: companionRuntimeSafeErrorSchema.nullable(),
 } as const;
@@ -422,6 +425,7 @@ function validateCompanionRoutineRunResult(
     surface_mode: CompanionRoutineSurfaceMode | null;
     main_entry_event_id: string | null;
     relay_turn_id: string | null;
+    recovery_status?: "pending" | "running" | "completed" | null;
   },
   context: z.RefinementCtx,
 ): void {
@@ -455,6 +459,14 @@ function validateCompanionRoutineRunResult(
       code: z.ZodIssueCode.custom,
       path: ["outcome"],
       message: "error outcome requires a failed, interrupted, or cancelled run",
+    });
+  }
+  if (run.recovery_status !== null && run.recovery_status !== undefined
+      && run.status !== "interrupted") {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["recovery_status"],
+      message: "automatic recovery status belongs only to interrupted runs",
     });
   }
 }
@@ -2018,7 +2030,7 @@ export const companionThreadSchema = z.object({
   active_turn: companionActiveTurnSchema.nullable(),
   /** Exact number of later turns still ordered in PostgreSQL. */
   queued_count: z.number().int().nonnegative(),
-  /** An unresolved legacy interruption, if any; terminal auto-abandoned turns are not projected. */
+  /** An unresolved ambiguous turn while its exact automatic cleanup is visible, if any. */
   interrupted_turn: companionInterruptedTurnSchema.nullable(),
   last_message_at: z.string().datetime().nullable(),
   /**

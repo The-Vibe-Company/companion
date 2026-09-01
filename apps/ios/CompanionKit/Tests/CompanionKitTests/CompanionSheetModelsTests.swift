@@ -363,6 +363,32 @@ func routineRunDetailStorePaginatesEntriesWithoutRepeatingTheBoundaryRow() async
     #expect(!store.canLoadMore)
 }
 
+@Test @MainActor
+func routineRunDetailRecoveryRefreshPreservesLoadedTranscriptPages() async {
+    let first = routineRunEntry(id: "routine:1", ordinal: 0)
+    let second = routineRunEntry(id: "routine:2", ordinal: 1)
+    var nilCursorRequests = 0
+    let store = CompanionRoutineRunDetailStore { cursor in
+        if cursor == nil {
+            nilCursorRequests += 1
+            return routineRunDetail(
+                entries: [first],
+                nextCursor: 0,
+                recoveryStatus: nilCursorRequests == 1 ? .running : .completed
+            )
+        }
+        return routineRunDetail(entries: [second], nextCursor: nil, recoveryStatus: .running)
+    }
+
+    await store.reload()
+    await store.loadMore()
+    await store.refreshPreservingLoadedPages()
+
+    #expect(store.entries.map(\.eventID) == [first.eventID, second.eventID])
+    #expect(store.detail?.recoveryStatus == .completed)
+    #expect(!store.canLoadMore)
+}
+
 private func routineRunSummary(id: String) -> CompanionRoutineRunSummary {
     CompanionRoutineRunSummary(
         runID: id,
@@ -376,7 +402,8 @@ private func routineRunSummary(id: String) -> CompanionRoutineRunSummary {
         createdAt: sheetTestTimestamp,
         startedAt: sheetTestTimestamp,
         settledAt: sheetTestTimestamp,
-        error: nil
+        error: nil,
+        recoveryStatus: nil
     )
 }
 
@@ -392,22 +419,31 @@ private func routineRunEntry(id: String, ordinal: Int) -> CompanionRoutineRunEnt
 
 private func routineRunDetail(
     entries: [CompanionRoutineRunEntry],
-    nextCursor: Int?
+    nextCursor: Int?,
+    recoveryStatus: CompanionRecoveryStatus? = nil
 ) -> CompanionRoutineRunDetail {
-    CompanionRoutineRunDetail(
+    let recovering = recoveryStatus != nil
+    return CompanionRoutineRunDetail(
         runID: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
         companionID: sheetTestCompanionID,
         routine: CompanionRoutineIdentitySnapshot(id: sheetTestRoutineID, name: "Release watch"),
-        status: .succeeded,
-        outcome: .surfaced,
-        surfaceMode: .notify,
-        mainEntryEventID: "routine-return:notice",
+        status: recovering ? .interrupted : .succeeded,
+        outcome: recovering ? .error : .surfaced,
+        surfaceMode: recovering ? nil : .notify,
+        mainEntryEventID: recovering ? nil : "routine-return:notice",
         relayTurnID: nil,
         createdAt: sheetTestTimestamp,
         startedAt: sheetTestTimestamp,
         settledAt: sheetTestTimestamp,
-        error: nil,
+        error: recovering
+            ? CompanionRuntimeSafeError(
+                code: "turn_stalled",
+                message: "The routine stopped making progress.",
+                action: "retry"
+            )
+            : nil,
         internalEntries: entries,
-        nextEntryCursor: nextCursor
+        nextEntryCursor: nextCursor,
+        recoveryStatus: recoveryStatus
     )
 }

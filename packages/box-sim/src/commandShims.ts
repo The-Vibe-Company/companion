@@ -86,6 +86,7 @@ export type BoxSimCommandKind =
   | "daemon-diagnostics"
   | "remove-control-bundle"
   | "remove-provider-files"
+  | "terminate-daemon-invocation"
   | "stop-daemon"
   | "prepare-attachments"
   | "lock-attachments"
@@ -425,6 +426,9 @@ export function classifyBoxCommand(command: string): BoxSimCommandKind {
     command.includes("COMPANION_CONTROL_BUNDLE=")
     && command.includes("COMPANION_CONTROL_APPLY")
   ) return "apply-control-bundle";
+  if (command.includes("companion-pi-termination-terminated")) {
+    return "terminate-daemon-invocation";
+  }
   if (command.includes("Pi daemon is still active after stop")) return "stop-daemon";
   if (
     command.includes(".companion/runtime/state/providers.env")
@@ -1488,6 +1492,29 @@ export async function executeBoxCommand(
         }
       }
       return ok();
+    case "terminate-daemon-invocation": {
+      const encodedExpected = /expected_invocation=('(?:[^']|'"'"')*')/.exec(command)?.[1];
+      const expected = encodedExpected ? decodeShellQuoted(encodedExpected) : null;
+      if (!expected) return failed("simulated exact Pi invocation is unreadable");
+      if (machine.daemon.status !== "active" || machine.daemon.invocationId === null) {
+        return ok("companion-pi-termination-already-gone\n");
+      }
+      if (machine.daemon.invocationId !== expected) {
+        return ok("companion-pi-termination-superseded\n");
+      }
+      try {
+        await machine.piController?.stop();
+      } catch {
+        return failed("simulated Pi controller failed to stop");
+      }
+      appendPiProcessExit(machine);
+      machine.daemon.status = "inactive";
+      machine.daemon.invocationId = null;
+      machine.daemon.rpcReady = false;
+      machine.daemon.activeAttemptId = null;
+      machine.volatileFiles.clear();
+      return ok("companion-pi-termination-terminated\n");
+    }
     case "stop-daemon":
       try {
         await machine.piController?.stop();

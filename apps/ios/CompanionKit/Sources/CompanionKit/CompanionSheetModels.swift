@@ -403,6 +403,27 @@ public final class CompanionRoutineRunDetailStore {
         await load(cursor: nil, replacing: true, requestGeneration: generation)
     }
 
+    /// Refreshes recovery metadata and the newest transcript page without discarding pages that
+    /// are already visible. This keeps reading position and loaded private history stable while a
+    /// pending/running cleanup is polled.
+    public func refreshPreservingLoadedPages() async {
+        guard loaded, !loading else { return }
+        generation += 1
+        let requestGeneration = generation
+        loading = true
+        do {
+            let page = try await fetchPage(nil)
+            guard requestGeneration == generation else { return }
+            detail = page
+            entries = Self.deduplicated(entries + page.internalEntries)
+            errorMessage = nil
+        } catch {
+            guard requestGeneration == generation else { return }
+            // Preserve the loaded transcript and retry on the next synchronization cycle.
+        }
+        if requestGeneration == generation { loading = false }
+    }
+
     public func loadMore() async {
         guard let nextCursor, !loading else { return }
         await load(cursor: nextCursor, replacing: false, requestGeneration: generation)

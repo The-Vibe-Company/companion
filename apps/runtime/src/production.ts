@@ -447,6 +447,7 @@ const disabledBoxControl: RuntimeBoxControl = {
 
 const disabledPiControl: RuntimePiControl = {
   stopPiDaemon: async () => runtimeDisabled(),
+  terminatePiInvocation: async () => runtimeDisabled(),
   startPiDaemon: async () => runtimeDisabled(),
   restartPiDaemon: async () => runtimeDisabled(),
   piDaemonStatus: async () => runtimeDisabled(),

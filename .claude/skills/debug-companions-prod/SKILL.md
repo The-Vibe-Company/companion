@@ -34,8 +34,10 @@ From the runbook — these are not negotiable:
    only; automatic repair may recycle Pi but never a healthy Box. This skill
    ships no Box mutation code at all.
 3. Never manually mark an ambiguous or interrupted attempt `queued`, clear
-   lease rows, or edit epochs. An ambiguous dispatch is resolved only by an
-   Owner/Editor Retry (new `retry_id`) or Cancel in the product.
+   lease rows, or edit epochs. Protocol 7 resolves an ambiguous dispatch with
+   cleanup of its exact Pi invocation, records `auto_abandoned`, and releases
+   the lane without replay. Retry is compatibility-only and may only observe
+   or re-enqueue that cleanup; it never creates an attempt.
 4. The kill switch (`companion_runtime_disable`) is a human, migration-owner
    action. This skill only *reads* gate status via `db_query.py gate`; it must
    never call enable/disable.
@@ -103,10 +105,12 @@ python3 scripts/box_list.py --companion <uuid>
 python3 scripts/railway_logs.py --service runtime --companion <uuid> --since 6h
 ```
 
-- `cold_start_deadline_exceeded` on turns + operations stuck around
-  `creating_box`/`waiting_ready`/`installing_layout`: the cold path (Box ready
-  + Pi install) exceeded the 3-minute SQL deadline. Check `ops` checkpoints and
-  `attempt_count` to see where time went.
+- A `runtime.work.start_requeued` / `cold_start_deadline_exceeded` log around
+  `creating_box`/`waiting_ready`/`installing_layout` means one protocol-7 cold
+  path cycle exceeded three minutes. The same operation must be pending with
+  bounded backoff, `started_at` and its transient error cleared, while its
+  source turn remains queued with no attempt. A terminal source turn carrying
+  this code is pre-protocol-7 behavior.
 - A `cold_start_deadline_exceeded` operation whose `started_at` is already later
   than the turn deadline, with no attempt and an existing warm idle Box, is the
   pre-0129 queued-follow-up bug: the send was misclassified while Pi was busy.
@@ -148,8 +152,8 @@ python3 scripts/railway_logs.py --service runtime --turn <uuid> --since 24h
    with code `turn_stalled`: Pi acknowledged the attempt but produced no
    correlated activity for ten minutes. Distinguish from case 1 by the
    absence of a pending/expired decision row; distinguish from case 2 by the
-   error code. Check whether Pi is wedged (`instance` shows `pi_state`) —
-   Retry recycles Pi.
+   error code. Check whether Pi is wedged (`instance` shows `pi_state`) and
+   follow the automatic-cleanup operation through `cleanup_complete`.
 
 The decision expiry and the ten-minute running stall are different clocks.
 After migration 0129, `needs_input` pauses inactivity; before it, trust the row
@@ -187,30 +191,19 @@ When the loop is on an attempt, `material` narrows which precondition actually f
 python3 scripts/db_query.py material --companion <uuid>
 ```
 
-`store.getMaterial` CROSS JOINs `companion_runtime_get_material`,
-`companion_runtime_get_turn_context` and `companion_runtime_get_routine_material`, so **any one of
-them returning no row makes the whole lookup null**, which `fencedMutation` reports as a lost
-fence. `material` selects each precondition as a boolean — actor match, claim epoch, prompt entry,
-routine shape — so a false column names the failing function instead of leaving one opaque
-`fence_lost`. A NULL `member_timezone` on an attempt that has been claimed means
-`get_turn_context`'s `UPDATE ... RETURNING` never matched.
+`store.getMaterial` CROSS JOINs the material, turn-context, and routine-material
+functions, so any one returning no row makes the combined lookup null.
+`material` selects each precondition as a boolean — actor match, claim epoch,
+prompt entry, and routine shape — so a false column names the missing input.
 
-Note that `companion_runtime_renew_and_authorize` also returns **zero rows**, not a denial row,
-when its final lease CAS fails — including when the lease already expired
-(`l.expires_at > clock_timestamp()`) or a deadline has passed. The runtime maps zero rows to
-`LeaseFenceLostError`, so several unrelated conditions arrive as the same symptom.
-
-**`fence_lost` in a loop is not a fencing problem.** `companion_runtime_get_material`
-returns **no row** when `companion_runtime_renew_and_authorize` denies
-authorization (`packages/db/drizzle/0106_companion_routines.sql:227`), and
-`LeaseSession.fencedMutation` maps *any* null to `#loseFence()`
-(`packages/companion-runtime/src/leaseSession.ts:306`). A real authorization
-denial — revoked provider or MCP access, a changed model selection, even an
-exceeded deadline — is therefore misreported as a lost fence and retried
-forever instead of failing closed. Treat repeated `fence_lost` on one attempt as
-a **swallowed denial**: the member must resolve the underlying access problem
-(reconnect the provider or MCP account in Plugins), and Cancel/Stop the wedged
-turn to release the lane. Retry alone will re-wedge it.
+`LeaseSession.fencedLookup` now re-authorizes a null result before classifying
+it. A real lost fence is abandoned without settlement, an authorization denial
+fails closed with its stable code, and missing material under a live lease
+becomes bounded `work_material_unavailable` work rather than an endless reclaim
+loop. Protocol 7 recovery never requests message material. For a looping
+`restart_pi` recovery, inspect its `started_at`, `attempt_count`, checkpoint,
+exact lane lease, and `runtime.recovery.stalled`; do not repair actor resources
+or mutate the turn merely to make cleanup run.
 
 ### Turn interrupted or Pi silent
 
@@ -220,14 +213,21 @@ python3 scripts/db_query.py turn --turn <uuid>
 ```
 
 - `dispatch_state=ambiguous` / `prompt_dispatch_ambiguous`: the prompt may
-  have reached Pi; it is deliberately never replayed. The queue is blocked
-  until an Owner/Editor retries or cancels — that is the design, not a bug.
-  Warn that earlier external effects may have succeeded.
-- An interrupted queue head with queued turns behind it (`stuck`) needs an
-  Owner/Editor decision in the product, not a database edit.
+  have reached Pi, so it is deliberately never replayed. Protocol 7 enqueues
+  resource-free cleanup of only the exact invocation, then records
+  `auto_abandoned` and resumes the next FIFO message. Warn that earlier
+  external effects may have succeeded.
+- An interrupted queue head with queued turns behind it (`stuck`) should own
+  one `restart_pi` operation with `trigger=recovery`. Inspect its lane,
+  checkpoint, age, `attempt_count`, and live lease. `cleanup_complete` is the
+  current terminal proof; `pi_ready` is accepted only for legacy recovery.
+- A recovery older than 15 minutes or with a climbing attempt count is a
+  stalled automatic cleanup. Correlate `runtime.recovery.stalled` with its
+  expurgated error and exact Box/Pi evidence; do not manufacture resolution.
 - `turn_deadline_exceeded`: two-hour absolute deadline; look at attempt
   history for what consumed it.
-- Retry creates a new attempt and recycles Pi; it never restarts the Box.
+- The compatibility Retry route never replays the prompt or creates an
+  attempt; it only observes or re-enqueues the existing cleanup.
 
 ### `/healthz` unhealthy (503)
 
@@ -253,33 +253,35 @@ adapters (persisted triplet: code, expurgated ≤500-char message, action):
 
 | Code | Meaning | Typical action |
 | --- | --- | --- |
-| `cold_start_deadline_exceeded` | Companion not started before the cold-start deadline | retry; inspect `ops` checkpoints |
-| `turn_stalled` | 10 min with no correlated Pi activity | retry (recycles Pi) |
-| `turn_deadline_exceeded` | 2 h absolute deadline reached | retry |
+| `cold_start_deadline_exceeded` | One pre-dispatch Start cycle reached three minutes | inspect Start checkpoint/backoff; protocol 7 requeues the same Start and keeps the message queued |
+| `turn_stalled` | 10 min with no correlated Pi activity | inspect exact automatic cleanup |
+| `turn_deadline_exceeded` | 2 h absolute deadline reached | inspect exact automatic cleanup |
 | `box_create_ambiguous` | Box create may have committed; not replayed | inspect `box_list --companion`; never delete manually |
-| `prompt_dispatch_ambiguous` | prompt may have reached Pi; not replayed | Owner/Editor Retry or Cancel only |
-| `decision_delivery_ambiguous` | decision response may have reached Pi | same explicit-resolution rule |
-| `pi_event_stream_interrupted` | broker event stream from Pi broke | retry; count occurrences (transport health) |
-| `pi_not_idle` / `pi_busy` | Pi had queued messages at dispatch time | retry after settle |
-| `pi_invocation_changed` | Pi restarted under the attempt | retry |
-| `pi_process_exited` | Pi process died mid-attempt | retry; check instance `pi_state` |
+| `prompt_dispatch_ambiguous` | prompt may have reached Pi; not replayed | automatic exact-invocation cleanup; inspect recovery |
+| `decision_delivery_ambiguous` | decision response may have reached Pi | same automatic-cleanup rule |
+| `pi_event_stream_interrupted` | broker event stream from Pi broke | inspect recovery; count occurrences (transport health) |
+| `pi_not_idle` / `pi_busy` | Pi had queued messages at dispatch time | inspect settlement and recovery |
+| `pi_invocation_changed` | Pi restarted under the attempt | inspect exact-invocation proof |
+| `pi_process_exited` | Pi process died mid-attempt | inspect recovery + instance `pi_state` |
 | `box_rate_limited` | provider 429 | wait/backoff; escalate volume |
 | `box_provider_unavailable` / `box_network_error` | provider unreachable/5xx | provider incident path |
 | `box_unavailable` / `box_not_found` | Box missing or not usable | inspect `instance` + `box_list` |
 | `provider_unavailable` / `provider_access_revoked` | model provider connection broken/revoked | reconnect provider in Plugins |
 | `mcp_access_revoked` | selected MCP account no longer authorized | reconnect account |
 | `model_image_input_unsupported` | image sent to a text-only model | switch model; nothing reached the Box |
-| `attachment_staging_failed` | staging writes refused before dispatch (proven negative) | retry; check object storage |
+| `attachment_staging_failed` | staging writes refused before dispatch (proven negative) | check object storage; a later Send may retry ordinary work |
 | `actor_not_authorized` / `companion_access_revoked` / `actor_access_revoked` | authority revoked before Box contact (fail closed) | none — expected security behavior |
-| `settings_changed` / `settings_changed_since_claim` | settings raced the claim | retry |
+| `settings_changed` / `settings_changed_since_claim` | settings raced the claim | let normal prerequisite work reconcile settings |
 | `invalid_model_selection` | selected model no longer valid | switch model |
 | `runtime_shutting_down` | replica drained mid-work | should be reclaimed; investigate if it settled a turn |
 | `runtime_execution_failed` / `runtime_failure` | generic fallback — the log line's `thrown` block has the real name | search runtime logs for the same ts |
 
 `fence_lost` / `LeaseFenceLostError` is likewise a process-log outcome, never a
-persisted triplet. Once per attempt it is ordinary lease handoff; repeating at
-the lease TTL on the same `workId` it means a denial was swallowed — see the
-wedged-lane playbook above.
+persisted triplet. Once per attempt it is ordinary lease handoff. If it repeats
+at the lease TTL on one `workId`, compare authorization and material evidence:
+current runtimes distinguish a true lost fence, a stable denial, and
+`work_material_unavailable`; mixed-release logs may still contain the legacy
+collapsed symptom.
 
 `outbox_harvest_failed` is a process-log event, not a persisted attempt error:
 the turn succeeded and only reply images were partially recovered — search

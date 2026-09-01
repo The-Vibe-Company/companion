@@ -34,15 +34,20 @@ private let routineRunSummaryFixture = CompanionRoutineRunSummary(
         id: "22222222-2222-4222-8222-222222222222",
         name: "Morning brief"
     ),
-    status: .succeeded,
-    outcome: .surfaced,
-    surfaceMode: .notify,
-    mainEntryEventID: "routine-return:1",
+    status: .interrupted,
+    outcome: .error,
+    surfaceMode: nil,
+    mainEntryEventID: nil,
     relayTurnID: nil,
     createdAt: "2026-08-27T09:00:00.000Z",
     startedAt: "2026-08-27T09:00:01.000Z",
     settledAt: "2026-08-27T09:00:05.000Z",
-    error: nil
+    error: CompanionRuntimeSafeError(
+        code: "turn_stalled",
+        message: "The routine stopped making progress.",
+        action: "retry"
+    ),
+    recoveryStatus: .completed
 )
 
 private let routineRunDetailFixture = CompanionRoutineRunDetail(
@@ -66,7 +71,8 @@ private let routineRunDetailFixture = CompanionRoutineRunDetail(
         reasoning: "Compared release notes.",
         createdAt: "2026-08-27T09:00:02.000Z"
     )],
-    nextEntryCursor: 0
+    nextEntryCursor: 0,
+    recoveryStatus: .completed
 )
 
 @Test
@@ -144,8 +150,9 @@ func requestsAndDecodesRoutineHistoryUsingTheSharedContract() async throws {
         cursor: "cursor id"
     )
     #expect(list.runs.count == 1)
-    #expect(list.runs[0].outcome == .surfaced)
-    #expect(list.runs[0].surfaceMode == .notify)
+    #expect(list.runs[0].outcome == .error)
+    #expect(list.runs[0].surfaceMode == nil)
+    #expect(list.runs[0].recoveryStatus == .completed)
 
     let detail = try await client.readCompanionRoutineRun(
         companionID: "companion id",
@@ -155,6 +162,22 @@ func requestsAndDecodesRoutineHistoryUsingTheSharedContract() async throws {
     )
     #expect(detail.internalEntries.first?.ordinal == 0)
     #expect(detail.internalEntries.first?.reasoning == "Compared release notes.")
+    #expect(detail.recoveryStatus == .completed)
+}
+
+@Test
+func routineRecoveryStatusToleratesAbsentAndFutureValues() throws {
+    let absent = try JSONDecoder().decode(
+        CompanionRoutineRunSummary.self,
+        from: Data(#"{"run_id":"run-1","companion_id":"companion-1","routine":{"id":null,"name":"Brief"},"status":"interrupted","outcome":"error","surface_mode":null,"main_entry_event_id":null,"relay_turn_id":null,"created_at":"2026-08-27T09:00:00.000Z","started_at":null,"settled_at":"2026-08-27T09:10:00.000Z","error":null}"#.utf8)
+    )
+    let future = try JSONDecoder().decode(
+        CompanionRoutineRunSummary.self,
+        from: Data(#"{"run_id":"run-2","companion_id":"companion-1","routine":{"id":null,"name":"Brief"},"status":"interrupted","outcome":"error","surface_mode":null,"main_entry_event_id":null,"relay_turn_id":null,"created_at":"2026-08-27T09:00:00.000Z","started_at":null,"settled_at":"2026-08-27T09:10:00.000Z","error":null,"recovery_status":"verifying"}"#.utf8)
+    )
+
+    #expect(absent.recoveryStatus == nil)
+    #expect(future.recoveryStatus == .unknown)
 }
 
 @Test

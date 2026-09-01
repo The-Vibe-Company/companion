@@ -668,6 +668,28 @@ describe("runtime Box/Pi port adapters", () => {
     expect(brokerState).not.toHaveBeenCalled();
   });
 
+  it("delegates exact main Pi termination without widening it to a daemon stop", async () => {
+    const terminatePiInvocation = vi.fn(async () => ({ outcome: "superseded" as const }));
+    const stopPiDaemon = vi.fn(async () => undefined);
+    const pi = createRuntimePiControl({
+      lifecycle: lifecycle(),
+      runtime: () => boxRuntime({ terminatePiInvocation, stopPiDaemon }),
+    });
+
+    await expect(pi.terminatePiInvocation({
+      boxId: "bx_23456789",
+      expectedInvocationId: "invocation-interrupted",
+      signal,
+    })).resolves.toEqual({ outcome: "superseded" });
+
+    expect(terminatePiInvocation).toHaveBeenCalledWith({
+      boxId: "bx_23456789",
+      expectedInvocationId: "invocation-interrupted",
+      signal,
+    });
+    expect(stopPiDaemon).not.toHaveBeenCalled();
+  });
+
   it("preserves refusal/ambiguity and converts broker cursors without precision loss", async () => {
     const dispatchPrompt = vi.fn()
       .mockResolvedValueOnce({ outcome: "refused", code: "pi_busy", message: "ignored" })

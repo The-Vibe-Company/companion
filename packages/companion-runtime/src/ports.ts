@@ -170,6 +170,15 @@ export interface RuntimePiRoutineSessionControl {
 
 export interface RuntimePiControl {
   stopPiDaemon(input: { boxId: string; signal: AbortSignal }): Promise<void>;
+  /**
+   * Stop only the main Pi systemd invocation that originally accepted an interrupted turn.
+   * `superseded` is terminal proof that a newer invocation owns the daemon and was left untouched.
+   */
+  terminatePiInvocation(input: {
+    boxId: string;
+    expectedInvocationId: string;
+    signal: AbortSignal;
+  }): Promise<{ outcome: "terminated" | "already_gone" | "superseded" }>;
   startPiDaemon(input: { boxId: string; signal: AbortSignal }): Promise<{
     state: PiObservedState;
     invocationId: string;

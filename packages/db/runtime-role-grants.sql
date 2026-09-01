@@ -687,6 +687,28 @@ BEGIN
       ];
     END IF;
 
+    -- 0157 exposes cleanup-only authorization without granting access to historical actor,
+    -- provider, Skill, MCP, or staged-material resources.
+    IF pg_catalog.to_regprocedure(
+      'public.companion_runtime_renew_and_authorize_v3(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,integer)'
+    ) IS NOT NULL THEN
+      companion_runtime_functions := companion_runtime_functions || ARRAY[
+        'public.companion_runtime_renew_and_authorize_v3(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,integer)'::regprocedure,
+        'public.companion_runtime_recovery_metrics()'::regprocedure
+      ];
+      companion_api_functions := companion_api_functions || ARRAY[
+        'public.companion_api_turn_recovery_status(uuid,uuid,uuid)'::regprocedure,
+        'public.companion_api_retry_turn(uuid,uuid,uuid,uuid,public.companion_client_surface)'::regprocedure
+      ];
+      internal_runtime_functions := internal_runtime_functions || ARRAY[
+        'public.companion_runtime_normalize_legacy_recovery_snapshot()'::regprocedure,
+        'public.companion_runtime_ensure_turn_recovery(uuid,uuid,uuid)'::regprocedure,
+        'public.companion_runtime_enqueue_interrupted_recovery()'::regprocedure,
+        'public.companion_runtime_settle_recovery_operation()'::regprocedure,
+        'public.companion_thread_touch_recovery_operation()'::regprocedure
+      ];
+    END IF;
+
     -- 0110 records staged credential expiry and publishes it only after a new Pi invocation.
     -- 0125 re-created the record function with the hosted Box-agent endpoint arguments, so the
     -- feature detection keys on that latest signature.

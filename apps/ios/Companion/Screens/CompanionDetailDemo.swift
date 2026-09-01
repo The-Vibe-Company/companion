@@ -194,15 +194,16 @@ private enum CompanionDetailDemoFixtures {
             id: "33333333-3333-4333-8333-333333333333",
             name: "Weekday brief"
         ),
-        status: .succeeded,
-        outcome: .surfaced,
-        surfaceMode: .notify,
-        mainEntryEventID: "routine-return:demo",
+        status: .interrupted,
+        outcome: .error,
+        surfaceMode: nil,
+        mainEntryEventID: nil,
         relayTurnID: nil,
         createdAt: "2026-08-27T13:00:00.000Z",
         startedAt: "2026-08-27T13:00:01.000Z",
         settledAt: "2026-08-27T13:00:05.000Z",
-        error: nil
+        error: nil,
+        recoveryStatus: .running
     )
 
     private static let routineRunDetail = CompanionRoutineRunDetail(
@@ -223,11 +224,12 @@ private enum CompanionDetailDemoFixtures {
                 eventID: "routine:assistant:demo",
                 ordinal: 0,
                 role: "assistant",
-                content: "The weekday brief completed.",
+                content: "The weekday brief recorded activity before it was interrupted.",
                 createdAt: "2026-08-27T13:00:04.000Z"
             ),
         ],
-        nextEntryCursor: nil
+        nextEntryCursor: nil,
+        recoveryStatus: .running
     )
 
     private static let plugins: [CompanionPluginAccount] = [

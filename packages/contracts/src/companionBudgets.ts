@@ -23,9 +23,10 @@ export interface CompanionBudgetsBase {
    */
   inactivityStallMs: number;
   /**
-   * From durable send to Pi prompt acknowledgement on a cold Box. SQL twin: `interval '3 minutes'`
-   * (`cold_start_deadline_at = created_at + 3 minutes`, fixed at enqueue and never moved —
-   * `attempt.ts` recovers the send time by subtracting this same constant).
+   * From the first effective Start claim to Pi prompt acknowledgement on a cold Box. SQL twin:
+   * `interval '3 minutes'`. A lease takeover preserves the same deadline; a Start cycle that
+   * settles on this timeout is re-enqueued with no deadline, and its next claim receives one fresh
+   * fixed window without expiring or replaying the queued turn.
    */
   coldStartDeadlineMs: number;
   /**
@@ -160,8 +161,8 @@ export function sqlIntervalToMs(literal: string): number {
 export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly string[]>> = {
   // Control request approval window.
   companion_api_create_control_request: ["24 hours"],
-  // turnAbsoluteDeadlineMs.
-  companion_runtime_claim_work_without_material_guard: ["2 hours"],
+  // turnAbsoluteDeadlineMs + claim-time coldStartDeadlineMs.
+  companion_runtime_claim_work_without_material_guard: ["2 hours", "3 minutes"],
   // Accepted activity timestamp skew allowance + inactivityStallMs.
   companion_runtime_checkpoint: ["5 minutes", "10 minutes"],
   // Event retention window + inactivityStallMs re-arm.
@@ -172,13 +173,12 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_runtime_record_attempt_outputs: ["10 minutes"],
   // inactivityStallMs re-armed for both the resumed turn and its delivery bookkeeping.
   companion_runtime_resume_after_decision_delivery: ["10 minutes", "10 minutes"],
-  // Prepare grace (x2), materialMinTtlMs (x2), coldStartDeadlineMs.
+  // Prepare grace (x2) + materialMinTtlMs (x2). Cold-start time begins only when Start is claimed.
   companion_runtime_prepare_queued_turn_material: [
     "2 minutes",
     "2 hours 5 minutes",
     "2 minutes",
     "2 hours 5 minutes",
-    "3 minutes",
   ],
   // Enqueue-time observation grace + materialMinTtlMs, rechecked before a warm attempt claim.
   companion_runtime_main_turn_material_ready: ["2 minutes", "2 hours 5 minutes"],
@@ -194,8 +194,6 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_runtime_settle: ["30 seconds", "30 seconds", "15 seconds"],
   // Health observation windows + coldStartDeadlineMs + leaseSeconds.
   companion_runtime_observe_instance: ["5 minutes", "3 minutes", "30 seconds"],
-  // coldStartDeadlineMs for the initial operation intent and explicit retry refresh.
-  companion_runtime_assign_operation_intent: ["3 minutes", "3 minutes"],
   // Deferred-delete retry ladder.
   companion_runtime_defer_delete: ["5 seconds", "15 seconds", "30 seconds", "60 seconds"],
   // COMPANION_ROUTINE_MISSED_GRACE_MS twin.
@@ -203,6 +201,8 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_runtime_expire_queued_routine_turns: ["10 minutes"],
   // COMPANION_TRIGGER_MIN_INTERVAL_MS twin.
   companion_api_fire_trigger: ["60 seconds"],
+  // Aggregate stalled-recovery warning threshold (telemetry only; never a claim gate).
+  companion_runtime_recovery_metrics: ["15 minutes"],
 };
 
 /**
@@ -243,7 +243,8 @@ export const KNOWN_EXCEEDANCES: readonly CompanionBudgetExceedance[] = [
     summary:
       "Nominal cold path box-ready wait (120s default, boxCompanionRuntime.ts COMPANION_BOX_READY_TIMEOUT_MS) "
       + "plus Pi daemon activation (180s, PI_DAEMON_ACTIVE_TIMEOUT_MS) exceeds the 3-minute cold "
-      + "start deadline; a Box that uses its full nominal waits always times the turn out.",
+      + "start deadline; a Box that uses its full nominal waits forces at least one Start cycle to "
+      + "requeue before the queued turn can progress.",
     actualMs: 120_000 + 180_000,
     boundMs: COMPANION_BUDGETS_BASE.coldStartDeadlineMs,
     kind: "exceeds",

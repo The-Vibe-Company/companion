@@ -81,6 +81,7 @@ const coreMocks = {
   readCompanionThreadWindowV2: vi.fn<typeof coreModule.readCompanionThreadWindowV2>(),
   readCompanionThreadV2: vi.fn<typeof coreModule.readCompanionThreadV2>(),
   syncCompanionThreadV2: vi.fn<typeof coreModule.syncCompanionThreadV2>(),
+  retryCompanionTurnV2: vi.fn<typeof coreModule.retryCompanionTurnV2>(),
   setCompanionProviderV2: vi.fn<typeof coreModule.setCompanionProviderV2>(),
   setCompanionWorkspaceShareV2: vi.fn<typeof coreModule.setCompanionWorkspaceShareV2>(),
   updateCompanionMemberStateV2: vi.fn<typeof coreModule.updateCompanionMemberStateV2>(),
@@ -448,6 +449,10 @@ describe("Companions Runtime v2 API", () => {
     });
     coreMocks.enqueueCompanionOperationV2.mockResolvedValue({
       operation,
+      replayed: false,
+    });
+    coreMocks.retryCompanionTurnV2.mockResolvedValue({
+      operation: { ...operation, kind: "restart_pi", source_turn_id: TURN_ID },
       replayed: false,
     });
     coreMocks.cancelCompanionTurnV2.mockResolvedValue(cancelledTurn);
@@ -1701,13 +1706,23 @@ describe("Companions Runtime v2 API", () => {
     }));
   });
 
-  it("does not expose the removed turn retry endpoint", async () => {
+  it("keeps the Retry wire endpoint as an observation of the existing automatic cleanup", async () => {
     const response = await appWithRoutes().request(
-      jsonPost(`/v1/companions/${COMPANION_ID}/turns/${TURN_ID}/retry`, {}),
+      jsonPost(`/v1/companions/${COMPANION_ID}/turns/${TURN_ID}/retry`, {
+        retry_id: RETRY_ID,
+      }),
     );
 
-    expect(response.status).toBe(404);
-    expect(coreMocks.cancelCompanionTurnV2).not.toHaveBeenCalled();
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toEqual({
+      operation: { ...operation, kind: "restart_pi", source_turn_id: TURN_ID },
+    });
+    expect(coreMocks.retryCompanionTurnV2).toHaveBeenCalledWith(expect.objectContaining({
+      companionId: COMPANION_ID,
+      turnId: TURN_ID,
+      retryId: RETRY_ID,
+      clientSurface: "web",
+    }));
   });
 
   it("persists decision answers and lets Runtime deliver them", async () => {

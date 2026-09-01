@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { RuntimeEngine } from "./engine";
 import { RuntimeStoreIndeterminateError } from "./store";
-import type { OperationRuntimeClaim } from "./types";
+import type { OperationRuntimeClaim, RuntimeAuthorization } from "./types";
 import {
   BOX_ID,
   PI_INVOCATION_ID,
@@ -17,6 +17,31 @@ import {
   operationClaim,
   attemptMaterial,
 } from "./test/fixtures";
+
+function recoveryAuthorization(
+  claim: OperationRuntimeClaim,
+  overrides: Partial<RuntimeAuthorization> = {},
+): RuntimeAuthorization {
+  return operationAuthorization(claim, {
+    authorizationActorId: null,
+    clientSurface: null,
+    modelId: null,
+    persona: null,
+    canWriteSkills: null,
+    providerRefs: [],
+    skillRefs: [],
+    mcpRefs: [],
+    desiredSettingsRevision: null,
+    skillsRevision: null,
+    targetSettingsRevision: null,
+    targetSkillsRevision: null,
+    operationTrigger: "recovery",
+    operationLane: "main",
+    sourceDispatchState: "ambiguous",
+    sourcePiInvocationId: "source-pi-invocation",
+    ...overrides,
+  });
+}
 
 describe("runtime lifecycle operations", () => {
   it("resumes a durable Box by id without account discovery, PATCH, or adapter polling", async () => {
@@ -769,6 +794,374 @@ describe("runtime lifecycle operations", () => {
     }]);
     expect(store.publishedMaterialSnapshots).toEqual([PI_INVOCATION_ID]);
     expect(store.authorization.piInvocationId).toBe(PI_INVOCATION_ID);
+  });
+
+  it("retries an isolated routine by terminating only that run's Pi process", async () => {
+    const invocationId = `routine:${TURN_ID}:dispatch-v2:previous`;
+    const claim = operationClaim({
+      operationKind: "restart_pi",
+      turnId: TURN_ID,
+      turnStatus: "interrupted",
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: recoveryAuthorization(claim, {
+        operationLane: "routine",
+        sourcePiInvocationId: invocationId,
+        boxId: BOX_ID,
+        boxState: "ready",
+        piState: "running",
+        piInvocationId: "main-pi-invocation",
+        commandPiInvocationId: invocationId,
+      }),
+      material: attemptMaterial({
+        routineId: ROUTINE_SNAPSHOT_ID,
+        routineName: "Parallel routine",
+        routineIsolated: true,
+      }),
+    });
+    const ports = fakePorts(store);
+    let mainRestarts = 0;
+    ports.pi.restartPiDaemon = async () => {
+      mainRestarts += 1;
+      return { state: "idle", invocationId: PI_INVOCATION_ID };
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(ports.routineTerminates).toEqual([TURN_ID]);
+    expect(mainRestarts).toBe(0);
+    expect(store.authorization.piInvocationId).toBe("main-pi-invocation");
+  });
+
+  it("treats an absent Box as complete cleanup for an interrupted occurrence", async () => {
+    const claim = operationClaim({
+      operationKind: "restart_pi",
+      turnId: TURN_ID,
+      turnStatus: "interrupted",
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: recoveryAuthorization(claim, {
+        boxId: null,
+        boxState: "absent",
+        piState: "absent",
+        piInvocationId: null,
+      }),
+    });
+    const ports = fakePorts(store);
+    let piCalls = 0;
+    ports.pi.stopPiDaemon = async () => { piCalls += 1; };
+    ports.pi.restartPiDaemon = async () => {
+      piCalls += 1;
+      return { state: "idle", invocationId: PI_INVOCATION_ID };
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(piCalls).toBe(0);
+    expect(store.authorization.workCheckpoint).toBe("cleanup_complete");
+  });
+
+  it("re-observes an archived Box before cleaning up an interrupted main occurrence", async () => {
+    const claim = operationClaim({
+      operationKind: "restart_pi",
+      turnId: TURN_ID,
+      turnStatus: "interrupted",
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: recoveryAuthorization(claim, {
+        boxId: BOX_ID,
+        boxState: "idle",
+        piState: "idle",
+        piInvocationId: "stale-pi-invocation",
+      }),
+    });
+    const ports = fakePorts(store);
+    let piCalls = 0;
+    ports.box.getStatus = async () => ({ state: "archived" });
+    ports.pi.stopPiDaemon = async () => { piCalls += 1; };
+    ports.pi.restartPiDaemon = async () => {
+      piCalls += 1;
+      return { state: "idle", invocationId: PI_INVOCATION_ID };
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(piCalls).toBe(0);
+    expect(store.observations).toContainEqual(expect.objectContaining({
+      boxId: BOX_ID,
+      boxState: "archived",
+    }));
+    expect(store.authorization.boxState).toBe("archived");
+    expect(store.authorization.piState).toBe("absent");
+    expect(store.authorization.piInvocationId).toBeNull();
+    expect(store.authorization.workCheckpoint).toBe("cleanup_complete");
+  });
+
+  it("uses an already archived durable projection as local cleanup proof", async () => {
+    const claim = operationClaim({
+      operationKind: "restart_pi",
+      turnId: TURN_ID,
+      turnStatus: "interrupted",
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: recoveryAuthorization(claim, {
+        boxId: BOX_ID,
+        boxState: "archived",
+        piState: "absent",
+        piInvocationId: null,
+      }),
+    });
+    const ports = fakePorts(store);
+    ports.box.getStatus = async () => { throw new Error("archived proof must not read provider"); };
+    ports.pi.terminatePiInvocation = async () => { throw new Error("archived proof must not contact Pi"); };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(store.authorization.workCheckpoint).toBe("cleanup_complete");
+  });
+
+  it("re-observes an archived Box before cleaning up an interrupted isolated routine", async () => {
+    const invocationId = `routine:${TURN_ID}:dispatch-v2:stale`;
+    const claim = operationClaim({
+      operationKind: "restart_pi",
+      turnId: TURN_ID,
+      turnStatus: "interrupted",
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: recoveryAuthorization(claim, {
+        operationLane: "routine",
+        sourcePiInvocationId: invocationId,
+        boxId: BOX_ID,
+        boxState: "idle",
+        piState: "running",
+        piInvocationId: "main-pi-invocation",
+        commandPiInvocationId: invocationId,
+      }),
+      material: attemptMaterial({
+        routineId: ROUTINE_SNAPSHOT_ID,
+        routineName: "Archived routine",
+        routineIsolated: true,
+      }),
+    });
+    const ports = fakePorts(store);
+    let mainPiCalls = 0;
+    ports.box.getStatus = async () => ({ state: "archived" });
+    ports.pi.stopPiDaemon = async () => { mainPiCalls += 1; };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(mainPiCalls).toBe(0);
+    expect(ports.routineTerminates).toEqual([]);
+    expect(store.observations).toContainEqual(expect.objectContaining({
+      boxId: BOX_ID,
+      boxState: "archived",
+    }));
+    expect(store.authorization.boxState).toBe("archived");
+    expect(store.authorization.piState).toBe("absent");
+    expect(store.authorization.piInvocationId).toBeNull();
+    expect(store.authorization.workCheckpoint).toBe("cleanup_complete");
+  });
+
+  it("cleans up an old protocol-7 recovery despite expired source-turn deadlines", async () => {
+    const claim = operationClaim({
+      operationKind: "restart_pi",
+      turnId: TURN_ID,
+      turnStatus: "interrupted",
+      operationAttemptCount: 78,
+      coldStartDeadlineAt: new Date("2026-08-16T06:00:00.000Z"),
+      absoluteDeadlineAt: new Date("2026-08-16T07:00:00.000Z"),
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: recoveryAuthorization(claim, {
+        boxId: BOX_ID,
+        boxState: "idle",
+        piState: "idle",
+        piInvocationId: "stale-projection-invocation",
+      }),
+    });
+    const ports = fakePorts(store);
+    let boxReads = 0;
+    let piCalls = 0;
+    ports.box.getStatus = async () => {
+      boxReads += 1;
+      return { state: "archived" };
+    };
+    ports.pi.terminatePiInvocation = async () => {
+      piCalls += 1;
+      return { outcome: "terminated" };
+    };
+    ports.pi.stopPiDaemon = async () => { piCalls += 1; };
+    ports.pi.restartPiDaemon = async () => {
+      piCalls += 1;
+      return { state: "idle", invocationId: PI_INVOCATION_ID };
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({
+      store,
+      ports,
+      materialProvider: { getMaterial: async () => { throw new Error("material must not load"); } },
+    })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(boxReads).toBe(1);
+    expect(piCalls).toBe(0);
+    expect(store.authorization.workCheckpoint).toBe("cleanup_complete");
+    expect(store.recordedMaterialSnapshots).toEqual([]);
+  });
+
+  it.each(["terminated", "already_gone", "superseded"] as const)(
+    "accepts exact main Pi cleanup proof %s without staging or restarting",
+    async (outcome) => {
+      const claim = operationClaim({
+        operationKind: "restart_pi",
+        turnId: TURN_ID,
+        turnStatus: "interrupted",
+      });
+      const store = new MemoryRuntimeStore({
+        authorization: recoveryAuthorization(claim, {
+          boxId: BOX_ID,
+          boxState: "ready",
+          piState: "running",
+          piInvocationId: outcome === "superseded" ? "newer-invocation" : "source-pi-invocation",
+        }),
+      });
+      const ports = fakePorts(store);
+      const exactCalls: string[] = [];
+      let broadPiCalls = 0;
+      let stagingCalls = 0;
+      ports.pi.terminatePiInvocation = async ({ expectedInvocationId }) => {
+        exactCalls.push(expectedInvocationId);
+        return { outcome };
+      };
+      ports.pi.stopPiDaemon = async () => { broadPiCalls += 1; };
+      ports.pi.restartPiDaemon = async () => {
+        broadPiCalls += 1;
+        return { state: "idle", invocationId: PI_INVOCATION_ID };
+      };
+      ports.resourceStager.stageExistingBox = async () => {
+        stagingCalls += 1;
+        throw new Error("recovery must not stage");
+      };
+
+      const result = await new RuntimeEngine(engineDependencies({
+        store,
+        ports,
+        materialProvider: { getMaterial: async () => { throw new Error("material must not load"); } },
+      })).execute(claim);
+
+      expect(result.outcome).toBe("succeeded");
+      expect(exactCalls).toEqual(["source-pi-invocation"]);
+      expect({ broadPiCalls, stagingCalls }).toEqual({ broadPiCalls: 0, stagingCalls: 0 });
+      expect(store.authorization.workCheckpoint).toBe("cleanup_complete");
+      expect(store.authorization.piInvocationId).toBe(
+        outcome === "superseded" ? "newer-invocation" : null,
+      );
+    },
+  );
+
+  it("terminates only the exact isolated routine invocation during recovery", async () => {
+    const invocationId = `routine:${TURN_ID}:dispatch-v2:interrupted`;
+    const claim = operationClaim({
+      operationKind: "restart_pi",
+      turnId: TURN_ID,
+      turnStatus: "interrupted",
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: recoveryAuthorization(claim, {
+        operationLane: "routine",
+        sourcePiInvocationId: invocationId,
+        boxId: BOX_ID,
+        boxState: "ready",
+        piState: "running",
+        piInvocationId: "main-pi-invocation",
+      }),
+    });
+    const ports = fakePorts(store);
+    let mainTerminationCalls = 0;
+    ports.pi.terminatePiInvocation = async () => {
+      mainTerminationCalls += 1;
+      return { outcome: "terminated" };
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({
+      store,
+      ports,
+      materialProvider: { getMaterial: async () => { throw new Error("material must not load"); } },
+    })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(ports.routineTerminates).toEqual([TURN_ID]);
+    expect(mainTerminationCalls).toBe(0);
+    expect(store.authorization.piInvocationId).toBe("main-pi-invocation");
+    expect(store.authorization.workCheckpoint).toBe("cleanup_complete");
+  });
+
+  it.each([null, "pending", "rejected"] as const)(
+    "uses source dispatch %s as local negative proof without contacting Box or Pi",
+    async (sourceDispatchState) => {
+      const claim = operationClaim({
+        operationKind: "restart_pi",
+        turnId: TURN_ID,
+        turnStatus: "interrupted",
+      });
+      const store = new MemoryRuntimeStore({
+        authorization: recoveryAuthorization(claim, {
+          sourceDispatchState,
+          sourcePiInvocationId: null,
+        }),
+      });
+      const ports = fakePorts(store);
+      ports.box.getStatus = async () => { throw new Error("Box must not be read"); };
+      ports.pi.terminatePiInvocation = async () => { throw new Error("Pi must not be contacted"); };
+
+      const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+      expect(result.outcome).toBe("succeeded");
+      expect(store.authorization.workCheckpoint).toBe("cleanup_complete");
+    },
+  );
+
+  it("uses an archived Box as terminal proof even when the source invocation is missing", async () => {
+    const claim = operationClaim({
+      operationKind: "restart_pi",
+      checkpoint: "restarting_pi",
+      checkpointSequence: 1n,
+      turnId: TURN_ID,
+      turnStatus: "interrupted",
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: recoveryAuthorization(claim, {
+        boxId: BOX_ID,
+        boxState: "idle",
+        piState: "absent",
+        piInvocationId: null,
+        sourcePiInvocationId: null,
+      }),
+    });
+    const ports = fakePorts(store);
+    let boxReads = 0;
+    let piCalls = 0;
+    ports.box.getStatus = async () => {
+      boxReads += 1;
+      return { state: "archived" };
+    };
+    ports.pi.restartPiDaemon = async () => {
+      piCalls += 1;
+      return { state: "idle", invocationId: PI_INVOCATION_ID };
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(boxReads).toBe(1);
+    expect(piCalls).toBe(0);
+    expect(store.authorization.boxState).toBe("archived");
+    expect(store.authorization.workCheckpoint).toBe("cleanup_complete");
   });
 
   it("resumes an already archived Box during an explicit full Box restart", async () => {
@@ -1531,6 +1924,117 @@ describe("runtime lifecycle operations", () => {
 
     expect(result.outcome).toBe("succeeded");
     expect(store.authorization.workCheckpoint).toBe("provider_deleted");
+  });
+
+  it("re-arms a queued turn when its Box readiness budget expires", async () => {
+    const claim = operationClaim({
+      checkpoint: "waiting_ready",
+      checkpointSequence: 2n,
+      turnId: TURN_ID,
+      turnStatus: "queued",
+      coldStartDeadlineAt: new Date("2026-08-16T12:00:00.000Z"),
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: operationAuthorization(claim, {
+        operationTrigger: "turn",
+        boxId: BOX_ID,
+        boxState: "provisioning",
+        piState: "absent",
+        piInvocationId: null,
+      }),
+    });
+    const ports = fakePorts(store);
+    let statusCalls = 0;
+    ports.box.getStatus = async () => {
+      statusCalls += 1;
+      return { state: "provisioning" };
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({
+      store,
+      ports,
+      clock: new TestClock(),
+    })).execute(claim);
+
+    expect(result.outcome).toBe("interrupted");
+    expect(statusCalls).toBe(0);
+    expect(store.settlements).toEqual([{
+      terminalStatus: "interrupted",
+      error: {
+        code: "cold_start_deadline_exceeded",
+        message: "The Companion did not start before its deadline.",
+        action: "none",
+      },
+    }]);
+  });
+
+  it("re-arms a queued turn when a retryable Box read exhausts its retries", async () => {
+    const claim = operationClaim({
+      checkpoint: "resolving_box",
+      checkpointSequence: 1n,
+      turnId: TURN_ID,
+      turnStatus: "queued",
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: operationAuthorization(claim, {
+        operationTrigger: "turn",
+        boxId: BOX_ID,
+        boxState: "provisioning",
+        piState: "absent",
+        piInvocationId: null,
+      }),
+    });
+    const ports = fakePorts(store);
+    let statusCalls = 0;
+    ports.box.getStatus = async () => {
+      statusCalls += 1;
+      throw Object.assign(new Error("temporary Box outage"), { status: 503 });
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({
+      store,
+      ports,
+      clock: new TestClock(),
+    })).execute(claim);
+
+    expect(result.outcome).toBe("interrupted");
+    expect(statusCalls).toBe(6);
+    expect(store.settlements[0]).toMatchObject({
+      terminalStatus: "interrupted",
+      error: { code: "cold_start_deadline_exceeded", action: "none" },
+    });
+  });
+
+  it("keeps an explicit Start provider failure terminal", async () => {
+    const claim = operationClaim({ checkpoint: "resolving_box", checkpointSequence: 1n });
+    const store = new MemoryRuntimeStore({
+      authorization: operationAuthorization(claim, {
+        operationTrigger: "user",
+        boxId: BOX_ID,
+        boxState: "provisioning",
+        piState: "absent",
+        piInvocationId: null,
+      }),
+    });
+    const ports = fakePorts(store);
+    let statusCalls = 0;
+    ports.box.getStatus = async () => {
+      statusCalls += 1;
+      throw Object.assign(new Error("temporary Box outage"), { status: 503 });
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({
+      store,
+      ports,
+      clock: new TestClock(),
+    })).execute(claim);
+
+    expect(result.outcome).toBe("failed");
+    expect(statusCalls).toBe(6);
+    expect(store.settlements[0]).toMatchObject({
+      terminalStatus: "failed",
+      error: { code: "runtime_execution_failed" },
+    });
   });
 
   it("records per-stage timings for a start", async () => {

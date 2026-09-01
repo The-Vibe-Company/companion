@@ -48,7 +48,7 @@ describe("companion skill package + row", () => {
     const pkg = await getCompanionSkillPackage();
     expect(pkg.key).toBe("companion");
     expect(pkg.checksum).toMatch(/^sha256:[0-9a-f]{64}$/);
-    expect(pkg.version).toBe("1.104.0");
+    expect(pkg.version).toBe("1.104.1");
     expect(pkg.sizeBytes).toBeGreaterThan(0);
     expect(pkg.integrity.packageChecksum).toBe(pkg.checksum);
     expect(pkg.integrity.files["SKILL.md"]).toMatch(/^sha256:[0-9a-f]{64}$/);
@@ -127,19 +127,19 @@ describe("companion skill package + row", () => {
       desc: "Create or repair manifest v2 with identity, env/secrets, dependency ids, notes, commands, and changelog.",
     });
     const changelog = row.changes.join("\n");
-    expect(changelog).toContain("protocol-6 terminal interruptions");
-    expect(changelog).toContain("exact bounded Pi cleanup");
-    expect(changelog).toContain("Retry/Cancel guidance");
+    expect(changelog).toContain("protocol-7 durable cleanup");
+    expect(changelog).toContain("exact ambiguous Pi invocation");
+    expect(changelog).toContain("manual Retry/Cancel controls");
     // SAFETY: the bundled manifest is the repo's own companion.json, whose metadata.changelog shape the manifest schema fixes.
     const manifest = JSON.parse(await readFile(join(companionSkillDir(), "companion.json"), "utf8")) as {
       metadata?: { changelog?: Array<{ version?: string; changes?: string[] }> };
     };
     const runtimeRecoveryChanges = manifest.metadata?.changelog
-      ?.find((entry) => entry.version === "1.104.0")
+      ?.find((entry) => entry.version === "1.104.1")
       ?.changes?.join("\n") ?? "";
-    expect(runtimeRecoveryChanges).toContain("protocol-6 terminal interruptions");
-    expect(runtimeRecoveryChanges).toContain("later messages, routines, or triggers");
-    expect(runtimeRecoveryChanges).toContain("historical retry_id evidence");
+    expect(runtimeRecoveryChanges).toContain("protocol-7 durable cleanup");
+    expect(runtimeRecoveryChanges).toContain("message resources");
+    expect(runtimeRecoveryChanges).toContain("later FIFO messages");
     const triggerAccountChanges = manifest.metadata?.changelog
       ?.find((entry) => entry.version === "1.101.0")
       ?.changes?.join("\n") ?? "";

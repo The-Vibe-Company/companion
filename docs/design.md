@@ -160,10 +160,15 @@ queued → starting → dispatching → running ↔ needs_input
 ```
 
 Only one attempt is active per execution lane. One ordinary main attempt and one isolated routine
-attempt may run concurrently; later turns remain ordered within their lane. An interrupted turn is
-terminal immediately: runtime attempts one exact, bounded Pi stop before settlement, records
-`auto_abandoned` with action `none`, and releases the lane whether cleanup succeeds or fails. The
-ambiguous prompt is never replayed, and the next main turn recycles a non-idle Pi during preflight.
+attempt may run concurrently; later turns remain ordered within their lane. An interrupted turn
+creates one idempotent lane-local `restart_pi + trigger=recovery` cleanup. Its narrow authorization
+does not load the old actor, provider/model, Skill, MCP, token, or message material. Runtime first
+re-observes the known Box; an absent or provider-archived Box proves the exact invocation no longer
+exists, while a live Box requires exact invocation termination. Main cleanup compares the captured
+systemd `InvocationID`; routine cleanup uses its run-scoped invocation. A newer invocation is never
+stopped. Runtime checkpoints `cleanup_complete`, marks the occurrence `auto_abandoned`, and releases
+the lane without staging or replaying its prompt. Cleanup retries with a maximum five-minute backoff
+and a fresh fixed ten-minute budget per claim cycle.
 Settings revisions accepted during a turn apply after
 the routine lane is quiescent and before the next main turn. On a warm Box, configuration is published as
 applied only after runtime stages the exact snapshot, restarts Pi, and observes a different idle Pi
@@ -185,8 +190,10 @@ A blocking `ask_user` decision moves the turn to `needs_input` and clears the
 inactivity deadline. An answer resumes Pi; after ten minutes, absence returns a cancelled response
 so Pi chooses a safe fallback without inferring approval. A newer member message cancels the wait
 sooner, remains an ordinary queued turn, and never supplies an implicit answer. That queued turn has
-no cold-start deadline until it reaches the head; runtime then decides whether restaging is needed
-and starts the three-minute cold-start window from that decision.
+no attempt or cold-start deadline while its Start prerequisite is waiting. Runtime starts the fixed
+three-minute cold-start window only when it first claims that Start, and a takeover preserves it. If
+that cycle times out before any prompt can be dispatched, PostgreSQL re-enqueues the same Start with
+bounded backoff and a fresh cycle budget while the accepted message remains `queued`.
 
 That decision is gated by shared lifecycle availability. While an isolated routine owns its lane,
 material preparation may be revisited but must not stamp a main turn's cold-start deadline or create
@@ -210,13 +217,17 @@ execution interrupts only the scheduler's backoff sleep so a start can hand its 
 directly to the queued turn. `/healthz` fails when PostgreSQL, the claim loop, or the
 latest sweep is unhealthy.
 
+Protocol 7 is the claim boundary for cleanup isolation and queue repair. Protocol-6 executors may
+finish an already-held lease but receive no new work. Migration 0157 rearms stale or missing cleanup
+rows without racing a live lease and removes cold deadlines created before an unclaimed Start.
+
 Main-lane precedence is permanent delete, explicit stop/restart, main decision response, active main
 attempt, configuration apply, next main turn, then health observation. The routine lane independently
 orders its decision response, active attempt, and next routine turn. Main lifecycle work waits for a
 quiescent routine lane without preempting its renewal; permanent delete is the exception: its claim
-fences and settles an active routine lane, then runtime terminates that exact run-scoped Pi
-invocation before contacting the provider. An interrupted routine is already terminal and owns no
-lane.
+fences and settles an active/interrupted routine lane, then runtime terminates that exact run-scoped
+Pi invocation before contacting the provider. Automatic routine cleanup addresses only that run;
+its backoff never delays an independently warm main message.
 Lifecycle and broker-observation calls that are known idempotent retry network, `429`, and `5xx`
 failures up to five times with jittered 1/2/5/10/30-second backoff. Observation-only broker state
 and journal reads also retry `409` while the provider is temporarily transitioning the Box. Every
@@ -255,10 +266,11 @@ command is durably bound to the Pi invocation observed idle at its write intent,
 refuses a changed instance before network I/O while the broker refuses a stale invocation before
 any Pi call. This is resolution of a proven broker fact, not replay of an
 ambiguous external effect. If no matching
-ledger fact can be recovered, the attempt becomes terminal `interrupted`, no exec fallback or new
-prompt is sent, and runtime attempts one exact bounded stop before settlement. The UI warns that an
-earlier external effect may have succeeded; `auto_abandoned` releases later work immediately,
-without replay or a cleanup gate.
+ledger fact can be recovered, the attempt becomes `interrupted`, no exec fallback or new prompt is
+sent, and one cleanup-only internal recovery terminates the exact invocation without loading
+message resources or staging Pi. The UI warns that an earlier
+external effect may have succeeded; after cleanup, `auto_abandoned` releases later work without
+replay.
 
 Immediately before dispatch, runtime adds one fixed-format metadata block to the newest user
 message: the attempt's durable `started_at` rendered with an offset plus the initiating member's
@@ -314,10 +326,12 @@ and reconciles any already-claimed cold-start derivative only after its main lea
 expired, so an orphan cannot retain lifecycle priority or the one-running-operation slot.
 
 Shared Box mutation remains single-owner: settings and lifecycle work other than permanent delete
-wait for the routine lane to be quiescent. An interrupted routine is terminal and does not block
-the main chat or shared lifecycle work; an explicit Full Box restart or permanent delete may
-preempt and settle an active routine occurrence. Runtime terminates its exact run-scoped Pi
-invocation before the provider lifecycle call. Routine context is
+wait for the routine lane to be quiescent. An interrupted routine is immediately terminal in the
+user history, while its automatic cleanup retains only the routine lane until exact
+`cleanup_complete` proof. It never blocks independently warm main chat, but shared lifecycle waits
+for that cleanup. An explicit Full Box restart or permanent delete may preempt and settle an active
+routine occurrence. Runtime terminates its exact run-scoped Pi invocation before the provider
+lifecycle call. Routine context is
 pinned and read-only; run-local memory cannot write parent memory. A
 `relay` return enters the ordinary main queue and does not inherit routine-lane ordering.
 
@@ -552,9 +566,10 @@ proposals (`kind: config` plus a bounded `proposal` object) dispatch to
 `companion_api_answer_config_decision` after the route validates `model_id` against the provider
 catalog. The web thread shows a dedicated config card that names the Companion as proposer, lists
 diffs from already-loaded skill/plugin/model names, and keeps the card pending when apply fails.
-`POST /v1/companions/:id/turns/:turnId/retry` does not exist and returns `404` to old clients.
+`POST /v1/companions/:id/turns/:turnId/retry` remains wire-compatible for old clients: it only
+observes or re-enqueues the exact automatic cleanup and never creates another turn attempt.
 `POST /v1/companions/:id/turns/:turnId/cancel` remains the explicit stop/dequeue path for active or
-queued work and returns a stable state error without mutation for terminal interruptions.
+queued work and returns the stable state without mutation for terminal interruptions.
 
 Native iOS composer dictation uses
 `POST /v1/companions/:id/transcriptions`. The route requires current Owner/Editor access before
@@ -649,8 +664,9 @@ fresh Lux desktop handoff in a dedicated `WKWebView` window; the secret-bearing 
 memory-only, each reconnect remints it, and Viewer or asleep-Box states expose no desktop control.
 
 Sending is the sole normal wake path. There is no Wake button or first-keystroke prewarm. Successful
-Pi acceptance refreshes Box TTL to six hours. Automatic preflight repair may recycle Pi only. Full
-Box restart requires explicit confirmation; it re-observes the known Box and, if already archived,
+Pi acceptance refreshes Box TTL to six hours. Ambiguous-turn cleanup only terminates the captured Pi
+invocation; it never resumes or restarts the Box and never stages or starts Pi. Full Box
+restart requires explicit confirmation; it re-observes the known Box and, if already archived,
 skips impossible Pi stop commands before resuming it. Permanent delete is cleanup rather than healing.
 Before a new prompt write intent, a stale active-attempt binding or unacknowledged broker tail causes
 one Pi-only recycle and a fresh idle proof; failure to obtain that proof remains an actionable

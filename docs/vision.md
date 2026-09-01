@@ -52,5 +52,6 @@ Pi is the only harness, box.ascii.dev is the only Box provider, and one Companio
 one main Pi session, and one thread. A routine may launch a run-scoped Pi process using that same
 harness and Box; it does not create another Companion or runtime owner. Sending a message is the
 only normal wake action. Full Box restart and
-permanent deletion remain explicit operator actions; automatic preflight repair is Pi-only and
-never gates terminal interruption settlement.
+permanent deletion remain explicit operator actions. Automatic interruption cleanup is Pi-only,
+terminates only the captured invocation, and gates only its affected lane until durable proof;
+independent warm-lane work remains available.

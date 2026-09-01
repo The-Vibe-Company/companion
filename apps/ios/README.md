@@ -86,10 +86,14 @@ unavailable plugin selections, and never receives mutation or restart controls. 
 native thread renders every durable decision request. Owner and Editor can answer `ask_user`,
 approve or deny asynchronous Companion control changes for models, OAuth, routines, triggers, and
 peer grants, and handle historical shell/file and legacy proposal
-requests without leaving iOS. An interrupted turn is terminal immediately and is not replayed;
-after settlement it remains durable history without a persistent conversation-tail card, and later
-work continues in order while Viewer remains read-only. The
-roster also manages model providers and MCP plugins. Provider
+requests without leaving iOS. An interrupted turn is equally explicit for Owner, Editor, and Viewer:
+iOS shows its automatic cleanup state, makes clear that the ambiguous prompt is never replayed, and
+keeps the composer available while later messages continue in order. The compatibility Retry API
+remains transport-compatible for older clients but the current app requires no manual recovery
+control. Routine run history polls every four seconds while that exact run's cleanup is pending or
+running and preserves transcript pages already loaded by the member. After cleanup, the occurrence
+remains durable history without a persistent conversation-tail card. The roster also manages model
+providers and MCP plugins. Provider
 connections support encrypted API keys plus the shared Claude authorization-code and Codex device
 flows. The live server catalog includes Claude, Codex, Kimi, Moonshot, z.ai, OpenAI API, and Google
 Gemini; the app renders that catalog rather than maintaining a divergent mobile allowlist. Members
@@ -262,9 +266,8 @@ decision controls. Set `COMPANION_DECISION_DEMO_FAIL_ONCE=<request-id>` to exerc
 submission followed by an enabled retry.
 Add `-markdown-table-dark-demo` alongside `-markdown-table-demo` to exercise the table gallery with
 the adaptive Companion color tokens in dark appearance.
-The interruption demo previews the passive terminal-state component shared by every workspace role;
-settled protocol-6 occurrences are not projected at the conversation tail, are not replayed, and
-later work continues automatically.
+The interruption demo shows a deterministic running automatic recovery, including the no-replay
+promise and automatic FIFO continuation, with no manual Retry or Cancel action.
 Set `COMPANION_TRANSCRIPT_DEMO_SHORT=1` with `-companion-transcript-window-demo` to exercise the
 same mixed chat surface in a short thread; the default fixture keeps the 120-entry load-more path.
 Set `COMPANION_TRANSCRIPT_DEMO_STAGED_POLL=1` with `-companion-transcript-window-demo` to stage a

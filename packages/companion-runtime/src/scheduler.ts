@@ -10,6 +10,7 @@ import { RUNTIME_LEASE_SECONDS, type RuntimeStore } from "./store";
 export const DEFAULT_RUNTIME_SWEEP_INTERVAL_MS = COMPANION_BUDGETS.sweepIntervalMs;
 export const DEFAULT_RUNTIME_CONCURRENCY = 8;
 export const DEFAULT_RUNTIME_DRAIN_TIMEOUT_MS = COMPANION_BUDGETS.shutdownDrainMs;
+export const RUNTIME_RECOVERY_METRICS_INTERVAL_MS = 60_000;
 
 const IMMEDIATE_WAKE_OUTCOMES = new Set<RuntimeExecutionOutcome>([
   "succeeded",
@@ -76,6 +77,8 @@ export class RuntimeScheduler {
   #claimLoopErrorStreak = 0;
   #disableApplied = false;
   #gateInterruptionApplied = false;
+  #lastRecoveryMetricsAt: Date | null = null;
+  #recoveryMetricsTask: Promise<void> | null = null;
   readonly #jitter: () => number;
 
   constructor(input: {
@@ -184,6 +187,7 @@ export class RuntimeScheduler {
         return;
       }
       this.#gateInterruptionApplied = false;
+      this.#startRecoveryMetricsObservation();
       const freeSlots = this.#concurrency - this.#active.size;
       if (freeSlots > 0) {
         const claims = await this.#store.claimWork({
@@ -225,6 +229,53 @@ export class RuntimeScheduler {
       });
       throw error;
     }
+  }
+
+  async #observeRecoveryMetrics(): Promise<void> {
+    if (!this.#store.recoveryMetrics) return;
+    const now = this.#clock.now();
+    if (this.#lastRecoveryMetricsAt
+      && now.getTime() - this.#lastRecoveryMetricsAt.getTime()
+        < RUNTIME_RECOVERY_METRICS_INTERVAL_MS) return;
+    this.#lastRecoveryMetricsAt = now;
+    try {
+      const metrics = await this.#store.recoveryMetrics();
+      this.#log?.info({
+        ts: this.#clock.now().toISOString(),
+        event: "runtime.recovery.metrics",
+        pendingCount: metrics.pendingCount,
+        oldestAgeSeconds: metrics.oldestAgeSeconds,
+        autoAbandonedCount: metrics.autoAbandonedCount,
+        stalledCount: metrics.stalledCount,
+        maxAttemptCount: metrics.maxAttemptCount,
+      });
+      if (metrics.stalledCount > 0) {
+        this.#log?.warn({
+          ts: this.#clock.now().toISOString(),
+          event: "runtime.recovery.stalled",
+          stalledCount: metrics.stalledCount,
+          oldestAgeSeconds: metrics.oldestAgeSeconds,
+          maxAttemptCount: metrics.maxAttemptCount,
+        });
+      }
+    } catch (error) {
+      // Telemetry is never a claim gate. A broken metric read is itself expurgated and retried on
+      // the next one-minute observation boundary while normal recovery continues.
+      this.#log?.warn({
+        ts: this.#clock.now().toISOString(),
+        event: "runtime.recovery.metrics_failed",
+        thrown: describeThrownError(error),
+      });
+    }
+  }
+
+  #startRecoveryMetricsObservation(): void {
+    if (this.#recoveryMetricsTask) return;
+    const task = this.#observeRecoveryMetrics();
+    this.#recoveryMetricsTask = task;
+    void task.finally(() => {
+      if (this.#recoveryMetricsTask === task) this.#recoveryMetricsTask = null;
+    });
   }
 
   /**

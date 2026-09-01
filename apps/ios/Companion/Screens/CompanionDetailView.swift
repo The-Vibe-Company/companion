@@ -1250,11 +1250,23 @@ private struct CompanionRoutineDetailSheet: View {
     private var memberTimezone: String {
         sessionStore.memberTimezone ?? MemberTimezone.deviceIdentifier
     }
+
 }
 
 private struct CompanionRoutineRunRow: View {
     let run: CompanionRoutineRunSummary
     let memberTimezone: String
+    let detail: CompanionRoutineRunDetail?
+
+    init(
+        run: CompanionRoutineRunSummary,
+        memberTimezone: String,
+        detail: CompanionRoutineRunDetail? = nil
+    ) {
+        self.run = run
+        self.memberTimezone = memberTimezone
+        self.detail = detail
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -1269,6 +1281,13 @@ private struct CompanionRoutineRunRow: View {
                 Text(MemberTimezone.formatInstant(run.createdAt, in: memberTimezone) ?? run.createdAt)
                     .font(.system(size: 15))
                     .foregroundStyle(CompanionIOSTheme.textSecondary)
+                if let recoveryDescription {
+                    Text(recoveryDescription)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(statusColor)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("companion.details.routine-run.recovery.\(run.runID)")
+                }
             }
             Spacer()
             Image(systemName: "chevron.right")
@@ -1281,17 +1300,25 @@ private struct CompanionRoutineRunRow: View {
     }
 
     private var statusLabel: String {
-        switch run.outcome {
+        if recoveryStatus == .pending { return "Recovery queued" }
+        if recoveryStatus == .running { return "Recovering" }
+        if recoveryStatus == .completed { return "Recovery complete" }
+        if recoveryStatus == .unknown || (recoveryStatus == nil && runStatus == .interrupted) {
+            return "Recovering automatically"
+        }
+        return switch runOutcome {
         case .surfaced: "Shared in chat"
         case .noOutput: "Completed · No update"
         case .error: "Failed"
-        case .pending: run.status.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
+        case .pending: runStatus.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
         case .unknown: "Completed"
         }
     }
 
     private var statusSymbol: String {
-        switch run.outcome {
+        if recoveryStatus == .completed { return "checkmark.circle.fill" }
+        if recoveryStatus != nil || runStatus == .interrupted { return "arrow.trianglehead.2.clockwise.rotate.90" }
+        return switch runOutcome {
         case .error: "exclamationmark.circle.fill"
         case .pending: "clock.fill"
         default: "checkmark.circle.fill"
@@ -1299,7 +1326,27 @@ private struct CompanionRoutineRunRow: View {
     }
 
     private var statusColor: Color {
-        run.outcome == .error ? CompanionIOSTheme.danger : (run.outcome == .pending ? CompanionIOSTheme.warning : CompanionIOSTheme.toggleGreen)
+        if recoveryStatus == .completed { return CompanionIOSTheme.toggleGreen }
+        if recoveryStatus != nil || runStatus == .interrupted { return CompanionIOSTheme.warning }
+        return runOutcome == .error
+            ? CompanionIOSTheme.danger
+            : (runOutcome == .pending ? CompanionIOSTheme.warning : CompanionIOSTheme.toggleGreen)
+    }
+
+    private var runStatus: CompanionRoutineRunStatus { detail?.status ?? run.status }
+    private var runOutcome: CompanionRoutineRunOutcome { detail?.outcome ?? run.outcome }
+    private var recoveryStatus: CompanionRecoveryStatus? { detail?.recoveryStatus ?? run.recoveryStatus }
+
+    private var recoveryDescription: String? {
+        switch recoveryStatus {
+        case .pending: "Automatic cleanup for this exact run is queued. The prompt will not be replayed. Later routine messages resume automatically in order when cleanup finishes."
+        case .running: "Automatic cleanup for this exact run is running. The prompt will not be replayed. Later routine messages resume automatically in order when cleanup finishes."
+        case .completed: "Automatic cleanup for this exact run is complete. The prompt was not replayed. Later routine messages continue automatically in order."
+        case .unknown: "Automatic cleanup for this exact run continues in the background. The prompt will not be replayed. Later routine messages resume automatically in order."
+        case nil: runStatus == .interrupted
+            ? "Automatic cleanup for this exact run continues in the background. The prompt will not be replayed. Later routine messages resume automatically in order."
+            : nil
+        }
     }
 }
 
@@ -1317,7 +1364,11 @@ private struct CompanionRoutineRunSheet: View {
             ScrollView {
                 VStack(spacing: 20) {
                     CompanionSheetHeader(title: "Routine run", leadingStyle: .back) { dismiss() }
-                    CompanionRoutineRunRow(run: run, memberTimezone: memberTimezone)
+                    CompanionRoutineRunRow(
+                        run: run,
+                        memberTimezone: memberTimezone,
+                        detail: store?.detail
+                    )
 
                     if let store {
                         if let message = store.errorMessage, store.entries.isEmpty {
@@ -1355,6 +1406,27 @@ private struct CompanionRoutineRunSheet: View {
                 }
             }
             await store?.reload()
+        }
+        .task(id: recoveryPollingID) {
+            await pollRecovery()
+        }
+    }
+
+    private var recoveryPollingID: String {
+        "\(run.runID):\((store?.detail?.recoveryStatus ?? run.recoveryStatus)?.rawValue ?? "none")"
+    }
+
+    private func pollRecovery() async {
+        guard (store?.detail?.recoveryStatus ?? run.recoveryStatus)?.isActive == true else { return }
+        while !Task.isCancelled {
+            do {
+                try await Task.sleep(for: .seconds(4))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            await store?.refreshPreservingLoadedPages()
+            guard (store?.detail?.recoveryStatus ?? run.recoveryStatus)?.isActive == true else { return }
         }
     }
 }

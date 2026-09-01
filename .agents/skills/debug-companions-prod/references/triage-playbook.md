@@ -7,8 +7,9 @@ State machine and protocol: `docs/companions-runtime.md`. Use the scripts in
 Turn lifecycle for reference:
 `queued → starting → dispatching → running ↔ needs_input →
 succeeded | failed | interrupted | cancelled`. Only one attempt is active per
-Companion; later turns wait in order. An ambiguous dispatch becomes
-`interrupted` and blocks the queue until an explicit Retry/Cancel.
+Companion lane; later turns in that lane wait in order. An ambiguous dispatch becomes
+`interrupted`; protocol 7 automatically cleans up its exact Pi invocation,
+records `auto_abandoned`, and releases the lane without replay.
 
 ---
 
@@ -55,7 +56,7 @@ python3 scripts/railway_logs.py --service runtime --turn <uuid> --since 24h
   restart, provider exec-channel loss). This is the dominant transport
   failure the direct-transport work (plan Phase 2) targets — count
   occurrences per day; the count is a baseline metric.
-- **Owner:** runtime/transport. Retry recycles Pi.
+- **Owner:** runtime/transport. Inspect the exact automatic-cleanup operation.
 - **Runbook:** Turn is interrupted or Pi is silent.
 
 ### 2c. `turn_stalled` (10-minute inactivity)
@@ -65,8 +66,8 @@ python3 scripts/railway_logs.py --service runtime --turn <uuid> --since 24h
   ≥10 min between `last_activity_at` and settlement.
 - **Cause:** Pi accepted the prompt then produced no correlated activity —
   wedged Pi, or a single tool call running into the stall window.
-- **Owner:** runtime. Retry recycles Pi; recurring stalls on the same skill
-  suggest a long-running tool hitting the budget.
+- **Owner:** runtime. Exact automatic cleanup releases the lane; recurring
+  stalls on the same skill suggest a long-running tool hitting the budget.
 - **Runbook:** Turn is interrupted or Pi is silent.
 
 For releases before migration 0129, a pending decision may incorrectly retain
@@ -78,7 +79,7 @@ the ten-minute inactivity deadline and end as `turn_stalled`; after 0129,
 | Evidence | Cause | Runbook section |
 | --- | --- | --- |
 | `turn` shows `dispatch_state=ambiguous`, code `prompt_dispatch_ambiguous` | prompt may have reached Pi; deliberately not replayed | "Never manually mark an ambiguous attempt queued" |
-| `stuck` lists a companion with an interrupted head + queued backlog >10 min | queue is blocked awaiting an explicit Owner/Editor Retry/Cancel | Turn is interrupted or Pi is silent |
+| `stuck` lists an interrupted head + queued backlog and recovery age >15 min | automatic exact-invocation cleanup is stalled; inspect recovery lane, checkpoint, attempts, lease, and `runtime.recovery.stalled` | Turn is interrupted or Pi is silent |
 | `turn` attempts show repeated `pi_invocation_changed` | Pi restarted under attempts (health recycle loop?) | Turn is interrupted or Pi is silent |
 | code `turn_deadline_exceeded` | 2-hour absolute deadline | same section |
 | code `attachment_staging_failed` (proven negative, nothing dispatched) | object storage or Box file API refused staging writes | A turn's attachments failed |

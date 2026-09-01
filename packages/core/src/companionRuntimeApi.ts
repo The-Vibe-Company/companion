@@ -25,6 +25,7 @@ import {
   companionDecisionProposalSchema,
   companionOperationSchema,
   companionRoutineNotifyReturnSchema,
+  companionRecoveryStatusSchema,
   companionSelectedMcpAccountIdsSchema,
   companionSelectedSkillIdsSchema,
   companionThreadDeltaResponseSchema,
@@ -118,9 +119,14 @@ type RuntimeReadRow = {
 
 export type CompanionRuntimeApiProjection = RuntimeReadRow;
 
-function parseTurn(value: unknown): CompanionTurn | null {
+function parseTurn(value: unknown, recoveryStatus?: unknown): CompanionTurn | null {
   if (value === null || value === undefined) return null;
-  return companionTurnSchema.parse(value);
+  const turn = companionTurnSchema.parse(value);
+  if (recoveryStatus === undefined) return turn;
+  return companionTurnSchema.parse({
+    ...turn,
+    recovery_status: companionRecoveryStatusSchema.nullable().catch(null).parse(recoveryStatus),
+  });
 }
 
 function parseOperation(value: unknown): CompanionOperation | null {
@@ -560,6 +566,8 @@ type ThreadReadRow = {
   active_turn: unknown;
   queued_count: number | string;
   interrupted_turn: unknown;
+  active_recovery_status: unknown;
+  interrupted_recovery_status: unknown;
   last_message_at: Date | string | null;
   previous_last_read_ordinal: number | string | null;
   hidden_routine_relay_turn_ids: unknown;
@@ -662,6 +670,16 @@ async function readCompanionThreadProjection(input: {
   const result = input.markRead
     ? await input.database.execute(sql`
       select thread_read.*,
+        public.companion_api_turn_recovery_status(
+          ${input.orgId}::uuid,
+          ${input.companionId}::uuid,
+          NULLIF(thread_read.active_turn->>'id', '')::uuid
+        ) as active_recovery_status,
+        public.companion_api_turn_recovery_status(
+          ${input.orgId}::uuid,
+          ${input.companionId}::uuid,
+          NULLIF(thread_read.interrupted_turn->>'id', '')::uuid
+        ) as interrupted_recovery_status,
         public.companion_api_routine_hidden_relay_turns(
           ${input.orgId}::uuid, ${input.companionId}::uuid
         ) as hidden_routine_relay_turn_ids,
@@ -674,6 +692,16 @@ async function readCompanionThreadProjection(input: {
     `)
     : await input.database.execute(sql`
       select thread_read.*,
+        public.companion_api_turn_recovery_status(
+          ${input.orgId}::uuid,
+          ${input.companionId}::uuid,
+          NULLIF(thread_read.active_turn->>'id', '')::uuid
+        ) as active_recovery_status,
+        public.companion_api_turn_recovery_status(
+          ${input.orgId}::uuid,
+          ${input.companionId}::uuid,
+          NULLIF(thread_read.interrupted_turn->>'id', '')::uuid
+        ) as interrupted_recovery_status,
         public.companion_api_routine_hidden_relay_turns(
           ${input.orgId}::uuid, ${input.companionId}::uuid
         ) as hidden_routine_relay_turn_ids,
@@ -698,8 +726,8 @@ async function readCompanionThreadProjection(input: {
     row.routine_notify_returns,
   );
   const entries = collapseRoutineNotifyEntries(visibleEntries, notifyReturns);
-  const activeTurn = parseTurn(row.active_turn);
-  const interruptedTurn = parseTurn(row.interrupted_turn);
+  const activeTurn = parseTurn(row.active_turn, row.active_recovery_status);
+  const interruptedTurn = parseTurn(row.interrupted_turn, row.interrupted_recovery_status);
   const queuedCount = integer(row.queued_count);
   return {
     companion_id: input.companionId,
@@ -747,6 +775,8 @@ type ThreadWindowReadRow = {
   active_turn: unknown;
   queued_count: number | string;
   interrupted_turn: unknown;
+  active_recovery_status: unknown;
+  interrupted_recovery_status: unknown;
   last_message_at: Date | string | null;
   previous_last_read_ordinal: number | string | null;
   older_before_ordinal: number | string | null;
@@ -761,6 +791,8 @@ type ThreadChangesReadRow = {
   active_turn: unknown;
   queued_count: number | string;
   interrupted_turn: unknown;
+  active_recovery_status: unknown;
+  interrupted_recovery_status: unknown;
   last_message_at: Date | string | null;
   last_read_ordinal: number | string | null;
   next_sequence: number | string | bigint;
@@ -787,11 +819,16 @@ function companionThreadMetadata(input: {
     | "active_turn"
     | "queued_count"
     | "interrupted_turn"
+    | "active_recovery_status"
+    | "interrupted_recovery_status"
     | "last_message_at"
     | "previous_last_read_ordinal">;
 }): CompanionThreadMetadata {
-  const activeTurn = parseTurn(input.row.active_turn);
-  const interruptedTurn = parseTurn(input.row.interrupted_turn);
+  const activeTurn = parseTurn(input.row.active_turn, input.row.active_recovery_status);
+  const interruptedTurn = parseTurn(
+    input.row.interrupted_turn,
+    input.row.interrupted_recovery_status,
+  );
   return {
     companion_id: input.companionId,
     viewer_id: input.actor.id,
@@ -821,13 +858,24 @@ export async function readCompanionThreadWindowV2(input: {
   database: Db;
 }): Promise<CompanionThreadWindow> {
   const result = await input.database.execute(sql`
-    select * from public.companion_api_read_thread_window(
+    select thread_window.*,
+      public.companion_api_turn_recovery_status(
+        ${input.orgId}::uuid,
+        ${input.companionId}::uuid,
+        NULLIF(thread_window.active_turn->>'id', '')::uuid
+      ) as active_recovery_status,
+      public.companion_api_turn_recovery_status(
+        ${input.orgId}::uuid,
+        ${input.companionId}::uuid,
+        NULLIF(thread_window.interrupted_turn->>'id', '')::uuid
+      ) as interrupted_recovery_status
+    from public.companion_api_read_thread_window(
       ${input.orgId}::uuid,
       ${input.companionId}::uuid,
       ${input.beforeOrdinal}::integer,
       ${input.limit}::integer,
       ${input.beforeOrdinal === null}::boolean
-    )
+    ) thread_window
   `);
   const [row] = rows<ThreadWindowReadRow>(result);
   if (!row) throw new Error("Companion thread window projection is unavailable");
@@ -865,12 +913,23 @@ export async function readCompanionThreadChangesV2(input: {
   database: Db;
 }): Promise<CompanionThreadDeltaResponse> {
   const result = await input.database.execute(sql`
-    select * from public.companion_api_read_thread_changes(
+    select thread_changes.*,
+      public.companion_api_turn_recovery_status(
+        ${input.orgId}::uuid,
+        ${input.companionId}::uuid,
+        NULLIF(thread_changes.active_turn->>'id', '')::uuid
+      ) as active_recovery_status,
+      public.companion_api_turn_recovery_status(
+        ${input.orgId}::uuid,
+        ${input.companionId}::uuid,
+        NULLIF(thread_changes.interrupted_turn->>'id', '')::uuid
+      ) as interrupted_recovery_status
+    from public.companion_api_read_thread_changes(
       ${input.orgId}::uuid,
       ${input.companionId}::uuid,
       ${input.afterSequence.toString()}::bigint,
       ${COMPANION_THREAD_DELTA_MAX_CHANGES}::integer
-    )
+    ) thread_changes
   `);
   const [row] = rows<ThreadChangesReadRow>(result);
   if (!row) throw new Error("Companion thread changes projection is unavailable");
@@ -1098,6 +1157,29 @@ export async function answerCompanionConfigDecisionV2(input: {
       ${input.decision}
     )
   `);
+}
+
+/** Compatibility Retry observes or re-enqueues the same cleanup; it never creates an attempt. */
+export async function retryCompanionTurnV2(input: {
+  orgId: string;
+  companionId: string;
+  turnId: string;
+  retryId: string;
+  clientSurface: CompanionClientSurface;
+  database: Db;
+}): Promise<{ operation: CompanionOperation; replayed: boolean }> {
+  const result = await input.database.execute(sql`
+    select * from public.companion_api_retry_turn(
+      ${input.orgId}::uuid,
+      ${input.companionId}::uuid,
+      ${input.turnId}::uuid,
+      ${input.retryId}::uuid,
+      ${input.clientSurface}::companion_client_surface
+    )
+  `);
+  const [row] = rows<{ operation: unknown; replayed: boolean }>(result);
+  if (!row) throw new Error("failed to enqueue Companion retry");
+  return { operation: companionOperationSchema.parse(row.operation), replayed: row.replayed };
 }
 
 export async function cancelCompanionTurnV2(input: {

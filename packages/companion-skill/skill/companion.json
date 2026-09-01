@@ -1,7 +1,7 @@
 {
   "$schema": "https://thecompanion.sh/schemas/companion-manifest.v2.schema.json",
   "name": "companion",
-  "version": "1.104.0",
+  "version": "1.104.1",
   "icon": "boxes",
   "title": "Companion",
   "description": "Manage and safely install SKILL.md packages through delegated Agent Auth, including pinned public releases, publishing, updates, dependencies, secrets, hosted Skill Databases, local install tracking, and Companion self-update.",
@@ -28,6 +28,15 @@
       "evals/evals.json"
     ],
     "changelog": [
+      {
+        "version": "1.104.1",
+        "date": "2026-09-01",
+        "changes": [
+          "Documents protocol-7 durable cleanup that terminates only the exact ambiguous Pi invocation before releasing its lane.",
+          "Clarifies that automatic recovery never reloads message resources, stages Pi, restarts the Box, or replays the ambiguous prompt.",
+          "Keeps hosted Companion interruptions free of manual Retry/Cancel controls while later FIFO messages resume automatically."
+        ]
+      },
       {
         "version": "1.104.0",
         "date": "2026-09-01",

@@ -56,7 +56,13 @@ function InterruptedTurnNotice({ turn }: {
           </p>
         </div>
         <p className="chat-interruption__status" role="status">
-          This occurrence is terminal and will not be replayed. Later work continues automatically.
+          {turn.recovery_status === "completed"
+            ? "Automatic cleanup for this turn is complete. The prompt was not replayed; later messages continue automatically in order."
+            : turn.recovery_status === "running"
+              ? "Automatic cleanup for this turn is running. The prompt will not be replayed; later messages resume automatically in order when cleanup finishes."
+              : turn.recovery_status === "pending"
+                ? "Automatic cleanup for this turn is queued. The prompt will not be replayed; later messages resume automatically in order when cleanup finishes."
+                : "Automatic cleanup for this turn continues in the background. The prompt will not be replayed; later messages resume automatically in order."}
         </p>
       </div>
     </section>

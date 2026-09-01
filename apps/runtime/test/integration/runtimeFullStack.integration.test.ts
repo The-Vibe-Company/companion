@@ -1347,8 +1347,9 @@ describe("Runtime v2 real-process control plane", () => {
     expect(first.settledAt!.getTime()).toBeLessThanOrEqual(second.startedAt!.getTime());
 
     // Reproduce the production divergence: the provider archives the Box while PostgreSQL still
-    // projects it as idle. The interrupted occurrence is terminal immediately; the next accepted
-    // message owns ordinary Box reconciliation and the ambiguous prompt is never replayed.
+    // projects it as idle. A six-hour-old protocol-7 recovery must receive a fresh cycle budget,
+    // re-observe the provider, prove that the interrupted Pi invocation no longer exists, and
+    // release the lane without replaying the source prompt.
     await stopProcess(runtimeProcess, "SIGKILL");
     await databaseSql!`
       update companion_runtime_instances
@@ -1367,6 +1368,13 @@ describe("Runtime v2 real-process control plane", () => {
     });
     expect(boxById(await simulatorState(), box.id)?.state).toBe("archived");
 
+    const [staleInstance] = await databaseSql!<Array<{ boxState: string }>>`
+      select box_state as "boxState"
+      from companion_runtime_instances
+      where org_id = ${orgId}::uuid and companion_id = ${companionId}::uuid
+    `;
+    expect(staleInstance?.boxState).toBe("idle");
+
     const interrupted = await apiJson<{ turn: { id: string } }>(
       `/v1/companions/${companionId}/messages`,
       {
@@ -1379,12 +1387,42 @@ describe("Runtime v2 real-process control plane", () => {
       },
       202,
     );
+    const interruptedAttemptId = randomUUID();
+    const interruptedCommandId = randomUUID();
+    await databaseSql!`
+      insert into companion_turn_attempts(
+        id, org_id, companion_id, turn_id, attempt_number, actor_id,
+        runtime_generation, settings_revision, skills_revision, model_id, persona,
+        can_write_skills, provider_ids, provider_credential_refs, selected_skill_ids,
+        skill_refs, selected_mcp_account_ids, mcp_credential_refs, execution_lane,
+        status, checkpoint, checkpoint_sequence, dispatch_state, dispatch_count,
+        command_id, dispatch_started_at, pi_invocation_id, event_cursor,
+        started_at, settled_at, last_error_code, last_error_message, last_error_action,
+        created_at, updated_at
+      )
+      select ${interruptedAttemptId}::uuid, ${orgId}::uuid, ${companionId}::uuid,
+        ${interrupted.turn.id}::uuid, 1, ${userId}, instance.generation,
+        instance.desired_settings_revision, companion.skills_revision, companion.model_id,
+        companion.persona, companion.can_write_skills, companion.provider_ids, '[]'::jsonb,
+        companion.selected_skill_ids, '[]'::jsonb, companion.selected_mcp_account_ids,
+        '[]'::jsonb, 'main', 'interrupted', 'dispatch_ambiguous', 2, 'ambiguous', 1,
+        ${interruptedCommandId}::uuid, clock_timestamp() - interval '5 hours',
+        instance.pi_invocation_id, 0, clock_timestamp() - interval '6 hours',
+        clock_timestamp() - interval '4 hours', 'turn_stalled',
+        'The interrupted invocation requires automatic cleanup.', 'none',
+        clock_timestamp() - interval '6 hours', clock_timestamp()
+      from companion_runtime_instances instance
+      join companions companion
+        on companion.org_id = instance.org_id and companion.id = instance.companion_id
+      where instance.org_id = ${orgId}::uuid and instance.companion_id = ${companionId}::uuid
+    `;
     await databaseSql!`
       update companion_turns
       set status = 'interrupted',
-          absolute_deadline_at = clock_timestamp() + interval '2 hours',
-          state_changed_at = clock_timestamp(),
-          settled_at = clock_timestamp(),
+          created_at = clock_timestamp() - interval '6 hours',
+          absolute_deadline_at = clock_timestamp() - interval '4 hours',
+          state_changed_at = clock_timestamp() - interval '4 hours',
+          settled_at = clock_timestamp() - interval '4 hours',
           last_error_code = 'turn_stalled',
           last_error_message = 'The interrupted invocation ended without a confirmed outcome.',
           last_error_action = 'none',
@@ -1393,32 +1431,31 @@ describe("Runtime v2 real-process control plane", () => {
         and companion_id = ${companionId}::uuid
         and id = ${interrupted.turn.id}::uuid
     `;
-    const [terminal] = await databaseSql!<Array<{
-      resolution: string | null;
-      errorAction: string;
-      recoveries: number;
-      attempts: number;
-    }>>`
-      select turn_row.resolution,
-        turn_row.last_error_action::text as "errorAction",
-        count(distinct operation.id)::integer as recoveries,
-        count(distinct attempt.id)::integer as attempts
-      from companion_turns turn_row
-      left join companion_operations operation
-        on operation.source_turn_id = turn_row.id
-        and operation.kind = 'restart_pi'
-        and operation.trigger = 'recovery'
-      left join companion_turn_attempts attempt on attempt.turn_id = turn_row.id
-      where turn_row.id = ${interrupted.turn.id}::uuid
-      group by turn_row.resolution, turn_row.last_error_action
+    const [pendingRecovery] = await databaseSql!<Array<{ id: string }>>`
+      select id::text
+      from companion_operations
+      where org_id = ${orgId}::uuid
+        and companion_id = ${companionId}::uuid
+        and source_turn_id = ${interrupted.turn.id}::uuid
+        and kind = 'restart_pi'
+        and trigger = 'recovery'
     `;
-    expect(terminal).toEqual({
-      resolution: "auto_abandoned",
-      errorAction: "none",
-      recoveries: 0,
-      attempts: 0,
-    });
+    if (!pendingRecovery) throw new Error("interrupted turn did not enqueue protocol-7 recovery");
+    await databaseSql!`
+      update companion_operations
+      set checkpoint = 'restarting_pi',
+          checkpoint_sequence = checkpoint_sequence + 1,
+          created_at = clock_timestamp() - interval '6 hours',
+          started_at = null,
+          attempt_count = 78,
+          updated_at = clock_timestamp()
+      where id = ${pendingRecovery.id}::uuid
+    `;
 
+    // Accept the next Send while cleanup is unresolved. The terminal-interruption fence has made
+    // the Box/Pi projection unknown, so Send may derive its ordinary Start immediately. That Start
+    // remains unclaimed and budget-free until cleanup proves the old invocation gone; no attempt or
+    // cold deadline may be created before then.
     const resumed = await apiJson<{ turn: { id: string } }>(
       `/v1/companions/${companionId}/messages`,
       {
@@ -1426,13 +1463,74 @@ describe("Runtime v2 real-process control plane", () => {
         body: JSON.stringify({
           client_message_id: randomUUID(),
           client_surface: "web",
-          content: "Resume the archived Box and dispatch only this message.",
+          content: "Resume the archived Box and dispatch this message.",
         }),
       },
       202,
     );
+    const [queuedFollowUp] = await databaseSql!<Array<{
+      coldStartDeadlineAt: Date | null;
+      attemptCount: number;
+      startCount: number;
+    }>>`
+      select turn_row.cold_start_deadline_at as "coldStartDeadlineAt",
+        (select count(*)::int from companion_turn_attempts attempt
+          where attempt.turn_id = turn_row.id) as "attemptCount",
+        (select count(*)::int from companion_operations operation
+          where operation.source_turn_id = turn_row.id and operation.kind = 'start') as "startCount"
+      from companion_turns turn_row
+      where turn_row.id = ${resumed.turn.id}::uuid
+    `;
+    expect(queuedFollowUp).toEqual({ coldStartDeadlineAt: null, attemptCount: 0, startCount: 1 });
+    const requestsBeforeRecovery = (await simulatorState()).requests.length;
+
     runtimeProcess = startRuntime(randomUUID());
     await waitForHttp(`${runtimeBase}/healthz`, runtimeProcess);
+    await waitForOperation(pendingRecovery.id, 30_000);
+    const [reconciled] = await databaseSql!<Array<{
+      boxState: string;
+      piState: string;
+      piInvocationId: string | null;
+      resolution: string | null;
+      operationStatus: string;
+      operationCheckpoint: string;
+      operationAttemptCount: number;
+    }>>`
+      select instance.box_state as "boxState",
+        instance.pi_state as "piState",
+        instance.pi_invocation_id as "piInvocationId",
+        turn_row.resolution,
+        operation.status::text as "operationStatus",
+        operation.checkpoint as "operationCheckpoint",
+        operation.attempt_count as "operationAttemptCount"
+      from companion_runtime_instances instance
+      join companion_turns turn_row
+        on turn_row.org_id = instance.org_id and turn_row.companion_id = instance.companion_id
+      join companion_operations operation
+        on operation.org_id = turn_row.org_id
+          and operation.companion_id = turn_row.companion_id
+          and operation.source_turn_id = turn_row.id
+      where turn_row.id = ${interrupted.turn.id}::uuid
+        and operation.id = ${pendingRecovery.id}::uuid
+    `;
+    expect(reconciled).toEqual({
+      resolution: "auto_abandoned",
+      boxState: "archived",
+      piState: "absent",
+      piInvocationId: null,
+      operationStatus: "succeeded",
+      operationCheckpoint: "cleanup_complete",
+      operationAttemptCount: 79,
+    });
+    const resumeStartId = await waitFor("fresh Start after recovery", async () => {
+      const [resumeStart] = await databaseSql!<Array<{ id: string }>>`
+        select id::text
+        from companion_operations
+        where source_turn_id = ${resumed.turn.id}::uuid and kind = 'start'
+      `;
+      return resumeStart?.id ?? false;
+    });
+    await waitForOperation(resumeStartId, 30_000);
     await waitForTurn(resumed.turn.id, "succeeded", 30_000);
     const [resumedAttempt] = await databaseSql!<Array<{
       dispatchState: string;
@@ -1443,7 +1541,187 @@ describe("Runtime v2 real-process control plane", () => {
       where turn_id = ${resumed.turn.id}::uuid
     `;
     expect(resumedAttempt).toEqual({ dispatchState: "accepted", dispatchCount: 1 });
+    const [sourceAttemptAfterRecovery] = await databaseSql!<Array<{
+      dispatchState: string;
+      dispatchCount: number;
+    }>>`
+      select dispatch_state as "dispatchState", dispatch_count as "dispatchCount"
+      from companion_turn_attempts
+      where id = ${interruptedAttemptId}::uuid
+    `;
+    expect(sourceAttemptAfterRecovery).toEqual({
+      dispatchState: "ambiguous",
+      dispatchCount: 1,
+    });
+    const recoveryRequests = (await simulatorState()).requests.slice(requestsBeforeRecovery);
+    const recoveryObserveIndex = recoveryRequests.findIndex((request) =>
+      request.surface === "box"
+      && request.method === "GET"
+      && request.path === `/boxes/${box.id}`);
+    const nextTurnCommandIndex = recoveryRequests.findIndex((request) =>
+      request.surface === "box"
+      && request.method === "POST"
+      && request.path === `/boxes/${box.id}/commands`);
+    expect(recoveryObserveIndex).toBeGreaterThanOrEqual(0);
+    expect(nextTurnCommandIndex).toBeGreaterThan(recoveryObserveIndex);
     expect(boxById(await simulatorState(), box.id)?.state).toMatch(/ready|idle|running/);
+
+    // Reproduce the live-idle shape as well: cleanup must stop the exact captured main invocation,
+    // leave the Box itself running, and let the next FIFO message start one fresh Pi exactly once.
+    const liveIdleBefore = boxById(await simulatorState(), box.id);
+    const interruptedInvocationId = liveIdleBefore?.daemon.invocationId;
+    if (!liveIdleBefore || !interruptedInvocationId) {
+      throw new Error("live-idle recovery fixture has no Pi invocation");
+    }
+    await stopProcess(runtimeProcess, "SIGKILL");
+    await databaseSql!`
+      update companion_runtime_instances
+      set box_state = 'idle', pi_state = 'idle', pi_invocation_id = ${interruptedInvocationId},
+          health_due_at = clock_timestamp() + interval '1 hour', updated_at = clock_timestamp()
+      where org_id = ${orgId}::uuid and companion_id = ${companionId}::uuid
+    `;
+
+    const liveIdleInterrupted = await apiJson<{ turn: { id: string } }>(
+      `/v1/companions/${companionId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          client_message_id: randomUUID(),
+          client_surface: "web",
+          content: "Do not replay this ambiguous live Pi prompt.",
+        }),
+      },
+      202,
+    );
+    const liveIdleAttemptId = randomUUID();
+    await databaseSql!`
+      insert into companion_turn_attempts(
+        id, org_id, companion_id, turn_id, attempt_number, actor_id,
+        runtime_generation, settings_revision, skills_revision, model_id, persona,
+        can_write_skills, provider_ids, provider_credential_refs, selected_skill_ids,
+        skill_refs, selected_mcp_account_ids, mcp_credential_refs, execution_lane,
+        status, checkpoint, checkpoint_sequence, dispatch_state, dispatch_count,
+        command_id, dispatch_started_at, pi_invocation_id, event_cursor,
+        started_at, settled_at, last_error_code, last_error_message, last_error_action,
+        created_at, updated_at
+      )
+      select ${liveIdleAttemptId}::uuid, ${orgId}::uuid, ${companionId}::uuid,
+        ${liveIdleInterrupted.turn.id}::uuid, 1, ${userId}, instance.generation,
+        instance.desired_settings_revision, companion.skills_revision, companion.model_id,
+        companion.persona, companion.can_write_skills, companion.provider_ids, '[]'::jsonb,
+        companion.selected_skill_ids, '[]'::jsonb, companion.selected_mcp_account_ids,
+        '[]'::jsonb, 'main', 'interrupted', 'dispatch_ambiguous', 2, 'ambiguous', 1,
+        ${randomUUID()}::uuid, clock_timestamp() - interval '5 hours',
+        ${interruptedInvocationId}, 0, clock_timestamp() - interval '6 hours',
+        clock_timestamp() - interval '4 hours', 'turn_stalled',
+        'The live invocation requires exact automatic cleanup.', 'none',
+        clock_timestamp() - interval '6 hours', clock_timestamp()
+      from companion_runtime_instances instance
+      join companions companion
+        on companion.org_id = instance.org_id and companion.id = instance.companion_id
+      where instance.org_id = ${orgId}::uuid and instance.companion_id = ${companionId}::uuid
+    `;
+    await databaseSql!`
+      update companion_turns
+      set status = 'interrupted', created_at = clock_timestamp() - interval '6 hours',
+          absolute_deadline_at = clock_timestamp() - interval '4 hours',
+          state_changed_at = clock_timestamp() - interval '4 hours',
+          settled_at = clock_timestamp() - interval '4 hours',
+          last_error_code = 'turn_stalled',
+          last_error_message = 'The live invocation requires exact automatic cleanup.',
+          last_error_action = 'none', updated_at = clock_timestamp()
+      where org_id = ${orgId}::uuid and companion_id = ${companionId}::uuid
+        and id = ${liveIdleInterrupted.turn.id}::uuid
+    `;
+    const [liveIdleRecovery] = await databaseSql!<Array<{ id: string }>>`
+      select id::text
+      from companion_operations
+      where source_turn_id = ${liveIdleInterrupted.turn.id}::uuid
+        and kind = 'restart_pi' and trigger = 'recovery'
+    `;
+    if (!liveIdleRecovery) throw new Error("live-idle turn did not enqueue recovery");
+    await databaseSql!`
+      update companion_operations
+      set checkpoint = 'restarting_pi', checkpoint_sequence = checkpoint_sequence + 1,
+          created_at = clock_timestamp() - interval '6 hours', started_at = null,
+          attempt_count = 63, updated_at = clock_timestamp()
+      where id = ${liveIdleRecovery.id}::uuid
+    `;
+
+    const liveIdleNext = await apiJson<{ turn: { id: string } }>(
+      `/v1/companions/${companionId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          client_message_id: randomUUID(),
+          client_surface: "web",
+          content: "Answer this FIFO message after exact cleanup.",
+        }),
+      },
+      202,
+    );
+    const [liveIdleQueued] = await databaseSql!<Array<{ attemptCount: number }>>`
+      select count(attempt.id)::int as "attemptCount"
+      from companion_turns turn_row
+      left join companion_turn_attempts attempt on attempt.turn_id = turn_row.id
+      where turn_row.id = ${liveIdleNext.turn.id}::uuid
+      group by turn_row.id
+    `;
+    expect(liveIdleQueued).toEqual({ attemptCount: 0 });
+    const liveIdleRequestOffset = (await simulatorState()).requests.length;
+
+    runtimeProcess = startRuntime(randomUUID());
+    await waitForHttp(`${runtimeBase}/healthz`, runtimeProcess);
+    await waitForOperation(liveIdleRecovery.id, 30_000);
+    await waitForTurn(liveIdleNext.turn.id, "succeeded", 30_000);
+    const [liveIdleResult] = await databaseSql!<Array<{
+      resolution: string | null;
+      checkpoint: string;
+      attemptCount: number;
+      recoverySettledAt: Date;
+      nextStartedAt: Date;
+      nextDispatchCount: number;
+      sourceDispatchCount: number;
+      startCount: number;
+    }>>`
+      select source_turn.resolution, recovery.checkpoint,
+        recovery.attempt_count as "attemptCount", recovery.settled_at as "recoverySettledAt",
+        next_attempt.started_at as "nextStartedAt",
+        next_attempt.dispatch_count as "nextDispatchCount",
+        source_attempt.dispatch_count as "sourceDispatchCount",
+        (select count(*)::int from companion_operations start_operation
+          where start_operation.source_turn_id = next_turn.id
+            and start_operation.kind = 'start') as "startCount"
+      from companion_turns source_turn
+      join companion_operations recovery on recovery.source_turn_id = source_turn.id
+        and recovery.kind = 'restart_pi' and recovery.trigger = 'recovery'
+      join companion_turn_attempts source_attempt on source_attempt.turn_id = source_turn.id
+      join companion_turns next_turn on next_turn.id = ${liveIdleNext.turn.id}::uuid
+      join companion_turn_attempts next_attempt on next_attempt.turn_id = next_turn.id
+      where source_turn.id = ${liveIdleInterrupted.turn.id}::uuid
+        and recovery.id = ${liveIdleRecovery.id}::uuid
+        and source_attempt.id = ${liveIdleAttemptId}::uuid
+    `;
+    expect(liveIdleResult).toMatchObject({
+      resolution: "auto_abandoned",
+      checkpoint: "cleanup_complete",
+      attemptCount: 64,
+      nextDispatchCount: 1,
+      sourceDispatchCount: 1,
+      startCount: 1,
+    });
+    expect(liveIdleResult!.recoverySettledAt.getTime())
+      .toBeLessThanOrEqual(liveIdleResult!.nextStartedAt.getTime());
+    const liveIdleAfter = boxById(await simulatorState(), box.id);
+    expect(liveIdleAfter).toMatchObject({
+      state: expect.stringMatching(/ready|idle|running/),
+      daemon: { status: "active", restartCount: liveIdleBefore.daemon.restartCount + 1 },
+    });
+    expect(liveIdleAfter?.daemon.invocationId).not.toBe(interruptedInvocationId);
+    const liveIdleRequests = (await simulatorState()).requests.slice(liveIdleRequestOffset);
+    expect(liveIdleRequests.some((request) =>
+      request.surface === "box" && request.method === "POST"
+        && request.path === `/boxes/${box.id}/stop`)).toBe(false);
 
     const stop = await apiJson<{ operation: { id: string } }>(
       `/v1/companions/${companionId}/runtime/stop`,

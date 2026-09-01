@@ -2835,6 +2835,46 @@ describe("RuntimeEngine process error logs", () => {
       reason: "settle_rejected",
     })]);
   });
+
+  it("logs a cold Start timeout as a durable requeue instead of a terminal interruption", async () => {
+    const claim = operationClaim({
+      turnId: TURN_ID,
+      turnStatus: "queued",
+      operationAttemptCount: 4,
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: operationAuthorization(claim, {
+        authorized: false,
+        denialCode: "cold_start_deadline_exceeded",
+      }),
+    });
+    const captured = capturingLog();
+    const engine = new RuntimeEngine(engineDependencies({ store, log: captured.log }));
+
+    const result = await engine.execute(claim);
+
+    // The existing outcome keeps the scheduler's immediate lane wake; PostgreSQL has already
+    // re-armed the same Start with backoff and left the source turn queued.
+    expect(result.outcome).toBe("interrupted");
+    expect(store.settlements).toEqual([expect.objectContaining({
+      terminalStatus: "interrupted",
+      error: expect.objectContaining({
+        code: "cold_start_deadline_exceeded",
+        action: "none",
+      }),
+    })]);
+    expect(captured.records).toEqual([expect.objectContaining({
+      level: "warn",
+      event: "runtime.work.start_requeued",
+      companionId: COMPANION_ID,
+      workKind: "operation",
+      workId: claim.workId,
+      operationKind: "start",
+      operationAttemptCount: 4,
+      reason: "cold_start_deadline_exceeded",
+    })]);
+    expect(captured.records.some((record) => record.event === "runtime.work.interrupted")).toBe(false);
+  });
 });
 
 describe("RuntimeEngine health observation", () => {

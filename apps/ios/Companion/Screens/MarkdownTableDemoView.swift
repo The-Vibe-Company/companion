@@ -75,7 +75,7 @@ private struct MarkdownTableDemoFixture: Identifiable {
             markdown: """
             | Check | Detail |
             | :-- | :-- |
-            | Dispatch safety | Ambiguous dispatches become terminal interruptions; later work continues and the occurrence is not replayed. |
+            | Dispatch safety | Ambiguous dispatches are never replayed; exact cleanup and FIFO continuation happen automatically. |
             | Workspace | [Open the deterministic Companion workspace](conductor://workspace/companion-layout-regression-evidence) |
             | Durable path | `companion/runtime/transcripts/2026/08/26/layout-regression-evidence.json` |
             """

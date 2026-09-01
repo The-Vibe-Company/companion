@@ -76,8 +76,15 @@ function workDeadline(context: OperationContext): Date {
   const operationDeadline = new Date(
     context.claim.operationStartedAt.getTime() + OPERATION_DEADLINE_MS,
   );
-  const durable = requiredAuthorization(context.session).coldStartDeadlineAt
-    ?? requiredAuthorization(context.session).absoluteDeadlineAt;
+  const authorization = requiredAuthorization(context.session);
+  // A protocol-7 recovery claim is one bounded cleanup cycle, not a replay of the source turn.
+  // The turn's cold/absolute deadlines are historical by definition and must never prevent the
+  // first provider observation or exact Pi termination in this fresh cycle.
+  if (
+    authorization.operationKind === "restart_pi"
+    && authorization.operationTrigger === "recovery"
+  ) return operationDeadline;
+  const durable = authorization.coldStartDeadlineAt ?? authorization.absoluteDeadlineAt;
   return durable && durable < operationDeadline ? durable : operationDeadline;
 }
 
@@ -806,6 +813,172 @@ async function handleRestartPi(context: OperationContext): Promise<RuntimeWorkDi
   }
 }
 
+function recoveryHadPossiblePiWrite(authorization: RuntimeAuthorization): boolean {
+  return authorization.sourceDispatchState === "write_intent"
+    || authorization.sourceDispatchState === "accepted"
+    || authorization.sourceDispatchState === "ambiguous";
+}
+
+/**
+ * Resolve one interrupted turn without replaying it or rebuilding the Companion runtime.
+ *
+ * This path deliberately has no material-provider, resource-stager, Skill, MCP, model, provider
+ * token, Pi start, or Box lifecycle call. Its only permitted external effects are a Box GET and
+ * termination of the exact Pi invocation captured with the interrupted dispatch.
+ */
+async function handleRecoveryCleanup(context: OperationContext): Promise<RuntimeWorkDisposition> {
+  const authorization = await context.session.reauthorize();
+  if (authorization.workCheckpoint === "cleanup_complete"
+    || authorization.workCheckpoint === "pi_ready") return runtimeSucceeded;
+  if (
+    authorization.operationKind !== "restart_pi"
+    || authorization.operationTrigger !== "recovery"
+    || authorization.operationLane === null
+    || authorization.turnId === null
+    || authorization.turnStatus !== "interrupted"
+    || !["pending", "restarting_pi", "starting_pi", "pi_observed"].includes(
+      authorization.workCheckpoint,
+    )
+  ) {
+    throw new RuntimeInvariantError({
+      code: "recovery_cleanup_contract_invalid",
+      message: "The interrupted turn cleanup identity is incomplete.",
+      action: "none",
+    });
+  }
+
+  // Pending/rejected dispatch is durable negative proof: no Pi prompt could be running.
+  if (!recoveryHadPossiblePiWrite(authorization)) {
+    await context.session.checkpoint({ nextCheckpoint: "cleanup_complete" });
+    return runtimeSucceeded;
+  }
+
+  // A missing durable Box id and a provider-observed absent/archived Box are both terminal proof
+  // that the captured Pi invocation no longer exists. Never resume the Box to perform cleanup.
+  if (
+    !authorization.boxId
+    || authorization.boxState === "absent"
+    || authorization.boxState === "archived"
+  ) {
+    await context.session.checkpoint({ nextCheckpoint: "cleanup_complete" });
+    return runtimeSucceeded;
+  }
+  const boxState = await observeKnownBoxState(context, authorization);
+  if (boxState === "absent" || boxState === "archived") {
+    const observed = await context.session.reauthorize();
+    if (observed.workCheckpoint !== "pi_ready") {
+      await context.session.checkpoint({ nextCheckpoint: "cleanup_complete" });
+    }
+    return runtimeSucceeded;
+  }
+
+  const expectedInvocationId = authorization.sourcePiInvocationId;
+  if (!expectedInvocationId) {
+    throw new RuntimeInvariantError({
+      code: "recovery_invocation_missing",
+      message: "The interrupted turn cleanup lacks its exact Pi invocation.",
+      action: "none",
+    });
+  }
+
+  if (authorization.operationLane === "routine") {
+    const routine = context.deps.pi.routineSession;
+    if (!routine) {
+      throw new RuntimeInvariantError({
+        code: "routine_session_unavailable",
+        message: "The isolated routine session control is unavailable.",
+        action: "retry",
+      });
+    }
+    if (!expectedInvocationId.startsWith(`routine:${authorization.turnId}:`)) {
+      throw new RuntimeInvariantError({
+        code: "routine_session_invocation_mismatch",
+        message: "The recovery routine identity did not match its interrupted run.",
+        action: "none",
+      });
+    }
+    await lifecycle(context, "terminate_pi_invocation", async ({ signal }) =>
+      await routine.terminate({
+        boxId: authorization.boxId!,
+        runId: authorization.turnId!,
+        expectedInvocationId,
+        signal,
+      }));
+  } else {
+    const result = await lifecycle(context, "terminate_pi_invocation", async ({ signal }) =>
+      await context.deps.pi.terminatePiInvocation({
+        boxId: authorization.boxId!,
+        expectedInvocationId,
+        signal,
+      }));
+    if (result.outcome !== "superseded") {
+      await observe(context, { piState: "absent" });
+    }
+  }
+  await context.session.checkpoint({ nextCheckpoint: "cleanup_complete" });
+  return runtimeSucceeded;
+}
+
+async function handleIsolatedRoutineRetry(
+  context: OperationContext,
+): Promise<RuntimeWorkDisposition | null> {
+  if (context.claim.turnId === null) return null;
+  const authorization = await context.session.reauthorize();
+  if (authorization.workCheckpoint === "pi_ready") return runtimeSucceeded;
+  if (authorization.workCheckpoint !== "pending") {
+    throw new RuntimeInvariantError({
+      code: "operation_checkpoint_invalid",
+      message: "The isolated routine retry reached an unsupported checkpoint.",
+      action: "none",
+    });
+  }
+  const material = await context.session.fencedLookup(async () =>
+    await context.deps.materialProvider.getMaterial({
+      store: context.deps.store,
+      fence: context.session.fence,
+      signal: context.session.signal,
+    }));
+  if (material === null) {
+    throw new RuntimeInvariantError({
+      code: "runtime_resource_snapshot_missing",
+      message: "The retry resource snapshot is unavailable.",
+      action: "retry",
+    });
+  }
+  if (material.routineId === null) return null;
+  if (!material.routineIsolated) return null;
+  const runId = context.claim.turnId;
+  const routine = context.deps.pi.routineSession;
+  if (!routine) {
+    throw new RuntimeInvariantError({
+      code: "routine_session_unavailable",
+      message: "The isolated routine session control is unavailable.",
+      action: "retry",
+    });
+  }
+  const invocationId = requiredAuthorization(context.session).commandPiInvocationId;
+  if (invocationId === null) {
+    await context.session.checkpoint({ nextCheckpoint: "pi_ready" });
+    return runtimeSucceeded;
+  }
+  if (!invocationId.startsWith(`routine:${runId}:`)) {
+    throw new RuntimeInvariantError({
+      code: "routine_session_invocation_mismatch",
+      message: "The isolated routine retry identity did not match its run.",
+      action: "retry",
+    });
+  }
+  await lifecycle(context, "stop_pi", async ({ signal }) =>
+    await routine.terminate({
+      boxId: requiredBoxId(context.session),
+      runId,
+      expectedInvocationId: invocationId,
+      signal,
+    }));
+  await context.session.checkpoint({ nextCheckpoint: "pi_ready" });
+  return runtimeSucceeded;
+}
+
 /**
  * Permanent deletion and an explicit full-Box restart may preempt an isolated routine. The claim
  * transaction stores the routine turn as the lifecycle source, and v2 authorization resolves
@@ -1146,12 +1319,38 @@ export async function handleOperation(
     checkpoint: context.claim.checkpoint,
   });
   switch (context.claim.operationKind) {
-    case "start":
-      return await handleStart(context);
+    case "start": {
+      const isTurnDerivedStart = context.claim.turnId !== null
+        && requiredAuthorization(context.session).operationTrigger === "turn";
+      try {
+        return await handleStart(context);
+      } catch (error) {
+        const exhaustedStartBudget = error instanceof RuntimeInvariantError
+          && error.stableCode === "box_start_deadline_exceeded";
+        const transientProviderFailure = error !== null
+          && typeof error === "object"
+          && isRetryableProviderError(error);
+        if (isTurnDerivedStart && (exhaustedStartBudget || transientProviderFailure)) {
+          // A turn-derived Start is only a prerequisite for the queued prompt. Exhausting this
+          // cycle proves neither that the prompt failed nor that replay is required; protocol 7
+          // re-arms the same operation with a fresh, fixed budget.
+          throw new RuntimeInvariantError({
+            code: "cold_start_deadline_exceeded",
+            message: "The Companion did not start before its deadline.",
+            action: "retry",
+          });
+        }
+        throw error;
+      }
+    }
     case "stop":
       return await handleStop(context);
-    case "restart_pi":
-      return await handleRestartPi(context);
+    case "restart_pi": {
+      if (requiredAuthorization(context.session).operationTrigger === "recovery") {
+        return await handleRecoveryCleanup(context);
+      }
+      return await handleIsolatedRoutineRetry(context) ?? await handleRestartPi(context);
+    }
     case "restart_box":
       return await handleRestartBox(context);
     case "apply_settings":

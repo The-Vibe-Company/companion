@@ -1040,6 +1040,12 @@ export interface CompanionBoxRuntimeV2 {
     invocationId: string;
   }>;
   stopPiDaemon(input: { boxId: string; signal?: AbortSignal }): Promise<void>;
+  /** Stop only the main systemd invocation named by an interrupted dispatch. */
+  terminatePiInvocation(input: {
+    boxId: string;
+    expectedInvocationId: string;
+    signal?: AbortSignal;
+  }): Promise<{ outcome: "terminated" | "already_gone" | "superseded" }>;
   piDaemonStatus(input: { boxId: string; signal?: AbortSignal }): Promise<{
     state: "idle" | "running" | "stopped" | "error";
     invocationId: string | null;
@@ -2716,6 +2722,20 @@ if ! systemctl --user show-environment >/dev/null 2>&1; then
   exit 1
 fi`;
 
+/** Serialize all main-Pi lifecycle mutations inside one Box. */
+const PI_LIFECYCLE_LOCK = `pi_lifecycle_lock="$HOME/.companion/runtime/state/pi-lifecycle.lock"
+mkdir -p "$(dirname "$pi_lifecycle_lock")"
+if ! command -v flock >/dev/null 2>&1; then
+  echo 'Companion Pi lifecycle lock provider is unavailable' >&2
+  exit 1
+fi
+exec 9>"$pi_lifecycle_lock"
+chmod 600 "$pi_lifecycle_lock"
+if ! flock -w 20 9; then
+  echo 'Companion Pi lifecycle lock could not be acquired' >&2
+  exit 1
+fi`;
+
 /** Prove an explicitly resumed Box runs commands before staging layout or credential material. */
 const BOX_RUNNABLE_COMMAND = `printf '%s\\n' ${shellQuote(BOX_RUNNABLE_MARKER)}`;
 
@@ -4344,6 +4364,7 @@ if [ ! -f "$auth_file" ]; then echo 'Companion provider auth file is missing' >&
   || chmod 700 "$HOME/.companion/pi"
 [ "$(stat -c '%a' "$auth_file" 2>/dev/null || true)" = 600 ] || chmod 600 "$auth_file"
 ${PREPARE_USER_BUS}
+${PI_LIFECYCLE_LOCK}
 runtime_credential_dir="$XDG_RUNTIME_DIR/companion"
 runtime_credential_file="$runtime_credential_dir/providers.env"
 mkdir -p "$runtime_credential_dir"
@@ -4420,6 +4441,7 @@ fi`,
     const stopped = await this.#command(
       input.boxId,
       `${USER_BUS_ENVIRONMENT}
+${PI_LIFECYCLE_LOCK}
 if systemctl --user show-environment >/dev/null 2>&1; then
   systemctl --user stop companion-pi-daemon.service >/dev/null 2>&1 || true
   if systemctl --user is-active --quiet companion-pi-daemon.service; then
@@ -5024,6 +5046,70 @@ printf 'companion-agent-endpoint %s\\n' "$companion_agent_url"`,
 
   async stopPiDaemon(input: { boxId: string; signal?: AbortSignal }): Promise<void> {
     await this.#deactivatePiDaemon(input);
+  }
+
+  async terminatePiInvocation(input: {
+    boxId: string;
+    expectedInvocationId: string;
+    signal?: AbortSignal;
+  }): Promise<{ outcome: "terminated" | "already_gone" | "superseded" }> {
+    if (!opaqueBrokerId(input.expectedInvocationId)) {
+      throw new BoxRuntimeProviderError(
+        "Pi invocation id is invalid",
+        400,
+        "pi_invocation_id_invalid",
+      );
+    }
+    const terminated = await this.#command(
+      input.boxId,
+      `set -euo pipefail
+expected_invocation=${shellQuote(input.expectedInvocationId)}
+${PREPARE_USER_BUS}
+${PI_LIFECYCLE_LOCK}
+current_state="$(systemctl --user is-active companion-pi-daemon.service 2>/dev/null || true)"
+current_invocation="$(systemctl --user show companion-pi-daemon.service -p InvocationID --value 2>/dev/null || true)"
+if [ "$current_state" != active ] || [ -z "$current_invocation" ]; then
+  printf '%s\\n' companion-pi-termination-already-gone
+  exit 0
+fi
+if [ "$current_invocation" != "$expected_invocation" ]; then
+  printf '%s\\n' companion-pi-termination-superseded
+  exit 0
+fi
+# All runtime start/restart/stop calls take the same Box-local lock. Re-read under that lock before
+# the stop so a newer invocation can never be inferred from the stale control-plane projection.
+confirmed_invocation="$(systemctl --user show companion-pi-daemon.service -p InvocationID --value 2>/dev/null || true)"
+if [ "$confirmed_invocation" != "$expected_invocation" ]; then
+  printf '%s\\n' companion-pi-termination-superseded
+  exit 0
+fi
+systemctl --user stop companion-pi-daemon.service >/dev/null 2>&1 || true
+if systemctl --user is-active --quiet companion-pi-daemon.service; then
+  echo 'Exact Pi invocation is still active after stop' >&2
+  exit 1
+fi
+rm -f "/run/user/$(id -u)/companion/providers.env" \
+  "$HOME/${COMPANION_PI_BROKER_SOCKET_PATH}"
+printf '%s\\n' companion-pi-termination-terminated`,
+      30,
+      input.signal,
+    );
+    if (!terminated.success) {
+      throw new BoxRuntimeProviderError(
+        `Exact Pi invocation failed to terminate${commandFailureDetail(terminated)}`,
+        502,
+        "pi_invocation_terminate_failed",
+      );
+    }
+    const markers = new Set(terminated.stdout.split(/[\r\n]+/));
+    if (markers.has("companion-pi-termination-terminated")) return { outcome: "terminated" };
+    if (markers.has("companion-pi-termination-already-gone")) return { outcome: "already_gone" };
+    if (markers.has("companion-pi-termination-superseded")) return { outcome: "superseded" };
+    throw new BoxRuntimeProviderError(
+      "Exact Pi invocation termination returned no proof",
+      502,
+      "pi_invocation_terminate_ambiguous",
+    );
   }
 
   async clearPersistedProviderAuth(input: { boxId: string; signal?: AbortSignal }): Promise<void> {

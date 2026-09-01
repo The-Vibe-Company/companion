@@ -21,9 +21,9 @@ re-enable procedure live in the
   `node dist/index.js`; it is never a migration hook.
 - Keep the runtime desktop endpoint private even though requests are HMAC authenticated. Never
   persist or log its returned signed URL.
-- Never replay a dispatch once the prompt may have been written. Protocol 6 marks it terminal
-  `interrupted`, attempts one exact bounded Pi stop, records `auto_abandoned` with action `none`,
-  and releases the lane even if that cleanup fails.
+- Never replay a dispatch once the prompt may have been written. Protocol 7 marks it interrupted,
+  terminates the exact Pi invocation through resource-independent internal cleanup, records
+  `auto_abandoned`, and releases the lane automatically.
 - Never use Full Box restart as automatic repair. Never delete a Box unless an explicit user delete
   or the audited legacy-purge procedure owns it.
 - Do not put provider payloads, tokens, signed URLs, raw Pi lines, auth files, or decrypted material
@@ -58,6 +58,32 @@ purge report checksum for every production change. Do not record secret values.
 For ordinary compatible Runtime v2 releases, use rolling deployment. One runtime replica receiving
 SIGTERM stops new claims, reaches bounded safe checkpoints, and releases or loses its leases; another
 replica must take over within 45 seconds. Do not clear lease rows or edit epochs manually.
+
+### Protocol 7 automatic-cleanup repair (migration 0157)
+
+Deploy migration 0157 and the protocol-7 runtime from the same immutable SHA. Run the migration
+first: protocol-5 and protocol-6 executors may finish compatible leases already held but receive no
+new claims, which safely pauses repaired work until the matching runtime is online. Deploy runtime
+next, then API/web and native clients. Do not edit affected turns, operations, deadlines, leases, or
+Boxes by hand.
+
+The migration repairs every qualifying unresolved interruption, not named Companions. It converts
+legacy terminal proof, rearms pending and terminal recoveries with a fresh cycle start, rearms only
+orphaned running rows, preserves live leases, creates missing recovery rows, and clears prematurely
+stamped cold deadlines for queued turns whose Start has not been claimed, and re-enqueues a timed-out
+pre-dispatch Start instead of expiring its message. After rollout, require:
+
+- protocol-5 and protocol-6 claims return no work and protocol-7 claims progress;
+- old recovery operations reach `cleanup_complete` (legacy `pi_ready` remains valid proof), and
+  their source turns record `auto_abandoned` without a new attempt;
+- `runtime.recovery.stalled` and the oldest recovery age fall back to zero/normal bounds;
+- an archived Box remains archived until the next ordinary Send resumes it; and
+- each already-queued FIFO follow-up receives at most one fresh Start and one reply.
+- each cold Start cycle keeps a fixed three-minute budget, while a timeout leaves its source message
+  queued and schedules the same Start with bounded backoff.
+
+Use the Companions gate as the operational kill switch if rollout must stop. Roll forward with a
+corrected protocol-7 runtime; never restore an earlier claim protocol or down-migrate the repair.
 
 ### Verify queued routine cleanup (migration 0145)
 
@@ -270,8 +296,8 @@ fence when waiting for a rolling deployment is unsafe.
 Re-enable only after the cause is corrected, an empty-claim dry observation is healthy, and an
 Owner/Editor communication plan exists for interrupted turns. Deploy all three flag consumers with
 the flag on, verify `/healthz`, then have the migration owner call `companion_runtime_enable` with
-the newly observed epoch. Protocol 6 backfills interrupted turns as released terminal history;
-enabling the gate never replays them.
+the newly observed epoch. Protocol 7 backfills interrupted turns into automatic recovery; enabling
+the gate never replays them.
 
 ## Incident response
 
@@ -291,19 +317,24 @@ Do not make the health endpoint public and do not weaken it to satisfy Railway r
 ### Turn is interrupted or Pi is silent
 
 The ten-minute inactivity deadline and two-hour absolute deadline must settle visibly. If prompt
-write/ACK outcome is ambiguous, warn that earlier external effects may have succeeded and confirm
-the occurrence is terminal `interrupted`, `resolution = auto_abandoned`, and action `none`. Never
-mark it queued, create a replacement attempt, or wait for Retry/Cancel. Runtime attempts one exact,
-bounded Pi stop before settlement; cleanup failure is an expurgated log event, never a durable queue
-gate. Confirm the next FIFO message, routine, or trigger is claimable. A following main turn owns any
-archived-Box resume and recycles a non-idle Pi during preflight.
+write/ACK outcome is ambiguous, warn that earlier external effects may have succeeded and verify the
+internal `restart_pi` recovery is `pending` or `running`. It must never replay the prompt. Cleanup
+retries automatically with a backoff capped at five minutes, preserves the original error, and ends
+the occurrence as `auto_abandoned`; never manually mark it queued or create a replacement attempt.
+Recovery re-observes the known Box before Pi cleanup. A provider result of `absent` or `archived`
+is valid negative proof for both main and isolated-routine lanes: the projected Box state must be
+updated, no Pi command is sent, and the next ordinary send—not recovery—owns any archived-Box resume.
+If recovery age exceeds 15 minutes, inspect aggregate `runtime.recovery.metrics` and
+`runtime.recovery.stalled`, the exact lane lease, checkpoint, maximum attempt count, and expurgated
+operation code. The warning must not make `/healthz` red. A routine recovery in backoff must not
+prevent an independently warm main-chat claim.
 
 While a turn is waiting in `needs_input`, its inactivity deadline is intentionally cleared. An
 `ask_user` decision returns control to Pi after ten minutes; asynchronous `companion-control`
 approvals never hold the attempt open. A newer member message
 cancels the wait sooner, without becoming an implicit approval, and remains queued for its own turn.
-That queued follow-up must have neither a Start operation nor a cold-start deadline until it reaches
-the head of the queue. If an older deployment shows
+That queued follow-up may own an idempotent pending Start prerequisite, but it must have neither an
+attempt nor a cold-start deadline until runtime actually claims that Start. If an older deployment shows
 `turn_stalled` for the pending decision followed by `cold_start_deadline_exceeded` for a never-
 attempted message on an idle warm Box, deploy migration 0129 before retrying; do not restart or
 replace that healthy Box.

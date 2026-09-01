@@ -1853,6 +1853,74 @@ func decodesOnlyUnresolvedLegacyInterruptionAsVisible() throws {
 }
 
 @Test
+func decodesInterruptedTurnAndItsAutomaticRecoveryStatus() throws {
+    let data = Data(#"""
+    {
+      "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
+      "viewer_id":"owner-1",
+      "read_only":false,
+      "can_send":true,
+      "entries":[],
+      "queued_count":2,
+      "interrupted_turn":{
+        "id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
+        "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "status":"interrupted",
+        "queue_sequence":20,
+        "latest_attempt":{
+          "id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "turn_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "attempt_number":1,
+          "retry_id":null,
+          "status":"interrupted",
+          "dispatch_state":"accepted",
+          "pi_invocation_id":"pi-interrupted-test",
+          "dispatch_accepted_at":"2026-08-26T05:56:00.000Z",
+          "error":{"code":"turn_stalled","message":"The Companion stopped making progress.","action":"none"},
+          "started_at":"2026-08-26T05:55:13.000Z",
+          "settled_at":"2026-08-26T05:59:33.505Z"
+        },
+        "replying":false,
+        "error":{"code":"turn_stalled","message":"The Companion stopped making progress.","action":"none"},
+        "state_changed_at":"2026-08-26T05:59:33.505Z",
+        "settled_at":"2026-08-26T05:59:33.505Z",
+        "created_at":"2026-08-26T05:55:12.466Z",
+        "updated_at":"2026-08-26T05:59:33.505Z",
+        "recovery_status":"running"
+      }
+    }
+    """#.utf8)
+
+    let thread = try JSONDecoder().decode(CompanionThread.self, from: data)
+    #expect(thread.queuedCount == 2)
+    #expect(thread.interruptedTurn?.status == .interrupted)
+    #expect(thread.interruptedTurn?.error?.action == "none")
+    #expect(thread.interruptedTurn?.recoveryStatus == .running)
+    #expect(thread.interruptedTurn?.latestAttempt?.piInvocationID == "pi-interrupted-test")
+}
+
+@Test
+func recoveryStatusToleratesAnOlderServerAndAFutureValue() throws {
+    func turn(recoveryFragment: String) throws -> CompanionTurn {
+        try JSONDecoder().decode(CompanionTurn.self, from: Data(#"""
+        {
+          "id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
+          "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          "status":"interrupted","queue_sequence":20,"latest_attempt":null,"replying":false,
+          "error":null,"state_changed_at":"2026-08-26T05:59:33.505Z",
+          "settled_at":"2026-08-26T05:59:33.505Z","created_at":"2026-08-26T05:55:12.466Z",
+          "updated_at":"2026-08-26T05:59:33.505Z"\#(recoveryFragment)
+        }
+        """#.utf8))
+    }
+
+    #expect(try turn(recoveryFragment: "").recoveryStatus == nil)
+    #expect(try turn(recoveryFragment: #", "recovery_status":"pausing""#).recoveryStatus == .unknown)
+}
+
+@Test
 func hidesAutoAbandonedInterruptionFromConversationTail() throws {
     let data = Data(#"""
     {
@@ -1870,18 +1938,20 @@ func hidesAutoAbandonedInterruptionFromConversationTail() throws {
         "queue_sequence":20,
         "latest_attempt":null,
         "replying":false,
-        "error":{"code":"cold_start_deadline_exceeded","message":"The Companion did not start before its deadline.","action":"none"},
+        "error":{"code":"turn_stalled","message":"The Companion stopped making progress.","action":"none"},
         "state_changed_at":"2026-08-26T05:59:33.505Z",
         "settled_at":"2026-08-26T05:59:33.505Z",
         "created_at":"2026-08-26T05:55:12.466Z",
         "updated_at":"2026-08-26T05:59:33.505Z",
-        "resolution":"auto_abandoned"
+        "resolution":"auto_abandoned",
+        "recovery_status":"completed"
       }
     }
     """#.utf8)
 
     let thread = try JSONDecoder().decode(CompanionThread.self, from: data)
     #expect(thread.interruptedTurn?.resolution == "auto_abandoned")
+    #expect(thread.interruptedTurn?.recoveryStatus == .completed)
     #expect(thread.visibleInterruptedTurn == nil)
     #expect(CompanionScrollTailSnapshot(thread: thread).interruptedTurn == nil)
 }

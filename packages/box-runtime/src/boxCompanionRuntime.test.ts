@@ -225,6 +225,34 @@ describe("narrow AsciiBoxCompanionRuntime", () => {
     expect(commands[0]?.timeoutSeconds).toBe(120);
   });
 
+  it.each([
+    ["companion-pi-termination-terminated", "terminated"],
+    ["companion-pi-termination-already-gone", "already_gone"],
+    ["companion-pi-termination-superseded", "superseded"],
+  ] as const)("maps exact Pi termination proof %s", async (marker, outcome) => {
+    const commands: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_rawUrl: string | URL | Request, init?: RequestInit) => {
+      const body = parseBoxTestBody(init?.body);
+      commands.push(requiredText(body, "command"));
+      return response(commandResult(`${marker}\n`));
+    }));
+    const runtime = new AsciiBoxCompanionRuntime({ COMPANION_BOX_API_KEY: "box_test" });
+
+    await expect(runtime.terminatePiInvocation({
+      boxId: "bx_23456789",
+      expectedInvocationId: "invocation-original",
+    })).resolves.toEqual({ outcome });
+
+    expect(commands).toHaveLength(1);
+    expect(commands[0]).toContain("flock -w 20");
+    expect(commands[0]).toContain("expected_invocation='invocation-original'");
+    expect(commands[0]).toContain('confirmed_invocation="$(systemctl --user show');
+    expect(spawnSync("bash", ["-n"], { input: commands[0], encoding: "utf8" })).toMatchObject({
+      status: 0,
+      stderr: "",
+    });
+  });
+
   it.each(["archived", "archiving"] as const)(
     "archives an already %s Box with one GET and no rejected cleanup command",
     async (state) => {

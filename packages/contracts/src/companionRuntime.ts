@@ -40,6 +40,10 @@ export const companionTurnStatusSchema = z.enum([
 ]);
 export type CompanionTurnStatus = z.infer<typeof companionTurnStatusSchema>;
 
+/** Exact per-turn state of protocol-7 automatic cleanup. Optional during rolling deploys. */
+export const companionRecoveryStatusSchema = z.enum(["pending", "running", "completed"]);
+export type CompanionRecoveryStatus = z.infer<typeof companionRecoveryStatusSchema>;
+
 export const companionTurnAttemptStatusSchema = z.enum([
   "starting",
   "dispatching",
@@ -134,8 +138,10 @@ export const companionTurnSchema = z.object({
   companion_id: z.string().uuid(),
   client_message_id: z.string().uuid(),
   status: companionTurnStatusSchema,
-  /** Historical terminal-interruption marker; protocol 6 writes auto_abandoned immediately. */
+  /** Optional across rolling deploys; null means no automatic terminal cleanup proof yet. */
   resolution: z.literal("auto_abandoned").nullable().optional(),
+  /** Automatic cleanup for this exact occurrence; never inferred from Companion-wide lifecycle. */
+  recovery_status: companionRecoveryStatusSchema.nullable().catch(null).optional(),
   queue_sequence: z.number().int().positive(),
   latest_attempt: companionTurnAttemptSchema.nullable(),
   /** Server-computed durable replying fact. Clients must not infer it from transcript tails. */
@@ -153,6 +159,23 @@ export const companionTurnSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["resolution"],
       message: "auto_abandoned is valid only for an interrupted turn",
+    });
+  }
+  if (turn.recovery_status === "completed" && turn.resolution !== "auto_abandoned") {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["recovery_status"],
+      message: "completed recovery requires an auto_abandoned interruption",
+    });
+  }
+  if (
+    (turn.recovery_status === "pending" || turn.recovery_status === "running")
+    && (turn.status !== "interrupted" || turn.resolution === "auto_abandoned")
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["recovery_status"],
+      message: "active recovery requires an unresolved interrupted turn",
     });
   }
   if (attempt !== null && attempt.turn_id !== turn.id) {
@@ -284,6 +307,17 @@ export type CompanionOperationAcceptedResponse = z.infer<
  */
 export const COMPANION_OPERATION_IDEMPOTENCY_HEADER = "Idempotency-Key";
 export const companionOperationRequestIdSchema = z.string().uuid();
+
+export const retryCompanionTurnInputSchema = z.object({
+  retry_id: z.string().uuid(),
+}).strict();
+export type RetryCompanionTurnInput = z.infer<typeof retryCompanionTurnInputSchema>;
+
+/** Compatibility Retry observes or re-enqueues the same cleanup; it never creates an attempt. */
+export const retryCompanionTurnAcceptedResponseSchema = companionOperationAcceptedResponseSchema;
+export type RetryCompanionTurnAcceptedResponse = z.infer<
+  typeof retryCompanionTurnAcceptedResponseSchema
+>;
 
 export const cancelCompanionTurnInputSchema = z.object({}).strict();
 export type CancelCompanionTurnInput = z.infer<typeof cancelCompanionTurnInputSchema>;

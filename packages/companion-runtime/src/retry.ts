@@ -10,6 +10,7 @@ export type IdempotentLifecycleCall =
   | "restart_pi"
   | "start_pi"
   | "stop_pi"
+  | "terminate_pi_invocation"
   | "apply_box_settings"
   | "apply_runtime_settings"
   | "request_delete"

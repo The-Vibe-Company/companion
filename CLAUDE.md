@@ -79,11 +79,11 @@ excluded product surface.
 - `apps/runtime` is the sole lifecycle owner. The API and worker have no Box credential; runtime
   receives the Box key and only narrow `SECURITY DEFINER` claim/renew/checkpoint/settle access.
 - One `(companion_id, client_message_id)` creates exactly one turn. Only one attempt may be active
-  per Companion; later turns remain ordered in PostgreSQL.
-- An ambiguous dispatch is never replayed automatically. It becomes terminal `interrupted` with
-  `resolution = auto_abandoned` and `last_error_action = none`, releasing its lane immediately.
-  Runtime attempts one exact, bounded Pi stop before settlement; cleanup failure never delays
-  settlement or later work. A following main turn recycles a non-idle Pi during preflight.
+  in each `main` or `routine` lane; later turns remain FIFO within their lane in PostgreSQL.
+- An ambiguous dispatch is never replayed automatically. It becomes `interrupted`; protocol 7
+  enqueues one cleanup-only internal `restart_pi` recovery, terminates the exact Pi invocation
+  without loading message resources, records `resolution = auto_abandoned`, and releases that lane.
+  Recovery retries with bounded backoff and never requires an Owner/Editor action.
 - Full Box restart is an explicit user action only. Automatic repair may recycle Pi but never
   restart, replace, archive, or delete a healthy Box as healing.
 - Runtime errors persist only a stable code, an expurgated message of at most 500 characters, and an
@@ -142,8 +142,9 @@ its full real-Linux acceptance is slow; run it locally as the final validation a
 - A turn stalls after ten minutes without correlated activity and has a two-hour absolute deadline.
   A timed-out or ambiguous turn becomes visible and terminal immediately; its ambiguous prompt is
   never replayed and later work continues without a human action.
-- There is no turn Retry endpoint. Cancel remains the explicit stop/dequeue path for active or
-  queued work and returns a stable state error without mutation for `interrupted` work.
+- The compatibility Retry endpoint only observes or re-enqueues the same cleanup; it never creates
+  an attempt. Cancel remains the explicit stop/dequeue path for active or queued work and returns a
+  stable state without mutation for `interrupted` work.
 - Box stays warm for six hours after successful Pi acceptance. Reads, lists, ordinary status, and
   Viewer access are PostgreSQL-only and never wake or observe Box directly.
 - Disabling the Companions flag stops new runtime claims. Active work reaches a safe checkpoint and

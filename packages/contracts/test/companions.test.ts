@@ -931,6 +931,20 @@ describe("Companion chat contracts", () => {
       error: null,
     });
     expect(summary.surface_mode).toBe("notify");
+    expect(summary.recovery_status).toBeUndefined();
+    expect(companionRoutineRunSummarySchema.parse({
+      ...summary,
+      status: "interrupted",
+      outcome: "error",
+      surface_mode: null,
+      main_entry_event_id: null,
+      error: {
+        code: "turn_stalled",
+        message: "The routine stopped making progress.",
+        action: "retry",
+      },
+      recovery_status: "future_cleanup_phase",
+    }).recovery_status).toBeNull();
     expect(companionRoutineRunDetailSchema.parse({
       ...summary,
       internal_entries: [{

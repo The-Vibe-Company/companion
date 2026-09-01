@@ -129,6 +129,20 @@ class SqlAssemblyTest(unittest.TestCase):
         for statement in db_query.QUERIES["decisions"]["statements"]:
             self.assertNotIn("response_text", statement)
 
+    def test_recovery_queries_expose_exact_lane_operation_and_lease(self):
+        _argv, ops_sql = self.build("ops")
+        self.assertIn("to_jsonb(o)->>'execution_lane'", ops_sql)
+        self.assertIn("source_turn.routine_snapshot_id", ops_sql)
+        self.assertIn("o.source_turn_id", ops_sql)
+        self.assertIn("lease.work_id = o.id", ops_sql)
+        self.assertIn("operation_age", ops_sql)
+
+        _argv, stuck_sql = self.build("stuck")
+        self.assertIn("o.trigger = 'recovery'", stuck_sql)
+        self.assertIn("recovery.attempt_count", stuck_sql)
+        self.assertIn("recovery_lease_expires_at", stuck_sql)
+        self.assertNotIn("o.execution_lane", stuck_sql)
+
 
 if __name__ == "__main__":
     unittest.main()

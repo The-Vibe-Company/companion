@@ -75,6 +75,30 @@ function outcomeIcon(outcome: CompanionRoutineRunOutcome, mode: "relay" | "notif
     : <BellIcon aria-hidden="true" className="size-3.5" />;
 }
 
+function recoveryMessage(status: CompanionRoutineRunSummary["recovery_status"]): string {
+  if (status === "completed") {
+    return "Automatic cleanup for this run is complete. The prompt was not replayed; later routine messages continue automatically in order.";
+  }
+  if (status === "running") {
+    return "Automatic cleanup for this run is running. The prompt will not be replayed; later routine messages resume automatically in order when cleanup finishes.";
+  }
+  if (status === "pending") {
+    return "Automatic cleanup for this run is queued. The prompt will not be replayed; later routine messages resume automatically in order when cleanup finishes.";
+  }
+  return "Automatic cleanup for this run continues in the background. The prompt will not be replayed; later routine messages resume automatically in order.";
+}
+
+function latestRecoveryStatus(
+  current: CompanionRoutineRunSummary["recovery_status"],
+  incoming: CompanionRoutineRunSummary["recovery_status"],
+): CompanionRoutineRunSummary["recovery_status"] {
+  // A failed cleanup cycle legitimately returns from running to pending backoff, while completed
+  // is terminal. Preserve that proof against an older pagination response delivered after a poll;
+  // otherwise prefer the fresh status and tolerate a rolling-deploy response that omits it.
+  if (current === "completed") return current;
+  return incoming ?? current;
+}
+
 function RunRow({
   run,
   timezone,
@@ -207,6 +231,7 @@ export function CompanionRoutineHistory({
   const selectedRunIdRef = useRef<string | null>(target.runId);
   const detailRequestGenerationRef = useRef(0);
   const displayTimezone = memberTimezone ?? detectedBrowserTimeZone();
+  const detailRecoveryStatus = detail?.recovery_status ?? null;
 
   const loadRuns = useCallback(async (cursor?: string) => {
     if (!target.routineId) return;
@@ -241,7 +266,14 @@ export function CompanionRoutineHistory({
       });
       if (!requestIsCurrent()) return;
       setDetail((current) => cursor !== undefined && current?.run_id === page.run_id
-        ? { ...page, internal_entries: [...current.internal_entries, ...page.internal_entries] }
+        ? {
+            ...page,
+            recovery_status: latestRecoveryStatus(
+              current.recovery_status,
+              page.recovery_status,
+            ),
+            internal_entries: [...current.internal_entries, ...page.internal_entries],
+          }
         : page);
     } catch (cause) {
       if (!requestIsCurrent()) return;
@@ -273,6 +305,57 @@ export function CompanionRoutineHistory({
     setDetail(null);
     void loadDetail(selectedRunId);
   }, [loadDetail, selectedRunId]);
+
+  useEffect(() => {
+    if (
+      !selectedRunId
+      || (detailRecoveryStatus !== "pending" && detailRecoveryStatus !== "running")
+    ) return;
+
+    let cancelled = false;
+    let timeout: number | undefined;
+    const scheduleRefresh = () => {
+      timeout = window.setTimeout(() => void refreshRecovery(), 4_000);
+    };
+    const refreshRecovery = async () => {
+      try {
+        const page = await readCompanionRoutineRun(orgId, companionId, selectedRunId, {
+          entryLimit: 50,
+        });
+        if (cancelled || selectedRunIdRef.current !== selectedRunId) return;
+        // Cleanup cannot append to the routine transcript. Keep every page already loaded while
+        // refreshing only metadata for this exact run.
+        setDetail((current) => current?.run_id === page.run_id
+          ? {
+              ...page,
+              recovery_status: latestRecoveryStatus(
+                current.recovery_status,
+                page.recovery_status,
+              ),
+              internal_entries: current.internal_entries,
+              next_entry_cursor: current.next_entry_cursor,
+            }
+          : current);
+        setRuns((current) => current.map((run) => run.run_id === page.run_id
+          ? {
+              ...run,
+              ...page,
+              recovery_status: latestRecoveryStatus(run.recovery_status, page.recovery_status),
+            }
+          : run));
+      } catch {
+        // Keep the foreground detail usable. A later poll observes recovery completion.
+      } finally {
+        if (!cancelled && selectedRunIdRef.current === selectedRunId) scheduleRefresh();
+      }
+    };
+
+    scheduleRefresh();
+    return () => {
+      cancelled = true;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, [companionId, detailRecoveryStatus, orgId, selectedRunId]);
 
   useEffect(() => {
     const drawer = drawerRef.current;
@@ -376,10 +459,8 @@ export function CompanionRoutineHistory({
                   ) : null}
                   {selectedSummary.status === "interrupted" ? (
                     <div className="routine-history__recovery">
-                      <p>
-                        Earlier routine effects may already have succeeded. This occurrence will
-                        not be replayed; later routine work continues automatically.
-                      </p>
+                      <p>Earlier routine effects may already have succeeded.</p>
+                      <p role="status">{recoveryMessage(selectedSummary.recovery_status)}</p>
                     </div>
                   ) : null}
                 </section>

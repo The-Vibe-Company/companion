@@ -44,6 +44,18 @@ export const OPERATION_KINDS = [
 ] as const;
 export type OperationKind = (typeof OPERATION_KINDS)[number];
 
+export const OPERATION_TRIGGERS = [
+  "turn",
+  "user",
+  "settings",
+  "recovery",
+  "kill_switch",
+] as const;
+export type OperationTrigger = (typeof OPERATION_TRIGGERS)[number];
+
+export const OPERATION_LANES = ["main", "routine"] as const;
+export type OperationLane = (typeof OPERATION_LANES)[number];
+
 export const DECISION_STATUSES = [
   "pending",
   "allowed",
@@ -153,6 +165,16 @@ export type OperationRuntimeClaim =
     operationAttemptCount: number;
     targetSettingsRevision: bigint;
     targetSkillsRevision: number | null;
+  })
+  | (RuntimeClaimBase & {
+    workKind: "operation";
+    actorId: string;
+    clientSurface: null;
+    operationKind: "restart_pi";
+    operationStartedAt: Date;
+    operationAttemptCount: number;
+    targetSettingsRevision: null;
+    targetSkillsRevision: null;
   })
   | (RuntimeClaimBase & {
     workKind: "operation";
@@ -275,6 +297,10 @@ export interface RuntimeAuthorization {
   operationKind: OperationKind | null;
   operationStartedAt: Date | null;
   operationAttemptCount: number | null;
+  operationTrigger: OperationTrigger | null;
+  operationLane: OperationLane | null;
+  sourceDispatchState: DispatchState | null;
+  sourcePiInvocationId: string | null;
   providerOperationId: string | null;
   targetSettingsRevision: bigint | null;
   targetSkillsRevision: number | null;
@@ -684,6 +710,12 @@ export function decodeRuntimeClaimRow(value: unknown): RuntimeClaim {
       ) {
         throw new RuntimeRowDecodeError("operation", "operation claim has an impossible nullable shape");
       }
+      if (base.operationKind === "restart_pi"
+        && base.clientSurface === null
+        && base.targetSettingsRevision === null
+        && base.targetSkillsRevision === null) {
+        return base as OperationRuntimeClaim;
+      }
       if (base.operationKind === "stop") {
         if (
           base.clientSurface !== null
@@ -789,6 +821,10 @@ export function decodeRuntimeAuthorizationRow(
     operationKind: nullableEnumeration(row, "operation_kind", OPERATION_KINDS),
     operationStartedAt: nullableDate(row, "operation_started_at"),
     operationAttemptCount: nullableInteger(row, "operation_attempt_count"),
+    operationTrigger: nullableEnumeration(row, "operation_trigger", OPERATION_TRIGGERS),
+    operationLane: nullableEnumeration(row, "operation_lane", OPERATION_LANES),
+    sourceDispatchState: nullableEnumeration(row, "source_dispatch_state", DISPATCH_STATES),
+    sourcePiInvocationId: nullableString(row, "source_pi_invocation_id"),
     providerOperationId: nullableString(row, "provider_operation_id"),
     targetSettingsRevision: nullableBigintText(row, "target_settings_revision"),
     targetSkillsRevision: nullableInteger(row, "target_skills_revision"),
@@ -828,12 +864,16 @@ export function decodeRuntimeAuthorizationRow(
     if (authorization.runtimeGeneration === null) {
       throw new RuntimeRowDecodeError("runtime_generation");
     }
+    const recoveryCleanup = expectedWorkKind === "operation"
+      && authorization.operationKind === "restart_pi"
+      && authorization.operationTrigger === "recovery";
     const resourceBearing = expectedWorkKind === "attempt"
       || expectedWorkKind === "decision"
       || expectedWorkKind === "settings"
       || (expectedWorkKind === "operation"
         && authorization.operationKind !== null
-        && ["start", "restart_pi", "restart_box", "apply_settings"].includes(authorization.operationKind));
+        && ["start", "restart_pi", "restart_box", "apply_settings"].includes(authorization.operationKind)
+        && !recoveryCleanup);
     if (
       resourceBearing
       && (
@@ -847,12 +887,35 @@ export function decodeRuntimeAuthorizationRow(
     switch (expectedWorkKind) {
       case "operation": {
         if (
-          authorization.authorizationActorId === null
-          || authorization.operationKind === null
+          authorization.operationKind === null
           || authorization.operationStartedAt === null
           || authorization.operationAttemptCount === null
         ) {
           throw new RuntimeRowDecodeError("operation", "authorized operation lacks its durable identity");
+        }
+        if (recoveryCleanup) {
+          if (
+            authorization.operationLane === null
+            || authorization.turnId === null
+            || authorization.turnStatus !== "interrupted"
+            || authorization.clientSurface !== null
+            || authorization.authorizationActorId !== null
+            || authorization.modelId !== null
+            || authorization.desiredSettingsRevision !== null
+            || authorization.skillsRevision !== null
+            || authorization.providerRefs.length > 0
+            || authorization.skillRefs.length > 0
+            || authorization.mcpRefs.length > 0
+          ) {
+            throw new RuntimeRowDecodeError(
+              "operation",
+              "authorized recovery cleanup contains actor or resource data",
+            );
+          }
+          break;
+        }
+        if (authorization.authorizationActorId === null) {
+          throw new RuntimeRowDecodeError("operation", "authorized operation lacks its actor");
         }
         const resourceOperation = ["start", "restart_pi", "restart_box", "apply_settings"]
           .includes(authorization.operationKind);

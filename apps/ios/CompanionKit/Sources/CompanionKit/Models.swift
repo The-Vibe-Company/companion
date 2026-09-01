@@ -766,6 +766,25 @@ public enum CompanionRoutineRunStatus: String, Codable, Equatable, Hashable, Sen
     }
 }
 
+/// The durable cleanup state for an interrupted occurrence. Older servers omit this field and
+/// newer servers may add states before an installed client is updated, so callers must treat both
+/// `nil` and `unknown` as automatic recovery without exposing a manual replay action.
+public enum CompanionRecoveryStatus: String, Codable, Equatable, Hashable, Sendable {
+    case pending
+    case running
+    case completed
+    case unknown
+
+    public init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        self = Self(rawValue: value) ?? .unknown
+    }
+
+    public var isActive: Bool {
+        self == .pending || self == .running
+    }
+}
+
 /// The private routine execution result. A silent completion is distinct from surfaced output.
 public enum CompanionRoutineRunOutcome: String, Codable, Equatable, Hashable, Sendable {
     case pending
@@ -872,6 +891,7 @@ public struct CompanionRoutineRunSummary: Codable, Identifiable, Equatable, Send
     public let startedAt: String?
     public let settledAt: String?
     public let error: CompanionRuntimeSafeError?
+    public let recoveryStatus: CompanionRecoveryStatus?
 
     public var id: String { runID }
 
@@ -887,7 +907,8 @@ public struct CompanionRoutineRunSummary: Codable, Identifiable, Equatable, Send
         createdAt: String,
         startedAt: String?,
         settledAt: String?,
-        error: CompanionRuntimeSafeError?
+        error: CompanionRuntimeSafeError?,
+        recoveryStatus: CompanionRecoveryStatus? = nil
     ) {
         self.runID = runID
         self.companionID = companionID
@@ -901,6 +922,7 @@ public struct CompanionRoutineRunSummary: Codable, Identifiable, Equatable, Send
         self.startedAt = startedAt
         self.settledAt = settledAt
         self.error = error
+        self.recoveryStatus = recoveryStatus
     }
 
     enum CodingKeys: String, CodingKey {
@@ -916,6 +938,7 @@ public struct CompanionRoutineRunSummary: Codable, Identifiable, Equatable, Send
         case startedAt = "started_at"
         case settledAt = "settled_at"
         case error
+        case recoveryStatus = "recovery_status"
     }
 }
 
@@ -934,6 +957,7 @@ public struct CompanionRoutineRunDetail: Codable, Equatable, Sendable {
     public let error: CompanionRuntimeSafeError?
     public let internalEntries: [CompanionRoutineRunEntry]
     public let nextEntryCursor: Int?
+    public let recoveryStatus: CompanionRecoveryStatus?
 
     public init(
         runID: String,
@@ -949,7 +973,8 @@ public struct CompanionRoutineRunDetail: Codable, Equatable, Sendable {
         settledAt: String?,
         error: CompanionRuntimeSafeError?,
         internalEntries: [CompanionRoutineRunEntry],
-        nextEntryCursor: Int?
+        nextEntryCursor: Int?,
+        recoveryStatus: CompanionRecoveryStatus? = nil
     ) {
         self.runID = runID
         self.companionID = companionID
@@ -965,6 +990,7 @@ public struct CompanionRoutineRunDetail: Codable, Equatable, Sendable {
         self.error = error
         self.internalEntries = internalEntries
         self.nextEntryCursor = nextEntryCursor
+        self.recoveryStatus = recoveryStatus
     }
 
     enum CodingKeys: String, CodingKey {
@@ -982,6 +1008,7 @@ public struct CompanionRoutineRunDetail: Codable, Equatable, Sendable {
         case error
         case internalEntries = "internal_entries"
         case nextEntryCursor = "next_entry_cursor"
+        case recoveryStatus = "recovery_status"
     }
 }
 
@@ -2705,6 +2732,7 @@ public struct CompanionTurn: Codable, Identifiable, Equatable, Sendable {
     public let createdAt: String
     public let updatedAt: String
     public let resolution: String?
+    public let recoveryStatus: CompanionRecoveryStatus?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -2720,6 +2748,7 @@ public struct CompanionTurn: Codable, Identifiable, Equatable, Sendable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case resolution
+        case recoveryStatus = "recovery_status"
     }
 }
 

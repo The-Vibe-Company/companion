@@ -75,6 +75,7 @@ const interruptedThread: Thread = {
     companion_id: companionId,
     client_message_id: "33333333-3333-4333-8333-333333333333",
     status: "interrupted",
+    recovery_status: "pending",
     queue_sequence: 1,
     latest_attempt: null,
     replying: false,
@@ -240,8 +241,9 @@ describe("CompanionThread composer", () => {
       onCancelTurn,
     });
 
-    expect(container.textContent).toContain("This occurrence is terminal");
+    expect(container.textContent).toContain("Automatic cleanup for this turn is queued");
     expect(container.textContent).toContain("will not be replayed");
+    expect(container.textContent).toContain("automatically in order");
     expect(container.textContent).not.toContain("Retry turn");
     expect(container.textContent).not.toContain("Cancel turn");
     expect(sendButton(container).disabled).toBe(true);
@@ -258,16 +260,52 @@ describe("CompanionThread composer", () => {
     expect(onCancelTurn).not.toHaveBeenCalled();
   });
 
-  it("keeps a failed-send draft mounted beside a passive terminal interruption", async () => {
+  it("reports a running automatic cleanup without unmounting a failed-send draft", async () => {
+    const runningRecoveryThread: Thread = {
+      ...interruptedThread,
+      interrupted_turn: {
+        ...interruptedThread.interrupted_turn!,
+        recovery_status: "running",
+      },
+    };
     const container = await mount(async () => false, {
-      thread: interruptedThread,
+      thread: runningRecoveryThread,
     });
     const composer = type(container, "Keep this draft safe");
 
     await send(container);
 
-    expect(container.textContent).toContain("Later work continues automatically");
+    expect(container.textContent).toContain("Automatic cleanup for this turn is running");
+    expect(container.textContent).toContain("will not be replayed");
     expect(composer.value).toBe("Keep this draft safe");
+  });
+
+  it("uses the exact turn cleanup for a Viewer", async () => {
+    const viewerCompanion: Companion = {
+      ...companion,
+      access: "viewer",
+    };
+    const viewerThread: Thread = {
+      ...interruptedThread,
+      access: "viewer",
+      read_only: true,
+      can_send: false,
+      interrupted_turn: {
+        ...interruptedThread.interrupted_turn!,
+        recovery_status: "pending",
+      },
+    };
+
+    const container = await mount(async () => false, {
+      companion: viewerCompanion,
+      thread: viewerThread,
+    });
+
+    expect(container.textContent).toContain("Automatic cleanup for this turn is queued");
+    expect(container.textContent).not.toContain("Automatic cleanup for this turn is running");
+    expect(container.textContent).not.toContain("Retry turn");
+    expect(container.textContent).not.toContain("Cancel turn");
+    expect(container.querySelector("textarea")).toBeNull();
   });
 
   it("anchors the scroll position when an older page is prepended", async () => {

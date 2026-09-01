@@ -10,6 +10,7 @@ import type {
 import {
   COMPANION_ROUTINE_RUN_ENTRY_PAGE_DEFAULT,
   COMPANION_ROUTINE_MIN_INTERVAL_MS,
+  companionRecoveryStatusSchema,
   companionRoutineDraftSchema,
   companionRoutineProposalSchema,
   companionRoutineRunDetailSchema,
@@ -173,17 +174,26 @@ export async function listCompanionRoutineRunsV2(input: {
   database: Db;
 }): Promise<CompanionRoutineRunList> {
   const limit = input.limit ?? 50;
-  const result = await input.database.execute<{ run: unknown }>(sql`
-    select run from public.companion_api_list_routine_runs(
+  const result = await input.database.execute<{ run: unknown; recovery_status: unknown }>(sql`
+    select routine_run.run,
+      public.companion_api_turn_recovery_status(
+        ${input.orgId}::uuid,
+        ${input.companionId}::uuid,
+        NULLIF(routine_run.run->>'run_id', '')::uuid
+      ) as recovery_status
+    from public.companion_api_list_routine_runs(
       ${input.orgId}::uuid,
       ${input.companionId}::uuid,
       ${input.routineId}::uuid,
       ${input.cursor ?? null}::uuid,
       ${limit + 1}::integer
-    )
+    ) routine_run
   `);
-  const parsed = rows(result).map((row) =>
-    companionRoutineRunSummarySchema.parse(row.run));
+  const parsed = rows(result).map((row) => companionRoutineRunSummarySchema.parse({
+    ...companionRoutineRunSummarySchema.parse(row.run),
+    recovery_status: companionRecoveryStatusSchema.nullable().catch(null)
+      .parse(row.recovery_status),
+  }));
   const hasMore = parsed.length > limit;
   const runs = hasMore ? parsed.slice(0, limit) : parsed;
   return {
@@ -202,18 +212,28 @@ export async function getCompanionRoutineRunV2(input: {
   database: Db;
 }): Promise<CompanionRoutineRunDetail> {
   const entryLimit = input.entryLimit ?? COMPANION_ROUTINE_RUN_ENTRY_PAGE_DEFAULT;
-  const result = await input.database.execute<{ run: unknown }>(sql`
-    select run from public.companion_api_get_routine_run(
+  const result = await input.database.execute<{ run: unknown; recovery_status: unknown }>(sql`
+    select routine_run.run,
+      public.companion_api_turn_recovery_status(
+        ${input.orgId}::uuid,
+        ${input.companionId}::uuid,
+        NULLIF(routine_run.run->>'run_id', '')::uuid
+      ) as recovery_status
+    from public.companion_api_get_routine_run(
       ${input.orgId}::uuid,
       ${input.companionId}::uuid,
       ${input.runId}::uuid,
       ${input.entryCursor ?? null}::integer,
       ${entryLimit}::integer
-    )
+    ) routine_run
   `);
   const [row] = rows(result);
   if (!row) throw new CompanionRoutineRunNotFoundError();
-  return companionRoutineRunDetailSchema.parse(row.run);
+  return companionRoutineRunDetailSchema.parse({
+    ...companionRoutineRunDetailSchema.parse(row.run),
+    recovery_status: companionRecoveryStatusSchema.nullable().catch(null)
+      .parse(row.recovery_status),
+  });
 }
 
 export async function createCompanionRoutineV2(input: {

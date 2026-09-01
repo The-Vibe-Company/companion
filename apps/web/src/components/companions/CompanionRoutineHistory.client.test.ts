@@ -67,6 +67,7 @@ function interruptedDetail(): CompanionRoutineRunDetail {
     outcome: "error",
     surface_mode: null,
     main_entry_event_id: null,
+    recovery_status: "pending",
     settled_at: "2026-08-27T09:10:00.000Z",
     error: {
       code: "turn_stalled",
@@ -121,7 +122,8 @@ const alternateDetail: CompanionRoutineRunDetail = {
 
 async function flush() {
   await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await Promise.resolve();
+    await Promise.resolve();
   });
 }
 
@@ -141,9 +143,7 @@ async function mount(run: string | null = null) {
   };
   await render();
   await flush();
-  return {
-    container,
-  };
+  return { container };
 }
 
 function buttonNamed(container: HTMLElement, name: string): HTMLButtonElement {
@@ -168,6 +168,7 @@ describe("Companion routine history", () => {
   afterEach(() => {
     act(() => roots.splice(0).forEach((root) => root.unmount()));
     document.body.innerHTML = "";
+    vi.useRealTimers();
   });
 
   it("moves from newest-first run history into the private paginated transcript", async () => {
@@ -255,13 +256,85 @@ describe("Companion routine history", () => {
     expect(container.textContent).toContain("The later run completed cleanly.");
   });
 
-  it("keeps an interrupted routine passive while later work continues automatically", async () => {
-    historyApi.readCompanionRoutineRun.mockReset().mockResolvedValue(interruptedDetail());
+  it("shows automatic cleanup without exposing replay or cancellation actions", async () => {
+    const interrupted = interruptedDetail();
+    historyApi.readCompanionRoutineRun.mockReset().mockResolvedValue(interrupted);
+
     const { container } = await mount(runId);
 
-    expect(container.textContent).toContain("This occurrence will not be replayed");
-    expect(container.textContent).toContain("later routine work continues automatically");
+    expect(container.textContent).toContain("Automatic cleanup for this run is queued");
+    expect(container.textContent).toContain("will not be replayed");
     expect(container.textContent).not.toContain("Retry run");
     expect(container.textContent).not.toContain("Cancel run");
+  });
+
+  it("polls active cleanup metadata without losing transcript pages already loaded", async () => {
+    vi.useFakeTimers();
+    const interrupted = { ...interruptedDetail(), next_entry_cursor: 1 };
+    const interruptedSecondPage = {
+      ...interrupted,
+      internal_entries: secondPage.internal_entries,
+      next_entry_cursor: null,
+    };
+    historyApi.readCompanionRoutineRun.mockReset()
+      .mockResolvedValueOnce(interrupted)
+      .mockResolvedValueOnce(interruptedSecondPage)
+      .mockResolvedValueOnce({ ...interrupted, recovery_status: "completed" });
+
+    const { container } = await mount(runId);
+    await act(async () => buttonNamed(container, "Load more transcript").click());
+    await flush();
+    expect(container.textContent).toContain("pnpm test");
+
+    await act(async () => vi.advanceTimersByTimeAsync(4_000));
+    await flush();
+
+    expect(container.textContent).toContain("Automatic cleanup for this run is complete");
+    expect(container.textContent).toContain("pnpm test");
+    expect(historyApi.readCompanionRoutineRun).toHaveBeenCalledTimes(3);
+  });
+
+  it("shows pending backoff when a running cleanup cycle is re-armed", async () => {
+    vi.useFakeTimers();
+    const running = { ...interruptedDetail(), recovery_status: "running" as const };
+    historyApi.readCompanionRoutineRun.mockReset()
+      .mockResolvedValueOnce(running)
+      .mockResolvedValueOnce({ ...running, recovery_status: "pending" });
+
+    const { container } = await mount(runId);
+    expect(container.textContent).toContain("Automatic cleanup for this run is running");
+
+    await act(async () => vi.advanceTimersByTimeAsync(4_000));
+    await flush();
+
+    expect(container.textContent).toContain("Automatic cleanup for this run is queued");
+  });
+
+  it("keeps completed cleanup proof when an older transcript page arrives later", async () => {
+    vi.useFakeTimers();
+    const running = {
+      ...interruptedDetail(),
+      recovery_status: "running" as const,
+      next_entry_cursor: 1,
+    };
+    historyApi.readCompanionRoutineRun.mockReset()
+      .mockResolvedValueOnce(running)
+      .mockResolvedValueOnce({ ...running, recovery_status: "completed" })
+      .mockResolvedValueOnce({
+        ...running,
+        internal_entries: secondPage.internal_entries,
+        next_entry_cursor: null,
+      });
+
+    const { container } = await mount(runId);
+    await act(async () => vi.advanceTimersByTimeAsync(4_000));
+    await flush();
+    expect(container.textContent).toContain("Automatic cleanup for this run is complete");
+
+    await act(async () => buttonNamed(container, "Load more transcript").click());
+    await flush();
+
+    expect(container.textContent).toContain("Automatic cleanup for this run is complete");
+    expect(container.textContent).toContain("pnpm test");
   });
 });
