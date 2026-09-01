@@ -51,7 +51,9 @@ describe("Skills Hub-only database migration", () => {
               'companion_runtime_project_event_batch',
               'companion_runtime_project_event_batch_v2',
               'companion_runtime_project_automatic_decision_close',
-              'companion_runtime_reconcile_projected_decision_with_member_turn'
+              'companion_runtime_reconcile_projected_decision_with_member_turn',
+              'companion_api_read_thread_projection_sequence',
+              'companion_thread_allocate_projection_sequence'
             )
         ) as "runtimeFunctions",
         (

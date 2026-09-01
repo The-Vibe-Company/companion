@@ -69,7 +69,25 @@ const fence: LeaseFence = {
 };
 
 describe("PostgresRuntimeStore", () => {
-  it("claims only through the material and delete-resume protocol guards", async () => {
+  it("reads only aggregate self-heal telemetry through the narrow runtime function", async () => {
+    const sql = new RecordingSql();
+    sql.rows = [{
+      pending_recovery_count: 3,
+      oldest_recovery_age_seconds: 47.5,
+      auto_abandoned_count: 12,
+    }];
+    const store = new PostgresRuntimeStore(sql);
+
+    await expect(store.recoveryMetrics()).resolves.toEqual({
+      pendingCount: 3,
+      oldestAgeSeconds: 47.5,
+      autoAbandonedCount: 12,
+    });
+    expect(sql.calls[0]?.query).toContain("public.companion_runtime_recovery_metrics()");
+    expect(sql.calls[0]?.query).not.toContain("companion_id");
+  });
+
+  it("claims only through the self-healing material and delete-resume protocol guards", async () => {
     const sql = new RecordingSql();
     const store = new PostgresRuntimeStore(sql);
 
@@ -572,7 +590,7 @@ describe("PostgresRuntimeStore", () => {
     });
   });
 
-  it("claims only lane-aware material protocol 5 and reads the dedicated MCP broker capability", async () => {
+  it("claims only lane-aware self-healing material protocol 5 and reads the dedicated MCP broker capability", async () => {
     const sql = new RecordingSql();
     const expiresAt = new Date("2026-08-16T18:00:00.000Z");
     sql.rows = [];

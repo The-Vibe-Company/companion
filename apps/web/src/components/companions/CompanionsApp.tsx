@@ -36,10 +36,12 @@ import {
 } from "@/lib/companionProviderSettingsCache";
 import {
   cancelCompanionTurn,
+  collapseLoadedRoutineNotifyEntries,
   deleteCompanion,
   duplicateCompanion,
   getCompanionRuntime,
   getCompanionThread,
+  getOlderCompanionThreadWindow,
   listCompanions,
   listCompanionProviders,
   listCompanionRoutines,
@@ -51,6 +53,7 @@ import {
   sendCompanionMessage,
   setCompanionProvider,
   updateCompanionMemberState,
+  type SyncedCompanionThread,
 } from "@/lib/companions";
 import { Icon } from "../Icon";
 import { Dialog } from "../org/primitives";
@@ -321,7 +324,8 @@ export function CompanionsApp({
       ? initialCompanionId ?? null
       : null,
   );
-  const [thread, setThread] = useState<Thread | null>(null);
+  const [thread, setThread] = useState<SyncedCompanionThread | null>(null);
+  const [loadingOlderThread, setLoadingOlderThread] = useState(false);
   const [threadError, setThreadError] = useState<string | null>(null);
   const [routines, setRoutines] = useState<CompanionRoutine[]>([]);
   const [triggers, setTriggers] = useState<CompanionTrigger[]>([]);
@@ -369,6 +373,8 @@ export function CompanionsApp({
     joining: boolean;
   } | null>(null);
   const threadRequestRef = useRef(0);
+  const threadRef = useRef<SyncedCompanionThread | null>(null);
+  const historyModeRef = useRef(false);
   /** Whether the open thread has a transcript on screen, for failure handling without dep churn. */
   const threadLoadedRef = useRef(false);
   /** The thread currently on screen, available to async completions without a stale render closure. */
@@ -412,6 +418,15 @@ export function CompanionsApp({
     () => companions.find((companion) => companion.id === openedId) ?? null,
     [companions, openedId],
   );
+  const presentedThread = useMemo<Thread | null>(() => thread === null
+    ? null
+    : {
+        ...thread,
+        entries: collapseLoadedRoutineNotifyEntries(
+          thread.entries,
+          thread.client_sync?.notify_returns ?? [],
+        ),
+      }, [thread]);
   const settingsCompanion = useMemo(
     () => companions.find((companion) => companion.id === settingsId) ?? null,
     [companions, settingsId],
@@ -556,6 +571,8 @@ export function CompanionsApp({
     threadRequestRef.current += 1;
     openedIdRef.current = companion.id;
     setOpenedId(companion.id);
+    threadRef.current = null;
+    historyModeRef.current = false;
     setThread(null);
     setThreadError(null);
     setRoutines([]);
@@ -575,6 +592,8 @@ export function CompanionsApp({
     threadRequestRef.current += 1;
     openedIdRef.current = null;
     setOpenedId(null);
+    threadRef.current = null;
+    historyModeRef.current = false;
     setThread(null);
     setThreadError(null);
     setRoutines([]);
@@ -620,6 +639,8 @@ export function CompanionsApp({
     threadRequestRef.current += 1;
     openedIdRef.current = null;
     setOpenedId(null);
+    threadRef.current = null;
+    historyModeRef.current = false;
     setThread(null);
     setThreadError(null);
     setRoutines([]);
@@ -647,7 +668,7 @@ export function CompanionsApp({
     router.push("/companions");
   };
 
-  /** One PostgreSQL-only refresh of the open thread and its durable turn projection. */
+  /** One bounded bootstrap or incremental PostgreSQL-only refresh of the open thread. */
   const refreshThread = useCallback(async () => {
     if (!openedId) return;
     const currentRead = threadReadRef.current;
@@ -660,8 +681,18 @@ export function CompanionsApp({
     const requestId = ++threadRequestRef.current;
     threadReadRef.current = { companionId: openedId, requestId };
     try {
-      const next = await getCompanionThread(currentOrg.id, openedId);
+      const current = threadRef.current?.companion_id === openedId
+        ? threadRef.current
+        : null;
+      const next = await getCompanionThread(currentOrg.id, openedId, current?.client_sync
+        ? {
+            cursor: current.client_sync.cursor,
+            current,
+            preserveHistory: historyModeRef.current,
+          }
+        : undefined);
       if (next && requestId === threadRequestRef.current) {
+        threadRef.current = next;
         setThread(next);
         setThreadError(null);
         setThreadPollFailures(0);
@@ -805,9 +836,94 @@ export function CompanionsApp({
     void refreshThread();
   }, [openedId, refreshThread]);
 
+  const loadOlderThread = useCallback(async () => {
+    if (!openedId || loadingOlderThread) return;
+    const current = threadRef.current;
+    const before = current?.companion_id === openedId
+      ? current.client_sync?.older_cursor
+      : null;
+    if (!current || !before) return;
+    setLoadingOlderThread(true);
+    try {
+      const page = await getOlderCompanionThreadWindow(currentOrg.id, openedId, before);
+      if (openedIdRef.current !== openedId || threadRef.current !== current) return;
+      const byId = new Map<string, CompanionTranscriptEntry>();
+      for (const entry of [...page.entries, ...current.entries]) byId.set(entry.event_id, entry);
+      const combined = [...byId.values()].sort((left, right) =>
+        left.ordinal - right.ordinal
+        || (left.event_id < right.event_id ? -1 : left.event_id > right.event_id ? 1 : 0));
+      const mounted = combined.slice(0, 150);
+      const unseenIds = new Set(current.client_sync?.unseen_event_ids ?? []);
+      for (const entry of combined.slice(150)) unseenIds.add(entry.event_id);
+      const notifyByRun = new Map(
+        (current.client_sync?.notify_returns ?? []).map((item) => [item.run_id, item]),
+      );
+      for (const item of page.client_sync?.notify_returns ?? []) notifyByRun.set(item.run_id, item);
+      const mountedIds = new Set(mounted.map((entry) => entry.event_id));
+      const mountedRunIds = new Set(mounted.flatMap((entry) => entry.routine?.run_id
+        ? [entry.routine.run_id]
+        : []));
+      const next: SyncedCompanionThread = {
+        ...current,
+        ...page,
+        entries: mounted,
+        client_sync: {
+          cursor: current.client_sync?.cursor ?? page.client_sync?.cursor ?? "",
+          older_cursor: page.client_sync?.older_cursor ?? null,
+          notify_returns: [...notifyByRun.values()].filter((item) =>
+            mountedIds.has(item.main_entry_event_id) || mountedRunIds.has(item.run_id)),
+          unseen_new_count: unseenIds.size,
+          unseen_event_ids: [...unseenIds],
+        },
+      };
+      historyModeRef.current = true;
+      threadRef.current = next;
+      setThread(next);
+    } catch (cause) {
+      setThreadError(cause instanceof Error ? cause.message : "Earlier messages could not be loaded.");
+    } finally {
+      setLoadingOlderThread(false);
+    }
+  }, [currentOrg.id, loadingOlderThread, openedId]);
+
+  const showLatestThread = useCallback(async () => {
+    if (!openedId) return;
+    historyModeRef.current = false;
+    const requestId = ++threadRequestRef.current;
+    try {
+      const next = await getCompanionThread(currentOrg.id, openedId);
+      if (requestId !== threadRequestRef.current) return;
+      threadRef.current = next;
+      setThread(next);
+      setThreadError(null);
+    } catch (cause) {
+      if (requestId === threadRequestRef.current) {
+        setThreadError(cause instanceof Error ? cause.message : "Latest messages could not be loaded.");
+      }
+    }
+  }, [currentOrg.id, openedId]);
+
+  const acceptThreadProjection = useCallback((nextProjection: Thread) => {
+    // Mutation endpoints still return the compatibility full projection. Keep only its recent
+    // tail, then deliberately discard the old incremental/page cursors: their page boundary may
+    // no longer describe these 150 rows. The next poll performs one bounded window bootstrap and
+    // restores a matching v2 cursor without ever leaving the full transcript mounted.
+    historyModeRef.current = false;
+    setThread(() => {
+      const next: SyncedCompanionThread = {
+        ...nextProjection,
+        entries: nextProjection.entries.slice(-150),
+        client_sync: undefined,
+      };
+      threadRef.current = next;
+      return next;
+    });
+  }, []);
+
   // Whether the transcript on screen belongs to the open thread, readable from async completions.
   useEffect(() => {
     threadLoadedRef.current = thread?.companion_id === openedId;
+    threadRef.current = thread?.companion_id === openedId ? thread : null;
   }, [openedId, thread]);
 
   // Moving to another thread resets the reconnect count: its connection has not failed anything yet.
@@ -955,7 +1071,7 @@ export function CompanionsApp({
       if (openedIdRef.current !== companionId) return;
       setThreadError(null);
       threadRequestRef.current += 1;
-      setThread(accepted.thread);
+      acceptThreadProjection(accepted.thread);
       void refreshCompanion(companionId);
     } catch (cause) {
       if (openedIdRef.current === companionId) {
@@ -1274,7 +1390,7 @@ export function CompanionsApp({
             )}
             <CompanionThread
               companion={opened}
-              thread={thread}
+              thread={presentedThread}
               orgId={currentOrg.id}
               error={desktopError ?? threadError}
               reconnecting={threadPollFailures >= 2 && thread?.companion_id === openedId}
@@ -1309,12 +1425,18 @@ export function CompanionsApp({
               )}
               lastReadOrdinal={lastReadOrdinal}
               openedThroughOrdinal={openedThroughOrdinal}
+              hasOlderMessages={thread?.client_sync?.older_cursor !== null
+                && thread?.client_sync?.older_cursor !== undefined}
+              loadingOlderMessages={loadingOlderThread}
+              onLoadOlderMessages={loadOlderThread}
+              unseenNewMessages={thread?.client_sync?.unseen_new_count ?? 0}
+              onShowLatestMessages={showLatestThread}
               onBack={closeThread}
               onSend={onSend}
               onSettings={opened.access === "viewer"
                 ? null
                 : () => router.push(`/companions/${opened.id}/settings`)}
-              onThread={setThread}
+              onThread={acceptThreadProjection}
               onDesktop={() => void onDesktop()}
               onRetryInterrupted={onRetryInterrupted}
               onCancelInterrupted={onCancelInterrupted}

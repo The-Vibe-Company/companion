@@ -48,7 +48,7 @@ describe("companion skill package + row", () => {
     const pkg = await getCompanionSkillPackage();
     expect(pkg.key).toBe("companion");
     expect(pkg.checksum).toMatch(/^sha256:[0-9a-f]{64}$/);
-    expect(pkg.version).toBe("1.102.0");
+    expect(pkg.version).toBe("1.103.0");
     expect(pkg.sizeBytes).toBeGreaterThan(0);
     expect(pkg.integrity.packageChecksum).toBe(pkg.checksum);
     expect(pkg.integrity.files["SKILL.md"]).toMatch(/^sha256:[0-9a-f]{64}$/);
@@ -134,12 +134,18 @@ describe("companion skill package + row", () => {
     const manifest = JSON.parse(await readFile(join(companionSkillDir(), "companion.json"), "utf8")) as {
       metadata?: { changelog?: Array<{ version?: string; changes?: string[] }> };
     };
-    const providerSelectionChanges = manifest.metadata?.changelog
+    const runtimeRecoveryChanges = manifest.metadata?.changelog
+      ?.find((entry) => entry.version === "1.102.0")
+      ?.changes?.join("\n") ?? "";
+    expect(runtimeRecoveryChanges).toContain("protocol-5 automatic Pi recovery");
+    expect(runtimeRecoveryChanges).toContain("bounded thread-window bootstrap");
+    expect(runtimeRecoveryChanges).toContain("routine recovery remains lane-local");
+    const triggerAccountChanges = manifest.metadata?.changelog
       ?.find((entry) => entry.version === "1.101.0")
       ?.changes?.join("\n") ?? "";
-    expect(providerSelectionChanges).toContain("provider-account UUIDs");
-    expect(providerSelectionChanges).toContain("approving member's sole eligible connection");
-    expect(providerSelectionChanges).toContain("fail-closed selection");
+    expect(triggerAccountChanges).toContain("provider-account UUIDs");
+    expect(triggerAccountChanges).toContain("approving member's sole eligible connection");
+    expect(triggerAccountChanges).toContain("fail-closed selection");
     const slackChanges = manifest.metadata?.changelog
       ?.find((entry) => entry.version === "1.92.0")
       ?.changes?.join("\n") ?? "";

@@ -75,6 +75,10 @@ const coreMocks = {
   getCompanionTriggerForWebhook: vi.fn<typeof coreModule.getCompanionTriggerForWebhook>(),
   fireCompanionTrigger: vi.fn<typeof coreModule.fireCompanionTrigger>(),
   failCompanionTriggerFire: vi.fn<typeof coreModule.failCompanionTriggerFire>(),
+  readCompanionThreadChangesV2: vi.fn<typeof coreModule.readCompanionThreadChangesV2>(),
+  readCompanionThreadProjectionSequenceV2:
+    vi.fn<typeof coreModule.readCompanionThreadProjectionSequenceV2>(),
+  readCompanionThreadWindowV2: vi.fn<typeof coreModule.readCompanionThreadWindowV2>(),
   readCompanionThreadV2: vi.fn<typeof coreModule.readCompanionThreadV2>(),
   syncCompanionThreadV2: vi.fn<typeof coreModule.syncCompanionThreadV2>(),
   retryCompanionTurnV2: vi.fn<typeof coreModule.retryCompanionTurnV2>(),
@@ -267,6 +271,8 @@ const thread = {
   last_message_at: NOW,
   last_read_ordinal: null,
 };
+const { entries: omittedThreadEntries, ...threadMetadata } = thread;
+void omittedThreadEntries;
 
 const projectedThread = {
   ...thread,
@@ -400,6 +406,33 @@ describe("Companions Runtime v2 API", () => {
     coreMocks.getCompanionV2.mockResolvedValue(companion);
     coreMocks.readCompanionThreadV2.mockResolvedValue(thread);
     coreMocks.syncCompanionThreadV2.mockResolvedValue(thread);
+    coreMocks.readCompanionThreadProjectionSequenceV2.mockResolvedValue(0n);
+    coreMocks.readCompanionThreadWindowV2.mockResolvedValue({
+      thread: threadMetadata,
+      entries: [],
+      older_cursor: null,
+      sync_cursor: coreModule.buildCompanionThreadSequenceCursor({
+        orgId: ORG_ID,
+        actorId: owner.id,
+        companionId: COMPANION_ID,
+        sequence: 0n,
+      }),
+      notify_returns: [],
+    });
+    coreMocks.readCompanionThreadChangesV2.mockResolvedValue({
+      cursor: coreModule.buildCompanionThreadSequenceCursor({
+        orgId: ORG_ID,
+        actorId: owner.id,
+        companionId: COMPANION_ID,
+        sequence: 0n,
+      }),
+      reset_entries: false,
+      changed_entries: [],
+      deleted_event_ids: [],
+      thread: threadMetadata,
+      has_more: false,
+      notify_returns: [],
+    });
     coreMocks.createCompanionV2.mockResolvedValue(companion);
     coreMocks.duplicateCompanionV2.mockResolvedValue(companion);
     coreMocks.updateCompanionV2.mockResolvedValue(companion);
@@ -947,6 +980,101 @@ describe("Companions Runtime v2 API", () => {
     await expect(response.json()).resolves.toEqual({
       thread: { ...thread, transcription_available: false },
     });
+  });
+
+  it("serves recent and historical thread windows from bounded cursor-scoped reads", async () => {
+    const syncCursor = coreModule.buildCompanionThreadSequenceCursor({
+      orgId: ORG_ID,
+      actorId: owner.id,
+      companionId: COMPANION_ID,
+      sequence: 42n,
+    });
+    const olderCursor = coreModule.buildCompanionThreadWindowCursor({
+      orgId: ORG_ID,
+      actorId: owner.id,
+      companionId: COMPANION_ID,
+      beforeOrdinal: 1_950,
+    });
+    const { entries: omittedViewerEntries, ...viewerMetadata } = threadWithInterruptedTurn("viewer");
+    void omittedViewerEntries;
+    coreMocks.readCompanionThreadWindowV2.mockResolvedValue({
+      thread: viewerMetadata,
+      entries: [threadEntry("event:recent", 1_999, "recent")],
+      older_cursor: olderCursor,
+      sync_cursor: syncCursor,
+      notify_returns: [],
+    });
+    const app = appWithRoutes();
+
+    const recentResponse = await app.request(
+      `/v1/companions/${COMPANION_ID}/thread-window?limit=50`,
+    );
+    expect(recentResponse.status).toBe(200);
+    // SAFETY: This route fixture controls the bounded window response decoded below.
+    const recent = await recentResponse.json() as {
+      thread: Omit<CompanionThread, "entries">;
+      entries: Array<{ event_id: string }>;
+      older_cursor: string | null;
+      sync_cursor: string;
+    };
+    expect(recent.entries.map((entry) => entry.event_id)).toEqual(["event:recent"]);
+    expect(recent.older_cursor).toBe(olderCursor);
+    expect(recent.sync_cursor).toBe(syncCursor);
+    expect(recent.thread.interrupted_turn?.error).toEqual({
+      code: "runtime_unavailable",
+      message: "Companion runtime needs attention.",
+      action: "none",
+    });
+    expect(coreMocks.readCompanionThreadWindowV2).toHaveBeenLastCalledWith(
+      expect.objectContaining({ beforeOrdinal: null, limit: 50 }),
+    );
+
+    const historyResponse = await app.request(
+      `/v1/companions/${COMPANION_ID}/thread-window?before=${encodeURIComponent(olderCursor)}&limit=50`,
+    );
+    expect(historyResponse.status).toBe(200);
+    expect(coreMocks.readCompanionThreadWindowV2).toHaveBeenLastCalledWith(
+      expect.objectContaining({ beforeOrdinal: 1_950, limit: 50 }),
+    );
+    expect(coreMocks.readCompanionThreadV2).not.toHaveBeenCalled();
+  });
+
+  it("uses a v2 sequence cursor for one bounded change page without reading full history", async () => {
+    const cursor = coreModule.buildCompanionThreadSequenceCursor({
+      orgId: ORG_ID,
+      actorId: owner.id,
+      companionId: COMPANION_ID,
+      sequence: 7n,
+    });
+    const nextCursor = coreModule.buildCompanionThreadSequenceCursor({
+      orgId: ORG_ID,
+      actorId: owner.id,
+      companionId: COMPANION_ID,
+      sequence: 8n,
+    });
+    coreMocks.readCompanionThreadChangesV2.mockResolvedValue({
+      cursor: nextCursor,
+      reset_entries: false,
+      changed_entries: [threadEntry("event:changed", 8, "changed")],
+      deleted_event_ids: [],
+      thread: threadMetadata,
+      has_more: true,
+      notify_returns: [],
+    });
+
+    const response = await appWithRoutes().request(
+      `/v1/companions/${COMPANION_ID}/thread-delta?cursor=${encodeURIComponent(cursor)}`,
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      cursor: nextCursor,
+      has_more: true,
+      changed_entries: [{ event_id: "event:changed" }],
+    });
+    expect(coreMocks.readCompanionThreadChangesV2).toHaveBeenCalledWith(
+      expect.objectContaining({ afterSequence: 7n }),
+    );
+    expect(coreMocks.syncCompanionThreadV2).not.toHaveBeenCalled();
   });
 
   it("serves thread deltas with current metadata and deterministic entry ordering", async () => {

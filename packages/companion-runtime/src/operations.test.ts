@@ -695,6 +695,38 @@ describe("runtime lifecycle operations", () => {
     expect(effects).toContain("restart-pi");
   });
 
+  it("terminates the exact isolated routine before a full Box restart", async () => {
+    const invocationId = `routine:${TURN_ID}:dispatch-v2:captured`;
+    const claim = operationClaim({ operationKind: "restart_box", turnId: TURN_ID });
+    const store = new MemoryRuntimeStore({
+      authorization: operationAuthorization(claim, {
+        boxId: BOX_ID,
+        boxState: "ready",
+        piState: "idle",
+        piInvocationId: "old-main-invocation",
+        commandPiInvocationId: invocationId,
+      }),
+    });
+    const ports = fakePorts(store);
+    const effects: string[] = [];
+    ports.pi.routineSession!.terminate = async (input) => {
+      effects.push(`terminate:${input.runId}:${input.expectedInvocationId}`);
+    };
+    ports.pi.stopPiDaemon = async () => { effects.push("stop-main-pi"); };
+    ports.box.stopExistingBox = async () => { effects.push("stop-box"); };
+    const states: Array<"archived" | "ready"> = ["archived", "ready"];
+    ports.box.getStatus = async () => ({ state: states.shift() ?? "ready" });
+    ports.box.resumeExistingBox = async () => { effects.push("resume-box"); };
+    ports.pi.restartPiDaemon = async () => ({ state: "idle", invocationId: PI_INVOCATION_ID });
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(effects[0]).toBe(`terminate:${TURN_ID}:${invocationId}`);
+    expect(effects.indexOf("stop-main-pi")).toBeGreaterThan(0);
+    expect(effects.indexOf("stop-box")).toBeGreaterThan(effects.indexOf("stop-main-pi"));
+  });
+
   it("waits for a different idle Pi invocation after an explicit Pi restart", async () => {
     const claim = operationClaim({ operationKind: "restart_pi" });
     const store = new MemoryRuntimeStore({
@@ -769,6 +801,58 @@ describe("runtime lifecycle operations", () => {
     expect(ports.routineTerminates).toEqual([TURN_ID]);
     expect(mainRestarts).toBe(0);
     expect(store.authorization.piInvocationId).toBe("main-pi-invocation");
+  });
+
+  it("treats an absent Box as complete cleanup for an interrupted occurrence", async () => {
+    const claim = operationClaim({ operationKind: "restart_pi", turnId: TURN_ID });
+    const store = new MemoryRuntimeStore({
+      authorization: operationAuthorization(claim, {
+        boxId: null,
+        boxState: "absent",
+        piState: "absent",
+        piInvocationId: null,
+      }),
+    });
+    const ports = fakePorts(store);
+    let piCalls = 0;
+    ports.pi.stopPiDaemon = async () => { piCalls += 1; };
+    ports.pi.restartPiDaemon = async () => {
+      piCalls += 1;
+      return { state: "idle", invocationId: PI_INVOCATION_ID };
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(piCalls).toBe(0);
+    expect(store.authorization.workCheckpoint).toBe("pi_ready");
+  });
+
+  it("does not treat an errored Box as proof that the interrupted Pi invocation is gone", async () => {
+    const claim = operationClaim({ operationKind: "restart_pi", turnId: TURN_ID });
+    const store = new MemoryRuntimeStore({
+      authorization: operationAuthorization(claim, {
+        boxId: BOX_ID,
+        boxState: "error",
+        piState: "running",
+        piInvocationId: "interrupted-pi-invocation",
+      }),
+    });
+    const ports = fakePorts(store);
+    let stops = 0;
+    let restarts = 0;
+    ports.pi.stopPiDaemon = async () => { stops += 1; };
+    ports.pi.restartPiDaemon = async () => {
+      restarts += 1;
+      return { state: "idle", invocationId: PI_INVOCATION_ID };
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect({ stops, restarts }).toEqual({ stops: 1, restarts: 1 });
+    expect(store.authorization.piInvocationId).toBe(PI_INVOCATION_ID);
+    expect(store.authorization.workCheckpoint).toBe("pi_ready");
   });
 
   it("retries a legacy routine through the shared main Pi process", async () => {

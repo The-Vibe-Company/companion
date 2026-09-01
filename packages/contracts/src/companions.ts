@@ -562,6 +562,13 @@ export const COMPANION_HUB_TOKEN_SCOPES: readonly TokenScope[] = [
   "database:write",
 ];
 
+export const companionRuntimeRecoverySchema = z.object({
+  turn_id: z.string().uuid(),
+  lane: z.enum(["main", "routine"]),
+  status: z.enum(["pending", "running"]),
+}).strict();
+export type CompanionRuntimeRecovery = z.infer<typeof companionRuntimeRecoverySchema>;
+
 export const companionSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -643,6 +650,8 @@ export const companionSchema = z.object({
     last_observed_at: z.string().datetime().nullable(),
     last_started_at: z.string().datetime().nullable(),
     last_stopped_at: z.string().datetime().nullable(),
+    /** Internal protocol-5 Pi cleanup; optional during rolling deploys and never a lifecycle error. */
+    recovery: companionRuntimeRecoverySchema.nullable().optional(),
     /** Latest durable lifecycle intent, sufficient to restore operation UI after navigation/reload. */
     latest_operation: companionLatestOperationSchema.nullable(),
   }),
@@ -1961,6 +1970,8 @@ function validateCompanionTranscriptEntry(
  * second disclosure that each client would have to interpret recursively.
  */
 const companionRoutineNotifyGroupSchema = z.object({
+  /** New clients open the routine's paginated history instead of embedding its old updates. */
+  routine_id: z.string().uuid().optional(),
   routine_name: companionRoutineNameSchema,
   total_count: z.number().int().min(2),
   hidden_entries: z.array(
@@ -2066,6 +2077,36 @@ export type CompanionRosterSyncResponse = z.infer<typeof companionRosterSyncResp
 export const companionThreadMetadataSchema = companionThreadSchema.omit({ entries: true });
 export type CompanionThreadMetadata = z.infer<typeof companionThreadMetadataSchema>;
 
+export const COMPANION_THREAD_WINDOW_DEFAULT_ENTRIES = 50;
+export const COMPANION_THREAD_WINDOW_MAX_ENTRIES = 100;
+export const COMPANION_THREAD_WINDOW_MAX_BYTES = 1024 * 1024;
+export const COMPANION_THREAD_DELTA_MAX_CHANGES = 200;
+
+export const companionRoutineNotifyReturnSchema = z.object({
+  run_id: z.string().uuid(),
+  routine_id: z.string().uuid(),
+  routine_name: companionRoutineNameSchema,
+  main_entry_event_id: z.string().min(1).max(200),
+}).strict();
+export type CompanionRoutineNotifyReturn = z.infer<typeof companionRoutineNotifyReturnSchema>;
+
+export const companionThreadWindowQuerySchema = z.object({
+  before: companionSyncCursorSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(COMPANION_THREAD_WINDOW_MAX_ENTRIES)
+    .default(COMPANION_THREAD_WINDOW_DEFAULT_ENTRIES),
+}).strict();
+export type CompanionThreadWindowQuery = z.infer<typeof companionThreadWindowQuerySchema>;
+
+export const companionThreadWindowSchema = z.object({
+  thread: companionThreadMetadataSchema,
+  entries: z.array(companionTranscriptEntrySchema)
+    .max(COMPANION_THREAD_WINDOW_MAX_ENTRIES),
+  older_cursor: companionSyncCursorSchema.nullable(),
+  sync_cursor: companionSyncCursorSchema,
+  notify_returns: z.array(companionRoutineNotifyReturnSchema),
+}).strict();
+export type CompanionThreadWindow = z.infer<typeof companionThreadWindowSchema>;
+
 export const companionThreadDeltaResponseSchema = z.object({
   cursor: companionSyncCursorSchema,
   /** True when the bounded cursor detected an edit/delete outside its retained digest tail. */
@@ -2073,6 +2114,10 @@ export const companionThreadDeltaResponseSchema = z.object({
   changed_entries: z.array(companionTranscriptEntrySchema),
   deleted_event_ids: z.array(z.string().min(1).max(200)),
   thread: companionThreadMetadataSchema,
+  /** Optional during rolling deploys; true means the client should drain another page now. */
+  has_more: z.boolean().optional(),
+  /** Bounded grouping evidence for routine notifications changed in this page. */
+  notify_returns: z.array(companionRoutineNotifyReturnSchema).optional(),
 }).strict();
 export type CompanionThreadDeltaResponse = z.infer<typeof companionThreadDeltaResponseSchema>;
 

@@ -57,6 +57,7 @@ import {
   cancelCompanionTurnV2,
   buildCompanionRosterSync,
   buildCompanionThreadDelta,
+  buildCompanionThreadSequenceCursor,
   validateCompanionSyncCursor,
   classifyCompanionTriggerFireError,
   composeTriggerPrompt,
@@ -85,6 +86,11 @@ import {
   listCompanionTriggerRunsV2,
   listCompanionTriggersV2,
   readCompanionAttachmentV2,
+  readCompanionThreadChangesV2,
+  readCompanionThreadProjectionSequenceV2,
+  readCompanionThreadSequenceCursor,
+  readCompanionThreadWindowCursor,
+  readCompanionThreadWindowV2,
   readCompanionThreadV2,
   syncCompanionThreadV2,
   retryCompanionTurnV2,
@@ -146,6 +152,8 @@ import {
   type CompanionTrigger,
   type CompanionRuntimeSafeError,
   type CompanionThread,
+  type CompanionThreadMetadata,
+  type CompanionThreadWindow,
   type CompanionTurn,
   type SendCompanionMessageInput,
   companionTranscriptionSchema,
@@ -182,6 +190,9 @@ import {
   setCompanionWorkspaceShareInputSchema,
   setDefaultCompanionProviderInputSchema,
   companionSyncQuerySchema,
+  companionThreadDeltaResponseSchema,
+  companionThreadWindowQuerySchema,
+  companionThreadWindowSchema,
   startCompanionRuntimeInputSchema,
   saveCompanionPluginInputSchema,
   updateCompanionInputSchema,
@@ -215,6 +226,7 @@ import {
 import { mintCompanionDesktop, RuntimeDesktopClientError } from "./runtimeDesktopClient";
 import { createCompanionTranscriptionDiagnostics } from "./companionTranscriptionDiagnostics";
 import { executeCompanionControlMcp } from "./companionControlMcp";
+import { recordCompanionThreadSyncMetrics } from "./companionThreadSyncMetrics";
 
 const companionIdSchema = z.string().uuid();
 
@@ -289,6 +301,9 @@ function defaultCompanionRouteDependencies() {
     fireCompanionTrigger,
     failCompanionTriggerFire,
     readCompanionThreadV2,
+    readCompanionThreadChangesV2,
+    readCompanionThreadProjectionSequenceV2,
+    readCompanionThreadWindowV2,
     syncCompanionThreadV2,
     retryCompanionTurnV2,
     setCompanionProviderV2,
@@ -330,35 +345,55 @@ const VIEWER_RUNTIME_ERROR: CompanionRuntimeSafeError = {
  * the Owner/Editor operating boundary. Keep the same turn shape so polling remains stable while
  * replacing both the turn-level and attempt-level error with one non-actionable projection.
  */
+function projectTurnForHttp(
+  turn: CompanionTurn | null,
+  viewer: boolean,
+): CompanionTurn | null {
+  if (!viewer || turn === null) return turn;
+  return {
+    ...turn,
+    error: turn.error === null ? null : { ...VIEWER_RUNTIME_ERROR },
+    latest_attempt: turn.latest_attempt === null
+      ? null
+      : {
+          ...turn.latest_attempt,
+          error: turn.latest_attempt.error === null
+            ? null
+            : { ...VIEWER_RUNTIME_ERROR },
+        },
+  };
+}
+
+function projectThreadMetadataForHttp(
+  thread: CompanionThreadMetadata,
+  transcriptionAvailable: boolean,
+): CompanionThreadMetadata {
+  const viewer = thread.access === "viewer";
+  return {
+    ...thread,
+    transcription_available: transcriptionAvailable,
+    active_turn: projectTurnForHttp(thread.active_turn, viewer),
+    interrupted_turn: projectTurnForHttp(thread.interrupted_turn, viewer),
+  };
+}
+
 function projectThreadForHttp(
   thread: CompanionThread,
   transcriptionAvailable: boolean,
 ): CompanionThread {
-  const projectedThread = {
-    ...thread,
-    transcription_available: transcriptionAvailable,
-  };
-  if (thread.access !== "viewer") return projectedThread;
-
-  const projectTurn = (turn: CompanionTurn | null): CompanionTurn | null => turn === null
-    ? null
-    : {
-        ...turn,
-        error: turn.error === null ? null : { ...VIEWER_RUNTIME_ERROR },
-        latest_attempt: turn.latest_attempt === null
-          ? null
-          : {
-              ...turn.latest_attempt,
-              error: turn.latest_attempt.error === null
-                ? null
-                : { ...VIEWER_RUNTIME_ERROR },
-            },
-      };
-
   return {
-    ...projectedThread,
-    active_turn: projectTurn(thread.active_turn),
-    interrupted_turn: projectTurn(thread.interrupted_turn),
+    ...projectThreadMetadataForHttp(thread, transcriptionAvailable),
+    entries: thread.entries,
+  };
+}
+
+function projectThreadWindowForHttp(
+  window: CompanionThreadWindow,
+  transcriptionAvailable: boolean,
+): CompanionThreadWindow {
+  return {
+    ...window,
+    thread: projectThreadMetadataForHttp(window.thread, transcriptionAvailable),
   };
 }
 
@@ -778,6 +813,9 @@ export function registerCompanionRoutes(
     disconnectCompanionTriggerProviderAccount,
     ensureOAuthCompanionTriggerProviderAccount,
     saveCompanionTriggerProviderAccount,
+    readCompanionThreadChangesV2,
+    readCompanionThreadProjectionSequenceV2,
+    readCompanionThreadWindowV2,
     readCompanionThreadV2,
     syncCompanionThreadV2,
     retryCompanionTurnV2,
@@ -2385,18 +2423,103 @@ export function registerCompanionRoutes(
     }
   });
 
+  app.get("/v1/companions/:id/thread-window", async (c) => {
+    const startedAt = performance.now();
+    try {
+      const companionId = companionIdSchema.parse(c.req.param("id"));
+      const query = companionThreadWindowQuerySchema.parse({
+        before: c.req.query("before"),
+        limit: c.req.query("limit"),
+      });
+      const window = await tenant(c, async ({ actor, orgId, database }) => {
+        const beforeOrdinal = query.before
+          ? readCompanionThreadWindowCursor({
+              cursor: query.before,
+              orgId,
+              actorId: actor.id,
+              companionId,
+            })
+          : null;
+        return projectThreadWindowForHttp(
+          await readCompanionThreadWindowV2({
+            actor,
+            orgId,
+            companionId,
+            beforeOrdinal,
+            limit: query.limit,
+            database,
+          }),
+          transcriptionAvailable,
+        );
+      });
+      c.header("Cache-Control", "private, no-store");
+      const payload = companionThreadWindowSchema.parse(window);
+      recordCompanionThreadSyncMetrics({
+        kind: "window",
+        durationMs: performance.now() - startedAt,
+        payload,
+      });
+      return c.json(payload);
+    } catch (error) {
+      return routeError(c, error);
+    }
+  });
+
   app.get("/v1/companions/:id/thread-delta", async (c) => {
+    const startedAt = performance.now();
     try {
       const companionId = companionIdSchema.parse(c.req.param("id"));
       const query = companionSyncQuerySchema.parse({ cursor: c.req.query("cursor") });
       const delta = await tenant(c, async ({ actor, orgId, database }) => {
         if (query.cursor) {
-          validateCompanionSyncCursor({
+          const sequence = readCompanionThreadSequenceCursor({
             cursor: query.cursor,
-            kind: "thread",
             orgId,
             actorId: actor.id,
             companionId,
+          });
+          if (sequence !== null) {
+            const incremental = await readCompanionThreadChangesV2({
+              actor,
+              orgId,
+              companionId,
+              afterSequence: sequence,
+              database,
+            });
+            return companionThreadDeltaResponseSchema.parse({
+              ...incremental,
+              thread: projectThreadMetadataForHttp(
+                incremental.thread,
+                transcriptionAvailable,
+              ),
+            });
+          }
+
+          // A v1 cursor receives exactly one legacy comparison. Capture the new sequence first:
+          // writes racing the full projection are therefore picked up by the next v2 delta.
+          const baseline = await readCompanionThreadProjectionSequenceV2({
+            actor,
+            orgId,
+            companionId,
+            database,
+          });
+          const thread = await syncCompanionThreadV2({ actor, orgId, companionId, database });
+          const legacy = buildCompanionThreadDelta({
+            orgId,
+            actorId: actor.id,
+            companionId,
+            thread: projectThreadForHttp(thread, transcriptionAvailable),
+            cursor: query.cursor,
+          });
+          return companionThreadDeltaResponseSchema.parse({
+            ...legacy,
+            cursor: buildCompanionThreadSequenceCursor({
+              orgId,
+              actorId: actor.id,
+              companionId,
+              sequence: baseline,
+            }),
+            has_more: false,
           });
         }
         const thread = await syncCompanionThreadV2({ actor, orgId, companionId, database });
@@ -2409,6 +2532,11 @@ export function registerCompanionRoutes(
         });
       });
       c.header("Cache-Control", "private, no-store");
+      recordCompanionThreadSyncMetrics({
+        kind: "delta",
+        durationMs: performance.now() - startedAt,
+        payload: delta,
+      });
       return c.json(delta);
     } catch (error) {
       return routeError(c, error);

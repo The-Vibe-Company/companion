@@ -1128,8 +1128,59 @@ public actor APIClient {
     }
 
     public func thread(companionID: String) async throws -> CompanionThread {
-        let id = companionID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? companionID
-        return try await decode(ThreadEnvelope.self, path: "/v1/companions/\(id)/thread").thread
+        var response = try await companionThreadWindow(companionID: companionID)
+        var metadata = response.value.thread
+        var entriesByID = Dictionary(
+            uniqueKeysWithValues: response.value.entries.map { ($0.eventID, $0) }
+        )
+        var notifyByRun = Dictionary(
+            uniqueKeysWithValues: response.value.notifyReturns.map { ($0.runID, $0) }
+        )
+        var before = response.value.olderCursor
+        var seenCursors: Set<String> = []
+        while let cursor = before {
+            guard seenCursors.insert(cursor).inserted else {
+                throw APIError(
+                    status: 500,
+                    code: "invalid_response",
+                    message: "The Companion history cursor did not advance."
+                )
+            }
+            response = try await companionThreadWindow(companionID: companionID, before: cursor)
+            metadata = response.value.thread
+            response.value.entries.forEach { entriesByID[$0.eventID] = $0 }
+            response.value.notifyReturns.forEach { notifyByRun[$0.runID] = $0 }
+            before = response.value.olderCursor
+        }
+        let ordered = entriesByID.values.sorted {
+            $0.ordinal == $1.ordinal ? $0.eventID < $1.eventID : $0.ordinal < $1.ordinal
+        }
+        let notifyReturns = companionMergedRoutineNotifyReturns(
+            existing: [],
+            changed: Array(notifyByRun.values),
+            entries: ordered
+        )
+        return metadata.thread(entries: companionCollapsedRoutineNotifyEntries(
+            ordered,
+            notifyReturns: notifyReturns
+        ))
+    }
+
+    public func companionThreadWindow(
+        companionID: String,
+        before: String? = nil,
+        limit: Int = 50
+    ) async throws -> CompanionSyncMeasurement<CompanionThreadWindow> {
+        let id = Self.encodedPathComponent(companionID)
+        var components = URLComponents()
+        components.path = "/v1/companions/\(id)/thread-window"
+        var queryItems = [URLQueryItem(name: "limit", value: String(min(max(limit, 1), 100)))]
+        if let before { queryItems.append(URLQueryItem(name: "before", value: before)) }
+        components.queryItems = queryItems
+        return try await decodeMeasured(
+            CompanionThreadWindow.self,
+            path: components.string ?? "/v1/companions/\(id)/thread-window?limit=50"
+        )
     }
 
     public func synchronizeCompanionThread(

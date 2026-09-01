@@ -106,7 +106,7 @@ Runtime state is explicit and durable:
   invocation id, and applied configuration revision.
 - `companion_turns` owns `client_message_id`, initiating actor/surface, queue state, inactivity and
   absolute deadlines, and one stable expurgated error.
-- `companion_turn_attempts` owns explicit retry identity, execution lane (`main` or `routine`), Pi
+- `companion_turn_attempts` owns execution lane (`main` or `routine`), historical retry identity, Pi
   invocation, dispatch/acknowledgement, correlated event cursor, and outcome.
 - `companion_operations` owns start, stop, Pi restart, Box restart, settings apply, and delete intent
   plus checkpoints. Multiple operations may wait; one may run per Companion.
@@ -148,9 +148,9 @@ sets `mutable-content`; the native extension renders that closed catalog locally
 communication avatar, with no control-plane avatar endpoint or network fetch.
 
 One `(companion_id, client_message_id)` produces exactly one turn. The transaction that stores the
-user message also stores that turn. A duplicate POST resolves to the same row. A retry names a new
-`retry_id` and creates a new attempt on the same turn; it never reuses `client_message_id` as an
-execution identity.
+user message also stores that turn. A duplicate POST resolves to the same row. An ambiguous
+occurrence is never dispatched again; the compatibility `retry_id` request resolves to the same
+internal recovery operation rather than creating an attempt.
 
 Turn states are:
 
@@ -161,8 +161,10 @@ queued → starting → dispatching → running ↔ needs_input
 
 Only one attempt is active per execution lane. One ordinary main attempt and one isolated routine
 attempt may run concurrently; later turns remain ordered within their lane. An interrupted turn
-blocks only its lane until Owner/Editor Retry or Cancel. Settings revisions accepted during a turn
-apply after the routine lane is quiescent and before the next main turn. On a warm Box, configuration is published as
+creates one idempotent lane-local `restart_pi` recovery. Runtime terminates the exact invocation,
+marks the occurrence `auto_abandoned`, and releases the lane without replaying its prompt; cleanup
+retries with a maximum five-minute backoff. Settings revisions accepted during a turn apply after
+the routine lane is quiescent and before the next main turn. On a warm Box, configuration is published as
 applied only after runtime stages the exact snapshot, restarts Pi, and observes a different idle Pi
 invocation; takeover repeats those idempotent steps if their final observation was lost.
 
@@ -246,8 +248,9 @@ refuses a changed instance before network I/O while the broker refuses a stale i
 any Pi call. This is resolution of a proven broker fact, not replay of an
 ambiguous external effect. If no matching
 ledger fact can be recovered, the attempt becomes `interrupted`, no exec fallback or new prompt is
-sent, and later turns remain blocked. Retry warns that an earlier external effect may have succeeded;
-Cancel explicitly accepts that uncertainty and releases the queue.
+sent, and one internal recovery terminates the exact invocation. The UI warns that an earlier
+external effect may have succeeded; after cleanup, `auto_abandoned` releases later work without
+replay.
 
 Immediately before dispatch, runtime adds one fixed-format metadata block to the newest user
 message: the attempt's durable `started_at` rendered with an offset plus the initiating member's
@@ -303,9 +306,10 @@ and reconciles any already-claimed cold-start derivative only after its main lea
 expired, so an orphan cannot retain lifecycle priority or the one-running-operation slot.
 
 Shared Box mutation remains single-owner: settings and lifecycle work other than permanent delete
-wait for the routine lane to be quiescent, and an interrupted routine must be retried or cancelled
-before those operations proceed. Permanent delete atomically fences and settles the routine lane,
-then terminates its exact run-scoped Pi invocation before provider deletion. Routine context is
+wait for the routine lane to be quiescent. An interrupted routine is cleaned by its own recovery
+lane and does not block the main chat; an explicit Full Box restart or permanent delete may preempt
+and settle the captured routine occurrence. Runtime terminates its exact run-scoped Pi invocation
+before the provider lifecycle call. Routine context is
 pinned and read-only; run-local memory cannot write parent memory. A
 `relay` return enters the ordinary main queue and does not inherit routine-lane ordering.
 
@@ -393,17 +397,14 @@ Native iOS treats authorized PostgreSQL projections as a local-first read model.
 backup-excluded SQLite database is scoped by organization plus member and stores the latest roster
 projection and a bounded transcript tail per Companion. Cached projections may render offline but
 never authorize a mutation: cached thread capabilities are forced read-only until a fresh response.
-`GET /v1/companions/sync` and `GET /v1/companions/:id/thread-delta` accept opaque, versioned,
-scope-bound cursors. The API still performs the ordinary authorized PostgreSQL reads, then returns
-only changed projections, deletion tombstones, current roster ordering, and current thread metadata;
-it never contacts Box or Pi and background/prefetch reads do not advance the member's unread
-watermark. Opening the visible thread clears unread through the ordinary member-state capability.
-Thread cursors retain six exact tail digests plus one historical-prefix digest, keeping the encoded
-query comfortably below intermediary request-line limits. An exceptional edit outside that tail
-returns an explicit replacement projection. Missing cursors produce the initial complete
-projection, while malformed or cross-scope cursors fail closed. Native iOS omits oversized legacy
-thread cursors and retries proxy `414`/`431` rejection once without a cursor, yielding that complete
-replacement projection instead of a permanent refresh failure.
+`GET /v1/companions/sync`, `GET /v1/companions/:id/thread-window`, and
+`GET /v1/companions/:id/thread-delta` accept opaque, versioned, scope-bound cursors. Opening a thread
+returns at most the newest 50 entries and 1 MiB; older pages use the same bounds and do not advance
+the unread watermark. A per-thread monotonic projection sequence lets each delta query only the at
+most 200 changed entries after its cursor, including deletion tombstones, and `has_more` makes new
+clients drain a burst immediately. The web mounts at most three pages. The API never contacts Box
+or Pi. One legacy digest comparison upgrades an old cursor to sequence v2; malformed and cross-scope
+cursors fail closed.
 Thread entry identity is `event_id`: if an authorized historical projection contains tied ordinals,
 the delta preserves every distinct event and orders the tie by event id instead of rejecting the
 refresh. Native iOS also retries a server `400` cursor rejection once without the cursor.
@@ -543,11 +544,10 @@ proposals (`kind: config` plus a bounded `proposal` object) dispatch to
 `companion_api_answer_config_decision` after the route validates `model_id` against the provider
 catalog. The web thread shows a dedicated config card that names the Companion as proposer, lists
 diffs from already-loaded skill/plugin/model names, and keeps the card pending when apply fails.
-New explicit recovery actions are:
-
-- `POST /v1/companions/:id/turns/:turnId/retry` with a unique `retry_id`;
-- `POST /v1/companions/:id/turns/:turnId/cancel` to stop an active turn, dequeue a follow-up, or
-  release an interrupted turn.
+Recovery is automatic. `POST /v1/companions/:id/turns/:turnId/retry` remains wire-compatible but
+only observes or re-enqueues the turn's idempotent internal recovery; it never replays the prompt.
+`POST /v1/companions/:id/turns/:turnId/cancel` remains the explicit stop/dequeue path for active or
+queued work.
 
 Native iOS composer dictation uses
 `POST /v1/companions/:id/transcriptions`. The route requires current Owner/Editor access before
@@ -612,9 +612,9 @@ The web and native Apple routine rows expose run history, and a routine-origin t
 routine-history APIs, list newest runs first, distinguish notify, relay, silent, pending, and error
 outcomes, and page the private transcript forward by ordinal. A deleted routine remains directly
 readable from its marker because the run id and identity snapshot are durable. An interrupted run
-keeps the explicit Retry/Cancel safety boundary in that history surface so an Owner/Editor can
-recycle only the isolated routine session or cancel it to release blocked shared lifecycle work;
-Viewer sees no mutation controls. Web presents a
+shows its automatic recovery status while runtime terminates only that isolated invocation; it does
+not expose a replay control or block main chat. Viewer sees the same expurgated read-only status.
+Web presents a
 responsive right-side drawer that traps focus, uses a scrim and Esc dismissal, and takes the full
 chat stage on a phone; iOS uses native navigation from Connected Resources and a modal navigation
 stack from the marker. Neither client contacts or wakes Box.

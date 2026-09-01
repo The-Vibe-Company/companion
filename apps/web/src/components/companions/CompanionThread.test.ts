@@ -406,17 +406,19 @@ describe("CompanionThread", () => {
     expect(markup).not.toContain(">Wake<");
   });
 
-  it("makes an interrupted turn explicit and actionable for a runner", () => {
+  it("makes automatic recovery explicit without asking a runner to unblock it", () => {
     const markup = render({ thread: thread({ interrupted_turn: interruptedTurn() }) });
 
     expect(markup).toContain("Turn interrupted");
     expect(markup).toContain("Pi acknowledgement was not confirmed.");
     expect(markup).toContain("External actions may already have succeeded.");
-    expect(markup).toContain("Retry turn");
-    expect(markup).toContain("Cancel turn");
+    expect(markup).toContain("Pi cleanup is queued automatically");
+    expect(markup).toContain("This occurrence will not be replayed");
+    expect(markup).not.toContain("Retry turn");
+    expect(markup).not.toContain("Cancel turn");
   });
 
-  it("keeps an interrupted turn read-only for a Viewer", () => {
+  it("shows the same non-blocking automatic recovery to a Viewer", () => {
     const markup = render({
       companion: companion({ access: "viewer" }),
       thread: thread({
@@ -428,7 +430,8 @@ describe("CompanionThread", () => {
       }),
     });
 
-    expect(markup).toContain("An Owner or Editor must retry or cancel this turn");
+    expect(markup).toContain("Pi cleanup is queued automatically");
+    expect(markup).toContain("This occurrence will not be replayed");
     expect(markup).not.toContain("Retry turn");
     expect(markup).not.toContain("Cancel turn");
   });

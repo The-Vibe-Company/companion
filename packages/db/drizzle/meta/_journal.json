@@ -1056,7 +1056,28 @@
       "idx": 150,
       "version": "7",
       "when": 1792775200000,
-      "tag": "0150_companion_control_mcp",
+      "tag": "0150_companion_needs_input_claim_damper",
+      "breakpoints": true
+    },
+    {
+      "idx": 151,
+      "version": "7",
+      "when": 1792861600000,
+      "tag": "0151_companion_runtime_self_heal_protocol_5",
+      "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1792948000000,
+      "tag": "0152_companion_thread_incremental_projection",
+      "breakpoints": true
+    },
+    {
+      "idx": 153,
+      "version": "7",
+      "when": 1793034400000,
+      "tag": "0153_companion_control_mcp",
       "breakpoints": true
     }
   ]

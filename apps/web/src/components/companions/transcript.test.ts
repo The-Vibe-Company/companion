@@ -205,7 +205,10 @@ describe("composerHint", () => {
       thread: thread({ interrupted_turn: interruptedTurn(), queued_count: 2 }),
       companionName: "Luna",
       state: "running",
-    })).toBe("Retry or cancel the interrupted turn to continue. 2 later messages are queued behind it.");
+    })).toBe(
+      "Automatic Pi cleanup is in progress; the interrupted occurrence will not be replayed."
+      + " 2 messages are saved and queued.",
+    );
   });
 
   it("reports saved queued work and lifecycle-only changes without suggesting a retry send", () => {

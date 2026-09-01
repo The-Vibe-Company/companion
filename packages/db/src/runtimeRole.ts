@@ -68,6 +68,7 @@ WITH runtime_role AS (
 ), required(signature) AS (
   VALUES
     ('public.companion_runtime_gate_status()'),
+    ('public.companion_runtime_recovery_metrics()'),
     ('public.companion_runtime_disable(bigint,text)'),
     ('public.companion_runtime_claim_work(text,integer,integer,bigint)'),
     ('public.companion_runtime_claim_work(text,integer,integer,bigint,integer)'),

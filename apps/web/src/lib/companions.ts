@@ -14,6 +14,9 @@ import type {
   CompanionShareRole,
   CompanionShares,
   CompanionThread,
+  CompanionThreadDeltaResponse,
+  CompanionThreadWindow,
+  CompanionTranscriptEntry,
   CompanionTrigger,
   CompanionTriggerProviderAccount,
   CancelCompanionTurnAcceptedResponse,
@@ -31,7 +34,7 @@ import {
   COMPANION_OPERATION_IDEMPOTENCY_HEADER,
   type RestartCompanionRuntimeInput,
 } from "@companion/contracts/companion-runtime";
-import { apiFetch } from "./apiClient";
+import { ApiFetchError, apiFetch } from "./apiClient";
 import type {
   CompanionTriggerHistoryDetail,
   CompanionTriggerHistoryDetailOptions,
@@ -48,6 +51,12 @@ function operationHeaders(orgId: string, requestId: string): HeadersInit {
     "x-companion-org": orgId,
     [COMPANION_OPERATION_IDEMPOTENCY_HEADER]: requestId,
   };
+}
+
+function isLegacyThreadResponse(
+  value: CompanionThreadDeltaResponse | { thread: CompanionThread },
+): value is { thread: CompanionThread } {
+  return "entries" in value.thread;
 }
 
 /** A desktop handoff is the only browser request that waits on a private runtime round trip. */
@@ -351,12 +360,241 @@ export async function setCompanionWorkspaceShare(
 export async function getCompanionThread(
   orgId: string,
   companionId: string,
-): Promise<CompanionThread> {
-  const result = await apiFetch<{ thread: CompanionThread }>(
-    `/v1/companions/${encodeURIComponent(companionId)}/thread`,
-    { headers: orgHeaders(orgId) },
-  );
-  return result.thread;
+  options: {
+    cursor?: string;
+    current?: SyncedCompanionThread;
+    preserveHistory?: boolean;
+  } = {},
+): Promise<SyncedCompanionThread> {
+  if (!options.cursor) return openCompanionThreadWindow(orgId, companionId);
+
+  const initial = options.current;
+  if (!initial) return openCompanionThreadWindow(orgId, companionId);
+  let current: SyncedCompanionThread = initial;
+  let cursor = options.cursor;
+  for (;;) {
+    const result = await apiFetch<CompanionThreadDeltaResponse | { thread: CompanionThread }>(
+      `/v1/companions/${encodeURIComponent(companionId)}/thread-delta?cursor=${encodeURIComponent(cursor)}`,
+      { headers: orgHeaders(orgId) },
+    );
+    // Rolling-deploy and test compatibility: an old endpoint can still answer one full thread.
+    if (isLegacyThreadResponse(result)) return result.thread;
+
+    const previousIds: Set<string> = new Set([
+      ...current.entries.map((entry) => entry.event_id),
+      ...(current.client_sync?.unseen_event_ids ?? []),
+    ]);
+    const deletedIds: Set<string> = new Set(result.deleted_event_ids);
+    const changedById: Map<string, CompanionTranscriptEntry> = new Map(
+      result.changed_entries.map((entry) => [entry.event_id, entry]),
+    );
+    const retained: CompanionTranscriptEntry[] = result.reset_entries
+      ? []
+      : current.entries
+          .filter((entry) => !deletedIds.has(entry.event_id))
+          .map((entry) => changedById.get(entry.event_id) ?? entry);
+    const additions: CompanionTranscriptEntry[] = result.changed_entries.filter(
+      (entry) => !previousIds.has(entry.event_id),
+    );
+    const unseenIds = new Set(current.client_sync?.unseen_event_ids ?? []);
+    for (const eventId of deletedIds) unseenIds.delete(eventId);
+    if (options.preserveHistory) {
+      for (const entry of additions) unseenIds.add(entry.event_id);
+    } else {
+      unseenIds.clear();
+    }
+    const merged: CompanionTranscriptEntry[] = result.reset_entries
+      ? result.changed_entries
+      : options.preserveHistory
+        ? retained
+        : [...retained, ...additions];
+    const ordered: CompanionTranscriptEntry[] = merged.sort((left, right) =>
+      left.ordinal - right.ordinal
+      || (left.event_id < right.event_id ? -1 : left.event_id > right.event_id ? 1 : 0));
+    // Once live append growth would evict the page boundary, refresh the bounded bootstrap so its
+    // signed older cursor is anchored to the first row that remains mounted. Keeping the stale
+    // cursor would skip the evicted interval when the reader later scrolls backwards.
+    if (ordered.length > 150 && !options.preserveHistory) {
+      return await openCompanionThreadWindow(orgId, companionId);
+    }
+    const notifyByRun: Map<string, CompanionThreadWindow["notify_returns"][number]> = new Map(
+      (current.client_sync?.notify_returns ?? []).map((item) => [item.run_id, item]),
+    );
+    for (const item of result.notify_returns ?? []) notifyByRun.set(item.run_id, item);
+    const nextCursor = result.cursor;
+    if (result.has_more && nextCursor === cursor) {
+      throw new Error("Companion thread delta cursor did not advance");
+    }
+    const mountedIds = new Set(ordered.map((entry) => entry.event_id));
+    const mountedRunIds = new Set(ordered.flatMap((entry) => entry.routine?.run_id
+      ? [entry.routine.run_id]
+      : []));
+    current = {
+      ...result.thread,
+      entries: ordered,
+      client_sync: {
+        cursor: nextCursor,
+        older_cursor: current.client_sync?.older_cursor ?? null,
+        notify_returns: [...notifyByRun.values()].filter((item) =>
+          mountedIds.has(item.main_entry_event_id) || mountedRunIds.has(item.run_id)),
+        unseen_new_count: unseenIds.size,
+        unseen_event_ids: [...unseenIds],
+      },
+    };
+    cursor = nextCursor;
+    if (!result.has_more) return current;
+  }
+}
+
+export type SyncedCompanionThread = CompanionThread & {
+  client_sync?: {
+    cursor: string;
+    older_cursor: string | null;
+    notify_returns: CompanionThreadWindow["notify_returns"];
+    unseen_new_count: number;
+    unseen_event_ids: string[];
+  };
+};
+
+/** Group only routine notify pairs present in the mounted pages; durable history stays server-side. */
+export function collapseLoadedRoutineNotifyEntries(
+  entries: readonly CompanionTranscriptEntry[],
+  notifyReturns: CompanionThreadWindow["notify_returns"],
+): CompanionTranscriptEntry[] {
+  const ordered = [...entries].sort((left, right) =>
+    left.ordinal - right.ordinal
+    || (left.event_id < right.event_id ? -1 : left.event_id > right.event_id ? 1 : 0));
+  const returnedByRun = new Map(notifyReturns.map((item) => [item.run_id, item]));
+  const output: CompanionTranscriptEntry[] = [];
+  let group: Array<{
+    marker: CompanionTranscriptEntry;
+    update: CompanionTranscriptEntry;
+    routineId: string;
+    routineName: string;
+  }> = [];
+  const flush = () => {
+    if (group.length === 0) return;
+    if (group.length === 1) {
+      output.push(group[0]!.marker, group[0]!.update);
+    } else {
+      const latest = group.at(-1)!;
+      output.push(latest.marker, {
+        ...latest.update,
+        routine_notify_group: {
+          routine_id: latest.routineId,
+          routine_name: latest.routineName,
+          total_count: group.length,
+          hidden_entries: group.slice(0, -1).flatMap((item) => [item.marker, item.update]),
+        },
+      });
+    }
+    group = [];
+  };
+
+  for (let index = 0; index < ordered.length;) {
+    const marker = ordered[index]!;
+    const update = ordered[index + 1];
+    const runId = marker.routine?.run_id;
+    const returned = runId ? returnedByRun.get(runId) : undefined;
+    const collapsible = returned !== undefined
+      && update !== undefined
+      && marker.role === "user"
+      && marker.routine?.id === returned.routine_id
+      && marker.routine?.name === returned.routine_name
+      && marker.attachments.length === 0
+      && marker.decision === null
+      && update.event_id === returned.main_entry_event_id
+      && update.role === "assistant"
+      && update.attachments.length === 0
+      && update.decision === null;
+    if (!collapsible || !update) {
+      flush();
+      output.push(marker);
+      index += 1;
+      continue;
+    }
+    if (group.length > 0 && (
+      group[0]!.routineId !== returned.routine_id
+      || group[0]!.routineName !== returned.routine_name
+    )) flush();
+    group.push({
+      marker,
+      update,
+      routineId: returned.routine_id,
+      routineName: returned.routine_name,
+    });
+    index += 2;
+  }
+  flush();
+  return output;
+}
+
+async function readCompanionThreadWindow(
+  orgId: string,
+  companionId: string,
+  before?: string,
+): Promise<CompanionThreadWindow | { thread: CompanionThread }> {
+  const query = new URLSearchParams({ limit: "50" });
+  if (before) query.set("before", before);
+  try {
+    return await apiFetch<CompanionThreadWindow | { thread: CompanionThread }>(
+      `/v1/companions/${encodeURIComponent(companionId)}/thread-window?${query.toString()}`,
+      { headers: orgHeaders(orgId) },
+    );
+  } catch (cause) {
+    // During a rolling deploy the old API has no window route yet. Only route absence falls back;
+    // an authorization, validation, or server failure must keep its real meaning.
+    if (!(cause instanceof ApiFetchError) || (cause.status !== 404 && cause.status !== 405)) {
+      throw cause;
+    }
+    return await apiFetch<{ thread: CompanionThread }>(
+      `/v1/companions/${encodeURIComponent(companionId)}/thread`,
+      { headers: orgHeaders(orgId) },
+    );
+  }
+}
+
+/** Initial bounded bootstrap; the compatibility branch can be removed after old API rollout. */
+export async function openCompanionThreadWindow(
+  orgId: string,
+  companionId: string,
+): Promise<SyncedCompanionThread> {
+  const window = await readCompanionThreadWindow(orgId, companionId);
+  if ("entries" in window) {
+    return {
+      ...window.thread,
+      entries: window.entries,
+      client_sync: {
+        cursor: window.sync_cursor,
+        older_cursor: window.older_cursor,
+        notify_returns: window.notify_returns,
+        unseen_new_count: 0,
+        unseen_event_ids: [],
+      },
+    };
+  }
+  return window.thread;
+}
+
+/** Fetch one older page without changing the live delta cursor or the server read watermark. */
+export async function getOlderCompanionThreadWindow(
+  orgId: string,
+  companionId: string,
+  before: string,
+): Promise<SyncedCompanionThread> {
+  const window = await readCompanionThreadWindow(orgId, companionId, before);
+  if (!("entries" in window)) return window.thread;
+  return {
+    ...window.thread,
+    entries: window.entries,
+    client_sync: {
+      cursor: window.sync_cursor,
+      older_cursor: window.older_cursor,
+      notify_returns: window.notify_returns,
+      unseen_new_count: 0,
+      unseen_event_ids: [],
+    },
+  };
 }
 
 /**

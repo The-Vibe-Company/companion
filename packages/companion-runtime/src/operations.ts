@@ -739,6 +739,20 @@ async function handleRestartPi(context: OperationContext): Promise<RuntimeWorkDi
     const authorization = await context.session.reauthorize();
     switch (authorization.workCheckpoint) {
       case "pending":
+        // An interrupted occurrence can outlive the Box or its durable identity. There is no Pi
+        // invocation to terminate in that case, so absence itself is a complete cleanup proof.
+        // The next ordinary queued turn remains responsible for the normal cold-start path.
+        if (
+          authorization.turnId !== null
+          && (
+            authorization.boxId === null
+            || authorization.boxState === "absent"
+            || authorization.boxState === "archived"
+          )
+        ) {
+          await context.session.checkpoint({ nextCheckpoint: "pi_ready" });
+          break;
+        }
         await lifecycle(context, "stop_pi", async ({ signal }) =>
           await context.deps.pi.stopPiDaemon({ boxId: requiredBoxId(context.session), signal }));
         await applyCapturedSkillUpdate(context);
@@ -853,13 +867,13 @@ async function handleIsolatedRoutineRetry(
 }
 
 /**
- * Permanent deletion is the one main-lane operation that may preempt an isolated routine. The
- * claim transaction stores the routine turn as the delete source, and v2 authorization resolves
+ * Permanent deletion and an explicit full-Box restart may preempt an isolated routine. The claim
+ * transaction stores the routine turn as the lifecycle source, and v2 authorization resolves
  * that turn to the exact attempt-bound invocation. Keep the identity check here as the last local
  * guard before the run-scoped terminate call; a routine id or invocation from another run must
  * never be sent to Pi.
  */
-async function terminateCapturedRoutineForDelete(
+async function terminateCapturedRoutineForLifecycle(
   context: OperationContext,
   authorization: RuntimeAuthorization,
 ): Promise<void> {
@@ -878,7 +892,7 @@ async function terminateCapturedRoutineForDelete(
   if (!invocationId.startsWith(`routine:${runId}:`)) {
     throw new RuntimeInvariantError({
       code: "routine_session_invocation_mismatch",
-      message: "The permanent delete routine identity did not match its run.",
+      message: "The lifecycle routine identity did not match its run.",
       action: "retry",
     });
   }
@@ -897,6 +911,7 @@ async function handleRestartBox(context: OperationContext): Promise<RuntimeWorkD
     const authorization = await context.session.reauthorize();
     switch (authorization.workCheckpoint) {
       case "pending":
+        await terminateCapturedRoutineForLifecycle(context, authorization);
         await lifecycle(context, "stop_pi", async ({ signal }) =>
           await context.deps.pi.stopPiDaemon({ boxId: requiredBoxId(context.session), signal }));
         await applyCapturedSkillUpdate(context);
@@ -1032,7 +1047,7 @@ async function handleDelete(context: OperationContext): Promise<RuntimeWorkDispo
     switch (authorization.workCheckpoint) {
       case "pending": {
         if (!routineTerminationComplete) {
-          await terminateCapturedRoutineForDelete(context, authorization);
+          await terminateCapturedRoutineForLifecycle(context, authorization);
           routineTerminationComplete = true;
         }
         let boxId = authorization.boxId;
@@ -1069,7 +1084,7 @@ async function handleDelete(context: OperationContext): Promise<RuntimeWorkDispo
       }
       case "box_absence_observed": {
         if (!routineTerminationComplete) {
-          await terminateCapturedRoutineForDelete(context, authorization);
+          await terminateCapturedRoutineForLifecycle(context, authorization);
           routineTerminationComplete = true;
         }
         requirePollingBudget(
