@@ -241,6 +241,7 @@ describe("runtime material provider and Box stager", () => {
         COMPANION_WORKSPACE_ID: orgId,
         COMPANION_DELEGATION_TOKEN: "cmp_pat_hubtokenfixture000000000000000000000000",
         COMPANION_MCP_BROKER_TOKEN: `cmp_mcp_${"a".repeat(48)}`,
+        COMPANION_CONTROL_TOKEN: `cmp_ctl_${"c".repeat(48)}`,
       },
       configCatalog: catalog,
       signal: expect.any(AbortSignal),
@@ -676,6 +677,13 @@ type MaterialTestStore = Pick<
 >;
 
 function fakeStore(value: MaterialTestStore): RuntimeStore {
-  // SAFETY: The material pipeline tests exercise only the four material/token store methods.
-  return value as RuntimeStore;
+  // SAFETY: The material pipeline tests exercise only these material/token store methods.
+  const store = Object.create(null) as RuntimeStore;
+  return Object.assign(store, {
+    mintControlToken: vi.fn(async () => ({
+      token: `cmp_ctl_${"c".repeat(48)}`,
+      expiresAt: new Date("2027-01-01T06:00:00.000Z"),
+    })),
+    ...value,
+  });
 }

@@ -1006,15 +1006,22 @@ public actor APIClient {
     /// in this client actor until the exact Universal Link callback is consumed.
     public func startCompanionPluginOAuth(
         serverName: String,
-        label: String
+        label: String,
+        companionID: String? = nil,
+        controlRequestID: String? = nil
     ) async throws -> CompanionPluginOAuthStart {
         companionPluginOAuthCookie = nil
         companionPluginOAuthState = nil
         companionPluginOAuthCallbackURL = nil
-        let body = try encoder.encode([
+        var input = [
             "server_name": serverName,
             "label": label,
-        ])
+        ]
+        if let companionID, let controlRequestID {
+            input["companion_id"] = companionID
+            input["control_request_id"] = controlRequestID
+        }
+        let body = try encoder.encode(input)
         let (data, response) = try await perform(
             path: "/v1/companion-plugins/oauth/start",
             method: "POST",

@@ -84,14 +84,27 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 - Pi-only recycle is the automatic repair. Full Box restart and permanent deletion are explicit,
   confirmed user operations; deletion is cleanup, never healing.
 
+### Companion control MCP and collaboration
+
+- Every ordinary main attempt receives a short-lived, attempt-fenced `companion-control` MCP
+  capability through the loopback gateway. Pi never receives its bearer token in the environment.
+- Identity, short persona, Skills, existing plugin attachments, and deferred Pi recycle are direct.
+  Model, OAuth, every routine/trigger mutation, and directed peer access use durable asynchronous
+  approval cards. Approval and retries are idempotent.
+- OAuth completion attaches the new account to the requesting Companion and queues a FIFO resume.
+- A source Owner may approve a persistent directed grant only when they can also operate the target.
+  Delegations are text-only, depth four, twenty per root turn, and return as `notify` or `relay` in
+  both threads. Groups and Rooms remain out of scope.
+- Routine and trigger turns cannot call the control MCP.
+
 ### Routines
 
 - A Companion may have at most ten named routines. Each has a full cron expression, an IANA
   timezone, and a prompt of at most 16,384 characters. Names are unique per Companion
   (case-insensitive). Fires must be at least five minutes apart.
-- Creation is Owner/Editor only: the context-panel + control, or Pi `propose_routine` approved as a
-  decision card. Approval of a same-name proposal (case-insensitive) updates that routine in place;
-  a different name creates a new routine. Viewer reads the panel and cards but cannot write.
+- Creation and every mutation are Owner/Editor approved: the context panel writes directly, while Pi
+  uses `companion_request_routine_change` and receives an asynchronous decision card. Viewer reads
+  the panel and cards but cannot write.
 - The worker claims due rows and fires as the immutable Companion Owner. Fire is API-level turn
   enqueue; the worker never contacts Box or Pi. The message id is deterministic
   (`uuidv5(routineId|scheduledFor)`), so at-least-once ticks collapse to one turn.
@@ -120,8 +133,9 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 - A Companion may have at most ten named triggers — the event-driven siblings of routines. Each has
   a prompt of at most 16,384 characters and a provider label (`webhook`, `linear`, `github`, `sentry`, or `custom`) that
   hints at the delivery id; it is not an auth scheme.
-- Creation is Owner/Editor only: the context-panel + control, or Pi `propose_trigger` approved as a
-  decision card. Creation and approval register the remote webhook end-to-end with the selected
+- Creation and every mutation are Owner/Editor approved: the context panel writes directly, while Pi
+  uses `companion_request_trigger_change` and receives an asynchronous decision card. Creation and
+  approval register the remote webhook end-to-end with the selected
   member-scoped trigger-provider account. That authority is immediately available to every
   Companion the member can operate and is never attached through `selected_mcp_account_ids`.
   OAuth-backed accounts reuse the existing MCP credential in place. One eligible account is

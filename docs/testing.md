@@ -194,14 +194,19 @@ Run API + worker + runtime + web + migrated PostgreSQL + Box/Pi simulator and pr
   prompt or Box;
 - two concurrent sends execute in order, one Pi attempt at a time;
 - `ask_user` persists a decision and resumes the same attempt;
-- a pending `ask_user` or `propose_*` remains actionable without an inactivity stall for up to the
-  two-hour absolute deadline;
+- a pending `ask_user` remains actionable without an inactivity stall for up to the two-hour
+  absolute deadline, while asynchronous control approvals do not hold Pi or an HTTP request open;
 - a follow-up sent while a warm Pi is busy stays queued without a cold-start deadline, then is
   re-evaluated only after it reaches the head;
 - a success and each new pending decision fan out once to the author's active devices, while a
   queued cancellation creates no delivery;
-- `propose_routine` projects a card, approval updates a case-insensitive same-name row in place or
-  creates a different-name row, and deny/expiry leave routines unchanged;
+- `companion_request_routine_change` and `companion_request_trigger_change` project durable cards;
+  create/update/enable/disable/delete/rotate apply once, while deny, expiry, and revoked authority
+  leave definitions and provider registration unchanged;
+- control tokens are attempt-fenced and absent from Pi's environment; routine/trigger turns cannot
+  call the MCP; deferred Pi restart executes exactly once after source settlement;
+- directed delegation covers notify, relay, A→B→C, depth/budget bounds, FIFO, revocation, every
+  terminal target state, and durable return-delivery failure;
 - provider failure, Pi silence, crash loop, unknown event, and oversized line end visibly;
 - a vision model reads the checked-in image fixture and a text-only model fails explicitly;
 - stop then send, explicit Pi restart, explicit Full Box restart, and deletion during a queue obey

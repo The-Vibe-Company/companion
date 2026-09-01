@@ -83,6 +83,15 @@ const coreMocks = {
   updateCompanionMemberStateV2: vi.fn<typeof coreModule.updateCompanionMemberStateV2>(),
   updateCompanionV2: vi.fn<typeof coreModule.updateCompanionV2>(),
   resolveCompanionMcpBrokerAuthorization: vi.fn<typeof coreModule.resolveCompanionMcpBrokerAuthorization>(),
+  resolveCompanionControlAuthorization: vi.fn<typeof coreModule.resolveCompanionControlAuthorization>(),
+  getCompanionControlRequest: vi.fn<typeof coreModule.getCompanionControlRequest>(),
+  decideCompanionControlRequest: vi.fn<typeof coreModule.decideCompanionControlRequest>(),
+  finishCompanionControlRequest: vi.fn<typeof coreModule.finishCompanionControlRequest>(),
+  enqueueCompanionControlContinuation: vi.fn<typeof coreModule.enqueueCompanionControlContinuation>(),
+  grantCompanionPeerAccess: vi.fn<typeof coreModule.grantCompanionPeerAccess>(),
+  listCompanionControlPeers: vi.fn<typeof coreModule.listCompanionControlPeers>(),
+  revokeCompanionPeerAccess: vi.fn<typeof coreModule.revokeCompanionPeerAccess>(),
+  updateCompanionControlPlugin: vi.fn<typeof coreModule.updateCompanionControlPlugin>(),
   issueCompanionMcpAccessToken: vi.fn<typeof coreModule.issueCompanionMcpAccessToken>(),
   registerCompanionNotificationDevice: vi.fn<typeof coreModule.registerCompanionNotificationDevice>(),
   unregisterCompanionNotificationDevice: vi.fn<typeof coreModule.unregisterCompanionNotificationDevice>(),
@@ -452,6 +461,9 @@ describe("Companions Runtime v2 API", () => {
       transport: "webrtc",
     });
     coreMocks.resolveCompanionMcpBrokerAuthorization.mockResolvedValue(null);
+    coreMocks.resolveCompanionControlAuthorization.mockResolvedValue(null);
+    coreMocks.getCompanionControlRequest.mockResolvedValue(null);
+    coreMocks.listCompanionControlPeers.mockResolvedValue([]);
     coreMocks.issueCompanionMcpAccessToken.mockResolvedValue({
       access_token: "temporary-access",
       token_type: "Bearer",
@@ -2090,6 +2102,73 @@ describe("Companions Runtime v2 API", () => {
       companionId: COMPANION_ID,
       triggerId: TRIGGER_ID,
     }));
+  });
+
+  it("never persists a control-created trigger webhook secret in the approval result", async () => {
+    const controlRequest = {
+      id: RETRY_ID,
+      companion_id: COMPANION_ID,
+      kind: "trigger_change" as const,
+      action: "create",
+      summary: "Create deployment hook",
+      payload: {
+        action: "create",
+        draft: {
+          name: proposedGithubTrigger.name,
+          prompt: proposedGithubTrigger.prompt,
+          mode: proposedGithubTrigger.mode,
+          provider: "webhook",
+          enabled: true,
+        },
+      },
+      status: "pending" as const,
+      requested_by_id: owner.id,
+      decided_by_id: null,
+      result: null,
+      error_code: null,
+      error_message: null,
+      expires_at: "2026-08-18T00:00:00.000Z",
+      decided_at: null,
+      applied_at: null,
+      continuation_turn_id: null,
+      created_at: NOW,
+      updated_at: NOW,
+    };
+    const applying = {
+      ...controlRequest,
+      status: "applying" as const,
+      decided_by_id: owner.id,
+      decided_at: NOW,
+    };
+    coreMocks.getCompanionControlRequest.mockResolvedValue(controlRequest);
+    coreMocks.decideCompanionControlRequest.mockResolvedValue(applying);
+    coreMocks.createCompanionTriggerV2.mockResolvedValue({
+      ...proposedGithubTrigger,
+      provider: "webhook",
+    });
+    coreMocks.finishCompanionControlRequest.mockImplementation(async (input) => ({
+      ...applying,
+      status: "applied" as const,
+      result: input.result ?? null,
+      applied_at: NOW,
+    }));
+
+    const response = await appWithRoutes().request(jsonPost(
+      `/v1/companions/${COMPANION_ID}/decisions/${RETRY_ID}`,
+      { action: "allow" },
+    ));
+
+    expect(response.status).toBe(202);
+    expect(coreMocks.finishCompanionControlRequest).toHaveBeenCalledWith(expect.objectContaining({
+      result: {
+        trigger: expect.objectContaining({
+          id: TRIGGER_ID,
+          webhook_url: null,
+        }),
+      },
+    }));
+    const finishInput = coreMocks.finishCompanionControlRequest.mock.calls[0]?.[0];
+    expect(JSON.stringify(finishInput?.result)).not.toContain(TRIGGER_SECRET);
   });
 
   it("retries remote trigger registration and serves bounded trigger history", async () => {

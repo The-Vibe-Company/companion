@@ -21,7 +21,7 @@ describe("COMPANION_PLUGIN_SKILLS", () => {
       (skill) => skill.provider === "github" || skill.provider === "linear",
     );
     for (const skill of triggerSkills) {
-      expect(skill.content).toContain("propose_trigger");
+      expect(skill.content).toContain("companion_request_trigger_change");
       expect(skill.content).toContain("registration");
     }
   });
@@ -39,13 +39,13 @@ describe("COMPANION_PLUGIN_SKILLS", () => {
     const slack = COMPANION_PLUGIN_SKILLS.find((skill) => skill.provider === "slack")!;
     expect(slack.content).toContain("slack_chat_post_message");
     expect(slack.content).toContain("does not receive Slack messages");
-    expect(github.content).toContain("propose_trigger");
-    expect(linear.content).toContain("propose_trigger");
+    expect(github.content).toContain("companion_request_trigger_change");
+    expect(linear.content).toContain("companion_request_trigger_change");
     expect(gmail.content).toContain("untrusted external data");
     expect(gmail.content).toContain("cannot send email");
-    expect(gmail.content).not.toContain("propose_trigger");
+    expect(gmail.content).not.toContain("companion_request_trigger_change");
     expect(sentry.content).toMatch(/external untrusted\s+data/);
     expect(sentry.content).toContain("consequential write");
-    expect(sentry.content).not.toContain("propose_trigger");
+    expect(sentry.content).not.toContain("companion_request_trigger_change");
   });
 });

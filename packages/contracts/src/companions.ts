@@ -757,6 +757,7 @@ export const companionDecisionKindSchema = z.enum([
   "config",
   "routine",
   "trigger",
+  "control",
 ]);
 export type CompanionDecisionKind = z.infer<typeof companionDecisionKindSchema>;
 
@@ -1106,6 +1107,146 @@ export const companionTriggerProposalMessageSchema = z.object({
 }).strict();
 export type CompanionTriggerProposalMessage = z.infer<typeof companionTriggerProposalMessageSchema>;
 
+/** Product-owned mutations requested through the always-on Companion control MCP. */
+export const companionControlRequestKindSchema = z.enum([
+  "model_change",
+  "plugin_connection",
+  "routine_change",
+  "trigger_change",
+  "peer_access",
+]);
+export type CompanionControlRequestKind = z.infer<typeof companionControlRequestKindSchema>;
+
+export const companionControlRequestStatusSchema = z.enum([
+  "pending",
+  "applying",
+  "applied",
+  "denied",
+  "expired",
+  "cancelled",
+  "failed",
+]);
+export type CompanionControlRequestStatus = z.infer<typeof companionControlRequestStatusSchema>;
+
+export type CompanionControlJsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | CompanionControlJsonValue[]
+  | { [key: string]: CompanionControlJsonValue };
+export const companionControlJsonValueSchema: z.ZodType<CompanionControlJsonValue> = z.lazy(() => z.union([
+  z.null(), z.boolean(), z.number().finite(), z.string(),
+  z.array(companionControlJsonValueSchema),
+  z.record(companionControlJsonValueSchema),
+]));
+export const companionControlJsonObjectSchema = z.record(companionControlJsonValueSchema);
+
+export const companionControlProposalSchema = z.object({
+  kind: z.literal("control"),
+  request_kind: companionControlRequestKindSchema,
+  action: z.string().trim().min(1).max(80).regex(/^[a-z][a-z0-9_]*$/),
+  summary: z.string().trim().min(1).max(COMPANION_CONFIG_PROPOSAL_SUMMARY_MAX_CHARACTERS),
+  payload: companionControlJsonObjectSchema,
+}).strict().superRefine((proposal, context) => {
+  if (utf8ByteLength(JSON.stringify(proposal)) > COMPANION_CONFIG_PROPOSAL_MAX_BYTES) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "control proposal exceeds 16 KiB",
+    });
+  }
+});
+export type CompanionControlProposal = z.infer<typeof companionControlProposalSchema>;
+
+export const companionControlRequestSchema = z.object({
+  id: z.string().uuid(),
+  companion_id: z.string().uuid(),
+  kind: companionControlRequestKindSchema,
+  action: z.string().trim().min(1).max(80),
+  summary: z.string().trim().min(1).max(COMPANION_CONFIG_PROPOSAL_SUMMARY_MAX_CHARACTERS),
+  payload: companionControlJsonObjectSchema,
+  status: companionControlRequestStatusSchema,
+  requested_by_id: z.string(),
+  decided_by_id: z.string().nullable(),
+  result: companionControlJsonObjectSchema.nullable(),
+  error_code: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/).nullable(),
+  error_message: z.string().max(500).nullable(),
+  expires_at: z.string().datetime(),
+  decided_at: z.string().datetime().nullable(),
+  applied_at: z.string().datetime().nullable(),
+  continuation_turn_id: z.string().uuid().nullable().optional(),
+  created_at: z.string().datetime(),
+  updated_at: z.string().datetime(),
+}).strict();
+export type CompanionControlRequest = z.infer<typeof companionControlRequestSchema>;
+
+export const companionPeerGrantSchema = z.object({
+  id: z.string().uuid(),
+  source_companion_id: z.string().uuid(),
+  target_companion_id: z.string().uuid(),
+  target_name: z.string().min(1).max(120),
+  granted_by_id: z.string(),
+  created_at: z.string().datetime(),
+  revoked_at: z.string().datetime().nullable(),
+}).strict();
+export type CompanionPeerGrant = z.infer<typeof companionPeerGrantSchema>;
+
+export const companionDelegationResponseModeSchema = z.enum(["relay", "notify"]);
+export type CompanionDelegationResponseMode = z.infer<
+  typeof companionDelegationResponseModeSchema
+>;
+export const companionDelegationDeliveryStatusSchema = z.enum([
+  "pending",
+  "delivered",
+  "failed",
+]);
+export const companionDelegationSchema = z.object({
+  id: z.string().uuid(),
+  source_companion_id: z.string().uuid().nullable(),
+  source_companion_name: z.string().min(1).max(120),
+  target_companion_id: z.string().uuid().nullable(),
+  target_companion_name: z.string().min(1).max(120),
+  source_turn_id: z.string().uuid(),
+  target_turn_id: z.string().uuid(),
+  root_turn_id: z.string().uuid(),
+  parent_delegation_id: z.string().uuid().nullable(),
+  depth: z.number().int().min(1).max(4),
+  response_mode: companionDelegationResponseModeSchema,
+  status: companionTurnStatusSchema,
+  delivery_status: companionDelegationDeliveryStatusSchema,
+  created_at: z.string().datetime(),
+  settled_at: z.string().datetime().nullable(),
+}).strict();
+export type CompanionDelegation = z.infer<typeof companionDelegationSchema>;
+
+export const companionDelegationListSchema = z.object({
+  delegations: z.array(companionDelegationSchema),
+  next_cursor: z.string().uuid().nullable(),
+}).strict();
+
+export const companionControlRoutineActionSchema = z.enum([
+  "create", "update", "enable", "disable", "delete",
+]);
+export const companionControlTriggerActionSchema = z.enum([
+  "create", "update", "enable", "disable", "delete", "rotate_secret",
+]);
+
+export const companionRequestRoutineChangeInputSchema = z.object({
+  action: companionControlRoutineActionSchema,
+  routine_id: z.string().uuid().optional(),
+  draft: companionRoutineDraftSchema.partial().optional(),
+}).strict();
+export const companionRequestTriggerChangeInputSchema = z.object({
+  action: companionControlTriggerActionSchema,
+  trigger_id: z.string().uuid().optional(),
+  draft: companionTriggerDraftSchema.partial().optional(),
+}).strict();
+export const companionSendPeerMessageInputSchema = z.object({
+  target_companion_id: z.string().uuid(),
+  content: z.string().trim().min(1).max(16_384),
+  response_mode: companionDelegationResponseModeSchema.default("relay"),
+}).strict();
+
 /**
  * Trigger history follows the same durable turn lifecycle as routine history. The trigger snapshot
  * keeps a deleted or renamed definition readable, while the outcome names the one user-visible
@@ -1276,6 +1417,7 @@ export const companionDecisionProposalSchema = z.union([
   companionConfigProposalSchema,
   companionRoutineProposalSchema,
   companionTriggerProposalSchema,
+  companionControlProposalSchema,
 ]);
 export type CompanionDecisionProposal = z.infer<typeof companionDecisionProposalSchema>;
 
@@ -1300,6 +1442,10 @@ export const companionDecisionSchema = z.object({
   decided_by_name: z.string().nullable(),
   decided_at: z.string().datetime().nullable(),
   expires_at: z.string().datetime(),
+  /** Minimum Companion ACL allowed to answer this card. */
+  required_access: z.enum(["owner", "editor"]).optional(),
+  /** Asynchronous product-control state; absent on Pi's blocking permission cards. */
+  control_status: companionControlRequestStatusSchema.nullable().optional(),
   /** Present on `config`, `routine`, and `trigger` cards; null on shell, file, and question. */
   proposal: companionDecisionProposalSchema.nullable().default(null),
 }).strict().superRefine((decision, context) => {
@@ -1327,11 +1473,19 @@ export const companionDecisionSchema = z.object({
         message: "a trigger card carries the proposed webhook trigger",
       });
     }
+  } else if (decision.kind === "control") {
+    if (decision.proposal === null || decision.proposal.kind !== "control") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["proposal"],
+        message: "a control card carries the requested Companion mutation",
+      });
+    }
   } else if (decision.proposal !== null) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["proposal"],
-      message: "only a config, routine, or trigger card may carry a proposal",
+      message: "only a config, routine, trigger, or control card may carry a proposal",
     });
   }
 });
@@ -1634,6 +1788,15 @@ const companionTranscriptEntryObjectSchema = z.object({
     id: z.string().uuid().nullable(),
     name: companionTriggerNameSchema,
   }).nullable().default(null),
+  /** Trusted origin/result marker for a Companion-to-Companion delegation. */
+  delegation: z.object({
+    id: z.string().uuid(),
+    direction: z.enum(["request", "response"]),
+    companion_id: z.string().uuid().nullable(),
+    companion_name: z.string().min(1).max(120),
+    response_mode: companionDelegationResponseModeSchema,
+    status: companionTurnStatusSchema,
+  }).strict().nullable().optional(),
   /**
    * The durable turn this user message created, so a queued follow-up can be cancelled by id.
    * Null on every other role, and on a message the composer is still sending.
@@ -1691,6 +1854,13 @@ function validateCompanionTranscriptEntry(
       code: z.ZodIssueCode.custom,
       path: ["trigger"],
       message: "a message has one origin: routine or trigger, never both",
+    });
+  }
+  if (entry.delegation != null && !["user", "assistant", "system"].includes(entry.role)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["delegation"],
+      message: "delegation metadata belongs to a request or surfaced response",
     });
   }
   if ((entry.turn_id !== null || entry.queued) && entry.role !== "user") {

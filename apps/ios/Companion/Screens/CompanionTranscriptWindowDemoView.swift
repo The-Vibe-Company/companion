@@ -19,7 +19,7 @@ struct CompanionTranscriptWindowDemoView: View {
             ChatView(
                 companion: selectedCompanion,
                 readingPosition: readingPositions.position(for: companionID),
-                onOpenPlugins: {},
+                onOpenPlugins: { _, _ in },
                 services: services,
                 onReadingPositionChange: { position in
                     readingPositions.record(position, for: companionID)

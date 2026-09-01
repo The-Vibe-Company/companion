@@ -33,6 +33,7 @@ struct CompanionListView: View {
     @State private var showingCreateCompanion = false
     @State private var showingProviders = false
     @State private var showingPlugins = false
+    @State private var pluginControlRequest: CompanionPluginControlRequest?
     @State private var showingMemberSettings = false
     @State private var companionToDelete: CompanionSummary?
     @State private var deleteRequestIDs: [String: UUID] = [:]
@@ -181,8 +182,8 @@ struct CompanionListView: View {
             ProviderManagementView()
                 .tint(Color.companionAccent)
         }
-        .sheet(isPresented: $showingPlugins) {
-            PluginManagementView()
+        .sheet(isPresented: $showingPlugins, onDismiss: { pluginControlRequest = nil }) {
+            PluginManagementView(controlRequest: pluginControlRequest)
                 .tint(Color.companionAccent)
         }
         .sheet(isPresented: $showingMemberSettings) {
@@ -599,7 +600,16 @@ struct CompanionListView: View {
                     companion: companion,
                     initialSnapshot: sessionStore.cachedThread(companionID: companionID),
                     readingPosition: chatReadingPositions.position(for: companionID),
-                    onOpenPlugins: { showingPlugins = true },
+                    onOpenPlugins: { provider, requestID in
+                        if let provider, let requestID {
+                            pluginControlRequest = CompanionPluginControlRequest(
+                                provider: provider,
+                                companionID: companionID,
+                                requestID: requestID
+                            )
+                        }
+                        showingPlugins = true
+                    },
                     services: chatServices,
                     onReadingPositionChange: { position in
                         chatReadingPositions.record(position, for: companionID)

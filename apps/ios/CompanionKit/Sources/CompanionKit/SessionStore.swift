@@ -1033,13 +1033,17 @@ public final class SessionStore {
 
     public func startCompanionPluginOAuth(
         serverName: String,
-        label: String
+        label: String,
+        companionID: String? = nil,
+        controlRequestID: String? = nil
     ) async throws -> CompanionPluginOAuthStart {
         do {
             await client.cancelCompanionPluginOAuth()
             return try await client.startCompanionPluginOAuth(
                 serverName: serverName,
-                label: label
+                label: label,
+                companionID: companionID,
+                controlRequestID: controlRequestID
             )
         } catch let error as APIError where error.status == 401 {
             await clearLocalSession()

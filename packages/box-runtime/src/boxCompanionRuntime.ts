@@ -6,7 +6,6 @@ import {
   COMPANION_ATTACHMENT_FILENAME_PATTERN,
   COMPANION_ATTACHMENT_MAX_BYTES,
   COMPANION_BUDGETS_BASE,
-  COMPANION_CONFIG_PROPOSAL_CONNECT_PROVIDERS,
   COMPANION_EXEC_TOOL_RUN_TIMEOUT_MS,
   COMPANION_OUTPUT_ATTACHMENT_MAX_COUNT,
   COMPANION_ROUTINE_MAX_PER_COMPANION,
@@ -717,36 +716,35 @@ function companionCapabilityInstructions(includeHub: boolean): string {
   return lines.join("\n");
 }
 
-function companionConfigInstructions(includeCatalog: boolean): string {
-  const body = [
-    "# Changing your own configuration",
+function companionControlInstructions(controlAvailable: boolean): string {
+  if (!controlAvailable) return [
+    "# Automation isolation",
     "",
-    "You cannot change your own settings. You can only ask, and you must not describe a change as done",
-    "before it is.",
+    "This routine run cannot use companion-control. It may not change configuration, plugins, routines,",
+    "triggers, Pi, or peer grants, and it may not delegate to another Companion. Finish only the task",
+    "that caused this isolated run.",
+  ].join("\n");
+  return [
+    "# Controlling this Companion",
+    "",
+    "The always-available `companion-control` MCP is the sole product interface for inspecting and",
+    "administering this Companion. Use its exact `companion_*` tools; never edit staged state files.",
     "",
     `- ask_user puts a question to the person and waits up to ${instructionClock(COMPANION_DECISION_TIMEOUT_MS)}. Use it for a decision, a`,
     "  preference, missing information, or sign-off before something consequential.",
     "  No answer means no approval: choose a safe fallback or finish the turn. A newer member message",
     "  may end the wait early and will arrive separately as the next queued turn.",
-    "- propose_config proposes adding or removing skills, attaching or detaching plugins, changing your",
-    "  model, or rewriting your persona line. Approval applies after this turn ends, so a proposed change",
-    "  is never active in the turn that proposed it.",
-    "- propose_routine proposes a named schedule — a prompt, a cron expression, and an IANA timezone.",
-    "  Keep its optional human-facing summary to one short sentence with no setup or process narration.",
-    "  Approval creates it after this turn ends, so a proposed routine never fires in the turn that proposed it.",
-    "- propose_trigger proposes a named webhook trigger with notify or relay mode. For GitHub include",
-    "  the repo and narrow events to watch. Never pass or invent a provider account id: approval resolves",
-    "  the approving member's eligible held credential, creates the trigger, and registers it remotely;",
-    "  never ask the person to paste a URL or use a provider console.",
-    `- request_plugin_connection asks for a supported plugin connection (${COMPANION_CONFIG_PROPOSAL_CONNECT_PROVIDERS.join(", ")}) that does not exist yet.`,
-    "  The person finishes it in the web UI; propose attaching it on a later turn.",
-  ].join("\n");
-  if (!includeCatalog) return body;
-  return [
-    body,
-    "",
-    "~/.companion/runtime/state/config-catalog.json names the skills and plugins you may propose. Read it",
-    "rather than guessing an id.",
+    "- Identity, persona, selected Skills, and attachment of an already-connected plugin are direct.",
+    "  Their result includes `apply_pending` when materialization waits for this turn to settle.",
+    "- Model changes, new OAuth connections, every routine or trigger mutation, and peer grants return",
+    "  `pending_approval`. Do not claim they applied; their durable card is answered asynchronously.",
+    "- `companion_request_trigger_change` registers, reconciles, rotates, and unregisters provider",
+    "  webhooks end-to-end. Never ask",
+    "  the person to paste a callback URL or operate a provider console.",
+    "- `companion_restart_pi` recycles Pi only after this turn settles; it never restarts the Box.",
+    "- Peer messages require a directed grant. Use `notify` to show the peer result without waking this",
+    "  session, or `relay` (the default) to receive a later hidden continuation for synthesis. Delegation",
+    "  is text-only, cannot target yourself, is at most four levels deep and twenty sends per root turn.",
   ].join("\n");
 }
 
@@ -829,17 +827,14 @@ export function parseOutboxManifest(stdout: string): CompanionOutboxEntry[] {
  * word on voice. Composing it here rather than storing it keeps the brief out of every persona, out
  * of the 280-character persona budget, and identical for every Companion on a given surface.
  *
- * `native_mobile` stages no skills, MCP accounts, hub env, or config catalog, so that surface omits
- * the Skills / Plugins / Skills-Hub bullets and the catalog pointer. ask_user / propose_config /
- * propose_routine / propose_trigger stay: the interaction extension is staged for every surface, and
- * routines and triggers fire as ordinary turns on every surface.
+ * Every first-party client stages the same capabilities. The client surface affects presentation,
+ * never the authority or tools Pi receives.
  */
 export function composedInstructions(
   persona?: string | null,
-  clientSurface: CompanionClientSurface = "web",
+  _clientSurface: CompanionClientSurface = "web",
 ): string {
   const written = persona?.trim() ?? "";
-  const includeHub = clientSurface !== "native_mobile";
   const parts = [
     COMPANION_SITUATION_INSTRUCTIONS,
     COMPANION_THREAD_INSTRUCTIONS,
@@ -847,8 +842,8 @@ export function composedInstructions(
     COMPANION_MACHINE_INSTRUCTIONS,
     COMPANION_TURN_INSTRUCTIONS,
     COMPANION_FILES_INSTRUCTIONS,
-    companionCapabilityInstructions(includeHub),
-    companionConfigInstructions(includeHub),
+    companionCapabilityInstructions(true),
+    companionControlInstructions(true),
   ];
   if (written) parts.push(`# This Companion\n\n${written}`);
   return `${parts.join("\n\n")}\n`;
@@ -865,7 +860,7 @@ export function composedRoutineInstructions(persona?: string | null): string {
     COMPANION_TURN_INSTRUCTIONS,
     COMPANION_FILES_INSTRUCTIONS,
     companionCapabilityInstructions(true),
-    companionConfigInstructions(true),
+    companionControlInstructions(false),
   ];
   if (written) parts.push(`# This Companion\n\n${written}`);
   return `${parts.join("\n\n")}\n`;
@@ -4022,7 +4017,7 @@ fi`,
     probe: { layoutCurrent: boolean; stdout: string };
   }): Promise<{ stagingMode: "refresh" | "skills"; skillBytesTransferred: number; skillsDigest: string }> {
     const injectedSkills = injectedSkillsFor(input);
-    const mcp = buildMcpAdapterInjection(input.mcpAccounts);
+    const mcp = buildMcpAdapterInjection(input.mcpAccounts, true);
     const bundledSkill = injectedSkills.find((skill) => skill.slug === "companion");
     let skillsTreeRevision = skillsTreeRevisionOf(injectedSkills);
     if (input.preserveSkills) {

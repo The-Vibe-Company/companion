@@ -76,6 +76,16 @@ describe("Pi MCP injection", () => {
     expect(JSON.stringify(injected)).not.toContain("GITHUB_MCP_AUTH");
   });
 
+  it("mounts the product-owned control MCP as an eager direct loopback server", () => {
+    const injected = buildMcpAdapterInjection([], true);
+    expect(injected.config.mcpServers["companion-control"]).toMatchObject({
+      url: "${COMPANION_MCP_GATEWAY_ORIGIN}/control",
+      lifecycle: "eager",
+      directTools: true,
+    });
+    expect(injected.gatewayAccounts).toEqual([]);
+  });
+
   it("passes a Gmail tool allow-list to the loopback gateway", () => {
     const accountId = "11111111-1111-4111-8111-111111111111";
     const credentialGeneration = "22222222-2222-4222-8222-222222222222";

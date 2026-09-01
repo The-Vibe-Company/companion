@@ -24,3 +24,4 @@ export * from "./companions";
 export * from "./companionRuntime";
 export * from "./companionPluginCatalog";
 export * from "./companionToolKinds";
+export * from "./companionControlMcp";

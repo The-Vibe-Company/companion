@@ -17,7 +17,7 @@ struct CompanionDecisionCard: View {
     let accent: Color
     let accentForeground: Color
     let onDecide: @MainActor (CompanionDecisionAction) async throws -> Void
-    let onOpenPlugins: () -> Void
+    let onOpenPlugins: (_ provider: String?, _ controlRequestID: String?) -> Void
     let onAnswerFocusChange: (Bool) -> Void
 
     @State private var answer = ""
@@ -69,6 +69,18 @@ struct CompanionDecisionCard: View {
             Text(settledBubbleText(outcome))
                 .font(.body)
                 .foregroundStyle(CompanionIOSTheme.textPrimary)
+
+            if outcome == .allowed, let provider = controlPluginProvider {
+                Button {
+                    onOpenPlugins(provider, decision.requestID)
+                } label: {
+                    Label("Connect \(provider.capitalized)", systemImage: "puzzlepiece.extension")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(accent)
+                .accessibilityIdentifier("decision.open-control-plugin.\(decision.requestID)")
+            }
 
             if let name = decision.decidedByName, !name.isEmpty {
                 Text("\(statusLabel) by \(name)")
@@ -131,6 +143,8 @@ struct CompanionDecisionCard: View {
             routineContent(proposal)
         case .trigger(let proposal):
             triggerContent(proposal)
+        case .control(let proposal):
+            controlContent(proposal)
         case nil:
             Text(decision.title)
                 .font(.system(.footnote, design: .monospaced))
@@ -268,7 +282,7 @@ struct CompanionDecisionCard: View {
                         .font(.footnote)
                         .foregroundStyle(CompanionIOSTheme.textSecondary)
                 }
-                Button(action: onOpenPlugins) {
+                Button(action: { onOpenPlugins(nil, nil) }) {
                     Label("Connect", systemImage: "puzzlepiece.extension")
                         .font(.subheadline.weight(.semibold))
                             .foregroundStyle(CompanionIOSTheme.primaryCTAText)
@@ -357,6 +371,35 @@ struct CompanionDecisionCard: View {
         }
     }
 
+    private func controlContent(_ proposal: CompanionControlProposal) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(proposal.summary)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(CompanionIOSTheme.textPrimary)
+            Text("\(proposal.requestKind) · \(proposal.action)")
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(CompanionIOSTheme.textSecondary)
+            if !proposal.payload.isEmpty {
+                DisclosureGroup("Requested values") {
+                    Text(CompanionControlJSONValue.object(proposal.payload).prettyPrintedJSON)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(CompanionIOSTheme.textPrimary)
+                        .textSelection(.enabled)
+                        .padding(.top, 6)
+                }
+                .font(.caption.weight(.semibold))
+                .tint(CompanionIOSTheme.textSecondary)
+            }
+        }
+    }
+
+    private var controlPluginProvider: String? {
+        guard case .control(let proposal) = decision.proposal,
+              proposal.requestKind == "plugin_connection",
+              case .string(let provider) = proposal.payload["provider"] else { return nil }
+        return provider
+    }
+
     private func promptDisclosure(_ prompt: String) -> some View {
         DisclosureGroup("Prompt") {
             Text(prompt)
@@ -393,6 +436,7 @@ struct CompanionDecisionCard: View {
         case .config: "\(companionName) proposes these changes"
         case .routine: "\(companionName) proposes this routine"
         case .trigger: "\(companionName) proposes this trigger"
+        case .control: "\(companionName) requests a change"
         case .shell: "Allow run a command"
         case .file: "Allow edit a file"
         case .unknown: "Unsupported request"
@@ -407,12 +451,26 @@ struct CompanionDecisionCard: View {
         case .config: "gearshape.2"
         case .routine: "calendar.badge.clock"
         case .trigger: "bolt.horizontal.circle"
+        case .control: "shippingbox.and.arrow.backward"
         case .unknown: "questionmark.diamond"
         }
     }
 
     private var statusLabel: String {
-        switch decision.status {
+        if decision.kind == .control {
+            switch decision.controlStatus {
+            case .pending: return "Waiting"
+            case .applying: return "Applying"
+            case .applied: return "Applied"
+            case .denied: return "Denied"
+            case .expired: return "Timed out"
+            case .cancelled: return "Closed"
+            case .failed: return "Failed"
+            case .unknown: return "Unknown"
+            case nil: break
+            }
+        }
+        return switch decision.status {
         case .pending: "Waiting"
         case .allowed: "Allowed"
         case .denied: "Denied"
@@ -424,7 +482,9 @@ struct CompanionDecisionCard: View {
     }
 
     private var statusSymbol: String {
-        switch decision.status {
+        if decision.kind == .control, decision.controlStatus == .applying { return "clock" }
+        if decision.kind == .control, decision.controlStatus == .failed { return "exclamationmark.triangle" }
+        return switch decision.status {
         case .pending: "clock"
         case .allowed, .answered: "checkmark"
         case .denied, .expired: "exclamationmark.triangle"
@@ -434,7 +494,9 @@ struct CompanionDecisionCard: View {
     }
 
     private var statusColor: Color {
-        switch decision.status {
+        if decision.kind == .control, decision.controlStatus == .applying { return CompanionIOSTheme.textSecondary }
+        if decision.kind == .control, decision.controlStatus == .failed { return CompanionIOSTheme.danger }
+        return switch decision.status {
         case .pending: CompanionIOSTheme.textSecondary
         case .allowed, .answered: CompanionIOSTheme.toggleGreen
         case .denied, .expired: CompanionIOSTheme.danger

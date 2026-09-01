@@ -8,6 +8,11 @@ import {
 import { existsSync, readFileSync } from "node:fs";
 import { pipeline, Readable, Transform } from "node:stream";
 import { z } from "zod";
+import {
+  COMPANION_CONTROL_MCP_PROTOCOL_VERSION,
+  COMPANION_CONTROL_MCP_SERVER_NAME,
+  COMPANION_CONTROL_MCP_TOOLS,
+} from "@companion/contracts";
 
 const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
 const MAX_SLACK_MCP_REQUEST_BYTES = 64 * 1024;
@@ -81,13 +86,18 @@ export async function startCompanionMcpGateway(input: {
   configPath: string;
   apiUrl: string;
   brokerToken: string;
+  controlToken?: string;
   fetchImpl?: typeof fetch;
   now?: () => number;
 }): Promise<CompanionMcpGateway | null> {
   const accounts = readGatewayAccounts(input.configPath);
-  if (accounts.length === 0) return null;
-  if (!/^cmp_mcp_[0-9a-f]{48}$/.test(input.brokerToken)) {
+  const controlToken = input.controlToken ?? "";
+  if (accounts.length === 0 && !controlToken) return null;
+  if (accounts.length > 0 && !/^cmp_mcp_[0-9a-f]{48}$/.test(input.brokerToken)) {
     throw new Error("MCP broker capability is unavailable");
+  }
+  if (!/^cmp_ctl_[0-9a-f]{48}$/.test(controlToken)) {
+    throw new Error("Companion control capability is unavailable");
   }
   const fetchImpl = input.fetchImpl ?? fetch;
   const now = input.now ?? Date.now;
@@ -126,6 +136,8 @@ export async function startCompanionMcpGateway(input: {
       accounts,
       accessFor,
       fetchImpl,
+      apiUrl: input.apiUrl,
+      controlToken,
       gatewayOrigin: () => origin,
     }).catch(() => {
       if (response.headersSent) response.destroy();
@@ -222,9 +234,20 @@ async function handleGatewayRequest(input: {
   accounts: GatewayAccount[];
   accessFor(account: GatewayAccount, force: boolean): Promise<CachedAccess>;
   fetchImpl: typeof fetch;
+  apiUrl: string;
+  controlToken: string;
   gatewayOrigin(): string;
 }): Promise<void> {
   const requestUrl = new URL(input.request.url ?? "/", input.gatewayOrigin());
+  if (requestUrl.pathname === "/control") {
+    return await handleCompanionControlRequest({
+      request: input.request,
+      response: input.response,
+      apiUrl: input.apiUrl,
+      controlToken: input.controlToken,
+      fetchImpl: input.fetchImpl,
+    });
+  }
   const route = /^\/(mcp|git)\/([0-9a-f-]{36})(?:\/endpoint\/([A-Za-z0-9_-]+))?$/.exec(requestUrl.pathname);
   if (!route) return safeError(input.response, 404);
   const account = input.accounts.find((candidate) => candidate.accountId === route[2]);
@@ -287,6 +310,79 @@ async function handleGatewayRequest(input: {
     gatewayOrigin: input.gatewayOrigin(),
     filterToolsList: toolRequest.filterToolsList,
   });
+}
+
+async function handleCompanionControlRequest(input: {
+  request: IncomingMessage;
+  response: ServerResponse;
+  apiUrl: string;
+  controlToken: string;
+  fetchImpl: typeof fetch;
+}): Promise<void> {
+  if (input.request.method !== "POST") return safeError(input.response, 405);
+  const body = await readBoundedBody(input.request, MAX_REQUEST_BYTES);
+  let request: JsonRpcRequest | null = null;
+  try {
+    const parsed = jsonRpcRequestSchema.safeParse(JSON.parse(body.toString("utf8")));
+    if (parsed.success) request = parsed.data;
+  } catch {
+    return jsonRpcResponse(input.response, {
+      jsonrpc: "2.0", id: null, error: { code: -32700, message: "Invalid JSON" },
+    });
+  }
+  if (!request) {
+    return jsonRpcResponse(input.response, {
+      jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid request" },
+    });
+  }
+  if (request.method === "notifications/initialized") {
+    input.response.writeHead(202, { "cache-control": "no-store" });
+    input.response.end();
+    return;
+  }
+  if (request.method === "initialize") {
+    return jsonRpcResponse(input.response, {
+      jsonrpc: "2.0",
+      id: request.id ?? null,
+      result: {
+        protocolVersion: COMPANION_CONTROL_MCP_PROTOCOL_VERSION,
+        capabilities: { tools: { listChanged: false } },
+        serverInfo: { name: COMPANION_CONTROL_MCP_SERVER_NAME, version: "1.0.0" },
+      },
+    });
+  }
+  if (request.method === "tools/list") {
+    return jsonRpcResponse(input.response, {
+      jsonrpc: "2.0",
+      id: request.id ?? null,
+      result: { tools: jsonValueSchema.parse(COMPANION_CONTROL_MCP_TOOLS) },
+    });
+  }
+  if (request.method !== "tools/call") {
+    return jsonRpcResponse(input.response, {
+      jsonrpc: "2.0", id: request.id ?? null,
+      error: { code: -32601, message: "Method not found" },
+    });
+  }
+  const endpoint = new URL("runtime/companion-control", `${input.apiUrl.replace(/\/+$/, "")}/`);
+  const upstream = await input.fetchImpl(endpoint, {
+    method: "POST",
+    redirect: "error",
+    signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${input.controlToken}`,
+      "content-type": "application/json",
+      "mcp-protocol-version": COMPANION_CONTROL_MCP_PROTOCOL_VERSION,
+    },
+    body,
+  });
+  const bytes = await readBoundedWebBody(upstream.body ?? new ReadableStream<Uint8Array>());
+  input.response.writeHead(upstream.status, {
+    "cache-control": "no-store",
+    "content-type": upstream.headers.get("content-type") ?? "application/json; charset=utf-8",
+  });
+  input.response.end(bytes);
 }
 
 interface McpToolRequestInspection {

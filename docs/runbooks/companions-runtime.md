@@ -295,7 +295,8 @@ Retry/Cancel only. Retry creates a new attempt and recycles Pi; it does not rest
 manually mark an ambiguous attempt queued.
 
 While a turn is waiting in `needs_input`, its inactivity deadline is intentionally cleared. An
-`ask_user` or `propose_*` decision returns control to Pi after ten minutes; a newer member message
+`ask_user` decision returns control to Pi after ten minutes; asynchronous `companion-control`
+approvals never hold the attempt open. A newer member message
 cancels the wait sooner, without becoming an implicit approval, and remains queued for its own turn.
 That queued follow-up must have neither a Start operation nor a cold-start deadline until it reaches
 the head of the queue. If an older deployment shows

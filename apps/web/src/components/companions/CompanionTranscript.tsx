@@ -255,11 +255,17 @@ function AssistantFrame({ children }: { children: ReactNode }) {
   } = useChrome();
   const groupedEntry = message?.entries.find((entry) => entry.routine_notify_group != null);
   const notifyGroup = groupedEntry?.routine_notify_group ?? null;
+  const delegation = message?.entries.find((entry) => entry.delegation)?.delegation ?? null;
   const expanded = groupedEntry ? expandedRoutineNotifyGroups.has(groupedEntry.event_id) : false;
   return (
     <>
       <Separators message={message} />
       <AssistantPassageLead message={message} />
+      {delegation && (
+        <p className="chat-routine-header">
+          From {delegation.companion_name} · {delegation.response_mode}
+        </p>
+      )}
       {notifyGroup && groupedEntry ? (
         <>
           <button
@@ -314,6 +320,7 @@ function UserFrame({ children }: { children: ReactNode }) {
   const { canSend, onCancelQueued, onOpenRoutineRun, dequeueingTurnId } = useChrome();
   const routine = message?.entries[0]?.routine ?? null;
   const trigger = message?.entries[0]?.trigger ?? null;
+  const delegation = message?.entries[0]?.delegation ?? null;
   const queued = message?.queued === true;
   return (
     <div
@@ -327,6 +334,12 @@ function UserFrame({ children }: { children: ReactNode }) {
       {/* Full width on purpose: the bubble inside is capped as a percentage, and a fit-content
           wrapper would make that percentage resolve against the bubble's own text. */}
       <div className={cn("flex w-full flex-col items-end", (message?.sending || queued) && "opacity-60")}>
+        {delegation && (
+          <p className="chat-routine-header">
+            {delegation.direction === "request" ? "Delegated by" : "Response from"} {delegation.companion_name}
+            {" · "}{delegation.response_mode}
+          </p>
+        )}
         {routine ? (
           routine.run_id && onOpenRoutineRun ? (
             <button
@@ -811,12 +824,14 @@ export function CompanionTranscript({
 
   const decisions = useMemo(() => ({
     canAct: canSend,
+    access: thread?.access ?? companion.access,
+    companionId: companion.id,
     companionName: companion.name,
     skills,
     plugins,
     models,
     onDecide,
-  }), [canSend, companion.name, models, onDecide, plugins, skills]);
+  }), [canSend, companion.access, companion.id, companion.name, models, onDecide, plugins, skills, thread?.access]);
   const attachmentContext = useMemo(() => ({ companionId: companion.id }), [companion.id]);
 
   return (

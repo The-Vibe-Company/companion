@@ -323,7 +323,7 @@ async function claimWorkRows(
       runtime_generation::text as "runtimeGeneration"
     from public.companion_runtime_claim_work(${claimant}, ${limit}, 30, (
       select gate_epoch from public.companion_runtime_gate_status()
-    ), 4, 1)
+    ), 5, 1)
   `);
   return rows;
 }
@@ -547,6 +547,73 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     await adminSql.unsafe(`drop database if exists "${databaseName}" with (force)`);
     await adminSql.unsafe(`drop role if exists ${runtimeRole}, ${workerRole}, ${apiRole}`);
     await adminSql.end({ timeout: 1 });
+  });
+
+  it("serializes identical control invocations and replays their exact stored response", async () => {
+    if (!sql) throw new Error("runtime executor database is not initialized");
+    const fixture = await createCompanion({ selectedSkillIds: [], selectedMcpAccountIds: [] });
+    const invocationId = randomUUID();
+    const requestKey = `${fixture.attemptId}:rpc-1`;
+    const requestDigest = "d".repeat(64);
+    const expectedResult = { jsonrpc: "2.0", id: "rpc-1", result: { applied: true } };
+    let mutationCount = 0;
+
+    async function invoke(): Promise<IntegrationJsonObject> {
+      return await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: async (tx) => {
+          const [registered] = await tx<Array<{ replayed: boolean; result: unknown }>>`
+            select * from public.companion_api_register_control_invocation(
+              ${ids.orgA}::uuid, ${fixture.companionId}::uuid, ${invocationId}::uuid,
+              ${fixture.turnId}::uuid, ${fixture.attemptId}::uuid,
+              ${requestKey}, ${requestDigest}
+            )
+          `;
+          if (!registered) throw new Error("expected a control invocation registration");
+          if (registered.replayed) return integrationJsonObjectSchema.parse(registered.result);
+          mutationCount += 1;
+          const [finished] = await tx<Array<{ result: unknown }>>`
+            select public.companion_api_finish_control_invocation(
+              ${ids.orgA}::uuid, ${fixture.companionId}::uuid, ${fixture.attemptId}::uuid,
+              ${requestKey}, ${requestDigest}, ${tx.json(expectedResult)}::jsonb
+            ) as result
+          `;
+          return integrationJsonObjectSchema.parse(finished?.result);
+        },
+      });
+    }
+
+    const [first, replay] = await Promise.all([invoke(), invoke()]);
+    expect(first).toEqual(expectedResult);
+    expect(replay).toEqual(expectedResult);
+    expect(mutationCount).toBe(1);
+    const [after] = await sql<Array<{ invocationCount: number }>>`
+      select count(*)::int as "invocationCount" from companion_control_invocations i
+      where i.companion_id = ${fixture.companionId}::uuid and i.request_key = ${requestKey}
+    `;
+    expect(after).toEqual({ invocationCount: 1 });
+
+    await sql`
+      update companion_turn_attempts set status = 'cancelled', settled_at = now()
+      where id = ${fixture.attemptId}::uuid
+    `;
+    await sql`
+      update companion_turns set status = 'cancelled', settled_at = now()
+      where id = ${fixture.turnId}::uuid
+    `;
+
+    await expect(asApi({
+      orgId: ids.orgA,
+      actorId: ids.ownerA,
+      action: (tx) => tx`
+        select * from public.companion_api_register_control_invocation(
+          ${ids.orgA}::uuid, ${fixture.companionId}::uuid, ${randomUUID()}::uuid,
+          ${fixture.turnId}::uuid, ${fixture.attemptId}::uuid,
+          ${requestKey}, ${"e".repeat(64)}
+        )
+      `,
+    })).rejects.toThrow(/idempotency conflict/);
   });
 
   it("grants only the narrow SECURITY DEFINER executor functions", async () => {
@@ -3119,8 +3186,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
         update companion_runtime_instances
         set material_client_surface = ${from}::public.companion_client_surface,
             material_pi_invocation_id = ${oldPi},
-            material_expires_at = CASE WHEN ${from} = 'native_mobile' THEN NULL
-              ELSE now() + interval '6 hours' END
+            material_expires_at = now() + interval '6 hours'
         where companion_id = ${companionId}::uuid
       `;
 

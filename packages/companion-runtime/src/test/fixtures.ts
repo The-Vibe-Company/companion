@@ -546,6 +546,10 @@ export class MemoryRuntimeStore implements RuntimeStore {
     return null;
   }
 
+  async mintControlToken(): Promise<{ token: string; expiresAt: Date } | null> {
+    return { token: `cmp_ctl_${"c".repeat(48)}`, expiresAt: new Date(Date.now() + 60_000) };
+  }
+
   async recordMaterialSnapshot(_fence: LeaseFence, input: {
     clientSurface: ClientSurface;
     materialExpiresAt: Date | null;

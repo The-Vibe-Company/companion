@@ -410,7 +410,14 @@ struct CompanionMacWorkspaceView: View {
                 sessionStore: model.sessionStore,
                 onCompanionChanged: { model.replaceProjection($0) },
                 onSettings: { _ in inspectorVisible.toggle() },
-                onOpenDesktop: { requestDesktop(for: $0) }
+                onOpenDesktop: { requestDesktop(for: $0) },
+                onOpenControlPlugin: { provider, requestID in
+                    openControlPlugin(
+                        companionID: companion.id,
+                        provider: provider,
+                        requestID: requestID
+                    )
+                }
             )
             .id(companion.id)
             .environment(model.sessionStore)
@@ -459,6 +466,21 @@ struct CompanionMacWorkspaceView: View {
         // the request there prevents a Window scene startup task and the toolbar path from racing
         // and rotating two signed stream URLs.
         openWindow(id: "companion-desktop")
+    }
+
+    private func openControlPlugin(companionID: String, provider: String, requestID: String) {
+        guard var components = URLComponents(
+            url: CompanionMacAppConfig.webURL.appending(path: "companions"),
+            resolvingAgainstBaseURL: false
+        ) else { return }
+        components.queryItems = [
+            URLQueryItem(name: "view", value: "plugins"),
+            URLQueryItem(name: "control_companion", value: companionID),
+            URLQueryItem(name: "connect", value: provider),
+            URLQueryItem(name: "control_request", value: requestID),
+        ]
+        guard let url = components.url else { return }
+        NSWorkspace.shared.open(url)
     }
 }
 

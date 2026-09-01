@@ -11,6 +11,7 @@ const credentialGeneration = "22222222-2222-4222-8222-222222222222";
 const conductorAccountId = "33333333-3333-4333-8333-333333333333";
 const conductorCredentialGeneration = "44444444-4444-4444-8444-444444444444";
 const brokerToken = `cmp_mcp_${"a".repeat(48)}`;
+const controlToken = `cmp_ctl_${"b".repeat(48)}`;
 const apiUrl = "https://control.example.test/v1";
 const upstreamUrl = "https://mcp.example.test/rpc";
 const brokerRequestSchema = z.object({
@@ -19,6 +20,9 @@ const brokerRequestSchema = z.object({
   force_refresh: z.boolean(),
 }).strict();
 const mcpMethodSchema = z.object({ method: z.string().optional() }).passthrough();
+const controlToolListSchema = z.object({
+  result: z.object({ tools: z.array(z.object({ name: z.string() })) }),
+});
 const toolsListResponseSchema = z.object({
   result: z.object({ tools: z.array(z.object({ name: z.string() }).passthrough()) }).passthrough(),
 }).passthrough();
@@ -35,6 +39,38 @@ afterEach(async () => {
 });
 
 describe("Companion MCP loopback gateway", () => {
+  it("serves the static control catalog and forwards tool calls with only the control capability", async () => {
+    const upstream: Array<{ url: string; authorization: string | null }> = [];
+    const gateway = await startGatewayWithAccounts(async (rawUrl, init) => {
+      upstream.push({
+        url: String(rawUrl),
+        authorization: new Headers(init?.headers).get("authorization"),
+      });
+      return Response.json({ jsonrpc: "2.0", id: 2, result: { content: [{ type: "text", text: "ok" }] } });
+    }, []);
+
+    const listed = controlToolListSchema.parse(await fetch(`${gateway.origin}/control`, {
+      method: "POST",
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    }).then(async (response) => await response.json()));
+    expect(listed.result.tools.map((tool) => tool.name)).toContain("companion_get_self");
+    expect(listed.result.tools.map((tool) => tool.name)).toContain("companion_send_message");
+    expect(upstream).toHaveLength(0);
+
+    await fetch(`${gateway.origin}/control`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 2, method: "tools/call",
+        params: { name: "companion_get_self", arguments: {} },
+      }),
+    });
+    expect(upstream).toEqual([{
+      url: `${apiUrl}/runtime/companion-control`,
+      authorization: `Bearer ${controlToken}`,
+    }]);
+  });
+
   it.each([
     { label: "without expiry", ttlMs: null },
     { label: "for one second", ttlMs: 1_000 },
@@ -549,6 +585,7 @@ async function startGatewayWithAccounts(
     configPath,
     apiUrl,
     brokerToken,
+    controlToken,
     fetchImpl,
     now,
   });

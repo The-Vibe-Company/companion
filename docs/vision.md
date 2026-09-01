@@ -35,13 +35,18 @@ hosted Companions, and their grants do not authorize Companion lifecycle or chat
 ## Product boundary
 
 Companions deliberately stop short of the broader Grok Bot vision. This version has no generic
-Projects, multi-Bot teams or handoffs, proactive jobs, voice, file library, artifact surface, or
+Projects, Group/Room model, autonomous multi-Bot orchestration, proactive jobs, voice, file library, artifact surface, or
 arbitrary computer-provider marketplace. Scheduled Companion routines are in scope: they create
 exactly-once durable runs on a cron+timezone schedule and execute in isolated Pi sessions inside the
 same Companion runtime. A message may carry files and a turn
 may hand images back, because showing a teammate something is part of talking to them; nothing
 about that becomes a store of files with a life of its own. It does not add a generic model platform,
 agent builder, container catalog, deployment manager, or harness selection UI.
+
+Every ordinary main Pi attempt does receive one product-owned control MCP for its own identity,
+Skills, plugins, routines, triggers, Pi recycle, and explicitly granted directed text delegations.
+Sensitive changes remain durable human-approved intent. This bounded source→target primitive is the
+foundation for future groups without introducing a group aggregate in this release.
 
 Pi is the only harness, box.ascii.dev is the only Box provider, and one Companion is always one Box,
 one main Pi session, and one thread. A routine may launch a run-scoped Pi process using that same

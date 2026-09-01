@@ -20,7 +20,7 @@ const validProfile = {
   ownsDatabaseOrSchema: false,
   ownsRelations: false,
   ownsFunctionsOrTypes: false,
-  protectedRelationCount: 14,
+  protectedRelationCount: 15,
   hasPublicRelationPrivileges: false,
   requiredFunctionsReady: true,
   ownsRequiredFunctions: false,

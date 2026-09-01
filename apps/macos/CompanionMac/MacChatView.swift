@@ -174,6 +174,7 @@ struct CompanionMacChatView: View {
     let onCompanionChanged: (CompanionSummary) -> Void
     let onSettings: (CompanionSummary) -> Void
     let onOpenDesktop: (CompanionSummary) -> Void
+    let onOpenControlPlugin: (_ provider: String, _ controlRequestID: String) -> Void
     @State private var model: CompanionMacChatModel
     @State private var draft = ""
     @State private var attachments: [CompanionMessageAttachment] = []
@@ -186,12 +187,14 @@ struct CompanionMacChatView: View {
         sessionStore: SessionStore,
         onCompanionChanged: @escaping (CompanionSummary) -> Void,
         onSettings: @escaping (CompanionSummary) -> Void,
-        onOpenDesktop: @escaping (CompanionSummary) -> Void
+        onOpenDesktop: @escaping (CompanionSummary) -> Void,
+        onOpenControlPlugin: @escaping (_ provider: String, _ controlRequestID: String) -> Void
     ) {
         self.companion = companion
         self.onCompanionChanged = onCompanionChanged
         self.onSettings = onSettings
         self.onOpenDesktop = onOpenDesktop
+        self.onOpenControlPlugin = onOpenControlPlugin
         _model = State(initialValue: CompanionMacChatModel(companion: companion, sessionStore: sessionStore))
     }
 
@@ -308,6 +311,7 @@ struct CompanionMacChatView: View {
                                 decide: { action in
                                     await model.decide(requestID: entry.decision?.requestID ?? "", action: action)
                                 },
+                                openControlPlugin: onOpenControlPlugin,
                                 reasoningExpanded: Binding(
                                     get: { expandedReasoning.contains(entry.id) },
                                     set: { expanded in
@@ -515,6 +519,7 @@ private struct CompanionMacTranscriptEntry: View {
     let viewerID: String
     let canDecide: Bool
     let decide: (CompanionDecisionAction) async -> Void
+    let openControlPlugin: (_ provider: String, _ controlRequestID: String) -> Void
     @Binding var reasoningExpanded: Bool
 
     var body: some View {
@@ -528,6 +533,15 @@ private struct CompanionMacTranscriptEntry: View {
                     Label("Routine: \(routine.name)", systemImage: "clock")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(linkColor)
+                } else if let delegation = entry.delegation {
+                    Label(
+                        delegation.direction == .request
+                            ? "Delegated by \(delegation.companionName)"
+                            : "Response from \(delegation.companionName)",
+                        systemImage: "arrow.triangle.branch"
+                    )
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(linkColor)
                 } else if entry.role == "user", !isUser, let author = entry.authorName {
                     Text(author)
                         .font(.system(size: 12, weight: .semibold))
@@ -545,10 +559,12 @@ private struct CompanionMacTranscriptEntry: View {
                 if let decision = entry.decision {
                     CompanionMacDecisionCard(
                         decision: decision,
-                        canAct: canDecide,
+                        canAct: canDecide
+                            && (decision.requiredAccess != .owner || companion.access == .owner),
                         onDecide: { action in
                             await decide(action)
-                        }
+                        },
+                        onOpenControlPlugin: openControlPlugin
                     )
                 }
                 if let reasoning = entry.reasoning, !reasoning.isEmpty {
@@ -774,6 +790,7 @@ private struct CompanionMacDecisionCard: View {
     let decision: CompanionDecision
     let canAct: Bool
     let onDecide: (CompanionDecisionAction) async -> Void
+    let onOpenControlPlugin: (_ provider: String, _ controlRequestID: String) -> Void
     @State private var answer = ""
     @State private var submitting = false
 
@@ -801,6 +818,16 @@ private struct CompanionMacDecisionCard: View {
                     .font(.caption.monospaced())
                     .foregroundStyle(CompanionIOSTheme.textPrimary)
                     .lineLimit(6)
+            }
+            if case .control(let proposal) = decision.proposal, !proposal.payload.isEmpty {
+                DisclosureGroup("Requested values") {
+                    Text(CompanionControlJSONValue.object(proposal.payload).prettyPrintedJSON)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(CompanionIOSTheme.textPrimary)
+                        .textSelection(.enabled)
+                        .padding(.top, 4)
+                }
+                .font(.caption.weight(.semibold))
             }
             if decision.status == .pending {
                 if decision.kind == .question {
@@ -834,6 +861,15 @@ private struct CompanionMacDecisionCard: View {
                     .font(.caption)
                     .foregroundStyle(Color.companionMacMuted)
             }
+            if decision.controlStatus == .applied, let provider = controlPluginProvider {
+                Button {
+                    onOpenControlPlugin(provider, decision.requestID)
+                } label: {
+                    Label("Connect \(provider.capitalized)", systemImage: "puzzlepiece.extension")
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("decision.open-control-plugin.\(decision.requestID)")
+            }
         }
         .padding(14)
         .frame(maxWidth: 640, alignment: .leading)
@@ -847,12 +883,25 @@ private struct CompanionMacDecisionCard: View {
         case .question: return "questionmark.circle"
         case .shell: return "terminal"
         case .file: return "doc.text"
-        case .config, .routine, .trigger: return "checkmark.shield"
+        case .config, .routine, .trigger, .control: return "checkmark.shield"
         case .unknown: return "questionmark"
         }
     }
 
     private var statusLabel: String {
+        if decision.kind == .control {
+            switch decision.controlStatus {
+            case .pending: return "Waiting"
+            case .applying: return "Applying"
+            case .applied: return "Applied"
+            case .denied: return "Denied"
+            case .expired: return "Expired"
+            case .cancelled: return "Cancelled"
+            case .failed: return "Failed"
+            case .unknown: return "Unknown"
+            case nil: break
+            }
+        }
         switch decision.status {
         case .pending: return "Waiting"
         case .allowed: return "Allowed"
@@ -865,6 +914,15 @@ private struct CompanionMacDecisionCard: View {
     }
 
     private var statusColor: Color {
+        if decision.kind == .control {
+            switch decision.controlStatus {
+            case .applied: return .companionMacSuccess
+            case .failed, .denied, .expired: return .companionMacDanger
+            case .pending, .applying: return .companionMacAccent
+            case .cancelled: return .companionMacDanger
+            case .unknown, nil: return .companionMacUnknown
+            }
+        }
         switch decision.status {
         case .pending: return .companionMacAccent
         case .allowed, .answered: return .companionMacSuccess
@@ -887,9 +945,18 @@ private struct CompanionMacDecisionCard: View {
             return "Routine: \(proposal.name) · \(proposal.cron) · \(proposal.timezone)"
         case .trigger(let proposal):
             return "Trigger: \(proposal.name) · \(proposal.provider)"
+        case .control(let proposal):
+            return "\(proposal.summary) · \(proposal.requestKind) · \(proposal.action)"
         case nil:
             return nil
         }
+    }
+
+    private var controlPluginProvider: String? {
+        guard case .control(let proposal) = decision.proposal,
+              proposal.requestKind == "plugin_connection",
+              case .string(let provider) = proposal.payload["provider"] else { return nil }
+        return provider
     }
 
     private func submit(_ action: CompanionDecisionAction) {

@@ -9,10 +9,12 @@ import type {
   CompanionRoutineProposal,
   CompanionTriggerProposal,
 } from "@companion/contracts";
+import { companionConfigProposalConnectProviderSchema } from "@companion/contracts";
 import {
   AlertTriangleIcon,
   CalendarClockIcon,
   CheckIcon,
+  BoxesIcon,
   FilePenLineIcon,
   LoaderIcon,
   MessageSquareIcon,
@@ -50,6 +52,7 @@ const DECISION_ICONS = {
   config: Settings2Icon,
   routine: CalendarClockIcon,
   trigger: WebhookIcon,
+  control: BoxesIcon,
 } satisfies Record<CompanionDecisionKind, LucideIcon>;
 
 const DECISION_KIND_LABELS = {
@@ -59,6 +62,7 @@ const DECISION_KIND_LABELS = {
   config: "these settings",
   routine: "this routine",
   trigger: "this trigger",
+  control: "this Companion change",
 } satisfies Record<CompanionDecisionKind, string>;
 
 const DECISION_STATUS_LABELS = {
@@ -196,22 +200,31 @@ function RoutineProposal({ proposal }: { proposal: CompanionRoutineProposal }) {
 }
 
 export const DecisionToolCard: ToolCallMessagePartComponent<CompanionDecisionArgs> = ({ args }) => {
-  const { canAct, companionName, skills, plugins, models, onDecide } = useDecisionActions();
+  const { canAct, access, companionId, companionName, skills, plugins, models, onDecide } = useDecisionActions();
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const decision = args?.decision;
   if (!decision) return null;
 
-  const pending = decision.status === "pending";
-  const interactive = pending && canAct && !busy;
-  const settledWell = decision.status === "allowed" || decision.status === "answered";
+  const control = decision.kind === "control";
+  const pending = decision.status === "pending" || (control && decision.control_status === "applying");
+  const canApprove = canAct && (decision.required_access !== "owner" || access === "owner");
+  const interactive = decision.status === "pending" && canApprove && !busy;
+  const settledWell = control
+    ? decision.control_status === "applied"
+    : decision.status === "allowed" || decision.status === "answered";
   const status = DECISION_STATUS_LABELS[decision.status];
   const KindIcon = DECISION_ICONS[decision.kind];
   const requestId = decision.request_id;
   const config = decision.kind === "config";
   const routine = decision.kind === "routine";
   const trigger = decision.kind === "trigger";
+  const controlPluginProvider = control
+    && decision.proposal?.kind === "control"
+    && decision.proposal.request_kind === "plugin_connection"
+      ? companionConfigProposalConnectProviderSchema.safeParse(decision.proposal.payload.provider).data ?? null
+      : null;
 
   async function act(input: DecisionAction) {
     if (!interactive) return;
@@ -250,9 +263,11 @@ export const DecisionToolCard: ToolCallMessagePartComponent<CompanionDecisionArg
                 ? `${companionName} proposes this routine`
                 : trigger
                   ? `${companionName} proposes this trigger`
+                  : control
+                    ? `${companionName} requests a change`
                   : `Allow ${DECISION_KIND_LABELS[decision.kind]}`}
         </span>
-        {!config && !routine && !trigger && (
+        {!config && !routine && !trigger && !control && (
           <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-xs">
             {decision.name}
           </span>
@@ -283,6 +298,23 @@ export const DecisionToolCard: ToolCallMessagePartComponent<CompanionDecisionArg
           ? <RoutineProposal proposal={decision.proposal} />
         : trigger && decision.proposal?.kind === "trigger"
           ? <TriggerProposal proposal={decision.proposal} />
+        : control && decision.proposal?.kind === "control"
+          ? (
+            <div className="mt-1.5 space-y-1.5 text-sm">
+              <p className="font-medium">{decision.proposal.summary}</p>
+              <p className="text-muted-foreground font-mono text-xs">
+                {decision.proposal.request_kind} · {decision.proposal.action}
+              </p>
+              {Object.keys(decision.proposal.payload).length > 0 && (
+                <details>
+                  <summary className="text-muted-foreground cursor-pointer select-none">Details</summary>
+                  <pre className="text-foreground mt-1 max-h-40 overflow-auto whitespace-pre-wrap text-xs">
+                    {JSON.stringify(decision.proposal.payload, null, 2)}
+                  </pre>
+                </details>
+              )}
+            </div>
+          )
         : (
           <pre className="text-foreground mt-1.5 max-h-40 overflow-auto font-mono text-xs leading-relaxed whitespace-pre-wrap">
             {decision.title}
@@ -296,6 +328,20 @@ export const DecisionToolCard: ToolCallMessagePartComponent<CompanionDecisionArg
         <p className="text-muted-foreground mt-1.5 text-xs">
           Approved — Companion handled the provider setup. Check Triggers for its registration status.
         </p>
+      )}
+      {control && decision.control_status === "applying" && (
+        <p className="text-muted-foreground mt-1.5 text-xs">Approved — applying asynchronously</p>
+      )}
+      {control && decision.control_status === "failed" && (
+        <p className="text-destructive mt-1.5 text-xs">Approved, but the change could not be applied</p>
+      )}
+      {controlPluginProvider && decision.control_status === "applied" && canApprove && (
+        <a
+          className="text-primary mt-1.5 inline-block text-xs underline-offset-2 hover:underline"
+          href={`/companions?view=plugins&control_companion=${encodeURIComponent(companionId)}&connect=${encodeURIComponent(controlPluginProvider)}&control_request=${encodeURIComponent(requestId)}`}
+        >
+          Connect {controlPluginProvider} and attach it automatically
+        </a>
       )}
       {!pending && decision.decided_by_name && (
         <p className="text-muted-foreground mt-1.5 text-xs">
@@ -358,8 +404,10 @@ export const DecisionToolCard: ToolCallMessagePartComponent<CompanionDecisionArg
           </Button>
         </div>
       )}
-      {pending && !canAct && (
-        <p className="text-muted-foreground mt-1.5 text-xs">Waiting for an Owner or Editor</p>
+      {decision.status === "pending" && !canApprove && (
+        <p className="text-muted-foreground mt-1.5 text-xs">
+          Waiting for {decision.required_access === "owner" ? "the Owner" : "an Owner or Editor"}
+        </p>
       )}
     </section>
   );

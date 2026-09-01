@@ -214,6 +214,29 @@ describe("CompanionPlugins", () => {
     expect(container.textContent).toContain("It never sends email.");
   });
 
+  it("opens an approved control OAuth request and preserves its attachment binding", async () => {
+    window.location.href = "http://localhost/companions?view=plugins&connect=github"
+      + "&control_companion=11111111-1111-4111-8111-111111111111"
+      + "&control_request=22222222-2222-4222-8222-222222222222";
+    startCompanionPluginOAuth.mockResolvedValue(
+      "https://github.com/login/oauth/authorize?state=signed-state",
+    );
+
+    const container = await mount();
+    const form = requireForm(container, "#companion-catalog-connect");
+    await act(async () => setControlled(requireInput(form, "input"), "work"));
+    await act(async () => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+
+    expect(startCompanionPluginOAuth).toHaveBeenCalledWith("org-1", {
+      server_name: "io.github.github/github-mcp-server",
+      label: "work",
+      companion_id: "11111111-1111-4111-8111-111111111111",
+      control_request_id: "22222222-2222-4222-8222-222222222222",
+    });
+  });
+
   it("shows the connected callback result and removes OAuth query parameters", async () => {
     window.location.href = "http://localhost/companions?view=plugins&oauth=connected";
 

@@ -1673,6 +1673,64 @@ func decodesAPluginConnectionDecisionWithoutTrustingPayloadLabels() throws {
 }
 
 @Test
+func decodesControlDecisionAndDelegationMetadata() throws {
+    let data = Data(#"""
+    {
+      "event_id":"control:11111111-1111-4111-8111-111111111111",
+      "ordinal":8,
+      "role":"decision",
+      "content":"",
+      "author_id":null,
+      "author_name":null,
+      "created_at":"2026-08-31T20:00:00.000Z",
+      "decision":{
+        "request_id":"11111111-1111-4111-8111-111111111111",
+        "kind":"control",
+        "name":"grant_peer_access",
+        "title":"Allow delegation to Orbit",
+        "detail":null,
+        "status":"allowed",
+        "answer":null,
+        "decided_by_id":"owner-1",
+        "decided_by_name":"Stan",
+        "decided_at":"2026-08-31T20:01:00.000Z",
+        "expires_at":"2026-09-01T20:00:00.000Z",
+        "required_access":"owner",
+        "control_status":"applying",
+        "proposal":{
+          "kind":"control",
+          "request_kind":"peer_access",
+          "action":"grant_peer_access",
+          "summary":"Allow delegation to Orbit",
+          "payload":{"target_name":"Orbit","enabled":true}
+        }
+      },
+      "delegation":{
+        "id":"22222222-2222-4222-8222-222222222222",
+        "direction":"response",
+        "companion_id":"33333333-3333-4333-8333-333333333333",
+        "companion_name":"Orbit",
+        "response_mode":"relay",
+        "status":"succeeded"
+      }
+    }
+    """#.utf8)
+
+    let entry = try JSONDecoder().decode(TranscriptEntry.self, from: data)
+    #expect(entry.decision?.kind == .control)
+    #expect(entry.decision?.requiredAccess == .owner)
+    #expect(entry.decision?.controlStatus == .applying)
+    guard case .control(let proposal) = entry.decision?.proposal else {
+        Issue.record("Expected a control proposal")
+        return
+    }
+    #expect(proposal.requestKind == "peer_access")
+    #expect(proposal.payload["target_name"] == .string("Orbit"))
+    #expect(entry.delegation?.companionName == "Orbit")
+    #expect(entry.delegation?.direction == .response)
+}
+
+@Test
 func keepsUnknownTranscriptAndDecisionKindsReadable() throws {
     let data = Data(#"""
     {

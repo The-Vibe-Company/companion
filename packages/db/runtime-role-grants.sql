@@ -858,6 +858,40 @@ BEGIN
       ];
     END IF;
 
+    -- 0150 installs the product-owned Companion control MCP and directed delegation surface.
+    -- The API owns decisions and ordinary-turn persistence; only the dedicated runtime may mint
+    -- the short-lived gateway token under its live claim fence.
+    IF pg_catalog.to_regprocedure(
+      'public.companion_runtime_mint_control_token(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,integer)'
+    ) IS NOT NULL THEN
+      companion_runtime_functions := companion_runtime_functions || ARRAY[
+        'public.companion_runtime_mint_control_token(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,integer)'::regprocedure
+      ];
+      companion_api_functions := companion_api_functions || ARRAY[
+        'public.companion_resolve_control_token(text)'::regprocedure,
+        'public.companion_api_register_control_invocation(uuid,uuid,uuid,uuid,uuid,text,text)'::regprocedure,
+        'public.companion_api_finish_control_invocation(uuid,uuid,uuid,text,text,jsonb)'::regprocedure,
+        'public.companion_api_create_control_request(uuid,uuid,uuid,uuid,uuid,public.companion_control_request_kind,text,text,jsonb,text,text,text)'::regprocedure,
+        'public.companion_api_get_control_request(uuid,uuid,uuid)'::regprocedure,
+        'public.companion_api_decide_control_request(uuid,uuid,uuid,text)'::regprocedure,
+        'public.companion_api_finish_control_request(uuid,uuid,uuid,jsonb,text,text)'::regprocedure,
+        'public.companion_api_enqueue_control_continuation(uuid,uuid,uuid,text)'::regprocedure,
+        'public.companion_api_list_peers(uuid,uuid)'::regprocedure,
+        'public.companion_api_grant_peer_access(uuid,uuid,uuid)'::regprocedure,
+        'public.companion_api_revoke_peer_access(uuid,uuid,uuid)'::regprocedure,
+        'public.companion_api_record_delegation(uuid,uuid,uuid,uuid,uuid,uuid,uuid,public.companion_routine_surface_mode,text,text)'::regprocedure,
+        'public.companion_api_enqueue_delegation(uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,public.companion_routine_surface_mode,text,text)'::regprocedure,
+        'public.companion_api_list_delegations(uuid,uuid,integer,uuid)'::regprocedure,
+        'public.companion_api_get_delegation(uuid,uuid,uuid)'::regprocedure,
+        'public.companion_api_schedule_pi_restart(uuid,uuid,uuid,uuid,uuid)'::regprocedure
+      ];
+      internal_runtime_functions := internal_runtime_functions || ARRAY[
+        'public.companion_revoke_inactive_control_token()'::regprocedure,
+        'public.companion_enqueue_deferred_pi_restart()'::regprocedure,
+        'public.companion_surface_delegation_result()'::regprocedure
+      ];
+    END IF;
+
     -- A migration owner can carry arbitrary ALTER DEFAULT PRIVILEGES grants installed by an
     -- earlier operator. Runtime v2 never relies on default function EXECUTE: erase every named
     -- non-owner grantee and PUBLIC before granting the exact executor surface below.

@@ -1,7 +1,3 @@
-import {
-  COMPANION_CONFIG_PROPOSAL_CONNECT_PROVIDERS,
-  COMPANION_TRIGGER_PROVIDERS,
-} from "@companion/contracts";
 import { describe, expect, it } from "vitest";
 import {
   COMPANION_PERMISSION_BROKER_EXTENSION_FILE,
@@ -13,7 +9,7 @@ describe("Companion Pi interaction extension", () => {
   it("overwrites the legacy broker without gating shell or file tools", () => {
     expect(COMPANION_PERMISSION_BROKER_EXTENSION_FILE).toBe("companion-permission-broker.ts");
     expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).not.toContain("GATED_TOOLS");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("ctx.ui.confirm");
+    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).not.toContain("ctx.ui.confirm");
   });
 
   it("keeps ask_user as an explicit blocking question", () => {
@@ -43,19 +39,12 @@ describe("Companion Pi interaction extension", () => {
     expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).not.toContain("runtime.abortTurn");
   });
 
-  it("proposes config changes through confirm with catalog-backed summaries", () => {
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain('name: "propose_config"');
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain('name: "request_plugin_connection"');
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("companion:config:");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("config-catalog.json");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("never claim a change is active");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("apply after this turn ends");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("finish the connection in the web UI");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("const CONFIG_MAX_IDS = 20");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain(
-      `const CONNECT_PROVIDERS = ${JSON.stringify(COMPANION_CONFIG_PROPOSAL_CONNECT_PROVIDERS)} as string[]`,
-    );
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("conductor");
+  it("keeps all product mutations out of the local bridge", () => {
+    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).not.toContain('name: "propose_config"');
+    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).not.toContain('name: "request_plugin_connection"');
+    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).not.toContain('name: "propose_routine"');
+    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).not.toContain('name: "propose_trigger"');
+    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("companion-control MCP");
   });
 
   it("accepts config proposal titles without treating them as questions", () => {
@@ -73,53 +62,6 @@ describe("Companion Pi interaction extension", () => {
     });
     expect(parseCompanionDecisionTitle("companion:question:ask_user")?.kind).toBe("question");
     expect(parseCompanionDecisionTitle("companion:hub:write")).toBeNull();
-  });
-
-  it("proposes routines through confirm with a companion:routine title", () => {
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain('name: "propose_routine"');
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("companion:routine:");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("never claim a routine is active");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("Keep confirm copy to one short sentence");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("${name}: ${cron} · ${timezone}.");
-  });
-
-  it("proposes triggers through confirm with a companion:trigger title and the contract providers", () => {
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain('name: "propose_trigger"');
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain("companion:trigger:");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
-      .toContain("registers supported provider webhooks itself with held credentials");
-    // The provider list is interpolated from the contract constant, never hardcoded in the tool.
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain(
-      `const TRIGGER_PROVIDERS = ${JSON.stringify(COMPANION_TRIGGER_PROVIDERS)} as string[]`,
-    );
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
-      .toContain("TRIGGER_PROVIDERS.includes(provider)");
-    // The trigger card is a ten-minute interactive decision, exempt from the execution timer.
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).toContain(
-      '"propose_routine", "propose_trigger", "request_plugin_connection"',
-    );
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
-      .toContain("never ask the person to paste a URL or use a provider console");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
-      .toContain("User denied or timed out. No trigger was created.");
-    // GitHub and Sentry carry their complete provider-specific target through approval.
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
-      .toContain('provider === "github"');
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
-      .toContain('provider === "sentry"');
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
-      .toContain("sentry triggers need organization, project, and at least one event");
-  });
-
-  it("keeps trigger proposals autonomous from Box-side plugin attachment gates", () => {
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).not.toContain("PLUGIN_TRIGGER_PROVIDERS");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE).not.toContain("hasAttachedPlugin");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
-      .not.toContain("provider_account_id: Type.Optional");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
-      .not.toContain("params.provider_account_id");
-    expect(COMPANION_PERMISSION_BROKER_EXTENSION_SOURCE)
-      .toContain("Companion creates the trigger and registers the provider webhook end-to-end");
   });
 
   it("classifies shell runs with the control plane's own catalog, priority order included", () => {

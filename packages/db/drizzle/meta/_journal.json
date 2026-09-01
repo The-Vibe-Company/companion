@@ -1051,6 +1051,13 @@
       "when": 1792688800000,
       "tag": "0149_companion_trigger_proposal_account_fallback",
       "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1792775200000,
+      "tag": "0150_companion_control_mcp",
+      "breakpoints": true
     }
   ]
 }

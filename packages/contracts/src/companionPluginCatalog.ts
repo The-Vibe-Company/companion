@@ -77,7 +77,12 @@ export const COMPANION_PLUGIN_CATALOG = [
 export const companionPluginOAuthStartInputSchema = z.object({
   server_name: companionPluginOAuthServerNameSchema,
   label: z.string().trim().min(1).max(40),
-}).strict();
+  companion_id: z.string().uuid().optional(),
+  control_request_id: z.string().uuid().optional(),
+}).strict().refine(
+  (input) => (input.companion_id === undefined) === (input.control_request_id === undefined),
+  { message: "companion_id and control_request_id must be provided together" },
+);
 export type CompanionPluginOAuthStartInput = z.infer<
   typeof companionPluginOAuthStartInputSchema
 >;

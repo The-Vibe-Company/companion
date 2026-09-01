@@ -80,6 +80,10 @@ export interface RuntimeStore {
     fence: LeaseFence,
     leaseSeconds: typeof RUNTIME_LEASE_SECONDS,
   ): Promise<{ token: string; expiresAt: Date } | null>;
+  mintControlToken(
+    fence: LeaseFence,
+    leaseSeconds: typeof RUNTIME_LEASE_SECONDS,
+  ): Promise<{ token: string; expiresAt: Date } | null>;
   recordMaterialSnapshot(fence: LeaseFence, input: {
     clientSurface: ClientSurface;
     materialExpiresAt: Date | null;
@@ -592,7 +596,7 @@ function decodeConfigCatalog(row: RuntimeSqlRow): RuntimeConfigCatalog {
 
 function decodeEphemeralToken(
   row: RuntimeSqlRow,
-  prefix: "cmp_pat_" | "cmp_mcp_",
+  prefix: "cmp_pat_" | "cmp_mcp_" | "cmp_ctl_",
 ): RuntimeEphemeralToken {
   const token = row.token;
   const expiresAt = row.expires_at;
@@ -786,7 +790,7 @@ export class PostgresRuntimeStore implements RuntimeStore {
       const rows = await this.sql.unsafe<RuntimeSqlRow[]>(`
         SELECT ${CLAIM_COLUMNS}
         FROM public.companion_runtime_claim_work(
-          $1::text, $2::integer, $3::integer, $4::bigint, 4::integer, 1::integer
+          $1::text, $2::integer, $3::integer, $4::bigint, 5::integer, 1::integer
         )
       `, [input.executorId, input.limit, input.leaseSeconds, input.gateEpoch.toString()]);
       return rows.map(decodeRuntimeClaimRow);
@@ -1061,6 +1065,23 @@ export class PostgresRuntimeStore implements RuntimeStore {
       `, [...fenceParameters(fence), leaseSeconds]);
       if (rows.length === 0) return null;
       return decodeEphemeralToken(one(rows, "MCP broker token"), "cmp_mcp_");
+    }, true);
+  }
+
+  async mintControlToken(
+    fence: LeaseFence,
+    leaseSeconds: typeof RUNTIME_LEASE_SECONDS,
+  ): Promise<{ token: string; expiresAt: Date } | null> {
+    return await mapped(async () => {
+      const rows = await this.sql.unsafe<RuntimeSqlRow[]>(`
+        SELECT token, expires_at
+        FROM public.companion_runtime_mint_control_token(
+          $1::uuid, $2::uuid, $3::uuid, $4::bigint, $5::bigint,
+          $6::text, $7::public.companion_runtime_work_kind, $8::uuid, $9::integer
+        )
+      `, [...fenceParameters(fence), leaseSeconds]);
+      if (rows.length === 0) return null;
+      return decodeEphemeralToken(one(rows, "control token"), "cmp_ctl_");
     }, true);
   }
 
