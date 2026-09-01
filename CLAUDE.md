@@ -183,3 +183,21 @@ its full real-Linux acceptance is slow; run it locally as the final validation a
   also updates `composedInstructions()` so Pi is told it exists.
 - PR titles use Commitizen style, for example
   `feat(runtime): add the dedicated Companion runtime service`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in Linear, reached through the GraphQL API with `LINEAR_API_KEY`; the team and project
+are confirmed with the user on first use. GitHub holds only pull requests. See
+`docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default triage labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`,
+`wontfix`) are used unchanged as Linear labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one root `CONTEXT.md` plus `docs/adr/`, created lazily by `/domain-modeling`. See
+`docs/agents/domain.md`.
