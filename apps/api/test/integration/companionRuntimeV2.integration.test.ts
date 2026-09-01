@@ -108,7 +108,6 @@ const companionApiFunctionSignatures = [
   "public.companion_api_list_runtime(uuid)",
   "public.companion_api_read_thread(uuid,uuid)",
   "public.companion_api_enqueue_operation(uuid,uuid,uuid,public.companion_operation_kind,public.companion_client_surface)",
-  "public.companion_api_retry_turn(uuid,uuid,uuid,uuid,public.companion_client_surface)",
   "public.companion_api_cancel_turn(uuid,uuid,uuid)",
   "public.companion_api_answer_decision(uuid,uuid,text,text,text)",
   "public.companion_api_bump_skill_revision(uuid,uuid)",

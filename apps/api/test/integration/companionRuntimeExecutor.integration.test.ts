@@ -323,7 +323,7 @@ async function claimWorkRows(
       runtime_generation::text as "runtimeGeneration"
     from public.companion_runtime_claim_work(${claimant}, ${limit}, 30, (
       select gate_epoch from public.companion_runtime_gate_status()
-    ), 5, 1)
+    ), 6, 1)
   `);
   return rows;
 }
@@ -860,8 +860,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
             'public.companion_runtime_image_mark_delete_intent(text,bigint,text)',
             'public.companion_runtime_image_mark_delete_operation(text,bigint,text,text)',
             'public.companion_runtime_image_record_ready(text,bigint,text,text)',
-            'public.companion_runtime_image_record_failure(text,bigint,text,text)',
-            'public.companion_runtime_recovery_metrics()'
+            'public.companion_runtime_image_record_failure(text,bigint,text,text)'
           ]) protected(signature)
           where has_function_privilege(${runtimeRole}, protected.signature, 'EXECUTE')
         ) as "callableFunctions",
@@ -869,7 +868,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
           ${runtimeRole}, 'public.companion_runtime_guard_duplicate_cleanup()', 'EXECUTE'
         ) as "helperCallable"
     `;
-    expect(acl).toEqual({ privateTableReads: 0, callableFunctions: 28, helperCallable: false });
+    expect(acl).toEqual({ privateTableReads: 0, callableFunctions: 27, helperCallable: false });
     await expect(asRuntime((tx) => tx`select * from companion_turn_attempts`))
       .rejects.toThrow(/permission denied/i);
 
@@ -890,7 +889,6 @@ describe("Companion runtime executor PostgreSQL surface", () => {
       "public.companion_runtime_image_mark_delete_operation(text,bigint,text,text)",
       "public.companion_runtime_image_record_ready(text,bigint,text,text)",
       "public.companion_runtime_image_record_failure(text,bigint,text,text)",
-      "public.companion_runtime_recovery_metrics()",
     ];
     const runtimeOnlyAcl = await sql<Array<{
       signature: string;
@@ -934,7 +932,6 @@ describe("Companion runtime executor PostgreSQL surface", () => {
       "public.companion_api_read_thread(uuid,uuid)",
       "public.companion_api_sync_thread(uuid,uuid)",
       "public.companion_api_enqueue_operation(uuid,uuid,uuid,public.companion_operation_kind,public.companion_client_surface)",
-      "public.companion_api_retry_turn(uuid,uuid,uuid,uuid,public.companion_client_surface)",
       "public.companion_api_cancel_turn(uuid,uuid,uuid)",
       "public.companion_api_answer_decision(uuid,uuid,text,text,text)",
       "public.companion_api_answer_config_decision(uuid,uuid,text,text)",
@@ -3827,313 +3824,89 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     }
   });
 
-  it("abandons an ambiguous absent-Box occurrence automatically without replaying its prompt", async () => {
-    if (!sql) throw new Error("runtime executor database is not initialized");
-    let companionId = "";
-    let claimed: Claim | undefined;
-    try {
-      const [created] = await asApi({
-        orgId: ids.orgA,
-        actorId: ids.ownerA,
-        action: (tx) => tx<Array<{ companionId: string }>>`
-          select companion_id::text as "companionId"
-          from public.companion_api_create_companion(
-            ${ids.orgA}::uuid, 'Retry handoff fixture', null, null, null,
-            '[]'::jsonb, false, '[]'::jsonb
-          )
-        `,
-      });
-      if (!created) throw new Error("expected an API-created Companion");
-      companionId = created.companionId;
-      const enqueue = (clientMessageId: string, content: string) => asApi({
-        orgId: ids.orgA,
-        actorId: ids.ownerA,
-        action: (tx: Tx) => tx<Array<{ turn: { id: string } }>>`
-          select turn from public.companion_api_enqueue_turn(
-            ${ids.orgA}::uuid, ${companionId}::uuid, ${clientMessageId}::uuid,
-            ${content}, 'web', '[]'::jsonb
-          )
-        `,
-      });
-      const firstClientMessageId = randomUUID();
-      const [first] = await enqueue(firstClientMessageId, "First ambiguous turn");
-      const [later] = await enqueue(randomUUID(), "Later ordered turn");
-      const firstTurnId = stringValue(first?.turn.id);
-      const laterTurnId = stringValue(later?.turn.id);
-      if (firstTurnId === null || laterTurnId === null) {
-        throw new Error("expected durable turn ids");
-      }
-
-      await sql`
-        update companion_operations
-        set status = 'cancelled', settled_at = now(), updated_at = now()
-        where companion_id = ${companionId}::uuid and kind = 'start' and status = 'pending'
-      `;
-      await sql`
-        update companion_turns
-        set status = 'interrupted', inactivity_deadline_at = null,
-          absolute_deadline_at = now(), settled_at = now(),
-          created_at = now() - interval '10 minutes',
-          cold_start_deadline_at = now() - interval '7 minutes',
-          state_changed_at = now(), last_error_code = 'dispatch_ambiguous',
-          last_error_message = 'Pi acceptance could not be proven.',
-          last_error_action = 'retry', updated_at = now()
-        where id = ${firstTurnId}::uuid
-      `;
-
-      const retryId = randomUUID();
-      const retry = () => asApi({
-        orgId: ids.orgA,
-        actorId: ids.ownerA,
-        action: (tx: Tx) => tx<Array<{ operation: {
-          id: string;
-          request_id: string | null;
-          source_turn_id: string;
-          kind: string;
-          trigger: string;
-          status: string;
-          queue_sequence: number;
-        }; replayed: boolean }>>`
-          select * from public.companion_api_retry_turn(
-            ${ids.orgA}::uuid, ${companionId}::uuid, ${firstTurnId}::uuid,
-            ${retryId}::uuid, 'web'
-          )
-        `,
-      });
-      const firstRetry = await retry();
-      expect(firstRetry).toEqual([{
-        operation: expect.objectContaining({
-          request_id: null,
-          source_turn_id: firstTurnId,
-          kind: "restart_pi",
-          trigger: "recovery",
-          status: "pending",
-          queue_sequence: 3,
-        }),
-        replayed: true,
-      }]);
-      expect(await retry()).toEqual(firstRetry);
-      const [operationKinds] = await sql<Array<{ recoveries: number; userRetries: number }>>`
-        select
-          count(*) filter (where trigger = 'recovery')::integer as recoveries,
-          count(*) filter (
-            where trigger = 'user' and kind in ('start', 'restart_pi')
-          )::integer as "userRetries"
-        from companion_operations
-        where companion_id = ${companionId}::uuid and source_turn_id = ${firstTurnId}::uuid
-      `;
-      expect(operationKinds).toEqual({ recoveries: 1, userRetries: 0 });
-
-      claimed = await claimWork();
-      expect(claimed).toMatchObject({
-        companionId,
-        workKind: "operation",
-        workId: firstRetry[0]?.operation.id,
-      });
-      const turnStatesDuringRecycle = await sql<Array<{
-        id: string;
-        status: string;
-        errorCode: string | null;
-      }>>`
-        select id::text as id, status::text as status, last_error_code as "errorCode"
-        from companion_turns
-        where companion_id = ${companionId}::uuid
-        order by queue_sequence
-      `;
-      expect(turnStatesDuringRecycle).toEqual([
-        { id: firstTurnId, status: "interrupted", errorCode: "dispatch_ambiguous" },
-        { id: laterTurnId, status: "queued", errorCode: null },
-      ]);
-
-      const [checkpointed] = await asRuntime((tx) => tx<Array<{ sequence: string | null }>>`
-        select public.companion_runtime_checkpoint(
-          ${claimed!.orgId}::uuid, ${claimed!.companionId}::uuid,
-          ${claimed!.claimToken}::uuid, ${claimed!.claimEpoch}::bigint,
-          ${claimed!.gateEpoch}::bigint, ${executorId}, 'operation',
-          ${claimed!.workId}::uuid, ${claimed!.checkpointSequence}::bigint,
-          'pi_ready', null, null, null, null, null, null, null, null
-        )::text as sequence
-      `);
-      expect(checkpointed?.sequence).toBe("1");
-      const [settlement] = await asRuntime((tx) => tx<Array<{ settled: boolean }>>`
-        select public.companion_runtime_settle(
-          ${claimed!.orgId}::uuid, ${claimed!.companionId}::uuid,
-          ${claimed!.claimToken}::uuid, ${claimed!.claimEpoch}::bigint,
-          ${claimed!.gateEpoch}::bigint, ${executorId}, 'operation',
-          ${claimed!.workId}::uuid, 'succeeded', null, null, null
-        ) as settled
-      `);
-      expect(settlement?.settled).toBe(true);
-      claimed = undefined;
-      const [reopened] = await sql<Array<{
-        status: string;
-        resolution: string | null;
-        settledAt: Date | null;
-        errorCode: string | null;
-      }>>`
-        select status::text as status, resolution, settled_at as "settledAt",
-          last_error_code as "errorCode"
-        from companion_turns where id = ${firstTurnId}::uuid
-      `;
-      expect(reopened).toEqual({
-        status: "interrupted",
-        resolution: "auto_abandoned",
-        settledAt: expect.any(Date),
-        errorCode: "dispatch_ambiguous",
-      });
-      const [attemptCount] = await sql<Array<{ count: number }>>`
-        select count(*)::integer as count from companion_turn_attempts
-        where turn_id = ${firstTurnId}::uuid
-      `;
-      expect(attemptCount?.count).toBe(0);
-
-      const [accepted] = await asApi({
-        orgId: ids.orgA,
-        actorId: ids.ownerA,
-        action: (tx) => tx<Array<{ turn: { id: string; status: string } }>>`
-          select turn from public.companion_api_enqueue_turn(
-            ${ids.orgA}::uuid, ${companionId}::uuid, ${randomUUID()}::uuid,
-            'Message accepted after automatic cleanup.', 'web', '[]'::jsonb
-          )
-        `,
-      });
-      expect(accepted?.turn.status).toBe("queued");
-      const [queueState] = await asApi({
-        orgId: ids.orgA,
-        actorId: ids.ownerA,
-        action: (tx) => tx<Array<{ queuedCount: number; interruptedTurn: unknown }>>`
-          select queued_count as "queuedCount", interrupted_turn as "interruptedTurn"
-          from public.companion_api_read_thread(${ids.orgA}::uuid, ${companionId}::uuid)
-        `,
-      });
-      expect(queueState).toEqual({ queuedCount: 2, interruptedTurn: null });
-      const [nextClaim] = await claimWorkRows(1);
-      expect(nextClaim?.companionId).toBe(companionId);
-      expect(["settings", "operation", "attempt"]).toContain(nextClaim?.workKind);
-      await release(nextClaim!);
-    } finally {
-      if (claimed) await release(claimed);
-      if (companionId) await removeCompanion(companionId);
-    }
-  });
-
-  it("retries automatic Pi cleanup with bounded backoff and preserves the original error", async () => {
+  it("releases an interrupted occurrence and claims the next turn without replay", async () => {
     if (!sql) throw new Error("runtime executor database is not initialized");
     const fixture = await createCompanion({ boxReady: true });
-    let recoveryClaim: Claim | undefined;
+    let activeClaim: Claim | undefined;
+    let nextClaim: Claim | undefined;
     try {
+      activeClaim = await claimWork();
+      expect(activeClaim).toMatchObject({
+        companionId: fixture.companionId,
+        workKind: "attempt",
+        workId: fixture.attemptId,
+      });
+      const nextClientMessageId = randomUUID();
+      const [next] = await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx<Array<{ turn: { id: string } }>>`
+          select turn from public.companion_api_enqueue_turn(
+            ${ids.orgA}::uuid, ${fixture.companionId}::uuid,
+            ${nextClientMessageId}::uuid, 'Continue after interruption.', 'web', '[]'::jsonb
+          )
+        `,
+      });
+      const nextTurnId = stringValue(next?.turn.id);
+      if (nextTurnId === null) throw new Error("expected the next durable turn");
+
       await sql`
         update companion_turn_attempts
         set status = 'interrupted', checkpoint = 'dispatch_ambiguous', settled_at = now(),
           last_error_code = 'dispatch_ambiguous',
           last_error_message = 'Pi acceptance could not be proven.',
-          last_error_action = 'retry', updated_at = now()
+          last_error_action = 'none', updated_at = now()
         where id = ${fixture.attemptId}::uuid
       `;
       await sql`
         update companion_turns
         set status = 'interrupted', inactivity_deadline_at = null,
-          absolute_deadline_at = now(), settled_at = now(),
-          state_changed_at = now(), last_error_code = 'dispatch_ambiguous',
+          absolute_deadline_at = now(), settled_at = now(), state_changed_at = now(),
+          last_error_code = 'dispatch_ambiguous',
           last_error_message = 'Pi acceptance could not be proven.',
-          last_error_action = 'retry', updated_at = now()
+          last_error_action = 'none', updated_at = now()
         where id = ${fixture.turnId}::uuid
       `;
+      await release(activeClaim);
+      activeClaim = undefined;
 
-      [recoveryClaim] = await claimWorkRows(1);
-      expect(recoveryClaim).toMatchObject({ workKind: "operation", companionId: fixture.companionId });
-      const recoveryId = recoveryClaim!.workId;
-      await sql`
-        update companion_runtime_instances set box_state = 'error', updated_at = now()
-        where companion_id = ${fixture.companionId}::uuid
-      `;
-      await expect(asRuntime((tx) => tx`
-        select public.companion_runtime_checkpoint(
-          ${recoveryClaim!.orgId}::uuid, ${recoveryClaim!.companionId}::uuid,
-          ${recoveryClaim!.claimToken}::uuid, ${recoveryClaim!.claimEpoch}::bigint,
-          ${recoveryClaim!.gateEpoch}::bigint, ${executorId}, 'operation',
-          ${recoveryId}::uuid, ${recoveryClaim!.checkpointSequence}::bigint,
-          'pi_ready', null, null, null, null, null, null, null, null
-        )
-      `)).rejects.toThrow(/invalid operation checkpoint transition/i);
-      await sql`
-        update companion_runtime_instances set box_state = 'ready', updated_at = now()
-        where companion_id = ${fixture.companionId}::uuid
-      `;
-      const [firstFailure] = await asRuntime((tx) => tx<Array<{ settled: boolean }>>`
-        select public.companion_runtime_settle(
-          ${recoveryClaim!.orgId}::uuid, ${recoveryClaim!.companionId}::uuid,
-          ${recoveryClaim!.claimToken}::uuid, ${recoveryClaim!.claimEpoch}::bigint,
-          ${recoveryClaim!.gateEpoch}::bigint, ${executorId}, 'operation',
-          ${recoveryId}::uuid, 'failed', 'pi_cleanup_failed',
-          'Pi cleanup failed safely.', 'retry'
-        ) as settled
-      `);
-      expect(firstFailure?.settled).toBe(true);
-      recoveryClaim = undefined;
-      const [firstBackoff] = await sql<Array<{
+      const [history] = await sql<Array<{
         status: string;
-        attemptCount: number;
-        delaySeconds: number;
+        resolution: string | null;
+        errorAction: string;
+        recoveries: number;
       }>>`
-        select status::text as status, attempt_count as "attemptCount",
-          extract(epoch from available_at - now())::integer as "delaySeconds"
-        from companion_operations where id = ${recoveryId}::uuid
+        select turn_row.status::text as status, turn_row.resolution,
+          turn_row.last_error_action::text as "errorAction",
+          count(operation.id)::integer as recoveries
+        from companion_turns turn_row
+        left join companion_operations operation
+          on operation.source_turn_id = turn_row.id
+          and operation.kind = 'restart_pi'
+          and operation.trigger = 'recovery'
+        where turn_row.id = ${fixture.turnId}::uuid
+        group by turn_row.status, turn_row.resolution, turn_row.last_error_action
       `;
-      expect(firstBackoff).toMatchObject({ status: "pending", attemptCount: 1 });
-      expect(firstBackoff!.delaySeconds).toBeGreaterThanOrEqual(3);
-      expect(firstBackoff!.delaySeconds).toBeLessThanOrEqual(5);
+      expect(history).toEqual({
+        status: "interrupted",
+        resolution: "auto_abandoned",
+        errorAction: "none",
+        recoveries: 0,
+      });
 
-      await sql`
-        update companion_operations set available_at = now(), attempt_count = 8
-        where id = ${recoveryId}::uuid
+      nextClaim = await claimWork();
+      expect(nextClaim).toMatchObject({
+        companionId: fixture.companionId,
+        workKind: "operation",
+      });
+      const [start] = await sql<Array<{ kind: string; sourceTurnId: string | null }>>`
+        select kind::text as kind, source_turn_id::text as "sourceTurnId"
+        from companion_operations where id = ${nextClaim.workId}::uuid
       `;
-      [recoveryClaim] = await claimWorkRows(1);
-      const [cappedFailure] = await asRuntime((tx) => tx<Array<{ settled: boolean }>>`
-        select public.companion_runtime_settle(
-          ${recoveryClaim!.orgId}::uuid, ${recoveryClaim!.companionId}::uuid,
-          ${recoveryClaim!.claimToken}::uuid, ${recoveryClaim!.claimEpoch}::bigint,
-          ${recoveryClaim!.gateEpoch}::bigint, ${executorId}, 'operation',
-          ${recoveryId}::uuid, 'failed', 'pi_cleanup_failed',
-          'Pi cleanup failed safely.', 'retry'
-        ) as settled
-      `);
-      expect(cappedFailure?.settled).toBe(true);
-      recoveryClaim = undefined;
-      const [cappedBackoff] = await sql<Array<{ status: string; delaySeconds: number }>>`
-        select status::text as status,
-          extract(epoch from available_at - now())::integer as "delaySeconds"
-        from companion_operations where id = ${recoveryId}::uuid
-      `;
-      expect(cappedBackoff?.status).toBe("pending");
-      expect(cappedBackoff!.delaySeconds).toBeGreaterThanOrEqual(298);
-      expect(cappedBackoff!.delaySeconds).toBeLessThanOrEqual(300);
-
-      await sql`update companion_operations set available_at = now() where id = ${recoveryId}::uuid`;
-      [recoveryClaim] = await claimWorkRows(1);
-      // The unit-level executor suite proves the live Pi lifecycle. Here, materialize its durable
-      // terminal checkpoint so this PostgreSQL test stays focused on retry/backoff settlement.
-      await sql`
-        update companion_operations set checkpoint = 'pi_ready', checkpoint_sequence = 1
-        where id = ${recoveryId}::uuid and status = 'running'
-      `;
-      const [succeeded] = await asRuntime((tx) => tx<Array<{ settled: boolean }>>`
-        select public.companion_runtime_settle(
-          ${recoveryClaim!.orgId}::uuid, ${recoveryClaim!.companionId}::uuid,
-          ${recoveryClaim!.claimToken}::uuid, ${recoveryClaim!.claimEpoch}::bigint,
-          ${recoveryClaim!.gateEpoch}::bigint, ${executorId}, 'operation',
-          ${recoveryId}::uuid, 'succeeded', null, null, null
-        ) as settled
-      `);
-      expect(succeeded?.settled).toBe(true);
-      recoveryClaim = undefined;
-      const [resolved] = await sql<Array<{ resolution: string; errorCode: string }>>`
-        select resolution, last_error_code as "errorCode"
-        from companion_turns where id = ${fixture.turnId}::uuid
-      `;
-      expect(resolved).toEqual({ resolution: "auto_abandoned", errorCode: "dispatch_ambiguous" });
+      expect(start).toEqual({ kind: "start", sourceTurnId: nextTurnId });
     } finally {
-      if (recoveryClaim) await release(recoveryClaim);
+      if (activeClaim) await release(activeClaim);
+      if (nextClaim) await release(nextClaim);
       await removeCompanion(fixture.companionId);
     }
   });
@@ -6132,7 +5905,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     }
   });
 
-  it("runs main turns and isolated routines concurrently with independent takeover, retry, and cancel", async () => {
+  it("runs main turns and isolated routines concurrently with independent takeover, interruption, and cancel", async () => {
     if (!sql) throw new Error("runtime executor database is not initialized");
     const fixture = await createCompanion({
       boxReady: true,
@@ -6142,10 +5915,8 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     const routineId = randomUUID();
     const routineExecutor = `${executorId}-routine-takeover`;
     const mainExecutor = `${executorId}-main-takeover`;
-    const retryExecutor = `${executorId}-routine-retry`;
     let routineClaim: Claim | undefined;
     let mainClaim: Claim | undefined;
-    let retryClaim: Claim | undefined;
     try {
       await sql`
         update companion_runtime_instances
@@ -6333,79 +6104,50 @@ describe("Companion runtime executor PostgreSQL surface", () => {
         denialCode: null,
       });
 
-      // Retry remains a routine-lane operation and can be claimed while the main attempt runs.
+      // A routine interruption is terminal immediately and does not disturb the live main lane.
       await sql`
         update companion_turn_attempts set status = 'interrupted', settled_at = now(),
           last_error_code = 'dispatch_ambiguous', last_error_message = 'Ambiguous routine run.',
-          last_error_action = 'retry'
+          last_error_action = 'none'
         where id = ${routineClaim!.workId}::uuid
       `;
       await sql`
         update companion_turns set status = 'interrupted', settled_at = now(),
           inactivity_deadline_at = null, last_error_code = 'dispatch_ambiguous',
-          last_error_message = 'Ambiguous routine run.', last_error_action = 'retry'
+          last_error_message = 'Ambiguous routine run.', last_error_action = 'none'
         where id = ${routineTurn.turnId}::uuid
       `;
       await release(routineClaim!, routineExecutor);
       routineClaim = undefined;
-      const retryId = randomUUID();
-      const [retried] = await asApi({
-        orgId: ids.orgA,
-        actorId: ids.ownerA,
-        action: (tx) => tx<Array<{ operation: { id: string; kind: string } }>>`
-          select * from public.companion_api_retry_turn(
-            ${ids.orgA}::uuid, ${fixture.companionId}::uuid, ${routineTurn.turnId}::uuid,
-            ${retryId}::uuid, 'web'
-          )
-        `,
-      });
-      expect(retried?.operation.kind).toBe("restart_pi");
-      [retryClaim] = await claimWorkRows(1, retryExecutor);
-      expect(retryClaim).toMatchObject({ workKind: "operation", workId: retried!.operation.id });
-      expect(await authorizeClaim(mainClaim!, `${mainExecutor}-second`)).toEqual({
-        authorized: true,
-        denialCode: null,
-      });
 
-      const [retryCheckpoint] = await asRuntime((tx) => tx<Array<{ sequence: string | null }>>`
-        select public.companion_runtime_checkpoint(
-          ${retryClaim!.orgId}::uuid, ${retryClaim!.companionId}::uuid,
-          ${retryClaim!.claimToken}::uuid, ${retryClaim!.claimEpoch}::bigint,
-          ${retryClaim!.gateEpoch}::bigint, ${retryExecutor}, 'operation',
-          ${retryClaim!.workId}::uuid, ${retryClaim!.checkpointSequence}::bigint,
-          'pi_ready', null, null, null, null, null, null, null, null
-        )::text as sequence
-      `);
-      expect(retryCheckpoint?.sequence).not.toBeNull();
-      const [retrySettled] = await asRuntime((tx) => tx<Array<{ settled: boolean }>>`
-        select public.companion_runtime_settle(
-          ${retryClaim!.orgId}::uuid, ${retryClaim!.companionId}::uuid,
-          ${retryClaim!.claimToken}::uuid, ${retryClaim!.claimEpoch}::bigint,
-          ${retryClaim!.gateEpoch}::bigint, ${retryExecutor}, 'operation',
-          ${retryClaim!.workId}::uuid, 'succeeded', null, null, null
-        ) as settled
-      `);
-      expect(retrySettled?.settled).toBe(true);
-      retryClaim = undefined;
-      const [resolvedRoutine] = await sql<Array<{ status: string; resolution: string | null }>>`
-        select status::text as status, resolution
-        from companion_turns where id = ${routineTurn.turnId}::uuid
+      const [resolvedRoutine] = await sql<Array<{
+        status: string;
+        resolution: string | null;
+        errorAction: string;
+        recoveries: number;
+      }>>`
+        select turn_row.status::text as status, turn_row.resolution,
+          turn_row.last_error_action::text as "errorAction",
+          count(operation.id)::integer as recoveries
+        from companion_turns turn_row
+        left join companion_operations operation
+          on operation.source_turn_id = turn_row.id
+          and operation.kind = 'restart_pi'
+          and operation.trigger = 'recovery'
+        where turn_row.id = ${routineTurn.turnId}::uuid
+        group by turn_row.status, turn_row.resolution, turn_row.last_error_action
       `;
       expect(resolvedRoutine).toEqual({
         status: "interrupted",
         resolution: "auto_abandoned",
+        errorAction: "none",
+        recoveries: 0,
       });
       expect(await authorizeClaim(mainClaim!, `${mainExecutor}-second`)).toEqual({
         authorized: true,
         denialCode: null,
       });
-      const [settledRetry] = await sql<Array<{ status: string }>>`
-        select status::text as status from companion_operations
-        where id = ${retried!.operation.id}::uuid
-      `;
-      expect(settledRetry?.status).toBe("succeeded");
     } finally {
-      if (retryClaim) await release(retryClaim, retryExecutor);
       if (mainClaim) await release(mainClaim, `${mainExecutor}-second`);
       if (routineClaim) await release(routineClaim, routineExecutor);
       await sql`delete from companion_routines where companion_id = ${fixture.companionId}::uuid`;

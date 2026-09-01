@@ -200,13 +200,13 @@ describe("composerHint", () => {
     })).toBe("Answer the request above to continue this turn. 1 later message is queued.");
   });
 
-  it("explains that interruption blocks the ordered queue", () => {
+  it("explains that interruption is terminal while later work stays queued", () => {
     expect(composerHint({
       thread: thread({ interrupted_turn: interruptedTurn(), queued_count: 2 }),
       companionName: "Luna",
       state: "running",
     })).toBe(
-      "Automatic Pi cleanup is in progress; the interrupted occurrence will not be replayed."
+      "The interrupted occurrence is terminal and will not be replayed; later work continues automatically."
       + " 2 messages are saved and queued.",
     );
   });

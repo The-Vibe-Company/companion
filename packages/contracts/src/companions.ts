@@ -562,13 +562,6 @@ export const COMPANION_HUB_TOKEN_SCOPES: readonly TokenScope[] = [
   "database:write",
 ];
 
-export const companionRuntimeRecoverySchema = z.object({
-  turn_id: z.string().uuid(),
-  lane: z.enum(["main", "routine"]),
-  status: z.enum(["pending", "running"]),
-}).strict();
-export type CompanionRuntimeRecovery = z.infer<typeof companionRuntimeRecoverySchema>;
-
 export const companionSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -650,8 +643,6 @@ export const companionSchema = z.object({
     last_observed_at: z.string().datetime().nullable(),
     last_started_at: z.string().datetime().nullable(),
     last_stopped_at: z.string().datetime().nullable(),
-    /** Internal protocol-5 Pi cleanup; optional during rolling deploys and never a lifecycle error. */
-    recovery: companionRuntimeRecoverySchema.nullable().optional(),
     /** Latest durable lifecycle intent, sufficient to restore operation UI after navigation/reload. */
     latest_operation: companionLatestOperationSchema.nullable(),
   }),

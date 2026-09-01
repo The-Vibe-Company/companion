@@ -220,9 +220,9 @@ Run API + worker + runtime + web + migrated PostgreSQL + Box/Pi simulator and pr
   issuing provider `DELETE`; other shared lifecycle/settings/health work remains routine-quiescent;
 - a prompt response lost after Pi ACK is recovered from the fsynced ledger with the same
   `command_id`, including after executor takeover, and produces exactly one Pi prompt; missing,
-  conflicting, or invocation-mismatched ledger proof yields `interrupted`, proves the replacement
-  Pi received no prompt, enqueues one idempotent recovery, auto-abandons the occurrence after exact
-  cleanup, and releases later turns without replay;
+  conflicting, or invocation-mismatched ledger proof yields terminal `interrupted`, attempts one
+  exact bounded cleanup before settlement, auto-abandons even if cleanup fails, and releases later
+  turns without replay;
 - Viewer, list, thread, and cross-tenant requests produce zero Box calls.
 
 Inject failure before and after create, Box ready, Pi ready, prompt write, ACK, event projection,
@@ -265,11 +265,11 @@ APP_URL=http://127.0.0.1:<port> pnpm browser:smoke
 ```
 
 Changed Companion paths need focused manual `agent-browser` checks. Verify truthful status,
-PostgreSQL-only Viewer reads, queue count, input-needed cards, automatic interruption recovery copy,
+PostgreSQL-only Viewer reads, queue count, input-needed cards, terminal interruption continuation copy,
 an always-mounted composer, explicit Full Box confirmation, attachment chips and inline images inside the message they belong to, a
 routine fire that shows `Routine: <name>` with the prompt hidden in the thread and on the list row,
 a context-panel routine create,
-an interrupted routine run whose history shows recovery without blocking the main chat,
+an interrupted routine run whose history is passive and does not block the main chat,
 and no excluded voice, multi-Bot, harness, deployment, or file-library chrome.
 
 ## Change verification

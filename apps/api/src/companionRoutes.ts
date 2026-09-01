@@ -93,7 +93,6 @@ import {
   readCompanionThreadWindowV2,
   readCompanionThreadV2,
   syncCompanionThreadV2,
-  retryCompanionTurnV2,
   rotateCompanionTriggerSecretV2,
   registerCompanionTriggerWebhookV2,
   unregisterCompanionTriggerWebhookV2,
@@ -199,7 +198,6 @@ import {
   updateCompanionMemberStateInputSchema,
   updateCompanionRoutineInputSchema,
   updateCompanionTriggerInputSchema,
-  retryCompanionTurnInputSchema,
   createCompanionSectionInputSchema,
   updateCompanionSectionInputSchema,
   reorderCompanionSectionsInputSchema,
@@ -305,7 +303,6 @@ function defaultCompanionRouteDependencies() {
     readCompanionThreadProjectionSequenceV2,
     readCompanionThreadWindowV2,
     syncCompanionThreadV2,
-    retryCompanionTurnV2,
     setCompanionProviderV2,
     setCompanionWorkspaceShareV2,
     updateCompanionMemberStateV2,
@@ -818,7 +815,6 @@ export function registerCompanionRoutes(
     readCompanionThreadWindowV2,
     readCompanionThreadV2,
     syncCompanionThreadV2,
-    retryCompanionTurnV2,
     setCompanionProviderV2,
     setCompanionWorkspaceShareV2,
     updateCompanionMemberStateV2,
@@ -2960,25 +2956,6 @@ export function registerCompanionRoutes(
         // request. Keep that response bounded with a generic code until the kind is known.
         return proposalDecisionFailureResponse(c, proposalDecisionMutation ?? "decision", error);
       }
-      return routeError(c, error);
-    }
-  });
-
-  app.post("/v1/companions/:id/turns/:turnId/retry", async (c) => {
-    try {
-      const companionId = companionIdSchema.parse(c.req.param("id"));
-      const turnId = companionIdSchema.parse(c.req.param("turnId"));
-      const body = retryCompanionTurnInputSchema.parse(await c.req.json());
-      const accepted = await tenant(c, ({ orgId, database }) => retryCompanionTurnV2({
-        orgId,
-        companionId,
-        turnId,
-        retryId: body.retry_id,
-        clientSurface: "web",
-        database,
-      }));
-      return c.json({ operation: accepted.operation }, 202);
-    } catch (error) {
       return routeError(c, error);
     }
   });

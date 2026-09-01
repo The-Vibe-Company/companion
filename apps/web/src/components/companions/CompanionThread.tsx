@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   Companion,
   CompanionDesktop,
-  CompanionOperation,
   CompanionRoutine,
   CompanionThread as Thread,
   CompanionTranscriptEntry,
@@ -42,17 +41,11 @@ export interface CompanionContextPanel {
   onJoin: () => void;
 }
 
-function InterruptedTurnNotice({
-  turn,
-  recovery,
-}: {
+function InterruptedTurnNotice({ turn }: {
   turn: NonNullable<Thread["interrupted_turn"]>;
-  recovery: Companion["runtime"]["recovery"];
 }) {
-  const recoveringThisTurn = recovery?.turn_id === turn.id;
-
   return (
-    <section className="chat-interruption" aria-label="Automatic runtime recovery">
+    <section className="chat-interruption" aria-label="Interrupted turn">
       <Icon name="alert-triangle" size={18} />
       <div className="chat-interruption__body">
         <div role="alert">
@@ -63,9 +56,7 @@ function InterruptedTurnNotice({
           </p>
         </div>
         <p className="chat-interruption__status" role="status">
-          {recoveringThisTurn && recovery?.status === "running"
-            ? "Pi cleanup is running automatically. This occurrence will not be replayed."
-            : "Pi cleanup is queued automatically. This occurrence will not be replayed."}
+          This occurrence is terminal and will not be replayed. Later work continues automatically.
         </p>
       </div>
     </section>
@@ -116,8 +107,7 @@ export function CompanionThread({
   onSettings,
   onThread,
   onDesktop,
-  onRetryInterrupted,
-  onCancelInterrupted,
+  onCancelTurn,
 }: {
   companion: Companion;
   thread: Thread | null;
@@ -159,8 +149,8 @@ export function CompanionThread({
   onSettings: (() => void) | null;
   onThread: (thread: Thread) => void;
   onDesktop: () => void;
-  onRetryInterrupted: (turnId: string, retryId: string) => Promise<CompanionOperation>;
-  onCancelInterrupted: (turnId: string) => Promise<void>;
+  /** Stop an active turn or remove a queued follow-up. */
+  onCancelTurn: (turnId: string) => Promise<void>;
 }) {
   const chatRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -254,7 +244,7 @@ export function CompanionThread({
     return () => window.cancelAnimationFrame(frame);
   }, [routineHistory, triggerHistory]);
 
-  // Once automatic recovery releases the occurrence, return keyboard users to the composer.
+  // Once the passive terminal notice changes, return keyboard users to the composer.
   useEffect(() => {
     const previous = previousInterruptedIdRef.current;
     previousInterruptedIdRef.current = interruptedTurn?.id ?? null;
@@ -410,10 +400,7 @@ export function CompanionThread({
       ) : null}
 
       {interruptedTurn ? (
-        <InterruptedTurnNotice
-          turn={interruptedTurn}
-          recovery={companion.runtime.recovery ?? null}
-        />
+        <InterruptedTurnNotice turn={interruptedTurn} />
       ) : null}
 
       {/*
@@ -443,8 +430,8 @@ export function CompanionThread({
           plugins={contextPlugins}
           models={contextModels}
           onSend={onSend}
-          onStop={onCancelInterrupted}
-          onCancelQueued={onCancelInterrupted}
+          onStop={onCancelTurn}
+          onCancelQueued={onCancelTurn}
           onOpenRoutineRun={openRoutineRun}
           onThread={onThread}
         />
@@ -488,10 +475,6 @@ export function CompanionThread({
           companionId={companion.id}
           target={routineHistory}
           memberTimezone={memberTimezone}
-          canAct={canSend}
-          latestOperation={companion.runtime.latest_operation ?? null}
-          onRetry={onRetryInterrupted}
-          onCancel={onCancelInterrupted}
           onClose={closeRoutineHistory}
         />
       ) : null}

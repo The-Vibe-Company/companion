@@ -638,28 +638,7 @@ export function companionAttachmentUrl(companionId: string, attachmentId: string
   return `/v1/companions/${encodeURIComponent(companionId)}/attachments/${encodeURIComponent(attachmentId)}`;
 }
 
-/**
- * Retry an interrupted turn. The caller owns the retry id so a repeated HTTP request resolves to
- * the same durable operation instead of scheduling another Pi recycle.
- */
-export async function retryCompanionTurn(
-  orgId: string,
-  companionId: string,
-  turnId: string,
-  retryId: string,
-): Promise<CompanionOperation> {
-  const result = await apiFetch<{ operation: CompanionOperation }>(
-    `/v1/companions/${encodeURIComponent(companionId)}/turns/${encodeURIComponent(turnId)}/retry`,
-    {
-      method: "POST",
-      headers: orgHeaders(orgId),
-      body: JSON.stringify({ retry_id: retryId }),
-    },
-  );
-  return result.operation;
-}
-
-/** Stop an active turn, dequeue a follow-up, or cancel an interrupted turn. */
+/** Stop an active turn or dequeue a follow-up. */
 export async function cancelCompanionTurn(
   orgId: string,
   companionId: string,

@@ -387,25 +387,12 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
     }
 
     public struct Runtime: Codable, Hashable, Sendable {
-        public struct Recovery: Codable, Hashable, Sendable {
-            public let turnID: String
-            public let lane: String
-            public let status: String
-
-            enum CodingKeys: String, CodingKey {
-                case turnID = "turn_id"
-                case lane
-                case status
-            }
-        }
-
         public let state: CompanionRuntimeState
         public let daemonState: CompanionDaemonState
         public let replying: Bool
         public let lastError: String?
         public let providerIDs: [String]
         public let latestOperation: CompanionOperationSummary?
-        public let recovery: Recovery?
 
         enum CodingKeys: String, CodingKey {
             case state
@@ -414,7 +401,6 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
             case lastError = "last_error"
             case providerIDs = "provider_ids"
             case latestOperation = "latest_operation"
-            case recovery
         }
 
         public init(from decoder: Decoder) throws {
@@ -428,7 +414,6 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
                 CompanionOperationSummary.self,
                 forKey: .latestOperation
             )
-            recovery = try container.decodeIfPresent(Recovery.self, forKey: .recovery)
         }
 
     }

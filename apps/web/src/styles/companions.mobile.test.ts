@@ -170,15 +170,6 @@ describe("Companions mobile viewport", () => {
     expect(desktop).toContain("min-height: 44px;");
   });
 
-  it("keeps interrupted routine recovery actions touch-sized", () => {
-    const recovery = declarationsFor(
-      ".routine-history__recovery-actions .cds-btn",
-      COARSE_POINTER,
-    )[0];
-    expect(recovery).toContain("min-width: 44px;");
-    expect(recovery).toContain("min-height: 44px;");
-  });
-
   it("makes Companion details a full-width, touch-safe phone view", () => {
     const phonePanel = declarationsFor(".chat-context", PHONE)[0];
     expect(phonePanel).toContain("width: 100%;");
@@ -306,14 +297,6 @@ describe("Companions mobile viewport", () => {
     // to the colour of the dot alone.
     expect(declarationsFor(".chat-box__state", PHONE)).toHaveLength(0);
     expect(declarationsFor(".chat-head > *")[0]).toContain("flex: none;");
-  });
-
-  it("keeps programmatically focused interrupted-action errors visible", () => {
-    const focusedError = declarationsFor(".chat-interruption__error:focus")[0];
-
-    expect(focusedError).toContain("outline: 2px solid var(--color-accent-ring);");
-    expect(focusedError).toContain("outline-offset: 2px;");
-    expect(focusedError).not.toContain("outline: none;");
   });
 
   it("keeps the new-message divider readable in every theme", () => {

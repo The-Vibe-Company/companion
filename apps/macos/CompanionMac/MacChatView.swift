@@ -161,41 +161,6 @@ final class CompanionMacChatModel {
         }
     }
 
-    func retryInterruptedTurn() async {
-        guard canSend, let turn = thread?.interruptedTurn else { return }
-        actionError = nil
-        do {
-            _ = try await sessionStore.retryCompanionTurn(
-                companionID: companion.id,
-                turnID: turn.id,
-                retryID: UUID()
-            )
-            await reload()
-        } catch {
-            actionError = companionMacErrorMessage(error, fallback: "The interrupted turn could not be retried.")
-        }
-    }
-
-    func cancelInterruptedTurn() async {
-        guard canSend, let turn = thread?.interruptedTurn else { return }
-        let mutationID = "cancel:\(turn.id)"
-        guard await mutationGate.acquire(mutationID: mutationID) else { return }
-        projection.invalidateRefreshes()
-        actionError = nil
-        do {
-            let next = try await sessionStore.cancelCompanionTurn(
-                companionID: companion.id,
-                turnID: turn.id
-            )
-            projection.replaceAfterMutation(with: next)
-            thread = next
-            await mutationGate.release(mutationID: mutationID)
-        } catch {
-            actionError = companionMacErrorMessage(error, fallback: "The interrupted turn could not be cancelled.")
-            await reload(silently: true)
-            await mutationGate.release(mutationID: mutationID)
-        }
-    }
 }
 
 struct CompanionMacChatView: View {
@@ -369,13 +334,9 @@ struct CompanionMacChatView: View {
                             .id(entry.id)
                         }
                         if let interruptedTurn = thread.interruptedTurn {
-                            CompanionMacInterruptedTurnView(
+                            CompanionMacInterruptedTurnNotice(
                                 turn: interruptedTurn,
-                                queuedCount: thread.queuedCount,
-                                canAct: model.canSend,
-                                actionError: model.actionError,
-                                retry: { Task { await model.retryInterruptedTurn() } },
-                                cancel: { Task { await model.cancelInterruptedTurn() } }
+                                queuedCount: thread.queuedCount
                             )
                             .id("interrupted-\(interruptedTurn.id)")
                         } else if thread.queuedCount > 0 {
@@ -1111,38 +1072,28 @@ private struct CompanionMacAttachmentView: View {
     }
 }
 
-private struct CompanionMacInterruptedTurnView: View {
+private struct CompanionMacInterruptedTurnNotice: View {
     let turn: CompanionTurn
     let queuedCount: Int
-    let canAct: Bool
-    let actionError: String?
-    let retry: () -> Void
-    let cancel: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: CompanionMacMetrics.space * 2) {
             Label("Turn interrupted", systemImage: "pause.circle.fill")
                 .font(.callout.weight(.semibold))
                 .foregroundStyle(Color.companionMacWarning)
-            Text("The runtime stopped waiting for this turn. Earlier external effects may have succeeded. Retry only if that is safe.")
+            Text(turn.error?.message ?? "The runtime could not confirm how this turn ended.")
                 .font(.callout)
                 .foregroundStyle(Color.companionMacMuted)
-            HStack {
-                Button("Retry", action: retry)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!canAct)
-                Button("Cancel", role: .destructive, action: cancel)
-                    .disabled(!canAct)
-                if queuedCount > 0 {
-                    Text("\(queuedCount) later message\(queuedCount == 1 ? "" : "s") queued")
-                        .font(.caption)
-                        .foregroundStyle(Color.companionMacMuted)
-                }
-            }
-            if let actionError {
-                Text(actionError)
+            Text("Earlier external actions may already have succeeded.")
+                .font(.caption)
+                .foregroundStyle(Color.companionMacMuted)
+            Text("This occurrence is terminal and will not be replayed. Later work continues automatically.")
+                .font(.caption)
+                .foregroundStyle(Color.companionMacMuted)
+            if queuedCount > 0 {
+                Text("\(queuedCount) later message\(queuedCount == 1 ? "" : "s") queued")
                     .font(.caption)
-                    .foregroundStyle(Color.companionMacDanger)
+                    .foregroundStyle(Color.companionMacMuted)
             }
         }
         .padding(CompanionMacMetrics.space * 3)

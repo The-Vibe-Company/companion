@@ -481,7 +481,6 @@ BEGIN
         'public.companion_api_list_runtime(uuid)'::regprocedure,
         'public.companion_api_read_thread(uuid,uuid)'::regprocedure,
         'public.companion_api_enqueue_operation(uuid,uuid,uuid,public.companion_operation_kind,public.companion_client_surface)'::regprocedure,
-        'public.companion_api_retry_turn(uuid,uuid,uuid,uuid,public.companion_client_surface)'::regprocedure,
         'public.companion_api_cancel_turn(uuid,uuid,uuid)'::regprocedure,
         'public.companion_api_answer_decision(uuid,uuid,text,text,text)'::regprocedure,
         'public.companion_api_bump_skill_revision(uuid,uuid)'::regprocedure
@@ -489,20 +488,6 @@ BEGIN
       IF pg_catalog.to_regprocedure('public.companion_api_sync_thread(uuid,uuid)') IS NOT NULL THEN
         companion_api_functions := companion_api_functions || ARRAY[
           'public.companion_api_sync_thread(uuid,uuid)'::regprocedure
-        ];
-      END IF;
-      IF pg_catalog.to_regprocedure('public.companion_api_read_recovery(uuid,uuid)') IS NOT NULL THEN
-        companion_api_functions := companion_api_functions || ARRAY[
-          'public.companion_api_read_recovery(uuid,uuid)'::regprocedure,
-          'public.companion_api_list_recoveries(uuid)'::regprocedure
-        ];
-        internal_runtime_functions := internal_runtime_functions || ARRAY[
-          'public.companion_runtime_ensure_turn_recovery(uuid,uuid,uuid)'::regprocedure,
-          'public.companion_runtime_enqueue_interrupted_recovery()'::regprocedure,
-          'public.companion_runtime_settle_recovery_operation()'::regprocedure
-        ];
-        companion_runtime_functions := companion_runtime_functions || ARRAY[
-          'public.companion_runtime_recovery_metrics()'::regprocedure
         ];
       END IF;
       IF pg_catalog.to_regprocedure(

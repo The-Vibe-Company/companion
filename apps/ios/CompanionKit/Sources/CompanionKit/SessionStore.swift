@@ -1357,25 +1357,6 @@ public final class SessionStore {
         }
     }
 
-    public func retryCompanionTurn(
-        companionID: String,
-        turnID: String,
-        retryID: UUID
-    ) async throws -> CompanionOperationSummary {
-        do {
-            let operation = try await client.retryCompanionTurn(
-                companionID: companionID,
-                turnID: turnID,
-                retryID: retryID
-            )
-            await persistRollingAuthority()
-            return operation
-        } catch let error as APIError where error.status == 401 {
-            await clearLocalSession()
-            throw error
-        }
-    }
-
     public func cancelCompanionTurn(
         companionID: String,
         turnID: String

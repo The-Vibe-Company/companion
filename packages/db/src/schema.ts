@@ -1157,9 +1157,6 @@ export const companionTurns = pgTable(
     queued: index("companion_turns_queue_idx").on(t.companionId, t.queueSequence).where(sql`${t.status} = 'queued'`),
     queuedRoutineExpiry: index("companion_turns_queued_routine_expiry_idx").on(t.createdAt, t.queueSequence, t.id).where(sql`${t.status} = 'queued' and (${t.routineSnapshotId} is not null or ${t.routineName} is not null)`),
     deadline: index("companion_turns_deadline_idx").on(t.coldStartDeadlineAt, t.inactivityDeadlineAt, t.absoluteDeadlineAt).where(sql`${t.status} in ('starting','dispatching','running','needs_input')`),
-    autoAbandonedMetrics: index("companion_turns_auto_abandoned_metrics_idx")
-      .on(t.updatedAt)
-      .where(sql`${t.resolution} = 'auto_abandoned'`),
     runtimeInstanceFk: foreignKey({ columns: [t.orgId, t.companionId], foreignColumns: [companionRuntimeInstances.orgId, companionRuntimeInstances.companionId], name: "companion_turns_runtime_instance_fk" }).onDelete("cascade"),
     queueSequenceCheck: check("companion_turns_queue_sequence_check", sql`${t.queueSequence} >= 1`),
     messageEventCheck: check("companion_turns_message_event_check", sql`${t.messageEventId} = 'msg:' || ${t.clientMessageId}::text`),
@@ -1167,6 +1164,7 @@ export const companionTurns = pgTable(
     deadlineCheck: check("companion_turns_deadline_check", sql`(${t.coldStartDeadlineAt} is null or ${t.coldStartDeadlineAt} >= ${t.createdAt}) and (${t.status} <> 'needs_input' or ${t.inactivityDeadlineAt} is null) and ((${t.status} in ('queued','cancelled') and ${t.inactivityDeadlineAt} is null and ${t.absoluteDeadlineAt} is null) or (${t.status} <> 'queued' and ${t.absoluteDeadlineAt} is not null and (${t.inactivityDeadlineAt} is null or ${t.absoluteDeadlineAt} >= ${t.inactivityDeadlineAt})))`),
     terminalCheck: check("companion_turns_terminal_check", sql`(${t.status} in ('succeeded','failed','interrupted','cancelled')) = (${t.settledAt} is not null)`),
     resolutionCheck: check("companion_turns_resolution_check", sql`${t.resolution} is null or (${t.resolution} = 'auto_abandoned' and ${t.status} = 'interrupted')`),
+    interruptedActionCheck: check("companion_turns_interrupted_action_check", sql`${t.status} <> 'interrupted' or ${t.lastErrorAction} = 'none'`),
     errorCheck: check("companion_turns_error_check", sql`((${t.lastErrorCode} is null) = (${t.lastErrorMessage} is null)) and (((${t.lastErrorCode} is null) = (${t.lastErrorAction} is null)) or (${t.status} = 'cancelled' and ${t.routineName} is not null and ${t.lastErrorCode} is not null and ${t.lastErrorAction} = 'none')) and (${t.lastErrorCode} is null or ${t.lastErrorCode} ~ '^[a-z][a-z0-9_]{0,63}$') and (${t.lastErrorMessage} is null or (char_length(${t.lastErrorMessage}) <= 500 and ${t.lastErrorMessage} !~ E'[\\n\\r]')) and (${t.status} not in ('failed','interrupted') or ${t.lastErrorCode} is not null) and (${t.status} not in ('succeeded','cancelled') or ${t.lastErrorCode} is null or (${t.status} = 'cancelled' and ${t.routineName} is not null and ${t.lastErrorAction} = 'none'))`),
     messageEvent: index("companion_turns_message_event_idx").on(t.companionId, t.messageEventId),
     routineOriginCheck: check("companion_turns_routine_origin_check", sql`(${t.routineId} is null or ${t.routineName} is not null) and (${t.routineName} is null or (char_length(${t.routineName}) between 1 and 80 and ${t.routineName} !~ E'[\\n\\r]'))`),
@@ -1588,6 +1586,7 @@ export const companionTurnAttempts = pgTable(
     progressCheck: check("companion_turn_attempts_progress_check", sql`${t.eventCursor} >= 0 and ${t.unknownEventCount} >= 0 and ${t.malformedEventCount} >= 0 and ${t.oversizedEventCount} >= 0`),
     terminalCheck: check("companion_turn_attempts_terminal_check", sql`(${t.status} in ('succeeded','failed','interrupted','cancelled')) = (${t.settledAt} is not null)`),
     terminalProofCheck: check("companion_turn_attempts_terminal_proof_check", sql`(${t.status} <> 'succeeded' or (${t.checkpoint} = 'agent_settled' and ${t.dispatchState} = 'accepted' and ${t.piInvocationId} is not null)) and (${t.dispatchState} <> 'ambiguous' or ${t.status} not in ('succeeded','failed','cancelled')) and (${t.dispatchState} <> 'rejected' or ${t.status} not in ('succeeded','cancelled'))`),
+    interruptedActionCheck: check("companion_turn_attempts_interrupted_action_check", sql`${t.status} <> 'interrupted' or ${t.lastErrorAction} = 'none'`),
     errorCheck: check("companion_turn_attempts_error_check", sql`((${t.lastErrorCode} is null) = (${t.lastErrorMessage} is null)) and ((${t.lastErrorCode} is null) = (${t.lastErrorAction} is null)) and (${t.lastErrorCode} is null or ${t.lastErrorCode} ~ '^[a-z][a-z0-9_]{0,63}$') and (${t.lastErrorMessage} is null or (char_length(${t.lastErrorMessage}) <= 500 and ${t.lastErrorMessage} !~ E'[\\n\\r]')) and (${t.status} not in ('failed','interrupted') or ${t.lastErrorCode} is not null) and (${t.status} not in ('succeeded','cancelled') or ${t.lastErrorCode} is null)`),
   }),
 );
@@ -1641,13 +1640,7 @@ export const companionOperations = pgTable(
     queueSequenceUnique: unique("companion_operations_queue_sequence_uq").on(t.companionId, t.queueSequence),
     oneRunning: uniqueIndex("companion_operations_one_running_uq").on(t.companionId).where(sql`${t.status} = 'running'`),
     pending: index("companion_operations_pending_idx").on(t.availableAt, t.queueSequence, t.companionId).where(sql`${t.status} in ('pending','running')`),
-    recoveryMetrics: index("companion_operations_recovery_metrics_idx")
-      .on(t.createdAt)
-      .where(sql`${t.kind} = 'restart_pi' and ${t.trigger} = 'recovery' and ${t.status} in ('pending','running')`),
     providerOperationUnique: uniqueIndex("companion_operations_provider_operation_uq").on(t.providerOperationId).where(sql`${t.providerOperationId} is not null`),
-    oneRecoveryPerTurn: uniqueIndex("companion_operations_one_recovery_per_turn_uq")
-      .on(t.companionId, t.sourceTurnId)
-      .where(sql`${t.kind} = 'restart_pi' and ${t.trigger} = 'recovery'`),
     runtimeInstanceFk: foreignKey({ columns: [t.orgId, t.companionId], foreignColumns: [companionRuntimeInstances.orgId, companionRuntimeInstances.companionId], name: "companion_operations_runtime_instance_fk" }).onDelete("cascade"),
     sourceTurnFk: foreignKey({ columns: [t.orgId, t.companionId, t.sourceTurnId], foreignColumns: [companionTurns.orgId, companionTurns.companionId, companionTurns.id], name: "companion_operations_source_turn_fk" }).onDelete("restrict"),
     queueSequenceCheck: check("companion_operations_queue_sequence_check", sql`${t.queueSequence} >= 1 and ${t.turnQueueCutoff} >= 0`),
@@ -1663,6 +1656,7 @@ export const companionOperations = pgTable(
     providerOperationCheck: check("companion_operations_provider_operation_check", sql`${t.providerOperationId} is null or (char_length(${t.providerOperationId}) between 1 and 200 and ${t.providerOperationId} !~ E'[\\n\\r]')`),
     terminalCheck: check("companion_operations_terminal_check", sql`(${t.status} in ('succeeded','failed','interrupted','cancelled')) = (${t.settledAt} is not null)`),
     terminalProofCheck: check("companion_operations_terminal_proof_check", sql`${t.status} <> 'succeeded' or ((${t.kind} in ('start','restart_pi','restart_box') and ${t.checkpoint} = 'pi_ready') or (${t.kind} = 'stop' and ${t.checkpoint} = 'box_archived') or (${t.kind} = 'apply_settings' and ${t.checkpoint} = 'settings_applied') or (${t.kind} = 'delete' and ${t.checkpoint} in ('provider_deleted','box_absent')))`),
+    interruptedActionCheck: check("companion_operations_interrupted_action_check", sql`${t.status} <> 'interrupted' or ${t.lastErrorAction} = 'none'`),
     explicitDestructiveTriggerCheck: check("companion_operations_explicit_destructive_trigger_check", sql`${t.kind} not in ('restart_box','delete') or ${t.trigger} = 'user'`),
     errorCheck: check("companion_operations_error_check", sql`((${t.lastErrorCode} is null) = (${t.lastErrorMessage} is null)) and ((${t.lastErrorCode} is null) = (${t.lastErrorAction} is null)) and (${t.lastErrorCode} is null or ${t.lastErrorCode} ~ '^[a-z][a-z0-9_]{0,63}$') and (${t.lastErrorMessage} is null or (char_length(${t.lastErrorMessage}) <= 500 and ${t.lastErrorMessage} !~ E'[\\n\\r]')) and (${t.status} not in ('failed','interrupted') or ${t.lastErrorCode} is not null) and (${t.status} not in ('succeeded','cancelled') or ${t.lastErrorCode} is null)`),
   }),

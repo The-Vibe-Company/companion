@@ -118,10 +118,9 @@ boundary for this incident. Deploy its release migration and the matching runtim
 4. Use the named read-only routine diagnostic to confirm `enabled`, `consecutive_failures`, the next
    fire, and recent run outcomes. Do not infer an abnormal cancellation from a Box-side
    `.cancelled` tombstone alone: exact routine termination writes that marker for normal cleanup too.
-5. If a historical run is still `interrupted`, verify protocol 5 created its lane-local
-   `restart_pi` recovery. It terminates only the exact run-scoped invocation, never replays the
-   prompt, and never restarts or deletes the Box; the original error remains after
-   `auto_abandoned` releases the lane.
+5. If a historical run is `interrupted`, verify protocol 6 marked it `auto_abandoned` with action
+   `none`, canceled any legacy recovery operation, and released the lane. The prompt is never
+   replayed and no Box restart or delete is automatic.
 
 After this migration, successful enqueue no longer clears the streak. A succeeded run clears it;
 only a terminal `failed` run increments it. `interrupted`, `cancelled`, and
@@ -196,8 +195,8 @@ Then validate scheduling concurrency with a routine that remains active long eno
   active under different lease lanes;
 - take over one lane in a controlled test environment and confirm the other lane's token, renewal,
   and process are unchanged; and
-- Retry or Cancel the routine and confirm the active main turn remains authorized, then validate the
-  inverse for a main turn while a routine is active.
+- Interrupt the routine and confirm the active main turn remains authorized and the next routine
+  occurrence stays claimable, then validate the inverse for a main turn while a routine is active.
 
 A `relay` return enters the ordinary main queue. It may wait behind another main turn, but it does
 not wait merely for routine settlement. Routine context and any parent-memory snapshot remain
@@ -215,13 +214,13 @@ case. Keep the routine disabled while investigating any of those results.
 ## Clean queued validation turns
 
 1. Disable the `Hello World` routine first to stop new cron fires.
-2. If a turn is interrupted, verify its protocol-5 recovery terminates the exact invocation and
-   reaches `auto_abandoned`; do not replay or rewrite the turn.
+2. If a turn is interrupted, verify it is already `auto_abandoned`, owns no lane, and exposes no
+   Retry/Cancel action; do not replay or rewrite the turn.
 3. Expand the queued-messages card and use **Remove from queue** for each queued `Hello World`
    message. Preserve unrelated owner messages.
 4. If the client action is unavailable, an authorized Owner/Editor may call
    `POST /v1/companions/<companion-id>/turns/<turn-id>/cancel` with `{}` once per exact queued turn.
-   Cancellation is durable and idempotent. Do not edit leases, attempts, recovery operations, or
+   Cancellation is durable and idempotent. Do not edit leases, attempts, or lifecycle operations
    routine rows directly.
 5. Confirm the ordered queue is clear before re-enabling the routine.
 
@@ -234,8 +233,7 @@ If isolated routine execution fails after cutover:
    product services—and deploy so new work stops and active work reaches the safe interrupted
    checkpoint.
 2. Cancel only affected queued turns through the product/API procedure above. Interrupted
-   occurrences remain durable and recover automatically after the fixed protocol-5 runtime resumes
-   claims.
+   occurrences remain durable terminal history and never hold claims.
 3. Preserve migrations 0137 and 0139 and every durable `routine_isolated` pin. Do not down-migrate, force a
    run onto the legacy main Pi, delete the Box, or use a full Box restart as automatic repair.
 4. Roll forward to a compatible fixed Runtime v2 SHA. Re-run release first if that SHA contains a

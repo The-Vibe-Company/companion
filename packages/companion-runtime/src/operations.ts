@@ -305,25 +305,6 @@ async function observeKnownBoxState(
   return state;
 }
 
-async function completeInterruptedRecoveryWithoutLiveBox(
-  context: OperationContext,
-  authorization: RuntimeAuthorization = requiredAuthorization(context.session),
-): Promise<boolean> {
-  if (context.claim.operationKind !== "restart_pi" || context.claim.turnId === null) return false;
-  if (
-    authorization.turnId !== context.claim.turnId
-    || authorization.turnStatus !== "interrupted"
-    || !["pending", "restarting_pi", "starting_pi", "pi_observed"].includes(
-      authorization.workCheckpoint,
-    )
-  ) return false;
-
-  const state = await observeKnownBoxState(context, authorization);
-  if (state !== "absent" && state !== "archived") return false;
-  await context.session.checkpoint({ nextCheckpoint: "pi_ready" });
-  return true;
-}
-
 function isReady(state: GenerationBox["state"]): boolean {
   return state === "ready" || state === "idle" || state === "running";
 }
@@ -770,26 +751,8 @@ async function handleStop(context: OperationContext): Promise<RuntimeWorkDisposi
 async function handleRestartPi(context: OperationContext): Promise<RuntimeWorkDisposition> {
   for (;;) {
     const authorization = await context.session.reauthorize();
-    if (
-      authorization.workCheckpoint !== "pending"
-      && await completeInterruptedRecoveryWithoutLiveBox(context, authorization)
-    ) return runtimeSucceeded;
     switch (authorization.workCheckpoint) {
       case "pending":
-        // An interrupted occurrence can outlive the Box or its durable identity. There is no Pi
-        // invocation to terminate in that case, so absence itself is a complete cleanup proof.
-        // The next ordinary queued turn remains responsible for the normal cold-start path.
-        if (
-          authorization.turnId !== null
-          && (
-            authorization.boxId === null
-            || authorization.boxState === "absent"
-            || authorization.boxState === "archived"
-          )
-        ) {
-          await context.session.checkpoint({ nextCheckpoint: "pi_ready" });
-          break;
-        }
         await lifecycle(context, "stop_pi", async ({ signal }) =>
           await context.deps.pi.stopPiDaemon({ boxId: requiredBoxId(context.session), signal }));
         await applyCapturedSkillUpdate(context);
@@ -841,66 +804,6 @@ async function handleRestartPi(context: OperationContext): Promise<RuntimeWorkDi
         });
     }
   }
-}
-
-async function handleIsolatedRoutineRetry(
-  context: OperationContext,
-): Promise<RuntimeWorkDisposition | null> {
-  if (context.claim.turnId === null) return null;
-  const authorization = await context.session.reauthorize();
-  if (authorization.workCheckpoint === "pi_ready") return runtimeSucceeded;
-  if (authorization.workCheckpoint !== "pending") {
-    throw new RuntimeInvariantError({
-      code: "operation_checkpoint_invalid",
-      message: "The isolated routine retry reached an unsupported checkpoint.",
-      action: "none",
-    });
-  }
-  const material = await context.session.fencedLookup(async () =>
-    await context.deps.materialProvider.getMaterial({
-      store: context.deps.store,
-      fence: context.session.fence,
-      signal: context.session.signal,
-    }));
-  if (material === null) {
-    throw new RuntimeInvariantError({
-      code: "runtime_resource_snapshot_missing",
-      message: "The retry resource snapshot is unavailable.",
-      action: "retry",
-    });
-  }
-  if (material.routineId === null) return null;
-  if (!material.routineIsolated) return null;
-  const runId = context.claim.turnId;
-  const routine = context.deps.pi.routineSession;
-  if (!routine) {
-    throw new RuntimeInvariantError({
-      code: "routine_session_unavailable",
-      message: "The isolated routine session control is unavailable.",
-      action: "retry",
-    });
-  }
-  const invocationId = requiredAuthorization(context.session).commandPiInvocationId;
-  if (invocationId === null) {
-    await context.session.checkpoint({ nextCheckpoint: "pi_ready" });
-    return runtimeSucceeded;
-  }
-  if (!invocationId.startsWith(`routine:${runId}:`)) {
-    throw new RuntimeInvariantError({
-      code: "routine_session_invocation_mismatch",
-      message: "The isolated routine retry identity did not match its run.",
-      action: "retry",
-    });
-  }
-  await lifecycle(context, "stop_pi", async ({ signal }) =>
-    await routine.terminate({
-      boxId: requiredBoxId(context.session),
-      runId,
-      expectedInvocationId: invocationId,
-      signal,
-    }));
-  await context.session.checkpoint({ nextCheckpoint: "pi_ready" });
-  return runtimeSucceeded;
 }
 
 /**
@@ -1247,10 +1150,8 @@ export async function handleOperation(
       return await handleStart(context);
     case "stop":
       return await handleStop(context);
-    case "restart_pi": {
-      if (await completeInterruptedRecoveryWithoutLiveBox(context)) return runtimeSucceeded;
-      return await handleIsolatedRoutineRetry(context) ?? await handleRestartPi(context);
-    }
+    case "restart_pi":
+      return await handleRestartPi(context);
     case "restart_box":
       return await handleRestartBox(context);
     case "apply_settings":

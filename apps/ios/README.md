@@ -86,9 +86,9 @@ unavailable plugin selections, and never receives mutation or restart controls. 
 native thread renders every durable decision request. Owner and Editor can answer `ask_user`,
 approve or deny asynchronous Companion control changes for models, OAuth, routines, triggers, and
 peer grants, and handle historical shell/file and legacy proposal
-requests without leaving iOS. An interrupted turn is equally explicit: Owner and Editor can retry
-it with a durable idempotency key or cancel it to release later queued messages, while Viewer remains
-read-only. The roster also manages model providers and MCP plugins. Provider
+requests without leaving iOS. An interrupted turn is equally explicit: it is terminal immediately
+and is not replayed; later work continues in order while Viewer remains read-only. The
+roster also manages model providers and MCP plugins. Provider
 connections support encrypted API keys plus the shared Claude authorization-code and Codex device
 flows. The live server catalog includes Claude, Codex, Kimi, Moonshot, z.ai, OpenAI API, and Google
 Gemini; the app renders that catalog rather than maintaining a divergent mobile allowlist. Members
@@ -261,9 +261,8 @@ decision controls. Set `COMPANION_DECISION_DEMO_FAIL_ONCE=<request-id>` to exerc
 submission followed by an enabled retry.
 Add `-markdown-table-dark-demo` alongside `-markdown-table-demo` to exercise the table gallery with
 the adaptive Companion color tokens in dark appearance.
-The interruption demo accepts `COMPANION_INTERRUPTION_DEMO_ACCESS=owner|editor|viewer`; set
-`COMPANION_INTERRUPTION_DEMO_FAIL_RETRY_ONCE=1` to verify that an uncertain submission keeps the
-same safe retry action available.
+The interruption demo shows the passive terminal state shared by every workspace role;
+interrupted occurrences are not replayed and later work continues automatically.
 Set `COMPANION_TRANSCRIPT_DEMO_SHORT=1` with `-companion-transcript-window-demo` to exercise the
 same mixed chat surface in a short thread; the default fixture keeps the 120-entry load-more path.
 Set `COMPANION_TRANSCRIPT_DEMO_STAGED_POLL=1` with `-companion-transcript-window-demo` to stage a

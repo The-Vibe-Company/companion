@@ -1,12 +1,12 @@
 /**
  * Product promise:
- * Protocol 5 turns the production-shaped interrupted-routine lock into one internal, idempotent
- * cleanup without replaying the ambiguous prompt or disturbing a concurrently starting chat turn.
+ * Protocol 6 makes every interrupted occurrence terminal history. The migration releases old
+ * queue locks, retires durable recovery operations, and prevents protocol-5 executors from
+ * claiming work under the new rules.
  *
  * Why integrated:
- * The guarantee is a deployment-time backfill across enum values, transition triggers, queue
- * allocators, partial uniqueness, and SECURITY DEFININER projections. A fixture created after the
- * migration cannot prove that an already-pending user retry is safely adopted in place.
+ * This is a deployment-time backfill across transition triggers, partial indexes, lane claims,
+ * SECURITY DEFINER grants, and the material-protocol fence. Unit fixtures cannot prove it.
  */
 import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
@@ -36,11 +36,12 @@ const actorId = `self-heal-owner-${suffix}`;
 const orgId = randomUUID();
 const companionId = randomUUID();
 const routineId = randomUUID();
-const routineTurnId = randomUUID();
-const routineMessageId = randomUUID();
-const chatTurnId = randomUUID();
-const chatMessageId = randomUUID();
-const retryId = randomUUID();
+const interruptedTurnId = randomUUID();
+const interruptedMessageId = randomUUID();
+const queuedChatMessageId = randomUUID();
+const queuedRoutineMessageId = randomUUID();
+let queuedChatTurnId = "";
+let queuedRoutineTurnId = "";
 
 async function applyMigrationFile(name: string): Promise<void> {
   const source = await readFile(`${migrationsDir}/${name}`, "utf8");
@@ -69,7 +70,20 @@ async function applySplitGrants(): Promise<void> {
   }
 }
 
-describe("0150 Companion self-heal upgrade", () => {
+async function asRole<T>(
+  role: string,
+  action: (tx: postgres.TransactionSql) => Promise<T>,
+): Promise<T> {
+  const result = await upgradeSql.begin(async (tx) => {
+    await tx.unsafe(`set local role ${role}`);
+    await tx`select set_config('app.org_id', ${orgId}, true)`;
+    await tx`select set_config('app.user_id', ${actorId}, true)`;
+    return { value: await action(tx) };
+  });
+  return result.value;
+}
+
+describe("0155 terminal interruption protocol-6 upgrade", () => {
   beforeAll(async () => {
     await adminSql.unsafe(`
       create role ${apiRole} login nosuperuser nobypassrls noinherit;
@@ -80,7 +94,7 @@ describe("0150 Companion self-heal upgrade", () => {
     upgradeSql = postgres(upgradeUrl.toString(), { max: 1 });
 
     const migrations = (await readdir(migrationsDir))
-      .filter((name) => /^\d{4}_.+\.sql$/.test(name) && name < "0151_companion_runtime_self_heal_protocol_5.sql")
+      .filter((name) => /^\d{4}_.+\.sql$/.test(name) && name < "0155_companion_interruption_terminal_protocol_6.sql")
       .sort();
     const cutoverIndex = migrations.findIndex((name) => name.startsWith("0094_"));
     if (cutoverIndex < 0) throw new Error("Runtime v2 cutover migration is missing");
@@ -122,55 +136,64 @@ describe("0150 Companion self-heal upgrade", () => {
     `;
     await upgradeSql`
       insert into companion_threads(org_id, companion_id, next_ordinal, last_message_at)
-      values (${orgId}::uuid, ${companionId}::uuid, 2, now())
-    `;
-    await upgradeSql`
-      insert into companion_transcript_entries(
-        org_id, companion_id, event_id, ordinal, role, content, author_id, routine_name
-      ) values
-        (
-          ${orgId}::uuid, ${companionId}::uuid, ${`msg:${routineMessageId}`}, 0,
-          'user', 'Historical routine occurrence', ${actorId}, 'Daily long-thread routine'
-        ),
-        (
-          ${orgId}::uuid, ${companionId}::uuid, ${`msg:${chatMessageId}`}, 1,
-          'user', 'Message accepted while cleanup is waiting', ${actorId}, null
-        )
+      values (${orgId}::uuid, ${companionId}::uuid, 1, now())
     `;
     await upgradeSql`
       insert into companion_routines(
         id, org_id, companion_id, name, prompt, cron, timezone, enabled, next_fire_at, created_by
       ) values (
         ${routineId}::uuid, ${orgId}::uuid, ${companionId}::uuid,
-        'Daily long-thread routine', 'Send an update.', '0 9 * * *', 'UTC', false, null, ${actorId}
+        'Daily routine', 'Send an update.', '0 9 * * *', 'UTC', false, null, ${actorId}
+      )
+    `;
+    await upgradeSql`
+      insert into companion_transcript_entries(
+        org_id, companion_id, event_id, ordinal, role, content, author_id, routine_name
+      ) values (
+        ${orgId}::uuid, ${companionId}::uuid, ${`msg:${interruptedMessageId}`}, 0,
+        'user', 'Historical ambiguous occurrence', ${actorId}, null
       )
     `;
     await upgradeSql`
       insert into companion_turns(
         id, org_id, companion_id, client_message_id, message_event_id, queue_sequence,
-        actor_id, client_surface, status, routine_id, routine_snapshot_id, routine_name,
-        absolute_deadline_at, state_changed_at, settled_at,
-        last_error_code, last_error_message, last_error_action
+        actor_id, client_surface, status, absolute_deadline_at, state_changed_at, settled_at,
+        last_error_code, last_error_message, last_error_action,
+        routine_id, routine_snapshot_id, routine_name
       ) values (
-        ${routineTurnId}::uuid, ${orgId}::uuid, ${companionId}::uuid,
-        ${routineMessageId}::uuid, ${`msg:${routineMessageId}`}, 1, ${actorId}, 'web',
-        'interrupted', ${routineId}::uuid, ${routineId}::uuid, 'Daily long-thread routine',
-        now() - interval '1 minute', now() - interval '2 minutes', now() - interval '2 minutes',
-        'pi_response_lost', 'The provider response was lost after dispatch.', 'retry'
-      ), (
-        ${chatTurnId}::uuid, ${orgId}::uuid, ${companionId}::uuid,
-        ${chatMessageId}::uuid, ${`msg:${chatMessageId}`}, 2, ${actorId}, 'web', 'starting',
-        null, null, null, now() + interval '2 hours', now(), null, null, null, null
-      )
-    `;
-    await upgradeSql`
-      select * from public.companion_api_retry_turn(
-        ${orgId}::uuid, ${companionId}::uuid, ${routineTurnId}::uuid,
-        ${retryId}::uuid, 'web'
+        ${interruptedTurnId}::uuid, ${orgId}::uuid, ${companionId}::uuid,
+        ${interruptedMessageId}::uuid, ${`msg:${interruptedMessageId}`}, 1, ${actorId}, 'web',
+        'interrupted', now() - interval '1 minute', now() - interval '2 minutes',
+        now() - interval '2 minutes', 'pi_response_lost',
+        'The provider response was lost after dispatch.', 'retry', null, null, null
       )
     `;
 
-    await applyMigrationFile("0151_companion_runtime_self_heal_protocol_5.sql");
+    const [chat] = await upgradeSql<Array<{ turn: { id: string } }>>`
+      select turn from public.companion_api_enqueue_turn(
+        ${orgId}::uuid, ${companionId}::uuid, ${queuedChatMessageId}::uuid,
+        'Next chat message', 'web', '[]'::jsonb
+      )
+    `;
+    const [routine] = await upgradeSql<Array<{ turn: { id: string } }>>`
+      select turn from public.companion_api_enqueue_turn(
+        ${orgId}::uuid, ${companionId}::uuid, ${queuedRoutineMessageId}::uuid,
+        'Next routine occurrence', 'web', '[]'::jsonb,
+        ${routineId}::uuid, 'Daily routine'
+      )
+    `;
+    queuedChatTurnId = chat?.turn.id ?? "";
+    queuedRoutineTurnId = routine?.turn.id ?? "";
+    if (!queuedChatTurnId || !queuedRoutineTurnId) throw new Error("queued turn fixture failed");
+
+    await applyMigrationFile("0155_companion_interruption_terminal_protocol_6.sql");
+    await applySplitGrants();
+    await upgradeSql`
+      select * from public.companion_runtime_enable(
+        (select gate_epoch from public.companion_runtime_gate_status()),
+        'self-heal-migration-test'
+      )
+    `;
   }, 120_000);
 
   afterAll(async () => {
@@ -180,72 +203,130 @@ describe("0150 Companion self-heal upgrade", () => {
     await adminSql.end({ timeout: 1 });
   });
 
-  it("adopts the pending restart as one routine-lane recovery without replaying either prompt", async () => {
+  it("backfills terminal history and cancels every durable recovery", async () => {
     const [state] = await upgradeSql<Array<{
-      operationCount: number;
-      operationKind: string;
-      operationTrigger: string;
-      operationStatus: string;
-      requestId: string | null;
-      sourceTurnId: string;
-      lane: string;
-      routineStatus: string;
-      routineResolution: string | null;
-      routineErrorCode: string;
-      chatStatus: string;
+      status: string;
+      resolution: string;
+      errorCode: string;
+      errorMessage: string;
+      errorAction: string;
+      recoveryTotal: number;
+      liveRecoveryTotal: number;
       transcriptCount: number;
+      boxState: string;
+      piState: string;
     }>>`
-      select
-        count(*) filter (
-          where operation.kind = 'restart_pi' and operation.trigger = 'recovery'
-        ) over ()::int as "operationCount",
-        operation.kind::text as "operationKind",
-        operation.trigger::text as "operationTrigger",
-        operation.status::text as "operationStatus",
-        operation.request_id::text as "requestId",
-        operation.source_turn_id::text as "sourceTurnId",
-        public.companion_runtime_operation_lane(
-          operation.org_id, operation.companion_id, operation.id
-        ) as lane,
-        routine_turn.status::text as "routineStatus",
-        routine_turn.resolution as "routineResolution",
-        routine_turn.last_error_code as "routineErrorCode",
-        chat_turn.status::text as "chatStatus",
+      select turn_row.status::text as status, turn_row.resolution,
+        turn_row.last_error_code as "errorCode", turn_row.last_error_message as "errorMessage",
+        turn_row.last_error_action::text as "errorAction",
+        (select count(*)::int from companion_operations operation
+          where operation.companion_id = turn_row.companion_id
+            and operation.kind = 'restart_pi' and operation.trigger = 'recovery') as "recoveryTotal",
+        (select count(*)::int from companion_operations operation
+          where operation.companion_id = turn_row.companion_id
+            and operation.kind = 'restart_pi' and operation.trigger = 'recovery'
+            and operation.status in ('pending', 'running')) as "liveRecoveryTotal",
         (select count(*)::int from companion_transcript_entries entry
-          where entry.companion_id = operation.companion_id) as "transcriptCount"
-      from companion_operations operation
-      join companion_turns routine_turn on routine_turn.id = operation.source_turn_id
-      join companion_turns chat_turn on chat_turn.id = ${chatTurnId}::uuid
-      where operation.companion_id = ${companionId}::uuid
-        and operation.kind = 'restart_pi'
-        and operation.status in ('pending', 'running')
+          where entry.companion_id = turn_row.companion_id) as "transcriptCount",
+        (select instance.box_state::text from companion_runtime_instances instance
+          where instance.companion_id = turn_row.companion_id) as "boxState",
+        (select instance.pi_state::text from companion_runtime_instances instance
+          where instance.companion_id = turn_row.companion_id) as "piState"
+      from companion_turns turn_row where turn_row.id = ${interruptedTurnId}::uuid
     `;
     expect(state).toEqual({
-      operationCount: 1,
-      operationKind: "restart_pi",
-      operationTrigger: "recovery",
-      operationStatus: "pending",
-      requestId: null,
-      sourceTurnId: routineTurnId,
-      lane: "routine",
-      routineStatus: "interrupted",
-      routineResolution: null,
-      routineErrorCode: "pi_response_lost",
-      chatStatus: "starting",
-      transcriptCount: 2,
+      status: "interrupted",
+      resolution: "auto_abandoned",
+      errorCode: "pi_response_lost",
+      errorMessage: "The provider response was lost after dispatch.",
+      errorAction: "none",
+      recoveryTotal: 1,
+      liveRecoveryTotal: 0,
+      transcriptCount: 3,
+      boxState: "unknown",
+      piState: "unknown",
     });
+  });
 
-    // Re-firing the migration's backfill trigger shape is idempotent: it cannot create a second
-    // cleanup and therefore cannot turn the historical prompt into another execution occurrence.
-    await upgradeSql`
-      update companion_turns set status = status
-      where id = ${routineTurnId}::uuid
+  it("keeps terminal interruption history in thread window and delta projections", async () => {
+    const [window] = await asRole(apiRole, (tx) => tx<Array<{
+      interruptedTurn: { id: string; status: string; resolution: string } | null;
+    }>>`
+      select interrupted_turn as "interruptedTurn"
+      from public.companion_api_read_thread_window(
+        ${orgId}::uuid, ${companionId}::uuid, null, 50, false
+      )
+    `);
+    const [delta] = await asRole(apiRole, (tx) => tx<Array<{
+      interruptedTurn: { id: string; status: string; resolution: string } | null;
+    }>>`
+      select interrupted_turn as "interruptedTurn"
+      from public.companion_api_read_thread_changes(
+        ${orgId}::uuid, ${companionId}::uuid, 0, 200
+      )
+    `);
+
+    expect(window?.interruptedTurn).toMatchObject({
+      id: interruptedTurnId,
+      status: "interrupted",
+      resolution: "auto_abandoned",
+    });
+    expect(delta?.interruptedTurn).toMatchObject({
+      id: interruptedTurnId,
+      status: "interrupted",
+      resolution: "auto_abandoned",
+    });
+  });
+
+  it("refuses protocol 5 and lets protocol 6 claim the next FIFO turn", async () => {
+    const oldClaims = await asRole(runtimeRole, (tx) => tx<Array<{ workId: string }>>`
+      select work_id::text as "workId"
+      from public.companion_runtime_claim_work('old-runtime', 4, 30, (
+        select gate_epoch from public.companion_runtime_gate_status()
+      ), 5, 1)
+    `);
+    expect(oldClaims).toEqual([]);
+
+    const claims = await asRole(runtimeRole, (tx) => tx<Array<{ workId: string; workKind: string }>>`
+      select work_id::text as "workId", work_kind::text as "workKind"
+      from public.companion_runtime_claim_work('protocol-6-runtime', 4, 30, (
+        select gate_epoch from public.companion_runtime_gate_status()
+      ), 6, 1) claim
+    `);
+    expect(claims).not.toEqual([]);
+    const claimedTurns = await upgradeSql<Array<{ turnId: string }>>`
+      select coalesce(attempt.turn_id, operation.source_turn_id)::text as "turnId"
+      from unnest(${claims.map((claim) => claim.workId)}::uuid[]) claimed(id)
+      left join companion_turn_attempts attempt on attempt.id = claimed.id
+      left join companion_operations operation on operation.id = claimed.id
     `;
-    const [count] = await upgradeSql<Array<{ value: number }>>`
-      select count(*)::int as value from companion_operations
-      where companion_id = ${companionId}::uuid
-        and kind = 'restart_pi' and trigger = 'recovery'
+    expect(claimedTurns.map((claim) => claim.turnId)).toContain(queuedChatTurnId);
+    const [routine] = await upgradeSql<Array<{ status: string }>>`
+      select status::text as status from companion_turns where id = ${queuedRoutineTurnId}::uuid
     `;
-    expect(count?.value).toBe(1);
+    expect(routine?.status).toBe("queued");
+  });
+
+  it("removes Retry and rejects Cancel for an interruption without mutation", async () => {
+    const [surface] = await upgradeSql<Array<{ retry: string | null; recoveryMetrics: string | null }>>`
+      select
+        to_regprocedure('public.companion_api_retry_turn(uuid,uuid,uuid,uuid,public.companion_client_surface)')::text as retry,
+        to_regprocedure('public.companion_runtime_recovery_metrics()')::text as "recoveryMetrics"
+    `;
+    expect(surface).toEqual({ retry: null, recoveryMetrics: null });
+
+    await expect(
+      asRole(apiRole, (tx) => tx`
+        select public.companion_api_cancel_turn(
+          ${orgId}::uuid, ${companionId}::uuid, ${interruptedTurnId}::uuid
+        )
+      `),
+    ).rejects.toMatchObject({ code: "55000" });
+
+    const [turn] = await upgradeSql<Array<{ status: string; resolution: string }>>`
+      select status::text as status, resolution from companion_turns
+      where id = ${interruptedTurnId}::uuid
+    `;
+    expect(turn).toEqual({ status: "interrupted", resolution: "auto_abandoned" });
   });
 });

@@ -269,7 +269,7 @@ export class RuntimeEngine {
       return this.#result(claim, released ? "released" : "fence_lost");
     }
     if (code === "turn_cancel_requested") {
-      await this.#abortPiForStop(claim, session);
+      await this.#abortAttempt(claim, session);
       return await this.#finishSettlement(claim, session, {
         terminalStatus: "cancelled",
       }, thrown);
@@ -282,16 +282,16 @@ export class RuntimeEngine {
    * Best-effort Pi abort on Owner/Editor stop. The lease signal is already aborted by the denial,
    * so this uses a short independent deadline rather than the turn's lease.
    */
-  async #abortPiForStop(
+  async #abortAttempt(
     claim: RuntimeClaim,
     session: LeaseSession,
-  ): Promise<void> {
-    if (claim.workKind !== "attempt") return;
-    const auth = session.authorization;
-    if (!auth?.boxId) return;
+  ): Promise<boolean> {
+    if (claim.workKind !== "attempt") return true;
+    const auth = session.cleanupAuthorization;
+    if (!auth?.boxId) return true;
     if (auth.dispatchState !== "accepted"
       && auth.dispatchState !== "write_intent"
-      && auth.dispatchState !== "ambiguous") return;
+      && auth.dispatchState !== "ambiguous") return true;
     const runId = claim.turnId;
     if (
       runId
@@ -324,7 +324,7 @@ export class RuntimeEngine {
           expectedInvocationId: auth.commandPiInvocationId,
           signal: terminateController.signal,
         });
-        return;
+        return true;
       } catch {
         throw new RoutineCancelTerminationError();
       } finally {
@@ -340,8 +340,10 @@ export class RuntimeEngine {
         attemptId: claim.workId,
         signal: controller.signal,
       });
+      return true;
     } catch {
-      // The persistent main Pi is recovered by the next turn's idle preflight.
+      // Ordinary turn-derived Start/preflight owns persistent main Pi reconciliation.
+      return false;
     } finally {
       clearTimeout(timer);
     }
@@ -372,18 +374,51 @@ export class RuntimeEngine {
     settlement: RuntimeSettlementInput,
     thrown?: unknown,
   ): Promise<RuntimeExecutionResult> {
-    const settled = await session.settle(settlement);
-    const outcome = settled ? settlement.terminalStatus : "fence_lost";
-    if (!settled || settlement.terminalStatus !== "succeeded") {
+    const terminalSettlement: RuntimeSettlementInput = settlement.terminalStatus === "interrupted"
+      && settlement.error
+      ? { ...settlement, error: { ...settlement.error, action: "none" } }
+      : settlement;
+    if (terminalSettlement.terminalStatus === "interrupted" && claim.workKind === "attempt") {
+      try {
+        // Cleanup is exact to the accepted/ambiguous attempt and never replays it. Failure remains
+        // non-blocking: main preflight recycles a non-idle Pi, while routine runs own isolated roots.
+        const cleaned = await this.#abortAttempt(claim, session);
+        if (!cleaned) {
+          this.#deps.log?.warn({
+            ts: this.#deps.clock.now().toISOString(),
+            event: "runtime.work.interruption_cleanup_failed",
+            companionId: claim.companionId,
+            attemptId: claim.workId,
+            reason: "attempt_cleanup_unconfirmed",
+          });
+        }
+      } catch (error) {
+        this.#deps.log?.warn({
+          ts: this.#deps.clock.now().toISOString(),
+          event: "runtime.work.interruption_cleanup_failed",
+          companionId: claim.companionId,
+          attemptId: claim.workId,
+          reason: "attempt_cleanup_unconfirmed",
+          thrown: describeThrownError(error),
+        });
+      }
+    }
+    const settled = await session.settle(terminalSettlement);
+    const outcome = settled ? terminalSettlement.terminalStatus : "fence_lost";
+    if (!settled || terminalSettlement.terminalStatus !== "succeeded") {
       this.#logFailure({
         claim,
         session,
-        event: settled ? `runtime.work.${settlement.terminalStatus}` : "runtime.work.fence_lost",
+        event: settled
+          ? `runtime.work.${terminalSettlement.terminalStatus}`
+          : "runtime.work.fence_lost",
         outcome,
         reason: settled ? undefined : "settle_rejected",
         thrown,
-        persisted: settlement.error,
-        level: settlement.terminalStatus === "interrupted" && thrown === undefined ? "warn" : "error",
+        persisted: terminalSettlement.error,
+        level: terminalSettlement.terminalStatus === "interrupted" && thrown === undefined
+          ? "warn"
+          : "error",
       });
     }
     return this.#result(claim, outcome);

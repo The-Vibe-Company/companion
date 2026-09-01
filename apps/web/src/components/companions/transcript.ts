@@ -73,7 +73,7 @@ export function composerHint(input: {
     const waiting = queued > 0
       ? ` ${queued} message${queued === 1 ? " is" : "s are"} saved and queued.`
       : " New messages remain available.";
-    return `Automatic Pi cleanup is in progress; the interrupted occurrence will not be replayed.${waiting}`;
+    return `The interrupted occurrence is terminal and will not be replayed; later work continues automatically.${waiting}`;
   }
 
   const active = input.thread?.active_turn;

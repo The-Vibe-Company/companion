@@ -1852,10 +1852,9 @@ func decodesInterruptedTurnAndItsSafeRecoveryAction() throws {
 }
 
 @Test
-func retriesAndCancelsInterruptedTurnsThroughSharedRoutes() async throws {
+func cancelsTurnsThroughSharedRoute() async throws {
     let configuration = URLSessionConfiguration.ephemeral
     configuration.protocolClasses = [TurnActionMockURLProtocol.self]
-    let retryID = UUID(uuidString: "dddddddd-dddd-4ddd-8ddd-dddddddddddd")!
     var requestCount = 0
     TurnActionMockURLProtocol.handler = { request in
         requestCount += 1
@@ -1866,25 +1865,7 @@ func retriesAndCancelsInterruptedTurnsThroughSharedRoutes() async throws {
             url: request.url!, statusCode: 202, httpVersion: nil, headerFields: nil
         ))
 
-        if requestCount == 1 {
-            #expect(request.url?.absoluteString.contains(
-                "/v1/companions/companion%2Fone/turns/turn%2Fone/retry"
-            ) == true)
-            let body = try #require(
-                JSONSerialization.jsonObject(with: requestBody(request)) as? [String: String]
-            )
-            #expect(body == ["retry_id": retryID.uuidString.lowercased()])
-            return (response, Data(#"""
-            {"operation":{
-              "id":"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
-              "source_turn_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-              "kind":"start",
-              "status":"pending",
-              "error":null
-            }}
-            """#.utf8))
-        }
-
+        #expect(requestCount == 1)
         #expect(request.url?.absoluteString.contains(
             "/v1/companions/companion%2Fone/turns/turn%2Fone/cancel"
         ) == true)
@@ -1921,21 +1902,13 @@ func retriesAndCancelsInterruptedTurnsThroughSharedRoutes() async throws {
         user: .init(id: "owner-1", email: "stan@example.com", name: "Stan")
     ))
 
-    let operation = try await client.retryCompanionTurn(
-        companionID: "companion/one",
-        turnID: "turn/one",
-        retryID: retryID
-    )
-    #expect(operation.status == .pending)
-    #expect(operation.sourceTurnID == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
-
     let thread = try await client.cancelCompanionTurn(
         companionID: "companion/one",
         turnID: "turn/one"
     )
     #expect(thread.interruptedTurn == nil)
     #expect(thread.queuedCount == 2)
-    #expect(requestCount == 2)
+    #expect(requestCount == 1)
 }
 
 @Test

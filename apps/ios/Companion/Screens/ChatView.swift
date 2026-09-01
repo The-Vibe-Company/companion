@@ -8,7 +8,6 @@ struct ChatServices {
     let thread: (String) async throws -> CompanionThread
     let listCompanions: () async throws -> [CompanionSummary]
     let decide: (String, String, CompanionDecisionAction) async throws -> CompanionThread
-    let retryTurn: (String, String, UUID) async throws -> CompanionOperationSummary
     let cancelTurn: (String, String) async throws -> CompanionThread
     let listSkills: () async throws -> [CompanionSkillReference]
     let listPlugins: () async throws -> [CompanionPluginAccount]
@@ -21,7 +20,6 @@ struct ChatServices {
         thread: @escaping (String) async throws -> CompanionThread,
         listCompanions: @escaping () async throws -> [CompanionSummary],
         decide: @escaping (String, String, CompanionDecisionAction) async throws -> CompanionThread,
-        retryTurn: @escaping (String, String, UUID) async throws -> CompanionOperationSummary,
         cancelTurn: @escaping (String, String) async throws -> CompanionThread,
         listSkills: @escaping () async throws -> [CompanionSkillReference],
         listPlugins: @escaping () async throws -> [CompanionPluginAccount],
@@ -33,7 +31,6 @@ struct ChatServices {
         self.thread = thread
         self.listCompanions = listCompanions
         self.decide = decide
-        self.retryTurn = retryTurn
         self.cancelTurn = cancelTurn
         self.listSkills = listSkills
         self.listPlugins = listPlugins
@@ -378,13 +375,7 @@ struct ChatView: View {
                                     if let interruptedTurn = thread?.interruptedTurn {
                                         CompanionInterruptedTurnNotice(
                                             turn: interruptedTurn,
-                                            queuedCount: thread?.queuedCount ?? 0,
-                                            canAct: thread?.canSend == true,
-                                            latestOperation: currentCompanion.runtime.latestOperation,
-                                            accent: visualTheme.accent,
-                                            accentForeground: visualTheme.accentForeground,
-                                            onRetry: retryInterruptedTurn,
-                                            onCancel: cancelTurn
+                                            queuedCount: thread?.queuedCount ?? 0
                                         )
                                         .padding(.top, 16)
                                         .id("interrupted-\(interruptedTurn.id)")
@@ -1862,26 +1853,6 @@ struct ChatView: View {
             await threadMutationGate.release(mutationID: mutationID)
             throw error
         }
-    }
-
-    private func retryInterruptedTurn(
-        turnID: String,
-        retryID: UUID
-    ) async throws -> CompanionOperationSummary {
-        cancelAssistantTailReveal()
-        refreshGate.invalidate()
-        let operation: CompanionOperationSummary
-        if let services {
-            operation = try await services.retryTurn(companion.id, turnID, retryID)
-        } else {
-            operation = try await sessionStore.retryCompanionTurn(
-                companionID: companion.id,
-                turnID: turnID,
-                retryID: retryID
-            )
-        }
-        await reload(silently: true)
-        return operation
     }
 
     private func cancelTurn(turnID: String) async throws {

@@ -64,10 +64,10 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 - Turn states are
   `queued → starting → dispatching → running ↔ needs_input → succeeded|failed|interrupted|cancelled`.
   One attempt is active per Companion; later turns remain ordered in PostgreSQL.
-- An ambiguous occurrence is never replayed. Runtime creates one internal recovery operation,
-  terminates the exact Pi invocation, preserves the original error, marks the occurrence
-  `auto_abandoned`, and releases its lane. The compatibility Retry request observes that same
-  recovery; Cancel remains the active/queued stop path.
+- An ambiguous occurrence is never replayed. Runtime attempts one exact, bounded Pi stop before
+  settlement, preserves the original error, marks the occurrence `auto_abandoned`, and releases its
+  lane even if cleanup fails. Retry does not exist; Cancel remains the active/queued stop path and
+  rejects terminal interruptions without mutation.
 - A dedicated `apps/runtime` service is the only Box/Pi lifecycle owner. Durable operations,
   checkpoints, leases, and attempt epochs let another replica continue after a crash without
   accepting stale settlements.
@@ -171,10 +171,10 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
   the sole active attempt with events through `agent_settled`.
 - Unknown Pi events are counted and ignored. Only explicitly supported terminal event shapes settle
   a turn; malformed or oversized lines advance safely without storing their raw content.
-- A missing acknowledgement after a possible prompt write is `interrupted` and never auto-replayed.
-  Its exact Pi invocation is cleaned automatically with bounded backoff, after which the occurrence
-  is `auto_abandoned` and later work continues. A proven negative acknowledgement may be retried
-  under the lifecycle retry policy.
+- A missing acknowledgement after a possible prompt write is terminal `interrupted` and never
+  auto-replayed. Runtime attempts one exact bounded stop before settlement; success or failure still
+  records `auto_abandoned` and later work continues immediately. A proven negative acknowledgement
+  may be retried under the lifecycle retry policy before ambiguity is declared.
 - Ten minutes without correlated activity stalls a running turn; the inactivity clock pauses while
   a blocking human decision is in `needs_input`. After ten minutes without an answer, or sooner when
   the member sends another message, Pi receives a cancelled response and chooses a safe fallback or
@@ -243,7 +243,7 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 
 - Unit, real PostgreSQL, simulator fault-injection, and browser suites in `docs/testing.md` pass.
 - The full API + worker + runtime + web + Box/Pi simulator topology passes cold send, image,
-  decision, stop/wake, takeover, automatic interruption recovery, and permanent deletion scenarios.
+  decision, stop/wake, takeover, terminal interruption release, and permanent deletion scenarios.
 - No P0/P1 runtime incident is open, and the purge report contains no owned legacy resource before
   legacy orchestration removal.
 - `pnpm verify:change` and every printed PostgreSQL, container, dependency, and browser gate pass.

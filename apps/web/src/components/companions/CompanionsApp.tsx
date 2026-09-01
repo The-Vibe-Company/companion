@@ -12,7 +12,6 @@ import { useRouter } from "next/navigation";
 import type {
   Companion,
   CompanionDesktop,
-  CompanionOperation,
   CompanionPluginAccount,
   CompanionProvidersResponse,
   CompanionThread as Thread,
@@ -48,7 +47,6 @@ import {
   listCompanionTriggerRuns,
   listCompanionTriggers,
   openCompanionDesktop,
-  retryCompanionTurn,
   readCompanionTriggerRun,
   sendCompanionMessage,
   setCompanionProvider,
@@ -1048,22 +1046,7 @@ export function CompanionsApp({
     }
   };
 
-  const onRetryInterrupted = async (
-    turnId: string,
-    retryId: string,
-  ): Promise<CompanionOperation> => {
-    if (!openedId) throw new Error("This Companion is no longer open.");
-    const companionId = openedId;
-    const operation = await retryCompanionTurn(currentOrg.id, companionId, turnId, retryId);
-    if (openedIdRef.current !== companionId) return operation;
-    // The accepted operation is asynchronous. The existing interrupted projection keeps both
-    // polls fast until the runtime moves the turn forward.
-    void refreshThread();
-    void refreshCompanion(companionId);
-    return operation;
-  };
-
-  const onCancelInterrupted = async (turnId: string): Promise<void> => {
+  const onCancelTurn = async (turnId: string): Promise<void> => {
     if (!openedId) throw new Error("This Companion is no longer open.");
     const companionId = openedId;
     try {
@@ -1438,8 +1421,7 @@ export function CompanionsApp({
                 : () => router.push(`/companions/${opened.id}/settings`)}
               onThread={acceptThreadProjection}
               onDesktop={() => void onDesktop()}
-              onRetryInterrupted={onRetryInterrupted}
-              onCancelInterrupted={onCancelInterrupted}
+              onCancelTurn={onCancelTurn}
             />
           </>
         ) : settingsCompanion && providers ? (

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import type { CompanionTurn, CompanionTurnAttempt } from "../src/companionRuntime";
+
 import {
   cancelCompanionTurnInputSchema,
   companionActiveTurnSchema,
@@ -9,14 +11,12 @@ import {
   companionQueuedTurnSchema,
   companionRuntimeSafeErrorSchema,
   companionTurnSchema,
-  retryCompanionTurnInputSchema,
 } from "../src/companionRuntime";
 
 const companionId = "11111111-1111-4111-8111-111111111111";
 const turnId = "22222222-2222-4222-8222-222222222222";
 const attemptId = "33333333-3333-4333-8333-333333333333";
 const messageId = "44444444-4444-4444-8444-444444444444";
-const retryId = "55555555-5555-4555-8555-555555555555";
 const operationId = "66666666-6666-4666-8666-666666666666";
 const createdAt = "2026-08-17T12:00:00.000+00:00";
 
@@ -26,7 +26,7 @@ const safeError = {
   action: "retry" as const,
 };
 
-function attempt(overrides: Record<string, unknown> = {}) {
+function attempt(overrides: Partial<CompanionTurnAttempt> = {}): CompanionTurnAttempt {
   return {
     id: attemptId,
     turn_id: turnId,
@@ -43,7 +43,7 @@ function attempt(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function turn(overrides: Record<string, unknown> = {}) {
+function turn(overrides: Partial<CompanionTurn> = {}): CompanionTurn {
   return {
     id: turnId,
     companion_id: companionId,
@@ -152,11 +152,7 @@ describe("Companion Runtime v2 public contracts", () => {
     })).toThrow();
   });
 
-  it("requires a UUID-only Retry id and an empty Cancel body", () => {
-    expect(retryCompanionTurnInputSchema.parse({ retry_id: retryId }))
-      .toEqual({ retry_id: retryId });
-    expect(() => retryCompanionTurnInputSchema.parse({ retry_id: "retry-1" })).toThrow();
-    expect(() => retryCompanionTurnInputSchema.parse({ retry_id: retryId, force: true })).toThrow();
+  it("requires an empty Cancel body", () => {
     expect(cancelCompanionTurnInputSchema.parse({})).toEqual({});
     expect(() => cancelCompanionTurnInputSchema.parse({ rollback: true })).toThrow();
   });

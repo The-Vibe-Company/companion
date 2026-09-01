@@ -4,8 +4,6 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type {
-  CompanionLatestOperation,
-  CompanionOperation,
   CompanionRoutineRunDetail,
   CompanionRoutineRunSummary,
 } from "@companion/contracts";
@@ -31,41 +29,6 @@ const routineId = "22222222-2222-4222-8222-222222222222";
 const runId = "33333333-3333-4333-8333-333333333333";
 const secondRunId = "44444444-4444-4444-8444-444444444444";
 const roots: Root[] = [];
-
-function retryOperation(
-  status: CompanionOperation["status"] = "pending",
-  error: CompanionOperation["error"] = null,
-): CompanionOperation {
-  return {
-    id: "55555555-5555-4555-8555-555555555555",
-    companion_id: companionId,
-    request_id: null,
-    source_turn_id: runId,
-    kind: "restart_pi",
-    trigger: "user",
-    status,
-    queue_sequence: 1,
-    checkpoint: status === "succeeded" ? "pi_ready" : "pending",
-    attempt_count: status === "pending" ? 0 : 1,
-    error,
-    created_at: "2026-08-27T09:10:01.000Z",
-    started_at: status === "pending" ? null : "2026-08-27T09:10:02.000Z",
-    settled_at: ["pending", "running"].includes(status) ? null : "2026-08-27T09:10:03.000Z",
-  };
-}
-
-function latestRetryOperation(
-  status: CompanionLatestOperation["status"],
-  error: CompanionLatestOperation["error"] = null,
-): CompanionLatestOperation {
-  return {
-    id: "55555555-5555-4555-8555-555555555555",
-    source_turn_id: runId,
-    kind: "restart_pi",
-    status,
-    error,
-  };
-}
 
 const summary: CompanionRoutineRunSummary = {
   run_id: runId,
@@ -162,29 +125,17 @@ async function flush() {
   });
 }
 
-interface RecoveryOptions {
-  canAct?: boolean;
-  latestOperation?: CompanionLatestOperation | null;
-  onRetry?: (runId: string, retryId: string) => Promise<CompanionOperation>;
-  onCancel?: (runId: string) => Promise<void>;
-}
-
-async function mount(run: string | null = null, recovery: RecoveryOptions = {}) {
+async function mount(run: string | null = null) {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
   roots.push(root);
-  let currentRecovery = recovery;
   const render = async () => {
     await act(async () => root.render(React.createElement(CompanionRoutineHistory, {
       orgId: "org-1",
       companionId,
       target: { routineId, runId: run, name: "Morning brief" },
       memberTimezone: "UTC",
-      canAct: currentRecovery.canAct ?? true,
-      latestOperation: currentRecovery.latestOperation ?? null,
-      onRetry: currentRecovery.onRetry ?? (async () => retryOperation()),
-      onCancel: currentRecovery.onCancel ?? (async () => undefined),
       onClose: () => undefined,
     })));
   };
@@ -192,11 +143,6 @@ async function mount(run: string | null = null, recovery: RecoveryOptions = {}) 
   await flush();
   return {
     container,
-    rerender: async (next: Partial<RecoveryOptions>) => {
-      currentRecovery = { ...currentRecovery, ...next };
-      await render();
-      await flush();
-    },
   };
 }
 
@@ -309,71 +255,12 @@ describe("Companion routine history", () => {
     expect(container.textContent).toContain("The later run completed cleanly.");
   });
 
-  it("lets a runner resolve an interrupted routine without touching the main Pi", async () => {
-    const interrupted = interruptedDetail();
-    const onRetry = vi.fn(async (): Promise<CompanionOperation> => retryOperation());
-    historyApi.readCompanionRoutineRun.mockReset().mockResolvedValue(interrupted);
-
-    const { container } = await mount(runId, { onRetry });
-    expect(container.textContent).toContain("Cancel releases blocked runtime work.");
-
-    await act(async () => buttonNamed(container, "Retry run").click());
-
-    expect(onRetry).toHaveBeenCalledWith(runId, expect.stringMatching(/^[0-9a-f-]{36}$/));
-    expect(container.textContent).toContain("Retry accepted. The isolated routine session");
-    expect(container.textContent).not.toContain("Retry run");
-    expect(buttonNamed(container, "Cancel run").disabled).toBe(false);
-  });
-
-  it("restores retry and shows the durable failure when the isolated Pi recycle fails", async () => {
+  it("keeps an interrupted routine passive while later work continues automatically", async () => {
     historyApi.readCompanionRoutineRun.mockReset().mockResolvedValue(interruptedDetail());
-    const { container, rerender } = await mount(runId);
+    const { container } = await mount(runId);
 
-    await act(async () => buttonNamed(container, "Retry run").click());
-    expect(container.textContent).toContain("Retry accepted.");
-
-    await rerender({
-      latestOperation: latestRetryOperation("failed", {
-        code: "runtime_execution_failed",
-        message: "The isolated routine session could not restart.",
-        action: "retry",
-      }),
-    });
-
-    expect(container.textContent).toContain("The isolated routine session could not restart.");
-    expect(buttonNamed(container, "Retry run").disabled).toBe(false);
-    expect(buttonNamed(container, "Cancel run").disabled).toBe(false);
-  });
-
-  it("refreshes a recovered run and removes stale cancellation controls", async () => {
-    const interrupted = interruptedDetail();
-    historyApi.readCompanionRoutineRun.mockReset().mockResolvedValue(interrupted);
-    const { container, rerender } = await mount(runId);
-
-    await act(async () => buttonNamed(container, "Retry run").click());
-    historyApi.readCompanionRoutineRun.mockResolvedValueOnce({
-      ...interrupted,
-      status: "queued",
-      outcome: "pending",
-      started_at: null,
-      settled_at: null,
-      error: null,
-    });
-    await rerender({ latestOperation: latestRetryOperation("succeeded") });
-    await flush();
-
-    expect(container.textContent).toContain("Queued");
-    expect(container.textContent).not.toContain("Retry run");
-    expect(container.textContent).not.toContain("Cancel run");
-  });
-
-  it("explains the recovery boundary without exposing mutations to a Viewer", async () => {
-    const interrupted = interruptedDetail();
-    historyApi.readCompanionRoutineRun.mockReset().mockResolvedValue(interrupted);
-
-    const { container } = await mount(runId, { canAct: false });
-
-    expect(container.textContent).toContain("An Owner or Editor must retry or cancel this run.");
+    expect(container.textContent).toContain("This occurrence will not be replayed");
+    expect(container.textContent).toContain("later routine work continues automatically");
     expect(container.textContent).not.toContain("Retry run");
     expect(container.textContent).not.toContain("Cancel run");
   });

@@ -81,7 +81,6 @@ const coreMocks = {
   readCompanionThreadWindowV2: vi.fn<typeof coreModule.readCompanionThreadWindowV2>(),
   readCompanionThreadV2: vi.fn<typeof coreModule.readCompanionThreadV2>(),
   syncCompanionThreadV2: vi.fn<typeof coreModule.syncCompanionThreadV2>(),
-  retryCompanionTurnV2: vi.fn<typeof coreModule.retryCompanionTurnV2>(),
   setCompanionProviderV2: vi.fn<typeof coreModule.setCompanionProviderV2>(),
   setCompanionWorkspaceShareV2: vi.fn<typeof coreModule.setCompanionWorkspaceShareV2>(),
   updateCompanionMemberStateV2: vi.fn<typeof coreModule.updateCompanionMemberStateV2>(),
@@ -449,10 +448,6 @@ describe("Companions Runtime v2 API", () => {
     });
     coreMocks.enqueueCompanionOperationV2.mockResolvedValue({
       operation,
-      replayed: false,
-    });
-    coreMocks.retryCompanionTurnV2.mockResolvedValue({
-      operation: { ...operation, kind: "restart_pi", source_turn_id: TURN_ID },
       replayed: false,
     });
     coreMocks.cancelCompanionTurnV2.mockResolvedValue(cancelledTurn);
@@ -1691,24 +1686,7 @@ describe("Companions Runtime v2 API", () => {
     expect(coreMocks.enqueueCompanionOperationV2).not.toHaveBeenCalled();
   });
 
-  it("accepts an explicit retry id as a Pi recycle operation", async () => {
-    const response = await appWithRoutes().request(
-      jsonPost(`/v1/companions/${COMPANION_ID}/turns/${TURN_ID}/retry`, {
-        retry_id: RETRY_ID,
-      }),
-    );
-    expect(response.status).toBe(202);
-    await expect(response.json()).resolves.toEqual({
-      operation: { ...operation, kind: "restart_pi", source_turn_id: TURN_ID },
-    });
-    expect(coreMocks.retryCompanionTurnV2).toHaveBeenCalledWith(expect.objectContaining({
-      companionId: COMPANION_ID,
-      turnId: TURN_ID,
-      retryId: RETRY_ID,
-    }));
-  });
-
-  it("cancels an interrupted turn durably and returns the refreshed thread", async () => {
+  it("cancels a turn durably and returns the refreshed thread", async () => {
     const response = await appWithRoutes().request(
       jsonPost(`/v1/companions/${COMPANION_ID}/turns/${TURN_ID}/cancel`, {}),
     );
@@ -1721,6 +1699,15 @@ describe("Companions Runtime v2 API", () => {
       companionId: COMPANION_ID,
       turnId: TURN_ID,
     }));
+  });
+
+  it("does not expose the removed turn retry endpoint", async () => {
+    const response = await appWithRoutes().request(
+      jsonPost(`/v1/companions/${COMPANION_ID}/turns/${TURN_ID}/retry`, {}),
+    );
+
+    expect(response.status).toBe(404);
+    expect(coreMocks.cancelCompanionTurnV2).not.toHaveBeenCalled();
   });
 
   it("persists decision answers and lets Runtime deliver them", async () => {

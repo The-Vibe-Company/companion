@@ -260,7 +260,6 @@ private enum CompanionDetailDemoFixtures {
             thread: { _ in currentThread },
             listCompanions: { [currentCompanion] },
             decide: { _, _, _ in currentThread },
-            retryTurn: { _, _, _ in deleteOperation },
             cancelTurn: { _, _ in currentThread },
             listSkills: { [] },
             listPlugins: { [] },

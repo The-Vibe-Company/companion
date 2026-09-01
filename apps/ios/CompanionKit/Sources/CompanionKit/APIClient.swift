@@ -1210,22 +1210,6 @@ public actor APIClient {
         ).thread
     }
 
-    public func retryCompanionTurn(
-        companionID: String,
-        turnID: String,
-        retryID: UUID
-    ) async throws -> CompanionOperationSummary {
-        let companion = Self.encodedPathComponent(companionID)
-        let turn = Self.encodedPathComponent(turnID)
-        let body = try encoder.encode(["retry_id": retryID.uuidString.lowercased()])
-        return try await decode(
-            OperationEnvelope.self,
-            path: "/v1/companions/\(companion)/turns/\(turn)/retry",
-            method: "POST",
-            body: body
-        ).operation
-    }
-
     public func cancelCompanionTurn(
         companionID: String,
         turnID: String

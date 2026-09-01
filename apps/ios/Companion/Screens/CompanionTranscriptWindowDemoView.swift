@@ -300,7 +300,6 @@ private enum CompanionTranscriptWindowDemoFixtures {
                 }
                 return settledQuestionThread(from: fixtureThread, action: action)
             },
-            retryTurn: { _, _, _ in throw CompanionTranscriptWindowDemoError.unavailable },
             cancelTurn: { _, _ in fixtureThread },
             listSkills: { [] },
             listPlugins: { [] },

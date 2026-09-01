@@ -1086,6 +1086,13 @@
       "when": 1793120800000,
       "tag": "0154_companion_archived_box_recovery",
       "breakpoints": true
+    },
+    {
+      "idx": 155,
+      "version": "7",
+      "when": 1793207200000,
+      "tag": "0155_companion_interruption_terminal_protocol_6",
+      "breakpoints": true
     }
   ]
 }

@@ -25,7 +25,6 @@ import {
   companionDecisionProposalSchema,
   companionOperationSchema,
   companionRoutineNotifyReturnSchema,
-  companionRuntimeRecoverySchema,
   companionSelectedMcpAccountIdsSchema,
   companionSelectedSkillIdsSchema,
   companionThreadDeltaResponseSchema,
@@ -113,7 +112,6 @@ type RuntimeReadRow = {
   queued_count: number | string;
   interrupted_turn: unknown;
   latest_operation: unknown;
-  recovery?: unknown;
   is_replying: boolean;
   last_observed_at?: Date | string | null;
 };
@@ -256,7 +254,6 @@ export function projectCompanionRuntimeV2(
           : skillsError
         : null,
       last_observed_at: lastObservedAt,
-      recovery: companionRuntimeRecoverySchema.nullable().parse(row.recovery ?? null),
       latest_operation: projectedOperation(latestOperation, row.access_role === "viewer"),
     },
   };
@@ -277,17 +274,11 @@ export async function readCompanionRuntimeV2(input: {
       ${input.orgId}::uuid, ${input.companionId}::uuid
     )
   `);
-  const recoveryResult = await input.database.execute(sql`
-    select * from public.companion_api_read_recovery(
-      ${input.orgId}::uuid, ${input.companionId}::uuid
-    )
-  `);
   const [runtime] = rows<Omit<RuntimeReadRow,
     "skills_available_revision" | "skills_update_error_message">>(result);
   const [sync] = rows<Pick<RuntimeReadRow,
     "skills_available_revision" | "skills_update_error_message">>(syncResult);
-  const [recovery] = rows<Pick<RuntimeReadRow, "recovery">>(recoveryResult);
-  const row = runtime && sync && recovery ? { ...runtime, ...sync, ...recovery } : null;
+  const row = runtime && sync ? { ...runtime, ...sync } : null;
   if (!row) throw new Error("companion runtime projection is unavailable");
   return row;
 }
@@ -318,9 +309,6 @@ export async function listCompanionsV2(input: {
   const syncResult = await input.database.execute(sql`
     select * from public.companion_api_list_skill_sync(${input.orgId}::uuid)
   `);
-  const recoveryResult = await input.database.execute(sql`
-    select * from public.companion_api_list_recoveries(${input.orgId}::uuid)
-  `);
   const syncs = new Map(rows<Pick<RuntimeReadRow,
     "skills_available_revision" | "skills_update_error_message"> & { companion_id: string }>(
       syncResult,
@@ -329,18 +317,11 @@ export async function listCompanionsV2(input: {
     "skills_available_revision" | "skills_update_error_message"> & { companion_id: string }>(
       result,
     ).map((runtime) => [runtime.companion_id, runtime] as const));
-  const recoveries = new Map(rows<Pick<RuntimeReadRow, "recovery"> & { companion_id: string }>(
-    recoveryResult,
-  ).map((recovery) => [recovery.companion_id, recovery.recovery] as const));
   return companions.map((companion) => {
     const runtime = runtimes.get(companion.id);
     const sync = syncs.get(companion.id);
     if (!runtime || !sync) throw new Error("companion runtime projection is unavailable");
-    return projectCompanionRuntimeV2(companion, {
-      ...runtime,
-      ...sync,
-      recovery: recoveries.get(companion.id) ?? null,
-    });
+    return projectCompanionRuntimeV2(companion, { ...runtime, ...sync });
   });
 }
 
@@ -1111,28 +1092,6 @@ export async function answerCompanionConfigDecisionV2(input: {
       ${input.decision}
     )
   `);
-}
-
-export async function retryCompanionTurnV2(input: {
-  orgId: string;
-  companionId: string;
-  turnId: string;
-  retryId: string;
-  clientSurface: CompanionClientSurface;
-  database: Db;
-}): Promise<{ operation: CompanionOperation; replayed: boolean }> {
-  const result = await input.database.execute(sql`
-    select * from public.companion_api_retry_turn(
-      ${input.orgId}::uuid,
-      ${input.companionId}::uuid,
-      ${input.turnId}::uuid,
-      ${input.retryId}::uuid,
-      ${input.clientSurface}::companion_client_surface
-    )
-  `);
-  const [row] = rows<{ operation: unknown; replayed: boolean }>(result);
-  if (!row) throw new Error("failed to enqueue Companion retry");
-  return { operation: companionOperationSchema.parse(row.operation), replayed: row.replayed };
 }
 
 export async function cancelCompanionTurnV2(input: {

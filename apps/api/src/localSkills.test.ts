@@ -48,7 +48,7 @@ describe("companion skill package + row", () => {
     const pkg = await getCompanionSkillPackage();
     expect(pkg.key).toBe("companion");
     expect(pkg.checksum).toMatch(/^sha256:[0-9a-f]{64}$/);
-    expect(pkg.version).toBe("1.103.1");
+    expect(pkg.version).toBe("1.104.0");
     expect(pkg.sizeBytes).toBeGreaterThan(0);
     expect(pkg.integrity.packageChecksum).toBe(pkg.checksum);
     expect(pkg.integrity.files["SKILL.md"]).toMatch(/^sha256:[0-9a-f]{64}$/);
@@ -127,19 +127,19 @@ describe("companion skill package + row", () => {
       desc: "Create or repair manifest v2 with identity, env/secrets, dependency ids, notes, commands, and changelog.",
     });
     const changelog = row.changes.join("\n");
-    expect(changelog).toContain("companion-control MCP");
-    expect(changelog).toContain("automatic OAuth attachment");
-    expect(changelog).toContain("bounded grant-gated peer messaging");
+    expect(changelog).toContain("protocol-6 terminal interruptions");
+    expect(changelog).toContain("exact bounded Pi cleanup");
+    expect(changelog).toContain("Retry/Cancel guidance");
     // SAFETY: the bundled manifest is the repo's own companion.json, whose metadata.changelog shape the manifest schema fixes.
     const manifest = JSON.parse(await readFile(join(companionSkillDir(), "companion.json"), "utf8")) as {
       metadata?: { changelog?: Array<{ version?: string; changes?: string[] }> };
     };
     const runtimeRecoveryChanges = manifest.metadata?.changelog
-      ?.find((entry) => entry.version === "1.102.0")
+      ?.find((entry) => entry.version === "1.104.0")
       ?.changes?.join("\n") ?? "";
-    expect(runtimeRecoveryChanges).toContain("protocol-5 automatic Pi recovery");
-    expect(runtimeRecoveryChanges).toContain("bounded thread-window bootstrap");
-    expect(runtimeRecoveryChanges).toContain("routine recovery remains lane-local");
+    expect(runtimeRecoveryChanges).toContain("protocol-6 terminal interruptions");
+    expect(runtimeRecoveryChanges).toContain("later messages, routines, or triggers");
+    expect(runtimeRecoveryChanges).toContain("historical retry_id evidence");
     const triggerAccountChanges = manifest.metadata?.changelog
       ?.find((entry) => entry.version === "1.101.0")
       ?.changes?.join("\n") ?? "";

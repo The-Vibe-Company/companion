@@ -5,7 +5,6 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type {
   Companion,
-  CompanionOperation,
   CompanionRoutine,
   CompanionThread as Thread,
 } from "@companion/contracts";
@@ -91,23 +90,6 @@ const interruptedThread: Thread = {
   },
 };
 
-const retryOperation: CompanionOperation = {
-  id: "44444444-4444-4444-8444-444444444444",
-  companion_id: companionId,
-  request_id: "55555555-5555-4555-8555-555555555555",
-  source_turn_id: interruptedThread.interrupted_turn!.id,
-  kind: "restart_pi",
-  trigger: "user",
-  status: "pending",
-  queue_sequence: 2,
-  checkpoint: "queued",
-  attempt_count: 0,
-  error: null,
-  created_at: "2026-08-12T12:01:00.000Z",
-  started_at: null,
-  settled_at: null,
-};
-
 const roots: Root[] = [];
 
 /** A closed context panel: what these cases render unless one asks for it open. */
@@ -129,8 +111,7 @@ async function mount(
     companion?: Companion;
     thread?: Thread;
     onDesktop?: () => void;
-    onRetryInterrupted?: (turnId: string, retryId: string) => Promise<CompanionOperation>;
-    onCancelInterrupted?: (turnId: string) => Promise<void>;
+    onCancelTurn?: (turnId: string) => Promise<void>;
     context?: Partial<CompanionContextPanel>;
     contextRoutines?: CompanionRoutine[];
     hasOlderMessages?: boolean;
@@ -161,8 +142,7 @@ async function mount(
       onSettings: () => {},
       onThread: () => {},
       onDesktop: overrides.onDesktop ?? (() => {}),
-      onRetryInterrupted: overrides.onRetryInterrupted ?? (async () => retryOperation),
-      onCancelInterrupted: overrides.onCancelInterrupted ?? (async () => {}),
+      onCancelTurn: overrides.onCancelTurn ?? (async () => {}),
     }));
   });
   return container;
@@ -171,8 +151,7 @@ async function mount(
 /** A mounted thread whose read model can be replaced, the way each poll replaces it in the app. */
 async function mountPolling(
   initial: Thread,
-  onRetryInterrupted: (turnId: string, retryId: string) => Promise<CompanionOperation> =
-    async () => retryOperation,
+  onCancelTurn: (turnId: string) => Promise<void> = async () => {},
 ) {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -194,8 +173,7 @@ async function mountPolling(
         onSettings: () => {},
         onThread: () => {},
         onDesktop: () => {},
-        onRetryInterrupted,
-        onCancelInterrupted: async () => {},
+        onCancelTurn,
       }));
     });
   };
@@ -256,15 +234,13 @@ describe("CompanionThread composer", () => {
 
   it("keeps interrupted work non-blocking and never exposes replay controls", async () => {
     const onSend = vi.fn(async () => true);
-    const onRetryInterrupted = vi.fn(async () => retryOperation);
-    const onCancelInterrupted = vi.fn(async () => {});
+    const onCancelTurn = vi.fn(async () => {});
     const container = await mount(onSend, {
       thread: interruptedThread,
-      onRetryInterrupted,
-      onCancelInterrupted,
+      onCancelTurn,
     });
 
-    expect(container.textContent).toContain("Pi cleanup is queued automatically");
+    expect(container.textContent).toContain("This occurrence is terminal");
     expect(container.textContent).toContain("will not be replayed");
     expect(container.textContent).not.toContain("Retry turn");
     expect(container.textContent).not.toContain("Cancel turn");
@@ -279,31 +255,18 @@ describe("CompanionThread composer", () => {
       expect.stringMatching(/^[0-9a-f-]{36}$/),
       [],
     );
-    expect(onRetryInterrupted).not.toHaveBeenCalled();
-    expect(onCancelInterrupted).not.toHaveBeenCalled();
+    expect(onCancelTurn).not.toHaveBeenCalled();
   });
 
-  it("reports a running automatic cleanup without unmounting a failed-send draft", async () => {
-    const recoveringCompanion: Companion = {
-      ...companion,
-      runtime: {
-        ...companion.runtime,
-        recovery: {
-          turn_id: interruptedThread.interrupted_turn!.id,
-          lane: "main",
-          status: "running",
-        },
-      },
-    };
+  it("keeps a failed-send draft mounted beside a passive terminal interruption", async () => {
     const container = await mount(async () => false, {
-      companion: recoveringCompanion,
       thread: interruptedThread,
     });
     const composer = type(container, "Keep this draft safe");
 
     await send(container);
 
-    expect(container.textContent).toContain("Pi cleanup is running automatically");
+    expect(container.textContent).toContain("Later work continues automatically");
     expect(composer.value).toBe("Keep this draft safe");
   });
 
@@ -481,8 +444,7 @@ describe("CompanionThread composer", () => {
       onSettings: () => {},
       onThread: () => {},
       onDesktop: () => {},
-      onRetryInterrupted: async () => retryOperation,
-      onCancelInterrupted: async () => {},
+      onCancelTurn: async () => {},
     });
     await act(async () => {
       root.render(render(thread));
@@ -1362,7 +1324,7 @@ describe("CompanionThread mobile stop", () => {
     const stopped: string[] = [];
     const container = await mount(async () => true, {
       thread: activeThread,
-      onCancelInterrupted: async (turnId) => {
+      onCancelTurn: async (turnId) => {
         stopped.push(turnId);
       },
     });
@@ -1398,7 +1360,7 @@ describe("CompanionThread mobile stop", () => {
     const stopped: string[] = [];
     const container = await mount(async () => true, {
       thread: activeThread,
-      onCancelInterrupted: async (turnId) => {
+      onCancelTurn: async (turnId) => {
         stopped.push(turnId);
       },
     });

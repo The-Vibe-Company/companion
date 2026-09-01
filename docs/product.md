@@ -86,10 +86,11 @@ resources, and owns every provider side effect.
 Sending is the only normal wake path. There is no Wake button and no keystroke prewarm. Pi must be
 idle before main dispatch, only one attempt may be active per lane, and queued turns preserve lane
 order. One isolated routine attempt may run alongside one ordinary main attempt. An attempt
-without a provable Pi acknowledgement becomes `interrupted` and is never replayed. Protocol 5
-automatically terminates its exact Pi invocation, marks that occurrence `auto_abandoned`, and
-continues the lane; cleanup retries with bounded backoff without blocking chat. Full Box restart is
-always an explicit, confirmed Editor/Owner action. Automatic repair may recycle Pi only.
+without a provable Pi acknowledgement becomes terminal `interrupted` and is never replayed. Runtime
+attempts one exact, bounded Pi stop before settlement, marks the occurrence `auto_abandoned`, and
+releases its lane even if cleanup fails. Later work starts automatically; a following main turn
+recycles a non-idle Pi during preflight. Full Box restart is always an explicit, confirmed
+Editor/Owner action. Automatic repair may recycle Pi only.
 
 Provider connections and member MCP accounts are envelope-encrypted and survive the one-time legacy
 Companion purge. Old Companions, Boxes, transcripts, runtime rows, pools, and leases do not migrate.

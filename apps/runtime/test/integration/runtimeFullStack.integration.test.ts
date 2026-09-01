@@ -1347,8 +1347,8 @@ describe("Runtime v2 real-process control plane", () => {
     expect(first.settledAt!.getTime()).toBeLessThanOrEqual(second.startedAt!.getTime());
 
     // Reproduce the production divergence: the provider archives the Box while PostgreSQL still
-    // projects it as idle. A pending protocol-5 recovery must re-observe the provider, prove that
-    // the interrupted Pi invocation no longer exists, and release the lane without a Pi command.
+    // projects it as idle. The interrupted occurrence is terminal immediately; the next accepted
+    // message owns ordinary Box reconciliation and the ambiguous prompt is never replayed.
     await stopProcess(runtimeProcess, "SIGKILL");
     await databaseSql!`
       update companion_runtime_instances
@@ -1367,13 +1367,6 @@ describe("Runtime v2 real-process control plane", () => {
     });
     expect(boxById(await simulatorState(), box.id)?.state).toBe("archived");
 
-    const [staleInstance] = await databaseSql!<Array<{ boxState: string }>>`
-      select box_state as "boxState"
-      from companion_runtime_instances
-      where org_id = ${orgId}::uuid and companion_id = ${companionId}::uuid
-    `;
-    expect(staleInstance?.boxState).toBe("idle");
-
     const interrupted = await apiJson<{ turn: { id: string } }>(
       `/v1/companions/${companionId}/messages`,
       {
@@ -1381,7 +1374,7 @@ describe("Runtime v2 real-process control plane", () => {
         body: JSON.stringify({
           client_message_id: randomUUID(),
           client_surface: "web",
-          content: "Recover the stale archived Box projection.",
+          content: "This ambiguous occurrence must never be replayed.",
         }),
       },
       202,
@@ -1393,73 +1386,38 @@ describe("Runtime v2 real-process control plane", () => {
           state_changed_at = clock_timestamp(),
           settled_at = clock_timestamp(),
           last_error_code = 'turn_stalled',
-          last_error_message = 'The interrupted invocation requires automatic cleanup.',
-          last_error_action = 'retry',
+          last_error_message = 'The interrupted invocation ended without a confirmed outcome.',
+          last_error_action = 'none',
           updated_at = clock_timestamp()
       where org_id = ${orgId}::uuid
         and companion_id = ${companionId}::uuid
         and id = ${interrupted.turn.id}::uuid
     `;
-    const [pendingRecovery] = await databaseSql!<Array<{ id: string }>>`
-      select id::text
-      from companion_operations
-      where org_id = ${orgId}::uuid
-        and companion_id = ${companionId}::uuid
-        and source_turn_id = ${interrupted.turn.id}::uuid
-        and kind = 'restart_pi'
-        and trigger = 'recovery'
-    `;
-    if (!pendingRecovery) throw new Error("interrupted turn did not enqueue protocol-5 recovery");
-    await databaseSql!`
-      update companion_operations
-      set checkpoint = 'restarting_pi',
-          checkpoint_sequence = checkpoint_sequence + 1,
-          updated_at = clock_timestamp()
-      where id = ${pendingRecovery.id}::uuid
-    `;
-    const commandsBeforeRecovery = (await simulatorState()).requests.filter((request) =>
-      request.surface === "box"
-      && request.method === "POST"
-      && request.path === `/boxes/${box.id}/commands`).length;
-
-    runtimeProcess = startRuntime(randomUUID());
-    await waitForHttp(`${runtimeBase}/healthz`, runtimeProcess);
-    await waitForOperation(pendingRecovery.id, 30_000);
-    const [reconciled] = await databaseSql!<Array<{
-      boxState: string;
-      piState: string;
-      piInvocationId: string | null;
+    const [terminal] = await databaseSql!<Array<{
       resolution: string | null;
-      operationStatus: string;
+      errorAction: string;
+      recoveries: number;
+      attempts: number;
     }>>`
-      select instance.box_state as "boxState",
-        instance.pi_state as "piState",
-        instance.pi_invocation_id as "piInvocationId",
-        turn_row.resolution,
-        operation.status::text as "operationStatus"
-      from companion_runtime_instances instance
-      join companion_turns turn_row
-        on turn_row.org_id = instance.org_id and turn_row.companion_id = instance.companion_id
-      join companion_operations operation
-        on operation.org_id = turn_row.org_id
-          and operation.companion_id = turn_row.companion_id
-          and operation.source_turn_id = turn_row.id
+      select turn_row.resolution,
+        turn_row.last_error_action::text as "errorAction",
+        count(distinct operation.id)::integer as recoveries,
+        count(distinct attempt.id)::integer as attempts
+      from companion_turns turn_row
+      left join companion_operations operation
+        on operation.source_turn_id = turn_row.id
+        and operation.kind = 'restart_pi'
+        and operation.trigger = 'recovery'
+      left join companion_turn_attempts attempt on attempt.turn_id = turn_row.id
       where turn_row.id = ${interrupted.turn.id}::uuid
-        and operation.id = ${pendingRecovery.id}::uuid
+      group by turn_row.resolution, turn_row.last_error_action
     `;
-    expect(reconciled).toEqual({
-      boxState: "archived",
-      piState: "absent",
-      piInvocationId: null,
+    expect(terminal).toEqual({
       resolution: "auto_abandoned",
-      operationStatus: "succeeded",
+      errorAction: "none",
+      recoveries: 0,
+      attempts: 0,
     });
-    const commandsAfterRecovery = (await simulatorState()).requests.filter((request) =>
-      request.surface === "box"
-      && request.method === "POST"
-      && request.path === `/boxes/${box.id}/commands`).length;
-    expect(commandsAfterRecovery).toBe(commandsBeforeRecovery);
-    await stopProcess(runtimeProcess, "SIGTERM");
 
     const resumed = await apiJson<{ turn: { id: string } }>(
       `/v1/companions/${companionId}/messages`,
@@ -1468,21 +1426,13 @@ describe("Runtime v2 real-process control plane", () => {
         body: JSON.stringify({
           client_message_id: randomUUID(),
           client_surface: "web",
-          content: "Resume the archived Box and dispatch this message.",
+          content: "Resume the archived Box and dispatch only this message.",
         }),
       },
       202,
     );
-    const [resumeStart] = await databaseSql!<Array<{ id: string }>>`
-      select id::text
-      from companion_operations
-      where source_turn_id = ${resumed.turn.id}::uuid and kind = 'start'
-    `;
-    if (!resumeStart) throw new Error("archived Box send did not enqueue its ordinary Start");
-    const resumeStartId = resumeStart.id;
     runtimeProcess = startRuntime(randomUUID());
     await waitForHttp(`${runtimeBase}/healthz`, runtimeProcess);
-    await waitForOperation(resumeStartId, 30_000);
     await waitForTurn(resumed.turn.id, "succeeded", 30_000);
     const [resumedAttempt] = await databaseSql!<Array<{
       dispatchState: string;

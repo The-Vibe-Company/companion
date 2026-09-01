@@ -192,23 +192,7 @@ function render(props: {
     onSettings: () => {},
     onThread: () => {},
     onDesktop: () => {},
-    onRetryInterrupted: async () => ({
-      id: "44444444-4444-4444-8444-444444444444",
-      companion_id: companion().id,
-      request_id: null,
-      source_turn_id: null,
-      kind: "restart_pi" as const,
-      trigger: "user" as const,
-      status: "pending" as const,
-      queue_sequence: 1,
-      checkpoint: "queued",
-      attempt_count: 0,
-      error: null,
-      created_at: "2026-08-12T12:00:00.000Z",
-      started_at: null,
-      settled_at: null,
-    }),
-    onCancelInterrupted: async () => {},
+    onCancelTurn: async () => {},
   }));
 }
 
@@ -406,19 +390,19 @@ describe("CompanionThread", () => {
     expect(markup).not.toContain(">Wake<");
   });
 
-  it("makes automatic recovery explicit without asking a runner to unblock it", () => {
+  it("makes terminal continuation explicit without asking a runner to unblock it", () => {
     const markup = render({ thread: thread({ interrupted_turn: interruptedTurn() }) });
 
     expect(markup).toContain("Turn interrupted");
     expect(markup).toContain("Pi acknowledgement was not confirmed.");
     expect(markup).toContain("External actions may already have succeeded.");
-    expect(markup).toContain("Pi cleanup is queued automatically");
-    expect(markup).toContain("This occurrence will not be replayed");
+    expect(markup).toContain("This occurrence is terminal and will not be replayed");
+    expect(markup).toContain("Later work continues automatically");
     expect(markup).not.toContain("Retry turn");
     expect(markup).not.toContain("Cancel turn");
   });
 
-  it("shows the same non-blocking automatic recovery to a Viewer", () => {
+  it("shows the same non-blocking terminal history to a Viewer", () => {
     const markup = render({
       companion: companion({ access: "viewer" }),
       thread: thread({
@@ -430,8 +414,8 @@ describe("CompanionThread", () => {
       }),
     });
 
-    expect(markup).toContain("Pi cleanup is queued automatically");
-    expect(markup).toContain("This occurrence will not be replayed");
+    expect(markup).toContain("This occurrence is terminal and will not be replayed");
+    expect(markup).toContain("Later work continues automatically");
     expect(markup).not.toContain("Retry turn");
     expect(markup).not.toContain("Cancel turn");
   });

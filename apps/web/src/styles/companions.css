@@ -1815,32 +1815,9 @@ button.chat-box:focus-visible {
   overflow-wrap: anywhere;
 }
 
-.chat-interruption__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
 .chat-interruption p.chat-interruption__status {
   color: var(--color-fg);
   font-weight: 500;
-}
-
-.chat-interruption p.chat-interruption__error {
-  color: var(--color-danger);
-}
-
-.chat-interruption__error:focus {
-  outline: 2px solid var(--color-accent-ring);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-@media (pointer: coarse) {
-  .chat-interruption__actions .cds-btn {
-    min-height: 44px;
-  }
 }
 
 /* The room below the header, shared by the conversation and the context panel. The conversation is
@@ -2664,12 +2641,6 @@ button.chat-box:focus-visible {
   margin: 0;
 }
 
-.routine-history__recovery-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .routine-history__transcript h3 {
   margin: 0 0 10px;
   color: var(--color-muted);
@@ -2835,8 +2806,7 @@ button.chat-box:focus-visible {
   }
 
   .routine-history__head .iconbtn,
-  .routine-history__more,
-  .routine-history__recovery-actions .cds-btn {
+  .routine-history__more {
     min-width: 44px;
     min-height: 44px;
   }

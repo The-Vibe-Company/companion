@@ -134,7 +134,7 @@ export const companionTurnSchema = z.object({
   companion_id: z.string().uuid(),
   client_message_id: z.string().uuid(),
   status: companionTurnStatusSchema,
-  /** Optional while protocol 5 rolls out; null means no automatic terminal cleanup proof yet. */
+  /** Historical terminal-interruption marker; protocol 6 writes auto_abandoned immediately. */
   resolution: z.literal("auto_abandoned").nullable().optional(),
   queue_sequence: z.number().int().positive(),
   latest_attempt: companionTurnAttemptSchema.nullable(),
@@ -284,17 +284,6 @@ export type CompanionOperationAcceptedResponse = z.infer<
  */
 export const COMPANION_OPERATION_IDEMPOTENCY_HEADER = "Idempotency-Key";
 export const companionOperationRequestIdSchema = z.string().uuid();
-
-export const retryCompanionTurnInputSchema = z.object({
-  retry_id: z.string().uuid(),
-}).strict();
-export type RetryCompanionTurnInput = z.infer<typeof retryCompanionTurnInputSchema>;
-
-/** Retry first persists a Pi-recycle operation; the same retry id makes replays idempotent. */
-export const retryCompanionTurnAcceptedResponseSchema = companionOperationAcceptedResponseSchema;
-export type RetryCompanionTurnAcceptedResponse = z.infer<
-  typeof retryCompanionTurnAcceptedResponseSchema
->;
 
 export const cancelCompanionTurnInputSchema = z.object({}).strict();
 export type CancelCompanionTurnInput = z.infer<typeof cancelCompanionTurnInputSchema>;

@@ -16,8 +16,6 @@ import {
   XIcon,
 } from "lucide-react";
 import type {
-  CompanionLatestOperation,
-  CompanionOperation,
   CompanionRoutineRunDetail,
   CompanionRoutineRunEntry,
   CompanionRoutineRunOutcome,
@@ -188,20 +186,12 @@ export function CompanionRoutineHistory({
   companionId,
   target,
   memberTimezone,
-  canAct,
-  latestOperation,
-  onRetry,
-  onCancel,
   onClose,
 }: {
   orgId: string;
   companionId: string;
   target: RoutineHistoryTarget;
   memberTimezone?: string | null;
-  canAct: boolean;
-  latestOperation: CompanionLatestOperation | null;
-  onRetry: (runId: string, retryId: string) => Promise<CompanionOperation>;
-  onCancel: (runId: string) => Promise<void>;
   onClose: () => void;
 }) {
   const titleId = useId();
@@ -214,11 +204,6 @@ export function CompanionRoutineHistory({
   const [detail, setDetail] = useState<CompanionRoutineRunDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(target.runId !== null);
   const [detailError, setDetailError] = useState<string | null>(null);
-  const [recoveryAction, setRecoveryAction] = useState<"retry" | "cancel" | null>(null);
-  const [acceptedRetry, setAcceptedRetry] = useState<CompanionOperation | null>(null);
-  const [recoveryError, setRecoveryError] = useState<string | null>(null);
-  const retryIdRef = useRef<string | null>(null);
-  const refreshedRetryOperationRef = useRef<string | null>(null);
   const selectedRunIdRef = useRef<string | null>(target.runId);
   const detailRequestGenerationRef = useRef(0);
   const displayTimezone = memberTimezone ?? detectedBrowserTimeZone();
@@ -266,68 +251,11 @@ export function CompanionRoutineHistory({
     }
   }, [companionId, orgId]);
 
-  const latestRetryOperation = latestOperation
-    && (latestOperation.kind === "start" || latestOperation.kind === "restart_pi")
-    && latestOperation.source_turn_id === selectedRunId
-    ? latestOperation
-    : null;
-  const latestRetryOperationId = latestRetryOperation?.id ?? null;
-  const latestRetryOperationStatus = latestRetryOperation?.status ?? null;
-  const durableRetry = latestRetryOperation;
-  const retryOperation = acceptedRetry && acceptedRetry.id !== durableRetry?.id
-    ? acceptedRetry
-    : durableRetry ?? acceptedRetry;
-  const retryPending = retryOperation?.status === "pending" || retryOperation?.status === "running";
-  const retrySucceeded = retryOperation?.status === "succeeded";
-  const retryFailure = retryOperation
-    && ["failed", "interrupted", "cancelled"].includes(retryOperation.status)
-    ? retryOperation.error?.message ?? (retryOperation.status === "cancelled"
-      ? "The retry was cancelled."
-      : "The isolated routine session could not restart. Retry or cancel this run.")
-    : null;
-
   const selectRun = useCallback((runId: string | null) => {
     selectedRunIdRef.current = runId;
     detailRequestGenerationRef.current += 1;
-    retryIdRef.current = null;
-    refreshedRetryOperationRef.current = null;
-    setRecoveryAction(null);
-    setAcceptedRetry(null);
-    setRecoveryError(null);
     setSelectedRunId(runId);
   }, []);
-
-  const retryRun = useCallback(async () => {
-    if (!selectedRunId || !canAct || recoveryAction || retryPending || retrySucceeded) return;
-    const retryId = retryIdRef.current ?? crypto.randomUUID();
-    retryIdRef.current = retryId;
-    setRecoveryAction("retry");
-    setRecoveryError(null);
-    try {
-      setAcceptedRetry(await onRetry(selectedRunId, retryId));
-    } catch (cause) {
-      setRecoveryError(cause instanceof Error ? cause.message : "This routine run could not be retried.");
-    } finally {
-      setRecoveryAction(null);
-    }
-  }, [canAct, onRetry, recoveryAction, retryPending, retrySucceeded, selectedRunId]);
-
-  const cancelRun = useCallback(async () => {
-    if (!selectedRunId || !canAct || recoveryAction) return;
-    setRecoveryAction("cancel");
-    setRecoveryError(null);
-    try {
-      await onCancel(selectedRunId);
-      await loadDetail(selectedRunId);
-      setRuns((current) => current.map((run) => run.run_id === selectedRunId
-        ? { ...run, status: "cancelled" }
-        : run));
-    } catch (cause) {
-      setRecoveryError(cause instanceof Error ? cause.message : "This routine run could not be cancelled.");
-    } finally {
-      setRecoveryAction(null);
-    }
-  }, [canAct, loadDetail, onCancel, recoveryAction, selectedRunId]);
 
   useEffect(() => {
     if (!target.routineId) return;
@@ -345,25 +273,6 @@ export function CompanionRoutineHistory({
     setDetail(null);
     void loadDetail(selectedRunId);
   }, [loadDetail, selectedRunId]);
-
-  useEffect(() => {
-    if (!selectedRunId || !latestRetryOperationId || !latestRetryOperationStatus) return;
-    if (latestRetryOperationStatus === "succeeded") {
-      if (refreshedRetryOperationRef.current === latestRetryOperationId) return;
-      refreshedRetryOperationRef.current = latestRetryOperationId;
-      void loadDetail(selectedRunId);
-      return;
-    }
-    if (!["failed", "interrupted", "cancelled"].includes(latestRetryOperationStatus)) return;
-    retryIdRef.current = null;
-    if (acceptedRetry?.id === latestRetryOperationId) setAcceptedRetry(null);
-  }, [
-    acceptedRetry?.id,
-    latestRetryOperationId,
-    latestRetryOperationStatus,
-    loadDetail,
-    selectedRunId,
-  ]);
 
   useEffect(() => {
     const drawer = drawerRef.current;
@@ -468,46 +377,9 @@ export function CompanionRoutineHistory({
                   {selectedSummary.status === "interrupted" ? (
                     <div className="routine-history__recovery">
                       <p>
-                        Earlier routine effects may already have succeeded. Retry recycles only
-                        this run&apos;s isolated Pi session; Cancel releases blocked runtime work.
+                        Earlier routine effects may already have succeeded. This occurrence will
+                        not be replayed; later routine work continues automatically.
                       </p>
-                      {canAct ? (
-                        <div className="routine-history__recovery-actions">
-                          {!retryPending && !retrySucceeded ? (
-                            <button
-                              type="button"
-                              className="cds-btn cds-btn--primary cds-btn--sm"
-                              disabled={recoveryAction !== null}
-                              onClick={() => void retryRun()}
-                            >
-                              {recoveryAction === "retry" ? "Requesting retry…" : "Retry run"}
-                            </button>
-                          ) : null}
-                          {!retrySucceeded ? (
-                            <button
-                              type="button"
-                              className="cds-btn cds-btn--secondary cds-btn--sm"
-                              disabled={recoveryAction !== null}
-                              onClick={() => void cancelRun()}
-                            >
-                              {recoveryAction === "cancel" ? "Cancelling…" : "Cancel run"}
-                            </button>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <p>An Owner or Editor must retry or cancel this run.</p>
-                      )}
-                      {retryPending ? (
-                        <p role="status">
-                          Retry accepted. The isolated routine session will be recycled before this
-                          run starts again.
-                        </p>
-                      ) : null}
-                      {retrySucceeded ? (
-                        <p role="status">Retry completed. Refreshing this routine run…</p>
-                      ) : null}
-                      {retryFailure ? <p className="routine-history__error" role="alert">{retryFailure}</p> : null}
-                      {recoveryError ? <p className="routine-history__error" role="alert">{recoveryError}</p> : null}
                     </div>
                   ) : null}
                 </section>

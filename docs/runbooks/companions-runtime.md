@@ -21,9 +21,9 @@ re-enable procedure live in the
   `node dist/index.js`; it is never a migration hook.
 - Keep the runtime desktop endpoint private even though requests are HMAC authenticated. Never
   persist or log its returned signed URL.
-- Never replay a dispatch once the prompt may have been written. Protocol 5 marks it interrupted,
-  terminates the exact Pi invocation through internal recovery, records `auto_abandoned`, and
-  releases the lane automatically.
+- Never replay a dispatch once the prompt may have been written. Protocol 6 marks it terminal
+  `interrupted`, attempts one exact bounded Pi stop, records `auto_abandoned` with action `none`,
+  and releases the lane even if that cleanup fails.
 - Never use Full Box restart as automatic repair. Never delete a Box unless an explicit user delete
   or the audited legacy-purge procedure owns it.
 - Do not put provider payloads, tokens, signed URLs, raw Pi lines, auth files, or decrypted material
@@ -270,8 +270,8 @@ fence when waiting for a rolling deployment is unsafe.
 Re-enable only after the cause is corrected, an empty-claim dry observation is healthy, and an
 Owner/Editor communication plan exists for interrupted turns. Deploy all three flag consumers with
 the flag on, verify `/healthz`, then have the migration owner call `companion_runtime_enable` with
-the newly observed epoch. Protocol 5 backfills interrupted turns into automatic recovery; enabling
-the gate never replays them.
+the newly observed epoch. Protocol 6 backfills interrupted turns as released terminal history;
+enabling the gate never replays them.
 
 ## Incident response
 
@@ -291,15 +291,12 @@ Do not make the health endpoint public and do not weaken it to satisfy Railway r
 ### Turn is interrupted or Pi is silent
 
 The ten-minute inactivity deadline and two-hour absolute deadline must settle visibly. If prompt
-write/ACK outcome is ambiguous, warn that earlier external effects may have succeeded and verify the
-internal `restart_pi` recovery is `pending` or `running`. It must never replay the prompt. Cleanup
-retries automatically with a backoff capped at five minutes, preserves the original error, and ends
-the occurrence as `auto_abandoned`; never manually mark it queued or create a replacement attempt.
-Recovery re-observes the known Box before Pi cleanup. A provider result of `absent` or `archived`
-is valid negative proof for both main and isolated-routine lanes: the projected Box state must be
-updated, no Pi command is sent, and the next ordinary send—not recovery—owns any archived-Box resume.
-If recovery age keeps growing, inspect aggregate `runtime.recovery.metrics`, the exact lane lease,
-and the expurgated operation code. A routine recovery must not prevent a new main-chat claim.
+write/ACK outcome is ambiguous, warn that earlier external effects may have succeeded and confirm
+the occurrence is terminal `interrupted`, `resolution = auto_abandoned`, and action `none`. Never
+mark it queued, create a replacement attempt, or wait for Retry/Cancel. Runtime attempts one exact,
+bounded Pi stop before settlement; cleanup failure is an expurgated log event, never a durable queue
+gate. Confirm the next FIFO message, routine, or trigger is claimable. A following main turn owns any
+archived-Box resume and recycles a non-idle Pi during preflight.
 
 While a turn is waiting in `needs_input`, its inactivity deadline is intentionally cleared. An
 `ask_user` decision returns control to Pi after ten minutes; asynchronous `companion-control`

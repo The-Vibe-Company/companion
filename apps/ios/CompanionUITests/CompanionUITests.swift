@@ -211,26 +211,18 @@ final class CompanionUITests: XCTestCase {
     }
 
     @MainActor
-    func testInterruptedTurnDemoRetriesAndKeepsCancelAvailable() throws {
+    func testInterruptedTurnDemoKeepsRecoveryPassiveForOwner() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-companion-interruption-demo"]
-        app.launchEnvironment["COMPANION_INTERRUPTION_DEMO_ACCESS"] = "owner"
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Turn interrupted"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["2 later messages are waiting behind this turn."].exists)
-        let retry = app.buttons["chat.interrupted.retry"]
-        let cancel = app.buttons["chat.interrupted.cancel"]
-        XCTAssertTrue(retry.exists)
-        XCTAssertTrue(cancel.exists)
-
-        retry.tap()
-        XCTAssertTrue(
-            app.descendants(matching: .any)["chat.interrupted.retry-status"]
-                .waitForExistence(timeout: 2)
-        )
-        XCTAssertFalse(retry.exists)
-        XCTAssertTrue(cancel.exists)
+        XCTAssertTrue(app.staticTexts["2 later messages are queued and will continue automatically."].exists)
+        XCTAssertTrue(app.staticTexts[
+            "This occurrence is terminal and will not be replayed. Later work continues automatically."
+        ].exists)
+        XCTAssertFalse(app.buttons["chat.interrupted.retry"].exists)
+        XCTAssertFalse(app.buttons["chat.interrupted.cancel"].exists)
     }
 
     @MainActor
@@ -392,77 +384,31 @@ final class CompanionUITests: XCTestCase {
     }
 
     @MainActor
-    func testInterruptedTurnDemoCanCancelAndReleaseTheQueue() throws {
+    func testInterruptedTurnDemoKeepsRecoveryPassiveForEditor() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-companion-interruption-demo"]
-        app.launchEnvironment["COMPANION_INTERRUPTION_DEMO_ACCESS"] = "editor"
-        app.launch()
-
-        let cancel = app.buttons["chat.interrupted.cancel"]
-        XCTAssertTrue(cancel.waitForExistence(timeout: 5))
-        cancel.tap()
-        XCTAssertTrue(
-            app.descendants(matching: .any)["interruption.demo.released"]
-                .waitForExistence(timeout: 2)
-        )
-        XCTAssertTrue(app.staticTexts["The two waiting messages can continue in order."].exists)
-    }
-
-    @MainActor
-    func testInterruptedTurnDemoKeepsViewerReadOnly() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["-companion-interruption-demo"]
-        app.launchEnvironment["COMPANION_INTERRUPTION_DEMO_ACCESS"] = "viewer"
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Turn interrupted"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts[
-            "An Owner or Editor must retry or cancel this turn before the conversation can continue."
+            "This occurrence is terminal and will not be replayed. Later work continues automatically."
         ].exists)
         XCTAssertFalse(app.buttons["chat.interrupted.retry"].exists)
         XCTAssertFalse(app.buttons["chat.interrupted.cancel"].exists)
     }
 
     @MainActor
-    func testInterruptedTurnDemoAllowsRetryAfterAnUncertainResponse() throws {
+    func testInterruptedTurnDemoKeepsViewerReadOnly() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-companion-interruption-demo"]
-        app.launchEnvironment["COMPANION_INTERRUPTION_DEMO_ACCESS"] = "owner"
-        app.launchEnvironment["COMPANION_INTERRUPTION_DEMO_FAIL_RETRY_ONCE"] = "1"
         app.launch()
 
-        let retry = app.buttons["chat.interrupted.retry"]
-        XCTAssertTrue(retry.waitForExistence(timeout: 5))
-        retry.tap()
-        XCTAssertTrue(
-            app.descendants(matching: .any)["chat.interrupted.error"]
-                .waitForExistence(timeout: 2)
-        )
-        XCTAssertTrue(retry.isEnabled)
-        retry.tap()
-        XCTAssertTrue(
-            app.descendants(matching: .any)["chat.interrupted.retry-status"]
-                .waitForExistence(timeout: 2)
-        )
-    }
-
-    @MainActor
-    func testInterruptedTurnDemoUsesANewerDurableRetryAfterPollingSkipsAhead() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["-companion-interruption-demo"]
-        app.launchEnvironment["COMPANION_INTERRUPTION_DEMO_ACCESS"] = "owner"
-        app.launchEnvironment["COMPANION_INTERRUPTION_DEMO_SUPERSEDE_RETRY"] = "1"
-        app.launch()
-
-        let retry = app.buttons["chat.interrupted.retry"]
-        XCTAssertTrue(retry.waitForExistence(timeout: 5))
-        retry.tap()
-        XCTAssertTrue(
-            app.staticTexts["Error. A newer retry could not stay running."]
-                .waitForExistence(timeout: 3)
-        )
-        XCTAssertTrue(retry.exists)
-        XCTAssertTrue(app.buttons["chat.interrupted.cancel"].exists)
+        XCTAssertTrue(app.staticTexts["Turn interrupted"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts[
+            "This occurrence is terminal and will not be replayed. Later work continues automatically."
+        ].exists)
+        XCTAssertFalse(app.buttons["chat.interrupted.retry"].exists)
+        XCTAssertFalse(app.buttons["chat.interrupted.cancel"].exists)
     }
 
     @MainActor

@@ -1,7 +1,7 @@
 {
   "$schema": "https://thecompanion.sh/schemas/companion-manifest.v2.schema.json",
   "name": "companion",
-  "version": "1.103.1",
+  "version": "1.104.0",
   "icon": "boxes",
   "title": "Companion",
   "description": "Manage and safely install SKILL.md packages through delegated Agent Auth, including pinned public releases, publishing, updates, dependencies, secrets, hosted Skill Databases, local install tracking, and Companion self-update.",
@@ -28,6 +28,15 @@
       "evals/evals.json"
     ],
     "changelog": [
+      {
+        "version": "1.104.0",
+        "date": "2026-09-01",
+        "changes": [
+          "Documents protocol-6 terminal interruptions that release their lane immediately without durable recovery or human actions.",
+          "Clarifies that ambiguous prompts are never replayed and that exact bounded Pi cleanup cannot block later messages, routines, or triggers.",
+          "Removes Retry/Cancel guidance for interrupted hosted Companion occurrences while retaining historical retry_id evidence."
+        ]
+      },
       {
         "version": "1.103.1",
         "date": "2026-09-01",

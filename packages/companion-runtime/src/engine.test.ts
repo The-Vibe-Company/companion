@@ -519,7 +519,7 @@ describe("RuntimeEngine attempts", () => {
     expect(store.authorization.eventCursor).toBe(2n);
     expect(store.settlements[0]).toMatchObject({
       terminalStatus: "interrupted",
-      error: { code: "pi_event_stream_interrupted", action: "restart_pi" },
+      error: { code: "pi_event_stream_interrupted", action: "none" },
     });
   });
 
@@ -548,7 +548,7 @@ describe("RuntimeEngine attempts", () => {
     expect(store.projected).toHaveLength(0);
     expect(store.settlements[0]).toMatchObject({
       terminalStatus: "interrupted",
-      error: { code: "pi_event_stream_interrupted", action: "restart_pi" },
+      error: { code: "pi_event_stream_interrupted", action: "none" },
     });
     expect(JSON.stringify(store.settlements)).not.toContain("opaque-secret-must-not-persist");
   });
@@ -833,8 +833,44 @@ describe("RuntimeEngine attempts", () => {
     }));
     expect(store.settlements[0]).toMatchObject({
       terminalStatus: "interrupted",
-      error: { code: "prompt_dispatch_ambiguous", action: "retry" },
+      error: { code: "prompt_dispatch_ambiguous", action: "none" },
     });
+    expect(ports.abortCalls).toEqual([{ attemptId: ATTEMPT_ID, boxId: BOX_ID }]);
+  });
+
+  it("settles an ambiguous prompt even when exact Pi cleanup fails", async () => {
+    const claim = attemptClaim();
+    const store = new MemoryRuntimeStore({ authorization: attemptAuthorization(claim) });
+    const ports = fakePorts(store);
+    ports.pi.prompt = async (input) => {
+      ports.promptCalls.push({ attemptId: input.attemptId, message: input.message });
+      return { outcome: "ambiguous", code: "ack_timeout" };
+    };
+    ports.pi.abort = async (input) => {
+      ports.abortCalls.push({ attemptId: input.attemptId, boxId: input.boxId });
+      throw new Error("cleanup unavailable");
+    };
+    const logged: Array<Record<string, unknown>> = [];
+    const engine = new RuntimeEngine(engineDependencies({
+      store,
+      ports,
+      log: { error: () => {}, warn: (record) => logged.push(record), info: () => {} },
+    }));
+
+    const result = await engine.execute(claim);
+
+    expect(result.outcome).toBe("interrupted");
+    expect(ports.promptCalls).toHaveLength(1);
+    expect(ports.abortCalls).toEqual([{ attemptId: ATTEMPT_ID, boxId: BOX_ID }]);
+    expect(store.settlements[0]).toMatchObject({
+      terminalStatus: "interrupted",
+      error: { code: "prompt_dispatch_ambiguous", action: "none" },
+    });
+    expect(logged).toContainEqual(expect.objectContaining({
+      event: "runtime.work.interruption_cleanup_failed",
+      companionId: COMPANION_ID,
+      attemptId: ATTEMPT_ID,
+    }));
   });
 
   it("abandons an ambiguous prompt when its durable ambiguity checkpoint is unclassified", async () => {
@@ -1418,7 +1454,7 @@ describe("RuntimeEngine attempts", () => {
       error: expect.objectContaining({ code: "pi_invocation_changed" }),
     })]);
     expect(projectEventBatch).not.toHaveBeenCalled();
-    expect(ports.routineTerminates).toHaveLength(0);
+    expect(ports.routineTerminates).toEqual([TURN_ID]);
   });
 
   it("terminates a started routine when pre-acceptance capability validation fails", async () => {

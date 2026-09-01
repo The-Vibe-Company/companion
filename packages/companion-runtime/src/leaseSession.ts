@@ -75,6 +75,7 @@ export class LeaseSession {
   readonly #renewIntervalMs: number;
   #sequence: bigint;
   #authorization: RuntimeAuthorization | null = null;
+  #lastAuthorizedAuthorization: RuntimeAuthorization | null = null;
   #tail: Promise<void> = Promise.resolve();
   #timer: unknown;
   #running = false;
@@ -117,6 +118,15 @@ export class LeaseSession {
 
   get authorization(): RuntimeAuthorization | null {
     return this.#authorization;
+  }
+
+  /**
+   * Last authority snapshot that proved this exact fenced item owned its Pi invocation. A denial
+   * may redact provider identity, but terminal cleanup must still be able to stop work that was
+   * already accepted without authorizing any new effect.
+   */
+  get cleanupAuthorization(): RuntimeAuthorization | null {
+    return this.#authorization?.boxId ? this.#authorization : this.#lastAuthorizedAuthorization;
   }
 
   get lost(): boolean {
@@ -177,6 +187,7 @@ export class LeaseSession {
       }
       this.#sequence = authorization.workCheckpointSequence;
       this.#authorization = authorization;
+      if (authorization.authorized) this.#lastAuthorizedAuthorization = authorization;
       this.#lastRenewSuccessAt = this.#clock.now();
       this.#renewFailureStreak = 0;
       if (!authorization.authorized) {
@@ -228,6 +239,7 @@ export class LeaseSession {
       }
       this.#sequence = authorization.workCheckpointSequence;
       this.#authorization = authorization;
+      if (authorization.authorized) this.#lastAuthorizedAuthorization = authorization;
       this.#lastRenewSuccessAt = this.#clock.now();
       if (!authorization.authorized) {
         this.#denialCode = authorization.denialCode ?? "runtime_authorization_denied";
