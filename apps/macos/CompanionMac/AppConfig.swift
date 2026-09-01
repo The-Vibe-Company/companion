@@ -21,6 +21,9 @@ enum CompanionMacAppConfig {
         if let environmentURL = validURL(ProcessInfo.processInfo.environment["COMPANION_WEB_URL"]) {
             return environmentURL
         }
+        if let configuredURL = validURL(Bundle.main.object(forInfoDictionaryKey: "CompanionWebURL") as? String) {
+            return configuredURL
+        }
         if let apiComponents = URLComponents(url: apiURL, resolvingAgainstBaseURL: false),
            let host = apiComponents.host,
            host == "127.0.0.1" || host == "localhost" {
