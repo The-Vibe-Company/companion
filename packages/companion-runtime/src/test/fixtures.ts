@@ -471,9 +471,7 @@ export class MemoryRuntimeStore implements RuntimeStore {
       nextCheckpoint = "observed";
     } else if (fence.workKind === "settings" && current === "applying"
       && input.appliedSettingsRevision === this.authorization.desiredSettingsRevision
-      && (this.authorization.clientSurface === "native_mobile"
-        ? input.appliedSkillsRevision === undefined
-        : input.appliedSkillsRevision === this.authorization.skillsRevision)
+      && input.appliedSkillsRevision === this.authorization.skillsRevision
       && input.piState === "idle"
       && input.piInvocationId !== undefined
       && input.piInvocationId !== previousPiInvocationId) {
@@ -879,9 +877,7 @@ export function fakePorts(store: MemoryRuntimeStore): FakePorts {
       appliedSkillsRevision: input.preserveInstalledSkills
         ? input.authorization.appliedSkillsRevision
         : input.targetSkillsRevision,
-      materialExpiresAt: input.clientSurface === "native_mobile"
-        ? null
-        : new Date("2026-08-16T18:00:00.000Z"),
+      materialExpiresAt: new Date("2026-08-16T18:00:00.000Z"),
     }),
     stageSkillTree: async (input) => ({
       appliedSkillsRevision: input.material.targetSkillsRevision,

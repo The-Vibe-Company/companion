@@ -30,6 +30,21 @@ CREATE INDEX companion_control_tokens_expiry_idx ON public.companion_control_tok
 
 ALTER TABLE public.companion_runtime_instances
   ADD COLUMN control_token_id uuid REFERENCES public.companion_control_tokens(id) ON DELETE SET NULL;
+-- Native snapshots created before the unified control surface intentionally had no expiring
+-- credentials. They cannot prove possession of the new bounded control/plugin capabilities, so
+-- invalidate them and let the normal claim path restage instead of assigning a synthetic expiry.
+UPDATE public.companion_runtime_instances
+SET material_client_surface=NULL,material_pi_invocation_id=NULL,material_expires_at=NULL
+WHERE material_client_surface='native_mobile' AND material_expires_at IS NULL;
+UPDATE public.companion_runtime_instances
+SET settings_claim_material_client_surface=NULL,settings_claim_material_staged_at=NULL,
+    settings_claim_material_expires_at=NULL
+WHERE settings_claim_material_client_surface='native_mobile'
+  AND settings_claim_material_expires_at IS NULL;
+UPDATE public.companion_operations
+SET material_staged_at=NULL,material_expires_at=NULL
+WHERE client_surface='native_mobile' AND material_staged_at IS NOT NULL
+  AND material_expires_at IS NULL;
 ALTER TABLE public.companion_runtime_instances
   DROP CONSTRAINT companion_runtime_instances_material_snapshot_check,
   ADD CONSTRAINT companion_runtime_instances_material_snapshot_check CHECK (
@@ -49,6 +64,119 @@ ALTER TABLE public.companion_operations
     (material_staged_at IS NOT NULL OR material_expires_at IS NULL)
     AND (material_staged_at IS NULL OR material_expires_at IS NOT NULL)
   );
+--> statement-breakpoint
+
+-- First-party clients share one runtime capability contract. Remove the legacy native-mobile
+-- reductions; because the unified material now contains expiring control and plugin capabilities,
+-- native snapshots follow the same bounded-expiry rule as web snapshots from this migration on.
+DO $companion_control_full_operation_material$
+DECLARE v_definition text; v_rewritten text;
+  v_old_revision text := $needle$NEW.target_skills_revision := CASE
+        WHEN NEW.client_surface = 'native_mobile' THEN v_required_revision
+        ELSE v_available_revision
+      END;$needle$;
+  v_new_revision text := $needle$NEW.target_skills_revision := v_available_revision;$needle$;
+  v_old_reduction text := $needle$IF NEW.client_surface = 'native_mobile' THEN
+      NEW.can_write_skills := false;
+      NEW.selected_skill_ids := '[]'::jsonb;
+      NEW.selected_mcp_account_ids := '[]'::jsonb;
+    END IF;$needle$;
+BEGIN
+  v_definition:=pg_catalog.pg_get_functiondef(
+    'public.companion_runtime_assign_operation_intent()'::regprocedure
+  );
+  v_rewritten:=replace(replace(v_definition,v_old_revision,v_new_revision),v_old_reduction,'');
+  IF v_rewritten=v_definition OR strpos(v_rewritten,v_old_revision)>0
+    OR strpos(v_rewritten,v_old_reduction)>0 THEN
+    RAISE EXCEPTION 'native operation material reduction cannot be removed' USING ERRCODE='55000';
+  END IF;
+  EXECUTE v_rewritten;
+END $companion_control_full_operation_material$;
+--> statement-breakpoint
+
+CREATE OR REPLACE FUNCTION public.companion_runtime_assign_attempt_snapshot()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public AS $$
+DECLARE
+  v_applied_ids jsonb; v_applied_refs jsonb; v_selected_ids jsonb; v_use_applied boolean;
+BEGIN
+  SELECT c.persona,i.applied_selected_skill_ids,i.applied_skill_refs,
+         i.applied_skills_digest IS NOT NULL AND i.applied_skills_revision>=c.skills_revision,
+         c.can_write_skills,c.selected_skill_ids,c.selected_mcp_account_ids
+  INTO NEW.persona,v_applied_ids,v_applied_refs,v_use_applied,
+       NEW.can_write_skills,v_selected_ids,NEW.selected_mcp_account_ids
+  FROM public.companions c
+  JOIN public.companion_turns t ON t.org_id=c.org_id AND t.companion_id=c.id AND t.id=NEW.turn_id
+  JOIN public.companion_runtime_instances i ON i.org_id=c.org_id AND i.companion_id=c.id
+  WHERE c.org_id=NEW.org_id AND c.id=NEW.companion_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'attempt Companion turn does not exist' USING ERRCODE='23503';
+  END IF;
+  IF v_use_applied THEN
+    NEW.selected_skill_ids:=v_applied_ids;
+    NEW.skill_refs:=v_applied_refs;
+  ELSE
+    NEW.selected_skill_ids:=v_selected_ids;
+    SELECT COALESCE(jsonb_agg(jsonb_build_object(
+      'skill_id',s.id,'current_version_id',s.current_version_id
+    ) ORDER BY s.id),'[]'::jsonb)
+    INTO NEW.skill_refs FROM public.skills s
+    WHERE s.org_id=NEW.org_id AND EXISTS(
+      SELECT 1 FROM jsonb_array_elements_text(NEW.selected_skill_ids) selected(skill_id)
+      WHERE selected.skill_id=s.id::text
+    );
+  END IF;
+  RETURN NEW;
+END $$;
+--> statement-breakpoint
+
+CREATE FUNCTION public.companion_control_normalize_native_settings_material()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public SET row_security=on AS $$
+DECLARE v_companion public.companions%ROWTYPE;
+BEGIN
+  IF NEW.settings_claim_client_surface IS DISTINCT FROM 'native_mobile'
+    OR NEW.settings_claim_epoch IS NOT DISTINCT FROM OLD.settings_claim_epoch THEN
+    RETURN NEW;
+  END IF;
+  SELECT * INTO STRICT v_companion FROM public.companions c
+  WHERE c.org_id=NEW.org_id AND c.id=NEW.companion_id;
+  NEW.settings_claim_skills_revision:=v_companion.skills_available_revision;
+  NEW.settings_claim_can_write_skills:=v_companion.can_write_skills;
+  NEW.settings_claim_selected_skill_ids:=v_companion.selected_skill_ids;
+  NEW.settings_claim_selected_mcp_account_ids:=v_companion.selected_mcp_account_ids;
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'skill_id',s.id,'current_version_id',s.current_version_id
+  ) ORDER BY s.id),'[]'::jsonb)
+  INTO NEW.settings_claim_skill_refs FROM public.skills s
+  WHERE s.org_id=NEW.org_id AND EXISTS(
+    SELECT 1 FROM jsonb_array_elements_text(v_companion.selected_skill_ids) selected(skill_id)
+    WHERE selected.skill_id=s.id::text
+  );
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION public.companion_control_normalize_native_settings_material() FROM PUBLIC;
+CREATE TRIGGER companion_runtime_instances_normalize_native_settings_material
+BEFORE UPDATE OF settings_claim_client_surface,settings_claim_skills_revision,
+  settings_claim_selected_skill_ids,settings_claim_selected_mcp_account_ids
+ON public.companion_runtime_instances FOR EACH ROW
+EXECUTE FUNCTION public.companion_control_normalize_native_settings_material();
+--> statement-breakpoint
+
+DO $companion_control_full_material_read$
+DECLARE v_definition text; v_rewritten text;
+  v_old text := $needle$IF v_authorization.client_surface IS DISTINCT FROM 'native_mobile' THEN$needle$;
+BEGIN
+  v_definition:=pg_catalog.pg_get_functiondef(
+    'public.companion_runtime_get_material(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,integer)'::regprocedure
+  );
+  v_rewritten:=replace(v_definition,v_old,'IF true THEN');
+  IF v_rewritten=v_definition THEN
+    RAISE EXCEPTION 'native material read reduction cannot be removed' USING ERRCODE='55000';
+  END IF;
+  EXECUTE v_rewritten;
+END $companion_control_full_material_read$;
 --> statement-breakpoint
 
 CREATE TABLE public.companion_peer_grants (
@@ -118,6 +246,9 @@ CREATE TABLE public.companion_control_requests (
     CHECK (jsonb_typeof(payload) = 'object' AND octet_length(payload::text) <= 16384),
   CONSTRAINT companion_control_requests_digest_check CHECK (request_digest ~ '^[0-9a-f]{64}$'),
   CONSTRAINT companion_control_requests_access_check CHECK (required_access IN ('owner', 'editor')),
+  CONSTRAINT companion_control_requests_result_check CHECK (
+    result IS NULL OR (jsonb_typeof(result) = 'object' AND octet_length(result::text) <= 1048576)
+  ),
   CONSTRAINT companion_control_requests_error_check CHECK (
     (error_code IS NULL) = (error_message IS NULL)
     AND (error_code IS NULL OR error_code ~ '^[a-z][a-z0-9_]{0,63}$')
@@ -428,13 +559,15 @@ BEGIN
     RAISE EXCEPTION 'invalid control request' USING ERRCODE='22023';
   END IF;
   SELECT * INTO v_existing FROM public.companion_control_requests r
-  WHERE r.companion_id=p_companion_id AND r.source_attempt_id=p_attempt_id
+  WHERE r.org_id=p_org_id AND r.companion_id=p_companion_id AND r.source_attempt_id=p_attempt_id
     AND r.request_key=p_request_key FOR UPDATE;
   IF FOUND THEN
     IF v_existing.request_digest<>p_request_digest THEN
       RAISE EXCEPTION 'control request idempotency conflict' USING ERRCODE='23505';
     END IF;
-    RETURN QUERY SELECT * FROM public.companion_control_requests r WHERE r.id=v_existing.id; RETURN;
+    RETURN QUERY SELECT * FROM public.companion_control_requests r
+    WHERE r.org_id=p_org_id AND r.companion_id=p_companion_id AND r.id=v_existing.id;
+    RETURN;
   END IF;
   PERFORM 1 FROM public.companion_turn_attempts a JOIN public.companion_turns t
     ON t.org_id=a.org_id AND t.companion_id=a.companion_id AND t.id=a.turn_id
@@ -447,9 +580,11 @@ BEGIN
     payload,request_key,request_digest,required_access,expires_at
   ) VALUES(p_id,p_org_id,p_companion_id,p_turn_id,p_attempt_id,v_actor,p_kind,p_action,p_summary,
     p_payload,p_request_key,p_request_digest,p_required_access,v_expires);
-  PERFORM 1 FROM public.companions c WHERE c.org_id=p_org_id AND c.id=p_companion_id FOR UPDATE;
-  SELECT COALESCE(max(e.ordinal),-1)+1 INTO v_ordinal FROM public.companion_transcript_entries e
-  WHERE e.org_id=p_org_id AND e.companion_id=p_companion_id;
+  UPDATE public.companion_threads thread
+  SET next_ordinal=thread.next_ordinal+1,last_message_at=v_now,updated_at=v_now
+  WHERE thread.org_id=p_org_id AND thread.companion_id=p_companion_id
+  RETURNING thread.next_ordinal-1 INTO v_ordinal;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Companion thread is unavailable' USING ERRCODE='55000'; END IF;
   INSERT INTO public.companion_transcript_entries(
     org_id,companion_id,event_id,ordinal,role,content,decision,author_id,turn_id,created_at
   ) VALUES(
@@ -462,7 +597,8 @@ BEGIN
         'summary',p_summary,'payload',p_payload)),
     NULL,p_turn_id,v_now
   );
-  RETURN QUERY SELECT * FROM public.companion_control_requests r WHERE r.id=p_id;
+  RETURN QUERY SELECT * FROM public.companion_control_requests r
+  WHERE r.org_id=p_org_id AND r.companion_id=p_companion_id AND r.id=p_id;
 END $$;
 REVOKE ALL ON FUNCTION public.companion_api_create_control_request(
   uuid,uuid,uuid,uuid,uuid,public.companion_control_request_kind,text,text,jsonb,text,text,text
@@ -500,16 +636,20 @@ BEGIN
   PERFORM public.companion_api_require_access(p_org_id,p_companion_id,v_request.required_access);
   IF v_request.status='pending' AND v_request.expires_at<=v_now THEN
     UPDATE public.companion_control_requests r SET status='expired',decided_at=v_now,updated_at=v_now
-    WHERE r.id=p_id;
+    WHERE r.org_id=p_org_id AND r.companion_id=p_companion_id AND r.id=p_id;
     UPDATE public.companion_transcript_entries e SET decision=e.decision||jsonb_build_object(
       'status','expired','control_status','expired',
       'decided_at',to_char(v_now AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'))
     WHERE e.org_id=p_org_id AND e.companion_id=p_companion_id AND e.event_id='control:'||p_id::text;
-    RETURN QUERY SELECT * FROM public.companion_control_requests r WHERE r.id=p_id; RETURN;
+    RETURN QUERY SELECT * FROM public.companion_control_requests r
+    WHERE r.org_id=p_org_id AND r.companion_id=p_companion_id AND r.id=p_id;
+    RETURN;
   END IF;
   IF (p_action='allow' AND v_request.status IN ('applying','applied','failed'))
     OR (p_action='deny' AND v_request.status='denied') THEN
-    RETURN QUERY SELECT * FROM public.companion_control_requests r WHERE r.id=p_id; RETURN;
+    RETURN QUERY SELECT * FROM public.companion_control_requests r
+    WHERE r.org_id=p_org_id AND r.companion_id=p_companion_id AND r.id=p_id;
+    RETURN;
   END IF;
   IF v_request.status<>(CASE WHEN p_action='allow' THEN 'applying'::public.companion_control_request_status
       ELSE 'denied'::public.companion_control_request_status END) THEN
@@ -519,7 +659,8 @@ BEGIN
     v_status:=CASE WHEN p_action='allow' THEN 'applying'::public.companion_control_request_status
       ELSE 'denied'::public.companion_control_request_status END;
     UPDATE public.companion_control_requests r SET status=v_status,decided_by_id=v_actor,
-      decided_at=v_now,updated_at=v_now WHERE r.id=p_id;
+      decided_at=v_now,updated_at=v_now
+    WHERE r.org_id=p_org_id AND r.companion_id=p_companion_id AND r.id=p_id;
     SELECT COALESCE(p.name,u.name,u.email) INTO v_name FROM public."user" u
       LEFT JOIN public.profiles p ON p.id=u.id WHERE u.id=v_actor;
     UPDATE public.companion_transcript_entries e SET decision=e.decision||jsonb_build_object(
@@ -528,7 +669,8 @@ BEGIN
       'decided_at',to_char(v_now AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'))
     WHERE e.org_id=p_org_id AND e.companion_id=p_companion_id AND e.event_id='control:'||p_id::text;
   END IF;
-  RETURN QUERY SELECT * FROM public.companion_control_requests r WHERE r.id=p_id;
+  RETURN QUERY SELECT * FROM public.companion_control_requests r
+  WHERE r.org_id=p_org_id AND r.companion_id=p_companion_id AND r.id=p_id;
 END $$;
 REVOKE ALL ON FUNCTION public.companion_api_decide_control_request(uuid,uuid,uuid,text) FROM PUBLIC;
 --> statement-breakpoint
@@ -542,24 +684,35 @@ SET search_path=pg_catalog,public SET row_security=on AS $$
 DECLARE v_now timestamptz:=clock_timestamp(); v_ordinal integer; v_summary text; v_status public.companion_control_request_status;
 BEGIN
   PERFORM public.companion_api_require_access(p_org_id,p_companion_id,'editor');
+  IF p_result IS NOT NULL AND (
+    jsonb_typeof(p_result) <> 'object' OR octet_length(p_result::text) > 1048576
+  ) THEN
+    RAISE EXCEPTION 'invalid control request result' USING ERRCODE='22023';
+  END IF;
   v_status:=CASE WHEN p_error_code IS NULL THEN 'applied'::public.companion_control_request_status
     ELSE 'failed'::public.companion_control_request_status END;
   UPDATE public.companion_control_requests r SET status=v_status,result=p_result,error_code=p_error_code,
-    error_message=p_error_message,applied_at=v_now,updated_at=v_now
+    error_message=p_error_message,applied_at=CASE WHEN p_error_code IS NULL THEN v_now ELSE NULL END,
+    updated_at=v_now
   WHERE r.org_id=p_org_id AND r.companion_id=p_companion_id AND r.id=p_id AND r.status='applying'
   RETURNING r.summary INTO v_summary;
   IF NOT FOUND THEN
-    RETURN QUERY SELECT * FROM public.companion_control_requests r WHERE r.id=p_id AND r.status=v_status; RETURN;
+    RETURN QUERY SELECT * FROM public.companion_control_requests r
+    WHERE r.org_id=p_org_id AND r.companion_id=p_companion_id AND r.id=p_id AND r.status=v_status;
+    RETURN;
   END IF;
   UPDATE public.companion_transcript_entries e SET decision=e.decision||jsonb_build_object('control_status',v_status)
   WHERE e.org_id=p_org_id AND e.companion_id=p_companion_id AND e.event_id='control:'||p_id::text;
-  PERFORM 1 FROM public.companions c WHERE c.org_id=p_org_id AND c.id=p_companion_id FOR UPDATE;
-  SELECT COALESCE(max(e.ordinal),-1)+1 INTO v_ordinal FROM public.companion_transcript_entries e
-  WHERE e.org_id=p_org_id AND e.companion_id=p_companion_id;
+  UPDATE public.companion_threads thread
+  SET next_ordinal=thread.next_ordinal+1,last_message_at=v_now,updated_at=v_now
+  WHERE thread.org_id=p_org_id AND thread.companion_id=p_companion_id
+  RETURNING thread.next_ordinal-1 INTO v_ordinal;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Companion thread is unavailable' USING ERRCODE='55000'; END IF;
   INSERT INTO public.companion_transcript_entries(org_id,companion_id,event_id,ordinal,role,content,created_at)
   VALUES(p_org_id,p_companion_id,'control-result:'||p_id::text,v_ordinal,'system',
     CASE WHEN p_error_code IS NULL THEN 'Applied: '||v_summary ELSE 'Could not apply: '||left(p_error_message,500) END,v_now);
-  RETURN QUERY SELECT * FROM public.companion_control_requests r WHERE r.id=p_id;
+  RETURN QUERY SELECT * FROM public.companion_control_requests r
+  WHERE r.org_id=p_org_id AND r.companion_id=p_companion_id AND r.id=p_id;
 END $$;
 REVOKE ALL ON FUNCTION public.companion_api_finish_control_request(uuid,uuid,uuid,jsonb,text,text) FROM PUBLIC;
 --> statement-breakpoint
@@ -579,7 +732,9 @@ BEGIN
     RAISE EXCEPTION 'control request is not applied' USING ERRCODE='55000';
   END IF;
   IF v_request.continuation_turn_id IS NOT NULL THEN
-    RETURN (SELECT to_jsonb(t) FROM public.companion_turns t WHERE t.id=v_request.continuation_turn_id);
+    RETURN (SELECT to_jsonb(t) FROM public.companion_turns t
+      WHERE t.org_id=p_org_id AND t.companion_id=p_companion_id
+        AND t.id=v_request.continuation_turn_id);
   END IF;
   -- The request UUID is a deterministic client message id, making callback and decision retries
   -- converge on the same ordinary FIFO turn.
@@ -590,7 +745,7 @@ BEGIN
   );
   UPDATE public.companion_control_requests SET
     continuation_turn_id=(v_enqueued.turn->>'id')::uuid,updated_at=clock_timestamp()
-  WHERE id=p_id;
+  WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_id;
   RETURN v_enqueued.turn;
 END $$;
 REVOKE ALL ON FUNCTION public.companion_api_enqueue_control_continuation(uuid,uuid,uuid,text) FROM PUBLIC;
@@ -642,7 +797,8 @@ BEGIN
     );
     UPDATE public.companion_deferred_pi_restarts SET status='enqueued',
       operation_id=(v_operation.operation->>'id')::uuid,enqueued_at=clock_timestamp()
-    WHERE id=v_restart.id AND status='pending';
+    WHERE org_id=v_restart.org_id AND companion_id=v_restart.companion_id
+      AND id=v_restart.id AND status='pending';
   END LOOP;
   RETURN NEW;
 END $$;
@@ -728,10 +884,13 @@ BEGIN
   PERFORM public.companion_api_require_access(p_org_id,p_target,'editor');
   IF p_source=p_target THEN RAISE EXCEPTION 'self delegation is not allowed' USING ERRCODE='22023'; END IF;
   SELECT * INTO v_existing FROM public.companion_delegations d
-  WHERE d.source_companion_id=p_source AND d.source_attempt_id=p_source_attempt AND d.request_key=p_request_key FOR UPDATE;
+  WHERE d.org_id=p_org_id AND d.source_companion_id=p_source
+    AND d.source_attempt_id=p_source_attempt AND d.request_key=p_request_key FOR UPDATE;
   IF FOUND THEN
     IF v_existing.request_digest<>p_request_digest THEN RAISE EXCEPTION 'delegation idempotency conflict' USING ERRCODE='23505'; END IF;
-    RETURN QUERY SELECT * FROM public.companion_delegations d WHERE d.id=v_existing.id; RETURN;
+    RETURN QUERY SELECT * FROM public.companion_delegations d
+    WHERE d.org_id=p_org_id AND d.id=v_existing.id;
+    RETURN;
   END IF;
   IF NOT EXISTS(SELECT 1 FROM public.companion_peer_grants g WHERE g.org_id=p_org_id
     AND g.source_companion_id=p_source AND g.target_companion_id=p_target AND g.revoked_at IS NULL) THEN
@@ -739,9 +898,15 @@ BEGIN
   END IF;
   SELECT s.name,t.name,st.delegation_id,tt.status,s.owner_id
   INTO v_source_name,v_target_name,v_parent,v_target_status,v_source_owner
-  FROM public.companions s,public.companions t,public.companion_turns st,public.companion_turns tt
+  FROM public.companions s,public.companions t,public.companion_turns st,
+       public.companion_turn_attempts sa,public.companion_turns tt
   WHERE s.org_id=p_org_id AND s.id=p_source AND t.org_id=p_org_id AND t.id=p_target
     AND st.org_id=p_org_id AND st.companion_id=p_source AND st.id=p_source_turn AND st.actor_id=v_actor
+    AND st.status IN ('running','needs_input') AND st.routine_snapshot_id IS NULL
+    AND st.trigger_name IS NULL
+    AND sa.org_id=st.org_id AND sa.companion_id=st.companion_id AND sa.turn_id=st.id
+    AND sa.id=p_source_attempt AND sa.status IN ('running','needs_input')
+    AND sa.dispatch_state='accepted'
     AND tt.org_id=p_org_id AND tt.companion_id=p_target AND tt.id=p_target_turn;
   IF NOT FOUND THEN RAISE EXCEPTION 'delegation turns are unavailable' USING ERRCODE='42501'; END IF;
   IF NOT EXISTS (
@@ -758,10 +923,12 @@ BEGIN
     RAISE EXCEPTION 'source owner cannot operate target Companion' USING ERRCODE='42501';
   END IF;
   IF v_parent IS NULL THEN v_root:=p_source_turn; v_depth:=1;
-  ELSE SELECT d.root_turn_id,d.depth+1 INTO v_root,v_depth FROM public.companion_delegations d WHERE d.id=v_parent; END IF;
+  ELSE SELECT d.root_turn_id,d.depth+1 INTO v_root,v_depth FROM public.companion_delegations d
+    WHERE d.org_id=p_org_id AND d.id=v_parent; END IF;
   IF v_depth>4 THEN RAISE EXCEPTION 'delegation depth exceeded' USING ERRCODE='54000'; END IF;
   PERFORM pg_advisory_xact_lock(hashtextextended(v_root::text,0));
-  IF (SELECT count(*) FROM public.companion_delegations d WHERE d.root_turn_id=v_root)>=20 THEN
+  IF (SELECT count(*) FROM public.companion_delegations d
+      WHERE d.org_id=p_org_id AND d.root_turn_id=v_root)>=20 THEN
     RAISE EXCEPTION 'delegation budget exceeded' USING ERRCODE='54000';
   END IF;
   INSERT INTO public.companion_delegations(
@@ -770,12 +937,14 @@ BEGIN
     response_mode,status,request_key,request_digest
   ) VALUES(p_id,p_org_id,p_source,v_source_name,p_target,v_target_name,v_actor,p_source_turn,p_source_attempt,
     p_target_turn,v_root,v_parent,v_depth,p_response_mode,v_target_status,p_request_key,p_request_digest);
-  UPDATE public.companion_turns SET delegation_id=p_id WHERE id=p_target_turn AND companion_id=p_target;
+  UPDATE public.companion_turns SET delegation_id=p_id
+  WHERE org_id=p_org_id AND id=p_target_turn AND companion_id=p_target;
   UPDATE public.companion_transcript_entries SET delegation=jsonb_build_object(
     'id',p_id,'direction','request','companion_id',p_source,'companion_name',v_source_name,
     'response_mode',p_response_mode,'status',v_target_status)
-  WHERE companion_id=p_target AND turn_id=p_target_turn AND role='user';
-  RETURN QUERY SELECT * FROM public.companion_delegations d WHERE d.id=p_id;
+  WHERE org_id=p_org_id AND companion_id=p_target AND turn_id=p_target_turn AND role='user';
+  RETURN QUERY SELECT * FROM public.companion_delegations d
+  WHERE d.org_id=p_org_id AND d.id=p_id;
 END $$;
 REVOKE ALL ON FUNCTION public.companion_api_record_delegation(
   uuid,uuid,uuid,uuid,uuid,uuid,uuid,public.companion_routine_surface_mode,text,text
@@ -792,6 +961,15 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public SET row_security=on AS $$
 DECLARE v_enqueued record; v_delegation public.companion_delegations%ROWTYPE;
 BEGIN
+  -- Reject revoked or inaccessible routes before target queue constraints can obscure the
+  -- authorization failure. record_delegation repeats these checks after enqueue so the grant and
+  -- both ACLs are still evaluated atomically with the durable delegation row.
+  PERFORM public.companion_api_require_access(p_org_id,p_source,'editor');
+  PERFORM public.companion_api_require_access(p_org_id,p_target,'editor');
+  IF NOT EXISTS(SELECT 1 FROM public.companion_peer_grants g WHERE g.org_id=p_org_id
+    AND g.source_companion_id=p_source AND g.target_companion_id=p_target AND g.revoked_at IS NULL) THEN
+    RAISE EXCEPTION 'peer access is not approved' USING ERRCODE='42501';
+  END IF;
   -- Both calls run in this statement's transaction. Any grant, ACL, depth, or budget failure rolls
   -- the target turn back instead of leaving an untracked delegation message in its queue.
   SELECT * INTO v_enqueued FROM public.companion_api_enqueue_turn(
@@ -817,7 +995,10 @@ BEGIN
   PERFORM public.companion_api_require_access(p_org_id,p_source,'editor');
   RETURN QUERY SELECT * FROM public.companion_delegations d
   WHERE d.org_id=p_org_id AND d.source_companion_id=p_source
-    AND (p_cursor IS NULL OR d.created_at<(SELECT c.created_at FROM public.companion_delegations c WHERE c.id=p_cursor))
+    AND (p_cursor IS NULL OR (d.created_at,d.id)<(
+      SELECT c.created_at,c.id FROM public.companion_delegations c
+      WHERE c.org_id=p_org_id AND c.source_companion_id=p_source AND c.id=p_cursor
+    ))
   ORDER BY d.created_at DESC,d.id DESC LIMIT greatest(1,least(COALESCE(p_limit,50),100));
 END $$;
 REVOKE ALL ON FUNCTION public.companion_api_list_delegations(uuid,uuid,integer,uuid) FROM PUBLIC;
@@ -843,26 +1024,28 @@ DECLARE
   v_client uuid:=gen_random_uuid(); v_enqueued record; v_relay uuid;
 BEGIN
   IF NEW.delegation_id IS NULL OR NEW.status=OLD.status THEN RETURN NEW; END IF;
-  SELECT * INTO v_d FROM public.companion_delegations d WHERE d.id=NEW.delegation_id FOR UPDATE;
+  SELECT * INTO v_d FROM public.companion_delegations d
+  WHERE d.org_id=NEW.org_id AND d.id=NEW.delegation_id FOR UPDATE;
   IF NOT FOUND THEN RETURN NEW; END IF;
   UPDATE public.companion_delegations SET status=NEW.status,
     settled_at=CASE WHEN NEW.status IN ('succeeded','failed','interrupted','cancelled') THEN NEW.settled_at ELSE NULL END,
-    updated_at=clock_timestamp() WHERE id=v_d.id;
+    updated_at=clock_timestamp() WHERE org_id=v_d.org_id AND id=v_d.id;
   UPDATE public.companion_transcript_entries SET delegation=delegation||jsonb_build_object('status',NEW.status)
-  WHERE companion_id=NEW.companion_id AND turn_id=NEW.id AND delegation IS NOT NULL;
+  WHERE org_id=NEW.org_id AND companion_id=NEW.companion_id
+    AND turn_id=NEW.id AND delegation IS NOT NULL;
   IF NEW.status NOT IN ('succeeded','failed','interrupted','cancelled') OR v_d.delivery_status<>'pending' THEN RETURN NEW; END IF;
   IF v_d.source_companion_id IS NULL OR NOT EXISTS(
     SELECT 1 FROM public.memberships m WHERE m.org_id=v_d.org_id AND m.user_id=v_d.actor_id
   ) THEN
     UPDATE public.companion_delegations SET delivery_status='failed',delivery_error_code='source_access_revoked',updated_at=clock_timestamp()
-    WHERE id=v_d.id; RETURN NEW;
+    WHERE org_id=v_d.org_id AND id=v_d.id; RETURN NEW;
   END IF;
   PERFORM set_config('app.org_id',v_d.org_id::text,true);
   PERFORM set_config('app.user_id',v_d.actor_id,true);
   BEGIN PERFORM public.companion_api_require_access(v_d.org_id,v_d.source_companion_id,'editor');
   EXCEPTION WHEN OTHERS THEN
     UPDATE public.companion_delegations SET delivery_status='failed',delivery_error_code='source_access_revoked',updated_at=clock_timestamp()
-    WHERE id=v_d.id; RETURN NEW;
+    WHERE org_id=v_d.org_id AND id=v_d.id; RETURN NEW;
   END;
   SELECT left(e.content,16384) INTO v_content FROM public.companion_transcript_entries e
   WHERE e.org_id=v_d.org_id AND e.companion_id=NEW.companion_id AND e.turn_id=NEW.id AND e.role='assistant'
@@ -877,16 +1060,26 @@ BEGIN
       'web'::public.companion_client_surface,'[]'::jsonb
     );
     v_relay:=(v_enqueued.turn->>'id')::uuid;
-    UPDATE public.companion_turns SET delegation_return_id=v_d.id WHERE id=v_relay;
+    UPDATE public.companion_turns SET delegation_return_id=v_d.id
+    WHERE org_id=v_d.org_id AND id=v_relay;
     UPDATE public.companion_transcript_entries SET delegation=jsonb_build_object(
       'id',v_d.id,'direction','response','companion_id',v_d.target_companion_id,
       'companion_name',v_d.target_companion_name,'response_mode',v_d.response_mode,'status',NEW.status)
-    WHERE companion_id=v_d.source_companion_id AND turn_id=v_relay AND role='user';
+    WHERE org_id=v_d.org_id AND companion_id=v_d.source_companion_id
+      AND turn_id=v_relay AND role='user';
     v_event:='msg:'||v_client::text;
   ELSE
-    PERFORM 1 FROM public.companions c WHERE c.org_id=v_d.org_id AND c.id=v_d.source_companion_id FOR UPDATE;
-    SELECT COALESCE(max(e.ordinal),-1)+1 INTO v_ordinal FROM public.companion_transcript_entries e
-      WHERE e.org_id=v_d.org_id AND e.companion_id=v_d.source_companion_id;
+    UPDATE public.companion_threads thread
+    SET next_ordinal=thread.next_ordinal+1,last_message_at=clock_timestamp(),
+        updated_at=clock_timestamp()
+    WHERE thread.org_id=v_d.org_id AND thread.companion_id=v_d.source_companion_id
+    RETURNING thread.next_ordinal-1 INTO v_ordinal;
+    IF NOT FOUND THEN
+      UPDATE public.companion_delegations SET delivery_status='failed',
+        delivery_error_code='source_thread_unavailable',updated_at=clock_timestamp()
+      WHERE org_id=v_d.org_id AND id=v_d.id;
+      RETURN NEW;
+    END IF;
     v_event:='delegation:'||v_d.id::text||':response';
     INSERT INTO public.companion_transcript_entries(
       org_id,companion_id,event_id,ordinal,role,content,delegation,created_at
@@ -896,7 +1089,8 @@ BEGIN
       clock_timestamp());
   END IF;
   UPDATE public.companion_delegations SET delivery_status='delivered',source_result_event_id=v_event,
-    source_relay_turn_id=v_relay,delivered_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=v_d.id;
+    source_relay_turn_id=v_relay,delivered_at=clock_timestamp(),updated_at=clock_timestamp()
+  WHERE org_id=v_d.org_id AND id=v_d.id;
   RETURN NEW;
 END $$;
 REVOKE ALL ON FUNCTION public.companion_surface_delegation_result() FROM PUBLIC;

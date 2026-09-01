@@ -1,13 +1,27 @@
+import {
+  COMPANION_CONFIG_PROPOSAL_CONNECT_PROVIDERS,
+  COMPANION_ROUTINE_CRON_MAX_CHARACTERS,
+  COMPANION_ROUTINE_NAME_MAX_CHARACTERS,
+  COMPANION_ROUTINE_PROMPT_MAX_CHARACTERS,
+  COMPANION_ROUTINE_TIMEZONE_MAX_CHARACTERS,
+  COMPANION_TRIGGER_MAX_EVENTS,
+  COMPANION_TRIGGER_NAME_MAX_CHARACTERS,
+  COMPANION_TRIGGER_PROMPT_MAX_CHARACTERS,
+  COMPANION_TRIGGER_PROVIDERS,
+} from "./companions";
+
 /** Stateless MCP tool catalog staged onto every hosted Companion. */
 export const COMPANION_CONTROL_MCP_SERVER_NAME = "companion-control";
 export const COMPANION_CONTROL_MCP_PROTOCOL_VERSION = "2025-03-26";
 
 interface JsonSchema {
-  type?: string;
+  type?: string | readonly string[];
   properties?: Record<string, JsonSchema>;
   items?: JsonSchema;
   required?: readonly string[];
+  oneOf?: readonly JsonSchema[];
   additionalProperties?: boolean;
+  minProperties?: number;
   minLength?: number;
   maxLength?: number;
   minItems?: number;
@@ -15,6 +29,7 @@ interface JsonSchema {
   minimum?: number;
   maximum?: number;
   format?: string;
+  pattern?: string;
   enum?: readonly string[];
   default?: string;
 }
@@ -27,6 +42,70 @@ export interface CompanionControlMcpToolDefinition {
 const empty = { type: "object", properties: {}, additionalProperties: false } satisfies JsonSchema;
 const uuid = { type: "string", format: "uuid" };
 const stringList = { type: "array", items: uuid, maxItems: 100 };
+const routineDraftProperties = {
+  name: { type: "string", minLength: 1, maxLength: COMPANION_ROUTINE_NAME_MAX_CHARACTERS },
+  prompt: { type: "string", minLength: 1, maxLength: COMPANION_ROUTINE_PROMPT_MAX_CHARACTERS },
+  cron: { type: "string", minLength: 1, maxLength: COMPANION_ROUTINE_CRON_MAX_CHARACTERS },
+  timezone: { type: "string", minLength: 1, maxLength: COMPANION_ROUTINE_TIMEZONE_MAX_CHARACTERS },
+  enabled: { type: "boolean" },
+} satisfies Record<string, JsonSchema>;
+const routineCreateDraft = {
+  type: "object",
+  properties: routineDraftProperties,
+  required: ["name", "prompt", "cron", "timezone"],
+  additionalProperties: false,
+} satisfies JsonSchema;
+const routineUpdateDraft = {
+  type: "object",
+  properties: routineDraftProperties,
+  minProperties: 1,
+  additionalProperties: false,
+} satisfies JsonSchema;
+const triggerTarget = {
+  type: "object",
+  properties: {
+    repo: { type: "string", maxLength: 200, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9._-]+$" },
+    organization: { type: "string", maxLength: 100, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    project: { type: "string", maxLength: 100, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    events: {
+      type: "array",
+      items: { type: "string", pattern: "^(\\*|[a-z_]{1,64})$" },
+      minItems: 1,
+      maxItems: COMPANION_TRIGGER_MAX_EVENTS,
+    },
+  },
+  additionalProperties: false,
+} satisfies JsonSchema;
+const triggerDraftProperties = {
+  name: { type: "string", minLength: 1, maxLength: COMPANION_TRIGGER_NAME_MAX_CHARACTERS },
+  prompt: { type: "string", minLength: 1, maxLength: COMPANION_TRIGGER_PROMPT_MAX_CHARACTERS },
+  mode: { enum: ["notify", "relay"] },
+  provider: { enum: COMPANION_TRIGGER_PROVIDERS },
+  provider_account_id: { type: ["string", "null"], format: "uuid" },
+  target: { oneOf: [triggerTarget, { type: "null" }] },
+  enabled: { type: "boolean" },
+} satisfies Record<string, JsonSchema>;
+const triggerCreateDraft = {
+  type: "object",
+  properties: triggerDraftProperties,
+  required: ["name", "prompt"],
+  additionalProperties: false,
+} satisfies JsonSchema;
+const triggerUpdateDraft = {
+  type: "object",
+  properties: triggerDraftProperties,
+  minProperties: 1,
+  additionalProperties: false,
+} satisfies JsonSchema;
+
+function existingActionSchema(action: string, idName: "routine_id" | "trigger_id"): JsonSchema {
+  return {
+    type: "object",
+    properties: { action: { enum: [action] }, [idName]: uuid },
+    required: ["action", idName],
+    additionalProperties: false,
+  };
+}
 
 export const COMPANION_CONTROL_MCP_TOOLS: readonly CompanionControlMcpToolDefinition[] = [
   { name: "companion_get_self", description: "Read this Companion's identity, settings, and durable runtime status.", inputSchema: empty },
@@ -61,7 +140,7 @@ export const COMPANION_CONTROL_MCP_TOOLS: readonly CompanionControlMcpToolDefini
   {
     name: "companion_request_plugin_connection",
     description: "Request human OAuth consent for a supported plugin connection.",
-    inputSchema: { type: "object", properties: { provider: { type: "string", minLength: 1, maxLength: 80 }, reason: { type: "string", maxLength: 280 } }, required: ["provider"], additionalProperties: false },
+    inputSchema: { type: "object", properties: { provider: { enum: COMPANION_CONFIG_PROPOSAL_CONNECT_PROVIDERS }, reason: { type: "string", maxLength: 280 } }, required: ["provider"], additionalProperties: false },
   },
   { name: "companion_list_routines", description: "List this Companion's scheduled routines.", inputSchema: empty },
   {
@@ -77,7 +156,15 @@ export const COMPANION_CONTROL_MCP_TOOLS: readonly CompanionControlMcpToolDefini
   {
     name: "companion_request_routine_change",
     description: "Request human approval to create, update, enable, disable, or delete a routine.",
-    inputSchema: { type: "object", properties: { action: { enum: ["create", "update", "enable", "disable", "delete"] }, routine_id: uuid, draft: { type: "object" } }, required: ["action"], additionalProperties: false },
+    inputSchema: {
+      oneOf: [
+        { type: "object", properties: { action: { enum: ["create"] }, draft: routineCreateDraft }, required: ["action", "draft"], additionalProperties: false },
+        { type: "object", properties: { action: { enum: ["update"] }, routine_id: uuid, draft: routineUpdateDraft }, required: ["action", "routine_id", "draft"], additionalProperties: false },
+        existingActionSchema("enable", "routine_id"),
+        existingActionSchema("disable", "routine_id"),
+        existingActionSchema("delete", "routine_id"),
+      ],
+    },
   },
   { name: "companion_list_triggers", description: "List this Companion's webhook triggers.", inputSchema: empty },
   {
@@ -93,7 +180,16 @@ export const COMPANION_CONTROL_MCP_TOOLS: readonly CompanionControlMcpToolDefini
   {
     name: "companion_request_trigger_change",
     description: "Request human approval to create, update, enable, disable, delete, or rotate a trigger secret.",
-    inputSchema: { type: "object", properties: { action: { enum: ["create", "update", "enable", "disable", "delete", "rotate_secret"] }, trigger_id: uuid, draft: { type: "object" } }, required: ["action"], additionalProperties: false },
+    inputSchema: {
+      oneOf: [
+        { type: "object", properties: { action: { enum: ["create"] }, draft: triggerCreateDraft }, required: ["action", "draft"], additionalProperties: false },
+        { type: "object", properties: { action: { enum: ["update"] }, trigger_id: uuid, draft: triggerUpdateDraft }, required: ["action", "trigger_id", "draft"], additionalProperties: false },
+        existingActionSchema("enable", "trigger_id"),
+        existingActionSchema("disable", "trigger_id"),
+        existingActionSchema("delete", "trigger_id"),
+        existingActionSchema("rotate_secret", "trigger_id"),
+      ],
+    },
   },
   { name: "companion_list_peers", description: "List other Companions this actor and the source Owner may operate, including grant state.", inputSchema: empty },
   {

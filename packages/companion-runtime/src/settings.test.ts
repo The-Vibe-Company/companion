@@ -152,7 +152,7 @@ describe("implicit settings activation", () => {
     expect(store.settlements[0]?.error?.code).toBe("pi_start_failed");
   });
 
-  it("activates native-mobile settings without claiming Skills or MCP layout", async () => {
+  it("activates native-mobile settings with the unified Skills and MCP layout", async () => {
     const claim = settingsClaim({
       clientSurface: "native_mobile",
       targetSkillsRevision: 1,
@@ -166,12 +166,12 @@ describe("implicit settings activation", () => {
     const ports = fakePorts(store);
     ports.resourceStager.stageExistingBox = async (input) => {
       expect(input.clientSurface).toBe("native_mobile");
-      expect(input.targetSkillsRevision).toBeNull();
+      expect(input.targetSkillsRevision).toBe(1);
       return {
         diskLayoutVersion: 14,
         appliedSettingsRevision: input.targetSettingsRevision,
-        appliedSkillsRevision: null,
-        materialExpiresAt: null,
+        appliedSkillsRevision: input.targetSkillsRevision,
+        materialExpiresAt: new Date("2026-08-16T18:00:00.000Z"),
       };
     };
     ports.pi.restartPiDaemon = async () => ({
@@ -189,11 +189,11 @@ describe("implicit settings activation", () => {
       piState: "idle",
       piInvocationId: "native-settings-pi",
       appliedSettingsRevision: 2n,
+      appliedSkillsRevision: 1,
     })]);
-    expect(store.observations[0]).not.toHaveProperty("appliedSkillsRevision");
     expect(store.recordedMaterialSnapshots).toEqual([{
       clientSurface: "native_mobile",
-      materialExpiresAt: null,
+      materialExpiresAt: new Date("2026-08-16T18:00:00.000Z"),
       agentEndpoint: null,
     }]);
     expect(store.publishedMaterialSnapshots).toEqual(["native-settings-pi"]);

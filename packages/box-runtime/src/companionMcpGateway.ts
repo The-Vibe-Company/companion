@@ -96,7 +96,7 @@ export async function startCompanionMcpGateway(input: {
   if (accounts.length > 0 && !/^cmp_mcp_[0-9a-f]{48}$/.test(input.brokerToken)) {
     throw new Error("MCP broker capability is unavailable");
   }
-  if (!/^cmp_ctl_[0-9a-f]{48}$/.test(controlToken)) {
+  if (controlToken && !/^cmp_ctl_[0-9a-f]{48}$/.test(controlToken)) {
     throw new Error("Companion control capability is unavailable");
   }
   const fetchImpl = input.fetchImpl ?? fetch;
@@ -240,6 +240,7 @@ async function handleGatewayRequest(input: {
 }): Promise<void> {
   const requestUrl = new URL(input.request.url ?? "/", input.gatewayOrigin());
   if (requestUrl.pathname === "/control") {
+    if (!input.controlToken) return safeError(input.response, 404);
     return await handleCompanionControlRequest({
       request: input.request,
       response: input.response,

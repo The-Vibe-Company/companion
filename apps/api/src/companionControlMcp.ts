@@ -8,6 +8,7 @@ import {
   companionRequestRoutineChangeInputSchema,
   companionRequestTriggerChangeInputSchema,
   companionSendPeerMessageInputSchema,
+  redactCompanionControlTrigger,
   type CompanionControlJsonValue,
   type CompanionControlRequestKind,
 } from "@companion/contracts";
@@ -107,9 +108,12 @@ function callIdentity(
   name: string,
   args: Record<string, CompanionControlJsonValue>,
 ) {
-  const key = `${authorization.attemptId}:${String(id)}`;
+  const rpcIdDigest = createHash("sha256")
+    .update(canonical({ id }), "utf8")
+    .digest("hex");
+  const key = `${authorization.attemptId}:${rpcIdDigest}`;
   const digest = createHash("sha256").update(canonical({ name, args }), "utf8").digest("hex");
-  return { key: key.slice(0, 200), digest };
+  return { key, digest };
 }
 
 function ok(id: JsonRpcId, value: McpResult) {
@@ -292,13 +296,15 @@ export async function executeCompanionControlMcp(input: {
           triggers: (await listCompanionTriggersV2({
             ...context,
             webhookBaseUrl: "https://companion.invalid",
-          })).map((trigger) => ({ ...trigger, webhook_url: null })),
+          })).map(redactCompanionControlTrigger),
         });
       case "companion_get_trigger": {
         const body = triggerIdSchema.parse(args);
         const trigger = (await listCompanionTriggersV2({ ...context, webhookBaseUrl: "https://companion.invalid" }))
           .find((item) => item.id === body.trigger_id);
-        return trigger ? ok(call.id, { trigger: { ...trigger, webhook_url: null } }) : failure(call.id, "Trigger not found.");
+        return trigger
+          ? ok(call.id, { trigger: redactCompanionControlTrigger(trigger) })
+          : failure(call.id, "Trigger not found.");
       }
       case "companion_list_trigger_runs": {
         const body = triggerRunsSchema.parse(args);

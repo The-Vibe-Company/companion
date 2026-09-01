@@ -1129,9 +1129,15 @@ export const companionTurns = pgTable(
     /** Trigger v2 validates in the isolated lane and pins the configured terminal surface mode. */
     triggerMode: text("trigger_mode"),
     /** Delegation whose request this main-lane turn is executing, if any. */
-    delegationId: uuid("delegation_id"),
+    delegationId: uuid("delegation_id").references(
+      (): AnyPgColumn => companionDelegations.id,
+      { onDelete: "set null" },
+    ),
     /** Delegation result fed back to this Companion for relay synthesis, if any. */
-    delegationReturnId: uuid("delegation_return_id"),
+    delegationReturnId: uuid("delegation_return_id").references(
+      (): AnyPgColumn => companionDelegations.id,
+      { onDelete: "set null" },
+    ),
     /**
      * Set when an Owner/Editor asks to stop an active turn whose prompt may already be on Pi.
      * The executor that holds the lease aborts Pi and settles; the API never contacts Box.
@@ -1226,6 +1232,34 @@ export const companionControlRequests = pgTable(
     pending: index("companion_control_requests_pending_idx")
       .on(t.companionId, t.createdAt)
       .where(sql`${t.status} = 'pending'`),
+    actionCheck: check(
+      "companion_control_requests_action_check",
+      sql`${t.action} ~ '^[a-z][a-z0-9_]{0,79}$'`,
+    ),
+    summaryCheck: check(
+      "companion_control_requests_summary_check",
+      sql`char_length(btrim(${t.summary})) between 1 and 300 and ${t.summary} !~ E'[\\n\\r]'`,
+    ),
+    payloadCheck: check(
+      "companion_control_requests_payload_check",
+      sql`jsonb_typeof(${t.payload}) = 'object' and octet_length(${t.payload}::text) <= 16384`,
+    ),
+    digestCheck: check(
+      "companion_control_requests_digest_check",
+      sql`${t.requestDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    accessCheck: check(
+      "companion_control_requests_access_check",
+      sql`${t.requiredAccess} in ('owner', 'editor')`,
+    ),
+    resultCheck: check(
+      "companion_control_requests_result_check",
+      sql`${t.result} is null or (jsonb_typeof(${t.result}) = 'object' and octet_length(${t.result}::text) <= 1048576)`,
+    ),
+    errorCheck: check(
+      "companion_control_requests_error_check",
+      sql`((${t.errorCode} is null) = (${t.errorMessage} is null)) and (${t.errorCode} is null or ${t.errorCode} ~ '^[a-z][a-z0-9_]{0,63}$') and (${t.errorMessage} is null or (char_length(${t.errorMessage}) <= 500 and ${t.errorMessage} !~ E'[\\n\\r]'))`,
+    ),
   }),
 );
 
@@ -1253,6 +1287,10 @@ export const companionControlInvocations = pgTable(
     resultCheck: check(
       "companion_control_invocations_result_check",
       sql`(${t.result} is null) = (${t.finishedAt} is null) and (${t.result} is null or (jsonb_typeof(${t.result}) = 'object' and octet_length(${t.result}::text) <= 1048576))`,
+    ),
+    digestCheck: check(
+      "companion_control_invocations_digest_check",
+      sql`${t.requestDigest} ~ '^[0-9a-f]{64}$'`,
     ),
     attemptFk: foreignKey({
       columns: [t.orgId, t.companionId, t.sourceTurnId, t.sourceAttemptId],
@@ -1326,7 +1364,10 @@ export const companionDelegations = pgTable(
     sourceAttemptId: uuid("source_attempt_id").notNull(),
     targetTurnId: uuid("target_turn_id").notNull(),
     rootTurnId: uuid("root_turn_id").notNull(),
-    parentDelegationId: uuid("parent_delegation_id"),
+    parentDelegationId: uuid("parent_delegation_id").references(
+      (): AnyPgColumn => companionDelegations.id,
+      { onDelete: "set null" },
+    ),
     depth: integer("depth").notNull(),
     responseMode: companionRoutineSurfaceModeEnum("response_mode").notNull(),
     status: companionTurnStatusEnum("status").notNull().default("queued"),
@@ -1342,6 +1383,9 @@ export const companionDelegations = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => ({
+    // Migration 0150 additionally owns the composite source/target Companion FKs. PostgreSQL's
+    // column-list `ON DELETE SET NULL (companion_id)` keeps the non-null tenant key intact, but
+    // Drizzle's FK builder can only null every local column and therefore cannot encode them here.
     idempotency: unique("companion_delegations_request_key_uq").on(
       t.sourceCompanionId,
       t.sourceAttemptId,
@@ -1353,6 +1397,18 @@ export const companionDelegations = pgTable(
     noSelf: check(
       "companion_delegations_no_self_check",
       sql`${t.sourceCompanionId} is null or ${t.targetCompanionId} is null or ${t.sourceCompanionId} <> ${t.targetCompanionId}`,
+    ),
+    digestCheck: check(
+      "companion_delegations_digest_check",
+      sql`${t.requestDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    terminalCheck: check(
+      "companion_delegations_terminal_check",
+      sql`(${t.status} in ('succeeded','failed','interrupted','cancelled')) = (${t.settledAt} is not null)`,
+    ),
+    deliveryErrorCheck: check(
+      "companion_delegations_delivery_error_check",
+      sql`${t.deliveryErrorCode} is null or ${t.deliveryErrorCode} ~ '^[a-z][a-z0-9_]{0,63}$'`,
     ),
   }),
 );

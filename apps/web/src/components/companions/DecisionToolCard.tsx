@@ -391,7 +391,7 @@ export const DecisionToolCard: ToolCallMessagePartComponent<CompanionDecisionArg
       {interactive && decision.kind !== "question" && (
         <div className="mt-2 flex items-center gap-2">
           <Button type="button" size="sm" disabled={busy} onClick={() => void act({ action: "allow" })}>
-            {config || routine || trigger ? "Approve" : "Allow"}
+            {config || routine || trigger || control ? "Approve" : "Allow"}
           </Button>
           <Button
             type="button"

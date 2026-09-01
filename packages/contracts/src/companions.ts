@@ -1057,6 +1057,11 @@ export const companionTriggerSchema = z.object({
 }).strict();
 export type CompanionTrigger = z.infer<typeof companionTriggerSchema>;
 
+/** Control/audit projections never expose the signed webhook endpoint. */
+export function redactCompanionControlTrigger(trigger: CompanionTrigger): CompanionTrigger {
+  return { ...trigger, webhook_url: null };
+}
+
 /** Create/update payload. The secret is always generated server-side, never client-supplied. */
 export const companionTriggerDraftSchema = z.object({
   name: companionTriggerNameSchema,
@@ -1235,12 +1240,56 @@ export const companionRequestRoutineChangeInputSchema = z.object({
   action: companionControlRoutineActionSchema,
   routine_id: z.string().uuid().optional(),
   draft: companionRoutineDraftSchema.partial().optional(),
-}).strict();
+}).strict().superRefine((value, context) => {
+  if (value.action !== "create" && value.routine_id === undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["routine_id"],
+      message: "routine_id is required for an existing routine",
+    });
+  }
+  if (value.action === "create" && !companionRoutineDraftSchema.safeParse(value.draft).success) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["draft"],
+      message: "a complete routine draft is required for create",
+    });
+  }
+  if (value.action === "update" && value.draft === undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["draft"],
+      message: "draft is required for update",
+    });
+  }
+});
 export const companionRequestTriggerChangeInputSchema = z.object({
   action: companionControlTriggerActionSchema,
   trigger_id: z.string().uuid().optional(),
   draft: companionTriggerDraftSchema.partial().optional(),
-}).strict();
+}).strict().superRefine((value, context) => {
+  if (value.action !== "create" && value.trigger_id === undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["trigger_id"],
+      message: "trigger_id is required for an existing trigger",
+    });
+  }
+  if (value.action === "create" && !companionTriggerDraftSchema.safeParse(value.draft).success) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["draft"],
+      message: "a complete trigger draft is required for create",
+    });
+  }
+  if (value.action === "update" && value.draft === undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["draft"],
+      message: "draft is required for update",
+    });
+  }
+});
 export const companionSendPeerMessageInputSchema = z.object({
   target_companion_id: z.string().uuid(),
   content: z.string().trim().min(1).max(16_384),

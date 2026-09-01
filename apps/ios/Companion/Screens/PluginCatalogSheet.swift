@@ -115,7 +115,10 @@ struct PluginManagementView: View {
             }
         }
         .sheet(item: $curatedPlugin) { plugin in
-            ConnectCuratedPluginView(plugin: plugin, controlRequest: controlRequest) {
+            ConnectCuratedPluginView(
+                plugin: plugin,
+                controlRequest: controlRequest?.provider == plugin.provider ? controlRequest : nil
+            ) {
                 curatedPlugin = nil
                 success = "\(plugin.title) account connected."
                 Task { await reload() }

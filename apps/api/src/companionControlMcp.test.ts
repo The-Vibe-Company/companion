@@ -63,10 +63,10 @@ const companion = {
 // SAFETY: every database-facing dependency used by these tests is replaced above.
 const database = {} as Db;
 
-function updateSelfCall(name: string) {
+function updateSelfCall(name: string, id = "call-1") {
   return {
     jsonrpc: "2.0" as const,
-    id: "call-1",
+    id,
     method: "tools/call" as const,
     params: { name: "companion_update_self", arguments: { name } },
   };
@@ -119,5 +119,24 @@ describe("executeCompanionControlMcp idempotence", () => {
     expect(dependencies.companionControlActor).not.toHaveBeenCalled();
     expect(dependencies.updateCompanionV2).not.toHaveBeenCalled();
     expect(dependencies.finishCompanionControlInvocation).not.toHaveBeenCalled();
+  });
+
+  it("hashes the complete JSON-RPC id instead of truncating long ids into one invocation key", async () => {
+    vi.mocked(dependencies.registerCompanionControlInvocation)
+      .mockRejectedValue(new Error("stop after identity capture"));
+    const sharedPrefix = "x".repeat(300);
+
+    await executeCompanionControlMcp({
+      raw: updateSelfCall("Renamed", `${sharedPrefix}-one`), authorization, database, dependencies,
+    });
+    await executeCompanionControlMcp({
+      raw: updateSelfCall("Renamed", `${sharedPrefix}-two`), authorization, database, dependencies,
+    });
+
+    const first = vi.mocked(dependencies.registerCompanionControlInvocation).mock.calls[0]?.[0];
+    const second = vi.mocked(dependencies.registerCompanionControlInvocation).mock.calls[1]?.[0];
+    expect(first?.requestKey).toMatch(new RegExp(`^${authorization.attemptId}:[0-9a-f]{64}$`));
+    expect(second?.requestKey).toMatch(new RegExp(`^${authorization.attemptId}:[0-9a-f]{64}$`));
+    expect(first?.requestKey).not.toBe(second?.requestKey);
   });
 });

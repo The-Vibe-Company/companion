@@ -355,7 +355,7 @@ async function stageCapturedResources(
   if (
     authorization.clientSurface === null
     || authorization.desiredSettingsRevision === null
-    || (authorization.clientSurface !== "native_mobile" && authorization.skillsRevision === null)
+    || authorization.skillsRevision === null
   ) {
     throw new RuntimeInvariantError({
       code: "runtime_resource_snapshot_missing",
@@ -365,9 +365,7 @@ async function stageCapturedResources(
   }
   const clientSurface = authorization.clientSurface;
   const targetSettingsRevision = authorization.desiredSettingsRevision;
-  const targetSkillsRevision = clientSurface === "native_mobile"
-    ? null
-    : authorization.skillsRevision;
+  const targetSkillsRevision = authorization.skillsRevision;
   const material = await context.session.fencedLookup(async () =>
     await context.deps.materialProvider.getMaterial({
       store: context.deps.store,
@@ -416,8 +414,6 @@ async function stageCapturedResources(
 async function applyCapturedSkillUpdate(context: OperationContext): Promise<void> {
   const authorization = requiredAuthorization(context.session);
   if (
-    authorization.clientSurface === "native_mobile"
-    ||
     authorization.targetSkillsRevision === null
     || (authorization.appliedSkillsRevision ?? 0) >= authorization.targetSkillsRevision
   ) return;
@@ -985,9 +981,7 @@ async function handleApplySettings(context: OperationContext): Promise<RuntimeWo
         }
         const activated = await activateRuntimeSettings({
           expectedSettingsRevision: authorization.targetSettingsRevision,
-          expectedSkillsRevision: authorization.clientSurface === "native_mobile"
-            ? null
-            : authorization.appliedSkillsRevision,
+          expectedSkillsRevision: authorization.appliedSkillsRevision,
           previousPiInvocationId: authorization.piInvocationId,
           deadlineAt: workDeadline(context),
           clock: context.deps.clock,

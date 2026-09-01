@@ -201,6 +201,7 @@ export type SettingsRuntimeClaim = RuntimeClaimBase & {
   actorId: string;
   clientSurface: ClientSurface;
   targetSettingsRevision: bigint;
+  targetSkillsRevision: number;
 };
 
 export type HealthRuntimeClaim = RuntimeClaimBase & {
@@ -700,7 +701,7 @@ export function decodeRuntimeClaimRow(value: unknown): RuntimeClaim {
       } else if (
         base.clientSurface === null
         || base.targetSettingsRevision === null
-        || (base.clientSurface !== "native_mobile" && base.targetSkillsRevision === null)
+        || base.targetSkillsRevision === null
       ) {
         throw new RuntimeRowDecodeError("operation", "resource operation lacks its captured snapshot");
       }
@@ -731,7 +732,7 @@ export function decodeRuntimeClaimRow(value: unknown): RuntimeClaim {
         !base.actorId
         || !base.clientSurface
         || base.targetSettingsRevision === null
-        || (base.clientSurface !== "native_mobile" && base.targetSkillsRevision === null)
+        || base.targetSkillsRevision === null
       ) {
         throw new RuntimeRowDecodeError("settings", "settings claim has an impossible nullable shape");
       }
@@ -838,8 +839,7 @@ export function decodeRuntimeAuthorizationRow(
       && (
         authorization.modelId === null
         || authorization.desiredSettingsRevision === null
-        || (authorization.clientSurface !== "native_mobile"
-          && authorization.skillsRevision === null)
+        || authorization.skillsRevision === null
       )
     ) {
       throw new RuntimeRowDecodeError("resources", "authorized resource work lacks model or revisions");
@@ -860,8 +860,7 @@ export function decodeRuntimeAuthorizationRow(
           if (
             authorization.clientSurface === null
             || authorization.targetSettingsRevision === null
-            || (authorization.clientSurface !== "native_mobile"
-              && authorization.targetSkillsRevision === null)
+            || authorization.targetSkillsRevision === null
           ) {
             throw new RuntimeRowDecodeError("operation", "authorized operation lacks its captured snapshot");
           }

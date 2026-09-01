@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  COMPANION_CONTROL_MCP_SERVER_NAME,
   COMPANION_EXEC_TOOL_RUN_TIMEOUT_MS,
   COMPANION_ROUTINE_MAX_PER_COMPANION,
   COMPANION_ROUTINE_MIN_INTERVAL_MS,
@@ -2045,6 +2046,12 @@ describe("isolated routine Pi sessions", () => {
     );
     writeFileSync(join(parentMemory, "MEMORY.md"), parentMemoryBytes);
     writeFileSync(join(parentDaily, "2026-08-28.md"), parentDailyBytes);
+    writeFileSync(join(boxHome, ".companion", "pi", "mcp.json"), JSON.stringify({
+      mcpServers: {
+        [COMPANION_CONTROL_MCP_SERVER_NAME]: { url: "http://127.0.0.1:1/control" },
+        mail: { url: "http://127.0.0.1:1/mcp/mail" },
+      },
+    }));
 
     try {
       vi.stubGlobal("fetch", vi.fn(async (rawUrl: string | URL | Request, init?: RequestInit) => {
@@ -2082,9 +2089,11 @@ describe("isolated routine Pi sessions", () => {
       // the command's stderr redirect. That benign warning must not hide the preparation exit code.
       expect(preparedResult).toMatchObject({ status: 0 });
       const routineMemory = join(boxHome, paths.root, "memory");
+      const routineMcp = JSON.parse(readFileSync(join(boxHome, paths.root, "pi", "mcp.json"), "utf8"));
       expect(readFileSync(join(routineMemory, "MEMORY.md"), "utf8")).toBe(parentMemoryBytes);
       expect(readFileSync(join(routineMemory, "daily", "2026-08-28.md"), "utf8"))
         .toBe(parentDailyBytes);
+      expect(routineMcp.mcpServers).toEqual({ mail: { url: "http://127.0.0.1:1/mcp/mail" } });
 
       // The routine's memory directory is a copied run-local pin, never a link to the parent. Even
       // if pi-memory writes during the isolated session, the main Pi's authoritative bytes cannot
@@ -2097,6 +2106,7 @@ describe("isolated routine Pi sessions", () => {
       expect(commands.at(-1)).toContain('export QMD_CONFIG_DIR="$routine_root/qmd/config"');
       expect(commands.at(-1)).toContain('export INDEX_PATH="$routine_root/qmd/index.sqlite"');
       expect(commands.at(-1)).toContain('export PATH="$routine_root/bin:');
+      expect(commands.at(-1)).toContain("unset COMPANION_CONTROL_TOKEN");
       expect(commands[0]).toContain('if [ -x "$routine_root/tools/bin/qmd" ]; then');
 
       const routineRoot = join(boxHome, paths.root);

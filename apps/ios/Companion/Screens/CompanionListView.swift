@@ -601,6 +601,7 @@ struct CompanionListView: View {
                     initialSnapshot: sessionStore.cachedThread(companionID: companionID),
                     readingPosition: chatReadingPositions.position(for: companionID),
                     onOpenPlugins: { provider, requestID in
+                        pluginControlRequest = nil
                         if let provider, let requestID {
                             pluginControlRequest = CompanionPluginControlRequest(
                                 provider: provider,

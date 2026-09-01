@@ -19,6 +19,8 @@ import {
   companionRoutineRunDetailQuerySchema,
   companionRoutineRunListQuerySchema,
   companionRoutineRunSummarySchema,
+  companionRequestRoutineChangeInputSchema,
+  companionRequestTriggerChangeInputSchema,
   companionTriggerProposalMessageSchema,
   companionTriggerProposalSchema,
   companionTriggerRunDetailSchema,
@@ -57,6 +59,44 @@ import { restartCompanionRuntimeInputSchema } from "../src/companionRuntime";
 import { companionToolRunKind } from "../src/companionToolKinds";
 
 describe("Companion provider contracts", () => {
+  it("requires ids for existing automation and complete drafts for creation", () => {
+    const routineId = "11111111-1111-4111-8111-111111111111";
+    const triggerId = "22222222-2222-4222-8222-222222222222";
+    const routineDraft = {
+      name: "Morning brief",
+      prompt: "Prepare the daily brief.",
+      cron: "0 9 * * 1-5",
+      timezone: "Europe/Paris",
+    };
+    const triggerDraft = { name: "Issue update", prompt: "Summarize the incoming issue." };
+
+    expect(companionRequestRoutineChangeInputSchema.safeParse({ action: "create" }).success).toBe(false);
+    expect(companionRequestRoutineChangeInputSchema.safeParse({
+      action: "create", draft: { name: "Incomplete" },
+    }).success).toBe(false);
+    expect(companionRequestRoutineChangeInputSchema.safeParse({ action: "update", routine_id: routineId }).success)
+      .toBe(false);
+    expect(companionRequestRoutineChangeInputSchema.safeParse({ action: "enable" }).success).toBe(false);
+    expect(companionRequestRoutineChangeInputSchema.safeParse({ action: "create", draft: routineDraft }).success)
+      .toBe(true);
+    expect(companionRequestRoutineChangeInputSchema.safeParse({
+      action: "update", routine_id: routineId, draft: { prompt: "Updated prompt." },
+    }).success).toBe(true);
+
+    expect(companionRequestTriggerChangeInputSchema.safeParse({ action: "create" }).success).toBe(false);
+    expect(companionRequestTriggerChangeInputSchema.safeParse({
+      action: "create", draft: { name: "Incomplete" },
+    }).success).toBe(false);
+    expect(companionRequestTriggerChangeInputSchema.safeParse({ action: "update", trigger_id: triggerId }).success)
+      .toBe(false);
+    expect(companionRequestTriggerChangeInputSchema.safeParse({ action: "rotate_secret" }).success).toBe(false);
+    expect(companionRequestTriggerChangeInputSchema.safeParse({ action: "create", draft: triggerDraft }).success)
+      .toBe(true);
+    expect(companionRequestTriggerChangeInputSchema.safeParse({
+      action: "disable", trigger_id: triggerId,
+    }).success).toBe(true);
+  });
+
   it("bounds owner sections and requires exact, unique reorder membership", () => {
     expect(createCompanionSectionInputSchema.parse({ name: "  Work  " })).toEqual({ name: "Work" });
     expect(assignCompanionSectionInputSchema.parse({ section_id: null })).toEqual({ section_id: null });

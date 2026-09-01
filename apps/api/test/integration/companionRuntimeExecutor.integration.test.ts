@@ -364,6 +364,11 @@ async function authorizeClaim(
 
 async function removeCompanion(companionId: string): Promise<void> {
   if (!sql) return;
+  await sql`delete from companion_delegations where source_companion_id = ${companionId}::uuid or target_companion_id = ${companionId}::uuid`;
+  await sql`delete from companion_peer_grants where source_companion_id = ${companionId}::uuid or target_companion_id = ${companionId}::uuid`;
+  await sql`delete from companion_deferred_pi_restarts where companion_id = ${companionId}::uuid`;
+  await sql`delete from companion_control_requests where companion_id = ${companionId}::uuid`;
+  await sql`delete from companion_control_invocations where companion_id = ${companionId}::uuid`;
   await sql`delete from companion_decision_deliveries where companion_id = ${companionId}::uuid`;
   await sql`delete from companion_runtime_event_projections where companion_id = ${companionId}::uuid`;
   await sql`delete from companion_runtime_duplicate_cleanups where companion_id = ${companionId}::uuid`;
@@ -372,6 +377,7 @@ async function removeCompanion(companionId: string): Promise<void> {
   await sql`delete from companion_turns where companion_id = ${companionId}::uuid`;
   await sql`delete from companion_runtime_leases where companion_id = ${companionId}::uuid`;
   await sql`delete from companion_runtime_instances where companion_id = ${companionId}::uuid`;
+  await sql`delete from companion_control_tokens where companion_id = ${companionId}::uuid`;
   await sql`delete from companions where id = ${companionId}::uuid`;
 }
 
@@ -552,6 +558,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
   it("serializes identical control invocations and replays their exact stored response", async () => {
     if (!sql) throw new Error("runtime executor database is not initialized");
     const fixture = await createCompanion({ selectedSkillIds: [], selectedMcpAccountIds: [] });
+    try {
     const invocationId = randomUUID();
     const requestKey = `${fixture.attemptId}:rpc-1`;
     const requestDigest = "d".repeat(64);
@@ -614,6 +621,190 @@ describe("Companion runtime executor PostgreSQL surface", () => {
         )
       `,
     })).rejects.toThrow(/idempotency conflict/);
+    } finally {
+      await removeCompanion(fixture.companionId);
+    }
+  });
+
+  it("delivers notify and relay delegations, paginates ties, and blocks sends after grant revocation", async () => {
+    if (!sql) throw new Error("runtime executor database is not initialized");
+    const source = await createCompanion({ selectedSkillIds: [], selectedMcpAccountIds: [] });
+    let targetCompanionId = "";
+    try {
+      const [created] = await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx<Array<{ companionId: string }>>`
+          select companion_id::text as "companionId"
+          from public.companion_api_create_companion(
+            ${ids.orgA}::uuid, 'Delegation target', null, null, null,
+            '[]'::jsonb, false, '[]'::jsonb
+          )
+        `,
+      });
+      targetCompanionId = created?.companionId ?? "";
+      await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx`
+          select * from public.companion_api_grant_peer_access(
+            ${ids.orgA}::uuid, ${source.companionId}::uuid, ${targetCompanionId}::uuid
+          )
+        `,
+      });
+
+      const delegationIds = [
+        "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      ] as const;
+      const modes = ["notify", "relay"] as const;
+      const targetTurnIds: string[] = [];
+      for (const [index, delegationId] of delegationIds.entries()) {
+        const mode = modes[index];
+        if (!mode) throw new Error("delegation mode fixture is unavailable");
+        const [enqueued] = await asApi({
+          orgId: ids.orgA,
+          actorId: ids.ownerA,
+          action: (tx) => tx<Array<{
+            delegation: IntegrationJsonObject;
+            targetTurn: IntegrationJsonObject;
+          }>>`
+            select delegation, target_turn as "targetTurn"
+            from public.companion_api_enqueue_delegation(
+              ${ids.orgA}::uuid, ${source.companionId}::uuid, ${targetCompanionId}::uuid,
+              ${source.turnId}::uuid, ${source.attemptId}::uuid, ${randomUUID()}::uuid,
+              ${`Delegation ${index + 1}`}, ${delegationId}::uuid,
+              ${mode}::public.companion_routine_surface_mode,
+              ${`delegation-key-${index + 1}`}, ${String(index + 1).repeat(64)}
+            )
+          `,
+        });
+        expect(enqueued?.delegation).toMatchObject({
+          id: delegationId,
+          response_mode: mode,
+          status: "queued",
+        });
+        const targetTurnId = stringValue(enqueued?.targetTurn.id);
+        if (!targetTurnId) throw new Error("delegation target turn is unavailable");
+        targetTurnIds.push(targetTurnId);
+      }
+
+      const tiedAt = new Date("2026-09-01T01:00:00.000Z");
+      await sql`
+        update companion_delegations set created_at=${tiedAt}
+        where org_id=${ids.orgA}::uuid and id in (${delegationIds[0]}::uuid,${delegationIds[1]}::uuid)
+      `;
+      const [firstPage] = await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx<Array<{ id: string }>>`
+          select id::text from public.companion_api_list_delegations(
+            ${ids.orgA}::uuid,${source.companionId}::uuid,1,null
+          )
+        `,
+      });
+      expect(firstPage?.id).toBe(delegationIds[1]);
+      const [secondPage] = await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx<Array<{ id: string }>>`
+          select id::text from public.companion_api_list_delegations(
+            ${ids.orgA}::uuid,${source.companionId}::uuid,1,${delegationIds[1]}::uuid
+          )
+        `,
+      });
+      expect(secondPage?.id).toBe(delegationIds[0]);
+
+      await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx`
+          select public.companion_api_revoke_peer_access(
+            ${ids.orgA}::uuid,${source.companionId}::uuid,${targetCompanionId}::uuid
+          )
+        `,
+      });
+      for (const [index, targetTurnId] of targetTurnIds.entries()) {
+        await sql`
+          insert into companion_transcript_entries(
+            org_id,companion_id,event_id,ordinal,role,content,turn_id
+          ) select ${ids.orgA}::uuid,${targetCompanionId}::uuid,${`delegation-output-${index}`},
+            coalesce(max(ordinal),-1)+1,'assistant',${`Response ${index + 1}`},${targetTurnId}::uuid
+          from companion_transcript_entries
+          where org_id=${ids.orgA}::uuid and companion_id=${targetCompanionId}::uuid
+        `;
+        await sql`
+          update companion_turns set status='succeeded',settled_at=now(),
+            absolute_deadline_at=now()+interval '2 hours',inactivity_deadline_at=null
+          where org_id=${ids.orgA}::uuid and companion_id=${targetCompanionId}::uuid
+            and id=${targetTurnId}::uuid
+        `;
+      }
+      const delivered = await sql<Array<{
+        id: string;
+        deliveryStatus: string;
+        sourceResultEventId: string | null;
+        sourceRelayTurnId: string | null;
+      }>>`
+        select id::text,delivery_status::text as "deliveryStatus",
+          source_result_event_id as "sourceResultEventId",
+          source_relay_turn_id::text as "sourceRelayTurnId"
+        from companion_delegations
+        where org_id=${ids.orgA}::uuid and source_companion_id=${source.companionId}::uuid
+        order by id
+      `;
+      expect(delivered).toEqual([
+        {
+          id: delegationIds[0],
+          deliveryStatus: "delivered",
+          sourceResultEventId: `delegation:${delegationIds[0]}:response`,
+          sourceRelayTurnId: null,
+        },
+        {
+          id: delegationIds[1],
+          deliveryStatus: "delivered",
+          sourceResultEventId: expect.stringMatching(/^msg:/),
+          sourceRelayTurnId: expect.any(String),
+        },
+      ]);
+      const [notifyEntry] = await sql<Array<{ content: string }>>`
+        select content from companion_transcript_entries
+        where org_id=${ids.orgA}::uuid and companion_id=${source.companionId}::uuid
+          and event_id=${`delegation:${delegationIds[0]}:response`}
+      `;
+      expect(notifyEntry?.content).toBe("Response 1");
+      const relayTurnId = delivered[1]?.sourceRelayTurnId;
+      if (!relayTurnId) throw new Error("relay return turn is unavailable");
+      const [relayTurn] = await sql<Array<{ delegationReturnId: string | null }>>`
+        select delegation_return_id::text as "delegationReturnId" from companion_turns
+        where org_id=${ids.orgA}::uuid and companion_id=${source.companionId}::uuid
+          and id=${relayTurnId}::uuid
+      `;
+      expect(relayTurn?.delegationReturnId).toBe(delegationIds[1]);
+
+      const [beforeRejectedRow] = await sql<Array<{ count: number }>>`
+        select count(*)::int from companion_turns where companion_id=${targetCompanionId}::uuid
+      `;
+      await expect(asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx`
+          select * from public.companion_api_enqueue_delegation(
+            ${ids.orgA}::uuid,${source.companionId}::uuid,${targetCompanionId}::uuid,
+            ${source.turnId}::uuid,${source.attemptId}::uuid,${randomUUID()}::uuid,
+            'Rejected after revoke',${randomUUID()}::uuid,'notify',
+            'delegation-key-revoked',${"f".repeat(64)}
+          )
+        `,
+      })).rejects.toMatchObject({ code: "42501" });
+      const [afterRejectedRow] = await sql<Array<{ count: number }>>`
+        select count(*)::int from companion_turns where companion_id=${targetCompanionId}::uuid
+      `;
+      expect(afterRejectedRow?.count).toBe(beforeRejectedRow?.count);
+    } finally {
+      await removeCompanion(source.companionId);
+      if (targetCompanionId) await removeCompanion(targetCompanionId);
+    }
   });
 
   it("grants only the narrow SECURITY DEFINER executor functions", async () => {

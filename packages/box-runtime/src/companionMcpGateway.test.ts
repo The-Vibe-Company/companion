@@ -71,6 +71,29 @@ describe("Companion MCP loopback gateway", () => {
     }]);
   });
 
+  it("keeps attached plugin accounts available when the current attempt has no control token", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "companion-mcp-gateway-"));
+    temporaryDirectories.push(directory);
+    const configPath = join(directory, "mcp-gateway.json");
+    writeFileSync(configPath, JSON.stringify({
+      accounts: [{ accountId, credentialGeneration, upstreamUrl, github: false }],
+    }));
+    const gateway = await startCompanionMcpGateway({
+      configPath,
+      apiUrl,
+      brokerToken,
+      fetchImpl: async (rawUrl) => String(rawUrl).startsWith(apiUrl)
+        ? tokenResponse("plugin-access", null)
+        : new Response("plugin-ok", { status: 200 }),
+    });
+    if (!gateway) throw new Error("gateway did not start");
+    gateways.push(gateway);
+
+    await expect(fetch(`${gateway.origin}/mcp/${accountId}`, { method: "POST", body: "{}" })
+      .then(async (response) => await response.text())).resolves.toBe("plugin-ok");
+    expect((await fetch(`${gateway.origin}/control`, { method: "POST", body: "{}" })).status).toBe(404);
+  });
+
   it.each([
     { label: "without expiry", ttlMs: null },
     { label: "for one second", ttlMs: 1_000 },

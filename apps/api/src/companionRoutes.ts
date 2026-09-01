@@ -160,6 +160,7 @@ import {
   companionControlRequestSchema,
   companionRequestRoutineChangeInputSchema,
   companionRequestTriggerChangeInputSchema,
+  redactCompanionControlTrigger,
   companionRoutineDraftSchema,
   companionTriggerDraftSchema,
   createCompanionTriggerInputSchema,
@@ -886,10 +887,6 @@ export function registerCompanionRoutes(
     });
   }
 
-  function redactControlTrigger(trigger: CompanionTrigger): CompanionTrigger {
-    return { ...trigger, webhook_url: null };
-  }
-
   async function applyControlRequest(input: {
     actor: ReturnType<typeof actorFromContext>;
     orgId: string;
@@ -987,7 +984,7 @@ export function registerCompanionRoutes(
         database: input.database,
         webhookBaseUrl: companionWebhookBaseUrl(env),
       });
-      return { trigger: redactControlTrigger(await autoRegisterCompanionTrigger({
+      return { trigger: redactCompanionControlTrigger(await autoRegisterCompanionTrigger({
         orgId: input.orgId,
         companionId: input.companionId,
         trigger: created,
@@ -1024,7 +1021,7 @@ export function registerCompanionRoutes(
         webhookBaseUrl: companionWebhookBaseUrl(env),
         database: input.database,
       });
-      return { trigger: redactControlTrigger(trigger) };
+      return { trigger: redactCompanionControlTrigger(trigger) };
     }
     const registrationChanged = body.action === "update"
       && body.draft !== undefined
@@ -1051,7 +1048,7 @@ export function registerCompanionRoutes(
       database: input.database,
       webhookBaseUrl: companionWebhookBaseUrl(env),
     });
-    return { trigger: redactControlTrigger(await autoRegisterCompanionTrigger({
+    return { trigger: redactCompanionControlTrigger(await autoRegisterCompanionTrigger({
       orgId: input.orgId,
       companionId: input.companionId,
       trigger: updated,

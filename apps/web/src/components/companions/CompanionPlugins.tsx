@@ -481,6 +481,16 @@ export function CompanionPlugins({
       url.searchParams.delete("control_request");
       window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
     }
+    return () => {
+      const current = new URL(window.location.href);
+      const before = current.search;
+      current.searchParams.delete("connect");
+      current.searchParams.delete("control_companion");
+      current.searchParams.delete("control_request");
+      if (current.search !== before) {
+        window.history.replaceState(null, "", `${current.pathname}${current.search}${current.hash}`);
+      }
+    };
   }, []);
 
   const groups = useMemo(() => {
@@ -509,6 +519,11 @@ export function CompanionPlugins({
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   };
 
+  const leavePlugins = () => {
+    closeConnection();
+    onBack();
+  };
+
   const remove = async (account: CompanionPluginAccount) => {
     const confirmed = window.confirm(
       `Disconnect ${providerName(account.provider)} “${account.label}”? `
@@ -534,7 +549,7 @@ export function CompanionPlugins({
     <section className="companions-plugins" aria-labelledby="plugins-title">
       <header className="companions-head companions-plugins__head">
         <div className="companions-plugins__title">
-          <button type="button" className="iconbtn" aria-label="Back to Companions" onClick={onBack}>
+          <button type="button" className="iconbtn" aria-label="Back to Companions" onClick={leavePlugins}>
             <Icon name="arrow-left" size={16} />
           </button>
           <div>

@@ -8,6 +8,7 @@ import {
   COMPANION_BUDGETS_BASE,
   COMPANION_EXEC_TOOL_RUN_TIMEOUT_MS,
   COMPANION_OUTPUT_ATTACHMENT_MAX_COUNT,
+  COMPANION_CONTROL_MCP_SERVER_NAME,
   COMPANION_ROUTINE_MAX_PER_COMPANION,
   COMPANION_ROUTINE_MIN_INTERVAL_MS,
   COMPANION_TOOL_RUN_TIMEOUT_MS,
@@ -154,7 +155,7 @@ export interface CompanionRuntimeStageTiming {
   ok: boolean;
 }
 
-/** Credential-free snapshot Pi reads before proposing settings. Omitted on native_mobile. */
+/** Credential-free snapshot Pi reads before using the unified control surface. */
 export type CompanionConfigCatalog = {
   companion: {
     model_id: string | null;
@@ -340,12 +341,12 @@ const SKILLS_TREE_REVISION_PATH = ".companion/runtime/state/skills-tree.version"
 const SKILLS_TREE_REUSED_MARKER = "companion-skills-tree-reused";
 const SKILLS_SNAPSHOT_CORRUPT_MARKER = "companion-skills-snapshot-corrupt";
 
-/** Skills a given surface actually receives; `native_mobile` gets none. */
+/** Every first-party surface receives the same selected Skills. */
 function injectedSkillsFor(input: {
   clientSurface: CompanionClientSurface;
   skills: CompanionRuntimeSkill[];
 }): CompanionRuntimeSkill[] {
-  return input.clientSurface === "native_mobile" ? [] : input.skills;
+  return input.skills;
 }
 
 function skillsTreeRevisionOf(skills: CompanionRuntimeSkill[]): string {
@@ -1423,6 +1424,19 @@ if [ -d "$parent_memory/daily" ] && [ ! -L "$parent_memory/daily" ]; then
   done
 fi
 ${copies}
+if [ -f "$routine_root/pi/mcp.json" ]; then
+  COMPANION_ROUTINE_MCP="$routine_root/pi/mcp.json" \
+  COMPANION_CONTROL_SERVER=${shellQuote(COMPANION_CONTROL_MCP_SERVER_NAME)} node <<'COMPANION_ROUTINE_MCP'
+const fs = require("node:fs");
+const path = process.env.COMPANION_ROUTINE_MCP;
+const server = process.env.COMPANION_CONTROL_SERVER;
+const config = JSON.parse(fs.readFileSync(path, "utf8"));
+if (config && config.mcpServers && typeof config.mcpServers === "object") {
+  delete config.mcpServers[server];
+}
+fs.writeFileSync(path, JSON.stringify(config, null, 2) + "\\n", { mode: 0o600 });
+COMPANION_ROUTINE_MCP
+fi
 chmod 700 "$routine_root" "$routine_root/bin" "$routine_root/state" "$routine_root/events" "$routine_root/sessions" "$routine_root/logs" "$routine_root/memory" "$routine_root/memory/daily" "$routine_root/memory/recovery" "$routine_root/qmd" "$routine_root/qmd/config" "$routine_root/tmp" "$routine_root/outbox" "$routine_root/pi" "$routine_root/pi/extensions" "$routine_root/tools"
 printf '%s\\n' "$expected_invocation" > "$reservation_file"
 chmod 600 "$reservation_file"
@@ -1555,6 +1569,7 @@ mkdir -p "$routine_root/logs" "$journal" "$routine_root/state" "$routine_root/se
 chmod 700 "$routine_root" "$routine_root/state" "$journal" "$routine_root/sessions" "$routine_root/logs" "$routine_root/memory" "$routine_root/qmd" "$routine_root/qmd/config" "$routine_root/tmp" "$routine_root/outbox"
 rm -f "$socket"
 ${providerEnvironment}
+unset COMPANION_CONTROL_TOKEN
 export PATH="$routine_root/bin:$(dirname "$pi_bin"):$HOME/.companion/bin:$routine_root/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PI_CODING_AGENT_DIR="$routine_root/pi"
 export PI_MEMORY_DIR="$routine_root/memory"
@@ -4080,7 +4095,7 @@ fi`,
         mode: 0o600,
       });
     }
-    if (input.clientSurface !== "native_mobile" && input.configCatalog) {
+    if (input.configCatalog) {
       controlFiles.push({
         path: ".companion/runtime/state/config-catalog.json",
         content: `${JSON.stringify(input.configCatalog)}\n`,

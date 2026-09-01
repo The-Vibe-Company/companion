@@ -160,10 +160,22 @@ function rows<T>(result: Iterable<T>): T[] {
 
 function projectControlRequest(row: ControlRequestRow): CompanionControlRequest {
   return companionControlRequestSchema.parse({
-    ...row,
+    id: row.id,
+    companion_id: row.companion_id,
+    kind: row.kind,
+    action: row.action,
+    summary: row.summary,
+    payload: row.payload,
+    status: row.status,
+    requested_by_id: row.requested_by_id,
+    decided_by_id: row.decided_by_id,
+    result: row.result,
+    error_code: row.error_code,
+    error_message: row.error_message,
     expires_at: iso(row.expires_at),
     decided_at: optionalIso(row.decided_at),
     applied_at: optionalIso(row.applied_at),
+    continuation_turn_id: row.continuation_turn_id,
     created_at: iso(row.created_at),
     updated_at: iso(row.updated_at),
   });
@@ -421,8 +433,11 @@ export async function grantCompanionPeerAccess(input: {
   const [row] = rows<PeerGrantRow>(result);
   if (!row) throw new Error("failed to grant Companion peer access");
   return companionPeerGrantSchema.parse({
-    ...row,
+    id: row.id,
+    source_companion_id: row.source_companion_id,
+    target_companion_id: row.target_companion_id,
     target_name: input.targetName,
+    granted_by_id: row.granted_by_id,
     created_at: iso(row.created_at),
     revoked_at: optionalIso(row.revoked_at),
   });
@@ -463,7 +478,19 @@ interface DelegationRow {
 
 function projectDelegation(row: DelegationRow): CompanionDelegation {
   return companionDelegationSchema.parse({
-    ...row,
+    id: row.id,
+    source_companion_id: row.source_companion_id,
+    source_companion_name: row.source_companion_name,
+    target_companion_id: row.target_companion_id,
+    target_companion_name: row.target_companion_name,
+    source_turn_id: row.source_turn_id,
+    target_turn_id: row.target_turn_id,
+    root_turn_id: row.root_turn_id,
+    parent_delegation_id: row.parent_delegation_id,
+    depth: row.depth,
+    response_mode: row.response_mode,
+    status: row.status,
+    delivery_status: row.delivery_status,
     created_at: iso(row.created_at),
     settled_at: optionalIso(row.settled_at),
   });

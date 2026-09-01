@@ -70,7 +70,7 @@ struct CompanionDecisionCard: View {
                 .font(.body)
                 .foregroundStyle(CompanionIOSTheme.textPrimary)
 
-            if outcome == .allowed, let provider = controlPluginProvider {
+            if canAct, outcome == .allowed, let provider = controlPluginProvider {
                 Button {
                     onOpenPlugins(provider, decision.requestID)
                 } label: {
