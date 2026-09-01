@@ -427,7 +427,8 @@ export class MemoryRuntimeStore implements RuntimeStore {
     if (input.boxId) this.authorization.boxId = input.boxId;
     if (input.boxState) this.authorization.boxState = input.boxState;
     if (input.piState) this.authorization.piState = input.piState;
-    if (input.piInvocationId) this.authorization.piInvocationId = input.piInvocationId;
+    if (input.piState === "absent") this.authorization.piInvocationId = null;
+    else if (input.piInvocationId) this.authorization.piInvocationId = input.piInvocationId;
     if (input.diskLayoutVersion !== undefined) {
       this.authorization.diskLayoutVersion = input.diskLayoutVersion;
     }

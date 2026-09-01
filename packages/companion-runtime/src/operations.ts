@@ -291,6 +291,39 @@ async function boxStatus(context: OperationContext, boxId: string): Promise<Gene
   }
 }
 
+async function observeKnownBoxState(
+  context: OperationContext,
+  authorization: RuntimeAuthorization,
+): Promise<GenerationBox["state"]> {
+  if (!authorization.boxId) return "absent";
+  const state = await boxStatus(context, authorization.boxId);
+  await observe(context, {
+    boxId: authorization.boxId,
+    boxState: state,
+    ...((state === "absent" || state === "archived") ? { piState: "absent" as const } : {}),
+  });
+  return state;
+}
+
+async function completeInterruptedRecoveryWithoutLiveBox(
+  context: OperationContext,
+  authorization: RuntimeAuthorization = requiredAuthorization(context.session),
+): Promise<boolean> {
+  if (context.claim.operationKind !== "restart_pi" || context.claim.turnId === null) return false;
+  if (
+    authorization.turnId !== context.claim.turnId
+    || authorization.turnStatus !== "interrupted"
+    || !["pending", "restarting_pi", "starting_pi", "pi_observed"].includes(
+      authorization.workCheckpoint,
+    )
+  ) return false;
+
+  const state = await observeKnownBoxState(context, authorization);
+  if (state !== "absent" && state !== "archived") return false;
+  await context.session.checkpoint({ nextCheckpoint: "pi_ready" });
+  return true;
+}
+
 function isReady(state: GenerationBox["state"]): boolean {
   return state === "ready" || state === "idle" || state === "running";
 }
@@ -741,6 +774,10 @@ async function handleStop(context: OperationContext): Promise<RuntimeWorkDisposi
 async function handleRestartPi(context: OperationContext): Promise<RuntimeWorkDisposition> {
   for (;;) {
     const authorization = await context.session.reauthorize();
+    if (
+      authorization.workCheckpoint !== "pending"
+      && await completeInterruptedRecoveryWithoutLiveBox(context, authorization)
+    ) return runtimeSucceeded;
     switch (authorization.workCheckpoint) {
       case "pending":
         // An interrupted occurrence can outlive the Box or its durable identity. There is no Pi
@@ -914,40 +951,54 @@ async function handleRestartBox(context: OperationContext): Promise<RuntimeWorkD
   for (;;) {
     const authorization = await context.session.reauthorize();
     switch (authorization.workCheckpoint) {
-      case "pending":
-        await terminateCapturedRoutineForLifecycle(context, authorization);
-        await lifecycle(context, "stop_pi", async ({ signal }) =>
-          await context.deps.pi.stopPiDaemon({ boxId: requiredBoxId(context.session), signal }));
-        await applyCapturedSkillUpdate(context);
+      case "pending": {
+        const state = await observeKnownBoxState(context, authorization);
+        if (state === "absent") {
+          throw new RuntimeInvariantError({
+            code: "box_unavailable",
+            message: "The Companion Box is unavailable for restart.",
+            action: "restart_box",
+          });
+        }
+        if (state !== "archived") {
+          await terminateCapturedRoutineForLifecycle(context, authorization);
+          await lifecycle(context, "stop_pi", async ({ signal }) =>
+            await context.deps.pi.stopPiDaemon({ boxId: requiredBoxId(context.session), signal }));
+          await applyCapturedSkillUpdate(context);
+        }
         await context.session.checkpoint({ nextCheckpoint: "skills_updated" });
         break;
+      }
       case "skills_updated":
         await context.session.checkpoint({ nextCheckpoint: "restarting_box" });
         break;
-      case "restarting_box":
-        await lifecycle(context, "stop_box", async ({ signal }) =>
-          await context.deps.box.stopExistingBox({ boxId: requiredBoxId(context.session), signal }));
-        for (;;) {
-          requirePollingBudget(
-            context,
-            "box_restart_deadline_exceeded",
-            "The Companion Box did not archive before restart deadline.",
-          );
-          const state = await boxStatus(context, requiredBoxId(context.session));
-          if (state === "archived") break;
-          if (state === "absent" || state === "error") {
-            throw new RuntimeInvariantError({
-              code: "box_restart_failed",
-              message: "The Companion Box could not be archived for restart.",
-              action: "restart_box",
-            });
+      case "restarting_box": {
+        if (authorization.boxState !== "archived") {
+          await lifecycle(context, "stop_box", async ({ signal }) =>
+            await context.deps.box.stopExistingBox({ boxId: requiredBoxId(context.session), signal }));
+          for (;;) {
+            requirePollingBudget(
+              context,
+              "box_restart_deadline_exceeded",
+              "The Companion Box did not archive before restart deadline.",
+            );
+            const state = await boxStatus(context, requiredBoxId(context.session));
+            if (state === "archived") break;
+            if (state === "absent" || state === "error") {
+              throw new RuntimeInvariantError({
+                code: "box_restart_failed",
+                message: "The Companion Box could not be archived for restart.",
+                action: "restart_box",
+              });
+            }
+            await context.deps.clock.sleep(PROVIDER_POLL_INTERVAL_MS, context.session.signal);
           }
-          await context.deps.clock.sleep(PROVIDER_POLL_INTERVAL_MS, context.session.signal);
         }
         await lifecycle(context, "resume_box", async ({ signal }) =>
           await context.deps.box.resumeExistingBox({ boxId: requiredBoxId(context.session), signal }));
         await context.session.checkpoint({ nextCheckpoint: "waiting_ready" });
         break;
+      }
       case "waiting_ready":
         await waitForReadyBox(context);
         break;
@@ -955,6 +1006,7 @@ async function handleRestartBox(context: OperationContext): Promise<RuntimeWorkD
         await context.session.checkpoint({ nextCheckpoint: "installing_layout" });
         break;
       case "installing_layout":
+        await applyCapturedSkillUpdate(context);
         await observeStagedResources(
           context,
           await stageCapturedResources(context, { preserveInstalledSkills: true }),
@@ -1201,8 +1253,10 @@ export async function handleOperation(
       return await handleStart(context);
     case "stop":
       return await handleStop(context);
-    case "restart_pi":
+    case "restart_pi": {
+      if (await completeInterruptedRecoveryWithoutLiveBox(context)) return runtimeSucceeded;
       return await handleIsolatedRoutineRetry(context) ?? await handleRestartPi(context);
+    }
     case "restart_box":
       return await handleRestartBox(context);
     case "apply_settings":

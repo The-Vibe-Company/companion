@@ -685,8 +685,8 @@ describe("runtime lifecycle operations", () => {
 
     expect(result.outcome).toBe("succeeded");
     expect(effects.slice(0, 5)).toEqual([
-      "stop",
       "status:archiving",
+      "stop",
       "status:archived",
       "resume",
       "status:ready",
@@ -714,7 +714,7 @@ describe("runtime lifecycle operations", () => {
     };
     ports.pi.stopPiDaemon = async () => { effects.push("stop-main-pi"); };
     ports.box.stopExistingBox = async () => { effects.push("stop-box"); };
-    const states: Array<"archived" | "ready"> = ["archived", "ready"];
+    const states: Array<"archived" | "ready"> = ["ready", "archived", "ready"];
     ports.box.getStatus = async () => ({ state: states.shift() ?? "ready" });
     ports.box.resumeExistingBox = async () => { effects.push("resume-box"); };
     ports.pi.restartPiDaemon = async () => ({ state: "idle", invocationId: PI_INVOCATION_ID });
@@ -825,6 +825,161 @@ describe("runtime lifecycle operations", () => {
 
     expect(result.outcome).toBe("succeeded");
     expect(piCalls).toBe(0);
+    expect(store.authorization.workCheckpoint).toBe("pi_ready");
+  });
+
+  it("re-observes an archived Box before cleaning up an interrupted main occurrence", async () => {
+    const claim = operationClaim({
+      operationKind: "restart_pi",
+      turnId: TURN_ID,
+      turnStatus: "interrupted",
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: operationAuthorization(claim, {
+        boxId: BOX_ID,
+        boxState: "idle",
+        piState: "idle",
+        piInvocationId: "stale-pi-invocation",
+      }),
+    });
+    const ports = fakePorts(store);
+    let piCalls = 0;
+    ports.box.getStatus = async () => ({ state: "archived" });
+    ports.pi.stopPiDaemon = async () => { piCalls += 1; };
+    ports.pi.restartPiDaemon = async () => {
+      piCalls += 1;
+      return { state: "idle", invocationId: PI_INVOCATION_ID };
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(piCalls).toBe(0);
+    expect(store.observations).toContainEqual(expect.objectContaining({
+      boxId: BOX_ID,
+      boxState: "archived",
+    }));
+    expect(store.authorization.boxState).toBe("archived");
+    expect(store.authorization.piState).toBe("absent");
+    expect(store.authorization.piInvocationId).toBeNull();
+    expect(store.authorization.workCheckpoint).toBe("pi_ready");
+  });
+
+  it("re-observes an archived Box before cleaning up an interrupted isolated routine", async () => {
+    const invocationId = `routine:${TURN_ID}:dispatch-v2:stale`;
+    const claim = operationClaim({
+      operationKind: "restart_pi",
+      turnId: TURN_ID,
+      turnStatus: "interrupted",
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: operationAuthorization(claim, {
+        boxId: BOX_ID,
+        boxState: "idle",
+        piState: "running",
+        piInvocationId: "main-pi-invocation",
+        commandPiInvocationId: invocationId,
+      }),
+      material: attemptMaterial({
+        routineId: ROUTINE_SNAPSHOT_ID,
+        routineName: "Archived routine",
+        routineIsolated: true,
+      }),
+    });
+    const ports = fakePorts(store);
+    let mainPiCalls = 0;
+    ports.box.getStatus = async () => ({ state: "archived" });
+    ports.pi.stopPiDaemon = async () => { mainPiCalls += 1; };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(mainPiCalls).toBe(0);
+    expect(ports.routineTerminates).toEqual([]);
+    expect(store.observations).toContainEqual(expect.objectContaining({
+      boxId: BOX_ID,
+      boxState: "archived",
+    }));
+    expect(store.authorization.boxState).toBe("archived");
+    expect(store.authorization.piState).toBe("absent");
+    expect(store.authorization.piInvocationId).toBeNull();
+    expect(store.authorization.workCheckpoint).toBe("pi_ready");
+  });
+
+  it("re-observes an archived Box after an interrupted recovery reached restarting_pi", async () => {
+    const claim = operationClaim({
+      operationKind: "restart_pi",
+      checkpoint: "restarting_pi",
+      checkpointSequence: 1n,
+      turnId: TURN_ID,
+      turnStatus: "interrupted",
+    });
+    const store = new MemoryRuntimeStore({
+      authorization: operationAuthorization(claim, {
+        boxId: BOX_ID,
+        boxState: "idle",
+        piState: "absent",
+        piInvocationId: null,
+      }),
+    });
+    const ports = fakePorts(store);
+    let piCalls = 0;
+    ports.box.getStatus = async () => ({ state: "archived" });
+    ports.pi.restartPiDaemon = async () => {
+      piCalls += 1;
+      return { state: "idle", invocationId: PI_INVOCATION_ID };
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(piCalls).toBe(0);
+    expect(store.authorization.boxState).toBe("archived");
+    expect(store.authorization.workCheckpoint).toBe("pi_ready");
+  });
+
+  it("resumes an already archived Box during an explicit full Box restart", async () => {
+    const claim = operationClaim({ operationKind: "restart_box", targetSkillsRevision: 2 });
+    const store = new MemoryRuntimeStore({
+      authorization: operationAuthorization(claim, {
+        boxId: BOX_ID,
+        boxState: "idle",
+        piState: "idle",
+        piInvocationId: "stale-pi-invocation",
+        appliedSkillsRevision: 1,
+        skillsRevision: 2,
+      }),
+    });
+    const ports = fakePorts(store);
+    const effects: string[] = [];
+    const states: Array<"archived" | "ready"> = ["archived", "ready"];
+    ports.box.getStatus = async () => ({ state: states.shift() ?? "ready" });
+    ports.box.stopExistingBox = async () => { effects.push("stop-box"); };
+    ports.box.resumeExistingBox = async () => { effects.push("resume-box"); };
+    ports.pi.stopPiDaemon = async () => { effects.push("stop-pi"); };
+    ports.resourceStager.stageSkillTree = async (input) => {
+      effects.push("update-skills");
+      return {
+        appliedSkillsRevision: input.material.targetSkillsRevision,
+        skillsDigest: "a".repeat(64),
+        skillBytesTransferred: 0,
+      };
+    };
+    ports.pi.restartPiDaemon = async () => {
+      effects.push("restart-pi");
+      return { state: "idle", invocationId: PI_INVOCATION_ID };
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("succeeded");
+    expect(effects).toEqual(["resume-box", "update-skills", "restart-pi"]);
+    expect(store.observations).toContainEqual(expect.objectContaining({
+      boxId: BOX_ID,
+      boxState: "archived",
+    }));
+    expect(store.authorization.boxState).toBe("ready");
+    expect(store.authorization.appliedSkillsRevision).toBe(2);
     expect(store.authorization.workCheckpoint).toBe("pi_ready");
   });
 

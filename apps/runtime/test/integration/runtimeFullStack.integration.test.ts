@@ -713,6 +713,20 @@ async function boxControl<T>(path: string, init: RequestInit = {}): Promise<T> {
   return await response.json() as T;
 }
 
+async function boxProvider<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${boxBase}${path}`, {
+    ...init,
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${boxApiKey}`,
+      ...init.headers,
+    },
+    signal: init.signal ?? AbortSignal.timeout(5_000),
+  });
+  if (!response.ok) throw new Error(`Box simulator provider ${path} returned ${response.status}`);
+  return await response.json() as T;
+}
+
 async function simulatorState(): Promise<BoxSimState> {
   const result = await boxControl<{ state: BoxSimState }>("/state");
   return result.state;
@@ -1331,6 +1345,155 @@ describe("Runtime v2 real-process control plane", () => {
     const second = await waitForTurn(ordered[1]!.turn.id, "succeeded", 30_000);
     expect(first.queueSequence).toBeLessThan(second.queueSequence);
     expect(first.settledAt!.getTime()).toBeLessThanOrEqual(second.startedAt!.getTime());
+
+    // Reproduce the production divergence: the provider archives the Box while PostgreSQL still
+    // projects it as idle. A pending protocol-5 recovery must re-observe the provider, prove that
+    // the interrupted Pi invocation no longer exists, and release the lane without a Pi command.
+    await stopProcess(runtimeProcess, "SIGKILL");
+    await databaseSql!`
+      update companion_runtime_instances
+      set box_state = 'idle',
+          health_due_at = clock_timestamp() + interval '1 hour',
+          updated_at = clock_timestamp()
+      where org_id = ${orgId}::uuid and companion_id = ${companionId}::uuid
+    `;
+    await boxProvider(`/boxes/${encodeURIComponent(box.id)}/stop`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    await boxControl(`/boxes/${encodeURIComponent(box.id)}/tick`, {
+      method: "POST",
+      body: JSON.stringify({ count: 1 }),
+    });
+    expect(boxById(await simulatorState(), box.id)?.state).toBe("archived");
+
+    const [staleInstance] = await databaseSql!<Array<{ boxState: string }>>`
+      select box_state as "boxState"
+      from companion_runtime_instances
+      where org_id = ${orgId}::uuid and companion_id = ${companionId}::uuid
+    `;
+    expect(staleInstance?.boxState).toBe("idle");
+
+    const interrupted = await apiJson<{ turn: { id: string } }>(
+      `/v1/companions/${companionId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          client_message_id: randomUUID(),
+          client_surface: "web",
+          content: "Recover the stale archived Box projection.",
+        }),
+      },
+      202,
+    );
+    await databaseSql!`
+      update companion_turns
+      set status = 'interrupted',
+          absolute_deadline_at = clock_timestamp() + interval '2 hours',
+          state_changed_at = clock_timestamp(),
+          settled_at = clock_timestamp(),
+          last_error_code = 'turn_stalled',
+          last_error_message = 'The interrupted invocation requires automatic cleanup.',
+          last_error_action = 'retry',
+          updated_at = clock_timestamp()
+      where org_id = ${orgId}::uuid
+        and companion_id = ${companionId}::uuid
+        and id = ${interrupted.turn.id}::uuid
+    `;
+    const [pendingRecovery] = await databaseSql!<Array<{ id: string }>>`
+      select id::text
+      from companion_operations
+      where org_id = ${orgId}::uuid
+        and companion_id = ${companionId}::uuid
+        and source_turn_id = ${interrupted.turn.id}::uuid
+        and kind = 'restart_pi'
+        and trigger = 'recovery'
+    `;
+    if (!pendingRecovery) throw new Error("interrupted turn did not enqueue protocol-5 recovery");
+    await databaseSql!`
+      update companion_operations
+      set checkpoint = 'restarting_pi',
+          checkpoint_sequence = checkpoint_sequence + 1,
+          updated_at = clock_timestamp()
+      where id = ${pendingRecovery.id}::uuid
+    `;
+    const commandsBeforeRecovery = (await simulatorState()).requests.filter((request) =>
+      request.surface === "box"
+      && request.method === "POST"
+      && request.path === `/boxes/${box.id}/commands`).length;
+
+    runtimeProcess = startRuntime(randomUUID());
+    await waitForHttp(`${runtimeBase}/healthz`, runtimeProcess);
+    await waitForOperation(pendingRecovery.id, 30_000);
+    const [reconciled] = await databaseSql!<Array<{
+      boxState: string;
+      piState: string;
+      piInvocationId: string | null;
+      resolution: string | null;
+      operationStatus: string;
+    }>>`
+      select instance.box_state as "boxState",
+        instance.pi_state as "piState",
+        instance.pi_invocation_id as "piInvocationId",
+        turn_row.resolution,
+        operation.status::text as "operationStatus"
+      from companion_runtime_instances instance
+      join companion_turns turn_row
+        on turn_row.org_id = instance.org_id and turn_row.companion_id = instance.companion_id
+      join companion_operations operation
+        on operation.org_id = turn_row.org_id
+          and operation.companion_id = turn_row.companion_id
+          and operation.source_turn_id = turn_row.id
+      where turn_row.id = ${interrupted.turn.id}::uuid
+        and operation.id = ${pendingRecovery.id}::uuid
+    `;
+    expect(reconciled).toEqual({
+      boxState: "archived",
+      piState: "absent",
+      piInvocationId: null,
+      resolution: "auto_abandoned",
+      operationStatus: "succeeded",
+    });
+    const commandsAfterRecovery = (await simulatorState()).requests.filter((request) =>
+      request.surface === "box"
+      && request.method === "POST"
+      && request.path === `/boxes/${box.id}/commands`).length;
+    expect(commandsAfterRecovery).toBe(commandsBeforeRecovery);
+    await stopProcess(runtimeProcess, "SIGTERM");
+
+    const resumed = await apiJson<{ turn: { id: string } }>(
+      `/v1/companions/${companionId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          client_message_id: randomUUID(),
+          client_surface: "web",
+          content: "Resume the archived Box and dispatch this message.",
+        }),
+      },
+      202,
+    );
+    const [resumeStart] = await databaseSql!<Array<{ id: string }>>`
+      select id::text
+      from companion_operations
+      where source_turn_id = ${resumed.turn.id}::uuid and kind = 'start'
+    `;
+    if (!resumeStart) throw new Error("archived Box send did not enqueue its ordinary Start");
+    const resumeStartId = resumeStart.id;
+    runtimeProcess = startRuntime(randomUUID());
+    await waitForHttp(`${runtimeBase}/healthz`, runtimeProcess);
+    await waitForOperation(resumeStartId, 30_000);
+    await waitForTurn(resumed.turn.id, "succeeded", 30_000);
+    const [resumedAttempt] = await databaseSql!<Array<{
+      dispatchState: string;
+      dispatchCount: number;
+    }>>`
+      select dispatch_state as "dispatchState", dispatch_count as "dispatchCount"
+      from companion_turn_attempts
+      where turn_id = ${resumed.turn.id}::uuid
+    `;
+    expect(resumedAttempt).toEqual({ dispatchState: "accepted", dispatchCount: 1 });
+    expect(boxById(await simulatorState(), box.id)?.state).toMatch(/ready|idle|running/);
 
     const stop = await apiJson<{ operation: { id: string } }>(
       `/v1/companions/${companionId}/runtime/stop`,

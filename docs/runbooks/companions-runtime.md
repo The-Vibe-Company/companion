@@ -295,6 +295,9 @@ write/ACK outcome is ambiguous, warn that earlier external effects may have succ
 internal `restart_pi` recovery is `pending` or `running`. It must never replay the prompt. Cleanup
 retries automatically with a backoff capped at five minutes, preserves the original error, and ends
 the occurrence as `auto_abandoned`; never manually mark it queued or create a replacement attempt.
+Recovery re-observes the known Box before Pi cleanup. A provider result of `absent` or `archived`
+is valid negative proof for both main and isolated-routine lanes: the projected Box state must be
+updated, no Pi command is sent, and the next ordinary send—not recovery—owns any archived-Box resume.
 If recovery age keeps growing, inspect aggregate `runtime.recovery.metrics`, the exact lane lease,
 and the expurgated operation code. A routine recovery must not prevent a new main-chat claim.
 

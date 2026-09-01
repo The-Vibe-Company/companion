@@ -161,9 +161,11 @@ queued → starting → dispatching → running ↔ needs_input
 
 Only one attempt is active per execution lane. One ordinary main attempt and one isolated routine
 attempt may run concurrently; later turns remain ordered within their lane. An interrupted turn
-creates one idempotent lane-local `restart_pi` recovery. Runtime terminates the exact invocation,
-marks the occurrence `auto_abandoned`, and releases the lane without replaying its prompt; cleanup
-retries with a maximum five-minute backoff. Settings revisions accepted during a turn apply after
+creates one idempotent lane-local `restart_pi` recovery. Runtime first re-observes the known Box;
+an absent or provider-archived Box proves the exact invocation no longer exists, while a live Box
+requires exact invocation termination. Runtime then marks the occurrence `auto_abandoned` and
+releases the lane without replaying its prompt; cleanup retries with a maximum five-minute backoff.
+Settings revisions accepted during a turn apply after
 the routine lane is quiescent and before the next main turn. On a warm Box, configuration is published as
 applied only after runtime stages the exact snapshot, restarts Pi, and observes a different idle Pi
 invocation; takeover repeats those idempotent steps if their final observation was lost.
@@ -637,7 +639,8 @@ memory-only, each reconnect remints it, and Viewer or asleep-Box states expose n
 
 Sending is the sole normal wake path. There is no Wake button or first-keystroke prewarm. Successful
 Pi acceptance refreshes Box TTL to six hours. Automatic recovery may recycle Pi only. Full Box
-restart requires explicit confirmation, and permanent delete is cleanup rather than healing.
+restart requires explicit confirmation; it re-observes the known Box and, if already archived,
+skips impossible Pi stop commands before resuming it. Permanent delete is cleanup rather than healing.
 Before a new prompt write intent, a stale active-attempt binding or unacknowledged broker tail causes
 one Pi-only recycle and a fresh idle proof; failure to obtain that proof remains an actionable
 `restart_pi` error and no prompt is dispatched.

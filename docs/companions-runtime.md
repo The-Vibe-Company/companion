@@ -288,12 +288,17 @@ throughout the rolling deploy.
 Stop snapshots/archives the Box. A later send queues wake after stop reaches a safe archive
 checkpoint; it does not race Pi start against an in-flight archive. Restart Pi keeps the Box and
 replaces only the daemon invocation. Full Box restart is never automatic and requires explicit
-Owner/Editor confirmation because it interrupts all Box work. Permanent delete is Owner-only
-cleanup, never healing; it may preempt an active or interrupted isolated routine, and runtime
-terminates that exact run-scoped Pi invocation before issuing provider DELETE.
+Owner/Editor confirmation because it interrupts all Box work. It re-observes the known Box before
+any Pi stop; if the provider already reports `archived`, runtime skips the impossible Pi commands
+and continues the explicit resume path. Permanent delete is Owner-only cleanup, never healing; it
+may preempt an active or interrupted isolated routine, and runtime terminates that exact run-scoped
+Pi invocation before issuing provider DELETE.
 
 Automatic recovery may recycle Pi for a proven daemon/protocol failure or an interrupted
-occurrence. Immediately before a new
+occurrence. Before interrupted-turn cleanup, runtime re-observes the known Box and persists that
+provider state. `absent` or `archived` is sufficient negative proof that the captured invocation no
+longer exists, including for an isolated routine; runtime does not resume the Box during recovery.
+Immediately before a new
 prompt write intent, this includes one recycle when the broker still reports an active attempt or an
 unacknowledged event tail left by earlier terminal work; runtime re-reads idle state before dispatch
 and otherwise fails with `restart_pi`. It may not invoke Full Box, replace a merely unhealthy Box,
@@ -533,10 +538,13 @@ Dispatch has three relevant outcomes:
 The ambiguous case is never automatically replayed, including after lease takeover, Pi restart,
 runtime restart, or a new user message. In the interruption transaction, protocol 5 creates one
 idempotent internal `restart_pi` operation with `trigger = recovery` on the affected lane. Runtime
-terminates the captured Pi invocation; an absent Box is a durable negative cleanup proof. Success
-preserves the original error, records `resolution = auto_abandoned`, and releases the lane. Cleanup
-failure returns the same operation to `pending` with exponential backoff capped at five minutes, so
-there is no terminal state requiring human intervention. No cleanup path dispatches the old prompt.
+re-observes and persists the known Box state before Pi cleanup. An absent or provider-archived Box
+is durable negative proof that the captured invocation no longer exists, including on the isolated
+routine lane; otherwise runtime terminates that exact invocation. Success preserves the original
+error, records `resolution = auto_abandoned`, and releases the lane. Cleanup failure returns the
+same operation to `pending` with exponential backoff capped at five minutes, so there is no terminal
+state requiring human intervention. Recovery never resumes a Box and no cleanup path dispatches the
+old prompt; the next ordinary send owns the normal archived-Box resume path.
 
 `POST /v1/companions/:id/turns/:turnId/retry` remains available during rolling deploys. Its unique
 `retry_id` is accepted for wire compatibility, but the function only returns or re-enqueues the same

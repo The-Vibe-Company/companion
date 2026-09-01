@@ -1072,6 +1072,13 @@
       "when": 1792948000000,
       "tag": "0152_companion_thread_incremental_projection",
       "breakpoints": true
+    },
+    {
+      "idx": 153,
+      "version": "7",
+      "when": 1793034400000,
+      "tag": "0153_companion_archived_box_recovery",
+      "breakpoints": true
     }
   ]
 }
