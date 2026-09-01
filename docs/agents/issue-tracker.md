@@ -7,39 +7,50 @@ Issues and specs for this repo live in **Linear**, not GitHub Issues. Skills suc
 ## Access
 
 - Endpoint: `https://api.linear.app/graphql`
-- Auth: personal API key from the `LINEAR_API_KEY` environment variable, sent raw in the
-  `Authorization` header (no `Bearer` prefix).
-- The key is The Vibe Company's Linear key, held as a Companion secret. If the variable is not
-  already exported, source the Companion projection before calling the API:
+- Auth: prefer the personal API key from `LINEAR_TVC_API_KEY` when it is available, otherwise
+  fall back to `LINEAR_API_KEY`. Send the selected key raw in the `Authorization` header (no
+  `Bearer` prefix). This precedence applies to every Linear read and write for Companion.
+- The fallback key is The Vibe Company's Linear key, held as a Companion secret. If neither
+  variable is already exported, source the Companion projection before calling the API:
   `set -a; . ~/.companion/secrets/<workspace-id>/_manual/linear/.env; set +a`
   (the projection is written by `sync_secrets.py manual linear <secret-id> LINEAR_API_KEY --confirm`
   from the `companion` skill; never print or copy its contents).
-- If `LINEAR_API_KEY` is missing or the request returns `401`, **stop** and tell the user the
-  exact setup requirement. Never draft or "remember" issues instead of filing them.
+- If both `LINEAR_TVC_API_KEY` and `LINEAR_API_KEY` are missing, or the request returns `401`,
+  **stop** and tell the user the exact setup requirement. Never draft or "remember" issues instead
+  of filing them.
 
 Helper used throughout this file (`lq` = "linear query"):
 
 ```bash
-lq() { local vars="${2:-"{}"}"; curl -sS https://api.linear.app/graphql \
-  -H "Content-Type: application/json" -H "Authorization: $LINEAR_API_KEY" \
-  --data "$(jq -cn --arg q "$1" --argjson v "$vars" '{query:$q, variables:$v}')"; }
+lq() {
+  local query="$1" vars="${2:-"{}"}"
+  local linear_key="${LINEAR_TVC_API_KEY:-${LINEAR_API_KEY:-}}"
+  if [[ -z "$linear_key" ]]; then
+    printf '%s\n' 'Linear auth unavailable: set LINEAR_TVC_API_KEY or LINEAR_API_KEY.' >&2
+    return 1
+  fi
+  curl -sS https://api.linear.app/graphql \
+    -H "Content-Type: application/json" -H "Authorization: $linear_key" \
+    --data "$(jq -cn --arg q "$query" --argjson v "$vars" '{query:$q, variables:$v}')"
+}
 ```
 
 ## Scope: team and project
 
-**Confirmed team key:** _not yet confirmed_ · **Confirmed project:** _none_
+**Confirmed team key:** _not yet confirmed_ · **Confirmed project:** `Companions`
 
-The Companion team and project have not been pinned yet. On the **first Linear write in a
-session**, discover the candidates and confirm the target with the user before creating anything:
+The Companion team has not been pinned yet. On the **first Linear write in a session**, discover
+the team candidates and resolve the confirmed `Companions` project, then confirm the target team
+with the user before creating anything:
 
 ```bash
 lq 'query { teams { nodes { id key name } } }' | jq '.data.teams.nodes'
 lq 'query { projects(first: 50) { nodes { id name state teams { nodes { key } } } } }' | jq '.data.projects.nodes'
 ```
 
-Once the user confirms, replace the line above with the real key and project name so later
-sessions skip the discovery step. Reads may proceed without confirmation when the user has named
-the team or issue identifier explicitly.
+Once the user confirms, replace the team placeholder above with the real key so later sessions skip
+team discovery. Keep `Companions` as the project. Reads may proceed without confirmation when the
+user has named the team or issue identifier explicitly.
 
 ## Conventions
 

@@ -192,9 +192,9 @@ its full real-Linux acceptance is slow; run it locally as the final validation a
 
 ### Issue tracker
 
-Issues live in Linear, reached through the GraphQL API with `LINEAR_API_KEY`; the team and project
-are confirmed with the user on first use. GitHub holds only pull requests. See
-`docs/agents/issue-tracker.md`.
+Issues live in Linear, reached through the GraphQL API with `LINEAR_TVC_API_KEY` when available and
+`LINEAR_API_KEY` otherwise; the project is `Companions`, and the team is confirmed with the user on
+first write. GitHub holds only pull requests. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
