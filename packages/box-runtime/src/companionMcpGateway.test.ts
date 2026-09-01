@@ -21,7 +21,12 @@ const brokerRequestSchema = z.object({
 }).strict();
 const mcpMethodSchema = z.object({ method: z.string().optional() }).passthrough();
 const controlToolListSchema = z.object({
-  result: z.object({ tools: z.array(z.object({ name: z.string() })) }),
+  result: z.object({
+    tools: z.array(z.object({
+      name: z.string(),
+      inputSchema: z.object({ type: z.literal("object") }).passthrough(),
+    })),
+  }),
 });
 const toolsListResponseSchema = z.object({
   result: z.object({ tools: z.array(z.object({ name: z.string() }).passthrough()) }).passthrough(),

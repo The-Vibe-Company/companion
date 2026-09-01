@@ -157,6 +157,7 @@ export const COMPANION_CONTROL_MCP_TOOLS: readonly CompanionControlMcpToolDefini
     name: "companion_request_routine_change",
     description: "Request human approval to create, update, enable, disable, or delete a routine.",
     inputSchema: {
+      type: "object",
       oneOf: [
         { type: "object", properties: { action: { enum: ["create"] }, draft: routineCreateDraft }, required: ["action", "draft"], additionalProperties: false },
         { type: "object", properties: { action: { enum: ["update"] }, routine_id: uuid, draft: routineUpdateDraft }, required: ["action", "routine_id", "draft"], additionalProperties: false },
@@ -181,6 +182,7 @@ export const COMPANION_CONTROL_MCP_TOOLS: readonly CompanionControlMcpToolDefini
     name: "companion_request_trigger_change",
     description: "Request human approval to create, update, enable, disable, delete, or rotate a trigger secret.",
     inputSchema: {
+      type: "object",
       oneOf: [
         { type: "object", properties: { action: { enum: ["create"] }, draft: triggerCreateDraft }, required: ["action", "draft"], additionalProperties: false },
         { type: "object", properties: { action: { enum: ["update"] }, trigger_id: uuid, draft: triggerUpdateDraft }, required: ["action", "trigger_id", "draft"], additionalProperties: false },
