@@ -180,6 +180,8 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
     "2 hours 5 minutes",
     "3 minutes",
   ],
+  // Enqueue-time observation grace + materialMinTtlMs, rechecked before a warm attempt claim.
+  companion_runtime_main_turn_material_ready: ["2 minutes", "2 hours 5 minutes"],
   // Enqueue-time material grace + materialMinTtlMs.
   companion_api_enqueue_turn: ["2 minutes", "2 hours 5 minutes"],
   // materialMinTtlMs + snapshot retention.
