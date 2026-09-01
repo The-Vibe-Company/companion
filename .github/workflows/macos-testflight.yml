@@ -60,7 +60,7 @@ jobs:
     if: needs.release-scope.outputs.macos == 'true'
     runs-on: macos-26
     environment: macos-testflight
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -111,11 +111,12 @@ jobs:
           security set-keychain-settings -lut 21600 "$keychain_path"
           security unlock-keychain -p "$keychain_password" "$keychain_path"
           security import "$distribution_path" -P "$MACOS_DISTRIBUTION_P12_PASSWORD" -t cert -f pkcs12 -k "$keychain_path" -T /usr/bin/codesign -T /usr/bin/security
-          security import "$installer_path" -P "$MACOS_INSTALLER_P12_PASSWORD" -t cert -f pkcs12 -k "$keychain_path" -T /usr/bin/codesign -T /usr/bin/security
+          security import "$installer_path" -P "$MACOS_INSTALLER_P12_PASSWORD" -t cert -f pkcs12 -k "$keychain_path" -T /usr/bin/codesign -T /usr/bin/productbuild -T /usr/bin/productsign -T /usr/bin/security
           security set-key-partition-list -S apple-tool:,apple: -k "$keychain_password" "$keychain_path"
           security list-keychains -d user -s "$keychain_path"
 
       - name: Archive and upload to App Store Connect
+        id: release
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -142,7 +143,7 @@ jobs:
           fi
 
       - name: Upload release diagnostics
-        if: failure()
+        if: always() && steps.release.outcome != 'success'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: macos-testflight-diagnostics

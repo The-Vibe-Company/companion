@@ -34,7 +34,17 @@ function commitFixture(cwd, path, contents, message) {
   mkdirSync(dirname(absolutePath), { recursive: true });
   writeFileSync(absolutePath, contents);
   git(cwd, ["add", "--", path]);
-  git(cwd, ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", message]);
+  git(cwd, [
+    "-c",
+    "user.name=Fixture",
+    "-c",
+    "user.email=fixture@example.invalid",
+    "-c",
+    "commit.gpgsign=false",
+    "commit",
+    "-m",
+    message,
+  ]);
   return git(cwd, ["rev-parse", "HEAD"]);
 }
 
@@ -171,6 +181,9 @@ test("the macOS TestFlight workflow releases only a CI-approved main commit", ()
   assert.match(workflow, /MACOS_DISTRIBUTION_P12: \$\{\{ secrets\.MACOS_DISTRIBUTION_P12 \}\}/);
   assert.match(workflow, /MACOS_INSTALLER_P12: \$\{\{ secrets\.MACOS_INSTALLER_P12 \}\}/);
   assert.match(workflow, /MACOS_PROVISIONING_PROFILE: \$\{\{ secrets\.MACOS_PROVISIONING_PROFILE \}\}/);
+  assert.match(workflow, /-T \/usr\/bin\/productbuild -T \/usr\/bin\/productsign/);
+  assert.match(workflow, /id: release/);
+  assert.match(workflow, /if: always\(\) && steps\.release\.outcome != 'success'/);
   assert.match(workflow, /bash apps\/macos\/scripts\/release\.sh/);
   assert.doesNotMatch(workflow, /pull_request:/);
 });
