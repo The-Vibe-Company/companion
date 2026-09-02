@@ -26,6 +26,7 @@ const mainClaim = {
   fence: {
     token: "3c706ec6-5caf-41fc-a009-614730726ebe",
     epoch: 4n,
+    gateEpoch: 9n,
   },
 };
 
@@ -121,12 +122,12 @@ describe("Runtime v3 progression interface", () => {
       orgId: mainClaim.orgId,
       companionId: mainClaim.companionId,
       turn: { ...acceptedTurn, id: "17307732-d811-4eb8-af79-0ae7e7942390", lane: "background" as const },
-      fence: { token: "a60fa0eb-e514-4453-94ef-d6668220fb85", epoch: 7n },
+      fence: { token: "a60fa0eb-e514-4453-94ef-d6668220fb85", epoch: 7n, gateEpoch: 9n },
     };
     const backgroundTwo = {
       ...backgroundOne,
       turn: { ...backgroundOne.turn, id: "41158351-61ee-4c41-8f5c-888d91df91e1" },
-      fence: { token: "2aa20f71-0f55-4f57-82a8-561256f42da3", epoch: 8n },
+      fence: { token: "2aa20f71-0f55-4f57-82a8-561256f42da3", epoch: 8n, gateEpoch: 9n },
     };
     const completed: string[] = [];
     const claims: ClaimQueues = {

@@ -220,9 +220,11 @@ completion choreography in its internal adapter.
 
 This seam is dormant. No API, worker, or runtime production composition root calls it, the v2
 executor uses its unchanged protocol-7 functions, and protocol-3 claims still fail closed when the
-existing Companions runtime gate is disabled. The separate function names and required protocol
-argument prevent an old executor from claiming or mutating v3 rows. Later stack layers replace
-behavior behind this interface; they do not activate a second live runtime beside v2.
+existing Companions runtime gate is disabled. V3 lane leases carry that gate's epoch; a gate change
+atomically invalidates their tokens, and both claim and completion lock and verify the shared fence.
+The separate function names and required protocol argument prevent an old executor from claiming
+or mutating v3 rows. Later stack layers replace behavior behind this interface; they do not activate
+a second live runtime beside v2.
 
 ## Dedicated runtime execution
 

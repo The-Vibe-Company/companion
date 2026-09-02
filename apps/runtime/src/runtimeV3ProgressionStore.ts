@@ -14,6 +14,7 @@ interface ClaimRow {
   state: RuntimeV3Turn["state"];
   claimToken: string;
   claimEpoch: string;
+  gateEpoch: string;
 }
 
 interface TerminalCompletion {
@@ -56,14 +57,19 @@ export function createRuntimeV3PostgresConvergence(sql: Sql): RuntimeV3Convergen
       const rows = await sql<ClaimRow[]>`
         select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
           command_id as "commandId", lane::text, state::text,
-          claim_token as "claimToken", claim_epoch::text as "claimEpoch"
+          claim_token as "claimToken", claim_epoch::text as "claimEpoch",
+          gate_epoch::text as "gateEpoch"
         from public.companion_v3_runtime_claim(${executorId}, ${lane}, 30, 3)
       `;
       const row = rows[0];
       return row
         ? {
           turn: turnFromRow(row),
-          fence: { token: row.claimToken, epoch: BigInt(row.claimEpoch) },
+          fence: {
+            token: row.claimToken,
+            epoch: BigInt(row.claimEpoch),
+            gateEpoch: BigInt(row.gateEpoch),
+          },
           orgId: row.orgId,
           companionId: row.companionId,
         }
@@ -79,6 +85,7 @@ export function createRuntimeV3PostgresConvergence(sql: Sql): RuntimeV3Convergen
           ${claim.turn.id}::uuid,
           ${claim.fence.token}::uuid,
           ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,
           ${terminal.outcome},
           ${terminal.code},
           ${terminal.message},

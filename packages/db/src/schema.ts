@@ -1307,6 +1307,7 @@ export const companionV3LaneLeases = pgTable(
     lane: companionV3LaneEnum("lane").notNull(),
     claimToken: uuid("claim_token"),
     claimEpoch: bigint("claim_epoch", { mode: "number" }).notNull().default(0),
+    gateEpoch: bigint("gate_epoch", { mode: "number" }),
     executorId: text("executor_id"),
     turnId: uuid("turn_id"),
     claimedAt: timestamp("claimed_at", { withTimezone: true }),
@@ -1329,14 +1330,17 @@ export const companionV3LaneLeases = pgTable(
     }).onDelete("cascade"),
     expiry: index("companion_v3_lane_leases_expiry_idx")
       .on(t.expiresAt).where(sql`${t.claimToken} is not null`),
-    epochCheck: check("companion_v3_lane_leases_epoch_check", sql`${t.claimEpoch} >= 0`),
+    epochCheck: check(
+      "companion_v3_lane_leases_epoch_check",
+      sql`${t.claimEpoch} >= 0 and (${t.gateEpoch} is null or ${t.gateEpoch} >= 1)`,
+    ),
     executorCheck: check(
       "companion_v3_lane_leases_executor_check",
       sql`${t.executorId} is null or (char_length(${t.executorId}) between 1 and 200 and ${t.executorId} !~ E'[\n\r]')`,
     ),
     claimCheck: check(
       "companion_v3_lane_leases_claim_check",
-      sql`(${t.claimToken} is null and ${t.executorId} is null and ${t.turnId} is null and ${t.claimedAt} is null and ${t.renewedAt} is null and ${t.expiresAt} is null) or (${t.claimToken} is not null and ${t.claimEpoch} >= 1 and ${t.executorId} is not null and ${t.turnId} is not null and ${t.claimedAt} is not null and ${t.renewedAt} is not null and ${t.expiresAt} > ${t.renewedAt})`,
+      sql`(${t.claimToken} is null and ${t.gateEpoch} is null and ${t.executorId} is null and ${t.turnId} is null and ${t.claimedAt} is null and ${t.renewedAt} is null and ${t.expiresAt} is null) or (${t.claimToken} is not null and ${t.claimEpoch} >= 1 and ${t.gateEpoch} is not null and ${t.executorId} is not null and ${t.turnId} is not null and ${t.claimedAt} is not null and ${t.renewedAt} is not null and ${t.expiresAt} is not null and ${t.expiresAt} > ${t.renewedAt})`,
     ),
   }),
 );

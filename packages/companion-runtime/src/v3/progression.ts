@@ -53,6 +53,7 @@ export interface RuntimeV3LifecycleRevision {
 export interface RuntimeV3Fence {
   token: string;
   epoch: bigint;
+  gateEpoch: bigint;
 }
 
 export interface RuntimeV3Claim {

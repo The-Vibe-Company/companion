@@ -124,6 +124,7 @@ CREATE TABLE public.companion_v3_lane_leases (
   lane public.companion_v3_lane NOT NULL,
   claim_token uuid,
   claim_epoch bigint NOT NULL DEFAULT 0,
+  gate_epoch bigint,
   executor_id text,
   turn_id uuid,
   claimed_at timestamp with time zone,
@@ -138,17 +139,20 @@ CREATE TABLE public.companion_v3_lane_leases (
   CONSTRAINT companion_v3_lane_leases_turn_fk
     FOREIGN KEY (org_id, companion_id, turn_id)
     REFERENCES public.companion_v3_turns(org_id, companion_id, id) ON DELETE CASCADE,
-  CONSTRAINT companion_v3_lane_leases_epoch_check CHECK (claim_epoch >= 0),
+  CONSTRAINT companion_v3_lane_leases_epoch_check CHECK (
+    claim_epoch >= 0 AND (gate_epoch IS NULL OR gate_epoch >= 1)
+  ),
   CONSTRAINT companion_v3_lane_leases_executor_check CHECK (
     executor_id IS NULL
     OR (char_length(executor_id) BETWEEN 1 AND 200 AND executor_id !~ E'[\n\r]')
   ),
   CONSTRAINT companion_v3_lane_leases_claim_check CHECK (
-    (claim_token IS NULL AND executor_id IS NULL AND turn_id IS NULL
+    (claim_token IS NULL AND gate_epoch IS NULL AND executor_id IS NULL AND turn_id IS NULL
       AND claimed_at IS NULL AND renewed_at IS NULL AND expires_at IS NULL)
-    OR (claim_token IS NOT NULL AND claim_epoch >= 1 AND executor_id IS NOT NULL
+    OR (claim_token IS NOT NULL AND claim_epoch >= 1 AND gate_epoch IS NOT NULL
+      AND executor_id IS NOT NULL
       AND turn_id IS NOT NULL AND claimed_at IS NOT NULL AND renewed_at IS NOT NULL
-      AND expires_at > renewed_at)
+      AND expires_at IS NOT NULL AND expires_at > renewed_at)
   )
 );
 --> statement-breakpoint
@@ -363,7 +367,8 @@ RETURNS TABLE (
   lane public.companion_v3_lane,
   state public.companion_v3_turn_state,
   claim_token uuid,
-  claim_epoch bigint
+  claim_epoch bigint,
+  gate_epoch bigint
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -374,18 +379,21 @@ DECLARE
   v_now timestamp with time zone := clock_timestamp();
   v_lease public.companion_v3_lane_leases%ROWTYPE;
   v_turn public.companion_v3_turns%ROWTYPE;
+  v_gate_epoch bigint;
 BEGIN
   IF p_protocol IS DISTINCT FROM 3 THEN
     RAISE EXCEPTION 'Runtime v3 protocol is required' USING ERRCODE = '42501';
   END IF;
   IF p_executor_id IS NULL OR char_length(p_executor_id) NOT BETWEEN 1 AND 200
-    OR p_executor_id ~ E'[\n\r]' OR p_lease_seconds NOT BETWEEN 1 AND 300 THEN
+    OR p_executor_id ~ E'[\n\r]' OR p_lease_seconds IS NULL
+    OR p_lease_seconds NOT BETWEEN 1 AND 300 THEN
     RAISE EXCEPTION 'invalid Runtime v3 claim' USING ERRCODE = '22023';
   END IF;
-  IF NOT EXISTS (
-    SELECT 1 FROM public.companion_runtime_control control
-    WHERE control.id = 'runtime-v2' AND control.enabled
-  ) THEN
+  SELECT control.gate_epoch INTO v_gate_epoch
+  FROM public.companion_runtime_control control
+  WHERE control.id = 'runtime-v2' AND control.enabled
+  FOR SHARE;
+  IF NOT FOUND THEN
     RETURN;
   END IF;
 
@@ -415,6 +423,7 @@ BEGIN
   UPDATE public.companion_v3_lane_leases lease
   SET claim_token = gen_random_uuid(),
       claim_epoch = lease.claim_epoch + 1,
+      gate_epoch = v_gate_epoch,
       executor_id = p_executor_id,
       turn_id = v_turn.id,
       claimed_at = v_now,
@@ -424,7 +433,8 @@ BEGIN
   WHERE lease.org_id = v_lease.org_id
     AND lease.companion_id = v_lease.companion_id
     AND lease.lane = p_lane
-  RETURNING lease.claim_token, lease.claim_epoch INTO claim_token, claim_epoch;
+  RETURNING lease.claim_token, lease.claim_epoch, lease.gate_epoch
+  INTO claim_token, claim_epoch, gate_epoch;
 
   org_id := v_turn.org_id;
   companion_id := v_turn.companion_id;
@@ -444,6 +454,7 @@ CREATE FUNCTION public.companion_v3_runtime_complete(
   p_turn_id uuid,
   p_claim_token uuid,
   p_claim_epoch bigint,
+  p_gate_epoch bigint,
   p_outcome text,
   p_code text,
   p_message text,
@@ -462,7 +473,8 @@ BEGIN
   IF p_protocol IS DISTINCT FROM 3 THEN
     RAISE EXCEPTION 'Runtime v3 protocol is required' USING ERRCODE = '42501';
   END IF;
-  IF p_outcome IS NULL
+  IF p_gate_epoch IS NULL OR p_gate_epoch < 1
+    OR p_outcome IS NULL
     OR p_outcome NOT IN ('release', 'succeeded', 'failed', 'interrupted')
     OR (p_outcome IN ('failed', 'interrupted') AND (
       p_code IS NULL OR p_message IS NULL OR p_action IS NULL OR p_action = 'restart_box'
@@ -473,10 +485,19 @@ BEGIN
     RAISE EXCEPTION 'invalid Runtime v3 completion' USING ERRCODE = '22023';
   END IF;
 
-  PERFORM 1 FROM public.companion_v3_lane_leases lease
+  PERFORM 1
+  FROM public.companion_runtime_control control
+  WHERE control.id = 'runtime-v2' AND control.enabled
+    AND control.gate_epoch = p_gate_epoch
+  FOR SHARE;
+  IF NOT FOUND THEN RETURN false; END IF;
+
+  PERFORM 1
+  FROM public.companion_v3_lane_leases lease
   WHERE lease.org_id = p_org_id AND lease.companion_id = p_companion_id
     AND lease.lane = p_lane AND lease.turn_id = p_turn_id
     AND lease.claim_token = p_claim_token AND lease.claim_epoch = p_claim_epoch
+    AND lease.gate_epoch = p_gate_epoch
     AND lease.expires_at > v_now
   FOR UPDATE;
   IF NOT FOUND THEN RETURN false; END IF;
@@ -496,7 +517,7 @@ BEGIN
   END IF;
 
   UPDATE public.companion_v3_lane_leases lease
-  SET claim_token = NULL, executor_id = NULL, turn_id = NULL,
+  SET claim_token = NULL, gate_epoch = NULL, executor_id = NULL, turn_id = NULL,
       claimed_at = NULL, renewed_at = NULL, expires_at = NULL, updated_at = v_now
   WHERE lease.org_id = p_org_id AND lease.companion_id = p_companion_id
     AND lease.lane = p_lane AND lease.claim_token = p_claim_token
@@ -504,6 +525,50 @@ BEGIN
   RETURN FOUND;
 END
 $$;
+--> statement-breakpoint
+
+-- Keep Runtime v3 claims inside the existing emergency-stop epoch. Claimers lock the control row
+-- before lane rows, so a concurrent disable waits, advances the epoch, and then invalidates every
+-- materialized v3 token before it commits.
+CREATE FUNCTION public.companion_v3_fence_runtime_gate()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+SET row_security = on
+AS $$
+DECLARE
+  v_now timestamp with time zone := clock_timestamp();
+BEGIN
+  IF NEW.gate_epoch IS NOT DISTINCT FROM OLD.gate_epoch THEN
+    RETURN NEW;
+  END IF;
+
+  PERFORM 1
+  FROM public.companion_v3_lane_leases lease
+  ORDER BY lease.org_id, lease.companion_id, lease.lane
+  FOR UPDATE;
+
+  UPDATE public.companion_v3_lane_leases lease
+  SET claim_token = NULL,
+      claim_epoch = lease.claim_epoch + 1,
+      gate_epoch = NULL,
+      executor_id = NULL,
+      turn_id = NULL,
+      claimed_at = NULL,
+      renewed_at = NULL,
+      expires_at = NULL,
+      updated_at = v_now
+  WHERE lease.claim_token IS NOT NULL;
+  RETURN NEW;
+END
+$$;
+--> statement-breakpoint
+CREATE TRIGGER companion_v3_runtime_gate_fence
+AFTER UPDATE OF gate_epoch ON public.companion_runtime_control
+FOR EACH ROW
+WHEN (OLD.gate_epoch IS DISTINCT FROM NEW.gate_epoch)
+EXECUTE FUNCTION public.companion_v3_fence_runtime_gate();
 --> statement-breakpoint
 
 ALTER TABLE public.companion_v3_instances ENABLE ROW LEVEL SECURITY;
@@ -576,6 +641,8 @@ REVOKE ALL ON FUNCTION public.companion_v3_runtime_claim(
 ) FROM PUBLIC;
 --> statement-breakpoint
 REVOKE ALL ON FUNCTION public.companion_v3_runtime_complete(
-  uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,text,text,text,
+  uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,
   public.companion_runtime_error_action,integer
 ) FROM PUBLIC;
+--> statement-breakpoint
+REVOKE ALL ON FUNCTION public.companion_v3_fence_runtime_gate() FROM PUBLIC;

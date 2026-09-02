@@ -163,9 +163,10 @@ describe("dormant Runtime v3 progression facts", () => {
       turnId: string;
       token: string;
       epoch: string;
+      gate: string;
     }>>`
       select command_id as "commandId", lane::text, turn_id as "turnId",
-        claim_token as token, claim_epoch::text as epoch
+        claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate
       from public.companion_v3_runtime_claim(
         'runtime-a', 'main', 30, 3
       )`;
@@ -189,6 +190,7 @@ describe("dormant Runtime v3 progression facts", () => {
     await runtimeSql`select public.companion_v3_runtime_complete(
       ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${mainClaim[0]!.turnId}::uuid,
       ${mainClaim[0]!.token}::uuid, ${mainClaim[0]!.epoch}::bigint,
+      ${mainClaim[0]!.gate}::bigint,
       'succeeded', null, null, null, 3
     )`;
     const nextMain = await runtimeSql<Array<{ commandId: string }>>`
@@ -216,12 +218,14 @@ describe("dormant Runtime v3 progression facts", () => {
 
   it("increments lane fences monotonically and rejects stale completion", async () => {
     await admitMain(randomUUID());
-    const first = await runtimeSql<Array<{ token: string; epoch: string; turnId: string }>>`
-      select claim_token as token, claim_epoch::text as epoch, turn_id as "turnId"
+    const first = await runtimeSql<Array<{ token: string; epoch: string; gate: string; turnId: string }>>`
+      select claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate,
+        turn_id as "turnId"
       from public.companion_v3_runtime_claim('runtime-c', 'main', 1, 3)`;
     await ownerSql`select pg_sleep(1.1)`;
-    const second = await runtimeSql<Array<{ token: string; epoch: string; turnId: string }>>`
-      select claim_token as token, claim_epoch::text as epoch, turn_id as "turnId"
+    const second = await runtimeSql<Array<{ token: string; epoch: string; gate: string; turnId: string }>>`
+      select claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate,
+        turn_id as "turnId"
       from public.companion_v3_runtime_claim('runtime-d', 'main', 30, 3)`;
 
     expect(BigInt(second[0]!.epoch)).toBeGreaterThan(BigInt(first[0]!.epoch));
@@ -229,6 +233,7 @@ describe("dormant Runtime v3 progression facts", () => {
       select public.companion_v3_runtime_complete(
         ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${first[0]!.turnId}::uuid,
         ${first[0]!.token}::uuid, ${first[0]!.epoch}::bigint,
+        ${first[0]!.gate}::bigint,
         'release', null, null, null, 3
       ) as completed`;
     expect(stale[0]!.completed).toBe(false);
@@ -236,13 +241,15 @@ describe("dormant Runtime v3 progression facts", () => {
 
   it("rejects a null completion outcome without releasing the lane lease", async () => {
     await admitMain(randomUUID());
-    const claim = await runtimeSql<Array<{ token: string; epoch: string; turnId: string }>>`
-      select claim_token as token, claim_epoch::text as epoch, turn_id as "turnId"
+    const claim = await runtimeSql<Array<{ token: string; epoch: string; gate: string; turnId: string }>>`
+      select claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate,
+        turn_id as "turnId"
       from public.companion_v3_runtime_claim('runtime-null-outcome', 'main', 30, 3)`;
 
     await expect(runtimeSql`select public.companion_v3_runtime_complete(
       ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${claim[0]!.turnId}::uuid,
       ${claim[0]!.token}::uuid, ${claim[0]!.epoch}::bigint,
+      ${claim[0]!.gate}::bigint,
       ${null}::text, null, null, null, 3
     )`).rejects.toThrow(/invalid Runtime v3 completion/);
 
@@ -254,6 +261,92 @@ describe("dormant Runtime v3 progression facts", () => {
           and lease.lane = turn_row.lane and lease.turn_id = turn_row.id
       where turn_row.id = ${claim[0]!.turnId}::uuid`;
     expect(facts).toEqual([{ state: "queued", token: claim[0]!.token }]);
+  });
+
+  it("rejects a null lease duration without materializing a lane claim", async () => {
+    await admitMain(randomUUID());
+
+    await expect(runtimeSql`select * from public.companion_v3_runtime_claim(
+      'runtime-null-lease', 'main', ${null}::integer, 3
+    )`).rejects.toThrow(/invalid Runtime v3 claim/);
+
+    const facts = await ownerSql<Array<{
+      state: string;
+      token: string | null;
+      gate: string | null;
+      expiresAt: Date | null;
+    }>>`
+      select turn_row.state::text, lease.claim_token::text as token,
+        lease.gate_epoch::text as gate, lease.expires_at as "expiresAt"
+      from public.companion_v3_turns turn_row
+      join public.companion_v3_lane_leases lease
+        on lease.org_id = turn_row.org_id and lease.companion_id = turn_row.companion_id
+          and lease.lane = turn_row.lane
+      where turn_row.org_id = ${ids.org}::uuid
+        and turn_row.companion_id = ${ids.companion}::uuid`;
+    expect(facts).toEqual([{ state: "queued", token: null, gate: null, expiresAt: null }]);
+  });
+
+  it("invalidates held lane claims when the shared runtime gate advances", async () => {
+    await admitMain(randomUUID());
+    const claim = await runtimeSql<Array<{
+      token: string;
+      epoch: string;
+      gate: string;
+      turnId: string;
+    }>>`
+      select claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate,
+        turn_id as "turnId"
+      from public.companion_v3_runtime_claim('runtime-gate-fence', 'main', 30, 3)`;
+    let disabledGate: string | undefined;
+    try {
+      const disabled = await runtimeSql<Array<{ enabled: boolean; gate: string }>>`
+        select enabled, gate_epoch::text as gate
+        from public.companion_runtime_disable(
+          ${claim[0]!.gate}::bigint, 'runtime-v3-gate-test'
+        )`;
+      disabledGate = disabled[0]!.gate;
+      expect(disabled).toEqual([{
+        enabled: false,
+        gate: expect.stringMatching(/^\d+$/),
+      }]);
+      expect(BigInt(disabledGate)).toBeGreaterThan(BigInt(claim[0]!.gate));
+
+      const completion = await runtimeSql<Array<{ completed: boolean }>>`
+        select public.companion_v3_runtime_complete(
+          ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${claim[0]!.turnId}::uuid,
+          ${claim[0]!.token}::uuid, ${claim[0]!.epoch}::bigint,
+          ${claim[0]!.gate}::bigint, 'succeeded', null, null, null, 3
+        ) as completed`;
+      expect(completion).toEqual([{ completed: false }]);
+
+      const facts = await ownerSql<Array<{
+        state: string;
+        token: string | null;
+        gate: string | null;
+        epoch: string;
+      }>>`
+        select turn_row.state::text, lease.claim_token::text as token,
+          lease.gate_epoch::text as gate, lease.claim_epoch::text as epoch
+        from public.companion_v3_turns turn_row
+        join public.companion_v3_lane_leases lease
+          on lease.org_id = turn_row.org_id and lease.companion_id = turn_row.companion_id
+            and lease.lane = turn_row.lane
+        where turn_row.id = ${claim[0]!.turnId}::uuid`;
+      expect(facts).toEqual([{
+        state: "queued",
+        token: null,
+        gate: null,
+        epoch: expect.stringMatching(/^\d+$/),
+      }]);
+      expect(BigInt(facts[0]!.epoch)).toBeGreaterThan(BigInt(claim[0]!.epoch));
+    } finally {
+      if (disabledGate) {
+        await ownerSql`select * from public.companion_runtime_enable(
+          ${disabledGate}::bigint, 'runtime-v3-gate-test'
+        )`;
+      }
+    }
   });
 
   it("drives PostgreSQL claims through the closed progression interface", async () => {
