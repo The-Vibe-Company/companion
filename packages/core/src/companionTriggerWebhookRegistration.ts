@@ -401,6 +401,17 @@ function parseProviderLinkParameterValue(
   return malformedProviderPagination(provider, "parameter value");
 }
 
+function isProviderPaginationPath(input: {
+  provider: "github" | "Sentry";
+  currentPath: string;
+  candidatePath: string;
+}): boolean {
+  if (input.candidatePath === input.currentPath) return true;
+  return input.provider === "github"
+    && /^\/repos\/[^/]+\/[^/]+\/hooks$/.test(input.currentPath)
+    && /^\/repositories\/[1-9]\d*\/hooks$/.test(input.candidatePath);
+}
+
 function providerNextPageUrl(input: {
   response: Response;
   currentUrl: string;
@@ -466,7 +477,11 @@ function providerNextPageUrl(input: {
       || candidate.password !== ""
       || candidate.hash !== ""
       || candidate.origin !== current.origin
-      || candidate.pathname !== current.pathname
+      || !isProviderPaginationPath({
+        provider: input.provider,
+        currentPath: current.pathname,
+        candidatePath: candidate.pathname,
+      })
     ) return malformedProviderPagination(input.provider, "URI boundary");
     if (relation !== "next") continue;
     if (next) return malformedProviderPagination(input.provider, "ambiguous next relation");
