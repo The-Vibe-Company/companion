@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BoxRuntimeAdapterError } from "@companion/box-runtime";
 
 import {
+  collectCompanionV2ObjectKeys,
   assertCompanionV2PurgeDisabled,
   mergeCompanionV2PurgeTargets,
   parseCompanionV2PurgeArgs,
@@ -9,6 +10,27 @@ import {
   type CompanionV2PurgeJournal,
   type CompanionV2PurgeTarget,
 } from "./companionV2Purge";
+
+describe("Runtime v2 object inventory pagination", () => {
+  it("collects every page and rejects truncated responses without forward progress", async () => {
+    await expect(collectCompanionV2ObjectKeys(async (token) => token
+      ? { Contents: [{ Key: "companion-attachments/b" }], IsTruncated: false }
+      : {
+          Contents: [{ Key: "companion-attachments/a" }],
+          IsTruncated: true,
+          NextContinuationToken: "page-2",
+        })).resolves.toEqual(["companion-attachments/a", "companion-attachments/b"]);
+
+    await expect(collectCompanionV2ObjectKeys(async () => ({
+      IsTruncated: true,
+    }))).rejects.toThrow("object inventory returned invalid pagination");
+
+    await expect(collectCompanionV2ObjectKeys(async () => ({
+      IsTruncated: true,
+      NextContinuationToken: "same-page",
+    }))).rejects.toThrow("object inventory returned invalid pagination");
+  });
+});
 
 describe("Runtime v2 purge operator interface", () => {
   it("selects destructive mode only for the exact confirmation phrase", () => {
@@ -123,6 +145,7 @@ describe("Runtime v2 external purge checkpoints", () => {
     await expect(processCompanionV2PurgeTargets({
       targets,
       journal,
+      providerPresent: () => true,
       remove: async (target) => {
         events.push(`effect:${target.kind}:${target.key}`);
         if (target.key === "trigger-1") return "absent";
@@ -143,6 +166,7 @@ describe("Runtime v2 external purge checkpoints", () => {
 
   it("skips completed targets when a partial purge resumes", async () => {
     const removed: string[] = [];
+    const inspected: string[] = [];
     await processCompanionV2PurgeTargets({
       targets: [
         { kind: "object", key: "done", evidence: [], state: "completed" },
@@ -153,12 +177,16 @@ describe("Runtime v2 external purge checkpoints", () => {
         async markComplete() {},
         async markFailure() {},
       },
+      providerPresent: (target) => {
+        inspected.push(target.key);
+        return true;
+      },
       remove: async (target) => {
         removed.push(target.key);
         return "completed";
       },
     });
-    expect(removed).toEqual(["retry"]);
+    expect({ inspected, removed }).toEqual({ inspected: ["retry"], removed: ["retry"] });
   });
 
   it("reconciles every effect committed before its terminal checkpoint without deleting twice", async () => {
@@ -277,7 +305,8 @@ describe("Runtime v2 external purge checkpoints", () => {
     expect(effects).toEqual(["bdop_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]);
   });
 
-  it("fails closed when a requesting Box cannot be reconciled by an authenticated read", async () => {
+  it("fails closed before a requesting effect when authenticated reconciliation fails", async () => {
+    const events: string[] = [];
     await expect(processCompanionV2PurgeTargets({
       targets: [{
         kind: "box",
@@ -287,13 +316,17 @@ describe("Runtime v2 external purge checkpoints", () => {
         operationId: null,
       }],
       journal: {
-        async markRequesting() {},
+        async markRequesting() { events.push("requesting"); },
         async markComplete() {},
         async markFailure() {},
       },
-      providerPresent: () => undefined,
-      remove: async () => "completed",
-    })).rejects.toThrow("authenticated Box presence reconciliation is unavailable");
+      providerPresent: () => { throw new Error("authenticated read failed"); },
+      remove: async () => {
+        events.push("effect");
+        return "completed";
+      },
+    })).rejects.toThrow("authenticated read failed");
+    expect(events).toEqual([]);
   });
 
   it("leaves a durable requesting checkpoint when the process stops before the effect", async () => {
@@ -305,6 +338,7 @@ describe("Runtime v2 external purge checkpoints", () => {
         async markComplete() { events.push("complete"); },
         async markFailure() { events.push("failure"); },
       },
+      providerPresent: () => true,
       beforeExternalEffect: async () => { throw new Error("crash before Box DELETE"); },
       remove: async () => {
         events.push("effect");

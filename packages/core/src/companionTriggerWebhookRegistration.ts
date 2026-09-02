@@ -317,7 +317,7 @@ async function findLinearWebhook(input: {
           pageInfo: z.object({
             hasNextPage: z.boolean(),
             endCursor: z.string().nullable(),
-          }).optional(),
+          }),
         }),
       }).optional(),
       errors: z.array(z.object({ message: z.string() })).optional(),
@@ -335,7 +335,7 @@ async function findLinearWebhook(input: {
     );
     if (hook) return hook.id;
     const pageInfo = payload.data.data.webhooks.pageInfo;
-    if (!pageInfo?.hasNextPage) return null;
+    if (!pageInfo.hasNextPage) return null;
     if (!pageInfo.endCursor || seen.has(pageInfo.endCursor)) {
       throw new CompanionTriggerRegistrationError(
         "provider_rejected",
@@ -412,7 +412,9 @@ export async function inspectCompanionTriggerWebhookV2(input: {
       { headers: { authorization: `Bearer ${providerTokenOf(account, input.orgId, input.masterKey)}` } },
     );
     if (response.status === 404) return "absent";
-    if (!response.ok) {
+    const hook = z.object({ id: z.string().min(1).max(200) }).passthrough()
+      .safeParse(await response.json().catch(() => null));
+    if (!response.ok || !hook.success || hook.data.id !== trigger.remote_hook_id) {
       throw new CompanionTriggerRegistrationError(
         "provider_rejected",
         `Sentry webhook reconciliation failed (${response.status})`,
@@ -438,7 +440,9 @@ export async function inspectCompanionTriggerWebhookV2(input: {
       { headers: githubHeaders(providerTokenOf(account, input.orgId, input.masterKey)) },
     );
     if (response.status === 404) return "absent";
-    if (!response.ok) {
+    const hook = z.object({ id: z.number().int() }).passthrough()
+      .safeParse(await response.json().catch(() => null));
+    if (!response.ok || !hook.success || String(hook.data.id) !== trigger.remote_hook_id) {
       throw new CompanionTriggerRegistrationError(
         "provider_rejected",
         `github webhook reconciliation failed (${response.status})`,

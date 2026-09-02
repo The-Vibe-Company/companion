@@ -181,7 +181,7 @@ export function mergeCompanionV2PurgeTargets(
 export async function processCompanionV2PurgeTargets(input: {
   targets: readonly CompanionV2PurgeTarget[];
   journal: CompanionV2PurgeJournal;
-  providerPresent?(target: CompanionV2PurgeTarget): boolean | undefined | Promise<boolean | undefined>;
+  providerPresent(target: CompanionV2PurgeTarget): boolean | Promise<boolean>;
   beforeExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
   afterExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
   pause?(milliseconds: number): Promise<void>;
@@ -202,18 +202,10 @@ export async function processCompanionV2PurgeTargets(input: {
     }
     const present = target.kind === "box" && target.operationId
       ? undefined
-      : await input.providerPresent?.(target);
+      : await input.providerPresent(target);
     if (present === false) {
       await input.journal.markComplete(target, "absent");
       continue;
-    }
-    if (
-      target.kind === "box"
-      && target.state === "requesting"
-      && !target.operationId
-      && present === undefined
-    ) {
-      throw new Error("authenticated Box presence reconciliation is unavailable");
     }
     await input.journal.markRequesting(target);
     try {
@@ -426,27 +418,49 @@ function productionObjectStore(): CompanionV2ObjectStore {
   const client = createStorageClient(config);
   return {
     async listKeys() {
-      const keys: string[] = [];
-      let continuationToken: string | undefined;
-      do {
+      return collectCompanionV2ObjectKeys(async (continuationToken) => {
         const request: ListObjectsV2CommandInput = {
           Bucket: config.bucket,
           Prefix: "companion-attachments/",
         };
         if (continuationToken) request.ContinuationToken = continuationToken;
-        const response = await client.send(new ListObjectsV2Command(request));
-        for (const item of response.Contents ?? []) {
-          if (item.Key) keys.push(item.Key);
-        }
-        continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
-      } while (continuationToken);
-      return keys.sort();
+        return client.send(new ListObjectsV2Command(request));
+      });
     },
     async remove(key) {
       await deleteStorageObject({ key, client, config });
       return "completed";
     },
   };
+}
+
+export async function collectCompanionV2ObjectKeys(
+  listPage: (continuationToken: string | undefined) => Promise<{
+    Contents?: Array<{ Key?: string }>;
+    IsTruncated?: boolean;
+    NextContinuationToken?: string;
+  }>,
+): Promise<string[]> {
+  const keys: string[] = [];
+  const seenContinuationTokens = new Set<string>();
+  let continuationToken: string | undefined;
+  do {
+    const response = await listPage(continuationToken);
+    for (const item of response.Contents ?? []) {
+      if (item.Key) keys.push(item.Key);
+    }
+    if (response.IsTruncated) {
+      const next = response.NextContinuationToken;
+      if (!next || seenContinuationTokens.has(next)) {
+        throw new Error("object inventory returned invalid pagination");
+      }
+      seenContinuationTokens.add(next);
+      continuationToken = next;
+    } else {
+      continuationToken = undefined;
+    }
+  } while (continuationToken);
+  return keys.sort();
 }
 
 export async function collectCompanionV2PurgeInventory(input: {
@@ -802,7 +816,6 @@ export async function executeConfirmedCompanionV2Purge(input: {
     journal,
     providerPresent: async (target) => {
       if (target.kind === "trigger") {
-        if (target.state !== "requesting") return true;
         const owner = input.initialInventory.triggerOwners.find(
           (item) => item.triggerId === target.key,
         );
@@ -815,22 +828,19 @@ export async function executeConfirmedCompanionV2Purge(input: {
         if (input.triggerRemover) inspection.triggerRemover = input.triggerRemover;
         return (await inspectCompanionV2Trigger(inspection)) === "present";
       }
-      const discovered = input.initialInventory.targets.find(
-        (item) => item.kind === target.kind && item.key === target.key,
-      );
-      if (!discovered) return false;
       if (target.kind === "object") {
-        return discovered.evidence.includes("storage-prefix:companion-attachments");
+        return (await objectStore.listKeys()).includes(target.key);
       }
       if (target.kind === "snapshot") {
-        return discovered.evidence.includes("provider-name:v2-image");
+        return (await input.boxClient.listNamedSnapshots()).some(
+          (snapshot) => snapshot.name === target.key && isCompanionRuntimeImageName(snapshot.name),
+        );
       }
       // Box documents that an accepted permanent delete disappears from ordinary authenticated
       // reads immediately, before the retained bdop finishes. Presence therefore proves admission
       // did not occur; absence is sufficient to close this purge target without replaying DELETE.
       // https://docs.ascii.dev/box/api/reference/boxes/permanently-delete-box-data.md
-      return discovered.evidence.includes("provider-id:box")
-        || discovered.evidence.includes("provider-name:companion-generation");
+      return (await input.boxClient.listAllBoxes()).some((box) => box.id === target.key);
     },
     remove: (target) => {
       const removal: Parameters<typeof removeCompanionV2Target>[0] = {

@@ -971,12 +971,12 @@ describe("Companion triggers over the real database", () => {
     }))!.secret);
 
     // Purge reconciliation can prove a committed delete without mutating the ownership row.
-    const reconcilePresent = asFetch(async () => new Response(JSON.stringify([{
+    const reconcilePresent = asFetch(async () => new Response(JSON.stringify({
       id: 424242,
       config: { url: requests[1]!.init.body
         ? JSON.parse(String(requests[1]!.init.body)).config.url
         : "" },
-    }]), { status: 200 }));
+    }), { status: 200 }));
     await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
       orgId: fixture.orgA,
       companionId,
@@ -986,6 +986,15 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: reconcilePresent,
     }))).resolves.toBe("present");
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => new Response(JSON.stringify({ id: 111111 }), { status: 200 })),
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
     let malformedLookupCalls = 0;
     const malformedLookup = asFetch(async () => {
       malformedLookupCalls += 1;
@@ -1178,7 +1187,9 @@ describe("Companion triggers over the real database", () => {
       requests.push({ url: String(url), init: init ?? {} });
       const requestBody = JSON.parse(String(init?.body));
       if (requestBody.query.includes("query CompanionWebhooks")) {
-        return new Response(JSON.stringify({ data: { webhooks: { nodes: [] } } }), { status: 200 });
+        return new Response(JSON.stringify({
+          data: { webhooks: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } },
+        }), { status: 200 });
       }
       return new Response(JSON.stringify({
         data: { webhookSubscriptionCreate: { success: true, webhookSubscription: { id: "linear-hook-1" } } },
@@ -1214,9 +1225,23 @@ describe("Companion triggers over the real database", () => {
       masterKey,
       database,
       fetch: asFetch(async () => new Response(JSON.stringify({
-        data: { webhooks: { nodes: [{ id: "linear-hook-1", url: trigger.webhook_url }] } },
+        data: { webhooks: {
+          nodes: [{ id: "linear-hook-1", url: trigger.webhook_url }],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        } },
       }), { status: 200 })),
     }))).resolves.toBe("present");
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => new Response(JSON.stringify({
+        data: { webhooks: { nodes: [] } },
+      }), { status: 200 })),
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
 
     // Unregistering removes the remote subscription and keeps provider intent unregistered.
     const rejectedDeleteFetch = asFetch(async () => new Response(JSON.stringify({
@@ -1359,12 +1384,14 @@ describe("Companion triggers over the real database", () => {
     ]);
 
     let duplicateCreateCalls = 0;
-    const existingFetch = asFetch(async () => {
+    const existingFetch = asFetch(async (url) => {
       duplicateCreateCalls += 1;
-      return new Response(JSON.stringify([{
-        id: "sentry-hook-1",
-        url: trigger.webhook_url,
-      }]), { status: 200 });
+      return String(url).endsWith("/hooks/")
+        ? new Response(JSON.stringify([{
+            id: "sentry-hook-1",
+            url: trigger.webhook_url,
+          }]), { status: 200 })
+        : new Response(JSON.stringify({ id: "sentry-hook-1" }), { status: 200 });
     });
     await integrationDb.update(schema.companionTriggers).set({ registrationStatus: "failed" })
       .where(eq(schema.companionTriggers.id, trigger.id));
@@ -1387,6 +1414,15 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: existingFetch,
     }))).resolves.toBe("present");
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => new Response(JSON.stringify([]), { status: 200 })),
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
     await integrationDb.update(schema.companionTriggers).set({ target: {} })
       .where(eq(schema.companionTriggers.id, trigger.id));
     await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({

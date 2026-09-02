@@ -538,6 +538,39 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       operationId: "bdop_55555555555555555555555555555555",
     });
 
+    const beforeObjectCrashInventory = await collectCompanionV2PurgeInventory({
+      client: database, boxClient, objectStore: objects,
+    });
+    await expect(executeConfirmedCompanionV2Purge({
+      client: database,
+      boxClient,
+      objectStore: objects,
+      triggerRemover: triggers,
+      initialInventory: beforeObjectCrashInventory,
+      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      afterExternalEffect: async (target) => {
+        if (target.kind === "object") throw new Error("crash after accepted object deletion");
+      },
+    })).rejects.toThrow("crash after accepted object deletion");
+    expect(objects.removals).toBe(1);
+
+    const beforeSnapshotCrashInventory = await collectCompanionV2PurgeInventory({
+      client: database, boxClient, objectStore: objects,
+    });
+    await expect(executeConfirmedCompanionV2Purge({
+      client: database,
+      boxClient,
+      objectStore: objects,
+      triggerRemover: triggers,
+      initialInventory: beforeSnapshotCrashInventory,
+      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      afterExternalEffect: async (target) => {
+        if (target.kind === "snapshot") throw new Error("crash after accepted snapshot deletion");
+      },
+    })).rejects.toThrow("crash after accepted snapshot deletion");
+    expect({ objectDeletes: objects.removals, snapshotDeletes: boxes.snapshotDeletes })
+      .toEqual({ objectDeletes: 1, snapshotDeletes: 1 });
+
     const beforeTriggerInventory = await collectCompanionV2PurgeInventory({
       client: database, boxClient, objectStore: objects,
     });
