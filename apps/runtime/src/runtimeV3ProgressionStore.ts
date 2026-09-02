@@ -200,8 +200,8 @@ export function createRuntimeV3PostgresLifecyclePersistence(
   sql: Sql,
 ): RuntimeV3LifecyclePersistence {
   return {
-    async claim({ executorId }) {
-      const rows = await sql<LifecycleClaimRow[]>`
+    async claim({ executorId, signal }) {
+      const rows = await abortable(sql<LifecycleClaimRow[]>`
         select org_id as "orgId", companion_id as "companionId", checkpoint::text,
           box_id as "boxId", provider_operation_id as "providerOperationId",
           claim_token as "claimToken", claim_epoch::text as "claimEpoch",
@@ -209,7 +209,7 @@ export function createRuntimeV3PostgresLifecyclePersistence(
         from public.companion_v3_runtime_claim_lifecycle(
           ${executorId}, ${LIFECYCLE_LEASE_SECONDS}, 5
         )
-      `;
+      `, signal);
       const row = rows[0];
       return row ? {
         executorId,
@@ -225,8 +225,8 @@ export function createRuntimeV3PostgresLifecyclePersistence(
         },
       } : null;
     },
-    async checkpoint(claim, input) {
-      const rows = await sql<Array<{ checkpointed: boolean }>>`
+    async checkpoint(claim, input, signal) {
+      const rows = await abortable(sql<Array<{ checkpointed: boolean }>>`
         select public.companion_v3_runtime_checkpoint_lifecycle(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
@@ -235,28 +235,28 @@ export function createRuntimeV3PostgresLifecyclePersistence(
           ${input.next}::public.companion_v3_lifecycle_state,
           ${input.providerOperationId ?? null}, 5
         ) as checkpointed
-      `;
+      `, signal);
       return rows[0]?.checkpointed === true;
     },
-    async defer(claim, input) {
-      const rows = await sql<Array<{ deferred: boolean }>>`
+    async defer(claim, input, signal) {
+      const rows = await abortable(sql<Array<{ deferred: boolean }>>`
         select public.companion_v3_runtime_defer_lifecycle(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint, ${input.delaySeconds},
           ${input.error?.code ?? null}, ${input.error?.message ?? null}, 5
         ) as deferred
-      `;
+      `, signal);
       return rows[0]?.deferred === true;
     },
-    async finalizeDeletion(claim) {
-      const rows = await sql<Array<{ finalized: boolean }>>`
+    async finalizeDeletion(claim, signal) {
+      const rows = await abortable(sql<Array<{ finalized: boolean }>>`
         select public.companion_v3_runtime_finalize_delete(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint, 5
         ) as finalized
-      `;
+      `, signal);
       return rows[0]?.finalized === true;
     },
   };

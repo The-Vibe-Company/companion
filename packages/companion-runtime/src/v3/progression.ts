@@ -250,7 +250,10 @@ export interface RuntimeV3LifecycleClaim {
 }
 
 export interface RuntimeV3LifecyclePersistence {
-  claim(input: { executorId: string }): Promise<RuntimeV3LifecycleClaim | null>;
+  claim(input: {
+    executorId: string;
+    signal?: AbortSignal;
+  }): Promise<RuntimeV3LifecycleClaim | null>;
   checkpoint(
     claim: RuntimeV3LifecycleClaim,
     input: {
@@ -266,12 +269,14 @@ export interface RuntimeV3LifecyclePersistence {
         | "waiting_deleted";
       providerOperationId?: string;
     },
+    signal?: AbortSignal,
   ): Promise<boolean>;
   defer(
     claim: RuntimeV3LifecycleClaim,
     input: { delaySeconds: number; error: SafeRuntimeError | null },
+    signal?: AbortSignal,
   ): Promise<boolean>;
-  finalizeDeletion(claim: RuntimeV3LifecycleClaim): Promise<boolean>;
+  finalizeDeletion(claim: RuntimeV3LifecycleClaim, signal?: AbortSignal): Promise<boolean>;
 }
 
 export interface RuntimeV3LifecycleOptions {
@@ -580,16 +585,19 @@ export function createRuntimeV3Lifecycle(
   options: RuntimeV3LifecycleOptions,
 ): RuntimeV3Convergence {
   return {
-    async converge({ executorId }) {
+    async converge({ executorId, signal: shutdownSignal }) {
       let progressed = 0;
       while (progressed < LANE_CONVERGENCE_LIMIT) {
-        const claim = await options.persistence.claim({ executorId });
+        const timeoutSignal = AbortSignal.timeout(COMPANION_BUDGETS.boxRequestTimeoutMs);
+        const signal = shutdownSignal
+          ? AbortSignal.any([shutdownSignal, timeoutSignal])
+          : timeoutSignal;
+        const claim = await options.persistence.claim({ executorId, signal });
         if (!claim) return { progressed, exhausted: false };
         let errorClaim = claim;
-        const signal = AbortSignal.timeout(COMPANION_BUDGETS.boxRequestTimeoutMs);
         try {
           if (claim.checkpoint === "archive_pending") {
-            if (!await options.persistence.checkpoint(claim, { next: "archive_requested" })) {
+            if (!await options.persistence.checkpoint(claim, { next: "archive_requested" }, signal)) {
               return { progressed, exhausted: false };
             }
           } else if (
@@ -602,23 +610,23 @@ export function createRuntimeV3Lifecycle(
               throw new Error("The persistent Companion Box is absent and cannot be replaced");
             }
             if (observed.state === "archived") {
-              if (!await options.persistence.checkpoint(claim, { next: "archived" })) {
+              if (!await options.persistence.checkpoint(claim, { next: "archived" }, signal)) {
                 return { progressed, exhausted: false };
               }
             } else if (claim.checkpoint === "archive_requested"
               && !["archiving", "initializing", "provisioning"].includes(observed.state)) {
               await options.box.stopExistingBox({ boxId: claim.boxId, signal });
-              if (!await options.persistence.checkpoint(claim, { next: "waiting_archived" })) {
+              if (!await options.persistence.checkpoint(claim, { next: "waiting_archived" }, signal)) {
                 return { progressed, exhausted: false };
               }
             } else {
               await options.persistence.defer(claim, {
                 delaySeconds: LIFECYCLE_RETRY_SECONDS,
                 error: null,
-              });
+              }, signal);
             }
           } else if (claim.checkpoint === "wake_pending") {
-            if (!await options.persistence.checkpoint(claim, { next: "wake_requested" })) {
+            if (!await options.persistence.checkpoint(claim, { next: "wake_requested" }, signal)) {
               return { progressed, exhausted: false };
             }
           } else if (
@@ -631,33 +639,33 @@ export function createRuntimeV3Lifecycle(
               throw new Error("The persistent Companion Box is absent and cannot be replaced");
             }
             if (["ready", "idle", "running"].includes(observed.state)) {
-              if (!await options.persistence.checkpoint(claim, { next: "active" })) {
+              if (!await options.persistence.checkpoint(claim, { next: "active" }, signal)) {
                 return { progressed, exhausted: false };
               }
             } else if (claim.checkpoint === "wake_requested" && observed.state === "archived") {
               await options.box.resumeExistingBox({ boxId: claim.boxId, signal });
-              if (!await options.persistence.checkpoint(claim, { next: "waiting_ready" })) {
+              if (!await options.persistence.checkpoint(claim, { next: "waiting_ready" }, signal)) {
                 return { progressed, exhausted: false };
               }
             } else {
               await options.persistence.defer(claim, {
                 delaySeconds: LIFECYCLE_RETRY_SECONDS,
                 error: null,
-              });
+              }, signal);
             }
           } else if (claim.checkpoint === "delete_pending") {
-            if (!await options.persistence.checkpoint(claim, { next: "delete_requested" })) {
+            if (!await options.persistence.checkpoint(claim, { next: "delete_requested" }, signal)) {
               return { progressed, exhausted: false };
             }
           } else if (claim.checkpoint === "delete_requested") {
             if (!claim.boxId) {
-              if (!await options.persistence.finalizeDeletion(claim)) {
+              if (!await options.persistence.finalizeDeletion(claim, signal)) {
                 return { progressed, exhausted: false };
               }
               progressed += 1;
               continue;
             }
-            if (!await options.persistence.checkpoint(claim, { next: "delete_dispatched" })) {
+            if (!await options.persistence.checkpoint(claim, { next: "delete_dispatched" }, signal)) {
               return { progressed, exhausted: false };
             }
             const dispatchedClaim: RuntimeV3LifecycleClaim = {
@@ -670,20 +678,20 @@ export function createRuntimeV3Lifecycle(
               signal,
             });
             if (requested.outcome === "absent") {
-              if (!await options.persistence.finalizeDeletion(dispatchedClaim)) {
+              if (!await options.persistence.finalizeDeletion(dispatchedClaim, signal)) {
                 return { progressed, exhausted: false };
               }
             } else if (!await options.persistence.checkpoint(dispatchedClaim, {
               next: "waiting_deleted",
               providerOperationId: requested.operationId,
-            })) {
+            }, signal)) {
               return { progressed, exhausted: false };
             }
           } else if (claim.checkpoint === "delete_dispatched") {
             if (!claim.boxId) throw new Error("Persistent Companion Box identity is missing");
             const observed = await options.box.getStatus({ boxId: claim.boxId, signal });
             if (observed.state === "absent") {
-              if (!await options.persistence.finalizeDeletion(claim)) {
+              if (!await options.persistence.finalizeDeletion(claim, signal)) {
                 return { progressed, exhausted: false };
               }
             } else {
@@ -694,7 +702,7 @@ export function createRuntimeV3Lifecycle(
                   message: "Provider deletion outcome is unknown; waiting for Box absence confirmation.",
                   action: "retry",
                 }),
-              });
+              }, signal);
             }
           } else {
             if (!claim.boxId || !claim.providerOperationId) {
@@ -706,14 +714,14 @@ export function createRuntimeV3Lifecycle(
               signal,
             });
             if (deletion.status === "completed") {
-              if (!await options.persistence.finalizeDeletion(claim)) {
+              if (!await options.persistence.finalizeDeletion(claim, signal)) {
                 return { progressed, exhausted: false };
               }
             } else {
               await options.persistence.defer(claim, {
                 delaySeconds: LIFECYCLE_RETRY_SECONDS,
                 error: null,
-              });
+              }, signal);
             }
           }
           progressed += 1;
@@ -732,7 +740,7 @@ export function createRuntimeV3Lifecycle(
               message: error,
               action,
             }),
-          });
+          }, signal);
           return { progressed: progressed + 1, exhausted: false };
         }
       }
