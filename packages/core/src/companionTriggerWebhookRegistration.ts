@@ -303,6 +303,7 @@ async function findLinearWebhook(input: {
   remoteHookId?: string;
 }): Promise<string | null> {
   const seen = new Set<string>();
+  let foundId: string | null = null;
   let after: string | null = null;
   for (;;) {
     const response = await input.fetch(LINEAR_API, {
@@ -328,14 +329,20 @@ async function findLinearWebhook(input: {
         `linear webhook reconciliation failed (${response.status})`,
       );
     }
-    const hook = payload.data.data.webhooks.nodes.find(
+    const matches = payload.data.data.webhooks.nodes.filter(
       (candidate) => input.remoteHookId
         ? candidate.id === input.remoteHookId
         : candidate.url === input.webhookUrl,
     );
-    if (hook) return hook.id;
+    if (matches.length > 1 || (foundId && matches.length > 0)) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        "linear webhook reconciliation returned duplicate registrations",
+      );
+    }
+    if (matches[0]) foundId = matches[0].id;
     const pageInfo = payload.data.data.webhooks.pageInfo;
-    if (!pageInfo.hasNextPage) return null;
+    if (!pageInfo.hasNextPage) return foundId;
     if (!pageInfo.endCursor || seen.has(pageInfo.endCursor)) {
       throw new CompanionTriggerRegistrationError(
         "provider_rejected",
@@ -479,16 +486,17 @@ function providerNextPageUrl(input: {
   return next;
 }
 
-async function findWebhookByIdFromProviderList<T>(input: {
+async function findWebhookFromProviderList<T>(input: {
   fetch: typeof globalThis.fetch;
   initialUrl: string;
   headers: Record<string, string>;
   provider: "github" | "Sentry";
   schema: z.ZodType<T>;
-  remoteHookId: string;
+  matches: (hook: T) => boolean;
   idOf: (hook: T) => string;
 }): Promise<string | null> {
   const seen = new Set<string>();
+  let foundId: string | null = null;
   let url: string | null = input.initialUrl;
   for (let page = 0; url && page < PROVIDER_WEBHOOK_PAGE_LIMIT; page += 1) {
     if (seen.has(url)) {
@@ -506,14 +514,18 @@ async function findWebhookByIdFromProviderList<T>(input: {
         `${input.provider} webhook reconciliation failed (${response.status})`,
       );
     }
-    const found = hooks.data.find((hook) => input.idOf(hook) === input.remoteHookId);
-    if (found) return input.remoteHookId;
-    url = providerNextPageUrl({
+    const nextUrl = providerNextPageUrl({
       response,
       currentUrl: url,
       provider: input.provider,
       seenUrls: seen,
     });
+    const matches = hooks.data.filter(input.matches);
+    if (matches.length > 1 || (foundId && matches.length > 0)) {
+      return malformedProviderPagination(input.provider, "duplicate target registrations");
+    }
+    if (matches[0]) foundId = input.idOf(matches[0]);
+    url = nextUrl;
   }
   if (url) {
     throw new CompanionTriggerRegistrationError(
@@ -521,34 +533,30 @@ async function findWebhookByIdFromProviderList<T>(input: {
       `${input.provider} webhook reconciliation exceeded its pagination bound`,
     );
   }
-  return null;
+  return foundId;
 }
 
-export async function inspectCompanionTriggerWebhookV2(input: {
+async function findTriggerWebhook(input: {
   orgId: string;
-  companionId: string;
-  triggerId: string;
-  webhookBaseUrl: string;
   masterKey: Buffer;
   database: Db;
   fetch?: typeof globalThis.fetch;
-}): Promise<"present" | "absent"> {
-  const trigger = await loadRegistrationTrigger(input);
-  if (!trigger.remote_hook_id) return "absent";
+}, trigger: RegistrationTrigger): Promise<string | null> {
   const doFetch = input.fetch ?? globalThis.fetch;
-  let found: string | null;
   if (trigger.provider === "linear") {
     const key = await linearTriggerKeyToken({
       ...input,
       providerAccountId: trigger.remote_hook_account_id ?? trigger.provider_account_id,
     });
-    found = await findLinearWebhook({
+    const lookup: Parameters<typeof findLinearWebhook>[0] = {
       fetch: doFetch,
       token: key.token,
       webhookUrl: trigger.webhook_url,
-      remoteHookId: trigger.remote_hook_id,
-    });
-  } else if (trigger.provider === "sentry") {
+    };
+    if (trigger.remote_hook_id) lookup.remoteHookId = trigger.remote_hook_id;
+    return findLinearWebhook(lookup);
+  }
+  if (trigger.provider === "sentry") {
     if (!trigger.target?.organization || !trigger.target.project) {
       throw new CompanionTriggerRegistrationError(
         "provider_rejected",
@@ -564,16 +572,19 @@ export async function inspectCompanionTriggerWebhookV2(input: {
     const projectPath = [trigger.target.organization, trigger.target.project]
       .map(encodeURIComponent)
       .join("/");
-    found = await findWebhookByIdFromProviderList({
+    return findWebhookFromProviderList({
       fetch: doFetch,
       initialUrl: `${SENTRY_API}/projects/${projectPath}/hooks/`,
       headers: { authorization: `Bearer ${providerTokenOf(account, input.orgId, input.masterKey)}` },
       provider: "Sentry",
-      schema: z.object({ id: z.string().min(1).max(200) }).passthrough(),
-      remoteHookId: trigger.remote_hook_id,
+      schema: z.object({ id: z.string().min(1).max(200), url: z.string() }).passthrough(),
+      matches: (hook) => trigger.remote_hook_id
+        ? hook.id === trigger.remote_hook_id
+        : hook.url === trigger.webhook_url,
       idOf: (hook) => hook.id,
     });
-  } else if (trigger.provider === "github") {
+  }
+  if (trigger.provider === "github") {
     if (!trigger.target?.repo) {
       throw new CompanionTriggerRegistrationError(
         "provider_rejected",
@@ -587,28 +598,39 @@ export async function inspectCompanionTriggerWebhookV2(input: {
       database: input.database,
     });
     const repoPath = trigger.target.repo.split("/").map(encodeURIComponent).join("/");
-    found = await findWebhookByIdFromProviderList({
+    return findWebhookFromProviderList({
       fetch: doFetch,
       initialUrl: `${GITHUB_API}/repos/${repoPath}/hooks?per_page=100&page=1`,
       headers: githubHeaders(providerTokenOf(account, input.orgId, input.masterKey)),
       provider: "github",
-      schema: z.object({ id: z.number().int() }).passthrough(),
-      remoteHookId: trigger.remote_hook_id,
+      schema: z.object({
+        id: z.number().int(),
+        config: z.object({ url: z.string() }).passthrough(),
+      }).passthrough(),
+      matches: (hook) => trigger.remote_hook_id
+        ? String(hook.id) === trigger.remote_hook_id
+        : hook.config.url === trigger.webhook_url,
       idOf: (hook) => String(hook.id),
     });
-  } else {
-    throw new CompanionTriggerRegistrationError(
-      "provider_rejected",
-      "Webhook reconciliation is unavailable for this registered provider",
-    );
   }
+  throw new CompanionTriggerRegistrationError(
+    "provider_rejected",
+    "Webhook reconciliation is unavailable for this registered provider",
+  );
+}
+
+export async function inspectCompanionTriggerWebhookV2(input: {
+  orgId: string;
+  companionId: string;
+  triggerId: string;
+  webhookBaseUrl: string;
+  masterKey: Buffer;
+  database: Db;
+  fetch?: typeof globalThis.fetch;
+}): Promise<"present" | "absent"> {
+  const trigger = await loadRegistrationTrigger(input);
+  const found = await findTriggerWebhook(input, trigger);
   if (found === null) return "absent";
-  if (found !== trigger.remote_hook_id) {
-    throw new CompanionTriggerRegistrationError(
-      "provider_rejected",
-      `${trigger.provider} webhook reconciliation returned a different registration`,
-    );
-  }
   return "present";
 }
 
@@ -1115,13 +1137,21 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
   preserveRegistration?: boolean;
 }): Promise<"completed" | "absent"> {
   const trigger = await loadRegistrationTrigger(input);
+  // A failed create can have committed remotely before its id was persisted. Destructive cleanup
+  // re-resolves that narrow case by the exact callback on every attempt, so a crash before DELETE
+  // or an ambiguous DELETE response never turns a local null into provider absence.
+  const remoteHookId = trigger.remote_hook_id ?? (
+    trigger.provider === "linear" || trigger.provider === "sentry" || trigger.provider === "github"
+      ? await findTriggerWebhook(input, trigger)
+      : null
+  );
   const persist = input.preserveRegistration
     ? async (): Promise<void> => undefined
     : async (registration: Parameters<typeof persistRegistration>[0]): Promise<void> => {
         await persistRegistration(registration);
       };
   if (trigger.provider === "linear") {
-    if (!trigger.remote_hook_id) {
+    if (!remoteHookId) {
       await persist({
         ...input,
         accountId: null,
@@ -1143,7 +1173,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
         headers: { "content-type": "application/json", authorization: key.token.trim() },
         body: JSON.stringify({
           query: LINEAR_DELETE_MUTATION,
-          variables: { id: trigger.remote_hook_id },
+          variables: { id: remoteHookId },
         }),
       });
     } catch {
@@ -1153,6 +1183,12 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
       );
     }
     if (response.status === 404) {
+      if (input.preserveRegistration) {
+        throw new CompanionTriggerRegistrationError(
+          "provider_rejected",
+          "linear webhook removal returned ambiguous absence; reconcile the parent list",
+        );
+      }
       await persist({
         ...input,
         accountId: null,
@@ -1191,8 +1227,8 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
     return "completed";
   }
   if (trigger.provider === "sentry") {
-    if (!trigger.remote_hook_id || !trigger.target?.organization || !trigger.target.project) {
-      if (input.preserveRegistration && trigger.remote_hook_id) {
+    if (!remoteHookId || !trigger.target?.organization || !trigger.target.project) {
+      if (input.preserveRegistration && remoteHookId) {
         throw new CompanionTriggerRegistrationError(
           "provider_rejected",
           "Sentry webhook deletion lacks its exact provider locator",
@@ -1220,13 +1256,19 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
     let response: Response;
     try {
       response = await (input.fetch ?? globalThis.fetch)(
-        `${SENTRY_API}/projects/${projectPath}/hooks/${encodeURIComponent(trigger.remote_hook_id)}/`,
+        `${SENTRY_API}/projects/${projectPath}/hooks/${encodeURIComponent(remoteHookId)}/`,
         { method: "DELETE", headers: { authorization: `Bearer ${token}` } },
       );
     } catch {
       throw new CompanionTriggerRegistrationError(
         "provider_rejected",
         "Sentry webhook removal could not reach the provider; the registration is kept",
+      );
+    }
+    if (response.status === 404 && input.preserveRegistration) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        "Sentry webhook removal returned ambiguous absence; reconcile the parent list",
       );
     }
     if (!response.ok && response.status !== 404) {
@@ -1244,8 +1286,8 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
     });
     return response.status === 404 ? "absent" : "completed";
   }
-  if (trigger.provider !== "github" || !trigger.target?.repo || !trigger.remote_hook_id) {
-    if (input.preserveRegistration && trigger.remote_hook_id) {
+  if (trigger.provider !== "github" || !trigger.target?.repo || !remoteHookId) {
+    if (input.preserveRegistration && remoteHookId) {
       throw new CompanionTriggerRegistrationError(
         "provider_rejected",
         trigger.provider === "github"
@@ -1274,7 +1316,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
   let response: Response | null;
   try {
     response = await doFetch(
-      `${GITHUB_API}/repos/${repoPath}/hooks/${encodeURIComponent(trigger.remote_hook_id)}`,
+      `${GITHUB_API}/repos/${repoPath}/hooks/${encodeURIComponent(remoteHookId)}`,
       {
         method: "DELETE",
         headers: {
@@ -1291,6 +1333,12 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
     throw new CompanionTriggerRegistrationError(
       "provider_rejected",
       "github webhook removal could not reach the provider; the registration is kept",
+    );
+  }
+  if (response.status === 404 && input.preserveRegistration) {
+    throw new CompanionTriggerRegistrationError(
+      "provider_rejected",
+      "github webhook removal returned ambiguous absence; reconcile the parent list",
     );
   }
   if (!response.ok && response.status !== 404) {

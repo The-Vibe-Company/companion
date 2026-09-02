@@ -1444,6 +1444,13 @@ operation-bearing Box resumes by polling. Without an operation id, fresh authent
 closes the target without replay, while fresh visibility proves the provider's documented
 immediate-removal admission boundary was not crossed and permits a new request. An unavailable or
 unknown observation fails closed; known-negative DELETE rejection is retried only after backoff.
+Automatic trigger registrations whose create may have committed before `remote_hook_id` was saved
+remain purge targets whenever their provider account is still owned. Report and dry-run inventory
+their provider, account, locator, and exact callback path without decrypting credentials or calling
+the provider. Destructive inspection and removal each re-enumerate the authenticated provider list
+to resolve that exact callback before DELETE; a crash before or ambiguously after DELETE therefore
+repeats observation, not the effect. Finalization repeats the callback lookup and requires fresh
+authoritative absence.
 
 Only a complete external ledger admits the final transaction. It drains Companions, ACLs, threads,
 Turns, attempts, operations, routines, triggers, leases, runtime projections, images/build state,

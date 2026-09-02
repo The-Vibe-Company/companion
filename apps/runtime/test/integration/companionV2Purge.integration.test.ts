@@ -215,6 +215,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
     const orgId = "11111111-1111-4111-8111-111111111111";
     const companionId = "22222222-2222-4222-8222-222222222222";
     const triggerId = "33333333-3333-4333-8333-333333333333";
+    const ambiguousTriggerId = "34343434-3434-4434-8434-343434343434";
     const skillId = "44444444-4444-4444-8444-444444444444";
     const secretId = "55555555-5555-4555-8555-555555555555";
     const mcpAccountId = "66666666-6666-4666-8666-666666666666";
@@ -309,6 +310,13 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
         '${triggerId}','${orgId}','${companionId}','GitHub','relay','github',repeat('a',32),
         '{"repo":"owner/repo"}','registered','hook-fixture','purge-owner'
       );
+      insert into public.companion_triggers(
+        id,org_id,companion_id,name,prompt,provider,secret,target,
+        registration_status,remote_hook_account_id,created_by
+      ) values (
+        '${ambiguousTriggerId}','${orgId}','${companionId}','Ambiguous GitHub','relay','github',repeat('b',32),
+        '{"repo":"owner/repo"}','failed','${triggerAccountId}','purge-owner'
+      );
       insert into public.companion_delegations(
         id,org_id,source_companion_id,source_companion_name,target_companion_id,
         target_companion_name,actor_id,source_turn_id,source_attempt_id,target_turn_id,
@@ -326,15 +334,100 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       values ('desktop-purge-fixture',statement_timestamp() + interval '5 minutes');
     `);
 
+    await expect(database.begin(async (tx) => {
+      await tx`
+        insert into public.companion_v2_purge_runs(
+          id,phase,inventory_hash,inventory,preservation_fingerprint
+        ) values (
+          'runtime-v2-purge','deleting_external',${"a".repeat(64)},'{}'::jsonb,
+          public.companion_v2_purge_preservation_fingerprint()
+        )
+      `;
+      await tx`
+        insert into public.companion_v2_purge_targets(
+          resource_kind,resource_key,evidence,state,completed_at
+        )
+        select owned.kind, owned.key, '[]'::jsonb, 'absent', statement_timestamp()
+        from (
+          select 'box'::text as kind, box_id as key
+          from public.companion_runtime_instances where box_id is not null
+          union
+          select 'box', box_id
+          from public.companion_runtime_duplicate_cleanups where box_id is not null
+          union
+          select 'box', build_box_id from public.companion_images where build_box_id is not null
+          union
+          select 'snapshot', image_name from public.companion_images
+          union
+          select 'trigger', id::text from public.companion_triggers
+          where remote_hook_id is not null
+             or (provider in ('linear','github','sentry') and remote_hook_account_id is not null)
+          union
+          select 'object', storage_key from public.companion_message_attachments
+          union
+          select 'object', storage_key from public.skill_database_object_deletions
+          where storage_key like 'companion-attachments/%'
+        ) owned
+        where owned.key <> ${ambiguousTriggerId}
+      `;
+      await tx`select public.companion_finalize_v2_purge()`;
+    })).rejects.toThrow("Runtime v2 ownership lacks confirmed external deletion");
+
+    await expect(database.begin(async (tx) => {
+      await tx`
+        insert into public.companion_v2_purge_runs(
+          id,phase,inventory_hash,inventory,preservation_fingerprint
+        ) values (
+          'runtime-v2-purge','deleting_external',${"b".repeat(64)},'{}'::jsonb,
+          public.companion_v2_purge_preservation_fingerprint()
+        )
+      `;
+      await tx`
+        insert into public.companion_v2_purge_targets(
+          resource_kind,resource_key,evidence,state,completed_at
+        )
+        select owned.kind, owned.key, '[]'::jsonb, 'absent', statement_timestamp()
+        from (
+          select 'box'::text as kind, box_id as key
+          from public.companion_runtime_instances where box_id is not null
+          union
+          select 'box', box_id
+          from public.companion_runtime_duplicate_cleanups where box_id is not null
+          union
+          select 'box', build_box_id from public.companion_images where build_box_id is not null
+          union
+          select 'snapshot', image_name from public.companion_images
+          union
+          select 'trigger', id::text from public.companion_triggers
+          where remote_hook_id is not null
+             or (provider in ('linear','github','sentry') and remote_hook_account_id is not null)
+          union
+          select 'object', storage_key from public.companion_message_attachments
+          union
+          select 'object', storage_key from public.skill_database_object_deletions
+          where storage_key like 'companion-attachments/%'
+        ) owned
+      `;
+      const [accepted] = await tx<Array<{ result: { remaining_companion_rows: number } }>>`
+        select public.companion_finalize_v2_purge() as result
+      `;
+      expect(accepted?.result.remaining_companion_rows).toBe(0);
+      throw new Error("rollback accepted finalizer fixture");
+    })).rejects.toThrow("rollback accepted finalizer fixture");
+
     const boxes = new DisposableBoxProvider();
     const objects = new DisposableObjectStore();
     let triggerAttempts = 0;
-    let triggerPresent = true;
+    const presentTriggers = new Set([triggerId]);
+    const triggerInspections: string[] = [];
     const triggers: CompanionV2TriggerRemover = {
-      async inspect() { return triggerPresent ? "present" : "absent"; },
-      async remove() {
+      async inspect(owner) {
+        triggerInspections.push(owner.triggerId);
+        return presentTriggers.has(owner.triggerId) ? "present" : "absent";
+      },
+      async remove(owner) {
         triggerAttempts += 1;
-        triggerPresent = false;
+        presentTriggers.delete(owner.triggerId);
         return "completed";
       },
     };
@@ -365,8 +458,21 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       await contender.end({ timeout: 1 });
     }
     expect(firstInventory.targets.map((target) => target.kind)).toEqual([
-      "box", "box", "box", "box", "box", "object", "snapshot", "snapshot", "trigger",
+      "box", "box", "box", "box", "box", "object", "snapshot", "snapshot", "trigger", "trigger",
     ]);
+    expect(firstInventory.targets).toContainEqual(expect.objectContaining({
+      kind: "trigger",
+      key: ambiguousTriggerId,
+      evidence: expect.arrayContaining(["database:ambiguous-trigger-registration"]),
+    }));
+    expect(firstInventory.triggerOwners).toContainEqual(expect.objectContaining({
+      triggerId: ambiguousTriggerId,
+      provider: "github",
+      providerAccountId: triggerAccountId,
+      remoteHookId: null,
+      target: { repo: "owner/repo" },
+      callbackPath: `/v1/hooks/triggers/${ambiguousTriggerId}/${"b".repeat(32)}`,
+    }));
     expect(firstInventory.targets.filter((target) => target.kind === "box")).toEqual([
       expect.objectContaining({
         key: "bx_23456789",
@@ -592,6 +698,22 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
     expect({ objectDeletes: objects.removals, snapshotDeletes: boxes.snapshotDeletes })
       .toEqual({ objectDeletes: 1, snapshotDeletes: 1 });
 
+    const beforeTriggerDeleteInventory = await collectCompanionV2PurgeInventory({
+      client: database, boxClient, objectStore: objects,
+    });
+    await expect(executeConfirmedCompanionV2Purge({
+      client: database,
+      boxClient,
+      objectStore: objects,
+      triggerRemover: triggers,
+      initialInventory: beforeTriggerDeleteInventory,
+      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      beforeExternalEffect: async (target) => {
+        if (target.kind === "trigger") throw new Error("crash after trigger discovery before DELETE");
+      },
+    })).rejects.toThrow("crash after trigger discovery before DELETE");
+    expect(triggerAttempts).toBe(0);
+
     const beforeTriggerInventory = await collectCompanionV2PurgeInventory({
       client: database, boxClient, objectStore: objects,
     });
@@ -674,6 +796,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectDeletes: objects.removals,
       triggerAttempts,
     }).toEqual({ boxDeletes: 2, snapshotDeletes: 2, objectDeletes: 1, triggerAttempts: 1 });
+    expect(triggerInspections).toContain(ambiguousTriggerId);
     expect([...boxes.snapshots]).toEqual(["provider-only-unrelated-snapshot"]);
 
     const [remaining] = await database<Array<{

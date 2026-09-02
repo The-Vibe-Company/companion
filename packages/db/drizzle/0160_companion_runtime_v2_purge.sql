@@ -276,6 +276,10 @@ BEGIN
       UNION
       SELECT 'trigger', id::text FROM public.companion_triggers
       WHERE remote_hook_id IS NOT NULL
+         OR (
+           provider IN ('linear','github','sentry')
+           AND remote_hook_account_id IS NOT NULL
+         )
       UNION
       SELECT 'object', storage_key FROM public.companion_message_attachments
       UNION

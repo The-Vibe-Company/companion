@@ -1004,7 +1004,10 @@ describe("Companion triggers over the real database", () => {
             },
           });
         }
-        return new Response(JSON.stringify([{ id: 424242 }]), { status: 200 });
+        return new Response(JSON.stringify([{
+          id: 424242,
+          config: { url: trigger.webhook_url },
+        }]), { status: 200 });
       }),
     }))).resolves.toBe("present");
     expect(paginatedGitHubRequests).toEqual([
@@ -1018,7 +1021,10 @@ describe("Companion triggers over the real database", () => {
       webhookBaseUrl: WEBHOOK_BASE_URL,
       masterKey,
       database,
-      fetch: asFetch(async () => new Response(JSON.stringify([{ id: 111111 }]), { status: 200 })),
+      fetch: asFetch(async () => new Response(JSON.stringify([{
+        id: 111111,
+        config: { url: "https://example.test/not-this-trigger" },
+      }]), { status: 200 })),
     }))).resolves.toBe("absent");
     await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
       orgId: fixture.orgA,
@@ -1069,7 +1075,10 @@ describe("Companion triggers over the real database", () => {
                 link: '<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=2>; rel="next"',
               },
             })
-          : new Response(JSON.stringify([{ id: 424242 }]), { status: 200 });
+          : new Response(JSON.stringify([{
+              id: 424242,
+              config: { url: trigger.webhook_url },
+            }]), { status: 200 });
       }),
     }))).resolves.toBe("present");
     const invalidLinkHeaders = [
@@ -1117,6 +1126,75 @@ describe("Companion triggers over the real database", () => {
       }),
     }))).rejects.toMatchObject({ code: "provider_rejected" });
     expect(boundedPageCalls).toBe(100);
+    await integrationDb.update(schema.companionTriggers).set({
+      registrationStatus: "failed",
+      remoteHookId: null,
+    }).where(eq(schema.companionTriggers.id, trigger.id));
+    const ambiguousHookRequests: Array<{ method: string; url: string }> = [];
+    let ambiguousRemotePresent = true;
+    const ambiguousHookFetch = asFetch(async (url, init) => {
+      const method = init?.method ?? "GET";
+      ambiguousHookRequests.push({ method, url: String(url) });
+      if (method === "DELETE") {
+        ambiguousRemotePresent = false;
+        throw new Error("provider accepted DELETE before the response was lost");
+      }
+      return new Response(JSON.stringify(ambiguousRemotePresent ? [{
+            id: 424242,
+            config: { url: trigger.webhook_url },
+          }] : []), { status: 200 });
+    });
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: ambiguousHookFetch,
+    }))).resolves.toBe("present");
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: ambiguousHookFetch,
+      preserveRegistration: true,
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: ambiguousHookFetch,
+      preserveRegistration: true,
+    }))).resolves.toBe("absent");
+    expect(ambiguousHookRequests).toEqual([
+      {
+        method: "GET",
+        url: "https://api.github.com/repos/acme/demo/hooks?per_page=100&page=1",
+      },
+      {
+        method: "GET",
+        url: "https://api.github.com/repos/acme/demo/hooks?per_page=100&page=1",
+      },
+      {
+        method: "DELETE",
+        url: "https://api.github.com/repos/acme/demo/hooks/424242",
+      },
+      {
+        method: "GET",
+        url: "https://api.github.com/repos/acme/demo/hooks?per_page=100&page=1",
+      },
+    ]);
+    await integrationDb.update(schema.companionTriggers).set({
+      registrationStatus: "registered",
+      remoteHookId: "424242",
+    }).where(eq(schema.companionTriggers.id, trigger.id));
     let malformedLookupCalls = 0;
     const malformedLookup = asFetch(async () => {
       malformedLookupCalls += 1;
@@ -1147,6 +1225,16 @@ describe("Companion triggers over the real database", () => {
     await integrationDb.update(schema.companionTriggers).set({
       target: { repo: "acme/demo", events: ["push"] },
     }).where(eq(schema.companionTriggers.id, trigger.id));
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => new Response(null, { status: 404 })),
+      preserveRegistration: true,
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
     const deleteRequests: string[] = [];
     const deleteFetch = asFetch(async (url) => {
       deleteRequests.push(String(url));
@@ -1512,7 +1600,12 @@ describe("Companion triggers over the real database", () => {
         ? new Response(JSON.stringify([{
             id: "sentry-hook-1",
             url: trigger.webhook_url,
-          }]), { status: 200 })
+          }]), {
+            status: 200,
+            headers: {
+              link: '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=next>; rel="next"; results="false"',
+            },
+          })
         : new Response(JSON.stringify({ id: "sentry-hook-1" }), { status: 200 });
     });
     await integrationDb.update(schema.companionTriggers).set({ registrationStatus: "failed" })
@@ -1572,7 +1665,15 @@ describe("Companion triggers over the real database", () => {
                 link: '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=next>; rel=next; results=true',
               },
             })
-          : new Response(JSON.stringify([{ id: "sentry-hook-1" }]), { status: 200 });
+          : new Response(JSON.stringify([{
+              id: "sentry-hook-1",
+              url: trigger.webhook_url,
+            }]), {
+              status: 200,
+              headers: {
+                link: '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=terminal>; rel=next; results=false',
+              },
+            });
       }),
     }))).resolves.toBe("present");
     expect(nextPageCalls).toBe(2);
@@ -1582,7 +1683,7 @@ describe("Companion triggers over the real database", () => {
       '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=next>; rel=next; results=true; results=false',
       '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=previous>; rel=previous; results=false',
     ];
-    for (const link of invalidSentryPagination) {
+    for (const [index, link] of invalidSentryPagination.entries()) {
       await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
         orgId: fixture.orgA,
         companionId,
@@ -1590,7 +1691,9 @@ describe("Companion triggers over the real database", () => {
         webhookBaseUrl: WEBHOOK_BASE_URL,
         masterKey,
         database,
-        fetch: asFetch(async () => new Response(JSON.stringify([]), {
+        fetch: asFetch(async () => new Response(JSON.stringify(index === 0
+          ? [{ id: "sentry-hook-1", url: trigger.webhook_url }]
+          : []), {
           status: 200,
           headers: { link },
         })),

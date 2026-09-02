@@ -88,6 +88,16 @@ export interface CompanionV2DatabaseInventory {
     orgId: string;
     companionId: string;
     ownerId: string;
+    provider: "linear" | "github" | "sentry";
+    providerAccountId: string | null;
+    remoteHookId: string | null;
+    target: {
+      repo?: string;
+      organization?: string;
+      project?: string;
+      events?: string[];
+    };
+    callbackPath: string;
   }>;
 }
 
@@ -398,17 +408,27 @@ export async function inventoryCompanionV2Database(
 
   const triggerOwners = await client<CompanionV2DatabaseInventory["triggerOwners"]>`
     select trigger.id::text as "triggerId", trigger.org_id::text as "orgId",
-           trigger.companion_id::text as "companionId", companion.owner_id as "ownerId"
+           trigger.companion_id::text as "companionId", companion.owner_id as "ownerId",
+           trigger.provider, coalesce(trigger.remote_hook_account_id, trigger.provider_account_id)::text
+             as "providerAccountId",
+           trigger.remote_hook_id as "remoteHookId", trigger.target,
+           '/v1/hooks/triggers/' || trigger.id::text || '/' || trigger.secret as "callbackPath"
     from public.companion_triggers trigger
     join public.companions companion
       on companion.org_id = trigger.org_id and companion.id = trigger.companion_id
     where trigger.remote_hook_id is not null
+       or (
+         trigger.provider in ('linear','github','sentry')
+         and trigger.remote_hook_account_id is not null
+       )
     order by trigger.id
   `;
   targets.push(...triggerOwners.map((row) => ({
     kind: "trigger" as const,
     key: row.triggerId,
-    evidence: ["database:remote-trigger-registration"],
+    evidence: [row.remoteHookId
+      ? "database:remote-trigger-registration"
+      : "database:ambiguous-trigger-registration"],
   })));
   return { rowCounts, targets: mergeCompanionV2PurgeTargets(targets), triggerOwners };
 }
