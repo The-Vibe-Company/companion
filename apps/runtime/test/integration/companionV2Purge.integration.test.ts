@@ -614,6 +614,27 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
     `;
     expect(preservedAtFinalization).not.toEqual(preservedBefore);
 
+    objects.keys.add("companion-attachments/orphan/output.png");
+    const contradictedInventory = await collectCompanionV2PurgeInventory({
+      client: database, boxClient, objectStore: objects,
+    });
+    await expect(executeConfirmedCompanionV2Purge({
+      client: database,
+      boxClient,
+      objectStore: objects,
+      triggerRemover: triggers,
+      initialInventory: contradictedInventory,
+      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+    })).rejects.toThrow(
+      "terminal Runtime v2 purge target remains visible (object:companion-attachments/orphan/output.png)",
+    );
+    expect(objects.removals).toBe(1);
+    const [ownedAfterContradiction] = await database<Array<{ count: string }>>`
+      select count(*)::text as count from public.companions where id = ${companionId}::uuid
+    `;
+    expect(ownedAfterContradiction?.count).toBe("1");
+    objects.keys.delete("companion-attachments/orphan/output.png");
+
     const retryInventory = await collectCompanionV2PurgeInventory({
       client: database, boxClient, objectStore: objects,
     });

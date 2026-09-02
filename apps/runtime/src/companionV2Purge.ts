@@ -811,37 +811,40 @@ export async function executeConfirmedCompanionV2Purge(input: {
   const targets = await loadCompanionV2PurgeTargets(input.client);
   const journal = createCompanionV2PurgeJournal(input.client);
   const objectStore = input.objectStore ?? productionObjectStore();
+  const providerPresent = async (target: CompanionV2PurgeTarget): Promise<boolean> => {
+    if (target.kind === "trigger") {
+      const owner = input.initialInventory.triggerOwners.find(
+        (item) => item.triggerId === target.key,
+      );
+      if (!owner) {
+        throw new Error(`trigger ${target.key} lacks ownership required for provider reconciliation`);
+      }
+      const inspection: Parameters<typeof inspectCompanionV2Trigger>[0] = {
+        owner,
+        client: input.client,
+        env,
+      };
+      if (input.triggerRemover) inspection.triggerRemover = input.triggerRemover;
+      return (await inspectCompanionV2Trigger(inspection)) === "present";
+    }
+    if (target.kind === "object") {
+      return (await objectStore.listKeys()).includes(target.key);
+    }
+    if (target.kind === "snapshot") {
+      return (await input.boxClient.listNamedSnapshots()).some(
+        (snapshot) => snapshot.name === target.key && isCompanionRuntimeImageName(snapshot.name),
+      );
+    }
+    // Box documents that an accepted permanent delete disappears from ordinary authenticated
+    // reads immediately, before the retained bdop finishes. Presence therefore proves admission
+    // did not occur; absence is sufficient to close this purge target without replaying DELETE.
+    // https://docs.ascii.dev/box/api/reference/boxes/permanently-delete-box-data.md
+    return (await input.boxClient.listAllBoxes()).some((box) => box.id === target.key);
+  };
   const processing: Parameters<typeof processCompanionV2PurgeTargets>[0] = {
     targets,
     journal,
-    providerPresent: async (target) => {
-      if (target.kind === "trigger") {
-        const owner = input.initialInventory.triggerOwners.find(
-          (item) => item.triggerId === target.key,
-        );
-        if (!owner) return false;
-        const inspection: Parameters<typeof inspectCompanionV2Trigger>[0] = {
-          owner,
-          client: input.client,
-          env,
-        };
-        if (input.triggerRemover) inspection.triggerRemover = input.triggerRemover;
-        return (await inspectCompanionV2Trigger(inspection)) === "present";
-      }
-      if (target.kind === "object") {
-        return (await objectStore.listKeys()).includes(target.key);
-      }
-      if (target.kind === "snapshot") {
-        return (await input.boxClient.listNamedSnapshots()).some(
-          (snapshot) => snapshot.name === target.key && isCompanionRuntimeImageName(snapshot.name),
-        );
-      }
-      // Box documents that an accepted permanent delete disappears from ordinary authenticated
-      // reads immediately, before the retained bdop finishes. Presence therefore proves admission
-      // did not occur; absence is sufficient to close this purge target without replaying DELETE.
-      // https://docs.ascii.dev/box/api/reference/boxes/permanently-delete-box-data.md
-      return (await input.boxClient.listAllBoxes()).some((box) => box.id === target.key);
-    },
+    providerPresent,
     remove: (target) => {
       const removal: Parameters<typeof removeCompanionV2Target>[0] = {
         target,
@@ -881,6 +884,14 @@ export async function executeConfirmedCompanionV2Purge(input: {
   });
   if (unresolved.length > 0) {
     throw new Error(`${unresolved.length} Runtime v2 external purge target(s) remain unresolved`);
+  }
+  for (const target of ledger.values()) {
+    if (target.state !== "completed" && target.state !== "absent") continue;
+    if (await providerPresent(target)) {
+      throw new Error(
+        `terminal Runtime v2 purge target remains visible (${target.kind}:${target.key})`,
+      );
+    }
   }
   const [result] = await input.client<Array<{ result: CompanionV2PurgeResult }>>`
     select public.companion_finalize_v2_purge() as result
