@@ -338,12 +338,18 @@ export function createRuntimeMaterialPipeline(input: {
         || claim.settingsRevision === null || claim.skillsRevision === null
       ) throw new RuntimeMaterialError("runtime_material_invalid");
       const material = preparationMaterial(claim);
+      // SAFETY: protocol 4 builds these three arrays from the same typed revision tuples used by
+      // assertRuntimeMaterialSnapshot, and the runtime store rejects non-object array members.
+      const authorizationRefs = claim as RuntimeV3PreparationClaim & Pick<
+        RuntimeAuthorization,
+        "providerRefs" | "skillRefs" | "mcpRefs"
+      >;
       assertRuntimeMaterialSnapshot({
         material,
         authorization: {
-          providerRefs: claim.providerRefs as unknown as RuntimeAuthorization["providerRefs"],
-          skillRefs: claim.skillRefs as unknown as RuntimeAuthorization["skillRefs"],
-          mcpRefs: claim.mcpRefs as unknown as RuntimeAuthorization["mcpRefs"],
+          providerRefs: authorizationRefs.providerRefs,
+          skillRefs: authorizationRefs.skillRefs,
+          mcpRefs: authorizationRefs.mcpRefs,
         },
       });
       const resources = await resolveRuntimeResources({
@@ -357,6 +363,9 @@ export function createRuntimeMaterialPipeline(input: {
       // final control-plane boundary before any resolved material crosses into the Box.
       const credentials = await authorize();
       if (!credentials) throw new RuntimeMaterialError("runtime_material_invalid");
+      // SAFETY: protocol 4 constructs this credential-free catalog with the CompanionConfigCatalog
+      // fields and the runtime store has already rejected null-excluding non-object values.
+      const configCatalog = claim.configCatalog as CompanionConfigCatalog | null;
       const observed = await input.runtime().stageExistingBox({
         orgId: claim.orgId,
         companionId: claim.companionId,
@@ -384,7 +393,7 @@ export function createRuntimeMaterialPipeline(input: {
           mcpBrokerCredential: credentials.mcpBrokerToken ?? undefined,
           controlCredential: credentials.controlToken,
         }),
-        configCatalog: claim.configCatalog as CompanionConfigCatalog | null,
+        configCatalog,
         signal,
       });
       if (input.registerAgentEndpoint && observed.agentEndpoint) {
@@ -531,11 +540,13 @@ export function createRuntimeMaterialPipeline(input: {
 }
 
 function preparationMaterial(claim: RuntimeV3PreparationClaim): RuntimeMaterialRows {
+  // SAFETY: protocol 4 emits the same provider, Skill, and MCP row shapes consumed by the existing
+  // material resolver; the runtime store rejects non-object array members before this boundary.
   return {
-    providerMaterial: claim.providerMaterial as RuntimeWorkMaterial["providerMaterial"],
-    skillMaterial: claim.skillMaterial as RuntimeWorkMaterial["skillMaterial"],
-    mcpMaterial: claim.mcpMaterial as RuntimeWorkMaterial["mcpMaterial"],
-  };
+    providerMaterial: claim.providerMaterial,
+    skillMaterial: claim.skillMaterial,
+    mcpMaterial: claim.mcpMaterial,
+  } as RuntimeMaterialRows;
 }
 
 function earliestDate(left: Date | null, right: Date | null): Date | null {
