@@ -855,6 +855,62 @@ describe("Runtime v3 progression facts", () => {
       where companion_id = ${lifecycleCompanion}::uuid`).resolves.toEqual([]);
   });
 
+  it("preserves a known delete operation across a second Owner request", async () => {
+    const companionId = randomUUID();
+    const firstRequest = randomUUID();
+    const secondRequest = randomUUID();
+    await ownerSql`insert into public.companions(id, org_id, owner_id, name)
+      values (${companionId}::uuid, ${ids.org}::uuid, ${ids.owner}, 'Delete replay')`;
+    await ownerSql`insert into public.companion_v3_instances(
+      org_id, companion_id, desired_lifecycle_actor_id, box_id
+    ) values (${ids.org}::uuid, ${companionId}::uuid, ${ids.owner}, 'bx_3456789a')`;
+    await asApi(async (sql) => {
+      await sql`select * from public.companion_v3_api_desire_lifecycle(
+        ${ids.org}::uuid, ${companionId}::uuid, 'delete', ${firstRequest}::uuid
+      )`;
+    });
+
+    let deleteCalls = 0;
+    let pollCalls = 0;
+    const lifecycle = createRuntimeV3Lifecycle({
+      persistence: createRuntimeV3PostgresLifecyclePersistence(runtimeSql),
+      box: {
+        getStatus: vi.fn(async () => ({ state: "ready" as const })),
+        stopExistingBox: vi.fn(),
+        resumeExistingBox: vi.fn(),
+        requestPermanentDeletion: vi.fn(async () => {
+          deleteCalls += 1;
+          return { outcome: "accepted" as const, operationId: "delete-operation-replay" };
+        }),
+        pollPermanentDeletion: vi.fn(async () => {
+          pollCalls += 1;
+          return { status: pollCalls === 1 ? "pending" as const : "completed" as const };
+        }),
+      },
+    });
+    await lifecycle.converge({ executorId: "runtime-delete-first" });
+
+    await asApi(async (sql) => {
+      await sql`select * from public.companion_v3_api_desire_lifecycle(
+        ${ids.org}::uuid, ${companionId}::uuid, 'delete', ${secondRequest}::uuid
+      )`;
+    });
+    const [inFlight] = await ownerSql<Array<{ state: string; operationId: string | null }>>`
+      select lifecycle_state::text as state,
+        delete_provider_operation_id as "operationId"
+      from public.companion_v3_instances where companion_id = ${companionId}::uuid`;
+    expect(inFlight).toEqual({
+      state: "waiting_deleted",
+      operationId: "delete-operation-replay",
+    });
+
+    await lifecycle.converge({ executorId: "runtime-delete-takeover" });
+    expect(deleteCalls).toBe(1);
+    expect(pollCalls).toBe(2);
+    await expect(ownerSql`select 1 from public.companions
+      where id = ${companionId}::uuid`).resolves.toEqual([]);
+  });
+
   it("fails closed before Pi when current provider authority is revoked", async () => {
     await seedPreparedV3("invocation-authority");
     const command = randomUUID();

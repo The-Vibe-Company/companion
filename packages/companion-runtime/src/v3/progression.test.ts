@@ -188,7 +188,40 @@ describe("Runtime v3 progression interface", () => {
       expect.objectContaining({
         error: expect.objectContaining({ code: "companion_delete_outcome_unknown" }),
       }),
+      expect.any(AbortSignal),
     );
+  });
+
+  it("propagates runtime shutdown cancellation into lifecycle persistence", async () => {
+    const controller = new AbortController();
+    controller.abort(new Error("runtime shutdown"));
+    const claim = vi.fn(async ({ signal }: { signal?: AbortSignal }) => {
+      signal?.throwIfAborted();
+      return null;
+    });
+    const lifecycle = createRuntimeV3Lifecycle({
+      persistence: {
+        claim,
+        checkpoint: vi.fn(),
+        defer: vi.fn(),
+        finalizeDeletion: vi.fn(),
+      },
+      box: {
+        getStatus: vi.fn(),
+        stopExistingBox: vi.fn(),
+        resumeExistingBox: vi.fn(),
+        requestPermanentDeletion: vi.fn(),
+        pollPermanentDeletion: vi.fn(),
+      },
+    });
+
+    await expect(lifecycle.converge({
+      executorId: "runtime-shutdown",
+      signal: controller.signal,
+    })).rejects.toThrow("runtime shutdown");
+    expect(claim).toHaveBeenCalledWith(expect.objectContaining({
+      signal: expect.objectContaining({ aborted: true }),
+    }));
   });
 
   it("checkpoints canonical Box identity before readiness, staging, and Pi activation", async () => {

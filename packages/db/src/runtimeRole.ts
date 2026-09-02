@@ -29,6 +29,8 @@ const RUNTIME_DATABASE_ROLE_MESSAGES = {
     "Runtime database role has an unexpected SECURITY DEFINER grant; reapply the runtime grants",
 } satisfies Record<RuntimeDatabaseRoleFailure, string>;
 
+const REQUIRED_PROTECTED_RELATION_COUNT = 19;
+
 export class RuntimeDatabaseRoleError extends Error {
   readonly failure: RuntimeDatabaseRoleFailure;
   readonly stableCode: string;
@@ -265,7 +267,10 @@ export async function verifyRuntimeDatabaseRole(
     || profile.ownsRelations !== false
     || profile.ownsFunctionsOrTypes !== false
   ) throw new RuntimeDatabaseRoleError("object_ownership");
-  if (profile.protectedRelationCount !== 18 || profile.requiredFunctionsReady !== true) {
+  if (
+    profile.protectedRelationCount !== REQUIRED_PROTECTED_RELATION_COUNT
+    || profile.requiredFunctionsReady !== true
+  ) {
     throw new RuntimeDatabaseRoleError("release_schema_incomplete");
   }
   if (profile.hasPublicRelationPrivileges !== false) {
