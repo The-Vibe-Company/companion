@@ -1014,6 +1014,34 @@ describe("Companion triggers over the real database", () => {
       "https://api.github.com/repos/acme/demo/hooks?per_page=100&page=1",
       "https://api.github.com/repos/acme/demo/hooks?per_page=100&page=2",
     ]);
+    const canonicalGitHubRequests: string[] = [];
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async (url) => {
+        canonicalGitHubRequests.push(String(url));
+        if (String(url).includes("/repos/acme/demo/hooks")) {
+          return new Response(JSON.stringify([]), {
+            status: 200,
+            headers: {
+              link: "<https://api.github.com/repositories/123456/hooks?per_page=100&page=2>; rel=next",
+            },
+          });
+        }
+        return new Response(JSON.stringify([{
+          id: 424242,
+          config: { url: trigger.webhook_url },
+        }]), { status: 200 });
+      }),
+    }))).resolves.toBe("present");
+    expect(canonicalGitHubRequests).toEqual([
+      "https://api.github.com/repos/acme/demo/hooks?per_page=100&page=1",
+      "https://api.github.com/repositories/123456/hooks?per_page=100&page=2",
+    ]);
     await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
       orgId: fixture.orgA,
       companionId,
