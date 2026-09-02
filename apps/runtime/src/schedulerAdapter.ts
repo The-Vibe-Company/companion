@@ -53,13 +53,13 @@ export function createRuntimeSchedulerAdapter(
       v3Sweep = runtimeV3.convergence.converge({ executorId: runtimeV3.executorId })
         .then((result) => {
           v3ErrorAt = null;
+          v3LastSweepCompletedAt = new Date();
           if (result.exhausted) scheduleV3(0);
         })
         .catch(() => {
           v3ErrorAt = new Date();
         })
         .finally(() => {
-          v3LastSweepCompletedAt = new Date();
           v3Sweep = null;
           if (!v3Timer) scheduleV3(runtimeV3.sweepIntervalMs);
         });

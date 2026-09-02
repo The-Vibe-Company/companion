@@ -9,6 +9,7 @@ import {
 import postgres, { type Sql } from "postgres";
 
 interface MeasurementRow {
+  inProductWindow: boolean;
   lane: RuntimeV3MeasurementFact["lane"];
   wakePath: RuntimeV3MeasurementFact["wakePath"];
   boxProvider: string;
@@ -33,7 +34,8 @@ export async function runtimeV3AcceptanceReport(
   input: { since: Date; until: Date },
 ) {
   const facts = await sql<MeasurementRow[]>`
-    select lane::text, wake_path::text as "wakePath", box_provider as "boxProvider",
+    select in_product_window as "inProductWindow", lane::text,
+      wake_path::text as "wakePath", box_provider as "boxProvider",
       model_provider as "modelProvider", model_id as "modelId", state::text,
       accepted_at as "acceptedAt", first_claimed_at as "firstClaimedAt",
       box_ready_at as "boxReadyAt", staging_completed_at as "stagingCompletedAt",

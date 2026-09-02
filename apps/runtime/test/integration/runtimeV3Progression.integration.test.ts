@@ -270,6 +270,41 @@ describe("Runtime v3 progression facts", () => {
     expect(prepared).toEqual([{ commandId: command }]);
   });
 
+  it("preserves the acceptance wake path when a created Box later reaches Pi admission", async () => {
+    const command = randomUUID();
+    await admitMain(command);
+    await ownerSql`update public.companion_v3_instances
+      set box_id = 'bx_23456789', pi_invocation_id = 'invocation-created',
+        prepared_at = clock_timestamp()
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
+    const convergence = createRuntimeV3PostgresWarmConvergence(runtimeSql);
+    const claim = await convergence.claimLane({ executorId: "runtime-created-path", lane: "main" });
+    expect(claim).not.toBeNull();
+    const persistence = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
+    await expect(persistence.recordAdmission(claim!, {
+      invocationId: "invocation-created",
+      cursor: 0n,
+    })).resolves.toBe(true);
+
+    const measured = await ownerSql<Array<{ wakePath: string }>>`
+      select wake_path::text as "wakePath" from public.companion_v3_turns
+      where command_id = ${command}::uuid`;
+    expect(measured).toEqual([{ wakePath: "creation" }]);
+  });
+
+  it("classifies acceptance against an archived instance as an archived wake", async () => {
+    await ownerSql`insert into public.companion_v3_instances(
+      org_id, companion_id, desired_lifecycle
+    ) values (${ids.org}::uuid, ${ids.companion}::uuid, 'archive')`;
+    const command = randomUUID();
+    await admitMain(command);
+
+    const measured = await ownerSql<Array<{ wakePath: string }>>`
+      select wake_path::text as "wakePath" from public.companion_v3_turns
+      where command_id = ${command}::uuid`;
+    expect(measured).toEqual([{ wakePath: "archived_wake" }]);
+  });
+
   it("fails closed before Pi when current provider authority is revoked", async () => {
     await ownerSql`insert into public.companion_v3_instances(
       org_id, companion_id, box_id, pi_invocation_id, prepared_at

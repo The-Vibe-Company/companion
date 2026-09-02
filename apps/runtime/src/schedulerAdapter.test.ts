@@ -82,6 +82,41 @@ describe("runtime scheduler composition adapter", () => {
     await adapter.shutdown({ drainTimeoutMs: 1_000 });
   });
 
+  it("does not mark a rejected Runtime v3 sweep as completed", async () => {
+    const kernelCompletedAt = new Date("2027-01-01T00:00:00.000Z");
+    const scheduler: RuntimeKernelScheduler = {
+      start: vi.fn(),
+      stopClaims: vi.fn(),
+      shutdown: vi.fn(async () => undefined),
+      snapshot: () => ({
+        claimLoopAlive: true,
+        acceptingClaims: true,
+        claimsEnabled: true,
+        gateEnabled: true,
+        lastSweepStartedAt: kernelCompletedAt,
+        lastSweepCompletedAt: kernelCompletedAt,
+        claimLoopErrorAt: null,
+        activeCount: 0,
+        concurrency: 8,
+        sweepIntervalMs: 2_000,
+      }),
+    };
+    const converge = vi.fn(async () => {
+      throw new Error("redacted claim failure");
+    });
+    const adapter = createRuntimeSchedulerAdapter(scheduler, {
+      convergence: { converge },
+      executorId: "runtime-v3-error-health",
+      sweepIntervalMs: 2_000,
+    });
+
+    adapter.start();
+    await vi.waitFor(() => expect(adapter.snapshot().claimLoopErrorAt).toBeInstanceOf(Date));
+    expect(adapter.snapshot().lastSweepCompletedAt).toBeNull();
+    adapter.stopClaims();
+    await adapter.shutdown({ drainTimeoutMs: 1_000 });
+  });
+
   it("bounds a pending Runtime v3 sweep inside the shutdown drain timeout", async () => {
     vi.useFakeTimers();
     try {

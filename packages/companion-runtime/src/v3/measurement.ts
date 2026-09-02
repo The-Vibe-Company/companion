@@ -2,6 +2,7 @@ export const RUNTIME_V3_WAKE_PATHS = ["warm", "creation", "archived_wake"] as co
 export type RuntimeV3WakePath = (typeof RUNTIME_V3_WAKE_PATHS)[number];
 
 export interface RuntimeV3MeasurementFact {
+  inProductWindow: boolean;
   lane: "main" | "background";
   wakePath: RuntimeV3WakePath;
   boxProvider: string;
@@ -70,7 +71,8 @@ export function createRuntimeV3AcceptanceReport(
   facts: readonly RuntimeV3MeasurementFact[],
   now = new Date(),
 ): RuntimeV3AcceptanceReport {
-  const acknowledged = facts.filter((fact) => validDate(fact.admittedAt));
+  const productFacts = facts.filter((fact) => fact.inProductWindow);
+  const acknowledged = productFacts.filter((fact) => validDate(fact.admittedAt));
   const complete = acknowledged.filter(completeCorrelation);
   const groups = new Map<string, RuntimeV3MeasurementFact[]>();
   for (const fact of acknowledged) {

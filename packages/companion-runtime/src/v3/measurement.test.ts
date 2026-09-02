@@ -17,6 +17,7 @@ const now = new Date("2027-01-01T01:00:00.000Z");
 
 function fact(overrides: Partial<RuntimeV3MeasurementFact> = {}): RuntimeV3MeasurementFact {
   return {
+    inProductWindow: true,
     lane: "main",
     wakePath: "creation",
     boxProvider: "ascii",
@@ -117,5 +118,41 @@ describe("Runtime v3 acceptance measurement report", () => {
 
     expect(report.releaseMeasurementReady).toBe(false);
     expect(report.correlation).toEqual({ acknowledged: 1, complete: 0, missing: 1 });
+  });
+
+  it("keeps old active safety facts out of the bounded product cohort", () => {
+    const report = createRuntimeV3AcceptanceReport([
+      fact({
+        inProductWindow: false,
+        state: "queued",
+        acceptedAt: new Date(now.getTime() - 40 * 24 * 60 * minute),
+        firstClaimedAt: null,
+        boxReadyAt: null,
+        stagingCompletedAt: null,
+        piReadyAt: null,
+        admissionKind: null,
+        admittedAt: null,
+        firstActivityAt: null,
+        lastActivityAt: null,
+        settledAt: null,
+        claimCount: 0,
+      }),
+      fact({
+        inProductWindow: false,
+        state: "running",
+        acceptedAt: new Date(now.getTime() - 20 * minute),
+        lastActivityAt: new Date(now.getTime() - 11 * minute),
+        settledAt: null,
+      }),
+    ], now);
+
+    expect(report.product).toEqual([]);
+    expect(report.correlation).toEqual({ acknowledged: 0, complete: 0, missing: 0 });
+    expect(report.safety).toEqual({
+      oldestQueueAgeMs: 40 * 24 * 60 * minute,
+      queued: 1,
+      stalled: 1,
+      takeovers: 0,
+    });
   });
 });

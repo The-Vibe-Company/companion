@@ -68,8 +68,9 @@ BEGIN
   FROM public.companions companion
   WHERE companion.org_id = NEW.org_id AND companion.id = NEW.companion_id;
   NEW.accepted_at := coalesce(NEW.accepted_at, clock_timestamp());
-  NEW.wake_path := CASE WHEN v_instance.prepared_at IS NOT NULL
-    THEN 'warm'::public.companion_v3_wake_path
+  NEW.wake_path := CASE
+    WHEN v_instance.prepared_at IS NOT NULL THEN 'warm'::public.companion_v3_wake_path
+    WHEN v_instance.desired_lifecycle = 'archive' THEN 'archived_wake'::public.companion_v3_wake_path
     ELSE 'creation'::public.companion_v3_wake_path END;
   NEW.box_provider := 'ascii';
   NEW.model_provider := coalesce(nullif(v_model_provider, ''), 'unconfigured');
@@ -127,7 +128,6 @@ BEGIN
     SELECT instance.prepared_at INTO v_prepared_at
     FROM public.companion_v3_instances instance
     WHERE instance.org_id = NEW.org_id AND instance.companion_id = NEW.companion_id;
-    NEW.wake_path := 'warm';
     NEW.box_ready_at := coalesce(NEW.box_ready_at, v_prepared_at);
     NEW.staging_completed_at := coalesce(NEW.staging_completed_at, v_prepared_at);
     NEW.pi_ready_at := coalesce(NEW.pi_ready_at, v_prepared_at);
@@ -155,6 +155,7 @@ CREATE FUNCTION public.companion_v3_runtime_measurement_facts(
   p_protocol integer
 )
 RETURNS TABLE (
+  in_product_window boolean,
   lane public.companion_v3_lane,
   wake_path public.companion_v3_wake_path,
   box_provider text,
@@ -185,6 +186,7 @@ BEGIN
     RAISE EXCEPTION 'invalid Runtime v3 measurement window' USING ERRCODE = '22023';
   END IF;
   RETURN QUERY SELECT
+    turn_row.accepted_at >= p_since AND turn_row.accepted_at <= p_until,
     turn_row.lane, turn_row.wake_path, turn_row.box_provider,
     turn_row.model_provider, turn_row.model_id, turn_row.state,
     turn_row.accepted_at, turn_row.first_claimed_at, turn_row.box_ready_at,
@@ -192,7 +194,8 @@ BEGIN
     turn_row.admitted_at, turn_row.first_activity_at, turn_row.last_activity_at,
     turn_row.settled_at, turn_row.claim_count
   FROM public.companion_v3_turns turn_row
-  WHERE turn_row.accepted_at >= p_since AND turn_row.accepted_at <= p_until;
+  WHERE (turn_row.accepted_at >= p_since AND turn_row.accepted_at <= p_until)
+    OR turn_row.state IN ('queued', 'admitted', 'running', 'needs_input');
 END
 $$;
 --> statement-breakpoint
