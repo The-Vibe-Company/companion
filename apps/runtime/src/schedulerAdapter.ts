@@ -18,6 +18,21 @@ export interface RuntimeV3SchedulerOptions {
   sweepIntervalMs: number;
 }
 
+async function waitWithin(promise: Promise<void> | null, timeoutMs: number): Promise<void> {
+  if (!promise) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      promise,
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /** Adapt the reusable kernel without inventing a second drain timer or health state. */
 export function createRuntimeSchedulerAdapter(
   scheduler: RuntimeKernelScheduler,
@@ -65,8 +80,10 @@ export function createRuntimeSchedulerAdapter(
       v3Stopped = true;
       if (v3Timer) clearTimeout(v3Timer);
       v3Timer = null;
-      await v3Sweep;
-      await scheduler.shutdown({ drainTimeoutMs });
+      await Promise.all([
+        waitWithin(v3Sweep, drainTimeoutMs),
+        scheduler.shutdown({ drainTimeoutMs }),
+      ]);
     },
     snapshot: () => {
       const snapshot = scheduler.snapshot();

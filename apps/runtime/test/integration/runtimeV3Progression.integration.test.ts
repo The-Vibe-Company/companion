@@ -332,7 +332,7 @@ describe("Runtime v3 progression facts", () => {
     });
   });
 
-  it("projects a Runtime v3 needs-input state from PostgreSQL after Pi admission", async () => {
+  it("projects and resumes a Runtime v3 needs-input Turn without redispatching its prompt", async () => {
     await ownerSql`insert into public.companion_v3_instances(
       org_id, companion_id, box_id, pi_invocation_id, prepared_at
     ) values (
@@ -347,15 +347,50 @@ describe("Runtime v3 progression facts", () => {
         ${ids.org}::uuid, ${ids.companion}::uuid, ${command}::uuid, 'ask me a question'
       )`;
     });
+    let reads = 0;
+    const prompt = vi.fn(async () => ({
+      outcome: "accepted" as const,
+      invocationId: "invocation-question",
+      initialCursor: 0n,
+    }));
     const convergence = createRuntimeV3Convergence({
       persistence: createRuntimeV3PostgresWarmConvergence(runtimeSql),
       advance: createRuntimeV3WarmTurnAdvance({
         persistence: createRuntimeV3PostgresWarmTurnPersistence(runtimeSql),
         pi: {
-          async prompt() {
-            return { outcome: "accepted", invocationId: "invocation-question", initialCursor: 0n };
-          },
+          prompt,
           async read(input) {
+            reads += 1;
+            if (reads > 1) {
+              return {
+                events: [
+                  {
+                    sequence: 2n,
+                    invocationId: input.invocationId,
+                    attemptId: input.turnId,
+                    kind: "pi_event" as const,
+                    event: {
+                      type: "message_end",
+                      message: {
+                        role: "assistant" as const,
+                        content: [{ type: "text" as const, text: "Production." }],
+                        stopReason: "stop" as const,
+                      },
+                    },
+                  },
+                  {
+                    sequence: 3n,
+                    invocationId: input.invocationId,
+                    attemptId: input.turnId,
+                    kind: "pi_event" as const,
+                    event: { type: "agent_settled" as const },
+                  },
+                ],
+                nextCursor: 3n,
+                acknowledgedCursor: 1n,
+                hasMore: false,
+              };
+            }
             return {
               events: [{
                 sequence: 1n,
@@ -382,6 +417,38 @@ describe("Runtime v3 progression facts", () => {
     await expect(convergence.converge({ executorId: "runtime-needs-input" }))
       .resolves.toEqual({ progressed: 1, exhausted: false });
 
+    let projection: Array<{ activeTurn: { status: string } | null; isReplying: boolean }> = [];
+    await asApi(async (sql) => {
+      projection = await sql<Array<{
+        activeTurn: { status: string } | null;
+        isReplying: boolean;
+      }>>`
+        select active_turn as "activeTurn", is_replying as "isReplying"
+        from public.companion_v3_api_read_projection(
+          ${ids.org}::uuid, ${ids.companion}::uuid, ${sql.json([`msg:${command}`])}::jsonb
+        )`;
+    });
+    expect(projection).toEqual([{
+      activeTurn: expect.objectContaining({ status: "needs_input" }),
+      isReplying: false,
+    }]);
+
+    await expect(convergence.converge({ executorId: "runtime-needs-input-resume" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    expect(prompt).toHaveBeenCalledOnce();
+
+    await asApi(async (sql) => {
+      projection = await sql<Array<{
+        activeTurn: { status: string } | null;
+        isReplying: boolean;
+      }>>`
+        select active_turn as "activeTurn", is_replying as "isReplying"
+        from public.companion_v3_api_read_projection(
+          ${ids.org}::uuid, ${ids.companion}::uuid, ${sql.json([`msg:${command}`])}::jsonb
+        )`;
+    });
+    expect(projection).toEqual([{ activeTurn: null, isReplying: false }]);
+
     await ownerSql`update public.companion_v3_instances set prepared_at = null,
       box_id = null, pi_invocation_id = null
       where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
@@ -395,18 +462,6 @@ describe("Runtime v3 progression facts", () => {
         replayed: true,
       }]);
     });
-    let projection: Array<{ activeTurn: { status: string }; isReplying: boolean }> = [];
-    await asApi(async (sql) => {
-      projection = await sql<Array<{ activeTurn: { status: string }; isReplying: boolean }>>`
-        select active_turn as "activeTurn", is_replying as "isReplying"
-        from public.companion_v3_api_read_projection(
-          ${ids.org}::uuid, ${ids.companion}::uuid, ${sql.json([`msg:${command}`])}::jsonb
-        )`;
-    });
-    expect(projection).toEqual([{
-      activeTurn: expect.objectContaining({ status: "needs_input" }),
-      isReplying: false,
-    }]);
   });
 
   it("settles warm text FIFO and releases a failed main lane before the next Turn", async () => {
