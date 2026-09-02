@@ -105,8 +105,9 @@ class DisposableBoxProvider implements CompanionV2BoxPurgeClient {
     }],
   ]);
   readonly snapshots = new Set([
-    "companion-l13-0123456789ab",
+    "legacy-companion-snapshot",
     "companion-l14-0123456789ab",
+    "provider-only-unrelated-snapshot",
   ]);
   deletionRequests = 0;
   snapshotDeletes = 0;
@@ -300,7 +301,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
         'bdop_33333333333333333333333333333333'
       );
       insert into public.companion_images(digest,image_name)
-      values (repeat('b',64),'companion-l13-0123456789ab');
+      values (repeat('b',64),'legacy-companion-snapshot');
       insert into public.companion_triggers(
         id,org_id,companion_id,name,prompt,provider,secret,target,
         registration_status,remote_hook_id,created_by
@@ -658,6 +659,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectDeletes: objects.removals,
       triggerAttempts,
     }).toEqual({ boxDeletes: 2, snapshotDeletes: 2, objectDeletes: 1, triggerAttempts: 1 });
+    expect([...boxes.snapshots]).toEqual(["provider-only-unrelated-snapshot"]);
 
     const [remaining] = await database<Array<{ companions: string; triggers: string; attempts: string }>>`
       select
