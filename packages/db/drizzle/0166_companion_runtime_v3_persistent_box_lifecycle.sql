@@ -239,8 +239,12 @@ BEGIN
       ELSE 'infinity'::timestamptz END,
     lifecycle_available_at = clock_timestamp(),
     lifecycle_error_code = NULL, lifecycle_error_message = NULL,
-    delete_provider_operation_id = CASE WHEN p_intent = 'delete'
-      THEN NULL ELSE instance.delete_provider_operation_id END,
+    delete_provider_operation_id = CASE
+      WHEN p_intent = 'delete' AND instance.lifecycle_state IN (
+        'delete_pending','delete_requested','delete_dispatched','waiting_deleted'
+      ) THEN instance.delete_provider_operation_id
+      WHEN p_intent = 'delete' THEN NULL
+      ELSE instance.delete_provider_operation_id END,
     updated_at = clock_timestamp()
   WHERE instance.org_id = p_org_id AND instance.companion_id = p_companion_id
   RETURNING instance.desired_lifecycle_revision INTO v_revision;
