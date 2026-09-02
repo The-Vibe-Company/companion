@@ -266,6 +266,7 @@ export interface DirectAgentCalls {
   }): Promise<{
     outcome: "accepted" | "refused" | "ambiguous";
     invocationId?: string;
+    responseAttemptId?: string;
     initialCursor?: number;
     code?: string;
   }>;
@@ -280,6 +281,7 @@ export interface DirectAgentCalls {
     dispatch?: {
       outcome: "accepted" | "refused" | "ambiguous";
       invocationId?: string;
+      responseAttemptId?: string;
       initialCursor?: number;
       code?: string;
     };
@@ -696,8 +698,9 @@ export function createDirectRuntimePiControl(
           ...input,
           signal: resolutionSignal,
         }));
-        if (repeated.outcome !== "ambiguous") return repeated;
+        if (repeated.outcome === "accepted") return repeated;
         lastCode = repeated.code;
+        if (repeated.outcome === "rejected") break;
       } catch (error) {
         if (input.signal.aborted) throw input.signal.reason ?? error;
         lastCode = stableAgentCode(error);
@@ -721,6 +724,7 @@ export function createDirectRuntimePiControl(
 function directPromptOutcome(input: {
   outcome: "accepted" | "refused" | "ambiguous";
   invocationId?: string;
+  responseAttemptId?: string;
   initialCursor?: number;
   code?: string;
 }): Awaited<ReturnType<RuntimePiControl["prompt"]>> {
@@ -730,22 +734,20 @@ function directPromptOutcome(input: {
     && Number.isSafeInteger(input.initialCursor)
     && Number(input.initialCursor) >= 0
   ) {
-    return {
+    const accepted: Awaited<ReturnType<RuntimePiControl["prompt"]>> = {
       outcome: "accepted",
       invocationId: input.invocationId,
       initialCursor: BigInt(Number(input.initialCursor)),
     };
+    if (typeof input.responseAttemptId === "string") {
+      accepted.responseAttemptId = input.responseAttemptId;
+    }
+    return accepted;
   }
   const code = input.code ?? "prompt_dispatch_unresolved";
-  if (
-    input.outcome === "refused"
-    && code !== "attempt_active"
-    && code !== "dispatch_conflict"
-    && code !== "invocation_mismatch"
-  ) {
-    return { outcome: "rejected", code };
-  }
-  return { outcome: "ambiguous", code };
+  return input.outcome === "refused"
+    ? { outcome: "rejected", code }
+    : { outcome: "ambiguous", code };
 }
 
 function directWriteOutcome(input: {

@@ -186,6 +186,7 @@ describe("CompanionBoxAgentClient", () => {
         }),
         piAcknowledged: true,
         attemptId: "attempt-1",
+        responseAttemptId: "attempt-1",
         invocationId: "inv-1",
         initialCursor: 7,
         clearOutbox: true,
@@ -199,12 +200,18 @@ describe("CompanionBoxAgentClient", () => {
     };
     await expect(client(agent.baseUrl).prompt(input)).resolves.toMatchObject({
       outcome: "accepted",
+      responseAttemptId: "attempt-1",
       invocationId: "inv-1",
       initialCursor: 7,
     });
     await expect(client(agent.baseUrl).dispatchStatus(input)).resolves.toMatchObject({
       status: "accepted",
-      dispatch: { outcome: "accepted", invocationId: "inv-1", initialCursor: 7 },
+      dispatch: {
+        outcome: "accepted",
+        responseAttemptId: "attempt-1",
+        invocationId: "inv-1",
+        initialCursor: 7,
+      },
     });
   });
 

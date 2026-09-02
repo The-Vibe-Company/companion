@@ -440,22 +440,31 @@ export interface CompanionPiBrokerOptions {
 
 export interface CompanionPiAcceptedDispatch {
   attemptId: string;
+  responseAttemptId: string;
   commandId: string;
   invocationId: string;
   initialCursor: number;
   fingerprint: string;
 }
 
+export interface CompanionPiAmbiguousDispatch {
+  attemptId: string;
+  commandId: string;
+  invocationId: string;
+  fingerprint: string;
+}
+
 /**
- * Small fsync-backed prompt ledger. A positive Pi acknowledgement is published here before the
- * broker answers its caller, so a runtime that loses the HTTP response can resolve the exact
- * attempt without replaying the prompt. Records are scoped to one Pi invocation: a daemon restart
- * cannot prove what the previous Pi process accepted and deliberately starts with an empty ledger.
+ * Small fsync-backed prompt ledger. Positive acknowledgements and ambiguous Pi writes are published
+ * here before the broker answers its caller, so response loss or broker reconstruction never
+ * replays the exact attempt. Records are scoped to one Pi invocation: a daemon restart cannot prove
+ * what the previous Pi process accepted and deliberately starts with an empty ledger.
  */
 export class CompanionPiDispatchLedger {
   readonly #path: string;
   readonly #invocationId: string;
   readonly #records = new Map<string, CompanionPiAcceptedDispatch>();
+  readonly #ambiguousRecords = new Map<string, CompanionPiAmbiguousDispatch>();
 
   constructor(options: { path: string; invocationId: string }) {
     if (!validOpaqueId(options.invocationId)) throw new Error("invocationId is invalid");
@@ -468,6 +477,44 @@ export class CompanionPiDispatchLedger {
   lookup(attemptId: string): CompanionPiAcceptedDispatch | null {
     const record = this.#records.get(attemptId);
     return record ? { ...record } : null;
+  }
+
+  lookupAmbiguous(attemptId: string): CompanionPiAmbiguousDispatch | null {
+    const record = this.#ambiguousRecords.get(attemptId);
+    return record ? { ...record } : null;
+  }
+
+  recordAmbiguous(record: CompanionPiAmbiguousDispatch): CompanionPiAmbiguousDispatch {
+    if (record.invocationId !== this.#invocationId) throw new Error("dispatch invocation is invalid");
+    const accepted = this.#records.get(record.attemptId);
+    if (accepted) {
+      if (accepted.commandId !== record.commandId || accepted.fingerprint !== record.fingerprint) {
+        throw new Error("dispatch ledger identity conflict");
+      }
+      throw new Error("accepted dispatch cannot become ambiguous");
+    }
+    const existing = this.#ambiguousRecords.get(record.attemptId);
+    if (existing) {
+      if (existing.commandId !== record.commandId || existing.fingerprint !== record.fingerprint) {
+        throw new Error("dispatch ledger identity conflict");
+      }
+      return { ...existing };
+    }
+    const previous = [...this.#ambiguousRecords.values()].map((value) => ({ ...value }));
+    this.#ambiguousRecords.set(record.attemptId, { ...record });
+    while (this.#ambiguousRecords.size > DISPATCH_LEDGER_MAX_RECORDS) {
+      const oldest = this.#ambiguousRecords.keys().next().value;
+      if (oldest === undefined) break;
+      this.#ambiguousRecords.delete(oldest);
+    }
+    try {
+      this.#persist();
+    } catch (error) {
+      this.#ambiguousRecords.clear();
+      for (const value of previous) this.#ambiguousRecords.set(value.attemptId, value);
+      throw error;
+    }
+    return { ...record };
   }
 
   record(record: CompanionPiAcceptedDispatch): CompanionPiAcceptedDispatch {
@@ -511,26 +558,38 @@ export class CompanionPiDispatchLedger {
       }
       for (const candidate of value.records.slice(-DISPATCH_LEDGER_MAX_RECORDS)) {
         if (!validAcceptedDispatch(candidate, this.#invocationId)) continue;
-        this.#records.set(candidate.attemptId, candidate);
+        this.#records.set(candidate.attemptId, {
+          ...candidate,
+          responseAttemptId: typeof candidate.responseAttemptId === "string"
+            ? candidate.responseAttemptId
+            : candidate.attemptId,
+        });
+      }
+      const ambiguousRecords = Array.isArray(value.ambiguousRecords) ? value.ambiguousRecords : [];
+      for (const candidate of ambiguousRecords.slice(-DISPATCH_LEDGER_MAX_RECORDS)) {
+        if (!validAmbiguousDispatch(candidate, this.#invocationId)) continue;
+        this.#ambiguousRecords.set(candidate.attemptId, { ...candidate });
       }
       this.#persist();
     } catch {
       // A corrupt or previous-version ledger proves nothing. Replace it before accepting work.
       this.#records.clear();
+      this.#ambiguousRecords.clear();
       this.#persist();
     }
   }
 
   #persist(): void {
     atomicWrite(this.#path, `${JSON.stringify({
-      version: 1,
+      version: 2,
       invocationId: this.#invocationId,
       records: [...this.#records.values()],
+      ambiguousRecords: [...this.#ambiguousRecords.values()],
     })}\n`);
   }
 }
 
-/** One-at-a-time Pi command broker and sole owner of event-to-attempt association. */
+/** Serialized Pi command broker and sole owner of event-to-response association. */
 export class CompanionPiBroker {
   readonly #invocationId: string;
   readonly #transport: CompanionPiRpcTransport;
@@ -539,6 +598,8 @@ export class CompanionPiBroker {
   readonly #layoutMarker: string | null;
   readonly #outboxPath: string | null;
   #activeAttemptId: string | null = null;
+  #activeAdmissionAmbiguous = false;
+  readonly #ambiguousDispatches = new Map<string, { commandId: string; fingerprint: string }>();
   #commandSequence = 0;
   #commandTail: Promise<void> = Promise.resolve();
 
@@ -592,6 +653,7 @@ export class CompanionPiBroker {
     });
     if (eventType === "agent_settled" && this.#activeAttemptId === attemptId) {
       this.#activeAttemptId = null;
+      this.#activeAdmissionAmbiguous = false;
     }
   }
 
@@ -611,6 +673,7 @@ export class CompanionPiBroker {
       },
     });
     this.#activeAttemptId = null;
+    this.#activeAdmissionAmbiguous = false;
   }
 
   async #handleCommand(command: PiJsonObject): Promise<PiJsonObject> {
@@ -720,31 +783,39 @@ export class CompanionPiBroker {
       }
       return acceptedDispatchData(recorded, requiredInput);
     }
-    if (this.#activeAttemptId) {
-      throw new BrokerCommandError("attempt_active", "another Pi attempt is already active");
-    }
-
-    const state = normalizePiState(await this.#piRequest("get_state", {}));
-    const model = isJsonObject(state.model) ? state.model : null;
-    const modelInput = Array.isArray(model?.input) ? model.input : [];
-    if (requiredInput.some((item) => !modelInput.includes(item))) {
+    const ambiguous = this.#ambiguousDispatches.get(attemptId)
+      ?? this.#dispatchLedger?.lookupAmbiguous(attemptId);
+    if (ambiguous) {
+      if (ambiguous.commandId !== commandId || ambiguous.fingerprint !== fingerprint) {
+        throw new BrokerCommandError("dispatch_conflict", "attempt dispatch identity does not match");
+      }
       throw new BrokerCommandError(
-        "model_input_unsupported",
-        "The selected Pi model does not support the required prompt input",
+        "pi_ack_ambiguous",
+        "Pi prompt acknowledgement remains unavailable",
+        true,
       );
     }
+    if (this.#activeAdmissionAmbiguous) {
+      throw new BrokerCommandError(
+        "attempt_active",
+        "the active Pi admission is ambiguous and cannot accept more work",
+      );
+    }
+    const responseAttemptId = this.#activeAttemptId;
     if (
-      state.isStreaming !== false
-      || state.isCompacting !== false
-      || state.pendingMessageCount !== 0
+      responseAttemptId === null
+      && this.#journal.tailCursor > this.#journal.acknowledgedCursor
     ) {
-      throw new BrokerCommandError("pi_not_idle", "Pi is not idle with an empty queue");
+      throw new BrokerCommandError(
+        "journal_pending",
+        "Pi has a completed response awaiting durable acknowledgement",
+      );
     }
 
     if (this.#outboxPath && command.clearOutbox !== true) {
       throw new BrokerCommandError("invalid_command", "clearOutbox is required");
     }
-    if (this.#outboxPath) {
+    if (this.#outboxPath && responseAttemptId === null) {
       mkdirSync(this.#outboxPath, { recursive: true, mode: 0o700 });
       for (const entry of readdirSync(this.#outboxPath)) {
         rmSync(join(this.#outboxPath, entry), { recursive: true, force: true });
@@ -755,12 +826,17 @@ export class CompanionPiBroker {
     // binding/writing the prompt so events emitted in the same stdout burst as Pi's response remain
     // visible to the attempt instead of being mistaken for already-consumed history.
     const initialCursor = this.#journal.tailCursor;
-    this.#activeAttemptId = attemptId;
+    if (responseAttemptId === null) {
+      this.#activeAttemptId = attemptId;
+      this.#activeAdmissionAmbiguous = true;
+    }
     let response: PiJsonObject;
     try {
-      // Deliberately no `streamingBehavior`: a post-probe race must be refused by Pi, not queued.
-      response = await this.#piRequest("prompt", { message });
+      // Pi 0.84.2 decides inside prompt whether this starts idle work or joins the active run as a
+      // steer. Its preflight response is the admission boundary; it is not proof of application.
+      response = await this.#piRequest("prompt", { message, streamingBehavior: "steer" });
     } catch {
+      this.#recordAmbiguousDispatch({ attemptId, commandId, fingerprint });
       throw new BrokerCommandError(
         "pi_ack_ambiguous",
         "Pi prompt acknowledgement is unavailable",
@@ -768,10 +844,14 @@ export class CompanionPiBroker {
       );
     }
     if (response.success === false) {
-      if (this.#activeAttemptId === attemptId) this.#activeAttemptId = null;
+      if (responseAttemptId === null && this.#activeAttemptId === attemptId) {
+        this.#activeAttemptId = null;
+        this.#activeAdmissionAmbiguous = false;
+      }
       throw new BrokerCommandError("pi_prompt_refused", "Pi refused the prompt");
     }
     if (response.success !== true) {
+      this.#recordAmbiguousDispatch({ attemptId, commandId, fingerprint });
       throw new BrokerCommandError(
         "pi_ack_ambiguous",
         "Pi prompt acknowledgement is unavailable",
@@ -780,6 +860,7 @@ export class CompanionPiBroker {
     }
     const accepted: CompanionPiAcceptedDispatch = {
       attemptId,
+      responseAttemptId: responseAttemptId ?? attemptId,
       commandId,
       invocationId: this.#invocationId,
       initialCursor,
@@ -790,13 +871,35 @@ export class CompanionPiBroker {
     } catch {
       // Pi accepted the prompt but its proof could not be made durable. The caller must keep the
       // attempt ambiguous; returning a positive ACK here would make takeover falsely replay-safe.
+      this.#recordAmbiguousDispatch({ attemptId, commandId, fingerprint });
       throw new BrokerCommandError(
         "dispatch_ledger_unavailable",
         "Pi prompt acknowledgement could not be recorded",
         true,
       );
     }
+    if (responseAttemptId === null) this.#activeAdmissionAmbiguous = false;
     return acceptedDispatchData(accepted, requiredInput);
+  }
+
+  #recordAmbiguousDispatch(record: {
+    attemptId: string;
+    commandId: string;
+    fingerprint: string;
+  }): void {
+    this.#ambiguousDispatches.set(record.attemptId, {
+      commandId: record.commandId,
+      fingerprint: record.fingerprint,
+    });
+    try {
+      this.#dispatchLedger?.recordAmbiguous({
+        ...record,
+        invocationId: this.#invocationId,
+      });
+    } catch {
+      // The in-memory tombstone still prevents replay for this invocation. The caller remains
+      // ambiguous because a failed durable write can never be upgraded to positive admission.
+    }
   }
 
   #dispatchStatus(command: PiJsonObject): PiJsonObject {
@@ -848,6 +951,7 @@ export class CompanionPiBroker {
     // Clear the binding on a positive ACK so the next queued turn does not see a stale active
     // attempt while Pi's agent_settled event is still in flight.
     this.#activeAttemptId = null;
+    this.#activeAdmissionAmbiguous = false;
     return { aborted: true, attemptId: activeAttemptId, invocationId: this.#invocationId };
   }
 
@@ -1233,10 +1337,23 @@ function validAcceptedDispatch(
 ): value is CompanionPiAcceptedDispatch {
   return isJsonObject(value)
     && validOpaqueId(value.attemptId)
+    && (value.responseAttemptId === undefined || validOpaqueId(value.responseAttemptId))
     && validOpaqueId(value.commandId)
     && value.invocationId === invocationId
     && Number.isSafeInteger(value.initialCursor)
     && Number(value.initialCursor) >= 0
+    && typeof value.fingerprint === "string"
+    && /^[a-f0-9]{64}$/.test(value.fingerprint);
+}
+
+function validAmbiguousDispatch(
+  value: unknown,
+  invocationId: string,
+): value is CompanionPiAmbiguousDispatch {
+  return isJsonObject(value)
+    && validOpaqueId(value.attemptId)
+    && validOpaqueId(value.commandId)
+    && value.invocationId === invocationId
     && typeof value.fingerprint === "string"
     && /^[a-f0-9]{64}$/.test(value.fingerprint);
 }
@@ -1265,6 +1382,7 @@ function acceptedDispatchData(
 ): PiJsonObject {
   return {
     attemptId: record.attemptId,
+    responseAttemptId: record.responseAttemptId,
     commandId: record.commandId,
     invocationId: record.invocationId,
     piAcknowledged: true,

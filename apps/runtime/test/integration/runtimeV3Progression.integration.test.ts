@@ -554,6 +554,7 @@ describe("Runtime v3 progression facts", () => {
     const persistence = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
     await expect(persistence.recordAdmission(claim!, {
       invocationId: "invocation-created",
+      responseTurnId: claim!.turn.id,
       cursor: 0n,
     })).resolves.toBe(true);
 
@@ -618,7 +619,8 @@ describe("Runtime v3 progression facts", () => {
     });
     await ownerSql`update public.companion_v3_turns set
       state = 'succeeded', admission_state = 'accepted', admitted_at = clock_timestamp(),
-      pi_invocation_id = 'pi-before-sleep', admission_cursor = 0, outcome = 'succeeded',
+      pi_invocation_id = 'pi-before-sleep', response_turn_id = id,
+      admission_cursor = 0, outcome = 'succeeded',
       settled_at = clock_timestamp()
       where command_id = ${firstMessage}::uuid`;
     await ownerSql`update public.companion_v3_instances set
@@ -1342,6 +1344,360 @@ describe("Runtime v3 progression facts", () => {
         )`;
     });
     expect(terminal).toEqual([{ activeTurn: null, queuedCount: 0, isReplying: false }]);
+  });
+
+  it("reclaims the same oldest queued Turn after a proven pre-admission refusal", async () => {
+    await seedPreparedV3("invocation-refusal-fifo");
+    const messages = [randomUUID(), randomUUID()];
+    const turns: string[] = [];
+    await asApi(async (sql) => {
+      for (const message of messages) {
+        const rows = await sql<Array<{ turn: { id: string } }>>`
+          select turn from public.companion_v3_api_enqueue_warm_turn(
+            ${ids.org}::uuid, ${ids.companion}::uuid, ${message}::uuid, 'retry in order'
+          )`;
+        turns.push(rows[0]!.turn.id);
+      }
+    });
+    const convergence = createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresWarmConvergence(runtimeSql),
+      advance: createRuntimeV3WarmTurnAdvance({
+        persistence: createRuntimeV3PostgresWarmTurnPersistence(runtimeSql),
+        pi: {
+          async prompt() { return { outcome: "rejected" as const, code: "pi_prompt_refused" }; },
+          async read() { throw new Error("refused work must not read the journal"); },
+          async acknowledge() { throw new Error("refused work must not ACK the journal"); },
+        },
+      }),
+    });
+    await expect(convergence.converge({ executorId: "runtime-refused" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    const retry = await createRuntimeV3PostgresWarmConvergence(runtimeSql).claimLane({
+      executorId: "runtime-refusal-retry",
+      lane: "main",
+    });
+    expect(retry?.turn.id).toBe(turns[0]);
+  });
+
+  it("keeps a steer burst durable through a long tool batch, executor loss, and journal replay", async () => {
+    await seedPreparedV3("invocation-native-steer");
+    const messages = [randomUUID(), randomUUID(), randomUUID()];
+    const turnIds: string[] = [];
+    await asApi(async (sql) => {
+      for (const [index, message] of messages.entries()) {
+        const rows = await sql<Array<{ turn: { id: string } }>>`
+          select turn from public.companion_v3_api_enqueue_warm_turn(
+            ${ids.org}::uuid, ${ids.companion}::uuid, ${message}::uuid,
+            ${`member message ${index + 1}`}
+          )`;
+        turnIds.push(rows[0]!.turn.id);
+      }
+    });
+    const rootTurnId = turnIds[0]!;
+
+    const warmPersistence = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
+    const baseConvergence = createRuntimeV3PostgresWarmConvergence(runtimeSql);
+    let responseTurnId: string | null = null;
+    let journalRead = 0;
+    let loseBeforeTerminalAck = false;
+    const prompt = vi.fn(async (input: { turnId: string }) => {
+      responseTurnId ??= input.turnId;
+      return {
+        outcome: "accepted" as const,
+        invocationId: "invocation-native-steer",
+        responseAttemptId: responseTurnId,
+        initialCursor: journalRead === 0 ? 0n : 40n,
+      };
+    });
+    const pi = {
+      prompt,
+      async read(input: { turnId: string; invocationId: string }) {
+        journalRead += 1;
+        if (journalRead === 1) {
+          return {
+            events: Array.from({ length: 40 }, (_, index) => ({
+              sequence: BigInt(index + 1),
+              invocationId: input.invocationId,
+              attemptId: input.turnId,
+              kind: "pi_event" as const,
+              event: { type: "tool_execution_start", toolCallId: `tool-${index + 1}` },
+            })),
+            nextCursor: 40n,
+            acknowledgedCursor: 0n,
+            hasMore: false,
+          };
+        }
+        if (journalRead === 2) {
+          return {
+            events: [{
+              sequence: 41n,
+              invocationId: input.invocationId,
+              attemptId: input.turnId,
+              kind: "pi_event" as const,
+              event: {
+                type: "message_end",
+                message: {
+                  role: "assistant",
+                  content: [{ type: "text", text: "one final response for the burst" }],
+                  stopReason: "stop",
+                },
+              },
+            }],
+            nextCursor: 41n,
+            acknowledgedCursor: 40n,
+            hasMore: true,
+          };
+        }
+        return {
+          events: [
+            {
+              sequence: 42n,
+              invocationId: input.invocationId,
+              attemptId: input.turnId,
+              kind: "pi_event" as const,
+              event: { type: "agent_settled" },
+            },
+          ],
+          nextCursor: 42n,
+          acknowledgedCursor: 40n,
+          hasMore: false,
+        };
+      },
+      async acknowledge(input: { through: bigint }) {
+        if (loseBeforeTerminalAck && input.through === 42n) {
+          throw new Error("simulated process loss before terminal ACK");
+        }
+        return input.through;
+      },
+    };
+
+    const beforeLoss = createRuntimeV3Convergence({
+      persistence: baseConvergence,
+      advance: createRuntimeV3WarmTurnAdvance({ persistence: warmPersistence, pi }),
+    });
+    await expect(beforeLoss.converge({ executorId: "runtime-before-loss" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    await expect(beforeLoss.converge({ executorId: "runtime-before-loss" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    await expect(beforeLoss.converge({ executorId: "runtime-before-loss" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    expect(prompt).toHaveBeenCalledTimes(3);
+
+    const admitted = await ownerSql<Array<{
+      id: string; state: string; admissionKind: string; responseTurnId: string;
+    }>>`
+      select id, state::text, admission_kind::text as "admissionKind",
+        response_turn_id as "responseTurnId"
+      from public.companion_v3_turns where id = any(${turnIds}::uuid[])
+      order by queue_sequence`;
+    expect(admitted).toEqual([
+      { id: rootTurnId, state: "running", admissionKind: "prompt", responseTurnId: rootTurnId },
+      { id: turnIds[1], state: "admitted", admissionKind: "steer", responseTurnId: rootTurnId },
+      { id: turnIds[2], state: "admitted", admissionKind: "steer", responseTurnId: rootTurnId },
+    ]);
+
+    const crashClaim = await baseConvergence.claimLane({
+      executorId: "runtime-lost-after-settlement",
+      lane: "main",
+    });
+    expect(crashClaim).not.toBeNull();
+    loseBeforeTerminalAck = true;
+    const advance = createRuntimeV3WarmTurnAdvance({ persistence: warmPersistence, pi });
+    await expect(advance(crashClaim!)).resolves.toEqual({ kind: "retry_ack" });
+    const durableBeforeAck = await ownerSql<Array<{
+      state: string; terminalCursor: string; ackPending: boolean;
+    }>>`
+      select state::text, terminal_cursor::text as "terminalCursor",
+        journal_ack_pending as "ackPending"
+      from public.companion_v3_turns where id = ${rootTurnId}::uuid`;
+    expect(durableBeforeAck).toEqual([{
+      state: "succeeded", terminalCursor: "42", ackPending: true,
+    }]);
+    await ownerSql`update public.companion_v3_lane_leases
+      set renewed_at = clock_timestamp() - interval '2 seconds',
+        expires_at = clock_timestamp() - interval '1 second'
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid and lane = 'main'`;
+    loseBeforeTerminalAck = false;
+
+    const afterTakeover = createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresWarmConvergence(runtimeSql),
+      advance,
+    });
+    await expect(afterTakeover.converge({ executorId: "runtime-after-takeover" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    expect(prompt).toHaveBeenCalledTimes(3);
+    expect(journalRead).toBe(3);
+
+    const settled = await ownerSql<Array<{ id: string; state: string }>>`
+      select id, state::text from public.companion_v3_turns
+      where id = any(${turnIds}::uuid[]) order by queue_sequence`;
+    expect(settled).toEqual(turnIds.map((id) => ({ id, state: "succeeded" })));
+    const assistant = await ownerSql<Array<{ content: string }>>`
+      select content from public.companion_transcript_entries
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid
+        and role = 'assistant' and event_id like ${`v3:${rootTurnId}:%`}`;
+    expect(assistant).toEqual([{ content: "one final response for the burst" }]);
+  });
+
+  it("keeps a failed terminal ACK pending until takeover completes that ACK", async () => {
+    await seedPreparedV3("invocation-failed-terminal-ack");
+    const messageId = randomUUID();
+    let turnId = "";
+    await asApi(async (sql) => {
+      const rows = await sql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_v3_api_enqueue_warm_turn(
+          ${ids.org}::uuid, ${ids.companion}::uuid, ${messageId}::uuid,
+          'fail after durable admission'
+        )`;
+      turnId = rows[0]!.turn.id;
+    });
+    let rejectAck = true;
+    const prompt = vi.fn(async () => ({
+      outcome: "accepted" as const,
+      invocationId: "invocation-failed-terminal-ack",
+      responseAttemptId: turnId,
+      initialCursor: 0n,
+    }));
+    const read = vi.fn(async (input: { turnId: string; invocationId: string }) => ({
+      events: [{
+        sequence: 1n,
+        invocationId: input.invocationId,
+        attemptId: input.turnId,
+        kind: "pi_process_exit" as const,
+        exit: { code: 1, signal: null },
+      }],
+      nextCursor: 1n,
+      acknowledgedCursor: 0n,
+      hasMore: false,
+    }));
+    const acknowledge = vi.fn(async (input: { through: bigint }) => {
+      if (rejectAck) throw new Error("terminal ACK transport lost");
+      return input.through;
+    });
+    const convergence = createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresWarmConvergence(runtimeSql),
+      advance: createRuntimeV3WarmTurnAdvance({
+        persistence: createRuntimeV3PostgresWarmTurnPersistence(runtimeSql),
+        pi: { prompt, read, acknowledge },
+      }),
+    });
+
+    await expect(convergence.converge({ executorId: "runtime-failed-ack" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    const pending = await ownerSql<Array<{
+      state: string; terminalCursor: string; ackPending: boolean;
+    }>>`
+      select state::text, terminal_cursor::text as "terminalCursor",
+        journal_ack_pending as "ackPending"
+      from public.companion_v3_turns where id = ${turnId}::uuid`;
+    expect(pending).toEqual([{ state: "failed", terminalCursor: "1", ackPending: true }]);
+
+    rejectAck = false;
+    await expect(convergence.converge({ executorId: "runtime-failed-ack-takeover" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    expect(prompt).toHaveBeenCalledOnce();
+    expect(read).toHaveBeenCalledOnce();
+    expect(acknowledge).toHaveBeenCalledTimes(2);
+    const completed = await ownerSql<Array<{ state: string; ackPending: boolean }>>`
+      select state::text, journal_ack_pending as "ackPending"
+      from public.companion_v3_turns where id = ${turnId}::uuid`;
+    expect(completed).toEqual([{ state: "failed", ackPending: false }]);
+  });
+
+  it("reclaims a response root when a nonterminal page was durable before ACK loss", async () => {
+    await seedPreparedV3("invocation-page-ack-loss");
+    const messageId = randomUUID();
+    let turnId = "";
+    await asApi(async (sql) => {
+      const rows = await sql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_v3_api_enqueue_warm_turn(
+          ${ids.org}::uuid, ${ids.companion}::uuid, ${messageId}::uuid,
+          'continue after a projected tool page'
+        )`;
+      turnId = rows[0]!.turn.id;
+    });
+    let readCount = 0;
+    let rejectAck = true;
+    const prompt = vi.fn(async () => ({
+      outcome: "accepted" as const,
+      invocationId: "invocation-page-ack-loss",
+      responseAttemptId: turnId,
+      initialCursor: 0n,
+    }));
+    const read = vi.fn(async (input: { turnId: string; invocationId: string; after: bigint }) => {
+      readCount += 1;
+      if (readCount === 1) {
+        expect(input.after).toBe(0n);
+        return {
+          events: [{
+            sequence: 1n,
+            invocationId: input.invocationId,
+            attemptId: input.turnId,
+            kind: "pi_event" as const,
+            event: { type: "tool_execution_end", toolCallId: "durable-tool", isError: false },
+          }],
+          nextCursor: 1n,
+          acknowledgedCursor: 0n,
+          hasMore: false,
+        };
+      }
+      expect(input.after).toBe(1n);
+      return {
+        events: [
+          {
+            sequence: 2n,
+            invocationId: input.invocationId,
+            attemptId: input.turnId,
+            kind: "pi_event" as const,
+            event: {
+              type: "message_end",
+              message: {
+                role: "assistant",
+                content: [{ type: "text", text: "continued after ACK loss" }],
+                stopReason: "stop",
+              },
+            },
+          },
+          {
+            sequence: 3n,
+            invocationId: input.invocationId,
+            attemptId: input.turnId,
+            kind: "pi_event" as const,
+            event: { type: "agent_settled" },
+          },
+        ],
+        nextCursor: 3n,
+        acknowledgedCursor: 0n,
+        hasMore: false,
+      };
+    });
+    const acknowledge = vi.fn(async (input: { through: bigint }) => {
+      if (rejectAck) throw new Error("nonterminal ACK transport lost");
+      return input.through;
+    });
+    const convergence = createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresWarmConvergence(runtimeSql),
+      advance: createRuntimeV3WarmTurnAdvance({
+        persistence: createRuntimeV3PostgresWarmTurnPersistence(runtimeSql),
+        pi: { prompt, read, acknowledge },
+      }),
+    });
+
+    await expect(convergence.converge({ executorId: "runtime-page-ack-loss" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    const resumable = await ownerSql<Array<{ state: string; outcome: string | null }>>`
+      select state::text, outcome::text from public.companion_v3_turns
+      where id = ${turnId}::uuid`;
+    expect(resumable).toEqual([{ state: "running", outcome: null }]);
+
+    rejectAck = false;
+    await expect(convergence.converge({ executorId: "runtime-page-ack-takeover" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    expect(prompt).toHaveBeenCalledOnce();
+    expect(read).toHaveBeenCalledTimes(2);
+    const [completed] = await ownerSql<Array<{ state: string }>>`
+      select state::text from public.companion_v3_turns where id = ${turnId}::uuid`;
+    expect(completed).toEqual({ state: "succeeded" });
   });
 
   it("increments lane fences monotonically and rejects stale completion", async () => {

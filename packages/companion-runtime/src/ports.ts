@@ -95,7 +95,12 @@ export type BrokerWriteOutcome =
   | { outcome: "ambiguous"; code: string };
 
 export type BrokerPromptWriteOutcome =
-  | { outcome: "accepted"; invocationId: string; initialCursor: bigint }
+  | {
+    outcome: "accepted";
+    invocationId: string;
+    responseAttemptId?: string;
+    initialCursor: bigint;
+  }
   | { outcome: "rejected"; code: string }
   | { outcome: "ambiguous"; code: string };
 

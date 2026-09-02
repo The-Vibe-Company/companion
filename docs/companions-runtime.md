@@ -345,12 +345,11 @@ occurrence instead uses cleanup-only exact termination: before cleanup, runtime 
 known Box and persists that provider state. `absent` or `archived` is sufficient negative proof that
 the captured invocation no longer exists, including for an isolated routine; cleanup does not
 resume the Box, stage resources, or start Pi.
-Immediately before a new
-prompt write intent, this includes one recycle when the broker still reports an active attempt or an
-unacknowledged event tail left by earlier terminal work; runtime re-reads idle state before dispatch
-and otherwise fails with `restart_pi`. It may not invoke Full Box, replace a merely unhealthy Box,
-or archive/delete to make a test pass. Terminal settlement preserves the interrupted row and
-original error, never replays its prompt, and records `auto_abandoned` with action `none`.
+Prompt admission itself never probes idle state or recycles Pi. An unacknowledged terminal journal
+tail keeps the next root Turn queued until its durable ACK takeover completes. Repair may not invoke
+Full Box, replace a merely unhealthy Box, or archive/delete to make a test pass. Terminal settlement
+preserves the interrupted row and original error, never replays its prompt, and records
+`auto_abandoned` with action `none`.
 
 ### Test-only Box Lab boundary
 
@@ -385,11 +384,14 @@ The broker provides:
 - a segmented, monotonically ordered event journal;
 - explicit event acknowledgement and safe segment retention;
 - the current Pi invocation id and process-exit observation;
-- one binding between the sole active attempt and its events through `agent_settled`.
+- one response-root binding for events through `agent_settled`, shared by any distinct Turns Pi
+  admits as native steers during that response.
 
-Runtime must obtain a correlated `get_state` response showing Pi idle with no queued messages before
-`prompt`. It omits Pi `streamingBehavior`, so a concurrent turn is refused rather than silently
-queued as a `followUp`.
+Runtime persists each Turn first, then calls Pi's atomic
+`prompt(..., streamingBehavior: "steer")` primitive without an `isStreaming` or queue pre-probe.
+Pi alone chooses idle prompt or active steer, including native FIFO ordering and safe boundaries.
+A positive acknowledgement is durable admission proof, not proof that Pi applied the message or
+completed it. A proven pre-admission refusal leaves the same Turn queued; ambiguity is never replayed.
 
 Pi command responses carry the command id; general Pi events do not. The broker therefore owns the
 one-active-attempt association. An `agent_settled` for that association ends the attempt only when
@@ -473,7 +475,7 @@ later claim preserves that state; only a newer staging observation or a successf
 Prompt dispatch never does so after a direct write may have started: the broker fsyncs an
 invocation-scoped `{attempt_id, command_id, fingerprint, ACK cursor}` ledger entry before answering;
 runtime polls `dispatch_status` and may resend only the byte-identical command id for at most 30
-seconds. Every prompt also carries the Pi invocation observed idle before the write intent; the
+seconds. Every prompt also carries the Pi invocation current before the write intent; the
 checkpoint pins that invocation on the attempt, and the broker rejects a mismatch before probing
 or writing to Pi. An absent ledger after a daemon restart can therefore never authorize replay onto
 the replacement process. A takeover obtains `command_id` plus that pinned invocation through the
@@ -1036,7 +1038,7 @@ and ignores row ids and keys: identical bytes are the same intent, and a differe
 position raises the existing `client_message_id was reused with different message intent` conflict. A
 send whose transaction does not commit deletes exactly the keys that request wrote.
 
-**Staging.** Before dispatch, and after Pi is confirmed idle, runtime downloads each file, verifies
+**Staging.** Before dispatch, runtime downloads each file, verifies
 its digest against what the control plane accepted, and writes it read-only to
 `~/attachments/<client-message-id>/<position>-<filename>`. A turn carrying an image first requires
 `image` in Pi's live `get_state.model.input`; a text-only model fails the turn with `switch_model`
@@ -1085,9 +1087,10 @@ assistant event from the chat projection. Only the later assistant message witho
 shown as the answer, so the thread never exposes pre-tool narration while tool and decision cards
 remain visible and durable.
 
-**Outputs.** The layout-14 broker creates and empties `~/outbox` inside the serialized prompt
-command, after proving Pi idle and immediately before prompt delivery. The positive ACK includes the
-initial journal cursor and is fsynced to the dispatch ledger before the broker answers. A lost HTTP
+**Outputs.** The layout-14 broker creates and empties `~/outbox` when it binds a new response root,
+immediately before prompt delivery; native steers never erase output already produced by that
+response. The positive ACK includes the response root and initial journal cursor and is fsynced to
+the dispatch ledger before the broker answers. A lost HTTP
 response is resolved with the same command id; failure to recover matching proof remains ambiguous
 and is never replayed through exec, under a new identity, or onto a different Pi invocation.
 

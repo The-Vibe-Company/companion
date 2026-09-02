@@ -542,6 +542,7 @@ describe("Runtime v3 progression interface", () => {
       .resolves.toEqual({ progressed: 1, exhausted: false });
     expect(warm.recordAdmission).toHaveBeenCalledWith(mainClaim, {
       invocationId: "invocation-1",
+      responseTurnId: mainClaim.turn.id,
       cursor: 0n,
     });
     expect(warm.project).toHaveBeenCalledWith(mainClaim, expect.objectContaining({
@@ -556,6 +557,40 @@ describe("Runtime v3 progression interface", () => {
     expect(store.convergence.completeProgression).toHaveBeenCalledWith(
       mainClaim,
       { kind: "succeeded" },
+    );
+  });
+
+  it("leaves the same Turn queued when Pi refuses before admission", async () => {
+    const claims: ClaimQueues = { main: [mainClaim, null], background: [null] };
+    const store = persistence({ claimLane: vi.fn(claimFrom(claims)) });
+    const warm = {
+      authorize: vi.fn().mockResolvedValue({
+        boxId: "bx_23456789",
+        piInvocationId: "invocation-1",
+        content: "Wait until compaction finishes",
+        cursor: 0n,
+      }),
+      recordAdmission: vi.fn().mockResolvedValue(true),
+      project: vi.fn().mockResolvedValue(true),
+    };
+    const progression = createRuntimeV3Progression({
+      persistence: store,
+      advance: createRuntimeV3WarmTurnAdvance({
+        persistence: warm,
+        pi: {
+          prompt: vi.fn().mockResolvedValue({ outcome: "rejected", code: "pi_prompt_refused" }),
+          read: vi.fn(),
+          acknowledge: vi.fn(),
+        },
+      }),
+    });
+
+    await expect(progression.converge({ executorId: "runtime-compacting" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    expect(warm.recordAdmission).not.toHaveBeenCalled();
+    expect(store.convergence.completeProgression).toHaveBeenCalledWith(
+      mainClaim,
+      { kind: "release" },
     );
   });
 

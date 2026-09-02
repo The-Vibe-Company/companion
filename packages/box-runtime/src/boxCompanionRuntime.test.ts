@@ -558,6 +558,7 @@ describe("narrow AsciiBoxCompanionRuntime", () => {
           success: true,
           data: {
             attemptId: command.attemptId,
+            responseAttemptId: command.attemptId,
             invocationId: "invocation-1",
             piAcknowledged: true,
             initialCursor: 0,
@@ -622,6 +623,7 @@ describe("narrow AsciiBoxCompanionRuntime", () => {
     })).resolves.toEqual({
       outcome: "accepted",
       attemptId: "attempt-1",
+      responseAttemptId: "attempt-1",
       invocationId: "invocation-1",
       initialCursor: 0,
     });

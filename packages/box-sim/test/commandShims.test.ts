@@ -410,7 +410,10 @@ fi`;
         piAcknowledged: true,
       },
     });
-    expect(handleRpc).toHaveBeenCalledWith(expect.objectContaining({ message: "don't repeat" }));
+    expect(handleRpc).toHaveBeenCalledWith(expect.objectContaining({
+      message: "don't repeat",
+      streamingBehavior: "steer",
+    }));
 
     const decision = await executeBoxCommand(machine, brokerShell({
       id: "decision-1",

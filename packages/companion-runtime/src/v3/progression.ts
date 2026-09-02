@@ -85,6 +85,8 @@ export interface RuntimeV3Claim {
 
 export type RuntimeV3ProgressionOutcome =
   | { kind: "release" }
+  | { kind: "ack_completed" }
+  | { kind: "retry_ack" }
   | { kind: "succeeded" }
   | { kind: "failed"; code: string; message: unknown; action: RuntimeV3ErrorAction }
   | { kind: "interrupted"; code: string; message: unknown; action: RuntimeV3ErrorAction };
@@ -93,6 +95,8 @@ export type RuntimeV3ErrorAction = Exclude<ErrorAction, "restart_box">;
 
 export type RuntimeV3DurableOutcome =
   | { kind: "release" }
+  | { kind: "ack_completed" }
+  | { kind: "retry_ack" }
   | { kind: "succeeded" }
   | { kind: "failed"; error: SafeRuntimeError }
   | { kind: "interrupted"; error: SafeRuntimeError };
@@ -317,6 +321,7 @@ export interface RuntimeV3WarmTurnProjection {
   assistant: Array<{ eventId: string; content: string }>;
   needsInput: boolean;
   settled: boolean;
+  processExited: boolean;
 }
 
 export interface RuntimeV3WarmTurnPersistence {
@@ -326,14 +331,14 @@ export interface RuntimeV3WarmTurnPersistence {
   ): Promise<RuntimeV3WarmTurnMaterial | null>;
   recordAdmission(
     claim: RuntimeV3Claim,
-    input: { invocationId: string; cursor: bigint },
+    input: { invocationId: string; responseTurnId: string; cursor: bigint },
     signal?: AbortSignal,
   ): Promise<boolean>;
   project(
     claim: RuntimeV3Claim,
     projection: RuntimeV3WarmTurnProjection,
     signal?: AbortSignal,
-  ): Promise<boolean>;
+  ): Promise<boolean | "succeeded" | "failed">;
 }
 
 export interface RuntimeV3WarmPi {
@@ -345,7 +350,12 @@ export interface RuntimeV3WarmPi {
     message: string;
     signal?: AbortSignal;
   }): Promise<
-    | { outcome: "accepted"; invocationId: string; initialCursor: bigint }
+    | {
+      outcome: "accepted";
+      invocationId: string;
+      responseAttemptId?: string;
+      initialCursor: bigint;
+    }
     | { outcome: "rejected"; code: string }
     | { outcome: "ambiguous"; code: string }
   >;
@@ -366,7 +376,6 @@ export interface RuntimeV3WarmPi {
 export interface RuntimeV3WarmTurnAdvanceOptions {
   persistence: RuntimeV3WarmTurnPersistence;
   pi: RuntimeV3WarmPi;
-  wait?: () => Promise<void>;
 }
 
 const LANE_CONVERGENCE_LIMIT = 16;
@@ -392,6 +401,7 @@ export function createRuntimeV3WarmTurnAdvance(
   options: RuntimeV3WarmTurnAdvanceOptions,
 ): RuntimeV3ConvergenceOptions["advance"] {
   return async (claim, signal) => {
+    let projectionPendingAck: "none" | "nonterminal" | "terminal" = "none";
     try {
       signal?.throwIfAborted();
       const material = signal
@@ -408,6 +418,12 @@ export function createRuntimeV3WarmTurnAdvance(
       }
       let invocationId = material.piInvocationId;
       let cursor = material.cursor;
+      if (claim.turn.state === "succeeded" || claim.turn.state === "failed") {
+        projectionPendingAck = "terminal";
+        await options.pi.acknowledge({ boxId: material.boxId, through: cursor, signal });
+        projectionPendingAck = "none";
+        return { kind: "ack_completed" };
+      }
       if (claim.turn.state === "queued") {
         const admission = await options.pi.prompt({
           boxId: material.boxId,
@@ -419,12 +435,7 @@ export function createRuntimeV3WarmTurnAdvance(
         });
         signal?.throwIfAborted();
         if (admission.outcome === "rejected") {
-          return {
-            kind: "failed",
-            code: "pi_admission_rejected",
-            message: "Pi rejected the warm Turn.",
-            action: "none",
-          };
+          return { kind: "release" };
         }
         if (admission.outcome === "ambiguous") {
           return {
@@ -436,6 +447,7 @@ export function createRuntimeV3WarmTurnAdvance(
         }
         const admissionRecord = {
           invocationId: admission.invocationId,
+          responseTurnId: admission.responseAttemptId ?? claim.turn.id,
           cursor: admission.initialCursor,
         };
         const admitted = signal
@@ -452,7 +464,14 @@ export function createRuntimeV3WarmTurnAdvance(
         }
         invocationId = admission.invocationId;
         cursor = admission.initialCursor;
-      } else if (claim.turn.state !== "needs_input") {
+        if (admission.responseAttemptId && admission.responseAttemptId !== claim.turn.id) {
+          return { kind: "release" };
+        }
+      } else if (
+        claim.turn.state !== "admitted"
+        && claim.turn.state !== "running"
+        && claim.turn.state !== "needs_input"
+      ) {
         return {
           kind: "interrupted",
           code: "warm_turn_state_invalid",
@@ -496,10 +515,16 @@ export function createRuntimeV3WarmTurnAdvance(
           assistant,
           needsInput: classified.needsInput,
           settled: classified.settled,
+          processExited: classified.processExit !== null,
         };
         const projected = signal
           ? await options.persistence.project(claim, projection, signal)
           : await options.persistence.project(claim, projection);
+        if (projected) {
+          projectionPendingAck = projected === "succeeded" || projected === "failed"
+            ? "terminal"
+            : "nonterminal";
+        }
         signal?.throwIfAborted();
         if (!projected) {
           return {
@@ -514,8 +539,12 @@ export function createRuntimeV3WarmTurnAdvance(
           through: classified.throughCursor,
           signal,
         });
+        projectionPendingAck = "none";
         signal?.throwIfAborted();
         cursor = classified.throughCursor;
+        if (projected === "succeeded" || projected === "failed") {
+          return { kind: "ack_completed" };
+        }
         if (classified.processExit) {
           return {
             kind: "failed",
@@ -535,18 +564,14 @@ export function createRuntimeV3WarmTurnAdvance(
               action: "none",
             };
         }
-        if (!page.hasMore && page.events.length === 0) {
-          await (options.wait ?? defaultWarmPollWait)();
-          signal?.throwIfAborted();
-        }
+        if (!page.hasMore) return { kind: "release" };
       }
-      return {
-        kind: "failed",
-        code: "pi_settlement_missing",
-        message: "Pi did not produce a terminal result.",
-        action: "none",
-      };
+      return { kind: "release" };
     } catch {
+      if (projectionPendingAck === "terminal") {
+        return { kind: "retry_ack" };
+      }
+      if (projectionPendingAck === "nonterminal") return { kind: "release" };
       return {
         kind: "failed",
         code: "warm_turn_failed",
@@ -555,10 +580,6 @@ export function createRuntimeV3WarmTurnAdvance(
       };
     }
   };
-}
-
-async function defaultWarmPollWait(): Promise<void> {
-  await new Promise<void>((resolve) => setTimeout(resolve, 100));
 }
 
 const PREPARATION_RETRY_SECONDS = 5;
@@ -929,7 +950,9 @@ export function createRuntimeV3Convergence(
             : await options.persistence.completeProgression(claim, outcome);
           if (!completed) return { progressed, exhausted: false };
           progressed += 1;
-          if (outcome.kind === "release") return { progressed, exhausted: false };
+          if (outcome.kind === "release" || outcome.kind === "retry_ack") {
+            return { progressed, exhausted: false };
+          }
         }
         return { progressed, exhausted: true };
       }));

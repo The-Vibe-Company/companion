@@ -1441,6 +1441,9 @@ export const companionV3Turns = pgTable(
     admissionKind: companionV3AdmissionKindEnum("admission_kind"),
     admittedAt: timestamp("admitted_at", { withTimezone: true }),
     piInvocationId: text("pi_invocation_id"),
+    responseTurnId: uuid("response_turn_id"),
+    terminalCursor: bigint("terminal_cursor", { mode: "number" }),
+    journalAckPending: boolean("journal_ack_pending").notNull().default(false),
     admissionCursor: bigint("admission_cursor", { mode: "number" }),
     activityCursor: bigint("activity_cursor", { mode: "number" }).notNull().default(0),
     lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
@@ -1483,6 +1486,19 @@ export const companionV3Turns = pgTable(
     invocationCheck: check(
       "companion_v3_turns_invocation_check",
       sql`${t.piInvocationId} is null or (char_length(${t.piInvocationId}) between 1 and 200 and ${t.piInvocationId} !~ E'[\n\r]')`,
+    ),
+    responseTurnFk: foreignKey({
+      columns: [t.orgId, t.companionId, t.responseTurnId],
+      foreignColumns: [t.orgId, t.companionId, t.id],
+      name: "companion_v3_turns_response_turn_fk",
+    }),
+    responseTurnCheck: check(
+      "companion_v3_turns_response_turn_check",
+      sql`(${t.admissionState} = 'pending' and ${t.responseTurnId} is null) or (${t.admissionState} = 'accepted' and ${t.responseTurnId} is not null) or ${t.admissionState} = 'ambiguous'`,
+    ),
+    terminalCursorCheck: check(
+      "companion_v3_turns_terminal_cursor_check",
+      sql`(${t.terminalCursor} is null and not ${t.journalAckPending}) or (${t.terminalCursor} is not null and ${t.terminalCursor} >= 0)`,
     ),
     cursorCheck: check(
       "companion_v3_turns_cursor_check",

@@ -259,26 +259,75 @@ describe("CompanionPiBroker", () => {
     ]);
   });
 
-  it("preflights idle state, omits streamingBehavior, and binds events through settlement", async () => {
+  it("lets Pi atomically admit a prompt or steer while one response remains active", async () => {
     const harness = brokerHarness();
 
-    const response = await harness.broker.command({
+    const first = await harness.broker.command({
       id: "control-prompt-1",
       type: "prompt",
       attemptId: "attempt-1",
       message: "Do the work",
     });
-    expect(response).toMatchObject({
+    const second = await harness.broker.command({
+      id: "control-prompt-2",
+      type: "prompt",
+      attemptId: "attempt-2",
+      message: "Also check the logs",
+    });
+    const third = await harness.broker.command({
+      id: "control-prompt-3",
+      type: "prompt",
+      attemptId: "attempt-3",
+      message: "And preserve the trace",
+    });
+    expect(first).toMatchObject({
       id: "control-prompt-1",
       success: true,
-      data: { attemptId: "attempt-1", piAcknowledged: true },
+      data: {
+        attemptId: "attempt-1",
+        responseAttemptId: "attempt-1",
+        piAcknowledged: true,
+      },
     });
-    expect(harness.transport.requests.map((request) => request.type)).toEqual(["get_state", "prompt"]);
-    expect(harness.transport.requests[1]).toEqual(expect.objectContaining({
+    expect(second).toMatchObject({
+      id: "control-prompt-2",
+      success: true,
+      data: {
+        attemptId: "attempt-2",
+        responseAttemptId: "attempt-1",
+        piAcknowledged: true,
+      },
+    });
+    expect(third).toMatchObject({
+      id: "control-prompt-3",
+      success: true,
+      data: {
+        attemptId: "attempt-3",
+        responseAttemptId: "attempt-1",
+        piAcknowledged: true,
+      },
+    });
+    expect(harness.transport.requests).toEqual([
+      expect.objectContaining({
+        type: "prompt",
+        message: "Do the work",
+        streamingBehavior: "steer",
+      }),
+      expect.objectContaining({
+        type: "prompt",
+        message: "Also check the logs",
+        streamingBehavior: "steer",
+      }),
+      expect.objectContaining({
+        type: "prompt",
+        message: "And preserve the trace",
+        streamingBehavior: "steer",
+      }),
+    ]);
+    expect(harness.transport.requests[0]).toEqual(expect.objectContaining({
       type: "prompt",
       message: "Do the work",
     }));
-    expect(harness.transport.requests[1]).not.toHaveProperty("streamingBehavior");
     expect(harness.broker.activeAttemptId).toBe("attempt-1");
 
     harness.broker.acceptPiRecord({ type: "agent_start" });
@@ -315,7 +364,6 @@ describe("CompanionPiBroker", () => {
       data: { aborted: true, attemptId: "attempt-1" },
     });
     expect(harness.transport.requests.map((request) => request.type)).toEqual([
-      "get_state",
       "prompt",
       "abort",
     ]);
@@ -427,7 +475,14 @@ describe("CompanionPiBroker", () => {
       attemptId: "attempt-ledger-restart",
       commandId: "dispatch-command-restart",
     });
-    expect(status).toMatchObject({ success: true, data: { status: "accepted", initialCursor: 0 } });
+    expect(status).toMatchObject({
+      success: true,
+      data: {
+        status: "accepted",
+        responseAttemptId: "attempt-ledger-restart",
+        initialCursor: 0,
+      },
+    });
     expect(secondTransport.requests).toEqual([]);
   });
 
@@ -457,7 +512,10 @@ describe("CompanionPiBroker", () => {
       error: { code: "dispatch_ledger_unavailable", ambiguous: true },
     });
     expect(status).toMatchObject({ success: true, data: { status: "absent" } });
-    expect(repeated).toMatchObject({ success: false, error: { code: "attempt_active" } });
+    expect(repeated).toMatchObject({
+      success: false,
+      error: { code: "pi_ack_ambiguous", ambiguous: true },
+    });
     expect(harness.transport.requests.filter((request) => request.type === "prompt")).toHaveLength(1);
   });
 
@@ -475,6 +533,7 @@ describe("CompanionPiBroker", () => {
       attemptId: "attempt-ledger-failure",
       commandId: "command-ledger-failure",
       invocationId: "invocation-ledger-failure",
+      responseAttemptId: "attempt-ledger-failure",
       initialCursor: 0,
       fingerprint: "f".repeat(64),
     })).toThrow();
@@ -527,20 +586,35 @@ describe("CompanionPiBroker", () => {
     expect(harness.dispatchLedger?.lookup("attempt-stale-invocation")).toBeNull();
   });
 
-  it("refuses a busy or queued Pi before writing a prompt", async () => {
-    const harness = brokerHarness({ isStreaming: true, pendingMessageCount: 1 });
-    const response = await harness.broker.command({
-      id: "control-prompt-busy",
+  it("keeps the same prompt identity retryable after Pi refuses during compaction", async () => {
+    const harness = brokerHarness({ isStreaming: true, isCompacting: true, pendingMessageCount: 1 });
+    harness.transport.promptResponseSuccess = false;
+    const command = {
+      id: "control-prompt-compacting",
       type: "prompt",
-      attemptId: "attempt-busy",
-      message: "Must not queue",
-    });
-    expect(response).toMatchObject({
+      attemptId: "attempt-compacting",
+      message: "Admit after compaction",
+    };
+    const refused = await harness.broker.command(command);
+    expect(refused).toMatchObject({
       success: false,
-      error: { code: "pi_not_idle", ambiguous: false },
+      error: { code: "pi_prompt_refused", ambiguous: false },
     });
-    expect(harness.transport.requests.map((request) => request.type)).toEqual(["get_state"]);
     expect(harness.broker.activeAttemptId).toBeNull();
+
+    harness.transport.promptResponseSuccess = true;
+    const accepted = await harness.broker.command(command);
+    expect(accepted).toMatchObject({
+      success: true,
+      data: {
+        attemptId: "attempt-compacting",
+        responseAttemptId: "attempt-compacting",
+      },
+    });
+    expect(harness.transport.requests).toEqual([
+      expect.objectContaining({ type: "prompt", streamingBehavior: "steer" }),
+      expect.objectContaining({ type: "prompt", streamingBehavior: "steer" }),
+    ]);
   });
 
   it("keeps an attempt bound when prompt acknowledgement is ambiguous and never auto-replays it", async () => {
@@ -566,6 +640,50 @@ describe("CompanionPiBroker", () => {
     });
     expect(second).toMatchObject({ success: false, error: { code: "attempt_active" } });
     expect(harness.transport.requests.filter((request) => request.type === "prompt")).toHaveLength(1);
+  });
+
+  it("tombstones an ambiguous steer by attempt id instead of redispatching it", async () => {
+    const harness = brokerHarness({}, { dispatchLedger: true });
+    await harness.broker.command({
+      id: "control-root",
+      type: "prompt",
+      attemptId: "attempt-root",
+      message: "Start",
+    });
+    harness.transport.promptFailure = true;
+    const steer = {
+      id: "control-steer-ambiguous",
+      type: "prompt",
+      attemptId: "attempt-steer-ambiguous",
+      message: "Steer once",
+    };
+    await expect(harness.broker.command(steer)).resolves.toMatchObject({
+      success: false,
+      error: { code: "pi_ack_ambiguous", ambiguous: true },
+    });
+    harness.transport.promptFailure = false;
+    await expect(harness.broker.command(steer)).resolves.toMatchObject({
+      success: false,
+      error: { code: "pi_ack_ambiguous", ambiguous: true },
+    });
+    expect(harness.transport.requests.filter((request) => request.type === "prompt")).toHaveLength(2);
+    expect(harness.broker.activeAttemptId).toBe("attempt-root");
+
+    const restartTransport = new FakePiTransport({});
+    const restarted = new CompanionPiBroker({
+      invocationId: "invocation-1",
+      journal: harness.journal,
+      transport: restartTransport,
+      dispatchLedger: new CompanionPiDispatchLedger({
+        path: join(harness.directory, "dispatch-ledger.json"),
+        invocationId: "invocation-1",
+      }),
+    });
+    await expect(restarted.command(steer)).resolves.toMatchObject({
+      success: false,
+      error: { code: "pi_ack_ambiguous", ambiguous: true },
+    });
+    expect(restartTransport.requests).toEqual([]);
   });
 
   it("treats a correlated but malformed prompt ACK as ambiguous rather than proven negative", async () => {

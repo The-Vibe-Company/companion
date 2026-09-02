@@ -181,8 +181,8 @@ describe("COMPANION_PI_BROKER_SOURCE", () => {
     expect(ack).toMatchObject({ success: true, data: { acknowledgedCursor: 3 } });
 
     const commands = readFileSync(capturePath, "utf8").trim().split("\n").map((line) => JSON.parse(line));
-    expect(commands.map((command) => command.type)).toEqual(["get_state", "get_state", "prompt"]);
-    expect(commands[2]).not.toHaveProperty("streamingBehavior");
+    expect(commands.map((command) => command.type)).toEqual(["get_state", "prompt"]);
+    expect(commands[1]).toMatchObject({ streamingBehavior: "steer" });
     const piPid = Number(readFileSync(piPidPath, "utf8"));
     expect(Number.isSafeInteger(piPid)).toBe(true);
     process.kill(piPid, "SIGKILL");

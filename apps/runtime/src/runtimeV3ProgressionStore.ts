@@ -42,7 +42,7 @@ interface ClaimRow {
 }
 
 interface TerminalCompletion {
-  outcome: "release" | "succeeded" | "failed" | "interrupted";
+  outcome: "release" | "ack_completed" | "retry_ack" | "succeeded" | "failed" | "interrupted";
   code: string | null;
   message: string | null;
   action: string | null;
@@ -412,7 +412,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
     },
     async recordAdmission(claim, input, signal) {
       const rows = await abortable(sql<Array<{ recorded: boolean }>>`
-        select public.companion_v3_runtime_record_admission(
+        select public.companion_v3_runtime_record_native_admission(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
           ${claim.turn.lane},
@@ -421,6 +421,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint,
           ${input.invocationId},
+          ${input.responseTurnId}::uuid,
           ${input.cursor.toString()}::bigint,
           3
         ) as recorded
@@ -428,8 +429,8 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
       return rows[0]?.recorded === true;
     },
     async project(claim, projection, signal) {
-      const rows = await abortable(sql<Array<{ projected: boolean }>>`
-        select public.companion_v3_runtime_project_page(
+      const rows = await abortable(sql<Array<{ projected: string | null }>>`
+        select public.companion_v3_runtime_project_native_page(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
           ${claim.turn.lane},
@@ -440,11 +441,12 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           ${projection.throughCursor.toString()}::bigint,
           ${sql.json(projection.assistant)}::jsonb,
           ${projection.needsInput},
-          ${projection.settled},
+          ${projection.processExited ? "process_exit" : projection.settled ? "settled" : null},
           3
         ) as projected
       `, signal);
-      return rows[0]?.projected === true;
+      const projected = rows[0]?.projected;
+      return projected === "succeeded" || projected === "failed" ? projected : projected === "projected";
     },
   };
 }

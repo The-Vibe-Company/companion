@@ -339,11 +339,13 @@ function promptWriteOutcome(
 ): BrokerPromptWriteOutcome {
   if (result.outcome === "refused") return { outcome: "rejected", code: result.code };
   if (result.outcome === "ambiguous") return { outcome: "ambiguous", code: result.code };
-  return {
+  const accepted: BrokerPromptWriteOutcome = {
     outcome: "accepted",
     invocationId: result.invocationId,
     initialCursor: BigInt(result.initialCursor),
   };
+  if (result.responseAttemptId) accepted.responseAttemptId = result.responseAttemptId;
+  return accepted;
 }
 
 function brokerState(

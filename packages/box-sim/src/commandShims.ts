@@ -129,6 +129,7 @@ export interface BoxSimDaemonMachine {
   brokerDispatchLedger: Map<string, {
     commandId: string;
     invocationId: string;
+    responseAttemptId: string;
     initialCursor: number;
     fingerprint: string;
   }>;
@@ -914,6 +915,7 @@ export async function executeBrokerControl(
         attemptId,
         commandId,
         invocationId: recorded.invocationId,
+        responseAttemptId: recorded.responseAttemptId,
         fingerprint: recorded.fingerprint,
         piAcknowledged: true,
         initialCursor: recorded.initialCursor,
@@ -1041,19 +1043,27 @@ async function executeBrokerCommand(
       attemptId: promptAttemptId,
       commandId: recorded.commandId,
       invocationId: recorded.invocationId,
+      responseAttemptId: recorded.responseAttemptId,
       piAcknowledged: true,
       initialCursor: recorded.initialCursor,
       requiredInput: brokerCommand.requiredInput ?? ["text"],
       clearOutbox: true,
     }))}\n`);
   }
-  if (brokerCommand.type === "prompt" && machine.daemon.activeAttemptId) {
+  if (
+    brokerCommand.type === "prompt"
+    && machine.daemon.activeAttemptId === null
+    && brokerTailCursor(machine) > machine.daemon.brokerAcknowledgedCursor
+  ) {
     return ok(`${JSON.stringify(brokerFailureFor(
       brokerCommand,
-      "attempt_active",
-      "another Pi attempt is already active",
+      "journal_pending",
+      "Pi has a completed response awaiting durable acknowledgement",
     ))}\n`);
   }
+  const responseAttemptId = brokerCommand.type === "prompt"
+    ? machine.daemon.activeAttemptId ?? promptAttemptId
+    : null;
   const abortAttemptId = brokerCommand.type === "abort" ? machine.daemon.activeAttemptId : null;
   if (brokerCommand.type === "abort" && typeof brokerCommand.attemptId === "string"
     && abortAttemptId && brokerCommand.attemptId !== abortAttemptId) {
@@ -1074,17 +1084,25 @@ async function executeBrokerCommand(
     const providerRequest = selectedCustomModel(machine);
     if (providerRequest) machine.providerRequests.push(providerRequest);
   }
-  if (brokerCommand.type === "prompt" && brokerCommand.clearOutbox === true) {
+  if (
+    brokerCommand.type === "prompt"
+    && machine.daemon.activeAttemptId === null
+    && brokerCommand.clearOutbox === true
+  ) {
     for (const path of machine.persistentFiles.keys()) {
       if (path.startsWith("outbox/")) machine.persistentFiles.delete(path);
     }
   }
   // The production broker binds before writing to Pi: Pi may emit an event before its correlated
   // command response arrives. Roll this provisional binding back only when Pi proves rejection.
-  if (promptAttemptId) machine.daemon.activeAttemptId = promptAttemptId;
+  const establishesResponse = promptAttemptId !== null && machine.daemon.activeAttemptId === null;
+  if (establishesResponse) machine.daemon.activeAttemptId = promptAttemptId;
   let response: BoxSimJsonObject | null;
   try {
-    const rawResponse = await machine.piController?.handleRpc(brokerCommand) ?? null;
+    const piCommand = brokerCommand.type === "prompt"
+      ? { ...brokerCommand, streamingBehavior: "steer" }
+      : brokerCommand;
+    const rawResponse = await machine.piController?.handleRpc(piCommand) ?? null;
     const parsedResponse = boxSimJsonObjectSchema.safeParse(rawResponse);
     response = parsedResponse.success ? parsedResponse.data : null;
   } catch {
@@ -1104,6 +1122,7 @@ async function executeBrokerCommand(
   if (brokerCommand.type === "prompt") {
     const promptResponseData: BoxSimJsonObject = {
       invocationId: machine.daemon.invocationId,
+      responseAttemptId,
       piAcknowledged: true,
       initialCursor,
       clearOutbox: true,
@@ -1134,6 +1153,7 @@ async function executeBrokerCommand(
       machine.daemon.brokerDispatchLedger.set(promptAttemptId, {
         commandId: promptCommandId,
         invocationId: machine.daemon.invocationId,
+        responseAttemptId: responseAttemptId ?? promptAttemptId,
         initialCursor,
         fingerprint: promptFingerprint,
       });
@@ -1141,6 +1161,7 @@ async function executeBrokerCommand(
     if (
       response.success !== true
       && promptAttemptId
+      && establishesResponse
       && machine.daemon.activeAttemptId === promptAttemptId
     ) {
       machine.daemon.activeAttemptId = null;

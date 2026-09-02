@@ -528,6 +528,8 @@ function promptDispatch(body: Record<string, unknown>, attemptId: string): Compa
   if (
     body.piAcknowledged === true
     && body.attemptId === attemptId
+    && typeof body.responseAttemptId === "string"
+    && body.responseAttemptId.length > 0
     && typeof body.invocationId === "string"
     && body.invocationId.length > 0
     && Number.isSafeInteger(body.initialCursor)
@@ -537,6 +539,7 @@ function promptDispatch(body: Record<string, unknown>, attemptId: string): Compa
     return {
       outcome: "accepted",
       attemptId,
+      responseAttemptId: body.responseAttemptId,
       invocationId: body.invocationId,
       initialCursor: Number(body.initialCursor),
     };

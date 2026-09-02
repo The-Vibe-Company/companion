@@ -173,8 +173,10 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 
 - Layout 14 installs a Node broker between runtime commands and Pi. It uses an owner-only Unix
   socket for correlated commands and a segmented, monotonic, acknowledged event journal.
-- Before `prompt`, Pi must answer `get_state` as idle with no queued messages. The broker associates
-  the sole active attempt with events through `agent_settled`.
+- Every message is persisted before the broker calls Pi with `streamingBehavior: "steer"`; Pi
+  atomically chooses idle prompt or active steer without a runtime `isStreaming` pre-probe. The
+  broker associates events with the response root through `agent_settled`, while PostgreSQL keeps
+  each admitted Turn and its FIFO identity distinct.
 - Unknown Pi events are counted and ignored. Only explicitly supported terminal event shapes settle
   a turn; malformed or oversized lines advance safely without storing their raw content.
 - A missing acknowledgement after a possible prompt write becomes `interrupted` and is never

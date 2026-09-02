@@ -354,7 +354,7 @@ Every prompt write carries the attempt's durable `command_id`. The on-Box broker
 Pi acknowledgement before answering and serves that exact result through `dispatch_status`. If the
 direct HTTP response is lost, runtime spends at most 30 seconds resolving the same command id and
 may repeat only that idempotent broker command; an executor takeover performs the same lookup. This
-command is durably bound to the Pi invocation observed idle at its write intent, and takeover
+command is durably bound to the Pi invocation current at its write intent, and takeover
 refuses a changed instance before network I/O while the broker refuses a stale invocation before
 any Pi call. This is resolution of a proven broker fact, not replay of an
 ambiguous external effect. If no matching
@@ -475,9 +475,12 @@ message is the visible answer, while tool and decision cards keep their own dura
 The owner's persona remains one operator-authored line rather than a system prompt, and it is
 appended last so it has the final word on voice.
 
-Before `prompt`, runtime requires a correlated `get_state` response showing idle Pi and no queued
-messages. It omits Pi `streamingBehavior`, so a race is refused rather than hidden as a follow-up.
-Only explicitly supported terminal event shapes settle a turn.
+The control plane persists every message and its FIFO position before offering it through Pi's
+atomic `prompt(..., streamingBehavior: "steer")` primitive. There is no `isStreaming` pre-probe:
+Pi alone chooses idle prompt or active steer and applies its native FIFO and safe boundaries. A
+positive reply records admission only, while a proven refusal leaves the same Turn queued and an
+ambiguous admission is never replayed. Only explicitly supported terminal event shapes settle a
+response; one final response may settle several distinct admitted Turns without merging them.
 
 Runtime projects an event batch and its monotonic cursor atomically. Supported settlement and
 process-exit events also persist their terminal checkpoint in that transaction; broker

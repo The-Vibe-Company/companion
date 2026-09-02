@@ -1170,6 +1170,13 @@
       "when": 1793329600000,
       "tag": "0166_companion_runtime_v3_persistent_box_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 167,
+      "version": "7",
+      "when": 1793333200000,
+      "tag": "0167_companion_runtime_v3_pi_native_admission",
+      "breakpoints": true
     }
   ]
 }

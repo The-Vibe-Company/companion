@@ -193,8 +193,9 @@ live canary does not replace local installation acceptance.
   expurgation, and text/vision model classification.
 - Inject unknown events and malformed or oversized lines. They advance the journal, increment
   bounded telemetry, persist no raw content, and do not settle a turn.
-- Prove `get_state` idle/no-queue precedes prompt and that omitting Pi `streamingBehavior` prevents a
-  hidden follow-up queue.
+- Prove every message uses Pi's atomic `prompt(..., streamingBehavior: "steer")` with no streaming
+  pre-probe; cover compaction refusal, steer bursts, long tool batches, process loss, journal replay,
+  and fenced executor takeover while preserving distinct durable Turns.
 
 ### Real PostgreSQL integration
 

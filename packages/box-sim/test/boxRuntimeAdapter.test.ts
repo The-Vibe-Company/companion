@@ -17,6 +17,35 @@ afterEach(async () => {
 });
 
 describe("production Box runtime v2 against the simulator", () => {
+  it("lets the simulated Pi admit a steer while the root response is active", async () => {
+    const { boxId, runtime } = await provision({
+      apiKey: "box_adapter_native_steer",
+      companionId: "88888888-8888-4888-8888-888888888888",
+      generation: 1,
+      piScenario: "ask_user",
+    });
+    await expect(runtime.dispatchPrompt({
+      boxId,
+      attemptId: "attempt-native-root",
+      requestId: "dispatch-native-root",
+      message: "Ask before continuing.",
+    })).resolves.toMatchObject({
+      outcome: "accepted",
+      responseAttemptId: "attempt-native-root",
+    });
+    await waitForBrokerEvent(runtime, boxId, 0, "extension_ui_request");
+
+    await expect(runtime.dispatchPrompt({
+      boxId,
+      attemptId: "attempt-native-steer",
+      requestId: "dispatch-native-steer",
+      message: "Use the safe default.",
+    })).resolves.toMatchObject({
+      outcome: "accepted",
+      responseAttemptId: "attempt-native-root",
+    });
+  });
+
   it("stages GLM 5.3 Flash and completes a turn through the fake z.ai route", async () => {
     const harness = await provision({
       apiKey: "box_adapter_glm_flash",
@@ -83,11 +112,18 @@ describe("production Box runtime v2 against the simulator", () => {
     })).resolves.toEqual({
       outcome: "accepted",
       attemptId: "attempt-contract-1",
+      responseAttemptId: "attempt-contract-1",
       invocationId: "00000000000000000000000000000001",
       initialCursor: 0,
     });
 
     const settled = await waitForBrokerEvent(runtime, boxId, 0, "agent_settled");
+    await expect(runtime.dispatchPrompt({
+      boxId,
+      attemptId: "attempt-contract-before-ack",
+      requestId: "dispatch-contract-before-ack",
+      message: "Do not bypass the durable journal.",
+    })).resolves.toMatchObject({ outcome: "refused", code: "journal_pending" });
     expect(settled.events).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ event: expect.objectContaining({ type: "response" }) }),
     ]));
@@ -174,6 +210,7 @@ describe("production Box runtime v2 against the simulator", () => {
     })).resolves.toEqual({
       outcome: "accepted",
       attemptId: "attempt-journal-1",
+      responseAttemptId: "attempt-journal-1",
       invocationId: "00000000000000000000000000000001",
       initialCursor: 0,
     });

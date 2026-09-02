@@ -935,7 +935,13 @@ export interface CompanionPiBrokerEventPage {
 
 /** Prompt dispatch never collapses an ambiguous write into a safe negative acknowledgement. */
 export type CompanionPiPromptDispatch =
-  | { outcome: "accepted"; attemptId: string; invocationId: string; initialCursor: number }
+  | {
+    outcome: "accepted";
+    attemptId: string;
+    responseAttemptId?: string;
+    invocationId: string;
+    initialCursor: number;
+  }
   | { outcome: "refused"; code: string; message: string }
   | { outcome: "ambiguous"; code: string; message: string };
 
@@ -5199,6 +5205,7 @@ done`,
       if (
         data?.piAcknowledged === true
         && data.attemptId === input.attemptId
+        && opaqueBrokerId(data.responseAttemptId)
         && opaqueBrokerId(data.invocationId)
         && nonNegativeSafeInteger(data.initialCursor)
         && data.clearOutbox === true
@@ -5206,6 +5213,7 @@ done`,
         return {
           outcome: "accepted",
           attemptId: input.attemptId,
+          responseAttemptId: data.responseAttemptId,
           invocationId: data.invocationId,
           initialCursor: data.initialCursor,
         };

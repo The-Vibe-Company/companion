@@ -126,9 +126,11 @@ its full real-Linux acceptance is slow; run it locally as the final validation a
   terminal settlement.
 - The runtime re-evaluates membership, Companion ACL, selected Skills, plugins, and provider access
   immediately before Box contact. Revoked authority fails closed.
-- Pi must be idle with no queued messages before prompt dispatch. The layout-14 broker correlates
-  the single active attempt through `agent_settled`; unknown events are counted and ignored, while
-  only supported terminal shapes settle a turn.
+- Every message is persisted before the layout-14 broker calls Pi's atomic
+  `prompt(..., streamingBehavior: "steer")`; no streaming or queue pre-probe gates admission. Pi
+  chooses idle prompt or active steer and the broker correlates the shared response root through
+  `agent_settled`; unknown events are counted and ignored, while only supported terminal shapes
+  settle the distinct admitted Turns.
 - Staged Pi instructions (`composedInstructions()` in `packages/box-runtime`, written to
   `~/.companion/runtime/state/instructions.txt` and passed as `--append-system-prompt`) are how Pi
   learns what this runtime actually provides. A Companion capability is not shipped until that brief
