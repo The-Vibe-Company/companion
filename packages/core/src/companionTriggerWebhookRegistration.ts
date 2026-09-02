@@ -256,9 +256,10 @@ const LINEAR_DELETE_MUTATION = `
 `;
 
 const LINEAR_LIST_QUERY = `
-  query CompanionWebhooks {
-    webhooks {
+  query CompanionWebhooks($after: String) {
+    webhooks(first: 100, after: $after) {
       nodes { id url }
+      pageInfo { hasNextPage endCursor }
     }
   }
 `;
@@ -299,25 +300,51 @@ async function findLinearWebhook(input: {
   fetch: typeof globalThis.fetch;
   token: string;
   webhookUrl: string;
+  remoteHookId?: string;
 }): Promise<string | null> {
-  const response = await input.fetch(LINEAR_API, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: input.token.trim() },
-    body: JSON.stringify({ query: LINEAR_LIST_QUERY }),
-  });
-  const payload = z.object({
-    data: z.object({
-      webhooks: z.object({ nodes: z.array(z.object({ id: z.string(), url: z.string() })) }),
-    }).optional(),
-    errors: z.array(z.object({ message: z.string() })).optional(),
-  }).safeParse(await response.json().catch(() => null));
-  if (!response.ok || !payload.success || payload.data.errors?.length || !payload.data.data) {
-    throw new CompanionTriggerRegistrationError(
-      "provider_rejected",
-      `linear webhook reconciliation failed (${response.status})`,
+  const seen = new Set<string>();
+  let after: string | null = null;
+  for (;;) {
+    const response = await input.fetch(LINEAR_API, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: input.token.trim() },
+      body: JSON.stringify({ query: LINEAR_LIST_QUERY, variables: { after } }),
+    });
+    const payload = z.object({
+      data: z.object({
+        webhooks: z.object({
+          nodes: z.array(z.object({ id: z.string(), url: z.string() })),
+          pageInfo: z.object({
+            hasNextPage: z.boolean(),
+            endCursor: z.string().nullable(),
+          }).optional(),
+        }),
+      }).optional(),
+      errors: z.array(z.object({ message: z.string() })).optional(),
+    }).safeParse(await response.json().catch(() => null));
+    if (!response.ok || !payload.success || payload.data.errors?.length || !payload.data.data) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        `linear webhook reconciliation failed (${response.status})`,
+      );
+    }
+    const hook = payload.data.data.webhooks.nodes.find(
+      (candidate) => input.remoteHookId
+        ? candidate.id === input.remoteHookId
+        : candidate.url === input.webhookUrl,
     );
+    if (hook) return hook.id;
+    const pageInfo = payload.data.data.webhooks.pageInfo;
+    if (!pageInfo?.hasNextPage) return null;
+    if (!pageInfo.endCursor || seen.has(pageInfo.endCursor)) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        "linear webhook reconciliation returned invalid pagination",
+      );
+    }
+    seen.add(pageInfo.endCursor);
+    after = pageInfo.endCursor;
   }
-  return payload.data.data.webhooks.nodes.find((candidate) => candidate.url === input.webhookUrl)?.id ?? null;
 }
 
 async function findSentryWebhook(input: {
@@ -338,6 +365,87 @@ async function findSentryWebhook(input: {
     );
   }
   return hooks.data.find((candidate) => candidate.url === input.webhookUrl)?.id ?? null;
+}
+
+export async function inspectCompanionTriggerWebhookV2(input: {
+  orgId: string;
+  companionId: string;
+  triggerId: string;
+  webhookBaseUrl: string;
+  masterKey: Buffer;
+  database: Db;
+  fetch?: typeof globalThis.fetch;
+}): Promise<"present" | "absent"> {
+  const trigger = await loadRegistrationTrigger(input);
+  if (!trigger.remote_hook_id) return "absent";
+  const doFetch = input.fetch ?? globalThis.fetch;
+  let found: string | null;
+  if (trigger.provider === "linear") {
+    const key = await linearTriggerKeyToken({
+      ...input,
+      providerAccountId: trigger.remote_hook_account_id ?? trigger.provider_account_id,
+    });
+    found = await findLinearWebhook({
+      fetch: doFetch,
+      token: key.token,
+      webhookUrl: trigger.webhook_url,
+      remoteHookId: trigger.remote_hook_id,
+    });
+  } else if (trigger.provider === "sentry") {
+    if (!trigger.target?.organization || !trigger.target.project) return "absent";
+    const account = await loadTriggerProviderAccount({
+      orgId: input.orgId,
+      provider: "sentry",
+      providerAccountId: trigger.remote_hook_account_id ?? trigger.provider_account_id,
+      database: input.database,
+    });
+    const projectPath = [trigger.target.organization, trigger.target.project]
+      .map(encodeURIComponent)
+      .join("/");
+    const response = await doFetch(
+      `${SENTRY_API}/projects/${projectPath}/hooks/${encodeURIComponent(trigger.remote_hook_id)}/`,
+      { headers: { authorization: `Bearer ${providerTokenOf(account, input.orgId, input.masterKey)}` } },
+    );
+    if (response.status === 404) return "absent";
+    if (!response.ok) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        `Sentry webhook reconciliation failed (${response.status})`,
+      );
+    }
+    return "present";
+  } else if (trigger.provider === "github") {
+    if (!trigger.target?.repo) return "absent";
+    const account = await loadTriggerProviderAccount({
+      orgId: input.orgId,
+      provider: "github",
+      providerAccountId: trigger.remote_hook_account_id ?? trigger.provider_account_id,
+      database: input.database,
+    });
+    const repoPath = trigger.target.repo.split("/").map(encodeURIComponent).join("/");
+    const response = await doFetch(
+      `${GITHUB_API}/repos/${repoPath}/hooks/${encodeURIComponent(trigger.remote_hook_id)}`,
+      { headers: githubHeaders(providerTokenOf(account, input.orgId, input.masterKey)) },
+    );
+    if (response.status === 404) return "absent";
+    if (!response.ok) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        `github webhook reconciliation failed (${response.status})`,
+      );
+    }
+    return "present";
+  } else {
+    return "absent";
+  }
+  if (found === null) return "absent";
+  if (found !== trigger.remote_hook_id) {
+    throw new CompanionTriggerRegistrationError(
+      "provider_rejected",
+      `${trigger.provider} webhook reconciliation returned a different registration`,
+    );
+  }
+  return "present";
 }
 
 async function linearTriggerKeyToken(input: {
@@ -841,7 +949,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
   fetch?: typeof globalThis.fetch;
   /** One-shot purge keeps ownership rows intact until every external resource is gone. */
   preserveRegistration?: boolean;
-}): Promise<void> {
+}): Promise<"completed" | "absent"> {
   const trigger = await loadRegistrationTrigger(input);
   const persist = input.preserveRegistration
     ? async (): Promise<void> => undefined
@@ -857,7 +965,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
         status: "unregistered",
         error: null,
       });
-      return;
+      return "absent";
     }
     const key = await linearTriggerKeyToken({
       ...input,
@@ -888,7 +996,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
         status: "unregistered",
         error: null,
       });
-      return;
+      return "absent";
     }
     if (!response.ok) {
       throw new CompanionTriggerRegistrationError(
@@ -916,7 +1024,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
       status: "unregistered",
       error: null,
     });
-    return;
+    return "completed";
   }
   if (trigger.provider === "sentry") {
     if (!trigger.remote_hook_id || !trigger.target?.organization || !trigger.target.project) {
@@ -927,7 +1035,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
         status: "unregistered",
         error: null,
       });
-      return;
+      return "absent";
     }
     const account = await loadTriggerProviderAccount({
       orgId: input.orgId,
@@ -964,7 +1072,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
       status: "unregistered",
       error: null,
     });
-    return;
+    return response.status === 404 ? "absent" : "completed";
   }
   if (trigger.provider !== "github" || !trigger.target?.repo || !trigger.remote_hook_id) {
     await persist({
@@ -974,7 +1082,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
       status: trigger.provider === "webhook" || trigger.provider === "custom" ? "manual" : "unregistered",
       error: null,
     });
-    return;
+    return "absent";
   }
   const account = await loadTriggerProviderAccount({
     orgId: input.orgId,
@@ -1020,4 +1128,5 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
     status: "unregistered",
     error: null,
   });
+  return response.status === 404 ? "absent" : "completed";
 }

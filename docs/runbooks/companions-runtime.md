@@ -250,13 +250,19 @@ the first ledger write or external request. It unregisters provider webhooks and
 objects, named snapshots, build/duplicate Boxes, and generation Boxes before the final database
 transaction. `404` is already absent. Any other failure is blocking: keep the feature disabled,
 correct the provider/storage problem, and rerun. Do not edit ownership or ledger rows manually;
-terminal targets are skipped and recorded Box operations resume.
+terminal targets are skipped and recorded Box operations resume. A `requesting` object, snapshot,
+or Box is first reconciled against fresh provider inventory; a `requesting` GitHub, Linear, or
+Sentry trigger is first reconciled through its authenticated provider read/list API. Absence closes
+the ledger without another DELETE. A still-visible Box with no recorded operation remains blocked
+as ambiguous instead of being resubmitted.
 
 Archive the final report and checksum. It must show zero Companion-domain rows and targets. Verify
 the ledger phase is `database_complete`, every target is `completed` or `absent`, and attempts to
-update/delete the completed evidence fail. The finalizer's before/after fingerprint must match,
-covering organizations, users, memberships, Skills and secrets, Skill Databases, billing, audit,
-encrypted provider connections, MCP accounts, trigger-provider credentials, and plugin trigger keys.
+update/delete the completed evidence fail. The finalizer locks the preserved tables, captures its
+baseline immediately before Companion-row deletion, and requires its before/after fingerprint to
+match. It covers organizations, users, memberships, Skills and secrets, Skill Databases, billing,
+audit, encrypted provider connections, MCP accounts, trigger-provider credentials, and plugin
+trigger keys without treating legitimate activity during provider cleanup as purge damage.
 
 ## Runtime v2 cutover
 

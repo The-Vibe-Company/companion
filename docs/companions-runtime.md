@@ -1425,13 +1425,18 @@ or external call, it requires `COMPANION_COMPANIONS_ENABLED=false`, the `runtime
 disabled, neutral v2 and v3 leases, and the migration advisory lock. External ownership is removed
 first. Provider `404` is recorded as `absent`; every other unresolved failure stops with ownership
 rows present. Terminal targets are skipped on retry, while a recorded Box operation is polled rather
-than resubmitted.
+than resubmitted. A nonterminal retry performs an authoritative provider observation first:
+storage/Box/snapshot inventory covers those resources, and authenticated GitHub, Linear, or Sentry
+lookup covers remote triggers. Proven absence closes the target without another DELETE; an
+ambiguous still-visible Box without an operation id fails closed.
 
 Only a complete external ledger admits the final transaction. It drains Companions, ACLs, threads,
 Turns, attempts, operations, routines, triggers, leases, runtime projections, images/build state,
 notifications, attachment metadata/outbox rows, and Companion-scoped bearer tokens. The ledger then
 becomes immutable and retains only identifier-level, expurgated evidence. A database-generated
-before/after fingerprint proves organizations, users, memberships, Skills, Skill secrets, Skill
+before/after fingerprint is captured under preserved-table locks immediately around the final SQL
+deletion, so legitimate Skills Hub writes during a long provider cleanup do not poison resume. It
+proves organizations, users, memberships, Skills, Skill secrets, Skill
 Databases, billing, audit history, encrypted provider connections, member MCP accounts, trigger
 provider credentials, and plugin trigger keys are unchanged.
 

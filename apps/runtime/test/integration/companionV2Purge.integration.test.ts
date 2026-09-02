@@ -20,8 +20,11 @@ import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
+  acquireCompanionV2PurgeLock,
+  assertCompanionV2PurgeLockHeld,
   collectCompanionV2PurgeInventory,
   executeConfirmedCompanionV2Purge,
+  runCompanionV2PurgeInvocation,
   type CompanionV2BoxPurgeClient,
   type CompanionV2ObjectStore,
   type CompanionV2TriggerRemover,
@@ -49,6 +52,13 @@ const workerRole = decodeURIComponent(new URL(workerUrl).username);
 const runtimeRole = decodeURIComponent(new URL(runtimeUrl).username);
 let databaseCreated = false;
 let database: ReturnType<typeof postgres> | undefined;
+
+function databaseRoleUrl(source: string, name: string): string {
+  const url = new URL(source);
+  url.pathname = `/${name}`;
+  url.search = "";
+  return url.toString();
+}
 
 async function applyMigrationFile(client: ReturnType<typeof postgres>, name: string): Promise<void> {
   const statements = (await readFile(`${migrationsDir}/${name}`, "utf8"))
@@ -156,6 +166,12 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
     const orgId = "11111111-1111-4111-8111-111111111111";
     const companionId = "22222222-2222-4222-8222-222222222222";
     const triggerId = "33333333-3333-4333-8333-333333333333";
+    const skillId = "44444444-4444-4444-8444-444444444444";
+    const secretId = "55555555-5555-4555-8555-555555555555";
+    const mcpAccountId = "66666666-6666-4666-8666-666666666666";
+    const triggerAccountId = "77777777-7777-4777-8777-777777777777";
+    const pluginKeyId = "88888888-8888-4888-8888-888888888888";
+    const realmId = "99999999-9999-4999-8999-999999999999";
     await database.unsafe(`
       insert into public."user"(id,name,email,email_verified)
       values ('purge-owner','Owner','purge-owner@example.test',true);
@@ -166,6 +182,46 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       insert into public.companion_provider_connections(
         org_id,provider_id,auth_method,ciphertext,iv,auth_tag,wrapped_dek,wrap_iv,wrap_auth_tag,key_id,connected_by
       ) values ('${orgId}','anthropic','api_key','ciphertext','iv','tag','dek','wiv','wtag','key','purge-owner');
+      insert into public.companion_mcp_accounts(
+        id,org_id,owner_id,provider,label,transport,account_config,
+        ciphertext,iv,auth_tag,wrapped_dek,wrap_iv,wrap_auth_tag,key_id
+      ) values (
+        '${mcpAccountId}','${orgId}','purge-owner','linear','Linear','http','{}',
+        'mcp-ciphertext','mcp-iv','mcp-tag','mcp-dek','mcp-wiv','mcp-wtag','mcp-key'
+      );
+      insert into public.companion_trigger_provider_accounts(
+        id,org_id,owner_id,provider,label,credential_source,credential_generation,
+        ciphertext,iv,auth_tag,wrapped_dek,wrap_iv,wrap_auth_tag,key_id
+      ) values (
+        '${triggerAccountId}','${orgId}','purge-owner','github','GitHub','api_key',
+        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','trigger-ciphertext','trigger-iv',
+        'trigger-tag','trigger-dek','trigger-wiv','trigger-wtag','trigger-key'
+      );
+      insert into public.companion_plugin_trigger_keys(
+        id,org_id,account_id,provider,ciphertext,iv,auth_tag,wrapped_dek,wrap_iv,wrap_auth_tag,key_id
+      ) values (
+        '${pluginKeyId}','${orgId}','${mcpAccountId}','linear','plugin-ciphertext','plugin-iv',
+        'plugin-tag','plugin-dek','plugin-wiv','plugin-wtag','plugin-key'
+      );
+      insert into public.skills(id,org_id,slug,description,creator_id,scope)
+      values ('${skillId}','${orgId}','preserved-skill','Preserved Skill','purge-owner','personal');
+      insert into public.secrets(id,org_id,owner_id,name,key,audience)
+      values ('${secretId}','${orgId}','purge-owner','Preserved secret','PRESERVED_SECRET','personal');
+      insert into public.secret_versions(
+        org_id,secret_id,version,ciphertext,iv,auth_tag,wrapped_dek,wrap_iv,wrap_auth_tag,key_id,created_by
+      ) values (
+        '${orgId}','${secretId}',1,'secret-ciphertext','secret-iv','secret-tag','secret-dek',
+        'secret-wiv','secret-wtag','secret-key','purge-owner'
+      );
+      insert into public.skill_database_schemas(org_id,skill_id,generation,declarations_checksum)
+      values ('${orgId}','${skillId}',1,'sha256:${"b".repeat(64)}');
+      insert into public.skill_database_tables(org_id,skill_id,table_name,audience,columns)
+      values ('${orgId}','${skillId}','items','organization','[]');
+      insert into public.skill_database_realms(
+        id,org_id,skill_id,audience,storage_key,size_bytes,schema_generation
+      ) values ('${realmId}','${orgId}','${skillId}','organization','skilldb/preserved.sqlite',128,1);
+      insert into public.billing_subscriptions(org_id,stripe_customer_id,stripe_status,synced_quantity)
+      values ('${orgId}','cus_preserved','active',1);
       insert into public.audit_log(org_id,actor_id,action,target_type,target_id,metadata)
       values ('${orgId}','purge-owner','fixture.created','test','preserved','{"safe":true}');
       insert into public.companions(id,org_id,owner_id,name)
@@ -186,10 +242,12 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
     const boxes = new DisposableBoxProvider();
     const objects = new DisposableObjectStore();
     let triggerAttempts = 0;
+    let triggerPresent = true;
     const triggers: CompanionV2TriggerRemover = {
+      async inspect() { return triggerPresent ? "present" : "absent"; },
       async remove() {
         triggerAttempts += 1;
-        if (triggerAttempts === 1) throw new Error("disposable provider failure");
+        triggerPresent = false;
         return "completed";
       },
     };
@@ -197,6 +255,28 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
     const firstInventory = await collectCompanionV2PurgeInventory({
       client: database, boxClient, objectStore: objects,
     });
+    for (const invocation of [{ mode: "report" }, { mode: "dry-run" }] as const) {
+      await expect(runCompanionV2PurgeInvocation({
+        invocation,
+        client: database,
+        boxClient,
+        objectStore: objects,
+        env: {},
+        log: () => undefined,
+      })).resolves.toMatchObject({ inventory: { hash: firstInventory.hash } });
+    }
+    await expect(assertCompanionV2PurgeLockHeld(database))
+      .rejects.toThrow("advisory lock must be held");
+    expect(await acquireCompanionV2PurgeLock(database)).toBe(true);
+    const contender = postgres(upgradeUrl.toString(), { max: 1 });
+    try {
+      const [lock] = await contender<Array<{ locked: boolean }>>`
+        select pg_try_advisory_lock(72401, 20260608) as locked
+      `;
+      expect(lock?.locked).toBe(false);
+    } finally {
+      await contender.end({ timeout: 1 });
+    }
     expect(firstInventory.targets.map((target) => target.kind)).toEqual([
       "box", "object", "snapshot", "trigger",
     ]);
@@ -212,6 +292,21 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectDeletes: objects.removals,
       triggerAttempts,
     }).toEqual({ boxDeletes: 0, snapshotDeletes: 0, objectDeletes: 0, triggerAttempts: 0 });
+
+    await expect(executeConfirmedCompanionV2Purge({
+      client: database,
+      boxClient,
+      objectStore: objects,
+      triggerRemover: triggers,
+      initialInventory: firstInventory,
+      env: { COMPANION_COMPANIONS_ENABLED: "true" },
+    })).rejects.toThrow("must be explicitly set to false");
+    const [ledgerAfterFlagGuard] = await database<Array<{ runs: string; targets: string }>>`
+      select
+        (select count(*)::text from public.companion_v2_purge_runs) as runs,
+        (select count(*)::text from public.companion_v2_purge_targets) as targets
+    `;
+    expect(ledgerAfterFlagGuard).toEqual({ runs: "0", targets: "0" });
 
     await database`
       update public.companion_runtime_control
@@ -240,6 +335,29 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
     const preservedBefore = await database<Array<{ fingerprint: postgres.JSONValue }>>`
       select public.companion_v2_purge_preservation_fingerprint() as fingerprint
     `;
+    const [preservedRowsBefore] = await database.unsafe<Array<Record<string, string>>>(
+      `select
+        (select ciphertext from public.companion_provider_connections where org_id = '${orgId}') as provider,
+        (select ciphertext from public.companion_mcp_accounts where id = '${mcpAccountId}') as mcp,
+        (select ciphertext from public.companion_trigger_provider_accounts where id = '${triggerAccountId}') as trigger,
+        (select ciphertext from public.companion_plugin_trigger_keys where id = '${pluginKeyId}') as plugin,
+        (select slug from public.skills where id = '${skillId}') as skill,
+        (select ciphertext from public.secret_versions where secret_id = '${secretId}') as secret,
+        (select storage_key from public.skill_database_realms where id = '${realmId}') as skill_database,
+        (select stripe_customer_id from public.billing_subscriptions where org_id = '${orgId}') as billing,
+        (select action from public.audit_log where target_id = 'preserved') as audit`,
+    );
+    expect(preservedRowsBefore).toEqual({
+      provider: "ciphertext",
+      mcp: "mcp-ciphertext",
+      trigger: "trigger-ciphertext",
+      plugin: "plugin-ciphertext",
+      skill: "preserved-skill",
+      secret: "secret-ciphertext",
+      skill_database: "skilldb/preserved.sqlite",
+      billing: "cus_preserved",
+      audit: "fixture.created",
+    });
 
     await expect(executeConfirmedCompanionV2Purge({
       client: database,
@@ -248,11 +366,38 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       triggerRemover: triggers,
       initialInventory: firstInventory,
       env: { COMPANION_COMPANIONS_ENABLED: "false" },
-    })).rejects.toThrow("disposable provider failure");
+      afterExternalEffect: async (target) => {
+        if (target.kind === "trigger") throw new Error("crash after accepted trigger deletion");
+      },
+    })).rejects.toThrow("crash after accepted trigger deletion");
+    for (const roleSource of [apiUrl, workerUrl, runtimeUrl]) {
+      const restricted = postgres(databaseRoleUrl(roleSource!, databaseName), { max: 1 });
+      try {
+        try {
+          expect(await restricted`select * from public.companion_v2_purge_runs`).toEqual([]);
+        } catch (error) {
+          expect(error).toMatchObject({ code: "42501" });
+        }
+        await expect(restricted`
+          insert into public.companion_v2_purge_targets(resource_kind,resource_key,evidence)
+          values ('object','forbidden','[]'::jsonb)
+        `).rejects.toThrow(/permission denied|row-level security/);
+      } finally {
+        await restricted.end({ timeout: 1 });
+      }
+    }
     const [ownedAfterFailure] = await database<Array<{ count: string }>>`
       select count(*)::text as count from public.companions where id = ${companionId}::uuid
     `;
     expect(ownedAfterFailure?.count).toBe("1");
+    await database`
+      insert into public.audit_log(org_id,actor_id,action,target_type,target_id,metadata)
+      values (${orgId}::uuid,'purge-owner','fixture.during_purge','test','preserved-during','{}')
+    `;
+    const preservedAtFinalization = await database<Array<{ fingerprint: postgres.JSONValue }>>`
+      select public.companion_v2_purge_preservation_fingerprint() as fingerprint
+    `;
+    expect(preservedAtFinalization).not.toEqual(preservedBefore);
 
     const retryInventory = await collectCompanionV2PurgeInventory({
       client: database, boxClient, objectStore: objects,
@@ -271,7 +416,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       snapshotDeletes: boxes.snapshotDeletes,
       objectDeletes: objects.removals,
       triggerAttempts,
-    }).toEqual({ boxDeletes: 1, snapshotDeletes: 1, objectDeletes: 1, triggerAttempts: 2 });
+    }).toEqual({ boxDeletes: 1, snapshotDeletes: 1, objectDeletes: 1, triggerAttempts: 1 });
 
     const [remaining] = await database<Array<{ companions: string; triggers: string; attempts: string }>>`
       select
@@ -283,7 +428,20 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
     const preservedAfter = await database<Array<{ fingerprint: postgres.JSONValue }>>`
       select public.companion_v2_purge_preservation_fingerprint() as fingerprint
     `;
-    expect(preservedAfter).toEqual(preservedBefore);
+    expect(preservedAfter).toEqual(preservedAtFinalization);
+    const [preservedRowsAfter] = await database.unsafe<Array<Record<string, string>>>(
+      `select
+        (select ciphertext from public.companion_provider_connections where org_id = '${orgId}') as provider,
+        (select ciphertext from public.companion_mcp_accounts where id = '${mcpAccountId}') as mcp,
+        (select ciphertext from public.companion_trigger_provider_accounts where id = '${triggerAccountId}') as trigger,
+        (select ciphertext from public.companion_plugin_trigger_keys where id = '${pluginKeyId}') as plugin,
+        (select slug from public.skills where id = '${skillId}') as skill,
+        (select ciphertext from public.secret_versions where secret_id = '${secretId}') as secret,
+        (select storage_key from public.skill_database_realms where id = '${realmId}') as skill_database,
+        (select stripe_customer_id from public.billing_subscriptions where org_id = '${orgId}') as billing,
+        (select action from public.audit_log where target_id = 'preserved') as audit`,
+    );
+    expect(preservedRowsAfter).toEqual(preservedRowsBefore);
     await expect(database`
       update public.companion_v2_purge_runs set inventory = '{}'::jsonb
       where id = 'runtime-v2-purge'

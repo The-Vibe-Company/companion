@@ -238,10 +238,15 @@ identity, terminal state, and expurgated failure text. Remote trigger registrati
 attachment/output objects, named v2 snapshots, build Boxes, duplicate Boxes, and every generation
 Box are removed before the final SQL transaction. `404` is successful absence; another failure
 leaves all Companion ownership rows intact. A retry skips terminal targets and resumes any recorded
-Box operation.
+Box operation. `requesting` targets are never blindly replayed: current storage/Box/snapshot
+inventory and authenticated provider-specific trigger lookup first prove whether the resource is
+present or absent. A lost Box-delete response with no operation id stays blocked while the Box is
+visible rather than issuing a second permanent DELETE.
 
-The finalizer deletes the Companion aggregate and all v2 runtime children. A before/after
-fingerprint covers every non-Companion table plus reusable encrypted provider, MCP, and
+The finalizer deletes the Companion aggregate and all v2 runtime children. It locks preserved
+tables and takes the before/after baseline only around that final transaction; normal Skills Hub
+activity during provider cleanup therefore does not break resume. The fingerprint covers every
+non-Companion table plus reusable encrypted provider, MCP, and
 trigger-provider connection tables. Any change to organizations, users, memberships, Skills,
 secrets, Skill Databases, billing, audit history, or those connections aborts the transaction.
 Completed ledger evidence is immutable. THE-511 builds and verifies this path only; it neither runs

@@ -124,4 +124,71 @@ describe("Runtime v2 external purge checkpoints", () => {
     });
     expect(removed).toEqual(["retry"]);
   });
+
+  it("reconciles every effect committed before its terminal checkpoint without deleting twice", async () => {
+    for (const kind of ["trigger", "object", "snapshot", "box"] as const) {
+      let present = true;
+      let effects = 0;
+      const target: CompanionV2PurgeTarget = {
+        kind,
+        key: `${kind}-reconciled`,
+        evidence: [`provider:${kind}`],
+      };
+      await expect(processCompanionV2PurgeTargets({
+        targets: [target],
+        journal: {
+          async markRequesting() {},
+          async markComplete() {},
+          async markFailure() {},
+        },
+        providerPresent: async () => present,
+        afterExternalEffect: async () => { throw new Error(`crash after ${kind} effect`); },
+        remove: async () => {
+          effects += 1;
+          present = false;
+          return "completed";
+        },
+      })).rejects.toThrow(`crash after ${kind} effect`);
+
+      const outcomes: string[] = [];
+      await processCompanionV2PurgeTargets({
+        targets: [{ ...target, state: "requesting" }],
+        journal: {
+          async markRequesting() {},
+          async markComplete(_target, outcome) { outcomes.push(outcome); },
+          async markFailure() {},
+        },
+        providerPresent: async () => present,
+        remove: async () => {
+          effects += 1;
+          return "completed";
+        },
+      });
+      expect({ kind, effects, outcomes }).toEqual({ kind, effects: 1, outcomes: ["absent"] });
+    }
+  });
+
+  it("fails closed when a Box delete response was lost and the Box is still visible", async () => {
+    const effects: string[] = [];
+    await expect(processCompanionV2PurgeTargets({
+      targets: [{
+        kind: "box",
+        key: "bx_ambiguous",
+        evidence: ["provider-name:companion-generation"],
+        state: "requesting",
+        operationId: null,
+      }],
+      journal: {
+        async markRequesting() {},
+        async markComplete() {},
+        async markFailure() {},
+      },
+      providerPresent: () => true,
+      remove: async (target) => {
+        effects.push(target.key);
+        return "completed";
+      },
+    })).rejects.toThrow("Ambiguous Box deletion is still provider-visible");
+    expect(effects).toEqual([]);
+  });
 });

@@ -162,7 +162,7 @@ DECLARE
 BEGIN
   PERFORM pg_advisory_xact_lock(72401, 20260608);
 
-  SELECT phase, preservation_fingerprint INTO v_phase, v_before
+  SELECT phase INTO v_phase
   FROM public.companion_v2_purge_runs
   WHERE id = 'runtime-v2-purge'
   FOR UPDATE;
@@ -220,8 +220,37 @@ BEGIN
     RAISE EXCEPTION 'Runtime v2 ownership lacks confirmed external deletion' USING ERRCODE = '55000';
   END IF;
 
+  -- Freeze every preserved table while taking the before/after proof. This baseline is deliberately
+  -- refreshed only now: ordinary Skills Hub, membership, billing, or audit writes during a long
+  -- provider cleanup are legitimate and must not make a resumable run irreparable.
+  FOR v_table IN
+    SELECT tablename
+    FROM pg_catalog.pg_tables
+    WHERE schemaname = 'public'
+      AND tablename NOT IN ('companions', 'api_tokens', 'skill_database_object_deletions')
+      AND (
+        tablename NOT LIKE 'companion\_%' ESCAPE E'\\'
+        OR tablename IN (
+          'companion_provider_connections',
+          'companion_mcp_accounts',
+          'companion_trigger_provider_accounts',
+          'companion_plugin_trigger_keys',
+          'companion_legacy_purge_runs',
+          'companion_legacy_purge_targets',
+          'companion_runtime_control'
+        )
+      )
+    ORDER BY tablename
+  LOOP
+    EXECUTE format('LOCK TABLE public.%I IN SHARE MODE', v_table.tablename);
+  END LOOP;
+  LOCK TABLE public.api_tokens IN SHARE MODE;
+  LOCK TABLE public.skill_database_object_deletions IN SHARE MODE;
+  v_before := public.companion_v2_purge_preservation_fingerprint();
+
   UPDATE public.companion_v2_purge_runs
-  SET phase = 'external_complete', updated_at = statement_timestamp()
+  SET phase = 'external_complete', preservation_fingerprint = v_before,
+      updated_at = statement_timestamp()
   WHERE id = 'runtime-v2-purge';
 
   -- Break the two deliberate non-cascade historical references before deleting the roots.

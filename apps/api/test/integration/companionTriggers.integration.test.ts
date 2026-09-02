@@ -15,6 +15,7 @@ import {
   fireCompanionTrigger,
   getCompanionTriggerForWebhook,
   getCompanionTriggerRunV2,
+  inspectCompanionTriggerWebhookV2,
   listCompanionTriggerRunsV2,
   listCompanionTriggersV2,
   listCompanionsV2,
@@ -969,13 +970,28 @@ describe("Companion triggers over the real database", () => {
       database: integrationDb,
     }))!.secret);
 
-    // Unregistering removes the remote hook and keeps provider intent explicitly unregistered.
+    // Purge reconciliation can prove a committed delete without mutating the ownership row.
+    const reconcilePresent = asFetch(async () => new Response(JSON.stringify([{
+      id: 424242,
+      config: { url: requests[1]!.init.body
+        ? JSON.parse(String(requests[1]!.init.body)).config.url
+        : "" },
+    }]), { status: 200 }));
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: reconcilePresent,
+    }))).resolves.toBe("present");
     const deleteRequests: string[] = [];
     const deleteFetch = asFetch(async (url) => {
       deleteRequests.push(String(url));
       return new Response(null, { status: 204 });
     });
-    await asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -983,11 +999,34 @@ describe("Companion triggers over the real database", () => {
       masterKey,
       database,
       fetch: deleteFetch,
-    }));
+      preserveRegistration: true,
+    }))).resolves.toBe("completed");
+    row = await triggerRow(trigger.id);
+    expect(row.registrationStatus).toBe("registered");
+    expect(row.remoteHookId).toBe("424242");
+    expect(deleteRequests[0]).toBe("https://api.github.com/repos/acme/demo/hooks/424242");
+    const reconcileAbsent = asFetch(async () => new Response(null, { status: 404 }));
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: reconcileAbsent,
+    }))).resolves.toBe("absent");
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => new Response(null, { status: 404 })),
+    }))).resolves.toBe("absent");
     row = await triggerRow(trigger.id);
     expect(row.registrationStatus).toBe("unregistered");
     expect(row.remoteHookId).toBeNull();
-    expect(deleteRequests[0]).toBe("https://api.github.com/repos/acme/demo/hooks/424242");
 
     // A provider-committed create whose response was lost is adopted by URL on retry instead of
     // creating a duplicate remote hook.
@@ -1137,6 +1176,17 @@ describe("Companion triggers over the real database", () => {
     // SAFETY: this request's headers were built by registerLinearTriggerWebhook as a plain string record.
     expect((requests[0]!.init.headers as Record<string, string>).authorization)
       .toBe("lin_api_integration_key");
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => new Response(JSON.stringify({
+        data: { webhooks: { nodes: [{ id: "linear-hook-1", url: trigger.webhook_url }] } },
+      }), { status: 200 })),
+    }))).resolves.toBe("present");
 
     // Unregistering removes the remote subscription and keeps provider intent unregistered.
     const rejectedDeleteFetch = asFetch(async () => new Response(JSON.stringify({
@@ -1298,6 +1348,24 @@ describe("Companion triggers over the real database", () => {
       fetch: existingFetch,
     }))).resolves.toEqual({ status: "registered", remote_hook_id: "sentry-hook-1" });
     expect(duplicateCreateCalls).toBe(1);
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: existingFetch,
+    }))).resolves.toBe("present");
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => new Response(null, { status: 404 })),
+    }))).resolves.toBe("absent");
   });
 
   it("applies an approved trigger proposal under the approver and refuses every other path", async () => {

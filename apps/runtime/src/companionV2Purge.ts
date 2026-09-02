@@ -6,7 +6,11 @@ import {
   isCompanionRuntimeImageName,
   type BoxRuntimeLifecycleClient,
 } from "@companion/box-runtime";
-import { unregisterCompanionTriggerWebhookV2, loadSecretsMasterKey } from "@companion/core";
+import {
+  inspectCompanionTriggerWebhookV2,
+  unregisterCompanionTriggerWebhookV2,
+  loadSecretsMasterKey,
+} from "@companion/core";
 import { createDatabase, withTenantContextOn } from "@companion/db";
 import {
   createStorageClient,
@@ -94,6 +98,7 @@ export interface CompanionV2ObjectStore {
 }
 
 export interface CompanionV2TriggerRemover {
+  inspect(owner: CompanionV2DatabaseInventory["triggerOwners"][number]): Promise<"present" | "absent">;
   remove(owner: CompanionV2DatabaseInventory["triggerOwners"][number]): Promise<"completed" | "absent">;
 }
 
@@ -160,13 +165,31 @@ export function mergeCompanionV2PurgeTargets(
 export async function processCompanionV2PurgeTargets(input: {
   targets: readonly CompanionV2PurgeTarget[];
   journal: CompanionV2PurgeJournal;
+  providerPresent?(target: CompanionV2PurgeTarget): boolean | undefined | Promise<boolean | undefined>;
+  afterExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
   remove(target: CompanionV2PurgeTarget): Promise<"completed" | "absent">;
 }): Promise<void> {
   for (const target of input.targets) {
     if (target.state === "completed" || target.state === "absent") continue;
+    const present = await input.providerPresent?.(target);
+    if (present === false) {
+      await input.journal.markComplete(target, "absent");
+      continue;
+    }
+    if (
+      target.kind === "box"
+      && target.state === "requesting"
+      && !target.operationId
+      && present === true
+    ) {
+      throw new Error(
+        "Ambiguous Box deletion is still provider-visible; retry after provider reconciliation",
+      );
+    }
     await input.journal.markRequesting(target);
     try {
       const outcome = await input.remove(target);
+      await input.afterExternalEffect?.(target);
       await input.journal.markComplete(target, outcome);
     } catch (error) {
       await input.journal.markFailure(
@@ -235,6 +258,31 @@ export async function assertCompanionV2DatabaseQuiescent(
   if (safeCount(state.runtimeClaims) > 0 || safeCount(state.v3Claims) > 0) {
     throw new Error("Runtime leases must be neutral before purge");
   }
+}
+
+export async function acquireCompanionV2PurgeLock(
+  client: CompanionV2PurgeSql,
+): Promise<boolean> {
+  const [row] = await client<Array<{ locked: boolean }>>`
+    select pg_try_advisory_lock(
+      ${COMPANION_V2_PURGE_LOCK_CLASS_ID}, ${COMPANION_V2_PURGE_LOCK_OBJECT_ID}
+    ) as locked
+  `;
+  return row?.locked ?? false;
+}
+
+export async function assertCompanionV2PurgeLockHeld(
+  client: CompanionV2PurgeSql,
+): Promise<void> {
+  const [row] = await client<Array<{ held: boolean }>>`
+    select exists (
+      select 1 from pg_catalog.pg_locks
+      where locktype = 'advisory' and pid = pg_backend_pid()
+        and classid = ${COMPANION_V2_PURGE_LOCK_CLASS_ID}::oid
+        and objid = ${COMPANION_V2_PURGE_LOCK_OBJECT_ID}::oid
+    ) as held
+  `;
+  if (!row?.held) throw new Error("Runtime v2 purge advisory lock must be held");
 }
 
 function safeCount(value: string | number | undefined): number {
@@ -559,7 +607,7 @@ async function removeCompanionV2Target(input: {
   if (!owner) return "absent";
   if (input.triggerRemover) return input.triggerRemover.remove(owner);
   const database = createDatabase(input.client);
-  await withTenantContextOn(
+  return withTenantContextOn(
     database,
     { orgId: owner.orgId, userId: owner.ownerId },
     async (tenantDatabase) => unregisterCompanionTriggerWebhookV2({
@@ -572,7 +620,28 @@ async function removeCompanionV2Target(input: {
       preserveRegistration: true,
     }),
   );
-  return "completed";
+}
+
+async function inspectCompanionV2Trigger(input: {
+  owner: CompanionV2DatabaseInventory["triggerOwners"][number];
+  client: CompanionV2PurgeSql;
+  env: NodeJS.ProcessEnv;
+  triggerRemover?: CompanionV2TriggerRemover;
+}): Promise<"present" | "absent"> {
+  if (input.triggerRemover) return input.triggerRemover.inspect(input.owner);
+  const database = createDatabase(input.client);
+  return withTenantContextOn(
+    database,
+    { orgId: input.owner.orgId, userId: input.owner.ownerId },
+    async (tenantDatabase) => inspectCompanionTriggerWebhookV2({
+      orgId: input.owner.orgId,
+      companionId: input.owner.companionId,
+      triggerId: input.owner.triggerId,
+      webhookBaseUrl: input.env.COMPANION_WEB_URL ?? "http://127.0.0.1:3000",
+      masterKey: loadSecretsMasterKey(input.env.COMPANION_SECRETS_MASTER_KEY),
+      database: tenantDatabase,
+    }),
+  );
 }
 
 export function printCompanionV2PurgeReport(input: {
@@ -603,7 +672,11 @@ export async function executeConfirmedCompanionV2Purge(input: {
   env?: NodeJS.ProcessEnv;
   objectStore?: CompanionV2ObjectStore;
   triggerRemover?: CompanionV2TriggerRemover;
+  afterExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
 }): Promise<CompanionV2PurgeResult> {
+  const env = input.env ?? process.env;
+  assertCompanionV2PurgeDisabled(env);
+  await assertCompanionV2PurgeLockHeld(input.client);
   await assertCompanionV2DatabaseQuiescent(input.client);
   const [existingRun] = await input.client<Array<{ phase: string }>>`
     select phase from public.companion_v2_purge_runs where id = ${COMPANION_V2_PURGE_RUN_ID}
@@ -614,22 +687,49 @@ export async function executeConfirmedCompanionV2Purge(input: {
   const targets = await loadCompanionV2PurgeTargets(input.client);
   const journal = createCompanionV2PurgeJournal(input.client);
   const objectStore = input.objectStore ?? productionObjectStore();
-  await processCompanionV2PurgeTargets({
+  const processing: Parameters<typeof processCompanionV2PurgeTargets>[0] = {
     targets,
     journal,
+    providerPresent: async (target) => {
+      if (target.kind === "trigger") {
+        if (target.state !== "requesting") return true;
+        const owner = input.initialInventory.triggerOwners.find(
+          (item) => item.triggerId === target.key,
+        );
+        if (!owner) return false;
+        const inspection: Parameters<typeof inspectCompanionV2Trigger>[0] = {
+          owner,
+          client: input.client,
+          env,
+        };
+        if (input.triggerRemover) inspection.triggerRemover = input.triggerRemover;
+        return (await inspectCompanionV2Trigger(inspection)) === "present";
+      }
+      const providerEvidence = target.kind === "object"
+        ? "storage-prefix:companion-attachments"
+        : target.kind === "snapshot"
+          ? "provider-name:v2-image"
+          : "provider-name:companion-generation";
+      const discovered = input.initialInventory.targets.find(
+        (item) => item.kind === target.kind && item.key === target.key,
+      );
+      return discovered?.evidence.includes(providerEvidence) ?? false;
+    },
     remove: (target) => {
       const removal: Parameters<typeof removeCompanionV2Target>[0] = {
         target,
         client: input.client,
         boxClient: input.boxClient,
         triggerOwners: input.initialInventory.triggerOwners,
-        env: input.env ?? process.env,
+        env,
         objectStore,
       };
       if (input.triggerRemover) removal.triggerRemover = input.triggerRemover;
       return removeCompanionV2Target(removal);
     },
-  });
+  };
+  if (input.afterExternalEffect) processing.afterExternalEffect = input.afterExternalEffect;
+  await processCompanionV2PurgeTargets(processing);
 
   const fresh = await collectCompanionV2PurgeInventory({
     client: input.client,
@@ -655,6 +755,77 @@ export async function executeConfirmedCompanionV2Purge(input: {
   return result.result;
 }
 
+export async function runCompanionV2PurgeInvocation(input: {
+  invocation: CompanionV2PurgeInvocation;
+  client: CompanionV2PurgeSql;
+  boxClient: CompanionV2BoxPurgeClient;
+  env?: NodeJS.ProcessEnv;
+  objectStore?: CompanionV2ObjectStore;
+  triggerRemover?: CompanionV2TriggerRemover;
+  afterExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
+  log?: (message: string) => void;
+}): Promise<{ inventory: CompanionV2PurgeInventory; result?: CompanionV2PurgeResult }> {
+  const env = input.env ?? process.env;
+  if (input.invocation.mode === "purge") assertCompanionV2PurgeDisabled(env);
+  const objectStore = input.objectStore ?? productionObjectStore();
+  let lockAcquired = false;
+  try {
+    if (!await acquireCompanionV2PurgeLock(input.client)) {
+      throw new Error("another migration or cutover holds the migration lock");
+    }
+    lockAcquired = true;
+    if (input.invocation.mode === "purge") {
+      await assertCompanionV2DatabaseQuiescent(input.client);
+    }
+    const inventory = await collectCompanionV2PurgeInventory({
+      client: input.client,
+      boxClient: input.boxClient,
+      objectStore,
+    });
+    printCompanionV2PurgeReport({ inventory, mode: input.invocation.mode, log: input.log });
+    if (input.invocation.mode !== "purge") {
+      (input.log ?? console.log)("No destructive provider request and no database write was made.");
+      return { inventory };
+    }
+    const confirmed: Parameters<typeof executeConfirmedCompanionV2Purge>[0] = {
+      client: input.client,
+      boxClient: input.boxClient,
+      initialInventory: inventory,
+      env,
+      objectStore,
+    };
+    if (input.triggerRemover) confirmed.triggerRemover = input.triggerRemover;
+    if (input.afterExternalEffect) confirmed.afterExternalEffect = input.afterExternalEffect;
+    const result = await executeConfirmedCompanionV2Purge(confirmed);
+    (input.log ?? console.log)(`Runtime v2 database purge result: ${JSON.stringify(result)}`);
+    const finalInventory = await collectCompanionV2PurgeInventory({
+      client: input.client,
+      boxClient: input.boxClient,
+      objectStore,
+    });
+    const remaining = Object.values(finalInventory.rowCounts).reduce((sum, count) => sum + count, 0);
+    if (remaining > 0 || finalInventory.targets.length > 0) {
+      throw new Error(
+        `Runtime v2 purge final verification failed (targets=${finalInventory.targets.length}, rows=${remaining})`,
+      );
+    }
+    printCompanionV2PurgeReport({
+      inventory: finalInventory,
+      mode: "purge-complete",
+      log: input.log,
+    });
+    return { inventory: finalInventory, result };
+  } finally {
+    if (lockAcquired) {
+      await input.client`
+        select pg_advisory_unlock(
+          ${COMPANION_V2_PURGE_LOCK_CLASS_ID}, ${COMPANION_V2_PURGE_LOCK_OBJECT_ID}
+        )
+      `.catch(() => undefined);
+    }
+  }
+}
+
 function safeCommandFailure(error: Error | null): string {
   if (error) {
     const message = error.message.replace(/[\r\n]+/g, " ").slice(0, 1_000);
@@ -674,41 +845,9 @@ export async function run(
   const client = postgres(companionV2PurgeDatabaseUrl(env), { max: 1 });
   const boxClient = new AsciiBoxMaintenanceClient(env);
   const objectStore = productionObjectStore();
-  let lockAcquired = false;
   try {
-    const [lock] = await client<Array<{ locked: boolean }>>`
-      select pg_try_advisory_lock(
-        ${COMPANION_V2_PURGE_LOCK_CLASS_ID}, ${COMPANION_V2_PURGE_LOCK_OBJECT_ID}
-      ) as locked
-    `;
-    if (!lock?.locked) throw new Error("another migration or cutover holds the migration lock");
-    lockAcquired = true;
-    const inventory = await collectCompanionV2PurgeInventory({ client, boxClient, objectStore });
-    printCompanionV2PurgeReport({ inventory, mode: invocation.mode });
-    if (invocation.mode !== "purge") {
-      console.log("No provider request and no database write was made.");
-      return;
-    }
-    const result = await executeConfirmedCompanionV2Purge({
-      client, boxClient, initialInventory: inventory, env, objectStore,
-    });
-    console.log(`Runtime v2 database purge result: ${JSON.stringify(result)}`);
-    const finalInventory = await collectCompanionV2PurgeInventory({ client, boxClient, objectStore });
-    const remaining = Object.values(finalInventory.rowCounts).reduce((sum, count) => sum + count, 0);
-    if (remaining > 0 || finalInventory.targets.length > 0) {
-      throw new Error(
-        `Runtime v2 purge final verification failed (targets=${finalInventory.targets.length}, rows=${remaining})`,
-      );
-    }
-    printCompanionV2PurgeReport({ inventory: finalInventory, mode: "purge-complete" });
+    await runCompanionV2PurgeInvocation({ invocation, client, boxClient, env, objectStore });
   } finally {
-    if (lockAcquired) {
-      await client`
-        select pg_advisory_unlock(
-          ${COMPANION_V2_PURGE_LOCK_CLASS_ID}, ${COMPANION_V2_PURGE_LOCK_OBJECT_ID}
-        )
-      `.catch(() => undefined);
-    }
     await client.end();
   }
 }
