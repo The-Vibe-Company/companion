@@ -6,6 +6,21 @@ import type {
 } from "@companion/companion-runtime/v3/internal";
 import type { Sql } from "postgres";
 
+interface CancellableQuery<T> extends PromiseLike<T> {
+  cancel(): void;
+}
+
+async function abortable<T>(query: CancellableQuery<T>, signal?: AbortSignal): Promise<T> {
+  signal?.throwIfAborted();
+  const cancel = (): void => query.cancel();
+  signal?.addEventListener("abort", cancel, { once: true });
+  try {
+    return await query;
+  } finally {
+    signal?.removeEventListener("abort", cancel);
+  }
+}
+
 interface ClaimRow {
   orgId: string;
   companionId: string;
@@ -73,23 +88,23 @@ function createPostgresConvergence(
   options: { enabledLanes?: ReadonlySet<"main" | "background"> },
 ): RuntimeV3ConvergencePersistence {
   return {
-    async claimLane({ executorId, lane }) {
+    async claimLane({ executorId, lane, signal }) {
       if (options.enabledLanes && !options.enabledLanes.has(lane)) return null;
       const rows = warmOnly
-        ? await sql<ClaimRow[]>`
+        ? await abortable(sql<ClaimRow[]>`
           select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
             command_id as "commandId", lane::text, state::text,
             claim_token as "claimToken", claim_epoch::text as "claimEpoch",
             gate_epoch::text as "gateEpoch"
           from public.companion_v3_runtime_claim_warm(${executorId}, ${lane}, 30, 3)
-        `
-        : await sql<ClaimRow[]>`
+        `, signal)
+        : await abortable(sql<ClaimRow[]>`
           select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
             command_id as "commandId", lane::text, state::text,
             claim_token as "claimToken", claim_epoch::text as "claimEpoch",
             gate_epoch::text as "gateEpoch"
           from public.companion_v3_runtime_claim(${executorId}, ${lane}, 30, 3)
-        `;
+        `, signal);
       const row = rows[0];
       return row
         ? {
@@ -104,9 +119,9 @@ function createPostgresConvergence(
         }
         : null;
     },
-    async completeProgression(claim, outcome) {
+    async completeProgression(claim, outcome, signal) {
       const terminal = terminalInput(outcome);
-      const rows = await sql<Array<{ completed: boolean }>>`
+      const rows = await abortable(sql<Array<{ completed: boolean }>>`
         select public.companion_v3_runtime_complete(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
@@ -121,7 +136,7 @@ function createPostgresConvergence(
           ${terminal.action}::public.companion_runtime_error_action,
           3
         ) as completed
-      `;
+      `, signal);
       return rows[0]?.completed === true;
     },
   };
@@ -139,8 +154,8 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
   sql: Sql,
 ): RuntimeV3WarmTurnPersistence {
   return {
-    async authorize(claim) {
-      const rows = await sql<WarmMaterialRow[]>`
+    async authorize(claim, signal) {
+      const rows = await abortable(sql<WarmMaterialRow[]>`
         select box_id as "boxId", pi_invocation_id as "piInvocationId",
           content, activity_cursor::text as "activityCursor"
         from public.companion_v3_runtime_authorize_warm_turn(
@@ -153,7 +168,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           ${claim.fence.gateEpoch.toString()}::bigint,
           3
         )
-      `;
+      `, signal);
       const row = rows[0];
       return row
         ? {
@@ -164,8 +179,8 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
         }
         : null;
     },
-    async recordAdmission(claim, input) {
-      const rows = await sql<Array<{ recorded: boolean }>>`
+    async recordAdmission(claim, input, signal) {
+      const rows = await abortable(sql<Array<{ recorded: boolean }>>`
         select public.companion_v3_runtime_record_admission(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
@@ -178,11 +193,11 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           ${input.cursor.toString()}::bigint,
           3
         ) as recorded
-      `;
+      `, signal);
       return rows[0]?.recorded === true;
     },
-    async project(claim, projection) {
-      const rows = await sql<Array<{ projected: boolean }>>`
+    async project(claim, projection, signal) {
+      const rows = await abortable(sql<Array<{ projected: boolean }>>`
         select public.companion_v3_runtime_project_page(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
@@ -197,7 +212,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           ${projection.settled},
           3
         ) as projected
-      `;
+      `, signal);
       return rows[0]?.projected === true;
     },
   };

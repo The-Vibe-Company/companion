@@ -3,6 +3,11 @@ import type { RuntimeV3WarmPi } from "@companion/companion-runtime/v3/internal";
 
 const WARM_PI_CALL_TIMEOUT_MS = 30_000;
 
+function warmCallSignal(signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(WARM_PI_CALL_TIMEOUT_MS);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
+
 /** Narrow Runtime v3 Pi boundary over the existing, simulator-backed broker transport. */
 export function createRuntimeV3WarmPi(pi: RuntimePiControl): RuntimeV3WarmPi {
   return {
@@ -13,14 +18,14 @@ export function createRuntimeV3WarmPi(pi: RuntimePiControl): RuntimeV3WarmPi {
         attemptId: input.turnId,
         expectedInvocationId: input.expectedInvocationId,
         message: input.message,
-        signal: AbortSignal.timeout(WARM_PI_CALL_TIMEOUT_MS),
+        signal: warmCallSignal(input.signal),
       });
     },
     async read(input) {
       const value = await pi.readBrokerEvents({
         boxId: input.boxId,
         after: input.after,
-        signal: AbortSignal.timeout(WARM_PI_CALL_TIMEOUT_MS),
+        signal: warmCallSignal(input.signal),
       });
       return validatePiJournalRead({
         value,
@@ -33,7 +38,7 @@ export function createRuntimeV3WarmPi(pi: RuntimePiControl): RuntimeV3WarmPi {
       return await pi.ackBrokerEvents({
         boxId: input.boxId,
         through: input.through,
-        signal: AbortSignal.timeout(WARM_PI_CALL_TIMEOUT_MS),
+        signal: warmCallSignal(input.signal),
       });
     },
   };
