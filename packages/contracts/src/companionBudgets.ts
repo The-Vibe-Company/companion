@@ -190,6 +190,10 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_runtime_mint_hub_token: ["6 hours"],
   companion_runtime_mint_mcp_broker_token: ["6 hours"],
   companion_runtime_mint_control_token: ["6 hours"],
+  // Warm admission and preparation reclamation require the full turn horizon plus staging margin.
+  companion_v3_runtime_claim_warm: ["2 hours 5 minutes"],
+  companion_v3_runtime_authorize_warm_turn: ["2 hours 5 minutes"],
+  companion_v3_runtime_claim_preparation: ["2 hours 5 minutes"],
   companion_v3_runtime_checkpoint_preparation: ["2 hours 5 minutes"],
   companion_v3_runtime_mint_preparation_credentials: ["6 hours"],
   // Settlement lease/backoff windows.
