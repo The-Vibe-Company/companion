@@ -328,6 +328,12 @@ BEGIN
   UPDATE public.companion_operations SET source_turn_id = NULL
   WHERE source_turn_id IS NOT NULL;
 
+  -- These Runtime v2 histories deliberately do not cascade from Companion ownership: delegation
+  -- rows retain names after their source/target is deleted, while desktop replay nonces are global.
+  -- Drain them explicitly before deleting the aggregate roots.
+  DELETE FROM public.companion_delegations;
+  DELETE FROM public.companion_runtime_desktop_requests;
+
   WITH deleted AS (DELETE FROM public.companions RETURNING 1)
   SELECT count(*) INTO v_companions FROM deleted;
   DELETE FROM public.companion_sections;

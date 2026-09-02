@@ -309,6 +309,21 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
         '${triggerId}','${orgId}','${companionId}','GitHub','relay','github',repeat('a',32),
         '{"repo":"owner/repo"}','registered','hook-fixture','purge-owner'
       );
+      insert into public.companion_delegations(
+        id,org_id,source_companion_id,source_companion_name,target_companion_id,
+        target_companion_name,actor_id,source_turn_id,source_attempt_id,target_turn_id,
+        root_turn_id,depth,response_mode,status,delivery_status,request_key,request_digest
+      ) values (
+        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','${orgId}','${companionId}',
+        'Disposable Companion',null,'Former target','purge-owner',
+        'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',1,'relay','queued','pending',
+        'purge-fixture',repeat('c',64)
+      );
+      insert into public.companion_runtime_desktop_requests(request_id,expires_at)
+      values ('desktop-purge-fixture',statement_timestamp() + interval '5 minutes');
     `);
 
     const boxes = new DisposableBoxProvider();
@@ -661,13 +676,27 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
     }).toEqual({ boxDeletes: 2, snapshotDeletes: 2, objectDeletes: 1, triggerAttempts: 1 });
     expect([...boxes.snapshots]).toEqual(["provider-only-unrelated-snapshot"]);
 
-    const [remaining] = await database<Array<{ companions: string; triggers: string; attempts: string }>>`
+    const [remaining] = await database<Array<{
+      companions: string;
+      triggers: string;
+      attempts: string;
+      delegations: string;
+      desktopRequests: string;
+    }>>`
       select
         (select count(*)::text from public.companions) as companions,
         (select count(*)::text from public.companion_triggers) as triggers,
-        (select count(*)::text from public.companion_turn_attempts) as attempts
+        (select count(*)::text from public.companion_turn_attempts) as attempts,
+        (select count(*)::text from public.companion_delegations) as delegations,
+        (select count(*)::text from public.companion_runtime_desktop_requests) as "desktopRequests"
     `;
-    expect(remaining).toEqual({ companions: "0", triggers: "0", attempts: "0" });
+    expect(remaining).toEqual({
+      companions: "0",
+      triggers: "0",
+      attempts: "0",
+      delegations: "0",
+      desktopRequests: "0",
+    });
     const preservedAfter = await database<Array<{ fingerprint: postgres.JSONValue }>>`
       select public.companion_v2_purge_preservation_fingerprint() as fingerprint
     `;
