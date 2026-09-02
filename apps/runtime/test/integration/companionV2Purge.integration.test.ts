@@ -556,13 +556,15 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       where id = 'runtime-v2'
     `;
     let credentialLoads = 0;
-    for (const env of [
-      { COMPANION_COMPANIONS_ENABLED: "false" },
-      {
-        COMPANION_COMPANIONS_ENABLED: "false",
-        COMPANION_WEB_URL: "https://companion.example/not-an-origin",
-      },
+    for (const callbackBase of [
+      undefined,
+      "https://companion.example/not-an-origin",
+      "https://companion.example/?",
+      "https://companion.example/#",
+      "https://companion.example:443",
     ]) {
+      const env: NodeJS.ProcessEnv = { COMPANION_COMPANIONS_ENABLED: "false" };
+      if (callbackBase) env.COMPANION_WEB_URL = callbackBase;
       await expect(executeConfirmedCompanionV2Purge({
         client: database,
         boxClient,
@@ -597,7 +599,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
     });
     const destructiveEnv = {
       COMPANION_COMPANIONS_ENABLED: "false",
-      COMPANION_WEB_URL: "https://companion.example",
+      COMPANION_WEB_URL: "https://companion.example/",
     };
     const [disabledGate] = await database<Array<{ gateEpoch: string }>>`
       select gate_epoch::text as "gateEpoch"

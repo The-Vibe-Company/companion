@@ -843,6 +843,7 @@ function requireCompanionV2TriggerCallbackBase(
     || parsed.pathname !== "/"
     || parsed.search
     || parsed.hash
+    || (configured !== parsed.origin && configured !== `${parsed.origin}/`)
   ) {
     throw new Error(
       "COMPANION_WEB_URL must be the exact public HTTP(S) origin before Runtime v2 trigger purge",
