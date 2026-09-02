@@ -159,7 +159,6 @@ function harness(input: {
     bakeOnce: bakeCompanionRuntimeImageOnce as never,
     log,
     pollIntervalMs: 1,
-    ...(input.attemptBudgetMs !== undefined ? { attemptBudgetMs: input.attemptBudgetMs } : {}),
     now: () => Date.now(),
     sleep: () => {
       if (firstSleep) {
@@ -169,6 +168,7 @@ function harness(input: {
       return parked;
     },
   } as unknown as ImageBuildWorkerOptions;
+  if (input.attemptBudgetMs !== undefined) options.attemptBudgetMs = input.attemptBudgetMs;
   const done = createImageBuildWorker(options).run(controller.signal)
     .catch(() => undefined);
   return { options, calls, controller, done, log };
