@@ -1038,6 +1038,85 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: asFetch(async () => new Response(JSON.stringify({ id: 424242 }), { status: 200 })),
     }))).rejects.toMatchObject({ code: "provider_rejected" });
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => new Response(JSON.stringify([]), {
+        status: 200,
+        headers: {
+          link: "<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=2>; rel",
+        },
+      })),
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
+    let quotedPage = 0;
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => {
+        quotedPage += 1;
+        return quotedPage === 1
+          ? new Response(JSON.stringify([]), {
+              status: 200,
+              headers: {
+                link: '<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=2>; rel="next"',
+              },
+            })
+          : new Response(JSON.stringify([{ id: 424242 }]), { status: 200 });
+      }),
+    }))).resolves.toBe("present");
+    const invalidLinkHeaders = [
+      '<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=2>; rel="next',
+      '<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=2>; rel="next previous"',
+      '<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=2>; rel=last, '
+        + '<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=3>; rel=last',
+      '<https://api.github.com/repos/acme/other/hooks?per_page=100&page=2>; rel=next',
+      '<https://example.test/repos/acme/demo/hooks?per_page=100&page=2>; rel=next',
+      '<https://user@api.github.com/repos/acme/demo/hooks?per_page=100&page=2>; rel=next',
+      '<https://[invalid/repos/acme/demo/hooks?per_page=100&page=2>; rel=next',
+      '<?per_page=100&page=2>; rel=next',
+      '<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=1>; rel=next',
+    ];
+    for (const link of invalidLinkHeaders) {
+      await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+        orgId: fixture.orgA,
+        companionId,
+        triggerId: trigger.id,
+        webhookBaseUrl: WEBHOOK_BASE_URL,
+        masterKey,
+        database,
+        fetch: asFetch(async () => new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { link },
+        })),
+      }))).rejects.toMatchObject({ code: "provider_rejected" });
+    }
+    let boundedPageCalls = 0;
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => {
+        boundedPageCalls += 1;
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: {
+            link: `<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=${boundedPageCalls + 1}>; rel=next`,
+          },
+        });
+      }),
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
+    expect(boundedPageCalls).toBe(100);
     let malformedLookupCalls = 0;
     const malformedLookup = asFetch(async () => {
       malformedLookupCalls += 1;

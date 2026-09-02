@@ -1427,8 +1427,13 @@ first. A provider's authoritative absence result is recorded as `absent`; every 
 stops with ownership rows present. For GitHub and Sentry triggers, a hook-item `404` is not
 authoritative because it can also mean that the parent repository or project is inaccessible. The
 purge instead walks the complete authenticated parent hook list and treats a list failure, including
-`404`, as unknown. Terminal targets are skipped on retry, while a recorded Box operation is polled
-rather than resubmitted. A nonterminal retry performs an authoritative provider observation first:
+`404`, as unknown. GitHub and Sentry `Link` pagination accepts only a complete parameter grammar,
+with one supported relation per link encoded as either a token such as `rel=next` or a quoted value
+such as `rel="next"`. Every page URI must be absolute HTTPS at the authenticated list's exact origin
+and path; duplicate or contradictory relations, malformed parameters or quoting, repeated pages,
+cycles, and traversal beyond 100 pages are unknown evidence and fail closed. Terminal targets are
+skipped on retry, while a recorded Box operation is polled rather than resubmitted. A nonterminal
+retry performs an authoritative provider observation first:
 storage/Box/snapshot inventory covers those resources, and complete authenticated GitHub, Linear,
 or Sentry lookup covers remote triggers. Proven absence closes the target without another DELETE; an
 operation-bearing Box resumes by polling. Without an operation id, fresh authenticated Box absence

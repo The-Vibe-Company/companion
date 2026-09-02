@@ -367,57 +367,89 @@ async function findSentryWebhook(input: {
   return hooks.data.find((candidate) => candidate.url === input.webhookUrl)?.id ?? null;
 }
 
+const PROVIDER_WEBHOOK_PAGE_LIMIT = 100;
+const LINK_TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+const SUPPORTED_LINK_RELATIONS = new Set(["first", "last", "next", "previous"]);
+
+function malformedProviderPagination(provider: "github" | "Sentry", detail: string): never {
+  throw new CompanionTriggerRegistrationError(
+    "provider_rejected",
+    `${provider} webhook reconciliation returned malformed pagination ${detail}`,
+  );
+}
+
+function parseProviderLinkParameterValue(
+  provider: "github" | "Sentry",
+  rawValue: string,
+): string {
+  if (LINK_TOKEN.test(rawValue)) return rawValue;
+  // Accepted Link grammar is intentionally narrower than RFC 8288: provider pagination values may
+  // be a token or a non-empty quoted visible-ASCII string without escapes or delimiters. Anything
+  // outside that grammar is unknown evidence and must not be interpreted as end-of-list.
+  const quoted = /^"([^"\\;,]+)"$/.exec(rawValue);
+  if (quoted && ![...quoted[1]!].some((character) => {
+    const codePoint = character.codePointAt(0)!;
+    return codePoint < 0x20 || codePoint === 0x7f;
+  })) return quoted[1]!;
+  return malformedProviderPagination(provider, "parameter value");
+}
+
 function providerNextPageUrl(input: {
   response: Response;
   currentUrl: string;
   provider: "github" | "Sentry";
+  seenUrls: ReadonlySet<string>;
 }): string | null {
   const link = input.response.headers.get("link");
   if (!link) return null;
   let next: string | null = null;
+  const seenRelations = new Set<string>();
+  const current = new URL(input.currentUrl);
   for (const rawPart of link.split(",")) {
-    const part = /^\s*<([^>]+)>((?:\s*;\s*[^;]+)*)\s*$/.exec(rawPart);
-    if (!part) {
-      throw new CompanionTriggerRegistrationError(
-        "provider_rejected",
-        `${input.provider} webhook reconciliation returned malformed pagination`,
-      );
-    }
-    const relations: string[] = [];
+    const part = /^\s*<([^<>,\s]+)>((?:\s*;\s*[^;,]+)+)\s*$/.exec(rawPart);
+    if (!part) return malformedProviderPagination(input.provider, "link value");
+    let relation: string | null = null;
+    const parameterNames = new Set<string>();
     for (const rawParameter of part[2]!.split(";").slice(1)) {
-      const parameter = /^\s*([^=\s]+)\s*=\s*(.*?)\s*$/.exec(rawParameter);
-      if (!parameter || parameter[1]!.toLowerCase() !== "rel") continue;
-      const rawValue = parameter[2]!;
-      const quoted = /^"([^"]+)"$/.exec(rawValue);
-      const token = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(rawValue) ? rawValue : null;
-      const value = quoted?.[1] ?? token;
-      if (!value) {
-        throw new CompanionTriggerRegistrationError(
-          "provider_rejected",
-          `${input.provider} webhook reconciliation returned malformed pagination relations`,
-        );
+      const parameter = /^\s*([!#$%&'*+\-.^_`|~0-9A-Za-z]+)\s*=\s*(.+?)\s*$/.exec(rawParameter);
+      if (!parameter) return malformedProviderPagination(input.provider, "parameter");
+      const name = parameter[1]!.toLowerCase();
+      if (parameterNames.has(name)) return malformedProviderPagination(input.provider, "duplicate parameter");
+      parameterNames.add(name);
+      const value = parseProviderLinkParameterValue(input.provider, parameter[2]!);
+      if (name !== "rel") continue;
+      const relations = value.toLowerCase().split(/\s+/).map((item) =>
+        item === "prev" ? "previous" : item);
+      if (relations.length !== 1 || !SUPPORTED_LINK_RELATIONS.has(relations[0]!)) {
+        return malformedProviderPagination(input.provider, "relation");
       }
-      relations.push(...value.split(/\s+/));
+      relation = relations[0]!;
     }
-    if (!relations.includes("next")) continue;
-    if (next) {
-      throw new CompanionTriggerRegistrationError(
-        "provider_rejected",
-        `${input.provider} webhook reconciliation returned ambiguous pagination`,
-      );
+    if (!relation) return malformedProviderPagination(input.provider, "missing relation");
+    if (seenRelations.has(relation)) return malformedProviderPagination(input.provider, "duplicate relation");
+    seenRelations.add(relation);
+    let candidate: URL;
+    try {
+      if (!part[1]!.startsWith("https://")) return malformedProviderPagination(input.provider, "URI");
+      candidate = new URL(part[1]!);
+    } catch {
+      return malformedProviderPagination(input.provider, "URI");
     }
-    next = part[1]!;
+    if (
+      candidate.protocol !== "https:"
+      || candidate.username !== ""
+      || candidate.password !== ""
+      || candidate.hash !== ""
+      || candidate.origin !== current.origin
+      || candidate.pathname !== current.pathname
+    ) return malformedProviderPagination(input.provider, "URI boundary");
+    if (relation !== "next") continue;
+    if (next) return malformedProviderPagination(input.provider, "ambiguous next relation");
+    next = candidate.toString();
   }
   if (!next) return null;
-  const current = new URL(input.currentUrl);
-  const candidate = new URL(next, current);
-  if (candidate.origin !== current.origin || candidate.pathname !== current.pathname) {
-    throw new CompanionTriggerRegistrationError(
-      "provider_rejected",
-      `${input.provider} webhook reconciliation returned unsafe pagination`,
-    );
-  }
-  return candidate.toString();
+  if (input.seenUrls.has(next)) return malformedProviderPagination(input.provider, "cycle");
+  return next;
 }
 
 async function findWebhookByIdFromProviderList<T>(input: {
@@ -431,7 +463,7 @@ async function findWebhookByIdFromProviderList<T>(input: {
 }): Promise<string | null> {
   const seen = new Set<string>();
   let url: string | null = input.initialUrl;
-  for (let page = 0; url && page < 1_000; page += 1) {
+  for (let page = 0; url && page < PROVIDER_WEBHOOK_PAGE_LIMIT; page += 1) {
     if (seen.has(url)) {
       throw new CompanionTriggerRegistrationError(
         "provider_rejected",
@@ -449,7 +481,12 @@ async function findWebhookByIdFromProviderList<T>(input: {
     }
     const found = hooks.data.find((hook) => input.idOf(hook) === input.remoteHookId);
     if (found) return input.remoteHookId;
-    url = providerNextPageUrl({ response, currentUrl: url, provider: input.provider });
+    url = providerNextPageUrl({
+      response,
+      currentUrl: url,
+      provider: input.provider,
+      seenUrls: seen,
+    });
   }
   if (url) {
     throw new CompanionTriggerRegistrationError(
