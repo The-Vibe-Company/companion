@@ -1156,6 +1156,13 @@
       "when": 1793322400000,
       "tag": "0164_runtime_images_optional_accelerators",
       "breakpoints": true
+    },
+    {
+      "idx": 165,
+      "version": "7",
+      "when": 1793326000000,
+      "tag": "0165_companion_runtime_v3_complete_preparation",
+      "breakpoints": true
     }
   ]
 }

@@ -70,6 +70,20 @@ describe("Runtime v3 progression interface", () => {
       commandId: acceptedTurn.commandId,
       boxIdempotencyKey: "11111111-1111-4111-8111-111111111111",
       createdAt: new Date("2026-09-02T00:00:00.000Z"),
+      executorId: "runtime-prepare",
+      authorized: true,
+      actorId: "actor-1",
+      modelId: "claude-test",
+      persona: null,
+      settingsRevision: 1n,
+      skillsRevision: 1,
+      providerRefs: [],
+      skillRefs: [],
+      mcpRefs: [],
+      providerMaterial: [],
+      skillMaterial: [],
+      mcpMaterial: [],
+      configCatalog: {},
       fence: mainClaim.fence,
     };
     const claims: RuntimeV3PreparationClaim[] = [
@@ -84,6 +98,11 @@ describe("Runtime v3 progression interface", () => {
         claim: vi.fn(async () => claims.shift() ?? null),
         checkpoint,
         defer: vi.fn().mockResolvedValue(true),
+        reauthorize: vi.fn().mockResolvedValue(true),
+        mintCredentials: vi.fn().mockResolvedValue({
+          hubToken: "hub", mcpBrokerToken: null, controlToken: "control",
+          expiresAt: new Date("2026-09-02T06:00:00.000Z"),
+        }),
       },
       box: {
         createGenerationBox: vi.fn().mockResolvedValue({
@@ -92,7 +111,15 @@ describe("Runtime v3 progression interface", () => {
         applyGenerationBoxSettings: vi.fn().mockResolvedValue(undefined),
         getStatus: vi.fn().mockResolvedValue({ state: "ready" }),
       },
-      resourceStager: { refreshLayout: vi.fn().mockResolvedValue({ applied: "base" }) },
+      preparationStager: {
+        stage: vi.fn().mockResolvedValue({
+          diskLayoutVersion: 14,
+          appliedSettingsRevision: 1n,
+          appliedSkillsRevision: 1,
+          skillsDigest: "a".repeat(64),
+          materialExpiresAt: new Date("2026-09-02T06:00:00.000Z"),
+        }),
+      },
       pi: { startPiDaemon: vi.fn().mockResolvedValue({ state: "idle", invocationId: "pi-1" }) },
       now: () => new Date("2026-09-02T00:00:02.000Z"),
     });
@@ -102,7 +129,11 @@ describe("Runtime v3 progression interface", () => {
     expect(checkpoint.mock.calls.map(([, value]) => value)).toEqual([
       { next: "box_created", boxId: "bx_23456789" },
       { next: "box_ready" },
-      { next: "staged" },
+      expect.objectContaining({
+        next: "staged", diskLayoutVersion: 14,
+        appliedSettingsRevision: 1n, appliedSkillsRevision: 1,
+        skillsDigest: "a".repeat(64),
+      }),
       { next: "prepared", piInvocationId: "pi-1" },
     ]);
   });
@@ -120,6 +151,15 @@ describe("Runtime v3 progression interface", () => {
       boxIdempotencyKey: "11111111-1111-4111-8111-111111111111",
       boxId: checkpoint === "pending" ? null : "bx_23456789",
       createdAt: new Date(),
+      executorId: "runtime-fault",
+      authorized: true,
+      actorId: "actor-1",
+      modelId: "claude-test",
+      persona: null,
+      settingsRevision: 1n,
+      skillsRevision: 1,
+      providerRefs: [], skillRefs: [], mcpRefs: [],
+      providerMaterial: [], skillMaterial: [], mcpMaterial: [], configCatalog: {},
       fence: mainClaim.fence,
     };
     const defer = vi.fn().mockResolvedValue(true);
@@ -128,6 +168,8 @@ describe("Runtime v3 progression interface", () => {
         claim: vi.fn().mockResolvedValueOnce(claim),
         checkpoint: vi.fn().mockResolvedValue(true),
         defer,
+        reauthorize: vi.fn().mockResolvedValue(true),
+        mintCredentials: vi.fn().mockResolvedValue(null),
       },
       box: {
         createGenerationBox: "createGenerationBox" in failure
@@ -136,7 +178,7 @@ describe("Runtime v3 progression interface", () => {
         applyGenerationBoxSettings: vi.fn(),
         getStatus: vi.fn(),
       },
-      resourceStager: { refreshLayout: vi.fn() },
+      preparationStager: { stage: vi.fn() },
       pi: {
         startPiDaemon: "startPiDaemon" in failure
           ? vi.fn().mockRejectedValue(failure.startPiDaemon)

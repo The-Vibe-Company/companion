@@ -5,6 +5,7 @@ import type {
   RuntimeV3Turn,
   RuntimeV3WarmTurnPersistence,
 } from "@companion/companion-runtime/v3/internal";
+import { RUNTIME_V3_PREPARATION_BUDGET_MS } from "@companion/companion-runtime/v3/internal";
 import type { Sql } from "postgres";
 
 interface CancellableQuery<T> extends PromiseLike<T> {
@@ -162,7 +163,22 @@ interface PreparationClaimRow {
   claimEpoch: string;
   gateEpoch: string;
   createdAt: Date;
+  authorized: boolean;
+  actorId: string | null;
+  modelId: string | null;
+  persona: string | null;
+  settingsRevision: string | null;
+  skillsRevision: number | null;
+  providerRefs: unknown;
+  skillRefs: unknown;
+  mcpRefs: unknown;
+  providerMaterial: unknown;
+  skillMaterial: unknown;
+  mcpMaterial: unknown;
+  configCatalog: unknown;
 }
+
+const PREPARATION_LEASE_SECONDS = Math.floor(RUNTIME_V3_PREPARATION_BUDGET_MS / 1_000);
 
 /** Runtime-only preparation facts. Box identity crosses this seam only after a fenced checkpoint. */
 export function createRuntimeV3PostgresPreparationPersistence(
@@ -174,11 +190,19 @@ export function createRuntimeV3PostgresPreparationPersistence(
         select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
           command_id as "commandId", checkpoint, box_idempotency_key as "boxIdempotencyKey",
           box_id as "boxId", claim_token as "claimToken", claim_epoch::text as "claimEpoch",
-          gate_epoch::text as "gateEpoch", created_at as "createdAt"
-        from public.companion_v3_runtime_claim_preparation(${executorId}, 30, 3)
+          gate_epoch::text as "gateEpoch", created_at as "createdAt",
+          authorized, actor_id as "actorId", model_id as "modelId", persona,
+          settings_revision::text as "settingsRevision", skills_revision as "skillsRevision",
+          provider_refs as "providerRefs", skill_refs as "skillRefs", mcp_refs as "mcpRefs",
+          provider_material as "providerMaterial", skill_material as "skillMaterial",
+          mcp_material as "mcpMaterial", config_catalog as "configCatalog"
+        from public.companion_v3_runtime_claim_preparation(
+          ${executorId}, ${PREPARATION_LEASE_SECONDS}, 4
+        )
       `;
       const row = rows[0];
       return row ? {
+        executorId,
         orgId: row.orgId,
         companionId: row.companionId,
         turnId: row.turnId,
@@ -187,6 +211,19 @@ export function createRuntimeV3PostgresPreparationPersistence(
         boxIdempotencyKey: row.boxIdempotencyKey,
         boxId: row.boxId,
         createdAt: row.createdAt,
+        authorized: row.authorized,
+        actorId: row.actorId,
+        modelId: row.modelId,
+        persona: row.persona,
+        settingsRevision: row.settingsRevision === null ? null : BigInt(row.settingsRevision),
+        skillsRevision: row.skillsRevision,
+        providerRefs: objectArray(row.providerRefs),
+        skillRefs: objectArray(row.skillRefs),
+        mcpRefs: objectArray(row.mcpRefs),
+        providerMaterial: objectArray(row.providerMaterial),
+        skillMaterial: objectArray(row.skillMaterial),
+        mcpMaterial: objectArray(row.mcpMaterial),
+        configCatalog: nullableObject(row.configCatalog),
         fence: {
           token: row.claimToken,
           epoch: BigInt(row.claimEpoch),
@@ -200,7 +237,11 @@ export function createRuntimeV3PostgresPreparationPersistence(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint, ${claim.checkpoint}, ${input.next},
-          ${input.boxId ?? null}, ${input.piInvocationId ?? null}, 3
+          ${input.boxId ?? null}, ${input.piInvocationId ?? null},
+          ${input.diskLayoutVersion ?? null},
+          ${input.appliedSettingsRevision?.toString() ?? null}::bigint,
+          ${input.appliedSkillsRevision ?? null}, ${input.skillsDigest ?? null},
+          ${input.materialExpiresAt ?? null}, 4
         ) as checkpointed
       `;
       return rows[0]?.checkpointed === true;
@@ -211,12 +252,56 @@ export function createRuntimeV3PostgresPreparationPersistence(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint, ${input.delaySeconds},
-          ${input.error?.code ?? null}, ${input.error?.message ?? null}, 3
+          ${input.error?.code ?? null}, ${input.error?.message ?? null}, 4
         ) as deferred
       `;
       return rows[0]?.deferred === true;
     },
+    async reauthorize(claim) {
+      const rows = await sql<Array<{ authorized: boolean }>>`
+        select public.companion_v3_runtime_reauthorize_preparation(
+          ${claim.orgId}::uuid, ${claim.companionId}::uuid,
+          ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint, ${claim.executorId},
+          ${PREPARATION_LEASE_SECONDS}, 4
+        ) as authorized
+      `;
+      return rows[0]?.authorized === true;
+    },
+    async mintCredentials(claim) {
+      const rows = await sql<Array<{
+        hubToken: string;
+        mcpBrokerToken: string | null;
+        controlToken: string;
+        expiresAt: Date;
+      }>>`
+        select hub_token as "hubToken", mcp_broker_token as "mcpBrokerToken",
+          control_token as "controlToken", expires_at as "expiresAt"
+        from public.companion_v3_runtime_mint_preparation_credentials(
+          ${claim.orgId}::uuid, ${claim.companionId}::uuid,
+          ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint, ${claim.executorId},
+          ${PREPARATION_LEASE_SECONDS}, 4
+        )
+      `;
+      return rows[0] ?? null;
+    },
   };
+}
+
+function objectArray(value: unknown): Array<Record<string, unknown>> {
+  if (!Array.isArray(value) || value.some((item) =>
+    !item || Array.isArray(item) || typeof item !== "object"
+  )) throw new Error("Runtime v3 preparation material is invalid");
+  return value as Array<Record<string, unknown>>;
+}
+
+function nullableObject(value: unknown): Record<string, unknown> | null {
+  if (value === null) return null;
+  if (!value || Array.isArray(value) || typeof value !== "object") {
+    throw new Error("Runtime v3 preparation catalog is invalid");
+  }
+  return value as Record<string, unknown>;
 }
 
 /** Fenced Runtime v3 warm-turn facts; Box/Pi values never cross into the API process. */

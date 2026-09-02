@@ -955,8 +955,10 @@ BEGIN
       ];
       companion_runtime_functions := companion_runtime_functions || ARRAY[
         'public.companion_v3_runtime_claim_preparation(text,integer,integer)'::regprocedure,
-        'public.companion_v3_runtime_checkpoint_preparation(uuid,uuid,uuid,bigint,bigint,text,text,text,text,integer)'::regprocedure,
+        'public.companion_v3_runtime_checkpoint_preparation(uuid,uuid,uuid,bigint,bigint,text,text,text,text,integer,bigint,integer,text,timestamp with time zone,integer)'::regprocedure,
         'public.companion_v3_runtime_defer_preparation(uuid,uuid,uuid,bigint,bigint,integer,text,text,integer)'::regprocedure,
+        'public.companion_v3_runtime_reauthorize_preparation(uuid,uuid,uuid,bigint,bigint,text,integer,integer)'::regprocedure,
+        'public.companion_v3_runtime_mint_preparation_credentials(uuid,uuid,uuid,bigint,bigint,text,integer,integer)'::regprocedure,
         'public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer)'::regprocedure,
         'public.companion_v3_runtime_claim_warm(text,public.companion_v3_lane,integer,integer)'::regprocedure,
         'public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure,

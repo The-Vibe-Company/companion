@@ -371,7 +371,7 @@ export async function buildProductionRuntimeService(
       createRuntimeV3Preparation({
         persistence: createRuntimeV3PostgresPreparationPersistence(database.sql),
         box,
-        resourceStager: material.resourceStager,
+        preparationStager: material.preparationStager,
         pi,
         observePreparedLatency: (durationMs) => log.info({
           ts: new Date().toISOString(),

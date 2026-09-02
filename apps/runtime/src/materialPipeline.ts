@@ -5,12 +5,14 @@ import { COMPANION_SKILL_KEY, companionSkillDir } from "@companion/companion-ski
 import { getCompanionSkillPackage } from "@companion/companion-skill/package";
 import {
   type CompanionBoxRuntimeV2,
+  type CompanionConfigCatalog,
   type CompanionRuntimeSkill,
 } from "@companion/box-runtime";
 import {
   RUNTIME_LEASE_SECONDS,
   createRuntimeVisibleTextRedactor,
   type RuntimeAttachmentStager,
+  type RuntimeAuthorization,
   type RuntimeMaterialProvider,
   type RuntimeOutboxHarvester,
   type RuntimeOutputAttachment,
@@ -18,6 +20,10 @@ import {
   type RuntimeResourceStager,
   type RuntimeWorkMaterial,
 } from "@companion/companion-runtime";
+import type {
+  RuntimeV3PreparationClaim,
+  RuntimeV3PreparationStager,
+} from "@companion/companion-runtime/v3/internal";
 import {
   COMPANION_ATTACHMENT_MAX_BYTES,
   COMPANION_OUTPUT_ATTACHMENT_MAX_COUNT,
@@ -37,12 +43,14 @@ import {
   decryptRuntimeMcpRows,
   resolveRuntimeResources,
   RuntimeMaterialError,
+  type RuntimeMaterialRows,
 } from "./resourceMaterial";
 
 export interface RuntimeMaterialPipeline {
   materialProvider: RuntimeMaterialProvider;
   projectionRedactorFactory: RuntimeProjectionRedactorFactory;
   resourceStager: RuntimeResourceStager;
+  preparationStager: RuntimeV3PreparationStager;
   attachmentStager: RuntimeAttachmentStager;
   outboxHarvester: RuntimeOutboxHarvester;
 }
@@ -323,6 +331,79 @@ export function createRuntimeMaterialPipeline(input: {
       });
     },
   };
+  const preparationStager: RuntimeV3PreparationStager = {
+    async stage({ claim, authorize, signal }) {
+      if (
+        !claim.boxId || !claim.actorId || !claim.modelId
+        || claim.settingsRevision === null || claim.skillsRevision === null
+      ) throw new RuntimeMaterialError("runtime_material_invalid");
+      const material = preparationMaterial(claim);
+      assertRuntimeMaterialSnapshot({
+        material,
+        authorization: {
+          providerRefs: claim.providerRefs as unknown as RuntimeAuthorization["providerRefs"],
+          skillRefs: claim.skillRefs as unknown as RuntimeAuthorization["skillRefs"],
+          mcpRefs: claim.mcpRefs as unknown as RuntimeAuthorization["mcpRefs"],
+        },
+      });
+      const resources = await resolveRuntimeResources({
+        orgId: claim.orgId,
+        material,
+        masterKey: input.masterKey,
+        loadSkillArchive: input.loadSkillArchive,
+        signal,
+      });
+      // Token minting reauthorizes the exact snapshot under the live preparation fence. It is the
+      // final control-plane boundary before any resolved material crosses into the Box.
+      const credentials = await authorize();
+      if (!credentials) throw new RuntimeMaterialError("runtime_material_invalid");
+      const observed = await input.runtime().stageExistingBox({
+        orgId: claim.orgId,
+        companionId: claim.companionId,
+        boxId: claim.boxId,
+        runtimeGeneration: 1,
+        clientSurface: "web",
+        providerAuth: resources.providerAuth,
+        replaceProviderAuth: true,
+        instructions: claim.persona,
+        modelId: claim.modelId,
+        mcpCredentials: resources.mcpCredentials,
+        mcpAccounts: resources.mcpAccounts,
+        skills: [
+          input.bundledSkill,
+          ...resources.skills.filter((skill) => skill.slug !== COMPANION_SKILL_KEY),
+        ],
+        reuseSkills: false,
+        preserveSkills: false,
+        hubEnv: buildRuntimeHubEnvironment({
+          nativeMobile: false,
+          apiUrl: input.apiUrl,
+          orgId: claim.orgId,
+          extraEnv: resources.extraEnv,
+          hubCredential: credentials.hubToken,
+          mcpBrokerCredential: credentials.mcpBrokerToken ?? undefined,
+          controlCredential: credentials.controlToken,
+        }),
+        configCatalog: claim.configCatalog as CompanionConfigCatalog | null,
+        signal,
+      });
+      if (input.registerAgentEndpoint && observed.agentEndpoint) {
+        input.registerAgentEndpoint(claim.boxId, {
+          hostedUrl: observed.agentEndpoint.hostedUrl,
+          proxyToken: observed.agentEndpoint.proxyToken,
+          bearerToken: observed.agentEndpoint.bearerToken,
+          observedAt: new Date(now()),
+        });
+      }
+      return {
+        diskLayoutVersion: observed.diskLayoutVersion,
+        appliedSettingsRevision: claim.settingsRevision,
+        appliedSkillsRevision: claim.skillsRevision,
+        skillsDigest: observed.skillsDigest,
+        materialExpiresAt: credentials.expiresAt,
+      };
+    },
+  };
   const attachmentStager: RuntimeAttachmentStager = {
     async stageAttachments(stage) {
       const files = [];
@@ -443,8 +524,17 @@ export function createRuntimeMaterialPipeline(input: {
     materialProvider,
     projectionRedactorFactory,
     resourceStager,
+    preparationStager,
     attachmentStager,
     outboxHarvester,
+  };
+}
+
+function preparationMaterial(claim: RuntimeV3PreparationClaim): RuntimeMaterialRows {
+  return {
+    providerMaterial: claim.providerMaterial as RuntimeWorkMaterial["providerMaterial"],
+    skillMaterial: claim.skillMaterial as RuntimeWorkMaterial["skillMaterial"],
+    mcpMaterial: claim.mcpMaterial as RuntimeWorkMaterial["mcpMaterial"],
   };
 }
 

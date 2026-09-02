@@ -190,6 +190,8 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_runtime_mint_hub_token: ["6 hours"],
   companion_runtime_mint_mcp_broker_token: ["6 hours"],
   companion_runtime_mint_control_token: ["6 hours"],
+  companion_v3_runtime_checkpoint_preparation: ["2 hours 5 minutes"],
+  companion_v3_runtime_mint_preparation_credentials: ["6 hours"],
   // Settlement lease/backoff windows.
   companion_runtime_settle: ["30 seconds", "30 seconds", "15 seconds"],
   // Health observation windows + coldStartDeadlineMs + leaseSeconds.
