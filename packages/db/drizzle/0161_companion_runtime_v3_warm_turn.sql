@@ -71,6 +71,32 @@ BEGIN
     RAISE EXCEPTION 'invalid Runtime v3 message' USING ERRCODE = '22023';
   END IF;
 
+  -- Resolve idempotency before readiness. A runtime-owned preparation proof may become stale
+  -- between retries, but that can never move one client_message_id between runtime generations.
+  SELECT * INTO v_turn FROM public.companion_v3_turns turn_row
+  WHERE turn_row.org_id = p_org_id AND turn_row.companion_id = p_companion_id
+    AND turn_row.client_message_id = p_client_message_id;
+  IF FOUND THEN
+    SELECT * INTO v_existing FROM public.companion_transcript_entries entry
+    WHERE entry.org_id = p_org_id AND entry.companion_id = p_companion_id
+      AND entry.event_id = v_turn.message_event_id;
+    IF NOT FOUND OR v_existing.role <> 'user' OR v_existing.content IS DISTINCT FROM p_content
+      OR v_existing.author_id IS DISTINCT FROM v_actor_id THEN
+      RAISE EXCEPTION 'client_message_id was reused with different message intent'
+        USING ERRCODE = '23505', CONSTRAINT = 'companion_v3_turns_client_message_uq';
+    END IF;
+    turn := public.companion_v3_public_turn(v_turn);
+    replayed := true;
+    RETURN NEXT;
+    RETURN;
+  END IF;
+  -- A v2 Turn accepted before v3 preparation remains the sole owner of this idempotency key.
+  IF EXISTS (
+    SELECT 1 FROM public.companion_turns legacy_turn
+    WHERE legacy_turn.org_id = p_org_id AND legacy_turn.companion_id = p_companion_id
+      AND legacy_turn.client_message_id = p_client_message_id
+  ) THEN RETURN; END IF;
+
   -- Preparation is a runtime-owned durable fact. The send only locks and consumes it; it never
   -- derives readiness from v2 observations or refreshes the proof while accepting user intent.
   PERFORM 1 FROM public.companion_v3_instances instance

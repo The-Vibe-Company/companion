@@ -617,6 +617,24 @@ function projectRuntimeV3MessageTurns(
   });
 }
 
+function mergedRuntimeActiveTurn(
+  v2: unknown,
+  v2Recovery: unknown,
+  v3: RuntimeV3ThreadProjectionRow | null,
+): CompanionTurn | null {
+  const v3Active = v3?.active_turn === null || v3?.active_turn === undefined
+    ? null
+    : companionTurnSchema.parse(v3.active_turn);
+  return v3Active ?? parseTurn(v2, v2Recovery);
+}
+
+function mergedRuntimeQueuedCount(
+  v2: number | string,
+  v3: RuntimeV3ThreadProjectionRow | null,
+): number {
+  return integer(v2) + (v3 ? integer(v3.queued_count) : 0);
+}
+
 export type RoutineNotifyReturn = CompanionRoutineNotifyReturn;
 
 type RoutineNotifyUnit = {
@@ -776,11 +794,9 @@ async function readCompanionThreadProjection(input: {
     database: input.database,
   });
   entries = projectRuntimeV3MessageTurns(entries, v3);
-  const activeTurn = v3
-    ? (v3.active_turn === null ? null : companionTurnSchema.parse(v3.active_turn))
-    : parseTurn(row.active_turn, row.active_recovery_status);
+  const activeTurn = mergedRuntimeActiveTurn(row.active_turn, row.active_recovery_status, v3);
   const interruptedTurn = parseTurn(row.interrupted_turn, row.interrupted_recovery_status);
-  const queuedCount = integer(v3?.queued_count ?? row.queued_count);
+  const queuedCount = mergedRuntimeQueuedCount(row.queued_count, v3);
   return {
     companion_id: input.companionId,
     viewer_id: input.actor.id,
@@ -877,9 +893,11 @@ function companionThreadMetadata(input: {
       | "previous_last_read_ordinal">;
   runtimeV3?: RuntimeV3ThreadProjectionRow | null;
 }): CompanionThreadMetadata {
-  const activeTurn = input.runtimeV3
-    ? parseTurn(input.runtimeV3.active_turn)
-    : parseTurn(input.row.active_turn, input.row.active_recovery_status);
+  const activeTurn = mergedRuntimeActiveTurn(
+    input.row.active_turn,
+    input.row.active_recovery_status,
+    input.runtimeV3 ?? null,
+  );
   const interruptedTurn = parseTurn(
     input.row.interrupted_turn,
     input.row.interrupted_recovery_status,
@@ -891,7 +909,7 @@ function companionThreadMetadata(input: {
     read_only: input.row.access_role === "viewer",
     can_send: input.row.access_role !== "viewer",
     active_turn: activeTurn?.status === "interrupted" ? null : activeTurn,
-    queued_count: integer(input.runtimeV3?.queued_count ?? input.row.queued_count),
+    queued_count: mergedRuntimeQueuedCount(input.row.queued_count, input.runtimeV3 ?? null),
     interrupted_turn:
       interruptedTurn?.status === "interrupted" && interruptedTurn.resolution === null
         ? interruptedTurn

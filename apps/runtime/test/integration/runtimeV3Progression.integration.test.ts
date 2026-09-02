@@ -9,6 +9,8 @@
  * a named assertion fail; replacing PostgreSQL with an in-memory fake invalidates the suite.
  */
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import {
   createRuntimeV3Convergence,
   createRuntimeV3WarmTurnAdvance,
@@ -86,6 +88,23 @@ describe("Runtime v3 progression facts", () => {
     apiRole = apiRows[0]!.currentUser;
     workerRole = workerRows[0]!.currentUser;
     runtimeRole = runtimeRows[0]!.currentUser;
+    // The preceding Runtime v2 grant tests intentionally scrub every non-fixture grantee from
+    // the shared disposable database. Reapply the production capability hook so this suite is
+    // order-independent and proves the real API/worker/runtime roles used below.
+    const grantsSource = await readFile(fileURLToPath(
+      new URL("../../../../packages/db/runtime-role-grants.sql", import.meta.url),
+    ), "utf8");
+    const beginMarker = "-- companion-runtime-grants-begin";
+    const endMarker = "-- companion-runtime-grants-end";
+    const begin = grantsSource.indexOf(beginMarker);
+    const end = grantsSource.indexOf(endMarker);
+    if (begin < 0 || end <= begin) throw new Error("runtime grant hook markers are missing");
+    await ownerSql`select
+      set_config('companion.api_role', ${apiRole}, false),
+      set_config('companion.worker_role', ${workerRole}, false),
+      set_config('companion.companion_runtime_role', ${runtimeRole}, false),
+      set_config('companion.retired_runtime_role', '', false)`;
+    await ownerSql.unsafe(grantsSource.slice(begin + beginMarker.length, end).trim());
     const gateRows = await ownerSql<Array<{
       enabled: boolean;
       enabledAt: Date | null;
@@ -280,6 +299,39 @@ describe("Runtime v3 progression facts", () => {
     )`;
   });
 
+  it("keeps one Turn owner when preparation changes across idempotent retries", async () => {
+    const legacyMessage = randomUUID();
+    await ownerSql`insert into public.companion_runtime_instances(org_id, companion_id)
+      values (${ids.org}::uuid, ${ids.companion}::uuid)`;
+    let legacy: Array<{ turn: { id: string }; replayed: boolean }> = [];
+    await asApi(async (sql) => {
+      legacy = await sql<Array<{ turn: { id: string }; replayed: boolean }>>`
+        select turn, replayed from public.companion_api_enqueue_turn(
+          ${ids.org}::uuid, ${ids.companion}::uuid, ${legacyMessage}::uuid,
+          'accepted before v3 preparation', 'web', '[]'::jsonb
+        )`;
+    });
+    await ownerSql`insert into public.companion_v3_instances(
+      org_id, companion_id, box_id, pi_invocation_id, prepared_at
+    ) values (
+      ${ids.org}::uuid, ${ids.companion}::uuid, 'bx_23456789', 'invocation-switch',
+      clock_timestamp()
+    )`;
+    await asApi(async (sql) => {
+      const v3 = await sql`select * from public.companion_v3_api_enqueue_warm_turn(
+        ${ids.org}::uuid, ${ids.companion}::uuid, ${legacyMessage}::uuid,
+        'accepted before v3 preparation'
+      )`;
+      expect(v3).toHaveLength(0);
+      const replay = await sql<Array<{ turn: { id: string }; replayed: boolean }>>`
+        select turn, replayed from public.companion_api_enqueue_turn(
+          ${ids.org}::uuid, ${ids.companion}::uuid, ${legacyMessage}::uuid,
+          'accepted before v3 preparation', 'web', '[]'::jsonb
+        )`;
+      expect(replay).toEqual([{ turn: expect.objectContaining({ id: legacy[0]!.turn.id }), replayed: true }]);
+    });
+  });
+
   it("projects a Runtime v3 needs-input state from PostgreSQL after Pi admission", async () => {
     await ownerSql`insert into public.companion_v3_instances(
       org_id, companion_id, box_id, pi_invocation_id, prepared_at
@@ -288,8 +340,10 @@ describe("Runtime v3 progression facts", () => {
       clock_timestamp()
     )`;
     const command = randomUUID();
+    let sent: Array<{ turn: { id: string } }> = [];
     await asApi(async (sql) => {
-      await sql`select * from public.companion_v3_api_enqueue_warm_turn(
+      sent = await sql<Array<{ turn: { id: string } }>>`select turn
+        from public.companion_v3_api_enqueue_warm_turn(
         ${ids.org}::uuid, ${ids.companion}::uuid, ${command}::uuid, 'ask me a question'
       )`;
     });
@@ -331,6 +385,16 @@ describe("Runtime v3 progression facts", () => {
     await ownerSql`update public.companion_v3_instances set prepared_at = null,
       box_id = null, pi_invocation_id = null
       where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
+    await asApi(async (sql) => {
+      const replay = await sql<Array<{ turn: { id: string }; replayed: boolean }>>`
+        select turn, replayed from public.companion_v3_api_enqueue_warm_turn(
+          ${ids.org}::uuid, ${ids.companion}::uuid, ${command}::uuid, 'ask me a question'
+        )`;
+      expect(replay).toEqual([{
+        turn: expect.objectContaining({ id: sent[0]!.turn.id }),
+        replayed: true,
+      }]);
+    });
     let projection: Array<{ activeTurn: { status: string }; isReplying: boolean }> = [];
     await asApi(async (sql) => {
       projection = await sql<Array<{ activeTurn: { status: string }; isReplying: boolean }>>`
