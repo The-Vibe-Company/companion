@@ -1446,11 +1446,13 @@ immediate-removal admission boundary was not crossed and permits a new request. 
 unknown observation fails closed; known-negative DELETE rejection is retried only after backoff.
 Automatic trigger registrations whose create may have committed before `remote_hook_id` was saved
 remain purge targets whenever their provider account is still owned. Report and dry-run inventory
-their provider, account, locator, and exact callback path without decrypting credentials or calling
-the provider. Destructive inspection and removal each re-enumerate the authenticated provider list
-to resolve that exact callback before DELETE; a crash before or ambiguously after DELETE therefore
-repeats observation, not the effect. Finalization repeats the callback lookup and requires fresh
-authoritative absence.
+their provider, account, and non-secret locator without selecting or serializing the callback
+credential, decrypting provider credentials, or calling the provider. Only after the destructive
+feature-flag, lock, and lease guards pass does the runtime load the master key and reconstruct the
+exact callback from the authorized trigger row. Destructive inspection and removal each
+re-enumerate the authenticated provider list to resolve that exact callback before DELETE; a crash
+before or ambiguously after DELETE therefore repeats observation, not the effect. Finalization
+repeats the callback lookup and requires fresh authoritative absence.
 
 Only a complete external ledger admits the final transaction. It drains Companions, ACLs, threads,
 Turns, attempts, operations, routines, triggers, leases, runtime projections, images/build state,

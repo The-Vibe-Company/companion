@@ -278,7 +278,7 @@ BEGIN
       WHERE remote_hook_id IS NOT NULL
          OR (
            provider IN ('linear','github','sentry')
-           AND remote_hook_account_id IS NOT NULL
+           AND coalesce(remote_hook_account_id, provider_account_id) IS NOT NULL
          )
       UNION
       SELECT 'object', storage_key FROM public.companion_message_attachments

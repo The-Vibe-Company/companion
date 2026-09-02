@@ -312,7 +312,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       );
       insert into public.companion_triggers(
         id,org_id,companion_id,name,prompt,provider,secret,target,
-        registration_status,remote_hook_account_id,created_by
+        registration_status,provider_account_id,created_by
       ) values (
         '${ambiguousTriggerId}','${orgId}','${companionId}','Ambiguous GitHub','relay','github',repeat('b',32),
         '{"repo":"owner/repo"}','failed','${triggerAccountId}','purge-owner'
@@ -361,7 +361,10 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
           union
           select 'trigger', id::text from public.companion_triggers
           where remote_hook_id is not null
-             or (provider in ('linear','github','sentry') and remote_hook_account_id is not null)
+             or (
+               provider in ('linear','github','sentry')
+               and coalesce(remote_hook_account_id, provider_account_id) is not null
+             )
           union
           select 'object', storage_key from public.companion_message_attachments
           union
@@ -400,7 +403,10 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
           union
           select 'trigger', id::text from public.companion_triggers
           where remote_hook_id is not null
-             or (provider in ('linear','github','sentry') and remote_hook_account_id is not null)
+             or (
+               provider in ('linear','github','sentry')
+               and coalesce(remote_hook_account_id, provider_account_id) is not null
+             )
           union
           select 'object', storage_key from public.companion_message_attachments
           union
@@ -418,7 +424,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
     const boxes = new DisposableBoxProvider();
     const objects = new DisposableObjectStore();
     let triggerAttempts = 0;
-    const presentTriggers = new Set([triggerId]);
+    const presentTriggers = new Set([triggerId, ambiguousTriggerId]);
     const triggerInspections: string[] = [];
     const triggers: CompanionV2TriggerRemover = {
       async inspect(owner) {
@@ -436,14 +442,16 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       client: database, boxClient, objectStore: objects,
     });
     for (const invocation of [{ mode: "report" }, { mode: "dry-run" }] as const) {
+      const report: string[] = [];
       await expect(runCompanionV2PurgeInvocation({
         invocation,
         client: database,
         boxClient,
         objectStore: objects,
         env: {},
-        log: () => undefined,
+        log: (message) => { report.push(message); },
       })).resolves.toMatchObject({ inventory: { hash: firstInventory.hash } });
+      expect(JSON.stringify(report)).not.toContain("b".repeat(32));
     }
     await expect(assertCompanionV2PurgeLockHeld(database))
       .rejects.toThrow("advisory lock must be held");
@@ -471,8 +479,11 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       providerAccountId: triggerAccountId,
       remoteHookId: null,
       target: { repo: "owner/repo" },
-      callbackPath: `/v1/hooks/triggers/${ambiguousTriggerId}/${"b".repeat(32)}`,
     }));
+    expect(firstInventory.triggerOwners.find(
+      (owner) => owner.triggerId === ambiguousTriggerId,
+    )).not.toHaveProperty("callbackPath");
+    expect(JSON.stringify(firstInventory)).not.toContain("b".repeat(32));
     expect(firstInventory.targets.filter((target) => target.kind === "box")).toEqual([
       expect.objectContaining({
         key: "bx_23456789",
@@ -608,6 +619,16 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       },
     })).rejects.toThrow("crash before Box DELETE");
     expect(boxes.deletionRequests).toBe(0);
+    const [nonSecretLedger] = await database<Array<{ inventory: string; evidence: string }>>`
+      select run.inventory::text as inventory,
+             coalesce(string_agg(target.evidence::text, ',' order by target.resource_key), '')
+               as evidence
+      from public.companion_v2_purge_runs run
+      left join public.companion_v2_purge_targets target on true
+      where run.id = 'runtime-v2-purge'
+      group by run.inventory
+    `;
+    expect(JSON.stringify(nonSecretLedger)).not.toContain("b".repeat(32));
 
     const beforeAcceptedInventory = await collectCompanionV2PurgeInventory({
       client: database, boxClient, objectStore: objects,
@@ -795,7 +816,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       snapshotDeletes: boxes.snapshotDeletes,
       objectDeletes: objects.removals,
       triggerAttempts,
-    }).toEqual({ boxDeletes: 2, snapshotDeletes: 2, objectDeletes: 1, triggerAttempts: 1 });
+    }).toEqual({ boxDeletes: 2, snapshotDeletes: 2, objectDeletes: 1, triggerAttempts: 2 });
     expect(triggerInspections).toContain(ambiguousTriggerId);
     expect([...boxes.snapshots]).toEqual(["provider-only-unrelated-snapshot"]);
 
