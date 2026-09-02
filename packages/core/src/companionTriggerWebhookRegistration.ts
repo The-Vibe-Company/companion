@@ -401,7 +401,12 @@ function providerNextPageUrl(input: {
   seenUrls: ReadonlySet<string>;
 }): string | null {
   const link = input.response.headers.get("link");
-  if (!link) return null;
+  if (!link) {
+    if (input.provider === "Sentry") {
+      return malformedProviderPagination(input.provider, "missing link header");
+    }
+    return null;
+  }
   let next: string | null = null;
   let nextHasResults: boolean | null = null;
   const seenRelations = new Set<string>();
@@ -461,7 +466,12 @@ function providerNextPageUrl(input: {
     next = candidate.toString();
     nextHasResults = hasResults;
   }
-  if (!next) return null;
+  if (!next) {
+    if (input.provider === "Sentry") {
+      return malformedProviderPagination(input.provider, "missing next relation");
+    }
+    return null;
+  }
   // Sentry always emits a next cursor. Its documented `results` marker, not cursor presence,
   // determines whether another authenticated page exists.
   if (input.provider === "Sentry" && nextHasResults === false) return null;

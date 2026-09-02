@@ -1580,6 +1580,7 @@ describe("Companion triggers over the real database", () => {
       '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=next>; rel=next',
       '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=next>; rel=next; results=unknown',
       '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=next>; rel=next; results=true; results=false',
+      '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=previous>; rel=previous; results=false',
     ];
     for (const link of invalidSentryPagination) {
       await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
@@ -1615,7 +1616,7 @@ describe("Companion triggers over the real database", () => {
       masterKey,
       database,
       fetch: asFetch(async () => new Response(JSON.stringify([]), { status: 200 })),
-    }))).resolves.toBe("absent");
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
     await integrationDb.update(schema.companionTriggers).set({ target: {} })
       .where(eq(schema.companionTriggers.id, trigger.id));
     await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
