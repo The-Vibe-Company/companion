@@ -492,6 +492,42 @@ describe("Runtime v3 progression facts", () => {
     expect(admissions.flat().map((admission) => admission.replayed).sort()).toEqual([false, true]);
   });
 
+  it("serializes concurrent lifecycle request replays before changing revision", async () => {
+    const companionId = randomUUID();
+    const requestId = randomUUID();
+    await ownerSql`insert into public.companions(id, org_id, owner_id, name)
+      values (${companionId}::uuid, ${ids.org}::uuid, ${ids.owner}, 'Lifecycle replay')`;
+    await ownerSql`insert into public.companion_v3_instances(org_id, companion_id)
+      values (${ids.org}::uuid, ${companionId}::uuid)`;
+    const requests: Array<Array<{ revision: string }>> = [[], []];
+
+    await Promise.all(requests.map(async (_request, index) => {
+      await asApi(async (sql) => {
+        requests[index] = await sql<Array<{ revision: string }>>`
+          select revision::text from public.companion_v3_api_desire_lifecycle(
+            ${ids.org}::uuid, ${companionId}::uuid, 'archive', ${requestId}::uuid
+          )`;
+      });
+    }));
+
+    expect(requests.flat()).toEqual([{ revision: "2" }, { revision: "2" }]);
+    const [persisted] = await ownerSql<Array<{
+      requestCount: string;
+      revision: string;
+      state: string;
+    }>>`
+      select count(request.*)::text as "requestCount",
+        instance.desired_lifecycle_revision::text as revision,
+        instance.lifecycle_state::text as state
+      from public.companion_v3_instances instance
+      left join public.companion_v3_lifecycle_requests request
+        on request.org_id = instance.org_id and request.companion_id = instance.companion_id
+      where instance.companion_id = ${companionId}::uuid
+      group by instance.desired_lifecycle_revision, instance.lifecycle_state`;
+    expect(persisted).toEqual({ requestCount: "1", revision: "2", state: "archive_pending" });
+    await ownerSql`delete from public.companions where id = ${companionId}::uuid`;
+  });
+
   it("claims warm work only after runtime-owned v3 preparation is durable", async () => {
     const command = randomUUID();
     await admitMain(command);
