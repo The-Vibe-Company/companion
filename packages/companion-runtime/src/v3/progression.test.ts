@@ -11,6 +11,7 @@ import {
   createRuntimeV3Preparation,
   createRuntimeV3Progression,
   createRuntimeV3WarmTurnAdvance,
+  runtimeV3PreparationRetryDelaySeconds,
   type RuntimeV3Claim,
   type RuntimeV3ConvergencePersistence,
   type RuntimeV3LifecycleClaim,
@@ -56,6 +57,7 @@ function persistence(
       }),
     },
     convergence: {
+      sweepLane: vi.fn().mockResolvedValue(0),
       claimLane: vi.fn().mockResolvedValue(null),
       completeProgression: vi.fn().mockResolvedValue(true),
       ...overrides,
@@ -64,6 +66,50 @@ function persistence(
 }
 
 describe("Runtime v3 progression interface", () => {
+  it("uses the complete jittered preparation ladder and clips it to the durable deadline", () => {
+    const now = new Date("2026-09-02T00:00:00.000Z");
+    expect([0, 1, 2, 3, 4, 5].map((attemptCount) =>
+      runtimeV3PreparationRetryDelaySeconds({
+        attemptCount,
+        jitter: 0.5,
+        now,
+        deadlineAt: null,
+      }))).toEqual([5, 15, 30, 60, 300, 300]);
+    expect(runtimeV3PreparationRetryDelaySeconds({
+      attemptCount: 4,
+      jitter: 1,
+      now,
+      deadlineAt: new Date(now.getTime() + 17_000),
+    })).toBe(17);
+  });
+
+  it("never redispatches a queued Turn whose admission write-intent survived takeover", async () => {
+    const prompt = vi.fn();
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789",
+          piInvocationId: "invocation-1",
+          content: "do not dispatch twice",
+          cursor: 0n,
+        }),
+        beginAdmission: vi.fn(),
+        recordAdmission: vi.fn(),
+        project: vi.fn(),
+      },
+      pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
+    });
+
+    await expect(advance({
+      ...mainClaim,
+      turn: { ...mainClaim.turn, admissionStartedAt: new Date() },
+    })).resolves.toMatchObject({
+      kind: "interrupted",
+      code: "pi_admission_outcome_unknown",
+    });
+    expect(prompt).not.toHaveBeenCalled();
+  });
+
   it("archives, resumes, and permanently deletes only the persistent Box", async () => {
     const lifecycleBase = {
       executorId: "runtime-lifecycle",
@@ -346,6 +392,7 @@ describe("Runtime v3 progression interface", () => {
           ? vi.fn().mockRejectedValue(failure.startPiDaemon)
           : vi.fn(),
       },
+      jitter: () => 0.5,
     });
 
     await preparation.converge({ executorId: "runtime-fault" });
@@ -410,6 +457,25 @@ describe("Runtime v3 progression interface", () => {
       mainClaim,
       { kind: "release" },
     );
+  });
+
+  it("hands an ordinary shutdown lease to takeover without stale settlement", async () => {
+    const controller = new AbortController();
+    const claims: ClaimQueues = { main: [mainClaim], background: [null] };
+    const store = persistence({ claimLane: vi.fn(claimFrom(claims)) });
+    const progression = createRuntimeV3Progression({
+      persistence: store,
+      advance: vi.fn(async () => {
+        controller.abort(new Error("runtime shutdown"));
+        return { kind: "succeeded" as const };
+      }),
+    });
+
+    await expect(progression.converge({
+      executorId: "runtime-shutdown",
+      signal: controller.signal,
+    })).resolves.toEqual({ progressed: 0, exhausted: false });
+    expect(store.convergence.completeProgression).not.toHaveBeenCalled();
   });
 
   it("advances main and background claims independently", async () => {
@@ -494,6 +560,7 @@ describe("Runtime v3 progression interface", () => {
         content: "Summarize the incident",
         cursor: 0n,
       }),
+      beginAdmission: vi.fn().mockResolvedValue(true),
       recordAdmission: vi.fn().mockResolvedValue(true),
       project: vi.fn().mockResolvedValue(true),
     };
@@ -545,6 +612,8 @@ describe("Runtime v3 progression interface", () => {
       responseTurnId: mainClaim.turn.id,
       cursor: 0n,
     });
+    expect(warm.beginAdmission.mock.invocationCallOrder[0])
+      .toBeLessThan(pi.prompt.mock.invocationCallOrder[0]!);
     expect(warm.project).toHaveBeenCalledWith(mainClaim, expect.objectContaining({
       throughCursor: 2n,
       settled: true,
@@ -570,6 +639,7 @@ describe("Runtime v3 progression interface", () => {
         content: "Wait until compaction finishes",
         cursor: 0n,
       }),
+      beginAdmission: vi.fn().mockResolvedValue(true),
       recordAdmission: vi.fn().mockResolvedValue(true),
       project: vi.fn().mockResolvedValue(true),
     };
@@ -599,6 +669,7 @@ describe("Runtime v3 progression interface", () => {
     const store = persistence({ claimLane: vi.fn(claimFrom(claims)) });
     const warm = {
       authorize: vi.fn().mockResolvedValue(null),
+      beginAdmission: vi.fn().mockResolvedValue(true),
       recordAdmission: vi.fn().mockResolvedValue(true),
       project: vi.fn().mockResolvedValue(true),
     };

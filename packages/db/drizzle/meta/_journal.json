@@ -1177,6 +1177,13 @@
       "when": 1793333200000,
       "tag": "0167_companion_runtime_v3_pi_native_admission",
       "breakpoints": true
+    },
+    {
+      "idx": 168,
+      "version": "7",
+      "when": 1793336800000,
+      "tag": "0168_companion_runtime_v3_turn_bounds",
+      "breakpoints": true
     }
   ]
 }

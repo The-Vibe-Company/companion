@@ -117,6 +117,40 @@ export function deriveCompanionBudgets(base: CompanionBudgetsBase): CompanionBud
 export const COMPANION_BUDGETS: CompanionBudgets = deriveCompanionBudgets(COMPANION_BUDGETS_BASE);
 
 /**
+ * Runtime v3 keeps phase policy in TypeScript while PostgreSQL persists the resulting deadlines.
+ * Execution budgets deliberately leave settlement headroom inside the two Turn ceilings.
+ */
+export const COMPANION_RUNTIME_V3_BUDGETS = {
+  providerRequestMs: 30_000,
+  stagingMs: 5 * 60_000,
+  piActivationMs: 2 * 60_000,
+  admissionAckMs: 15_000,
+  silentCommandMs: 8 * 60_000 + 30_000,
+  silentSettlementMs: 90_000,
+  heartbeatCommandMs: 118 * 60_000,
+  heartbeatSettlementMs: 2 * 60_000,
+  preparationDeadlineMs: 135 * 60_000,
+  preparationRetrySeconds: [5, 15, 30, 60, 300],
+} as const;
+
+if (
+  COMPANION_RUNTIME_V3_BUDGETS.providerRequestMs > COMPANION_RUNTIME_V3_BUDGETS.stagingMs
+  || COMPANION_RUNTIME_V3_BUDGETS.piActivationMs > COMPANION_RUNTIME_V3_BUDGETS.stagingMs
+  || COMPANION_RUNTIME_V3_BUDGETS.admissionAckMs
+    >= COMPANION_RUNTIME_V3_BUDGETS.silentSettlementMs
+  || COMPANION_RUNTIME_V3_BUDGETS.silentCommandMs
+    + COMPANION_RUNTIME_V3_BUDGETS.silentSettlementMs
+    !== COMPANION_BUDGETS.inactivityStallMs
+  || COMPANION_RUNTIME_V3_BUDGETS.heartbeatCommandMs
+    + COMPANION_RUNTIME_V3_BUDGETS.heartbeatSettlementMs
+    !== COMPANION_BUDGETS.turnAbsoluteDeadlineMs
+  || COMPANION_RUNTIME_V3_BUDGETS.preparationDeadlineMs
+    <= COMPANION_BUDGETS.turnAbsoluteDeadlineMs
+) {
+  throw new Error("Runtime v3 budgets must remain nested inside their durable deadlines");
+}
+
+/**
  * Parses the narrow `interval '...'` dialect used by this repo's migrations into milliseconds.
  * Supports only the unit words that actually appear; anything else throws so a new spelling is
  * registered deliberately.
@@ -195,6 +229,8 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_v3_runtime_authorize_warm_turn: ["2 hours 5 minutes"],
   companion_v3_runtime_claim_preparation: ["2 hours 5 minutes"],
   companion_v3_runtime_checkpoint_preparation: ["2 hours 5 minutes"],
+  companion_v3_bound_turn_clocks: ["2 hours", "10 minutes", "10 minutes"],
+  companion_v3_bound_preparation_clock: ["2 hours 15 minutes"],
   // Runtime v3 archives the persistent Box after one hour without newly admitted work.
   companion_v3_runtime_claim_lifecycle: ["1 hour"],
   companion_v3_runtime_mint_preparation_credentials: ["6 hours"],

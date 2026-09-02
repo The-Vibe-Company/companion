@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   COMPANION_BUDGETS,
   COMPANION_BUDGETS_BASE,
+  COMPANION_RUNTIME_V3_BUDGETS,
   COMPANION_SQL_BUDGET_CONTRACT,
   COMPANION_SQL_UNTRACKED_INTERVAL_FUNCTIONS,
   deriveCompanionBudgets,
@@ -47,6 +48,22 @@ describe("companion budget derivation", () => {
 });
 
 describe("companion budget invariants", () => {
+  it("nests every Runtime v3 phase inside the durable Turn and preparation bounds", () => {
+    const v3 = COMPANION_RUNTIME_V3_BUDGETS;
+    expect(v3.providerRequestMs).toBe(30_000);
+    expect(v3.stagingMs).toBe(300_000);
+    expect(v3.piActivationMs).toBe(120_000);
+    expect(v3.admissionAckMs).toBe(15_000);
+    expect(v3.silentCommandMs).toBe(510_000);
+    expect(v3.silentSettlementMs).toBe(90_000);
+    expect(v3.heartbeatCommandMs).toBe(118 * 60_000);
+    expect(v3.heartbeatSettlementMs).toBe(120_000);
+    expect(v3.silentCommandMs + v3.silentSettlementMs).toBe(base.inactivityStallMs);
+    expect(v3.heartbeatCommandMs + v3.heartbeatSettlementMs)
+      .toBe(base.turnAbsoluteDeadlineMs);
+    expect(v3.preparationDeadlineMs).toBe(135 * 60_000);
+    expect(v3.preparationRetrySeconds).toEqual([5, 15, 30, 60, 300]);
+  });
   it("returns unanswered decisions to Pi after ten minutes", () => {
     expect(base.decisionTimeoutMs).toBe(10 * 60 * 1_000);
     expect(base.decisionTimeoutMs).toBeLessThan(base.turnAbsoluteDeadlineMs);

@@ -955,17 +955,32 @@ BEGIN
         'public.companion_v3_worker_admit_turn(uuid,uuid,uuid,text,text)'::regprocedure
       ];
       companion_runtime_functions := companion_runtime_functions || ARRAY[
-        'public.companion_v3_runtime_claim_preparation(text,integer,integer)'::regprocedure,
         'public.companion_v3_runtime_checkpoint_preparation(uuid,uuid,uuid,bigint,bigint,text,text,text,text,integer,bigint,integer,text,timestamp with time zone,integer)'::regprocedure,
         'public.companion_v3_runtime_defer_preparation(uuid,uuid,uuid,bigint,bigint,integer,text,text,integer)'::regprocedure,
         'public.companion_v3_runtime_reauthorize_preparation(uuid,uuid,uuid,bigint,bigint,text,integer,integer)'::regprocedure,
         'public.companion_v3_runtime_mint_preparation_credentials(uuid,uuid,uuid,bigint,bigint,text,integer,integer)'::regprocedure,
-        'public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer)'::regprocedure,
-        'public.companion_v3_runtime_claim_warm(text,public.companion_v3_lane,integer,integer)'::regprocedure,
-        'public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure,
         'public.companion_v3_runtime_authorize_warm_turn(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure,
         'public.companion_v3_runtime_measurement_facts(timestamp with time zone,timestamp with time zone,integer)'::regprocedure
       ];
+      IF pg_catalog.to_regprocedure(
+        'public.companion_v3_runtime_claim_warm_v4(text,public.companion_v3_lane,integer,integer)'
+      ) IS NOT NULL THEN
+        companion_runtime_functions := companion_runtime_functions || ARRAY[
+          'public.companion_v3_runtime_claim_preparation_v5(text,integer,integer)'::regprocedure,
+          'public.companion_v3_runtime_claim_v4(text,public.companion_v3_lane,integer,integer)'::regprocedure,
+          'public.companion_v3_runtime_claim_warm_v4(text,public.companion_v3_lane,integer,integer)'::regprocedure,
+          'public.companion_v3_runtime_complete_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure,
+          'public.companion_v3_runtime_begin_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure,
+          'public.companion_v3_runtime_sweep_deadlines(public.companion_v3_lane,integer)'::regprocedure
+        ];
+      ELSE
+        companion_runtime_functions := companion_runtime_functions || ARRAY[
+          'public.companion_v3_runtime_claim_preparation(text,integer,integer)'::regprocedure,
+          'public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer)'::regprocedure,
+          'public.companion_v3_runtime_claim_warm(text,public.companion_v3_lane,integer,integer)'::regprocedure,
+          'public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure
+        ];
+      END IF;
       IF pg_catalog.to_regprocedure(
         'public.companion_v3_runtime_record_native_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,uuid,bigint,integer)'
       ) IS NOT NULL THEN

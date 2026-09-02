@@ -22,6 +22,13 @@
 > healing remains Pi-only. Owner-authorized permanent deletion persists `delete_dispatched` before
 > its sole provider call. A lost response is reconciled through operation status or Box absence,
 > never a second `DELETE`; the aggregate is removed only after absence is confirmed.
+> Migration 0168 bounds this v3 seam with PostgreSQL-owned clocks and fences. Accepted Turns carry
+> a ten-minute correlated-activity deadline and an immutable two-hour absolute deadline;
+> `needs_input` clears only inactivity. A two-second runtime sweep terminalizes overdue response
+> groups and advances the independent lane epoch. Prompt write-intent is durable before Box/Pi
+> contact, so takeover interrupts an outcome-unknown admission instead of dispatching it again.
+> Cold preparation has a two-hour-fifteen-minute durable deadline and releases its claim between
+> jittered 5/15/30/60/300-second retries.
 >
 > Runtime v3 purge note (THE-511): migration 0160 and the dedicated runtime maintenance command add
 > a dormant, one-shot path that can remove Runtime v2 state before a later cutover. This ticket

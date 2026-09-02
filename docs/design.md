@@ -268,6 +268,16 @@ remain until the provider reports completion or the exact Box is observed absent
 can only persist admission or lifecycle intent; only `apps/runtime` holds the narrow provider
 capability and lifecycle fence.
 
+Migration 0168 makes the v3 Turn and preparation horizons durable PostgreSQL facts. Positive
+admission fixes a two-hour absolute deadline and starts a ten-minute inactivity clock; only a
+correlated cursor advance re-arms inactivity, and `needs_input` pauses inactivity without moving
+the absolute bound. Each runtime sweep checks the independent `main` and `background` lanes,
+terminalizes overdue response groups, and increments the affected lane epoch before later work can
+claim it. A fenced write-intent precedes prompt/steer so takeover never redispatches an occurrence
+whose admission result is unknown. TypeScript owns the nested provider, staging, Pi activation,
+admission, command, and settlement budgets. Cold preparation releases capacity between jittered
+5/15/30/60/300-second retries and cannot outlive its two-hour-fifteen-minute durable deadline.
+
 Migration 0160 adds the separate one-shot Runtime v2 purge needed before a later v3 cutover. Its
 operator module is dormant: no service composition root calls it. `report` and `purge --dry-run`
 only read PostgreSQL, Box/named-snapshot inventory, and the `companion-attachments/` object prefix;

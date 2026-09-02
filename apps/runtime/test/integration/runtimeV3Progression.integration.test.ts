@@ -222,7 +222,7 @@ describe("Runtime v3 progression facts", () => {
         select companion_id as "companionId", turn_id as "turnId", work_kind::text as "workKind",
           checkpoint, box_idempotency_key as "idempotencyKey", claim_token as token,
           claim_epoch::text as epoch, gate_epoch::text as gate
-        from public.companion_v3_runtime_claim_preparation('runtime-cold', 30, 4)
+        from public.companion_v3_runtime_claim_preparation_v5('runtime-cold', 30, 5)
       `;
       expect(claims).toEqual([expect.objectContaining({
         companionId: coldCompanion,
@@ -242,7 +242,7 @@ describe("Runtime v3 progression facts", () => {
       const readyClaim = (await runtimeSql<Array<{
         token: string; epoch: string; gate: string;
       }>>`select claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate
-        from public.companion_v3_runtime_claim_preparation('runtime-cold-retry', 30, 4)`)[0]!;
+        from public.companion_v3_runtime_claim_preparation_v5('runtime-cold-retry', 30, 5)`)[0]!;
       await expect(runtimeSql`select public.companion_v3_runtime_checkpoint_preparation(
         ${ids.org}::uuid, ${coldCompanion}::uuid, ${readyClaim.token}::uuid,
         ${readyClaim.epoch}::bigint, ${readyClaim.gate}::bigint,
@@ -252,7 +252,7 @@ describe("Runtime v3 progression facts", () => {
       const retry = (await runtimeSql<Array<{
         token: string; epoch: string; gate: string;
       }>>`select claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate
-        from public.companion_v3_runtime_claim_preparation('runtime-cold-defer', 30, 4)`)[0]!;
+        from public.companion_v3_runtime_claim_preparation_v5('runtime-cold-defer', 30, 5)`)[0]!;
       await expect(runtimeSql`select public.companion_v3_runtime_defer_preparation(
         ${ids.org}::uuid, ${coldCompanion}::uuid, ${retry.token}::uuid,
         ${retry.epoch}::bigint, ${retry.gate}::bigint, 5,
@@ -261,9 +261,12 @@ describe("Runtime v3 progression facts", () => {
 
       const queued = await ownerSql<Array<{
         state: string; errorCode: string; delaySeconds: number;
-        firstClaimedAt: Date; boxReadyAt: Date;
+        firstClaimedAt: Date; boxReadyAt: Date; claimToken: string | null;
+        preparationDeadlineAt: Date;
       }>>`select turn_row.state::text, instance.preparation_error_code as "errorCode",
           turn_row.first_claimed_at as "firstClaimedAt", instance.box_ready_at as "boxReadyAt",
+          instance.preparation_claim_token::text as "claimToken",
+          instance.preparation_deadline_at as "preparationDeadlineAt",
           extract(epoch from (instance.preparation_available_at - clock_timestamp()))::integer
             as "delaySeconds"
         from public.companion_v3_turns turn_row
@@ -275,6 +278,14 @@ describe("Runtime v3 progression facts", () => {
       );
       expect(queued[0]!.delaySeconds).toBeGreaterThanOrEqual(1);
       expect(queued[0]!.delaySeconds).toBeLessThanOrEqual(5);
+      expect(queued[0]!.claimToken).toBeNull();
+      expect(queued[0]!.preparationDeadlineAt.getTime() - Date.now())
+        .toBeGreaterThan(134 * 60_000);
+      await expect(runtimeSql`
+        select * from public.companion_v3_runtime_claim_preparation_v5(
+          'runtime-cold-too-soon', 30, 5
+        )
+      `).resolves.toEqual([]);
 
       await asApi(async (sql) => {
         const replay = await sql<Array<{
@@ -394,6 +405,42 @@ describe("Runtime v3 progression facts", () => {
     expect(checkpointed?.checkpoint).toBe("box_created");
   });
 
+  it("expires preparation at two hours fifteen minutes and fences its prior executor", async () => {
+    const command = randomUUID();
+    await admitMain(command);
+    const persistence = createRuntimeV3PostgresPreparationPersistence(runtimeSql);
+    const stale = await persistence.claim({ executorId: "runtime-expired-preparation" });
+    expect(stale).not.toBeNull();
+    if (!stale) throw new Error("preparation claim was not created");
+
+    await ownerSql`update public.companion_v3_instances
+      set preparation_deadline_at = clock_timestamp() - interval '1 millisecond'
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
+    const takeover = await persistence.claim({ executorId: "runtime-preparation-takeover" });
+    expect(takeover).not.toBeNull();
+    expect(takeover!.fence.epoch).toBeGreaterThan(stale.fence.epoch);
+    await expect(persistence.checkpoint(stale, {
+      next: "box_created",
+      boxId: "bx_stale_executor",
+    })).resolves.toBe(false);
+
+    const [expired] = await ownerSql<Array<{
+      state: string;
+      code: string;
+      deadlineAt: Date;
+    }>>`select turn_row.state::text, turn_row.outcome_code as code,
+        instance.preparation_deadline_at as "deadlineAt"
+      from public.companion_v3_turns turn_row
+      join public.companion_v3_instances instance using (org_id, companion_id)
+      where turn_row.command_id = ${command}::uuid`;
+    expect(expired).toMatchObject({
+      state: "failed",
+      code: "companion_prepare_deadline_exceeded",
+      deadlineAt: expect.any(Date),
+    });
+    expect(expired!.deadlineAt.getTime() - Date.now()).toBeGreaterThan(134 * 60_000);
+  });
+
   afterAll(async () => {
     if (originalRuntimeGate) {
       await ownerSql`update public.companion_runtime_control
@@ -443,12 +490,12 @@ describe("Runtime v3 progression facts", () => {
     }>>`
       select command_id as "commandId", lane::text, turn_id as "turnId",
         claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate
-      from public.companion_v3_runtime_claim(
-        'runtime-a', 'main', 30, 3
+      from public.companion_v3_runtime_claim_v4(
+        'runtime-a', 'main', 30, 4
       )`;
     const backgroundClaim = await runtimeSql<Array<{ commandId: string; lane: string }>>`
-      select command_id as "commandId", lane::text from public.companion_v3_runtime_claim(
-        'runtime-b', 'background', 30, 3
+      select command_id as "commandId", lane::text from public.companion_v3_runtime_claim_v4(
+        'runtime-b', 'background', 30, 4
       )`;
 
     expect(mainClaim).toEqual([expect.objectContaining({ commandId: mainOne, lane: "main" })]);
@@ -463,15 +510,15 @@ describe("Runtime v3 progression facts", () => {
         )`;
     });
     expect(lifecycle).toEqual([{ intent: "archive", revision: "2" }]);
-    await runtimeSql`select public.companion_v3_runtime_complete(
+    await runtimeSql`select public.companion_v3_runtime_complete_v4(
       ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${mainClaim[0]!.turnId}::uuid,
       ${mainClaim[0]!.token}::uuid, ${mainClaim[0]!.epoch}::bigint,
       ${mainClaim[0]!.gate}::bigint,
-      'succeeded', null, null, null, 3
+      'succeeded', null, null, null, 4
     )`;
     const nextMain = await runtimeSql<Array<{ commandId: string }>>`
       select command_id as "commandId"
-      from public.companion_v3_runtime_claim('runtime-a', 'main', 30, 3)`;
+      from public.companion_v3_runtime_claim_v4('runtime-a', 'main', 30, 4)`;
     expect(nextMain).toEqual([{ commandId: mainTwo }]);
   });
 
@@ -534,13 +581,13 @@ describe("Runtime v3 progression facts", () => {
 
     const unprepared = await runtimeSql<Array<{ commandId: string }>>`
       select command_id as "commandId"
-      from public.companion_v3_runtime_claim_warm('runtime-warm-readiness', 'main', 30, 3)`;
+      from public.companion_v3_runtime_claim_warm_v4('runtime-warm-readiness', 'main', 30, 4)`;
     expect(unprepared).toEqual([]);
 
     await seedPreparedV3("invocation-ready");
     const prepared = await runtimeSql<Array<{ commandId: string }>>`
       select command_id as "commandId"
-      from public.companion_v3_runtime_claim_warm('runtime-warm-readiness', 'main', 30, 3)`;
+      from public.companion_v3_runtime_claim_warm_v4('runtime-warm-readiness', 'main', 30, 4)`;
     expect(prepared).toEqual([{ commandId: command }]);
   });
 
@@ -618,7 +665,8 @@ describe("Runtime v3 progression facts", () => {
       )`;
     });
     await ownerSql`update public.companion_v3_turns set
-      state = 'succeeded', admission_state = 'accepted', admitted_at = clock_timestamp(),
+      state = 'succeeded', admission_state = 'accepted',
+      admission_started_at = clock_timestamp(), admitted_at = clock_timestamp(),
       pi_invocation_id = 'pi-before-sleep', response_turn_id = id,
       admission_cursor = 0, outcome = 'succeeded',
       settled_at = clock_timestamp()
@@ -1705,20 +1753,20 @@ describe("Runtime v3 progression facts", () => {
     const first = await runtimeSql<Array<{ token: string; epoch: string; gate: string; turnId: string }>>`
       select claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate,
         turn_id as "turnId"
-      from public.companion_v3_runtime_claim('runtime-c', 'main', 1, 3)`;
+      from public.companion_v3_runtime_claim_v4('runtime-c', 'main', 1, 4)`;
     await ownerSql`select pg_sleep(1.1)`;
     const second = await runtimeSql<Array<{ token: string; epoch: string; gate: string; turnId: string }>>`
       select claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate,
         turn_id as "turnId"
-      from public.companion_v3_runtime_claim('runtime-d', 'main', 30, 3)`;
+      from public.companion_v3_runtime_claim_v4('runtime-d', 'main', 30, 4)`;
 
     expect(BigInt(second[0]!.epoch)).toBeGreaterThan(BigInt(first[0]!.epoch));
     const stale = await runtimeSql<Array<{ completed: boolean }>>`
-      select public.companion_v3_runtime_complete(
+      select public.companion_v3_runtime_complete_v4(
         ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${first[0]!.turnId}::uuid,
         ${first[0]!.token}::uuid, ${first[0]!.epoch}::bigint,
         ${first[0]!.gate}::bigint,
-        'release', null, null, null, 3
+        'release', null, null, null, 4
       ) as completed`;
     expect(stale[0]!.completed).toBe(false);
   });
@@ -1728,13 +1776,13 @@ describe("Runtime v3 progression facts", () => {
     const claim = await runtimeSql<Array<{ token: string; epoch: string; gate: string; turnId: string }>>`
       select claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate,
         turn_id as "turnId"
-      from public.companion_v3_runtime_claim('runtime-null-outcome', 'main', 30, 3)`;
+      from public.companion_v3_runtime_claim_v4('runtime-null-outcome', 'main', 30, 4)`;
 
-    await expect(runtimeSql`select public.companion_v3_runtime_complete(
+    await expect(runtimeSql`select public.companion_v3_runtime_complete_v4(
       ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${claim[0]!.turnId}::uuid,
       ${claim[0]!.token}::uuid, ${claim[0]!.epoch}::bigint,
       ${claim[0]!.gate}::bigint,
-      ${null}::text, null, null, null, 3
+      ${null}::text, null, null, null, 4
     )`).rejects.toThrow(/invalid Runtime v3 completion/);
 
     const facts = await ownerSql<Array<{ state: string; token: string | null }>>`
@@ -1750,8 +1798,8 @@ describe("Runtime v3 progression facts", () => {
   it("rejects a null lease duration without materializing a lane claim", async () => {
     await admitMain(randomUUID());
 
-    await expect(runtimeSql`select * from public.companion_v3_runtime_claim(
-      'runtime-null-lease', 'main', ${null}::integer, 3
+    await expect(runtimeSql`select * from public.companion_v3_runtime_claim_v4(
+      'runtime-null-lease', 'main', ${null}::integer, 4
     )`).rejects.toThrow(/invalid Runtime v3 claim/);
 
     const facts = await ownerSql<Array<{
@@ -1781,7 +1829,7 @@ describe("Runtime v3 progression facts", () => {
     }>>`
       select claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate,
         turn_id as "turnId"
-      from public.companion_v3_runtime_claim('runtime-gate-fence', 'main', 30, 3)`;
+      from public.companion_v3_runtime_claim_v4('runtime-gate-fence', 'main', 30, 4)`;
     let disabledGate: string | undefined;
     try {
       const disabled = await runtimeSql<Array<{ enabled: boolean; gate: string }>>`
@@ -1797,10 +1845,10 @@ describe("Runtime v3 progression facts", () => {
       expect(BigInt(disabledGate)).toBeGreaterThan(BigInt(claim[0]!.gate));
 
       const completion = await runtimeSql<Array<{ completed: boolean }>>`
-        select public.companion_v3_runtime_complete(
+        select public.companion_v3_runtime_complete_v4(
           ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${claim[0]!.turnId}::uuid,
           ${claim[0]!.token}::uuid, ${claim[0]!.epoch}::bigint,
-          ${claim[0]!.gate}::bigint, 'succeeded', null, null, null, 3
+          ${claim[0]!.gate}::bigint, 'succeeded', null, null, null, 4
         ) as completed`;
       expect(completion).toEqual([{ completed: false }]);
 
@@ -1883,6 +1931,139 @@ describe("Runtime v3 progression facts", () => {
     await expect(convergence).resolves.toEqual({ progressed: 3, exhausted: false });
   });
 
+  it("fences a stale replica after admission takeover without dispatching the occurrence twice", async () => {
+    await seedPreparedV3("invocation-two-replicas");
+    const messageId = randomUUID();
+    let turnId = "";
+    await asApi(async (sql) => {
+      const rows = await sql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_v3_api_enqueue_warm_turn(
+          ${ids.org}::uuid, ${ids.companion}::uuid, ${messageId}::uuid,
+          'dispatch exactly once'
+        )`;
+      turnId = rows[0]!.turn.id;
+    });
+    const firstStore = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
+    const firstClaim = await createRuntimeV3PostgresWarmConvergence(runtimeSql).claimLane({
+      executorId: "runtime-replica-a",
+      lane: "main",
+    });
+    expect(firstClaim).not.toBeNull();
+    await expect(firstStore.beginAdmission!(firstClaim!)).resolves.toBe(true);
+    const prompt = vi.fn().mockResolvedValue({
+      outcome: "accepted" as const,
+      invocationId: "invocation-two-replicas",
+      responseAttemptId: turnId,
+      initialCursor: 0n,
+    });
+    await prompt();
+
+    await ownerSql`update public.companion_v3_lane_leases
+      set renewed_at = clock_timestamp() - interval '2 seconds',
+        expires_at = clock_timestamp() - interval '1 second'
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid
+        and lane = 'main'`;
+    const secondStore = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
+    const secondReplica = createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresWarmConvergence(runtimeSql),
+      advance: createRuntimeV3WarmTurnAdvance({
+        persistence: secondStore,
+        pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
+      }),
+    });
+    await expect(secondReplica.converge({ executorId: "runtime-replica-b" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    expect(prompt).toHaveBeenCalledOnce();
+    await expect(firstStore.recordAdmission(firstClaim!, {
+      invocationId: "invocation-two-replicas",
+      responseTurnId: turnId,
+      cursor: 0n,
+    })).resolves.toBe(false);
+    const [settled] = await ownerSql<Array<{ state: string; code: string }>>`
+      select state::text, outcome_code as code from public.companion_v3_turns
+      where id = ${turnId}::uuid`;
+    expect(settled).toEqual({ state: "interrupted", code: "pi_admission_outcome_unknown" });
+  });
+
+  it("sweeps inactivity and absolute deadlines while needs-input pauses only inactivity", async () => {
+    await seedPreparedV3("invocation-deadlines");
+    const persistence = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
+
+    const admitActive = async (content: string) => {
+      const messageId = randomUUID();
+      let turnId = "";
+      await asApi(async (sql) => {
+        const rows = await sql<Array<{ turn: { id: string } }>>`
+          select turn from public.companion_v3_api_enqueue_warm_turn(
+            ${ids.org}::uuid, ${ids.companion}::uuid, ${messageId}::uuid, ${content}
+          )`;
+        turnId = rows[0]!.turn.id;
+      });
+      const claim = await createRuntimeV3PostgresWarmConvergence(runtimeSql).claimLane({
+        executorId: `runtime-deadline-${messageId}`,
+        lane: "main",
+      });
+      expect(claim).not.toBeNull();
+      await expect(persistence.beginAdmission!(claim!)).resolves.toBe(true);
+      await expect(persistence.recordAdmission(claim!, {
+        invocationId: "invocation-deadlines",
+        responseTurnId: turnId,
+        cursor: 0n,
+      })).resolves.toBe(true);
+      return { claim: claim!, turnId };
+    };
+
+    const silent = await admitActive("become inactive");
+    const [silentClock] = await ownerSql<Array<{ absolute: Date; inactivity: Date }>>`
+      select absolute_deadline_at as absolute, inactivity_deadline_at as inactivity
+      from public.companion_v3_turns where id = ${silent.turnId}::uuid`;
+    expect(silentClock!.absolute.getTime() - silentClock!.inactivity.getTime())
+      .toBe(110 * 60_000);
+    await ownerSql`update public.companion_v3_turns
+      set inactivity_deadline_at = clock_timestamp() - interval '1 millisecond'
+      where id = ${silent.turnId}::uuid`;
+    await expect(createRuntimeV3PostgresWarmConvergence(runtimeSql).sweepLane!({ lane: "main" }))
+      .resolves.toBe(1);
+    const [stalled] = await ownerSql<Array<{ state: string; code: string }>>`
+      select state::text, outcome_code as code from public.companion_v3_turns
+      where id = ${silent.turnId}::uuid`;
+    expect(stalled).toEqual({ state: "interrupted", code: "turn_stalled" });
+
+    const active = await admitActive("keep a correlated heartbeat");
+    const [beforeHeartbeat] = await ownerSql<Array<{ absolute: Date; inactivity: Date }>>`
+      select absolute_deadline_at as absolute, inactivity_deadline_at as inactivity
+      from public.companion_v3_turns where id = ${active.turnId}::uuid`;
+    await expect(persistence.project(active.claim, {
+      throughCursor: 1n, assistant: [], needsInput: false,
+      settled: false, processExited: false,
+    })).resolves.toBe(true);
+    const [heartbeat] = await ownerSql<Array<{ absolute: Date; inactivity: Date }>>`
+      select absolute_deadline_at as absolute, inactivity_deadline_at as inactivity
+      from public.companion_v3_turns where id = ${active.turnId}::uuid`;
+    expect(heartbeat!.absolute).toEqual(beforeHeartbeat!.absolute);
+    expect(heartbeat!.inactivity.getTime()).toBeGreaterThanOrEqual(
+      beforeHeartbeat!.inactivity.getTime(),
+    );
+    await expect(persistence.project(active.claim, {
+      throughCursor: 2n, assistant: [], needsInput: true,
+      settled: false, processExited: false,
+    })).resolves.toBe(true);
+    const [waiting] = await ownerSql<Array<{ absolute: Date; inactivity: Date | null }>>`
+      select absolute_deadline_at as absolute, inactivity_deadline_at as inactivity
+      from public.companion_v3_turns where id = ${active.turnId}::uuid`;
+    expect(waiting!.inactivity).toBeNull();
+    expect(waiting!.absolute).toEqual(beforeHeartbeat!.absolute);
+    await ownerSql`update public.companion_v3_turns
+      set absolute_deadline_at = clock_timestamp() - interval '1 millisecond'
+      where id = ${active.turnId}::uuid`;
+    await expect(createRuntimeV3PostgresWarmConvergence(runtimeSql).sweepLane!({ lane: "main" }))
+      .resolves.toBe(1);
+    const [expired] = await ownerSql<Array<{ state: string; code: string }>>`
+      select state::text, outcome_code as code from public.companion_v3_turns
+      where id = ${active.turnId}::uuid`;
+    expect(expired).toEqual({ state: "interrupted", code: "turn_deadline_exceeded" });
+  });
+
   it("forces RLS and keeps v3 facts behind split role grants", async () => {
     const tables = await ownerSql<Array<{ name: string; rls: boolean; forced: boolean }>>`
       select relname as name, relrowsecurity as rls, relforcerowsecurity as forced
@@ -1908,6 +2089,7 @@ describe("Runtime v3 progression facts", () => {
       workerClaim: boolean;
       runtimeAdmit: boolean;
       runtimeClaim: boolean;
+      runtimeBoundedClaim: boolean;
     }>>`
       select
         has_function_privilege(${apiRole},
@@ -1921,14 +2103,17 @@ describe("Runtime v3 progression facts", () => {
         has_function_privilege(${runtimeRole},
           'public.companion_v3_api_admit_turn(uuid,uuid,uuid,text)', 'EXECUTE') as "runtimeAdmit",
         has_function_privilege(${runtimeRole},
-          'public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer)', 'EXECUTE') as "runtimeClaim"`;
+          'public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer)', 'EXECUTE') as "runtimeClaim",
+        has_function_privilege(${runtimeRole},
+          'public.companion_v3_runtime_claim_v4(text,public.companion_v3_lane,integer,integer)', 'EXECUTE') as "runtimeBoundedClaim"`;
     expect(grants).toEqual([{
       apiAdmit: true,
       apiClaim: false,
       workerAdmit: true,
       workerClaim: false,
       runtimeAdmit: false,
-      runtimeClaim: true,
+      runtimeClaim: false,
+      runtimeBoundedClaim: true,
     }]);
     await expect(apiSql`select * from public.companion_v3_turns`).rejects.toMatchObject({ code: "42501" });
     await expect(workerSql`select * from public.companion_v3_turns`).rejects.toMatchObject({ code: "42501" });
@@ -1952,7 +2137,7 @@ describe("Runtime v3 progression facts", () => {
         where id = 'runtime-v2'`;
       const claims = await sql<Array<{ turnId: string }>>`
         select turn_id as "turnId"
-        from public.companion_v3_runtime_claim('runtime-disabled', 'main', 30, 3)`;
+        from public.companion_v3_runtime_claim_v4('runtime-disabled', 'main', 30, 4)`;
       expect(claims).toEqual([]);
       await sql`update public.companion_runtime_control
         set enabled = ${rows[0]!.enabled}, enabled_at = ${rows[0]!.enabledAt},

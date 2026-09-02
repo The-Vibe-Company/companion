@@ -1325,6 +1325,7 @@ export const companionV3Instances = pgTable(
     boxIdempotencyKey: uuid("box_idempotency_key").notNull().defaultRandom(),
     preparationCheckpoint: text("preparation_checkpoint").notNull().default("pending"),
     preparationAvailableAt: timestamp("preparation_available_at", { withTimezone: true }).notNull().defaultNow(),
+    preparationDeadlineAt: timestamp("preparation_deadline_at", { withTimezone: true }),
     preparationAttemptCount: integer("preparation_attempt_count").notNull().default(0),
     preparationErrorCode: text("preparation_error_code"),
     preparationErrorMessage: text("preparation_error_message"),
@@ -1439,6 +1440,7 @@ export const companionV3Turns = pgTable(
     stagingCompletedAt: timestamp("staging_completed_at", { withTimezone: true }),
     piReadyAt: timestamp("pi_ready_at", { withTimezone: true }),
     admissionKind: companionV3AdmissionKindEnum("admission_kind"),
+    admissionStartedAt: timestamp("admission_started_at", { withTimezone: true }),
     admittedAt: timestamp("admitted_at", { withTimezone: true }),
     piInvocationId: text("pi_invocation_id"),
     responseTurnId: uuid("response_turn_id"),
@@ -1448,6 +1450,8 @@ export const companionV3Turns = pgTable(
     activityCursor: bigint("activity_cursor", { mode: "number" }).notNull().default(0),
     lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
     firstActivityAt: timestamp("first_activity_at", { withTimezone: true }),
+    inactivityDeadlineAt: timestamp("inactivity_deadline_at", { withTimezone: true }),
+    absoluteDeadlineAt: timestamp("absolute_deadline_at", { withTimezone: true }),
     outcome: companionV3TurnOutcomeEnum("outcome"),
     outcomeCode: text("outcome_code"),
     outcomeMessage: text("outcome_message"),
@@ -1472,6 +1476,9 @@ export const companionV3Turns = pgTable(
     fifo: index("companion_v3_turns_fifo_idx")
       .on(t.companionId, t.lane, t.queueSequence, t.id)
       .where(sql`${t.state} = 'queued'`),
+    deadlines: index("companion_v3_turns_deadlines_idx")
+      .on(t.absoluteDeadlineAt, t.inactivityDeadlineAt)
+      .where(sql`${t.state} in ('admitted', 'running', 'needs_input')`),
     measurementWindow: index("companion_v3_turns_measurement_window_idx")
       .on(t.acceptedAt, t.lane, t.wakePath),
     sequenceCheck: check("companion_v3_turns_sequence_check", sql`${t.queueSequence} >= 1`),
@@ -1506,7 +1513,11 @@ export const companionV3Turns = pgTable(
     ),
     admissionCheck: check(
       "companion_v3_turns_admission_check",
-      sql`(${t.admissionState} = 'pending' and ${t.admittedAt} is null and ${t.piInvocationId} is null and ${t.admissionCursor} is null) or (${t.admissionState} in ('accepted', 'ambiguous') and ${t.admittedAt} is not null and ${t.piInvocationId} is not null and ${t.admissionCursor} is not null)`,
+      sql`(${t.admissionState} = 'pending' and ${t.admittedAt} is null and ${t.piInvocationId} is null and ${t.admissionCursor} is null) or (${t.admissionState} in ('accepted', 'ambiguous') and ${t.admissionStartedAt} is not null and ${t.admittedAt} is not null and ${t.piInvocationId} is not null and ${t.admissionCursor} is not null)`,
+    ),
+    deadlineCheck: check(
+      "companion_v3_turns_deadline_check",
+      sql`(${t.state} = 'queued' and ${t.inactivityDeadlineAt} is null and ${t.absoluteDeadlineAt} is null) or (${t.state} in ('admitted', 'running') and ${t.inactivityDeadlineAt} is not null and ${t.absoluteDeadlineAt} is not null and ${t.inactivityDeadlineAt} <= ${t.absoluteDeadlineAt}) or (${t.state} = 'needs_input' and ${t.inactivityDeadlineAt} is null and ${t.absoluteDeadlineAt} is not null) or (${t.state} in ('succeeded', 'failed', 'interrupted', 'cancelled') and ${t.inactivityDeadlineAt} is null and ${t.absoluteDeadlineAt} is null)`,
     ),
     outcomeCheck: check(
       "companion_v3_turns_outcome_check",

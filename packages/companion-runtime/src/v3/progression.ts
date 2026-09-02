@@ -1,6 +1,6 @@
 import { safeRuntimeError } from "../errors";
 import { classifyPiJournalPage, type ValidatedPiJournalRead } from "../piEvents";
-import { COMPANION_BUDGETS } from "@companion/contracts";
+import { COMPANION_BUDGETS, COMPANION_RUNTIME_V3_BUDGETS } from "@companion/contracts";
 import type {
   ErrorAction,
   ProviderRef,
@@ -46,6 +46,7 @@ export interface RuntimeV3Turn {
   commandId: string;
   lane: RuntimeV3Lane;
   state: RuntimeV3TurnState;
+  admissionStartedAt?: Date | null;
 }
 
 export interface RuntimeV3Admission {
@@ -112,6 +113,10 @@ export interface RuntimeV3LifecycleIntentPersistence {
 }
 
 export interface RuntimeV3ConvergencePersistence {
+  sweepLane(input: {
+    lane: RuntimeV3Lane;
+    signal?: AbortSignal;
+  }): Promise<number>;
   claimLane(input: {
     executorId: string;
     lane: RuntimeV3Lane;
@@ -158,6 +163,8 @@ export interface RuntimeV3PreparationClaim {
   boxIdempotencyKey: string;
   boxId: string | null;
   createdAt: Date;
+  attemptCount?: number;
+  deadlineAt?: Date | null;
   authorized: boolean;
   actorId: string | null;
   modelId: string | null;
@@ -229,6 +236,7 @@ export interface RuntimeV3PreparationOptions {
   pi: Pick<RuntimePiControl, "startPiDaemon">;
   observePreparedLatency?: (durationMs: number) => void;
   now?: () => Date;
+  jitter?: () => number;
 }
 
 export type RuntimeV3LifecycleCheckpoint =
@@ -329,6 +337,10 @@ export interface RuntimeV3WarmTurnPersistence {
     claim: RuntimeV3Claim,
     signal?: AbortSignal,
   ): Promise<RuntimeV3WarmTurnMaterial | null>;
+  beginAdmission(
+    claim: RuntimeV3Claim,
+    signal?: AbortSignal,
+  ): Promise<boolean>;
   recordAdmission(
     claim: RuntimeV3Claim,
     input: { invocationId: string; responseTurnId: string; cursor: bigint },
@@ -402,6 +414,7 @@ export function createRuntimeV3WarmTurnAdvance(
 ): RuntimeV3ConvergenceOptions["advance"] {
   return async (claim, signal) => {
     let projectionPendingAck: "none" | "nonterminal" | "terminal" = "none";
+    let admissionWriteIntent = false;
     try {
       signal?.throwIfAborted();
       const material = signal
@@ -425,13 +438,40 @@ export function createRuntimeV3WarmTurnAdvance(
         return { kind: "ack_completed" };
       }
       if (claim.turn.state === "queued") {
+        if (claim.turn.admissionStartedAt) {
+          return {
+            kind: "interrupted",
+            code: "pi_admission_outcome_unknown",
+            message: "Pi admission may have occurred before executor takeover.",
+            action: "none",
+          };
+        }
+        const begun = signal
+          ? await options.persistence.beginAdmission(claim, signal)
+          : await options.persistence.beginAdmission(claim);
+        signal?.throwIfAborted();
+        if (!begun) {
+          return {
+            kind: "interrupted",
+            code: "pi_admission_fence_lost",
+            message: "Pi admission could not be fenced safely.",
+            action: "none",
+          };
+        }
+        admissionWriteIntent = true;
+        const admissionTimeout = AbortSignal.timeout(
+          COMPANION_RUNTIME_V3_BUDGETS.admissionAckMs,
+        );
+        const admissionSignal = signal
+          ? AbortSignal.any([signal, admissionTimeout])
+          : admissionTimeout;
         const admission = await options.pi.prompt({
           boxId: material.boxId,
           commandId: claim.turn.commandId,
           turnId: claim.turn.id,
           expectedInvocationId: material.piInvocationId,
           message: material.content,
-          signal,
+          signal: admissionSignal,
         });
         signal?.throwIfAborted();
         if (admission.outcome === "rejected") {
@@ -572,6 +612,14 @@ export function createRuntimeV3WarmTurnAdvance(
         return { kind: "retry_ack" };
       }
       if (projectionPendingAck === "nonterminal") return { kind: "release" };
+      if (admissionWriteIntent) {
+        return {
+          kind: "interrupted",
+          code: "pi_admission_outcome_unknown",
+          message: "Pi admission could not be confirmed before executor handoff.",
+          action: "none",
+        };
+      }
       return {
         kind: "failed",
         code: "warm_turn_failed",
@@ -582,18 +630,37 @@ export function createRuntimeV3WarmTurnAdvance(
   };
 }
 
-const PREPARATION_RETRY_SECONDS = 5;
 const PREPARATION_POLL_SECONDS = 1;
 const PREPARATION_BOX_TTL_SECONDS = 6 * 60 * 60;
-export const RUNTIME_V3_PREPARATION_BUDGET_MS = COMPANION_BUDGETS.layoutInstallBudgetMs;
-export const RUNTIME_V3_STAGING_BUDGET_MS =
-  RUNTIME_V3_PREPARATION_BUDGET_MS - COMPANION_BUDGETS.boxRequestTimeoutMs;
-export const RUNTIME_V3_PI_ACTIVATION_BUDGET_MS = COMPANION_BUDGETS.boxRequestTimeoutMs;
+export const RUNTIME_V3_PREPARATION_BUDGET_MS =
+  COMPANION_RUNTIME_V3_BUDGETS.preparationDeadlineMs;
+export const RUNTIME_V3_STAGING_BUDGET_MS = COMPANION_RUNTIME_V3_BUDGETS.stagingMs;
+export const RUNTIME_V3_PI_ACTIVATION_BUDGET_MS =
+  COMPANION_RUNTIME_V3_BUDGETS.piActivationMs;
 
 if (
   RUNTIME_V3_STAGING_BUDGET_MS >= RUNTIME_V3_PREPARATION_BUDGET_MS
-  || RUNTIME_V3_PI_ACTIVATION_BUDGET_MS >= RUNTIME_V3_PREPARATION_BUDGET_MS
+  || RUNTIME_V3_PI_ACTIVATION_BUDGET_MS >= RUNTIME_V3_STAGING_BUDGET_MS
 ) throw new Error("Runtime v3 nested preparation budgets require a strict margin");
+
+export function runtimeV3PreparationRetryDelaySeconds(input: {
+  attemptCount: number;
+  jitter: number;
+  now: Date;
+  deadlineAt: Date | null;
+}): number {
+  const ladder = COMPANION_RUNTIME_V3_BUDGETS.preparationRetrySeconds;
+  const index = Math.min(Math.max(0, Math.trunc(input.attemptCount)), ladder.length - 1);
+  const base = ladder[index]!;
+  const sample = Math.min(1, Math.max(0, Number.isFinite(input.jitter) ? input.jitter : 0.5));
+  const jittered = Math.min(
+    ladder[ladder.length - 1]!,
+    Math.max(1, Math.round(base * (0.8 + sample * 0.4))),
+  );
+  if (!input.deadlineAt) return jittered;
+  const remaining = Math.floor((input.deadlineAt.getTime() - input.now.getTime()) / 1_000);
+  return Math.max(1, Math.min(jittered, remaining));
+}
 
 const LIFECYCLE_RETRY_SECONDS = 5;
 
@@ -775,13 +842,17 @@ export function createRuntimeV3Preparation(
   options: RuntimeV3PreparationOptions,
 ): RuntimeV3Convergence {
   const now = options.now ?? (() => new Date());
+  const jitter = options.jitter ?? Math.random;
   return {
     async converge({ executorId }) {
       let progressed = 0;
       while (progressed < LANE_CONVERGENCE_LIMIT) {
         const claim = await options.persistence.claim({ executorId });
         if (!claim) return { progressed, exhausted: false };
-        const signal = AbortSignal.timeout(RUNTIME_V3_PREPARATION_BUDGET_MS);
+        const remainingMs = claim.deadlineAt
+          ? Math.max(1, claim.deadlineAt.getTime() - now().getTime())
+          : RUNTIME_V3_PREPARATION_BUDGET_MS;
+        const signal = AbortSignal.timeout(Math.min(RUNTIME_V3_STAGING_BUDGET_MS, remainingMs));
         try {
           if (!claim.authorized) throw new Error("Runtime v3 preparation is not authorized");
           if (claim.checkpoint === "pending") {
@@ -799,7 +870,10 @@ export function createRuntimeV3Preparation(
               // A preparation claim never waits for an image build. It may consume a ready image,
               // while the next fenced claim retries after the normal preparation backoff.
               deadlineAt: now(),
-              signal,
+              signal: AbortSignal.any([
+                signal,
+                AbortSignal.timeout(COMPANION_RUNTIME_V3_BUDGETS.providerRequestMs),
+              ]),
             });
             if (!await options.persistence.checkpoint(claim, {
               next: "box_created",
@@ -815,13 +889,19 @@ export function createRuntimeV3Preparation(
               companionId: claim.companionId,
               generation: 1n,
               ttlSeconds: PREPARATION_BOX_TTL_SECONDS,
-              signal,
+              signal: AbortSignal.any([
+                signal,
+                AbortSignal.timeout(COMPANION_RUNTIME_V3_BUDGETS.providerRequestMs),
+              ]),
             });
             const observed = await options.box.getStatus({
               boxId: claim.boxId,
               companionId: claim.companionId,
               generation: 1n,
-              signal,
+              signal: AbortSignal.any([
+                signal,
+                AbortSignal.timeout(COMPANION_RUNTIME_V3_BUDGETS.providerRequestMs),
+              ]),
             });
             if (!["ready", "idle", "running"].includes(observed.state)) {
               await options.persistence.defer(claim, {
@@ -880,7 +960,12 @@ export function createRuntimeV3Preparation(
             action: "retry",
           });
           await options.persistence.defer(claim, {
-            delaySeconds: PREPARATION_RETRY_SECONDS,
+            delaySeconds: runtimeV3PreparationRetryDelaySeconds({
+              attemptCount: claim.attemptCount ?? 0,
+              jitter: jitter(),
+              now: now(),
+              deadlineAt: claim.deadlineAt ?? null,
+            }),
             error: safe,
           });
           return { progressed: progressed + 1, exhausted: false };
@@ -935,6 +1020,7 @@ export function createRuntimeV3Convergence(
     converge: async ({ executorId, signal }) => {
       const lanes = await Promise.all(RUNTIME_V3_LANES.map(async (lane) => {
         let progressed = 0;
+        progressed += await options.persistence.sweepLane({ lane, signal });
         while (progressed < LANE_CONVERGENCE_LIMIT) {
           if (signal?.aborted) return { progressed, exhausted: false };
           const claim = await options.persistence.claimLane({ executorId, lane, signal });
