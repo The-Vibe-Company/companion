@@ -641,6 +641,20 @@ async function waitForTurn(turnId: string, status: string, timeoutMs = 30_000): 
   }
 }
 
+async function waitForV3Turn(turnId: string, status: string, timeoutMs = 30_000): Promise<void> {
+  await waitFor(`Runtime v3 turn ${turnId} to become ${status}`, async () => {
+    const [row] = await databaseSql!<Array<{ state: string; code: string | null }>>`
+      select state::text, outcome_code as code
+      from companion_v3_turns where id = ${turnId}::uuid
+    `;
+    if (!row) return false;
+    if (["failed", "interrupted", "cancelled"].includes(row.state) && row.state !== status) {
+      throw new TerminalWaitError(`Runtime v3 turn became ${row.state} (${row.code ?? "no code"})`);
+    }
+    return row.state === status;
+  }, timeoutMs);
+}
+
 async function turnDiagnostic(turnId: string): Promise<string> {
   const row = await turnRow(turnId).catch(() => undefined);
   const [attempt] = await databaseSql!<Array<{
@@ -999,6 +1013,106 @@ describe("Runtime v2 real-process control plane", () => {
     const box = durableBoxId ? boxById(stateAfterCold, durableBoxId) : undefined;
     if (!box) throw new Error("cold send did not create a Box");
     expect(box.state).toMatch(/ready|idle|running/);
+
+    // THE-512 tracer bullet: explicitly hand the already-prepared warm Box/Pi identity to v3.
+    // The public send remains API-only; only the runtime process may observe the simulator.
+    if (!box.daemon.invocationId) throw new Error("warm Pi has no invocation identity");
+    await boxControl(`/boxes/${box.id}/scenario`, {
+      method: "PUT",
+      body: JSON.stringify({ scenario: "normal" }),
+    });
+    const [preparedV3] = await databaseSql!<Array<{ preparedAt: Date }>>`
+      insert into companion_v3_instances(
+        org_id, companion_id, box_id, pi_invocation_id, prepared_at
+      ) values (
+        ${orgId}::uuid, ${companionId}::uuid, ${box.id},
+        ${box.daemon.invocationId}, clock_timestamp()
+      ) returning prepared_at as "preparedAt"
+    `;
+    await stopProcess(runtimeProcess, "SIGKILL");
+    runtimeProcess = undefined;
+    const beforeV3Send = await simulatorState();
+    const warmMessageId = randomUUID();
+    const warmBody = {
+      client_message_id: warmMessageId,
+      client_surface: "web",
+      content: "Return one deterministic warm Runtime v3 answer.",
+    };
+    const warmStartedAt = Date.now();
+    const warm = await apiJson<{ turn: { id: string; status: string } }>(
+      `/v1/companions/${companionId}/messages`,
+      { method: "POST", body: JSON.stringify(warmBody) },
+      202,
+    );
+    const warmReplay = await apiJson<{ turn: { id: string; status: string } }>(
+      `/v1/companions/${companionId}/messages`,
+      { method: "POST", body: JSON.stringify(warmBody) },
+      202,
+    );
+    expect(Date.now() - warmStartedAt).toBeLessThan(1_000);
+    expect(warm.turn.status).toBe("queued");
+    expect(warmReplay.turn.id).toBe(warm.turn.id);
+    const [preparedAfterSend] = await databaseSql!<Array<{ preparedAt: Date }>>`
+      select prepared_at as "preparedAt" from companion_v3_instances
+      where org_id = ${orgId}::uuid and companion_id = ${companionId}::uuid
+    `;
+    expect(preparedAfterSend!.preparedAt.getTime()).toBe(preparedV3!.preparedAt.getTime());
+    const immediatelyAfterV3Send = await simulatorState();
+    expect(immediatelyAfterV3Send.requests.filter((request) => request.surface === "box"))
+      .toHaveLength(beforeV3Send.requests.filter((request) => request.surface === "box").length);
+
+    runtimeProcess = startRuntime(randomUUID());
+    await waitForHttp(`${runtimeBase}/healthz`, runtimeProcess);
+    await waitForV3Turn(warm.turn.id, "succeeded");
+    const warmThread = await apiJson<{ thread: {
+      active_turn: unknown;
+      queued_count: number;
+      entries: Array<{ event_id: string; role: string; turn_id: string | null; queued: boolean }>;
+    } }>(`/v1/companions/${companionId}/thread`, { method: "GET" }, 200);
+    expect(warmThread.thread.active_turn).toBeNull();
+    expect(warmThread.thread.queued_count).toBe(0);
+    expect(warmThread.thread.entries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        event_id: `msg:${warmMessageId}`,
+        role: "user",
+        turn_id: warm.turn.id,
+        queued: false,
+      }),
+    ]));
+    const warmWindow = await apiJson<{
+      thread: { active_turn: unknown; queued_count: number };
+      entries: Array<{ event_id: string; turn_id: string | null; queued: boolean }>;
+    }>(`/v1/companions/${companionId}/thread-window?limit=50`, { method: "GET" }, 200);
+    expect(warmWindow.thread).toEqual(expect.objectContaining({ active_turn: null, queued_count: 0 }));
+    expect(warmWindow.entries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        event_id: `msg:${warmMessageId}`,
+        turn_id: warm.turn.id,
+        queued: false,
+      }),
+    ]));
+    const [warmProjection] = await databaseSql!<Array<{
+      assistants: number;
+      admissionState: string;
+      leaseToken: string | null;
+    }>>`
+      select count(entry.*)::integer as assistants,
+        max(turn_row.admission_state::text) as "admissionState",
+        max(lease.claim_token::text) as "leaseToken"
+      from companion_v3_turns turn_row
+      join companion_v3_lane_leases lease
+        on lease.org_id = turn_row.org_id and lease.companion_id = turn_row.companion_id
+          and lease.lane = turn_row.lane
+      left join companion_transcript_entries entry
+        on entry.org_id = turn_row.org_id and entry.companion_id = turn_row.companion_id
+          and entry.role = 'assistant' and entry.event_id like 'v3:' || turn_row.id::text || ':%'
+      where turn_row.id = ${warm.turn.id}::uuid
+      group by turn_row.id`;
+    expect(warmProjection).toEqual({ assistants: 1, admissionState: "accepted", leaseToken: null });
+
+    // Return the long-running v2 acceptance fixture to its original routing after the v3 proof.
+    await databaseSql!`delete from companion_v3_instances
+      where org_id = ${orgId}::uuid and companion_id = ${companionId}::uuid`;
     await boxControl(`/boxes/${box.id}/scenario`, {
       method: "PUT",
       body: JSON.stringify({ scenario: "ask_user" }),

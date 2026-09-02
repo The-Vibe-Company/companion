@@ -1,7 +1,7 @@
 /**
  * Product promise: Runtime v3 keeps FIFO, lane independence, and executor fencing as PostgreSQL
  * facts while callers use the closed TypeScript progression interface. The v2 executor and direct
- * process-role table access cannot claim or mutate these dormant rows.
+ * process-role table access cannot bypass the Runtime v3 capability surface.
  *
  * Why integrated: FORCE RLS, split grants, SKIP LOCKED, and monotonic takeover epochs only exist in
  * a real migrated PostgreSQL database. An in-memory adapter cannot prove them.
@@ -11,11 +11,16 @@
 import { randomUUID } from "node:crypto";
 import {
   createRuntimeV3Convergence,
+  createRuntimeV3WarmTurnAdvance,
 } from "@companion/companion-runtime/v3/internal";
 import postgres from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createRuntimeV3PostgresConvergence } from "../../src/runtimeV3ProgressionStore";
+import {
+  createRuntimeV3PostgresConvergence,
+  createRuntimeV3PostgresWarmConvergence,
+  createRuntimeV3PostgresWarmTurnPersistence,
+} from "../../src/runtimeV3ProgressionStore";
 
 const ownerUrl = process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL;
 const apiUrl = process.env.DATABASE_API_URL;
@@ -71,7 +76,7 @@ async function admitMain(commandId: string): Promise<void> {
   });
 }
 
-describe("dormant Runtime v3 progression facts", () => {
+describe("Runtime v3 progression facts", () => {
   beforeAll(async () => {
     const [apiRows, workerRows, runtimeRows] = await Promise.all([
       apiSql<Array<{ currentUser: string }>>`select current_user as "currentUser"`,
@@ -214,6 +219,173 @@ describe("dormant Runtime v3 progression facts", () => {
 
     expect(new Set(admissions.flat().map((admission) => admission.turnId)).size).toBe(1);
     expect(admissions.flat().map((admission) => admission.replayed).sort()).toEqual([false, true]);
+  });
+
+  it("claims warm work only after runtime-owned v3 preparation is durable", async () => {
+    const command = randomUUID();
+    await admitMain(command);
+
+    const unprepared = await runtimeSql<Array<{ commandId: string }>>`
+      select command_id as "commandId"
+      from public.companion_v3_runtime_claim_warm('runtime-warm-readiness', 'main', 30, 3)`;
+    expect(unprepared).toEqual([]);
+
+    await ownerSql`update public.companion_v3_instances
+      set box_id = 'bx_23456789', pi_invocation_id = 'invocation-ready',
+        prepared_at = clock_timestamp()
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
+    const prepared = await runtimeSql<Array<{ commandId: string }>>`
+      select command_id as "commandId"
+      from public.companion_v3_runtime_claim_warm('runtime-warm-readiness', 'main', 30, 3)`;
+    expect(prepared).toEqual([{ commandId: command }]);
+  });
+
+  it("settles warm text FIFO and releases a failed main lane before the next Turn", async () => {
+    await ownerSql`insert into public.companion_v3_instances(
+      org_id, companion_id, box_id, pi_invocation_id, prepared_at
+    ) values (
+      ${ids.org}::uuid, ${ids.companion}::uuid, 'bx_23456789', 'invocation-warm', clock_timestamp()
+    )`;
+    const first = randomUUID();
+    const second = randomUUID();
+    let firstSend: Array<{ turn: { id: string }; replayed: boolean }> = [];
+    let replay: Array<{ turn: { id: string }; replayed: boolean }> = [];
+    await asApi(async (sql) => {
+      firstSend = await sql<Array<{ turn: { id: string }; replayed: boolean }>>`
+        select turn, replayed from public.companion_v3_api_enqueue_warm_turn(
+          ${ids.org}::uuid, ${ids.companion}::uuid, ${first}::uuid, 'fail first'
+        )`;
+      replay = await sql<Array<{ turn: { id: string }; replayed: boolean }>>`
+        select turn, replayed from public.companion_v3_api_enqueue_warm_turn(
+          ${ids.org}::uuid, ${ids.companion}::uuid, ${first}::uuid, 'fail first'
+        )`;
+      await sql`select * from public.companion_v3_api_enqueue_warm_turn(
+        ${ids.org}::uuid, ${ids.companion}::uuid, ${second}::uuid, 'then answer'
+      )`;
+    });
+    expect(firstSend[0]!.replayed).toBe(false);
+    expect(replay).toEqual([{ turn: expect.objectContaining({ id: firstSend[0]!.turn.id }), replayed: true }]);
+
+    let queued: Array<{ queuedCount: number; isReplying: boolean }> = [];
+    await asApi(async (sql) => {
+      queued = await sql<Array<{ queuedCount: number; isReplying: boolean }>>`
+        select queued_count as "queuedCount", is_replying as "isReplying"
+        from public.companion_v3_api_read_projection(
+          ${ids.org}::uuid, ${ids.companion}::uuid,
+          ${sql.json([`msg:${first}`, `msg:${second}`])}::jsonb
+        )`;
+    });
+    expect(queued).toEqual([{ queuedCount: 2, isReplying: false }]);
+
+    const basePersistence = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
+    const admissionReplying: boolean[] = [];
+    const persistence = {
+      ...basePersistence,
+      async recordAdmission(...args: Parameters<typeof basePersistence.recordAdmission>) {
+        const recorded = await basePersistence.recordAdmission(...args);
+        await asApi(async (sql) => {
+          const rows = await sql<Array<{ isReplying: boolean }>>`
+            select is_replying as "isReplying"
+            from public.companion_v3_api_read_projection(
+              ${ids.org}::uuid, ${ids.companion}::uuid, '[]'::jsonb
+            )`;
+          admissionReplying.push(rows[0]!.isReplying);
+        });
+        return recorded;
+      },
+    };
+    const attempts = new Map<string, "fail" | "answer">();
+    const convergence = createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresWarmConvergence(runtimeSql),
+      advance: createRuntimeV3WarmTurnAdvance({
+        persistence,
+        pi: {
+          async prompt(input) {
+            attempts.set(input.turnId, input.message === "fail first" ? "fail" : "answer");
+            return { outcome: "accepted", invocationId: "invocation-warm", initialCursor: 0n };
+          },
+          async read(input) {
+            if (attempts.get(input.turnId) === "fail") {
+              return {
+                events: [{
+                  sequence: 1n,
+                  invocationId: input.invocationId,
+                  attemptId: input.turnId,
+                  kind: "pi_process_exit",
+                  exit: { code: 1, signal: null },
+                }],
+                nextCursor: 1n,
+                acknowledgedCursor: 0n,
+                hasMore: false,
+              };
+            }
+            return {
+              events: [
+                {
+                  sequence: 1n,
+                  invocationId: input.invocationId,
+                  attemptId: input.turnId,
+                  kind: "pi_event",
+                  event: {
+                    type: "message_end",
+                    message: {
+                      role: "assistant",
+                      content: [{ type: "text", text: "durable answer" }],
+                      stopReason: "stop",
+                    },
+                  },
+                },
+                {
+                  sequence: 2n,
+                  invocationId: input.invocationId,
+                  attemptId: input.turnId,
+                  kind: "pi_event",
+                  event: { type: "agent_settled" },
+                },
+              ],
+              nextCursor: 2n,
+              acknowledgedCursor: 0n,
+              hasMore: false,
+            };
+          },
+          async acknowledge(input) { return input.through; },
+        },
+      }),
+    });
+
+    await expect(convergence.converge({ executorId: "runtime-v3-warm" }))
+      .resolves.toEqual({ progressed: 2, exhausted: false });
+    expect(admissionReplying).toEqual([true, true]);
+
+    const facts = await ownerSql<Array<{
+      state: string;
+      claimToken: string | null;
+      assistantCount: number;
+    }>>`
+      select turn_row.state::text, lease.claim_token::text as "claimToken",
+        (select count(*)::integer from public.companion_transcript_entries entry
+          where entry.org_id = turn_row.org_id and entry.companion_id = turn_row.companion_id
+            and entry.role = 'assistant') as "assistantCount"
+      from public.companion_v3_turns turn_row
+      join public.companion_v3_lane_leases lease
+        on lease.org_id = turn_row.org_id and lease.companion_id = turn_row.companion_id
+          and lease.lane = turn_row.lane
+      where turn_row.command_id in (${first}::uuid, ${second}::uuid)
+      order by turn_row.queue_sequence`;
+    expect(facts).toEqual([
+      { state: "failed", claimToken: null, assistantCount: 1 },
+      { state: "succeeded", claimToken: null, assistantCount: 1 },
+    ]);
+    let terminal: Array<{ activeTurn: unknown; queuedCount: number; isReplying: boolean }> = [];
+    await asApi(async (sql) => {
+      terminal = await sql<Array<{ activeTurn: unknown; queuedCount: number; isReplying: boolean }>>`
+        select active_turn as "activeTurn", queued_count as "queuedCount",
+          is_replying as "isReplying"
+        from public.companion_v3_api_read_projection(
+          ${ids.org}::uuid, ${ids.companion}::uuid, '[]'::jsonb
+        )`;
+    });
+    expect(terminal).toEqual([{ activeTurn: null, queuedCount: 0, isReplying: false }]);
   });
 
   it("increments lane fences monotonically and rejects stale completion", async () => {
@@ -453,7 +625,7 @@ describe("dormant Runtime v3 progression facts", () => {
       .rejects.toMatchObject({ code: "42501" });
   });
 
-  it("keeps dormant work non-activatable while the existing runtime gate is disabled", async () => {
+  it("keeps v3 work non-activatable while the existing runtime gate is disabled", async () => {
     await admitMain(randomUUID());
     await ownerSql.begin(async (sql) => {
       const rows = await sql<Array<{

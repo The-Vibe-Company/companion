@@ -1,9 +1,11 @@
 # Companions Runtime v2
 
-> Runtime v3 expand note (THE-510): migration 0159 and the TypeScript progression module add a
-> dormant, separately named v3 persistence/interface seam beside the live system described here.
-> It is not wired into the API, worker, or runtime composition roots and cannot change this v2
-> contract. V3 has one Turn carrying command/admission/activity/outcome facts, independent
+> Runtime v3 warm-text note (THE-510/THE-512): migration 0159 and the TypeScript progression module
+> add a separately named v3 persistence/interface seam beside the live system described here;
+> migration 0161 wires its first narrow tracer bullet. An attachment-free public text send for an
+> explicitly prepared warm aggregate persists its message and Turn atomically, then the runtime
+> alone admits it to Pi and projects one durable assistant result. Other aggregates and surfaces
+> retain the v2 contract in this stack. V3 has one Turn carrying command/admission/activity/outcome facts, independent
 > `main`/`background` leases, no attempt table, and no derived Start operation. Its protocol-3
 > functions remain behind forced RLS, split role grants, and the existing runtime kill switch.
 >

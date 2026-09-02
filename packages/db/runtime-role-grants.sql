@@ -944,17 +944,24 @@ BEGIN
     ) IS NOT NULL THEN
       companion_api_functions := companion_api_functions || ARRAY[
         'public.companion_v3_api_admit_turn(uuid,uuid,uuid,text)'::regprocedure,
-        'public.companion_v3_api_desire_lifecycle(uuid,uuid,public.companion_v3_lifecycle_intent)'::regprocedure
+        'public.companion_v3_api_desire_lifecycle(uuid,uuid,public.companion_v3_lifecycle_intent)'::regprocedure,
+        'public.companion_v3_api_enqueue_warm_turn(uuid,uuid,uuid,text)'::regprocedure,
+        'public.companion_v3_api_read_projection(uuid,uuid,jsonb)'::regprocedure
       ];
       worker_functions := worker_functions || ARRAY[
         'public.companion_v3_worker_admit_turn(uuid,uuid,uuid,text,text)'::regprocedure
       ];
       companion_runtime_functions := companion_runtime_functions || ARRAY[
         'public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer)'::regprocedure,
-        'public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure
+        'public.companion_v3_runtime_claim_warm(text,public.companion_v3_lane,integer,integer)'::regprocedure,
+        'public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure,
+        'public.companion_v3_runtime_authorize_warm_turn(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure,
+        'public.companion_v3_runtime_record_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,bigint,integer)'::regprocedure,
+        'public.companion_v3_runtime_project_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,integer)'::regprocedure
       ];
       internal_runtime_functions := internal_runtime_functions || ARRAY[
-        'public.companion_v3_admit_turn(uuid,uuid,uuid,text,text,public.companion_v3_lane)'::regprocedure
+        'public.companion_v3_admit_turn(uuid,uuid,uuid,text,text,public.companion_v3_lane)'::regprocedure,
+        'public.companion_v3_public_turn(public.companion_v3_turns)'::regprocedure
       ];
     END IF;
 

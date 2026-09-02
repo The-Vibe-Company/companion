@@ -29,6 +29,7 @@ export type CompanionRuntimeSafeError = z.infer<typeof companionRuntimeSafeError
 
 export const companionTurnStatusSchema = z.enum([
   "queued",
+  "admitted",
   "starting",
   "dispatching",
   "running",
@@ -144,6 +145,10 @@ export const companionTurnSchema = z.object({
   recovery_status: companionRecoveryStatusSchema.nullable().catch(null).optional(),
   queue_sequence: z.number().int().positive(),
   latest_attempt: companionTurnAttemptSchema.nullable(),
+  /** Runtime v3 owns Pi admission on the Turn itself and deliberately has no attempt row. */
+  admission_state: z.enum(["pending", "accepted", "ambiguous"]).optional(),
+  /** Present exactly after Runtime v3 has durably recorded a positive or ambiguous admission. */
+  admitted_at: companionRuntimeTimestampSchema.nullable().optional(),
   /** Server-computed durable replying fact. Clients must not infer it from transcript tails. */
   replying: z.boolean(),
   error: companionRuntimeSafeErrorSchema.nullable(),
@@ -154,6 +159,24 @@ export const companionTurnSchema = z.object({
 }).strict().superRefine((turn, context) => {
   validateTerminalSettlement(turn, terminalTurnStatuses, context);
   const attempt = turn.latest_attempt;
+  const v3Admission = turn.admission_state;
+  if (
+    v3Admission !== undefined
+    && ((v3Admission === "pending") !== (turn.admitted_at == null))
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["admitted_at"],
+      message: "Runtime v3 admitted_at is present exactly after Pi admission",
+    });
+  }
+  if (turn.status === "admitted" && v3Admission !== "accepted") {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["admission_state"],
+      message: "admitted status requires positive Runtime v3 Pi admission",
+    });
+  }
   if (turn.resolution === "auto_abandoned" && turn.status !== "interrupted") {
     context.addIssue({
       code: z.ZodIssueCode.custom,
@@ -189,7 +212,11 @@ export const companionTurnSchema = z.object({
     && attempt?.status === "running"
     && attempt.dispatch_state === "accepted"
     && attempt.dispatch_accepted_at !== null;
-  if (turn.replying && !replyIsDurablyAccepted) {
+  const v3ReplyIsDurablyAccepted = attempt === null
+    && v3Admission === "accepted"
+    && (turn.status === "admitted" || turn.status === "running")
+    && turn.admitted_at != null;
+  if (turn.replying && !replyIsDurablyAccepted && !v3ReplyIsDurablyAccepted) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["replying"],
@@ -200,6 +227,7 @@ export const companionTurnSchema = z.object({
 export type CompanionTurn = z.infer<typeof companionTurnSchema>;
 
 const activeTurnStatuses = new Set<CompanionTurnStatus>([
+  "admitted",
   "starting",
   "dispatching",
   "running",

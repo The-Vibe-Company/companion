@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createRuntimeV3Progression,
+  createRuntimeV3WarmTurnAdvance,
   type RuntimeV3Claim,
   type RuntimeV3ConvergencePersistence,
   type RuntimeV3ProgressionPersistence,
@@ -183,5 +184,111 @@ describe("Runtime v3 progression interface", () => {
       error: { code: "runtime_failure", action: "retry" },
     });
     expect(JSON.stringify(completion)).not.toContain("secret");
+  });
+
+  it("keeps warm Pi admission and durable projection inside autonomous convergence", async () => {
+    const claims: ClaimQueues = { main: [mainClaim, null], background: [null] };
+    const store = persistence({ claimLane: vi.fn(claimFrom(claims)) });
+    const warm = {
+      authorize: vi.fn().mockResolvedValue({
+        boxId: "bx_23456789",
+        piInvocationId: "invocation-1",
+        content: "Summarize the incident",
+        cursor: 0n,
+      }),
+      recordAdmission: vi.fn().mockResolvedValue(true),
+      project: vi.fn().mockResolvedValue(true),
+    };
+    const pi = {
+      prompt: vi.fn().mockResolvedValue({
+        outcome: "accepted" as const,
+        invocationId: "invocation-1",
+        initialCursor: 0n,
+      }),
+      read: vi.fn().mockResolvedValue({
+        events: [
+          {
+            sequence: 1n,
+            invocationId: "invocation-1",
+            attemptId: acceptedTurn.id,
+            kind: "pi_event",
+            event: {
+              type: "message_end",
+              message: {
+                role: "assistant",
+                content: [{ type: "text", text: "The incident is resolved." }],
+                stopReason: "stop",
+              },
+            },
+          },
+          {
+            sequence: 2n,
+            invocationId: "invocation-1",
+            attemptId: acceptedTurn.id,
+            kind: "pi_event",
+            event: { type: "agent_settled" },
+          },
+        ],
+        nextCursor: 2n,
+        acknowledgedCursor: 0n,
+        hasMore: false,
+      }),
+      acknowledge: vi.fn().mockResolvedValue(2n),
+    };
+    const progression = createRuntimeV3Progression({
+      persistence: store,
+      advance: createRuntimeV3WarmTurnAdvance({ persistence: warm, pi }),
+    });
+
+    await expect(progression.converge({ executorId: "runtime-warm" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    expect(warm.recordAdmission).toHaveBeenCalledWith(mainClaim, {
+      invocationId: "invocation-1",
+      cursor: 0n,
+    });
+    expect(warm.project).toHaveBeenCalledWith(mainClaim, expect.objectContaining({
+      throughCursor: 2n,
+      settled: true,
+      assistant: [{
+        eventId: expect.stringMatching(/^v3:/),
+        content: "The incident is resolved.",
+      }],
+    }));
+    expect(pi.acknowledge).toHaveBeenCalledWith(expect.objectContaining({ through: 2n }));
+    expect(store.convergence.completeProgression).toHaveBeenCalledWith(
+      mainClaim,
+      { kind: "succeeded" },
+    );
+  });
+
+  it("fails closed without contacting Pi when fenced warm authorization is unavailable", async () => {
+    const claims: ClaimQueues = { main: [mainClaim, null], background: [null] };
+    const store = persistence({ claimLane: vi.fn(claimFrom(claims)) });
+    const warm = {
+      authorize: vi.fn().mockResolvedValue(null),
+      recordAdmission: vi.fn().mockResolvedValue(true),
+      project: vi.fn().mockResolvedValue(true),
+    };
+    const pi = {
+      prompt: vi.fn(),
+      read: vi.fn(),
+      acknowledge: vi.fn(),
+    };
+    const progression = createRuntimeV3Progression({
+      persistence: store,
+      advance: createRuntimeV3WarmTurnAdvance({ persistence: warm, pi }),
+    });
+
+    await expect(progression.converge({ executorId: "runtime-unprepared" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    expect(pi.prompt).not.toHaveBeenCalled();
+    expect(store.convergence.completeProgression).toHaveBeenCalledWith(mainClaim, {
+      kind: "failed",
+      error: {
+        code: "warm_turn_unauthorized",
+        message: "The warm Turn is no longer authorized to run.",
+        action: "none",
+      },
+    });
   });
 });

@@ -23,6 +23,10 @@ import {
   type RuntimeStore,
 } from "@companion/companion-runtime";
 import {
+  createRuntimeV3Convergence,
+  createRuntimeV3WarmTurnAdvance,
+} from "@companion/companion-runtime/v3/internal";
+import {
   createStorageClient,
   getSkillArchive,
   getStorageConfig,
@@ -55,6 +59,11 @@ import {
   type RuntimeKernelScheduler,
 } from "./schedulerAdapter";
 import { createSentryRuntimeProcessLog } from "./sentry";
+import {
+  createRuntimeV3PostgresWarmConvergence,
+  createRuntimeV3PostgresWarmTurnPersistence,
+} from "./runtimeV3ProgressionStore";
+import { createRuntimeV3WarmPi } from "./runtimeV3WarmPi";
 
 export interface RuntimeArchiveStorage {
   load(storagePath: string, signal: AbortSignal): Promise<Buffer>;
@@ -321,10 +330,11 @@ export async function buildProductionRuntimeService(
         log,
       })
       : null;
+    const pi = direct?.pi ?? execPi;
     const kernel = factories.createKernel({
       store,
       box: createRuntimeBoxControl(adapters),
-      pi: direct?.pi ?? execPi,
+      pi,
       ...(direct && config.directTransport === "on"
         ? { eventPollIntervalMs: direct.eventPollIntervalMs }
         : {}),
@@ -345,10 +355,23 @@ export async function buildProductionRuntimeService(
         desktop: async (input) => await freshRuntime().desktop(input),
       },
     });
+    const runtimeV3 = createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresWarmConvergence(database.sql, {
+        enabledLanes: new Set(["main"]),
+      }),
+      advance: createRuntimeV3WarmTurnAdvance({
+        persistence: createRuntimeV3PostgresWarmTurnPersistence(database.sql),
+        pi: createRuntimeV3WarmPi(pi),
+      }),
+    });
     return composeRuntimeService({
       config,
       store,
-      scheduler: createRuntimeSchedulerAdapter(kernel.scheduler),
+      scheduler: createRuntimeSchedulerAdapter(kernel.scheduler, {
+        convergence: runtimeV3,
+        executorId: config.executorId,
+        sweepIntervalMs: config.sweepIntervalMs,
+      }),
       desktop,
       desktopReplay: new PostgresRuntimeDesktopReplayGuard(database.sql),
       imageHealth: () => imageSupervisor.snapshot(),

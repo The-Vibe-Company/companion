@@ -1288,7 +1288,7 @@ export const companionTurns = pgTable(
   }),
 );
 
-/** Dormant Runtime v3 aggregate facts; no production composition root reads these yet. */
+/** Runtime v3 aggregate facts, including the narrow prepared-warm tracer-bullet projection. */
 export const companionV3Instances = pgTable(
   "companion_v3_instances",
   {
@@ -1297,6 +1297,9 @@ export const companionV3Instances = pgTable(
     desiredLifecycle: companionV3LifecycleIntentEnum("desired_lifecycle").notNull().default("prepare"),
     desiredLifecycleRevision: bigint("desired_lifecycle_revision", { mode: "number" }).notNull().default(1),
     desiredLifecycleActorId: text("desired_lifecycle_actor_id"),
+    boxId: text("box_id"),
+    piInvocationId: text("pi_invocation_id"),
+    preparedAt: timestamp("prepared_at", { withTimezone: true }),
     nextMainSequence: bigint("next_main_sequence", { mode: "number" }).notNull().default(1),
     nextBackgroundSequence: bigint("next_background_sequence", { mode: "number" }).notNull().default(1),
     createdAt: now(),
@@ -1316,6 +1319,10 @@ export const companionV3Instances = pgTable(
     actorCheck: check(
       "companion_v3_instances_actor_check",
       sql`${t.desiredLifecycleActorId} is null or (char_length(${t.desiredLifecycleActorId}) between 1 and 200 and ${t.desiredLifecycleActorId} !~ E'[\n\r]')`,
+    ),
+    preparedCheck: check(
+      "companion_v3_instances_prepared_check",
+      sql`(${t.boxId} is null and ${t.piInvocationId} is null and ${t.preparedAt} is null) or (${t.boxId} ~ '^bx_[23456789abcdefghjkmnpqrstuvwxyz]{8}$' and char_length(${t.piInvocationId}) between 1 and 200 and ${t.piInvocationId} !~ E'[\n\r]' and ${t.preparedAt} is not null)`,
     ),
   }),
 );

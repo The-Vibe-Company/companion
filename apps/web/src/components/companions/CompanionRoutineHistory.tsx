@@ -42,6 +42,7 @@ const FOCUSABLE =
 
 const STATUS_LABELS = {
   queued: "Queued",
+  admitted: "Admitted",
   starting: "Starting",
   dispatching: "Dispatching",
   running: "Running",

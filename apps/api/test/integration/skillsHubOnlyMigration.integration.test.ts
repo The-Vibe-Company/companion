@@ -42,7 +42,7 @@ describe("Skills Hub-only database migration", () => {
               or p.proname like 'companion%model_provider%'
               or p.proname like 'companion%sandbox%'
             )
-            -- Runtime v2 projects correlated broker events and terminal attempt state. Those
+            -- Companion runtimes project correlated broker events and terminal Turn state. Those
             -- verbs contain the English word "project" but are unrelated to the removed generic
             -- Projects product. Keep the historical-runtime assertion exact instead of treating
             -- every future use of "projection" as a resurrected Project function.
@@ -53,7 +53,9 @@ describe("Skills Hub-only database migration", () => {
               'companion_runtime_project_automatic_decision_close',
               'companion_runtime_reconcile_projected_decision_with_member_turn',
               'companion_api_read_thread_projection_sequence',
-              'companion_thread_allocate_projection_sequence'
+              'companion_thread_allocate_projection_sequence',
+              'companion_v3_api_read_projection',
+              'companion_v3_runtime_project_page'
             )
         ) as "runtimeFunctions",
         (

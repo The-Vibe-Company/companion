@@ -2,6 +2,7 @@ import type {
   RuntimeV3ConvergencePersistence,
   RuntimeV3DurableOutcome,
   RuntimeV3Turn,
+  RuntimeV3WarmTurnPersistence,
 } from "@companion/companion-runtime/v3/internal";
 import type { Sql } from "postgres";
 
@@ -51,16 +52,44 @@ function terminalInput(outcome: RuntimeV3DurableOutcome): TerminalCompletion {
 }
 
 /** Runtime-role PostgreSQL adapter kept outside the caller-facing interface and composition root. */
-export function createRuntimeV3PostgresConvergence(sql: Sql): RuntimeV3ConvergencePersistence {
+export function createRuntimeV3PostgresConvergence(
+  sql: Sql,
+  options: { enabledLanes?: ReadonlySet<"main" | "background"> } = {},
+): RuntimeV3ConvergencePersistence {
+  return createPostgresConvergence(sql, false, options);
+}
+
+/** Warm-only production adapter: durable v3 preparation is part of claim eligibility. */
+export function createRuntimeV3PostgresWarmConvergence(
+  sql: Sql,
+  options: { enabledLanes?: ReadonlySet<"main" | "background"> } = {},
+): RuntimeV3ConvergencePersistence {
+  return createPostgresConvergence(sql, true, options);
+}
+
+function createPostgresConvergence(
+  sql: Sql,
+  warmOnly: boolean,
+  options: { enabledLanes?: ReadonlySet<"main" | "background"> },
+): RuntimeV3ConvergencePersistence {
   return {
     async claimLane({ executorId, lane }) {
-      const rows = await sql<ClaimRow[]>`
-        select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
-          command_id as "commandId", lane::text, state::text,
-          claim_token as "claimToken", claim_epoch::text as "claimEpoch",
-          gate_epoch::text as "gateEpoch"
-        from public.companion_v3_runtime_claim(${executorId}, ${lane}, 30, 3)
-      `;
+      if (options.enabledLanes && !options.enabledLanes.has(lane)) return null;
+      const rows = warmOnly
+        ? await sql<ClaimRow[]>`
+          select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
+            command_id as "commandId", lane::text, state::text,
+            claim_token as "claimToken", claim_epoch::text as "claimEpoch",
+            gate_epoch::text as "gateEpoch"
+          from public.companion_v3_runtime_claim_warm(${executorId}, ${lane}, 30, 3)
+        `
+        : await sql<ClaimRow[]>`
+          select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
+            command_id as "commandId", lane::text, state::text,
+            claim_token as "claimToken", claim_epoch::text as "claimEpoch",
+            gate_epoch::text as "gateEpoch"
+          from public.companion_v3_runtime_claim(${executorId}, ${lane}, 30, 3)
+        `;
       const row = rows[0];
       return row
         ? {
@@ -94,6 +123,82 @@ export function createRuntimeV3PostgresConvergence(sql: Sql): RuntimeV3Convergen
         ) as completed
       `;
       return rows[0]?.completed === true;
+    },
+  };
+}
+
+interface WarmMaterialRow {
+  boxId: string;
+  piInvocationId: string;
+  content: string;
+  activityCursor: string;
+}
+
+/** Fenced Runtime v3 warm-turn facts; Box/Pi values never cross into the API process. */
+export function createRuntimeV3PostgresWarmTurnPersistence(
+  sql: Sql,
+): RuntimeV3WarmTurnPersistence {
+  return {
+    async authorize(claim) {
+      const rows = await sql<WarmMaterialRow[]>`
+        select box_id as "boxId", pi_invocation_id as "piInvocationId",
+          content, activity_cursor::text as "activityCursor"
+        from public.companion_v3_runtime_authorize_warm_turn(
+          ${claim.orgId}::uuid,
+          ${claim.companionId}::uuid,
+          ${claim.turn.lane},
+          ${claim.turn.id}::uuid,
+          ${claim.fence.token}::uuid,
+          ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,
+          3
+        )
+      `;
+      const row = rows[0];
+      return row
+        ? {
+          boxId: row.boxId,
+          piInvocationId: row.piInvocationId,
+          content: row.content,
+          cursor: BigInt(row.activityCursor),
+        }
+        : null;
+    },
+    async recordAdmission(claim, input) {
+      const rows = await sql<Array<{ recorded: boolean }>>`
+        select public.companion_v3_runtime_record_admission(
+          ${claim.orgId}::uuid,
+          ${claim.companionId}::uuid,
+          ${claim.turn.lane},
+          ${claim.turn.id}::uuid,
+          ${claim.fence.token}::uuid,
+          ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,
+          ${input.invocationId},
+          ${input.cursor.toString()}::bigint,
+          3
+        ) as recorded
+      `;
+      return rows[0]?.recorded === true;
+    },
+    async project(claim, projection) {
+      const rows = await sql<Array<{ projected: boolean }>>`
+        select public.companion_v3_runtime_project_page(
+          ${claim.orgId}::uuid,
+          ${claim.companionId}::uuid,
+          ${claim.turn.lane},
+          ${claim.turn.id}::uuid,
+          ${claim.fence.token}::uuid,
+          ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,
+          ${projection.throughCursor.toString()}::bigint,
+          ${sql.json(projection.assistant)}::jsonb,
+          ${projection.needsInput},
+          ${projection.settled},
+          3
+        ) as projected
+      `;
+      return rows[0]?.projected === true;
     },
   };
 }

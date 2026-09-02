@@ -54,16 +54,18 @@ slow, local-only final validation and is intentionally not part of CI.
 
 ## Runtime test layers
 
-The dormant Runtime v3 expand seam is proved at its public TypeScript progression interface and a
+The Runtime v3 progression seam is proved at its public TypeScript progression interface and a
 supporting disposable real-PostgreSQL seam. The interface test must show that callers only admit,
 record desired lifecycle, and converge; main and background claims are obtained and advanced
 independently so a blocked main claim cannot serialize or starve background work. PostgreSQL tests
 prove idempotent command admission, per-lane FIFO, monotonic takeover epochs, stale-fence rejection,
 shared kill-switch epoch invalidation, invalid-boundary rejection before lease mutation, forced RLS,
 distinct API/worker/runtime function grants, protocol isolation from v2 executors, and the absence
-of a v3 attempt or derived Start-operation table. Until the warm-turn tracer bullet is implemented,
-the existing Runtime v2 topology suite remains the end-to-end behavior regression gate; tests must
-not activate v3 through a production composition root.
+of a v3 attempt or derived Start-operation table. The warm-text tracer bullet additionally runs the
+production HTTP API and runtime as separate processes against a fresh migrated PostgreSQL database
+and the deterministic Box/Pi simulator. It stops runtime across the public send to prove the `202`
+has no provider dependency, replays the same `client_message_id`, then verifies positive admission,
+exactly one durable assistant entry, terminal projection, and lane release after runtime restart.
 
 The Runtime v2 purge suite creates a disposable database, replays the complete migration history,
 and uses deterministic trigger, object-store, named-snapshot, and Box adapters. It proves inventory

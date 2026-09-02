@@ -102,6 +102,27 @@ describe("Companion Runtime v2 public contracts", () => {
     })).replying).toBe(false);
   });
 
+  it("projects Runtime v3 admission without inventing an attempt", () => {
+    const admitted = turn({
+      status: "admitted",
+      latest_attempt: null,
+      admission_state: "accepted",
+      admitted_at: createdAt,
+      replying: true,
+    });
+    expect(companionActiveTurnSchema.parse(admitted)).toMatchObject({
+      status: "admitted",
+      admission_state: "accepted",
+      replying: true,
+      latest_attempt: null,
+    });
+    expect(() => companionTurnSchema.parse({
+      ...admitted,
+      admission_state: "pending",
+      admitted_at: null,
+    })).toThrow();
+  });
+
   it("keeps queued and interrupted turns distinct and enforces terminal errors", () => {
     const queued = turn({
       status: "queued",

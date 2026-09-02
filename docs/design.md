@@ -208,7 +208,7 @@ persist an asynchronous control request and return immediately. Approval applies
 and may enqueue an ordinary FIFO continuation. Routine and trigger turns never receive this MCP.
 Directed peer grants allow bounded text delegations without introducing a Group or Room aggregate.
 
-### Dormant Runtime v3 progression seam
+### Runtime v3 warm-text progression seam
 
 Migration 0159 is the expand half of the Runtime v3 wide refactor. It adds separate
 `companion_v3_instances`, `companion_v3_turns`, and retained per-lane lease facts beside Runtime v2.
@@ -218,13 +218,14 @@ admission, independent `main`/`background` FIFO, and monotonic fence epochs. Typ
 deep progression interface—admit, record desired lifecycle, and converge—and keeps claim and
 completion choreography in its internal adapter.
 
-This seam is dormant. No API, worker, or runtime production composition root calls it, the v2
-executor uses its unchanged protocol-7 functions, and protocol-3 claims still fail closed when the
-existing Companions runtime gate is disabled. V3 lane leases carry that gate's epoch; a gate change
-atomically invalidates their tokens, and both claim and completion lock and verify the shared fence.
-The separate function names and required protocol argument prevent an old executor from claiming
-or mutating v3 rows. Later stack layers replace behavior behind this interface; they do not activate
-a second live runtime beside v2.
+Migration 0161 routes only attachment-free text sends for an explicitly prepared warm v3 aggregate.
+The API atomically persists the user entry and Turn and returns without Box credentials; the runtime
+composition claims only the v3 `main` lane, reauthorizes the actor, dispatches through the existing
+Pi transport, records positive admission before `replying`, and projects one assistant result into
+the durable thread before ACK and terminal settlement. Aggregates not explicitly prepared for v3,
+files, routines, and background work remain on their prior paths in this stack. Protocol-3 claims
+still fail closed under the shared runtime gate and carry its epoch, so stale executors cannot
+project or settle. There is still no v3 attempt table or derived Start operation.
 
 Migration 0160 adds the separate one-shot Runtime v2 purge needed before a later v3 cutover. Its
 operator module is dormant: no service composition root calls it. `report` and `purge --dry-run`

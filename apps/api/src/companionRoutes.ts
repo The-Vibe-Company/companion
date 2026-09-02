@@ -70,7 +70,7 @@ import {
   deleteCompanionTriggerV2,
   duplicateCompanionV2,
   enqueueCompanionOperationV2,
-  enqueueCompanionTurnV2,
+  enqueueCompanionTurn,
   extractTriggerDeliveryId,
   failCompanionTriggerFire,
   fireCompanionTrigger,
@@ -269,7 +269,7 @@ function defaultCompanionRouteDependencies() {
     createCompanionV2,
     duplicateCompanionV2,
     enqueueCompanionOperationV2,
-    enqueueCompanionTurnV2,
+    enqueueCompanionTurn,
     getCompanionDecisionV2,
     getCompanion,
     getCompanionV2,
@@ -785,7 +785,7 @@ export function registerCompanionRoutes(
     createCompanionV2,
     duplicateCompanionV2,
     enqueueCompanionOperationV2,
-    enqueueCompanionTurnV2,
+    enqueueCompanionTurn,
     getCompanionDecisionV2,
     getCompanion,
     getCompanionV2,
@@ -2667,7 +2667,7 @@ export function registerCompanionRoutes(
         }
 
         const accepted = await tenant(c, async ({ actor, orgId, database }) => {
-          const { turn } = await enqueueCompanionTurnV2({
+          const { turn } = await enqueueCompanionTurn({
             actor,
             orgId,
             companionId,

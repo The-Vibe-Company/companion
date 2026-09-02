@@ -47,7 +47,7 @@ const coreMocks = {
   createCompanionV2: vi.fn<typeof coreModule.createCompanionV2>(),
   duplicateCompanionV2: vi.fn<typeof coreModule.duplicateCompanionV2>(),
   enqueueCompanionOperationV2: vi.fn<typeof coreModule.enqueueCompanionOperationV2>(),
-  enqueueCompanionTurnV2: vi.fn<typeof coreModule.enqueueCompanionTurnV2>(),
+  enqueueCompanionTurn: vi.fn<typeof coreModule.enqueueCompanionTurn>(),
   getCompanionDecisionV2: vi.fn<typeof coreModule.getCompanionDecisionV2>(),
   getCompanionRoutineRunV2: vi.fn<typeof coreModule.getCompanionRoutineRunV2>(),
   getCompanionV2: vi.fn<typeof coreModule.getCompanionV2>(),
@@ -442,7 +442,7 @@ describe("Companions Runtime v2 API", () => {
       companion_id: COMPANION_ID,
       workspace_role: null,
     });
-    coreMocks.enqueueCompanionTurnV2.mockResolvedValue({
+    coreMocks.enqueueCompanionTurn.mockResolvedValue({
       turn,
       operation,
       replayed: false,
@@ -1264,7 +1264,7 @@ describe("Companions Runtime v2 API", () => {
 
     expect(response.status).toBe(202);
     await expect(response.json()).resolves.toEqual({ turn });
-    expect(coreMocks.enqueueCompanionTurnV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.enqueueCompanionTurn).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       clientMessageId: MESSAGE_ID,
       content: "Summarize the incident",
@@ -1289,7 +1289,7 @@ describe("Companions Runtime v2 API", () => {
 
     expect(response.status).toBe(202);
     expect(storageMocks.putSkillArchive).toHaveBeenCalledTimes(2);
-    const attachments = coreMocks.enqueueCompanionTurnV2.mock.calls[0]?.[0].attachments;
+    const attachments = coreMocks.enqueueCompanionTurn.mock.calls[0]?.[0].attachments;
     expect(attachments).toEqual([
       expect.objectContaining({
         content_type: "image/png",
@@ -1323,12 +1323,12 @@ describe("Companions Runtime v2 API", () => {
 
     expect(response.status).toBe(400);
     expect(storageMocks.putSkillArchive).not.toHaveBeenCalled();
-    expect(coreMocks.enqueueCompanionTurnV2).not.toHaveBeenCalled();
+    expect(coreMocks.enqueueCompanionTurn).not.toHaveBeenCalled();
   });
 
   it("removes the objects it just stored when the turn does not persist", async () => {
     const app = appWithRoutes();
-    coreMocks.enqueueCompanionTurnV2.mockRejectedValueOnce(new Error("queue is closed"));
+    coreMocks.enqueueCompanionTurn.mockRejectedValueOnce(new Error("queue is closed"));
     const form = new FormData();
     form.set("content", "Look at this");
     form.set("client_message_id", MESSAGE_ID);
@@ -1358,7 +1358,7 @@ describe("Companions Runtime v2 API", () => {
 
     expect(response.status).toBe(403);
     expect(storageMocks.putSkillArchive).not.toHaveBeenCalled();
-    expect(coreMocks.enqueueCompanionTurnV2).not.toHaveBeenCalled();
+    expect(coreMocks.enqueueCompanionTurn).not.toHaveBeenCalled();
   });
 
   it("never deletes an object it did not create when the replay conflicts", async () => {
@@ -1368,7 +1368,7 @@ describe("Companions Runtime v2 API", () => {
     storageMocks.putSkillArchive.mockRejectedValueOnce(
       Object.assign(new Error("PreconditionFailed"), { name: "PreconditionFailed" }),
     );
-    coreMocks.enqueueCompanionTurnV2.mockRejectedValueOnce(
+    coreMocks.enqueueCompanionTurn.mockRejectedValueOnce(
       Object.assign(new Error("client_message_id was reused with different message intent"), {
         code: "23505",
       }),
@@ -1392,7 +1392,7 @@ describe("Companions Runtime v2 API", () => {
     // A self-hosted object store that ignores `If-None-Match: *` would let the PUT succeed and put
     // the key in the cleanup list. A replay conflict must still never delete it.
     storageMocks.putSkillArchive.mockResolvedValueOnce(null);
-    coreMocks.enqueueCompanionTurnV2.mockRejectedValueOnce(
+    coreMocks.enqueueCompanionTurn.mockRejectedValueOnce(
       Object.assign(new Error("client_message_id was reused with different message intent"), {
         code: "23505",
       }),
@@ -1448,7 +1448,7 @@ describe("Companions Runtime v2 API", () => {
     expect(response.status).toBe(403);
     expect(coreMocks.getCompanionV2).toHaveBeenCalled();
     expect(storageMocks.putSkillArchive).not.toHaveBeenCalled();
-    expect(coreMocks.enqueueCompanionTurnV2).not.toHaveBeenCalled();
+    expect(coreMocks.enqueueCompanionTurn).not.toHaveBeenCalled();
   });
 
   it("refuses too many files and an empty file before storing anything", async () => {
@@ -1470,7 +1470,7 @@ describe("Companions Runtime v2 API", () => {
       expect(response.status).toBe(400);
     }
     expect(storageMocks.putSkillArchive).not.toHaveBeenCalled();
-    expect(coreMocks.enqueueCompanionTurnV2).not.toHaveBeenCalled();
+    expect(coreMocks.enqueueCompanionTurn).not.toHaveBeenCalled();
   });
 
   it("refuses a file over the per-attachment ceiling without reading its bytes", async () => {
@@ -1489,7 +1489,7 @@ describe("Companions Runtime v2 API", () => {
 
     expect(response.status).toBe(400);
     expect(storageMocks.putSkillArchive).not.toHaveBeenCalled();
-    expect(coreMocks.enqueueCompanionTurnV2).not.toHaveBeenCalled();
+    expect(coreMocks.enqueueCompanionTurn).not.toHaveBeenCalled();
   });
 
   it("lets a Viewer read an attachment without contacting the Box", async () => {
@@ -1576,7 +1576,7 @@ describe("Companions Runtime v2 API", () => {
       client_message_id: MESSAGE_ID,
       client_surface: "web",
     };
-    coreMocks.enqueueCompanionTurnV2
+    coreMocks.enqueueCompanionTurn
       .mockResolvedValueOnce({ turn, operation, replayed: false })
       .mockResolvedValueOnce({ turn, operation: null, replayed: true });
 
@@ -1586,12 +1586,12 @@ describe("Companions Runtime v2 API", () => {
     expect(first.status).toBe(202);
     expect(replay.status).toBe(202);
     expect(await replay.json()).toEqual(await first.json());
-    expect(coreMocks.enqueueCompanionTurnV2.mock.calls.map(([input]) => input.clientMessageId))
+    expect(coreMocks.enqueueCompanionTurn.mock.calls.map(([input]) => input.clientMessageId))
       .toEqual([MESSAGE_ID, MESSAGE_ID]);
   });
 
   it("maps a conflicting client_message_id replay SQLSTATE to 409", async () => {
-    coreMocks.enqueueCompanionTurnV2.mockRejectedValueOnce(Object.assign(
+    coreMocks.enqueueCompanionTurn.mockRejectedValueOnce(Object.assign(
       new Error("query failed"),
       { cause: Object.assign(new Error("message intent differs"), { code: "23505" }) },
     ));
@@ -1609,7 +1609,7 @@ describe("Companions Runtime v2 API", () => {
       jsonPost(`/v1/companions/${COMPANION_ID}/messages`, { content: "No id" }),
     );
     expect(response.status).toBe(400);
-    expect(coreMocks.enqueueCompanionTurnV2).not.toHaveBeenCalled();
+    expect(coreMocks.enqueueCompanionTurn).not.toHaveBeenCalled();
   });
 
   it("routes Companion creation, settings, member state, provider, and sharing through v2", async () => {

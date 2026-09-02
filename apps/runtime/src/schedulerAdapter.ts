@@ -1,6 +1,7 @@
 import type {
   RuntimeSchedulerSnapshot,
 } from "@companion/companion-runtime";
+import type { RuntimeV3Convergence } from "@companion/companion-runtime/v3/internal";
 
 import type { RuntimeApplicationScheduler } from "./application";
 
@@ -11,14 +12,60 @@ export interface RuntimeKernelScheduler {
   snapshot(): RuntimeSchedulerSnapshot;
 }
 
+export interface RuntimeV3SchedulerOptions {
+  convergence: RuntimeV3Convergence;
+  executorId: string;
+  sweepIntervalMs: number;
+}
+
 /** Adapt the reusable kernel without inventing a second drain timer or health state. */
 export function createRuntimeSchedulerAdapter(
   scheduler: RuntimeKernelScheduler,
+  runtimeV3?: RuntimeV3SchedulerOptions,
 ): RuntimeApplicationScheduler {
+  let v3Timer: ReturnType<typeof setTimeout> | null = null;
+  let v3Sweep: Promise<void> | null = null;
+  let v3Stopped = true;
+  let v3ErrorAt: Date | null = null;
+
+  const scheduleV3 = (delayMs: number): void => {
+    if (!runtimeV3 || v3Stopped) return;
+    v3Timer = setTimeout(() => {
+      v3Timer = null;
+      v3Sweep = runtimeV3.convergence.converge({ executorId: runtimeV3.executorId })
+        .then((result) => {
+          v3ErrorAt = null;
+          if (result.exhausted) scheduleV3(0);
+        })
+        .catch(() => {
+          v3ErrorAt = new Date();
+        })
+        .finally(() => {
+          v3Sweep = null;
+          if (!v3Timer) scheduleV3(runtimeV3.sweepIntervalMs);
+        });
+    }, delayMs);
+  };
+
   return {
-    start: () => scheduler.start(),
-    stopClaims: () => scheduler.stopClaims(),
+    start: () => {
+      scheduler.start();
+      if (runtimeV3) {
+        v3Stopped = false;
+        scheduleV3(0);
+      }
+    },
+    stopClaims: () => {
+      v3Stopped = true;
+      if (v3Timer) clearTimeout(v3Timer);
+      v3Timer = null;
+      scheduler.stopClaims();
+    },
     shutdown: async ({ drainTimeoutMs }) => {
+      v3Stopped = true;
+      if (v3Timer) clearTimeout(v3Timer);
+      v3Timer = null;
+      await v3Sweep;
       await scheduler.shutdown({ drainTimeoutMs });
     },
     snapshot: () => {
@@ -30,7 +77,7 @@ export function createRuntimeSchedulerAdapter(
         fatal: false,
         lastSweepStartedAt: snapshot.lastSweepStartedAt,
         lastSweepCompletedAt: snapshot.lastSweepCompletedAt,
-        claimLoopErrorAt: snapshot.claimLoopErrorAt,
+        claimLoopErrorAt: v3ErrorAt ?? snapshot.claimLoopErrorAt,
         activeCount: snapshot.activeCount,
       };
     },
