@@ -95,7 +95,7 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
       const create = (
         fromImage?: string,
         idempotencyKey = input.idempotencyKey,
-        deadlineLimit = input.deadlineAt,
+        deadlineLimit = input.workDeadlineAt ?? input.deadlineAt,
       ) =>
         options.lifecycle.createGenerationBoxAfterObservedAbsence({
           companionId: input.companionId,
@@ -115,7 +115,7 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
         from = undefined;
         created = await create(undefined, input.idempotencyKey
           ? coldFallbackIdempotencyKey(input.idempotencyKey)
-          : undefined, input.workDeadlineAt ?? input.deadlineAt);
+          : undefined);
       }
       const result = created;
       // A snapshot source that still ended without a clone name means this create cold-installed.

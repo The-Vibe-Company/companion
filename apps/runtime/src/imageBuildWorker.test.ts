@@ -51,6 +51,7 @@ function harness(input: {
   outcome?: "ready" | "failed" | "lease_lost";
   deleteError?: Error;
   authorizePublication?: boolean;
+  attemptBudgetMs?: number;
 } = {}): {
   options: ImageBuildWorkerOptions;
   calls: RegistryCalls;
@@ -158,6 +159,7 @@ function harness(input: {
     bakeOnce: bakeCompanionRuntimeImageOnce as never,
     log,
     pollIntervalMs: 1,
+    ...(input.attemptBudgetMs !== undefined ? { attemptBudgetMs: input.attemptBudgetMs } : {}),
     now: () => Date.now(),
     sleep: () => {
       if (firstSleep) {
@@ -262,9 +264,11 @@ describe("image build worker", () => {
     })]);
   });
 
-  it("persists a stable failure when the bake throws and keeps its lease fence", async () => {
-    vi.mocked(bakeCompanionRuntimeImageOnce).mockRejectedValue(new Error("provider exploded"));
-    const { calls, controller, done } = harness({ outcome: "failed" });
+  it("persists and logs an expurgated failure when the bake throws", async () => {
+    vi.mocked(bakeCompanionRuntimeImageOnce).mockRejectedValue(
+      new Error("provider payload https://provider.invalid/signed?token=secret-image-token"),
+    );
+    const { calls, controller, done, log } = harness({ outcome: "failed" });
     await vi.waitFor(() => expect(calls.outcomes).toHaveLength(1));
     controller.abort();
     await done;
@@ -274,7 +278,38 @@ describe("image build worker", () => {
       claimEpoch: 3,
       kind: "failed",
       errorCode: "image_build_failed",
+      errorMessage: "The runtime image build attempt failed.",
     })]);
+    expect(JSON.stringify(log?.records)).not.toContain("secret-image-token");
+  });
+
+  it("stops waiting for an uncooperative bake at the hard attempt budget", async () => {
+    vi.useFakeTimers();
+    try {
+      let bakeSignal: AbortSignal | undefined;
+      vi.mocked(bakeCompanionRuntimeImageOnce).mockImplementation(async (input) => {
+        bakeSignal = input.signal;
+        return await new Promise<never>(() => undefined);
+      });
+      const { calls, controller, done } = harness({
+        outcome: "failed",
+        attemptBudgetMs: 40,
+      });
+      await vi.waitFor(() => expect(bakeCompanionRuntimeImageOnce).toHaveBeenCalledOnce());
+      await vi.advanceTimersByTimeAsync(40);
+      await vi.waitFor(() => expect(calls.outcomes).toHaveLength(1));
+      controller.abort();
+      await done;
+
+      expect(bakeSignal?.aborted).toBe(true);
+      expect(calls.outcomes).toEqual([expect.objectContaining({
+        kind: "failed",
+        errorCode: "image_build_timeout",
+        errorMessage: "The runtime image build attempt exceeded its budget.",
+      })]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("deletes and clears a Box left by an expired claim before baking again", async () => {
@@ -365,7 +400,7 @@ describe("image build worker", () => {
     expect(calls.clearedBoxes).toEqual([]);
     expect(calls.outcomes[0]).toEqual(expect.objectContaining({
       kind: "failed",
-      errorMessage: "provider delete failed",
+      errorMessage: "The runtime image build attempt failed.",
     }));
     expect(bakeCompanionRuntimeImageOnce).not.toHaveBeenCalled();
   });
@@ -433,7 +468,7 @@ describe("image build worker", () => {
     expect(calls.publicationAuthorizations).toHaveLength(1);
     expect(calls.outcomes[0]).toEqual(expect.objectContaining({
       kind: "failed",
-      errorMessage: "The image build lease was lost before snapshot publication.",
+      errorMessage: "The runtime image build attempt failed.",
     }));
   });
 });

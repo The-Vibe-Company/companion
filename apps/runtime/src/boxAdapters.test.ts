@@ -189,6 +189,40 @@ describe("runtime Box/Pi port adapters", () => {
       .not.toBe("11111111-1111-4111-8111-111111111111");
   });
 
+  it("starts cold creation with a fresh provider budget after the image lookup", async () => {
+    let currentTime = 1_000_000;
+    const createOrRecoverGenerationBox = vi.fn(async () => ({
+      outcome: "created" as const,
+      boxId: "bx_23456789",
+      name: "canonical",
+    }));
+    const control = createRuntimeBoxControl({
+      lifecycle: lifecycle({ createOrRecoverGenerationBox }),
+      runtime: () => boxRuntime(),
+      runtimeImage: runtimeImage({
+        availability: async () => {
+          currentTime += 29_999;
+          return "failed";
+        },
+      }),
+      providerDeadlineMs: 30_000,
+      now: () => currentTime,
+    });
+
+    await expect(control.createGenerationBox({
+      companionId: "11111111-1111-4111-8111-111111111111",
+      generation: 4n,
+      ttlSeconds: 21_600,
+      deadlineAt: new Date(1_030_000),
+      workDeadlineAt: new Date(1_180_000),
+      signal,
+    })).resolves.toMatchObject({ outcome: "created", boxId: "bx_23456789" });
+
+    expect(createOrRecoverGenerationBox).toHaveBeenCalledWith(expect.objectContaining({
+      deadlineAt: new Date(1_059_999),
+    }));
+  });
+
   it.each([
     ["missing", "image_missing"],
     ["requested", "image_build_pending"],

@@ -1,4 +1,4 @@
-/* oxlint-disable anti-slop/no-unknown-parameters -- Failure reporting receives unknown thrown values at this process boundary and redacts them into bounded messages. */
+/* oxlint-disable anti-slop/no-unknown-parameters -- Failure reporting receives unknown thrown values at this process boundary and replaces them with fixed expurgated messages. */
 import {
   bakeCompanionRuntimeImageOnce,
   deleteCompanionRuntimeBakerBox,
@@ -25,6 +25,11 @@ export const IMAGE_BUILD_POLL_INTERVAL_MS = 5_000;
 export const IMAGE_BUILD_ATTEMPT_BUDGET_MS = 40 * 60_000;
 /** Independent cleanup budget; it intentionally survives an expired bake signal. */
 export const IMAGE_BUILD_CLEANUP_BUDGET_MS = 2 * 60_000;
+
+const IMAGE_BUILD_FAILURE_MESSAGE = "The runtime image build attempt failed.";
+const IMAGE_BUILD_TIMEOUT_MESSAGE = "The runtime image build attempt exceeded its budget.";
+const IMAGE_BUILD_CLEANUP_FAILURE_MESSAGE = "The runtime image build cleanup failed.";
+const IMAGE_BUILD_WORKER_FAILURE_MESSAGE = "The runtime image builder iteration failed.";
 
 export interface ImageBuildWorkerOptions {
   registry: CompanionImageRegistry;
@@ -154,13 +159,14 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
             }
           },
           onCleanupError: (error) => {
+            void error;
             options.log.warn({
               ts: new Date(now()).toISOString(),
               event: "runtime.image_build_cleanup_failed",
               digest: claim.digest,
               buildBoxId: claim.buildBoxId,
               buildDeleteOperationId: claim.buildDeleteOperationId,
-              error: describeError(error),
+              error: IMAGE_BUILD_CLEANUP_FAILURE_MESSAGE,
             });
           },
         };
@@ -190,7 +196,7 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
             if (options.bundledSkill) {
               bakeInput.bundledSkill = options.bundledSkill;
             }
-            const baked = await bake(bakeInput);
+            const baked = await waitForBakeWithinBudget(bake(bakeInput), attemptController.signal);
             if (!baked.ready) {
               throw new Error("The runtime image snapshot did not become ready.");
             }
@@ -212,7 +218,7 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
             claimEpoch: claim.claimEpoch,
             kind: "failed",
             errorCode: timedOut ? "image_build_timeout" : "image_build_failed",
-            errorMessage: describeError(error),
+            errorMessage: timedOut ? IMAGE_BUILD_TIMEOUT_MESSAGE : IMAGE_BUILD_FAILURE_MESSAGE,
           });
           options.log.warn({
             ts: new Date(now()).toISOString(),
@@ -223,7 +229,7 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
             retryBackoffMs: claim.attemptCount >= 4
               ? null
               : IMAGE_BUILD_BACKOFF_MS[claim.attemptCount - 1] ?? null,
-            error: describeError(error),
+            error: timedOut ? IMAGE_BUILD_TIMEOUT_MESSAGE : IMAGE_BUILD_FAILURE_MESSAGE,
           });
         }
         clearTimeout(budgetTimer);
@@ -241,7 +247,7 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
         options.log.warn({
           ts: new Date(now()).toISOString(),
           event: "runtime.image_build_worker_error",
-          error: describeError(error),
+          error: IMAGE_BUILD_WORKER_FAILURE_MESSAGE,
         });
         await sleep(pollIntervalMs, signal);
       }
@@ -332,10 +338,20 @@ async function cleanupClaimedBox(input: {
   }
 }
 
-function describeError(error: unknown): string {
-  return error instanceof Error && error.message.length > 0
-    ? error.message.slice(0, 500)
-    : "The image build failed without a message.";
+async function waitForBakeWithinBudget<T>(bake: Promise<T>, signal: AbortSignal): Promise<T> {
+  signal.throwIfAborted();
+  let onAbort: (() => void) | undefined;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    onAbort = () => reject(
+      signal.reason instanceof Error ? signal.reason : new Error(IMAGE_BUILD_TIMEOUT_MESSAGE),
+    );
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([bake, aborted]);
+  } finally {
+    if (onAbort) signal.removeEventListener("abort", onAbort);
+  }
 }
 
 function defaultSleep(ms: number, signal: AbortSignal): Promise<void> {
