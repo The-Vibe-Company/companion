@@ -121,7 +121,7 @@ function completeCorrelation(fact: RuntimeV3MeasurementFact): boolean {
     && fact.admissionKind !== null;
   if (!admissionComplete) return false;
   return !TERMINAL_STATES.has(fact.state)
-    || (validDate(fact.firstActivityAt) !== null && validDate(fact.settledAt) !== null);
+    || validDate(fact.settledAt) !== null;
 }
 
 function series(facts: RuntimeV3MeasurementFact[]): RuntimeV3AcceptanceSeries {

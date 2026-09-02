@@ -120,6 +120,15 @@ describe("Runtime v3 acceptance measurement report", () => {
     expect(report.correlation).toEqual({ acknowledged: 1, complete: 0, missing: 1 });
   });
 
+  it("keeps a settled missing-activity terminal correlated to its durable ACK", () => {
+    const report = createRuntimeV3AcceptanceReport([
+      fact({ state: "failed", firstActivityAt: null, lastActivityAt: null }),
+    ], now);
+
+    expect(report.releaseMeasurementReady).toBe(true);
+    expect(report.correlation).toEqual({ acknowledged: 1, complete: 1, missing: 0 });
+  });
+
   it("keeps old active safety facts out of the bounded product cohort", () => {
     const report = createRuntimeV3AcceptanceReport([
       fact({
