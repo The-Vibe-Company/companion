@@ -14,3 +14,12 @@ paths = [
   '''\.claude/skills/debug-companions-prod/scripts/test_prodlib\.py''',
   '''\.agents/skills/debug-companions-prod/scripts/test_prodlib\.py''',
 ]
+
+# Runtime v3 lease-fencing tests need stable UUID-shaped tokens so assertions can distinguish
+# independent claims. These three exact literals are synthetic fixtures, not credentials. Keep the
+# exemption value-specific because the history scan evaluates the commits that introduced them.
+regexes = [
+  '''3c706ec6-5caf-41fc-a009-614730726ebe''',
+  '''a60fa0eb-e514-4453-94ef-d6668220fb85''',
+  '''2aa20f71-0f55-4f57-82a8-561256f42da3''',
+]
