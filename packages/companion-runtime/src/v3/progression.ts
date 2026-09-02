@@ -1,7 +1,7 @@
 import { safeRuntimeError } from "../errors";
 import { classifyPiJournalPage, type ValidatedPiJournalRead } from "../piEvents";
 import type { ErrorAction, SafeRuntimeError } from "../types";
-import type { RuntimeBoxControl, RuntimePiControl, RuntimeResourceStager } from "../ports";
+import type { RuntimeBoxControl, RuntimePiControl } from "../ports";
 
 export const RUNTIME_V3_LANES = ["main", "background"] as const;
 export type RuntimeV3Lane = (typeof RUNTIME_V3_LANES)[number];
@@ -126,6 +126,20 @@ export type RuntimeV3Convergence = Pick<RuntimeV3Progression, "converge">;
 export type RuntimeV3PreparationCheckpoint =
   | "pending" | "box_created" | "box_ready" | "staged";
 
+export type RuntimeV3ProviderMaterial = {
+  provider_id: string;
+  auth_method: string;
+  credential_generation: string;
+  credential_version: number;
+  ciphertext: string;
+  iv: string;
+  auth_tag: string;
+  wrapped_dek: string;
+  wrap_iv: string;
+  wrap_auth_tag: string;
+  key_id: string;
+};
+
 export interface RuntimeV3PreparationClaim {
   orgId: string;
   companionId: string;
@@ -134,6 +148,9 @@ export interface RuntimeV3PreparationClaim {
   checkpoint: RuntimeV3PreparationCheckpoint;
   boxIdempotencyKey: string;
   boxId: string | null;
+  modelId: string;
+  persona: string | null;
+  providerMaterial: RuntimeV3ProviderMaterial[];
   createdAt: Date;
   fence: RuntimeV3Fence;
 }
@@ -157,7 +174,17 @@ export interface RuntimeV3PreparationPersistence {
 export interface RuntimeV3PreparationOptions {
   persistence: RuntimeV3PreparationPersistence;
   box: Pick<RuntimeBoxControl, "createGenerationBox" | "applyGenerationBoxSettings" | "getStatus">;
-  resourceStager: Pick<RuntimeResourceStager, "refreshLayout">;
+  resourceStager: {
+    stagePreparation(input: {
+      orgId: string;
+      companionId: string;
+      boxId: string;
+      modelId: string;
+      persona: string | null;
+      providerMaterial: RuntimeV3ProviderMaterial[];
+      signal: AbortSignal;
+    }): Promise<void>;
+  };
   pi: Pick<RuntimePiControl, "startPiDaemon">;
   observePreparedLatency?: (durationMs: number) => void;
   now?: () => Date;
@@ -458,6 +485,9 @@ export function createRuntimeV3Preparation(
               generation: 1n,
               ttlSeconds: PREPARATION_BOX_TTL_SECONDS,
               idempotencyKey: claim.boxIdempotencyKey,
+              // Preparation owns no user-facing operation deadline. Use a ready image if already
+              // published, but never spend this fenced claim waiting for the image builder.
+              imageWaitDeadlineAt: now(),
               signal,
             });
             if (!await options.persistence.checkpoint(claim, {
@@ -491,7 +521,15 @@ export function createRuntimeV3Preparation(
             }
           } else if (claim.checkpoint === "box_ready") {
             if (!claim.boxId) throw new Error("Box identity is missing before staging");
-            await options.resourceStager.refreshLayout({ boxId: claim.boxId, signal });
+            await options.resourceStager.stagePreparation({
+              orgId: claim.orgId,
+              companionId: claim.companionId,
+              boxId: claim.boxId,
+              modelId: claim.modelId,
+              persona: claim.persona,
+              providerMaterial: claim.providerMaterial,
+              signal,
+            });
             if (!await options.persistence.checkpoint(claim, { next: "staged" })) {
               return { progressed, exhausted: false };
             }

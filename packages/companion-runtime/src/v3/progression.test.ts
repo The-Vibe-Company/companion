@@ -69,6 +69,9 @@ describe("Runtime v3 progression interface", () => {
       turnId: acceptedTurn.id,
       commandId: acceptedTurn.commandId,
       boxIdempotencyKey: "11111111-1111-4111-8111-111111111111",
+      modelId: "claude-test",
+      persona: "Reply concisely.",
+      providerMaterial: [],
       createdAt: new Date("2026-09-02T00:00:00.000Z"),
       fence: mainClaim.fence,
     };
@@ -92,7 +95,7 @@ describe("Runtime v3 progression interface", () => {
         applyGenerationBoxSettings: vi.fn().mockResolvedValue(undefined),
         getStatus: vi.fn().mockResolvedValue({ state: "ready" }),
       },
-      resourceStager: { refreshLayout: vi.fn().mockResolvedValue({ applied: "base" }) },
+      resourceStager: { stagePreparation: vi.fn().mockResolvedValue(undefined) },
       pi: { startPiDaemon: vi.fn().mockResolvedValue({ state: "idle", invocationId: "pi-1" }) },
       now: () => new Date("2026-09-02T00:00:02.000Z"),
     });
@@ -119,6 +122,9 @@ describe("Runtime v3 progression interface", () => {
       checkpoint,
       boxIdempotencyKey: "11111111-1111-4111-8111-111111111111",
       boxId: checkpoint === "pending" ? null : "bx_23456789",
+      modelId: "claude-test",
+      persona: "Reply concisely.",
+      providerMaterial: [],
       createdAt: new Date(),
       fence: mainClaim.fence,
     };
@@ -136,7 +142,7 @@ describe("Runtime v3 progression interface", () => {
         applyGenerationBoxSettings: vi.fn(),
         getStatus: vi.fn(),
       },
-      resourceStager: { refreshLayout: vi.fn() },
+      resourceStager: { stagePreparation: vi.fn() },
       pi: {
         startPiDaemon: "startPiDaemon" in failure
           ? vi.fn().mockRejectedValue(failure.startPiDaemon)

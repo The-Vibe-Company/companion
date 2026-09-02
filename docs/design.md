@@ -312,7 +312,8 @@ reconciliation. Before create,
 runtime searches every Box-list page for that exact name and adopts one canonical Box. Because the
 public create request cannot set a name, Runtime v3 supplies a durable provider `Idempotency-Key`,
 checkpoints the acknowledged Box id, then applies the name and
-six-hour TTL through an idempotent PATCH. An ambiguous create is interrupted and never replayed.
+six-hour TTL through an idempotent PATCH. Runtime v3 retries an ambiguous create only with the same
+durable key and byte-equivalent body; the retained unkeyed Runtime v2 path remains non-replayable.
 After naming, runtime lists again and permanently deletes duplicates. Permanent deletion is provider
 operation tracking, not stop/archive.
 

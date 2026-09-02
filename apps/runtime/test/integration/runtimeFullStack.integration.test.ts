@@ -642,17 +642,37 @@ async function waitForTurn(turnId: string, status: string, timeoutMs = 30_000): 
 }
 
 async function waitForV3Turn(turnId: string, status: string, timeoutMs = 30_000): Promise<void> {
-  await waitFor(`Runtime v3 turn ${turnId} to become ${status}`, async () => {
-    const [row] = await databaseSql!<Array<{ state: string; code: string | null }>>`
-      select state::text, outcome_code as code
-      from companion_v3_turns where id = ${turnId}::uuid
+  try {
+    await waitFor(`Runtime v3 turn ${turnId} to become ${status}`, async () => {
+      const [row] = await databaseSql!<Array<{ state: string; code: string | null }>>`
+        select state::text, outcome_code as code
+        from companion_v3_turns where id = ${turnId}::uuid
+      `;
+      if (!row) return false;
+      if (["failed", "interrupted", "cancelled"].includes(row.state) && row.state !== status) {
+        throw new TerminalWaitError(`Runtime v3 turn became ${row.state} (${row.code ?? "no code"})`);
+      }
+      return row.state === status;
+    }, timeoutMs);
+  } catch (error) {
+    const [facts] = await databaseSql!<Array<{
+      state: string;
+      checkpoint: string;
+      errorCode: string | null;
+      errorMessage: string | null;
+    }>>`
+      select turn_row.state::text, instance.preparation_checkpoint as checkpoint,
+        instance.preparation_error_code as "errorCode",
+        instance.preparation_error_message as "errorMessage"
+      from companion_v3_turns turn_row
+      join companion_v3_instances instance using (org_id, companion_id)
+      where turn_row.id = ${turnId}::uuid
     `;
-    if (!row) return false;
-    if (["failed", "interrupted", "cancelled"].includes(row.state) && row.state !== status) {
-      throw new TerminalWaitError(`Runtime v3 turn became ${row.state} (${row.code ?? "no code"})`);
-    }
-    return row.state === status;
-  }, timeoutMs);
+    throw new Error(
+      `${error instanceof Error ? error.message : "Runtime v3 wait failed"}; `
+      + `facts=${JSON.stringify(facts ?? null)}; runtime=${runtimeProcess?.output().slice(-2_000) ?? "stopped"}`,
+    );
+  }
 }
 
 async function turnDiagnostic(turnId: string): Promise<string> {
@@ -863,6 +883,81 @@ afterAll(async () => {
 }, 30_000);
 
 describe("Runtime v2 real-process control plane", () => {
+  it("accepts an immediate cold Turn and answers after an idempotent create fault", async () => {
+    assertProcessAlive(apiProcess);
+    assertProcessAlive(runtimeProcess);
+    const before = await simulatorState();
+    await boxControl("/faults", {
+      method: "POST",
+      body: JSON.stringify({
+        point: "box.create.idempotent.after",
+        action: { kind: "disconnect" },
+      }),
+    });
+
+    const created = await apiJson<{ companion: { id: string } }>("/v1/companions", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Runtime v3 cold acceptance",
+        persona: "Reply concisely.",
+        provider_id: "anthropic",
+        model_id: "claude-sonnet-4-6",
+      }),
+    }, 201);
+    const messageId = randomUUID();
+    const accepted = await apiJson<{ turn: { id: string; status: string } }>(
+      `/v1/companions/${created.companion.id}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          client_message_id: messageId,
+          client_surface: "web",
+          content: "Return one deterministic cold Runtime v3 answer.",
+        }),
+      },
+      202,
+    );
+    expect(accepted.turn.status).toBe("queued");
+
+    await waitForV3Turn(accepted.turn.id, "succeeded", 60_000);
+    const thread = await apiJson<{ thread: {
+      active_turn: unknown;
+      queued_count: number;
+      entries: Array<{ role: string; turn_id: string | null }>;
+    } }>(`/v1/companions/${created.companion.id}/thread`, { method: "GET" }, 200);
+    expect(thread.thread.active_turn).toBeNull();
+    expect(thread.thread.queued_count).toBe(0);
+    expect(thread.thread.entries).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: "assistant", content: "Simulated reply." }),
+    ]));
+
+    const [durable] = await databaseSql!<Array<{
+      preparationAttempts: number;
+      firstClaimedAt: Date;
+      boxReadyAt: Date;
+      operations: number;
+      attempts: number;
+    }>>`
+      select instance.preparation_attempt_count as "preparationAttempts",
+        turn_row.first_claimed_at as "firstClaimedAt",
+        instance.box_ready_at as "boxReadyAt",
+        (select count(*)::integer from companion_operations operation
+          where operation.companion_id = instance.companion_id) as operations,
+        (select count(*)::integer from companion_turn_attempts attempt
+          where attempt.companion_id = instance.companion_id) as attempts
+      from companion_v3_instances instance
+      join companion_v3_turns turn_row using (org_id, companion_id)
+      where instance.companion_id = ${created.companion.id}::uuid
+        and turn_row.id = ${accepted.turn.id}::uuid
+    `;
+    expect(durable).toMatchObject({ preparationAttempts: 1, operations: 0, attempts: 0 });
+    expect(durable!.firstClaimedAt.getTime()).toBeLessThanOrEqual(durable!.boxReadyAt.getTime());
+
+    const after = await simulatorState();
+    const oldBoxIds = new Set(before.boxes.map((box) => box.id));
+    expect(after.boxes.filter((box) => !oldBoxIds.has(box.id))).toHaveLength(1);
+  }, 90_000);
+
   it("survives API death and runtime takeover while preserving order, decisions, wake, and delete", async () => {
     assertProcessAlive(apiProcess);
     assertProcessAlive(workerProcess);
@@ -1023,10 +1118,12 @@ describe("Runtime v2 real-process control plane", () => {
     });
     const [preparedV3] = await databaseSql!<Array<{ preparedAt: Date }>>`
       insert into companion_v3_instances(
-        org_id, companion_id, box_id, pi_invocation_id, prepared_at
+        org_id, companion_id, box_id, pi_invocation_id, preparation_checkpoint,
+        box_ready_at, staging_completed_at, prepared_at
       ) values (
         ${orgId}::uuid, ${companionId}::uuid, ${box.id},
-        ${box.daemon.invocationId}, clock_timestamp()
+        ${box.daemon.invocationId}, 'prepared',
+        current_timestamp, current_timestamp, current_timestamp
       ) returning prepared_at as "preparedAt"
     `;
     await stopProcess(runtimeProcess, "SIGKILL");

@@ -101,6 +101,7 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
       const image = options.runtimeImage;
       let from = image?.cloneName() ?? undefined;
       let imageWaitMs = 0;
+      let waitedForImage = false;
       let fallbackReason:
         | "image_wait_exhausted" | "image_build_failed" | "no_snapshot"
         | "unknown_snapshot_fallback" | undefined;
@@ -111,6 +112,7 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
         // a failed build falls back immediately, and a wait that exhausts its bound cold-installs.
         const boundMs = imageWaitBoundMs(input.imageWaitDeadlineAt, now());
         const waitStartedAt = now();
+        waitedForImage = boundMs > 0;
         const resolution = boundMs > 0
           ? await image.waitForResolution(boundMs, input.signal)
           : "pending";
@@ -132,17 +134,15 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
           });
         }
       }
-      // `deadlineAt` was minted by the engine before the optional image wait. Reusing it here can
-      // make the create POST start with an already-expired deadline after a 60-second wait. Refresh
-      // the single-call budget now, still capped by the operation-level image wait deadline.
-      const createDeadlineSource = input.imageWaitDeadlineAt ?? input.deadlineAt;
+      // The image-wait and pre-wait call deadlines only bound earlier work. They must never become
+      // the POST deadline: a completed wait leaves create its own fresh provider-call budget.
       const create = (fromImage?: string) =>
         options.lifecycle.createGenerationBoxAfterObservedAbsence({
           companionId: input.companionId,
           generation: generationNumber(input.generation),
           ttlSeconds: input.ttlSeconds,
           ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
-          deadlineAt: deadline(createDeadlineSource),
+          deadlineAt: deadline(waitedForImage ? undefined : input.deadlineAt),
           signal: input.signal,
           ...(fromImage ? { from: fromImage } : {}),
         });
