@@ -29,3 +29,8 @@ a30e3cf92fcfbe99e33402deee30505dc2b3d3b7:apps/api/src/companionRoutes.test.ts:ge
 a30e3cf92fcfbe99e33402deee30505dc2b3d3b7:packages/contracts/test/companions.test.ts:generic-api-key:1027
 a30e3cf92fcfbe99e33402deee30505dc2b3d3b7:packages/contracts/test/companions.test.ts:generic-api-key:1048
 a30e3cf92fcfbe99e33402deee30505dc2b3d3b7:packages/contracts/test/companions.test.ts:generic-api-key:1079
+
+# Audited Runtime v2 purge fixture: this provider-shaped snapshot name is synthetic and only proves
+# exact inventory/reconciliation behavior. Keep both historical findings fingerprint-specific.
+5bbc924152ca00f9f83eaa15f7c3321065a1e0e3:apps/runtime/src/companionV2Purge.test.ts:generic-api-key:52
+5bbc924152ca00f9f83eaa15f7c3321065a1e0e3:apps/runtime/src/companionV2Purge.test.ts:generic-api-key:66
