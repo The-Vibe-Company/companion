@@ -151,9 +151,8 @@ BEGIN
     RAISE EXCEPTION 'invalid Runtime v3 projection request' USING ERRCODE = '22023';
   END IF;
   IF NOT EXISTS (
-    SELECT 1 FROM public.companion_v3_instances instance
-    WHERE instance.org_id = p_org_id AND instance.companion_id = p_companion_id
-      AND instance.prepared_at IS NOT NULL
+    SELECT 1 FROM public.companion_v3_turns turn_row
+    WHERE turn_row.org_id = p_org_id AND turn_row.companion_id = p_companion_id
   ) THEN RETURN; END IF;
 
   SELECT turn_row.* INTO v_active
@@ -342,7 +341,44 @@ BEGIN
     AND lease.claim_token = p_claim_token AND lease.claim_epoch = p_claim_epoch
     AND lease.gate_epoch = p_gate_epoch AND lease.expires_at > v_now
     AND turn_row.state = 'queued'
-    AND (companion.owner_id = turn_row.actor_id OR workspace_access.role = 'editor');
+    AND (companion.owner_id = turn_row.actor_id OR workspace_access.role = 'editor')
+    AND jsonb_typeof(companion.provider_ids) = 'array'
+    AND jsonb_array_length(companion.provider_ids) = 1
+    AND companion.model_id IS NOT NULL
+    AND char_length(companion.model_id) BETWEEN 1 AND 200
+    AND companion.model_id !~ E'[\n\r]'
+    AND NOT EXISTS (
+      SELECT 1 FROM jsonb_array_elements_text(companion.provider_ids) selected(provider_id)
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.companion_provider_connections connection
+        WHERE connection.org_id = turn_row.org_id
+          AND connection.provider_id = selected.provider_id
+        FOR NO KEY UPDATE
+      )
+    )
+    AND jsonb_typeof(companion.selected_skill_ids) = 'array'
+    AND NOT EXISTS (
+      SELECT 1 FROM jsonb_array_elements_text(companion.selected_skill_ids) selected(skill_id)
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.skills skill
+        WHERE skill.org_id = turn_row.org_id
+          AND skill.id::text = selected.skill_id
+          AND skill.archived_at IS NULL
+          AND (skill.scope = 'org' OR skill.creator_id = turn_row.actor_id)
+        FOR NO KEY UPDATE
+      )
+    )
+    AND jsonb_typeof(companion.selected_mcp_account_ids) = 'array'
+    AND NOT EXISTS (
+      SELECT 1 FROM jsonb_array_elements_text(companion.selected_mcp_account_ids) selected(account_id)
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.companion_mcp_accounts account
+        WHERE account.org_id = turn_row.org_id
+          AND account.id::text = selected.account_id
+          AND account.owner_id = turn_row.actor_id
+        FOR NO KEY UPDATE
+      )
+    );
 END
 $$;
 --> statement-breakpoint

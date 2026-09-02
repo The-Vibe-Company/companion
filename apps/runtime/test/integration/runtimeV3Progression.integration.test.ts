@@ -112,6 +112,16 @@ describe("Runtime v3 progression facts", () => {
       values ('${ids.org}', '${ids.editor}', 'developer');
       insert into public.companions (id, org_id, owner_id, name)
       values ('${ids.companion}', '${ids.org}', '${ids.owner}', 'Runtime v3 test');
+      insert into public.companion_provider_connections(
+        org_id, provider_id, auth_method, ciphertext, iv, auth_tag,
+        wrapped_dek, wrap_iv, wrap_auth_tag, key_id, connected_by
+      ) values (
+        '${ids.org}', 'anthropic', 'api_key', 'ciphertext', 'iv', 'tag',
+        'dek', 'wiv', 'wtag', 'key', '${ids.owner}'
+      );
+      update public.companions
+      set model_id = 'claude-test', provider_ids = '["anthropic"]'::jsonb
+      where id = '${ids.companion}';
       insert into public.companion_workspace_access(
         org_id, companion_id, owner_id, role, granted_by
       ) values ('${ids.org}', '${ids.companion}', '${ids.owner}', 'editor', '${ids.owner}');
@@ -238,6 +248,101 @@ describe("Runtime v3 progression facts", () => {
       select command_id as "commandId"
       from public.companion_v3_runtime_claim_warm('runtime-warm-readiness', 'main', 30, 3)`;
     expect(prepared).toEqual([{ commandId: command }]);
+  });
+
+  it("fails closed before Pi when current provider authority is revoked", async () => {
+    await ownerSql`insert into public.companion_v3_instances(
+      org_id, companion_id, box_id, pi_invocation_id, prepared_at
+    ) values (
+      ${ids.org}::uuid, ${ids.companion}::uuid, 'bx_23456789', 'invocation-authority',
+      clock_timestamp()
+    )`;
+    const command = randomUUID();
+    await asApi(async (sql) => {
+      await sql`select * from public.companion_v3_api_enqueue_warm_turn(
+        ${ids.org}::uuid, ${ids.companion}::uuid, ${command}::uuid, 'authorized warm text'
+      )`;
+    });
+    const convergence = createRuntimeV3PostgresWarmConvergence(runtimeSql);
+    const claim = await convergence.claimLane({ executorId: "runtime-authority", lane: "main" });
+    expect(claim).not.toBeNull();
+
+    await ownerSql`delete from public.companion_provider_connections
+      where org_id = ${ids.org}::uuid and provider_id = 'anthropic'`;
+    await expect(createRuntimeV3PostgresWarmTurnPersistence(runtimeSql).authorize(claim!))
+      .resolves.toBeNull();
+    await ownerSql`insert into public.companion_provider_connections(
+      org_id, provider_id, auth_method, ciphertext, iv, auth_tag,
+      wrapped_dek, wrap_iv, wrap_auth_tag, key_id, connected_by
+    ) values (
+      ${ids.org}::uuid, 'anthropic', 'api_key', 'ciphertext', 'iv', 'tag',
+      'dek', 'wiv', 'wtag', 'key', ${ids.owner}
+    )`;
+  });
+
+  it("projects a Runtime v3 needs-input state from PostgreSQL after Pi admission", async () => {
+    await ownerSql`insert into public.companion_v3_instances(
+      org_id, companion_id, box_id, pi_invocation_id, prepared_at
+    ) values (
+      ${ids.org}::uuid, ${ids.companion}::uuid, 'bx_23456789', 'invocation-question',
+      clock_timestamp()
+    )`;
+    const command = randomUUID();
+    await asApi(async (sql) => {
+      await sql`select * from public.companion_v3_api_enqueue_warm_turn(
+        ${ids.org}::uuid, ${ids.companion}::uuid, ${command}::uuid, 'ask me a question'
+      )`;
+    });
+    const convergence = createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresWarmConvergence(runtimeSql),
+      advance: createRuntimeV3WarmTurnAdvance({
+        persistence: createRuntimeV3PostgresWarmTurnPersistence(runtimeSql),
+        pi: {
+          async prompt() {
+            return { outcome: "accepted", invocationId: "invocation-question", initialCursor: 0n };
+          },
+          async read(input) {
+            return {
+              events: [{
+                sequence: 1n,
+                invocationId: input.invocationId,
+                attemptId: input.turnId,
+                kind: "pi_event" as const,
+                event: {
+                  type: "extension_ui_request",
+                  id: "question-1",
+                  method: "input",
+                  title: "companion:question:Clarification",
+                  placeholder: "Which environment should I inspect?",
+                },
+              }],
+              nextCursor: 1n,
+              acknowledgedCursor: 0n,
+              hasMore: false,
+            };
+          },
+          async acknowledge(input) { return input.through; },
+        },
+      }),
+    });
+    await expect(convergence.converge({ executorId: "runtime-needs-input" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+
+    await ownerSql`update public.companion_v3_instances set prepared_at = null,
+      box_id = null, pi_invocation_id = null
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
+    let projection: Array<{ activeTurn: { status: string }; isReplying: boolean }> = [];
+    await asApi(async (sql) => {
+      projection = await sql<Array<{ activeTurn: { status: string }; isReplying: boolean }>>`
+        select active_turn as "activeTurn", is_replying as "isReplying"
+        from public.companion_v3_api_read_projection(
+          ${ids.org}::uuid, ${ids.companion}::uuid, ${sql.json([`msg:${command}`])}::jsonb
+        )`;
+    });
+    expect(projection).toEqual([{
+      activeTurn: expect.objectContaining({ status: "needs_input" }),
+      isReplying: false,
+    }]);
   });
 
   it("settles warm text FIFO and releases a failed main lane before the next Turn", async () => {
