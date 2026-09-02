@@ -403,12 +403,14 @@ function providerNextPageUrl(input: {
   const link = input.response.headers.get("link");
   if (!link) return null;
   let next: string | null = null;
+  let nextHasResults: boolean | null = null;
   const seenRelations = new Set<string>();
   const current = new URL(input.currentUrl);
   for (const rawPart of link.split(",")) {
     const part = /^\s*<([^<>,\s]+)>((?:\s*;\s*[^;,]+)+)\s*$/.exec(rawPart);
     if (!part) return malformedProviderPagination(input.provider, "link value");
     let relation: string | null = null;
+    let results: string | null = null;
     const parameterNames = new Set<string>();
     for (const rawParameter of part[2]!.split(";").slice(1)) {
       const parameter = /^\s*([!#$%&'*+\-.^_`|~0-9A-Za-z]+)\s*=\s*(.+?)\s*$/.exec(rawParameter);
@@ -417,17 +419,28 @@ function providerNextPageUrl(input: {
       if (parameterNames.has(name)) return malformedProviderPagination(input.provider, "duplicate parameter");
       parameterNames.add(name);
       const value = parseProviderLinkParameterValue(input.provider, parameter[2]!);
-      if (name !== "rel") continue;
-      const relations = value.toLowerCase().split(/\s+/).map((item) =>
-        item === "prev" ? "previous" : item);
-      if (relations.length !== 1 || !SUPPORTED_LINK_RELATIONS.has(relations[0]!)) {
-        return malformedProviderPagination(input.provider, "relation");
+      if (name === "rel") {
+        const relations = value.toLowerCase().split(/\s+/).map((item) =>
+          item === "prev" ? "previous" : item);
+        if (relations.length !== 1 || !SUPPORTED_LINK_RELATIONS.has(relations[0]!)) {
+          return malformedProviderPagination(input.provider, "relation");
+        }
+        relation = relations[0]!;
+      } else if (name === "results") {
+        results = value;
       }
-      relation = relations[0]!;
     }
     if (!relation) return malformedProviderPagination(input.provider, "missing relation");
     if (seenRelations.has(relation)) return malformedProviderPagination(input.provider, "duplicate relation");
     seenRelations.add(relation);
+    let hasResults: boolean | null = null;
+    if (input.provider === "Sentry" && relation === "next") {
+      const normalizedResults = results?.toLowerCase();
+      if (normalizedResults !== "true" && normalizedResults !== "false") {
+        return malformedProviderPagination(input.provider, "results marker");
+      }
+      hasResults = normalizedResults === "true";
+    }
     let candidate: URL;
     try {
       if (!part[1]!.startsWith("https://")) return malformedProviderPagination(input.provider, "URI");
@@ -446,8 +459,12 @@ function providerNextPageUrl(input: {
     if (relation !== "next") continue;
     if (next) return malformedProviderPagination(input.provider, "ambiguous next relation");
     next = candidate.toString();
+    nextHasResults = hasResults;
   }
   if (!next) return null;
+  // Sentry always emits a next cursor. Its documented `results` marker, not cursor presence,
+  // determines whether another authenticated page exists.
+  if (input.provider === "Sentry" && nextHasResults === false) return null;
   if (input.seenUrls.has(next)) return malformedProviderPagination(input.provider, "cycle");
   return next;
 }

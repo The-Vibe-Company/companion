@@ -1536,6 +1536,65 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: existingFetch,
     }))).resolves.toBe("present");
+    let terminalPageCalls = 0;
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => {
+        terminalPageCalls += 1;
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: {
+            link: '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=next>; rel="next"; results="false"',
+          },
+        });
+      }),
+    }))).resolves.toBe("absent");
+    expect(terminalPageCalls).toBe(1);
+    let nextPageCalls = 0;
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => {
+        nextPageCalls += 1;
+        return nextPageCalls === 1
+          ? new Response(JSON.stringify([]), {
+              status: 200,
+              headers: {
+                link: '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=next>; rel=next; results=true',
+              },
+            })
+          : new Response(JSON.stringify([{ id: "sentry-hook-1" }]), { status: 200 });
+      }),
+    }))).resolves.toBe("present");
+    expect(nextPageCalls).toBe(2);
+    const invalidSentryPagination = [
+      '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=next>; rel=next',
+      '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=next>; rel=next; results=unknown',
+      '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=next>; rel=next; results=true; results=false',
+    ];
+    for (const link of invalidSentryPagination) {
+      await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+        orgId: fixture.orgA,
+        companionId,
+        triggerId: trigger.id,
+        webhookBaseUrl: WEBHOOK_BASE_URL,
+        masterKey,
+        database,
+        fetch: asFetch(async () => new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { link },
+        })),
+      }))).rejects.toMatchObject({ code: "provider_rejected" });
+    }
     await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
       orgId: fixture.orgA,
       companionId,

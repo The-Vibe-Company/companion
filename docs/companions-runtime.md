@@ -1432,8 +1432,12 @@ with one supported relation per link encoded as either a token such as `rel=next
 such as `rel="next"`. Every page URI must be absolute HTTPS at the authenticated list's exact origin
 and path; duplicate or contradictory relations, malformed parameters or quoting, repeated pages,
 cycles, and traversal beyond 100 pages are unknown evidence and fail closed. Terminal targets are
-skipped on retry, while a recorded Box operation is polled rather than resubmitted. A nonterminal
-retry performs an authoritative provider observation first:
+skipped on retry. Sentry's
+[documented pagination contract](https://docs.sentry.io/api/pagination/) always exposes a `next`
+cursor, so that link must carry exactly one boolean `results` parameter: `false` is authoritative
+end-of-list and only `true` advances to the cursor. GitHub does not require that Sentry-specific
+parameter. A recorded Box operation is polled rather than resubmitted. A nonterminal retry performs an
+authoritative provider observation first:
 storage/Box/snapshot inventory covers those resources, and complete authenticated GitHub, Linear,
 or Sentry lookup covers remote triggers. Proven absence closes the target without another DELETE; an
 operation-bearing Box resumes by polling. Without an operation id, fresh authenticated Box absence
