@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { ListObjectsV2Command, type ListObjectsV2CommandInput } from "@aws-sdk/client-s3";
 import {
   AsciiBoxMaintenanceClient,
+  BoxRuntimeAdapterError,
   isCompanionRuntimeImageName,
   type BoxRuntimeLifecycleClient,
 } from "@companion/box-runtime";
@@ -20,7 +21,6 @@ import {
 import postgres from "postgres";
 
 import {
-  processLegacyPurgeTarget,
   type LegacyTargetJournal,
 } from "./companionPurge";
 
@@ -28,6 +28,8 @@ export const COMPANION_V2_PURGE_RUN_ID = "runtime-v2-purge";
 export const COMPANION_V2_PURGE_LOCK_CLASS_ID = 72_401;
 export const COMPANION_V2_PURGE_LOCK_OBJECT_ID = 20_260_608;
 const V2_BOX_NAME = /^Companion ([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}) g[1-9][0-9]*$/;
+const BOX_DELETE_POLL_INTERVAL_MS = 1_000;
+const BOX_DELETE_TIMEOUT_MS = 15 * 60_000;
 
 export type CompanionV2PurgeInvocation =
   | { mode: "report" }
@@ -47,6 +49,7 @@ export interface CompanionV2PurgeTarget {
   evidence: string[];
   state?: CompanionV2PurgeTargetState;
   operationId?: string | null;
+  retryAfter?: string | null;
 }
 
 export interface CompanionV2PurgeJournal {
@@ -55,7 +58,11 @@ export interface CompanionV2PurgeJournal {
     target: CompanionV2PurgeTarget,
     outcome: "completed" | "absent",
   ): Promise<void>;
-  markFailure(target: CompanionV2PurgeTarget, message: string): Promise<void>;
+  markFailure(
+    target: CompanionV2PurgeTarget,
+    message: string,
+    disposition?: "ambiguous" | "retryable",
+  ): Promise<void>;
 }
 
 export type CompanionV2PurgeSql = ReturnType<typeof postgres>;
@@ -154,8 +161,17 @@ export function mergeCompanionV2PurgeTargets(
     };
     const state = target.state ?? current?.state;
     if (state) next.state = state;
+    if (
+      current?.operationId
+      && target.operationId
+      && current.operationId !== target.operationId
+    ) {
+      throw new Error(`Box ${target.key} has conflicting provider deletion operations`);
+    }
     const operationId = target.operationId ?? current?.operationId;
     if (operationId) next.operationId = operationId;
+    const retryAfter = target.retryAfter ?? current?.retryAfter;
+    if (retryAfter) next.retryAfter = retryAfter;
     merged.set(identity, next);
   }
   return [...merged.values()].sort((left, right) =>
@@ -166,12 +182,27 @@ export async function processCompanionV2PurgeTargets(input: {
   targets: readonly CompanionV2PurgeTarget[];
   journal: CompanionV2PurgeJournal;
   providerPresent?(target: CompanionV2PurgeTarget): boolean | undefined | Promise<boolean | undefined>;
+  beforeExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
   afterExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
+  pause?(milliseconds: number): Promise<void>;
+  nowMs?: () => number;
   remove(target: CompanionV2PurgeTarget): Promise<"completed" | "absent">;
 }): Promise<void> {
   for (const target of input.targets) {
     if (target.state === "completed" || target.state === "absent") continue;
-    const present = await input.providerPresent?.(target);
+    if (target.retryAfter) {
+      const retryAt = Date.parse(target.retryAfter);
+      if (!Number.isFinite(retryAt)) throw new Error("purge ledger contains an invalid retry time");
+      const delay = Math.max(0, retryAt - (input.nowMs ?? Date.now)());
+      if (delay > 0) {
+        await (input.pause ?? ((milliseconds) => new Promise((resolve) => {
+          setTimeout(resolve, milliseconds);
+        })))(delay);
+      }
+    }
+    const present = target.kind === "box" && target.operationId
+      ? undefined
+      : await input.providerPresent?.(target);
     if (present === false) {
       await input.journal.markComplete(target, "absent");
       continue;
@@ -180,21 +211,26 @@ export async function processCompanionV2PurgeTargets(input: {
       target.kind === "box"
       && target.state === "requesting"
       && !target.operationId
-      && present === true
+      && present === undefined
     ) {
-      throw new Error(
-        "Ambiguous Box deletion is still provider-visible; retry after provider reconciliation",
-      );
+      throw new Error("authenticated Box presence reconciliation is unavailable");
     }
     await input.journal.markRequesting(target);
     try {
+      await input.beforeExternalEffect?.(target);
       const outcome = await input.remove(target);
-      await input.afterExternalEffect?.(target);
+      if (target.kind !== "box") await input.afterExternalEffect?.(target);
       await input.journal.markComplete(target, outcome);
     } catch (error) {
+      const disposition = target.kind === "box"
+        && error instanceof BoxRuntimeAdapterError
+        && !error.outcomeUnknown
+        ? "retryable"
+        : "ambiguous";
       await input.journal.markFailure(
         target,
         "external removal failed; retry the purge",
+        disposition,
       ).catch(() => undefined);
       throw error;
     }
@@ -314,17 +350,36 @@ export async function inventoryCompanionV2Database(
   rowCounts.companion_object_deletions = safeCount(objectOutboxCount?.count);
 
   const targets: CompanionV2PurgeTarget[] = [];
-  const boxRows = await client<Array<{ key: string; evidence: string }>>`
-    select box_id as key, 'database:runtime-instance'::text as evidence
+  const boxRows = await client<Array<{
+    key: string;
+    evidence: string;
+    operationId: string | null;
+  }>>`
+    select box_id as key, 'database:runtime-instance'::text as evidence,
+           null::text as "operationId"
     from public.companion_runtime_instances where box_id is not null
     union all
-    select box_id, 'database:duplicate-cleanup'
+    select instance.box_id, 'database:delete-operation', operation.provider_operation_id
+    from public.companion_runtime_instances instance
+    join public.companion_operations operation
+      on operation.org_id = instance.org_id
+     and operation.companion_id = instance.companion_id
+    where instance.box_id is not null
+      and operation.kind = 'delete'
+      and operation.provider_operation_id is not null
+    union all
+    select box_id, 'database:duplicate-cleanup', provider_operation_id
     from public.companion_runtime_duplicate_cleanups where box_id is not null
     union all
-    select build_box_id, 'database:image-build-box'
+    select build_box_id, 'database:image-build-box', build_delete_operation_id
     from public.companion_images where build_box_id is not null
   `;
-  targets.push(...boxRows.map((row) => ({ kind: "box" as const, key: row.key, evidence: [row.evidence] })));
+  targets.push(...boxRows.map((row) => ({
+    kind: "box" as const,
+    key: row.key,
+    evidence: [row.evidence],
+    operationId: row.operationId,
+  })));
 
   const snapshots = await client<Array<{ key: string }>>`
     select image_name as key from public.companion_images
@@ -407,14 +462,16 @@ export async function collectCompanionV2PurgeInventory(input: {
     objectStore.listKeys(),
   ]);
   const providerTargets: CompanionV2PurgeTarget[] = [];
+  const databaseBoxIds = new Set(
+    database.targets.filter((target) => target.kind === "box").map((target) => target.key),
+  );
   for (const box of boxes) {
+    const evidence: string[] = [];
+    if (databaseBoxIds.has(box.id)) evidence.push("provider-id:box");
     if (box.name && V2_BOX_NAME.test(box.name)) {
-      providerTargets.push({
-        kind: "box",
-        key: box.id,
-        evidence: ["provider-name:companion-generation"],
-      });
+      evidence.push("provider-name:companion-generation");
     }
+    if (evidence.length > 0) providerTargets.push({ kind: "box", key: box.id, evidence });
   }
   for (const snapshot of snapshots) {
     if (isCompanionRuntimeImageName(snapshot.name)) {
@@ -433,7 +490,9 @@ export async function collectCompanionV2PurgeInventory(input: {
   const targets = mergeCompanionV2PurgeTargets([...database.targets, ...providerTargets]);
   const inventoryForHash = {
     rowCounts: database.rowCounts,
-    targets: targets.map(({ kind, key, evidence }) => ({ kind, key, evidence })),
+    targets: targets.map(({ kind, key, evidence, operationId }) => ({
+      kind, key, evidence, operationId: operationId ?? null,
+    })),
     providerCounts: {
       boxes: boxes.length,
       snapshots: snapshots.length,
@@ -456,9 +515,10 @@ export async function loadCompanionV2PurgeTargets(
     evidence: string[];
     state: CompanionV2PurgeTargetState;
     operationId: string | null;
+    retryAfter: string | null;
   }>>`
     select resource_kind as kind, resource_key as key, evidence, state,
-           operation_id as "operationId"
+           operation_id as "operationId", retry_after::text as "retryAfter"
     from public.companion_v2_purge_targets
     order by resource_kind, resource_key
   `;
@@ -480,7 +540,9 @@ async function seedCompanionV2PurgeLedger(
   const snapshot = {
     rowCounts: inventory.rowCounts,
     providerCounts: inventory.providerCounts,
-    targets: inventory.targets.map(({ kind, key, evidence }) => ({ kind, key, evidence })),
+    targets: inventory.targets.map(({ kind, key, evidence, operationId }) => ({
+      kind, key, evidence, operationId: operationId ?? null,
+    })),
   } satisfies postgres.JSONValue;
   const fingerprint = fingerprintRow.fingerprint;
 
@@ -500,15 +562,25 @@ async function seedCompanionV2PurgeLedger(
     `;
     for (const target of inventory.targets) {
       const previous = existing.get(`${target.kind}:${target.key}`);
+      if (
+        previous?.operationId
+        && target.operationId
+        && previous.operationId !== target.operationId
+      ) {
+        throw new Error(`Box ${target.key} has conflicting provider deletion operations`);
+      }
       const evidence = [...new Set([...(previous?.evidence ?? []), ...target.evidence])].sort();
       await tx`
         insert into public.companion_v2_purge_targets (
-          resource_kind, resource_key, evidence, state, updated_at
+          resource_kind, resource_key, evidence, state, operation_id, updated_at
         ) values (
-          ${target.kind}, ${target.key}, ${tx.json(evidence)}, 'discovered', statement_timestamp()
+          ${target.kind}, ${target.key}, ${tx.json(evidence)}, 'discovered',
+          ${target.operationId ?? null}, statement_timestamp()
         )
         on conflict (resource_kind, resource_key) do update set
-          evidence = excluded.evidence, updated_at = excluded.updated_at
+          evidence = excluded.evidence,
+          operation_id = coalesce(companion_v2_purge_targets.operation_id, excluded.operation_id),
+          updated_at = excluded.updated_at
       `;
     }
   });
@@ -521,7 +593,7 @@ function createCompanionV2PurgeJournal(client: CompanionV2PurgeSql): CompanionV2
         update public.companion_v2_purge_targets
         set state = 'requesting', attempt_count = attempt_count + 1,
             requested_at = statement_timestamp(), completed_at = null,
-            last_error = null, updated_at = statement_timestamp()
+            retry_after = null, last_error = null, updated_at = statement_timestamp()
         where resource_kind = ${target.kind} and resource_key = ${target.key}
           and state not in ('completed', 'absent')
       `;
@@ -530,14 +602,19 @@ function createCompanionV2PurgeJournal(client: CompanionV2PurgeSql): CompanionV2
       await client`
         update public.companion_v2_purge_targets
         set state = ${outcome}, completed_at = statement_timestamp(),
-            last_error = null, updated_at = statement_timestamp()
+            retry_after = null, last_error = null, updated_at = statement_timestamp()
         where resource_kind = ${target.kind} and resource_key = ${target.key}
       `;
     },
-    async markFailure(target, message) {
+    async markFailure(target, message, disposition = "ambiguous") {
       await client`
         update public.companion_v2_purge_targets
-        set last_error = ${message}, updated_at = statement_timestamp()
+        set state = case when ${disposition} = 'retryable' then 'discovered' else state end,
+            retry_after = case
+              when ${disposition} = 'retryable' then statement_timestamp() + interval '5 seconds'
+              else retry_after
+            end,
+            last_error = ${message}, updated_at = statement_timestamp()
         where resource_kind = ${target.kind} and resource_key = ${target.key}
       `;
     },
@@ -554,7 +631,7 @@ function boxJournal(
       onTerminal("absent");
       await client`
         update public.companion_v2_purge_targets
-        set operation_id = null, updated_at = statement_timestamp()
+        set operation_id = null, retry_after = null, updated_at = statement_timestamp()
         where resource_kind = 'box' and resource_key = ${boxId}
       `;
     },
@@ -562,12 +639,50 @@ function boxJournal(
       if (operation.status === "completed") onTerminal("completed");
       await client`
         update public.companion_v2_purge_targets
-        set operation_id = ${operation.id}, updated_at = statement_timestamp()
+        set operation_id = ${operation.id}, retry_after = null, updated_at = statement_timestamp()
         where resource_kind = 'box' and resource_key = ${boxId}
       `;
     },
     async markError() {},
   };
+}
+
+async function removeCompanionV2BoxTarget(input: {
+  target: CompanionV2PurgeTarget;
+  client: CompanionV2PurgeSql;
+  boxClient: CompanionV2BoxPurgeClient;
+  afterRequestAccepted?(target: CompanionV2PurgeTarget): Promise<void>;
+  afterOperationCheckpoint?(target: CompanionV2PurgeTarget): Promise<void>;
+}): Promise<"completed" | "absent"> {
+  let outcome: "completed" | "absent" = "completed";
+  const journal = boxJournal(input.client, (terminal) => { outcome = terminal; });
+  let operationId = input.target.operationId ?? null;
+  if (!operationId) {
+    const deletion = await input.boxClient.requestPermanentDeletion({ boxId: input.target.key });
+    if (deletion.outcome === "absent") {
+      await journal.markAbsent(input.target.key);
+      return "absent";
+    }
+    await input.afterRequestAccepted?.(input.target);
+    operationId = deletion.operation.id;
+    await journal.markOperation(input.target.key, deletion.operation, false);
+    await input.afterOperationCheckpoint?.(input.target);
+    if (deletion.operation.status === "completed") return outcome;
+  }
+
+  const deadline = Date.now() + BOX_DELETE_TIMEOUT_MS;
+  for (;;) {
+    if (Date.now() >= deadline) {
+      throw new Error("Box deletion operation did not complete before the purge deadline");
+    }
+    await new Promise<void>((resolve) => { setTimeout(resolve, BOX_DELETE_POLL_INTERVAL_MS); });
+    const operation = await input.boxClient.getDeletionOperation({
+      operationId,
+      boxId: input.target.key,
+    });
+    await journal.markOperation(input.target.key, operation, true);
+    if (operation.status === "completed") return outcome;
+  }
 }
 
 async function removeCompanionV2Target(input: {
@@ -578,30 +693,23 @@ async function removeCompanionV2Target(input: {
   env: NodeJS.ProcessEnv;
   objectStore: CompanionV2ObjectStore;
   triggerRemover?: CompanionV2TriggerRemover;
+  afterBoxRequestAccepted?(target: CompanionV2PurgeTarget): Promise<void>;
+  afterBoxOperationCheckpoint?(target: CompanionV2PurgeTarget): Promise<void>;
 }): Promise<"completed" | "absent"> {
   if (input.target.kind === "object") {
     return input.objectStore.remove(input.target.key);
   }
   if (input.target.kind === "snapshot") {
-    await input.boxClient.deleteNamedSnapshot({ name: input.target.key });
-    return "completed";
+    return input.boxClient.deleteNamedSnapshot({ name: input.target.key });
   }
   if (input.target.kind === "box") {
-    let outcome: "completed" | "absent" = "completed";
-    await processLegacyPurgeTarget({
-      target: {
-        boxId: input.target.key,
-        observedName: null,
-        evidence: input.target.evidence,
-        state: input.target.state ?? "discovered",
-        operationId: input.target.operationId ?? null,
-        attemptCount: 0,
-        lastError: null,
-      },
+    return removeCompanionV2BoxTarget({
+      target: input.target,
+      client: input.client,
       boxClient: input.boxClient,
-      journal: boxJournal(input.client, (terminal) => { outcome = terminal; }),
+      afterRequestAccepted: input.afterBoxRequestAccepted,
+      afterOperationCheckpoint: input.afterBoxOperationCheckpoint,
     });
-    return outcome;
   }
   const owner = input.triggerOwners.find((item) => item.triggerId === input.target.key);
   if (!owner) return "absent";
@@ -672,7 +780,9 @@ export async function executeConfirmedCompanionV2Purge(input: {
   env?: NodeJS.ProcessEnv;
   objectStore?: CompanionV2ObjectStore;
   triggerRemover?: CompanionV2TriggerRemover;
+  beforeExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
   afterExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
+  afterBoxOperationCheckpoint?(target: CompanionV2PurgeTarget): Promise<void>;
 }): Promise<CompanionV2PurgeResult> {
   const env = input.env ?? process.env;
   assertCompanionV2PurgeDisabled(env);
@@ -705,15 +815,22 @@ export async function executeConfirmedCompanionV2Purge(input: {
         if (input.triggerRemover) inspection.triggerRemover = input.triggerRemover;
         return (await inspectCompanionV2Trigger(inspection)) === "present";
       }
-      const providerEvidence = target.kind === "object"
-        ? "storage-prefix:companion-attachments"
-        : target.kind === "snapshot"
-          ? "provider-name:v2-image"
-          : "provider-name:companion-generation";
       const discovered = input.initialInventory.targets.find(
         (item) => item.kind === target.kind && item.key === target.key,
       );
-      return discovered?.evidence.includes(providerEvidence) ?? false;
+      if (!discovered) return false;
+      if (target.kind === "object") {
+        return discovered.evidence.includes("storage-prefix:companion-attachments");
+      }
+      if (target.kind === "snapshot") {
+        return discovered.evidence.includes("provider-name:v2-image");
+      }
+      // Box documents that an accepted permanent delete disappears from ordinary authenticated
+      // reads immediately, before the retained bdop finishes. Presence therefore proves admission
+      // did not occur; absence is sufficient to close this purge target without replaying DELETE.
+      // https://docs.ascii.dev/box/api/reference/boxes/permanently-delete-box-data.md
+      return discovered.evidence.includes("provider-id:box")
+        || discovered.evidence.includes("provider-name:companion-generation");
     },
     remove: (target) => {
       const removal: Parameters<typeof removeCompanionV2Target>[0] = {
@@ -725,9 +842,16 @@ export async function executeConfirmedCompanionV2Purge(input: {
         objectStore,
       };
       if (input.triggerRemover) removal.triggerRemover = input.triggerRemover;
+      if (target.kind === "box" && input.afterExternalEffect) {
+        removal.afterBoxRequestAccepted = input.afterExternalEffect;
+      }
+      if (target.kind === "box" && input.afterBoxOperationCheckpoint) {
+        removal.afterBoxOperationCheckpoint = input.afterBoxOperationCheckpoint;
+      }
       return removeCompanionV2Target(removal);
     },
   };
+  if (input.beforeExternalEffect) processing.beforeExternalEffect = input.beforeExternalEffect;
   if (input.afterExternalEffect) processing.afterExternalEffect = input.afterExternalEffect;
   await processCompanionV2PurgeTargets(processing);
 
@@ -762,7 +886,9 @@ export async function runCompanionV2PurgeInvocation(input: {
   env?: NodeJS.ProcessEnv;
   objectStore?: CompanionV2ObjectStore;
   triggerRemover?: CompanionV2TriggerRemover;
+  beforeExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
   afterExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
+  afterBoxOperationCheckpoint?(target: CompanionV2PurgeTarget): Promise<void>;
   log?: (message: string) => void;
 }): Promise<{ inventory: CompanionV2PurgeInventory; result?: CompanionV2PurgeResult }> {
   const env = input.env ?? process.env;
@@ -795,7 +921,11 @@ export async function runCompanionV2PurgeInvocation(input: {
       objectStore,
     };
     if (input.triggerRemover) confirmed.triggerRemover = input.triggerRemover;
+    if (input.beforeExternalEffect) confirmed.beforeExternalEffect = input.beforeExternalEffect;
     if (input.afterExternalEffect) confirmed.afterExternalEffect = input.afterExternalEffect;
+    if (input.afterBoxOperationCheckpoint) {
+      confirmed.afterBoxOperationCheckpoint = input.afterBoxOperationCheckpoint;
+    }
     const result = await executeConfirmedCompanionV2Purge(confirmed);
     (input.log ?? console.log)(`Runtime v2 database purge result: ${JSON.stringify(result)}`);
     const finalInventory = await collectCompanionV2PurgeInventory({

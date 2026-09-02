@@ -71,7 +71,10 @@ creates no ledger or provider effect, external effects precede row deletion, `40
 absence, a mid-purge provider failure keeps ownership intact, and retry does not repeat completed
 effects. Fault injection immediately after accepted trigger, object, snapshot, and Box deletion
 proves that retry observes provider absence instead of repeating DELETE; provider-specific trigger
-tests cover GitHub, Linear, and Sentry presence/absence. Final assertions require an empty
+tests cover GitHub, Linear, and Sentry presence/absence. Box tests also fault immediately before
+DELETE, after `202` but before operation-id persistence, and after operation persistence; they prove
+fresh visible/absent reconciliation and retained-operation polling without assuming DELETE
+idempotence. Final assertions require an empty
 Companion-domain inventory, immutable expurgated
 evidence, and an identical preservation fingerprint covering tenant, Skills/secrets/Skill Database,
 billing/audit, and reusable encrypted connection data. No test may invoke destructive mode against

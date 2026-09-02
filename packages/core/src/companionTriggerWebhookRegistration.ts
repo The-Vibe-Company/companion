@@ -392,7 +392,12 @@ export async function inspectCompanionTriggerWebhookV2(input: {
       remoteHookId: trigger.remote_hook_id,
     });
   } else if (trigger.provider === "sentry") {
-    if (!trigger.target?.organization || !trigger.target.project) return "absent";
+    if (!trigger.target?.organization || !trigger.target.project) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        "Sentry webhook reconciliation lacks its exact provider locator",
+      );
+    }
     const account = await loadTriggerProviderAccount({
       orgId: input.orgId,
       provider: "sentry",
@@ -415,7 +420,12 @@ export async function inspectCompanionTriggerWebhookV2(input: {
     }
     return "present";
   } else if (trigger.provider === "github") {
-    if (!trigger.target?.repo) return "absent";
+    if (!trigger.target?.repo) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        "GitHub webhook reconciliation lacks its exact provider locator",
+      );
+    }
     const account = await loadTriggerProviderAccount({
       orgId: input.orgId,
       provider: "github",
@@ -436,7 +446,10 @@ export async function inspectCompanionTriggerWebhookV2(input: {
     }
     return "present";
   } else {
-    return "absent";
+    throw new CompanionTriggerRegistrationError(
+      "provider_rejected",
+      "Webhook reconciliation is unavailable for this registered provider",
+    );
   }
   if (found === null) return "absent";
   if (found !== trigger.remote_hook_id) {
@@ -1028,6 +1041,12 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
   }
   if (trigger.provider === "sentry") {
     if (!trigger.remote_hook_id || !trigger.target?.organization || !trigger.target.project) {
+      if (input.preserveRegistration && trigger.remote_hook_id) {
+        throw new CompanionTriggerRegistrationError(
+          "provider_rejected",
+          "Sentry webhook deletion lacks its exact provider locator",
+        );
+      }
       await persist({
         ...input,
         accountId: null,
@@ -1075,6 +1094,14 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
     return response.status === 404 ? "absent" : "completed";
   }
   if (trigger.provider !== "github" || !trigger.target?.repo || !trigger.remote_hook_id) {
+    if (input.preserveRegistration && trigger.remote_hook_id) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        trigger.provider === "github"
+          ? "GitHub webhook deletion lacks its exact provider locator"
+          : "Webhook deletion is unavailable for this registered provider",
+      );
+    }
     await persist({
       ...input,
       accountId: null,

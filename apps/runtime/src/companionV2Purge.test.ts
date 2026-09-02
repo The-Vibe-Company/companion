@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BoxRuntimeAdapterError } from "@companion/box-runtime";
 
 import {
   assertCompanionV2PurgeDisabled,
@@ -68,6 +69,41 @@ describe("Runtime v2 purge inventory", () => {
       },
     ]);
   });
+
+  it("retains one provider operation checkpoint and rejects conflicting ownership", () => {
+    expect(mergeCompanionV2PurgeTargets([
+      {
+        kind: "box",
+        key: "bx_23456789",
+        evidence: ["database:image-build-box"],
+        operationId: "bdop_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      },
+      {
+        kind: "box",
+        key: "bx_23456789",
+        evidence: ["provider-id:box"],
+      },
+    ])).toEqual([{
+      kind: "box",
+      key: "bx_23456789",
+      evidence: ["database:image-build-box", "provider-id:box"],
+      operationId: "bdop_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    }]);
+    expect(() => mergeCompanionV2PurgeTargets([
+      {
+        kind: "box",
+        key: "bx_23456789",
+        evidence: ["database:image-build-box"],
+        operationId: "bdop_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      },
+      {
+        kind: "box",
+        key: "bx_23456789",
+        evidence: ["database:duplicate-cleanup"],
+        operationId: "bdop_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      },
+    ])).toThrow("conflicting provider deletion operations");
+  });
 });
 
 describe("Runtime v2 external purge checkpoints", () => {
@@ -126,7 +162,7 @@ describe("Runtime v2 external purge checkpoints", () => {
   });
 
   it("reconciles every effect committed before its terminal checkpoint without deleting twice", async () => {
-    for (const kind of ["trigger", "object", "snapshot", "box"] as const) {
+    for (const kind of ["trigger", "object", "snapshot"] as const) {
       let present = true;
       let effects = 0;
       const target: CompanionV2PurgeTarget = {
@@ -168,7 +204,7 @@ describe("Runtime v2 external purge checkpoints", () => {
     }
   });
 
-  it("fails closed when a Box delete response was lost and the Box is still visible", async () => {
+  it("retries only after fresh presence proves that Box DELETE admission did not occur", async () => {
     const effects: string[] = [];
     await expect(processCompanionV2PurgeTargets({
       targets: [{
@@ -188,7 +224,127 @@ describe("Runtime v2 external purge checkpoints", () => {
         effects.push(target.key);
         return "completed";
       },
-    })).rejects.toThrow("Ambiguous Box deletion is still provider-visible");
-    expect(effects).toEqual([]);
+    })).resolves.toBeUndefined();
+    expect(effects).toEqual(["bx_ambiguous"]);
+  });
+
+  it("does not replay Box DELETE when fresh authenticated inventory proves absence", async () => {
+    const effects: string[] = [];
+    const outcomes: string[] = [];
+    await processCompanionV2PurgeTargets({
+      targets: [{
+        kind: "box",
+        key: "bx_admitted",
+        evidence: ["database:runtime-instance"],
+        state: "requesting",
+        operationId: null,
+      }],
+      journal: {
+        async markRequesting() {},
+        async markComplete(_target, outcome) { outcomes.push(outcome); },
+        async markFailure() {},
+      },
+      providerPresent: () => false,
+      remove: async (target) => {
+        effects.push(target.key);
+        return "completed";
+      },
+    });
+    expect({ effects, outcomes }).toEqual({ effects: [], outcomes: ["absent"] });
+  });
+
+  it("polls a durable Box operation even after the Box leaves ordinary inventory", async () => {
+    const effects: string[] = [];
+    await processCompanionV2PurgeTargets({
+      targets: [{
+        kind: "box",
+        key: "bx_operation",
+        evidence: ["database:runtime-instance"],
+        state: "requesting",
+        operationId: "bdop_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      }],
+      journal: {
+        async markRequesting() {},
+        async markComplete() {},
+        async markFailure() {},
+      },
+      providerPresent: () => false,
+      remove: async (target) => {
+        effects.push(target.operationId!);
+        return "completed";
+      },
+    });
+    expect(effects).toEqual(["bdop_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]);
+  });
+
+  it("fails closed when a requesting Box cannot be reconciled by an authenticated read", async () => {
+    await expect(processCompanionV2PurgeTargets({
+      targets: [{
+        kind: "box",
+        key: "bx_unknown",
+        evidence: ["database:runtime-instance"],
+        state: "requesting",
+        operationId: null,
+      }],
+      journal: {
+        async markRequesting() {},
+        async markComplete() {},
+        async markFailure() {},
+      },
+      providerPresent: () => undefined,
+      remove: async () => "completed",
+    })).rejects.toThrow("authenticated Box presence reconciliation is unavailable");
+  });
+
+  it("leaves a durable requesting checkpoint when the process stops before the effect", async () => {
+    const events: string[] = [];
+    await expect(processCompanionV2PurgeTargets({
+      targets: [{ kind: "box", key: "bx_before", evidence: ["provider-id:box"] }],
+      journal: {
+        async markRequesting() { events.push("requesting"); },
+        async markComplete() { events.push("complete"); },
+        async markFailure() { events.push("failure"); },
+      },
+      beforeExternalEffect: async () => { throw new Error("crash before Box DELETE"); },
+      remove: async () => {
+        events.push("effect");
+        return "completed";
+      },
+    })).rejects.toThrow("crash before Box DELETE");
+    expect(events).toEqual(["requesting", "failure"]);
+  });
+
+  it("backs off and makes a known-negative Box rejection safely retryable", async () => {
+    const events: string[] = [];
+    const retryAfter = new Date(10_000).toISOString();
+    await expect(processCompanionV2PurgeTargets({
+      targets: [{
+        kind: "box",
+        key: "bx_retryable",
+        evidence: ["provider-id:box"],
+        state: "discovered",
+        retryAfter,
+      }],
+      journal: {
+        async markRequesting() { events.push("requesting"); },
+        async markComplete() {},
+        async markFailure(_target, _message, disposition) {
+          events.push(`failure:${disposition}`);
+        },
+      },
+      providerPresent: () => true,
+      pause: async (milliseconds) => { events.push(`pause:${milliseconds}`); },
+      nowMs: () => 7_000,
+      remove: async () => {
+        throw new BoxRuntimeAdapterError({
+          stableCode: "box_conflict",
+          message: "The Box delete request was rejected",
+          status: 409,
+          retryable: true,
+          outcomeUnknown: false,
+        });
+      },
+    })).rejects.toMatchObject({ outcomeUnknown: false });
+    expect(events).toEqual(["pause:3000", "requesting", "failure:retryable"]);
   });
 });

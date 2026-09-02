@@ -1428,7 +1428,10 @@ rows present. Terminal targets are skipped on retry, while a recorded Box operat
 than resubmitted. A nonterminal retry performs an authoritative provider observation first:
 storage/Box/snapshot inventory covers those resources, and authenticated GitHub, Linear, or Sentry
 lookup covers remote triggers. Proven absence closes the target without another DELETE; an
-ambiguous still-visible Box without an operation id fails closed.
+operation-bearing Box resumes by polling. Without an operation id, fresh authenticated Box absence
+closes the target without replay, while fresh visibility proves the provider's documented
+immediate-removal admission boundary was not crossed and permits a new request. An unavailable or
+unknown observation fails closed; known-negative DELETE rejection is retried only after backoff.
 
 Only a complete external ledger admits the final transaction. It drains Companions, ACLs, threads,
 Turns, attempts, operations, routines, triggers, leases, runtime projections, images/build state,

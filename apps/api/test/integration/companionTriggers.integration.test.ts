@@ -986,6 +986,36 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: reconcilePresent,
     }))).resolves.toBe("present");
+    let malformedLookupCalls = 0;
+    const malformedLookup = asFetch(async () => {
+      malformedLookupCalls += 1;
+      throw new Error("malformed provider locator must fail before fetch");
+    });
+    await integrationDb.update(schema.companionTriggers).set({ target: {} })
+      .where(eq(schema.companionTriggers.id, trigger.id));
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: malformedLookup,
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: malformedLookup,
+      preserveRegistration: true,
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
+    expect(malformedLookupCalls).toBe(0);
+    await integrationDb.update(schema.companionTriggers).set({
+      target: { repo: "acme/demo", events: ["push"] },
+    }).where(eq(schema.companionTriggers.id, trigger.id));
     const deleteRequests: string[] = [];
     const deleteFetch = asFetch(async (url) => {
       deleteRequests.push(String(url));
@@ -1357,6 +1387,30 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: existingFetch,
     }))).resolves.toBe("present");
+    await integrationDb.update(schema.companionTriggers).set({ target: {} })
+      .where(eq(schema.companionTriggers.id, trigger.id));
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: existingFetch,
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: existingFetch,
+      preserveRegistration: true,
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
+    await integrationDb.update(schema.companionTriggers).set({
+      target: { organization: "acme", project: "frontend", events: ["error"] },
+    }).where(eq(schema.companionTriggers.id, trigger.id));
     await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
       orgId: fixture.orgA,
       companionId,

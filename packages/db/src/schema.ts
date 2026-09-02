@@ -914,6 +914,7 @@ export const companionV2PurgeTargets = pgTable(
     operationId: text("operation_id"),
     attemptCount: integer("attempt_count").notNull().default(0),
     requestedAt: timestamp("requested_at", { withTimezone: true }),
+    retryAfter: timestamp("retry_after", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     lastError: text("last_error"),
     createdAt: now(),

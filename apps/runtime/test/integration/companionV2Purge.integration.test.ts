@@ -85,15 +85,31 @@ async function applyRuntimeGrants(client: ReturnType<typeof postgres>): Promise<
 }
 
 class DisposableBoxProvider implements CompanionV2BoxPurgeClient {
-  boxPresent = true;
+  readonly boxes = new Map<string, BoxMaintenanceBox>([
+    ["bx_23456789", {
+      id: "bx_23456789",
+      name: "Companion 22222222-2222-4222-8222-222222222222 g1",
+    }],
+    ["bx_3456789a", {
+      id: "bx_3456789a",
+      name: "Companion 22222222-2222-4222-8222-222222222222 g2",
+    }],
+    ["bx_456789ab", { id: "bx_456789ab" }],
+    ["bx_56789abc", {
+      id: "bx_56789abc",
+      name: "Companion aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa g1",
+    }],
+    ["bx_6789abcd", {
+      id: "bx_6789abcd",
+      name: "Companion bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb g1",
+    }],
+  ]);
   snapshotPresent = true;
   deletionRequests = 0;
   snapshotDeletes = 0;
 
   async listAllBoxes(): Promise<BoxMaintenanceBox[]> {
-    return this.boxPresent
-      ? [{ id: "bx_23456789", name: "Companion 22222222-2222-4222-8222-222222222222 g1" }]
-      : [];
+    return [...this.boxes.values()];
   }
 
   async listNamedSnapshots() {
@@ -107,19 +123,48 @@ class DisposableBoxProvider implements CompanionV2BoxPurgeClient {
       : [];
   }
 
-  async deleteNamedSnapshot(): Promise<void> {
+  async deleteNamedSnapshot(): Promise<"completed"> {
     this.snapshotDeletes += 1;
     this.snapshotPresent = false;
+    return "completed";
   }
 
   async requestPermanentDeletion(input: { boxId: string }): Promise<BoxPermanentDeletionResult> {
     this.deletionRequests += 1;
-    this.boxPresent = false;
-    return { outcome: "absent", boxId: input.boxId };
+    if (
+      !["bx_56789abc", "bx_6789abcd"].includes(input.boxId)
+      || !this.boxes.delete(input.boxId)
+    ) {
+      throw new Error(`unexpected duplicate Box DELETE for ${input.boxId}`);
+    }
+    return {
+      outcome: "accepted",
+      operation: {
+        id: input.boxId === "bx_56789abc"
+          ? "bdop_44444444444444444444444444444444"
+          : "bdop_55555555555555555555555555555555",
+        targetId: input.boxId,
+        status: "pending",
+        attemptCount: 0,
+        requestedAt: new Date(0).toISOString(),
+        completedAt: null,
+      },
+    };
   }
 
-  async getDeletionOperation(): Promise<BoxDeletionOperation> {
-    throw new Error("an absent disposable Box has no operation");
+  async getDeletionOperation(input: {
+    operationId: string;
+    boxId: string;
+  }): Promise<BoxDeletionOperation> {
+    this.boxes.delete(input.boxId);
+    return {
+      id: input.operationId,
+      targetId: input.boxId,
+      status: "completed",
+      attemptCount: 1,
+      requestedAt: new Date(0).toISOString(),
+      completedAt: new Date(1).toISOString(),
+    };
   }
 }
 
@@ -228,8 +273,29 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       values ('${companionId}','${orgId}','purge-owner','Disposable Companion');
       insert into public.companion_runtime_instances(org_id,companion_id,box_id)
       values ('${orgId}','${companionId}','bx_23456789');
-      insert into public.companion_images(digest,image_name)
-      values (repeat('a',64),'companion-l14-0123456789ab');
+      insert into public.companion_operations(
+        id,org_id,companion_id,kind,trigger,status,actor_id,queue_sequence,turn_queue_cutoff,
+        runtime_generation,claim_epoch,checkpoint,checkpoint_sequence,attempt_count,
+        provider_operation_id,started_at
+      ) values (
+        'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa','${orgId}','${companionId}',
+        'delete','user','running','purge-owner',1,0,1,1,'provider_delete_requested',1,1,
+        'bdop_11111111111111111111111111111111',statement_timestamp()
+      );
+      insert into public.companion_runtime_duplicate_cleanups(
+        org_id,companion_id,operation_id,box_id,status,provider_operation_id,
+        checkpoint_sequence,delete_requested_at
+      ) values (
+        '${orgId}','${companionId}','aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+        'bx_3456789a','delete_requested','bdop_22222222222222222222222222222222',1,
+        statement_timestamp()
+      );
+      insert into public.companion_images(
+        digest,image_name,build_box_id,build_delete_intent_at,build_delete_operation_id
+      ) values (
+        repeat('a',64),'companion-l14-0123456789ab','bx_456789ab',statement_timestamp(),
+        'bdop_33333333333333333333333333333333'
+      );
       insert into public.companion_triggers(
         id,org_id,companion_id,name,prompt,provider,secret,target,
         registration_status,remote_hook_id,created_by
@@ -278,7 +344,32 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       await contender.end({ timeout: 1 });
     }
     expect(firstInventory.targets.map((target) => target.kind)).toEqual([
-      "box", "object", "snapshot", "trigger",
+      "box", "box", "box", "box", "box", "object", "snapshot", "trigger",
+    ]);
+    expect(firstInventory.targets.filter((target) => target.kind === "box")).toEqual([
+      expect.objectContaining({
+        key: "bx_23456789",
+        operationId: "bdop_11111111111111111111111111111111",
+        evidence: expect.arrayContaining(["database:delete-operation", "provider-id:box"]),
+      }),
+      expect.objectContaining({
+        key: "bx_3456789a",
+        operationId: "bdop_22222222222222222222222222222222",
+        evidence: expect.arrayContaining(["database:duplicate-cleanup", "provider-id:box"]),
+      }),
+      expect.objectContaining({
+        key: "bx_456789ab",
+        operationId: "bdop_33333333333333333333333333333333",
+        evidence: expect.arrayContaining(["database:image-build-box", "provider-id:box"]),
+      }),
+      expect.objectContaining({
+        key: "bx_56789abc",
+        evidence: ["provider-name:companion-generation"],
+      }),
+      expect.objectContaining({
+        key: "bx_6789abcd",
+        evidence: ["provider-name:companion-generation"],
+      }),
     ]);
     const [ledgerBeforePurge] = await database<Array<{ runs: string; targets: string }>>`
       select
@@ -326,6 +417,25 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       set enabled = false, enabled_at = null, disabled_at = statement_timestamp()
       where id = 'runtime-v2'
     `;
+    const [disabledGate] = await database<Array<{ gateEpoch: string }>>`
+      select gate_epoch::text as "gateEpoch"
+      from public.companion_runtime_control where id = 'runtime-v2'
+    `;
+    const enabler = postgres(upgradeUrl.toString(), { max: 1 });
+    try {
+      await enabler`set statement_timeout = 100`;
+      await expect(enabler`
+        select * from public.companion_runtime_enable(
+          ${Number(disabledGate?.gateEpoch)}, 'race-during-purge'
+        )
+      `).rejects.toMatchObject({ code: "57014" });
+    } finally {
+      await enabler.end({ timeout: 1 });
+    }
+    const [stillDisabled] = await database<Array<{ enabled: boolean }>>`
+      select enabled from public.companion_runtime_control where id = 'runtime-v2'
+    `;
+    expect(stillDisabled?.enabled).toBe(false);
     expect({
       boxDeletes: boxes.deletionRequests,
       snapshotDeletes: boxes.snapshotDeletes,
@@ -365,6 +475,78 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectStore: objects,
       triggerRemover: triggers,
       initialInventory: firstInventory,
+      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      beforeExternalEffect: async (target) => {
+        if (target.key === "bx_56789abc") throw new Error("crash before Box DELETE");
+      },
+    })).rejects.toThrow("crash before Box DELETE");
+    expect(boxes.deletionRequests).toBe(0);
+
+    const beforeAcceptedInventory = await collectCompanionV2PurgeInventory({
+      client: database, boxClient, objectStore: objects,
+    });
+    await expect(executeConfirmedCompanionV2Purge({
+      client: database,
+      boxClient,
+      objectStore: objects,
+      triggerRemover: triggers,
+      initialInventory: beforeAcceptedInventory,
+      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      afterExternalEffect: async (target) => {
+        if (target.key === "bx_56789abc") {
+          throw new Error("crash after accepted Box deletion before operation checkpoint");
+        }
+      },
+    })).rejects.toThrow("crash after accepted Box deletion before operation checkpoint");
+    expect(boxes.deletionRequests).toBe(1);
+    const [boxCrashTarget] = await database<Array<{
+      state: string;
+      operationId: string | null;
+    }>>`
+      select state, operation_id as "operationId"
+      from public.companion_v2_purge_targets
+      where resource_kind = 'box' and resource_key = 'bx_56789abc'
+    `;
+    expect(boxCrashTarget).toEqual({ state: "requesting", operationId: null });
+
+    const beforeOperationCheckpointCrash = await collectCompanionV2PurgeInventory({
+      client: database, boxClient, objectStore: objects,
+    });
+    await expect(executeConfirmedCompanionV2Purge({
+      client: database,
+      boxClient,
+      objectStore: objects,
+      triggerRemover: triggers,
+      initialInventory: beforeOperationCheckpointCrash,
+      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      afterBoxOperationCheckpoint: async (target) => {
+        if (target.key === "bx_6789abcd") {
+          throw new Error("crash after durable Box operation checkpoint");
+        }
+      },
+    })).rejects.toThrow("crash after durable Box operation checkpoint");
+    const [recordedBoxTarget] = await database<Array<{
+      state: string;
+      operationId: string | null;
+    }>>`
+      select state, operation_id as "operationId"
+      from public.companion_v2_purge_targets
+      where resource_kind = 'box' and resource_key = 'bx_6789abcd'
+    `;
+    expect(recordedBoxTarget).toEqual({
+      state: "requesting",
+      operationId: "bdop_55555555555555555555555555555555",
+    });
+
+    const beforeTriggerInventory = await collectCompanionV2PurgeInventory({
+      client: database, boxClient, objectStore: objects,
+    });
+    await expect(executeConfirmedCompanionV2Purge({
+      client: database,
+      boxClient,
+      objectStore: objects,
+      triggerRemover: triggers,
+      initialInventory: beforeTriggerInventory,
       env: { COMPANION_COMPANIONS_ENABLED: "false" },
       afterExternalEffect: async (target) => {
         if (target.kind === "trigger") throw new Error("crash after accepted trigger deletion");
@@ -416,7 +598,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       snapshotDeletes: boxes.snapshotDeletes,
       objectDeletes: objects.removals,
       triggerAttempts,
-    }).toEqual({ boxDeletes: 1, snapshotDeletes: 1, objectDeletes: 1, triggerAttempts: 1 });
+    }).toEqual({ boxDeletes: 2, snapshotDeletes: 1, objectDeletes: 1, triggerAttempts: 1 });
 
     const [remaining] = await database<Array<{ companions: string; triggers: string; attempts: string }>>`
       select

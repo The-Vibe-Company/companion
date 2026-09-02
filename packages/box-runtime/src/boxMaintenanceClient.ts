@@ -318,7 +318,9 @@ export interface BoxRuntimeLifecycleClient extends BoxMaintenanceClient {
     boxId: string;
     name: string;
   } & BoxCallControl): Promise<BoxNamedSnapshot>;
-  deleteNamedSnapshot(input: { name: string } & BoxCallControl): Promise<void>;
+  deleteNamedSnapshot(
+    input: { name: string } & BoxCallControl,
+  ): Promise<"completed" | "absent">;
   deletePermanentlyAndWait(input: {
     boxId: string;
     operationId?: string;
@@ -1166,7 +1168,9 @@ export class AsciiBoxMaintenanceClient implements BoxRuntimeLifecycleClient {
     return parseNamedSnapshot(response.body, name);
   }
 
-  async deleteNamedSnapshot(input: { name: string } & BoxCallControl): Promise<void> {
+  async deleteNamedSnapshot(
+    input: { name: string } & BoxCallControl,
+  ): Promise<"completed" | "absent"> {
     const name = namedSnapshotNameSchema.parse(input.name);
     try {
       await this.#request(
@@ -1174,8 +1178,11 @@ export class AsciiBoxMaintenanceClient implements BoxRuntimeLifecycleClient {
         { method: "DELETE" },
         input,
       );
+      return "completed";
     } catch (error) {
-      if (error instanceof BoxRuntimeAdapterError && error.stableCode === "box_not_found") return;
+      if (error instanceof BoxRuntimeAdapterError && error.stableCode === "box_not_found") {
+        return "absent";
+      }
       throw error;
     }
   }

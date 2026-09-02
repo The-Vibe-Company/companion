@@ -253,8 +253,15 @@ correct the provider/storage problem, and rerun. Do not edit ownership or ledger
 terminal targets are skipped and recorded Box operations resume. A `requesting` object, snapshot,
 or Box is first reconciled against fresh provider inventory; a `requesting` GitHub, Linear, or
 Sentry trigger is first reconciled through its authenticated provider read/list API. Absence closes
-the ledger without another DELETE. A still-visible Box with no recorded operation remains blocked
-as ambiguous instead of being resubmitted.
+the ledger without another DELETE. Box recovery follows the provider's documented contract:
+[permanent deletion](https://docs.ascii.dev/box/api/reference/boxes/permanently-delete-box-data.md)
+returns `202` and immediately removes the Box from ordinary reads while the retained `bdop_...`
+operation completes; [data retention](https://docs.ascii.dev/box/data-retention.md) is separate from
+that admission boundary. Therefore a recorded operation is polled, fresh authenticated absence
+without one is recorded `absent` without replay, and fresh visibility proves admission did not occur
+and permits a new attempt. `absent` does not claim that physical erasure has finished. Malformed,
+unsupported, unknown, or unavailable reads fail closed. A known-negative DELETE rejection returns
+to retryable state with bounded backoff.
 
 Archive the final report and checksum. It must show zero Companion-domain rows and targets. Verify
 the ledger phase is `database_complete`, every target is `completed` or `absent`, and attempts to

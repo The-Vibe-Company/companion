@@ -34,6 +34,7 @@ CREATE TABLE public.companion_v2_purge_targets (
   operation_id text,
   attempt_count integer DEFAULT 0 NOT NULL,
   requested_at timestamp with time zone,
+  retry_after timestamp with time zone,
   completed_at timestamp with time zone,
   last_error text,
   created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -70,6 +71,74 @@ ALTER TABLE public.companion_v2_purge_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.companion_v2_purge_runs FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.companion_v2_purge_targets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.companion_v2_purge_targets FORCE ROW LEVEL SECURITY;
+--> statement-breakpoint
+
+-- Serialize the approved owner-only enable path with the whole purge. The purge holds the same
+-- session lock from inventory through final verification; enable takes its transaction form so it
+-- cannot reactivate claims between destructive provider effects and the database finalizer.
+CREATE OR REPLACE FUNCTION public.companion_runtime_enable(
+  p_expected_gate_epoch bigint,
+  p_actor_id text
+)
+RETURNS TABLE (
+  enabled boolean,
+  gate_epoch bigint,
+  updated_at timestamp with time zone
+)
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_owner name;
+  v_control public.companion_runtime_control%ROWTYPE;
+  v_now timestamp with time zone := statement_timestamp();
+BEGIN
+  SELECT pg_get_userbyid(p.proowner) INTO v_owner
+  FROM pg_proc p
+  WHERE p.oid = 'public.companion_runtime_enable(bigint,text)'::regprocedure;
+
+  IF current_user <> v_owner THEN
+    RAISE EXCEPTION 'only the Runtime v2 function owner may enable execution'
+      USING ERRCODE = '42501';
+  END IF;
+  IF p_expected_gate_epoch IS NULL OR p_expected_gate_epoch < 1 THEN
+    RAISE EXCEPTION 'invalid runtime gate epoch' USING ERRCODE = '22023';
+  END IF;
+  IF p_actor_id IS NULL
+     OR char_length(p_actor_id) NOT BETWEEN 1 AND 200
+     OR p_actor_id ~ E'[\n\r]' THEN
+    RAISE EXCEPTION 'invalid runtime gate actor' USING ERRCODE = '22023';
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(72401, 20260608);
+
+  SELECT c.* INTO v_control
+  FROM public.companion_runtime_control c
+  WHERE c.id = 'runtime-v2'
+  FOR UPDATE;
+
+  IF v_control.gate_epoch <> p_expected_gate_epoch THEN
+    RAISE EXCEPTION 'runtime gate epoch is stale' USING ERRCODE = '40001';
+  END IF;
+  IF v_control.enabled THEN
+    RETURN QUERY SELECT true, v_control.gate_epoch, v_control.updated_at;
+    RETURN;
+  END IF;
+
+  UPDATE public.companion_runtime_control c
+  SET enabled = true,
+      gate_epoch = c.gate_epoch + 1,
+      enabled_at = v_now,
+      disabled_at = NULL,
+      changed_by = p_actor_id,
+      updated_at = v_now
+  WHERE c.id = 'runtime-v2'
+  RETURNING c.* INTO v_control;
+
+  RETURN QUERY SELECT v_control.enabled, v_control.gate_epoch, v_control.updated_at;
+END
+$$;
 --> statement-breakpoint
 
 -- Hash every preserved row without retaining plaintext. New non-Companion tables are included

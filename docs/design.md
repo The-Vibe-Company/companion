@@ -240,8 +240,12 @@ Box are removed before the final SQL transaction. `404` is successful absence; a
 leaves all Companion ownership rows intact. A retry skips terminal targets and resumes any recorded
 Box operation. `requesting` targets are never blindly replayed: current storage/Box/snapshot
 inventory and authenticated provider-specific trigger lookup first prove whether the resource is
-present or absent. A lost Box-delete response with no operation id stays blocked while the Box is
-visible rather than issuing a second permanent DELETE.
+present or absent. For Box DELETE, a durable operation id is always polled. Without one, fresh
+authenticated absence means the `202` admission was acquired (or the Box was already absent), so
+the ledger closes without replay; fresh visibility means the documented immediate-removal boundary
+was not crossed and permits a new attempt. Unknown reads fail closed. Known-negative Box failures
+return to `discovered` with a bounded backoff. The owner-only runtime enable function takes the same
+advisory lock, so it cannot reactivate claims during provider cleanup.
 
 The finalizer deletes the Companion aggregate and all v2 runtime children. It locks preserved
 tables and takes the before/after baseline only around that final transaction; normal Skills Hub
