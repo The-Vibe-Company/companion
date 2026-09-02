@@ -226,6 +226,27 @@ The separate function names and required protocol argument prevent an old execut
 or mutating v3 rows. Later stack layers replace behavior behind this interface; they do not activate
 a second live runtime beside v2.
 
+Migration 0160 adds the separate one-shot Runtime v2 purge needed before a later v3 cutover. Its
+operator module is dormant: no service composition root calls it. `report` and `purge --dry-run`
+only read PostgreSQL, Box/named-snapshot inventory, and the `companion-attachments/` object prefix;
+neither mode writes its ledger or loads the secrets master key. Confirmed mode additionally requires
+the environment flag and PostgreSQL runtime gate off, neutral v2/v3 leases, the migration advisory
+lock, and the exact confirmation phrase before any external effect.
+
+The FK-free purge ledger stores only resource kind/key, bounded evidence, provider operation
+identity, terminal state, and expurgated failure text. Remote trigger registrations,
+attachment/output objects, named v2 snapshots, build Boxes, duplicate Boxes, and every generation
+Box are removed before the final SQL transaction. `404` is successful absence; another failure
+leaves all Companion ownership rows intact. A retry skips terminal targets and resumes any recorded
+Box operation.
+
+The finalizer deletes the Companion aggregate and all v2 runtime children. A before/after
+fingerprint covers every non-Companion table plus reusable encrypted provider, MCP, and
+trigger-provider connection tables. Any change to organizations, users, memberships, Skills,
+secrets, Skill Databases, billing, audit history, or those connections aborts the transaction.
+Completed ledger evidence is immutable. THE-511 builds and verifies this path only; it neither runs
+a production purge nor activates Runtime v3.
+
 ## Dedicated runtime execution
 
 `apps/runtime` sweeps every two seconds, claims with a 30-second lease, renews every ten seconds,

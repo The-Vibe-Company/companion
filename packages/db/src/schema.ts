@@ -131,6 +131,12 @@ export type CompanionLegacyPurgeTargetState =
   | "blocked"
   | "completed"
   | "absent";
+export type CompanionV2PurgePhase =
+  | "deleting_external"
+  | "external_complete"
+  | "database_complete";
+export type CompanionV2PurgeTargetKind = "trigger" | "object" | "snapshot" | "box";
+export type CompanionV2PurgeTargetState = "discovered" | "requesting" | "completed" | "absent";
 export const companionProviderAuthMethodEnum = pgEnum("companion_provider_auth_method", [
   "api_key",
   "subscription",
@@ -857,6 +863,93 @@ export const companionLegacyPurgeTargets = pgTable(
     ),
     completedState: check(
       "companion_legacy_purge_targets_completed_check",
+      sql`(${t.state} in ('completed', 'absent')) = (${t.completedAt} is not null)`,
+    ),
+  }),
+);
+
+/** Immutable, expurgated evidence for the one-shot Runtime v2 -> Runtime v3 purge. */
+export const companionV2PurgeRuns = pgTable(
+  "companion_v2_purge_runs",
+  {
+    id: text("id").primaryKey().notNull().default("runtime-v2-purge"),
+    phase: text("phase").$type<CompanionV2PurgePhase>().notNull().default("deleting_external"),
+    inventoryHash: text("inventory_hash").notNull(),
+    inventory: jsonb("inventory").$type<SchemaJsonObject>().notNull().default({}),
+    preservationFingerprint: jsonb("preservation_fingerprint")
+      .$type<SchemaJsonObject>().notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: updatedAt(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => ({
+    singleton: check("companion_v2_purge_runs_singleton_check", sql`${t.id} = 'runtime-v2-purge'`),
+    phaseCheck: check(
+      "companion_v2_purge_runs_phase_check",
+      sql`${t.phase} in ('deleting_external', 'external_complete', 'database_complete')`,
+    ),
+    inventoryHashCheck: check(
+      "companion_v2_purge_runs_inventory_hash_check",
+      sql`${t.inventoryHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    jsonCheck: check(
+      "companion_v2_purge_runs_json_check",
+      sql`jsonb_typeof(${t.inventory}) = 'object'
+        and jsonb_typeof(${t.preservationFingerprint}) = 'object'`,
+    ),
+    completedCheck: check(
+      "companion_v2_purge_runs_completed_check",
+      sql`(${t.phase} = 'database_complete') = (${t.completedAt} is not null)`,
+    ),
+  }),
+);
+
+export const companionV2PurgeTargets = pgTable(
+  "companion_v2_purge_targets",
+  {
+    resourceKind: text("resource_kind").$type<CompanionV2PurgeTargetKind>().notNull(),
+    resourceKey: text("resource_key").notNull(),
+    evidence: jsonb("evidence").$type<string[]>().notNull().default([]),
+    state: text("state").$type<CompanionV2PurgeTargetState>().notNull().default("discovered"),
+    operationId: text("operation_id"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    requestedAt: timestamp("requested_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    createdAt: now(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.resourceKind, t.resourceKey] }),
+    kindCheck: check(
+      "companion_v2_purge_targets_kind_check",
+      sql`${t.resourceKind} in ('trigger', 'object', 'snapshot', 'box')`,
+    ),
+    keyCheck: check(
+      "companion_v2_purge_targets_key_check",
+      sql`char_length(${t.resourceKey}) between 1 and 512 and ${t.resourceKey} !~ E'[\n\r]'`,
+    ),
+    evidenceCheck: check(
+      "companion_v2_purge_targets_evidence_check",
+      sql`jsonb_typeof(${t.evidence}) = 'array'`,
+    ),
+    stateCheck: check(
+      "companion_v2_purge_targets_state_check",
+      sql`${t.state} in ('discovered', 'requesting', 'completed', 'absent')`,
+    ),
+    operationCheck: check(
+      "companion_v2_purge_targets_operation_check",
+      sql`${t.operationId} is null or (char_length(${t.operationId}) between 1 and 200
+        and ${t.operationId} !~ E'[\n\r]')`,
+    ),
+    attemptCheck: check("companion_v2_purge_targets_attempt_check", sql`${t.attemptCount} >= 0`),
+    errorCheck: check(
+      "companion_v2_purge_targets_error_check",
+      sql`${t.lastError} is null or (char_length(${t.lastError}) <= 500
+        and ${t.lastError} !~ E'[\n\r]')`,
+    ),
+    completedCheck: check(
+      "companion_v2_purge_targets_completed_check",
       sql`(${t.state} in ('completed', 'absent')) = (${t.completedAt} is not null)`,
     ),
   }),

@@ -6,6 +6,10 @@
 > contract. V3 has one Turn carrying command/admission/activity/outcome facts, independent
 > `main`/`background` leases, no attempt table, and no derived Start operation. Its protocol-3
 > functions remain behind forced RLS, split role grants, and the existing runtime kill switch.
+>
+> Runtime v3 purge note (THE-511): migration 0160 and the dedicated runtime maintenance command add
+> a dormant, one-shot path that can remove Runtime v2 state before a later cutover. This ticket
+> builds and tests the path only; it does not execute a production purge or wire v3 into a service.
 
 This document is the normative, as-built Runtime v2 Box/Pi contract. Companion remains a Skills Hub
 at its core; the optional Companions surface adds one bounded hosted shape. The guarded cutover
@@ -1407,6 +1411,29 @@ The stacked rollout retained legacy columns solely for deployability and never b
 final migration removes them; its release gate requires no open P0/P1 runtime issue and no resource
 remaining in the purge report. The immutable purge ledger remains owner-readable evidence; its
 mutating finalizer no longer exists.
+
+## Runtime v2 purge before Runtime v3
+
+The successor purge is a separate command and ledger; the historical pre-v2 command above remains
+unchanged for migration replay. `node dist/companionV2Purge.js report` and `purge --dry-run` enumerate
+all Companion rows, registered remote triggers, `companion-attachments/` objects, exact runtime
+named snapshots, image-build Boxes, duplicate Boxes, and generation-qualified Companion Boxes.
+They perform no database or provider mutation and do not load or decrypt reusable credentials.
+
+Destructive mode accepts only `purge --confirm-delete-all-companions`. Before its first ledger write
+or external call, it requires `COMPANION_COMPANIONS_ENABLED=false`, the `runtime-v2` PostgreSQL gate
+disabled, neutral v2 and v3 leases, and the migration advisory lock. External ownership is removed
+first. Provider `404` is recorded as `absent`; every other unresolved failure stops with ownership
+rows present. Terminal targets are skipped on retry, while a recorded Box operation is polled rather
+than resubmitted.
+
+Only a complete external ledger admits the final transaction. It drains Companions, ACLs, threads,
+Turns, attempts, operations, routines, triggers, leases, runtime projections, images/build state,
+notifications, attachment metadata/outbox rows, and Companion-scoped bearer tokens. The ledger then
+becomes immutable and retains only identifier-level, expurgated evidence. A database-generated
+before/after fingerprint proves organizations, users, memberships, Skills, Skill secrets, Skill
+Databases, billing, audit history, encrypted provider connections, member MCP accounts, trigger
+provider credentials, and plugin trigger keys are unchanged.
 
 ## Health, observability, and acceptance
 

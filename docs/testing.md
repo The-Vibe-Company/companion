@@ -35,6 +35,7 @@ slow, local-only final validation and is intentionally not part of CI.
 | Viewer and ordinary reads never contact or wake Box | Read causes spend, secret access, or lifecycle mutation | HTTP + browser + provider spy | Instantiate Box before the runner guard |
 | Provider/MCP secrets stay write-only and runtime errors stay expurgated | Token, signed URL, provider payload, or Pi line persisted | Core + runtime + HTTP + logs | Return raw adapter error text |
 | Permanent legacy purge deletes external ownership before rows | Orphan Box or irrecoverable ownership loss | Command + PostgreSQL + provider contract | Delete the row before provider confirmation |
+| Runtime v2 purge is resumable, expurgated, and preserves the Skills Hub | Duplicate provider effects, orphan object/webhook/Box, leaked content, or collateral data loss | Command + disposable fully migrated PostgreSQL + object/provider adapters | Remove the pre-effect checkpoint, terminal-target skip, ownership guard, or preservation fingerprint |
 | API, worker, and runtime database roles stay separated | API/runtime claims the other's work, API bypasses a Companion capability function, or worker reads Companion state | Migrated PostgreSQL | Grant the opposite process function/table or forge the Runtime protocol GUC |
 | Billing changes stay outside the runtime overhaul | Undocumented runtime entitlement or Skills access change | Contracts + Core + web | Add a runtime quota or bypass an existing skill limit |
 
@@ -63,6 +64,15 @@ distinct API/worker/runtime function grants, protocol isolation from v2 executor
 of a v3 attempt or derived Start-operation table. Until the warm-turn tracer bullet is implemented,
 the existing Runtime v2 topology suite remains the end-to-end behavior regression gate; tests must
 not activate v3 through a production composition root.
+
+The Runtime v2 purge suite creates a disposable database, replays the complete migration history,
+and uses deterministic trigger, object-store, named-snapshot, and Box adapters. It proves inventory
+creates no ledger or provider effect, external effects precede row deletion, `404` is terminal
+absence, a mid-purge provider failure keeps ownership intact, and retry does not repeat completed
+effects. Final assertions require an empty Companion-domain inventory, immutable expurgated
+evidence, and an identical preservation fingerprint covering tenant, Skills/secrets/Skill Database,
+billing/audit, and reusable encrypted connection data. No test may invoke destructive mode against
+a shared database or real provider.
 
 Skill synchronization coverage distinguishes publication-only available revisions from required
 selection revisions. PostgreSQL tests prove wake and desktop accept `applied >= required` while a

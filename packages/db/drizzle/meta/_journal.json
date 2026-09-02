@@ -1121,6 +1121,13 @@
       "when": 1793304400000,
       "tag": "0159_companion_runtime_v3_progression",
       "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1793308000000,
+      "tag": "0160_companion_runtime_v2_purge",
+      "breakpoints": true
     }
   ]
 }

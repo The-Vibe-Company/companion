@@ -201,6 +201,12 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
   are removed with no history migration or backfill.
 - Encrypted provider connections, member MCP accounts, Skills, secrets, organizations, users,
   billing, and audit history survive.
+- Before later Runtime v3 activation, a separate resumable v2 purge inventories and removes remote
+  triggers, attachment/output objects, v2 named images/build resources, and every owned Box before
+  deleting any Companion ownership row. Report/dry-run are mutation-free; confirmed mode requires
+  the flag and database gate off, neutral leases, an advisory lock, and the exact confirmation
+  phrase. An immutable expurgated ledger and preservation fingerprint prove reusable encrypted
+  connections and all Skills Hub, tenant, billing, and audit data are unchanged.
 
 ## Security invariants
 

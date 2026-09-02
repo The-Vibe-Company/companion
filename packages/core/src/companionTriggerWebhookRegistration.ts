@@ -839,11 +839,18 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
   masterKey: Buffer;
   database: Db;
   fetch?: typeof globalThis.fetch;
+  /** One-shot purge keeps ownership rows intact until every external resource is gone. */
+  preserveRegistration?: boolean;
 }): Promise<void> {
   const trigger = await loadRegistrationTrigger(input);
+  const persist = input.preserveRegistration
+    ? async (): Promise<void> => undefined
+    : async (registration: Parameters<typeof persistRegistration>[0]): Promise<void> => {
+        await persistRegistration(registration);
+      };
   if (trigger.provider === "linear") {
     if (!trigger.remote_hook_id) {
-      await persistRegistration({
+      await persist({
         ...input,
         accountId: null,
         remoteHookId: null,
@@ -873,6 +880,16 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
         "linear webhook removal could not reach the provider; the registration is kept",
       );
     }
+    if (response.status === 404) {
+      await persist({
+        ...input,
+        accountId: null,
+        remoteHookId: null,
+        status: "unregistered",
+        error: null,
+      });
+      return;
+    }
     if (!response.ok) {
       throw new CompanionTriggerRegistrationError(
         "provider_rejected",
@@ -892,7 +909,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
         "linear refused to remove the webhook; the registration is kept",
       );
     }
-    await persistRegistration({
+    await persist({
       ...input,
       accountId: null,
       remoteHookId: null,
@@ -903,7 +920,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
   }
   if (trigger.provider === "sentry") {
     if (!trigger.remote_hook_id || !trigger.target?.organization || !trigger.target.project) {
-      await persistRegistration({
+      await persist({
         ...input,
         accountId: null,
         remoteHookId: null,
@@ -940,7 +957,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
         `Sentry refused to remove the webhook (${response.status})`,
       );
     }
-    await persistRegistration({
+    await persist({
       ...input,
       accountId: null,
       remoteHookId: null,
@@ -950,7 +967,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
     return;
   }
   if (trigger.provider !== "github" || !trigger.target?.repo || !trigger.remote_hook_id) {
-    await persistRegistration({
+    await persist({
       ...input,
       accountId: null,
       remoteHookId: null,
@@ -996,7 +1013,7 @@ export async function unregisterCompanionTriggerWebhookV2(input: {
       `github refused to remove the webhook (${response.status})`,
     );
   }
-  await persistRegistration({
+  await persist({
     ...input,
     accountId: null,
     remoteHookId: null,

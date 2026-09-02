@@ -213,6 +213,51 @@ rows. Save the final report and its checksum. It must show:
 
 Do not deploy final legacy-removal migrations when any item remains.
 
+## Runtime v2 purge before Runtime v3
+
+THE-511 installs this command and migration but does **not** authorize a production purge. Use this
+section only in a separately approved Runtime v3 cutover change. The historical `companionPurge.js`
+procedure above remains the pre-v2 migration path and must not be substituted.
+
+Prepare a backup, deploy with `COMPANION_COMPANIONS_ENABLED=false`, disable the `runtime-v2`
+PostgreSQL gate through the existing operational procedure, and wait until both v2 and dormant v3
+lease tables have no claim token. Run only from an ephemeral private execution of the runtime image.
+Supply the migration-owner URL, Box inventory credential, object-storage credential, public web base
+URL, and—only for confirmed remote-trigger removal—the secrets master key. Never add the migration
+URL or master key to a long-lived service merely to run inventory.
+
+Save and independently review both mutation-free inventories:
+
+```bash
+node dist/companionV2Purge.js report
+node dist/companionV2Purge.js purge --dry-run
+```
+
+These modes do not write the purge ledger, delete provider resources or objects, or load/decrypt the
+master key. The report must enumerate all Companion-domain row counts, registered remote triggers,
+attachment/output object keys including storage-only orphans, exact runtime named snapshots, image-build
+and duplicate Boxes, database-owned generation Boxes, and exact provider generation names. Stop if
+any inventory source is unavailable or a near-match needs manual ownership investigation.
+
+After separate approval, the only destructive spelling is:
+
+```bash
+node dist/companionV2Purge.js purge --confirm-delete-all-companions
+```
+
+The command rechecks the environment flag, database gate, neutral leases, and advisory lock before
+the first ledger write or external request. It unregisters provider webhooks and removes attachment
+objects, named snapshots, build/duplicate Boxes, and generation Boxes before the final database
+transaction. `404` is already absent. Any other failure is blocking: keep the feature disabled,
+correct the provider/storage problem, and rerun. Do not edit ownership or ledger rows manually;
+terminal targets are skipped and recorded Box operations resume.
+
+Archive the final report and checksum. It must show zero Companion-domain rows and targets. Verify
+the ledger phase is `database_complete`, every target is `completed` or `absent`, and attempts to
+update/delete the completed evidence fail. The finalizer's before/after fingerprint must match,
+covering organizations, users, memberships, Skills and secrets, Skill Databases, billing, audit,
+encrypted provider connections, MCP accounts, trigger-provider credentials, and plugin trigger keys.
+
 ## Runtime v2 cutover
 
 1. Complete and archive the legacy purge report while the feature flag and database gate are off.

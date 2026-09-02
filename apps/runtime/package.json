@@ -7,6 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsup",
     "companion-purge": "node dist/companionPurge.js",
+    "companion-v2-purge": "node dist/companionV2Purge.js",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "test": "vitest run",

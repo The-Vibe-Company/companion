@@ -18,18 +18,34 @@ export const sql = postgres(getDatabaseUrl(), { max: poolMax });
 export const db = drizzle(sql, { schema });
 export type Db = typeof db;
 
-export async function withTenantContext<T>(
+/** Build the typed Drizzle surface on an explicitly owned maintenance connection. */
+export function createDatabase(client: typeof sql): Db {
+  return drizzle(client, { schema });
+}
+
+export async function withTenantContextOn<T>(
+  database: Db,
   input: { orgId: string; userId: string },
-  fn: (database: Db) => Promise<T>,
+  fn: (tenantDatabase: Db) => Promise<T>,
 ): Promise<T> {
-  return db.transaction(async (tx) => {
+  return database.transaction(async (tx) => {
     await tx.execute(
       drizzleSql`select
         set_config('app.org_id', ${input.orgId}, true),
         set_config('app.user_id', ${input.userId}, true)`,
     );
-    return fn(tx as unknown as Db);
+    const transactionDatabase: unknown = tx;
+    // SAFETY: Drizzle's transaction surface has the same schema and query contract as `Db`; only
+    // the private client holder differs while this callback is active.
+    return fn(transactionDatabase as Db);
   });
+}
+
+export async function withTenantContext<T>(
+  input: { orgId: string; userId: string },
+  fn: (database: Db) => Promise<T>,
+): Promise<T> {
+  return withTenantContextOn(db, input, fn);
 }
 
 export async function closeDb(): Promise<void> {

@@ -8,7 +8,7 @@ const bundledSkillSource = resolve(configDir, "../../packages/companion-skill/sk
 const excludedSkillAsset = /(?:^|\/)(?:\.git|node_modules|__pycache__|__MACOSX|\.companion)(?:\/|$)|(?:^|\/)\.DS_Store$|\.pyc$|(?:^|\/)(?:\.companion\.lock|companion\.lock)$/;
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/companionPurge.ts"],
+  entry: ["src/index.ts", "src/companionPurge.ts", "src/companionV2Purge.ts"],
   banner: {
     js: 'import { createRequire as __companionCreateRequire } from "node:module"; const require = __companionCreateRequire(import.meta.url);',
   },
