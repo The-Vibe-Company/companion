@@ -332,7 +332,7 @@ export function createRuntimeMaterialPipeline(input: {
     },
   };
   const preparationStager: RuntimeV3PreparationStager = {
-    async stage({ claim, authorize, signal }) {
+    async stagePreparation({ claim, authorize, signal }) {
       if (
         !claim.boxId || !claim.actorId || !claim.modelId
         || claim.settingsRevision === null || claim.skillsRevision === null

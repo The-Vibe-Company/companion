@@ -596,6 +596,7 @@ async function handleStart(context: OperationContext): Promise<RuntimeWorkDispos
               generation: context.claim.runtimeGeneration,
               ttlSeconds: BOX_WARM_TTL_SECONDS,
               deadlineAt,
+              workDeadlineAt: workDeadline(context),
               signal,
             });
           });

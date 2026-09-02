@@ -92,13 +92,17 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
         }
         imageLookupMs = now() - lookupStartedAt;
       }
-      const create = (fromImage?: string, idempotencyKey = input.idempotencyKey) =>
+      const create = (
+        fromImage?: string,
+        idempotencyKey = input.idempotencyKey,
+        deadlineLimit = input.deadlineAt,
+      ) =>
         options.lifecycle.createGenerationBoxAfterObservedAbsence({
           companionId: input.companionId,
           generation: generationNumber(input.generation),
           ttlSeconds: input.ttlSeconds,
           ...(idempotencyKey ? { idempotencyKey } : {}),
-          deadlineAt: deadline(input.deadlineAt),
+          deadlineAt: deadline(deadlineLimit),
           signal: input.signal,
           ...(fromImage ? { from: fromImage } : {}),
         });
@@ -111,7 +115,7 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
         from = undefined;
         created = await create(undefined, input.idempotencyKey
           ? coldFallbackIdempotencyKey(input.idempotencyKey)
-          : undefined);
+          : undefined, input.workDeadlineAt ?? input.deadlineAt);
       }
       const result = created;
       // A snapshot source that still ended without a clone name means this create cold-installed.

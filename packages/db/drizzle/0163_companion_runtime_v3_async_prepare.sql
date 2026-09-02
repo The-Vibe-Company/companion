@@ -15,7 +15,18 @@ ALTER TABLE public.companion_v3_instances
   ADD COLUMN preparation_gate_epoch bigint,
   ADD COLUMN preparation_executor_id text,
   ADD COLUMN preparation_claimed_at timestamp with time zone,
-  ADD COLUMN preparation_expires_at timestamp with time zone,
+  ADD COLUMN preparation_expires_at timestamp with time zone;
+--> statement-breakpoint
+
+-- Warm Runtime v3 rows created by THE-512 already carry the complete readiness proof.
+UPDATE public.companion_v3_instances SET
+  preparation_checkpoint = 'prepared',
+  box_ready_at = prepared_at,
+  staging_completed_at = prepared_at
+WHERE prepared_at IS NOT NULL;
+--> statement-breakpoint
+
+ALTER TABLE public.companion_v3_instances
   ADD CONSTRAINT companion_v3_instances_preparation_check CHECK (
     preparation_checkpoint IN ('pending', 'box_created', 'box_ready', 'staged', 'prepared')
     AND preparation_attempt_count >= 0 AND preparation_claim_epoch >= 0
@@ -53,6 +64,51 @@ ALTER TABLE public.companion_v3_instances
 CREATE INDEX companion_v3_instances_preparation_idx
   ON public.companion_v3_instances(preparation_available_at, created_at)
   WHERE prepared_at IS NULL AND desired_lifecycle = 'prepare';
+--> statement-breakpoint
+
+-- Queued cold Turns expose their runtime-owned preparation delay without becoming failed. The
+-- existing public error shape keeps clients PostgreSQL-only while the Turn status remains queued.
+CREATE OR REPLACE FUNCTION public.companion_v3_public_turn(p_turn public.companion_v3_turns)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SET search_path = pg_catalog, public
+AS $$
+  SELECT jsonb_build_object(
+    'id', p_turn.id,
+    'companion_id', p_turn.companion_id,
+    'client_message_id', p_turn.client_message_id,
+    'status', p_turn.state,
+    'queue_sequence', p_turn.queue_sequence,
+    'latest_attempt', NULL,
+    'admission_state', p_turn.admission_state,
+    'admitted_at', p_turn.admitted_at,
+    'replying', p_turn.admission_state = 'accepted'
+      AND p_turn.state IN ('admitted', 'running'),
+    'error', CASE
+      WHEN p_turn.outcome IN ('failed', 'interrupted') THEN jsonb_build_object(
+        'code', p_turn.outcome_code,
+        'message', p_turn.outcome_message,
+        'action', p_turn.outcome_action
+      )
+      WHEN p_turn.state = 'queued' THEN (
+        SELECT CASE WHEN instance.preparation_error_code IS NOT NULL THEN jsonb_build_object(
+          'code', instance.preparation_error_code,
+          'message', instance.preparation_error_message,
+          'action', 'retry'
+        ) ELSE NULL END
+        FROM public.companion_v3_instances instance
+        WHERE instance.org_id = p_turn.org_id
+          AND instance.companion_id = p_turn.companion_id
+      )
+      ELSE NULL
+    END,
+    'state_changed_at', p_turn.updated_at,
+    'settled_at', p_turn.settled_at,
+    'created_at', p_turn.created_at,
+    'updated_at', p_turn.updated_at
+  )
+$$;
 --> statement-breakpoint
 
 CREATE OR REPLACE FUNCTION public.companion_v3_api_create_companion(
@@ -153,6 +209,9 @@ BEGIN
   PERFORM 1 FROM public.companion_v3_instances instance
   WHERE instance.org_id = p_org_id AND instance.companion_id = p_companion_id FOR UPDATE;
   IF NOT FOUND THEN RETURN; END IF;
+  INSERT INTO public.companion_threads(org_id, companion_id)
+  VALUES (p_org_id, p_companion_id)
+  ON CONFLICT ON CONSTRAINT companion_threads_pkey DO NOTHING;
 
   SELECT * INTO v_admission FROM public.companion_v3_admit_turn(
     p_org_id, p_companion_id, p_client_message_id,
@@ -186,7 +245,8 @@ CREATE FUNCTION public.companion_v3_runtime_claim_preparation(
 RETURNS TABLE (
   org_id uuid, companion_id uuid, turn_id uuid, command_id uuid,
   work_kind text, checkpoint text, box_idempotency_key uuid, box_id text,
-  claim_token uuid, claim_epoch bigint, gate_epoch bigint, created_at timestamp with time zone
+  claim_token uuid, claim_epoch bigint, gate_epoch bigint, model_id text, persona text,
+  provider_material jsonb, created_at timestamp with time zone
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -198,6 +258,9 @@ DECLARE
   v_instance public.companion_v3_instances%ROWTYPE;
   v_turn public.companion_v3_turns%ROWTYPE;
   v_gate_epoch bigint;
+  v_model_id text;
+  v_persona text;
+  v_provider_material jsonb;
 BEGIN
   IF p_protocol IS DISTINCT FROM 3 OR p_executor_id IS NULL
     OR char_length(p_executor_id) NOT BETWEEN 1 AND 200 OR p_executor_id ~ E'[\n\r]'
@@ -231,6 +294,29 @@ BEGIN
   WHERE queued.org_id = v_instance.org_id AND queued.companion_id = v_instance.companion_id
     AND queued.lane = 'main' AND queued.state = 'queued'
   ORDER BY queued.queue_sequence, queued.id LIMIT 1;
+  SELECT companion.model_id, companion.persona, jsonb_build_array(jsonb_build_object(
+      'provider_id', connection.provider_id,
+      'auth_method', connection.auth_method,
+      'credential_generation', connection.credential_generation,
+      'credential_version', connection.credential_version,
+      'ciphertext', connection.ciphertext,
+      'iv', connection.iv,
+      'auth_tag', connection.auth_tag,
+      'wrapped_dek', connection.wrapped_dek,
+      'wrap_iv', connection.wrap_iv,
+      'wrap_auth_tag', connection.wrap_auth_tag,
+      'key_id', connection.key_id
+    ))
+  INTO v_model_id, v_persona, v_provider_material
+  FROM public.companions companion
+  JOIN public.memberships membership
+    ON membership.org_id = companion.org_id AND membership.user_id = companion.owner_id
+  JOIN public.companion_provider_connections connection
+    ON connection.org_id = companion.org_id
+   AND connection.provider_id = companion.provider_ids->>0
+  WHERE companion.org_id = v_instance.org_id AND companion.id = v_instance.companion_id
+    AND companion.model_id IS NOT NULL;
+  IF NOT FOUND THEN RETURN; END IF;
   UPDATE public.companion_v3_instances instance SET
     preparation_claim_token = gen_random_uuid(),
     preparation_claim_epoch = instance.preparation_claim_epoch + 1,
@@ -242,11 +328,20 @@ BEGIN
   WHERE instance.org_id = v_instance.org_id AND instance.companion_id = v_instance.companion_id
   RETURNING instance.preparation_claim_token, instance.preparation_claim_epoch,
     instance.preparation_gate_epoch INTO claim_token, claim_epoch, gate_epoch;
+  IF v_turn.id IS NOT NULL THEN
+    UPDATE public.companion_v3_turns turn_row SET
+      first_claimed_at = coalesce(turn_row.first_claimed_at, v_now),
+      last_claimed_at = v_now,
+      claim_count = turn_row.claim_count + 1,
+      updated_at = v_now
+    WHERE turn_row.id = v_turn.id;
+  END IF;
   org_id := v_instance.org_id; companion_id := v_instance.companion_id;
   turn_id := v_turn.id; command_id := v_turn.command_id;
   work_kind := 'preparation';
   checkpoint := v_instance.preparation_checkpoint;
   box_idempotency_key := v_instance.box_idempotency_key; box_id := v_instance.box_id;
+  model_id := v_model_id; persona := v_persona; provider_material := v_provider_material;
   created_at := v_instance.created_at; RETURN NEXT;
 END
 $$;

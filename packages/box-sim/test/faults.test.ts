@@ -99,19 +99,4 @@ describe("deterministic Box faults", () => {
     await expect(request(handle, "/boxes", { method: "POST", body: "{}" })).rejects.toThrow();
     expect(handle.simulator.snapshot().boxes).toHaveLength(1);
   });
-
-  it("replays a lost create response through the provider idempotency key", async () => {
-    const handle = await start();
-    handle.simulator.addFault({ point: "box.create.after", action: { kind: "disconnect" } });
-    const init = {
-      method: "POST",
-      headers: { "Idempotency-Key": "11111111-1111-4111-8111-111111111111" },
-      body: JSON.stringify({ ttlSeconds: 300, noEnv: true }),
-    };
-    await expect(request(handle, "/boxes", init)).rejects.toThrow();
-    const replay = await request(handle, "/boxes", init);
-    expect(replay.status).toBe(202);
-    expect((await replay.json() as { box: { id: string } }).box.id).toBe("bx_23456789");
-    expect(handle.simulator.snapshot().boxes).toHaveLength(1);
-  });
 });

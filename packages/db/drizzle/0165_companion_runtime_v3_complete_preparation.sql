@@ -363,6 +363,14 @@ BEGIN
   WHERE instance.org_id = v_instance.org_id AND instance.companion_id = v_instance.companion_id
   RETURNING instance.preparation_claim_token, instance.preparation_claim_epoch,
     instance.preparation_gate_epoch INTO claim_token, claim_epoch, gate_epoch;
+  IF v_turn.id IS NOT NULL THEN
+    UPDATE public.companion_v3_turns turn_row SET
+      first_claimed_at = coalesce(turn_row.first_claimed_at, v_now),
+      last_claimed_at = v_now,
+      claim_count = turn_row.claim_count + 1,
+      updated_at = v_now
+    WHERE turn_row.id = v_turn.id;
+  END IF;
   org_id := v_instance.org_id; companion_id := v_instance.companion_id;
   turn_id := v_turn.id; command_id := v_turn.command_id; work_kind := 'preparation';
   checkpoint := v_instance.preparation_checkpoint; box_idempotency_key := v_instance.box_idempotency_key;

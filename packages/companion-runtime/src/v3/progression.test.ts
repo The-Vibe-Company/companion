@@ -112,7 +112,7 @@ describe("Runtime v3 progression interface", () => {
         getStatus: vi.fn().mockResolvedValue({ state: "ready" }),
       },
       preparationStager: {
-        stage: vi.fn().mockResolvedValue({
+        stagePreparation: vi.fn().mockResolvedValue({
           diskLayoutVersion: 14,
           appliedSettingsRevision: 1n,
           appliedSkillsRevision: 1,
@@ -178,7 +178,7 @@ describe("Runtime v3 progression interface", () => {
         applyGenerationBoxSettings: vi.fn(),
         getStatus: vi.fn(),
       },
-      preparationStager: { stage: vi.fn() },
+      preparationStager: { stagePreparation: vi.fn() },
       pi: {
         startPiDaemon: "startPiDaemon" in failure
           ? vi.fn().mockRejectedValue(failure.startPiDaemon)

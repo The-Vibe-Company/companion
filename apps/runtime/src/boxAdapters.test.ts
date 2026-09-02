@@ -135,16 +135,20 @@ describe("runtime Box/Pi port adapters", () => {
     });
   });
 
-  it("clones the golden runtime image and falls back when that snapshot is gone", async () => {
+  it("gives an unknown-snapshot cold fallback a fresh create budget within the work deadline", async () => {
+    let currentTime = 1_000_000;
     const createOrRecoverGenerationBox = vi.fn()
-      .mockRejectedValueOnce(new BoxRuntimeAdapterError({
-        stableCode: "box_not_found",
-        message: "The Box provider resource was not found",
-        status: 404,
-        providerCode: "unknown_snapshot",
-        retryable: false,
-        outcomeUnknown: false,
-      }))
+      .mockImplementationOnce(async () => {
+        currentTime += 29_999;
+        throw new BoxRuntimeAdapterError({
+          stableCode: "box_not_found",
+          message: "The Box provider resource was not found",
+          status: 404,
+          providerCode: "unknown_snapshot",
+          retryable: false,
+          outcomeUnknown: false,
+        });
+      })
       .mockResolvedValue({
         outcome: "created" as const,
         boxId: "bx_23456789",
@@ -154,8 +158,8 @@ describe("runtime Box/Pi port adapters", () => {
       lifecycle: lifecycle({ createOrRecoverGenerationBox }),
       runtime: () => boxRuntime(),
       runtimeImage: runtimeImage({ availability: async () => "ready" }),
-
-      now: () => deadlineAt.getTime() - 10_000,
+      providerDeadlineMs: 30_000,
+      now: () => currentTime,
     });
 
     await expect(control.createGenerationBox({
@@ -163,15 +167,20 @@ describe("runtime Box/Pi port adapters", () => {
       generation: 4n,
       ttlSeconds: 21_600,
       idempotencyKey: "11111111-1111-4111-8111-111111111111",
-      deadlineAt,
+      deadlineAt: new Date(1_030_000),
+      workDeadlineAt: new Date(1_180_000),
       signal,
     })).resolves.toMatchObject({ outcome: "created", boxId: "bx_23456789" });
 
     expect(createOrRecoverGenerationBox).toHaveBeenNthCalledWith(1, expect.objectContaining({
       from: "companion-l14-aaaaaaaaaaaa",
       idempotencyKey: "11111111-1111-4111-8111-111111111111",
+      deadlineAt: new Date(1_030_000),
     }));
-    expect(createOrRecoverGenerationBox).toHaveBeenNthCalledWith(2, expect.not.objectContaining({
+    expect(createOrRecoverGenerationBox).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      deadlineAt: new Date(1_059_999),
+    }));
+    expect(createOrRecoverGenerationBox.mock.calls[1]?.[0]).not.toEqual(expect.objectContaining({
       from: expect.anything(),
     }));
     expect(createOrRecoverGenerationBox.mock.calls[1]?.[0].idempotencyKey)

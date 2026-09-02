@@ -2,15 +2,17 @@ import type {
   RuntimeV3ConvergencePersistence,
   RuntimeV3DurableOutcome,
   RuntimeV3PreparationPersistence,
+  RuntimeV3ProviderMaterial,
   RuntimeV3Turn,
   RuntimeV3WarmTurnPersistence,
 } from "@companion/companion-runtime/v3/internal";
-import { RUNTIME_V3_PREPARATION_BUDGET_MS } from "@companion/companion-runtime/v3/internal";
 import type { Sql } from "postgres";
 
 interface CancellableQuery<T> extends PromiseLike<T> {
   cancel(): void;
 }
+
+const PREPARATION_LEASE_SECONDS = 90;
 
 async function abortable<T>(query: CancellableQuery<T>, signal?: AbortSignal): Promise<T> {
   signal?.throwIfAborted();
@@ -178,8 +180,6 @@ interface PreparationClaimRow {
   configCatalog: unknown;
 }
 
-const PREPARATION_LEASE_SECONDS = Math.floor(RUNTIME_V3_PREPARATION_BUDGET_MS / 1_000);
-
 /** Runtime-only preparation facts. Box identity crosses this seam only after a fenced checkpoint. */
 export function createRuntimeV3PostgresPreparationPersistence(
   sql: Sql,
@@ -220,7 +220,7 @@ export function createRuntimeV3PostgresPreparationPersistence(
         providerRefs: objectArray(row.providerRefs),
         skillRefs: objectArray(row.skillRefs),
         mcpRefs: objectArray(row.mcpRefs),
-        providerMaterial: objectArray(row.providerMaterial),
+        providerMaterial: objectArray(row.providerMaterial) as unknown as RuntimeV3ProviderMaterial[],
         skillMaterial: objectArray(row.skillMaterial),
         mcpMaterial: objectArray(row.mcpMaterial),
         configCatalog: nullableObject(row.configCatalog),

@@ -127,6 +127,20 @@ export type RuntimeV3Convergence = Pick<RuntimeV3Progression, "converge">;
 export type RuntimeV3PreparationCheckpoint =
   | "pending" | "box_created" | "box_ready" | "staged";
 
+export type RuntimeV3ProviderMaterial = {
+  provider_id: string;
+  auth_method: string;
+  credential_generation: string;
+  credential_version: number;
+  ciphertext: string;
+  iv: string;
+  auth_tag: string;
+  wrapped_dek: string;
+  wrap_iv: string;
+  wrap_auth_tag: string;
+  key_id: string;
+};
+
 export interface RuntimeV3PreparationClaim {
   executorId: string;
   orgId: string;
@@ -146,7 +160,7 @@ export interface RuntimeV3PreparationClaim {
   providerRefs: Array<Record<string, unknown>>;
   skillRefs: Array<Record<string, unknown>>;
   mcpRefs: Array<Record<string, unknown>>;
-  providerMaterial: Array<Record<string, unknown>>;
+  providerMaterial: RuntimeV3ProviderMaterial[];
   skillMaterial: Array<Record<string, unknown>>;
   mcpMaterial: Array<Record<string, unknown>>;
   configCatalog: Record<string, unknown> | null;
@@ -194,7 +208,7 @@ export interface RuntimeV3PreparationPersistence {
 }
 
 export interface RuntimeV3PreparationStager {
-  stage(input: {
+  stagePreparation(input: {
     claim: RuntimeV3PreparationClaim;
     authorize: () => Promise<RuntimeV3PreparationCredentials | null>;
     signal: AbortSignal;
@@ -518,6 +532,12 @@ export function createRuntimeV3Preparation(
               generation: 1n,
               ttlSeconds: PREPARATION_BOX_TTL_SECONDS,
               idempotencyKey: claim.boxIdempotencyKey,
+              // Preparation owns no user-facing operation deadline. The signal bounds the whole
+              // claim, while this bound lets an unknown-snapshot fallback take a fresh create slot.
+              workDeadlineAt: new Date(now().getTime() + 60_000),
+              // A preparation claim never waits for an image build. It may consume a ready image,
+              // while the next fenced claim retries after the normal preparation backoff.
+              deadlineAt: now(),
               signal,
             });
             if (!await options.persistence.checkpoint(claim, {
@@ -554,7 +574,7 @@ export function createRuntimeV3Preparation(
             }
           } else if (claim.checkpoint === "box_ready") {
             if (!claim.boxId) throw new Error("Box identity is missing before staging");
-            const staged = await options.preparationStager.stage({
+            const staged = await options.preparationStager.stagePreparation({
               claim,
               authorize: async () => await options.persistence.mintCredentials(claim),
               signal: AbortSignal.any([
