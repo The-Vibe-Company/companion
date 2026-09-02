@@ -67,11 +67,12 @@ not activate v3 through a production composition root.
 
 The Runtime v2 purge suite creates a disposable database, replays the complete migration history,
 and uses deterministic trigger, object-store, named-snapshot, and Box adapters. It proves inventory
-creates no ledger or provider effect, external effects precede row deletion, `404` is terminal
-absence, a mid-purge provider failure keeps ownership intact, and retry does not repeat completed
+creates no ledger or provider effect, external effects precede row deletion, authoritative absence
+is terminal, a mid-purge provider failure keeps ownership intact, and retry does not repeat completed
 effects. Fault injection immediately after accepted trigger, object, snapshot, and Box deletion
 proves that retry observes provider absence instead of repeating DELETE; provider-specific trigger
-tests cover GitHub, Linear, and Sentry presence/absence. Box tests also fault immediately before
+tests cover complete GitHub, Linear, and Sentry presence/absence lookups and fail closed when a
+GitHub/Sentry parent list is inaccessible. Box tests also fault immediately before
 DELETE, after `202` but before operation-id persistence, and after operation persistence; they prove
 fresh visible/absent reconciliation and retained-operation polling without assuming DELETE
 idempotence. Final assertions require an empty

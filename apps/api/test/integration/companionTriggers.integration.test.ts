@@ -971,12 +971,12 @@ describe("Companion triggers over the real database", () => {
     }))!.secret);
 
     // Purge reconciliation can prove a committed delete without mutating the ownership row.
-    const reconcilePresent = asFetch(async () => new Response(JSON.stringify({
+    const reconcilePresent = asFetch(async () => new Response(JSON.stringify([{
       id: 424242,
       config: { url: requests[1]!.init.body
         ? JSON.parse(String(requests[1]!.init.body)).config.url
         : "" },
-    }), { status: 200 }));
+    }]), { status: 200 }));
     await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
       orgId: fixture.orgA,
       companionId,
@@ -986,6 +986,7 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: reconcilePresent,
     }))).resolves.toBe("present");
+    const paginatedGitHubRequests: string[] = [];
     await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
       orgId: fixture.orgA,
       companionId,
@@ -993,7 +994,49 @@ describe("Companion triggers over the real database", () => {
       webhookBaseUrl: WEBHOOK_BASE_URL,
       masterKey,
       database,
-      fetch: asFetch(async () => new Response(JSON.stringify({ id: 111111 }), { status: 200 })),
+      fetch: asFetch(async (url) => {
+        paginatedGitHubRequests.push(String(url));
+        if (String(url).endsWith("page=1")) {
+          return new Response(JSON.stringify([]), {
+            status: 200,
+            headers: {
+              link: '<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=2>; rel="next"',
+            },
+          });
+        }
+        return new Response(JSON.stringify([{ id: 424242 }]), { status: 200 });
+      }),
+    }))).resolves.toBe("present");
+    expect(paginatedGitHubRequests).toEqual([
+      "https://api.github.com/repos/acme/demo/hooks?per_page=100&page=1",
+      "https://api.github.com/repos/acme/demo/hooks?per_page=100&page=2",
+    ]);
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => new Response(JSON.stringify([{ id: 111111 }]), { status: 200 })),
+    }))).resolves.toBe("absent");
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => new Response(null, { status: 404 })),
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => new Response(JSON.stringify({ id: 424242 }), { status: 200 })),
     }))).rejects.toMatchObject({ code: "provider_rejected" });
     let malformedLookupCalls = 0;
     const malformedLookup = asFetch(async () => {
@@ -1044,7 +1087,7 @@ describe("Companion triggers over the real database", () => {
     expect(row.registrationStatus).toBe("registered");
     expect(row.remoteHookId).toBe("424242");
     expect(deleteRequests[0]).toBe("https://api.github.com/repos/acme/demo/hooks/424242");
-    const reconcileAbsent = asFetch(async () => new Response(null, { status: 404 }));
+    const reconcileAbsent = asFetch(async () => new Response(JSON.stringify([]), { status: 200 }));
     await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
       orgId: fixture.orgA,
       companionId,
@@ -1421,8 +1464,20 @@ describe("Companion triggers over the real database", () => {
       webhookBaseUrl: WEBHOOK_BASE_URL,
       masterKey,
       database,
-      fetch: asFetch(async () => new Response(JSON.stringify([]), { status: 200 })),
+      fetch: asFetch(async () => new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { link: '<https://untrusted.invalid/hooks/?cursor=next>; rel="next"' },
+      })),
     }))).rejects.toMatchObject({ code: "provider_rejected" });
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      orgId: fixture.orgA,
+      companionId,
+      triggerId: trigger.id,
+      webhookBaseUrl: WEBHOOK_BASE_URL,
+      masterKey,
+      database,
+      fetch: asFetch(async () => new Response(JSON.stringify([]), { status: 200 })),
+    }))).resolves.toBe("absent");
     await integrationDb.update(schema.companionTriggers).set({ target: {} })
       .where(eq(schema.companionTriggers.id, trigger.id));
     await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
@@ -1455,7 +1510,7 @@ describe("Companion triggers over the real database", () => {
       masterKey,
       database,
       fetch: asFetch(async () => new Response(null, { status: 404 })),
-    }))).resolves.toBe("absent");
+    }))).rejects.toMatchObject({ code: "provider_rejected" });
   });
 
   it("applies an approved trigger proposal under the approver and refuses every other path", async () => {

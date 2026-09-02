@@ -367,6 +367,85 @@ async function findSentryWebhook(input: {
   return hooks.data.find((candidate) => candidate.url === input.webhookUrl)?.id ?? null;
 }
 
+function providerNextPageUrl(input: {
+  response: Response;
+  currentUrl: string;
+  provider: "github" | "Sentry";
+}): string | null {
+  const link = input.response.headers.get("link");
+  if (!link) return null;
+  let next: string | null = null;
+  for (const rawPart of link.split(",")) {
+    const part = /^\s*<([^>]+)>((?:\s*;\s*[^;]+)*)\s*$/.exec(rawPart);
+    if (!part) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        `${input.provider} webhook reconciliation returned malformed pagination`,
+      );
+    }
+    const relations = [...part[2]!.matchAll(/(?:^|;)\s*rel="([^"]+)"/g)]
+      .flatMap((match) => match[1]!.split(/\s+/));
+    if (!relations.includes("next")) continue;
+    if (next) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        `${input.provider} webhook reconciliation returned ambiguous pagination`,
+      );
+    }
+    next = part[1]!;
+  }
+  if (!next) return null;
+  const current = new URL(input.currentUrl);
+  const candidate = new URL(next, current);
+  if (candidate.origin !== current.origin || candidate.pathname !== current.pathname) {
+    throw new CompanionTriggerRegistrationError(
+      "provider_rejected",
+      `${input.provider} webhook reconciliation returned unsafe pagination`,
+    );
+  }
+  return candidate.toString();
+}
+
+async function findWebhookByIdFromProviderList<T>(input: {
+  fetch: typeof globalThis.fetch;
+  initialUrl: string;
+  headers: Record<string, string>;
+  provider: "github" | "Sentry";
+  schema: z.ZodType<T>;
+  remoteHookId: string;
+  idOf: (hook: T) => string;
+}): Promise<string | null> {
+  const seen = new Set<string>();
+  let url: string | null = input.initialUrl;
+  for (let page = 0; url && page < 1_000; page += 1) {
+    if (seen.has(url)) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        `${input.provider} webhook reconciliation repeated pagination`,
+      );
+    }
+    seen.add(url);
+    const response = await input.fetch(url, { headers: input.headers });
+    const hooks = z.array(input.schema).safeParse(await response.json().catch(() => null));
+    if (!response.ok || !hooks.success) {
+      throw new CompanionTriggerRegistrationError(
+        "provider_rejected",
+        `${input.provider} webhook reconciliation failed (${response.status})`,
+      );
+    }
+    const found = hooks.data.find((hook) => input.idOf(hook) === input.remoteHookId);
+    if (found) return input.remoteHookId;
+    url = providerNextPageUrl({ response, currentUrl: url, provider: input.provider });
+  }
+  if (url) {
+    throw new CompanionTriggerRegistrationError(
+      "provider_rejected",
+      `${input.provider} webhook reconciliation exceeded its pagination bound`,
+    );
+  }
+  return null;
+}
+
 export async function inspectCompanionTriggerWebhookV2(input: {
   orgId: string;
   companionId: string;
@@ -407,20 +486,15 @@ export async function inspectCompanionTriggerWebhookV2(input: {
     const projectPath = [trigger.target.organization, trigger.target.project]
       .map(encodeURIComponent)
       .join("/");
-    const response = await doFetch(
-      `${SENTRY_API}/projects/${projectPath}/hooks/${encodeURIComponent(trigger.remote_hook_id)}/`,
-      { headers: { authorization: `Bearer ${providerTokenOf(account, input.orgId, input.masterKey)}` } },
-    );
-    if (response.status === 404) return "absent";
-    const hook = z.object({ id: z.string().min(1).max(200) }).passthrough()
-      .safeParse(await response.json().catch(() => null));
-    if (!response.ok || !hook.success || hook.data.id !== trigger.remote_hook_id) {
-      throw new CompanionTriggerRegistrationError(
-        "provider_rejected",
-        `Sentry webhook reconciliation failed (${response.status})`,
-      );
-    }
-    return "present";
+    found = await findWebhookByIdFromProviderList({
+      fetch: doFetch,
+      initialUrl: `${SENTRY_API}/projects/${projectPath}/hooks/`,
+      headers: { authorization: `Bearer ${providerTokenOf(account, input.orgId, input.masterKey)}` },
+      provider: "Sentry",
+      schema: z.object({ id: z.string().min(1).max(200) }).passthrough(),
+      remoteHookId: trigger.remote_hook_id,
+      idOf: (hook) => hook.id,
+    });
   } else if (trigger.provider === "github") {
     if (!trigger.target?.repo) {
       throw new CompanionTriggerRegistrationError(
@@ -435,20 +509,15 @@ export async function inspectCompanionTriggerWebhookV2(input: {
       database: input.database,
     });
     const repoPath = trigger.target.repo.split("/").map(encodeURIComponent).join("/");
-    const response = await doFetch(
-      `${GITHUB_API}/repos/${repoPath}/hooks/${encodeURIComponent(trigger.remote_hook_id)}`,
-      { headers: githubHeaders(providerTokenOf(account, input.orgId, input.masterKey)) },
-    );
-    if (response.status === 404) return "absent";
-    const hook = z.object({ id: z.number().int() }).passthrough()
-      .safeParse(await response.json().catch(() => null));
-    if (!response.ok || !hook.success || String(hook.data.id) !== trigger.remote_hook_id) {
-      throw new CompanionTriggerRegistrationError(
-        "provider_rejected",
-        `github webhook reconciliation failed (${response.status})`,
-      );
-    }
-    return "present";
+    found = await findWebhookByIdFromProviderList({
+      fetch: doFetch,
+      initialUrl: `${GITHUB_API}/repos/${repoPath}/hooks?per_page=100&page=1`,
+      headers: githubHeaders(providerTokenOf(account, input.orgId, input.masterKey)),
+      provider: "github",
+      schema: z.object({ id: z.number().int() }).passthrough(),
+      remoteHookId: trigger.remote_hook_id,
+      idOf: (hook) => String(hook.id),
+    });
   } else {
     throw new CompanionTriggerRegistrationError(
       "provider_rejected",

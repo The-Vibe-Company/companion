@@ -248,12 +248,15 @@ node dist/companionV2Purge.js purge --confirm-delete-all-companions
 The command rechecks the environment flag, database gate, neutral leases, and advisory lock before
 the first ledger write or external request. It unregisters provider webhooks and removes attachment
 objects, named snapshots, build/duplicate Boxes, and generation Boxes before the final database
-transaction. `404` is already absent. Any other failure is blocking: keep the feature disabled,
-correct the provider/storage problem, and rerun. Do not edit ownership or ledger rows manually;
+transaction. An authoritative provider absence result is already absent. A GitHub or Sentry
+hook-item `404` is ambiguous because the parent repository or project may instead be inaccessible;
+only a successful complete authenticated parent hook listing can prove that trigger absent, while a
+list `404` remains blocking. Keep the feature disabled, correct any provider/storage problem, and
+rerun. Do not edit ownership or ledger rows manually;
 terminal targets are skipped and recorded Box operations resume. A `requesting` object, snapshot,
 or Box is first reconciled against fresh provider inventory; a `requesting` GitHub, Linear, or
-Sentry trigger is first reconciled through its authenticated provider read/list API. Absence closes
-the ledger without another DELETE. Box recovery follows the provider's documented contract:
+Sentry trigger is first reconciled through its complete authenticated provider read/list API.
+Absence closes the ledger without another DELETE. Box recovery follows the provider's documented contract:
 [permanent deletion](https://docs.ascii.dev/box/api/reference/boxes/permanently-delete-box-data.md)
 returns `202` and immediately removes the Box from ordinary reads while the retained `bdop_...`
 operation completes; [data retention](https://docs.ascii.dev/box/data-retention.md) is separate from

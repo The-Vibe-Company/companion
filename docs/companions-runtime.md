@@ -1423,11 +1423,14 @@ They perform no database or provider mutation and do not load or decrypt reusabl
 Destructive mode accepts only `purge --confirm-delete-all-companions`. Before its first ledger write
 or external call, it requires `COMPANION_COMPANIONS_ENABLED=false`, the `runtime-v2` PostgreSQL gate
 disabled, neutral v2 and v3 leases, and the migration advisory lock. External ownership is removed
-first. Provider `404` is recorded as `absent`; every other unresolved failure stops with ownership
-rows present. Terminal targets are skipped on retry, while a recorded Box operation is polled rather
-than resubmitted. A nonterminal retry performs an authoritative provider observation first:
-storage/Box/snapshot inventory covers those resources, and authenticated GitHub, Linear, or Sentry
-lookup covers remote triggers. Proven absence closes the target without another DELETE; an
+first. A provider's authoritative absence result is recorded as `absent`; every unresolved failure
+stops with ownership rows present. For GitHub and Sentry triggers, a hook-item `404` is not
+authoritative because it can also mean that the parent repository or project is inaccessible. The
+purge instead walks the complete authenticated parent hook list and treats a list failure, including
+`404`, as unknown. Terminal targets are skipped on retry, while a recorded Box operation is polled
+rather than resubmitted. A nonterminal retry performs an authoritative provider observation first:
+storage/Box/snapshot inventory covers those resources, and complete authenticated GitHub, Linear,
+or Sentry lookup covers remote triggers. Proven absence closes the target without another DELETE; an
 operation-bearing Box resumes by polling. Without an operation id, fresh authenticated Box absence
 closes the target without replay, while fresh visibility proves the provider's documented
 immediate-removal admission boundary was not crossed and permits a new request. An unavailable or
