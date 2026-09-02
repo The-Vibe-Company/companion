@@ -1,6 +1,7 @@
 import { safeRuntimeError } from "../errors";
 import { classifyPiJournalPage, type ValidatedPiJournalRead } from "../piEvents";
 import type { ErrorAction, SafeRuntimeError } from "../types";
+import type { RuntimeBoxControl, RuntimePiControl, RuntimeResourceStager } from "../ports";
 
 export const RUNTIME_V3_LANES = ["main", "background"] as const;
 export type RuntimeV3Lane = (typeof RUNTIME_V3_LANES)[number];
@@ -116,6 +117,46 @@ export interface RuntimeV3Progression {
 }
 
 export type RuntimeV3Convergence = Pick<RuntimeV3Progression, "converge">;
+
+export type RuntimeV3PreparationCheckpoint =
+  | "pending" | "box_created" | "box_ready" | "staged";
+
+export interface RuntimeV3PreparationClaim {
+  orgId: string;
+  companionId: string;
+  turnId: string | null;
+  commandId: string | null;
+  checkpoint: RuntimeV3PreparationCheckpoint;
+  boxIdempotencyKey: string;
+  boxId: string | null;
+  createdAt: Date;
+  fence: RuntimeV3Fence;
+}
+
+export interface RuntimeV3PreparationPersistence {
+  claim(input: { executorId: string }): Promise<RuntimeV3PreparationClaim | null>;
+  checkpoint(
+    claim: RuntimeV3PreparationClaim,
+    input: {
+      next: "box_created" | "box_ready" | "staged" | "prepared";
+      boxId?: string;
+      piInvocationId?: string;
+    },
+  ): Promise<boolean>;
+  defer(
+    claim: RuntimeV3PreparationClaim,
+    input: { delaySeconds: number; error: SafeRuntimeError | null },
+  ): Promise<boolean>;
+}
+
+export interface RuntimeV3PreparationOptions {
+  persistence: RuntimeV3PreparationPersistence;
+  box: Pick<RuntimeBoxControl, "createGenerationBox" | "applyGenerationBoxSettings" | "getStatus">;
+  resourceStager: Pick<RuntimeResourceStager, "refreshLayout">;
+  pi: Pick<RuntimePiControl, "startPiDaemon">;
+  observePreparedLatency?: (durationMs: number) => void;
+  now?: () => Date;
+}
 
 export interface RuntimeV3ProgressionOptions {
   persistence: RuntimeV3ProgressionPersistence;
@@ -348,6 +389,112 @@ export function createRuntimeV3WarmTurnAdvance(
 
 async function defaultWarmPollWait(): Promise<void> {
   await new Promise<void>((resolve) => setTimeout(resolve, 100));
+}
+
+const PREPARATION_RETRY_SECONDS = 5;
+const PREPARATION_POLL_SECONDS = 1;
+const PREPARATION_BOX_TTL_SECONDS = 6 * 60 * 60;
+
+/** Prepare one cold Companion through fenced, restart-safe checkpoints. */
+export function createRuntimeV3Preparation(
+  options: RuntimeV3PreparationOptions,
+): RuntimeV3Convergence {
+  const now = options.now ?? (() => new Date());
+  return {
+    async converge({ executorId }) {
+      let progressed = 0;
+      while (progressed < LANE_CONVERGENCE_LIMIT) {
+        const claim = await options.persistence.claim({ executorId });
+        if (!claim) return { progressed, exhausted: false };
+        const signal = AbortSignal.timeout(60_000);
+        try {
+          if (claim.checkpoint === "pending") {
+            const created = await options.box.createGenerationBox({
+              companionId: claim.companionId,
+              generation: 1n,
+              ttlSeconds: PREPARATION_BOX_TTL_SECONDS,
+              idempotencyKey: claim.boxIdempotencyKey,
+              signal,
+            });
+            if (!await options.persistence.checkpoint(claim, {
+              next: "box_created",
+              boxId: created.boxId,
+            })) return { progressed, exhausted: false };
+          } else if (claim.checkpoint === "box_created") {
+            if (!claim.boxId) throw new Error("Box identity is missing after creation");
+            await options.box.applyGenerationBoxSettings({
+              boxId: claim.boxId,
+              companionId: claim.companionId,
+              generation: 1n,
+              ttlSeconds: PREPARATION_BOX_TTL_SECONDS,
+              signal,
+            });
+            const observed = await options.box.getStatus({
+              boxId: claim.boxId,
+              companionId: claim.companionId,
+              generation: 1n,
+              signal,
+            });
+            if (!["ready", "idle", "running"].includes(observed.state)) {
+              await options.persistence.defer(claim, {
+                delaySeconds: PREPARATION_POLL_SECONDS,
+                error: null,
+              });
+              return { progressed: progressed + 1, exhausted: false };
+            }
+            if (!await options.persistence.checkpoint(claim, { next: "box_ready" })) {
+              return { progressed, exhausted: false };
+            }
+          } else if (claim.checkpoint === "box_ready") {
+            if (!claim.boxId) throw new Error("Box identity is missing before staging");
+            await options.resourceStager.refreshLayout({ boxId: claim.boxId, signal });
+            if (!await options.persistence.checkpoint(claim, { next: "staged" })) {
+              return { progressed, exhausted: false };
+            }
+          } else {
+            if (!claim.boxId) throw new Error("Box identity is missing before Pi activation");
+            const pi = await options.pi.startPiDaemon({ boxId: claim.boxId, signal });
+            if (pi.state !== "idle") throw new Error("Pi did not become idle during preparation");
+            if (!await options.persistence.checkpoint(claim, {
+              next: "prepared",
+              piInvocationId: pi.invocationId,
+            })) return { progressed, exhausted: false };
+            options.observePreparedLatency?.(Math.max(0, now().getTime() - claim.createdAt.getTime()));
+          }
+          progressed += 1;
+        } catch (error) {
+          const safe = safeRuntimeError({
+            code: "companion_prepare_failed",
+            message: error,
+            action: "retry",
+          });
+          await options.persistence.defer(claim, {
+            delaySeconds: PREPARATION_RETRY_SECONDS,
+            error: safe,
+          });
+          return { progressed: progressed + 1, exhausted: false };
+        }
+      }
+      return { progressed, exhausted: true };
+    },
+  };
+}
+
+/** Run preparation before dispatch so a queued head Turn itself implies preparation. */
+export function combineRuntimeV3Convergence(
+  preparation: RuntimeV3Convergence,
+  turns: RuntimeV3Convergence,
+): RuntimeV3Convergence {
+  return {
+    async converge(input) {
+      const prepared = await preparation.converge(input);
+      const dispatched = await turns.converge(input);
+      return {
+        progressed: prepared.progressed + dispatched.progressed,
+        exhausted: prepared.exhausted || dispatched.exhausted,
+      };
+    },
+  };
 }
 
 /**

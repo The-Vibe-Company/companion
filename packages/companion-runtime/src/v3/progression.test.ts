@@ -7,11 +7,13 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  createRuntimeV3Preparation,
   createRuntimeV3Progression,
   createRuntimeV3WarmTurnAdvance,
   type RuntimeV3Claim,
   type RuntimeV3ConvergencePersistence,
   type RuntimeV3ProgressionPersistence,
+  type RuntimeV3PreparationClaim,
 } from "./progression";
 
 const acceptedTurn = {
@@ -60,6 +62,97 @@ function persistence(
 }
 
 describe("Runtime v3 progression interface", () => {
+  it("checkpoints canonical Box identity before readiness, staging, and Pi activation", async () => {
+    const base = {
+      orgId: mainClaim.orgId,
+      companionId: mainClaim.companionId,
+      turnId: acceptedTurn.id,
+      commandId: acceptedTurn.commandId,
+      boxIdempotencyKey: "11111111-1111-4111-8111-111111111111",
+      createdAt: new Date("2026-09-02T00:00:00.000Z"),
+      fence: mainClaim.fence,
+    };
+    const claims: RuntimeV3PreparationClaim[] = [
+      { ...base, checkpoint: "pending", boxId: null },
+      { ...base, checkpoint: "box_created", boxId: "bx_23456789" },
+      { ...base, checkpoint: "box_ready", boxId: "bx_23456789" },
+      { ...base, checkpoint: "staged", boxId: "bx_23456789" },
+    ];
+    const checkpoint = vi.fn().mockResolvedValue(true);
+    const preparation = createRuntimeV3Preparation({
+      persistence: {
+        claim: vi.fn(async () => claims.shift() ?? null),
+        checkpoint,
+        defer: vi.fn().mockResolvedValue(true),
+      },
+      box: {
+        createGenerationBox: vi.fn().mockResolvedValue({
+          outcome: "created", boxId: "bx_23456789", name: "canonical",
+        }),
+        applyGenerationBoxSettings: vi.fn().mockResolvedValue(undefined),
+        getStatus: vi.fn().mockResolvedValue({ state: "ready" }),
+      },
+      resourceStager: { refreshLayout: vi.fn().mockResolvedValue({ applied: "base" }) },
+      pi: { startPiDaemon: vi.fn().mockResolvedValue({ state: "idle", invocationId: "pi-1" }) },
+      now: () => new Date("2026-09-02T00:00:02.000Z"),
+    });
+
+    await expect(preparation.converge({ executorId: "runtime-prepare" }))
+      .resolves.toEqual({ progressed: 4, exhausted: false });
+    expect(checkpoint.mock.calls.map(([, value]) => value)).toEqual([
+      { next: "box_created", boxId: "bx_23456789" },
+      { next: "box_ready" },
+      { next: "staged" },
+      { next: "prepared", piInvocationId: "pi-1" },
+    ]);
+  });
+
+  it.each([
+    ["Box create", "pending" as const, { createGenerationBox: new Error("token=provider-secret") }],
+    ["Pi activation", "staged" as const, { startPiDaemon: new Error("token=provider-secret") }],
+  ])("keeps the queued Turn retryable after a %s failure", async (_label, checkpoint, failure) => {
+    const claim: RuntimeV3PreparationClaim = {
+      orgId: mainClaim.orgId,
+      companionId: mainClaim.companionId,
+      turnId: acceptedTurn.id,
+      commandId: acceptedTurn.commandId,
+      checkpoint,
+      boxIdempotencyKey: "11111111-1111-4111-8111-111111111111",
+      boxId: checkpoint === "pending" ? null : "bx_23456789",
+      createdAt: new Date(),
+      fence: mainClaim.fence,
+    };
+    const defer = vi.fn().mockResolvedValue(true);
+    const preparation = createRuntimeV3Preparation({
+      persistence: {
+        claim: vi.fn().mockResolvedValueOnce(claim),
+        checkpoint: vi.fn().mockResolvedValue(true),
+        defer,
+      },
+      box: {
+        createGenerationBox: "createGenerationBox" in failure
+          ? vi.fn().mockRejectedValue(failure.createGenerationBox)
+          : vi.fn(),
+        applyGenerationBoxSettings: vi.fn(),
+        getStatus: vi.fn(),
+      },
+      resourceStager: { refreshLayout: vi.fn() },
+      pi: {
+        startPiDaemon: "startPiDaemon" in failure
+          ? vi.fn().mockRejectedValue(failure.startPiDaemon)
+          : vi.fn(),
+      },
+    });
+
+    await preparation.converge({ executorId: "runtime-fault" });
+    const deferred = defer.mock.calls[0]?.[1];
+    expect(deferred).toMatchObject({
+      delaySeconds: 5,
+      error: { code: "companion_prepare_failed", action: "retry" },
+    });
+    expect(JSON.stringify(deferred)).not.toContain("provider-secret");
+  });
+
   it("admits work without exposing persistence choreography", async () => {
     const store = persistence();
     const progression = createRuntimeV3Progression({

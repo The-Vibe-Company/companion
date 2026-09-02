@@ -943,6 +943,7 @@ BEGIN
       'public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer)'
     ) IS NOT NULL THEN
       companion_api_functions := companion_api_functions || ARRAY[
+        'public.companion_v3_api_create_companion(uuid,text,text,text,text,jsonb,boolean,jsonb,uuid,smallint,smallint,smallint,smallint)'::regprocedure,
         'public.companion_v3_api_admit_turn(uuid,uuid,uuid,text)'::regprocedure,
         'public.companion_v3_api_desire_lifecycle(uuid,uuid,public.companion_v3_lifecycle_intent)'::regprocedure,
         'public.companion_v3_api_enqueue_warm_turn(uuid,uuid,uuid,text)'::regprocedure,
@@ -952,6 +953,9 @@ BEGIN
         'public.companion_v3_worker_admit_turn(uuid,uuid,uuid,text,text)'::regprocedure
       ];
       companion_runtime_functions := companion_runtime_functions || ARRAY[
+        'public.companion_v3_runtime_claim_preparation(text,integer,integer)'::regprocedure,
+        'public.companion_v3_runtime_checkpoint_preparation(uuid,uuid,uuid,bigint,bigint,text,text,text,text,integer)'::regprocedure,
+        'public.companion_v3_runtime_defer_preparation(uuid,uuid,uuid,bigint,bigint,integer,text,text,integer)'::regprocedure,
         'public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer)'::regprocedure,
         'public.companion_v3_runtime_claim_warm(text,public.companion_v3_lane,integer,integer)'::regprocedure,
         'public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure,

@@ -61,7 +61,10 @@ independently so a blocked main claim cannot serialize or starve background work
 prove idempotent command admission, per-lane FIFO, monotonic takeover epochs, stale-fence rejection,
 shared kill-switch epoch invalidation, invalid-boundary rejection before lease mutation, forced RLS,
 distinct API/worker/runtime function grants, protocol isolation from v2 executors, and the absence
-of a v3 attempt or derived Start-operation table. The warm-text tracer bullet additionally runs the
+of a v3 attempt or derived Start-operation table. Async preparation tests create through the public
+v3 acceptance seam, send before readiness, and fault Box create and Pi activation while proving the
+Turn remains queued with a bounded retry. The simulator replays a lost `POST /boxes` response from
+the same provider `Idempotency-Key` without creating a second Box. The warm-text tracer bullet additionally runs the
 production HTTP API and runtime as separate processes against a fresh migrated PostgreSQL database
 and the deterministic Box/Pi simulator. It stops runtime across the public send to prove the `202`
 has no provider dependency, replays the same `client_message_id`, then verifies positive admission,
@@ -100,7 +103,8 @@ and takeover around the installed-tree checkpoint.
   delete and operation polling, commands, files, and desktop minting.
 - Keep create faithful to the public API: `202`, provider-generated name, no client name in the
   request. Assert the acknowledged id is checkpointed before the generation-name/six-hour-TTL
-  PATCH; a lost create response leaves a five-minute provisional Box and never triggers a second
+  PATCH; Runtime v3 retries a lost create response with its durable provider idempotency key and
+  never creates a second
   POST.
 - Run Pi as a real JSONL process with command ACKs, tool calls/results, `ask_user`, provider errors,
   crash loops, malformed/oversized lines, and `agent_settled`.

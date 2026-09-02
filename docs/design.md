@@ -218,11 +218,17 @@ admission, independent `main`/`background` FIFO, and monotonic fence epochs. Typ
 deep progression interface—admit, record desired lifecycle, and converge—and keeps claim and
 completion choreography in its internal adapter.
 
-Migration 0161 routes only attachment-free text sends for an explicitly prepared warm v3 aggregate.
+Migration 0161 introduced attachment-free warm dispatch. Migration 0163 makes public creation
+atomically add the v3 aggregate and thread, so creation returns before Box/Pi work and an immediate
+text send is accepted as a queued v3 Turn. `apps/runtime` claims preparation independently, uses the
+provider's 24-hour `Idempotency-Key`, checkpoints the canonical Box id before any later lifecycle
+work, then records Box-ready, layout, and Pi-ready clocks before warm dispatch. Preparation failure
+only records an expurgated, bounded retry on the instance; it creates neither an attempt nor a
+derived Start/Wake operation and leaves the head Turn queued.
 The API atomically persists the user entry and Turn and returns without Box credentials; the runtime
 composition claims only the v3 `main` lane, reauthorizes the actor, dispatches through the existing
 Pi transport, records positive admission before `replying`, and projects one assistant result into
-the durable thread before ACK and terminal settlement. Aggregates not explicitly prepared for v3,
+the durable thread before ACK and terminal settlement. Legacy aggregates without a v3 projection,
 files, routines, and background work remain on their prior paths in this stack. Protocol-3 claims
 still fail closed under the shared runtime gate and carry its epoch, so stale executors cannot
 project or settle. There is still no v3 attempt table or derived Start operation.
@@ -266,7 +272,7 @@ non-Companion table plus reusable encrypted provider, MCP, and
 trigger-provider connection tables. Any change to organizations, users, memberships, Skills,
 secrets, Skill Databases, billing, audit history, or those connections aborts the transaction.
 Completed ledger evidence is immutable. THE-511 builds and verifies this path only; it neither runs
-a production purge nor activates Runtime v3.
+a production purge.
 
 ## Dedicated runtime execution
 
@@ -304,8 +310,8 @@ Box identity uses the generation-qualified name `Companion <id> g<generation>`. 
 and resumed directly; global discovery is reserved for absence, `404`, and ambiguous-create
 reconciliation. Before create,
 runtime searches every Box-list page for that exact name and adopts one canonical Box. Because the
-public create request cannot set a name or supply an idempotency key, runtime issues one create with
-a five-minute provisional TTL, checkpoints the acknowledged Box id, then applies the name and
+public create request cannot set a name, Runtime v3 supplies a durable provider `Idempotency-Key`,
+checkpoints the acknowledged Box id, then applies the name and
 six-hour TTL through an idempotent PATCH. An ambiguous create is interrupted and never replayed.
 After naming, runtime lists again and permanently deletes duplicates. Permanent deletion is provider
 operation tracking, not stop/archive.

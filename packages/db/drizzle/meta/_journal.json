@@ -1142,6 +1142,13 @@
       "when": 1793315200000,
       "tag": "0162_companion_runtime_v3_acceptance_measurement",
       "breakpoints": true
+    },
+    {
+      "idx": 163,
+      "version": "7",
+      "when": 1793318800000,
+      "tag": "0163_companion_runtime_v3_async_prepare",
+      "breakpoints": true
     }
   ]
 }

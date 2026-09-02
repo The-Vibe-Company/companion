@@ -50,6 +50,11 @@ describe("Skills Hub runtime-role grants", () => {
     ]) {
       expect(runtimeFunctions).toContain(signature);
     }
+    for (const signature of [
+      "companion_v3_runtime_claim_preparation(text,integer,integer)",
+      "companion_v3_runtime_checkpoint_preparation(uuid,uuid,uuid,bigint,bigint,text,text,text,text,integer)",
+      "companion_v3_runtime_defer_preparation(uuid,uuid,uuid,bigint,bigint,integer,text,text,integer)",
+    ]) expect(sql).toContain(signature);
     expect(runtimeFunctions).not.toContain("companion_runtime_enable");
     expect(sql).toContain(
       "companion_runtime_renew_and_authorize_v2(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,integer)",
@@ -143,6 +148,7 @@ describe("Skills Hub runtime-role grants", () => {
     );
     expect(apiBlock).toContain("companion_api_create_function,");
     for (const signature of [
+      "companion_v3_api_create_companion(uuid,text,text,text,text,jsonb,boolean,jsonb,uuid,smallint,smallint,smallint,smallint)",
       "companion_api_update_companion(uuid,uuid,jsonb)",
       "companion_api_set_initial_provider(uuid,uuid,text,text)",
       "companion_api_set_workspace_access(uuid,uuid,public.companion_share_role)",

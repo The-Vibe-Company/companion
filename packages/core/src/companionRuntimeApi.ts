@@ -374,7 +374,7 @@ export async function createCompanionV2(input: {
   // Icon catalogs are geometric; "shape" is the domain term.
   /* oxlint-disable anti-slop/no-shape-in-symbol-names */
   const result = await input.database.execute(sql`
-    select * from public.companion_api_create_companion(
+    select * from public.companion_v3_api_create_companion(
       ${input.orgId}::uuid,
       ${input.name}::text,
       ${input.persona ?? null}::text,

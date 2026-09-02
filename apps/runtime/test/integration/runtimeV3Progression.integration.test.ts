@@ -153,6 +153,94 @@ describe("Runtime v3 progression facts", () => {
       where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
   });
 
+  it("creates a cold Companion, durably queues its first Turn, and claims preparation", async () => {
+    let coldCompanion: string | null = null;
+    const message = randomUUID();
+    try {
+      await asApi(async (sql) => {
+        const created = await sql<Array<{ companionId: string }>>`
+          select companion_id as "companionId" from public.companion_v3_api_create_companion(
+          ${ids.org}::uuid, 'Cold Companion', null, 'anthropic', 'claude-test',
+          '[]'::jsonb, true, '[]'::jsonb, null,
+          1::smallint, 1::smallint, 1::smallint, 2::smallint
+        )`;
+        coldCompanion = created[0]!.companionId;
+        const accepted = await sql<Array<{ turn: { status: string }; replayed: boolean }>>`
+          select turn, replayed from public.companion_v3_api_enqueue_warm_turn(
+            ${ids.org}::uuid, ${coldCompanion}::uuid, ${message}::uuid, 'hello immediately'
+          )`;
+        expect(accepted).toEqual([{
+          turn: expect.objectContaining({ status: "queued" }),
+          replayed: false,
+        }]);
+      });
+
+      const claims = await runtimeSql<Array<{
+        companionId: string;
+        turnId: string | null;
+        workKind: string;
+        checkpoint: string;
+        idempotencyKey: string;
+        token: string;
+        epoch: string;
+        gate: string;
+      }>>`
+        select companion_id as "companionId", turn_id as "turnId", work_kind::text as "workKind",
+          checkpoint, box_idempotency_key as "idempotencyKey", claim_token as token,
+          claim_epoch::text as epoch, gate_epoch::text as gate
+        from public.companion_v3_runtime_claim_preparation('runtime-cold', 30, 3)
+      `;
+      expect(claims).toEqual([expect.objectContaining({
+        companionId: coldCompanion,
+        turnId: expect.any(String),
+        workKind: "preparation",
+        checkpoint: "pending",
+        idempotencyKey: expect.any(String),
+      })]);
+
+      const first = claims[0]!;
+      await expect(runtimeSql`select public.companion_v3_runtime_checkpoint_preparation(
+        ${ids.org}::uuid, ${coldCompanion}::uuid, ${first.token}::uuid,
+        ${first.epoch}::bigint, ${first.gate}::bigint,
+        'pending', 'box_created', 'bx_23456789', null, 3
+      )`).resolves.toEqual([{ companion_v3_runtime_checkpoint_preparation: true }]);
+      const retry = (await runtimeSql<Array<{
+        token: string; epoch: string; gate: string;
+      }>>`select claim_token as token, claim_epoch::text as epoch, gate_epoch::text as gate
+        from public.companion_v3_runtime_claim_preparation('runtime-cold-retry', 30, 3)`)[0]!;
+      await expect(runtimeSql`select public.companion_v3_runtime_defer_preparation(
+        ${ids.org}::uuid, ${coldCompanion}::uuid, ${retry.token}::uuid,
+        ${retry.epoch}::bigint, ${retry.gate}::bigint, 5,
+        'companion_prepare_failed', 'Runtime execution failed.', 3
+      )`).resolves.toEqual([{ companion_v3_runtime_defer_preparation: true }]);
+
+      const queued = await ownerSql<Array<{
+        state: string; errorCode: string; delaySeconds: number;
+      }>>`select turn_row.state::text, instance.preparation_error_code as "errorCode",
+          extract(epoch from (instance.preparation_available_at - clock_timestamp()))::integer
+            as "delaySeconds"
+        from public.companion_v3_turns turn_row
+        join public.companion_v3_instances instance using (org_id, companion_id)
+        where turn_row.companion_id = ${coldCompanion}::uuid`;
+      expect(queued[0]).toMatchObject({ state: "queued", errorCode: "companion_prepare_failed" });
+      expect(queued[0]!.delaySeconds).toBeGreaterThanOrEqual(1);
+      expect(queued[0]!.delaySeconds).toBeLessThanOrEqual(5);
+
+      const durableSideEffects = await ownerSql<Array<{ operations: string; attempts: string }>>`
+        select
+          (select count(*)::text from public.companion_operations
+            where companion_id = ${coldCompanion}::uuid) as operations,
+          (select count(*)::text from public.companion_turn_attempts
+            where companion_id = ${coldCompanion}::uuid) as attempts
+      `;
+      expect(durableSideEffects).toEqual([{ operations: "0", attempts: "0" }]);
+    } finally {
+      if (coldCompanion) {
+        await ownerSql`delete from public.companions where id = ${coldCompanion}::uuid`;
+      }
+    }
+  });
+
   afterAll(async () => {
     if (originalRuntimeGate) {
       await ownerSql`update public.companion_runtime_control

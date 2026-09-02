@@ -1,6 +1,7 @@
 import type {
   RuntimeV3ConvergencePersistence,
   RuntimeV3DurableOutcome,
+  RuntimeV3PreparationPersistence,
   RuntimeV3Turn,
   RuntimeV3WarmTurnPersistence,
 } from "@companion/companion-runtime/v3/internal";
@@ -132,6 +133,75 @@ interface WarmMaterialRow {
   piInvocationId: string;
   content: string;
   activityCursor: string;
+}
+
+interface PreparationClaimRow {
+  orgId: string;
+  companionId: string;
+  turnId: string | null;
+  commandId: string | null;
+  checkpoint: "pending" | "box_created" | "box_ready" | "staged";
+  boxIdempotencyKey: string;
+  boxId: string | null;
+  claimToken: string;
+  claimEpoch: string;
+  gateEpoch: string;
+  createdAt: Date;
+}
+
+/** Runtime-only preparation facts. Box identity crosses this seam only after a fenced checkpoint. */
+export function createRuntimeV3PostgresPreparationPersistence(
+  sql: Sql,
+): RuntimeV3PreparationPersistence {
+  return {
+    async claim({ executorId }) {
+      const rows = await sql<PreparationClaimRow[]>`
+        select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
+          command_id as "commandId", checkpoint, box_idempotency_key as "boxIdempotencyKey",
+          box_id as "boxId", claim_token as "claimToken", claim_epoch::text as "claimEpoch",
+          gate_epoch::text as "gateEpoch", created_at as "createdAt"
+        from public.companion_v3_runtime_claim_preparation(${executorId}, 30, 3)
+      `;
+      const row = rows[0];
+      return row ? {
+        orgId: row.orgId,
+        companionId: row.companionId,
+        turnId: row.turnId,
+        commandId: row.commandId,
+        checkpoint: row.checkpoint,
+        boxIdempotencyKey: row.boxIdempotencyKey,
+        boxId: row.boxId,
+        createdAt: row.createdAt,
+        fence: {
+          token: row.claimToken,
+          epoch: BigInt(row.claimEpoch),
+          gateEpoch: BigInt(row.gateEpoch),
+        },
+      } : null;
+    },
+    async checkpoint(claim, input) {
+      const rows = await sql<Array<{ checkpointed: boolean }>>`
+        select public.companion_v3_runtime_checkpoint_preparation(
+          ${claim.orgId}::uuid, ${claim.companionId}::uuid,
+          ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint, ${claim.checkpoint}, ${input.next},
+          ${input.boxId ?? null}, ${input.piInvocationId ?? null}, 3
+        ) as checkpointed
+      `;
+      return rows[0]?.checkpointed === true;
+    },
+    async defer(claim, input) {
+      const rows = await sql<Array<{ deferred: boolean }>>`
+        select public.companion_v3_runtime_defer_preparation(
+          ${claim.orgId}::uuid, ${claim.companionId}::uuid,
+          ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint, ${input.delaySeconds},
+          ${input.error?.code ?? null}, ${input.error?.message ?? null}, 3
+        ) as deferred
+      `;
+      return rows[0]?.deferred === true;
+    },
+  };
 }
 
 /** Fenced Runtime v3 warm-turn facts; Box/Pi values never cross into the API process. */

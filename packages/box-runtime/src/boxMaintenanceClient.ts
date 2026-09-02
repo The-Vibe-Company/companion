@@ -12,8 +12,7 @@ const DEFAULT_BOX_API_BASE = "https://ascii.dev/api/box/v1";
 const BOX_REQUEST_TIMEOUT_MS = COMPANION_BUDGETS_BASE.boxRequestTimeoutMs;
 const BOX_LIST_PAGE_LIMIT = 200;
 const BOX_TTL_MAX_SECONDS = 2_592_000;
-// Create has no idempotency key and cannot set the generation name. Keep the irreducible
-// POST-response/process-crash orphan bounded until runtime durably records the returned Box id.
+// Keep the unassigned create TTL bounded until runtime durably records the returned Box id.
 const BOX_UNASSIGNED_CREATE_TTL_SECONDS = COMPANION_BUDGETS_BASE.provisionalCreateTtlSeconds;
 const DEFAULT_DELETION_POLL_INTERVAL_MS = 1_000;
 const MAX_GENERATION = 2_147_483_647;
@@ -137,6 +136,8 @@ export interface BoxGenerationCreateInput extends BoxDeadlineControl {
   companionId: string;
   generation: number;
   ttlSeconds: number;
+  /** Provider-native create idempotency key, retained by ascii.dev for 24 hours. */
+  idempotencyKey?: string;
   setupScript?: string;
   environment?: string;
   env?: Record<string, string>;
@@ -996,6 +997,9 @@ export class AsciiBoxMaintenanceClient implements BoxRuntimeLifecycleClient {
       "/boxes",
       {
         method: "POST",
+        headers: input.idempotencyKey
+          ? { "Idempotency-Key": input.idempotencyKey }
+          : undefined,
         body: JSON.stringify({
           ttlSeconds: createTtlSeconds,
           noEnv: true,

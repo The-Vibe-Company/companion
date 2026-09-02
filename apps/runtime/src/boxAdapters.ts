@@ -141,6 +141,7 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
           companionId: input.companionId,
           generation: generationNumber(input.generation),
           ttlSeconds: input.ttlSeconds,
+          ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
           deadlineAt: deadline(createDeadlineSource),
           signal: input.signal,
           ...(fromImage ? { from: fromImage } : {}),
@@ -149,7 +150,7 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
       try {
         created = await create(from);
       } catch (error) {
-        if (!from || !isUnknownSnapshot(error)) throw error;
+        if (!from || input.idempotencyKey || !isUnknownSnapshot(error)) throw error;
         fallbackReason = "unknown_snapshot_fallback";
         from = undefined;
         created = await create();

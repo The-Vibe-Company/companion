@@ -55,6 +55,7 @@ export interface RuntimeBoxControl {
     companionId: string;
     generation: bigint;
     ttlSeconds: number;
+    idempotencyKey?: string;
     deadlineAt?: Date;
     /**
      * The operation's cold-start/work deadline. Bounds how long the create may wait for a ready

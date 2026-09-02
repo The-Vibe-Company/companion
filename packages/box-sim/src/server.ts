@@ -448,6 +448,9 @@ export function createBoxSimServer(options: BoxSimServerOptions = {}): BoxSimSer
         response,
         point: "box.create",
         operation: () => simulator.createBox({
+          ...(typeof request.headers["idempotency-key"] === "string"
+            ? { idempotencyKey: request.headers["idempotency-key"] }
+            : {}),
           ...(typeof body.ttlSeconds === "number" ? { ttlSeconds: body.ttlSeconds } : {}),
           ...(typeof body.setupScript === "string" ? { setupScript: body.setupScript } : {}),
           ...(body.env && typeof body.env === "object" && !Array.isArray(body.env)

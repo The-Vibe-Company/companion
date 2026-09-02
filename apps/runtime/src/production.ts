@@ -23,7 +23,9 @@ import {
   type RuntimeStore,
 } from "@companion/companion-runtime";
 import {
+  combineRuntimeV3Convergence,
   createRuntimeV3Convergence,
+  createRuntimeV3Preparation,
   createRuntimeV3WarmTurnAdvance,
 } from "@companion/companion-runtime/v3/internal";
 import {
@@ -60,6 +62,7 @@ import {
 } from "./schedulerAdapter";
 import { createSentryRuntimeProcessLog } from "./sentry";
 import {
+  createRuntimeV3PostgresPreparationPersistence,
   createRuntimeV3PostgresWarmConvergence,
   createRuntimeV3PostgresWarmTurnPersistence,
 } from "./runtimeV3ProgressionStore";
@@ -331,9 +334,10 @@ export async function buildProductionRuntimeService(
       })
       : null;
     const pi = direct?.pi ?? execPi;
+    const box = createRuntimeBoxControl(adapters);
     const kernel = factories.createKernel({
       store,
-      box: createRuntimeBoxControl(adapters),
+      box,
       pi,
       ...(direct && config.directTransport === "on"
         ? { eventPollIntervalMs: direct.eventPollIntervalMs }
@@ -355,7 +359,7 @@ export async function buildProductionRuntimeService(
         desktop: async (input) => await freshRuntime().desktop(input),
       },
     });
-    const runtimeV3 = createRuntimeV3Convergence({
+    const runtimeV3Turns = createRuntimeV3Convergence({
       persistence: createRuntimeV3PostgresWarmConvergence(database.sql, {
         enabledLanes: new Set(["main"]),
       }),
@@ -364,6 +368,20 @@ export async function buildProductionRuntimeService(
         pi: createRuntimeV3WarmPi(pi),
       }),
     });
+    const runtimeV3 = combineRuntimeV3Convergence(
+      createRuntimeV3Preparation({
+        persistence: createRuntimeV3PostgresPreparationPersistence(database.sql),
+        box,
+        resourceStager: material.resourceStager,
+        pi,
+        observePreparedLatency: (durationMs) => log.info({
+          ts: new Date().toISOString(),
+          event: "runtime.v3.prepared",
+          durationMs,
+        }),
+      }),
+      runtimeV3Turns,
+    );
     return composeRuntimeService({
       config,
       store,

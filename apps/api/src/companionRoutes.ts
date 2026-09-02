@@ -142,6 +142,7 @@ import {
   reorderCompanionSections,
   assignCompanionSection,
 } from "@companion/core";
+import { recordCompanionCreationMetrics } from "./companionCreationMetrics";
 import {
   COMPANION_ATTACHMENT_MAX_BYTES,
   COMPANION_MESSAGE_ATTACHMENT_MAX_COUNT,
@@ -1326,6 +1327,7 @@ export function registerCompanionRoutes(
   });
 
   app.post("/v1/companions", async (c) => {
+    const startedAt = performance.now();
     try {
       const body = createCompanionInputSchema.parse(await c.req.json());
       const companion = await tenant(c, ({ actor, orgId, database }) =>
@@ -1341,8 +1343,16 @@ export function registerCompanionRoutes(
           icon: body.icon,
           database,
         }));
+      recordCompanionCreationMetrics({
+        durationMs: performance.now() - startedAt,
+        outcome: "accepted",
+      });
       return c.json({ companion }, 201);
     } catch (error) {
+      recordCompanionCreationMetrics({
+        durationMs: performance.now() - startedAt,
+        outcome: "rejected",
+      });
       return routeError(c, error);
     }
   });

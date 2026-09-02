@@ -1,9 +1,12 @@
 # Companions Runtime v2
 
-> Runtime v3 warm-text note (THE-510/THE-512): migration 0159 and the TypeScript progression module
+> Runtime v3 warm-text note (THE-510/THE-512/THE-514): migration 0159 and the TypeScript progression module
 > add a separately named v3 persistence/interface seam beside the live system described here;
 > migration 0161 wires its first narrow tracer bullet. An attachment-free public text send for an
-> explicitly prepared warm aggregate persists its message and Turn atomically, then the runtime
+> aggregate persists its message and Turn atomically even while cold. Migration 0163 makes creation
+> persist that aggregate and thread before returning; apps/runtime prepares Box/layout/Pi through
+> fenced checkpoints, using the provider's 24-hour create idempotency key. Preparation failures
+> remain bounded and expurgated while the Turn stays queued. Once prepared, the runtime
 > alone admits it to Pi and projects one durable assistant result. Other aggregates and surfaces
 > retain the v2 contract in this stack. V3 has one Turn carrying command/admission/activity/outcome facts, independent
 > `main`/`background` leases, no attempt table, and no derived Start operation. Its protocol-3
@@ -291,16 +294,14 @@ id is absent, returns `404`, or a takeover must reconcile an ambiguous create. A
 receives one resume POST with the six-hour TTL and one runtime-owned ready loop; resume itself never
 polls Box or probes Pi. Before create, runtime searches every provider list page for the exact name. It chooses one canonical
 Box and permanently deletes duplicates. The public Box create contract cannot assign that name and
-has no idempotency key: runtime therefore writes `creating_box`, performs exactly one `POST /boxes`
-with a five-minute provisional TTL, and never retries an ambiguous result. A positive `202` exposes
+accepts an `Idempotency-Key` retained for 24 hours: Runtime v3 stores one key before `POST /boxes`
+and safely retries an ambiguous result with the same body. A positive `202` exposes
 the provider id; runtime checkpoints that id before an idempotent `PATCH` applies the deterministic
 name and six-hour TTL. It then lists again, chooses the canonical id, and durably deletes duplicates.
 
-A transport loss around the create POST is irreducibly ambiguous under the provider's current
-public contract. It interrupts the operation explicitly and may leave one unnamed Box which
-auto-archives after the provisional TTL; runtime never guesses its id from account-wide list order
-and never creates a second Box automatically. Operators must keep orphan inventory enabled until
-the provider offers a create idempotency key or client-supplied name.
+The retained Runtime v2 path still treats a transport loss around an unkeyed create as ambiguous.
+Runtime v3 instead replays the exact create body with its durable provider key, then checkpoints the
+canonical id before continuing.
 An exact-name Box discovered after any acknowledged create is always adopted and permanently
 deleted before retirement.
 

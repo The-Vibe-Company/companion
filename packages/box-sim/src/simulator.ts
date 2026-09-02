@@ -62,6 +62,7 @@ export interface CreateBoxInput {
   noEnv?: boolean;
   /** Clone persistent files from a ready named snapshot. */
   from?: string;
+  idempotencyKey?: string;
 }
 
 const NAMED_SNAPSHOT_NAME = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -195,6 +196,7 @@ export class BoxSimulator {
   readonly #initialDefaults: BoxSimDefaults;
   readonly #piControllerFactory: BoxSimPiControllerFactory | undefined;
   readonly #boxes = new Map<string, BoxRecord>();
+  readonly #createIdempotency = new Map<string, { fingerprint: string; boxId: string }>();
   readonly #namedSnapshots = new Map<string, NamedSnapshotRecord>();
   readonly #deletions = new Map<string, DeletionRecord>();
   readonly #faults = new Map<string, BoxSimFaultRule>();
@@ -269,6 +271,7 @@ export class BoxSimulator {
       await machine.piController?.dispose();
     }));
     this.#boxes.clear();
+    this.#createIdempotency.clear();
     this.#namedSnapshots.clear();
     this.#deletions.clear();
     this.#faults.clear();
@@ -309,6 +312,17 @@ export class BoxSimulator {
   }
 
   async createBox(input: CreateBoxInput = {}): Promise<BoxSimBox> {
+    const idempotencyKey = input.idempotencyKey?.trim();
+    const fingerprint = JSON.stringify({ ...input, idempotencyKey: undefined });
+    if (idempotencyKey) {
+      const prior = this.#createIdempotency.get(idempotencyKey);
+      if (prior) {
+        if (prior.fingerprint !== fingerprint) {
+          throw new BoxSimHttpError(409, "idempotency_key_reused", "Idempotency key was reused");
+        }
+        return publicBox(this.#record(prior.boxId));
+      }
+    }
     const from = typeof input.from === "string" ? input.from.trim() : "";
     let cloned: NamedSnapshotRecord | undefined;
     if (from) {
@@ -349,6 +363,7 @@ export class BoxSimulator {
       machine,
     };
     this.#boxes.set(id, record);
+    if (idempotencyKey) this.#createIdempotency.set(idempotencyKey, { fingerprint, boxId: id });
     if (this.#piControllerFactory) {
       try {
         machine.piController = this.#piControllerFactory({
