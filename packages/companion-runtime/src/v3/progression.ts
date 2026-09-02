@@ -210,51 +210,66 @@ export function createRuntimeV3WarmTurnAdvance(
           action: "none",
         };
       }
-      const admission = await options.pi.prompt({
-        boxId: material.boxId,
-        commandId: claim.turn.commandId,
-        turnId: claim.turn.id,
-        expectedInvocationId: material.piInvocationId,
-        message: material.content,
-      });
-      if (admission.outcome === "rejected") {
-        return {
-          kind: "failed",
-          code: "pi_admission_rejected",
-          message: "Pi rejected the warm Turn.",
-          action: "none",
-        };
-      }
-      if (admission.outcome === "ambiguous") {
+      let invocationId = material.piInvocationId;
+      let cursor = material.cursor;
+      if (claim.turn.state === "queued") {
+        const admission = await options.pi.prompt({
+          boxId: material.boxId,
+          commandId: claim.turn.commandId,
+          turnId: claim.turn.id,
+          expectedInvocationId: material.piInvocationId,
+          message: material.content,
+        });
+        if (admission.outcome === "rejected") {
+          return {
+            kind: "failed",
+            code: "pi_admission_rejected",
+            message: "Pi rejected the warm Turn.",
+            action: "none",
+          };
+        }
+        if (admission.outcome === "ambiguous") {
+          return {
+            kind: "interrupted",
+            code: "pi_admission_ambiguous",
+            message: "Pi admission could not be confirmed.",
+            action: "none",
+          };
+        }
+        const admitted = await options.persistence.recordAdmission(claim, {
+          invocationId: admission.invocationId,
+          cursor: admission.initialCursor,
+        });
+        if (!admitted) {
+          return {
+            kind: "interrupted",
+            code: "pi_admission_fence_lost",
+            message: "Pi admission could not be recorded safely.",
+            action: "none",
+          };
+        }
+        invocationId = admission.invocationId;
+        cursor = admission.initialCursor;
+      } else if (claim.turn.state !== "needs_input") {
         return {
           kind: "interrupted",
-          code: "pi_admission_ambiguous",
-          message: "Pi admission could not be confirmed.",
-          action: "none",
-        };
-      }
-      const admitted = await options.persistence.recordAdmission(claim, {
-        invocationId: admission.invocationId,
-        cursor: admission.initialCursor,
-      });
-      if (!admitted) {
-        return {
-          kind: "interrupted",
-          code: "pi_admission_fence_lost",
-          message: "Pi admission could not be recorded safely.",
+          code: "warm_turn_state_invalid",
+          message: "The warm Turn cannot resume from its durable state.",
           action: "none",
         };
       }
 
-      let cursor = admission.initialCursor;
       let assistantResults = 0;
       for (let pageNumber = 0; pageNumber < 32; pageNumber += 1) {
         const page = await options.pi.read({
           boxId: material.boxId,
           after: cursor,
           turnId: claim.turn.id,
-          invocationId: admission.invocationId,
+          invocationId,
         });
+        if (claim.turn.state === "needs_input" && page.events.length === 0 && !page.hasMore) {
+          return { kind: "release" };
+        }
         const classified = classifyPiJournalPage(page);
         const assistant = classified.projections.flatMap((projection) =>
           projection.type === "assistant"
@@ -278,7 +293,14 @@ export function createRuntimeV3WarmTurnAdvance(
           needsInput: classified.needsInput,
           settled: classified.settled,
         });
-        if (!projected) return { kind: "release" };
+        if (!projected) {
+          return {
+            kind: "interrupted",
+            code: "pi_projection_fence_lost",
+            message: "Pi output could not be projected safely.",
+            action: "none",
+          };
+        }
         await options.pi.acknowledge({
           boxId: material.boxId,
           through: classified.throughCursor,
@@ -361,6 +383,7 @@ export function createRuntimeV3Convergence(
           const completed = await options.persistence.completeProgression(claim, outcome);
           if (!completed) return { progressed, exhausted: false };
           progressed += 1;
+          if (outcome.kind === "release") return { progressed, exhausted: false };
         }
         return { progressed, exhausted: true };
       }));

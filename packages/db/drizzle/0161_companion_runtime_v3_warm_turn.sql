@@ -213,7 +213,7 @@ $$;
 -- Production warm convergence has a narrower claim surface than the generic v3 progression
 -- primitive. It takes work only for runtime-owned durable preparation, while authorization below
 -- revalidates that fact under the resulting fence immediately before any Pi contact.
-CREATE FUNCTION public.companion_v3_runtime_claim_warm(
+CREATE OR REPLACE FUNCTION public.companion_v3_runtime_claim_warm(
   p_executor_id text,
   p_lane public.companion_v3_lane,
   p_lease_seconds integer,
@@ -261,35 +261,55 @@ BEGIN
     ON instance.org_id = lease.org_id AND instance.companion_id = lease.companion_id
    AND instance.box_id IS NOT NULL AND instance.pi_invocation_id IS NOT NULL
    AND instance.prepared_at IS NOT NULL
-  JOIN public.companion_v3_turns queued
-    ON queued.org_id = lease.org_id AND queued.companion_id = lease.companion_id
-   AND queued.lane = lease.lane AND queued.state = 'queued'
+  JOIN public.companion_v3_turns eligible
+    ON eligible.org_id = lease.org_id AND eligible.companion_id = lease.companion_id
+   AND eligible.lane = lease.lane
+   AND (
+     eligible.state = 'needs_input'
+     OR (
+       eligible.state = 'queued'
+       AND NOT EXISTS (
+         SELECT 1 FROM public.companion_v3_turns active
+         WHERE active.org_id = lease.org_id AND active.companion_id = lease.companion_id
+           AND active.lane = lease.lane
+           AND active.state IN ('admitted', 'running', 'needs_input')
+       )
+     )
+   )
   WHERE lease.lane = p_lane
     AND (lease.claim_token IS NULL OR lease.expires_at <= v_now)
-    AND NOT EXISTS (
-      SELECT 1 FROM public.companion_v3_turns active
-      WHERE active.org_id = lease.org_id AND active.companion_id = lease.companion_id
-        AND active.lane = lease.lane
-        AND active.state IN ('admitted', 'running', 'needs_input')
-    )
-  ORDER BY queued.created_at, queued.queue_sequence, queued.id
+  ORDER BY (eligible.state = 'needs_input') DESC,
+    eligible.created_at, eligible.queue_sequence, eligible.id
   LIMIT 1
   FOR UPDATE OF lease SKIP LOCKED;
   IF NOT FOUND THEN RETURN; END IF;
 
-  SELECT queued.* INTO v_turn
-  FROM public.companion_v3_turns queued
+  SELECT eligible.* INTO v_turn
+  FROM public.companion_v3_turns eligible
   JOIN public.companion_v3_instances instance
-    ON instance.org_id = queued.org_id AND instance.companion_id = queued.companion_id
+    ON instance.org_id = eligible.org_id AND instance.companion_id = eligible.companion_id
    AND instance.box_id IS NOT NULL AND instance.pi_invocation_id IS NOT NULL
    AND instance.prepared_at IS NOT NULL
-  WHERE queued.org_id = v_lease.org_id
-    AND queued.companion_id = v_lease.companion_id
-    AND queued.lane = p_lane
-    AND queued.state = 'queued'
-  ORDER BY queued.queue_sequence, queued.id
+  WHERE eligible.org_id = v_lease.org_id
+    AND eligible.companion_id = v_lease.companion_id
+    AND eligible.lane = p_lane
+    AND (
+      eligible.state = 'needs_input'
+      OR (
+        eligible.state = 'queued'
+        AND NOT EXISTS (
+          SELECT 1 FROM public.companion_v3_turns active
+          WHERE active.org_id = eligible.org_id
+            AND active.companion_id = eligible.companion_id
+            AND active.lane = eligible.lane
+            AND active.state IN ('admitted', 'running', 'needs_input')
+        )
+      )
+    )
+  ORDER BY (eligible.state = 'needs_input') DESC,
+    eligible.queue_sequence, eligible.id
   LIMIT 1
-  FOR UPDATE OF queued;
+  FOR UPDATE OF eligible;
   IF NOT FOUND THEN RETURN; END IF;
 
   UPDATE public.companion_v3_lane_leases lease
@@ -319,7 +339,7 @@ END
 $$;
 --> statement-breakpoint
 
-CREATE FUNCTION public.companion_v3_runtime_authorize_warm_turn(
+CREATE OR REPLACE FUNCTION public.companion_v3_runtime_authorize_warm_turn(
   p_org_id uuid,
   p_companion_id uuid,
   p_lane public.companion_v3_lane,
@@ -366,7 +386,14 @@ BEGIN
     AND lease.lane = p_lane AND lease.turn_id = p_turn_id
     AND lease.claim_token = p_claim_token AND lease.claim_epoch = p_claim_epoch
     AND lease.gate_epoch = p_gate_epoch AND lease.expires_at > v_now
-    AND turn_row.state = 'queued'
+    AND (
+      turn_row.state = 'queued'
+      OR (
+        turn_row.state = 'needs_input'
+        AND turn_row.admission_state = 'accepted'
+        AND turn_row.pi_invocation_id = instance.pi_invocation_id
+      )
+    )
     AND (companion.owner_id = turn_row.actor_id OR workspace_access.role = 'editor')
     AND jsonb_typeof(companion.provider_ids) = 'array'
     AND jsonb_array_length(companion.provider_ids) = 1
