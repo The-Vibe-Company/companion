@@ -49,6 +49,7 @@ DECLARE
   v_gate_epoch bigint;
   v_expired_org uuid;
   v_expired_companion uuid;
+  v_material_margin interval := interval '2 hours 5 minutes';
 BEGIN
   IF p_protocol IS DISTINCT FROM 3 THEN
     RAISE EXCEPTION 'Runtime v3 protocol is required' USING ERRCODE = '42501';
@@ -83,7 +84,7 @@ BEGIN
    ))
   WHERE instance.prepared_at IS NOT NULL
     AND (instance.prepared_material_expires_at IS NULL
-      OR instance.prepared_material_expires_at <= v_now + interval '2 hours 5 minutes')
+      OR instance.prepared_material_expires_at <= v_now + v_material_margin)
   ORDER BY eligible.claim_count, eligible.queue_sequence, eligible.id
   LIMIT 1 FOR UPDATE OF instance SKIP LOCKED;
   IF FOUND THEN
@@ -98,7 +99,7 @@ BEGIN
    AND instance.box_id IS NOT NULL AND instance.pi_invocation_id IS NOT NULL
    AND instance.prepared_at IS NOT NULL
    AND (instance.prepared_material_expires_at IS NULL
-     OR instance.prepared_material_expires_at > v_now + interval '2 hours 5 minutes')
+     OR instance.prepared_material_expires_at > v_now + v_material_margin)
   JOIN public.companion_v3_turns eligible
     ON eligible.org_id = lease.org_id AND eligible.companion_id = lease.companion_id
    AND eligible.lane = lease.lane

@@ -343,6 +343,58 @@ describe("CompanionPiBroker", () => {
     expect(harness.journal.counters.unknownEvents).toBe(2);
   });
 
+  it("promotes a pending admission to a new root when the previous response settles before ACK", async () => {
+    const harness = brokerHarness();
+    await harness.broker.command({
+      id: "control-racing-root",
+      type: "prompt",
+      attemptId: "attempt-racing-root",
+      message: "Start the old response",
+    });
+    let releasePrompt!: () => void;
+    harness.transport.promptGate = new Promise<void>((resolve) => {
+      releasePrompt = resolve;
+    });
+    const pending = harness.broker.command({
+      id: "control-racing-next",
+      type: "prompt",
+      attemptId: "attempt-racing-next",
+      message: "Start after the old response settles",
+    });
+    await vi.waitFor(() => {
+      expect(harness.transport.requests.filter((request) => request.type === "prompt"))
+        .toHaveLength(2);
+    });
+
+    harness.broker.acceptPiRecord({ type: "agent_settled" });
+    harness.broker.acceptPiRecord({ type: "agent_start" });
+    releasePrompt();
+    await expect(pending).resolves.toMatchObject({
+      success: true,
+      data: {
+        attemptId: "attempt-racing-next",
+        responseAttemptId: "attempt-racing-next",
+        initialCursor: 1,
+      },
+    });
+    expect(harness.journal.read(0).events).toEqual([
+      expect.objectContaining({
+        sequence: 1,
+        attemptId: "attempt-racing-root",
+        event: { type: "agent_settled" },
+      }),
+      expect.objectContaining({
+        sequence: 2,
+        attemptId: "attempt-racing-next",
+        event: { type: "agent_start" },
+      }),
+    ]);
+    expect(harness.journal.read(1).events).toEqual([
+      expect.objectContaining({ attemptId: "attempt-racing-next" }),
+    ]);
+    expect(harness.broker.activeAttemptId).toBe("attempt-racing-next");
+  });
+
   it("aborts the active attempt and clears the binding on a positive ACK", async () => {
     const harness = brokerHarness();
     await harness.broker.command({
@@ -970,6 +1022,7 @@ class FakePiTransport implements CompanionPiRpcTransport {
   readonly sent: PiJsonObject[] = [];
   state: PiJsonObject;
   promptFailure = false;
+  promptGate: Promise<void> | null = null;
   sendFailure = false;
   promptResponseSuccess: unknown = true;
 
@@ -989,6 +1042,7 @@ class FakePiTransport implements CompanionPiRpcTransport {
       };
     }
     if (command.type === "prompt") {
+      await this.promptGate;
       if (this.promptFailure) throw new Error("synthetic lost acknowledgement");
       return {
         id: command.id,
