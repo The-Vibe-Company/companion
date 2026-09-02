@@ -957,7 +957,8 @@ BEGIN
         'public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure,
         'public.companion_v3_runtime_authorize_warm_turn(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure,
         'public.companion_v3_runtime_record_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,bigint,integer)'::regprocedure,
-        'public.companion_v3_runtime_project_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,integer)'::regprocedure
+        'public.companion_v3_runtime_project_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,integer)'::regprocedure,
+        'public.companion_v3_runtime_measurement_facts(timestamp with time zone,timestamp with time zone,integer)'::regprocedure
       ];
       internal_runtime_functions := internal_runtime_functions || ARRAY[
         'public.companion_v3_admit_turn(uuid,uuid,uuid,text,text,public.companion_v3_lane)'::regprocedure,

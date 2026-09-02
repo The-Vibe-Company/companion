@@ -1477,6 +1477,16 @@ attempt duration, lease takeover, deadline settlement, unknown/malformed event c
 duplicate Box discovery, permanent-delete progress, and expurgated failure codes without accessing
 secret payloads.
 
+Runtime v3 uses one durable Turn measurement for the full accepted occurrence: acceptance,
+first/latest claim and takeover count, Box ready, staging complete, Pi ready, prompt/steer ACK,
+first correlated activity, and settlement. Its dimensions are only lane, wake path, Box provider,
+model provider, and model id. The runtime-role command
+`pnpm --filter @companion/runtime acceptance-report [hours]`
+emits aggregate-only JSON with P50/P95 create, preparation, send-to-ACK, wake-to-ACK, and
+terminalization plus oldest queue age, stalls, and takeovers. Missing acceptance-to-ACK correlation
+makes the report fail its release measurement. The combined health snapshot uses the least-recent
+v2/v3 sweep completion, so a blocked v3 claim loop cannot hide behind a fresh v2 sweep.
+
 Protocol 7 emits aggregate-only recovery telemetry once per minute: pending recovery count, oldest
 recovery age, count older than 15 minutes, maximum attempt count, and cumulative `auto_abandoned`
 count. A nonzero stalled count emits `runtime.recovery.stalled` as a warning, never as a claim gate

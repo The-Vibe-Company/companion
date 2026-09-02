@@ -23,6 +23,7 @@ import {
   createRuntimeV3PostgresWarmConvergence,
   createRuntimeV3PostgresWarmTurnPersistence,
 } from "../../src/runtimeV3ProgressionStore";
+import { runtimeV3AcceptanceReport } from "../../src/runtimeV3AcceptanceReport";
 
 const ownerUrl = process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL;
 const apiUrl = process.env.DATABASE_API_URL;
@@ -530,21 +531,90 @@ describe("Runtime v3 progression facts", () => {
       state: string;
       claimToken: string | null;
       assistantCount: number;
+      wakePath: string;
+      boxProvider: string;
+      modelProvider: string;
+      modelId: string;
+      admissionKind: string;
+      acceptedAt: Date;
+      firstClaimedAt: Date;
+      boxReadyAt: Date;
+      stagingCompletedAt: Date;
+      piReadyAt: Date;
+      admittedAt: Date;
+      firstActivityAt: Date;
+      settledAt: Date;
+      claimCount: number;
     }>>`
       select turn_row.state::text, lease.claim_token::text as "claimToken",
         (select count(*)::integer from public.companion_transcript_entries entry
           where entry.org_id = turn_row.org_id and entry.companion_id = turn_row.companion_id
-            and entry.role = 'assistant') as "assistantCount"
+            and entry.role = 'assistant') as "assistantCount",
+        turn_row.wake_path::text as "wakePath", turn_row.box_provider as "boxProvider",
+        turn_row.model_provider as "modelProvider", turn_row.model_id as "modelId",
+        turn_row.admission_kind::text as "admissionKind",
+        turn_row.accepted_at as "acceptedAt", turn_row.first_claimed_at as "firstClaimedAt",
+        turn_row.box_ready_at as "boxReadyAt",
+        turn_row.staging_completed_at as "stagingCompletedAt",
+        turn_row.pi_ready_at as "piReadyAt", turn_row.admitted_at as "admittedAt",
+        turn_row.first_activity_at as "firstActivityAt", turn_row.settled_at as "settledAt",
+        turn_row.claim_count as "claimCount"
       from public.companion_v3_turns turn_row
       join public.companion_v3_lane_leases lease
         on lease.org_id = turn_row.org_id and lease.companion_id = turn_row.companion_id
           and lease.lane = turn_row.lane
       where turn_row.command_id in (${first}::uuid, ${second}::uuid)
       order by turn_row.queue_sequence`;
-    expect(facts).toEqual([
+    expect(facts.map(({ state, claimToken, assistantCount }) => ({
+      state,
+      claimToken,
+      assistantCount,
+    }))).toEqual([
       { state: "failed", claimToken: null, assistantCount: 1 },
       { state: "succeeded", claimToken: null, assistantCount: 1 },
     ]);
+    for (const measured of facts) {
+      expect(measured).toMatchObject({
+        wakePath: "warm",
+        boxProvider: "ascii",
+        modelProvider: "anthropic",
+        modelId: "claude-test",
+        admissionKind: "prompt",
+        claimCount: 1,
+      });
+      for (const timestamp of [
+        measured.acceptedAt,
+        measured.firstClaimedAt,
+        measured.boxReadyAt,
+        measured.stagingCompletedAt,
+        measured.piReadyAt,
+        measured.admittedAt,
+        measured.firstActivityAt,
+        measured.settledAt,
+      ]) expect(timestamp).toBeInstanceOf(Date);
+      expect(measured.admittedAt.getTime()).toBeGreaterThanOrEqual(measured.acceptedAt.getTime());
+      expect(measured.settledAt.getTime()).toBeGreaterThanOrEqual(measured.admittedAt.getTime());
+    }
+    const report = await runtimeV3AcceptanceReport(runtimeSql, {
+      since: new Date(Date.now() - 60_000),
+      until: new Date(Date.now() + 60_000),
+    });
+    expect(report).toMatchObject({
+      releaseMeasurementReady: true,
+      correlation: { acknowledged: 2, complete: 2, missing: 0 },
+      safety: { queued: 0, stalled: 0, takeovers: 0 },
+      product: [expect.objectContaining({
+        lane: "main",
+        wakePath: "warm",
+        boxProvider: "ascii",
+        modelProvider: "anthropic",
+        modelId: "claude-test",
+        sampleCount: 2,
+      })],
+    });
+    expect(JSON.stringify(report)).not.toMatch(
+      /orgId|companionId|actorId|transcript|url|token|payload|invocation|eventId/i,
+    );
     let terminal: Array<{ activeTurn: unknown; queuedCount: number; isReplying: boolean }> = [];
     await asApi(async (sql) => {
       terminal = await sql<Array<{ activeTurn: unknown; queuedCount: number; isReplying: boolean }>>`

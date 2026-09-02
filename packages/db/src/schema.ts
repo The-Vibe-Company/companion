@@ -97,6 +97,12 @@ export const companionV3TurnOutcomeEnum = pgEnum("companion_v3_turn_outcome", [
 export const companionV3LifecycleIntentEnum = pgEnum("companion_v3_lifecycle_intent", [
   "prepare", "archive", "recycle_pi", "delete",
 ]);
+export const companionV3WakePathEnum = pgEnum("companion_v3_wake_path", [
+  "warm", "creation", "archived_wake",
+]);
+export const companionV3AdmissionKindEnum = pgEnum("companion_v3_admission_kind", [
+  "prompt", "steer",
+]);
 export const companionDecisionStatusEnum = pgEnum("companion_decision_status", [
   "pending", "allowed", "denied", "answered", "expired", "cancelled",
 ]);
@@ -1342,11 +1348,24 @@ export const companionV3Turns = pgTable(
     queueSequence: bigint("queue_sequence", { mode: "number" }).notNull(),
     state: companionV3TurnStateEnum("state").notNull().default("queued"),
     admissionState: companionV3AdmissionStateEnum("admission_state").notNull().default("pending"),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull().defaultNow(),
+    firstClaimedAt: timestamp("first_claimed_at", { withTimezone: true }),
+    lastClaimedAt: timestamp("last_claimed_at", { withTimezone: true }),
+    claimCount: integer("claim_count").notNull().default(0),
+    wakePath: companionV3WakePathEnum("wake_path").notNull().default("creation"),
+    boxProvider: text("box_provider").notNull().default("ascii"),
+    modelProvider: text("model_provider").notNull().default("unconfigured"),
+    modelId: text("model_id").notNull().default("unconfigured"),
+    boxReadyAt: timestamp("box_ready_at", { withTimezone: true }),
+    stagingCompletedAt: timestamp("staging_completed_at", { withTimezone: true }),
+    piReadyAt: timestamp("pi_ready_at", { withTimezone: true }),
+    admissionKind: companionV3AdmissionKindEnum("admission_kind"),
     admittedAt: timestamp("admitted_at", { withTimezone: true }),
     piInvocationId: text("pi_invocation_id"),
     admissionCursor: bigint("admission_cursor", { mode: "number" }),
     activityCursor: bigint("activity_cursor", { mode: "number" }).notNull().default(0),
     lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
+    firstActivityAt: timestamp("first_activity_at", { withTimezone: true }),
     outcome: companionV3TurnOutcomeEnum("outcome"),
     outcomeCode: text("outcome_code"),
     outcomeMessage: text("outcome_message"),
@@ -1371,6 +1390,8 @@ export const companionV3Turns = pgTable(
     fifo: index("companion_v3_turns_fifo_idx")
       .on(t.companionId, t.lane, t.queueSequence, t.id)
       .where(sql`${t.state} = 'queued'`),
+    measurementWindow: index("companion_v3_turns_measurement_window_idx")
+      .on(t.acceptedAt, t.lane, t.wakePath),
     sequenceCheck: check("companion_v3_turns_sequence_check", sql`${t.queueSequence} >= 1`),
     messageEventCheck: check(
       "companion_v3_turns_message_event_check",
@@ -1395,6 +1416,10 @@ export const companionV3Turns = pgTable(
     outcomeCheck: check(
       "companion_v3_turns_outcome_check",
       sql`(${t.outcome} is null and ${t.settledAt} is null and ${t.outcomeCode} is null and ${t.outcomeMessage} is null and ${t.outcomeAction} is null and ${t.state} in ('queued', 'admitted', 'running', 'needs_input')) or (${t.outcome} is not null and ${t.settledAt} is not null and ${t.state}::text = ${t.outcome}::text and ((${t.outcome} in ('failed', 'interrupted') and ${t.outcomeCode} ~ '^[a-z][a-z0-9_]{0,63}$' and char_length(${t.outcomeMessage}) between 1 and 500 and ${t.outcomeMessage} !~ E'[\n\r]' and ${t.outcomeAction} is not null and ${t.outcomeAction} <> 'restart_box') or (${t.outcome} in ('succeeded', 'cancelled') and ${t.outcomeCode} is null and ${t.outcomeMessage} is null and ${t.outcomeAction} is null)))`,
+    ),
+    measurementCheck: check(
+      "companion_v3_turns_measurement_check",
+      sql`${t.claimCount} >= 0 and ((${t.claimCount} = 0 and ${t.firstClaimedAt} is null and ${t.lastClaimedAt} is null) or (${t.claimCount} > 0 and ${t.firstClaimedAt} is not null and ${t.lastClaimedAt} is not null and ${t.lastClaimedAt} >= ${t.firstClaimedAt})) and char_length(${t.boxProvider}) between 1 and 40 and ${t.boxProvider} !~ E'[\n\r]' and char_length(${t.modelProvider}) between 1 and 80 and ${t.modelProvider} !~ E'[\n\r]' and char_length(${t.modelId}) between 1 and 200 and ${t.modelId} !~ E'[\n\r]' and (${t.admissionKind} is null or ${t.admissionState} = 'accepted') and (${t.boxReadyAt} is null or ${t.stagingCompletedAt} is null or ${t.stagingCompletedAt} >= ${t.boxReadyAt}) and (${t.stagingCompletedAt} is null or ${t.piReadyAt} is null or ${t.piReadyAt} >= ${t.stagingCompletedAt}) and (${t.firstActivityAt} is null or ${t.admittedAt} is null or ${t.firstActivityAt} >= ${t.admittedAt})`,
     ),
   }),
 );

@@ -1135,6 +1135,13 @@
       "when": 1793311600000,
       "tag": "0161_companion_runtime_v3_warm_turn",
       "breakpoints": true
+    },
+    {
+      "idx": 162,
+      "version": "7",
+      "when": 1793315200000,
+      "tag": "0162_companion_runtime_v3_acceptance_measurement",
+      "breakpoints": true
     }
   ]
 }

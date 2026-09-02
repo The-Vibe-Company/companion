@@ -117,7 +117,8 @@ WITH runtime_role AS (
     ('public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'),
     ('public.companion_v3_runtime_authorize_warm_turn(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'),
     ('public.companion_v3_runtime_record_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,bigint,integer)'),
-    ('public.companion_v3_runtime_project_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,integer)')
+    ('public.companion_v3_runtime_project_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,integer)'),
+    ('public.companion_v3_runtime_measurement_facts(timestamp with time zone,timestamp with time zone,integer)')
 ), required_functions AS (
   SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
   FROM required

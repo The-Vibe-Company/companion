@@ -8,12 +8,17 @@ const bundledSkillSource = resolve(configDir, "../../packages/companion-skill/sk
 const excludedSkillAsset = /(?:^|\/)(?:\.git|node_modules|__pycache__|__MACOSX|\.companion)(?:\/|$)|(?:^|\/)\.DS_Store$|\.pyc$|(?:^|\/)(?:\.companion\.lock|companion\.lock)$/;
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/companionPurge.ts", "src/companionV2Purge.ts"],
+  entry: [
+    "src/index.ts",
+    "src/companionPurge.ts",
+    "src/companionV2Purge.ts",
+    "src/runtimeV3AcceptanceReport.ts",
+  ],
   banner: {
     js: 'import { createRequire as __companionCreateRequire } from "node:module"; const require = __companionCreateRequire(import.meta.url);',
   },
   format: ["esm"],
-  // Both files are direct Node entrypoints. Keeping them self-contained preserves the
+  // Every file is a direct Node entrypoint. Keeping them self-contained preserves the
   // `import.meta.url` CLI guard used by the one-shot purge command.
   splitting: false,
   noExternal: [/^@companion\//],

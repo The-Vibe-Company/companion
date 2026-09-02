@@ -227,6 +227,17 @@ files, routines, and background work remain on their prior paths in this stack. 
 still fail closed under the shared runtime gate and carry its epoch, so stale executors cannot
 project or settle. There is still no v3 attempt table or derived Start operation.
 
+Migration 0162 keeps release measurement on that same Turn instead of adding an observability
+attempt model. Acceptance, first/latest claim, Box ready, staging complete, Pi ready, prompt/steer
+admission, first correlated activity, and settlement are durable timestamps. Stable dimensions are
+limited to `main|background`, `warm|creation|archived_wake`, Box provider, model provider, and model
+id. The runtime-only measurement function omits organization, Companion, actor, command, transcript,
+URL, credential, provider payload, and Pi-event identities.
+`pnpm --filter @companion/runtime acceptance-report [hours]`
+reproduces P50/P95 create, preparation, send-to-ACK, wake-to-ACK, and terminalization distributions
+plus oldest queue age, stalls, and takeovers. It exits 2 when an ACK is not fully correlated, making
+the acceptance-to-ACK chain a release measurement rather than an internal safety timer.
+
 Migration 0160 adds the separate one-shot Runtime v2 purge needed before a later v3 cutover. Its
 operator module is dormant: no service composition root calls it. `report` and `purge --dry-run`
 only read PostgreSQL, Box/named-snapshot inventory, and the `companion-attachments/` object prefix;

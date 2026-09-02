@@ -66,6 +66,11 @@ production HTTP API and runtime as separate processes against a fresh migrated P
 and the deterministic Box/Pi simulator. It stops runtime across the public send to prove the `202`
 has no provider dependency, replays the same `client_message_id`, then verifies positive admission,
 exactly one durable assistant entry, terminal projection, and lane release after runtime restart.
+The acceptance-measurement test fixes worked timestamp examples for all three wake paths and both
+lanes, verifies P50/P95 product clocks separately from queue/stall/takeover safety clocks, and proves
+that deleting acceptance-to-ACK correlation makes the release report fail. The PostgreSQL seam
+proves warm admission writes every durable milestone and exposes only stable dimensions; the
+scheduler test blocks v3 convergence and requires the shared health snapshot to remain stale.
 
 The Runtime v2 purge suite creates a disposable database, replays the complete migration history,
 and uses deterministic trigger, object-store, named-snapshot, and Box adapters. It proves inventory
