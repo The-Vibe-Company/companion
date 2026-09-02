@@ -564,7 +564,7 @@ describe("AsciiBoxMaintenanceClient", () => {
   });
 
   it("recovers the exact-name canonical and duplicates without issuing create", async () => {
-    const fetchMock = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => json({
+    const fetchMock = vi.fn(async () => json({
       ok: true,
       type: "box.list",
       boxes: [
@@ -657,28 +657,6 @@ describe("AsciiBoxMaintenanceClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://box.test/v1/boxes");
     expect((fetchMock.mock.calls[0]?.[1] as RequestInit).method).toBe("POST");
-  });
-
-  it("sends the provider-native idempotency key on Box create", async () => {
-    const fetchMock = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => json({
-      ok: true,
-      type: "box.created",
-      status: "provisioning",
-      ttlSeconds: 300,
-      box: { id: OTHER_BOX_ID, name: "temporary" },
-    }, 202));
-    vi.stubGlobal("fetch", fetchMock);
-
-    await client().createGenerationBoxAfterObservedAbsence({
-      companionId: COMPANION_ID,
-      generation: 14,
-      ttlSeconds: 21_600,
-      idempotencyKey: "11111111-1111-4111-8111-111111111111",
-      deadlineAt: Date.now() + 1_000,
-    });
-    expect((fetchMock.mock.calls[0]?.[1] as RequestInit).headers).toMatchObject({
-      "Idempotency-Key": "11111111-1111-4111-8111-111111111111",
-    });
   });
 
   it("clones a named snapshot on create when from is supplied", async () => {

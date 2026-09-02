@@ -443,14 +443,15 @@ export function createBoxSimServer(options: BoxSimServerOptions = {}): BoxSimSer
       return;
     }
     if (method === "POST" && url.pathname === "/boxes") {
+      const idempotencyKey = typeof request.headers["idempotency-key"] === "string"
+        ? request.headers["idempotency-key"]
+        : undefined;
       await withFault({
         request,
         response,
-        point: "box.create",
+        point: idempotencyKey ? "box.create.idempotent" : "box.create",
         operation: () => simulator.createBox({
-          ...(typeof request.headers["idempotency-key"] === "string"
-            ? { idempotencyKey: request.headers["idempotency-key"] }
-            : {}),
+          ...(idempotencyKey ? { idempotencyKey } : {}),
           ...(typeof body.ttlSeconds === "number" ? { ttlSeconds: body.ttlSeconds } : {}),
           ...(typeof body.setupScript === "string" ? { setupScript: body.setupScript } : {}),
           ...(body.env && typeof body.env === "object" && !Array.isArray(body.env)
@@ -603,9 +604,10 @@ export function createBoxSimServer(options: BoxSimServerOptions = {}): BoxSimSer
         request,
         response,
         point: "box.resume",
-        operation: () => simulator.resumeBox(boxId, {
-          ...(typeof body.ttlSeconds === "number" ? { ttlSeconds: body.ttlSeconds } : {}),
-        }),
+        operation: () => simulator.resumeBox(
+          boxId,
+          typeof body.ttlSeconds === "number" ? { ttlSeconds: body.ttlSeconds } : {},
+        ),
         respond: (box) => sendJson(response, 202, { ok: true, type: "box.resuming", box }),
       });
       return;

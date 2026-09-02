@@ -18,6 +18,7 @@ import {
   type RuntimeResourceStager,
   type RuntimeWorkMaterial,
 } from "@companion/companion-runtime";
+import type { RuntimeV3ProviderMaterial } from "@companion/companion-runtime/v3/internal";
 import {
   COMPANION_ATTACHMENT_MAX_BYTES,
   COMPANION_OUTPUT_ATTACHMENT_MAX_COUNT,
@@ -45,6 +46,17 @@ export interface RuntimeMaterialPipeline {
   resourceStager: RuntimeResourceStager;
   attachmentStager: RuntimeAttachmentStager;
   outboxHarvester: RuntimeOutboxHarvester;
+  preparationStager: {
+    stagePreparation(input: {
+      orgId: string;
+      companionId: string;
+      boxId: string;
+      modelId: string;
+      persona: string | null;
+      providerMaterial: RuntimeV3ProviderMaterial[];
+      signal: AbortSignal;
+    }): Promise<void>;
+  };
 }
 
 interface RuntimeHubEnvironment {
@@ -323,6 +335,45 @@ export function createRuntimeMaterialPipeline(input: {
       });
     },
   };
+  const preparationStager: RuntimeMaterialPipeline["preparationStager"] = {
+    async stagePreparation(stage) {
+      const resources = await resolveRuntimeResources({
+        orgId: stage.orgId,
+        material: {
+          providerMaterial: stage.providerMaterial,
+          skillMaterial: [],
+          mcpMaterial: [],
+        },
+        masterKey: input.masterKey,
+        loadSkillArchive: input.loadSkillArchive,
+        signal: stage.signal,
+      });
+      const observed = await input.runtime().stageExistingBox({
+        orgId: stage.orgId,
+        companionId: stage.companionId,
+        boxId: stage.boxId,
+        runtimeGeneration: 1,
+        clientSurface: "web",
+        providerAuth: resources.providerAuth,
+        replaceProviderAuth: true,
+        instructions: stage.persona,
+        modelId: stage.modelId,
+        mcpCredentials: [],
+        mcpAccounts: [],
+        skills: [input.bundledSkill],
+        reuseSkills: false,
+        signal: stage.signal,
+      });
+      if (input.registerAgentEndpoint && observed.agentEndpoint) {
+        input.registerAgentEndpoint(stage.boxId, {
+          hostedUrl: observed.agentEndpoint.hostedUrl,
+          proxyToken: observed.agentEndpoint.proxyToken,
+          bearerToken: observed.agentEndpoint.bearerToken,
+          observedAt: new Date(now()),
+        });
+      }
+    },
+  };
   const attachmentStager: RuntimeAttachmentStager = {
     async stageAttachments(stage) {
       const files = [];
@@ -445,6 +496,7 @@ export function createRuntimeMaterialPipeline(input: {
     resourceStager,
     attachmentStager,
     outboxHarvester,
+    preparationStager,
   };
 }
 

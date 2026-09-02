@@ -2,6 +2,7 @@ import type {
   RuntimeV3ConvergencePersistence,
   RuntimeV3DurableOutcome,
   RuntimeV3PreparationPersistence,
+  RuntimeV3ProviderMaterial,
   RuntimeV3Turn,
   RuntimeV3WarmTurnPersistence,
 } from "@companion/companion-runtime/v3/internal";
@@ -158,6 +159,9 @@ interface PreparationClaimRow {
   checkpoint: "pending" | "box_created" | "box_ready" | "staged";
   boxIdempotencyKey: string;
   boxId: string | null;
+  modelId: string;
+  persona: string | null;
+  providerMaterial: RuntimeV3ProviderMaterial[];
   claimToken: string;
   claimEpoch: string;
   gateEpoch: string;
@@ -174,7 +178,8 @@ export function createRuntimeV3PostgresPreparationPersistence(
         select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
           command_id as "commandId", checkpoint, box_idempotency_key as "boxIdempotencyKey",
           box_id as "boxId", claim_token as "claimToken", claim_epoch::text as "claimEpoch",
-          gate_epoch::text as "gateEpoch", created_at as "createdAt"
+          gate_epoch::text as "gateEpoch", model_id as "modelId", persona,
+          provider_material as "providerMaterial", created_at as "createdAt"
         from public.companion_v3_runtime_claim_preparation(${executorId}, 30, 3)
       `;
       const row = rows[0];
@@ -186,6 +191,9 @@ export function createRuntimeV3PostgresPreparationPersistence(
         checkpoint: row.checkpoint,
         boxIdempotencyKey: row.boxIdempotencyKey,
         boxId: row.boxId,
+        modelId: row.modelId,
+        persona: row.persona,
+        providerMaterial: row.providerMaterial,
         createdAt: row.createdAt,
         fence: {
           token: row.claimToken,
