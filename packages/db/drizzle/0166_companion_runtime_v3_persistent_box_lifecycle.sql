@@ -190,6 +190,10 @@ BEGIN
   END IF;
   PERFORM public.companion_api_require_access(p_org_id, p_companion_id,
     CASE WHEN p_intent = 'delete' THEN 'owner' ELSE 'editor' END);
+  PERFORM 1 FROM public.companion_v3_instances instance
+  WHERE instance.org_id = p_org_id AND instance.companion_id = p_companion_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Companion not found' USING ERRCODE = 'P0002'; END IF;
   SELECT request.* INTO v_existing FROM public.companion_v3_lifecycle_requests request
   WHERE request.org_id = p_org_id AND request.companion_id = p_companion_id
     AND request.request_id = p_request_id;
@@ -248,7 +252,6 @@ BEGIN
     updated_at = clock_timestamp()
   WHERE instance.org_id = p_org_id AND instance.companion_id = p_companion_id
   RETURNING instance.desired_lifecycle_revision INTO v_revision;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Companion not found' USING ERRCODE = 'P0002'; END IF;
   INSERT INTO public.companion_v3_lifecycle_requests(
     org_id, companion_id, request_id, actor_id, intent, revision
   ) VALUES (p_org_id, p_companion_id, p_request_id, v_actor_id, p_intent, v_revision);
