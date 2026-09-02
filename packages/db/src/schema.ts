@@ -1249,6 +1249,7 @@ export const companionV3Turns = pgTable(
     outcome: companionV3TurnOutcomeEnum("outcome"),
     outcomeCode: text("outcome_code"),
     outcomeMessage: text("outcome_message"),
+    outcomeAction: companionRuntimeErrorActionEnum("outcome_action"),
     settledAt: timestamp("settled_at", { withTimezone: true }),
     createdAt: now(),
     updatedAt: updatedAt(),
@@ -1292,7 +1293,7 @@ export const companionV3Turns = pgTable(
     ),
     outcomeCheck: check(
       "companion_v3_turns_outcome_check",
-      sql`(${t.outcome} is null and ${t.settledAt} is null and ${t.outcomeCode} is null and ${t.outcomeMessage} is null and ${t.state} in ('queued', 'admitted', 'running', 'needs_input')) or (${t.outcome} is not null and ${t.settledAt} is not null and ${t.state}::text = ${t.outcome}::text and ((${t.outcome} in ('failed', 'interrupted') and ${t.outcomeCode} ~ '^[a-z][a-z0-9_]{0,63}$' and char_length(${t.outcomeMessage}) between 1 and 500 and ${t.outcomeMessage} !~ E'[\n\r]') or (${t.outcome} in ('succeeded', 'cancelled') and ${t.outcomeCode} is null and ${t.outcomeMessage} is null)))`,
+      sql`(${t.outcome} is null and ${t.settledAt} is null and ${t.outcomeCode} is null and ${t.outcomeMessage} is null and ${t.outcomeAction} is null and ${t.state} in ('queued', 'admitted', 'running', 'needs_input')) or (${t.outcome} is not null and ${t.settledAt} is not null and ${t.state}::text = ${t.outcome}::text and ((${t.outcome} in ('failed', 'interrupted') and ${t.outcomeCode} ~ '^[a-z][a-z0-9_]{0,63}$' and char_length(${t.outcomeMessage}) between 1 and 500 and ${t.outcomeMessage} !~ E'[\n\r]' and ${t.outcomeAction} is not null and ${t.outcomeAction} <> 'restart_box') or (${t.outcome} in ('succeeded', 'cancelled') and ${t.outcomeCode} is null and ${t.outcomeMessage} is null and ${t.outcomeAction} is null)))`,
     ),
   }),
 );

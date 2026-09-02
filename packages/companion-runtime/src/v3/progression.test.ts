@@ -1,7 +1,15 @@
+/**
+ * Product promise: callers admit intent and request convergence without owning lease choreography.
+ * Regression guarded: a blocked main Turn must never stop later background Turns from progressing.
+ * Why unit-level: deterministic deferred promises expose scheduling at the public module boundary.
+ * Sensitivity: serializing the lane loops or returning arbitrary failure text makes these fail.
+ */
 import { describe, expect, it, vi } from "vitest";
 
 import {
   createRuntimeV3Progression,
+  type RuntimeV3Claim,
+  type RuntimeV3ConvergencePersistence,
   type RuntimeV3ProgressionPersistence,
 } from "./progression";
 
@@ -21,18 +29,31 @@ const mainClaim = {
   },
 };
 
+interface ClaimQueues {
+  main: Array<RuntimeV3Claim | null>;
+  background: Array<RuntimeV3Claim | null>;
+}
+
+function claimFrom(queues: ClaimQueues): RuntimeV3ConvergencePersistence["claimLane"] {
+  return async ({ lane }) => queues[lane].shift() ?? null;
+}
+
 function persistence(
-  overrides: Partial<RuntimeV3ProgressionPersistence> = {},
+  overrides: Partial<RuntimeV3ProgressionPersistence["convergence"]> = {},
 ): RuntimeV3ProgressionPersistence {
   return {
-    admitTurn: vi.fn().mockResolvedValue(acceptedTurn),
-    recordDesiredLifecycle: vi.fn().mockResolvedValue({
-      intent: "archive",
-      revision: 2n,
-    }),
-    claimAvailable: vi.fn().mockResolvedValue([]),
-    completeProgression: vi.fn().mockResolvedValue(true),
-    ...overrides,
+    admission: { admitTurn: vi.fn().mockResolvedValue(acceptedTurn) },
+    lifecycle: {
+      recordDesiredLifecycle: vi.fn().mockResolvedValue({
+        intent: "archive",
+        revision: 2n,
+      }),
+    },
+    convergence: {
+      claimLane: vi.fn().mockResolvedValue(null),
+      completeProgression: vi.fn().mockResolvedValue(true),
+      ...overrides,
+    },
   };
 }
 
@@ -73,17 +94,22 @@ describe("Runtime v3 progression interface", () => {
 
   it("owns autonomous claim and settlement while advancing queued facts", async () => {
     const advance = vi.fn().mockResolvedValue({ kind: "release" as const });
+    const claims: ClaimQueues = {
+      main: [mainClaim, null],
+      background: [null],
+    };
     const store = persistence({
-      claimAvailable: vi.fn()
-        .mockResolvedValueOnce([mainClaim])
-        .mockResolvedValueOnce([]),
+      claimLane: vi.fn(claimFrom(claims)),
     });
     const progression = createRuntimeV3Progression({ persistence: store, advance });
 
     await expect(progression.converge({ executorId: "runtime-1" }))
       .resolves.toEqual({ progressed: 1, exhausted: false });
     expect(advance).toHaveBeenCalledWith(mainClaim);
-    expect(store.completeProgression).toHaveBeenCalledWith(mainClaim, { kind: "release" });
+    expect(store.convergence.completeProgression).toHaveBeenCalledWith(
+      mainClaim,
+      { kind: "release" },
+    );
   });
 
   it("advances main and background claims independently", async () => {
@@ -91,19 +117,26 @@ describe("Runtime v3 progression interface", () => {
     const mainWait = new Promise<void>((resolve) => {
       releaseMain = resolve;
     });
-    const background = {
+    const backgroundOne = {
       orgId: mainClaim.orgId,
       companionId: mainClaim.companionId,
       turn: { ...acceptedTurn, id: "17307732-d811-4eb8-af79-0ae7e7942390", lane: "background" as const },
       fence: { token: "a60fa0eb-e514-4453-94ef-d6668220fb85", epoch: 7n },
     };
+    const backgroundTwo = {
+      ...backgroundOne,
+      turn: { ...backgroundOne.turn, id: "41158351-61ee-4c41-8f5c-888d91df91e1" },
+      fence: { token: "2aa20f71-0f55-4f57-82a8-561256f42da3", epoch: 8n },
+    };
     const completed: string[] = [];
+    const claims: ClaimQueues = {
+      main: [mainClaim, null],
+      background: [backgroundOne, backgroundTwo, null],
+    };
     const store = persistence({
-      claimAvailable: vi.fn()
-        .mockResolvedValueOnce([mainClaim, background])
-        .mockResolvedValueOnce([]),
+      claimLane: vi.fn(claimFrom(claims)),
       completeProgression: vi.fn(async (claimed) => {
-        completed.push(claimed.turn.lane);
+        completed.push(claimed.turn.id);
         return true;
       }),
     });
@@ -116,8 +149,38 @@ describe("Runtime v3 progression interface", () => {
     });
 
     const convergence = progression.converge({ executorId: "runtime-1" });
-    await vi.waitFor(() => expect(completed).toEqual(["background"]));
+    await vi.waitFor(() => expect(completed).toEqual([
+      backgroundOne.turn.id,
+      backgroundTwo.turn.id,
+    ]));
     releaseMain();
-    await expect(convergence).resolves.toEqual({ progressed: 2, exhausted: false });
+    await expect(convergence).resolves.toEqual({ progressed: 3, exhausted: false });
+  });
+
+  it("expurgates terminal failures before they reach persistence", async () => {
+    const claims: ClaimQueues = {
+      main: [mainClaim, null],
+      background: [null],
+    };
+    const store = persistence({
+      claimLane: vi.fn(claimFrom(claims)),
+    });
+    const progression = createRuntimeV3Progression({
+      persistence: store,
+      advance: async () => ({
+        kind: "failed",
+        code: "NOT STABLE",
+        message: "provider rejected https://user:secret@example.test/path?token=secret",
+        action: "retry",
+      }),
+    });
+
+    await progression.converge({ executorId: "runtime-safe-errors" });
+    const completion = vi.mocked(store.convergence.completeProgression).mock.calls[0]?.[1];
+    expect(completion).toMatchObject({
+      kind: "failed",
+      error: { code: "runtime_failure", action: "retry" },
+    });
+    expect(JSON.stringify(completion)).not.toContain("secret");
   });
 });

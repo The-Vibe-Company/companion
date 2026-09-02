@@ -5,16 +5,17 @@
  *
  * Why integrated: FORCE RLS, split grants, SKIP LOCKED, and monotonic takeover epochs only exist in
  * a real migrated PostgreSQL database. An in-memory adapter cannot prove them.
+ * Sensitivity: removing org scoping, fencing, split grants, or either independent lane loop makes
+ * a named assertion fail; replacing PostgreSQL with an in-memory fake invalidates the suite.
  */
 import { randomUUID } from "node:crypto";
 import {
-  createRuntimeV3Progression,
-  type RuntimeV3ProgressionPersistence,
+  createRuntimeV3Convergence,
 } from "@companion/companion-runtime/v3/internal";
 import postgres from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createRuntimeV3PostgresPersistence } from "../../src/runtimeV3ProgressionStore";
+import { createRuntimeV3PostgresConvergence } from "../../src/runtimeV3ProgressionStore";
 
 const ownerUrl = process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL;
 const apiUrl = process.env.DATABASE_API_URL;
@@ -31,6 +32,11 @@ const runtimeSql = postgres(runtimeUrl, { max: 3 });
 let apiRole = "";
 let workerRole = "";
 let runtimeRole = "";
+let originalRuntimeGate: {
+  enabled: boolean;
+  enabledAt: Date | null;
+  disabledAt: Date | null;
+} | undefined;
 const suffix = randomUUID().replaceAll("-", "").slice(0, 16);
 const ids = {
   org: randomUUID(),
@@ -75,6 +81,17 @@ describe("dormant Runtime v3 progression facts", () => {
     apiRole = apiRows[0]!.currentUser;
     workerRole = workerRows[0]!.currentUser;
     runtimeRole = runtimeRows[0]!.currentUser;
+    const gateRows = await ownerSql<Array<{
+      enabled: boolean;
+      enabledAt: Date | null;
+      disabledAt: Date | null;
+    }>>`
+      select enabled, enabled_at as "enabledAt", disabled_at as "disabledAt"
+      from public.companion_runtime_control where id = 'runtime-v2' for update`;
+    originalRuntimeGate = gateRows[0];
+    await ownerSql`update public.companion_runtime_control
+      set enabled = true, enabled_at = coalesce(enabled_at, clock_timestamp()), disabled_at = null
+      where id = 'runtime-v2'`;
     await ownerSql.unsafe(`
       insert into public."user" (id, name, email, email_verified)
       values ('${ids.owner}', 'Owner', '${ids.owner}@example.test', true);
@@ -102,6 +119,13 @@ describe("dormant Runtime v3 progression facts", () => {
   });
 
   afterAll(async () => {
+    if (originalRuntimeGate) {
+      await ownerSql`update public.companion_runtime_control
+        set enabled = ${originalRuntimeGate.enabled},
+          enabled_at = ${originalRuntimeGate.enabledAt},
+          disabled_at = ${originalRuntimeGate.disabledAt}
+        where id = 'runtime-v2'`;
+    }
     await ownerSql`delete from public.companions where id = ${ids.companion}::uuid`;
     await ownerSql`delete from public.organizations where id = ${ids.org}::uuid`;
     await ownerSql`delete from public."user" where id = ${ids.owner}`;
@@ -153,15 +177,41 @@ describe("dormant Runtime v3 progression facts", () => {
     expect(mainClaim).toEqual([expect.objectContaining({ commandId: mainOne, lane: "main" })]);
     expect(backgroundClaim).toEqual([{ commandId: background, lane: "background" }]);
     expect(replay).toEqual([{ replayed: true }]);
+    let lifecycle: Array<{ intent: string; revision: string }> = [];
+    await asApi(async (sql) => {
+      lifecycle = await sql<Array<{ intent: string; revision: string }>>`
+        select intent::text, revision::text
+        from public.companion_v3_api_desire_lifecycle(
+          ${ids.org}::uuid, ${ids.companion}::uuid, 'archive'
+        )`;
+    });
+    expect(lifecycle).toEqual([{ intent: "archive", revision: "2" }]);
     await runtimeSql`select public.companion_v3_runtime_complete(
       ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${mainClaim[0]!.turnId}::uuid,
       ${mainClaim[0]!.token}::uuid, ${mainClaim[0]!.epoch}::bigint,
-      'succeeded', null, null, 3
+      'succeeded', null, null, null, 3
     )`;
     const nextMain = await runtimeSql<Array<{ commandId: string }>>`
       select command_id as "commandId"
       from public.companion_v3_runtime_claim('runtime-a', 'main', 30, 3)`;
     expect(nextMain).toEqual([{ commandId: mainTwo }]);
+  });
+
+  it("resolves concurrent retries of one client message to one Turn", async () => {
+    const command = randomUUID();
+    const admissions: Array<Array<{ turnId: string; replayed: boolean }>> = [[], []];
+    await Promise.all(admissions.map(async (_rows, index) => {
+      await asApi(async (sql) => {
+        admissions[index] = await sql<Array<{ turnId: string; replayed: boolean }>>`
+          select turn_id as "turnId", replayed
+          from public.companion_v3_api_admit_turn(
+            ${ids.org}::uuid, ${ids.companion}::uuid, ${command}::uuid, ${`msg:${command}`}
+          )`;
+      });
+    }));
+
+    expect(new Set(admissions.flat().map((admission) => admission.turnId)).size).toBe(1);
+    expect(admissions.flat().map((admission) => admission.replayed).sort()).toEqual([false, true]);
   });
 
   it("increments lane fences monotonically and rejects stale completion", async () => {
@@ -178,16 +228,16 @@ describe("dormant Runtime v3 progression facts", () => {
     const stale = await runtimeSql<Array<{ completed: boolean }>>`
       select public.companion_v3_runtime_complete(
         ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${first[0]!.turnId}::uuid,
-        ${first[0]!.token}::uuid, ${first[0]!.epoch}::bigint, 'release', null, null, 3
+        ${first[0]!.token}::uuid, ${first[0]!.epoch}::bigint,
+        'release', null, null, null, 3
       ) as completed`;
     expect(stale[0]!.completed).toBe(false);
   });
 
   it("drives PostgreSQL claims through the closed progression interface", async () => {
     await admitMain(randomUUID());
-    const persistence: RuntimeV3ProgressionPersistence = createRuntimeV3PostgresPersistence(runtimeSql);
-    const progression = createRuntimeV3Progression({
-      persistence,
+    const progression = createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresConvergence(runtimeSql),
       advance: async () => ({ kind: "succeeded" }),
     });
 
@@ -197,18 +247,24 @@ describe("dormant Runtime v3 progression facts", () => {
 
   it("progresses an available background lane without waiting for main", async () => {
     const main = randomUUID();
-    const background = randomUUID();
+    const backgroundOne = randomUUID();
+    const backgroundTwo = randomUUID();
     await admitMain(main);
     await workerSql`select * from public.companion_v3_worker_admit_turn(
-      ${ids.org}::uuid, ${ids.companion}::uuid, ${background}::uuid,
-      ${`msg:${background}`}, ${ids.owner}
+      ${ids.org}::uuid, ${ids.companion}::uuid, ${backgroundOne}::uuid,
+      ${`msg:${backgroundOne}`}, ${ids.owner}
+    )`;
+    await workerSql`select * from public.companion_v3_worker_admit_turn(
+      ${ids.org}::uuid, ${ids.companion}::uuid, ${backgroundTwo}::uuid,
+      ${`msg:${backgroundTwo}`}, ${ids.owner}
     )`;
     let releaseMain!: () => void;
     const mainWait = new Promise<void>((resolve) => {
       releaseMain = resolve;
     });
-    const progression = createRuntimeV3Progression({
-      persistence: createRuntimeV3PostgresPersistence(runtimeSql),
+    const convergencePersistence = createRuntimeV3PostgresConvergence(runtimeSql);
+    const progression = createRuntimeV3Convergence({
+      persistence: convergencePersistence,
       advance: async (claim) => {
         if (claim.turn.lane === "main") await mainWait;
         return { kind: "succeeded" };
@@ -219,11 +275,13 @@ describe("dormant Runtime v3 progression facts", () => {
     await vi.waitFor(async () => {
       const rows = await ownerSql<Array<{ state: string }>>`
         select state::text from public.companion_v3_turns
-        where companion_id = ${ids.companion}::uuid and command_id = ${background}::uuid`;
-      expect(rows).toEqual([{ state: "succeeded" }]);
+        where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid
+          and command_id in (${backgroundOne}::uuid, ${backgroundTwo}::uuid)
+        order by queue_sequence`;
+      expect(rows).toEqual([{ state: "succeeded" }, { state: "succeeded" }]);
     });
     releaseMain();
-    await expect(convergence).resolves.toEqual({ progressed: 2, exhausted: false });
+    await expect(convergence).resolves.toEqual({ progressed: 3, exhausted: false });
   });
 
   it("forces RLS and keeps v3 facts behind split role grants", async () => {

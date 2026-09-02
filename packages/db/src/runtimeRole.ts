@@ -113,7 +113,7 @@ WITH runtime_role AS (
     ('public.companion_runtime_consume_desktop_request(text,bigint,integer)'),
     ('public.companion_runtime_record_attempt_outputs(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,jsonb,timestamp with time zone)'),
     ('public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer)'),
-    ('public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,text,text,text,integer)')
+    ('public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,text,text,text,public.companion_runtime_error_action,integer)')
 ), required_functions AS (
   SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
   FROM required

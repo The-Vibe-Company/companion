@@ -67,6 +67,7 @@ CREATE TABLE public.companion_v3_turns (
   outcome public.companion_v3_turn_outcome,
   outcome_code text,
   outcome_message text,
+  outcome_action public.companion_runtime_error_action,
   settled_at timestamp with time zone,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -99,15 +100,16 @@ CREATE TABLE public.companion_v3_turns (
   ),
   CONSTRAINT companion_v3_turns_outcome_check CHECK (
     (outcome IS NULL AND settled_at IS NULL
-      AND outcome_code IS NULL AND outcome_message IS NULL
+      AND outcome_code IS NULL AND outcome_message IS NULL AND outcome_action IS NULL
       AND state IN ('queued', 'admitted', 'running', 'needs_input'))
     OR (outcome IS NOT NULL AND settled_at IS NOT NULL AND state::text = outcome::text
       AND ((outcome IN ('failed', 'interrupted')
           AND outcome_code ~ '^[a-z][a-z0-9_]{0,63}$'
           AND char_length(outcome_message) BETWEEN 1 AND 500
-          AND outcome_message !~ E'[\n\r]')
+          AND outcome_message !~ E'[\n\r]'
+          AND outcome_action IS NOT NULL AND outcome_action <> 'restart_box')
         OR (outcome IN ('succeeded', 'cancelled')
-          AND outcome_code IS NULL AND outcome_message IS NULL)))
+          AND outcome_code IS NULL AND outcome_message IS NULL AND outcome_action IS NULL)))
   )
 );
 --> statement-breakpoint
@@ -186,9 +188,20 @@ BEGIN
     RAISE EXCEPTION 'invalid Runtime v3 Turn admission' USING ERRCODE = '22023';
   END IF;
 
+  INSERT INTO public.companion_v3_instances(org_id, companion_id)
+  VALUES (p_org_id, p_companion_id)
+  ON CONFLICT (org_id, companion_id) DO NOTHING;
+
+  -- Serialize idempotency lookup and sequence allocation per Companion. Concurrent retries of one
+  -- client_message_id therefore resolve to the first Turn instead of surfacing a uniqueness race.
+  PERFORM 1 FROM public.companion_v3_instances instance
+  WHERE instance.org_id = p_org_id AND instance.companion_id = p_companion_id
+  FOR UPDATE;
+
   SELECT turn_row.* INTO v_turn
   FROM public.companion_v3_turns turn_row
-  WHERE turn_row.companion_id = p_companion_id
+  WHERE turn_row.org_id = p_org_id
+    AND turn_row.companion_id = p_companion_id
     AND turn_row.client_message_id = p_client_message_id;
   IF FOUND THEN
     IF v_turn.org_id IS DISTINCT FROM p_org_id
@@ -201,10 +214,6 @@ BEGIN
     RETURN QUERY SELECT v_turn.id, v_turn.command_id, v_turn.lane, v_turn.state, true;
     RETURN;
   END IF;
-
-  INSERT INTO public.companion_v3_instances(org_id, companion_id)
-  VALUES (p_org_id, p_companion_id)
-  ON CONFLICT (org_id, companion_id) DO NOTHING;
 
   IF p_lane = 'main' THEN
     UPDATE public.companion_v3_instances instance
@@ -438,6 +447,7 @@ CREATE FUNCTION public.companion_v3_runtime_complete(
   p_outcome text,
   p_code text,
   p_message text,
+  p_action public.companion_runtime_error_action,
   p_protocol integer
 )
 RETURNS boolean
@@ -453,8 +463,12 @@ BEGIN
     RAISE EXCEPTION 'Runtime v3 protocol is required' USING ERRCODE = '42501';
   END IF;
   IF p_outcome NOT IN ('release', 'succeeded', 'failed', 'interrupted')
-    OR ((p_outcome IN ('failed', 'interrupted'))
-      <> (p_code IS NOT NULL AND p_message IS NOT NULL)) THEN
+    OR (p_outcome IN ('failed', 'interrupted') AND (
+      p_code IS NULL OR p_message IS NULL OR p_action IS NULL OR p_action = 'restart_box'
+    ))
+    OR (p_outcome IN ('release', 'succeeded') AND (
+      p_code IS NOT NULL OR p_message IS NOT NULL OR p_action IS NOT NULL
+    )) THEN
     RAISE EXCEPTION 'invalid Runtime v3 completion' USING ERRCODE = '22023';
   END IF;
 
@@ -472,6 +486,7 @@ BEGIN
         outcome = p_outcome::public.companion_v3_turn_outcome,
         outcome_code = p_code,
         outcome_message = p_message,
+        outcome_action = p_action,
         settled_at = v_now,
         updated_at = v_now
     WHERE turn_row.org_id = p_org_id AND turn_row.companion_id = p_companion_id
@@ -560,5 +575,6 @@ REVOKE ALL ON FUNCTION public.companion_v3_runtime_claim(
 ) FROM PUBLIC;
 --> statement-breakpoint
 REVOKE ALL ON FUNCTION public.companion_v3_runtime_complete(
-  uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,text,text,text,integer
+  uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,text,text,text,
+  public.companion_runtime_error_action,integer
 ) FROM PUBLIC;
