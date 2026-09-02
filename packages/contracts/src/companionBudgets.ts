@@ -196,6 +196,8 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_runtime_observe_instance: ["5 minutes", "3 minutes", "30 seconds"],
   // Deferred-delete retry ladder.
   companion_runtime_defer_delete: ["5 seconds", "15 seconds", "30 seconds", "60 seconds"],
+  // Snapshot publication must begin with more headroom than the provider's 30-second deadline.
+  companion_runtime_image_authorize_publish: ["45 seconds"],
   // COMPANION_ROUTINE_MISSED_GRACE_MS twin.
   companion_fire_routine: ["10 minutes"],
   companion_runtime_expire_queued_routine_turns: ["10 minutes"],

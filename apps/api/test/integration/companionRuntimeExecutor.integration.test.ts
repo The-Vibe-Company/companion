@@ -1891,11 +1891,13 @@ describe("Companion runtime executor PostgreSQL surface", () => {
       expect(retryState).toEqual({
         status: "requested",
         attemptCount: 1,
-        backoffSeconds: 30,
+        backoffSeconds: expect.any(Number),
         buildBoxId: "bx_baker01",
         buildDeleteIntentRecorded: false,
         buildDeleteOperationId: null,
       });
+      expect(retryState?.backoffSeconds).toBeGreaterThanOrEqual(60);
+      expect(retryState?.backoffSeconds).toBeLessThanOrEqual(71);
       const earlyRetry = await asRuntime((tx) => tx<Array<{ attemptCount: number }>>`
         select image_attempt_count as "attemptCount"
         from public.companion_runtime_image_claim(

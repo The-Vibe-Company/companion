@@ -57,6 +57,8 @@ export interface RuntimeBoxControl {
     ttlSeconds: number;
     idempotencyKey?: string;
     deadlineAt?: Date;
+    /** Overall operation bound used only to cap a fresh provider deadline for a cold retry. */
+    workDeadlineAt?: Date;
     signal: AbortSignal;
   }): Promise<BoxCreateResult>;
   applyGenerationBoxSettings(input: {
