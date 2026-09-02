@@ -104,7 +104,10 @@ class DisposableBoxProvider implements CompanionV2BoxPurgeClient {
       name: "Companion bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb g1",
     }],
   ]);
-  snapshotPresent = true;
+  readonly snapshots = new Set([
+    "companion-l13-0123456789ab",
+    "companion-l14-0123456789ab",
+  ]);
   deletionRequests = 0;
   snapshotDeletes = 0;
 
@@ -113,19 +116,19 @@ class DisposableBoxProvider implements CompanionV2BoxPurgeClient {
   }
 
   async listNamedSnapshots() {
-    return this.snapshotPresent
-      ? [{
-          name: "companion-l14-0123456789ab",
-          status: "ready" as const,
-          sourceBoxId: "bx_23456789",
-          createdAt: new Date(0).toISOString(),
-        }]
-      : [];
+    return [...this.snapshots].map((name) => ({
+      name,
+      status: "ready" as const,
+      sourceBoxId: "bx_23456789",
+      createdAt: new Date(0).toISOString(),
+    }));
   }
 
-  async deleteNamedSnapshot(): Promise<"completed"> {
+  async deleteNamedSnapshot(input: { name: string }): Promise<"completed"> {
+    if (!this.snapshots.delete(input.name)) {
+      throw new Error(`unexpected duplicate snapshot DELETE for ${input.name}`);
+    }
     this.snapshotDeletes += 1;
-    this.snapshotPresent = false;
     return "completed";
   }
 
@@ -296,6 +299,8 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
         repeat('a',64),'companion-l14-0123456789ab','bx_456789ab',statement_timestamp(),
         'bdop_33333333333333333333333333333333'
       );
+      insert into public.companion_images(digest,image_name)
+      values (repeat('b',64),'companion-l13-0123456789ab');
       insert into public.companion_triggers(
         id,org_id,companion_id,name,prompt,provider,secret,target,
         registration_status,remote_hook_id,created_by
@@ -344,7 +349,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       await contender.end({ timeout: 1 });
     }
     expect(firstInventory.targets.map((target) => target.kind)).toEqual([
-      "box", "box", "box", "box", "box", "object", "snapshot", "trigger",
+      "box", "box", "box", "box", "box", "object", "snapshot", "snapshot", "trigger",
     ]);
     expect(firstInventory.targets.filter((target) => target.kind === "box")).toEqual([
       expect.objectContaining({
@@ -652,7 +657,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       snapshotDeletes: boxes.snapshotDeletes,
       objectDeletes: objects.removals,
       triggerAttempts,
-    }).toEqual({ boxDeletes: 2, snapshotDeletes: 1, objectDeletes: 1, triggerAttempts: 1 });
+    }).toEqual({ boxDeletes: 2, snapshotDeletes: 2, objectDeletes: 1, triggerAttempts: 1 });
 
     const [remaining] = await database<Array<{ companions: string; triggers: string; attempts: string }>>`
       select

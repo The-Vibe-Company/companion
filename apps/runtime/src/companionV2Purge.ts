@@ -832,7 +832,7 @@ export async function executeConfirmedCompanionV2Purge(input: {
     }
     if (target.kind === "snapshot") {
       return (await input.boxClient.listNamedSnapshots()).some(
-        (snapshot) => snapshot.name === target.key && isCompanionRuntimeImageName(snapshot.name),
+        (snapshot) => snapshot.name === target.key,
       );
     }
     // Box documents that an accepted permanent delete disappears from ordinary authenticated
