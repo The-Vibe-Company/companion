@@ -196,7 +196,10 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
             if (options.bundledSkill) {
               bakeInput.bundledSkill = options.bundledSkill;
             }
-            const baked = await waitForBakeWithinBudget(bake(bakeInput), attemptController.signal);
+            const baked = await waitForBakeWithinBudget(
+              () => bake(bakeInput),
+              attemptController.signal,
+            );
             if (!baked.ready) {
               throw new Error("The runtime image snapshot did not become ready.");
             }
@@ -338,7 +341,7 @@ async function cleanupClaimedBox(input: {
   }
 }
 
-async function waitForBakeWithinBudget<T>(bake: Promise<T>, signal: AbortSignal): Promise<T> {
+async function waitForBakeWithinBudget<T>(bake: () => Promise<T>, signal: AbortSignal): Promise<T> {
   signal.throwIfAborted();
   let onAbort: (() => void) | undefined;
   const aborted = new Promise<never>((_resolve, reject) => {
@@ -348,7 +351,7 @@ async function waitForBakeWithinBudget<T>(bake: Promise<T>, signal: AbortSignal)
     signal.addEventListener("abort", onAbort, { once: true });
   });
   try {
-    return await Promise.race([bake, aborted]);
+    return await Promise.race([bake(), aborted]);
   } finally {
     if (onAbort) signal.removeEventListener("abort", onAbort);
   }
