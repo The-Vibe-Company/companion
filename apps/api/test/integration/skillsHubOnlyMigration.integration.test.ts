@@ -55,7 +55,8 @@ describe("Skills Hub-only database migration", () => {
               'companion_api_read_thread_projection_sequence',
               'companion_thread_allocate_projection_sequence',
               'companion_v3_api_read_projection',
-              'companion_v3_runtime_project_page'
+              'companion_v3_runtime_project_page',
+              'companion_v3_runtime_project_native_page'
             )
         ) as "runtimeFunctions",
         (

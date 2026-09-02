@@ -599,6 +599,12 @@ export class CompanionPiBroker {
   readonly #outboxPath: string | null;
   #activeAttemptId: string | null = null;
   #activeAdmissionAmbiguous = false;
+  #pendingPrompt: {
+    attemptId: string;
+    priorResponseAttemptId: string | null;
+    initialCursor: number;
+    promotedToRoot: boolean;
+  } | null = null;
   readonly #ambiguousDispatches = new Map<string, { commandId: string; fingerprint: string }>();
   #commandSequence = 0;
   #commandTail: Promise<void> = Promise.resolve();
@@ -654,6 +660,12 @@ export class CompanionPiBroker {
     if (eventType === "agent_settled" && this.#activeAttemptId === attemptId) {
       this.#activeAttemptId = null;
       this.#activeAdmissionAmbiguous = false;
+      if (this.#pendingPrompt?.priorResponseAttemptId === attemptId) {
+        this.#pendingPrompt.promotedToRoot = true;
+        this.#pendingPrompt.initialCursor = this.#journal.tailCursor;
+        this.#activeAttemptId = this.#pendingPrompt.attemptId;
+        this.#activeAdmissionAmbiguous = true;
+      }
     }
   }
 
@@ -825,7 +837,13 @@ export class CompanionPiBroker {
     // Runtime reads strictly after the cursor returned with the ACK. Capture the boundary before
     // binding/writing the prompt so events emitted in the same stdout burst as Pi's response remain
     // visible to the attempt instead of being mistaken for already-consumed history.
-    const initialCursor = this.#journal.tailCursor;
+    const pendingPrompt = {
+      attemptId,
+      priorResponseAttemptId: responseAttemptId,
+      initialCursor: this.#journal.tailCursor,
+      promotedToRoot: false,
+    };
+    this.#pendingPrompt = pendingPrompt;
     if (responseAttemptId === null) {
       this.#activeAttemptId = attemptId;
       this.#activeAdmissionAmbiguous = true;
@@ -836,6 +854,7 @@ export class CompanionPiBroker {
       // steer. Its preflight response is the admission boundary; it is not proof of application.
       response = await this.#piRequest("prompt", { message, streamingBehavior: "steer" });
     } catch {
+      this.#pendingPrompt = null;
       this.#recordAmbiguousDispatch({ attemptId, commandId, fingerprint });
       throw new BrokerCommandError(
         "pi_ack_ambiguous",
@@ -843,8 +862,12 @@ export class CompanionPiBroker {
         true,
       );
     }
+    this.#pendingPrompt = null;
+    const acceptedResponseAttemptId = pendingPrompt.promotedToRoot
+      ? attemptId
+      : responseAttemptId ?? attemptId;
     if (response.success === false) {
-      if (responseAttemptId === null && this.#activeAttemptId === attemptId) {
+      if (acceptedResponseAttemptId === attemptId && this.#activeAttemptId === attemptId) {
         this.#activeAttemptId = null;
         this.#activeAdmissionAmbiguous = false;
       }
@@ -860,10 +883,10 @@ export class CompanionPiBroker {
     }
     const accepted: CompanionPiAcceptedDispatch = {
       attemptId,
-      responseAttemptId: responseAttemptId ?? attemptId,
+      responseAttemptId: acceptedResponseAttemptId,
       commandId,
       invocationId: this.#invocationId,
-      initialCursor,
+      initialCursor: pendingPrompt.initialCursor,
       fingerprint,
     };
     try {
@@ -878,7 +901,7 @@ export class CompanionPiBroker {
         true,
       );
     }
-    if (responseAttemptId === null) this.#activeAdmissionAmbiguous = false;
+    if (acceptedResponseAttemptId === attemptId) this.#activeAdmissionAmbiguous = false;
     return acceptedDispatchData(accepted, requiredInput);
   }
 
