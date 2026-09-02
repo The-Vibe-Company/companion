@@ -234,6 +234,28 @@ describe("dormant Runtime v3 progression facts", () => {
     expect(stale[0]!.completed).toBe(false);
   });
 
+  it("rejects a null completion outcome without releasing the lane lease", async () => {
+    await admitMain(randomUUID());
+    const claim = await runtimeSql<Array<{ token: string; epoch: string; turnId: string }>>`
+      select claim_token as token, claim_epoch::text as epoch, turn_id as "turnId"
+      from public.companion_v3_runtime_claim('runtime-null-outcome', 'main', 30, 3)`;
+
+    await expect(runtimeSql`select public.companion_v3_runtime_complete(
+      ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${claim[0]!.turnId}::uuid,
+      ${claim[0]!.token}::uuid, ${claim[0]!.epoch}::bigint,
+      ${null}::text, null, null, null, 3
+    )`).rejects.toThrow(/invalid Runtime v3 completion/);
+
+    const facts = await ownerSql<Array<{ state: string; token: string | null }>>`
+      select turn_row.state::text, lease.claim_token::text as token
+      from public.companion_v3_turns turn_row
+      join public.companion_v3_lane_leases lease
+        on lease.org_id = turn_row.org_id and lease.companion_id = turn_row.companion_id
+          and lease.lane = turn_row.lane and lease.turn_id = turn_row.id
+      where turn_row.id = ${claim[0]!.turnId}::uuid`;
+    expect(facts).toEqual([{ state: "queued", token: claim[0]!.token }]);
+  });
+
   it("drives PostgreSQL claims through the closed progression interface", async () => {
     await admitMain(randomUUID());
     const progression = createRuntimeV3Convergence({

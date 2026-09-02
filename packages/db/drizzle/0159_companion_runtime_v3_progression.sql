@@ -462,7 +462,8 @@ BEGIN
   IF p_protocol IS DISTINCT FROM 3 THEN
     RAISE EXCEPTION 'Runtime v3 protocol is required' USING ERRCODE = '42501';
   END IF;
-  IF p_outcome NOT IN ('release', 'succeeded', 'failed', 'interrupted')
+  IF p_outcome IS NULL
+    OR p_outcome NOT IN ('release', 'succeeded', 'failed', 'interrupted')
     OR (p_outcome IN ('failed', 'interrupted') AND (
       p_code IS NULL OR p_message IS NULL OR p_action IS NULL OR p_action = 'restart_box'
     ))
