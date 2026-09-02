@@ -2,10 +2,11 @@
 
 import type { RuntimeSqlClient, RuntimeSqlRow } from "./store";
 
-/** Backoff between bake attempts; the terminal entry doubles as the failure gate (see 0123). */
-export const IMAGE_BUILD_BACKOFF_MS = [30_000, 60_000, 120_000, 300_000] as const;
+/** Retry bases; PostgreSQL adds bounded positive jitter before making each claim available. */
+export const IMAGE_BUILD_BACKOFF_MS = [60_000, 300_000, 900_000, 3_600_000] as const;
 export const IMAGE_BUILD_MAX_ATTEMPTS = 4;
-export const IMAGE_BUILD_LEASE_SECONDS = 1_800;
+/** Longer than the 40-minute bake budget plus its independent two-minute cleanup reserve. */
+export const IMAGE_BUILD_LEASE_SECONDS = 45 * 60;
 /** An exhausted failure stays visible for this long before a fresh request may re-arm it. */
 export const IMAGE_FAILURE_REARM_COOLDOWN_SECONDS = 600;
 
@@ -22,6 +23,7 @@ export interface CompanionImage {
   attemptCount: number;
   lastErrorCode: string | null;
   lastErrorMessage: string | null;
+  leaseExpiresAt: Date | null;
 }
 
 export interface ClaimedImageBuild {
@@ -56,6 +58,13 @@ function integer(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) ? value : null;
 }
 
+function date(value: unknown): Date | null {
+  if (value instanceof Date && Number.isFinite(value.getTime())) return value;
+  if (typeof value !== "string") return null;
+  const decoded = new Date(value);
+  return Number.isFinite(decoded.getTime()) ? decoded : null;
+}
+
 function decodeImage(row: RuntimeSqlRow): CompanionImage | null {
   if (!isRecord(row)) return null;
   const digest = text(row.digest);
@@ -74,6 +83,7 @@ function decodeImage(row: RuntimeSqlRow): CompanionImage | null {
     attemptCount: integer(row.attempt_count) ?? 0,
     lastErrorCode: text(row.last_error_code),
     lastErrorMessage: text(row.last_error_message),
+    leaseExpiresAt: date(row.lease_expires_at),
   };
 }
 
@@ -161,6 +171,23 @@ export class CompanionImageRegistry {
       buildDeleteOperationId,
       recoveryOnly,
     };
+  }
+
+  /**
+   * Proves an epoch still owns its exact baker Box with enough lease headroom for the bounded
+   * snapshot publication call. A stale builder must stop before provider publication.
+   */
+  async authorizeSnapshotPublication(input: {
+    digest: string;
+    claimEpoch: number;
+    buildBoxId: string;
+  }): Promise<boolean> {
+    const rows = await this.sql.unsafe(
+      "select companion_runtime_image_authorize_publish($1, $2, $3) as authorized",
+      [input.digest, input.claimEpoch, input.buildBoxId],
+    );
+    const first = rows[0];
+    return isRecord(first) && first.authorized === true;
   }
 
   /**

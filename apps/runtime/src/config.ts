@@ -33,11 +33,6 @@ interface RuntimeServiceConfigBase {
   shutdownDrainMs: number;
   releaseId: string;
   /**
-   * Strict launch: refuse the cold-install fallback and fail a start with `runtime_image_unavailable`
-   * when no ready runtime image can be cloned. Default false — the loud fallback stays nominal.
-   */
-  requireRuntimeImage: boolean;
-  /**
    * Phase 2 direct-transport rollout gate. `off` (default) skips Box agent endpoint registration
    * and keeps the exec-only composition byte-for-byte. `shadow` registers the hosted endpoint at
    * staging and logs one throttled direct-vs-exec comparison per Box without routing any real
@@ -146,10 +141,6 @@ export function loadRuntimeServiceConfig(
     desktopMaxSkewSeconds: DESKTOP_REQUEST_MAX_SKEW_SECONDS,
     shutdownDrainMs,
     releaseId: deploymentReleaseId(env),
-    requireRuntimeImage: booleanEnv(
-      env.COMPANION_RUNTIME_REQUIRE_IMAGE,
-      "COMPANION_RUNTIME_REQUIRE_IMAGE",
-    ),
     directTransport: directTransportEnv(env.COMPANION_DIRECT_TRANSPORT),
   };
   if (!enabled) {

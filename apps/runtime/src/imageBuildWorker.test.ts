@@ -42,6 +42,7 @@ interface RegistryCalls {
   deletionOperations: Array<Record<string, unknown>>;
   deletionRequests: Array<Record<string, unknown>>;
   deletedBoxes: Array<Record<string, unknown>>;
+  publicationAuthorizations: Array<Record<string, unknown>>;
   outcomes: Array<Record<string, unknown>>;
 }
 
@@ -49,6 +50,7 @@ function harness(input: {
   claim?: Record<string, unknown> | null;
   outcome?: "ready" | "failed" | "lease_lost";
   deleteError?: Error;
+  authorizePublication?: boolean;
 } = {}): {
   options: ImageBuildWorkerOptions;
   calls: RegistryCalls;
@@ -65,6 +67,7 @@ function harness(input: {
     deletionOperations: [],
     deletionRequests: [],
     deletedBoxes: [],
+    publicationAuthorizations: [],
     outcomes: [],
   };
   const registry = {
@@ -88,6 +91,10 @@ function harness(input: {
     },
     async getByDigest() {
       return null;
+    },
+    async authorizeSnapshotPublication(authorization: Record<string, unknown>) {
+      calls.publicationAuthorizations.push(authorization);
+      return input.authorizePublication ?? true;
     },
     async markBuildingBox(box: Record<string, unknown>) {
       calls.buildingBoxes.push(box);
@@ -176,6 +183,7 @@ describe("image build worker", () => {
         boxId: "bx_baker01",
         parentImageName: "companion-l14-bbbbbbbbbbbb",
       });
+      await input.onBeforeSnapshotPublish?.({ boxId: "bx_baker01" });
       await input.onBoxDeletionIntentRecorded?.({ boxId: "bx_baker01" });
       await input.onBoxDeletionRequested?.({
         boxId: "bx_baker01",
@@ -203,6 +211,11 @@ describe("image build worker", () => {
       imageName: IDENTITY.imageName,
     });
     expect(calls.buildingBoxes).toEqual([{
+      digest: IDENTITY.imageMarker,
+      claimEpoch: 3,
+      buildBoxId: "bx_baker01",
+    }]);
+    expect(calls.publicationAuthorizations).toEqual([{
       digest: IDENTITY.imageMarker,
       claimEpoch: 3,
       buildBoxId: "bx_baker01",
@@ -357,9 +370,16 @@ describe("image build worker", () => {
     expect(bakeCompanionRuntimeImageOnce).not.toHaveBeenCalled();
   });
 
-  it("publishes registry resolution states to Box creation", async () => {
-    const statuses = ["ready", "failed", "building", null];
-    let queryIndex = 0;
+  it("exposes one non-blocking registry readiness read to Box creation", async () => {
+    const statuses = [
+      { status: "ready", leaseExpiresAt: null },
+      { status: "failed", leaseExpiresAt: null },
+      { status: "requested", leaseExpiresAt: null },
+      { status: "building", leaseExpiresAt: new Date(4_000) },
+      { status: "building", leaseExpiresAt: new Date(6_000) },
+      null,
+    ] as const;
+    let index = 0;
     const registry = {
       async requestImage() {
         throw new Error("not used");
@@ -368,9 +388,9 @@ describe("image build worker", () => {
         return null;
       },
       async getByDigest() {
-        const status = statuses[queryIndex];
-        queryIndex += 1;
-        return status ? { digest: IDENTITY.imageMarker, status } : null;
+        const image = statuses[index];
+        index += 1;
+        return image ? { digest: IDENTITY.imageMarker, ...image } : null;
       },
       async recordBuildOutcome() {
         return "ready" as const;
@@ -384,101 +404,36 @@ describe("image build worker", () => {
       executorId: "executor-1",
       bakeOnce: bakeCompanionRuntimeImageOnce as never,
       log: capturingLog(),
-      sleep: vi.fn(async () => undefined),
-      // Time advances a second per clock read so bounded waits terminate.
-      now: (() => {
-        let tick = 0;
-        return () => (tick += 1_000);
-      })(),
-    });
-    const signal = new AbortController().signal;
-    await expect(worker.source().waitForResolution(60_000, signal)).resolves.toBe("ready");
-    await expect(worker.source().waitForResolution(60_000, signal)).resolves.toBe("failed");
-    await expect(worker.source().waitForResolution(60_000, signal)).resolves.toBe("pending");
-  });
-
-  it("falls back to pending once the bound elapses without readiness", async () => {
-    const worker = createImageBuildWorker({
-      registry: {
-        async requestImage() {
-          throw new Error("not used");
-        },
-        async claimImageBuild() {
-          return null;
-        },
-        async getByDigest() {
-          return { digest: IDENTITY.imageMarker, status: "building" };
-        },
-        async recordBuildOutcome() {
-          return "ready" as const;
-        },
-      } as never,
-      identity: IDENTITY,
-      lifecycle: {} as never,
-      runtime: () => ({}) as never,
-      executorId: "executor-1",
-      log: capturingLog(),
-      sleep: vi.fn(async () => undefined),
-      resolutionBoundMs: 50,
-      now: (() => {
-        let tick = 0;
-        return () => (tick += 100);
-      })(),
-    });
-    const signal = new AbortController().signal;
-    await expect(worker.source().waitForResolution(60_000, signal)).resolves.toBe("pending");
-  });
-
-  it("honors a caller bound well beyond the old 3s clamp", async () => {
-    // The registry only publishes readiness on the fifth read (~5 simulated seconds). Under the
-    // former 3s clamp the wait returned `pending` at ~3 reads and every create cold-installed; the
-    // caller's 10s bound must now be honored so the snapshot is actually cloned.
-    let reads = 0;
-    const worker = createImageBuildWorker({
-      registry: {
-        async requestImage() { throw new Error("not used"); },
-        async claimImageBuild() { return null; },
-        async getByDigest() {
-          reads += 1;
-          return { digest: IDENTITY.imageMarker, status: reads >= 5 ? "ready" : "building" };
-        },
-        async recordBuildOutcome() { return "ready" as const; },
-      } as never,
-      identity: IDENTITY,
-      lifecycle: {} as never,
-      runtime: () => ({}) as never,
-      executorId: "executor-1",
-      log: capturingLog(),
-      sleep: vi.fn(async () => undefined),
-      now: (() => {
-        let tick = 0;
-        return () => (tick += 1_000);
-      })(),
-    });
-    const signal = new AbortController().signal;
-    await expect(worker.source().waitForResolution(10_000, signal)).resolves.toBe("ready");
-    expect(reads).toBeGreaterThan(3);
-  });
-
-  it("short-circuits a terminal status even at a zero bound", async () => {
-    const worker = createImageBuildWorker({
-      registry: {
-        async requestImage() { throw new Error("not used"); },
-        async claimImageBuild() { return null; },
-        async getByDigest() {
-          return { digest: IDENTITY.imageMarker, status: "failed" };
-        },
-        async recordBuildOutcome() { return "ready" as const; },
-      } as never,
-      identity: IDENTITY,
-      lifecycle: {} as never,
-      runtime: () => ({}) as never,
-      executorId: "executor-1",
-      log: capturingLog(),
-      sleep: vi.fn(async () => undefined),
       now: () => 5_000,
     });
     const signal = new AbortController().signal;
-    await expect(worker.source().waitForResolution(0, signal)).resolves.toBe("failed");
+    await expect(worker.source().availability(signal)).resolves.toBe("ready");
+    await expect(worker.source().availability(signal)).resolves.toBe("failed");
+    await expect(worker.source().availability(signal)).resolves.toBe("requested");
+    await expect(worker.source().availability(signal)).resolves.toBe("stale");
+    await expect(worker.source().availability(signal)).resolves.toBe("building");
+    await expect(worker.source().availability(signal)).resolves.toBe("missing");
+    expect(index).toBe(6);
+  });
+
+  it("does not let a stale epoch reach snapshot publication", async () => {
+    vi.mocked(bakeCompanionRuntimeImageOnce).mockImplementation(async (input) => {
+      await input.onBoxCreated?.({ boxId: "bx_baker01", parentImageName: null });
+      await input.onBeforeSnapshotPublish?.({ boxId: "bx_baker01" });
+      throw new Error("snapshot publication should have been fenced");
+    });
+    const { calls, controller, done } = harness({
+      authorizePublication: false,
+      outcome: "failed",
+    });
+    await vi.waitFor(() => expect(calls.outcomes).toHaveLength(1));
+    controller.abort();
+    await done;
+
+    expect(calls.publicationAuthorizations).toHaveLength(1);
+    expect(calls.outcomes[0]).toEqual(expect.objectContaining({
+      kind: "failed",
+      errorMessage: "The image build lease was lost before snapshot publication.",
+    }));
   });
 });

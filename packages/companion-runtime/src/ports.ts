@@ -57,12 +57,6 @@ export interface RuntimeBoxControl {
     ttlSeconds: number;
     idempotencyKey?: string;
     deadlineAt?: Date;
-    /**
-     * The operation's cold-start/work deadline. Bounds how long the create may wait for a ready
-     * runtime image before cold-installing. Distinct from `deadlineAt`, which caps a single provider
-     * call; the snapshot wait is scoped to the whole operation budget, not one HTTP call.
-     */
-    imageWaitDeadlineAt?: Date;
     signal: AbortSignal;
   }): Promise<BoxCreateResult>;
   applyGenerationBoxSettings(input: {

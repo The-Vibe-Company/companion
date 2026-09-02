@@ -261,14 +261,4 @@ export const KNOWN_EXCEEDANCES: readonly CompanionBudgetExceedance[] = [
     boundMs: COMPANION_BUDGETS_BASE.inactivityStallMs,
     kind: "no_margin",
   },
-  {
-    id: "baker_exceeds_image_attempt_budget",
-    summary:
-      "Baker box-ready wait (900s, companionRuntimeBaker.ts BOX_READY_TIMEOUT_MS) plus snapshot "
-      + "wait (600s, SNAPSHOT_READY_TIMEOUT_MS) exceeds the image build attempt budget "
-      + "(1200s, imageBuildWorker.ts IMAGE_BUILD_ATTEMPT_BUDGET_MS).",
-    actualMs: 900_000 + 600_000,
-    boundMs: 20 * 60_000,
-    kind: "exceeds",
-  },
 ];

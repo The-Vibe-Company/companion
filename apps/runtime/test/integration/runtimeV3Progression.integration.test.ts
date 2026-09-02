@@ -241,6 +241,61 @@ describe("Runtime v3 progression facts", () => {
     }
   });
 
+  it("keeps image retry and takeover fencing independent from Turns and lanes", async () => {
+    const digest = `the515-${suffix}`;
+    const imageName = `companion-l14-${suffix.slice(0, 12)}`;
+    try {
+      await runtimeSql`select * from public.companion_runtime_image_request(${digest}, ${imageName})`;
+      const first = (await runtimeSql<Array<{ epoch: string }>>`
+        select image_claim_epoch::text as epoch
+        from public.companion_runtime_image_claim('image-builder-a', ${digest}, ${imageName})
+      `)[0]!;
+      await expect(runtimeSql`select public.companion_runtime_image_mark_building_box(
+        ${digest}, ${first.epoch}::bigint, 'bx_23456789'
+      )`).resolves.toEqual([{ companion_runtime_image_mark_building_box: true }]);
+
+      await ownerSql`update public.companion_images
+        set lease_expires_at = clock_timestamp() - interval '1 second'
+        where digest = ${digest}`;
+      const takeover = (await runtimeSql<Array<{ epoch: string }>>`
+        select image_claim_epoch::text as epoch
+        from public.companion_runtime_image_claim('image-builder-b', ${digest}, ${imageName})
+      `)[0]!;
+      expect(BigInt(takeover.epoch)).toBe(BigInt(first.epoch) + 1n);
+
+      await expect(runtimeSql`select public.companion_runtime_image_authorize_publish(
+        ${digest}, ${first.epoch}::bigint, 'bx_23456789'
+      )`).resolves.toEqual([{ companion_runtime_image_authorize_publish: false }]);
+      await expect(runtimeSql`select public.companion_runtime_image_mark_delete_intent(
+        ${digest}, ${first.epoch}::bigint, 'bx_23456789'
+      )`).resolves.toEqual([{ companion_runtime_image_mark_delete_intent: false }]);
+      await expect(runtimeSql`select public.companion_runtime_image_record_ready(
+        ${digest}, ${first.epoch}::bigint, ${imageName}, null
+      )`).resolves.toEqual([{ companion_runtime_image_record_ready: false }]);
+      await expect(runtimeSql`select public.companion_runtime_image_authorize_publish(
+        ${digest}, ${takeover.epoch}::bigint, 'bx_23456789'
+      )`).resolves.toEqual([{ companion_runtime_image_authorize_publish: true }]);
+
+      await expect(runtimeSql`select public.companion_runtime_image_record_failure(
+        ${digest}, ${takeover.epoch}::bigint,
+        'image_build_failed', 'A bounded expurgated failure.'
+      )`).resolves.toEqual([{ companion_runtime_image_record_failure: "requested" }]);
+      const retry = (await ownerSql<Array<{ delaySeconds: number; errorMessage: string }>>`
+        select extract(epoch from (next_attempt_at - clock_timestamp()))::integer as "delaySeconds",
+          last_error_message as "errorMessage"
+        from public.companion_images where digest = ${digest}
+      `)[0]!;
+      expect(retry.delaySeconds).toBeGreaterThanOrEqual(299);
+      expect(retry.delaySeconds).toBeLessThanOrEqual(360);
+      expect(retry.errorMessage).toBe("A bounded expurgated failure.");
+      await expect(runtimeSql`
+        select * from public.companion_runtime_image_claim('image-builder-c', ${digest}, ${imageName})
+      `).resolves.toEqual([]);
+    } finally {
+      await ownerSql`delete from public.companion_images where digest = ${digest}`;
+    }
+  });
+
   afterAll(async () => {
     if (originalRuntimeGate) {
       await ownerSql`update public.companion_runtime_control

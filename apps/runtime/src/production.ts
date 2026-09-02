@@ -319,7 +319,6 @@ export async function buildProductionRuntimeService(
       lifecycle,
       runtime: freshRuntime,
       runtimeImage: imageWorker.source(),
-      requireImage: config.requireRuntimeImage,
       onColdFallback: (reason: string) => imageSupervisor.recordColdFallback(reason),
       log,
     };

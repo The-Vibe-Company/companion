@@ -40,6 +40,8 @@ export async function bakeCompanionRuntimeImageOnce(input: {
   signal: AbortSignal;
   /** Persists the provider Box identity immediately after create, before layout side effects. */
   onBoxCreated?: (input: { boxId: string; parentImageName: string | null }) => Promise<void>;
+  /** Revalidates the builder epoch immediately before the bounded provider snapshot write. */
+  onBeforeSnapshotPublish?: (input: { boxId: string }) => Promise<void>;
   /** Persists irreversible-delete intent before the provider DELETE can be attempted. */
   onBoxDeletionIntentRecorded?: (input: { boxId: string }) => Promise<void>;
   /** Persists the accepted irreversible deletion before polling it. */
@@ -57,6 +59,7 @@ export async function bakeCompanionRuntimeImageOnce(input: {
     sleep: input.sleep ?? defaultSleep,
     signal: input.signal,
     onBoxCreated: input.onBoxCreated,
+    onBeforeSnapshotPublish: input.onBeforeSnapshotPublish,
     onBoxDeletionIntentRecorded: input.onBoxDeletionIntentRecorded,
     onBoxDeletionRequested: input.onBoxDeletionRequested,
     onBoxDeleted: input.onBoxDeleted,
@@ -74,6 +77,7 @@ async function ensureImage(input: {
   sleep: (ms: number, signal: AbortSignal) => Promise<void>;
   signal: AbortSignal;
   onBoxCreated?: (input: { boxId: string; parentImageName: string | null }) => Promise<void>;
+  onBeforeSnapshotPublish?: (input: { boxId: string }) => Promise<void>;
   onBoxDeletionIntentRecorded?: (input: { boxId: string }) => Promise<void>;
   onBoxDeletionRequested?: (input: { boxId: string; operationId: string }) => Promise<void>;
   onBoxDeleted?: (input: { boxId: string }) => Promise<void>;
@@ -117,6 +121,7 @@ async function ensureImage(input: {
         signal: input.signal,
       });
     }
+    await input.onBeforeSnapshotPublish?.({ boxId });
     try {
       await input.lifecycle.saveNamedSnapshot({
         boxId,

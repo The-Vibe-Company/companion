@@ -244,6 +244,8 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 - Send acknowledgement is under one second outside load; runtime claims work within five seconds.
 - Each cold-start cycle finishes or re-enqueues explicitly within three minutes; a provider delay
   before dispatch does not expire the accepted message.
+- Runtime images accelerate only an already-ready cold path; missing, pending, stale, failed, or
+  unreadable image state immediately cold-installs and repairs outside Turn/lane ownership.
 - A stalled attempt settles within ten minutes plus one sweep; absolute deadline settles within two
   hours plus one sweep.
 - Runtime takeover completes within 45 seconds after a replica dies.

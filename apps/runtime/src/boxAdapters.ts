@@ -6,8 +6,8 @@ import {
   type CompanionBoxRuntimeV2,
   type BoxState,
 } from "@companion/box-runtime";
+import { createHash } from "node:crypto";
 import { COMPANION_BUDGETS_BASE } from "@companion/contracts";
-import { RuntimeInvariantError } from "@companion/companion-runtime";
 import type {
   BrokerWriteOutcome,
   BrokerPromptWriteOutcome,
@@ -16,50 +16,22 @@ import type {
   RuntimeProcessLog,
 } from "@companion/companion-runtime";
 
-/**
- * Absolute cap on how long a Box create waits on the registry's published build before a cold
- * install. The effective bound is the smaller of this cap and the room the operation's cold-start
- * deadline leaves after {@link IMAGE_WAIT_RESERVE_MS}; see {@link imageWaitBoundMs}.
- */
-export const RUNTIME_IMAGE_WAIT_MS = 60_000;
-
-/**
- * Time reserved after the snapshot wait for the work that still must finish before the cold-start
- * deadline: at minimum the create POST itself. It is one Box provider call budget
- * (`boxRequestTimeoutMs`). This is deliberately the *snapshot* fast-path reserve, not the full cold
- * install: once a ready snapshot is cloned, staging skips the npm installs, so waiting up to the cap
- * for that snapshot beats cold-installing (which blows the deadline regardless).
- *
- * TODO(companionBudgets): once the canary measures real clone-ready + Pi-start on the snapshot path,
- * promote this to a derived `deriveCompanionBudgets` relation (create POST + clone-ready + Pi start)
- * instead of reusing the single provider-call budget here.
- */
-export const IMAGE_WAIT_RESERVE_MS = COMPANION_BUDGETS_BASE.boxRequestTimeoutMs;
-
-/**
- * The bound handed to the registry wait: the room the cold-start deadline leaves after the reserve,
- * clamped to the absolute cap and never negative. Absent a deadline (delete/health work, tests) it
- * is the flat cap. A non-positive result means there is no time to wait — the create cold-installs
- * immediately rather than pretending to wait.
- */
-export function imageWaitBoundMs(deadlineAt: Date | undefined, nowMs: number): number {
-  if (!deadlineAt || !Number.isFinite(deadlineAt.getTime())) return RUNTIME_IMAGE_WAIT_MS;
-  const room = deadlineAt.getTime() - nowMs - IMAGE_WAIT_RESERVE_MS;
-  return Math.min(Math.max(room, 0), RUNTIME_IMAGE_WAIT_MS);
-}
+export type RuntimeImageAvailability =
+  | "ready"
+  | "missing"
+  | "requested"
+  | "building"
+  | "stale"
+  | "failed";
 
 /** The durable image registry as seen by Box creation. Status is published in PostgreSQL. */
 export interface RuntimeImageSource {
   expectedName(): string;
-  cloneName(): string | null;
   /**
-   * Resolves with the registry's published outcome for this digest: `ready` (clone
-   * expectedName), `failed`, or `pending` past the bound (cold install remains possible).
+   * Reads readiness exactly once. Creation never waits for the independent builder: only a
+   * currently published `ready` row is eligible as a clone source.
    */
-  waitForResolution(
-    boundMs: number,
-    signal: AbortSignal,
-  ): Promise<"ready" | "failed" | "pending">;
+  availability(signal: AbortSignal): Promise<RuntimeImageAvailability>;
 }
 
 export interface RuntimeBoxAdapterOptions {
@@ -72,12 +44,6 @@ export interface RuntimeBoxAdapterOptions {
   log?: RuntimeProcessLog;
   /** Each provider operation gets a bound even when delete/health work has no turn deadline. */
   providerDeadlineMs?: number;
-  /**
-   * Strict mode: refuse the silent cold-install fallback. When true, a create that cannot clone a
-   * ready snapshot fails the operation with `runtime_image_unavailable` (action retry) instead of
-   * cold-installing. Default false — the loud fallback stays the nominal safety net.
-   */
-  requireImage?: boolean;
   /** Invoked once per create that cold-installs despite a snapshot source, with its fallback reason. */
   onColdFallback?: (reason: string) => void;
   now?: () => number;
@@ -99,50 +65,40 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
     async createGenerationBox(input) {
       const startedAt = now();
       const image = options.runtimeImage;
-      let from = image?.cloneName() ?? undefined;
-      let imageWaitMs = 0;
+      let from: string | undefined;
+      let imageLookupMs = 0;
       let fallbackReason:
-        | "image_wait_exhausted" | "image_build_failed" | "no_snapshot"
+        | "image_missing" | "image_build_pending" | "image_build_stale"
+        | "image_build_failed" | "image_registry_unavailable"
         | "unknown_snapshot_fallback" | undefined;
-      if (image && from === undefined) {
-        // Wait on the registry's published build state instead of racing in-process baker memory.
-        // The bound is derived from the operation's cold-start deadline (imageWaitDeadlineAt), so a
-        // ready snapshot clones, an in-flight build is waited for up to the room the deadline leaves,
-        // a failed build falls back immediately, and a wait that exhausts its bound cold-installs.
-        const boundMs = imageWaitBoundMs(input.imageWaitDeadlineAt, now());
-        const waitStartedAt = now();
-        const resolution = boundMs > 0
-          ? await image.waitForResolution(boundMs, input.signal)
-          : "pending";
-        imageWaitMs = now() - waitStartedAt;
-        if (resolution === "ready") {
-          from = image.expectedName();
-        } else {
-          fallbackReason = resolution === "failed" ? "image_build_failed" : "image_wait_exhausted";
+      if (image) {
+        const lookupStartedAt = now();
+        try {
+          const availability = await image.availability(input.signal);
+          if (availability === "ready") {
+            from = image.expectedName();
+          } else if (availability === "failed") {
+            fallbackReason = "image_build_failed";
+          } else if (availability === "stale") {
+            fallbackReason = "image_build_stale";
+          } else if (availability === "missing") {
+            fallbackReason = "image_missing";
+          } else {
+            fallbackReason = "image_build_pending";
+          }
+        } catch (error) {
+          if (input.signal.aborted) throw error;
+          fallbackReason = "image_registry_unavailable";
         }
-        if (options.requireImage && from === undefined) {
-          // Strict mode never cold-installs: fail the operation so the ordered queue retries once a
-          // snapshot is ready. The message stays a stable, provider-free expurgated string.
-          throw new RuntimeInvariantError({
-            code: "runtime_image_unavailable",
-            message: fallbackReason === "image_build_failed"
-              ? "The Companion runtime image build failed; refusing to cold install."
-              : "The Companion runtime image was not ready before the deadline; refusing to cold install.",
-            action: "retry",
-          });
-        }
+        imageLookupMs = now() - lookupStartedAt;
       }
-      // `deadlineAt` was minted by the engine before the optional image wait. Reusing it here can
-      // make the create POST start with an already-expired deadline after a 60-second wait. Refresh
-      // the single-call budget now, still capped by the operation-level image wait deadline.
-      const createDeadlineSource = input.imageWaitDeadlineAt ?? input.deadlineAt;
-      const create = (fromImage?: string) =>
+      const create = (fromImage?: string, idempotencyKey = input.idempotencyKey) =>
         options.lifecycle.createGenerationBoxAfterObservedAbsence({
           companionId: input.companionId,
           generation: generationNumber(input.generation),
           ttlSeconds: input.ttlSeconds,
-          ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
-          deadlineAt: deadline(createDeadlineSource),
+          ...(idempotencyKey ? { idempotencyKey } : {}),
+          deadlineAt: deadline(input.deadlineAt),
           signal: input.signal,
           ...(fromImage ? { from: fromImage } : {}),
         });
@@ -150,16 +106,18 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
       try {
         created = await create(from);
       } catch (error) {
-        if (!from || input.idempotencyKey || !isUnknownSnapshot(error)) throw error;
+        if (!from || !isUnknownSnapshot(error)) throw error;
         fallbackReason = "unknown_snapshot_fallback";
         from = undefined;
-        created = await create();
+        created = await create(undefined, input.idempotencyKey
+          ? coldFallbackIdempotencyKey(input.idempotencyKey)
+          : undefined);
       }
       const result = created;
       // A snapshot source that still ended without a clone name means this create cold-installed.
       // Count it so /healthz can surface a silently degraded launch path even while creates succeed.
       if (image && from === undefined) {
-        options.onColdFallback?.(fallbackReason ?? "no_snapshot");
+        options.onColdFallback?.(fallbackReason ?? "image_missing");
       }
       options.log?.info({
         ts: new Date(now()).toISOString(),
@@ -169,7 +127,7 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
         expectedImage: image?.expectedName() ?? null,
         fromImage: from ?? null,
         ...(fallbackReason ? { fallbackReason } : {}),
-        imageWaitMs,
+        imageLookupMs,
         durationMs: now() - startedAt,
         outcome: result.outcome,
       });
@@ -436,6 +394,18 @@ function cursorNumber(value: bigint): number {
 function isUnknownSnapshot(error: unknown): boolean {
   if (!(error instanceof BoxRuntimeAdapterError)) return false;
   return error.providerCode === "unknown_snapshot" || error.stableCode === "box_not_found";
+}
+
+/** A known-negative snapshot response may retry cold with a distinct replay-stable provider key. */
+function coldFallbackIdempotencyKey(source: string): string {
+  const bytes = createHash("sha256")
+    .update(`companion:cold-fallback:${source}`)
+    .digest()
+    .subarray(0, 16);
+  bytes[6] = (bytes[6]! & 0x0f) | 0x50;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 const DEFAULT_PROVIDER_DEADLINE_MS = COMPANION_BUDGETS_BASE.boxRequestTimeoutMs;

@@ -2,6 +2,8 @@
 import { describe, expect, it } from "vitest";
 import {
   CompanionImageRegistry,
+  IMAGE_BUILD_BACKOFF_MS,
+  IMAGE_BUILD_LEASE_SECONDS,
   IMAGE_FAILURE_REARM_COOLDOWN_SECONDS,
   type ClaimedImageBuild,
   type CompanionImage,
@@ -180,6 +182,21 @@ describe("CompanionImageRegistry", () => {
     expect(outcome).toBe("lease_lost");
   });
 
+  it("authorizes provider publication only through the exact epoch and baker Box fence", async () => {
+    const sql = new RecordingSql();
+    sql.rows = [{ authorized: true } as RuntimeSqlRow];
+    const registry = new CompanionImageRegistry(sql);
+    await expect(registry.authorizeSnapshotPublication({
+      digest: DIGEST,
+      claimEpoch: 7,
+      buildBoxId: "bx_baker01",
+    })).resolves.toBe(true);
+    expect(sql.calls[0]?.query).toContain(
+      "companion_runtime_image_authorize_publish($1, $2, $3)",
+    );
+    expect(sql.calls[0]?.parameters).toEqual([DIGEST, 7, "bx_baker01"]);
+  });
+
   it("decodes stored images and rejects malformed rows", async () => {
     const sql = new RecordingSql();
     sql.rows = [imageRow({
@@ -257,5 +274,7 @@ describe("CompanionImageRegistry", () => {
 
   it("exposes the cooldown constant used by the definer request function", () => {
     expect(IMAGE_FAILURE_REARM_COOLDOWN_SECONDS).toBe(600);
+    expect(IMAGE_BUILD_BACKOFF_MS).toEqual([60_000, 300_000, 900_000, 3_600_000]);
+    expect(IMAGE_BUILD_LEASE_SECONDS).toBe(2_700);
   });
 });

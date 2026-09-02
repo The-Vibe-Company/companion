@@ -596,20 +596,13 @@ async function handleStart(context: OperationContext): Promise<RuntimeWorkDispos
               generation: context.claim.runtimeGeneration,
               ttlSeconds: BOX_WARM_TTL_SECONDS,
               deadlineAt,
-              // The snapshot wait is bounded by the whole operation's cold-start budget, not the
-              // single-call `deadlineAt`, so a ready image is worth waiting for before cold install.
-              imageWaitDeadlineAt: workDeadline(context),
               signal,
             });
           });
         } catch (error) {
-          // A RuntimeInvariantError here is a deliberate pre-POST refusal (strict-image mode), never
-          // an ambiguous provider effect, so it must surface with its own stable code, not as
-          // box_create_ambiguous.
           if (
             !providerCallStarted
             || mustAbandonRuntimeExecution(error)
-            || error instanceof RuntimeInvariantError
           ) throw error;
           throw new AmbiguousExternalEffectError("box_create_ambiguous");
         }

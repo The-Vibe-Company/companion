@@ -74,9 +74,10 @@ Semantics:
   via compare-and-set lease (epoch), drives the existing bake steps, and persists
   every transition: `building`, per-attempt errors with capped exponential backoff,
   terminal `ready` or `failed`.
-- Backoff: `[30s, 60s, 120s, 300s]`, max 4 attempts, then `failed`. A request after a
-  ten-minute terminal cooldown starts a fresh four-attempt cycle. Failure is visible:
-  it surfaces as a stable error code on the blocked operation instead of a silent loop.
+- Backoff uses jittered `[1m, 5m, 15m, 60m]` bases, max 4 attempts, then `failed`. The
+  next-attempt instant is durable, and the dedicated builder poll never occupies a Turn/lane slot.
+  A request after a ten-minute terminal cooldown starts a fresh four-attempt cycle. Failure is
+  visible in operational image health while Box creation immediately cold-installs.
 - Phase 1 does not prune provider snapshots. Deleting a snapshot while its registry row remains
   `ready` would publish a false clone source. Registry-aware retention/garbage collection belongs
   to phase 3; until then, a provider snapshot-limit error fails visibly and creation takes the
@@ -103,6 +104,8 @@ Semantics:
   cleanup-only recovery flag.
 - `recordBuildOutcome(...)` — persists transition with epoch fence; stale epochs are
   no-ops (same fencing as operations).
+- `authorizeSnapshotPublication(...)` — proves the exact epoch and baker Box still have enough
+  lease headroom immediately before the bounded provider snapshot write.
 
 Consistent with every other Runtime v2 surface, no process role holds table privileges
 on `companion_images`. All access crosses narrow SECURITY DEFINER functions installed by
@@ -111,23 +114,17 @@ migration 0123 and granted to the dedicated runtime role only; the role verifier
 
 ### What changes for creation
 
-- `createGenerationBox` waits on the registry row's published status with progression
-  (`requested → building → ready`). The snapshot clone is the nominal launch path, so the
-  wait is bounded by the room the operation's own cold-start deadline leaves after a reserve
-  for the create POST (`imageWaitBoundMs`, capped at `RUNTIME_IMAGE_WAIT_MS`), not by a hidden
-  3-second clamp. A ready image resolves on the first read and clones immediately; a `building`
-  or `requested` image is waited for up to that bound (cloning a pre-baked snapshot then skips
-  the 300s install, so the wait beats cold-installing, which blows the deadline regardless); a
-  `failed` build falls back immediately; and a wait that exhausts its bound cold-installs.
-- Cold install remains the last-resort fallback, but it is now loud, never silent: every create
+- `createGenerationBox` reads the registry once and clones only when the exact digest is already
+  published `ready`. Missing, `requested`, `building`, stale, failed, or unreadable image state
+  selects cold installation immediately; a Turn never waits for an image-builder deadline.
+- Cold install is an attributed normal path: every create
   that cold-installs despite a snapshot source is logged with a `fallbackReason`
-  (`image_build_failed`, `image_wait_exhausted`, `unknown_snapshot_fallback`, or `no_snapshot`)
+  (`image_missing`, `image_build_pending`, `image_build_stale`, `image_build_failed`,
+  `image_registry_unavailable`, or `unknown_snapshot_fallback`)
   and counted so `/healthz` (`image.cold_fallback_count`) surfaces a degraded launch path. The
   registry-driven builder is supervised: a dead builder loop fails `/healthz` (`checks.image_builder`),
   and a `failed` digest is reported (`image.status`) without flipping health, since creates still
-  succeed via the fallback. `COMPANION_RUNTIME_REQUIRE_IMAGE=true` makes creation strict — it
-  refuses the fallback and fails the start with the stable code `runtime_image_unavailable`
-  (action `retry`) so the ordered queue retries once a snapshot is ready.
+  succeed via the fallback. Image state never becomes a member-visible chat failure.
 - The in-process baker class is retired: its infinite retry loop and sticky-resolution
   heuristics are deleted; only the single-attempt `bakeCompanionRuntimeImageOnce` unit
   remains, executed by the registry-driven builder under its lease. The diagnostic

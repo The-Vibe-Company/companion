@@ -1149,6 +1149,13 @@
       "when": 1793318800000,
       "tag": "0163_companion_runtime_v3_async_prepare",
       "breakpoints": true
+    },
+    {
+      "idx": 164,
+      "version": "7",
+      "when": 1793322400000,
+      "tag": "0164_runtime_images_optional_accelerators",
+      "breakpoints": true
     }
   ]
 }

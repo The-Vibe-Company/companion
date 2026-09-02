@@ -221,6 +221,23 @@ describe("bakeCompanionRuntimeImageOnce", () => {
     expect(lifecycle().deletePermanentlyAndWait).not.toHaveBeenCalled();
   });
 
+  it("checks the builder fence immediately before publishing the named snapshot", async () => {
+    const saveNamedSnapshot = vi.fn(async () => snapshot(identity.imageName));
+    const onBeforeSnapshotPublish = vi.fn(async () => {
+      throw new Error("image build lease lost");
+    });
+
+    await expect(bakeCompanionRuntimeImageOnce({
+      identity,
+      lifecycle: lifecycle({ saveNamedSnapshot }),
+      runtime: runtime(),
+      onBeforeSnapshotPublish,
+      signal: new AbortController().signal,
+    })).rejects.toThrow("image build lease lost");
+    expect(onBeforeSnapshotPublish).toHaveBeenCalledWith({ boxId: "bx_23456789" });
+    expect(saveNamedSnapshot).not.toHaveBeenCalled();
+  });
+
   it("does not treat a named snapshot limit as an in-flight save", async () => {
     const saveNamedSnapshot = vi.fn(async () => {
       throw new BoxRuntimeAdapterError({

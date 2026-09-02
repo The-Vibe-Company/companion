@@ -499,34 +499,35 @@ The image identity extends the full disk-layout marker with the immutable bundle
 checksum and boot-profile revision; those image-only inputs never force an in-place tenant relayout.
 `companion_images` is the provider-wide, content-addressed registry for those snapshots. It
 separates requested state from the builder's observed `requested | building | ready | failed`
-status. Only runtime may call its nine narrow `SECURITY DEFINER` functions; no process role has
+status. Only runtime may call its narrow `SECURITY DEFINER` functions; no process role has
 table privileges. Each registry worker claims only its configured digest and image name with an
-epoch-fenced 30-minute lease, runs one bounded bake attempt, records the baker Box before layout
-work, and publishes readiness or a stable bounded failure. The Box pointer is cleared only after
-provider deletion succeeds under that fence. Irreversible-delete intent is persisted before the
+epoch-fenced 45-minute lease, runs one bake attempt inside a strict 40-minute outer budget, records
+the baker Box before layout work, and publishes readiness or a stable bounded failure. Immediately
+before the bounded snapshot write it revalidates the exact epoch and Box with lease headroom. The
+Box pointer is cleared only after provider deletion succeeds under that fence. Irreversible-delete intent is persisted before the
 provider call; once `DELETE` is accepted, its provider operation id is persisted before polling.
 A blocked cleanup stays durable and takeover resumes the same operation without issuing another
 `DELETE`. If the accepted response or operation checkpoint is lost, takeover uses read-only Box
 absence reconciliation and the bounded baker TTL instead of replaying the write. Takeover reconciles
 those retained pointers before any new bake, including cleanup-only settlement of an expired fourth
-attempt. Retry backoff is 30, 60, 120,
-then 300 seconds with four attempts; an exhausted failure remains visible for ten minutes before a
+attempt. Retry backoff uses jittered 1, 5, 15, then 60-minute bases with four attempts; availability
+lives in PostgreSQL, so the dedicated image loop releases its claim and never sleeps in a Turn or
+lane slot. An exhausted failure remains visible for ten minutes before a
 new request starts a fresh cycle.
 
 Runtime bakes the current image marker into a throwaway baker Box (never a tenant Companion), then
 creates new generation Boxes with `from` that snapshot so the first send skips the five-minute
 package install. The baker Box is created with the five-minute unnamed-orphan TTL, then patched to
-one hour so layout and snapshot can finish; each attempt has a strict 20-minute process budget.
+one hour so layout and snapshot can finish; each attempt has a strict 40-minute outer budget.
 Before publishing, it writes a `.boxignore` that excludes only regenerable logs, transient staging
 archives, credentials, attachments, and outbox data; embeds the static Companion-skill archive;
 archives and resumes the baker Box; warms Node/Pi; and requires a stable `.ascii/playbook.json`. A
-failed warmup or non-ready snapshot never publishes the candidate. Creation reads the registry for
-up to 60 seconds within the cold-start deadline: `ready` clones the exact expected snapshot,
-`failed` takes the explicit logged cold-install path immediately, and an unresolved `building` or
-`requested` state takes that fallback after the bound. The provider-call deadline for the create
-POST is minted only after this optional wait, so waiting for an image cannot expire the request
-before it is sent. An unknown snapshot response retries creation once without `from` and records
-that fallback. Running Companions keep their disk: health (every 30 seconds while idle) and the next
+failed warmup or non-ready snapshot never publishes the candidate. Creation reads the registry once:
+only `ready` clones the exact expected snapshot; missing, `requested`, `building`, stale, failed, or
+unreadable state immediately takes the attributed cold-install path. A provider-known missing
+snapshot retries creation cold with a distinct deterministic idempotency key and records that
+fallback. Image failures never become member-visible Turn failures. Running Companions keep their
+disk: health (every 30 seconds while idle) and the next
 warm send apply overlay or base in place and recycle **Pi only**. If that recycle fails, runtime
 writes the package-base marker so the next health or send retries the overlay instead of treating
 the disk as current. Full Box restart remains an explicit Owner/Editor action.

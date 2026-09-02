@@ -61,6 +61,7 @@ DECLARE
     'public.companion_runtime_image_request(text,text)',
     'public.companion_runtime_image_get(text)',
     'public.companion_runtime_image_claim(text,text,text)',
+    'public.companion_runtime_image_authorize_publish(text,bigint,text)',
     'public.companion_runtime_image_mark_building_box(text,bigint,text)',
     'public.companion_runtime_image_clear_building_box(text,bigint,text)',
     'public.companion_runtime_image_mark_delete_intent(text,bigint,text)',

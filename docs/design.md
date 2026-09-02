@@ -113,7 +113,9 @@ Runtime state is explicit and durable:
 - `companion_runtime_leases` owns independent `main` and `routine` claim tokens, globally increasing
   attempt epochs, executor ids, and expiries used to fence every checkpoint and settlement.
 - `companion_images` owns provider-wide content-addressed image intent, published build status,
-  bounded retry state, and the epoch-fenced single-builder lease used only by `apps/runtime`.
+  bounded retry state, and the epoch-fenced single-builder lease used only by `apps/runtime`. It is
+  an optional accelerator: Box creation clones only an already-ready digest and otherwise starts
+  cold immediately, independently of Turn and lane ownership.
 - `companion_message_attachments` owns the files one transcript entry carries: `user_upload` for what
   a member sent, `pi_output` for an image Pi handed back, plus the content-addressed storage key,
   resolved content type, size, digest, sanitized filename, and position. Deleting a row journals its
