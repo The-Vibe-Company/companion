@@ -83,7 +83,7 @@ describe("Runtime v3 progression interface", () => {
       providerMaterial: [],
       skillMaterial: [],
       mcpMaterial: [],
-      configCatalog: {},
+      configCatalog: null,
       fence: mainClaim.fence,
     };
     const claims: RuntimeV3PreparationClaim[] = [
@@ -159,7 +159,7 @@ describe("Runtime v3 progression interface", () => {
       settingsRevision: 1n,
       skillsRevision: 1,
       providerRefs: [], skillRefs: [], mcpRefs: [],
-      providerMaterial: [], skillMaterial: [], mcpMaterial: [], configCatalog: {},
+      providerMaterial: [], skillMaterial: [], mcpMaterial: [], configCatalog: null,
       fence: mainClaim.fence,
     };
     const defer = vi.fn().mockResolvedValue(true);

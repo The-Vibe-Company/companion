@@ -1,8 +1,10 @@
+import {
+  decodeRuntimeV3PreparationSnapshot,
+} from "@companion/companion-runtime";
 import type {
   RuntimeV3ConvergencePersistence,
   RuntimeV3DurableOutcome,
   RuntimeV3PreparationPersistence,
-  RuntimeV3ProviderMaterial,
   RuntimeV3Turn,
   RuntimeV3WarmTurnPersistence,
 } from "@companion/companion-runtime/v3/internal";
@@ -201,6 +203,15 @@ export function createRuntimeV3PostgresPreparationPersistence(
         )
       `;
       const row = rows[0];
+      const material = row ? decodeRuntimeV3PreparationSnapshot({
+        provider_refs: row.providerRefs,
+        skill_refs: row.skillRefs,
+        mcp_refs: row.mcpRefs,
+        provider_material: row.providerMaterial,
+        skill_material: row.skillMaterial,
+        mcp_material: row.mcpMaterial,
+        config_catalog: row.configCatalog,
+      }) : null;
       return row ? {
         executorId,
         orgId: row.orgId,
@@ -217,13 +228,13 @@ export function createRuntimeV3PostgresPreparationPersistence(
         persona: row.persona,
         settingsRevision: row.settingsRevision === null ? null : BigInt(row.settingsRevision),
         skillsRevision: row.skillsRevision,
-        providerRefs: objectArray(row.providerRefs),
-        skillRefs: objectArray(row.skillRefs),
-        mcpRefs: objectArray(row.mcpRefs),
-        providerMaterial: objectArray(row.providerMaterial) as unknown as RuntimeV3ProviderMaterial[],
-        skillMaterial: objectArray(row.skillMaterial),
-        mcpMaterial: objectArray(row.mcpMaterial),
-        configCatalog: nullableObject(row.configCatalog),
+        providerRefs: material?.providerRefs ?? [],
+        skillRefs: material?.skillRefs ?? [],
+        mcpRefs: material?.mcpRefs ?? [],
+        providerMaterial: material?.providerMaterial ?? [],
+        skillMaterial: material?.skillMaterial ?? [],
+        mcpMaterial: material?.mcpMaterial ?? [],
+        configCatalog: material?.configCatalog ?? null,
         fence: {
           token: row.claimToken,
           epoch: BigInt(row.claimEpoch),
@@ -287,21 +298,6 @@ export function createRuntimeV3PostgresPreparationPersistence(
       return rows[0] ?? null;
     },
   };
-}
-
-function objectArray(value: unknown): Array<Record<string, unknown>> {
-  if (!Array.isArray(value) || value.some((item) =>
-    !item || Array.isArray(item) || typeof item !== "object"
-  )) throw new Error("Runtime v3 preparation material is invalid");
-  return value as Array<Record<string, unknown>>;
-}
-
-function nullableObject(value: unknown): Record<string, unknown> | null {
-  if (value === null) return null;
-  if (!value || Array.isArray(value) || typeof value !== "object") {
-    throw new Error("Runtime v3 preparation catalog is invalid");
-  }
-  return value as Record<string, unknown>;
 }
 
 /** Fenced Runtime v3 warm-turn facts; Box/Pi values never cross into the API process. */

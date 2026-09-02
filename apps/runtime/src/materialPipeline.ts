@@ -5,14 +5,12 @@ import { COMPANION_SKILL_KEY, companionSkillDir } from "@companion/companion-ski
 import { getCompanionSkillPackage } from "@companion/companion-skill/package";
 import {
   type CompanionBoxRuntimeV2,
-  type CompanionConfigCatalog,
   type CompanionRuntimeSkill,
 } from "@companion/box-runtime";
 import {
   RUNTIME_LEASE_SECONDS,
   createRuntimeVisibleTextRedactor,
   type RuntimeAttachmentStager,
-  type RuntimeAuthorization,
   type RuntimeMaterialProvider,
   type RuntimeOutboxHarvester,
   type RuntimeOutputAttachment,
@@ -338,18 +336,12 @@ export function createRuntimeMaterialPipeline(input: {
         || claim.settingsRevision === null || claim.skillsRevision === null
       ) throw new RuntimeMaterialError("runtime_material_invalid");
       const material = preparationMaterial(claim);
-      // SAFETY: protocol 4 builds these three arrays from the same typed revision tuples used by
-      // assertRuntimeMaterialSnapshot, and the runtime store rejects non-object array members.
-      const authorizationRefs = claim as RuntimeV3PreparationClaim & Pick<
-        RuntimeAuthorization,
-        "providerRefs" | "skillRefs" | "mcpRefs"
-      >;
       assertRuntimeMaterialSnapshot({
         material,
         authorization: {
-          providerRefs: authorizationRefs.providerRefs,
-          skillRefs: authorizationRefs.skillRefs,
-          mcpRefs: authorizationRefs.mcpRefs,
+          providerRefs: claim.providerRefs,
+          skillRefs: claim.skillRefs,
+          mcpRefs: claim.mcpRefs,
         },
       });
       const resources = await resolveRuntimeResources({
@@ -363,9 +355,6 @@ export function createRuntimeMaterialPipeline(input: {
       // final control-plane boundary before any resolved material crosses into the Box.
       const credentials = await authorize();
       if (!credentials) throw new RuntimeMaterialError("runtime_material_invalid");
-      // SAFETY: protocol 4 constructs this credential-free catalog with the CompanionConfigCatalog
-      // fields and the runtime store has already rejected null-excluding non-object values.
-      const configCatalog = claim.configCatalog as CompanionConfigCatalog | null;
       const observed = await input.runtime().stageExistingBox({
         orgId: claim.orgId,
         companionId: claim.companionId,
@@ -393,7 +382,7 @@ export function createRuntimeMaterialPipeline(input: {
           mcpBrokerCredential: credentials.mcpBrokerToken ?? undefined,
           controlCredential: credentials.controlToken,
         }),
-        configCatalog,
+        configCatalog: claim.configCatalog,
         signal,
       });
       if (input.registerAgentEndpoint && observed.agentEndpoint) {
@@ -540,13 +529,11 @@ export function createRuntimeMaterialPipeline(input: {
 }
 
 function preparationMaterial(claim: RuntimeV3PreparationClaim): RuntimeMaterialRows {
-  // SAFETY: protocol 4 emits the same provider, Skill, and MCP row shapes consumed by the existing
-  // material resolver; the runtime store rejects non-object array members before this boundary.
   return {
-    providerMaterial: claim.providerMaterial,
-    skillMaterial: claim.skillMaterial,
-    mcpMaterial: claim.mcpMaterial,
-  } as RuntimeMaterialRows;
+    providerMaterial: claim.providerMaterial.map((row) => ({ ...row })),
+    skillMaterial: claim.skillMaterial.map((row) => ({ ...row })),
+    mcpMaterial: claim.mcpMaterial.map((row) => ({ ...row })),
+  };
 }
 
 function earliestDate(left: Date | null, right: Date | null): Date | null {

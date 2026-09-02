@@ -227,6 +227,12 @@ provider's 24-hour `Idempotency-Key`, checkpoints the canonical Box id before an
 work, then records Box-ready, layout, and Pi-ready clocks before warm dispatch. Preparation failure
 only records an expurgated, bounded retry on the instance; it creates neither an attempt nor a
 derived Start/Wake operation and leaves the head Turn queued.
+Migration 0165 deepens that preparation seam: `Prepared` is an actor-bound proof that the current
+model/provider, bundled and selected Skills, product plugins, composed instructions, selected
+member MCP accounts, and freshly minted Hub/MCP/control capabilities were staged atomically. The
+runtime revalidates membership, Companion Editor access, personal-resource ownership, revisions,
+and credential generations immediately before Box and Pi effects. Changed, revoked, or expiring
+material clears warm readiness and converges through a complete restage before the next admission.
 The API atomically persists the user entry and Turn and returns without Box credentials; the runtime
 composition claims only the v3 `main` lane, reauthorizes the actor, dispatches through the existing
 Pi transport, records positive admission before `replying`, and projects one assistant result into

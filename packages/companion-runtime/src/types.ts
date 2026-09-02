@@ -1,6 +1,10 @@
 /* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- Existing runtime boundary decoders predate the incremental anti-slop gate. */
 
-import { COMPANION_BUDGETS } from "@companion/contracts";
+import {
+  COMPANION_BUDGETS,
+  companionMcpAccountSchema,
+  type CompanionMcpAccount,
+} from "@companion/contracts";
 
 export const WORK_KINDS = ["operation", "decision", "attempt", "settings", "health"] as const;
 export type WorkKind = (typeof WORK_KINDS)[number];
@@ -255,6 +259,56 @@ export interface SkillRef {
 export interface McpRef {
   account_id: string;
   credential_generation: string;
+}
+
+export interface RuntimeV3McpRef extends McpRef {
+  credential_version: number;
+}
+
+interface RuntimeV3EncryptedMaterial {
+  credential_generation: string;
+  credential_version: number;
+  ciphertext: string;
+  iv: string;
+  auth_tag: string;
+  wrapped_dek: string;
+  wrap_iv: string;
+  wrap_auth_tag: string;
+  key_id: string;
+}
+
+export interface RuntimeV3ProviderMaterial extends RuntimeV3EncryptedMaterial {
+  provider_id: string;
+  auth_method: string;
+}
+
+export interface RuntimeV3SkillMaterial {
+  skill_id: string;
+  slug: string;
+  version_id: string;
+  version: string;
+  checksum: string;
+  size_bytes: number;
+  storage_path: string;
+}
+
+export interface RuntimeV3McpMaterial extends RuntimeV3EncryptedMaterial {
+  account_id: string;
+  owner_id: string;
+  provider: string;
+  label: string;
+  transport: string;
+  account_config: CompanionMcpAccount;
+}
+
+export interface RuntimeV3PreparationSnapshot {
+  providerRefs: ProviderRef[];
+  skillRefs: SkillRef[];
+  mcpRefs: RuntimeV3McpRef[];
+  providerMaterial: RuntimeV3ProviderMaterial[];
+  skillMaterial: RuntimeV3SkillMaterial[];
+  mcpMaterial: RuntimeV3McpMaterial[];
+  configCatalog: RuntimeConfigCatalog | null;
 }
 
 export interface RuntimeAuthorization {
@@ -652,6 +706,118 @@ function mcpRefs(row: Record<string, unknown>): McpRef[] {
       credential_generation: requiredString(value, "credential_generation"),
     };
   });
+}
+
+function positiveInteger(row: Record<string, unknown>, key: string): number {
+  const value = integer(row, key);
+  if (value < 1) throw new RuntimeRowDecodeError(key);
+  return value;
+}
+
+function encryptedRuntimeV3Material(
+  row: Record<string, unknown>,
+): RuntimeV3EncryptedMaterial {
+  return {
+    credential_generation: requiredString(row, "credential_generation"),
+    credential_version: positiveInteger(row, "credential_version"),
+    ciphertext: requiredString(row, "ciphertext"),
+    iv: requiredString(row, "iv"),
+    auth_tag: requiredString(row, "auth_tag"),
+    wrapped_dek: requiredString(row, "wrapped_dek"),
+    wrap_iv: requiredString(row, "wrap_iv"),
+    wrap_auth_tag: requiredString(row, "wrap_auth_tag"),
+    key_id: requiredString(row, "key_id"),
+  };
+}
+
+/** Decode the JSONB snapshot before it enters the Runtime v3 preparation claim. */
+export function decodeRuntimeV3PreparationSnapshot(
+  value: unknown,
+): RuntimeV3PreparationSnapshot {
+  const row = record(value);
+  return {
+    providerRefs: providerRefs(row),
+    skillRefs: skillRefs(row),
+    mcpRefs: jsonArray(row, "mcp_refs").map((entry) => {
+      const ref = record(entry);
+      return {
+        account_id: requiredString(ref, "account_id"),
+        credential_generation: requiredString(ref, "credential_generation"),
+        credential_version: positiveInteger(ref, "credential_version"),
+      };
+    }),
+    providerMaterial: jsonArray(row, "provider_material").map((entry) => {
+      const material = record(entry);
+      return {
+        provider_id: requiredString(material, "provider_id"),
+        auth_method: requiredString(material, "auth_method"),
+        ...encryptedRuntimeV3Material(material),
+      };
+    }),
+    skillMaterial: jsonArray(row, "skill_material").map((entry) => {
+      const material = record(entry);
+      return {
+        skill_id: requiredString(material, "skill_id"),
+        slug: requiredString(material, "slug"),
+        version_id: requiredString(material, "version_id"),
+        version: requiredString(material, "version"),
+        checksum: requiredString(material, "checksum"),
+        size_bytes: positiveInteger(material, "size_bytes"),
+        storage_path: requiredString(material, "storage_path"),
+      };
+    }),
+    mcpMaterial: jsonArray(row, "mcp_material").map((entry) => {
+      const material = record(entry);
+      const accountConfig = companionMcpAccountSchema.safeParse(material.account_config);
+      if (!accountConfig.success) throw new RuntimeRowDecodeError("account_config");
+      return {
+        account_id: requiredString(material, "account_id"),
+        owner_id: requiredString(material, "owner_id"),
+        provider: requiredString(material, "provider"),
+        label: requiredString(material, "label"),
+        transport: requiredString(material, "transport"),
+        account_config: accountConfig.data,
+        ...encryptedRuntimeV3Material(material),
+      };
+    }),
+    configCatalog: decodeRuntimeV3ConfigCatalog(row),
+  };
+}
+
+function decodeRuntimeV3ConfigCatalog(
+  row: Record<string, unknown>,
+): RuntimeConfigCatalog | null {
+  if (row.config_catalog === null) return null;
+  const catalog = record(row.config_catalog);
+  const companion = record(catalog.companion);
+  return {
+    companion: {
+      model_id: nullableString(companion, "model_id"),
+      provider_id: nullableString(companion, "provider_id"),
+      persona: nullableString(companion, "persona"),
+    },
+    skills: jsonArray(catalog, "skills").map((entry) => {
+      const skill = record(entry);
+      return {
+        id: requiredString(skill, "id"),
+        slug: requiredString(skill, "slug"),
+        name: requiredString(skill, "name"),
+        description: requiredString(skill, "description"),
+        selected: boolean(skill, "selected"),
+      };
+    }),
+    plugins: jsonArray(catalog, "plugins").map((entry) => {
+      const plugin = record(entry);
+      return {
+        id: requiredString(plugin, "id"),
+        label: requiredString(plugin, "label"),
+        provider: requiredString(plugin, "provider"),
+        transport: requiredString(plugin, "transport"),
+        selected: boolean(plugin, "selected"),
+      };
+    }),
+    note: requiredString(catalog, "note"),
+  };
 }
 
 export function decodeGateStatusRow(value: unknown): GateStatus {

@@ -24,7 +24,18 @@ CREATE INDEX companion_v3_instances_preparation_idx
 --> statement-breakpoint
 
 ALTER TABLE public.companion_v3_instances
-  DROP CONSTRAINT companion_v3_instances_preparation_check,
+  DROP CONSTRAINT companion_v3_instances_preparation_check;
+--> statement-breakpoint
+
+-- Earlier tracer-bullet readiness never proved material. Reset those rows while the legacy check
+-- is absent, preserving Box identity but requiring a complete stage and fresh Pi activation.
+UPDATE public.companion_v3_instances
+SET preparation_checkpoint = CASE WHEN box_id IS NULL THEN 'pending' ELSE 'box_ready' END,
+    staging_completed_at = NULL, pi_invocation_id = NULL, prepared_at = NULL,
+    preparation_available_at = clock_timestamp(), updated_at = clock_timestamp();
+--> statement-breakpoint
+
+ALTER TABLE public.companion_v3_instances
   ADD CONSTRAINT companion_v3_instances_preparation_check CHECK (
     preparation_checkpoint IN ('pending', 'box_created', 'box_ready', 'staged', 'prepared')
     AND preparation_attempt_count >= 0 AND preparation_claim_epoch >= 0
@@ -77,15 +88,11 @@ ALTER TABLE public.companion_v3_instances
         AND preparation_gate_epoch IS NOT NULL AND preparation_executor_id IS NOT NULL
         AND preparation_claimed_at IS NOT NULL AND preparation_expires_at > preparation_claimed_at)
     )
-  );
+  ) NOT VALID;
 --> statement-breakpoint
 
--- Earlier tracer-bullet readiness never proved material. Preserve the Box identity but require a
--- complete stage and fresh Pi activation before it can become Prepared again.
-UPDATE public.companion_v3_instances
-SET preparation_checkpoint = CASE WHEN box_id IS NULL THEN 'pending' ELSE 'box_ready' END,
-    staging_completed_at = NULL, pi_invocation_id = NULL, prepared_at = NULL,
-    preparation_available_at = clock_timestamp(), updated_at = clock_timestamp();
+ALTER TABLE public.companion_v3_instances
+  VALIDATE CONSTRAINT companion_v3_instances_preparation_check;
 --> statement-breakpoint
 
 CREATE FUNCTION public.companion_v3_invalidate_preparation(p_org_id uuid, p_companion_id uuid)
@@ -152,22 +159,36 @@ FOR EACH ROW WHEN (NEW.lane = 'main') EXECUTE FUNCTION public.companion_v3_inval
 CREATE FUNCTION public.companion_v3_invalidate_from_resource()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public SET row_security = on AS $$
-DECLARE v_org uuid := COALESCE(NEW.org_id, OLD.org_id); v_companion uuid;
+DECLARE
+  v_row jsonb := CASE WHEN TG_OP = 'DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+  v_org uuid := (v_row->>'org_id')::uuid;
+  v_resource_id text := CASE TG_TABLE_NAME
+    WHEN 'companion_provider_connections' THEN v_row->>'provider_id'
+    WHEN 'companion_mcp_accounts' THEN v_row->>'id'
+    WHEN 'skills' THEN v_row->>'id'
+    ELSE NULL
+  END;
+  v_companion uuid;
 BEGIN
+  IF v_org IS NULL OR v_resource_id IS NULL THEN
+    RAISE EXCEPTION 'unsupported Runtime v3 preparation invalidation resource'
+      USING ERRCODE = '22023';
+  END IF;
   FOR v_companion IN
     SELECT instance.companion_id FROM public.companion_v3_instances instance
     JOIN public.companions companion
       ON companion.org_id = instance.org_id AND companion.id = instance.companion_id
     WHERE instance.org_id = v_org AND instance.prepared_at IS NOT NULL AND (
       (TG_TABLE_NAME = 'companion_provider_connections'
-        AND companion.provider_ids ? COALESCE(NEW.provider_id, OLD.provider_id))
+        AND companion.provider_ids ? v_resource_id)
       OR (TG_TABLE_NAME = 'companion_mcp_accounts'
-        AND companion.selected_mcp_account_ids ? COALESCE(NEW.id, OLD.id)::text)
+        AND companion.selected_mcp_account_ids ? v_resource_id)
       OR (TG_TABLE_NAME = 'skills'
-        AND companion.selected_skill_ids ? COALESCE(NEW.id, OLD.id)::text)
+        AND companion.selected_skill_ids ? v_resource_id)
     )
   LOOP PERFORM public.companion_v3_invalidate_preparation(v_org, v_companion); END LOOP;
-  RETURN COALESCE(NEW, OLD);
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
 END $$;
 REVOKE ALL ON FUNCTION public.companion_v3_invalidate_from_resource() FROM PUBLIC;
 CREATE TRIGGER companion_v3_invalidate_provider
@@ -179,6 +200,120 @@ FOR EACH ROW EXECUTE FUNCTION public.companion_v3_invalidate_from_resource();
 CREATE TRIGGER companion_v3_invalidate_skill
 AFTER UPDATE OR DELETE ON public.skills
 FOR EACH ROW EXECUTE FUNCTION public.companion_v3_invalidate_from_resource();
+--> statement-breakpoint
+
+-- Keep protocol-3 call signatures while fencing material-expired rows before they can reach Pi.
+ALTER FUNCTION public.companion_v3_runtime_claim_warm(
+  text,public.companion_v3_lane,integer,integer
+) RENAME TO companion_v3_runtime_claim_warm_unchecked;
+ALTER FUNCTION public.companion_v3_runtime_authorize_warm_turn(
+  uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer
+) RENAME TO companion_v3_runtime_authorize_warm_unchecked;
+--> statement-breakpoint
+
+CREATE FUNCTION public.companion_v3_runtime_claim_warm(
+  p_executor_id text, p_lane public.companion_v3_lane,
+  p_lease_seconds integer, p_protocol integer
+)
+RETURNS TABLE (
+  org_id uuid, companion_id uuid, turn_id uuid, command_id uuid,
+  lane public.companion_v3_lane, state public.companion_v3_turn_state,
+  claim_token uuid, claim_epoch bigint, gate_epoch bigint
+)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public SET row_security = on AS $$
+DECLARE
+  v_now timestamptz := clock_timestamp(); v_org uuid; v_companion uuid;
+BEGIN
+  SELECT instance.org_id, instance.companion_id INTO v_org, v_companion
+  FROM public.companion_v3_instances instance
+  JOIN public.companion_v3_lane_leases lease
+    ON lease.org_id = instance.org_id AND lease.companion_id = instance.companion_id
+  JOIN public.companion_v3_turns eligible
+    ON eligible.org_id = lease.org_id AND eligible.companion_id = lease.companion_id
+   AND eligible.lane = lease.lane AND eligible.state IN ('queued', 'needs_input')
+  WHERE lease.lane = p_lane AND instance.prepared_at IS NOT NULL
+    AND (instance.prepared_material_expires_at IS NULL
+      OR instance.prepared_material_expires_at <= v_now + interval '2 hours 5 minutes')
+  ORDER BY eligible.created_at, eligible.queue_sequence, eligible.id
+  LIMIT 1 FOR UPDATE OF instance SKIP LOCKED;
+  IF FOUND THEN
+    PERFORM public.companion_v3_invalidate_preparation(v_org, v_companion);
+    RETURN;
+  END IF;
+  RETURN QUERY SELECT claimed.org_id, claimed.companion_id, claimed.turn_id,
+    claimed.command_id, claimed.lane, claimed.state, claimed.claim_token,
+    claimed.claim_epoch, claimed.gate_epoch
+  FROM public.companion_v3_runtime_claim_warm_unchecked(
+    p_executor_id, p_lane, p_lease_seconds, p_protocol
+  ) claimed;
+END $$;
+REVOKE ALL ON FUNCTION public.companion_v3_runtime_claim_warm(
+  text,public.companion_v3_lane,integer,integer
+) FROM PUBLIC;
+--> statement-breakpoint
+
+CREATE FUNCTION public.companion_v3_runtime_authorize_warm_turn(
+  p_org_id uuid, p_companion_id uuid, p_lane public.companion_v3_lane,
+  p_turn_id uuid, p_claim_token uuid, p_claim_epoch bigint,
+  p_gate_epoch bigint, p_protocol integer
+)
+RETURNS TABLE (box_id text, pi_invocation_id text, content text, activity_cursor bigint)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public SET row_security = on AS $$
+DECLARE v_now timestamptz := clock_timestamp();
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.companion_v3_instances instance
+    WHERE instance.org_id = p_org_id AND instance.companion_id = p_companion_id
+      AND instance.prepared_at IS NOT NULL
+      AND (instance.prepared_material_expires_at IS NULL
+        OR instance.prepared_material_expires_at <= v_now + interval '2 hours 5 minutes')
+  ) THEN
+    PERFORM public.companion_v3_invalidate_preparation(p_org_id, p_companion_id);
+    UPDATE public.companion_v3_lane_leases lease SET
+      claim_token = NULL, gate_epoch = NULL, executor_id = NULL, turn_id = NULL,
+      claimed_at = NULL, renewed_at = NULL, expires_at = NULL, updated_at = v_now
+    WHERE lease.org_id = p_org_id AND lease.companion_id = p_companion_id
+      AND lease.lane = p_lane AND lease.turn_id = p_turn_id
+      AND lease.claim_token = p_claim_token AND lease.claim_epoch = p_claim_epoch
+      AND lease.gate_epoch = p_gate_epoch;
+    RETURN;
+  END IF;
+  RETURN QUERY SELECT authorized.box_id, authorized.pi_invocation_id,
+    authorized.content, authorized.activity_cursor
+  FROM public.companion_v3_runtime_authorize_warm_unchecked(
+    p_org_id, p_companion_id, p_lane, p_turn_id, p_claim_token,
+    p_claim_epoch, p_gate_epoch, p_protocol
+  ) authorized;
+END $$;
+REVOKE ALL ON FUNCTION public.companion_v3_runtime_authorize_warm_turn(
+  uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer
+) FROM PUBLIC;
+--> statement-breakpoint
+
+DO $companion_v3_warm_material_expiry_acl$
+DECLARE v_source oid; v_target regprocedure; v_grantee oid; v_role name;
+BEGIN
+  FOR v_source, v_target IN VALUES
+    (pg_catalog.to_regprocedure('public.companion_v3_runtime_claim_warm_unchecked(text,public.companion_v3_lane,integer,integer)'),
+      'public.companion_v3_runtime_claim_warm(text,public.companion_v3_lane,integer,integer)'::regprocedure),
+    (pg_catalog.to_regprocedure('public.companion_v3_runtime_authorize_warm_unchecked(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'),
+      'public.companion_v3_runtime_authorize_warm_turn(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure)
+  LOOP
+    FOR v_grantee IN SELECT DISTINCT acl.grantee FROM pg_catalog.pg_proc source_proc
+      CROSS JOIN LATERAL pg_catalog.aclexplode(
+        COALESCE(source_proc.proacl, pg_catalog.acldefault('f', source_proc.proowner))) acl
+      WHERE source_proc.oid = v_source AND acl.privilege_type = 'EXECUTE'
+        AND acl.grantee NOT IN (source_proc.proowner, 0)
+    LOOP
+      SELECT role_row.rolname INTO STRICT v_role FROM pg_catalog.pg_roles role_row
+      WHERE role_row.oid = v_grantee;
+      EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO %I', v_target, v_role);
+      EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM %I', v_source::regprocedure, v_role);
+    END LOOP;
+  END LOOP;
+END $companion_v3_warm_material_expiry_acl$;
 --> statement-breakpoint
 
 DROP FUNCTION public.companion_v3_runtime_claim_preparation(text, integer, integer);
@@ -208,6 +343,7 @@ DECLARE
   v_now timestamptz := clock_timestamp(); v_instance public.companion_v3_instances%ROWTYPE;
   v_companion public.companions%ROWTYPE; v_turn public.companion_v3_turns%ROWTYPE;
   v_runtime public.companion_runtime_instances%ROWTYPE; v_gate bigint;
+  v_expired_org uuid; v_expired_companion uuid;
   v_provider_count integer; v_skill_count integer; v_mcp_count integer;
   v_skills jsonb; v_plugins jsonb;
 BEGIN
@@ -219,6 +355,16 @@ BEGIN
   SELECT control.gate_epoch INTO v_gate FROM public.companion_runtime_control control
   WHERE control.id = 'runtime-v2' AND control.enabled FOR SHARE;
   IF NOT FOUND THEN RETURN; END IF;
+  SELECT instance.org_id, instance.companion_id INTO v_expired_org, v_expired_companion
+  FROM public.companion_v3_instances instance
+  WHERE instance.desired_lifecycle = 'prepare' AND instance.prepared_at IS NOT NULL
+    AND (instance.prepared_material_expires_at IS NULL
+      OR instance.prepared_material_expires_at <= v_now + interval '2 hours 5 minutes')
+  ORDER BY instance.prepared_material_expires_at NULLS FIRST, instance.created_at
+  LIMIT 1 FOR UPDATE SKIP LOCKED;
+  IF FOUND THEN
+    PERFORM public.companion_v3_invalidate_preparation(v_expired_org, v_expired_companion);
+  END IF;
   SELECT instance.* INTO v_instance FROM public.companion_v3_instances instance
   WHERE instance.desired_lifecycle = 'prepare' AND instance.prepared_at IS NULL
     AND instance.preparation_available_at <= v_now
@@ -356,10 +502,14 @@ BEGIN
     preparation_gate_epoch = v_gate, preparation_executor_id = p_executor_id,
     preparation_claimed_at = v_now,
     preparation_expires_at = v_now + make_interval(secs => p_lease_seconds),
-    preparation_actor_id = actor_id, preparation_settings_revision = settings_revision,
-    preparation_skills_revision = skills_revision, preparation_model_id = model_id,
-    preparation_provider_refs = provider_refs, preparation_skill_refs = skill_refs,
-    preparation_mcp_refs = mcp_refs, updated_at = v_now
+    preparation_actor_id = CASE WHEN authorized THEN actor_id ELSE NULL END,
+    preparation_settings_revision = CASE WHEN authorized THEN settings_revision ELSE NULL END,
+    preparation_skills_revision = CASE WHEN authorized THEN skills_revision ELSE NULL END,
+    preparation_model_id = CASE WHEN authorized THEN model_id ELSE NULL END,
+    preparation_provider_refs = CASE WHEN authorized THEN provider_refs ELSE NULL END,
+    preparation_skill_refs = CASE WHEN authorized THEN skill_refs ELSE NULL END,
+    preparation_mcp_refs = CASE WHEN authorized THEN mcp_refs ELSE NULL END,
+    updated_at = v_now
   WHERE instance.org_id = v_instance.org_id AND instance.companion_id = v_instance.companion_id
   RETURNING instance.preparation_claim_token, instance.preparation_claim_epoch,
     instance.preparation_gate_epoch INTO claim_token, claim_epoch, gate_epoch;
@@ -569,6 +719,7 @@ SET search_path = pg_catalog, public SET row_security = on AS $$
 DECLARE
   v_now timestamptz := clock_timestamp(); v_expires timestamptz := v_now + interval '6 hours';
   v_instance public.companion_v3_instances%ROWTYPE; v_hub_id uuid := gen_random_uuid();
+  v_runtime public.companion_runtime_instances%ROWTYPE;
   v_mcp_id uuid; v_control_id uuid := gen_random_uuid(); v_secret text;
 BEGIN
   IF NOT public.companion_v3_runtime_reauthorize_preparation(
@@ -576,6 +727,8 @@ BEGIN
     p_executor_id, p_lease_seconds, p_protocol
   ) THEN RETURN; END IF;
   SELECT instance.* INTO STRICT v_instance FROM public.companion_v3_instances instance
+  WHERE instance.org_id = p_org_id AND instance.companion_id = p_companion_id FOR UPDATE;
+  SELECT instance.* INTO STRICT v_runtime FROM public.companion_runtime_instances instance
   WHERE instance.org_id = p_org_id AND instance.companion_id = p_companion_id FOR UPDATE;
 
   v_secret := left(replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''), 48);
@@ -615,9 +768,16 @@ BEGIN
   UPDATE public.api_tokens SET revoked_at = v_now
   WHERE id = v_instance.hub_token_id AND revoked_at IS NULL;
   UPDATE public.companion_mcp_broker_tokens SET revoked_at = v_now
-  WHERE id = v_instance.mcp_broker_token_id AND revoked_at IS NULL;
+  WHERE id IN (v_instance.mcp_broker_token_id, v_runtime.mcp_broker_token_id)
+    AND revoked_at IS NULL;
   UPDATE public.companion_control_tokens SET revoked_at = v_now
-  WHERE id = v_instance.control_token_id AND revoked_at IS NULL;
+  WHERE id IN (v_instance.control_token_id, v_runtime.control_token_id)
+    AND revoked_at IS NULL;
+  UPDATE public.companion_runtime_instances SET
+    mcp_broker_token_id = v_mcp_id, control_token_id = v_control_id, updated_at = v_now
+  WHERE org_id = p_org_id AND companion_id = p_companion_id
+    AND retirement_state = 'active';
+  IF NOT FOUND THEN RETURN; END IF;
   UPDATE public.companion_v3_instances SET hub_token_id = v_hub_id,
     mcp_broker_token_id = v_mcp_id, control_token_id = v_control_id, updated_at = v_now
   WHERE org_id = p_org_id AND companion_id = p_companion_id

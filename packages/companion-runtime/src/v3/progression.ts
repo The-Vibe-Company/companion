@@ -1,7 +1,23 @@
 import { safeRuntimeError } from "../errors";
 import { classifyPiJournalPage, type ValidatedPiJournalRead } from "../piEvents";
 import { COMPANION_BUDGETS } from "@companion/contracts";
-import type { ErrorAction, SafeRuntimeError } from "../types";
+import type {
+  ErrorAction,
+  ProviderRef,
+  RuntimeConfigCatalog,
+  SafeRuntimeError,
+  SkillRef,
+  RuntimeV3McpMaterial,
+  RuntimeV3McpRef,
+  RuntimeV3ProviderMaterial,
+  RuntimeV3SkillMaterial,
+} from "../types";
+export type {
+  RuntimeV3McpMaterial,
+  RuntimeV3McpRef,
+  RuntimeV3ProviderMaterial,
+  RuntimeV3SkillMaterial,
+} from "../types";
 import type { RuntimeBoxControl, RuntimePiControl } from "../ports";
 
 export const RUNTIME_V3_LANES = ["main", "background"] as const;
@@ -127,20 +143,6 @@ export type RuntimeV3Convergence = Pick<RuntimeV3Progression, "converge">;
 export type RuntimeV3PreparationCheckpoint =
   | "pending" | "box_created" | "box_ready" | "staged";
 
-export type RuntimeV3ProviderMaterial = {
-  provider_id: string;
-  auth_method: string;
-  credential_generation: string;
-  credential_version: number;
-  ciphertext: string;
-  iv: string;
-  auth_tag: string;
-  wrapped_dek: string;
-  wrap_iv: string;
-  wrap_auth_tag: string;
-  key_id: string;
-};
-
 export interface RuntimeV3PreparationClaim {
   executorId: string;
   orgId: string;
@@ -157,13 +159,13 @@ export interface RuntimeV3PreparationClaim {
   persona: string | null;
   settingsRevision: bigint | null;
   skillsRevision: number | null;
-  providerRefs: Array<Record<string, unknown>>;
-  skillRefs: Array<Record<string, unknown>>;
-  mcpRefs: Array<Record<string, unknown>>;
+  providerRefs: ProviderRef[];
+  skillRefs: SkillRef[];
+  mcpRefs: RuntimeV3McpRef[];
   providerMaterial: RuntimeV3ProviderMaterial[];
-  skillMaterial: Array<Record<string, unknown>>;
-  mcpMaterial: Array<Record<string, unknown>>;
-  configCatalog: Record<string, unknown> | null;
+  skillMaterial: RuntimeV3SkillMaterial[];
+  mcpMaterial: RuntimeV3McpMaterial[];
+  configCatalog: RuntimeConfigCatalog | null;
   fence: RuntimeV3Fence;
 }
 

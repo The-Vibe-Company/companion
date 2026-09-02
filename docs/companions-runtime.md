@@ -11,6 +11,10 @@
 > retain the v2 contract in this stack. V3 has one Turn carrying command/admission/activity/outcome facts, independent
 > `main`/`background` leases, no attempt table, and no derived Start operation. Its protocol-3
 > functions remain behind forced RLS, split role grants, and the existing runtime kill switch.
+> Migration 0165 makes `Prepared` the durable actor/revision-bound proof of a complete atomic stage:
+> bundled and selected Skills, product plugins, `composedInstructions()`, model/provider material,
+> member-owned MCP accounts, and fresh Hub/MCP/control capabilities. Warm claim and authorization
+> reject changed, revoked, or near-expiry material and return the aggregate to full staging before Pi.
 >
 > Runtime v3 purge note (THE-511): migration 0160 and the dedicated runtime maintenance command add
 > a dormant, one-shot path that can remove Runtime v2 state before a later cutover. This ticket
