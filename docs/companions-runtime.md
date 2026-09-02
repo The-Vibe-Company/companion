@@ -126,7 +126,9 @@ isolated routine-origin turns. At most one attempt is active in each lane, so on
 one routine attempt may run together. FIFO ordering applies within each lane. An unresolved
 `interrupted` occurrence owns only its lane until protocol 7's internal Pi cleanup proves terminal;
 then `resolution = auto_abandoned` releases it without replay. A routine recovery, including one in
-backoff, never delays an independently warm main-lane message.
+backoff, never delays an independently warm main-lane message. On the affected lane, cleanup backoff
+still fences a new Start; any already-active work exposed during rollout is reclaimed before the
+pending recovery can run.
 
 ### Attempt
 

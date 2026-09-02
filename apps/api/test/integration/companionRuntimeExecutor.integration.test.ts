@@ -10000,6 +10000,147 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     }
   });
 
+  it("reclaims a running Start before due same-lane recovery without starving other Companions", async () => {
+    if (!sql) throw new Error("runtime executor database is not initialized");
+    const blockedFixture = await createCompanion({
+      boxReady: true,
+      selectedSkillIds: [],
+      selectedMcpAccountIds: [],
+    });
+    let independentFixture: Awaited<ReturnType<typeof createCompanion>> | undefined;
+    const queuedTurnId = randomUUID();
+    const queuedClientMessageId = randomUUID();
+    const startId = randomUUID();
+    const startExecutor = `${executorId}-same-lane-start`;
+    const takeoverExecutor = `${executorId}-same-lane-takeover`;
+    let claims: Claim[] = [];
+    try {
+      await sql`
+        update companion_turn_attempts
+        set status = 'interrupted', settled_at = now(),
+          last_error_code = 'turn_stalled',
+          last_error_message = 'The Companion stopped making progress.',
+          last_error_action = 'retry', updated_at = now()
+        where id = ${blockedFixture.attemptId}::uuid
+      `;
+      await sql`
+        update companion_turns
+        set status = 'interrupted', settled_at = now(), state_changed_at = now(),
+          last_error_code = 'turn_stalled',
+          last_error_message = 'The Companion stopped making progress.',
+          last_error_action = 'retry', updated_at = now()
+        where id = ${blockedFixture.turnId}::uuid
+      `;
+      const [recovery] = await sql<Array<{ id: string }>>`
+        update companion_operations
+        set available_at = now() + interval '1 hour'
+        where companion_id = ${blockedFixture.companionId}::uuid
+          and source_turn_id = ${blockedFixture.turnId}::uuid
+          and kind = 'restart_pi' and trigger = 'recovery'
+        returning id::text as id
+      `;
+      if (!recovery) throw new Error("expected same-lane recovery");
+
+      await sql`
+        insert into companion_transcript_entries(
+          org_id, companion_id, event_id, ordinal, role, content, author_id
+        ) values (
+          ${ids.orgA}::uuid, ${blockedFixture.companionId}::uuid,
+          ${`msg:${queuedClientMessageId}`}, 1, 'user',
+          'Start after exact cleanup.', ${ids.ownerA}
+        )
+      `;
+      await sql`
+        insert into companion_turns(
+          id, org_id, companion_id, client_message_id, message_event_id,
+          queue_sequence, actor_id, client_surface, status
+        ) values (
+          ${queuedTurnId}::uuid, ${ids.orgA}::uuid, ${blockedFixture.companionId}::uuid,
+          ${queuedClientMessageId}::uuid, ${`msg:${queuedClientMessageId}`}, 2,
+          ${ids.ownerA}, 'web', 'queued'
+        )
+      `;
+      await sql`
+        insert into companion_operations(
+          id, org_id, companion_id, request_id, kind, trigger,
+          actor_id, source_turn_id, runtime_generation, available_at
+        ) values (
+          ${startId}::uuid, ${ids.orgA}::uuid, ${blockedFixture.companionId}::uuid,
+          ${randomUUID()}::uuid, 'start', 'turn', ${ids.ownerA}, ${queuedTurnId}::uuid,
+          1, now()
+        )
+      `;
+
+      await sql`
+        update companion_runtime_instances set health_due_at = now() + interval '1 day'
+        where companion_id = ${blockedFixture.companionId}::uuid
+      `;
+      const nonStartClaims = await claimWorkRows(1, startExecutor);
+      expect(nonStartClaims).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ workKind: "operation", workId: startId }),
+      ]));
+      for (const nonStartClaim of nonStartClaims) await release(nonStartClaim, startExecutor);
+      const [blockedStart] = await sql<Array<{ status: string; startedAt: Date | null }>>`
+        select status::text as status, started_at as "startedAt"
+        from companion_operations where id = ${startId}::uuid
+      `;
+      expect(blockedStart).toEqual({ status: "pending", startedAt: null });
+
+      // Simulate the finite rolling-deploy overlap produced before this interlock existed.
+      await sql`
+        update companion_operations
+        set status = 'running', claim_epoch = 1, attempt_count = 1,
+          started_at = now(), updated_at = now()
+        where id = ${startId}::uuid
+      `;
+
+      independentFixture = await createCompanion({
+        boxReady: false,
+        selectedSkillIds: [],
+        selectedMcpAccountIds: [],
+      });
+
+      await sql`
+        update companion_operations set available_at = now()
+        where id = ${recovery.id}::uuid
+      `;
+
+      claims = await claimWorkRows(2, takeoverExecutor);
+      expect(claims).toHaveLength(2);
+      expect(claims).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          companionId: blockedFixture.companionId,
+          workKind: "operation",
+          workId: startId,
+        }),
+        expect.objectContaining({
+          companionId: independentFixture.companionId,
+          workKind: "attempt",
+          workId: independentFixture.attemptId,
+        }),
+      ]));
+      const [operationState] = await sql<Array<{
+        recoveryStatus: string;
+        startStatus: string;
+      }>>`
+        select recovery.status::text as "recoveryStatus",
+          start_operation.status::text as "startStatus"
+        from companion_operations recovery
+        join companion_operations start_operation
+          on start_operation.id = ${startId}::uuid
+        where recovery.id = ${recovery.id}::uuid
+      `;
+      expect(operationState).toEqual({
+        recoveryStatus: "pending",
+        startStatus: "running",
+      });
+    } finally {
+      for (const claim of claims) await release(claim, takeoverExecutor);
+      if (independentFixture) await removeCompanion(independentFixture.companionId);
+      await removeCompanion(blockedFixture.companionId);
+    }
+  });
+
   it("holds a cold main Start behind unresolved routine cleanup, then claims it after proof", async () => {
     if (!sql) throw new Error("runtime executor database is not initialized");
     const fixture = await createCompanion({

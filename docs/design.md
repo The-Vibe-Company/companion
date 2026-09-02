@@ -168,7 +168,8 @@ exists, while a live Box requires exact invocation termination. Main cleanup com
 systemd `InvocationID`; routine cleanup uses its run-scoped invocation. A newer invocation is never
 stopped. Runtime checkpoints `cleanup_complete`, marks the occurrence `auto_abandoned`, and releases
 the lane without staging or replaying its prompt. Cleanup retries with a maximum five-minute backoff
-and a fresh fixed ten-minute budget per claim cycle.
+and a fresh fixed ten-minute budget per claim cycle. Backoff still fences a new Start on that lane;
+if rolling deployment exposes already-active same-lane work, Runtime reclaims it before cleanup.
 Settings revisions accepted during a turn apply after
 the routine lane is quiescent and before the next main turn. On a warm Box, configuration is published as
 applied only after runtime stages the exact snapshot, restarts Pi, and observes a different idle Pi

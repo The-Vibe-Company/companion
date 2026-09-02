@@ -1107,6 +1107,13 @@
       "when": 1793297200000,
       "tag": "0157_companion_recovery_cleanup_protocol_7",
       "breakpoints": true
+    },
+    {
+      "idx": 158,
+      "version": "7",
+      "when": 1793300800000,
+      "tag": "0158_companion_recovery_lane_interlock",
+      "breakpoints": true
     }
   ]
 }
