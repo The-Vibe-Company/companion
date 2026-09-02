@@ -252,6 +252,22 @@ reproduces P50/P95 create, preparation, send-to-ACK, wake-to-ACK, and terminaliz
 plus oldest queue age, stalls, and takeovers. It exits 2 when an ACK is not fully correlated, making
 the acceptance-to-ACK chain a release measurement rather than an internal safety timer.
 
+Migration 0166 adds a separate fenced lifecycle lease for the one persistent Box. PostgreSQL marks
+the Box archiveable one hour after the latest newly inserted, positively admitted Turn, while API
+reads, lists, status polling, Viewer access, and composer activity remain projection-only. A new
+member or background Turn changes an archived instance to `wake_pending`; runtime resumes the
+stored Box id, then runs the complete current preparation/staging path before warm dispatch. Stop
+uses the same archive path. Lifecycle convergence is intentionally typed without any Box create or
+restart primitive, so healing cannot replace, reboot, archive, or delete the Box.
+
+Permanent deletion records an Owner-authorized request id and durably enters `delete_dispatched`
+under the retained lifecycle fence before runtime issues provider delete once. A returned operation
+id advances to takeover polling; a transport failure or lost response remains outcome-unknown and
+takeover uses only status/absence reconciliation, never another `DELETE`. The aggregate and thread
+remain until the provider reports completion or the exact Box is observed absent. The API and worker
+can only persist admission or lifecycle intent; only `apps/runtime` holds the narrow provider
+capability and lifecycle fence.
+
 Migration 0160 adds the separate one-shot Runtime v2 purge needed before a later v3 cutover. Its
 operator module is dormant: no service composition root calls it. `report` and `purge --dry-run`
 only read PostgreSQL, Box/named-snapshot inventory, and the `companion-attachments/` object prefix;

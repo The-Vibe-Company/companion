@@ -85,7 +85,10 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
   is external untrusted data; any triage or project-management write remains explicit and limited
   to the capabilities the member approved in Sentry's OAuth flow.
 - Sending is the only normal wake action. There is no Wake button and no first-keystroke prewarm.
-  A successful Pi acknowledgement refreshes Box TTL to six hours.
+  After Runtime v3 cutover, the persistent Box archives one hour after the latest positively
+  admitted member message or due background occurrence. Reads, status polling, Viewer access, and
+  composer activity neither wake it nor extend that window; the next admitted occurrence resumes
+  the same Box and completes current staging before Pi receives work.
 - Pi-only recycle is the automatic repair. Full Box restart and permanent deletion are explicit,
   confirmed user operations; deletion is cleanup, never healing.
 

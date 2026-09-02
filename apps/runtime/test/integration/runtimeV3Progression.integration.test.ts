@@ -13,6 +13,8 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
   createRuntimeV3Convergence,
+  createRuntimeV3Lifecycle,
+  createRuntimeV3Preparation,
   createRuntimeV3WarmTurnAdvance,
 } from "@companion/companion-runtime/v3/internal";
 import postgres from "postgres";
@@ -20,6 +22,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import {
   createRuntimeV3PostgresConvergence,
+  createRuntimeV3PostgresLifecyclePersistence,
   createRuntimeV3PostgresPreparationPersistence,
   createRuntimeV3PostgresWarmConvergence,
   createRuntimeV3PostgresWarmTurnPersistence,
@@ -535,6 +538,321 @@ describe("Runtime v3 progression facts", () => {
       select wake_path::text as "wakePath" from public.companion_v3_turns
       where command_id = ${command}::uuid`;
     expect(measured).toEqual([{ wakePath: "archived_wake" }]);
+  });
+
+  it("archives after one idle hour, resumes the same Box through staging, and deletes once", async () => {
+    const lifecycleCompanion = randomUUID();
+    const firstMessage = randomUUID();
+    const wakeMessage = randomUUID();
+    const stopRequest = randomUUID();
+    const backgroundMessage = randomUUID();
+    const deleteRequest = randomUUID();
+    await ownerSql`insert into public.companions(
+      id, org_id, owner_id, name, model_id, provider_ids, skills_revision,
+      skills_available_revision
+    )
+      values (${lifecycleCompanion}::uuid, ${ids.org}::uuid, ${ids.owner},
+        'Persistent lifecycle', 'claude-test', '["anthropic"]'::jsonb, 1, 1)`;
+    await ownerSql`insert into public.companion_runtime_instances(org_id, companion_id)
+      values (${ids.org}::uuid, ${lifecycleCompanion}::uuid)`;
+    await ownerSql`insert into public.companion_workspace_access(
+      org_id, companion_id, owner_id, role, granted_by
+    ) values (
+      ${ids.org}::uuid, ${lifecycleCompanion}::uuid, ${ids.owner}, 'editor', ${ids.owner}
+    )`;
+    await ownerSql`insert into public.companion_v3_instances(
+      org_id, companion_id, desired_lifecycle_actor_id, box_id, pi_invocation_id,
+      preparation_checkpoint, box_ready_at, staging_completed_at, prepared_at,
+      preparation_actor_id, preparation_settings_revision, preparation_skills_revision,
+      preparation_model_id, preparation_provider_refs, preparation_skill_refs,
+      preparation_mcp_refs, prepared_disk_layout_version, prepared_skills_digest,
+      prepared_material_expires_at
+    ) values (
+      ${ids.org}::uuid, ${lifecycleCompanion}::uuid, ${ids.owner}, 'bx_23456789', 'pi-before-sleep',
+      'prepared', current_timestamp - interval '2 hours',
+      current_timestamp - interval '2 hours', current_timestamp - interval '2 hours',
+      ${ids.owner}, 1, 1, 'claude-test', '[{"provider_id":"anthropic"}]'::jsonb,
+      '[]'::jsonb, '[]'::jsonb, 14, ${"a".repeat(64)},
+      clock_timestamp() + interval '4 hours'
+    )`;
+    await asApi(async (sql) => {
+      await sql`select * from public.companion_v3_api_enqueue_warm_turn(
+        ${ids.org}::uuid, ${lifecycleCompanion}::uuid, ${firstMessage}::uuid, 'visible before delete'
+      )`;
+    });
+    await ownerSql`update public.companion_v3_turns set
+      state = 'succeeded', admission_state = 'accepted', admitted_at = clock_timestamp(),
+      pi_invocation_id = 'pi-before-sleep', admission_cursor = 0, outcome = 'succeeded',
+      settled_at = clock_timestamp()
+      where command_id = ${firstMessage}::uuid`;
+    await ownerSql`update public.companion_v3_instances set
+      last_work_accepted_at = clock_timestamp() - interval '1 hour 1 minute'
+      where companion_id = ${lifecycleCompanion}::uuid`;
+    const [beforeRead] = await ownerSql<Array<{ acceptedAt: Date }>>`
+      select last_work_accepted_at as "acceptedAt" from public.companion_v3_instances
+      where companion_id = ${lifecycleCompanion}::uuid`;
+    await asApiActor(ids.org, ids.editor, async (sql) => {
+      await sql`select * from public.companion_v3_api_read_projection(
+        ${ids.org}::uuid, ${lifecycleCompanion}::uuid, '[]'::jsonb
+      )`;
+    });
+    const [afterRead] = await ownerSql<Array<{ acceptedAt: Date; state: string }>>`
+      select last_work_accepted_at as "acceptedAt", lifecycle_state::text as state
+      from public.companion_v3_instances where companion_id = ${lifecycleCompanion}::uuid`;
+    expect(afterRead).toEqual({ acceptedAt: beforeRead!.acceptedAt, state: "active" });
+
+    let providerState: "ready" | "archived" | "absent" = "ready";
+    let archiveCalls = 0;
+    let resumeCalls = 0;
+    let deleteCalls = 0;
+    let deletePolls = 0;
+    const provider = {
+      getStatus: vi.fn(async () => ({ state: providerState })),
+      stopExistingBox: vi.fn(async () => {
+        archiveCalls += 1;
+        providerState = "archived";
+      }),
+      resumeExistingBox: vi.fn(async () => {
+        resumeCalls += 1;
+        providerState = "ready";
+      }),
+      requestPermanentDeletion: vi.fn(async () => {
+        deleteCalls += 1;
+        providerState = "absent";
+        throw new Error("provider accepted DELETE but its response was lost");
+      }),
+      pollPermanentDeletion: vi.fn(async () => {
+        deletePolls += 1;
+        return { status: "completed" as const };
+      }),
+    };
+    const durable = createRuntimeV3PostgresLifecyclePersistence(runtimeSql);
+    let failAfter: "waiting_archived" | "waiting_ready" | "waiting_deleted" | null =
+      "waiting_archived";
+    const faulting = {
+      ...durable,
+      async checkpoint(
+        claim: Parameters<typeof durable.checkpoint>[0],
+        input: Parameters<typeof durable.checkpoint>[1],
+      ) {
+        const committed = await durable.checkpoint(claim, input);
+        if (committed && input.next === failAfter) {
+          failAfter = null;
+          throw new Error("fault after durable lifecycle checkpoint");
+        }
+        return committed;
+      },
+    };
+    const lifecycle = createRuntimeV3Lifecycle({ persistence: faulting, box: provider });
+
+    await lifecycle.converge({ executorId: "runtime-archive-crash" });
+    await lifecycle.converge({ executorId: "runtime-archive-takeover" });
+    const [archived] = await ownerSql<Array<{ boxId: string; state: string }>>`
+      select box_id as "boxId", lifecycle_state::text as state
+      from public.companion_v3_instances where companion_id = ${lifecycleCompanion}::uuid`;
+    expect(archived).toEqual({ boxId: "bx_23456789", state: "archived" });
+    expect(archiveCalls).toBe(1);
+
+    await asApi(async (sql) => {
+      await sql`select * from public.companion_v3_api_enqueue_warm_turn(
+        ${ids.org}::uuid, ${lifecycleCompanion}::uuid, ${wakeMessage}::uuid, 'wake the same box'
+      )`;
+    });
+    failAfter = "waiting_ready";
+    await lifecycle.converge({ executorId: "runtime-wake-crash" });
+    await lifecycle.converge({ executorId: "runtime-wake-takeover" });
+    expect(resumeCalls).toBe(1);
+
+    let stagedBoxId: string | null = null;
+    const stagePreparation = vi.fn(async (input: { claim: { boxId: string | null } }) => {
+      stagedBoxId = input.claim.boxId;
+      return {
+      diskLayoutVersion: 14,
+      appliedSettingsRevision: 1n,
+      appliedSkillsRevision: 1,
+      skillsDigest: "b".repeat(64),
+      materialExpiresAt: new Date(Date.now() + 4 * 60 * 60 * 1_000),
+      };
+    });
+    const startPiDaemon = vi.fn(async () => ({ state: "idle" as const, invocationId: "pi-after-wake" }));
+    const preparation = createRuntimeV3Preparation({
+      persistence: createRuntimeV3PostgresPreparationPersistence(runtimeSql),
+      box: {
+        createGenerationBox: vi.fn(),
+        applyGenerationBoxSettings: vi.fn(),
+        getStatus: vi.fn(async () => ({ state: "ready" as const })),
+      },
+      preparationStager: { stagePreparation },
+      pi: { startPiDaemon },
+    });
+    await preparation.converge({ executorId: "runtime-current-staging" });
+    expect(stagePreparation).toHaveBeenCalledOnce();
+    expect(startPiDaemon).toHaveBeenCalledOnce();
+    expect(stagedBoxId).toBe("bx_23456789");
+
+    const prompt = vi.fn(async () => ({
+      outcome: "accepted" as const, invocationId: "pi-after-wake", initialCursor: 0n,
+    }));
+    // The journal validator requires the claimed Turn id; use a deterministic reader after claim.
+    const wakeTurn = (await ownerSql<Array<{ id: string }>>`
+      select id from public.companion_v3_turns where command_id = ${wakeMessage}::uuid`)[0]!;
+    const warmPi = {
+      prompt,
+      read: vi.fn(async () => ({
+        events: [
+          {
+            sequence: 1n, invocationId: "pi-after-wake", attemptId: wakeTurn.id,
+            kind: "pi_event" as const,
+            event: {
+              type: "message_end",
+              message: { role: "assistant", content: [{ type: "text", text: "awake" }], stopReason: "stop" },
+            },
+          },
+          {
+            sequence: 2n, invocationId: "pi-after-wake", attemptId: wakeTurn.id,
+            kind: "pi_event" as const, event: { type: "agent_settled" },
+          },
+        ],
+        nextCursor: 2n, acknowledgedCursor: 0n, hasMore: false,
+      })),
+      acknowledge: vi.fn(async () => 2n),
+    };
+    const deliver = createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresWarmConvergence(runtimeSql, {
+        enabledLanes: new Set(["main"]),
+      }),
+      advance: createRuntimeV3WarmTurnAdvance({
+        persistence: createRuntimeV3PostgresWarmTurnPersistence(runtimeSql), pi: warmPi,
+      }),
+    });
+    await deliver.converge({ executorId: "runtime-wake-delivery" });
+    expect(prompt).toHaveBeenCalledWith(expect.objectContaining({ boxId: "bx_23456789" }));
+
+    await asApi(async (sql) => {
+      await sql`select * from public.companion_v3_api_desire_lifecycle(
+        ${ids.org}::uuid, ${lifecycleCompanion}::uuid, 'archive', ${stopRequest}::uuid
+      )`;
+    });
+    await lifecycle.converge({ executorId: "runtime-explicit-stop" });
+    await ownerSql`insert into public.companion_transcript_entries(
+      org_id, companion_id, event_id, ordinal, role, content
+    ) values (
+      ${ids.org}::uuid, ${lifecycleCompanion}::uuid, ${`msg:${backgroundMessage}`},
+      (select coalesce(max(entry.ordinal), -1) + 1
+       from public.companion_transcript_entries entry
+       where entry.companion_id = ${lifecycleCompanion}::uuid),
+      'user', 'background work is due'
+    )`;
+    await workerSql`select * from public.companion_v3_worker_admit_turn(
+      ${ids.org}::uuid, ${lifecycleCompanion}::uuid, ${backgroundMessage}::uuid,
+      ${`msg:${backgroundMessage}`}, ${ids.owner}
+    )`;
+    await lifecycle.converge({ executorId: "runtime-background-wake" });
+    await preparation.converge({ executorId: "runtime-background-staging" });
+    const [backgroundPrepared] = await ownerSql<Array<{
+      boxId: string;
+      state: string;
+      preparedAt: Date;
+      materialExpiresAt: Date;
+    }>>`
+      select box_id as "boxId", lifecycle_state::text as state,
+        prepared_at as "preparedAt", prepared_material_expires_at as "materialExpiresAt"
+      from public.companion_v3_instances where companion_id = ${lifecycleCompanion}::uuid`;
+    expect(backgroundPrepared).toEqual(expect.objectContaining({
+      boxId: "bx_23456789", state: "active", preparedAt: expect.any(Date),
+      materialExpiresAt: expect.any(Date),
+    }));
+    expect(backgroundPrepared!.materialExpiresAt.getTime() - Date.now())
+      .toBeGreaterThan(2 * 60 * 60 * 1_000 + 5 * 60 * 1_000);
+    expect(archiveCalls).toBe(2);
+    expect(resumeCalls).toBe(2);
+    expect(stagePreparation).toHaveBeenCalledTimes(2);
+    expect(startPiDaemon).toHaveBeenCalledTimes(2);
+
+    const backgroundTurn = (await ownerSql<Array<{ id: string }>>`
+      select id from public.companion_v3_turns where command_id = ${backgroundMessage}::uuid`)[0]!;
+    const backgroundPrompt = vi.fn(async () => ({
+      outcome: "accepted" as const, invocationId: "pi-after-wake", initialCursor: 0n,
+    }));
+    const backgroundPi = {
+      prompt: backgroundPrompt,
+      read: vi.fn(async () => ({
+        events: [
+          {
+            sequence: 1n, invocationId: "pi-after-wake", attemptId: backgroundTurn.id,
+            kind: "pi_event" as const,
+            event: {
+              type: "message_end",
+              message: { role: "assistant", content: [{ type: "text", text: "routine awake" }], stopReason: "stop" },
+            },
+          },
+          {
+            sequence: 2n, invocationId: "pi-after-wake", attemptId: backgroundTurn.id,
+            kind: "pi_event" as const, event: { type: "agent_settled" },
+          },
+        ],
+        nextCursor: 2n, acknowledgedCursor: 0n, hasMore: false,
+      })),
+      acknowledge: vi.fn(async () => 2n),
+    };
+    await createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresWarmConvergence(runtimeSql, {
+        enabledLanes: new Set(["background"]),
+      }),
+      advance: createRuntimeV3WarmTurnAdvance({
+        persistence: createRuntimeV3PostgresWarmTurnPersistence(runtimeSql), pi: backgroundPi,
+      }),
+    }).converge({ executorId: "runtime-background-delivery" });
+    expect(backgroundPrompt).toHaveBeenCalledWith(expect.objectContaining({
+      boxId: "bx_23456789",
+    }));
+
+    await expect(asApiActor(ids.org, ids.editor, async (sql) => {
+      await sql`select * from public.companion_v3_api_desire_lifecycle(
+        ${ids.org}::uuid, ${lifecycleCompanion}::uuid, 'delete', ${randomUUID()}::uuid
+      )`;
+    })).rejects.toMatchObject({ code: "42501" });
+    let deleteIntent: Array<{ revision: string }> = [];
+    await asApi(async (sql) => {
+      deleteIntent = await sql<Array<{ revision: string }>>`
+        select revision::text from public.companion_v3_api_desire_lifecycle(
+        ${ids.org}::uuid, ${lifecycleCompanion}::uuid, 'delete', ${deleteRequest}::uuid
+      )`;
+      const replayed = await sql<Array<{ revision: string }>>`
+        select revision::text from public.companion_v3_api_desire_lifecycle(
+          ${ids.org}::uuid, ${lifecycleCompanion}::uuid, 'delete', ${deleteRequest}::uuid
+        )`;
+      expect(replayed).toEqual(deleteIntent);
+    });
+    expect(deleteIntent).toHaveLength(1);
+    await lifecycle.converge({ executorId: "runtime-delete-crash" });
+    const [visibleBeforeAbsence] = await ownerSql<Array<{
+      entries: string;
+      state: string;
+      errorCode: string | null;
+    }>>`
+      select count(entry.*)::text as entries, instance.lifecycle_state::text as state,
+        instance.lifecycle_error_code as "errorCode"
+      from public.companion_v3_instances instance
+      left join public.companion_transcript_entries entry
+        on entry.org_id = instance.org_id and entry.companion_id = instance.companion_id
+      where instance.companion_id = ${lifecycleCompanion}::uuid
+      group by instance.lifecycle_state, instance.lifecycle_error_code`;
+    expect(visibleBeforeAbsence).toEqual(expect.objectContaining({
+      state: "delete_dispatched",
+      errorCode: "companion_delete_failed",
+    }));
+    expect(Number(visibleBeforeAbsence!.entries)).toBeGreaterThan(0);
+    await ownerSql`update public.companion_v3_instances
+      set lifecycle_available_at = clock_timestamp()
+      where companion_id = ${lifecycleCompanion}::uuid`;
+    await lifecycle.converge({ executorId: "runtime-delete-takeover" });
+    expect(deleteCalls).toBe(1);
+    expect(deletePolls).toBe(0);
+    await expect(ownerSql`select 1 from public.companions
+      where id = ${lifecycleCompanion}::uuid`).resolves.toEqual([]);
+    await expect(ownerSql`select 1 from public.companion_transcript_entries
+      where companion_id = ${lifecycleCompanion}::uuid`).resolves.toEqual([]);
   });
 
   it("fails closed before Pi when current provider authority is revoked", async () => {

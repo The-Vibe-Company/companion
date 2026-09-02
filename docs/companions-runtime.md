@@ -1,6 +1,6 @@
 # Companions Runtime v2
 
-> Runtime v3 warm-text note (THE-510/THE-512/THE-514): migration 0159 and the TypeScript progression module
+> Runtime v3 warm-text note (THE-510/THE-512/THE-514/THE-517): migration 0159 and the TypeScript progression module
 > add a separately named v3 persistence/interface seam beside the live system described here;
 > migration 0161 wires its first narrow tracer bullet. An attachment-free public text send for an
 > aggregate persists its message and Turn atomically even while cold. Migration 0163 makes creation
@@ -15,6 +15,13 @@
 > bundled and selected Skills, product plugins, `composedInstructions()`, model/provider material,
 > member-owned MCP accounts, and fresh Hub/MCP/control capabilities. Warm claim and authorization
 > reject changed, revoked, or near-expiry material and return the aggregate to full staging before Pi.
+> Migration 0166 adds the persistent-Box lifecycle: one hour after the last newly admitted member
+> or background Turn, runtime archives the stored Box id. The next admitted Turn resumes that same
+> id and completes current staging before Pi dispatch. Projection reads, status polling, Viewer
+> access, and composer activity do not touch Box or extend the window. Stop archives; automatic
+> healing remains Pi-only. Owner-authorized permanent deletion persists `delete_dispatched` before
+> its sole provider call. A lost response is reconciled through operation status or Box absence,
+> never a second `DELETE`; the aggregate is removed only after absence is confirmed.
 >
 > Runtime v3 purge note (THE-511): migration 0160 and the dedicated runtime maintenance command add
 > a dormant, one-shot path that can remove Runtime v2 state before a later cutover. This ticket

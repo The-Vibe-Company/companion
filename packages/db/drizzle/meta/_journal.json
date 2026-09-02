@@ -1163,6 +1163,13 @@
       "when": 1793326000000,
       "tag": "0165_companion_runtime_v3_complete_preparation",
       "breakpoints": true
+    },
+    {
+      "idx": 166,
+      "version": "7",
+      "when": 1793329600000,
+      "tag": "0166_companion_runtime_v3_persistent_box_lifecycle",
+      "breakpoints": true
     }
   ]
 }

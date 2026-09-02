@@ -74,6 +74,12 @@ lanes, verifies P50/P95 product clocks separately from queue/stall/takeover safe
 that deleting acceptance-to-ACK correlation makes the release report fail. The PostgreSQL seam
 proves warm admission writes every durable milestone and exposes only stable dimensions; the
 scheduler test blocks v3 convergence and requires the shared health snapshot to remain stale.
+The persistent-Box lifecycle case advances the accepted-work clock past one hour, injects failure
+after archive, resume, and provider-delete checkpoints, and changes executor ids for takeover. It
+must retain one Box id, one archive/resume call per accepted transition, exactly one provider DELETE,
+the provider operation id, and a visible thread until absence is confirmed. The same case proves a
+Viewer projection read does not move the accepted-work clock, explicit Stop archives, and both a
+member message and a due background Turn resume through complete current staging before Pi.
 
 The Runtime v2 purge suite creates a disposable database, replays the complete migration history,
 and uses deterministic trigger, object-store, named-snapshot, and Box adapters. It proves inventory

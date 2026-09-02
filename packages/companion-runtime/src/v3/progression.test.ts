@@ -7,11 +7,13 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  createRuntimeV3Lifecycle,
   createRuntimeV3Preparation,
   createRuntimeV3Progression,
   createRuntimeV3WarmTurnAdvance,
   type RuntimeV3Claim,
   type RuntimeV3ConvergencePersistence,
+  type RuntimeV3LifecycleClaim,
   type RuntimeV3ProgressionPersistence,
   type RuntimeV3PreparationClaim,
 } from "./progression";
@@ -62,6 +64,133 @@ function persistence(
 }
 
 describe("Runtime v3 progression interface", () => {
+  it("archives, resumes, and permanently deletes only the persistent Box", async () => {
+    const lifecycleBase = {
+      executorId: "runtime-lifecycle",
+      orgId: mainClaim.orgId,
+      companionId: mainClaim.companionId,
+      boxId: "bx_23456789",
+      providerOperationId: null,
+      fence: mainClaim.fence,
+    };
+    const claims: RuntimeV3LifecycleClaim[] = [
+      { ...lifecycleBase, checkpoint: "archive_pending" },
+      { ...lifecycleBase, checkpoint: "archive_requested" },
+      { ...lifecycleBase, checkpoint: "waiting_archived" },
+      { ...lifecycleBase, checkpoint: "wake_pending" },
+      { ...lifecycleBase, checkpoint: "wake_requested" },
+      { ...lifecycleBase, checkpoint: "waiting_ready" },
+      { ...lifecycleBase, checkpoint: "delete_pending" },
+      { ...lifecycleBase, checkpoint: "delete_requested" },
+      {
+        ...lifecycleBase,
+        checkpoint: "waiting_deleted",
+        providerOperationId: "delete-operation-1",
+      },
+    ];
+    const observed = [
+      { state: "ready" as const },
+      { state: "archived" as const },
+      { state: "archived" as const },
+      { state: "ready" as const },
+      { state: "ready" as const },
+    ];
+    const checkpoint = vi.fn().mockResolvedValue(true);
+    const finalizeDeletion = vi.fn().mockResolvedValue(true);
+    const stopExistingBox = vi.fn().mockResolvedValue(undefined);
+    const resumeExistingBox = vi.fn().mockResolvedValue(undefined);
+    const requestPermanentDeletion = vi.fn().mockResolvedValue({
+      outcome: "accepted" as const,
+      operationId: "delete-operation-1",
+    });
+    const pollPermanentDeletion = vi.fn().mockResolvedValue({ status: "completed" as const });
+    const lifecycle = createRuntimeV3Lifecycle({
+      persistence: {
+        claim: vi.fn(async () => claims.shift() ?? null),
+        checkpoint,
+        defer: vi.fn().mockResolvedValue(true),
+        finalizeDeletion,
+      },
+      box: {
+        getStatus: vi.fn(async () => observed.shift() ?? { state: "ready" as const }),
+        stopExistingBox,
+        resumeExistingBox,
+        requestPermanentDeletion,
+        pollPermanentDeletion,
+      },
+    });
+
+    await expect(lifecycle.converge({ executorId: "runtime-lifecycle" }))
+      .resolves.toEqual({ progressed: 9, exhausted: false });
+    expect(stopExistingBox).toHaveBeenCalledOnce();
+    expect(stopExistingBox).toHaveBeenCalledWith(expect.objectContaining({
+      boxId: "bx_23456789",
+    }));
+    expect(resumeExistingBox).toHaveBeenCalledOnce();
+    expect(resumeExistingBox).toHaveBeenCalledWith(expect.objectContaining({
+      boxId: "bx_23456789",
+    }));
+    expect(requestPermanentDeletion).toHaveBeenCalledOnce();
+    expect(pollPermanentDeletion).toHaveBeenCalledOnce();
+    expect(finalizeDeletion).toHaveBeenCalledOnce();
+    expect(checkpoint.mock.calls.map(([, value]) => value)).toEqual([
+      { next: "archive_requested" },
+      { next: "waiting_archived" },
+      { next: "archived" },
+      { next: "wake_requested" },
+      { next: "waiting_ready" },
+      { next: "active" },
+      { next: "delete_requested" },
+      { next: "delete_dispatched" },
+      { next: "waiting_deleted", providerOperationId: "delete-operation-1" },
+    ]);
+  });
+
+  it("never reissues an outcome-unknown permanent deletion after takeover", async () => {
+    const lifecycleBase = {
+      executorId: "runtime-delete",
+      orgId: mainClaim.orgId,
+      companionId: mainClaim.companionId,
+      boxId: "bx_23456789",
+      providerOperationId: null,
+      fence: mainClaim.fence,
+    };
+    const claims: RuntimeV3LifecycleClaim[] = [
+      { ...lifecycleBase, checkpoint: "delete_requested" },
+      { ...lifecycleBase, executorId: "runtime-takeover", checkpoint: "delete_dispatched" },
+    ];
+    const requestPermanentDeletion = vi.fn().mockRejectedValue(new Error("transport failed"));
+    const finalizeDeletion = vi.fn().mockResolvedValue(true);
+    const defer = vi.fn().mockResolvedValue(true);
+    const lifecycle = createRuntimeV3Lifecycle({
+      persistence: {
+        claim: vi.fn(async () => claims.shift() ?? null),
+        checkpoint: vi.fn().mockResolvedValue(true),
+        defer,
+        finalizeDeletion,
+      },
+      box: {
+        getStatus: vi.fn().mockResolvedValue({ state: "ready" as const }),
+        stopExistingBox: vi.fn(),
+        resumeExistingBox: vi.fn(),
+        requestPermanentDeletion,
+        pollPermanentDeletion: vi.fn(),
+      },
+    });
+
+    await lifecycle.converge({ executorId: "runtime-delete" });
+    await lifecycle.converge({ executorId: "runtime-takeover" });
+
+    expect(requestPermanentDeletion).toHaveBeenCalledOnce();
+    expect(finalizeDeletion).not.toHaveBeenCalled();
+    expect(defer).toHaveBeenLastCalledWith(
+      expect.objectContaining({ checkpoint: "delete_dispatched" }),
+      expect.objectContaining({
+        error: expect.objectContaining({ code: "companion_delete_outcome_unknown" }),
+      }),
+    );
+  });
+
   it("checkpoints canonical Box identity before readiness, staging, and Pi activation", async () => {
     const base = {
       orgId: mainClaim.orgId,
@@ -225,6 +354,7 @@ describe("Runtime v3 progression interface", () => {
       orgId: "2d6ca5e0-1696-4692-baa8-cf722771d01e",
       companionId: "52cafaca-b95f-4b4d-bd71-d083a7a07939",
       actorId: "member-1",
+      requestId: "6cfebf1f-6d2f-470a-aa89-d6deca17063e",
       intent: "archive",
     })).resolves.toEqual({ intent: "archive", revision: 2n });
   });

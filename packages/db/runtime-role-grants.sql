@@ -78,6 +78,7 @@ DECLARE
     'companion_v3_instances',
     'companion_v3_turns',
     'companion_v3_lane_leases',
+    'companion_v3_lifecycle_requests',
     'companion_decision_deliveries',
     'companion_runtime_leases',
     'companion_runtime_duplicate_cleanups',
@@ -971,6 +972,22 @@ BEGIN
         'public.companion_v3_admit_turn(uuid,uuid,uuid,text,text,public.companion_v3_lane)'::regprocedure,
         'public.companion_v3_public_turn(public.companion_v3_turns)'::regprocedure
       ];
+      IF pg_catalog.to_regprocedure(
+        'public.companion_v3_runtime_claim_lifecycle(text,integer,integer)'
+      ) IS NOT NULL THEN
+        companion_api_functions := companion_api_functions || ARRAY[
+          'public.companion_v3_api_desire_lifecycle(uuid,uuid,public.companion_v3_lifecycle_intent,uuid)'::regprocedure
+        ];
+        companion_runtime_functions := companion_runtime_functions || ARRAY[
+          'public.companion_v3_runtime_claim_lifecycle(text,integer,integer)'::regprocedure,
+          'public.companion_v3_runtime_checkpoint_lifecycle(uuid,uuid,uuid,bigint,bigint,public.companion_v3_lifecycle_state,public.companion_v3_lifecycle_state,text,integer)'::regprocedure,
+          'public.companion_v3_runtime_defer_lifecycle(uuid,uuid,uuid,bigint,bigint,integer,text,text,integer)'::regprocedure,
+          'public.companion_v3_runtime_finalize_delete(uuid,uuid,uuid,bigint,bigint,integer)'::regprocedure
+        ];
+        internal_runtime_functions := internal_runtime_functions || ARRAY[
+          'public.companion_v3_note_admitted_work()'::regprocedure
+        ];
+      END IF;
     END IF;
 
     -- A migration owner can carry arbitrary ALTER DEFAULT PRIVILEGES grants installed by an

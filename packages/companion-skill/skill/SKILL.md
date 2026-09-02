@@ -57,6 +57,10 @@ Never use a skill command to
 wake, retry, cancel, restart, stop, or delete a hosted Companion. Scheduled routines are the
 sanctioned wake-on-a-schedule path and webhook triggers are the sanctioned wake-on-an-event path;
 their mutations are gated by Owner/Editor approval through `companion-control`, never Agent Auth.
+After Runtime v3 cutover, the persistent Box archives after one hour without newly accepted member
+or background work. Reads, Viewer access, status polling, and composer activity do not wake it or
+extend that window; the next accepted occurrence resumes the same Box and completes current staging
+before Pi receives it. Stop uses this archive path, while permanent deletion remains Owner-only.
 The control plane never executes package scripts; Pi may consume the selected skill
 instructions inside its isolated Box runtime.
 

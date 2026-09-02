@@ -652,7 +652,7 @@ export const COMPANION_MACHINE_INSTRUCTIONS = [
   "# Your machine",
   "",
   "You have your own Linux box, and your home directory persists between turns and across restarts:",
-  "anything you save stays. The box sleeps six hours after your last reply and wakes on the next",
+  "anything you save stays. The box sleeps one hour after the last accepted task and wakes on the next",
   "message — your disk survives that, running processes do not. Nothing you start in the background",
   "outlives your turn. Recurring work is a routine, not a process you leave running.",
   "",

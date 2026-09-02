@@ -56,6 +56,10 @@ describe("Skills Hub runtime-role grants", () => {
       "companion_v3_runtime_defer_preparation(uuid,uuid,uuid,bigint,bigint,integer,text,text,integer)",
       "companion_v3_runtime_reauthorize_preparation(uuid,uuid,uuid,bigint,bigint,text,integer,integer)",
       "companion_v3_runtime_mint_preparation_credentials(uuid,uuid,uuid,bigint,bigint,text,integer,integer)",
+      "companion_v3_runtime_claim_lifecycle(text,integer,integer)",
+      "companion_v3_runtime_checkpoint_lifecycle(uuid,uuid,uuid,bigint,bigint,public.companion_v3_lifecycle_state,public.companion_v3_lifecycle_state,text,integer)",
+      "companion_v3_runtime_defer_lifecycle(uuid,uuid,uuid,bigint,bigint,integer,text,text,integer)",
+      "companion_v3_runtime_finalize_delete(uuid,uuid,uuid,bigint,bigint,integer)",
     ]) expect(sql).toContain(signature);
     expect(runtimeFunctions).not.toContain("companion_runtime_enable");
     expect(sql).toContain(

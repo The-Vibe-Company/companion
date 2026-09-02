@@ -97,6 +97,12 @@ export const companionV3TurnOutcomeEnum = pgEnum("companion_v3_turn_outcome", [
 export const companionV3LifecycleIntentEnum = pgEnum("companion_v3_lifecycle_intent", [
   "prepare", "archive", "recycle_pi", "delete",
 ]);
+export const companionV3LifecycleStateEnum = pgEnum("companion_v3_lifecycle_state", [
+  "active",
+  "archive_pending", "archive_requested", "waiting_archived", "archived",
+  "wake_pending", "wake_requested", "waiting_ready",
+  "delete_pending", "delete_requested", "delete_dispatched", "waiting_deleted",
+]);
 export const companionV3WakePathEnum = pgEnum("companion_v3_wake_path", [
   "warm", "creation", "archived_wake",
 ]);
@@ -1303,6 +1309,19 @@ export const companionV3Instances = pgTable(
     desiredLifecycle: companionV3LifecycleIntentEnum("desired_lifecycle").notNull().default("prepare"),
     desiredLifecycleRevision: bigint("desired_lifecycle_revision", { mode: "number" }).notNull().default(1),
     desiredLifecycleActorId: text("desired_lifecycle_actor_id"),
+    desiredLifecycleRequestId: uuid("desired_lifecycle_request_id"),
+    lifecycleState: companionV3LifecycleStateEnum("lifecycle_state").notNull().default("active"),
+    lastWorkAcceptedAt: timestamp("last_work_accepted_at", { withTimezone: true }).notNull().defaultNow(),
+    lifecycleAvailableAt: timestamp("lifecycle_available_at", { withTimezone: true }).notNull().defaultNow(),
+    lifecycleErrorCode: text("lifecycle_error_code"),
+    lifecycleErrorMessage: text("lifecycle_error_message"),
+    lifecycleClaimToken: uuid("lifecycle_claim_token"),
+    lifecycleClaimEpoch: bigint("lifecycle_claim_epoch", { mode: "number" }).notNull().default(0),
+    lifecycleGateEpoch: bigint("lifecycle_gate_epoch", { mode: "number" }),
+    lifecycleExecutorId: text("lifecycle_executor_id"),
+    lifecycleClaimedAt: timestamp("lifecycle_claimed_at", { withTimezone: true }),
+    lifecycleExpiresAt: timestamp("lifecycle_expires_at", { withTimezone: true }),
+    deleteProviderOperationId: text("delete_provider_operation_id"),
     boxIdempotencyKey: uuid("box_idempotency_key").notNull().defaultRandom(),
     preparationCheckpoint: text("preparation_checkpoint").notNull().default("pending"),
     preparationAvailableAt: timestamp("preparation_available_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1359,6 +1378,36 @@ export const companionV3Instances = pgTable(
     preparationCheck: check(
       "companion_v3_instances_preparation_check",
       sql`${t.preparationCheckpoint} in ('pending','box_created','box_ready','staged','prepared') and ${t.preparationAttemptCount} >= 0 and ${t.preparationClaimEpoch} >= 0 and (${t.boxId} is null or ${t.boxId} ~ '^bx_[23456789abcdefghjkmnpqrstuvwxyz]{8}$') and (${t.preparationErrorCode} is null) = (${t.preparationErrorMessage} is null) and (${t.preparationCheckpoint} = 'pending' or ${t.boxId} is not null) and ((${t.preparationCheckpoint} = 'prepared') = (${t.preparedAt} is not null))`,
+    ),
+    lifecycleIndex: index("companion_v3_instances_lifecycle_idx")
+      .on(t.lifecycleAvailableAt, t.lastWorkAcceptedAt, t.createdAt)
+      .where(sql`${t.lifecycleState} <> 'active' or ${t.desiredLifecycle} <> 'prepare' or ${t.boxId} is not null`),
+  }),
+);
+
+/** Replay-safe Owner/Editor lifecycle intent; provider progress remains on the aggregate. */
+export const companionV3LifecycleRequests = pgTable(
+  "companion_v3_lifecycle_requests",
+  {
+    orgId: uuid("org_id").notNull(),
+    companionId: uuid("companion_id").notNull(),
+    requestId: uuid("request_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    intent: companionV3LifecycleIntentEnum("intent").notNull(),
+    revision: bigint("revision", { mode: "number" }).notNull(),
+    createdAt: now(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.orgId, t.companionId, t.requestId] }),
+    instanceFk: foreignKey({
+      columns: [t.orgId, t.companionId],
+      foreignColumns: [companionV3Instances.orgId, companionV3Instances.companionId],
+      name: "companion_v3_lifecycle_requests_instance_fk",
+    }).onDelete("cascade"),
+    revisionCheck: check("companion_v3_lifecycle_requests_revision_check", sql`${t.revision} >= 1`),
+    actorCheck: check(
+      "companion_v3_lifecycle_requests_actor_check",
+      sql`char_length(${t.actorId}) between 1 and 200 and ${t.actorId} !~ E'[\n\r]'`,
     ),
   }),
 );

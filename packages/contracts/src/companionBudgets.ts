@@ -195,6 +195,8 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_v3_runtime_authorize_warm_turn: ["2 hours 5 minutes"],
   companion_v3_runtime_claim_preparation: ["2 hours 5 minutes"],
   companion_v3_runtime_checkpoint_preparation: ["2 hours 5 minutes"],
+  // Runtime v3 archives the persistent Box after one hour without newly admitted work.
+  companion_v3_runtime_claim_lifecycle: ["1 hour"],
   companion_v3_runtime_mint_preparation_credentials: ["6 hours"],
   // Settlement lease/backoff windows.
   companion_runtime_settle: ["30 seconds", "30 seconds", "15 seconds"],

@@ -4,6 +4,7 @@ import {
 import type {
   RuntimeV3ConvergencePersistence,
   RuntimeV3DurableOutcome,
+  RuntimeV3LifecyclePersistence,
   RuntimeV3PreparationPersistence,
   RuntimeV3Turn,
   RuntimeV3WarmTurnPersistence,
@@ -15,6 +16,7 @@ interface CancellableQuery<T> extends PromiseLike<T> {
 }
 
 const PREPARATION_LEASE_SECONDS = 90;
+const LIFECYCLE_LEASE_SECONDS = 30;
 
 async function abortable<T>(query: CancellableQuery<T>, signal?: AbortSignal): Promise<T> {
   signal?.throwIfAborted();
@@ -180,6 +182,84 @@ interface PreparationClaimRow {
   skillMaterial: unknown;
   mcpMaterial: unknown;
   configCatalog: unknown;
+}
+
+interface LifecycleClaimRow {
+  orgId: string;
+  companionId: string;
+  checkpoint: Parameters<RuntimeV3LifecyclePersistence["checkpoint"]>[0]["checkpoint"];
+  boxId: string | null;
+  providerOperationId: string | null;
+  claimToken: string;
+  claimEpoch: string;
+  gateEpoch: string;
+}
+
+/** Runtime-only lifecycle facts; the API and worker can persist intent but never receive Box data. */
+export function createRuntimeV3PostgresLifecyclePersistence(
+  sql: Sql,
+): RuntimeV3LifecyclePersistence {
+  return {
+    async claim({ executorId }) {
+      const rows = await sql<LifecycleClaimRow[]>`
+        select org_id as "orgId", companion_id as "companionId", checkpoint::text,
+          box_id as "boxId", provider_operation_id as "providerOperationId",
+          claim_token as "claimToken", claim_epoch::text as "claimEpoch",
+          gate_epoch::text as "gateEpoch"
+        from public.companion_v3_runtime_claim_lifecycle(
+          ${executorId}, ${LIFECYCLE_LEASE_SECONDS}, 5
+        )
+      `;
+      const row = rows[0];
+      return row ? {
+        executorId,
+        orgId: row.orgId,
+        companionId: row.companionId,
+        checkpoint: row.checkpoint,
+        boxId: row.boxId,
+        providerOperationId: row.providerOperationId,
+        fence: {
+          token: row.claimToken,
+          epoch: BigInt(row.claimEpoch),
+          gateEpoch: BigInt(row.gateEpoch),
+        },
+      } : null;
+    },
+    async checkpoint(claim, input) {
+      const rows = await sql<Array<{ checkpointed: boolean }>>`
+        select public.companion_v3_runtime_checkpoint_lifecycle(
+          ${claim.orgId}::uuid, ${claim.companionId}::uuid,
+          ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,
+          ${claim.checkpoint}::public.companion_v3_lifecycle_state,
+          ${input.next}::public.companion_v3_lifecycle_state,
+          ${input.providerOperationId ?? null}, 5
+        ) as checkpointed
+      `;
+      return rows[0]?.checkpointed === true;
+    },
+    async defer(claim, input) {
+      const rows = await sql<Array<{ deferred: boolean }>>`
+        select public.companion_v3_runtime_defer_lifecycle(
+          ${claim.orgId}::uuid, ${claim.companionId}::uuid,
+          ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint, ${input.delaySeconds},
+          ${input.error?.code ?? null}, ${input.error?.message ?? null}, 5
+        ) as deferred
+      `;
+      return rows[0]?.deferred === true;
+    },
+    async finalizeDeletion(claim) {
+      const rows = await sql<Array<{ finalized: boolean }>>`
+        select public.companion_v3_runtime_finalize_delete(
+          ${claim.orgId}::uuid, ${claim.companionId}::uuid,
+          ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint, 5
+        ) as finalized
+      `;
+      return rows[0]?.finalized === true;
+    },
+  };
 }
 
 /** Runtime-only preparation facts. Box identity crosses this seam only after a fenced checkpoint. */

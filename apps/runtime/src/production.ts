@@ -25,6 +25,7 @@ import {
 import {
   combineRuntimeV3Convergence,
   createRuntimeV3Convergence,
+  createRuntimeV3Lifecycle,
   createRuntimeV3Preparation,
   createRuntimeV3WarmTurnAdvance,
 } from "@companion/companion-runtime/v3/internal";
@@ -63,6 +64,7 @@ import {
 import { createSentryRuntimeProcessLog } from "./sentry";
 import {
   createRuntimeV3PostgresPreparationPersistence,
+  createRuntimeV3PostgresLifecyclePersistence,
   createRuntimeV3PostgresWarmConvergence,
   createRuntimeV3PostgresWarmTurnPersistence,
 } from "./runtimeV3ProgressionStore";
@@ -368,6 +370,10 @@ export async function buildProductionRuntimeService(
       }),
     });
     const runtimeV3 = combineRuntimeV3Convergence(
+      createRuntimeV3Lifecycle({
+        persistence: createRuntimeV3PostgresLifecyclePersistence(database.sql),
+        box,
+      }),
       createRuntimeV3Preparation({
         persistence: createRuntimeV3PostgresPreparationPersistence(database.sql),
         box,
