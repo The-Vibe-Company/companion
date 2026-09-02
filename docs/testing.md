@@ -53,6 +53,16 @@ slow, local-only final validation and is intentionally not part of CI.
 
 ## Runtime test layers
 
+The dormant Runtime v3 expand seam is proved at its public TypeScript progression interface and a
+supporting disposable real-PostgreSQL seam. The interface test must show that callers only admit,
+record desired lifecycle, and converge; main and background claims are obtained and advanced
+independently so a blocked main claim cannot serialize or starve background work. PostgreSQL tests
+prove idempotent command admission, per-lane FIFO, monotonic takeover epochs, stale-fence rejection,
+forced RLS, distinct API/worker/runtime function grants, protocol isolation from v2 executors, and
+the absence of a v3 attempt or derived Start-operation table. Until the warm-turn tracer bullet is
+implemented, the existing Runtime v2 topology suite remains the end-to-end behavior regression
+gate; tests must not activate v3 through a production composition root.
+
 Skill synchronization coverage distinguishes publication-only available revisions from required
 selection revisions. PostgreSQL tests prove wake and desktop accept `applied >= required` while a
 publication is pending. Simulator and fault-injection tests cover `stop Pi -> update Skills ->

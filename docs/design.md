@@ -208,6 +208,22 @@ persist an asynchronous control request and return immediately. Approval applies
 and may enqueue an ordinary FIFO continuation. Routine and trigger turns never receive this MCP.
 Directed peer grants allow bounded text delegations without introducing a Group or Room aggregate.
 
+### Dormant Runtime v3 progression seam
+
+Migration 0159 is the expand half of the Runtime v3 wide refactor. It adds separate
+`companion_v3_instances`, `companion_v3_turns`, and retained per-lane lease facts beside Runtime v2.
+A v3 Turn owns its command identity, lane, Pi-admission facts, activity cursor, and outcome; there
+is deliberately no v3 attempt table or derived Start operation. PostgreSQL owns idempotent
+admission, independent `main`/`background` FIFO, and monotonic fence epochs. TypeScript exposes one
+deep progression interface—admit, record desired lifecycle, and converge—and keeps claim and
+completion choreography in its internal adapter.
+
+This seam is dormant. No API, worker, or runtime production composition root calls it, the v2
+executor uses its unchanged protocol-7 functions, and protocol-3 claims still fail closed when the
+existing Companions runtime gate is disabled. The separate function names and required protocol
+argument prevent an old executor from claiming or mutating v3 rows. Later stack layers replace
+behavior behind this interface; they do not activate a second live runtime beside v2.
+
 ## Dedicated runtime execution
 
 `apps/runtime` sweeps every two seconds, claims with a 30-second lease, renews every ten seconds,

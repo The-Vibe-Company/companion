@@ -1114,6 +1114,13 @@
       "when": 1793300800000,
       "tag": "0158_companion_recovery_lane_interlock",
       "breakpoints": true
+    },
+    {
+      "idx": 159,
+      "version": "7",
+      "when": 1793304400000,
+      "tag": "0159_companion_runtime_v3_progression",
+      "breakpoints": true
     }
   ]
 }

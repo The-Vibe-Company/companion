@@ -83,6 +83,20 @@ export const companionRuntimeErrorActionEnum = pgEnum("companion_runtime_error_a
 export const companionRuntimeWorkKindEnum = pgEnum("companion_runtime_work_kind", [
   "operation", "decision", "attempt", "settings", "health",
 ]);
+export const companionV3LaneEnum = pgEnum("companion_v3_lane", ["main", "background"]);
+export const companionV3TurnStateEnum = pgEnum("companion_v3_turn_state", [
+  "queued", "admitted", "running", "needs_input",
+  "succeeded", "failed", "interrupted", "cancelled",
+]);
+export const companionV3AdmissionStateEnum = pgEnum("companion_v3_admission_state", [
+  "pending", "accepted", "ambiguous",
+]);
+export const companionV3TurnOutcomeEnum = pgEnum("companion_v3_turn_outcome", [
+  "succeeded", "failed", "interrupted", "cancelled",
+]);
+export const companionV3LifecycleIntentEnum = pgEnum("companion_v3_lifecycle_intent", [
+  "prepare", "archive", "recycle_pi", "delete",
+]);
 export const companionDecisionStatusEnum = pgEnum("companion_decision_status", [
   "pending", "allowed", "denied", "answered", "expired", "cancelled",
 ]);
@@ -1177,6 +1191,152 @@ export const companionTurns = pgTable(
     routineSnapshot: index("companion_turns_routine_snapshot_idx").on(t.orgId, t.companionId, t.routineSnapshotId, t.queueSequence, t.id).where(sql`${t.routineSnapshotId} is not null`),
     triggerOriginCheck: check("companion_turns_trigger_origin_check", sql`(${t.triggerId} is null or ${t.triggerName} is not null) and (${t.triggerName} is null or (char_length(${t.triggerName}) between 1 and 80 and ${t.triggerName} !~ E'[\\n\\r]')) and (${t.triggerName} is null or ${t.routineId} is null)`),
     triggerModeCheck: check("companion_turns_trigger_mode_check", sql`(${t.triggerName} is null and ${t.triggerMode} is null) or (${t.triggerName} is not null and ${t.triggerMode} in ('notify', 'relay'))`),
+  }),
+);
+
+/** Dormant Runtime v3 aggregate facts; no production composition root reads these yet. */
+export const companionV3Instances = pgTable(
+  "companion_v3_instances",
+  {
+    orgId: uuid("org_id").notNull(),
+    companionId: uuid("companion_id").notNull(),
+    desiredLifecycle: companionV3LifecycleIntentEnum("desired_lifecycle").notNull().default("prepare"),
+    desiredLifecycleRevision: bigint("desired_lifecycle_revision", { mode: "number" }).notNull().default(1),
+    desiredLifecycleActorId: text("desired_lifecycle_actor_id"),
+    nextMainSequence: bigint("next_main_sequence", { mode: "number" }).notNull().default(1),
+    nextBackgroundSequence: bigint("next_background_sequence", { mode: "number" }).notNull().default(1),
+    createdAt: now(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.orgId, t.companionId] }),
+    companionFk: foreignKey({
+      columns: [t.orgId, t.companionId],
+      foreignColumns: [companions.orgId, companions.id],
+      name: "companion_v3_instances_companion_fk",
+    }).onDelete("cascade"),
+    revisionCheck: check(
+      "companion_v3_instances_revision_check",
+      sql`${t.desiredLifecycleRevision} >= 1 and ${t.nextMainSequence} >= 1 and ${t.nextBackgroundSequence} >= 1`,
+    ),
+    actorCheck: check(
+      "companion_v3_instances_actor_check",
+      sql`${t.desiredLifecycleActorId} is null or (char_length(${t.desiredLifecycleActorId}) between 1 and 200 and ${t.desiredLifecycleActorId} !~ E'[\n\r]')`,
+    ),
+  }),
+);
+
+/** One Runtime v3 Turn owns command identity, admission facts, activity, outcome, and lane. */
+export const companionV3Turns = pgTable(
+  "companion_v3_turns",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    companionId: uuid("companion_id").notNull(),
+    commandId: uuid("command_id").notNull(),
+    clientMessageId: uuid("client_message_id").notNull(),
+    messageEventId: text("message_event_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    lane: companionV3LaneEnum("lane").notNull(),
+    queueSequence: bigint("queue_sequence", { mode: "number" }).notNull(),
+    state: companionV3TurnStateEnum("state").notNull().default("queued"),
+    admissionState: companionV3AdmissionStateEnum("admission_state").notNull().default("pending"),
+    admittedAt: timestamp("admitted_at", { withTimezone: true }),
+    piInvocationId: text("pi_invocation_id"),
+    admissionCursor: bigint("admission_cursor", { mode: "number" }),
+    activityCursor: bigint("activity_cursor", { mode: "number" }).notNull().default(0),
+    lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
+    outcome: companionV3TurnOutcomeEnum("outcome"),
+    outcomeCode: text("outcome_code"),
+    outcomeMessage: text("outcome_message"),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+    createdAt: now(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    uniqueOrgCompanionId: unique("companion_v3_turns_org_companion_id_uq")
+      .on(t.orgId, t.companionId, t.id),
+    commandUnique: unique("companion_v3_turns_command_uq").on(t.companionId, t.commandId),
+    clientMessageUnique: unique("companion_v3_turns_client_message_uq")
+      .on(t.companionId, t.clientMessageId),
+    laneSequenceUnique: unique("companion_v3_turns_lane_sequence_uq")
+      .on(t.companionId, t.lane, t.queueSequence),
+    instanceFk: foreignKey({
+      columns: [t.orgId, t.companionId],
+      foreignColumns: [companionV3Instances.orgId, companionV3Instances.companionId],
+      name: "companion_v3_turns_instance_fk",
+    }).onDelete("cascade"),
+    fifo: index("companion_v3_turns_fifo_idx")
+      .on(t.companionId, t.lane, t.queueSequence, t.id)
+      .where(sql`${t.state} = 'queued'`),
+    sequenceCheck: check("companion_v3_turns_sequence_check", sql`${t.queueSequence} >= 1`),
+    messageEventCheck: check(
+      "companion_v3_turns_message_event_check",
+      sql`${t.messageEventId} = 'msg:' || ${t.clientMessageId}::text`,
+    ),
+    actorCheck: check(
+      "companion_v3_turns_actor_check",
+      sql`char_length(${t.actorId}) between 1 and 200 and ${t.actorId} !~ E'[\n\r]'`,
+    ),
+    invocationCheck: check(
+      "companion_v3_turns_invocation_check",
+      sql`${t.piInvocationId} is null or (char_length(${t.piInvocationId}) between 1 and 200 and ${t.piInvocationId} !~ E'[\n\r]')`,
+    ),
+    cursorCheck: check(
+      "companion_v3_turns_cursor_check",
+      sql`${t.activityCursor} >= 0 and (${t.admissionCursor} is null or ${t.admissionCursor} >= 0)`,
+    ),
+    admissionCheck: check(
+      "companion_v3_turns_admission_check",
+      sql`(${t.admissionState} = 'pending' and ${t.admittedAt} is null and ${t.piInvocationId} is null and ${t.admissionCursor} is null) or (${t.admissionState} in ('accepted', 'ambiguous') and ${t.admittedAt} is not null and ${t.piInvocationId} is not null and ${t.admissionCursor} is not null)`,
+    ),
+    outcomeCheck: check(
+      "companion_v3_turns_outcome_check",
+      sql`(${t.outcome} is null and ${t.settledAt} is null and ${t.outcomeCode} is null and ${t.outcomeMessage} is null and ${t.state} in ('queued', 'admitted', 'running', 'needs_input')) or (${t.outcome} is not null and ${t.settledAt} is not null and ${t.state}::text = ${t.outcome}::text and ((${t.outcome} in ('failed', 'interrupted') and ${t.outcomeCode} ~ '^[a-z][a-z0-9_]{0,63}$' and char_length(${t.outcomeMessage}) between 1 and 500 and ${t.outcomeMessage} !~ E'[\n\r]') or (${t.outcome} in ('succeeded', 'cancelled') and ${t.outcomeCode} is null and ${t.outcomeMessage} is null)))`,
+    ),
+  }),
+);
+
+/** Retained per-lane rows keep v3 executor epochs monotonic across release and takeover. */
+export const companionV3LaneLeases = pgTable(
+  "companion_v3_lane_leases",
+  {
+    orgId: uuid("org_id").notNull(),
+    companionId: uuid("companion_id").notNull(),
+    lane: companionV3LaneEnum("lane").notNull(),
+    claimToken: uuid("claim_token"),
+    claimEpoch: bigint("claim_epoch", { mode: "number" }).notNull().default(0),
+    executorId: text("executor_id"),
+    turnId: uuid("turn_id"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    renewedAt: timestamp("renewed_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: now(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.orgId, t.companionId, t.lane] }),
+    instanceFk: foreignKey({
+      columns: [t.orgId, t.companionId],
+      foreignColumns: [companionV3Instances.orgId, companionV3Instances.companionId],
+      name: "companion_v3_lane_leases_instance_fk",
+    }).onDelete("cascade"),
+    turnFk: foreignKey({
+      columns: [t.orgId, t.companionId, t.turnId],
+      foreignColumns: [companionV3Turns.orgId, companionV3Turns.companionId, companionV3Turns.id],
+      name: "companion_v3_lane_leases_turn_fk",
+    }).onDelete("cascade"),
+    expiry: index("companion_v3_lane_leases_expiry_idx")
+      .on(t.expiresAt).where(sql`${t.claimToken} is not null`),
+    epochCheck: check("companion_v3_lane_leases_epoch_check", sql`${t.claimEpoch} >= 0`),
+    executorCheck: check(
+      "companion_v3_lane_leases_executor_check",
+      sql`${t.executorId} is null or (char_length(${t.executorId}) between 1 and 200 and ${t.executorId} !~ E'[\n\r]')`,
+    ),
+    claimCheck: check(
+      "companion_v3_lane_leases_claim_check",
+      sql`(${t.claimToken} is null and ${t.executorId} is null and ${t.turnId} is null and ${t.claimedAt} is null and ${t.renewedAt} is null and ${t.expiresAt} is null) or (${t.claimToken} is not null and ${t.claimEpoch} >= 1 and ${t.executorId} is not null and ${t.turnId} is not null and ${t.claimedAt} is not null and ${t.renewedAt} is not null and ${t.expiresAt} > ${t.renewedAt})`,
+    ),
   }),
 );
 

@@ -74,6 +74,9 @@ DECLARE
     'companion_turns',
     'companion_turn_attempts',
     'companion_operations',
+    'companion_v3_instances',
+    'companion_v3_turns',
+    'companion_v3_lane_leases',
     'companion_decision_deliveries',
     'companion_runtime_leases',
     'companion_runtime_duplicate_cleanups',
@@ -930,6 +933,28 @@ BEGIN
         'public.companion_revoke_inactive_control_token()'::regprocedure,
         'public.companion_enqueue_deferred_pi_restart()'::regprocedure,
         'public.companion_surface_delegation_result()'::regprocedure
+      ];
+    END IF;
+
+    -- 0159 is the dormant Runtime v3 expand seam. Each process gets only its own capability;
+    -- direct facts and the generic admission helper remain migration-owner-only. Protocol 3 is a
+    -- separate function surface, so a deployed v2 executor cannot claim these rows.
+    IF pg_catalog.to_regprocedure(
+      'public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer)'
+    ) IS NOT NULL THEN
+      companion_api_functions := companion_api_functions || ARRAY[
+        'public.companion_v3_api_admit_turn(uuid,uuid,uuid,text)'::regprocedure,
+        'public.companion_v3_api_desire_lifecycle(uuid,uuid,public.companion_v3_lifecycle_intent)'::regprocedure
+      ];
+      worker_functions := worker_functions || ARRAY[
+        'public.companion_v3_worker_admit_turn(uuid,uuid,uuid,text,text)'::regprocedure
+      ];
+      companion_runtime_functions := companion_runtime_functions || ARRAY[
+        'public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer)'::regprocedure,
+        'public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,text,text,text,integer)'::regprocedure
+      ];
+      internal_runtime_functions := internal_runtime_functions || ARRAY[
+        'public.companion_v3_admit_turn(uuid,uuid,uuid,text,text,public.companion_v3_lane)'::regprocedure
       ];
     END IF;
 

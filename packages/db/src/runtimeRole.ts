@@ -111,7 +111,9 @@ WITH runtime_role AS (
     ('public.companion_runtime_image_record_failure(text,bigint,text,text)'),
     ('public.companion_runtime_authorize_desktop(uuid,uuid,text)'),
     ('public.companion_runtime_consume_desktop_request(text,bigint,integer)'),
-    ('public.companion_runtime_record_attempt_outputs(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,jsonb,timestamp with time zone)')
+    ('public.companion_runtime_record_attempt_outputs(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,jsonb,timestamp with time zone)'),
+    ('public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer)'),
+    ('public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,text,text,text,integer)')
 ), required_functions AS (
   SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
   FROM required
@@ -142,7 +144,10 @@ WITH runtime_role AS (
       'companion_routine_context_substrates',
       'companion_mcp_broker_tokens',
       'companion_control_tokens',
-      'companion_message_attachments'
+      'companion_message_attachments',
+      'companion_v3_instances',
+      'companion_v3_turns',
+      'companion_v3_lane_leases'
     ]::text[])
 )
 SELECT
@@ -244,7 +249,7 @@ export async function verifyRuntimeDatabaseRole(
     || profile.ownsRelations !== false
     || profile.ownsFunctionsOrTypes !== false
   ) throw new RuntimeDatabaseRoleError("object_ownership");
-  if (profile.protectedRelationCount !== 15 || profile.requiredFunctionsReady !== true) {
+  if (profile.protectedRelationCount !== 18 || profile.requiredFunctionsReady !== true) {
     throw new RuntimeDatabaseRoleError("release_schema_incomplete");
   }
   if (profile.hasPublicRelationPrivileges !== false) {

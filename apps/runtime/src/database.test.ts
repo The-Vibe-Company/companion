@@ -20,7 +20,7 @@ const validProfile = {
   ownsDatabaseOrSchema: false,
   ownsRelations: false,
   ownsFunctionsOrTypes: false,
-  protectedRelationCount: 15,
+  protectedRelationCount: 18,
   hasPublicRelationPrivileges: false,
   requiredFunctionsReady: true,
   ownsRequiredFunctions: false,
@@ -73,6 +73,9 @@ describe("runtime database role verification", () => {
     expect(query).toContain("companion_runtime_renew_and_authorize");
     expect(query).toContain("companion_runtime_get_routine_material");
     expect(query).toContain("companion_routine_context_substrates");
+    expect(query).toContain("companion_v3_runtime_claim");
+    expect(query).toContain("companion_v3_runtime_complete");
+    expect(query).toContain("companion_v3_lane_leases");
   });
 
   it.each([

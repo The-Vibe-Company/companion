@@ -226,9 +226,11 @@ describe("Skills Hub runtime-role grants", () => {
     // bookkeeping to the API role; the JSON projection stays internal.
     const sentinel = sql.indexOf("'public.companion_api_list_triggers(uuid,uuid)'");
     expect(sentinel).toBeGreaterThan(-1);
+    const runtimeV3Sentinel = sql.indexOf("-- 0159 is the dormant Runtime v3 expand seam", sentinel);
+    expect(runtimeV3Sentinel).toBeGreaterThan(sentinel);
     const triggerBlock = sql.slice(
       sentinel,
-      sql.indexOf("-- A migration owner can carry arbitrary", sentinel),
+      runtimeV3Sentinel,
     );
     for (const signature of [
       "companion_api_list_triggers(uuid,uuid)",

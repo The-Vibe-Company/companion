@@ -1,5 +1,12 @@
 # Companions Runtime v2
 
+> Runtime v3 expand note (THE-510): migration 0159 and the TypeScript progression module add a
+> dormant, separately named v3 persistence/interface seam beside the live system described here.
+> It is not wired into the API, worker, or runtime composition roots and cannot change this v2
+> contract. V3 has one Turn carrying command/admission/activity/outcome facts, independent
+> `main`/`background` leases, no attempt table, and no derived Start operation. Its protocol-3
+> functions remain behind forced RLS, split role grants, and the existing runtime kill switch.
+
 This document is the normative, as-built Runtime v2 Box/Pi contract. Companion remains a Skills Hub
 at its core; the optional Companions surface adds one bounded hosted shape. The guarded cutover
 removed the legacy orchestration surface:
