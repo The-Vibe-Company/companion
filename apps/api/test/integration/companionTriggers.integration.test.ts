@@ -1000,7 +1000,7 @@ describe("Companion triggers over the real database", () => {
           return new Response(JSON.stringify([]), {
             status: 200,
             headers: {
-              link: '<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=2>; rel="next"',
+              link: "<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=2>; rel=next",
             },
           });
         }

@@ -383,8 +383,22 @@ function providerNextPageUrl(input: {
         `${input.provider} webhook reconciliation returned malformed pagination`,
       );
     }
-    const relations = [...part[2]!.matchAll(/(?:^|;)\s*rel="([^"]+)"/g)]
-      .flatMap((match) => match[1]!.split(/\s+/));
+    const relations: string[] = [];
+    for (const rawParameter of part[2]!.split(";").slice(1)) {
+      const parameter = /^\s*([^=\s]+)\s*=\s*(.*?)\s*$/.exec(rawParameter);
+      if (!parameter || parameter[1]!.toLowerCase() !== "rel") continue;
+      const rawValue = parameter[2]!;
+      const quoted = /^"([^"]+)"$/.exec(rawValue);
+      const token = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(rawValue) ? rawValue : null;
+      const value = quoted?.[1] ?? token;
+      if (!value) {
+        throw new CompanionTriggerRegistrationError(
+          "provider_rejected",
+          `${input.provider} webhook reconciliation returned malformed pagination relations`,
+        );
+      }
+      relations.push(...value.split(/\s+/));
+    }
     if (!relations.includes("next")) continue;
     if (next) {
       throw new CompanionTriggerRegistrationError(
