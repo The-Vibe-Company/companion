@@ -18,21 +18,6 @@ export interface RuntimeV3SchedulerOptions {
   sweepIntervalMs: number;
 }
 
-async function waitWithin(promise: Promise<void> | null, timeoutMs: number): Promise<void> {
-  if (!promise) return;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    await Promise.race([
-      promise,
-      new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
-
 /** Adapt the reusable kernel without inventing a second drain timer or health state. */
 export function createRuntimeSchedulerAdapter(
   scheduler: RuntimeKernelScheduler,
@@ -40,6 +25,7 @@ export function createRuntimeSchedulerAdapter(
 ): RuntimeApplicationScheduler {
   let v3Timer: ReturnType<typeof setTimeout> | null = null;
   let v3Sweep: Promise<void> | null = null;
+  let v3SweepAbort: AbortController | null = null;
   let v3Stopped = true;
   let v3ErrorAt: Date | null = null;
 
@@ -47,7 +33,11 @@ export function createRuntimeSchedulerAdapter(
     if (!runtimeV3 || v3Stopped) return;
     v3Timer = setTimeout(() => {
       v3Timer = null;
-      v3Sweep = runtimeV3.convergence.converge({ executorId: runtimeV3.executorId })
+      v3SweepAbort = new AbortController();
+      v3Sweep = runtimeV3.convergence.converge({
+        executorId: runtimeV3.executorId,
+        signal: v3SweepAbort.signal,
+      })
         .then((result) => {
           v3ErrorAt = null;
           if (result.exhausted) scheduleV3(0);
@@ -57,6 +47,7 @@ export function createRuntimeSchedulerAdapter(
         })
         .finally(() => {
           v3Sweep = null;
+          v3SweepAbort = null;
           if (!v3Timer) scheduleV3(runtimeV3.sweepIntervalMs);
         });
     }, delayMs);
@@ -74,14 +65,16 @@ export function createRuntimeSchedulerAdapter(
       v3Stopped = true;
       if (v3Timer) clearTimeout(v3Timer);
       v3Timer = null;
+      v3SweepAbort?.abort();
       scheduler.stopClaims();
     },
     shutdown: async ({ drainTimeoutMs }) => {
       v3Stopped = true;
       if (v3Timer) clearTimeout(v3Timer);
       v3Timer = null;
+      v3SweepAbort?.abort();
       await Promise.all([
-        waitWithin(v3Sweep, drainTimeoutMs),
+        v3Sweep,
         scheduler.shutdown({ drainTimeoutMs }),
       ]);
     },

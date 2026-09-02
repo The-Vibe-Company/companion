@@ -61,7 +61,15 @@ describe("runtime scheduler composition adapter", () => {
           sweepIntervalMs: 2_000,
         }),
       };
-      const converge = vi.fn(async () => await new Promise<never>(() => undefined));
+      let sweepSignal: AbortSignal | undefined;
+      const converge = vi.fn(async (input: { executorId: string; signal?: AbortSignal }) => {
+        sweepSignal = input.signal;
+        return await new Promise<{ progressed: number; exhausted: boolean }>((resolve) => {
+          input.signal?.addEventListener("abort", () => {
+            resolve({ progressed: 0, exhausted: false });
+          }, { once: true });
+        });
+      });
       const adapter = createRuntimeSchedulerAdapter(scheduler, {
         convergence: { converge },
         executorId: "runtime-v3-shutdown",
@@ -71,16 +79,15 @@ describe("runtime scheduler composition adapter", () => {
       adapter.start();
       await vi.advanceTimersByTimeAsync(0);
       expect(converge).toHaveBeenCalledOnce();
+      expect(sweepSignal).toBeInstanceOf(AbortSignal);
 
       let stopped = false;
       const shutdown = adapter.shutdown({ drainTimeoutMs: 25 }).then(() => { stopped = true; });
       await Promise.resolve();
       expect(scheduler.shutdown).toHaveBeenCalledWith({ drainTimeoutMs: 25 });
-      expect(stopped).toBe(false);
-
-      await vi.advanceTimersByTimeAsync(25);
       await shutdown;
       expect(stopped).toBe(true);
+      expect(sweepSignal?.aborted).toBe(true);
     } finally {
       vi.useRealTimers();
     }

@@ -89,10 +89,15 @@ export interface RuntimeV3LifecyclePersistence {
 }
 
 export interface RuntimeV3ConvergencePersistence {
-  claimLane(input: { executorId: string; lane: RuntimeV3Lane }): Promise<RuntimeV3Claim | null>;
+  claimLane(input: {
+    executorId: string;
+    lane: RuntimeV3Lane;
+    signal?: AbortSignal;
+  }): Promise<RuntimeV3Claim | null>;
   completeProgression(
     claim: RuntimeV3Claim,
     outcome: RuntimeV3DurableOutcome,
+    signal?: AbortSignal,
   ): Promise<boolean>;
 }
 
@@ -109,7 +114,7 @@ export interface RuntimeV3ProgressionPersistence {
 export interface RuntimeV3Progression {
   admit(input: RuntimeV3Admission): Promise<RuntimeV3Turn>;
   desire(input: RuntimeV3DesiredLifecycleChange): Promise<RuntimeV3LifecycleRevision>;
-  converge(input: { executorId: string }): Promise<{
+  converge(input: { executorId: string; signal?: AbortSignal }): Promise<{
     progressed: number;
     exhausted: boolean;
   }>;
@@ -119,12 +124,18 @@ export type RuntimeV3Convergence = Pick<RuntimeV3Progression, "converge">;
 
 export interface RuntimeV3ProgressionOptions {
   persistence: RuntimeV3ProgressionPersistence;
-  advance: (claim: RuntimeV3Claim) => Promise<RuntimeV3ProgressionOutcome>;
+  advance: (
+    claim: RuntimeV3Claim,
+    signal?: AbortSignal,
+  ) => Promise<RuntimeV3ProgressionOutcome>;
 }
 
 export interface RuntimeV3ConvergenceOptions {
   persistence: RuntimeV3ConvergencePersistence;
-  advance: (claim: RuntimeV3Claim) => Promise<RuntimeV3ProgressionOutcome>;
+  advance: (
+    claim: RuntimeV3Claim,
+    signal?: AbortSignal,
+  ) => Promise<RuntimeV3ProgressionOutcome>;
 }
 
 export interface RuntimeV3WarmTurnMaterial {
@@ -142,12 +153,20 @@ export interface RuntimeV3WarmTurnProjection {
 }
 
 export interface RuntimeV3WarmTurnPersistence {
-  authorize(claim: RuntimeV3Claim): Promise<RuntimeV3WarmTurnMaterial | null>;
+  authorize(
+    claim: RuntimeV3Claim,
+    signal?: AbortSignal,
+  ): Promise<RuntimeV3WarmTurnMaterial | null>;
   recordAdmission(
     claim: RuntimeV3Claim,
     input: { invocationId: string; cursor: bigint },
+    signal?: AbortSignal,
   ): Promise<boolean>;
-  project(claim: RuntimeV3Claim, projection: RuntimeV3WarmTurnProjection): Promise<boolean>;
+  project(
+    claim: RuntimeV3Claim,
+    projection: RuntimeV3WarmTurnProjection,
+    signal?: AbortSignal,
+  ): Promise<boolean>;
 }
 
 export interface RuntimeV3WarmPi {
@@ -157,6 +176,7 @@ export interface RuntimeV3WarmPi {
     turnId: string;
     expectedInvocationId: string;
     message: string;
+    signal?: AbortSignal;
   }): Promise<
     | { outcome: "accepted"; invocationId: string; initialCursor: bigint }
     | { outcome: "rejected"; code: string }
@@ -167,8 +187,13 @@ export interface RuntimeV3WarmPi {
     after: bigint;
     turnId: string;
     invocationId: string;
+    signal?: AbortSignal;
   }): Promise<ValidatedPiJournalRead>;
-  acknowledge(input: { boxId: string; through: bigint }): Promise<bigint>;
+  acknowledge(input: {
+    boxId: string;
+    through: bigint;
+    signal?: AbortSignal;
+  }): Promise<bigint>;
 }
 
 export interface RuntimeV3WarmTurnAdvanceOptions {
@@ -199,9 +224,13 @@ function durableOutcome(outcome: RuntimeV3ProgressionOutcome): RuntimeV3DurableO
 export function createRuntimeV3WarmTurnAdvance(
   options: RuntimeV3WarmTurnAdvanceOptions,
 ): RuntimeV3ConvergenceOptions["advance"] {
-  return async (claim) => {
+  return async (claim, signal) => {
     try {
-      const material = await options.persistence.authorize(claim);
+      signal?.throwIfAborted();
+      const material = signal
+        ? await options.persistence.authorize(claim, signal)
+        : await options.persistence.authorize(claim);
+      signal?.throwIfAborted();
       if (!material) {
         return {
           kind: "failed",
@@ -219,7 +248,9 @@ export function createRuntimeV3WarmTurnAdvance(
           turnId: claim.turn.id,
           expectedInvocationId: material.piInvocationId,
           message: material.content,
+          signal,
         });
+        signal?.throwIfAborted();
         if (admission.outcome === "rejected") {
           return {
             kind: "failed",
@@ -236,10 +267,14 @@ export function createRuntimeV3WarmTurnAdvance(
             action: "none",
           };
         }
-        const admitted = await options.persistence.recordAdmission(claim, {
+        const admissionRecord = {
           invocationId: admission.invocationId,
           cursor: admission.initialCursor,
-        });
+        };
+        const admitted = signal
+          ? await options.persistence.recordAdmission(claim, admissionRecord, signal)
+          : await options.persistence.recordAdmission(claim, admissionRecord);
+        signal?.throwIfAborted();
         if (!admitted) {
           return {
             kind: "interrupted",
@@ -266,7 +301,9 @@ export function createRuntimeV3WarmTurnAdvance(
           after: cursor,
           turnId: claim.turn.id,
           invocationId,
+          signal,
         });
+        signal?.throwIfAborted();
         if (claim.turn.state === "needs_input" && page.events.length === 0 && !page.hasMore) {
           return { kind: "release" };
         }
@@ -287,12 +324,16 @@ export function createRuntimeV3WarmTurnAdvance(
             action: "none",
           };
         }
-        const projected = await options.persistence.project(claim, {
+        const projection = {
           throughCursor: classified.throughCursor,
           assistant,
           needsInput: classified.needsInput,
           settled: classified.settled,
-        });
+        };
+        const projected = signal
+          ? await options.persistence.project(claim, projection, signal)
+          : await options.persistence.project(claim, projection);
+        signal?.throwIfAborted();
         if (!projected) {
           return {
             kind: "interrupted",
@@ -304,7 +345,9 @@ export function createRuntimeV3WarmTurnAdvance(
         await options.pi.acknowledge({
           boxId: material.boxId,
           through: classified.throughCursor,
+          signal,
         });
+        signal?.throwIfAborted();
         cursor = classified.throughCursor;
         if (classified.processExit) {
           return {
@@ -327,6 +370,7 @@ export function createRuntimeV3WarmTurnAdvance(
         }
         if (!page.hasMore && page.events.length === 0) {
           await (options.wait ?? defaultWarmPollWait)();
+          signal?.throwIfAborted();
         }
       }
       return {
@@ -373,14 +417,22 @@ export function createRuntimeV3Convergence(
   options: RuntimeV3ConvergenceOptions,
 ): RuntimeV3Convergence {
   return {
-    converge: async ({ executorId }) => {
+    converge: async ({ executorId, signal }) => {
       const lanes = await Promise.all(RUNTIME_V3_LANES.map(async (lane) => {
         let progressed = 0;
         while (progressed < LANE_CONVERGENCE_LIMIT) {
-          const claim = await options.persistence.claimLane({ executorId, lane });
+          if (signal?.aborted) return { progressed, exhausted: false };
+          const claim = await options.persistence.claimLane({ executorId, lane, signal });
+          if (signal?.aborted) return { progressed, exhausted: false };
           if (!claim) return { progressed, exhausted: false };
-          const outcome = durableOutcome(await options.advance(claim));
-          const completed = await options.persistence.completeProgression(claim, outcome);
+          const advanced = signal
+            ? await options.advance(claim, signal)
+            : await options.advance(claim);
+          const outcome = durableOutcome(advanced);
+          if (signal?.aborted) return { progressed, exhausted: false };
+          const completed = signal
+            ? await options.persistence.completeProgression(claim, outcome, signal)
+            : await options.persistence.completeProgression(claim, outcome);
           if (!completed) return { progressed, exhausted: false };
           progressed += 1;
           if (outcome.kind === "release") return { progressed, exhausted: false };
