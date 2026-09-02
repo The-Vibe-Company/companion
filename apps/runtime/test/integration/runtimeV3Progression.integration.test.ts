@@ -20,6 +20,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import {
   createRuntimeV3PostgresConvergence,
+  createRuntimeV3PostgresPreparationPersistence,
   createRuntimeV3PostgresWarmConvergence,
   createRuntimeV3PostgresWarmTurnPersistence,
 } from "../../src/runtimeV3ProgressionStore";
@@ -324,6 +325,38 @@ describe("Runtime v3 progression facts", () => {
     } finally {
       await ownerSql`delete from public.companion_images where digest = ${digest}`;
     }
+  });
+
+  it("keeps a near-60-second preparation fenced through its checkpoint", async () => {
+    const command = randomUUID();
+    await admitMain(command);
+    const persistence = createRuntimeV3PostgresPreparationPersistence(runtimeSql);
+    const claim = await persistence.claim({ executorId: "runtime-long-preparation" });
+    expect(claim).toMatchObject({ companionId: ids.companion, checkpoint: "pending" });
+    if (!claim) throw new Error("preparation claim was not created");
+
+    const [lease] = await ownerSql<Array<{ seconds: number }>>`
+      update public.companion_v3_instances
+      set preparation_claimed_at = clock_timestamp() - interval '59 seconds',
+        preparation_expires_at = clock_timestamp() + interval '31 seconds'
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid
+        and preparation_claim_token = ${claim.fence.token}::uuid
+      returning extract(epoch from (preparation_expires_at - preparation_claimed_at))::integer
+        as seconds
+    `;
+    expect(lease?.seconds).toBe(90);
+
+    await expect(persistence.claim({ executorId: "runtime-concurrent-preparation" }))
+      .resolves.toBeNull();
+    await expect(persistence.checkpoint(claim, {
+      next: "box_created",
+      boxId: "bx_23456789",
+    })).resolves.toBe(true);
+    const [checkpointed] = await ownerSql<Array<{ checkpoint: string }>>`
+      select preparation_checkpoint as checkpoint from public.companion_v3_instances
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid
+    `;
+    expect(checkpointed?.checkpoint).toBe("box_created");
   });
 
   afterAll(async () => {

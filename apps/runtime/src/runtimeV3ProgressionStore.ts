@@ -12,6 +12,8 @@ interface CancellableQuery<T> extends PromiseLike<T> {
   cancel(): void;
 }
 
+const PREPARATION_LEASE_SECONDS = 90;
+
 async function abortable<T>(query: CancellableQuery<T>, signal?: AbortSignal): Promise<T> {
   signal?.throwIfAborted();
   const cancel = (): void => query.cancel();
@@ -180,7 +182,9 @@ export function createRuntimeV3PostgresPreparationPersistence(
           box_id as "boxId", claim_token as "claimToken", claim_epoch::text as "claimEpoch",
           gate_epoch::text as "gateEpoch", model_id as "modelId", persona,
           provider_material as "providerMaterial", created_at as "createdAt"
-        from public.companion_v3_runtime_claim_preparation(${executorId}, 30, 3)
+        from public.companion_v3_runtime_claim_preparation(
+          ${executorId}, ${PREPARATION_LEASE_SECONDS}, 3
+        )
       `;
       const row = rows[0];
       return row ? {
