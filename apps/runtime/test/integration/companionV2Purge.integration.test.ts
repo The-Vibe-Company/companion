@@ -555,6 +555,50 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       set enabled = false, enabled_at = null, disabled_at = statement_timestamp()
       where id = 'runtime-v2'
     `;
+    let credentialLoads = 0;
+    for (const env of [
+      { COMPANION_COMPANIONS_ENABLED: "false" },
+      {
+        COMPANION_COMPANIONS_ENABLED: "false",
+        COMPANION_WEB_URL: "https://companion.example/not-an-origin",
+      },
+    ]) {
+      await expect(executeConfirmedCompanionV2Purge({
+        client: database,
+        boxClient,
+        objectStore: objects,
+        initialInventory: firstInventory,
+        env,
+        loadMasterKey: () => {
+          credentialLoads += 1;
+          return Buffer.alloc(32);
+        },
+      })).rejects.toThrow("COMPANION_WEB_URL must be the exact public HTTP(S) origin");
+      const [guardedLedger] = await database<Array<{ runs: string; targets: string }>>`
+        select
+          (select count(*)::text from public.companion_v2_purge_runs) as runs,
+          (select count(*)::text from public.companion_v2_purge_targets) as targets
+      `;
+      expect(guardedLedger).toEqual({ runs: "0", targets: "0" });
+    }
+    expect(credentialLoads).toBe(0);
+    expect({
+      boxDeletes: boxes.deletionRequests,
+      snapshotDeletes: boxes.snapshotDeletes,
+      objectDeletes: objects.removals,
+      triggerAttempts,
+      triggerInspections,
+    }).toEqual({
+      boxDeletes: 0,
+      snapshotDeletes: 0,
+      objectDeletes: 0,
+      triggerAttempts: 0,
+      triggerInspections: [],
+    });
+    const destructiveEnv = {
+      COMPANION_COMPANIONS_ENABLED: "false",
+      COMPANION_WEB_URL: "https://companion.example",
+    };
     const [disabledGate] = await database<Array<{ gateEpoch: string }>>`
       select gate_epoch::text as "gateEpoch"
       from public.companion_runtime_control where id = 'runtime-v2'
@@ -613,7 +657,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectStore: objects,
       triggerRemover: triggers,
       initialInventory: firstInventory,
-      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      env: destructiveEnv,
       beforeExternalEffect: async (target) => {
         if (target.key === "bx_56789abc") throw new Error("crash before Box DELETE");
       },
@@ -639,7 +683,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectStore: objects,
       triggerRemover: triggers,
       initialInventory: beforeAcceptedInventory,
-      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      env: destructiveEnv,
       afterExternalEffect: async (target) => {
         if (target.key === "bx_56789abc") {
           throw new Error("crash after accepted Box deletion before operation checkpoint");
@@ -666,7 +710,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectStore: objects,
       triggerRemover: triggers,
       initialInventory: beforeOperationCheckpointCrash,
-      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      env: destructiveEnv,
       afterBoxOperationCheckpoint: async (target) => {
         if (target.key === "bx_6789abcd") {
           throw new Error("crash after durable Box operation checkpoint");
@@ -695,7 +739,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectStore: objects,
       triggerRemover: triggers,
       initialInventory: beforeObjectCrashInventory,
-      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      env: destructiveEnv,
       afterExternalEffect: async (target) => {
         if (target.kind === "object") throw new Error("crash after accepted object deletion");
       },
@@ -711,7 +755,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectStore: objects,
       triggerRemover: triggers,
       initialInventory: beforeSnapshotCrashInventory,
-      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      env: destructiveEnv,
       afterExternalEffect: async (target) => {
         if (target.kind === "snapshot") throw new Error("crash after accepted snapshot deletion");
       },
@@ -728,7 +772,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectStore: objects,
       triggerRemover: triggers,
       initialInventory: beforeTriggerDeleteInventory,
-      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      env: destructiveEnv,
       beforeExternalEffect: async (target) => {
         if (target.kind === "trigger") throw new Error("crash after trigger discovery before DELETE");
       },
@@ -744,7 +788,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectStore: objects,
       triggerRemover: triggers,
       initialInventory: beforeTriggerInventory,
-      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      env: destructiveEnv,
       afterExternalEffect: async (target) => {
         if (target.kind === "trigger") throw new Error("crash after accepted trigger deletion");
       },
@@ -788,7 +832,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectStore: objects,
       triggerRemover: triggers,
       initialInventory: contradictedInventory,
-      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      env: destructiveEnv,
     })).rejects.toThrow(
       "terminal Runtime v2 purge target remains visible (object:companion-attachments/orphan/output.png)",
     );
@@ -808,7 +852,7 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
       objectStore: objects,
       triggerRemover: triggers,
       initialInventory: retryInventory,
-      env: { COMPANION_COMPANIONS_ENABLED: "false" },
+      env: destructiveEnv,
     });
     expect(result).toMatchObject({ already_complete: false, companions: 1, remaining_companion_rows: 0 });
     expect({

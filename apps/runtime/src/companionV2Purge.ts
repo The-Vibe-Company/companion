@@ -722,7 +722,9 @@ async function removeCompanionV2Target(input: {
   client: CompanionV2PurgeSql;
   boxClient: CompanionV2BoxPurgeClient;
   triggerOwners: CompanionV2DatabaseInventory["triggerOwners"];
+  webhookBaseUrl: string | null;
   env: NodeJS.ProcessEnv;
+  loadMasterKey: typeof loadSecretsMasterKey;
   objectStore: CompanionV2ObjectStore;
   triggerRemover?: CompanionV2TriggerRemover;
   afterBoxRequestAccepted?(target: CompanionV2PurgeTarget): Promise<void>;
@@ -746,6 +748,10 @@ async function removeCompanionV2Target(input: {
   const owner = input.triggerOwners.find((item) => item.triggerId === input.target.key);
   if (!owner) return "absent";
   if (input.triggerRemover) return input.triggerRemover.remove(owner);
+  if (!input.webhookBaseUrl) {
+    throw new Error("COMPANION_WEB_URL is required to reconcile Runtime v2 trigger callbacks");
+  }
+  const webhookBaseUrl = input.webhookBaseUrl;
   const database = createDatabase(input.client);
   return withTenantContextOn(
     database,
@@ -754,8 +760,8 @@ async function removeCompanionV2Target(input: {
       orgId: owner.orgId,
       companionId: owner.companionId,
       triggerId: owner.triggerId,
-      webhookBaseUrl: input.env.COMPANION_WEB_URL ?? "http://127.0.0.1:3000",
-      masterKey: loadSecretsMasterKey(input.env.COMPANION_SECRETS_MASTER_KEY),
+      webhookBaseUrl,
+      masterKey: input.loadMasterKey(input.env.COMPANION_SECRETS_MASTER_KEY),
       database: tenantDatabase,
       preserveRegistration: true,
     }),
@@ -766,9 +772,15 @@ async function inspectCompanionV2Trigger(input: {
   owner: CompanionV2DatabaseInventory["triggerOwners"][number];
   client: CompanionV2PurgeSql;
   env: NodeJS.ProcessEnv;
+  webhookBaseUrl: string | null;
+  loadMasterKey: typeof loadSecretsMasterKey;
   triggerRemover?: CompanionV2TriggerRemover;
 }): Promise<"present" | "absent"> {
   if (input.triggerRemover) return input.triggerRemover.inspect(input.owner);
+  if (!input.webhookBaseUrl) {
+    throw new Error("COMPANION_WEB_URL is required to reconcile Runtime v2 trigger callbacks");
+  }
+  const webhookBaseUrl = input.webhookBaseUrl;
   const database = createDatabase(input.client);
   return withTenantContextOn(
     database,
@@ -777,8 +789,8 @@ async function inspectCompanionV2Trigger(input: {
       orgId: input.owner.orgId,
       companionId: input.owner.companionId,
       triggerId: input.owner.triggerId,
-      webhookBaseUrl: input.env.COMPANION_WEB_URL ?? "http://127.0.0.1:3000",
-      masterKey: loadSecretsMasterKey(input.env.COMPANION_SECRETS_MASTER_KEY),
+      webhookBaseUrl,
+      masterKey: input.loadMasterKey(input.env.COMPANION_SECRETS_MASTER_KEY),
       database: tenantDatabase,
     }),
   );
@@ -805,6 +817,40 @@ export function printCompanionV2PurgeReport(input: {
   log("Preserved data is fingerprinted without plaintext: organizations, users, memberships, Skills, Skill secrets, Skill Databases, billing, audit, encrypted provider connections, and MCP accounts.");
 }
 
+function requireCompanionV2TriggerCallbackBase(
+  env: NodeJS.ProcessEnv,
+  triggerOwners: CompanionV2DatabaseInventory["triggerOwners"],
+): string | null {
+  if (triggerOwners.length === 0) return null;
+  const configured = env.COMPANION_WEB_URL;
+  if (!configured || configured !== configured.trim()) {
+    throw new Error(
+      "COMPANION_WEB_URL must be the exact public HTTP(S) origin before Runtime v2 trigger purge",
+    );
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(configured);
+  } catch {
+    throw new Error(
+      "COMPANION_WEB_URL must be the exact public HTTP(S) origin before Runtime v2 trigger purge",
+    );
+  }
+  if (
+    !["http:", "https:"].includes(parsed.protocol)
+    || parsed.username
+    || parsed.password
+    || parsed.pathname !== "/"
+    || parsed.search
+    || parsed.hash
+  ) {
+    throw new Error(
+      "COMPANION_WEB_URL must be the exact public HTTP(S) origin before Runtime v2 trigger purge",
+    );
+  }
+  return parsed.origin;
+}
+
 export async function executeConfirmedCompanionV2Purge(input: {
   client: CompanionV2PurgeSql;
   boxClient: CompanionV2BoxPurgeClient;
@@ -812,6 +858,7 @@ export async function executeConfirmedCompanionV2Purge(input: {
   env?: NodeJS.ProcessEnv;
   objectStore?: CompanionV2ObjectStore;
   triggerRemover?: CompanionV2TriggerRemover;
+  loadMasterKey?: typeof loadSecretsMasterKey;
   beforeExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
   afterExternalEffect?(target: CompanionV2PurgeTarget): Promise<void>;
   afterBoxOperationCheckpoint?(target: CompanionV2PurgeTarget): Promise<void>;
@@ -824,6 +871,15 @@ export async function executeConfirmedCompanionV2Purge(input: {
     select phase from public.companion_v2_purge_runs where id = ${COMPANION_V2_PURGE_RUN_ID}
   `;
   if (existingRun?.phase === "database_complete") return { already_complete: true };
+
+  // Callback identity is destructive evidence: validate its exact public origin only after the
+  // feature flag, migration lock, and lease guards, but before the ledger, master key, provider
+  // credentials, or any external effect. Report and dry-run never cross this boundary.
+  const webhookBaseUrl = requireCompanionV2TriggerCallbackBase(
+    env,
+    input.initialInventory.triggerOwners,
+  );
+  const masterKeyLoader = input.loadMasterKey ?? loadSecretsMasterKey;
 
   await seedCompanionV2PurgeLedger(input.client, input.initialInventory);
   const targets = await loadCompanionV2PurgeTargets(input.client);
@@ -841,6 +897,8 @@ export async function executeConfirmedCompanionV2Purge(input: {
         owner,
         client: input.client,
         env,
+        webhookBaseUrl,
+        loadMasterKey: masterKeyLoader,
       };
       if (input.triggerRemover) inspection.triggerRemover = input.triggerRemover;
       return (await inspectCompanionV2Trigger(inspection)) === "present";
@@ -869,7 +927,9 @@ export async function executeConfirmedCompanionV2Purge(input: {
         client: input.client,
         boxClient: input.boxClient,
         triggerOwners: input.initialInventory.triggerOwners,
+        webhookBaseUrl,
         env,
+        loadMasterKey: masterKeyLoader,
         objectStore,
       };
       if (input.triggerRemover) removal.triggerRemover = input.triggerRemover;

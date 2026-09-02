@@ -1448,8 +1448,11 @@ Automatic trigger registrations whose create may have committed before `remote_h
 remain purge targets whenever their provider account is still owned. Report and dry-run inventory
 their provider, account, and non-secret locator without selecting or serializing the callback
 credential, decrypting provider credentials, or calling the provider. Only after the destructive
-feature-flag, lock, and lease guards pass does the runtime load the master key and reconstruct the
-exact callback from the authorized trigger row. Destructive inspection and removal each
+feature-flag, lock, and lease guards pass does the runtime require `COMPANION_WEB_URL` to be the
+exact public HTTP(S) origin used at registration. Missing, credential-bearing, path-bearing, or
+otherwise malformed configuration fails before the ledger, master key, provider credentials, or
+external effects. The runtime then loads the master key and reconstructs the exact callback from
+the authorized trigger row. Destructive inspection and removal each
 re-enumerate the authenticated provider list to resolve that exact callback before DELETE; a crash
 before or ambiguously after DELETE therefore repeats observation, not the effect. Finalization
 repeats the callback lookup and requires fresh authoritative absence.
