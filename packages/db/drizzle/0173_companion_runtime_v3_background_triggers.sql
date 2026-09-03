@@ -192,7 +192,7 @@ REVOKE ALL ON FUNCTION public.companion_v3_runtime_claim_background_internal_v7(
   text,public.companion_v3_lane,integer,integer) FROM PUBLIC;
 --> statement-breakpoint
 
--- Protocol 7 remains fail-closed during a mixed rollout. It cannot claim a trigger occurrence.
+-- Protocol 7 remains routine-only during a mixed rollout. It cannot claim a trigger occurrence.
 CREATE OR REPLACE FUNCTION public.companion_v3_runtime_claim_routine_v7(
   p_executor_id text,p_lane public.companion_v3_lane,p_lease_seconds integer,p_protocol integer
 ) RETURNS TABLE(org_id uuid,companion_id uuid,turn_id uuid,command_id uuid,
@@ -201,12 +201,95 @@ CREATE OR REPLACE FUNCTION public.companion_v3_runtime_claim_routine_v7(
   inactivity_deadline_at timestamptz,absolute_deadline_at timestamptz,
   cleanup_box_id text,cleanup_invocation_id text)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET row_security=on AS $$
+DECLARE v_now timestamptz:=clock_timestamp();v_gate bigint;v_candidate record;
+  v_invalid_org uuid;v_invalid_companion uuid;
 BEGIN
   IF p_protocol<>7 THEN RAISE EXCEPTION 'Runtime v3 protocol 7 is required' USING ERRCODE='42501';END IF;
-  -- Protocol 8 owns all background claims after this migration. A protocol-7 executor
-  -- remains fail-closed instead of consuming an occurrence it cannot classify safely.
-  RETURN;
+  IF p_lane<>'background' THEN RETURN;END IF;
+  IF p_executor_id IS NULL OR char_length(p_executor_id) NOT BETWEEN 1 AND 200
+    OR p_executor_id~E'[\n\r]' OR p_lease_seconds NOT BETWEEN 1 AND 300 THEN
+    RAISE EXCEPTION 'invalid Runtime v3 background claim' USING ERRCODE='22023';END IF;
+  SELECT control.gate_epoch INTO v_gate FROM public.companion_runtime_control control
+    WHERE control.id='runtime-v2' AND control.enabled FOR SHARE;
+  IF NOT FOUND THEN RETURN;END IF;
+
+  SELECT turn_row.*,instance.box_id AS cleanup_box_id,
+    run.cleanup_invocation_id AS cleanup_invocation_id INTO v_candidate
+  FROM public.companion_v3_lane_leases lease
+  JOIN public.companion_v3_turns turn_row ON turn_row.org_id=lease.org_id
+    AND turn_row.companion_id=lease.companion_id AND turn_row.lane='background'
+  JOIN public.companion_v3_routine_runs run ON run.org_id=turn_row.org_id
+    AND run.companion_id=turn_row.companion_id AND run.turn_id=turn_row.id
+    AND run.trigger_snapshot_id IS NULL AND run.cleanup_checkpoint='terminate'
+  JOIN public.companion_v3_instances instance ON instance.org_id=turn_row.org_id
+    AND instance.companion_id=turn_row.companion_id AND instance.box_id IS NOT NULL
+  WHERE lease.lane='background' AND (lease.claim_token IS NULL OR lease.expires_at<=v_now)
+  ORDER BY turn_row.queue_sequence,turn_row.id
+  LIMIT 1 FOR UPDATE OF lease,turn_row,run SKIP LOCKED;
+
+  IF NOT FOUND THEN
+    SELECT instance.org_id,instance.companion_id INTO v_invalid_org,v_invalid_companion
+    FROM public.companion_v3_instances instance
+    JOIN public.companion_v3_turns turn_row ON turn_row.org_id=instance.org_id
+      AND turn_row.companion_id=instance.companion_id AND turn_row.lane='background'
+    JOIN public.companion_v3_routine_runs run ON run.org_id=turn_row.org_id
+      AND run.companion_id=turn_row.companion_id AND run.turn_id=turn_row.id
+      AND run.trigger_snapshot_id IS NULL AND run.outcome IN ('pending','running')
+    WHERE instance.prepared_at IS NOT NULL
+      AND NOT public.companion_v3_routine_preparation_matches(
+        turn_row.org_id,turn_row.companion_id,turn_row.actor_id)
+    ORDER BY turn_row.queue_sequence,turn_row.id
+    LIMIT 1 FOR UPDATE OF instance SKIP LOCKED;
+    IF FOUND THEN
+      PERFORM public.companion_v3_invalidate_preparation(v_invalid_org,v_invalid_companion);
+    END IF;
+
+    SELECT turn_row.*,NULL::text AS cleanup_box_id,NULL::text AS cleanup_invocation_id
+      INTO v_candidate FROM public.companion_v3_lane_leases lease
+    JOIN public.companion_v3_turns turn_row ON turn_row.org_id=lease.org_id
+      AND turn_row.companion_id=lease.companion_id AND turn_row.lane='background'
+    JOIN public.companion_v3_routine_runs run ON run.org_id=turn_row.org_id
+      AND run.companion_id=turn_row.companion_id AND run.turn_id=turn_row.id
+      AND run.trigger_snapshot_id IS NULL AND run.cleanup_checkpoint IS NULL
+    JOIN public.companion_v3_instances instance ON instance.org_id=turn_row.org_id
+      AND instance.companion_id=turn_row.companion_id AND instance.box_id IS NOT NULL
+      AND instance.prepared_at IS NOT NULL AND instance.pi_recycle_checkpoint IS NULL
+      AND (instance.prepared_material_expires_at IS NULL
+        OR instance.prepared_material_expires_at>v_now+interval '2 hours 5 minutes')
+    WHERE lease.lane='background' AND (lease.claim_token IS NULL OR lease.expires_at<=v_now)
+      AND public.companion_v3_routine_preparation_matches(
+        turn_row.org_id,turn_row.companion_id,turn_row.actor_id)
+      AND ((turn_row.state IN ('succeeded','failed') AND turn_row.journal_ack_pending)
+      OR (run.outcome IN ('pending','running') AND ((turn_row.state='queued' AND turn_row.available_at<=v_now AND NOT EXISTS(
+      SELECT 1 FROM public.companion_v3_turns active WHERE active.org_id=turn_row.org_id
+        AND active.companion_id=turn_row.companion_id AND active.lane='background'
+        AND active.state IN ('admitted','running','needs_input')))
+      OR turn_row.state IN ('admitted','running','needs_input'))))
+    ORDER BY turn_row.journal_ack_pending DESC,(turn_row.state<>'queued') DESC,
+      turn_row.queue_sequence,turn_row.id
+    LIMIT 1 FOR UPDATE OF lease,turn_row SKIP LOCKED;
+  END IF;
+  IF NOT FOUND THEN RETURN;END IF;
+  UPDATE public.companion_v3_lane_leases lease SET claim_token=gen_random_uuid(),
+    claim_epoch=lease.claim_epoch+1,gate_epoch=v_gate,executor_id=p_executor_id,
+    turn_id=v_candidate.id,claimed_at=v_now,renewed_at=v_now,
+    expires_at=v_now+make_interval(secs=>p_lease_seconds),updated_at=v_now
+  WHERE lease.org_id=v_candidate.org_id AND lease.companion_id=v_candidate.companion_id
+    AND lease.lane='background'
+  RETURNING lease.claim_token,lease.claim_epoch,lease.gate_epoch
+    INTO claim_token,claim_epoch,gate_epoch;
+  UPDATE public.companion_v3_turns SET first_claimed_at=COALESCE(first_claimed_at,v_now),
+    last_claimed_at=v_now,claim_count=claim_count+1,updated_at=v_now WHERE id=v_candidate.id;
+  org_id:=v_candidate.org_id;companion_id:=v_candidate.companion_id;turn_id:=v_candidate.id;
+  command_id:=v_candidate.command_id;lane:=v_candidate.lane;state:=v_candidate.state;
+  admission_started_at:=v_candidate.admission_started_at;
+  inactivity_deadline_at:=v_candidate.inactivity_deadline_at;
+  absolute_deadline_at:=v_candidate.absolute_deadline_at;
+  cleanup_box_id:=v_candidate.cleanup_box_id;
+  cleanup_invocation_id:=v_candidate.cleanup_invocation_id;RETURN NEXT;
 END $$;
+REVOKE ALL ON FUNCTION public.companion_v3_runtime_claim_routine_v7(
+  text,public.companion_v3_lane,integer,integer) FROM PUBLIC;
 --> statement-breakpoint
 
 -- Protocol 8 is the source-neutral selector. Its only ordering key is the durable Turn sequence.
@@ -513,6 +596,7 @@ DO $$ DECLARE v_role text;BEGIN
   SELECT pg_get_userbyid(proowner) INTO v_role FROM pg_proc WHERE oid=
     'public.companion_v3_runtime_claim_warm_v7(text,public.companion_v3_lane,integer,integer)'::regprocedure;
   IF v_role IS NOT NULL THEN
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_claim_routine_v7(text,public.companion_v3_lane,integer,integer) TO %I',v_role);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_claim_background_v8(text,public.companion_v3_lane,integer,integer) TO %I',v_role);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_claim_warm_v8(text,public.companion_v3_lane,integer,integer) TO %I',v_role);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_authorize_background_v8(uuid,uuid,uuid,uuid,bigint,bigint,integer) TO %I',v_role);
