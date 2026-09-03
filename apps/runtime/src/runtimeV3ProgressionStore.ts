@@ -121,7 +121,7 @@ function createPostgresConvergence(
             gate_epoch::text as "gateEpoch", admission_started_at as "admissionStartedAt",
             inactivity_deadline_at as "inactivityDeadlineAt",
             absolute_deadline_at as "absoluteDeadlineAt"
-          from public.companion_v3_runtime_claim_warm_v4(${executorId}, ${lane}, 30, 4)
+          from public.companion_v3_runtime_claim_warm_v5(${executorId}, ${lane}, 30, 5)
         `, signal)
         : await abortable(sql<ClaimRow[]>`
           select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
@@ -174,6 +174,7 @@ interface WarmMaterialRow {
   piInvocationId: string;
   content: string;
   activityCursor: string;
+  recoveryDeferred: boolean;
 }
 
 interface PreparationClaimRow {
@@ -442,7 +443,8 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
     async authorize(claim, signal) {
       const rows = await abortable(sql<WarmMaterialRow[]>`
         select box_id as "boxId", pi_invocation_id as "piInvocationId",
-          content, activity_cursor::text as "activityCursor"
+          content, activity_cursor::text as "activityCursor",
+          recovery_deferred as "recoveryDeferred"
         from public.companion_v3_runtime_authorize_warm_turn_v5(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
@@ -461,6 +463,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           piInvocationId: row.piInvocationId,
           content: row.content,
           cursor: BigInt(row.activityCursor),
+          recoveryDeferred: row.recoveryDeferred,
         }
         : null;
     },

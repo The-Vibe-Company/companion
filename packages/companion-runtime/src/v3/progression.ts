@@ -342,6 +342,7 @@ export interface RuntimeV3WarmTurnMaterial {
   piInvocationId: string;
   content: string;
   cursor: bigint;
+  recoveryDeferred?: boolean;
 }
 
 export interface RuntimeV3WarmTurnProjection {
@@ -481,6 +482,14 @@ export function createRuntimeV3WarmTurnAdvance(
     let durableNeedsInput = claim.turn.state === "needs_input";
     try {
       signal?.throwIfAborted();
+      if (claim.turn.state === "queued" && claim.turn.admissionStartedAt) {
+        return {
+          kind: "interrupted",
+          code: "pi_admission_outcome_unknown",
+          message: "Pi may have acted on this message; it will not be sent again.",
+          action: "none",
+        };
+      }
       const material = signal
         ? await options.persistence.authorize(claim, signal)
         : await options.persistence.authorize(claim);
@@ -493,6 +502,7 @@ export function createRuntimeV3WarmTurnAdvance(
           action: "none",
         };
       }
+      if (material.recoveryDeferred) return { kind: "release" };
       let invocationId = material.piInvocationId;
       let cursor = material.cursor;
       if (claim.turn.state === "succeeded" || claim.turn.state === "failed") {
@@ -506,14 +516,6 @@ export function createRuntimeV3WarmTurnAdvance(
         return { kind: "ack_completed" };
       }
       if (claim.turn.state === "queued") {
-        if (claim.turn.admissionStartedAt) {
-          return {
-            kind: "interrupted",
-            code: "pi_admission_outcome_unknown",
-            message: "Pi may have acted on this message; it will not be sent again.",
-            action: "none",
-          };
-        }
         const admissionFence = { invocationId: material.piInvocationId, cursor: material.cursor };
         const begun = signal
           ? await options.persistence.beginAdmission(claim, admissionFence, signal)

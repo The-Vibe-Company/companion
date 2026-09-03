@@ -117,6 +117,7 @@ WITH runtime_role AS (
     ('public.companion_runtime_record_attempt_outputs(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,jsonb,timestamp with time zone)'),
     ('public.companion_v3_runtime_claim_v4(text,public.companion_v3_lane,integer,integer)'),
     ('public.companion_v3_runtime_claim_warm_v4(text,public.companion_v3_lane,integer,integer)'),
+    ('public.companion_v3_runtime_claim_warm_v5(text,public.companion_v3_lane,integer,integer)'),
     ('public.companion_v3_runtime_claim_preparation_v6(text,integer,integer)'),
     ('public.companion_v3_runtime_begin_admission_v5(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,bigint,integer)'),
     ('public.companion_v3_runtime_sweep_deadlines(public.companion_v3_lane,integer)'),

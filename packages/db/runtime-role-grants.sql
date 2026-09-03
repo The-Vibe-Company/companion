@@ -969,6 +969,7 @@ BEGIN
           'public.companion_v3_runtime_checkpoint_pi_recycle(uuid,uuid,uuid,bigint,bigint,text,text,integer)'::regprocedure,
           'public.companion_v3_runtime_claim_v4(text,public.companion_v3_lane,integer,integer)'::regprocedure,
           'public.companion_v3_runtime_claim_warm_v4(text,public.companion_v3_lane,integer,integer)'::regprocedure,
+          'public.companion_v3_runtime_claim_warm_v5(text,public.companion_v3_lane,integer,integer)'::regprocedure,
           'public.companion_v3_runtime_complete_v5(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure,
           'public.companion_v3_runtime_begin_admission_v5(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,bigint,integer)'::regprocedure,
           'public.companion_v3_runtime_authorize_warm_turn_v5(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure,
@@ -976,6 +977,13 @@ BEGIN
           'public.companion_v3_runtime_sweep_deadlines(public.companion_v3_lane,integer)'::regprocedure,
           'public.companion_v3_runtime_sweep_preparation_deadlines(integer)'::regprocedure,
           'public.companion_v3_runtime_project_native_page_v5(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,boolean,boolean,text,integer)'::regprocedure
+        ];
+        owner_only_runtime_functions := owner_only_runtime_functions || ARRAY[
+          'public.companion_v3_runtime_complete_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure,
+          'public.companion_v3_runtime_begin_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure,
+          'public.companion_v3_runtime_authorize_warm_turn(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure,
+          'public.companion_v3_runtime_record_native_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,uuid,bigint,integer)'::regprocedure,
+          'public.companion_v3_runtime_project_native_page_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,text,integer)'::regprocedure
         ];
       ELSIF pg_catalog.to_regprocedure(
         'public.companion_v3_runtime_claim_warm_v4(text,public.companion_v3_lane,integer,integer)'
@@ -999,32 +1007,36 @@ BEGIN
         ];
       END IF;
       IF pg_catalog.to_regprocedure(
-        'public.companion_v3_runtime_record_native_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,uuid,bigint,integer)'
-      ) IS NOT NULL THEN
-        companion_runtime_functions := companion_runtime_functions || ARRAY[
-          'public.companion_v3_runtime_record_native_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,uuid,bigint,integer)'::regprocedure
-        ];
-      ELSE
-        companion_runtime_functions := companion_runtime_functions || ARRAY[
-          'public.companion_v3_runtime_record_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,bigint,integer)'::regprocedure
-        ];
-      END IF;
-      IF pg_catalog.to_regprocedure(
-        'public.companion_v3_runtime_project_native_page_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,text,integer)'
-      ) IS NOT NULL THEN
-        companion_runtime_functions := companion_runtime_functions || ARRAY[
-          'public.companion_v3_runtime_project_native_page_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,text,integer)'::regprocedure
-        ];
-      ELSIF pg_catalog.to_regprocedure(
-        'public.companion_v3_runtime_project_native_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,text,integer)'
-      ) IS NOT NULL THEN
-        companion_runtime_functions := companion_runtime_functions || ARRAY[
-          'public.companion_v3_runtime_project_native_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,text,integer)'::regprocedure
-        ];
-      ELSE
-        companion_runtime_functions := companion_runtime_functions || ARRAY[
-          'public.companion_v3_runtime_project_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,integer)'::regprocedure
-        ];
+        'public.companion_v3_runtime_complete_v5(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'
+      ) IS NULL THEN
+        IF pg_catalog.to_regprocedure(
+          'public.companion_v3_runtime_record_native_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,uuid,bigint,integer)'
+        ) IS NOT NULL THEN
+          companion_runtime_functions := companion_runtime_functions || ARRAY[
+            'public.companion_v3_runtime_record_native_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,uuid,bigint,integer)'::regprocedure
+          ];
+        ELSE
+          companion_runtime_functions := companion_runtime_functions || ARRAY[
+            'public.companion_v3_runtime_record_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,bigint,integer)'::regprocedure
+          ];
+        END IF;
+        IF pg_catalog.to_regprocedure(
+          'public.companion_v3_runtime_project_native_page_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,text,integer)'
+        ) IS NOT NULL THEN
+          companion_runtime_functions := companion_runtime_functions || ARRAY[
+            'public.companion_v3_runtime_project_native_page_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,text,integer)'::regprocedure
+          ];
+        ELSIF pg_catalog.to_regprocedure(
+          'public.companion_v3_runtime_project_native_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,text,integer)'
+        ) IS NOT NULL THEN
+          companion_runtime_functions := companion_runtime_functions || ARRAY[
+            'public.companion_v3_runtime_project_native_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,text,integer)'::regprocedure
+          ];
+        ELSE
+          companion_runtime_functions := companion_runtime_functions || ARRAY[
+            'public.companion_v3_runtime_project_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,integer)'::regprocedure
+          ];
+        END IF;
       END IF;
       internal_runtime_functions := internal_runtime_functions || ARRAY[
         'public.companion_v3_admit_turn(uuid,uuid,uuid,text,text,public.companion_v3_lane)'::regprocedure,

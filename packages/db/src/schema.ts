@@ -1339,6 +1339,7 @@ export const companionV3Instances = pgTable(
     recoveryTurnId: uuid("recovery_turn_id"),
     recoveryContext: text("recovery_context"),
     recoveryContextSha256: text("recovery_context_sha256"),
+    recoveryContextTurnId: uuid("recovery_context_turn_id"),
     contextLossNoticePending: boolean("context_loss_notice_pending").notNull().default(false),
     preparationClaimToken: uuid("preparation_claim_token"),
     preparationClaimEpoch: bigint("preparation_claim_epoch", { mode: "number" }).notNull().default(0),
@@ -1392,7 +1393,7 @@ export const companionV3Instances = pgTable(
     ),
     recoveryContextCheck: check(
       "companion_v3_instances_recovery_context_check",
-      sql`(${t.recoveryContext} is null) = (${t.recoveryContextSha256} is null) and (${t.recoveryContext} is null or octet_length(${t.recoveryContext}) <= 65536) and (${t.recoveryContextSha256} is null or ${t.recoveryContextSha256} ~ '^[0-9a-f]{64}$')`,
+      sql`(${t.recoveryContext} is null) = (${t.recoveryContextSha256} is null) and (${t.recoveryContext} is null or octet_length(${t.recoveryContext}) <= 65536) and (${t.recoveryContextSha256} is null or ${t.recoveryContextSha256} ~ '^[0-9a-f]{64}$') and (${t.recoveryContextTurnId} is null or ${t.recoveryContext} is not null)`,
     ),
     lifecycleIndex: index("companion_v3_instances_lifecycle_idx")
       .on(t.lifecycleAvailableAt, t.lastWorkAcceptedAt, t.createdAt)

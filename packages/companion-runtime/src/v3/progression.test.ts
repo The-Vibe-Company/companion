@@ -115,14 +115,10 @@ describe("Runtime v3 progression interface", () => {
 
   it("never redispatches a queued Turn whose admission write-intent survived takeover", async () => {
     const prompt = vi.fn();
+    const authorize = vi.fn().mockResolvedValue(null);
     const advance = createRuntimeV3WarmTurnAdvance({
       persistence: {
-        authorize: vi.fn().mockResolvedValue({
-          boxId: "bx_23456789",
-          piInvocationId: "invocation-1",
-          content: "do not dispatch twice",
-          cursor: 0n,
-        }),
+        authorize,
         beginAdmission: vi.fn(),
         recordAdmission: vi.fn(),
         project: vi.fn(),
@@ -137,6 +133,27 @@ describe("Runtime v3 progression interface", () => {
       kind: "interrupted",
       code: "pi_admission_outcome_unknown",
     });
+    expect(authorize).not.toHaveBeenCalled();
+    expect(prompt).not.toHaveBeenCalled();
+  });
+
+  it("releases a recovery-deferred lane without contacting Pi", async () => {
+    const prompt = vi.fn();
+    const beginAdmission = vi.fn();
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1",
+          content: "wait for the reserved recovery admission", cursor: 0n,
+          recoveryDeferred: true,
+        }),
+        beginAdmission, recordAdmission: vi.fn(), project: vi.fn(),
+      },
+      pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
+    });
+
+    await expect(advance(mainClaim)).resolves.toEqual({ kind: "release" });
+    expect(beginAdmission).not.toHaveBeenCalled();
     expect(prompt).not.toHaveBeenCalled();
   });
 
