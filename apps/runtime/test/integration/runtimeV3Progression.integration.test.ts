@@ -1471,6 +1471,43 @@ describe("Runtime v3 progression facts", () => {
       .toBeNull();
   });
 
+  it("rejects an expired detached answer without reviving background work", async () => {
+    const staged = await stageAskUser({
+      lane: "background", requestKey: "expired-detached-question",
+      invocationId: "invocation-expired-detached",
+    });
+    expect(staged.projected).toBe("detached");
+    const action = await staged.persistence.beginDecisionAction!(staged.claim);
+    await expect(staged.persistence.finishDecisionAction!(staged.claim, {
+      decisionId: action!.decisionId,
+      kind: "detach",
+      invocationId: "invocation-expired-detached",
+    })).resolves.toBe(true);
+    await expect(staged.convergence.completeProgression(staged.claim, { kind: "detached" }))
+      .resolves.toBe(true);
+    await ownerSql`update public.companion_v3_decisions
+      set expires_at=clock_timestamp()-interval '1 millisecond'
+      where turn_id=${staged.turnId}::uuid`;
+    await expect(staged.convergence.sweepLane!({ lane: "background" })).resolves.toBe(1);
+
+    await expect(asApi(async (sql) => {
+      await sql`select public.companion_v3_api_answer_decision(
+        ${ids.org}::uuid,${ids.companion}::uuid,
+        'expired-detached-question','answer','Too late')`;
+    })).rejects.toMatchObject({ code: "55000" });
+
+    const [facts] = await ownerSql<Array<{ state: string; status: string; answer: string | null }>>`
+      select turn_row.state::text,decision.decision_status::text as status,
+        decision.response_text as answer
+      from public.companion_v3_turns turn_row
+      join public.companion_v3_decisions decision on decision.turn_id=turn_row.id
+      where turn_row.id=${staged.turnId}::uuid`;
+    expect(facts).toEqual({ state: "cancelled", status: "expired", answer: null });
+    expect(await staged.convergence.claimLane({
+      executorId: "runtime-expired-obsolete", lane: "background",
+    })).toBeNull();
+  });
+
   it("settles warm text FIFO and releases a failed main lane before the next Turn", async () => {
     await seedPreparedV3("invocation-warm");
     const first = randomUUID();

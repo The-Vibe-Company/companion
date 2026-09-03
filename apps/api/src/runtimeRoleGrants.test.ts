@@ -20,6 +20,7 @@ describe("Skills Hub runtime-role grants", () => {
       "companion_turn_attempts",
       "companion_operations",
       "companion_decision_deliveries",
+      "companion_v3_decisions",
       "companion_runtime_leases",
       "companion_mcp_broker_tokens",
       "companion_routines",
@@ -60,6 +61,12 @@ describe("Skills Hub runtime-role grants", () => {
       "companion_v3_runtime_checkpoint_lifecycle(uuid,uuid,uuid,bigint,bigint,public.companion_v3_lifecycle_state,public.companion_v3_lifecycle_state,text,integer)",
       "companion_v3_runtime_defer_lifecycle(uuid,uuid,uuid,bigint,bigint,integer,text,text,integer)",
       "companion_v3_runtime_finalize_delete(uuid,uuid,uuid,bigint,bigint,integer)",
+      "companion_v3_runtime_claim_warm_v6(text,public.companion_v3_lane,integer,integer)",
+      "companion_v3_runtime_project_native_page_v6(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)",
+      "companion_v3_runtime_begin_decision_action(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)",
+      "companion_v3_runtime_finish_decision_action(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,uuid,text,text,integer)",
+      "companion_v3_runtime_complete_v6(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)",
+      "companion_v3_runtime_sweep_decisions(public.companion_v3_lane,integer)",
     ]) expect(sql).toContain(signature);
     expect(runtimeFunctions).not.toContain("companion_runtime_enable");
     expect(sql).toContain(
@@ -178,6 +185,8 @@ describe("Skills Hub runtime-role grants", () => {
       "companion_api_answer_config_decision(uuid,uuid,text,text)",
       "companion_api_answer_routine_decision(uuid,uuid,text,text,uuid,timestamp with time zone)",
       "companion_api_get_decision(uuid,uuid,text)",
+      "companion_v3_api_get_decision(uuid,uuid,text)",
+      "companion_v3_api_answer_decision(uuid,uuid,text,text,text)",
       "companion_api_bump_skill_revision(uuid,uuid)",
       "companion_api_list_routines(uuid,uuid)",
       "companion_api_create_routine(uuid,uuid,uuid,text,text,text,text,boolean,timestamp with time zone)",
