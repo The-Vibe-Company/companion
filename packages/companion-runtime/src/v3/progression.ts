@@ -228,6 +228,11 @@ export interface RuntimeV3PreparationPersistence {
     next: "reset" | "complete",
     signal?: AbortSignal,
   ): Promise<boolean>;
+  reconcilePiRecycleInvocation?(
+    claim: RuntimeV3PreparationClaim,
+    input: { expectedInvocationId: string; observedInvocationId: string },
+    signal?: AbortSignal,
+  ): Promise<boolean>;
   defer(
     claim: RuntimeV3PreparationClaim,
     input: { delaySeconds: number; error: SafeRuntimeError | null },
@@ -253,7 +258,8 @@ export interface RuntimeV3PreparationOptions {
   box: Pick<RuntimeBoxControl, "createGenerationBox" | "applyGenerationBoxSettings" | "getStatus">;
   preparationStager: RuntimeV3PreparationStager;
   pi: Pick<RuntimePiControl, "startPiDaemon">
-    & Partial<Pick<RuntimePiControl, "terminatePiInvocation" | "resetPiSession">>;
+    & Partial<Pick<RuntimePiControl,
+      "terminatePiInvocation" | "resetPiSession" | "piDaemonStatus">>;
   observePreparedLatency?: (durationMs: number) => void;
   now?: () => Date;
   jitter?: () => number;
@@ -476,7 +482,10 @@ export function createRuntimeV3WarmTurnAdvance(
 ): RuntimeV3ConvergenceOptions["advance"] {
   return async (claim, signal) => {
     let projectionPendingAck: "none" | "nonterminal" | "terminal" = "none";
+    let projectionWriteIntent = false;
+    let prePiHandoff = false;
     let admissionWriteIntent = false;
+    let durableAdmissionRecorded = false;
     let inactivityDeadlineAt = claim.turn.inactivityDeadlineAt ?? null;
     let absoluteDeadlineAt = claim.turn.absoluteDeadlineAt ?? null;
     let durableNeedsInput = claim.turn.state === "needs_input";
@@ -490,11 +499,12 @@ export function createRuntimeV3WarmTurnAdvance(
           action: "none",
         };
       }
+      prePiHandoff = claim.turn.state === "queued";
       const material = signal
         ? await options.persistence.authorize(claim, signal)
         : await options.persistence.authorize(claim);
-      signal?.throwIfAborted();
       if (!material) {
+        prePiHandoff = false;
         return {
           kind: "failed",
           code: "warm_turn_unauthorized",
@@ -503,6 +513,7 @@ export function createRuntimeV3WarmTurnAdvance(
         };
       }
       if (material.recoveryDeferred) return { kind: "release" };
+      signal?.throwIfAborted();
       let invocationId = material.piInvocationId;
       let cursor = material.cursor;
       if (claim.turn.state === "succeeded" || claim.turn.state === "failed") {
@@ -520,15 +531,11 @@ export function createRuntimeV3WarmTurnAdvance(
         const begun = signal
           ? await options.persistence.beginAdmission(claim, admissionFence, signal)
           : await options.persistence.beginAdmission(claim, admissionFence);
-        signal?.throwIfAborted();
         if (!begun) {
-          return {
-            kind: "interrupted",
-            code: "pi_admission_fence_lost",
-            message: "Pi admission could not be fenced safely.",
-            action: "none",
-          };
+          return { kind: "release" };
         }
+        signal?.throwIfAborted();
+        prePiHandoff = false;
         admissionWriteIntent = true;
         const admissionTimeout = AbortSignal.timeout(
           COMPANION_RUNTIME_V3_BUDGETS.admissionAckMs,
@@ -544,8 +551,8 @@ export function createRuntimeV3WarmTurnAdvance(
           message: material.content,
           signal: admissionSignal,
         });
-        signal?.throwIfAborted();
         if (admission.outcome === "rejected") {
+          admissionWriteIntent = false;
           return { kind: "release" };
         }
         if (admission.outcome === "ambiguous") {
@@ -556,6 +563,7 @@ export function createRuntimeV3WarmTurnAdvance(
             action: "none",
           };
         }
+        signal?.throwIfAborted();
         const admissionRecord = {
           invocationId: admission.invocationId,
           responseTurnId: admission.responseAttemptId ?? claim.turn.id,
@@ -564,6 +572,10 @@ export function createRuntimeV3WarmTurnAdvance(
         const admitted = signal
           ? await options.persistence.recordAdmission(claim, admissionRecord, signal)
           : await options.persistence.recordAdmission(claim, admissionRecord);
+        if (admitted) {
+          admissionWriteIntent = false;
+          durableAdmissionRecorded = true;
+        }
         signal?.throwIfAborted();
         if (!admitted) {
           return {
@@ -573,7 +585,6 @@ export function createRuntimeV3WarmTurnAdvance(
             action: "none",
           };
         }
-        admissionWriteIntent = false;
         const admittedAt = Date.now();
         absoluteDeadlineAt ??= new Date(admittedAt + COMPANION_BUDGETS.turnAbsoluteDeadlineMs);
         inactivityDeadlineAt ??= new Date(Math.min(
@@ -659,13 +670,14 @@ export function createRuntimeV3WarmTurnAdvance(
           processExited: classified.processExit !== null,
           activity: classified.activity,
         };
+        projectionWriteIntent = true;
         const projected = await options.persistence.project(claim, projection, commandSignal);
+        projectionWriteIntent = false;
         if (projected) {
           projectionPendingAck = projected === "succeeded" || projected === "failed"
             ? "terminal"
             : "nonterminal";
         }
-        signal?.throwIfAborted();
         if (!projected) {
           return {
             kind: "interrupted",
@@ -674,6 +686,7 @@ export function createRuntimeV3WarmTurnAdvance(
             action: "none",
           };
         }
+        signal?.throwIfAborted();
         await options.pi.acknowledge({
           boxId: material.boxId,
           through: classified.throughCursor,
@@ -721,6 +734,10 @@ export function createRuntimeV3WarmTurnAdvance(
         return { kind: "retry_ack" };
       }
       if (projectionPendingAck === "nonterminal") return { kind: "release" };
+      if (projectionWriteIntent || (durableAdmissionRecorded && signal?.aborted)) {
+        return { kind: "release" };
+      }
+      if (prePiHandoff) return { kind: "release" };
       if (admissionWriteIntent) {
         return {
           kind: "interrupted",
@@ -989,7 +1006,7 @@ export function createRuntimeV3Preparation(
               throw new Error("Runtime v3 preparation authorization changed");
             }
             const terminationSignal = phaseSignal(RUNTIME_V3_PI_ACTIVATION_BUDGET_MS);
-            const stopped = await options.pi.terminatePiInvocation({
+            let stopped = await options.pi.terminatePiInvocation({
               boxId: claim.boxId,
               expectedInvocationId: claim.recyclePiInvocationId,
               signal: terminationSignal,
@@ -997,7 +1014,38 @@ export function createRuntimeV3Preparation(
             terminationSignal.throwIfAborted();
             shutdownSignal?.throwIfAborted();
             if (stopped.outcome === "superseded") {
-              throw new Error("A newer Pi invocation superseded the fenced recycle");
+              if (!options.pi.piDaemonStatus
+                || !options.persistence.reconcilePiRecycleInvocation) {
+                throw new Error("Superseded Pi recycle reconciliation is unavailable");
+              }
+              const observationSignal = phaseSignal(RUNTIME_V3_PI_ACTIVATION_BUDGET_MS);
+              const observed = await options.pi.piDaemonStatus({
+                boxId: claim.boxId,
+                signal: observationSignal,
+              });
+              observationSignal.throwIfAborted();
+              shutdownSignal?.throwIfAborted();
+              if (observed.state !== "idle" || !observed.invocationId
+                || observed.invocationId === claim.recyclePiInvocationId) {
+                throw new Error("Superseded Pi invocation could not be proven idle and distinct");
+              }
+              if (!await options.persistence.reconcilePiRecycleInvocation(claim, {
+                expectedInvocationId: claim.recyclePiInvocationId,
+                observedInvocationId: observed.invocationId,
+              }, deadlineSignal)) {
+                return { progressed, exhausted: false };
+              }
+              const reconciledTerminationSignal = phaseSignal(RUNTIME_V3_PI_ACTIVATION_BUDGET_MS);
+              stopped = await options.pi.terminatePiInvocation({
+                boxId: claim.boxId,
+                expectedInvocationId: observed.invocationId,
+                signal: reconciledTerminationSignal,
+              });
+              reconciledTerminationSignal.throwIfAborted();
+              shutdownSignal?.throwIfAborted();
+              if (stopped.outcome === "superseded") {
+                throw new Error("Reconciled Pi invocation changed before exact termination");
+              }
             }
             if (!await options.persistence.checkpointPiRecycle(claim, "reset", deadlineSignal)) {
               return { progressed, exhausted: false };
