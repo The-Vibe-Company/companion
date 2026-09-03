@@ -24,7 +24,7 @@
   "devDependencies": {
     "@companion/box-runtime": "workspace:*",
     "@types/node": "^22.10.2",
-    "tsx": "^4.19.2",
+    "tsx": "^4.23.13",
     "typescript": "^5.7.2",
     "undici": "7.29.0",
     "vitest": "3.2.7",

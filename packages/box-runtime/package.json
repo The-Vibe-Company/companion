@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "esbuild": "0.27.7",
+    "esbuild": "0.28.2",
     "typescript": "^5.7.2",
     "vitest": "3.2.7"
   }
