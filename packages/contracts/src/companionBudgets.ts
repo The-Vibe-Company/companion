@@ -242,6 +242,8 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_v3_runtime_defer_external_v9: ["2 hours"],
   companion_v3_runtime_external_incident_facts_v9: ["31 days"],
   companion_v3_runtime_project_background_page_v7: ["10 minutes"],
+  // First-party preparation copy crosses the captured wake-path p99 only after correlated progress.
+  companion_v3_api_read_projection: ["15 seconds", "90 seconds", "120 seconds"],
   // COMPANION_ROUTINE_MISSED_GRACE_MS twin used by the scheduler fire fence.
   companion_fire_routine: ["10 minutes"],
   companion_v3_runtime_sweep_decisions: ["10 minutes"],
