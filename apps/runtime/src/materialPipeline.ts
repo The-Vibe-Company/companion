@@ -238,6 +238,12 @@ export function createRuntimeMaterialPipeline(input: {
         if (stage.attachments.some((attachment) => now() >= attachment.expiresAt.getTime())) {
           await failExpired();
         }
+        if (!await stage.reauthorize(stage.signal)) {
+          throw new RuntimeV3InputAttachmentError(
+            "runtime_authorization_revoked",
+            "The sender no longer has authority to stage these files.",
+          );
+        }
         const staged = await fileRuntime.stageAttachments({
           boxId: stage.boxId,
           messageId,
@@ -249,7 +255,10 @@ export function createRuntimeMaterialPipeline(input: {
         }
         return staged;
       } catch (error) {
-        if (error instanceof RuntimeV3InputAttachmentError && error.code === "attachment_expired") {
+        if (error instanceof RuntimeV3InputAttachmentError && (
+          error.code === "attachment_expired"
+          || error.code === "runtime_authorization_revoked"
+        )) {
           throw error;
         }
         await clearStaging();

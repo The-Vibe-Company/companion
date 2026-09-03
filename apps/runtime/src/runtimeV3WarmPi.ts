@@ -11,6 +11,13 @@ function warmCallSignal(signal?: AbortSignal): AbortSignal {
 /** Narrow Runtime v3 Pi boundary over the existing, simulator-backed broker transport. */
 export function createRuntimeV3WarmPi(pi: RuntimeV3PiTransport): RuntimeV3WarmPi {
   return {
+    async modelInput(input) {
+      const state = await pi.brokerState({
+        boxId: input.boxId,
+        signal: warmCallSignal(input.signal),
+      });
+      return state.modelInput;
+    },
     async prompt(input) {
       return await pi.prompt({
         boxId: input.boxId,

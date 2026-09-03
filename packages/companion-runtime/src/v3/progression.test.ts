@@ -303,7 +303,12 @@ describe("Runtime v3 progression interface", () => {
         recordAdmission: vi.fn(),
         project: vi.fn(),
       },
-      pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
+      pi: {
+        modelInput: vi.fn().mockResolvedValue(["text"]),
+        prompt,
+        read: vi.fn(),
+        acknowledge: vi.fn(),
+      },
       inputAttachments: { stage },
       outbox: { harvest: vi.fn(), clear },
     });
@@ -326,6 +331,52 @@ describe("Runtime v3 progression interface", () => {
       .toBeLessThan(beginAdmission.mock.invocationCallOrder[0] ?? Number.NEGATIVE_INFINITY);
     expect(beginAdmission.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY)
       .toBeLessThan(prompt.mock.invocationCallOrder[0] ?? Number.NEGATIVE_INFINITY);
+  });
+
+  it("refuses an image before staging when Pi's live model is text-only", async () => {
+    const stage = vi.fn();
+    const beginAdmission = vi.fn();
+    const prompt = vi.fn();
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789",
+          piInvocationId: "invocation-1",
+          content: "Inspect this image",
+          cursor: 0n,
+          messageEventId: `msg:${acceptedTurn.id}`,
+          inputAttachments: [{
+            storageKey: "companion-attachments/object",
+            contentType: "image/png",
+            byteSize: 5,
+            sha256: "a".repeat(64),
+            filename: "image.png",
+            position: 0,
+            expiresAt: new Date("2026-10-01T00:00:00.000Z"),
+          }],
+        }),
+        beginAdmission,
+        recordAdmission: vi.fn(),
+        project: vi.fn(),
+      },
+      pi: {
+        modelInput: vi.fn().mockResolvedValue(["text"]),
+        prompt,
+        read: vi.fn(),
+        acknowledge: vi.fn(),
+      },
+      inputAttachments: { stage },
+    });
+
+    await expect(advance(mainClaim)).resolves.toEqual({
+      kind: "failed",
+      code: "model_image_input_unsupported",
+      message: "The selected model does not support image input.",
+      action: "switch_model",
+    });
+    expect(stage).not.toHaveBeenCalled();
+    expect(beginAdmission).not.toHaveBeenCalled();
+    expect(prompt).not.toHaveBeenCalled();
   });
 
   it.each([

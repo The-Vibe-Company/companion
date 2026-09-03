@@ -102,6 +102,7 @@ describe("Runtime v3 inbound attachment staging", () => {
         position: 0,
         expiresAt,
       }],
+      reauthorize: vi.fn().mockResolvedValue(true),
       signal: new AbortController().signal,
     });
 
@@ -133,9 +134,40 @@ describe("Runtime v3 inbound attachment staging", () => {
         position: 0,
         expiresAt: new Date(Date.now() + 60_000),
       }],
+      reauthorize: vi.fn().mockResolvedValue(true),
       signal: new AbortController().signal,
     })).rejects.toMatchObject({ code: "attachment_staging_failed" });
     expect(stageAttachments).toHaveBeenCalledWith(expect.objectContaining({ files: [] }));
+  });
+
+  it("reauthorizes after object reads and refuses every Box write when authority is gone", async () => {
+    const bytes = Buffer.from("authorized only while reading");
+    const stageAttachments = vi.fn().mockResolvedValue([]);
+    const loadAttachment = vi.fn().mockResolvedValue(bytes);
+    const reauthorize = vi.fn().mockResolvedValue(false);
+
+    await expect(pipeline({
+      runtime: { stageAttachments },
+      loadAttachment,
+    }).inputAttachmentStager.stage({
+      boxId: "bx_23456789",
+      messageEventId: `msg:${turnId}`,
+      attachments: [{
+        storageKey: "companion-attachments/example",
+        contentType: "text/plain",
+        byteSize: bytes.byteLength,
+        sha256: digest(bytes),
+        filename: "notes.txt",
+        position: 0,
+        expiresAt: new Date(Date.now() + 60_000),
+      }],
+      reauthorize,
+      signal: new AbortController().signal,
+    })).rejects.toMatchObject({ code: "runtime_authorization_revoked" });
+
+    expect(loadAttachment).toHaveBeenCalledOnce();
+    expect(reauthorize).toHaveBeenCalledOnce();
+    expect(stageAttachments).not.toHaveBeenCalled();
   });
 });
 

@@ -52,7 +52,10 @@ export interface RuntimeV3StagedInputAttachment {
 
 export class RuntimeV3InputAttachmentError extends Error {
   constructor(
-    readonly code: "attachment_expired" | "attachment_staging_failed",
+    readonly code:
+      | "attachment_expired"
+      | "attachment_staging_failed"
+      | "runtime_authorization_revoked",
     message: string,
   ) {
     super(message);
@@ -561,6 +564,11 @@ export interface RuntimeV3WarmTurnPersistence {
 }
 
 export interface RuntimeV3WarmPi {
+  /** Pi's live `get_state.model.input`, read before any attachment bytes reach the Box. */
+  modelInput?(input: {
+    boxId: string;
+    signal?: AbortSignal;
+  }): Promise<Array<"text" | "image">>;
   prompt(input: {
     boxId: string;
     commandId: string;
@@ -634,6 +642,8 @@ export interface RuntimeV3InputAttachmentStager {
     boxId: string;
     messageEventId: string;
     attachments: RuntimeV3InputAttachment[];
+    /** Recheck the exact fenced Turn after object reads and immediately before Box writes. */
+    reauthorize(signal: AbortSignal): Promise<boolean>;
     signal: AbortSignal;
   }): Promise<RuntimeV3StagedInputAttachment[]>;
 }
@@ -935,8 +945,9 @@ export function createRuntimeV3WarmTurnAdvance(
         let stagedAttachments: RuntimeV3StagedInputAttachment[] = [];
         if (inputAttachments.length > 0) {
           const stager = options.inputAttachments;
+          const readModelInput = options.pi.modelInput;
           const messageEventId = material.messageEventId;
-          if (!stager || !messageEventId) {
+          if (!stager || !readModelInput || !messageEventId) {
             return {
               kind: "failed",
               code: "attachment_staging_unavailable",
@@ -944,10 +955,32 @@ export function createRuntimeV3WarmTurnAdvance(
               action: "none",
             };
           }
+          const modelInput = await readModelInput({
+            boxId: material.boxId,
+            signal: boundedSignal(signal, COMPANION_RUNTIME_V3_BUDGETS.heartbeatCommandMs),
+          });
+          const requiredInput = inputAttachments.some((attachment) =>
+            attachment.contentType.startsWith("image/")) ? "image" : "text";
+          if (!modelInput.includes("text") || !modelInput.includes(requiredInput)) {
+            return {
+              kind: "failed",
+              code: requiredInput === "image"
+                ? "model_image_input_unsupported"
+                : "model_text_input_unsupported",
+              message: requiredInput === "image"
+                ? "The selected model does not support image input."
+                : "The selected model does not support text input.",
+              action: "switch_model",
+            };
+          }
           stagedAttachments = await stager.stage({
             boxId: material.boxId,
             messageEventId,
             attachments: inputAttachments,
+            reauthorize: async (reauthorizeSignal) => (await options.persistence.authorize(
+              claim,
+              reauthorizeSignal,
+            )) !== null,
             signal: boundedSignal(signal, COMPANION_RUNTIME_V3_BUDGETS.heartbeatCommandMs),
           });
         }
@@ -1347,6 +1380,16 @@ export function createRuntimeV3WarmTurnAdvance(
     } catch (error) {
       if (signal?.aborted) return { kind: "release" };
       if (error instanceof RuntimeV3InputAttachmentError) {
+        if (error.code === "runtime_authorization_revoked") {
+          return {
+            kind: "external_retry",
+            failureClass: "authority",
+            source: externalSource(claim),
+            dependencyKey: externalDependencyKey(claim, "authority"),
+            code: error.code,
+            message: "This work is blocked until its external access is available again.",
+          };
+        }
         return {
           kind: "failed",
           code: error.code,
