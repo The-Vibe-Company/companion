@@ -637,16 +637,22 @@ export const COMPANION_ROUTINE_RUN_INSTRUCTIONS = [
 export const COMPANION_ROUTINE_MACHINE_INSTRUCTIONS = [
   "# Your machine",
   "",
-  "You run on this Companion's persistent Linux box, but this routine has its own disposable Pi",
-  "session directory. Files you create outside the managed runtime paths remain on the Box; running",
-  "processes do not outlive the routine.",
+  "You run directly in this Companion's persistent Linux workspace. Only this routine's Pi session,",
+  "broker journal, and runtime state are isolated; files and memory use the same live durable paths as",
+  "the main Companion. Running processes do not outlive the routine.",
   "",
-  "Your memory tools read a private snapshot of the main Companion's MEMORY.md and daily logs taken",
-  "when this routine session is prepared. The main Pi is the only owner of durable memory writes.",
-  "Do not use memory_write, memory_forget, memory_restore, or scratchpad to persist routine state:",
-  "changes stay inside this disposable run and never update the main Companion's memory.",
+  "Your memory tools read and write the live ~/.companion/runtime/memory tree. Recall can see memory",
+  "written by the main Companion, and durable memory changes you make remain visible to later main",
+  "turns. There is no routine snapshot, merge step, or workspace filesystem lock.",
   "",
   "The run-scoped Pi and runtime state directories are managed for you. Do not edit them.",
+].join("\n");
+
+const COMPANION_ISOLATED_ROUTINE_MACHINE_INSTRUCTIONS = [
+  "# Your machine",
+  "",
+  "This legacy isolated routine uses a disposable memory snapshot and Pi session.",
+  "Do not rely on memory writes from this run remaining available later.",
 ].join("\n");
 
 export const COMPANION_MACHINE_INSTRUCTIONS = [
@@ -854,17 +860,22 @@ export function composedInstructions(
 }
 
 /** Stable-prefix operating brief for one isolated routine session. Persona remains last for voice. */
-export function composedRoutineInstructions(persona?: string | null): string {
+export function composedRoutineInstructions(
+  persona?: string | null,
+  directWorkspace = true,
+): string {
   const written = persona?.trim() ?? "";
   const parts = [
     COMPANION_SITUATION_INSTRUCTIONS,
     COMPANION_ROUTINE_RUN_INSTRUCTIONS,
     COMPANION_DELIVERY_INSTRUCTIONS,
-    COMPANION_ROUTINE_MACHINE_INSTRUCTIONS,
+    directWorkspace
+      ? COMPANION_ROUTINE_MACHINE_INSTRUCTIONS
+      : COMPANION_ISOLATED_ROUTINE_MACHINE_INSTRUCTIONS,
     COMPANION_TURN_INSTRUCTIONS,
     COMPANION_FILES_INSTRUCTIONS,
     companionCapabilityInstructions(true),
-    companionControlInstructions(false),
+    companionControlInstructions(directWorkspace),
   ];
   if (written) parts.push(`# This Companion\n\n${written}`);
   return `${parts.join("\n\n")}\n`;
@@ -1355,6 +1366,33 @@ if [ -d "$parent_memory/daily" ] && [ ! -L "$parent_memory/daily" ]; then
     cp -- "$memory_source" "$routine_memory/daily/\${memory_source##*/}"
   done
 fi`;
+  const qmdWrapper = directWorkspace ? "" : `
+# Legacy isolated runs keep qmd on their private snapshot and SQLite index.
+if [ -x "$routine_root/tools/bin/qmd" ]; then
+  cat > "$routine_root/bin/qmd" <<'COMPANION_ROUTINE_QMD'
+#!/bin/sh
+set -eu
+: "\${COMPANION_PI_ROOT:?}"
+export QMD_CONFIG_DIR="$COMPANION_PI_ROOT/qmd/config"
+export INDEX_PATH="$COMPANION_PI_ROOT/qmd/index.sqlite"
+exec "$COMPANION_PI_ROOT/tools/bin/qmd" --index companion-routine "$@"
+COMPANION_ROUTINE_QMD
+  chmod 700 "$routine_root/bin/qmd"
+fi`;
+  const controlFiltering = directWorkspace ? "" : `
+if [ -f "$routine_root/pi/mcp.json" ]; then
+  COMPANION_ROUTINE_MCP="$routine_root/pi/mcp.json" \
+  COMPANION_CONTROL_SERVER=${shellQuote(COMPANION_CONTROL_MCP_SERVER_NAME)} node <<'COMPANION_ROUTINE_MCP'
+const fs = require("node:fs");
+const path = process.env.COMPANION_ROUTINE_MCP;
+const server = process.env.COMPANION_CONTROL_SERVER;
+const config = JSON.parse(fs.readFileSync(path, "utf8"));
+if (config && config.mcpServers && typeof config.mcpServers === "object") {
+  delete config.mcpServers[server];
+}
+fs.writeFileSync(path, JSON.stringify(config, null, 2) + "\\n", { mode: 0o600 });
+COMPANION_ROUTINE_MCP
+fi`;
   return `set -euo pipefail
 umask 077
 routine_root="$HOME/${paths.root}"
@@ -1433,37 +1471,10 @@ if [ -L "$routine_root/pi/mcp.json" ]; then
   echo 'routine-pi-session mcp config is a symlink' >&2
   false
 fi
-# qmd discovers project-local configuration before its environment-selected defaults unless an
-# explicit named index is present. Put a private wrapper first on PATH so every pi-memory qmd child
-# uses the run-local config and SQLite paths even if the Box command runner starts below .qmd/. qmd
-# is a best-effort install, so leave it absent when no executable was copied and let pi-memory fall
-# back to plain recall.
-if [ -x "$routine_root/tools/bin/qmd" ]; then
-  cat > "$routine_root/bin/qmd" <<'COMPANION_ROUTINE_QMD'
-#!/bin/sh
-set -eu
-: "\${COMPANION_PI_ROOT:?}"
-export QMD_CONFIG_DIR="$COMPANION_PI_ROOT/qmd/config"
-export INDEX_PATH="$COMPANION_PI_ROOT/qmd/index.sqlite"
-exec "$COMPANION_PI_ROOT/tools/bin/qmd" --index companion-routine "$@"
-COMPANION_ROUTINE_QMD
-  chmod 700 "$routine_root/bin/qmd"
-fi
+${qmdWrapper}
 ${memoryPreparation}
 ${copies}
-if [ -f "$routine_root/pi/mcp.json" ]; then
-  COMPANION_ROUTINE_MCP="$routine_root/pi/mcp.json" \
-  COMPANION_CONTROL_SERVER=${shellQuote(COMPANION_CONTROL_MCP_SERVER_NAME)} node <<'COMPANION_ROUTINE_MCP'
-const fs = require("node:fs");
-const path = process.env.COMPANION_ROUTINE_MCP;
-const server = process.env.COMPANION_CONTROL_SERVER;
-const config = JSON.parse(fs.readFileSync(path, "utf8"));
-if (config && config.mcpServers && typeof config.mcpServers === "object") {
-  delete config.mcpServers[server];
-}
-fs.writeFileSync(path, JSON.stringify(config, null, 2) + "\\n", { mode: 0o600 });
-COMPANION_ROUTINE_MCP
-fi
+${controlFiltering}
 chmod 700 "$routine_root" "$routine_root/bin" "$routine_root/state" "$routine_root/events" "$routine_root/sessions" "$routine_root/logs" "$routine_root/memory" "$routine_root/memory/daily" "$routine_root/memory/recovery" "$routine_root/qmd" "$routine_root/qmd/config" "$routine_root/tmp" "$routine_root/outbox" "$routine_root/pi" "$routine_root/pi/extensions" "$routine_root/tools"
 printf '%s\\n' "$expected_invocation" > "$reservation_file"
 chmod 600 "$reservation_file"
@@ -1477,6 +1488,7 @@ function routineLaunchCommand(
   paths: CompanionPiRoutineSessionPaths,
   invocationId: string,
   validationOnly: boolean,
+  directWorkspace: boolean,
 ): string {
   const invocation = shellQuote(invocationId);
   const providerEnvironment = validationOnly ? "" : `
@@ -1489,6 +1501,16 @@ fi`;
   const validationEnvironment = validationOnly
     ? "\nexport COMPANION_PI_VALIDATION_ONLY=1"
     : "";
+  const controlEnvironment = directWorkspace ? "" : "unset COMPANION_CONTROL_TOKEN";
+  const memoryEnvironment = directWorkspace ? `
+mkdir -p "$HOME/.companion/runtime/memory" "$HOME/.companion/runtime/qmd/config"
+chmod 700 "$HOME/.companion/runtime/memory" "$HOME/.companion/runtime/qmd" "$HOME/.companion/runtime/qmd/config"
+export PI_MEMORY_DIR="$HOME/.companion/runtime/memory"
+export QMD_CONFIG_DIR="$HOME/.companion/runtime/qmd/config"
+export INDEX_PATH="$HOME/.companion/runtime/qmd/index.sqlite"` : `
+export PI_MEMORY_DIR="$routine_root/memory"
+export QMD_CONFIG_DIR="$routine_root/qmd/config"
+export INDEX_PATH="$routine_root/qmd/index.sqlite"`;
   return `set -euo pipefail
 umask 077
 routine_root="$HOME/${paths.root}"
@@ -1596,16 +1618,10 @@ mkdir -p "$routine_root/logs" "$journal" "$routine_root/state" "$routine_root/se
 chmod 700 "$routine_root" "$routine_root/state" "$journal" "$routine_root/sessions" "$routine_root/logs" "$routine_root/memory" "$routine_root/qmd" "$routine_root/qmd/config" "$routine_root/tmp" "$routine_root/outbox"
 rm -f "$socket"
 ${providerEnvironment}
-unset COMPANION_CONTROL_TOKEN
+${controlEnvironment}
 export PATH="$routine_root/bin:$(dirname "$pi_bin"):$HOME/.companion/bin:$routine_root/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PI_CODING_AGENT_DIR="$routine_root/pi"
-export PI_MEMORY_DIR="$routine_root/memory"
-# pi-memory always addresses qmd's fixed pi-memory collection. Give the routine both a private
-# collection config and a private SQLite index so search follows the pinned files and can neither
-# query nor reconfigure the main daemon's collection. qmd's model cache stays shared because it
-# contains model assets rather than memory content and avoids downloading them for every routine.
-export QMD_CONFIG_DIR="$routine_root/qmd/config"
-export INDEX_PATH="$routine_root/qmd/index.sqlite"
+${memoryEnvironment}
 export TMPDIR="$routine_root/tmp"
 export JITI_RESPECT_TMPDIR_ENV=1
 export COMPANION_PI_ROOT="$routine_root"
@@ -5595,7 +5611,7 @@ done`,
         `${paths.root}/state/instructions.txt`,
         input.validationOnly === true
           ? composedTriggerValidationInstructions(input.persona)
-          : composedRoutineInstructions(input.persona),
+          : composedRoutineInstructions(input.persona, input.directWorkspace === true),
       );
 
       await this.#writeFile(
@@ -5621,7 +5637,12 @@ done`,
 
       const started = await this.#command(
         input.boxId,
-        routineLaunchCommand(paths, invocationId, input.validationOnly === true),
+        routineLaunchCommand(
+          paths,
+          invocationId,
+          input.validationOnly === true,
+          input.directWorkspace === true,
+        ),
         PI_ROUTINE_START_TIMEOUT_SECONDS,
         input.signal,
       );

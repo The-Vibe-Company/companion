@@ -25,31 +25,15 @@ export function createRuntimeV3RoutinePi(
   return {
     async prompt(input) {
       const signal = bounded(input.signal);
+      let started: Awaited<ReturnType<typeof routine.start>>;
       try {
-        const started = await routine.start({
+        started = await routine.start({
           boxId: input.boxId,
           runId: input.turnId,
           persona: input.persona ?? null,
           validationOnly: input.validationOnly ?? false,
           directWorkspace: input.directWorkspace ?? true,
           expectedInvocationId: input.expectedInvocationId,
-          signal,
-        });
-        if (started.invocationId !== input.expectedInvocationId) {
-          return { outcome: "ambiguous", code: "routine_invocation_changed" };
-        }
-        activeByBox.set(input.boxId, {
-          runId: input.turnId,
-          invocationId: started.invocationId,
-          terminal: false,
-        });
-        return await routine.prompt({
-          boxId: input.boxId,
-          runId: input.turnId,
-          commandId: input.commandId,
-          attemptId: input.turnId,
-          expectedInvocationId: started.invocationId,
-          message: input.message,
           signal,
         });
       } catch {
@@ -64,6 +48,27 @@ export function createRuntimeV3RoutinePi(
         } catch {
           return { outcome: "ambiguous", code: "routine_start_ambiguous" };
         }
+      }
+      if (started.invocationId !== input.expectedInvocationId) {
+        return { outcome: "ambiguous", code: "routine_invocation_changed" };
+      }
+      activeByBox.set(input.boxId, {
+        runId: input.turnId,
+        invocationId: started.invocationId,
+        terminal: false,
+      });
+      try {
+        return await routine.prompt({
+          boxId: input.boxId,
+          runId: input.turnId,
+          commandId: input.commandId,
+          attemptId: input.turnId,
+          expectedInvocationId: started.invocationId,
+          message: input.message,
+          signal,
+        });
+      } catch {
+        return { outcome: "ambiguous", code: "routine_prompt_outcome_unknown" };
       }
     },
     async read(input) {
@@ -118,6 +123,15 @@ export function createRuntimeV3RoutinePi(
         activeByBox.delete(input.boxId);
       }
       return acknowledged;
+    },
+    async terminate(input) {
+      await routine.terminate({
+        boxId: input.boxId,
+        runId: input.turnId,
+        expectedInvocationId: input.invocationId,
+        signal: bounded(input.signal),
+      });
+      activeByBox.delete(input.boxId);
     },
     async abort(input) {
       return await routine.abort({

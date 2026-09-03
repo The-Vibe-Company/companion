@@ -68,6 +68,8 @@ WITH runtime_role AS (
   WHERE rolname = current_user
 ), decision_schema AS (
   SELECT pg_catalog.to_regclass('public.companion_v3_decisions') IS NOT NULL AS available
+), routine_schema AS (
+  SELECT pg_catalog.to_regclass('public.companion_v3_routine_runs') IS NOT NULL AS available
 ), required(signature) AS (
   VALUES
     ('public.companion_runtime_gate_status()'),
@@ -146,6 +148,16 @@ WITH runtime_role AS (
     ('public.companion_v3_runtime_finish_decision_action(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,uuid,text,text,integer)'),
     ('public.companion_v3_runtime_complete_v6(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'),
     ('public.companion_v3_runtime_sweep_decisions(public.companion_v3_lane,integer)')
+), routine_required(signature) AS (
+  VALUES
+    ('public.companion_v3_runtime_claim_warm_v7(text,public.companion_v3_lane,integer,integer)'),
+    ('public.companion_v3_runtime_claim_routine_v7(text,public.companion_v3_lane,integer,integer)'),
+    ('public.companion_v3_runtime_authorize_warm_turn_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'),
+    ('public.companion_v3_runtime_authorize_routine(uuid,uuid,uuid,uuid,bigint,bigint,integer)'),
+    ('public.companion_v3_runtime_begin_routine_admission(uuid,uuid,uuid,uuid,bigint,bigint,text,bigint,integer)'),
+    ('public.companion_v3_runtime_project_routine_page(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'),
+    ('public.companion_v3_runtime_sweep_routine_deadlines_v7(integer)'),
+    ('public.companion_v3_runtime_complete_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)')
 ), required_functions AS (
   SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
   FROM required
@@ -153,6 +165,10 @@ WITH runtime_role AS (
   SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
   FROM decision_required CROSS JOIN decision_schema
   WHERE decision_schema.available
+  UNION ALL
+  SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
+  FROM routine_required CROSS JOIN routine_schema
+  WHERE routine_schema.available
 ), public_relations AS (
   SELECT relation.oid, relation.relkind
   FROM pg_catalog.pg_class relation

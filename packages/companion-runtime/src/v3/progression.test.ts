@@ -157,6 +157,57 @@ describe("Runtime v3 progression interface", () => {
     expect(prompt).not.toHaveBeenCalled();
   });
 
+  it("terminates the exact background invocation before completing durable cleanup", async () => {
+    const terminate = vi.fn().mockResolvedValue(undefined);
+    const prompt = vi.fn();
+    const read = vi.fn();
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn(),
+        beginAdmission: vi.fn(),
+        recordAdmission: vi.fn(),
+        project: vi.fn(),
+      },
+      pi: { prompt, read, acknowledge: vi.fn(), terminate },
+    });
+    const claim: RuntimeV3Claim = {
+      ...mainClaim,
+      turn: { ...acceptedTurn, lane: "background" },
+      cleanup: { boxId: "bx_23456789", invocationId: "routine-invocation-1" },
+    };
+
+    await expect(advance(claim)).resolves.toEqual({ kind: "cleanup_completed" });
+    expect(terminate).toHaveBeenCalledOnce();
+    expect(terminate).toHaveBeenCalledWith(expect.objectContaining({
+      boxId: "bx_23456789",
+      turnId: acceptedTurn.id,
+      invocationId: "routine-invocation-1",
+    }));
+    expect(prompt).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it("retains the durable cleanup checkpoint when exact termination is not confirmed", async () => {
+    const terminate = vi.fn().mockRejectedValue(new Error("termination result unavailable"));
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn(),
+        beginAdmission: vi.fn(),
+        recordAdmission: vi.fn(),
+        project: vi.fn(),
+      },
+      pi: { prompt: vi.fn(), read: vi.fn(), acknowledge: vi.fn(), terminate },
+    });
+    const claim: RuntimeV3Claim = {
+      ...mainClaim,
+      turn: { ...acceptedTurn, lane: "background" },
+      cleanup: { boxId: "bx_23456789", invocationId: "routine-invocation-1" },
+    };
+
+    await expect(advance(claim)).resolves.toEqual({ kind: "release" });
+    expect(terminate).toHaveBeenCalledOnce();
+  });
+
   it("releases without contacting Pi when the pre-Pi admission fence is refused", async () => {
     const prompt = vi.fn();
     const beginAdmission = vi.fn().mockResolvedValue(false);
@@ -176,6 +227,29 @@ describe("Runtime v3 progression interface", () => {
     await expect(advance(mainClaim)).resolves.toEqual({ kind: "release" });
     expect(beginAdmission).toHaveBeenCalledOnce();
     expect(prompt).not.toHaveBeenCalled();
+  });
+
+  it("retries a background routine only after Pi explicitly rejects prompt admission", async () => {
+    const prompt = vi.fn().mockResolvedValue({
+      outcome: "rejected" as const, code: "pi_prompt_refused",
+    });
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "routine-invocation-1",
+          content: "run once", cursor: 0n, backgroundRoutine: true,
+        }),
+        beginAdmission: vi.fn().mockResolvedValue(true),
+        recordAdmission: vi.fn(),
+        project: vi.fn(),
+      },
+      pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
+    });
+    const claim = { ...mainClaim, turn: { ...acceptedTurn, lane: "background" as const } };
+
+    await expect(advance(claim)).resolves.toMatchObject({
+      kind: "admission_rejected", code: "pi_prompt_refused",
+    });
   });
 
   it("hands off an authorization reservation whose committed response is lost", async () => {
@@ -241,6 +315,43 @@ describe("Runtime v3 progression interface", () => {
     await expect(advance(mainClaim, controller.signal)).resolves.toEqual({ kind: "release" });
     expect(prompt).toHaveBeenCalledOnce();
     expect(project).not.toHaveBeenCalled();
+  });
+
+  it("reclaims a cooperatively released background poll without prompting again", async () => {
+    const prompt = vi.fn().mockResolvedValue({
+      outcome: "accepted" as const, invocationId: "routine-invocation-1", initialCursor: 0n,
+    });
+    const read = vi.fn().mockResolvedValue({
+      events: [], nextCursor: 0n, acknowledgedCursor: 0n, hasMore: false,
+    });
+    const material = {
+      boxId: "bx_23456789", piInvocationId: "routine-invocation-1",
+      content: "poll without new activity", cursor: 0n,
+    };
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue(material),
+        beginAdmission: vi.fn().mockResolvedValue(true),
+        recordAdmission: vi.fn().mockResolvedValue(true),
+        project: vi.fn().mockResolvedValue(true),
+      },
+      pi: { prompt, read, acknowledge: vi.fn() },
+    });
+    const queued = { ...mainClaim, turn: { ...acceptedTurn, lane: "background" as const } };
+    const resumed = {
+      ...queued,
+      turn: {
+        ...queued.turn,
+        state: "running" as const,
+        inactivityDeadlineAt: new Date(Date.now() + 60_000),
+        absoluteDeadlineAt: new Date(Date.now() + 120_000),
+      },
+    };
+
+    await expect(advance(queued)).resolves.toEqual({ kind: "release" });
+    await expect(advance(resumed)).resolves.toEqual({ kind: "release" });
+    expect(prompt).toHaveBeenCalledOnce();
+    expect(read).toHaveBeenCalledTimes(2);
   });
 
   it("keeps a proven prompt refusal queued when shutdown arrives with the response", async () => {
