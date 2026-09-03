@@ -2269,6 +2269,113 @@ describe("Runtime v3 progression facts", () => {
     );
   });
 
+  it("releases a recovery-context reservation when preparation invalidates before write intent", async () => {
+    const recoveryContext = "Durable context reserved before invalidation.";
+    await seedPreparedV3("invocation-reservation-invalidation");
+    await ownerSql`update public.companion_v3_instances
+      set recovery_context = ${recoveryContext},
+        recovery_context_sha256 = encode(sha256(convert_to(${recoveryContext}, 'UTF8')), 'hex'),
+        recovery_context_turn_id = null
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
+    const firstCommand = randomUUID();
+    await asApi(async (sql) => {
+      await sql`select turn from public.companion_v3_api_enqueue_warm_turn(
+        ${ids.org}::uuid, ${ids.companion}::uuid, ${firstCommand}::uuid,
+        'reserve recovered context before invalidation'
+      )`;
+    });
+    const [first] = await runtimeSql<Array<{
+      turnId: string; token: string; epoch: string; gate: string;
+    }>>`
+      select turn_id as "turnId", claim_token as token, claim_epoch::text as epoch,
+        gate_epoch::text as gate
+      from public.companion_v3_runtime_claim_warm_v5(
+        'runtime-context-before-invalidation', 'main', 30, 5
+      )`;
+    expect(first).toBeDefined();
+    const [firstMaterial] = await runtimeSql<Array<{
+      invocationId: string; cursor: string; content: string; recoveryDeferred: boolean;
+    }>>`
+      select pi_invocation_id as "invocationId", activity_cursor::text as cursor,
+        content, recovery_deferred as "recoveryDeferred"
+      from public.companion_v3_runtime_authorize_warm_turn_v5(
+        ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${first!.turnId}::uuid,
+        ${first!.token}::uuid, ${first!.epoch}::bigint, ${first!.gate}::bigint, 5
+      )`;
+    expect(firstMaterial).toMatchObject({ recoveryDeferred: false });
+    expect(firstMaterial!.content).toContain(recoveryContext);
+    const [reserved] = await ownerSql<Array<{ reservedTurnId: string | null }>>`
+      select recovery_context_turn_id as "reservedTurnId"
+      from public.companion_v3_instances
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
+    expect(reserved?.reservedTurnId).toBe(first!.turnId);
+
+    await ownerSql`delete from public.companion_provider_connections
+      where org_id = ${ids.org}::uuid and provider_id = 'anthropic'`;
+    try {
+      const [invalidated] = await ownerSql<Array<{
+        context: string | null; reservedTurnId: string | null;
+      }>>`
+        select instance.recovery_context as context,
+          instance.recovery_context_turn_id as "reservedTurnId"
+        from public.companion_v3_instances instance
+        where instance.org_id = ${ids.org}::uuid
+          and instance.companion_id = ${ids.companion}::uuid`;
+      expect(invalidated).toEqual({ context: recoveryContext, reservedTurnId: null });
+      const [begun] = await runtimeSql<Array<{ begun: boolean }>>`
+        select public.companion_v3_runtime_begin_admission_v5(
+          ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${first!.turnId}::uuid,
+          ${first!.token}::uuid, ${first!.epoch}::bigint, ${first!.gate}::bigint,
+          ${firstMaterial!.invocationId}, ${firstMaterial!.cursor}::bigint, 5
+        ) as begun`;
+      expect(begun?.begun).toBe(false);
+      const [completed] = await runtimeSql<Array<{ completed: boolean }>>`
+        select public.companion_v3_runtime_complete_v5(
+          ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${first!.turnId}::uuid,
+          ${first!.token}::uuid, ${first!.epoch}::bigint, ${first!.gate}::bigint,
+          'interrupted', 'pi_admission_fence_lost',
+          'Pi admission could not be fenced safely.', 'none', 5
+        ) as completed`;
+      expect(completed?.completed).toBe(true);
+    } finally {
+      await ownerSql`insert into public.companion_provider_connections(
+        org_id, provider_id, auth_method, ciphertext, iv, auth_tag,
+        wrapped_dek, wrap_iv, wrap_auth_tag, key_id, connected_by
+      ) values (
+        ${ids.org}::uuid, 'anthropic', 'api_key', 'ciphertext', 'iv', 'tag',
+        'dek', 'wiv', 'wtag', 'key', ${ids.owner}
+      ) on conflict (org_id, provider_id) do nothing`;
+    }
+
+    await seedPreparedV3("invocation-reservation-restaged");
+    const nextCommand = randomUUID();
+    await asApi(async (sql) => {
+      await sql`select turn from public.companion_v3_api_enqueue_warm_turn(
+        ${ids.org}::uuid, ${ids.companion}::uuid, ${nextCommand}::uuid,
+        'consume recovered context after invalidation'
+      )`;
+    });
+    const [next] = await runtimeSql<Array<{
+      turnId: string; token: string; epoch: string; gate: string;
+    }>>`
+      select turn_id as "turnId", claim_token as token, claim_epoch::text as epoch,
+        gate_epoch::text as gate
+      from public.companion_v3_runtime_claim_warm_v5(
+        'runtime-context-after-invalidation', 'main', 30, 5
+      )`;
+    expect(next).toBeDefined();
+    const [nextMaterial] = await runtimeSql<Array<{
+      content: string; recoveryDeferred: boolean;
+    }>>`
+      select content, recovery_deferred as "recoveryDeferred"
+      from public.companion_v3_runtime_authorize_warm_turn_v5(
+        ${ids.org}::uuid, ${ids.companion}::uuid, 'main', ${next!.turnId}::uuid,
+        ${next!.token}::uuid, ${next!.epoch}::bigint, ${next!.gate}::bigint, 5
+      )`;
+    expect(nextMaterial).toMatchObject({ recoveryDeferred: false });
+    expect(nextMaterial!.content).toContain(recoveryContext);
+  });
+
   it("atomically emits one context-loss notice across concurrent lanes", async () => {
     const warning = "I may have forgotten part of our earlier conversation while recovering.";
     const recoveryContext = "Reserved durable recovery context.";

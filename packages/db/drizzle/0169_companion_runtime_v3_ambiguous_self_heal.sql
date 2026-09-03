@@ -37,6 +37,35 @@ ALTER TABLE public.companion_v3_turns
   );
 --> statement-breakpoint
 
+-- Authorization can reserve recovered context before the write intent is fenced. Configuration
+-- invalidation makes that authorization unusable, so release only the reservation while retaining
+-- the durable context for the next freshly authorized Turn.
+CREATE OR REPLACE FUNCTION public.companion_v3_invalidate_preparation(
+  p_org_id uuid, p_companion_id uuid
+)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public SET row_security = on AS $$
+BEGIN
+  UPDATE public.companion_v3_instances instance SET
+    preparation_checkpoint = CASE WHEN instance.box_id IS NULL THEN 'pending' ELSE 'box_ready' END,
+    staging_completed_at = NULL, pi_invocation_id = NULL, prepared_at = NULL,
+    preparation_actor_id = NULL, preparation_settings_revision = NULL,
+    preparation_skills_revision = NULL, preparation_model_id = NULL,
+    preparation_provider_refs = NULL, preparation_skill_refs = NULL,
+    preparation_mcp_refs = NULL, prepared_disk_layout_version = NULL,
+    prepared_skills_digest = NULL, prepared_material_expires_at = NULL,
+    recovery_context_turn_id = NULL,
+    preparation_available_at = CASE WHEN instance.lifecycle_state = 'active'
+      THEN clock_timestamp() ELSE 'infinity'::timestamptz END,
+    preparation_claim_token = NULL, preparation_gate_epoch = NULL,
+    preparation_executor_id = NULL, preparation_claimed_at = NULL,
+    preparation_expires_at = NULL, updated_at = clock_timestamp()
+  WHERE instance.org_id = p_org_id AND instance.companion_id = p_companion_id
+    AND instance.desired_lifecycle = 'prepare';
+END $$;
+REVOKE ALL ON FUNCTION public.companion_v3_invalidate_preparation(uuid, uuid) FROM PUBLIC;
+--> statement-breakpoint
+
 CREATE FUNCTION public.companion_v3_build_recovery_context(
   p_org_id uuid, p_companion_id uuid, p_pi_invocation_id text, p_before_ordinal integer
 )

@@ -157,6 +157,32 @@ describe("Runtime v3 progression interface", () => {
     expect(prompt).not.toHaveBeenCalled();
   });
 
+  it("interrupts without contacting Pi when the admission fence is lost after authorization", async () => {
+    const prompt = vi.fn();
+    const beginAdmission = vi.fn().mockResolvedValue(false);
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1",
+          content: "authorized before invalidation", cursor: 0n,
+        }),
+        beginAdmission,
+        recordAdmission: vi.fn(),
+        project: vi.fn(),
+      },
+      pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
+    });
+
+    await expect(advance(mainClaim)).resolves.toEqual({
+      kind: "interrupted",
+      code: "pi_admission_fence_lost",
+      message: "Pi admission could not be fenced safely.",
+      action: "none",
+    });
+    expect(beginAdmission).toHaveBeenCalledOnce();
+    expect(prompt).not.toHaveBeenCalled();
+  });
+
   it("preserves needs-input across unknown pages until correlated activity resumes it", async () => {
     const project = vi.fn().mockResolvedValue(true);
     const read = vi.fn()
