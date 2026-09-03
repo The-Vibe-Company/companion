@@ -695,6 +695,14 @@ in both threads: `notify` surfaces without waking source Pi; `relay` queues a hi
 synthesis. Grant revocation blocks new sends but accepted work may finish; a later return-ACL failure
 is durable and leaves the target result intact.
 
+Runtime v3 stores the control execution identity as the ordinary accepted source Turn id; there is
+no delegation attempt model. The atomic send writes the target message, one `main` Turn, and the
+delegation lineage together. Target execution is indistinguishable from member-authored main work
+after admission. Terminal return rechecks membership, both ACLs, the grant, and the root bounds.
+`notify` appends a PostgreSQL-only source result and never contacts source Pi; `relay` enqueues one
+ordinary source `main` Turn through the same v3 admission function. A failed return leaves the full
+target result in place and appends a bounded delivery-failure marker to each surviving thread.
+
 A running attempt has two bounds:
 
 - inactivity stall after ten minutes without correlated activity, paused while `needs_input`;

@@ -1480,6 +1480,16 @@ export const companionV3Turns = pgTable(
     availableAt: timestamp("available_at", { withTimezone: true }).notNull().defaultNow(),
     retryCount: integer("retry_count").notNull().default(0),
     routineRelaySourceEventId: text("routine_relay_source_event_id"),
+    /** Directed delegation whose ordinary target main Turn this is. */
+    delegationId: uuid("delegation_id").references(
+      (): AnyPgColumn => companionDelegations.id,
+      { onDelete: "set null" },
+    ),
+    /** Directed result supplied to this ordinary source main Turn for relay synthesis. */
+    delegationReturnId: uuid("delegation_return_id").references(
+      (): AnyPgColumn => companionDelegations.id,
+      { onDelete: "set null" },
+    ),
     createdAt: now(),
     updatedAt: updatedAt(),
   },
@@ -1854,16 +1864,15 @@ export const companionControlInvocations = pgTable(
       "companion_control_invocations_digest_check",
       sql`${t.requestDigest} ~ '^[0-9a-f]{64}$'`,
     ),
-    attemptFk: foreignKey({
-      columns: [t.orgId, t.companionId, t.sourceTurnId, t.sourceAttemptId],
-      foreignColumns: [
-        companionTurnAttempts.orgId,
-        companionTurnAttempts.companionId,
-        companionTurnAttempts.turnId,
-        companionTurnAttempts.id,
-      ],
-      name: "companion_control_invocations_attempt_fk",
+    v3TurnFk: foreignKey({
+      columns: [t.orgId, t.companionId, t.sourceTurnId],
+      foreignColumns: [companionV3Turns.orgId, companionV3Turns.companionId, companionV3Turns.id],
+      name: "companion_control_invocations_v3_turn_fk",
     }).onDelete("cascade"),
+    v3IdentityCheck: check(
+      "companion_control_invocations_v3_identity_check",
+      sql`${t.sourceAttemptId} = ${t.sourceTurnId}`,
+    ),
   }),
 );
 

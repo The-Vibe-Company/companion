@@ -248,6 +248,15 @@ The first later admission receives a hash-validated compacted summary and the gr
 suffix of complete durable transcript entries, excluding the ambiguous message. A durable loss bit
 adds one fixed context-loss sentence to the beginning of the next Companion answer exactly once.
 
+Migration 0174 moves directed delegation onto that same progression. A control invocation is bound
+to its accepted ordinary v3 main Turn; enqueue atomically adds one ordinary target main Turn and its
+durable source/root lineage. PostgreSQL revalidates both Companion ACLs, the persistent peer grant,
+depth four, and the twenty-descendant root budget at enqueue and terminal return. The target therefore
+inherits the normal main FIFO, preparation, native prompt/steer admission, fences, deadlines, and
+terminal settlement. A terminal `notify` writes only a durable source-thread result, while `relay`
+adds exactly one ordinary source main Turn. Return failure is recorded in both threads and never
+removes the target result.
+
 Migration 0162 keeps release measurement on that same Turn instead of adding an observability
 attempt model. Acceptance, first/latest claim, Box ready, staging complete, Pi ready, prompt/steer
 admission, first correlated activity, and settlement are durable timestamps. Stable dimensions are

@@ -1219,6 +1219,13 @@
       "when": 1793354800000,
       "tag": "0173_companion_runtime_v3_background_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 174,
+      "version": "7",
+      "when": 1793358400000,
+      "tag": "0174_companion_runtime_v3_delegations",
+      "breakpoints": true
     }
   ]
 }
