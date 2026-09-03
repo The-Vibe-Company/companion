@@ -248,6 +248,41 @@ describe("staging a member's attachments onto the Box", () => {
     expect(stageAttachments).toHaveBeenCalledTimes(2);
     expect(stageAttachments).toHaveBeenLastCalledWith(expect.objectContaining({ files: [] }));
   });
+
+  it("clears expired staging even when the attempt is cancelled during the Box write", async () => {
+    let clock = Date.parse("2026-09-24T23:59:59.000Z");
+    const controller = new AbortController();
+    const stageAttachments = vi.fn(async (input: { files: unknown[]; signal?: AbortSignal }) => {
+      if (input.files.length === 0) {
+        expect(input.signal?.aborted).toBe(false);
+        return [];
+      }
+      clock = Date.parse("2026-09-25T00:00:00.000Z");
+      controller.abort();
+      return [{
+        position: 0,
+        filename: "chart-0.png",
+        contentType: "image/png",
+        byteSize: PNG.byteLength,
+        path: "~/attachments/message/0-chart-0.png",
+      }];
+    });
+
+    await expect(pipeline({
+      runtime: { stageAttachments },
+      now: () => clock,
+    }).attachmentStager.stageAttachments({
+      ...stageInput([attachment(PNG)]),
+      signal: controller.signal,
+    })).rejects.toMatchObject({ stableCode: "attachment_expired" });
+    expect(stageAttachments).toHaveBeenCalledTimes(2);
+    expect(stageAttachments).toHaveBeenLastCalledWith(expect.objectContaining({
+      boxId: "bx_23456789",
+      messageId: "44444444-4444-4444-8444-444444444444",
+      files: [],
+      signal: expect.objectContaining({ aborted: false }),
+    }));
+  });
 });
 
 describe("harvesting Pi's outbox", () => {

@@ -410,12 +410,13 @@ export function createRuntimeMaterialPipeline(input: {
       const clearExpiredStaging = async (): Promise<never> => {
         // The staging contract replaces the whole scratch root. Let provider failures propagate:
         // the engine classifies them as retryable staging failures, and the next attempt starts by
-        // retrying this empty replacement without reading or writing attachment bytes.
+        // retrying this empty replacement without reading or writing attachment bytes. Retention
+        // cleanup must outlive cancellation of the attempt whose Box write crossed the deadline.
         await fileRuntime.stageAttachments({
           boxId: stage.boxId,
           messageId,
           files: [],
-          signal: stage.signal,
+          signal: AbortSignal.timeout(30_000),
         });
         throw new RuntimeAttachmentExpiredError();
       };
