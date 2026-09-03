@@ -19,6 +19,7 @@ import {
   createRuntimeV3WarmTurnAdvance,
   type RuntimeV3PreparationCredentials,
 } from "@companion/companion-runtime/v3/internal";
+import { companionTranscriptEntrySchema } from "@companion/contracts";
 import postgres from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -5313,6 +5314,54 @@ describe("Runtime v3 progression facts", () => {
         where companion_id=${targetB}::uuid
           and event_id=${`v3:${acceptedBeforeRevocation.target_turn.id}:1`}
           and role='assistant'`).toEqual([{ content: "result retained on target" }]);
+
+      await asApi(async (sql) => {
+        await sql`select * from public.companion_api_grant_peer_access(
+          ${ids.org}::uuid,${ids.companion}::uuid,${targetB}::uuid)`;
+      });
+      const acceptedBeforeMembershipRevocation = await delegate({
+        source: ids.companion,target: targetB,sourceTurn: source.turnId,
+        key: "return-member-revoked",mode: "notify",content: "accepted before membership loss",
+      });
+      await ownerSql`delete from public.memberships
+        where org_id=${ids.org}::uuid and user_id=${ids.owner}`;
+      await expect(delegate({ source: ids.companion,target: targetB,
+        sourceTurn: source.turnId,key: "member-revoked-new",mode: "notify",content: "blocked" }))
+        .rejects.toMatchObject({ code: "42501" });
+      await settle(acceptedBeforeMembershipRevocation.target_turn.id,targetB,
+        "membership-revoked result retained");
+      expect(await ownerSql`select delivery_status::text as delivery_status,delivery_error_code
+        from public.companion_delegations
+        where id=${acceptedBeforeMembershipRevocation.delegation.id}::uuid`)
+        .toEqual([{ delivery_status: "failed",delivery_error_code: "delegation_actor_revoked" }]);
+      expect(await ownerSql`select delegation->>'delivery_status' as delivery_status,
+          delegation->>'delivery_error_code' as delivery_error_code
+        from public.companion_transcript_entries
+        where companion_id=${targetB}::uuid
+          and event_id=(select message_event_id from public.companion_v3_turns
+            where id=${acceptedBeforeMembershipRevocation.target_turn.id}::uuid)`)
+        .toEqual([{ delivery_status: "failed",delivery_error_code: "delegation_actor_revoked" }]);
+      expect(await ownerSql`select delegation->>'delivery_status' as delivery_status,
+          delegation->>'delivery_error_code' as delivery_error_code
+        from public.companion_transcript_entries
+        where companion_id=${ids.companion}::uuid
+          and event_id=${`delegation:${acceptedBeforeMembershipRevocation.delegation.id}:delivery-failed`}`)
+        .toEqual([{ delivery_status: "failed",delivery_error_code: "delegation_actor_revoked" }]);
+      await ownerSql`insert into public.memberships(org_id,user_id,org_role)
+        values(${ids.org}::uuid,${ids.owner},'owner')`;
+      for (const companionId of [ids.companion,targetB]) {
+        let entries: unknown[] = [];
+        await asApi(async (sql) => {
+          const thread = await sql<Array<{ entries: unknown[] }>>`
+            select entries from public.companion_api_read_thread(
+              ${ids.org}::uuid,${companionId}::uuid)`;
+          entries=thread[0]?.entries ?? [];
+        });
+        expect(entries.every((entry) => companionTranscriptEntrySchema.safeParse(entry).success))
+          .toBe(true);
+        expect((await enqueue(companionId,"ordinary work after failed return")).turnId)
+          .toMatch(/^[0-9a-f-]{36}$/);
+      }
 
       await ownerSql`update public.companion_v3_turns set delegation_id=${chainChild.delegation.id}::uuid
         where id=${source.turnId}::uuid`;
