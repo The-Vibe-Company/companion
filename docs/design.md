@@ -192,7 +192,11 @@ remain independent of routine attempts.
 A blocking `ask_user` decision moves the turn to `needs_input` and clears the
 inactivity deadline. An answer resumes Pi; after ten minutes, absence returns a cancelled response
 so Pi chooses a safe fallback without inferring approval. A newer member message cancels the wait
-sooner, remains an ordinary queued turn, and never supplies an implicit answer. That queued turn has
+sooner, remains an ordinary queued turn, and never supplies an implicit answer or a runtime-only
+approval action. A background question instead keeps its durable card identity while
+runtime aborts and terminalizes that occurrence, releasing its Pi execution and background lane;
+the first current Owner/Editor answer may settle only the detached card and never revives the Turn.
+That queued turn has
 no attempt or cold-start deadline while its Start prerequisite is waiting. Runtime starts the fixed
 three-minute cold-start window only when it first claims that Start, and a takeover preserves it. If
 that cycle times out before any prompt can be dispatched, PostgreSQL re-enqueues the same Start with

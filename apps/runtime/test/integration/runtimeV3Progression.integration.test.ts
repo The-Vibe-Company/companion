@@ -126,6 +126,87 @@ async function seedPreparedV3(
     prepared_material_expires_at = excluded.prepared_material_expires_at`;
 }
 
+async function stageAskUser(input: {
+  lane: "main" | "background";
+  requestKey: string;
+  invocationId: string;
+}) {
+  await seedPreparedV3(input.invocationId);
+  const messageId = randomUUID();
+  const eventId = `msg:${messageId}`;
+  let turnId = "";
+  if (input.lane === "main") {
+    await asApi(async (sql) => {
+      const result = await sql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_v3_api_enqueue_warm_turn(
+          ${ids.org}::uuid,${ids.companion}::uuid,${messageId}::uuid,'ask a durable question')`;
+      turnId = result[0]!.turn.id;
+    });
+  } else {
+    await ownerSql`insert into public.companion_threads(org_id,companion_id)
+      values(${ids.org}::uuid,${ids.companion}::uuid) on conflict do nothing`;
+    await ownerSql`with advanced as (
+      update public.companion_threads set next_ordinal=next_ordinal+1,
+        projection_sequence=projection_sequence+1,updated_at=clock_timestamp()
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+      returning next_ordinal-1 as ordinal,projection_sequence
+    ) insert into public.companion_transcript_entries(
+      org_id,companion_id,event_id,ordinal,projection_sequence,role,content,author_id)
+    select ${ids.org}::uuid,${ids.companion}::uuid,${eventId},ordinal,projection_sequence,
+      'user','background asks a durable question',${ids.owner} from advanced`;
+    const result = await ownerSql<Array<{ turnId: string }>>`
+      select turn_id as "turnId" from public.companion_v3_admit_turn(
+        ${ids.org}::uuid,${ids.companion}::uuid,${messageId}::uuid,${eventId},${ids.owner},'background')`;
+    turnId = result[0]!.turnId;
+  }
+  const convergence = createRuntimeV3PostgresWarmConvergence(runtimeSql);
+  const persistence = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
+  const claim = await convergence.claimLane({
+    executorId: `runtime-question-${input.lane}-${messageId}`, lane: input.lane,
+  });
+  expect(claim).not.toBeNull();
+  await expect(persistence.beginAdmission(claim!, {
+    invocationId: input.invocationId, cursor: 0n,
+  })).resolves.toBe(true);
+  await expect(persistence.recordAdmission(claim!, {
+    invocationId: input.invocationId, responseTurnId: turnId, cursor: 0n,
+  })).resolves.toBe(true);
+  const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
+  const projected = await persistence.project(claim!, {
+    throughCursor: 1n,
+    assistant: [],
+    decisions: [{
+      sequence: 1n,
+      type: "decision" as const,
+      entry_key: "decision:1",
+      eventId: `v3:${turnId}:decision:1`,
+      request_key: input.requestKey,
+      request_kind: "question" as const,
+      content: "Which safe option?",
+      decision: {
+        request_id: input.requestKey,
+        kind: "question" as const,
+        name: "ask_user",
+        title: "Which safe option?",
+        detail: null,
+        status: "pending" as const,
+        answer: null,
+        decided_by_id: null,
+        decided_by_name: null,
+        decided_at: null,
+        expires_at: expiresAt,
+        proposal: null,
+      },
+      expires_at: expiresAt,
+    }],
+    needsInput: true,
+    settled: false,
+    processExited: false,
+    activity: true,
+  });
+  return { claim: claim!, convergence, persistence, projected, turnId, messageId };
+}
+
 describe("Runtime v3 progression facts", () => {
   beforeAll(async () => {
     const [apiRows, workerRows, runtimeRows] = await Promise.all([
@@ -1138,6 +1219,10 @@ describe("Runtime v3 progression facts", () => {
       invocationId: "invocation-question",
       initialCursor: 0n,
     }));
+    const respondExtensionUi = vi.fn(async () => ({
+      outcome: "accepted" as const,
+      invocationId: "invocation-question",
+    }));
     const convergence = createRuntimeV3Convergence({
       persistence: createRuntimeV3PostgresWarmConvergence(runtimeSql),
       advance: createRuntimeV3WarmTurnAdvance({
@@ -1196,6 +1281,7 @@ describe("Runtime v3 progression facts", () => {
             };
           },
           async acknowledge(input) { return input.through; },
+          respondExtensionUi,
         },
       }),
     });
@@ -1218,9 +1304,40 @@ describe("Runtime v3 progression facts", () => {
       isReplying: false,
     }]);
 
+    const [durableCard] = await ownerSql<Array<{
+      role: string; status: string; requestId: string; expiresAt: string;
+    }>>`select role::text, decision->>'status' as status,
+      decision->>'request_id' as "requestId", decision->>'expires_at' as "expiresAt"
+      from public.companion_transcript_entries
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+        and role='decision'`;
+    expect(durableCard).toEqual({
+      role: "decision", status: "pending", requestId: "question-1", expiresAt: expect.any(String),
+    });
+    await ownerSql`update public.companion_workspace_access set role='viewer'
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
+    await expect(asApiActor(ids.org, ids.editor, async (sql) => {
+      const rows = await sql`select * from public.companion_v3_api_get_decision(
+        ${ids.org}::uuid,${ids.companion}::uuid,'question-1')`;
+      expect(rows).toHaveLength(1);
+      await sql`select public.companion_v3_api_answer_decision(
+        ${ids.org}::uuid,${ids.companion}::uuid,'question-1','answer','Staging')`;
+    })).rejects.toMatchObject({ code: "42501" });
+    await ownerSql`update public.companion_workspace_access set role='editor'
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
+    await asApi(async (sql) => {
+      await sql`select public.companion_v3_api_answer_decision(
+        ${ids.org}::uuid,${ids.companion}::uuid,'question-1','answer','Production')`;
+    });
+
     await expect(convergence.converge({ executorId: "runtime-needs-input-resume" }))
       .resolves.toEqual({ progressed: 1, exhausted: false });
     expect(prompt).toHaveBeenCalledOnce();
+    expect(respondExtensionUi).toHaveBeenCalledOnce();
+    expect(respondExtensionUi).toHaveBeenCalledWith(expect.objectContaining({
+      turnId: sent[0]!.turn.id,
+      response: { type: "extension_ui_response", id: "question-1", value: "Production" },
+    }));
 
     await asApi(async (sql) => {
       projection = await sql<Array<{
@@ -1250,6 +1367,108 @@ describe("Runtime v3 progression facts", () => {
         replayed: true,
       }]);
     });
+  });
+
+  it("cancels an attached ask_user before admitting a newer member message", async () => {
+    const staged = await stageAskUser({
+      lane: "main", requestKey: "superseded-question", invocationId: "invocation-superseded",
+    });
+    expect(staged.projected).toBe(true);
+    await expect(staged.convergence.completeProgression(staged.claim, { kind: "release" }))
+      .resolves.toBe(true);
+    const newerMessage = randomUUID();
+    await asApi(async (sql) => {
+      await sql`select turn from public.companion_v3_api_enqueue_warm_turn(
+        ${ids.org}::uuid,${ids.companion}::uuid,${newerMessage}::uuid,'new member direction')`;
+    });
+    const oldClaim = await staged.convergence.claimLane({
+      executorId: "runtime-superseded-delivery", lane: "main",
+    });
+    expect(oldClaim?.turn.id).toBe(staged.turnId);
+    const action = await staged.persistence.beginDecisionAction!(oldClaim!);
+    expect(action).toMatchObject({
+      kind: "respond",
+      response: { type: "extension_ui_response", id: "superseded-question", cancelled: true },
+    });
+    expect(await staged.persistence.beginDecisionAction!(oldClaim!)).toBeNull();
+    const [facts] = await ownerSql<Array<{ status: string; answer: string | null; newerState: string }>>`
+      select decision.decision_status::text as status,decision.response_text as answer,
+        newer.state::text as "newerState"
+      from public.companion_v3_decisions decision
+      join public.companion_v3_turns newer on newer.command_id=${newerMessage}::uuid
+      where decision.turn_id=${staged.turnId}::uuid`;
+    expect(facts).toEqual({ status: "cancelled", answer: null, newerState: "queued" });
+  });
+
+  it("expires an unanswered main ask_user and stages only a cancellation for Pi", async () => {
+    const staged = await stageAskUser({
+      lane: "main", requestKey: "silent-question", invocationId: "invocation-silent",
+    });
+    await expect(staged.convergence.completeProgression(staged.claim, { kind: "release" }))
+      .resolves.toBe(true);
+    await ownerSql`update public.companion_v3_decisions
+      set expires_at=clock_timestamp()-interval '1 millisecond'
+      where turn_id=${staged.turnId}::uuid`;
+    await expect(staged.convergence.sweepLane!({ lane: "main" })).resolves.toBe(1);
+    const claim = await staged.convergence.claimLane({ executorId: "runtime-silent", lane: "main" });
+    const action = await staged.persistence.beginDecisionAction!(claim!);
+    expect(action).toMatchObject({
+      kind: "respond",
+      response: { type: "extension_ui_response", id: "silent-question", cancelled: true },
+    });
+    const [waiting] = await ownerSql<Array<{
+      status: string; state: string; inactivity: Date; absolute: Date;
+    }>>`select decision.decision_status::text as status,turn_row.state::text as state,
+      turn_row.inactivity_deadline_at as inactivity,turn_row.absolute_deadline_at as absolute
+      from public.companion_v3_decisions decision join public.companion_v3_turns turn_row
+        on turn_row.id=decision.turn_id where decision.turn_id=${staged.turnId}::uuid`;
+    expect(waiting).toMatchObject({
+      status: "expired", state: "running", inactivity: expect.any(Date), absolute: expect.any(Date),
+    });
+    expect(waiting!.inactivity.getTime()).toBeLessThanOrEqual(waiting!.absolute.getTime());
+  });
+
+  it("detaches background ask_user and lets only the first unexpired authorized answer win", async () => {
+    const staged = await stageAskUser({
+      lane: "background", requestKey: "detached-question", invocationId: "invocation-detached",
+    });
+    expect(staged.projected).toBe("detached");
+    const action = await staged.persistence.beginDecisionAction!(staged.claim);
+    expect(action).toMatchObject({ kind: "detach", response: null });
+    await expect(staged.persistence.finishDecisionAction!(staged.claim, {
+      decisionId: action!.decisionId,
+      kind: "detach",
+      invocationId: "invocation-detached",
+    })).resolves.toBe(true);
+    await expect(staged.convergence.completeProgression(staged.claim, { kind: "detached" }))
+      .resolves.toBe(true);
+    const contenders = await Promise.allSettled([
+      asApi(async (sql) => {
+        await sql`select public.companion_v3_api_answer_decision(
+          ${ids.org}::uuid,${ids.companion}::uuid,'detached-question','answer','Alpha')`;
+      }),
+      asApi(async (sql) => {
+        await sql`select public.companion_v3_api_answer_decision(
+          ${ids.org}::uuid,${ids.companion}::uuid,'detached-question','answer','Beta')`;
+      }),
+    ]);
+    expect(contenders.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(contenders.filter((result) => result.status === "rejected")).toHaveLength(1);
+    const [facts] = await ownerSql<Array<{
+      state: string; leaseTurnId: string | null; status: string; answer: string;
+    }>>`select turn_row.state::text,lease.turn_id as "leaseTurnId",
+      decision.decision_status::text as status,decision.response_text as answer
+      from public.companion_v3_turns turn_row
+      join public.companion_v3_decisions decision on decision.turn_id=turn_row.id
+      join public.companion_v3_lane_leases lease on lease.org_id=turn_row.org_id
+        and lease.companion_id=turn_row.companion_id and lease.lane=turn_row.lane
+      where turn_row.id=${staged.turnId}::uuid`;
+    expect(facts).toMatchObject({
+      state: "cancelled", leaseTurnId: null, status: "answered",
+      answer: expect.stringMatching(/^(Alpha|Beta)$/),
+    });
+    expect(await staged.convergence.claimLane({ executorId: "runtime-obsolete", lane: "background" }))
+      .toBeNull();
   });
 
   it("settles warm text FIFO and releases a failed main lane before the next Turn", async () => {

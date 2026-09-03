@@ -41,5 +41,22 @@ export function createRuntimeV3WarmPi(pi: RuntimePiControl): RuntimeV3WarmPi {
         signal: warmCallSignal(input.signal),
       });
     },
+    async abort(input) {
+      return await pi.abort({
+        boxId: input.boxId,
+        commandId: input.commandId,
+        attemptId: input.turnId,
+        signal: warmCallSignal(input.signal),
+      });
+    },
+    async respondExtensionUi(input) {
+      return await pi.respondExtensionUi({
+        boxId: input.boxId,
+        commandId: input.commandId,
+        attemptId: input.turnId,
+        response: input.response,
+        signal: warmCallSignal(input.signal),
+      });
+    },
   };
 }

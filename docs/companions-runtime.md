@@ -651,6 +651,11 @@ message performs the same fail-closed cancellation immediately, then waits as it
 Neither path can approve a confirmation or proposal. Delivery re-arms inactivity; the attempt's
 existing two-hour absolute deadline remains the outer bound.
 
+A background `ask_user` is detached after its card is durable: runtime aborts the exact Pi occurrence,
+terminalizes the background Turn, and releases that lane. Its request identity remains answerable
+after reload; a PostgreSQL first-writer check accepts one current Owner/Editor response, while expired
+or concurrent responses cannot enqueue or revive the obsolete occurrence.
+
 `companion-control` is the single product-owned MCP for identity, Skills, models, plugins, routines,
 triggers, Pi recycle, and directed delegation. The Box loopback gateway injects a short-lived
 `cmp_ctl_*` bearer only into the gateway request; Pi never receives it in its environment. Resolution

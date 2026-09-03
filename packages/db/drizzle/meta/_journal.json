@@ -1191,6 +1191,13 @@
       "when": 1793340400000,
       "tag": "0169_companion_runtime_v3_ambiguous_self_heal",
       "breakpoints": true
+    },
+    {
+      "idx": 170,
+      "version": "7",
+      "when": 1793344000000,
+      "tag": "0170_companion_runtime_v3_human_decisions",
+      "breakpoints": true
     }
   ]
 }

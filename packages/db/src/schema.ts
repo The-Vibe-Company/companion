@@ -1547,6 +1547,66 @@ export const companionV3Turns = pgTable(
   }),
 );
 
+/** Durable Runtime v3 ask_user identity and its one-way delivery/detachment checkpoint. */
+export const companionV3Decisions = pgTable(
+  "companion_v3_decisions",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    companionId: uuid("companion_id").notNull(),
+    turnId: uuid("turn_id").notNull(),
+    lane: companionV3LaneEnum("lane").notNull(),
+    eventId: text("event_id").notNull(),
+    requestKey: text("request_key").notNull(),
+    requestKind: companionDecisionRequestKindEnum("request_kind").notNull(),
+    decisionStatus: companionDecisionStatusEnum("decision_status").notNull().default("pending"),
+    actorId: text("actor_id"),
+    responseText: text("response_text"),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    deliveryState: companionDecisionDeliveryStateEnum("delivery_state").notNull().default("pending"),
+    commandId: uuid("command_id"),
+    deliveryStartedAt: timestamp("delivery_started_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    detachedAt: timestamp("detached_at", { withTimezone: true }),
+    createdAt: now(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    uniqueOrgCompanionId: unique("companion_v3_decisions_org_companion_id_uq")
+      .on(t.orgId, t.companionId, t.id),
+    requestUnique: unique("companion_v3_decisions_request_uq").on(t.turnId, t.requestKey),
+    eventUnique: unique("companion_v3_decisions_event_uq").on(t.companionId, t.eventId),
+    turnFk: foreignKey({
+      columns: [t.orgId, t.companionId, t.turnId],
+      foreignColumns: [companionV3Turns.orgId, companionV3Turns.companionId, companionV3Turns.id],
+      name: "companion_v3_decisions_turn_fk",
+    }).onDelete("cascade"),
+    pending: index("companion_v3_decisions_pending_idx")
+      .on(t.expiresAt, t.companionId).where(sql`${t.decisionStatus} = 'pending'`),
+    requestKeyCheck: check(
+      "companion_v3_decisions_request_key_check",
+      sql`char_length(${t.requestKey}) between 1 and 200 and ${t.requestKey} !~ E'[\\n\\r]'`,
+    ),
+    eventIdCheck: check(
+      "companion_v3_decisions_event_id_check",
+      sql`${t.eventId} ~ '^v3:[0-9a-f-]{36}:decision:[0-9]+$'`,
+    ),
+    questionOnly: check(
+      "companion_v3_decisions_question_only_check",
+      sql`${t.requestKind} = 'question'`,
+    ),
+    responseCheck: check(
+      "companion_v3_decisions_response_check",
+      sql`(${t.responseText} is null or octet_length(${t.responseText}) <= 24000) and ((${t.decisionStatus} = 'pending' and ${t.actorId} is null and ${t.responseText} is null and ${t.respondedAt} is null) or (${t.decisionStatus} = 'answered' and ${t.actorId} is not null and ${t.responseText} is not null and ${t.respondedAt} is not null) or (${t.decisionStatus} in ('denied','expired','cancelled') and ${t.responseText} is null and ${t.respondedAt} is not null))`,
+    ),
+    deliveryCheck: check(
+      "companion_v3_decisions_delivery_check",
+      sql`((${t.deliveryState} in ('pending','cancelled') and ${t.commandId} is null and ${t.deliveryStartedAt} is null) or (${t.deliveryState} in ('write_intent','delivered','ambiguous') and ${t.commandId} is not null and ${t.deliveryStartedAt} is not null)) and ((${t.deliveryState} = 'delivered') = (${t.deliveredAt} is not null)) and (${t.detachedAt} is null or (${t.lane} = 'background' and ${t.deliveryState} = 'cancelled'))`,
+    ),
+  }),
+);
+
 /** Retained per-lane rows keep v3 executor epochs monotonic across release and takeover. */
 export const companionV3LaneLeases = pgTable(
   "companion_v3_lane_leases",

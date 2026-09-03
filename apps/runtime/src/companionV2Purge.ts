@@ -129,6 +129,7 @@ const PURGED_COMPANION_TABLES = [
   "companion_runtime_instances",
   "companion_turns",
   "companion_v3_instances",
+  "companion_v3_decisions",
   "companion_v3_turns",
   "companion_v3_lane_leases",
   "companion_control_requests",

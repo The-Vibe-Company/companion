@@ -1,5 +1,9 @@
 import { safeRuntimeError } from "../errors";
-import { classifyPiJournalPage, type ValidatedPiJournalRead } from "../piEvents";
+import {
+  classifyPiJournalPage,
+  type RuntimePiProjection,
+  type ValidatedPiJournalRead,
+} from "../piEvents";
 import { COMPANION_BUDGETS, COMPANION_RUNTIME_V3_BUDGETS } from "@companion/contracts";
 import type {
   ErrorAction,
@@ -88,6 +92,7 @@ export interface RuntimeV3Claim {
 
 export type RuntimeV3ProgressionOutcome =
   | { kind: "release" }
+  | { kind: "detached" }
   | { kind: "ack_completed" }
   | { kind: "retry_ack" }
   | { kind: "succeeded" }
@@ -98,6 +103,7 @@ export type RuntimeV3ErrorAction = Exclude<ErrorAction, "restart_box">;
 
 export type RuntimeV3DurableOutcome =
   | { kind: "release" }
+  | { kind: "detached" }
   | { kind: "ack_completed" }
   | { kind: "retry_ack" }
   | { kind: "succeeded" }
@@ -357,6 +363,7 @@ export interface RuntimeV3WarmTurnProjection {
     cacheRead: number | null;
     cacheWrite: number | null;
   }>;
+  decisions?: Array<Extract<RuntimePiProjection, { type: "decision" }> & { eventId: string }>;
   needsInput: boolean;
   settled: boolean;
   processExited: boolean;
@@ -382,7 +389,21 @@ export interface RuntimeV3WarmTurnPersistence {
     claim: RuntimeV3Claim,
     projection: RuntimeV3WarmTurnProjection,
     signal?: AbortSignal,
-  ): Promise<boolean | "succeeded" | "failed">;
+  ): Promise<boolean | "succeeded" | "failed" | "detached">;
+  beginDecisionAction?(
+    claim: RuntimeV3Claim,
+    signal?: AbortSignal,
+  ): Promise<{
+    kind: "respond" | "detach";
+    decisionId: string;
+    commandId: string;
+    response: Record<string, unknown> | null;
+  } | null>;
+  finishDecisionAction?(
+    claim: RuntimeV3Claim,
+    input: { decisionId: string; kind: "respond" | "detach"; invocationId: string },
+    signal?: AbortSignal,
+  ): Promise<boolean>;
 }
 
 export interface RuntimeV3WarmPi {
@@ -415,6 +436,19 @@ export interface RuntimeV3WarmPi {
     through: bigint;
     signal?: AbortSignal;
   }): Promise<bigint>;
+  abort?(input: {
+    boxId: string;
+    commandId: string;
+    turnId: string;
+    signal?: AbortSignal;
+  }): Promise<{ outcome: "accepted"; invocationId: string } | { outcome: "rejected" | "ambiguous"; code: string }>;
+  respondExtensionUi?(input: {
+    boxId: string;
+    commandId: string;
+    turnId: string;
+    response: Record<string, unknown>;
+    signal?: AbortSignal;
+  }): Promise<{ outcome: "accepted"; invocationId: string } | { outcome: "rejected" | "ambiguous"; code: string }>;
 }
 
 export interface RuntimeV3WarmTurnAdvanceOptions {
@@ -477,6 +511,7 @@ export function createRuntimeV3WarmTurnAdvance(
   return async (claim, signal) => {
     let projectionPendingAck: "none" | "nonterminal" | "terminal" = "none";
     let admissionWriteIntent = false;
+    let decisionWriteIntent = false;
     let inactivityDeadlineAt = claim.turn.inactivityDeadlineAt ?? null;
     let absoluteDeadlineAt = claim.turn.absoluteDeadlineAt ?? null;
     let durableNeedsInput = claim.turn.state === "needs_input";
@@ -598,6 +633,70 @@ export function createRuntimeV3WarmTurnAdvance(
         };
       }
 
+      const deliverDecisionAction = async (): Promise<RuntimeV3ProgressionOutcome | null> => {
+        if (!options.persistence.beginDecisionAction || !options.persistence.finishDecisionAction) {
+          return null;
+        }
+        const action = signal
+          ? await options.persistence.beginDecisionAction(claim, signal)
+          : await options.persistence.beginDecisionAction(claim);
+        if (!action) return null;
+        decisionWriteIntent = true;
+        const actionSignal = boundedSignal(
+          signal,
+          COMPANION_RUNTIME_V3_BUDGETS.heartbeatCommandMs,
+        );
+        const write = action.kind === "detach"
+          ? await options.pi.abort?.({
+            boxId: material.boxId,
+            commandId: action.commandId,
+            turnId: claim.turn.id,
+            signal: actionSignal,
+          })
+          : await options.pi.respondExtensionUi?.({
+            boxId: material.boxId,
+            commandId: action.commandId,
+            turnId: claim.turn.id,
+            response: action.response!,
+            signal: actionSignal,
+          });
+        signal?.throwIfAborted();
+        if (!write || write.outcome !== "accepted") {
+          return {
+            kind: "interrupted",
+            code: action.kind === "detach" ? "pi_detach_ambiguous" : "pi_decision_ambiguous",
+            message: action.kind === "detach"
+              ? "The background question was detached, but Pi termination was not confirmed."
+              : "The human response may have reached Pi; it will not be sent again.",
+            action: "none",
+          };
+        }
+        const finished = signal
+          ? await options.persistence.finishDecisionAction(claim, {
+            decisionId: action.decisionId,
+            kind: action.kind,
+            invocationId: write.invocationId,
+          }, signal)
+          : await options.persistence.finishDecisionAction(claim, {
+            decisionId: action.decisionId,
+            kind: action.kind,
+            invocationId: write.invocationId,
+          });
+        if (!finished) {
+          return {
+            kind: "interrupted",
+            code: "pi_decision_fence_lost",
+            message: "The human response could not be checkpointed safely.",
+            action: "none",
+          };
+        }
+        decisionWriteIntent = false;
+        return action.kind === "detach" ? { kind: "detached" } : null;
+      };
+
+      const pendingDecisionOutcome = await deliverDecisionAction();
+      if (pendingDecisionOutcome) return pendingDecisionOutcome;
+
       let assistantResults = 0;
       for (let pageNumber = 0; pageNumber < 32; pageNumber += 1) {
         const commandWindow = runtimeV3CommandWindow({
@@ -654,6 +753,10 @@ export function createRuntimeV3WarmTurnAdvance(
               cacheWrite: item.cache_write,
             }]
             : []),
+          decisions: classified.projections.flatMap((item) => item.type === "decision"
+            && item.request_kind === "question"
+            ? [{ ...item, eventId: `v3:${claim.turn.id}:decision:${item.sequence.toString()}` }]
+            : []),
           needsInput: projectedNeedsInput,
           settled: classified.settled,
           processExited: classified.processExit !== null,
@@ -694,6 +797,15 @@ export function createRuntimeV3WarmTurnAdvance(
         if (projected === "succeeded" || projected === "failed") {
           return { kind: "ack_completed" };
         }
+        if (projected === "detached") {
+          const decisionOutcome = await deliverDecisionAction();
+          return decisionOutcome ?? {
+            kind: "interrupted",
+            code: "pi_detach_fence_lost",
+            message: "The background question could not be detached safely.",
+            action: "none",
+          };
+        }
         if (classified.processExit) {
           return {
             kind: "failed",
@@ -726,6 +838,14 @@ export function createRuntimeV3WarmTurnAdvance(
           kind: "interrupted",
           code: "pi_admission_outcome_unknown",
           message: "Pi may have acted on this message; it will not be sent again.",
+          action: "none",
+        };
+      }
+      if (decisionWriteIntent) {
+        return {
+          kind: "interrupted",
+          code: "pi_decision_outcome_unknown",
+          message: "Pi may have received the decision action; it will not be attempted again.",
           action: "none",
         };
       }

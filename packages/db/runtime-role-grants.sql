@@ -77,6 +77,7 @@ DECLARE
     'companion_operations',
     'companion_v3_instances',
     'companion_v3_turns',
+    'companion_v3_decisions',
     'companion_v3_lane_leases',
     'companion_v3_lifecycle_requests',
     'companion_decision_deliveries',
@@ -1058,6 +1059,28 @@ BEGIN
           'public.companion_v3_note_admitted_work()'::regprocedure
         ];
       END IF;
+    END IF;
+
+    -- 0170 keeps ask_user durable while only the API answers and only Runtime v3 delivers or
+    -- detaches the resulting broker action under the live lane fence.
+    IF pg_catalog.to_regprocedure(
+      'public.companion_v3_runtime_complete_v6(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'
+    ) IS NOT NULL THEN
+      companion_api_functions := companion_api_functions || ARRAY[
+        'public.companion_v3_api_get_decision(uuid,uuid,text)'::regprocedure,
+        'public.companion_v3_api_answer_decision(uuid,uuid,text,text,text)'::regprocedure
+      ];
+      companion_runtime_functions := companion_runtime_functions || ARRAY[
+        'public.companion_v3_runtime_claim_warm_v6(text,public.companion_v3_lane,integer,integer)'::regprocedure,
+        'public.companion_v3_runtime_project_native_page_v6(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'::regprocedure,
+        'public.companion_v3_runtime_begin_decision_action(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure,
+        'public.companion_v3_runtime_finish_decision_action(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,uuid,text,text,integer)'::regprocedure,
+        'public.companion_v3_runtime_complete_v6(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure,
+        'public.companion_v3_runtime_sweep_decisions(public.companion_v3_lane,integer)'::regprocedure
+      ];
+      internal_runtime_functions := internal_runtime_functions || ARRAY[
+        'public.companion_v3_api_enqueue_warm_turn_v5(uuid,uuid,uuid,text)'::regprocedure
+      ];
     END IF;
 
     -- A migration owner can carry arbitrary ALTER DEFAULT PRIVILEGES grants installed by an

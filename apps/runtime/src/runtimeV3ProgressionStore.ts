@@ -45,7 +45,7 @@ interface ClaimRow {
 }
 
 interface TerminalCompletion {
-  outcome: "release" | "ack_completed" | "retry_ack" | "succeeded" | "failed" | "interrupted";
+  outcome: "release" | "detached" | "ack_completed" | "retry_ack" | "succeeded" | "failed" | "interrupted";
   code: string | null;
   message: string | null;
   action: string | null;
@@ -106,10 +106,15 @@ function createPostgresConvergence(
 ): RuntimeV3ConvergencePersistence {
   return {
     async sweepLane({ lane, signal }) {
-      const rows = await abortable(sql<Array<{ swept: number }>>`
+      const decisionRows = await abortable(sql<Array<{ swept: number }>>`
+        select public.companion_v3_runtime_sweep_decisions(${lane}, 6) as swept
+      `, signal);
+      const decisionCount = decisionRows[0]?.swept ?? 0;
+      if (decisionCount > 0) return decisionCount;
+      const deadlineRows = await abortable(sql<Array<{ swept: number }>>`
         select public.companion_v3_runtime_sweep_deadlines(${lane}, 4) as swept
       `, signal);
-      return rows[0]?.swept ?? 0;
+      return deadlineRows[0]?.swept ?? 0;
     },
     async claimLane({ executorId, lane, signal }) {
       if (options.enabledLanes && !options.enabledLanes.has(lane)) return null;
@@ -121,7 +126,7 @@ function createPostgresConvergence(
             gate_epoch::text as "gateEpoch", admission_started_at as "admissionStartedAt",
             inactivity_deadline_at as "inactivityDeadlineAt",
             absolute_deadline_at as "absoluteDeadlineAt"
-          from public.companion_v3_runtime_claim_warm_v5(${executorId}, ${lane}, 30, 5)
+          from public.companion_v3_runtime_claim_warm_v6(${executorId}, ${lane}, 30, 6)
         `, signal)
         : await abortable(sql<ClaimRow[]>`
           select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
@@ -149,7 +154,7 @@ function createPostgresConvergence(
     async completeProgression(claim, outcome, signal) {
       const terminal = terminalInput(outcome);
       const rows = await abortable(sql<Array<{ completed: boolean }>>`
-        select public.companion_v3_runtime_complete_v5(
+        select public.companion_v3_runtime_complete_v6(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
           ${claim.turn.lane},
@@ -161,7 +166,7 @@ function createPostgresConvergence(
           ${terminal.code},
           ${terminal.message},
           ${terminal.action}::public.companion_runtime_error_action,
-          5
+          6
         ) as completed
       `, signal);
       return rows[0]?.completed === true;
@@ -175,6 +180,13 @@ interface WarmMaterialRow {
   content: string;
   activityCursor: string;
   recoveryDeferred: boolean;
+}
+
+interface DecisionActionRow {
+  kind: "respond" | "detach";
+  decisionId: string;
+  commandId: string;
+  response: Record<string, unknown> | null;
 }
 
 interface PreparationClaimRow {
@@ -502,7 +514,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
     },
     async project(claim, projection, signal) {
       const rows = await abortable(sql<Array<{ projected: string | null }>>`
-        select public.companion_v3_runtime_project_native_page_v5(
+        select public.companion_v3_runtime_project_native_page_v6(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
           ${claim.turn.lane},
@@ -516,14 +528,55 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
             ...item,
             cursor: item.cursor.toString(),
           })))}::jsonb,
+          ${sql.json((projection.decisions ?? []).map((item) => ({
+            ...item,
+            sequence: item.sequence.toString(),
+          })))}::jsonb,
           ${projection.needsInput},
           ${projection.activity},
           ${projection.processExited ? "process_exit" : projection.settled ? "settled" : null},
-          5
+          6
         ) as projected
       `, signal);
       const projected = rows[0]?.projected;
-      return projected === "succeeded" || projected === "failed" ? projected : projected === "projected";
+      return projected === "succeeded" || projected === "failed" || projected === "detached"
+        ? projected
+        : projected === "projected";
+    },
+    async beginDecisionAction(claim, signal) {
+      const rows = await abortable(sql<DecisionActionRow[]>`
+        select action_kind as kind, decision_id as "decisionId", command_id as "commandId",
+          response
+        from public.companion_v3_runtime_begin_decision_action(
+          ${claim.orgId}::uuid,
+          ${claim.companionId}::uuid,
+          ${claim.turn.lane},
+          ${claim.turn.id}::uuid,
+          ${claim.fence.token}::uuid,
+          ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,
+          6
+        )
+      `, signal);
+      return rows[0] ?? null;
+    },
+    async finishDecisionAction(claim, input, signal) {
+      const rows = await abortable(sql<Array<{ finished: boolean }>>`
+        select public.companion_v3_runtime_finish_decision_action(
+          ${claim.orgId}::uuid,
+          ${claim.companionId}::uuid,
+          ${claim.turn.lane},
+          ${claim.turn.id}::uuid,
+          ${claim.fence.token}::uuid,
+          ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,
+          ${input.decisionId}::uuid,
+          ${input.kind},
+          ${input.invocationId},
+          6
+        ) as finished
+      `, signal);
+      return rows[0]?.finished === true;
     },
   };
 }

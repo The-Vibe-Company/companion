@@ -169,6 +169,7 @@ WITH runtime_role AS (
       'companion_message_attachments',
       'companion_v3_instances',
       'companion_v3_turns',
+      'companion_v3_decisions',
       'companion_v3_lane_leases',
       'companion_v3_lifecycle_requests'
     ]::text[])

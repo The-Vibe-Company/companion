@@ -1205,6 +1205,17 @@ export async function answerCompanionDecisionV2(input: {
   text?: string;
   database: Db;
 }): Promise<void> {
+  const v3Result = await input.database.execute(sql`
+    select public.companion_v3_api_answer_decision(
+      ${input.orgId}::uuid,
+      ${input.companionId}::uuid,
+      ${input.requestId},
+      ${input.decision},
+      ${input.optionId ?? input.text ?? null}
+    ) as answered
+  `);
+  const [v3Row] = rows<{ answered: boolean }>(v3Result);
+  if (v3Row?.answered) return;
   await input.database.execute(sql`
     select * from public.companion_api_answer_decision(
       ${input.orgId}::uuid,
@@ -1230,6 +1241,31 @@ export async function getCompanionDecisionV2(input: {
   requestId: string;
   database: Db;
 }): Promise<CompanionDecisionRecord> {
+  const v3Result = await input.database.execute(sql`
+    select request_key, request_kind::text as request_kind,
+      decision_status::text as decision_status, proposal, expires_at
+    from public.companion_v3_api_get_decision(
+      ${input.orgId}::uuid,
+      ${input.companionId}::uuid,
+      ${input.requestId}
+    )
+  `);
+  const [v3Row] = rows<{
+    request_key: string;
+    request_kind: string;
+    decision_status: string;
+    proposal: unknown;
+    expires_at: Date | string;
+  }>(v3Result);
+  if (v3Row) {
+    return {
+      requestKey: v3Row.request_key,
+      requestKind: v3Row.request_kind,
+      decisionStatus: v3Row.decision_status,
+      proposal: null,
+      expiresAt: iso(v3Row.expires_at) ?? new Date(v3Row.expires_at).toISOString(),
+    };
+  }
   const result = await input.database.execute(sql`
     select request_key, request_kind::text as request_kind,
       decision_status::text as decision_status, proposal, expires_at
