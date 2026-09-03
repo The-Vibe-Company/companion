@@ -414,7 +414,7 @@ export interface RuntimeV3WarmTurnPersistence {
   } | null>;
   finishDecisionAction?(
     claim: RuntimeV3Claim,
-    input: { decisionId: string; kind: "respond" | "detach"; invocationId: string },
+    input: { decisionId: string; kind: "respond" | "detach" | "obsolete"; invocationId: string },
     signal?: AbortSignal,
   ): Promise<boolean>;
 }
@@ -697,34 +697,64 @@ export function createRuntimeV3WarmTurnAdvance(
             action: "none",
           };
         }
-        if (write.outcome !== "accepted") {
+        if (
+          write.outcome === "rejected"
+          && action.kind === "respond"
+          && (write.code === "no_active_attempt" || write.code === "attempt_mismatch")
+        ) {
+          decisionPiWriteIntent = false;
+          decisionCheckpointPending = true;
+          signal?.throwIfAborted();
+          const finished = signal
+            ? await options.persistence.finishDecisionAction(claim, {
+              decisionId: action.decisionId,
+              kind: "obsolete",
+              invocationId: material.piInvocationId,
+            }, signal)
+            : await options.persistence.finishDecisionAction(claim, {
+              decisionId: action.decisionId,
+              kind: "obsolete",
+              invocationId: material.piInvocationId,
+            });
+          decisionCheckpointPending = false;
+          if (!finished) {
+            return {
+              kind: "interrupted",
+              code: "pi_decision_fence_lost",
+              message: "The obsolete human response could not be checkpointed safely.",
+              action: "none",
+            };
+          }
+        } else if (write.outcome !== "accepted") {
           decisionPiWriteIntent = false;
           return { kind: "release" };
+        } else {
+          decisionPiWriteIntent = false;
+          decisionCheckpointPending = true;
+          signal?.throwIfAborted();
+          const finished = signal
+            ? await options.persistence.finishDecisionAction(claim, {
+              decisionId: action.decisionId,
+              kind: action.kind,
+              invocationId: write.invocationId,
+            }, signal)
+            : await options.persistence.finishDecisionAction(claim, {
+              decisionId: action.decisionId,
+              kind: action.kind,
+              invocationId: write.invocationId,
+            });
+          decisionCheckpointPending = false;
+          if (!finished) {
+            return {
+              kind: "interrupted",
+              code: "pi_decision_fence_lost",
+              message: "The human response could not be checkpointed safely.",
+              action: "none",
+            };
+          }
+          if (action.kind === "detach") return { kind: "detached" };
         }
-        decisionPiWriteIntent = false;
-        decisionCheckpointPending = true;
-        signal?.throwIfAborted();
-        const finished = signal
-          ? await options.persistence.finishDecisionAction(claim, {
-            decisionId: action.decisionId,
-            kind: action.kind,
-            invocationId: write.invocationId,
-          }, signal)
-          : await options.persistence.finishDecisionAction(claim, {
-            decisionId: action.decisionId,
-            kind: action.kind,
-            invocationId: write.invocationId,
-          });
-        decisionCheckpointPending = false;
-        if (!finished) {
-          return {
-            kind: "interrupted",
-            code: "pi_decision_fence_lost",
-            message: "The human response could not be checkpointed safely.",
-            action: "none",
-          };
-        }
-        return action.kind === "detach" ? { kind: "detached" } : null;
+        return null;
       };
 
       const pendingDecisionOutcome = await deliverDecisionAction();

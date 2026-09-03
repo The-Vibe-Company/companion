@@ -365,11 +365,12 @@ BEGIN
     AND turn_row.companion_id=decision.companion_id AND turn_row.id=decision.turn_id
   WHERE decision.org_id=p_org_id AND decision.companion_id=p_companion_id
     AND decision.turn_id=p_turn_id AND decision.lane=p_lane
-    AND decision.delivery_state IN ('pending','write_intent','cancelled')
-    AND ((p_lane='background' AND turn_row.state='needs_input'
-          AND (decision.delivery_state<>'cancelled' OR decision.detached_at IS NOT NULL))
-      OR (p_lane='main' AND decision.decision_status IN ('answered','denied','expired','cancelled')
-        AND turn_row.state='running'))
+    AND ((decision.delivery_state IN ('pending','write_intent')
+          AND ((p_lane='background' AND turn_row.state='needs_input')
+            OR (p_lane='main' AND decision.decision_status IN ('answered','denied','expired','cancelled')
+              AND turn_row.state='running')))
+      OR (p_lane='background' AND turn_row.state='needs_input'
+        AND decision.delivery_state='cancelled' AND decision.detached_at IS NOT NULL))
   ORDER BY decision.created_at,decision.id LIMIT 1 FOR UPDATE OF decision;
   IF NOT FOUND THEN RETURN; END IF;
   IF v_decision.delivery_state='cancelled' THEN
@@ -402,13 +403,15 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog,public SET row_security = on AS $$
 DECLARE v_now timestamptz:=clock_timestamp();
 BEGIN
-  IF p_protocol IS DISTINCT FROM 6 OR p_action_kind NOT IN ('respond','detach') THEN
+  IF p_protocol IS DISTINCT FROM 6 OR p_action_kind NOT IN ('respond','detach','obsolete') THEN
     RAISE EXCEPTION 'invalid Runtime v3 decision checkpoint' USING ERRCODE='22023'; END IF;
   UPDATE public.companion_v3_decisions decision SET
-    delivery_state=CASE WHEN p_action_kind='detach' THEN 'cancelled'::public.companion_decision_delivery_state
+    delivery_state=CASE WHEN p_action_kind IN ('detach','obsolete')
+      THEN 'cancelled'::public.companion_decision_delivery_state
       ELSE 'delivered'::public.companion_decision_delivery_state END,
-    command_id=CASE WHEN p_action_kind='detach' THEN NULL ELSE decision.command_id END,
-    delivery_started_at=CASE WHEN p_action_kind='detach' THEN NULL ELSE decision.delivery_started_at END,
+    command_id=CASE WHEN p_action_kind IN ('detach','obsolete') THEN NULL ELSE decision.command_id END,
+    delivery_started_at=CASE WHEN p_action_kind IN ('detach','obsolete')
+      THEN NULL ELSE decision.delivery_started_at END,
     delivered_at=CASE WHEN p_action_kind='respond' THEN v_now END,
     detached_at=CASE WHEN p_action_kind='detach' THEN v_now END,updated_at=v_now
   FROM public.companion_v3_turns turn_row,public.companion_v3_lane_leases lease,
@@ -417,7 +420,8 @@ BEGIN
     AND decision.companion_id=p_companion_id AND decision.turn_id=p_turn_id
     AND decision.lane=p_lane AND decision.delivery_state='write_intent'
     AND ((p_action_kind='detach' AND p_lane='background')
-      OR (p_action_kind='respond' AND p_lane='main' AND decision.decision_status<>'pending'))
+      OR (p_action_kind IN ('respond','obsolete') AND p_lane='main'
+        AND decision.decision_status<>'pending'))
     AND turn_row.org_id=decision.org_id AND turn_row.companion_id=decision.companion_id
     AND turn_row.id=decision.turn_id AND turn_row.pi_invocation_id=p_pi_invocation_id
     AND lease.org_id=turn_row.org_id AND lease.companion_id=turn_row.companion_id
