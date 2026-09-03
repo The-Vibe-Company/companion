@@ -12,7 +12,10 @@ import {
   type RuntimeWorkMaterial,
 } from "@companion/companion-runtime";
 import type { RuntimeV3PreparationClaim } from "@companion/companion-runtime/v3/internal";
-import type { CompanionBoxRuntimeV2 } from "@companion/box-runtime";
+import {
+  BoxRuntimeProviderError,
+  type CompanionBoxRuntimeV2,
+} from "@companion/box-runtime";
 
 import { companionHubApiUrl, createRuntimeMaterialPipeline } from "./materialPipeline";
 import { RuntimeMaterialError } from "./resourceMaterial";
@@ -655,31 +658,7 @@ describe("runtime material provider and Box stager", () => {
       loadAttachment: vi.fn(),
       storeAttachment: vi.fn(),
     });
-    const claim = {
-      executorId: "runtime-test",
-      orgId,
-      companionId,
-      turnId: "66666666-6666-4666-8666-666666666666",
-      commandId: "77777777-7777-4777-8777-777777777777",
-      checkpoint: "box_ready",
-      boxIdempotencyKey: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-      boxId: "bx_23456789",
-      createdAt: new Date("2026-09-03T00:00:00.000Z"),
-      authorized: true,
-      actorId: accountId,
-      modelId: "claude-test",
-      persona: "test",
-      settingsRevision: 3n,
-      skillsRevision: 4,
-      providerRefs: [],
-      skillRefs: [],
-      mcpRefs: [],
-      providerMaterial: [],
-      skillMaterial: [],
-      mcpMaterial: [],
-      configCatalog: null,
-      fence: { token: generation, epoch: 1n, gateEpoch: 1n },
-    } satisfies RuntimeV3PreparationClaim;
+    const claim = preparationClaim();
 
     await expect(pipeline.preparationStager.stagePreparation({
       claim,
@@ -692,7 +671,99 @@ describe("runtime material provider and Box stager", () => {
     } satisfies Partial<RuntimeExternalDependencyError>);
     expect(stageExistingBox).not.toHaveBeenCalled();
   });
+
+  it("preserves deterministic Box conflicts while classifying provider failures as outages", async () => {
+    const conflict = new BoxRuntimeProviderError(
+      "The durable Box identity does not match this Companion",
+      409,
+    );
+    const invalidSnapshot = new BoxRuntimeProviderError("Invalid staged snapshot", 422);
+    const providerFailure = new BoxRuntimeProviderError("Box API is unavailable", 502);
+    const stageExistingBox = vi.fn()
+      .mockRejectedValueOnce(conflict)
+      .mockRejectedValueOnce(invalidSnapshot)
+      .mockRejectedValueOnce(providerFailure);
+    const pipeline = createRuntimeMaterialPipeline({
+      masterKey,
+      apiUrl: "https://api.example.test",
+      bundledSkill: {
+        slug: "companion",
+        version: "1.0.0",
+        checksum: `sha256:${"1".repeat(64)}`,
+        archive: Buffer.from("bundled"),
+      },
+      runtime: () => fakeRuntime(stageExistingBox),
+      loadSkillArchive: vi.fn(),
+      loadAttachment: vi.fn(),
+      storeAttachment: vi.fn(),
+    });
+
+    await expect(pipeline.preparationStager.stagePreparation({
+      claim: preparationClaim(),
+      authorize: async () => ({
+        hubToken: "hub-token",
+        mcpBrokerToken: null,
+        controlToken: "control-token",
+        expiresAt: new Date("2027-01-01T00:00:00.000Z"),
+      }),
+      signal: new AbortController().signal,
+    })).rejects.toBe(conflict);
+
+    await expect(pipeline.preparationStager.stagePreparation({
+      claim: preparationClaim(),
+      authorize: async () => ({
+        hubToken: "hub-token",
+        mcpBrokerToken: null,
+        controlToken: "control-token",
+        expiresAt: new Date("2027-01-01T00:00:00.000Z"),
+      }),
+      signal: new AbortController().signal,
+    })).rejects.toBe(invalidSnapshot);
+
+    await expect(pipeline.preparationStager.stagePreparation({
+      claim: preparationClaim(),
+      authorize: async () => ({
+        hubToken: "hub-token",
+        mcpBrokerToken: null,
+        controlToken: "control-token",
+        expiresAt: new Date("2027-01-01T00:00:00.000Z"),
+      }),
+      signal: new AbortController().signal,
+    })).rejects.toMatchObject({
+      name: "RuntimeExternalDependencyError",
+      failureClass: "box",
+      dependency: { kind: "box", id: "bx_23456789" },
+    } satisfies Partial<RuntimeExternalDependencyError>);
+  });
 });
+
+function preparationClaim(): RuntimeV3PreparationClaim {
+  return {
+    executorId: "runtime-test",
+    orgId,
+    companionId,
+    turnId: "66666666-6666-4666-8666-666666666666",
+    commandId: "77777777-7777-4777-8777-777777777777",
+    checkpoint: "box_ready",
+    boxIdempotencyKey: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    boxId: "bx_23456789",
+    createdAt: new Date("2026-09-03T00:00:00.000Z"),
+    authorized: true,
+    actorId: accountId,
+    modelId: "claude-test",
+    persona: "test",
+    settingsRevision: 3n,
+    skillsRevision: 4,
+    providerRefs: [],
+    skillRefs: [],
+    mcpRefs: [],
+    providerMaterial: [],
+    skillMaterial: [],
+    mcpMaterial: [],
+    configCatalog: null,
+    fence: { token: generation, epoch: 1n, gateEpoch: 1n },
+  };
+}
 
 function fakeEncryptedEnvelope() {
   return {

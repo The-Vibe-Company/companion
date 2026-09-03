@@ -677,6 +677,73 @@ describe("runtime material resolution", () => {
     expect(String(error)).not.toContain(secretPath);
     expect(loadSkillArchive).toHaveBeenCalledWith(secretPath, expect.any(AbortSignal));
   });
+
+  it("keeps local provider and MCP validation failures terminal", async () => {
+    const providerGeneration = "66666666-6666-4666-8666-666666666666";
+    const providerEnvelope = encryptOpaqueValue({
+      orgId,
+      purpose: "companion-provider-credential",
+      subjectId: `anthropic:${providerGeneration}`,
+      value: JSON.stringify({ type: "api_key", key: "provider-secret" }),
+    }, masterKey);
+    const mcpEnvelope = encryptCompanionMcpRuntimeCredential({
+      orgId,
+      accountId,
+      credentialGeneration: generation,
+      credential: [{ env_key: "MCP_TOKEN", value: "mcp-secret" }],
+    }, masterKey);
+    const resolve = async (material: Parameters<typeof resolveRuntimeResources>[0]["material"]) =>
+      await resolveRuntimeResources({
+        orgId,
+        masterKey,
+        material,
+        loadSkillArchive: vi.fn(),
+        signal: new AbortController().signal,
+      });
+
+    await expect(resolve({
+      providerMaterial: [{
+        provider_id: "anthropic",
+        auth_method: "oauth",
+        credential_generation: providerGeneration,
+        credential_version: 1,
+        ...snakeEnvelope(providerEnvelope),
+      }],
+      skillMaterial: [],
+      mcpMaterial: [],
+    })).rejects.toBeInstanceOf(RuntimeMaterialError);
+
+    await expect(resolve({
+      providerMaterial: [],
+      skillMaterial: [],
+      mcpMaterial: [{
+        account_id: accountId,
+        credential_generation: generation,
+        account_config: {
+          id: "77777777-7777-4777-8777-777777777777",
+          label: "Mismatched account",
+          lifecycle: "lazy",
+          direct_tools: false,
+          transport: "stdio",
+          command: "example-mcp",
+          args: [],
+          env: { TOKEN: "MCP_TOKEN" },
+        },
+        ...snakeEnvelope(mcpEnvelope),
+      }],
+    })).rejects.toBeInstanceOf(RuntimeMaterialError);
+
+    await expect(resolve({
+      providerMaterial: [],
+      skillMaterial: [],
+      mcpMaterial: [{
+        account_id: accountId,
+        credential_generation: generation,
+        account_config: { id: accountId, transport: "invalid" },
+        ...snakeEnvelope(mcpEnvelope),
+      }],
+    })).rejects.toBeInstanceOf(RuntimeMaterialError);
+  });
 });
 
 function snakeEnvelope(envelope: {

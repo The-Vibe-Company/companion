@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { COMPANION_SKILL_KEY, companionSkillDir } from "@companion/companion-skill";
 import { getCompanionSkillPackage } from "@companion/companion-skill/package";
 import {
+  BoxRuntimeProviderError,
   type CompanionBoxRuntimeV2,
   type CompanionRuntimeSkill,
 } from "@companion/box-runtime";
@@ -394,7 +395,13 @@ export function createRuntimeMaterialPipeline(input: {
           configCatalog: claim.configCatalog,
           signal,
         });
-      } catch {
+      } catch (error) {
+        if (signal.aborted) throw signal.reason;
+        const retryableProviderFailure = error instanceof BoxRuntimeProviderError
+          && (error.status === 408 || error.status === 429 || error.status >= 500);
+        if (!retryableProviderFailure) {
+          throw error;
+        }
         throw new RuntimeExternalDependencyError("box_unavailable", {
           kind: "box",
           id: claim.boxId,
