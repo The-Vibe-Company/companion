@@ -947,6 +947,23 @@ export interface CompanionPiBrokerEventPage {
   hasMore: boolean;
 }
 
+export interface CompanionExternalDependencyIdentity {
+  kind: "provider" | "grant";
+  id: string;
+}
+
+function brokerExternalDependency(value: unknown): CompanionExternalDependencyIdentity | undefined {
+  if (!isJsonObject(value)) return undefined;
+  if (value.kind !== "provider" && value.kind !== "grant") return undefined;
+  if (
+    typeof value.id !== "string"
+    || value.id.length === 0
+    || value.id.length > 160
+    || /[\n\r]/.test(value.id)
+  ) return undefined;
+  return { kind: value.kind, id: value.id };
+}
+
 /** Prompt dispatch never collapses an ambiguous write into a safe negative acknowledgement. */
 export type CompanionPiPromptDispatch =
   | {
@@ -956,7 +973,12 @@ export type CompanionPiPromptDispatch =
     invocationId: string;
     initialCursor: number;
   }
-  | { outcome: "refused"; code: string; message: string }
+  | {
+    outcome: "refused";
+    code: string;
+    message: string;
+    dependency?: CompanionExternalDependencyIdentity;
+  }
   | { outcome: "ambiguous"; code: string; message: string };
 
 export type CompanionPiControlDispatch =
@@ -5304,7 +5326,7 @@ done`,
     }
     const error = isJsonObject(response.error) ? response.error : {};
     const ambiguous = error.ambiguous === true;
-    return {
+    const refused: CompanionPiPromptDispatch = {
       outcome: ambiguous ? "ambiguous" : "refused",
       code: brokerSafeCode(error.code, ambiguous ? "pi_ack_ambiguous" : "pi_prompt_refused"),
       message: brokerSafeMessage(
@@ -5312,6 +5334,9 @@ done`,
         ambiguous ? "Pi prompt acknowledgement is unavailable" : "Pi refused the prompt",
       ),
     };
+    const dependency = brokerExternalDependency(error.dependency);
+    if (refused.outcome === "refused" && dependency) refused.dependency = dependency;
+    return refused;
   }
 
   async dispatchAbort(input: {

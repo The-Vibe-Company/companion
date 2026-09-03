@@ -14,6 +14,7 @@ import {
   type CompanionPiBrokerEventPage,
   type CompanionPiBrokerState,
   type CompanionPiControlDispatch,
+  type CompanionExternalDependencyIdentity,
   type CompanionPiExtensionUiDispatch,
   type CompanionPiPromptDispatch,
   type CompanionAttachmentFile,
@@ -568,20 +569,41 @@ function controlDispatch(
 function brokerFailure(
   body: Record<string, unknown>,
   fallbackCode: string,
-): { outcome: "refused" | "ambiguous"; code: string; message: string } {
+): {
+  outcome: "refused" | "ambiguous";
+  code: string;
+  message: string;
+  dependency?: CompanionExternalDependencyIdentity;
+} {
   const error = body.error;
   if (error === null || typeof error !== "object" || Array.isArray(error)) {
     return { outcome: "ambiguous", code: fallbackCode, message: "Pi acknowledgement is unavailable" };
   }
   const record = error as Record<string, unknown>;
   const ambiguous = record.ambiguous === true;
-  return {
+  const failure: ReturnType<typeof brokerFailure> = {
     outcome: ambiguous ? "ambiguous" : "refused",
     code: typeof record.code === "string" && record.code.length > 0 ? record.code.slice(0, 64) : fallbackCode,
     message: typeof record.message === "string" && record.message.length > 0
       ? record.message.slice(0, 500)
       : "Pi acknowledgement is unavailable",
   };
+  const dependency = externalDependency(record.dependency);
+  if (!ambiguous && dependency) failure.dependency = dependency;
+  return failure;
+}
+
+function externalDependency(value: unknown): CompanionExternalDependencyIdentity | undefined {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  if (record.kind !== "provider" && record.kind !== "grant") return undefined;
+  if (
+    typeof record.id !== "string"
+    || record.id.length === 0
+    || record.id.length > 160
+    || /[\n\r]/.test(record.id)
+  ) return undefined;
+  return { kind: record.kind, id: record.id };
 }
 
 function boundedTimeoutMs(ceilingMs: number, deadlineAt: Date | undefined): number {

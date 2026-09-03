@@ -538,6 +538,32 @@ describe("createDirectRuntimePiControl (on)", () => {
     expect(exec.prompt).not.toHaveBeenCalled();
   });
 
+  it("preserves a causal grant identity returned by the direct prompt transport", async () => {
+    const calls = agentCalls({
+      prompt: vi.fn(async () => ({
+        outcome: "refused" as const,
+        code: "authorization_revoked",
+        message: "revoked",
+        dependency: { kind: "grant" as const, id: "account-1" },
+      })),
+    });
+    const { facade, exec } = harness({ calls });
+
+    await expect(facade.pi.prompt({
+      boxId: BOX_ID,
+      commandId: "command-grant-refusal",
+      attemptId: "attempt-grant-refusal",
+      expectedInvocationId: "inv-1",
+      message: "hello",
+      signal,
+    })).resolves.toEqual({
+      outcome: "rejected",
+      code: "authorization_revoked",
+      dependency: { kind: "grant", id: "account-1" },
+    });
+    expect(exec.prompt).not.toHaveBeenCalled();
+  });
+
   it("never replays a lost prompt onto a replacement Pi invocation", async () => {
     let nowMs = 1_000_000;
     const prompt = vi.fn()

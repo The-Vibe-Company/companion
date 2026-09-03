@@ -340,7 +340,13 @@ function writeOutcome(
 function promptWriteOutcome(
   result: Awaited<ReturnType<CompanionBoxRuntimeV2["dispatchPrompt"]>>,
 ): BrokerPromptWriteOutcome {
-  if (result.outcome === "refused") return { outcome: "rejected", code: result.code };
+  if (result.outcome === "refused") {
+    return {
+      outcome: "rejected",
+      code: result.code,
+      ...(result.dependency ? { dependency: result.dependency } : {}),
+    };
+  }
   if (result.outcome === "ambiguous") return { outcome: "ambiguous", code: result.code };
   const accepted: BrokerPromptWriteOutcome = {
     outcome: "accepted",

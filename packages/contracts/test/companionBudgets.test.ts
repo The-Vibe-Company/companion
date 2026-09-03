@@ -62,6 +62,7 @@ describe("companion budget invariants", () => {
       .toBe(base.turnAbsoluteDeadlineMs);
     expect(v3.preparationDeadlineMs).toBe(135 * 60_000);
     expect(v3.preparationRetrySeconds).toEqual([5, 15, 30, 60, 300]);
+    expect(v3.externalIncidentRetrySeconds).toEqual([5, 15, 30, 60, 300]);
   });
   it("returns unanswered decisions to Pi after ten minutes", () => {
     expect(base.decisionTimeoutMs).toBe(10 * 60 * 1_000);

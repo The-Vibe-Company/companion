@@ -682,6 +682,32 @@ describe("narrow AsciiBoxCompanionRuntime", () => {
     });
   });
 
+  it("carries a validated causal provider identity on a prompt refusal", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => response(commandResult(JSON.stringify({
+      id: "prompt-provider-refusal",
+      type: "response",
+      command: "prompt",
+      success: false,
+      error: {
+        code: "provider_unavailable",
+        message: "Provider unavailable",
+        dependency: { kind: "provider", id: "github" },
+      },
+    }) + "\n"))));
+
+    await expect(runtimeClient().dispatchPrompt({
+      boxId: "bx_23456789",
+      attemptId: "attempt-provider-refusal",
+      requestId: "prompt-provider-refusal",
+      message: "do work",
+    })).resolves.toEqual({
+      outcome: "refused",
+      code: "provider_unavailable",
+      message: "Provider unavailable",
+      dependency: { kind: "provider", id: "github" },
+    });
+  });
+
   it("sends exactly one abortable resume request without polling Box or Pi", async () => {
     const controller = new AbortController();
     let commandStarted!: () => void;

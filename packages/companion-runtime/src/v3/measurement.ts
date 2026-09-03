@@ -53,6 +53,30 @@ export interface RuntimeV3AcceptanceReport {
     stalled: number;
     takeovers: number;
   };
+  slo: {
+    turnOccurrences: number;
+    externalFailureOccurrences: number;
+    successfulTurns: number;
+    terminalTurnFailures: number;
+    totalMeasuredOccurrences: number;
+  };
+  external: Array<{
+    classification: "box" | "model" | "plugin_provider" | "authority";
+    source: "main" | "routine" | "trigger" | "delegation";
+    incidents: number;
+    occurrences: number;
+    open: number;
+    recovered: number;
+  }>;
+}
+
+export interface RuntimeV3ExternalIncidentFact {
+  classification: "box" | "model" | "plugin_provider" | "authority";
+  source: "main" | "routine" | "trigger" | "delegation";
+  occurrenceCount: number;
+  openedAt: Date;
+  recoveredAt: Date | null;
+  aggregatedIncident?: boolean;
 }
 
 const STALL_AFTER_MS = 10 * 60_000;
@@ -70,6 +94,7 @@ const TERMINAL_STATES = new Set<RuntimeV3MeasurementFact["state"]>([
 export function createRuntimeV3AcceptanceReport(
   facts: readonly RuntimeV3MeasurementFact[],
   now = new Date(),
+  incidents: readonly RuntimeV3ExternalIncidentFact[] = [],
 ): RuntimeV3AcceptanceReport {
   const productFacts = facts.filter((fact) => fact.inProductWindow);
   const acknowledged = productFacts.filter((fact) => validDate(fact.admittedAt));
@@ -99,6 +124,13 @@ export function createRuntimeV3AcceptanceReport(
     && validDate(fact.lastActivityAt) !== null
     && duration(fact.lastActivityAt!, now) >= STALL_AFTER_MS).length;
   const missing = acknowledged.length - complete.length;
+  const external = externalSeries(incidents);
+  const externalFailureOccurrences = external.reduce(
+    (count, item) => count + item.occurrences,
+    0,
+  );
+  const terminalTurnFailures = productFacts.filter((fact) =>
+    fact.state === "failed" || fact.state === "interrupted").length;
   return {
     releaseMeasurementReady: missing === 0,
     correlation: { acknowledged: acknowledged.length, complete: complete.length, missing },
@@ -109,7 +141,43 @@ export function createRuntimeV3AcceptanceReport(
       stalled,
       takeovers: facts.reduce((count, fact) => count + Math.max(0, fact.claimCount - 1), 0),
     },
+    slo: {
+      turnOccurrences: productFacts.length,
+      externalFailureOccurrences,
+      successfulTurns: productFacts.filter((fact) => fact.state === "succeeded").length,
+      terminalTurnFailures,
+      totalMeasuredOccurrences: productFacts.length + externalFailureOccurrences,
+    },
+    external,
   };
+}
+
+function externalSeries(
+  facts: readonly RuntimeV3ExternalIncidentFact[],
+): RuntimeV3AcceptanceReport["external"] {
+  const groups = new Map<string, RuntimeV3AcceptanceReport["external"][number]>();
+  for (const fact of facts) {
+    const key = `${fact.classification}\u001f${fact.source}`;
+    const group = groups.get(key) ?? {
+      classification: fact.classification,
+      source: fact.source,
+      incidents: 0,
+      occurrences: 0,
+      open: 0,
+      recovered: 0,
+    };
+    group.occurrences += Math.max(1, Math.trunc(fact.occurrenceCount));
+    if (fact.aggregatedIncident !== false) {
+      group.incidents += 1;
+      if (fact.recoveredAt) group.recovered += 1;
+      else group.open += 1;
+    }
+    groups.set(key, group);
+  }
+  return [...groups.values()].sort((left, right) =>
+    `${left.classification}\u001f${left.source}`.localeCompare(
+      `${right.classification}\u001f${right.source}`,
+    ));
 }
 
 function completeCorrelation(fact: RuntimeV3MeasurementFact): boolean {

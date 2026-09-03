@@ -22,10 +22,49 @@ export type {
   RuntimeV3ProviderMaterial,
   RuntimeV3SkillMaterial,
 } from "../types";
-import type { RuntimeBoxControl, RuntimePiControl } from "../ports";
+import {
+  RuntimeExternalDependencyError,
+  type RuntimeBoxControl,
+  type RuntimeExternalDependencyIdentity,
+  type RuntimePiControl,
+} from "../ports";
 
 export const RUNTIME_V3_LANES = ["main", "background"] as const;
 export type RuntimeV3Lane = (typeof RUNTIME_V3_LANES)[number];
+
+export const RUNTIME_V3_EXTERNAL_RETRY_SECONDS =
+  COMPANION_RUNTIME_V3_BUDGETS.externalIncidentRetrySeconds;
+export const RUNTIME_V3_EXTERNAL_FAILURE_CLASSES = [
+  "box", "model", "plugin_provider", "authority",
+] as const;
+export type RuntimeV3ExternalFailureClass =
+  (typeof RUNTIME_V3_EXTERNAL_FAILURE_CLASSES)[number];
+export const RUNTIME_V3_WORK_SOURCES = [
+  "main", "routine", "trigger", "delegation",
+] as const;
+export type RuntimeV3WorkSource = (typeof RUNTIME_V3_WORK_SOURCES)[number];
+
+/** Privacy-safe retry timing shared by Box, model, plugin/provider, and authority incidents. */
+export function runtimeV3ExternalRetryDelaySeconds(input: {
+  failureCount: number;
+  jitter: number;
+  now: Date;
+  deadlineAt: Date | null;
+}): number {
+  const index = Math.min(
+    Math.max(0, Math.trunc(input.failureCount) - 1),
+    RUNTIME_V3_EXTERNAL_RETRY_SECONDS.length - 1,
+  );
+  const base = RUNTIME_V3_EXTERNAL_RETRY_SECONDS[index]!;
+  const sample = Math.min(1, Math.max(0, Number.isFinite(input.jitter) ? input.jitter : 0.5));
+  const jittered = Math.min(
+    RUNTIME_V3_EXTERNAL_RETRY_SECONDS[RUNTIME_V3_EXTERNAL_RETRY_SECONDS.length - 1]!,
+    Math.max(1, Math.round(base * (0.8 + sample * 0.4))),
+  );
+  if (!input.deadlineAt) return jittered;
+  const remaining = Math.floor((input.deadlineAt.getTime() - input.now.getTime()) / 1_000);
+  return Math.max(0, Math.min(jittered, remaining));
+}
 
 export type RuntimeV3DecisionResponse = {
   type: "extension_ui_response";
@@ -93,6 +132,8 @@ export interface RuntimeV3Claim {
   companionId: string;
   turn: RuntimeV3Turn;
   fence: RuntimeV3Fence;
+  source?: RuntimeV3WorkSource;
+  externalDependencyKeys?: Partial<Record<RuntimeV3ExternalFailureClass, string>>;
   cleanup?: { boxId: string; invocationId: string };
 }
 
@@ -106,7 +147,15 @@ export type RuntimeV3ProgressionOutcome =
   | { kind: "succeeded" }
   | { kind: "failed"; code: string; message: unknown; action: RuntimeV3ErrorAction }
   | { kind: "interrupted"; code: string; message: unknown; action: RuntimeV3ErrorAction }
-  | { kind: "decision_ambiguous"; code: string; message: unknown; action: RuntimeV3ErrorAction };
+  | { kind: "decision_ambiguous"; code: string; message: unknown; action: RuntimeV3ErrorAction }
+  | {
+    kind: "external_retry";
+    failureClass: RuntimeV3ExternalFailureClass;
+    source: RuntimeV3WorkSource;
+    dependencyKey: string | null;
+    code: string;
+    message: unknown;
+  };
 
 export type RuntimeV3ErrorAction = Exclude<ErrorAction, "restart_box">;
 
@@ -120,7 +169,14 @@ export type RuntimeV3DurableOutcome =
   | { kind: "succeeded" }
   | { kind: "failed"; error: SafeRuntimeError }
   | { kind: "interrupted"; error: SafeRuntimeError }
-  | { kind: "decision_ambiguous"; error: SafeRuntimeError };
+  | { kind: "decision_ambiguous"; error: SafeRuntimeError }
+  | {
+    kind: "external_retry";
+    failureClass: RuntimeV3ExternalFailureClass;
+    source: RuntimeV3WorkSource;
+    dependencyKey: string | null;
+    error: SafeRuntimeError;
+  };
 
 export interface RuntimeV3AdmissionPersistence {
   admitTurn(input: RuntimeV3Admission): Promise<RuntimeV3Turn>;
@@ -253,7 +309,12 @@ export interface RuntimeV3PreparationPersistence {
   ): Promise<boolean>;
   defer(
     claim: RuntimeV3PreparationClaim,
-    input: { delaySeconds: number; error: SafeRuntimeError | null },
+    input: {
+      delaySeconds: number;
+      error: SafeRuntimeError | null;
+      externalFailureClass?: RuntimeV3ExternalFailureClass;
+      dependencyKey?: string;
+    },
     signal?: AbortSignal,
   ): Promise<boolean>;
   reauthorize(claim: RuntimeV3PreparationClaim, signal?: AbortSignal): Promise<boolean>;
@@ -416,6 +477,7 @@ export interface RuntimeV3WarmTurnPersistence {
     projection: RuntimeV3WarmTurnProjection,
     signal?: AbortSignal,
   ): Promise<boolean | "succeeded" | "failed" | "detached">;
+  recoverExternal?(claim: RuntimeV3Claim, signal?: AbortSignal): Promise<boolean>;
   beginDecisionAction?(
     claim: RuntimeV3Claim,
     signal?: AbortSignal,
@@ -450,7 +512,7 @@ export interface RuntimeV3WarmPi {
       responseAttemptId?: string;
       initialCursor: bigint;
     }
-    | { outcome: "rejected"; code: string }
+    | { outcome: "rejected"; code: string; dependency?: RuntimeExternalDependencyIdentity }
     | { outcome: "ambiguous"; code: string }
   >;
   read(input: {
@@ -531,7 +593,21 @@ function durableOutcome(outcome: RuntimeV3ProgressionOutcome): RuntimeV3DurableO
     && outcome.kind !== "interrupted"
     && outcome.kind !== "admission_rejected"
     && outcome.kind !== "decision_ambiguous"
+    && outcome.kind !== "external_retry"
   ) return outcome;
+  if (outcome.kind === "external_retry") {
+    return {
+      kind: outcome.kind,
+      failureClass: outcome.failureClass,
+      source: outcome.source,
+      dependencyKey: outcome.dependencyKey,
+      error: safeRuntimeError({
+        code: outcome.code,
+        message: outcome.message,
+        action: "retry",
+      }),
+    };
+  }
   return {
     kind: outcome.kind,
     error: safeRuntimeError({
@@ -540,6 +616,98 @@ function durableOutcome(outcome: RuntimeV3ProgressionOutcome): RuntimeV3DurableO
       action: outcome.action,
     }),
   };
+}
+
+function externalSource(claim: RuntimeV3Claim): RuntimeV3WorkSource {
+  return claim.source ?? (claim.turn.lane === "main" ? "main" : "routine");
+}
+
+function externalDependencyKey(
+  claim: RuntimeV3Claim,
+  failureClass: RuntimeV3ExternalFailureClass,
+): string | null {
+  const exact = claim.externalDependencyKeys?.[failureClass];
+  if (exact) return exact;
+  if (failureClass === "box") return "box:companion";
+  if (failureClass === "model") return "model:unselected";
+  return null;
+}
+
+function preparationDependencyKey(
+  claim: RuntimeV3PreparationClaim,
+  failureClass: RuntimeV3ExternalFailureClass,
+): string | null {
+  if (failureClass === "box") return "box:companion";
+  if (failureClass === "model") return `model:${claim.modelId ?? "unselected"}`;
+  if (failureClass === "plugin_provider") {
+    const providers = [...new Set(claim.providerRefs.map((ref) => ref.provider_id))].sort();
+    return providers.length === 1 ? `provider:${providers[0]}` : null;
+  }
+  return null;
+}
+
+function causalDependencyKey(
+  cause: unknown,
+  fallback: string | null,
+): string | null {
+  if (!(cause instanceof RuntimeExternalDependencyError)) return fallback;
+  return causalIdentityKey(cause.dependency, fallback);
+}
+
+function causalIdentityKey(
+  dependency: RuntimeExternalDependencyIdentity | undefined,
+  fallback: string | null,
+): string | null {
+  if (!dependency || dependency.id.length === 0 || dependency.id.length > 160 || /[\n\r]/.test(dependency.id)) {
+    return fallback;
+  }
+  if (dependency.kind === "box") return "box:companion";
+  return `${dependency.kind}:${dependency.id}`;
+}
+
+async function externalDependencyCall<T>(
+  code: string,
+  dependency: RuntimeExternalDependencyIdentity,
+  effect: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await effect();
+  } catch (cause) {
+    if (cause instanceof RuntimeExternalDependencyError) throw cause;
+    throw new RuntimeExternalDependencyError(code, dependency);
+  }
+}
+
+function rejectedFailureClass(code: string): RuntimeV3ExternalFailureClass {
+  const stableClasses: Readonly<Record<string, RuntimeV3ExternalFailureClass>> = {
+    model_unavailable: "model",
+    model_unusable: "model",
+    context_window_exceeded: "model",
+    input_too_long: "model",
+    plugin_provider_unavailable: "plugin_provider",
+    provider_unavailable: "plugin_provider",
+    credential_unavailable: "plugin_provider",
+    mcp_unavailable: "plugin_provider",
+    authorization_revoked: "authority",
+    external_authority_unavailable: "authority",
+    access_revoked: "authority",
+    permission_denied: "authority",
+    forbidden: "authority",
+  };
+  return stableClasses[code] ?? "box";
+}
+
+function externalBlockMessage(failureClass: RuntimeV3ExternalFailureClass): string {
+  if (failureClass === "model") {
+    return "This work is blocked until the selected model is usable again.";
+  }
+  if (failureClass === "plugin_provider") {
+    return "This work is blocked until its plugin provider is available again.";
+  }
+  if (failureClass === "authority") {
+    return "This work is blocked until its external access is available again.";
+  }
+  return "This work is blocked because its Box is unavailable.";
 }
 
 /**
@@ -573,6 +741,7 @@ export function createRuntimeV3WarmTurnAdvance(
     let decisionPiWriteIntent = false;
     let decisionCheckpointPending = false;
     let durableAdmissionRecorded = false;
+    let recoveryCheckpointPending = false;
     let inactivityDeadlineAt = claim.turn.inactivityDeadlineAt ?? null;
     let absoluteDeadlineAt = claim.turn.absoluteDeadlineAt ?? null;
     let durableNeedsInput = claim.turn.state === "needs_input";
@@ -592,11 +761,14 @@ export function createRuntimeV3WarmTurnAdvance(
         : await options.persistence.authorize(claim);
       if (!material) {
         prePiHandoff = false;
+        const dependencyKey = externalDependencyKey(claim, "authority");
         return {
-          kind: "failed",
+          kind: "external_retry",
+          failureClass: "authority",
+          source: externalSource(claim),
+          dependencyKey,
           code: "warm_turn_unauthorized",
-          message: "The warm Turn is no longer authorized to run.",
-          action: "none",
+          message: "This work is blocked until its external access is available again.",
         };
       }
       if (material.recoveryDeferred) return { kind: "release" };
@@ -643,16 +815,22 @@ export function createRuntimeV3WarmTurnAdvance(
           directWorkspace: material.directWorkspace,
           signal: admissionSignal,
         });
+        if (signal?.aborted) return { kind: "release" };
         if (admission.outcome === "rejected") {
           admissionWriteIntent = false;
-          return claim.turn.lane === "background"
-            ? {
-              kind: "admission_rejected",
-              code: admission.code,
-              message: "Pi rejected the routine before accepting its prompt.",
-              action: "none",
-            }
-            : { kind: "release" };
+          const failureClass = rejectedFailureClass(admission.code);
+          const dependencyKey = causalIdentityKey(
+            admission.dependency,
+            externalDependencyKey(claim, failureClass),
+          );
+          return {
+            kind: "external_retry",
+            failureClass,
+            source: externalSource(claim),
+            dependencyKey,
+            code: admission.code,
+            message: externalBlockMessage(failureClass),
+          };
         }
         if (admission.outcome === "ambiguous") {
           return {
@@ -674,6 +852,11 @@ export function createRuntimeV3WarmTurnAdvance(
         if (admitted) {
           admissionWriteIntent = false;
           durableAdmissionRecorded = true;
+          if (options.persistence.recoverExternal) {
+            recoveryCheckpointPending = true;
+            await options.persistence.recoverExternal(claim, signal);
+            recoveryCheckpointPending = false;
+          }
         }
         signal?.throwIfAborted();
         if (!admitted) {
@@ -826,6 +1009,11 @@ export function createRuntimeV3WarmTurnAdvance(
           invocationId,
           signal: commandSignal,
         });
+        if (options.persistence.recoverExternal) {
+          recoveryCheckpointPending = true;
+          await options.persistence.recoverExternal(claim, signal);
+          recoveryCheckpointPending = false;
+        }
         signal?.throwIfAborted();
         if (claim.turn.state === "needs_input" && page.events.length === 0 && !page.hasMore) {
           return { kind: "release" };
@@ -951,14 +1139,18 @@ export function createRuntimeV3WarmTurnAdvance(
       }
       return { kind: "release" };
     } catch {
+      if (signal?.aborted) return { kind: "release" };
       if (projectionPendingAck === "terminal") {
         return { kind: "retry_ack" };
       }
       if (projectionPendingAck === "nonterminal") return { kind: "release" };
+      if (recoveryCheckpointPending) return { kind: "release" };
       if (projectionWriteIntent || (durableAdmissionRecorded && signal?.aborted)) {
         return { kind: "release" };
       }
-      if (prePiHandoff) return { kind: "release" };
+      if (prePiHandoff) {
+        return { kind: "release" };
+      }
       if (admissionWriteIntent) {
         return {
           kind: "interrupted",
@@ -1223,8 +1415,23 @@ export function createRuntimeV3Preparation(
         const deadlineSignal = boundedSignal(shutdownSignal, remainingMs);
         const phaseSignal = (timeoutMs: number): AbortSignal =>
           boundedSignal(deadlineSignal, timeoutMs);
+        let externalFailureClass: RuntimeV3ExternalFailureClass = claim.authorized
+          ? "box"
+          : "authority";
+        const reauthorize = async (): Promise<void> => {
+          if (await options.persistence.reauthorize(claim, deadlineSignal)) return;
+          throw new RuntimeExternalDependencyError("external_authority_unavailable", {
+            kind: "grant",
+            id: `actor:${claim.actorId ?? "unavailable"}`,
+          });
+        };
         try {
-          if (!claim.authorized) throw new Error("Runtime v3 preparation is not authorized");
+          if (!claim.authorized) {
+            throw new RuntimeExternalDependencyError("external_authority_unavailable", {
+              kind: "grant",
+              id: `actor:${claim.actorId ?? "unavailable"}`,
+            });
+          }
           if (claim.piRecycleCheckpoint === "terminate") {
             if (!claim.boxId || !claim.recyclePiInvocationId || !claim.recoveryId) {
               throw new Error("Fenced Pi recycle identity is incomplete");
@@ -1232,15 +1439,17 @@ export function createRuntimeV3Preparation(
             if (!options.pi.terminatePiInvocation || !options.persistence.checkpointPiRecycle) {
               throw new Error("Fenced Pi recycle boundary is unavailable");
             }
-            if (!await options.persistence.reauthorize(claim, deadlineSignal)) {
-              throw new Error("Runtime v3 preparation authorization changed");
-            }
+            await reauthorize();
             const terminationSignal = phaseSignal(RUNTIME_V3_PI_ACTIVATION_BUDGET_MS);
-            let stopped = await options.pi.terminatePiInvocation({
-              boxId: claim.boxId,
-              expectedInvocationId: claim.recyclePiInvocationId,
-              signal: terminationSignal,
-            });
+            let stopped = await externalDependencyCall(
+              "box_unavailable",
+              { kind: "box", id: claim.boxId },
+              async () => await options.pi.terminatePiInvocation!({
+                boxId: claim.boxId!,
+                expectedInvocationId: claim.recyclePiInvocationId!,
+                signal: terminationSignal,
+              }),
+            );
             terminationSignal.throwIfAborted();
             shutdownSignal?.throwIfAborted();
             if (stopped.outcome === "superseded") {
@@ -1249,10 +1458,14 @@ export function createRuntimeV3Preparation(
                 throw new Error("Superseded Pi recycle reconciliation is unavailable");
               }
               const observationSignal = phaseSignal(RUNTIME_V3_PI_ACTIVATION_BUDGET_MS);
-              const observed = await options.pi.piDaemonStatus({
-                boxId: claim.boxId,
-                signal: observationSignal,
-              });
+              const observed = await externalDependencyCall(
+                "box_unavailable",
+                { kind: "box", id: claim.boxId },
+                async () => await options.pi.piDaemonStatus!({
+                  boxId: claim.boxId!,
+                  signal: observationSignal,
+                }),
+              );
               observationSignal.throwIfAborted();
               shutdownSignal?.throwIfAborted();
               if (observed.state !== "idle" || !observed.invocationId
@@ -1266,11 +1479,15 @@ export function createRuntimeV3Preparation(
                 return { progressed, exhausted: false };
               }
               const reconciledTerminationSignal = phaseSignal(RUNTIME_V3_PI_ACTIVATION_BUDGET_MS);
-              stopped = await options.pi.terminatePiInvocation({
-                boxId: claim.boxId,
-                expectedInvocationId: observed.invocationId,
-                signal: reconciledTerminationSignal,
-              });
+              stopped = await externalDependencyCall(
+                "box_unavailable",
+                { kind: "box", id: claim.boxId },
+                async () => await options.pi.terminatePiInvocation!({
+                  boxId: claim.boxId!,
+                  expectedInvocationId: observed.invocationId!,
+                  signal: reconciledTerminationSignal,
+                }),
+              );
               reconciledTerminationSignal.throwIfAborted();
               shutdownSignal?.throwIfAborted();
               if (stopped.outcome === "superseded") {
@@ -1284,29 +1501,33 @@ export function createRuntimeV3Preparation(
             if (!claim.boxId || !claim.recoveryId) {
               throw new Error("Fenced Pi recycle identity is incomplete");
             }
-            if (!await options.persistence.reauthorize(claim, deadlineSignal)) {
-              throw new Error("Runtime v3 preparation authorization changed");
-            }
+            await reauthorize();
             if (!options.pi.resetPiSession || !options.persistence.checkpointPiRecycle) {
               throw new Error("Fenced Pi recycle boundary is unavailable");
             }
             const resetSignal = phaseSignal(RUNTIME_V3_STAGING_BUDGET_MS);
-            await options.pi.resetPiSession({
-              boxId: claim.boxId,
-              recoveryId: claim.recoveryId,
-              signal: resetSignal,
-            });
+            await externalDependencyCall(
+              "box_unavailable",
+              { kind: "box", id: claim.boxId },
+              async () => await options.pi.resetPiSession!({
+                boxId: claim.boxId!,
+                recoveryId: claim.recoveryId!,
+                signal: resetSignal,
+              }),
+            );
             resetSignal.throwIfAborted();
             shutdownSignal?.throwIfAborted();
             if (!await options.persistence.checkpointPiRecycle(claim, "complete", deadlineSignal)) {
               return { progressed, exhausted: false };
             }
           } else if (claim.checkpoint === "pending") {
-            if (!await options.persistence.reauthorize(claim, deadlineSignal)) {
-              throw new Error("Runtime v3 preparation authorization changed");
-            }
+            externalFailureClass = "box";
+            await reauthorize();
             const providerSignal = phaseSignal(COMPANION_RUNTIME_V3_BUDGETS.providerRequestMs);
-            const created = await options.box.createGenerationBox({
+            const created = await externalDependencyCall(
+              "box_unavailable",
+              { kind: "box", id: "companion" },
+              async () => await options.box.createGenerationBox({
               companionId: claim.companionId,
               generation: 1n,
               ttlSeconds: PREPARATION_BOX_TTL_SECONDS,
@@ -1318,7 +1539,8 @@ export function createRuntimeV3Preparation(
               // while the next fenced claim retries after the normal preparation backoff.
               deadlineAt: now(),
               signal: providerSignal,
-            });
+              }),
+            );
             providerSignal.throwIfAborted();
             shutdownSignal?.throwIfAborted();
             if (!await options.persistence.checkpoint(claim, {
@@ -1326,29 +1548,42 @@ export function createRuntimeV3Preparation(
               boxId: created.boxId,
             }, deadlineSignal)) return { progressed, exhausted: false };
           } else if (claim.checkpoint === "box_created") {
+            externalFailureClass = "box";
             if (!claim.boxId) throw new Error("Box identity is missing after creation");
-            if (!await options.persistence.reauthorize(claim, deadlineSignal)) {
-              throw new Error("Runtime v3 preparation authorization changed");
-            }
+            await reauthorize();
             const settingsSignal = phaseSignal(COMPANION_RUNTIME_V3_BUDGETS.providerRequestMs);
-            await options.box.applyGenerationBoxSettings({
-              boxId: claim.boxId,
-              companionId: claim.companionId,
-              generation: 1n,
-              ttlSeconds: PREPARATION_BOX_TTL_SECONDS,
-              signal: settingsSignal,
-            });
+            await externalDependencyCall(
+              "box_unavailable",
+              { kind: "box", id: claim.boxId },
+              async () => await options.box.applyGenerationBoxSettings({
+                boxId: claim.boxId!,
+                companionId: claim.companionId,
+                generation: 1n,
+                ttlSeconds: PREPARATION_BOX_TTL_SECONDS,
+                signal: settingsSignal,
+              }),
+            );
             settingsSignal.throwIfAborted();
             shutdownSignal?.throwIfAborted();
             const statusSignal = phaseSignal(COMPANION_RUNTIME_V3_BUDGETS.providerRequestMs);
-            const observed = await options.box.getStatus({
-              boxId: claim.boxId,
-              companionId: claim.companionId,
-              generation: 1n,
-              signal: statusSignal,
-            });
+            const observed = await externalDependencyCall(
+              "box_unavailable",
+              { kind: "box", id: claim.boxId },
+              async () => await options.box.getStatus({
+                boxId: claim.boxId!,
+                companionId: claim.companionId,
+                generation: 1n,
+                signal: statusSignal,
+              }),
+            );
             statusSignal.throwIfAborted();
             shutdownSignal?.throwIfAborted();
+            if (observed.state === "absent") {
+              throw new RuntimeExternalDependencyError("box_unavailable", {
+                kind: "box",
+                id: claim.boxId,
+              });
+            }
             if (!["ready", "idle", "running"].includes(observed.state)) {
               await options.persistence.defer(claim, {
                 delaySeconds: PREPARATION_POLL_SECONDS,
@@ -1362,6 +1597,7 @@ export function createRuntimeV3Preparation(
               return { progressed, exhausted: false };
             }
           } else if (claim.checkpoint === "box_ready") {
+            externalFailureClass = "plugin_provider";
             if (!claim.boxId) throw new Error("Box identity is missing before staging");
             const stagingSignal = phaseSignal(RUNTIME_V3_STAGING_BUDGET_MS);
             const staged = await options.preparationStager.stagePreparation({
@@ -1384,18 +1620,30 @@ export function createRuntimeV3Preparation(
               return { progressed, exhausted: false };
             }
           } else {
+            externalFailureClass = "model";
             if (!claim.boxId) throw new Error("Box identity is missing before Pi activation");
-            if (!await options.persistence.reauthorize(claim, deadlineSignal)) {
-              throw new Error("Runtime v3 preparation authorization changed");
-            }
+            await reauthorize();
             const activationSignal = phaseSignal(RUNTIME_V3_PI_ACTIVATION_BUDGET_MS);
-            const pi = await options.pi.startPiDaemon({
-              boxId: claim.boxId,
-              signal: activationSignal,
-            });
+            let pi;
+            try {
+              pi = await options.pi.startPiDaemon({
+                boxId: claim.boxId,
+                signal: activationSignal,
+              });
+            } catch {
+              throw new RuntimeExternalDependencyError("box_unavailable", {
+                kind: "box",
+                id: claim.boxId,
+              });
+            }
             activationSignal.throwIfAborted();
             shutdownSignal?.throwIfAborted();
-            if (pi.state !== "idle") throw new Error("Pi did not become idle during preparation");
+            if (pi.state !== "idle") {
+              throw new RuntimeExternalDependencyError("model_unusable", {
+                kind: "model",
+                id: claim.modelId ?? "unselected",
+              });
+            }
             if (!await options.persistence.checkpoint(claim, {
               next: "prepared",
               piInvocationId: pi.invocationId,
@@ -1403,22 +1651,80 @@ export function createRuntimeV3Preparation(
             options.observePreparedLatency?.(Math.max(0, now().getTime() - claim.createdAt.getTime()));
           }
           progressed += 1;
-        } catch (error) {
+        } catch (cause) {
           if (shutdownSignal?.aborted) return { progressed, exhausted: false };
+          if (cause instanceof RuntimeExternalDependencyError) {
+            externalFailureClass = cause.failureClass;
+          } else {
+            const releaseSignal = boundedSignal(
+              shutdownSignal,
+              COMPANION_RUNTIME_V3_BUDGETS.heartbeatSettlementMs,
+            );
+            await options.persistence.defer(claim, {
+              delaySeconds: runtimeV3PreparationRetryDelaySeconds({
+                attemptCount: (claim.attemptCount ?? 0) + 1,
+                jitter: jitter(),
+                now: now(),
+                deadlineAt: claim.deadlineAt ?? null,
+              }),
+              error: safeRuntimeError({
+                code: "runtime_preparation_retry",
+                message: "Runtime preparation could not be completed.",
+                action: "retry",
+              }),
+            }, releaseSignal);
+            return { progressed: progressed + 1, exhausted: false };
+          }
+          const external = {
+            code: externalFailureClass === "model"
+              ? "model_unusable"
+              : externalFailureClass === "plugin_provider"
+                ? "plugin_provider_unavailable"
+                : externalFailureClass === "authority"
+                  ? "external_authority_unavailable"
+                  : "box_unavailable",
+            message: externalBlockMessage(externalFailureClass),
+          };
           const safe = safeRuntimeError({
-            code: "companion_prepare_failed",
-            message: error,
+            code: external.code,
+            message: external.message,
             action: "retry",
           });
+          const releaseSignal = boundedSignal(
+            shutdownSignal,
+            COMPANION_RUNTIME_V3_BUDGETS.heartbeatSettlementMs,
+          );
+          const dependencyKey = causalDependencyKey(
+            cause,
+            preparationDependencyKey(claim, externalFailureClass),
+          );
+          if (!dependencyKey) {
+            await options.persistence.defer(claim, {
+              delaySeconds: runtimeV3PreparationRetryDelaySeconds({
+                attemptCount: (claim.attemptCount ?? 0) + 1,
+                jitter: jitter(),
+                now: now(),
+                deadlineAt: claim.deadlineAt ?? null,
+              }),
+              error: safeRuntimeError({
+                code: "runtime_preparation_retry",
+                message: "Runtime preparation could not be completed.",
+                action: "retry",
+              }),
+            }, releaseSignal);
+            return { progressed: progressed + 1, exhausted: false };
+          }
           await options.persistence.defer(claim, {
-            delaySeconds: runtimeV3PreparationRetryDelaySeconds({
-              attemptCount: claim.attemptCount ?? 0,
+            delaySeconds: runtimeV3ExternalRetryDelaySeconds({
+              failureCount: (claim.attemptCount ?? 0) + 1,
               jitter: jitter(),
               now: now(),
               deadlineAt: claim.deadlineAt ?? null,
             }),
             error: safe,
-          }, deadlineSignal);
+            externalFailureClass,
+            dependencyKey,
+          }, releaseSignal);
           return { progressed: progressed + 1, exhausted: false };
         }
       }

@@ -9,6 +9,7 @@ import {
 } from "@companion/box-runtime";
 import {
   RUNTIME_LEASE_SECONDS,
+  RuntimeExternalDependencyError,
   RuntimeAttachmentExpiredError,
   createRuntimeVisibleTextRedactor,
   type RuntimeAttachmentStager,
@@ -355,37 +356,50 @@ export function createRuntimeMaterialPipeline(input: {
       // Token minting reauthorizes the exact snapshot under the live preparation fence. It is the
       // final control-plane boundary before any resolved material crosses into the Box.
       const credentials = await authorize();
-      if (!credentials) throw new RuntimeMaterialError("runtime_material_invalid");
-      const observed = await input.runtime().stageExistingBox({
-        orgId: claim.orgId,
-        companionId: claim.companionId,
-        boxId: claim.boxId,
-        runtimeGeneration: 1,
-        clientSurface: "web",
-        providerAuth: resources.providerAuth,
-        replaceProviderAuth: true,
-        instructions: claim.persona,
-        modelId: claim.modelId,
-        mcpCredentials: resources.mcpCredentials,
-        mcpAccounts: resources.mcpAccounts,
-        skills: [
-          input.bundledSkill,
-          ...resources.skills.filter((skill) => skill.slug !== COMPANION_SKILL_KEY),
-        ],
-        reuseSkills: false,
-        preserveSkills: false,
-        hubEnv: buildRuntimeHubEnvironment({
-          nativeMobile: false,
-          apiUrl: input.apiUrl,
+      if (!credentials) {
+        throw new RuntimeExternalDependencyError("external_authority_unavailable", {
+          kind: "grant",
+          id: `actor:${claim.actorId}`,
+        });
+      }
+      let observed;
+      try {
+        observed = await input.runtime().stageExistingBox({
           orgId: claim.orgId,
-          extraEnv: resources.extraEnv,
-          hubCredential: credentials.hubToken,
-          mcpBrokerCredential: credentials.mcpBrokerToken ?? undefined,
-          controlCredential: credentials.controlToken,
-        }),
-        configCatalog: claim.configCatalog,
-        signal,
-      });
+          companionId: claim.companionId,
+          boxId: claim.boxId,
+          runtimeGeneration: 1,
+          clientSurface: "web",
+          providerAuth: resources.providerAuth,
+          replaceProviderAuth: true,
+          instructions: claim.persona,
+          modelId: claim.modelId,
+          mcpCredentials: resources.mcpCredentials,
+          mcpAccounts: resources.mcpAccounts,
+          skills: [
+            input.bundledSkill,
+            ...resources.skills.filter((skill) => skill.slug !== COMPANION_SKILL_KEY),
+          ],
+          reuseSkills: false,
+          preserveSkills: false,
+          hubEnv: buildRuntimeHubEnvironment({
+            nativeMobile: false,
+            apiUrl: input.apiUrl,
+            orgId: claim.orgId,
+            extraEnv: resources.extraEnv,
+            hubCredential: credentials.hubToken,
+            mcpBrokerCredential: credentials.mcpBrokerToken ?? undefined,
+            controlCredential: credentials.controlToken,
+          }),
+          configCatalog: claim.configCatalog,
+          signal,
+        });
+      } catch {
+        throw new RuntimeExternalDependencyError("box_unavailable", {
+          kind: "box",
+          id: claim.boxId,
+        });
+      }
       if (input.registerAgentEndpoint && observed.agentEndpoint) {
         input.registerAgentEndpoint(claim.boxId, {
           hostedUrl: observed.agentEndpoint.hostedUrl,

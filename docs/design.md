@@ -187,6 +187,20 @@ accepted, timed-out, or ambiguous work is terminated exactly and never replayed.
 the routine. Ordinary main Turns and their
 lifecycle/preparation loop run on a separate scheduler clock and remain independent.
 
+Migration 0175 records Box, selected-model, plugin/provider, and external-authority outages as
+durable incidents keyed by a one-way dependency fingerprint and stable classification. Main,
+routine, trigger, and delegation occurrences join one continuous incident instead of emitting an
+alert per retry. Each failed pre-admission occurrence stays enabled and queued, releases its runtime
+claim, and retries with jittered 5/15/30/60/300-second backoff clipped by its deadline. One durable
+open checkpoint records the operator/member incident signal once, and one recovery checkpoint
+records recovery; aggregate SLO facts retain every occurrence by classification and source without
+tenant, message, credential, URL, or provider payload labels. Recovery makes eligible queued heads
+immediately claimable again. A queued FIFO
+head in backoff blocks only its own lane; main and background remain independently claimable.
+The causal provider/grant identity is hashed before persistence, and runtime alone drains durable
+opened/recovered signal rows through fenced claim/ack. A crash before ACK redelivers the same
+signal identity; an ACK prevents a second delivery.
+
 A blocking `ask_user` decision moves the turn to `needs_input` and clears the
 inactivity deadline. An answer resumes Pi; after ten minutes, absence returns a cancelled response
 so Pi chooses a safe fallback without inferring approval. A newer member message cancels the wait

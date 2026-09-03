@@ -84,6 +84,26 @@ describe("runtime Sentry process log", () => {
     expect(capture).toHaveBeenNthCalledWith(3, "error", fenceLost.event, JSON.stringify(fenceLost));
   });
 
+  it("captures each durable incident once while suppressing redelivery of the same incident", () => {
+    const base: RuntimeProcessLog = { error: vi.fn(), warn() {}, info() {} };
+    const capture = vi.fn();
+    const log = createSentryRuntimeProcessLog(base, capture);
+    const event = "runtime.external_incident.box.opened";
+    const first = record(event, { incident_id: "11111111-1111-4111-8111-111111111111" });
+    const second = record(event, { incident_id: "22222222-2222-4222-8222-222222222222" });
+
+    log.error(first);
+    log.error(first);
+    log.error(second);
+
+    expect(base.error).toHaveBeenCalledTimes(3);
+    expect(capture).toHaveBeenCalledTimes(2);
+    expect(capture.mock.calls.map((call) => call[1])).toEqual([
+      `${event}.11111111-1111-4111-8111-111111111111`,
+      `${event}.22222222-2222-4222-8222-222222222222`,
+    ]);
+  });
+
   it("expurgates records before sending them to the telemetry capture boundary", () => {
     const base: RuntimeProcessLog = { error() {}, warn() {}, info() {} };
     const capture = vi.fn<RuntimeLogCapture>();

@@ -5,6 +5,7 @@
  * Sensitivity: serializing the lane loops or returning arbitrary failure text makes these fail.
  */
 import { describe, expect, it, vi } from "vitest";
+import { RuntimeExternalDependencyError } from "../ports";
 
 import {
   createRuntimeV3Lifecycle,
@@ -13,6 +14,7 @@ import {
   createRuntimeV3Progression,
   createRuntimeV3WarmTurnAdvance,
   runtimeV3CommandWindow,
+  runtimeV3ExternalRetryDelaySeconds,
   runtimeV3PreparationRetryDelaySeconds,
   type RuntimeV3Claim,
   type RuntimeV3ConvergencePersistence,
@@ -68,6 +70,44 @@ function persistence(
 }
 
 describe("Runtime v3 progression interface", () => {
+  it("uses the shared jittered external ladder and clips every work source to its deadline", () => {
+    const now = new Date("2026-09-03T00:00:00.000Z");
+    const deadlineAt = new Date(now.getTime() + 1_000_000);
+    expect([1, 2, 3, 4, 5, 6].map((failureCount) =>
+      runtimeV3ExternalRetryDelaySeconds({ failureCount, jitter: 0.5, now, deadlineAt })
+    )).toEqual([5, 15, 30, 60, 300, 300]);
+    expect(runtimeV3ExternalRetryDelaySeconds({
+      failureCount: 5,
+      jitter: 1,
+      now,
+      deadlineAt: new Date(now.getTime() + 17_000),
+    })).toBe(17);
+    expect(runtimeV3ExternalRetryDelaySeconds({
+      failureCount: 5,
+      jitter: 1,
+      now,
+      deadlineAt,
+    })).toBe(300);
+    expect(runtimeV3ExternalRetryDelaySeconds({
+      failureCount: 1,
+      jitter: 0,
+      now,
+      deadlineAt,
+    })).toBe(4);
+    expect(runtimeV3ExternalRetryDelaySeconds({
+      failureCount: 1,
+      jitter: 1,
+      now,
+      deadlineAt,
+    })).toBe(6);
+    expect(runtimeV3ExternalRetryDelaySeconds({
+      failureCount: 1,
+      jitter: 0.5,
+      now,
+      deadlineAt: new Date(now.getTime() - 1),
+    })).toBe(0);
+  });
+
   it("reserves settlement inside silent and active command deadlines", () => {
     const now = new Date("2026-09-03T00:00:00.000Z");
     expect(runtimeV3CommandWindow({
@@ -229,9 +269,28 @@ describe("Runtime v3 progression interface", () => {
     expect(prompt).not.toHaveBeenCalled();
   });
 
-  it("retries a background routine only after Pi explicitly rejects prompt admission", async () => {
+  it.each([
+    ["pi_prompt_refused", "box", "This work is blocked because its Box is unavailable."],
+    ["model_unavailable", "model", "This work is blocked until the selected model is usable again."],
+    ["plugin_provider_unavailable", "plugin_provider", "This work is blocked until its plugin provider is available again."],
+    ["authorization_revoked", "authority", "This work is blocked until its external access is available again."],
+  ] as const)("classifies proven background refusal %s for source-preserving retry", async (
+    code, failureClass, message,
+  ) => {
+    const dependencyKeys = {
+      box: "box:companion",
+      model: "model:claude-test",
+      plugin_provider: "provider:anthropic",
+      authority: "grant:actor:owner-1",
+    } as const;
     const prompt = vi.fn().mockResolvedValue({
-      outcome: "rejected" as const, code: "pi_prompt_refused",
+      outcome: "rejected" as const,
+      code,
+      ...(failureClass === "plugin_provider"
+        ? { dependency: { kind: "provider" as const, id: "github" } }
+        : failureClass === "authority"
+          ? { dependency: { kind: "grant" as const, id: "account-1" } }
+        : {}),
     });
     const advance = createRuntimeV3WarmTurnAdvance({
       persistence: {
@@ -245,14 +304,136 @@ describe("Runtime v3 progression interface", () => {
       },
       pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
     });
-    const claim = { ...mainClaim, turn: { ...acceptedTurn, lane: "background" as const } };
+    const claim = {
+      ...mainClaim,
+      source: "routine" as const,
+      externalDependencyKeys: dependencyKeys,
+      turn: { ...acceptedTurn, lane: "background" as const },
+    };
 
-    await expect(advance(claim)).resolves.toMatchObject({
-      kind: "admission_rejected", code: "pi_prompt_refused",
+    await expect(advance(claim)).resolves.toEqual({
+      kind: "external_retry",
+      failureClass,
+      source: "routine",
+      dependencyKey: failureClass === "plugin_provider"
+        ? "provider:github"
+        : failureClass === "authority"
+          ? "grant:account-1"
+        : dependencyKeys[failureClass],
+      code,
+      message,
     });
   });
 
-  it("hands off an authorization reservation whose committed response is lost", async () => {
+  it("uses one canonical provider key for typed and singleton fallback refusals", async () => {
+    const outcomes = [];
+    for (const dependency of [undefined, { kind: "provider" as const, id: "github" }]) {
+      const advance = createRuntimeV3WarmTurnAdvance({
+        persistence: {
+          authorize: vi.fn().mockResolvedValue({
+            boxId: "bx_23456789", piInvocationId: "invocation-1",
+            content: "provider call", cursor: 0n,
+          }),
+          beginAdmission: vi.fn().mockResolvedValue(true),
+          recordAdmission: vi.fn(),
+          project: vi.fn(),
+        },
+        pi: {
+          prompt: vi.fn().mockResolvedValue({
+            outcome: "rejected", code: "provider_unavailable", dependency,
+          }),
+          read: vi.fn(),
+          acknowledge: vi.fn(),
+        },
+      });
+      outcomes.push(await advance({
+        ...mainClaim,
+        externalDependencyKeys: {
+          box: "box:companion",
+          model: "model:claude-test",
+          plugin_provider: "provider:github",
+          authority: "grant:actor:owner-1",
+        },
+      }));
+    }
+
+    expect(outcomes.map((outcome) => outcome.kind === "external_retry"
+      ? outcome.dependencyKey
+      : null)).toEqual(["provider:github", "provider:github"]);
+  });
+
+  it.each([
+    ["provider", "provider_unavailable", "plugin_provider"],
+    ["grant", "authorization_revoked", "authority"],
+  ] as const)("does not invent a %s incident when a multi-dependency refusal lacks identity", async (
+    _kind, code, omittedClass,
+  ) => {
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1",
+          content: "ambiguous dependency", cursor: 0n,
+        }),
+        beginAdmission: vi.fn().mockResolvedValue(true),
+        recordAdmission: vi.fn(),
+        project: vi.fn(),
+      },
+      pi: {
+        prompt: vi.fn().mockResolvedValue({ outcome: "rejected", code }),
+        read: vi.fn(),
+        acknowledge: vi.fn(),
+      },
+    });
+    const keys = {
+      box: "box:companion",
+      model: "model:claude-test",
+      plugin_provider: "provider:github",
+      authority: "grant:account-1",
+    };
+    delete keys[omittedClass];
+
+    await expect(advance({ ...mainClaim, externalDependencyKeys: keys }))
+      .resolves.toMatchObject({
+        kind: "external_retry",
+        failureClass: omittedClass,
+        source: "main",
+        dependencyKey: null,
+      });
+  });
+
+  it("keeps an exact typed provider identity when the claim has multiple candidates", async () => {
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1",
+          content: "exact provider", cursor: 0n,
+        }),
+        beginAdmission: vi.fn().mockResolvedValue(true),
+        recordAdmission: vi.fn(),
+        project: vi.fn(),
+      },
+      pi: {
+        prompt: vi.fn().mockResolvedValue({
+          outcome: "rejected",
+          code: "provider_unavailable",
+          dependency: { kind: "provider", id: "github" },
+        }),
+        read: vi.fn(),
+        acknowledge: vi.fn(),
+      },
+    });
+
+    await expect(advance({
+      ...mainClaim,
+      externalDependencyKeys: { box: "box:companion", model: "model:claude-test" },
+    })).resolves.toMatchObject({
+      kind: "external_retry",
+      failureClass: "plugin_provider",
+      dependencyKey: "provider:github",
+    });
+  });
+
+  it("releases an authorization reservation failure without inventing a Box incident", async () => {
     const prompt = vi.fn();
     const advance = createRuntimeV3WarmTurnAdvance({
       persistence: {
@@ -1107,10 +1288,33 @@ describe("Runtime v3 progression interface", () => {
     expect(defer).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ["Box create", "pending" as const, { createGenerationBox: new Error("token=provider-secret") }],
-    ["Pi activation", "staged" as const, { startPiDaemon: new Error("token=provider-secret") }],
-  ])("keeps the queued Turn retryable after a %s failure", async (_label, checkpoint, failure) => {
+  it.each<[
+    string,
+    "pending" | "box_ready" | "staged",
+    {
+      authorized?: boolean;
+      createGenerationBox?: Error;
+      stagePreparation?: Error;
+      startPiDaemon?: Error;
+    },
+    "box" | "model" | "plugin_provider" | "authority",
+    string,
+    string,
+  ]>([
+    ["Box create", "pending", { createGenerationBox: new Error("token=provider-secret") }, "box", "box_unavailable", "box:companion"],
+    ["plugin staging", "box_ready", { stagePreparation: new RuntimeExternalDependencyError(
+      "provider_unavailable",
+      { kind: "provider", id: "github" },
+    ) }, "plugin_provider", "plugin_provider_unavailable", "provider:github"],
+    ["credential grant", "box_ready", { stagePreparation: new RuntimeExternalDependencyError(
+      "external_authority_unavailable",
+      { kind: "grant", id: "actor:actor-1" },
+    ) }, "authority", "external_authority_unavailable", "grant:actor:actor-1"],
+    ["Pi activation", "staged", { startPiDaemon: new Error("token=provider-secret") }, "box", "box_unavailable", "box:companion"],
+    ["authority loss", "pending", { authorized: false }, "authority", "external_authority_unavailable", "grant:actor:actor-1"],
+  ])("keeps the queued Turn retryable after a %s failure", async (
+    _label, checkpoint, failure, failureClass, failureCode, dependencyKey,
+  ) => {
     const claim: RuntimeV3PreparationClaim = {
       orgId: mainClaim.orgId,
       companionId: mainClaim.companionId,
@@ -1121,7 +1325,7 @@ describe("Runtime v3 progression interface", () => {
       boxId: checkpoint === "pending" ? null : "bx_23456789",
       createdAt: new Date(),
       executorId: "runtime-fault",
-      authorized: true,
+      authorized: failure.authorized ?? true,
       actorId: "actor-1",
       modelId: "claude-test",
       persona: null,
@@ -1142,15 +1346,19 @@ describe("Runtime v3 progression interface", () => {
       },
       box: {
         createGenerationBox: "createGenerationBox" in failure
-          ? vi.fn().mockRejectedValue(failure.createGenerationBox)
+          ? vi.fn().mockRejectedValue(failure.createGenerationBox!)
           : vi.fn(),
         applyGenerationBoxSettings: vi.fn(),
         getStatus: vi.fn(),
       },
-      preparationStager: { stagePreparation: vi.fn() },
+      preparationStager: {
+        stagePreparation: failure.stagePreparation
+          ? vi.fn().mockRejectedValue(failure.stagePreparation)
+          : vi.fn(),
+      },
       pi: {
         startPiDaemon: "startPiDaemon" in failure
-          ? vi.fn().mockRejectedValue(failure.startPiDaemon)
+          ? vi.fn().mockRejectedValue(failure.startPiDaemon!)
           : vi.fn(),
       },
       jitter: () => 0.5,
@@ -1160,7 +1368,9 @@ describe("Runtime v3 progression interface", () => {
     const deferred = defer.mock.calls[0]?.[1];
     expect(deferred).toMatchObject({
       delaySeconds: 5,
-      error: { code: "companion_prepare_failed", action: "retry" },
+      error: { code: failureCode, action: "retry" },
+      externalFailureClass: failureClass,
+      dependencyKey,
     });
     expect(JSON.stringify(deferred)).not.toContain("provider-secret");
   });
@@ -1420,41 +1630,62 @@ describe("Runtime v3 progression interface", () => {
     await expect(progression.converge({ executorId: "runtime-compacting" }))
       .resolves.toEqual({ progressed: 1, exhausted: false });
     expect(warm.recordAdmission).not.toHaveBeenCalled();
-    expect(store.convergence.completeProgression).toHaveBeenCalledWith(
-      mainClaim,
-      { kind: "release" },
-    );
-  });
-
-  it("fails closed without contacting Pi when fenced warm authorization is unavailable", async () => {
-    const claims: ClaimQueues = { main: [mainClaim, null], background: [null] };
-    const store = persistence({ claimLane: vi.fn(claimFrom(claims)) });
-    const warm = {
-      authorize: vi.fn().mockResolvedValue(null),
-      beginAdmission: vi.fn().mockResolvedValue(true),
-      recordAdmission: vi.fn().mockResolvedValue(true),
-      project: vi.fn().mockResolvedValue(true),
-    };
-    const pi = {
-      prompt: vi.fn(),
-      read: vi.fn(),
-      acknowledge: vi.fn(),
-    };
-    const progression = createRuntimeV3Progression({
-      persistence: store,
-      advance: createRuntimeV3WarmTurnAdvance({ persistence: warm, pi }),
-    });
-
-    await expect(progression.converge({ executorId: "runtime-unprepared" }))
-      .resolves.toEqual({ progressed: 1, exhausted: false });
-    expect(pi.prompt).not.toHaveBeenCalled();
     expect(store.convergence.completeProgression).toHaveBeenCalledWith(mainClaim, {
-      kind: "failed",
+      kind: "external_retry",
+      failureClass: "box",
+      source: "main",
+      dependencyKey: "box:companion",
       error: {
-        code: "warm_turn_unauthorized",
-        message: "The warm Turn is no longer authorized to run.",
-        action: "none",
+        code: "pi_prompt_refused",
+      message: "This work is blocked because its Box is unavailable.",
+        action: "retry",
       },
     });
   });
+
+  it.each(["main", "routine", "trigger", "delegation"] as const)(
+    "fails closed without contacting Pi when %s authority is unavailable",
+    async (source) => {
+      const lane: "main" | "background" =
+        source === "routine" || source === "trigger" ? "background" : "main";
+      const claim = { ...mainClaim, source, turn: { ...mainClaim.turn, lane } };
+      const claims: ClaimQueues = lane === "main"
+        ? { main: [claim, null], background: [null] }
+        : { main: [null], background: [claim, null] };
+      const store = persistence({ claimLane: vi.fn(claimFrom(claims)) });
+      const warm = {
+        authorize: vi.fn().mockResolvedValue(null),
+        beginAdmission: vi.fn().mockResolvedValue(true),
+        recordAdmission: vi.fn().mockResolvedValue(true),
+        project: vi.fn().mockResolvedValue(true),
+      };
+      const pi = {
+        prompt: vi.fn(),
+        read: vi.fn(),
+        acknowledge: vi.fn(),
+      };
+      const progression = createRuntimeV3Progression({
+        persistence: store,
+        advance: createRuntimeV3WarmTurnAdvance({ persistence: warm, pi }),
+      });
+
+      await expect(progression.converge({ executorId: "runtime-unprepared" }))
+        .resolves.toEqual({ progressed: 1, exhausted: false });
+      expect(pi.prompt).not.toHaveBeenCalled();
+      expect(store.convergence.completeProgression).toHaveBeenCalledWith(
+        claim,
+        {
+          kind: "external_retry",
+          failureClass: "authority",
+          source,
+          dependencyKey: null,
+          error: {
+            code: "warm_turn_unauthorized",
+            message: "This work is blocked until its external access is available again.",
+            action: "retry",
+          },
+        },
+      );
+    },
+  );
 });

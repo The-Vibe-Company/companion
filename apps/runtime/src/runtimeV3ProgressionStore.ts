@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   decodeRuntimeV3PreparationSnapshot,
 } from "@companion/companion-runtime";
@@ -6,9 +7,11 @@ import type {
   RuntimeV3ConvergencePersistence,
   RuntimeV3DecisionResponse,
   RuntimeV3DurableOutcome,
+  RuntimeV3ExternalFailureClass,
   RuntimeV3LifecyclePersistence,
   RuntimeV3PreparationPersistence,
   RuntimeV3Turn,
+  RuntimeV3WorkSource,
   RuntimeV3WarmTurnPersistence,
 } from "@companion/companion-runtime/v3/internal";
 import type { Sql } from "postgres";
@@ -46,6 +49,91 @@ interface ClaimRow {
   absoluteDeadlineAt: Date | null;
   cleanupBoxId?: string | null;
   cleanupInvocationId?: string | null;
+  workSource?: RuntimeV3WorkSource;
+  boxDependency?: string;
+  modelDependency?: string;
+  pluginProviderDependency?: string;
+  authorityDependency?: string;
+}
+
+export interface RuntimeV3ExternalIncidentEvent {
+  signalId: string;
+  incidentId: string;
+  state: "opened" | "recovered";
+  classification: RuntimeV3ExternalFailureClass;
+  source: RuntimeV3WorkSource;
+  stableCode?: string;
+}
+
+interface PostgresConvergenceOptions {
+  enabledLanes?: ReadonlySet<"main" | "background">;
+  backgroundOnly?: boolean;
+  jitter?: () => number;
+  onExternalIncident?: (event: RuntimeV3ExternalIncidentEvent) => void;
+}
+
+type IncidentObserverOptions = Pick<PostgresConvergenceOptions, "onExternalIncident">;
+
+async function drainExternalIncidentSignal(
+  sql: Sql,
+  executorId: string,
+  options: IncidentObserverOptions,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  if (!options.onExternalIncident) return false;
+  const rows = await abortable(sql<Array<{
+    signalId: string;
+    incidentId: string;
+    state: "opened" | "recovered";
+    classification: RuntimeV3ExternalFailureClass;
+    source: RuntimeV3WorkSource;
+    stableCode: string;
+    claimToken: string;
+    claimEpoch: string;
+  }>>`
+    select signal_id as "signalId",incident_id as "incidentId",kind as state,
+      failure_class::text as classification,source::text,stable_code as "stableCode",
+      claim_token as "claimToken",claim_epoch::text as "claimEpoch"
+    from public.companion_v3_runtime_claim_external_incident_signal_v9(${executorId},30,9)
+  `, signal);
+  const row = rows[0];
+  if (!row) return false;
+  options.onExternalIncident({
+    signalId: row.signalId,
+    incidentId: row.incidentId,
+    state: row.state,
+    classification: row.classification,
+    source: row.source,
+    ...(row.state === "opened" ? { stableCode: row.stableCode } : {}),
+  });
+  const acknowledged = await abortable(sql<Array<{ acknowledged: boolean }>>`
+    select public.companion_v3_runtime_ack_external_incident_signal_v9(
+      ${row.signalId}::uuid,${row.claimToken}::uuid,${row.claimEpoch}::bigint,9) as acknowledged
+  `, signal);
+  return acknowledged[0]?.acknowledged === true;
+}
+
+async function recoverExternalIncident(
+  sql: Sql,
+  claim: { orgId: string; companionId: string; turnId: string },
+  options: IncidentObserverOptions,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  const rows = await abortable(sql<Array<{
+    classification: RuntimeV3ExternalFailureClass;
+    source: RuntimeV3WorkSource;
+  }>>`
+    select failure_class::text as classification,source::text
+    from public.companion_v3_runtime_recover_external_turn_v9(
+      ${claim.orgId}::uuid,${claim.companionId}::uuid,${claim.turnId}::uuid,9)
+  `, signal);
+  if (rows.length > 0) await drainExternalIncidentSignal(
+    sql,
+    `incident-recovery:${claim.turnId}`,
+    options,
+    signal,
+  );
+  return true;
 }
 
 interface TerminalCompletion {
@@ -75,7 +163,9 @@ function turnFromRow(row: {
   };
 }
 
-function terminalInput(outcome: RuntimeV3DurableOutcome): TerminalCompletion {
+function terminalInput(
+  outcome: Exclude<RuntimeV3DurableOutcome, { kind: "external_retry" }>,
+): TerminalCompletion {
   if (
     outcome.kind === "failed"
     || outcome.kind === "interrupted"
@@ -95,7 +185,7 @@ function terminalInput(outcome: RuntimeV3DurableOutcome): TerminalCompletion {
 /** Runtime-role PostgreSQL adapter kept outside the caller-facing interface and composition root. */
 export function createRuntimeV3PostgresConvergence(
   sql: Sql,
-  options: { enabledLanes?: ReadonlySet<"main" | "background"> } = {},
+  options: PostgresConvergenceOptions = {},
 ): RuntimeV3ConvergencePersistence {
   return createPostgresConvergence(sql, false, options);
 }
@@ -103,7 +193,7 @@ export function createRuntimeV3PostgresConvergence(
 /** Warm-only production adapter: durable v3 preparation is part of claim eligibility. */
 export function createRuntimeV3PostgresWarmConvergence(
   sql: Sql,
-  options: { enabledLanes?: ReadonlySet<"main" | "background"> } = {},
+  options: PostgresConvergenceOptions = {},
 ): RuntimeV3ConvergencePersistence {
   return createPostgresConvergence(sql, true, options);
 }
@@ -111,8 +201,10 @@ export function createRuntimeV3PostgresWarmConvergence(
 /** The single background claimant consumes routine and trigger occurrences in queue order. */
 export function createRuntimeV3PostgresBackgroundConvergence(
   sql: Sql,
+  options: Pick<PostgresConvergenceOptions, "jitter" | "onExternalIncident"> = {},
 ): RuntimeV3ConvergencePersistence {
   return createPostgresConvergence(sql, true, {
+    ...options,
     enabledLanes: new Set(["background"]),
     backgroundOnly: true,
   });
@@ -123,10 +215,11 @@ export const createRuntimeV3PostgresRoutineConvergence = createRuntimeV3Postgres
 function createPostgresConvergence(
   sql: Sql,
   warmOnly: boolean,
-  options: { enabledLanes?: ReadonlySet<"main" | "background">; backgroundOnly?: boolean },
+  options: PostgresConvergenceOptions,
 ): RuntimeV3ConvergencePersistence {
   return {
     async sweepLane({ lane, signal }) {
+      await drainExternalIncidentSignal(sql, `incident-sweep:${lane}`, options, signal);
       if (options.enabledLanes && !options.enabledLanes.has(lane)) return 0;
       if (options.backgroundOnly) {
         const routineRows = await abortable(sql<Array<{ swept: number }>>`
@@ -149,8 +242,11 @@ function createPostgresConvergence(
             gate_epoch::text as "gateEpoch", admission_started_at as "admissionStartedAt",
             inactivity_deadline_at as "inactivityDeadlineAt",
             absolute_deadline_at as "absoluteDeadlineAt", cleanup_box_id as "cleanupBoxId",
-            cleanup_invocation_id as "cleanupInvocationId"
-          from public.companion_v3_runtime_claim_background_v8(${executorId}, ${lane}, 30, 8)
+            cleanup_invocation_id as "cleanupInvocationId",work_source::text as "workSource",
+            box_dependency as "boxDependency",model_dependency as "modelDependency",
+            plugin_provider_dependency as "pluginProviderDependency",
+            authority_dependency as "authorityDependency"
+          from public.companion_v3_runtime_claim_background_v9(${executorId}, ${lane}, 30, 9)
         `, signal)
         : warmOnly ? await abortable(sql<ClaimRow[]>`
           select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
@@ -158,8 +254,11 @@ function createPostgresConvergence(
             claim_token as "claimToken", claim_epoch::text as "claimEpoch",
             gate_epoch::text as "gateEpoch", admission_started_at as "admissionStartedAt",
             inactivity_deadline_at as "inactivityDeadlineAt",
-            absolute_deadline_at as "absoluteDeadlineAt"
-          from public.companion_v3_runtime_claim_warm_v8(${executorId}, ${lane}, 30, 8)
+            absolute_deadline_at as "absoluteDeadlineAt",work_source::text as "workSource",
+            box_dependency as "boxDependency",model_dependency as "modelDependency",
+            plugin_provider_dependency as "pluginProviderDependency",
+            authority_dependency as "authorityDependency"
+          from public.companion_v3_runtime_claim_warm_v9(${executorId}, ${lane}, 30, 9)
         `, signal)
         : await abortable(sql<ClaimRow[]>`
           select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
@@ -181,6 +280,15 @@ function createPostgresConvergence(
           },
           orgId: row.orgId,
           companionId: row.companionId,
+          source: row.workSource,
+          externalDependencyKeys: {
+            ...(row.boxDependency ? { box: row.boxDependency } : {}),
+            ...(row.modelDependency ? { model: row.modelDependency } : {}),
+            ...(row.pluginProviderDependency
+              ? { plugin_provider: row.pluginProviderDependency }
+              : {}),
+            ...(row.authorityDependency ? { authority: row.authorityDependency } : {}),
+          },
       };
       if (row.cleanupBoxId && row.cleanupInvocationId) {
         claim.cleanup = {
@@ -191,6 +299,36 @@ function createPostgresConvergence(
       return claim;
     },
     async completeProgression(claim, outcome, signal) {
+      if (outcome.kind === "external_retry") {
+        const dependencyFingerprint = outcome.dependencyKey === null
+          ? null
+          : createHash("sha256")
+            .update(`runtime-v3:${outcome.failureClass}:${outcome.dependencyKey}`)
+            .digest("hex");
+        const rows = await abortable(sql<Array<{
+          incidentId: string;
+          incidentOpened: boolean;
+          delaySeconds: number;
+        }>>`
+          select incident_id as "incidentId",incident_opened as "incidentOpened",
+            delay_seconds as "delaySeconds"
+          from public.companion_v3_runtime_defer_external_v9(
+            ${claim.orgId}::uuid,${claim.companionId}::uuid,${claim.turn.lane},
+            ${claim.turn.id}::uuid,${claim.fence.token}::uuid,
+            ${claim.fence.epoch.toString()}::bigint,${claim.fence.gateEpoch.toString()}::bigint,
+            ${outcome.failureClass}::public.companion_v3_external_failure_class,
+            ${outcome.source}::public.companion_v3_work_source,${dependencyFingerprint}::text,
+            ${outcome.error.code},${outcome.error.message},${(options.jitter ?? Math.random)()},9)
+        `, signal);
+        const deferred = rows[0];
+        if (deferred) await drainExternalIncidentSignal(
+          sql,
+          `incident-open:${claim.turn.id}`,
+          options,
+          signal,
+        );
+        return deferred !== undefined;
+      }
       const terminal = terminalInput(outcome);
       const rows = await abortable(sql<Array<{ completed: boolean }>>`
         select ${options.backgroundOnly
@@ -351,6 +489,7 @@ export function createRuntimeV3PostgresLifecyclePersistence(
 /** Runtime-only preparation facts. Box identity crosses this seam only after a fenced checkpoint. */
 export function createRuntimeV3PostgresPreparationPersistence(
   sql: Sql,
+  options: Pick<PostgresConvergenceOptions, "onExternalIncident"> = {},
 ): RuntimeV3PreparationPersistence {
   return {
     async sweepDeadlines({ signal }) {
@@ -437,7 +576,16 @@ export function createRuntimeV3PostgresPreparationPersistence(
           ${input.materialExpiresAt ?? null}, 6
         ) as checkpointed
       `, signal);
-      return rows[0]?.checkpointed === true;
+      const checkpointed = rows[0]?.checkpointed === true;
+      if (checkpointed && claim.turnId) {
+        await recoverExternalIncident(
+          sql,
+          { orgId: claim.orgId, companionId: claim.companionId, turnId: claim.turnId },
+          options,
+          signal,
+        );
+      }
+      return checkpointed;
     },
     async checkpointPiRecycle(claim, next, signal) {
       const checkpoint = claim.piRecycleCheckpoint;
@@ -464,6 +612,32 @@ export function createRuntimeV3PostgresPreparationPersistence(
       return rows[0]?.reconciled === true;
     },
     async defer(claim, input, signal) {
+      if (input.externalFailureClass && input.dependencyKey && claim.turnId && input.error) {
+        const fingerprint = createHash("sha256")
+          .update(`runtime-v3:${input.externalFailureClass}:${input.dependencyKey}`)
+          .digest("hex");
+        const rows = await abortable(sql<Array<{
+          incidentOpened: boolean;
+          source: RuntimeV3WorkSource;
+        }>>`
+          select incident_opened as "incidentOpened",source::text
+          from public.companion_v3_runtime_defer_preparation_external_v9(
+            ${claim.orgId}::uuid,${claim.companionId}::uuid,${claim.turnId}::uuid,
+            ${claim.fence.token}::uuid,${claim.fence.epoch.toString()}::bigint,
+            ${claim.fence.gateEpoch.toString()}::bigint,
+            ${input.externalFailureClass}::public.companion_v3_external_failure_class,
+            ${fingerprint},${input.error.code},${input.error.message},${input.delaySeconds},9)
+        `, signal);
+        const row = rows[0];
+        if (!row) return false;
+        await drainExternalIncidentSignal(
+          sql,
+          `incident-open:${claim.turnId}`,
+          options,
+          signal,
+        );
+        return true;
+      }
       const rows = await abortable(sql<Array<{ deferred: boolean }>>`
         select public.companion_v3_runtime_defer_preparation(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid,
@@ -509,8 +683,17 @@ export function createRuntimeV3PostgresPreparationPersistence(
 /** Fenced Runtime v3 warm-turn facts; Box/Pi values never cross into the API process. */
 export function createRuntimeV3PostgresWarmTurnPersistence(
   sql: Sql,
+  options: IncidentObserverOptions = {},
 ): RuntimeV3WarmTurnPersistence {
   return {
+    async recoverExternal(claim, signal) {
+      return await recoverExternalIncident(
+        sql,
+        { orgId: claim.orgId, companionId: claim.companionId, turnId: claim.turn.id },
+        options,
+        signal,
+      );
+    },
     async authorize(claim, signal) {
       const rows = await abortable(sql<WarmMaterialRow[]>`
         select box_id as "boxId", pi_invocation_id as "piInvocationId",
@@ -643,8 +826,9 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
 /** Background projection stays private while routines and triggers share one lane/fence. */
 export function createRuntimeV3PostgresBackgroundTurnPersistence(
   sql: Sql,
+  options: IncidentObserverOptions = {},
 ): RuntimeV3WarmTurnPersistence {
-  const ordinary = createRuntimeV3PostgresWarmTurnPersistence(sql);
+  const ordinary = createRuntimeV3PostgresWarmTurnPersistence(sql, options);
   return {
     ...ordinary,
     async authorize(claim, signal) {

@@ -111,6 +111,57 @@ describe("Runtime v3 acceptance measurement report", () => {
     );
   });
 
+  it("counts external failures in the global SLO with identifier-free attribution", () => {
+    const report = createRuntimeV3AcceptanceReport([fact()], now, [
+      {
+        classification: "box",
+        source: "trigger",
+        occurrenceCount: 2,
+        openedAt: new Date(now.getTime() - minute),
+        recoveredAt: null,
+      },
+      {
+        classification: "box",
+        source: "routine",
+        occurrenceCount: 1,
+        openedAt: new Date(now.getTime() - minute),
+        recoveredAt: null,
+      },
+      {
+        classification: "model",
+        source: "main",
+        occurrenceCount: 2,
+        openedAt: new Date(now.getTime() - 2 * minute),
+        recoveredAt: new Date(now.getTime() - minute),
+      },
+      {
+        classification: "authority",
+        source: "delegation",
+        occurrenceCount: 1,
+        openedAt: new Date(now.getTime() - minute),
+        recoveredAt: null,
+        aggregatedIncident: false,
+      },
+    ]);
+
+    expect(report.slo).toEqual({
+      turnOccurrences: 1,
+      externalFailureOccurrences: 6,
+      successfulTurns: 1,
+      terminalTurnFailures: 0,
+      totalMeasuredOccurrences: 7,
+    });
+    expect(report.external).toEqual([
+      { classification: "authority", source: "delegation", incidents: 0, occurrences: 1, open: 0, recovered: 0 },
+      { classification: "box", source: "routine", incidents: 1, occurrences: 1, open: 1, recovered: 0 },
+      { classification: "box", source: "trigger", incidents: 1, occurrences: 2, open: 1, recovered: 0 },
+      { classification: "model", source: "main", incidents: 1, occurrences: 2, open: 0, recovered: 1 },
+    ]);
+    expect(JSON.stringify(report.external)).not.toMatch(
+      /org|tenant|companion|message|credential|url|payload|fingerprint|provider/i,
+    );
+  });
+
   it("fails the release measurement when an ACK loses its acceptance correlation", () => {
     const report = createRuntimeV3AcceptanceReport([
       fact({ acceptedAt: null }),

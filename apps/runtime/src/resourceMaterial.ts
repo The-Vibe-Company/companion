@@ -8,7 +8,11 @@ import {
   type CompanionRuntimeProviderCredential,
 } from "@companion/core";
 import type { CompanionRuntimeSkill, CompanionStagedMcpAccount } from "@companion/box-runtime";
-import type { RuntimeAuthorization, RuntimeWorkMaterial } from "@companion/companion-runtime";
+import {
+  RuntimeExternalDependencyError,
+  type RuntimeAuthorization,
+  type RuntimeWorkMaterial,
+} from "@companion/companion-runtime";
 import { MAX_ARCHIVE_BYTES, skillChecksum, toTar } from "@companion/skills";
 
 export interface RuntimeMaterialRows {
@@ -176,17 +180,24 @@ export async function resolveRuntimeResources(input: {
     for (const raw of input.material.providerMaterial) {
       const row = providerRow(raw);
       if (providerAuth[row.providerId]) throw new RuntimeMaterialError("runtime_material_invalid");
-      const credential = decryptCompanionProviderRuntimeCredential({
-        orgId: input.orgId,
-        providerId: row.providerId,
-        credentialGeneration: row.credentialGeneration,
-        envelope: row.envelope,
-      }, input.masterKey);
-      if (
-        (row.authMethod === "api_key" && credential.type !== "api_key")
-        || (row.authMethod !== "api_key" && credential.type !== "oauth")
-      ) throw new RuntimeMaterialError("runtime_material_invalid");
-      providerAuth[row.providerId] = credential;
+      try {
+        const credential = decryptCompanionProviderRuntimeCredential({
+          orgId: input.orgId,
+          providerId: row.providerId,
+          credentialGeneration: row.credentialGeneration,
+          envelope: row.envelope,
+        }, input.masterKey);
+        if (
+          (row.authMethod === "api_key" && credential.type !== "api_key")
+          || (row.authMethod !== "api_key" && credential.type !== "oauth")
+        ) throw new RuntimeMaterialError("runtime_material_invalid");
+        providerAuth[row.providerId] = credential;
+      } catch {
+        throw new RuntimeExternalDependencyError("provider_unavailable", {
+          kind: "provider",
+          id: row.providerId,
+        });
+      }
     }
 
     const skills: CompanionRuntimeSkill[] = [];
@@ -262,6 +273,7 @@ export async function resolveRuntimeResources(input: {
     return { providerAuth, skills, mcpAccounts, mcpCredentials, extraEnv };
   } catch (error) {
     if (input.signal.aborted) throw input.signal.reason;
+    if (error instanceof RuntimeExternalDependencyError) throw error;
     if (error instanceof RuntimeMaterialError) throw error;
     // Core credential/schema/storage errors may carry implementation detail; collapse all of them.
     throw new RuntimeMaterialError("runtime_material_invalid");
@@ -276,21 +288,29 @@ export function decryptRuntimeMcpRows(input: {
   try {
     return input.mcpMaterial.map((raw) => {
       const row = mcpRow(raw);
-      const account = companionMcpAccountSchema.parse(row.accountConfig);
-      if (account.id !== row.accountId) throw new RuntimeMaterialError("runtime_material_invalid");
-      return {
-        accountId: row.accountId,
-        credentialGeneration: row.credentialGeneration,
-        account,
-        decrypted: decryptCompanionMcpRuntimeCredential({
-          orgId: input.orgId,
+      try {
+        const account = companionMcpAccountSchema.parse(row.accountConfig);
+        if (account.id !== row.accountId) throw new RuntimeMaterialError("runtime_material_invalid");
+        return {
           accountId: row.accountId,
           credentialGeneration: row.credentialGeneration,
-          envelope: row.envelope,
-        }, input.masterKey),
-      };
+          account,
+          decrypted: decryptCompanionMcpRuntimeCredential({
+            orgId: input.orgId,
+            accountId: row.accountId,
+            credentialGeneration: row.credentialGeneration,
+            envelope: row.envelope,
+          }, input.masterKey),
+        };
+      } catch {
+        throw new RuntimeExternalDependencyError("mcp_access_revoked", {
+          kind: "grant",
+          id: row.accountId,
+        });
+      }
     });
   } catch (error) {
+    if (error instanceof RuntimeExternalDependencyError) throw error;
     if (error instanceof RuntimeMaterialError) throw error;
     throw new RuntimeMaterialError("runtime_material_invalid");
   }

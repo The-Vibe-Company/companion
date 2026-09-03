@@ -45,6 +45,13 @@ continues independently. Runtime revalidates Owner-bound current capabilities an
 and durable memory work directly in the persistent Box workspace. Only a prompt rejection proven
 before acceptance retries; ambiguous or accepted work is never replayed, and newer due instants
 supersede only obsolete pending work.
+Box, selected-model, plugin/provider, and external-authority outages are shown as one honest
+external block rather than repeated failures or a claimed automatic repair. Main, routine, trigger,
+and delegation work remains enabled; each failed pre-admission occurrence releases its runtime
+claim, retries with bounded jittered 5/15/30/60/300-second backoff, and resumes automatically after
+one recovery signal. FIFO remains local to each independently progressing main/background lane.
+Runtime redelivers the same durable incident signal after a delivery crash until it is acknowledged;
+an acknowledged open or recovery signal is not delivered again.
 Hosted runtime protocol 7 never replays a prompt whose dispatch outcome is ambiguous. It retries a
 resource-independent durable cleanup that terminates only the captured Pi invocation, preserves the
 original interruption, then marks that occurrence `auto_abandoned` and releases its execution lane.
@@ -1411,7 +1418,7 @@ skills view shows the correct status and version. Report the version from this s
 `companion.json.version`:
 
 ```sh
-printf '%s' '{"action":"api","method":"POST","path":"/local-skills/companion/installed","body":{"version":"1.109.0","agent":"<your assistant name>"}}' \
+printf '%s' '{"action":"api","method":"POST","path":"/local-skills/companion/installed","body":{"version":"1.110.0","agent":"<your assistant name>"}}' \
   | node scripts/companion-agent-client.mjs
 ```
 

@@ -490,7 +490,12 @@ describe("runtime Box/Pi port adapters", () => {
 
   it("preserves refusal/ambiguity and converts broker cursors without precision loss", async () => {
     const dispatchPrompt = vi.fn()
-      .mockResolvedValueOnce({ outcome: "refused", code: "pi_busy", message: "ignored" })
+      .mockResolvedValueOnce({
+        outcome: "refused",
+        code: "provider_unavailable",
+        message: "ignored",
+        dependency: { kind: "provider", id: "github" },
+      })
       .mockResolvedValueOnce({ outcome: "ambiguous", code: "pi_ack_ambiguous", message: "ignored" });
     const ackEvents = vi.fn(async () => ({ acknowledgedCursor: 42 }));
     const readEvents = vi.fn(async () => ({
@@ -512,7 +517,11 @@ describe("runtime Box/Pi port adapters", () => {
       message: "hello",
       signal,
     };
-    await expect(pi.prompt(request)).resolves.toEqual({ outcome: "rejected", code: "pi_busy" });
+    await expect(pi.prompt(request)).resolves.toEqual({
+      outcome: "rejected",
+      code: "provider_unavailable",
+      dependency: { kind: "provider", id: "github" },
+    });
     await expect(pi.prompt(request)).resolves.toEqual({
       outcome: "ambiguous",
       code: "pi_ack_ambiguous",

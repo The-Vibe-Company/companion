@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { verifyRuntimeDatabaseRole } from "@companion/db/runtime-role";
 import {
   createRuntimeV3AcceptanceReport,
+  type RuntimeV3ExternalIncidentFact,
   type RuntimeV3MeasurementFact,
 } from "@companion/companion-runtime/v3/measurement";
 import postgres, { type Sql } from "postgres";
@@ -33,7 +34,7 @@ export async function runtimeV3AcceptanceReport(
   sql: Sql,
   input: { since: Date; until: Date },
 ) {
-  const facts = await sql<MeasurementRow[]>`
+  const [facts, incidents] = await Promise.all([sql<MeasurementRow[]>`
     select in_product_window as "inProductWindow", lane::text,
       wake_path::text as "wakePath", box_provider as "boxProvider",
       model_provider as "modelProvider", model_id as "modelId", state::text,
@@ -44,8 +45,22 @@ export async function runtimeV3AcceptanceReport(
       last_activity_at as "lastActivityAt", settled_at as "settledAt",
       claim_count as "claimCount"
     from public.companion_v3_runtime_measurement_facts(${input.since}, ${input.until}, 3)
-  `;
-  return createRuntimeV3AcceptanceReport(facts, input.until);
+  `, sql<Array<{
+    classification: RuntimeV3ExternalIncidentFact["classification"];
+    source: RuntimeV3ExternalIncidentFact["source"];
+    occurrenceCount: number;
+    openedAt: Date;
+    recoveredAt: Date | null;
+    aggregatedIncident: boolean;
+  }>>`
+    select failure_class::text as classification,source::text,
+      occurrence_count as "occurrenceCount",
+      opened_at as "openedAt",recovered_at as "recoveredAt",
+      aggregated_incident as "aggregatedIncident"
+    from public.companion_v3_runtime_external_incident_facts_v9(
+      ${input.since},${input.until},9)
+  `]);
+  return createRuntimeV3AcceptanceReport(facts, input.until, incidents);
 }
 
 async function main(): Promise<void> {

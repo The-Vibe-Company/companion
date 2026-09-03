@@ -63,6 +63,25 @@ function turn(overrides: Partial<CompanionTurn> = {}): CompanionTurn {
 }
 
 describe("Companion Runtime v2 public contracts", () => {
+  it("projects an honest bounded external block without dependency identifiers", () => {
+    const parsed = companionTurnSchema.parse(turn({
+      status: "queued",
+      replying: false,
+      latest_attempt: null,
+      external_block: {
+        classification: "model",
+        source: "delegation",
+        message: "This work is blocked until the selected model is usable again.",
+      },
+    }));
+    expect(parsed.external_block).toEqual({
+      classification: "model",
+      source: "delegation",
+      message: "This work is blocked until the selected model is usable again.",
+    });
+    expect(JSON.stringify(parsed.external_block)).not.toMatch(/tenant|credential|url|payload/i);
+  });
+
   it("bounds persisted errors to one safe line and one supported action", () => {
     expect(companionRuntimeSafeErrorSchema.parse(safeError)).toEqual(safeError);
     expect(companionRuntimeSafeErrorSchema.parse({

@@ -680,6 +680,461 @@ describe("Runtime v3 progression facts", () => {
     expect(nextMain).toEqual([{ commandId: mainTwo }]);
   });
 
+  it("aggregates one external incident across sources and resumes both lanes in FIFO order", async () => {
+    await ownerSql`insert into public.companion_runtime_instances(org_id, companion_id)
+      values (${ids.org}::uuid, ${ids.companion}::uuid)`;
+    await seedPreparedV3("incident-pi");
+    const triggerId = randomUUID();
+    const mainOne = randomUUID();
+    const mainTwo = randomUUID();
+    const triggerDelivery = randomUUID();
+    const triggerDeliveryTwo = randomUUID();
+    const observed: Array<{
+      state: string; classification: string; source: string; stableCode?: string;
+    }> = [];
+    const incidentOptions = {
+      jitter: () => 0.5,
+      onExternalIncident: (event: {
+        signalId: string;
+        incidentId: string;
+        state: "opened" | "recovered";
+        classification: "box" | "model" | "plugin_provider" | "authority";
+        source: "main" | "routine" | "trigger" | "delegation";
+        stableCode?: string;
+      }) => observed.push({
+        state: event.state,
+        classification: event.classification,
+        source: event.source,
+        ...(event.stableCode ? { stableCode: event.stableCode } : {}),
+      }),
+    };
+    const mainStore = createRuntimeV3PostgresWarmConvergence(runtimeSql, {
+      enabledLanes: new Set(["main"]),
+      ...incidentOptions,
+    });
+    const backgroundStore = createRuntimeV3PostgresRoutineConvergence(
+      runtimeSql,
+      incidentOptions,
+    );
+    const warmPersistence = createRuntimeV3PostgresWarmTurnPersistence(
+      runtimeSql,
+      incidentOptions,
+    );
+    try {
+      const mainTurns: string[] = [];
+      await asApi(async (sql) => {
+        for (const messageId of [mainOne, mainTwo]) {
+          const rows = await sql<Array<{ turn: { id: string } }>>`
+            select turn from public.companion_v3_api_enqueue_warm_turn(
+              ${ids.org}::uuid,${ids.companion}::uuid,${messageId}::uuid,'queued main work')`;
+          mainTurns.push(rows[0]!.turn.id);
+        }
+      });
+      await ownerSql`insert into public.companion_triggers(
+        id,org_id,companion_id,name,prompt,mode,provider,secret,target,
+        registration_status,enabled,created_by
+      ) values(${triggerId}::uuid,${ids.org}::uuid,${ids.companion}::uuid,
+        'incident trigger','Validate the event','notify','webhook',${"a".repeat(64)},
+        '{}'::jsonb,'manual',true,${ids.owner})`;
+      const fired = await apiSql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_api_fire_trigger(
+          ${ids.org}::uuid,${triggerId}::uuid,${triggerDelivery}::uuid,'external payload')`;
+      const triggerTurn = fired[0]!.turn.id;
+      const firedTwo = await apiSql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_api_fire_trigger(
+          ${ids.org}::uuid,${triggerId}::uuid,${triggerDeliveryTwo}::uuid,'later payload')`;
+      const triggerTurnTwo = firedTwo[0]!.turn.id;
+
+      const mainClaim = await mainStore.claimLane({
+        executorId: "runtime-incident-main", lane: "main",
+      });
+      expect(mainClaim).toMatchObject({ turn: { id: mainTurns[0] }, source: "main" });
+      await expect(mainStore.completeProgression(mainClaim!, {
+        kind: "external_retry",
+        failureClass: "box",
+        source: "main",
+        dependencyKey: "box:companion",
+        error: { code: "box_unavailable", message: "Box is unavailable.", action: "retry" },
+      })).resolves.toBe(true);
+
+      const backgroundClaim = await backgroundStore.claimLane({
+        executorId: "runtime-incident-trigger", lane: "background",
+      });
+      expect(backgroundClaim).toMatchObject({ turn: { id: triggerTurn }, source: "trigger" });
+      await expect(backgroundStore.completeProgression(backgroundClaim!, {
+        kind: "external_retry",
+        failureClass: "box",
+        source: "trigger",
+        dependencyKey: "box:companion",
+        error: { code: "box_unavailable", message: "Box is unavailable.", action: "retry" },
+      })).resolves.toBe(true);
+
+      const [incident] = await ownerSql<Array<{
+        count: number; occurrences: number; firstSource: string; lastSource: string;
+        operatorSignals: number; memberSignals: number; recovered: boolean;
+        mainLease: string | null; backgroundLease: string | null; triggerEnabled: boolean;
+      }>>`select
+        count(distinct incident.id)::int as count,
+        max(incident.occurrence_count)::int as occurrences,
+        max(incident.first_source)::text as "firstSource",
+        max(incident.last_source)::text as "lastSource",
+        count(*) filter (where incident.operator_signal_at is not null)::int as "operatorSignals",
+        count(*) filter (where incident.member_signal_at is not null)::int as "memberSignals",
+        bool_and(incident.recovered_at is not null) as recovered,
+        (select claim_token::text from public.companion_v3_lane_leases
+          where companion_id=${ids.companion}::uuid and lane='main') as "mainLease",
+        (select claim_token::text from public.companion_v3_lane_leases
+          where companion_id=${ids.companion}::uuid and lane='background') as "backgroundLease",
+        (select enabled from public.companion_triggers where id=${triggerId}::uuid) as "triggerEnabled"
+      from public.companion_v3_external_incidents incident
+      where incident.org_id=${ids.org}::uuid and incident.companion_id=${ids.companion}::uuid`;
+      expect(incident).toEqual({
+        count: 1, occurrences: 2, firstSource: "main", lastSource: "trigger",
+        operatorSignals: 1, memberSignals: 1, recovered: false,
+        mainLease: null, backgroundLease: null, triggerEnabled: true,
+      });
+      const occurrenceFacts = await runtimeSql<Array<{
+        classification: string; source: string; occurrences: number;
+      }>>`select failure_class::text as classification,source::text,
+          occurrence_count as occurrences
+        from public.companion_v3_runtime_external_incident_facts_v9(
+          clock_timestamp()-interval '1 minute',clock_timestamp()+interval '1 minute',9)
+        order by failure_class,source`;
+      expect(occurrenceFacts).toEqual([
+        { classification: "box", source: "main", occurrences: 1 },
+        { classification: "box", source: "trigger", occurrences: 1 },
+      ]);
+      await ownerSql`update public.companion_v3_external_incident_occurrences occurrence
+        set occurred_at=clock_timestamp()-interval '2 hours'
+        from public.companion_v3_external_incidents incident
+        where occurrence.incident_id=incident.id
+          and incident.org_id=${ids.org}::uuid and incident.companion_id=${ids.companion}::uuid
+          and occurrence.source='main'`;
+      const windowedOccurrenceFacts = await runtimeSql<Array<{
+        classification: string; source: string; occurrences: number;
+      }>>`select failure_class::text as classification,source::text,
+          occurrence_count as occurrences
+        from public.companion_v3_runtime_external_incident_facts_v9(
+          clock_timestamp()-interval '1 minute',clock_timestamp()+interval '1 minute',9)
+        order by failure_class,source`;
+      expect(windowedOccurrenceFacts).toEqual([
+        { classification: "box", source: "trigger", occurrences: 1 },
+      ]);
+      expect(observed).toEqual([{
+        state: "opened", classification: "box", source: "main", stableCode: "box_unavailable",
+      }]);
+
+      const [deferredHead] = await ownerSql<Array<{ state: string; delaySeconds: number }>>`
+        select state::text,
+          extract(epoch from (available_at-clock_timestamp()))::float as "delaySeconds"
+        from public.companion_v3_turns where id=${mainTurns[0]!}::uuid`;
+      expect(deferredHead?.state).toBe("queued");
+      expect(deferredHead?.delaySeconds).toBeGreaterThan(3);
+
+      // The later main Turn cannot overtake the deferred head, while background capacity was free.
+      await expect(mainStore.claimLane({
+        executorId: "runtime-incident-fifo-blocked", lane: "main",
+      })).resolves.toBeNull();
+      await expect(backgroundStore.claimLane({
+        executorId: "runtime-incident-background-fifo-blocked", lane: "background",
+      })).resolves.toBeNull();
+      await expect(warmPersistence.recoverExternal!(mainClaim!)).resolves.toBe(true);
+      await expect(warmPersistence.recoverExternal!(mainClaim!)).resolves.toBe(true);
+      expect(observed).toEqual([
+        { state: "opened", classification: "box", source: "main", stableCode: "box_unavailable" },
+        { state: "recovered", classification: "box", source: "trigger" },
+      ]);
+
+      const resumedMain = await mainStore.claimLane({
+        executorId: "runtime-incident-main-resumed", lane: "main",
+      });
+      const resumedBackground = await backgroundStore.claimLane({
+        executorId: "runtime-incident-trigger-resumed", lane: "background",
+      });
+      expect(resumedMain?.turn.id).toBe(mainTurns[0]);
+      expect(resumedBackground?.turn.id).toBe(triggerTurn);
+      await mainStore.completeProgression(resumedMain!, {
+        kind: "failed", error: { code: "test_complete", message: "Test complete.", action: "none" },
+      });
+      await backgroundStore.completeProgression(resumedBackground!, {
+        kind: "failed", error: { code: "test_complete", message: "Test complete.", action: "none" },
+      });
+      const nextMain = await mainStore.claimLane({
+        executorId: "runtime-incident-main-next", lane: "main",
+      });
+      expect(nextMain?.turn.id).toBe(mainTurns[1]);
+      const nextBackground = await backgroundStore.claimLane({
+        executorId: "runtime-incident-background-next", lane: "background",
+      });
+      expect(nextBackground?.turn.id).toBe(triggerTurnTwo);
+
+      const [recovery] = await ownerSql<Array<{ recoveries: number; blockedTurns: number }>>`
+        select count(*) filter (where recovery_signal_at is not null)::int as recoveries,
+          (select count(*)::int from public.companion_v3_turns
+            where companion_id=${ids.companion}::uuid and external_incident_id is not null
+              and state='queued') as "blockedTurns"
+        from public.companion_v3_external_incidents
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
+      expect(recovery).toEqual({ recoveries: 1, blockedTurns: 0 });
+
+      await expect(mainStore.completeProgression(nextMain!, {
+        kind: "external_retry",
+        failureClass: "plugin_provider",
+        source: "main",
+        dependencyKey: "provider:github",
+        error: {
+          code: "provider_unavailable",
+          message: "The provider is unavailable.",
+          action: "retry",
+        },
+      })).resolves.toBe(true);
+      await ownerSql`update public.companion_v3_turns set available_at=clock_timestamp()
+        where id=${nextMain!.turn.id}::uuid`;
+      const unattributedClaim = await mainStore.claimLane({
+        executorId: "runtime-incident-unattributed", lane: "main",
+      });
+      expect(unattributedClaim?.turn.id).toBe(nextMain!.turn.id);
+      await expect(mainStore.completeProgression(unattributedClaim!, {
+        kind: "external_retry",
+        failureClass: "plugin_provider",
+        source: "main",
+        dependencyKey: null,
+        error: {
+          code: "provider_unavailable",
+          message: "The provider is unavailable.",
+          action: "retry",
+        },
+      })).resolves.toBe(true);
+      const [unattributed] = await ownerSql<Array<{
+        occurrences: number; incidents: number; delaySeconds: number;
+        linkedOpen: boolean; recoverySignals: number;
+      }>>`select
+          count(*)::int as occurrences,
+          (select count(*)::int from public.companion_v3_external_incidents
+            where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+              and stable_code='provider_unavailable') as incidents,
+          (select extract(epoch from (available_at-clock_timestamp()))::float
+            from public.companion_v3_turns where id=${nextMain!.turn.id}::uuid) as "delaySeconds"
+          ,(select incident.recovered_at is null
+            from public.companion_v3_turns turn_row
+            join public.companion_v3_external_incidents incident
+              on incident.id=turn_row.external_incident_id
+            where turn_row.id=${nextMain!.turn.id}::uuid) as "linkedOpen"
+          ,(select count(*)::int from public.companion_v3_external_incident_signals signal
+            join public.companion_v3_external_incidents incident on incident.id=signal.incident_id
+            where incident.stable_code='provider_unavailable'
+              and signal.kind='recovered') as "recoverySignals"
+        from public.companion_v3_external_unattributed_occurrences
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+          and failure_class='plugin_provider' and source='main'`;
+      expect(unattributed?.occurrences).toBe(1);
+      expect(unattributed?.incidents).toBe(1);
+      expect(unattributed?.delaySeconds).toBeGreaterThan(3);
+      expect(unattributed?.linkedOpen).toBe(true);
+      expect(unattributed?.recoverySignals).toBe(0);
+      await expect(mainStore.claimLane({
+        executorId: "runtime-incident-unattributed-blocked", lane: "main",
+      })).resolves.toBeNull();
+      const unattributedFacts = await runtimeSql<Array<{
+        classification: string; source: string; occurrences: number;
+      }>>`select failure_class::text as classification,source::text,
+          sum(occurrence_count)::int as occurrences
+        from public.companion_v3_runtime_external_incident_facts_v9(
+          clock_timestamp()-interval '1 minute',clock_timestamp()+interval '1 minute',9)
+        where failure_class='plugin_provider' and source='main'
+        group by failure_class,source`;
+      expect(unattributedFacts).toEqual([
+        { classification: "plugin_provider", source: "main", occurrences: 2 },
+      ]);
+      await ownerSql`update public.companion_v3_turns set available_at=clock_timestamp()
+        where id=${nextMain!.turn.id}::uuid`;
+      const retryMain = await mainStore.claimLane({
+        executorId: "runtime-incident-unattributed-retry", lane: "main",
+      });
+      expect(retryMain?.turn.id).toBe(nextMain!.turn.id);
+      await expect(warmPersistence.recoverExternal!(retryMain!)).resolves.toBe(true);
+      await mainStore.completeProgression(retryMain!, {
+        kind: "failed", error: { code: "test_complete", message: "Test complete.", action: "none" },
+      });
+      await backgroundStore.completeProgression(nextBackground!, {
+        kind: "failed", error: { code: "test_complete", message: "Test complete.", action: "none" },
+      });
+      let preparationTurn = "";
+      await asApi(async (sql) => {
+        const rows = await sql<Array<{ turn: { id: string } }>>`
+          select turn from public.companion_v3_api_enqueue_warm_turn(
+            ${ids.org}::uuid,${ids.companion}::uuid,${randomUUID()}::uuid,'model retry')`;
+        preparationTurn = rows[0]!.turn.id;
+      });
+      await ownerSql`select public.companion_v3_invalidate_preparation(
+        ${ids.org}::uuid,${ids.companion}::uuid)`;
+      const preparationStore = createRuntimeV3PostgresPreparationPersistence(
+        runtimeSql, incidentOptions,
+      );
+      const crashingPreparationStore = createRuntimeV3PostgresPreparationPersistence(
+        runtimeSql,
+        { onExternalIncident: () => { throw new Error("simulated crash before signal ack"); } },
+      );
+      let preparationClaim = await preparationStore.claim({
+        executorId: "runtime-incident-preparation",
+      });
+      expect(preparationClaim?.turnId).toBe(preparationTurn);
+      await expect(preparationStore.defer(preparationClaim!, {
+        delaySeconds: 5,
+        error: { code: "box_unavailable", message: "Box is unavailable.", action: "retry" },
+        externalFailureClass: "box",
+        dependencyKey: "box:companion",
+      })).resolves.toBe(true);
+      await ownerSql`update public.companion_v3_turns set available_at=clock_timestamp()
+        where id=${preparationTurn}::uuid`;
+      await ownerSql`update public.companion_v3_instances set preparation_available_at=clock_timestamp()
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
+      preparationClaim = await preparationStore.claim({
+        executorId: "runtime-incident-preparation-model",
+      });
+      expect(preparationClaim?.turnId).toBe(preparationTurn);
+      await expect(crashingPreparationStore.defer(preparationClaim!, {
+        delaySeconds: 5,
+        error: {
+          code: "model_unusable",
+          message: "This work is blocked until the selected model is usable again.",
+          action: "retry",
+        },
+        externalFailureClass: "model",
+        dependencyKey: "model:claude-test",
+      })).rejects.toThrow("simulated crash before signal ack");
+      const [pendingOpen] = await ownerSql<Array<{ acknowledged: boolean }>>`
+        select acknowledged_at is not null as acknowledged
+        from public.companion_v3_external_incident_signals
+        where failure_class='model' and kind='opened' order by created_at desc limit 1`;
+      expect(pendingOpen).toEqual({ acknowledged: false });
+      await ownerSql`update public.companion_v3_external_incident_signals
+        set claim_expires_at=clock_timestamp()-interval '1 second'
+        where acknowledged_at is null and claim_token is not null`;
+      await mainStore.sweepLane({ lane: "main" });
+      await mainStore.sweepLane({ lane: "main" });
+      const afterOpenDelivery = observed.length;
+      await mainStore.sweepLane({ lane: "main" });
+      expect(observed).toHaveLength(afterOpenDelivery);
+      const [preparationBlocked] = await ownerSql<Array<{
+        classification: string; source: string; claimToken: string | null;
+      }>>`
+        select turn_row.external_failure_class::text as classification,
+          turn_row.external_failure_source::text as source,
+          instance.preparation_claim_token::text as "claimToken"
+        from public.companion_v3_turns turn_row
+        join public.companion_v3_instances instance
+          on instance.companion_id=turn_row.companion_id
+        where turn_row.id=${preparationTurn}::uuid`;
+      expect(preparationBlocked).toEqual({
+        classification: "model", source: "main", claimToken: null,
+      });
+      const chainedIncidents = await ownerSql<Array<{ classification: string; recovered: boolean }>>`
+        select failure_class::text as classification,recovered_at is not null as recovered
+        from public.companion_v3_external_incidents
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+          and id in (select distinct incident_id
+            from public.companion_v3_external_incident_occurrences
+            where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+              and occurred_at>clock_timestamp()-interval '1 minute')
+        order by opened_at desc limit 2`;
+      expect(chainedIncidents).toEqual([
+        { classification: "model", recovered: false },
+        { classification: "box", recovered: true },
+      ]);
+      await ownerSql`update public.companion_v3_turns set available_at=clock_timestamp()
+        where id=${preparationTurn}::uuid`;
+      await ownerSql`update public.companion_v3_instances set preparation_available_at=clock_timestamp()
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
+      preparationClaim = await preparationStore.claim({
+        executorId: "runtime-incident-preparation-other-model",
+      });
+      await expect(preparationStore.defer(preparationClaim!, {
+        delaySeconds: 5,
+        error: {
+          code: "model_unusable",
+          message: "This work is blocked until the selected model is usable again.",
+          action: "retry",
+        },
+        externalFailureClass: "model",
+        dependencyKey: "model:claude-other",
+      })).resolves.toBe(true);
+      await mainStore.sweepLane({ lane: "main" });
+      const [distinctDependencies] = await ownerSql<Array<{
+        incidents: number; fingerprints: number;
+      }>>`select count(*)::int as incidents,
+          count(distinct dependency_fingerprint)::int as fingerprints
+        from public.companion_v3_external_incidents
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+          and stable_code='model_unusable'`;
+      expect(distinctDependencies).toEqual({ incidents: 2, fingerprints: 2 });
+      // Success on an unrelated Turn cannot close this model incident.
+      await expect(warmPersistence.recoverExternal!(mainClaim!)).resolves.toBe(true);
+      const [stillBlocked] = await ownerSql<Array<{ recovered: boolean }>>`
+        select recovered_at is not null as recovered
+        from public.companion_v3_external_incidents
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+          and failure_class='model' order by opened_at desc limit 1`;
+      expect(stillBlocked).toEqual({ recovered: false });
+      const linkedModelClaim = {
+        ...mainClaim!,
+        turn: { ...mainClaim!.turn, id: preparationTurn },
+      };
+      const crashingWarmPersistence = createRuntimeV3PostgresWarmTurnPersistence(
+        runtimeSql,
+        { onExternalIncident: () => { throw new Error("simulated crash before recovery ack"); } },
+      );
+      await expect(crashingWarmPersistence.recoverExternal!(linkedModelClaim))
+        .rejects.toThrow("simulated crash before recovery ack");
+      await ownerSql`update public.companion_v3_external_incident_signals
+        set claim_expires_at=clock_timestamp()-interval '1 second'
+        where failure_class='model' and kind='recovered' and acknowledged_at is null`;
+      await mainStore.sweepLane({ lane: "main" });
+      const afterRecoveryDelivery = observed.length;
+      await mainStore.sweepLane({ lane: "main" });
+      expect(observed).toHaveLength(afterRecoveryDelivery);
+      expect(observed.at(-1)).toEqual({
+        state: "recovered", classification: "model", source: "main",
+      });
+      expect(observed.filter((event) =>
+        event.classification === "model" && event.state === "opened")).toHaveLength(2);
+      expect(observed.filter((event) =>
+        event.classification === "model" && event.state === "recovered")).toHaveLength(2);
+
+      for (const provider of ["github", "slack"]) {
+        await ownerSql`update public.companion_v3_turns set available_at=clock_timestamp()
+          where id=${preparationTurn}::uuid`;
+        await ownerSql`update public.companion_v3_instances
+          set preparation_available_at=clock_timestamp()
+          where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
+        const providerClaim = await preparationStore.claim({
+          executorId: `runtime-incident-provider-${provider}`,
+        });
+        expect(providerClaim?.turnId).toBe(preparationTurn);
+        await expect(preparationStore.defer(providerClaim!, {
+          delaySeconds: 5,
+          error: {
+            code: "plugin_provider_unavailable",
+            message: "This work is blocked until its plugin provider is available again.",
+            action: "retry",
+          },
+          externalFailureClass: "plugin_provider",
+          dependencyKey: `provider:${provider}`,
+        })).resolves.toBe(true);
+      }
+      const [distinctProviders] = await ownerSql<Array<{
+        incidents: number; fingerprints: number;
+      }>>`select count(*)::int as incidents,
+          count(distinct dependency_fingerprint)::int as fingerprints
+        from public.companion_v3_external_incidents
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+          and stable_code='plugin_provider_unavailable'`;
+      expect(distinctProviders).toEqual({ incidents: 2, fingerprints: 2 });
+    } finally {
+      await ownerSql`delete from public.companion_triggers where id=${triggerId}::uuid`;
+    }
+  });
+
   it("resolves concurrent retries of one client message to one Turn", async () => {
     const command = randomUUID();
     const admissions: Array<Array<{ turnId: string; replayed: boolean }>> = [[], []];

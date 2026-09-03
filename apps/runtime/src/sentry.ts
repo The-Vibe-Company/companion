@@ -96,10 +96,20 @@ function captureRecord<TLevel extends string>(
   capture: (level: TLevel, event: string, expurgatedRecord: string) => void,
   level: TLevel,
   record: RuntimeLogRecord,
+  groupingKey?: string,
 ): void {
   const event = expurgateRuntimeMessage(record.event, "runtime.event");
   const expurgatedRecord = expurgateRuntimeMessage(JSON.stringify(record), "{}");
-  capture(level, event, expurgatedRecord);
+  capture(level, groupingKey ?? event, expurgatedRecord);
+}
+
+function errorGroupingKey(record: RuntimeLogRecord): string {
+  const incidentId = record.incident_id;
+  return record.event.startsWith("runtime.external_incident.")
+    && typeof incidentId === "string"
+    && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(incidentId)
+    ? `${record.event}.${incidentId}`
+    : record.event;
 }
 
 /**
@@ -115,11 +125,12 @@ export function createSentryRuntimeProcessLog(
   return {
     error(record) {
       log.error(record);
-      const previous = lastCapturedAt.get(record.event);
+      const groupingKey = errorGroupingKey(record);
+      const previous = lastCapturedAt.get(groupingKey);
       const current = now();
       if (previous !== undefined && current - previous < SENTRY_RUNTIME_ERROR_COOLDOWN_MS) return;
-      lastCapturedAt.set(record.event, current);
-      captureRecord(capture, "error", record);
+      lastCapturedAt.set(groupingKey, current);
+      captureRecord(capture, "error", record, groupingKey);
     },
     warn(record) {
       log.warn(record);

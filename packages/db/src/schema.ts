@@ -109,6 +109,14 @@ export const companionV3WakePathEnum = pgEnum("companion_v3_wake_path", [
 export const companionV3AdmissionKindEnum = pgEnum("companion_v3_admission_kind", [
   "prompt", "steer",
 ]);
+export const companionV3ExternalFailureClassEnum = pgEnum(
+  "companion_v3_external_failure_class",
+  ["box", "model", "plugin_provider", "authority"],
+);
+export const companionV3WorkSourceEnum = pgEnum(
+  "companion_v3_work_source",
+  ["main", "routine", "trigger", "delegation"],
+);
 export const companionDecisionStatusEnum = pgEnum("companion_decision_status", [
   "pending", "allowed", "denied", "answered", "expired", "cancelled",
 ]);
@@ -1490,6 +1498,13 @@ export const companionV3Turns = pgTable(
       (): AnyPgColumn => companionDelegations.id,
       { onDelete: "set null" },
     ),
+    externalIncidentId: uuid("external_incident_id").references(
+      (): AnyPgColumn => companionV3ExternalIncidents.id,
+      { onDelete: "set null" },
+    ),
+    externalFailureClass: companionV3ExternalFailureClassEnum("external_failure_class"),
+    externalFailureSource: companionV3WorkSourceEnum("external_failure_source"),
+    externalBlockedMessage: text("external_blocked_message"),
     createdAt: now(),
     updatedAt: updatedAt(),
   },
@@ -1563,6 +1578,161 @@ export const companionV3Turns = pgTable(
     measurementCheck: check(
       "companion_v3_turns_measurement_check",
       sql`${t.claimCount} >= 0 and ((${t.claimCount} = 0 and ${t.firstClaimedAt} is null and ${t.lastClaimedAt} is null) or (${t.claimCount} > 0 and ${t.firstClaimedAt} is not null and ${t.lastClaimedAt} is not null and ${t.lastClaimedAt} >= ${t.firstClaimedAt})) and char_length(${t.boxProvider}) between 1 and 40 and ${t.boxProvider} !~ E'[\n\r]' and char_length(${t.modelProvider}) between 1 and 80 and ${t.modelProvider} !~ E'[\n\r]' and char_length(${t.modelId}) between 1 and 200 and ${t.modelId} !~ E'[\n\r]' and (${t.admissionKind} is null or ${t.admissionState} = 'accepted') and (${t.boxReadyAt} is null or ${t.stagingCompletedAt} is null or ${t.stagingCompletedAt} >= ${t.boxReadyAt}) and (${t.stagingCompletedAt} is null or ${t.piReadyAt} is null or ${t.piReadyAt} >= ${t.stagingCompletedAt}) and (${t.firstActivityAt} is null or ${t.admittedAt} is null or ${t.firstActivityAt} >= ${t.admittedAt})`,
+    ),
+    externalFailureCheck: check(
+      "companion_v3_turns_external_failure_check",
+      sql`(${t.externalIncidentId} is null and ${t.externalFailureClass} is null and ${t.externalFailureSource} is null and ${t.externalBlockedMessage} is null) or (${t.externalIncidentId} is not null and ${t.externalFailureClass} is not null and ${t.externalFailureSource} is not null and char_length(${t.externalBlockedMessage}) between 1 and 500 and ${t.externalBlockedMessage} !~ E'[\n\r]')`,
+    ),
+  }),
+);
+
+/** One continuous privacy-safe dependency outage across all work sources for a Companion. */
+export const companionV3ExternalIncidents = pgTable(
+  "companion_v3_external_incidents",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    companionId: uuid("companion_id").notNull(),
+    failureClass: companionV3ExternalFailureClassEnum("failure_class").notNull(),
+    dependencyFingerprint: text("dependency_fingerprint").notNull(),
+    stableCode: text("stable_code").notNull(),
+    firstSource: companionV3WorkSourceEnum("first_source").notNull(),
+    lastSource: companionV3WorkSourceEnum("last_source").notNull(),
+    occurrenceCount: integer("occurrence_count").notNull().default(1),
+    openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    operatorSignalAt: timestamp("operator_signal_at", { withTimezone: true }),
+    memberSignalAt: timestamp("member_signal_at", { withTimezone: true }),
+    recoveredAt: timestamp("recovered_at", { withTimezone: true }),
+    recoverySignalAt: timestamp("recovery_signal_at", { withTimezone: true }),
+    createdAt: now(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    instanceFk: foreignKey({
+      columns: [t.orgId, t.companionId],
+      foreignColumns: [companionV3Instances.orgId, companionV3Instances.companionId],
+      name: "companion_v3_external_incidents_instance_fk",
+    }).onDelete("cascade"),
+    openIncident: uniqueIndex("companion_v3_external_incidents_open_uq")
+      .on(t.orgId, t.companionId, t.failureClass, t.dependencyFingerprint)
+      .where(sql`${t.recoveredAt} is null`),
+    slo: index("companion_v3_external_incidents_slo_idx")
+      .on(t.failureClass, t.openedAt, t.recoveredAt),
+    fingerprintCheck: check(
+      "companion_v3_external_incidents_fingerprint_check",
+      sql`${t.dependencyFingerprint} ~ '^[0-9a-f]{64}$'`,
+    ),
+    codeCheck: check(
+      "companion_v3_external_incidents_code_check",
+      sql`${t.stableCode} ~ '^[a-z][a-z0-9_]{0,63}$'`,
+    ),
+    countCheck: check(
+      "companion_v3_external_incidents_count_check",
+      sql`${t.occurrenceCount} >= 1`,
+    ),
+    recoveryCheck: check(
+      "companion_v3_external_incidents_recovery_check",
+      sql`${t.recoverySignalAt} is null or ${t.recoveredAt} is not null`,
+    ),
+    scopeUnique: unique("companion_v3_external_incidents_scope_uq")
+      .on(t.id, t.orgId, t.companionId),
+  }),
+);
+
+/** Privacy-safe occurrence facts retained separately from the aggregated incident signal. */
+export const companionV3ExternalIncidentOccurrences = pgTable(
+  "companion_v3_external_incident_occurrences",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    companionId: uuid("companion_id").notNull(),
+    incidentId: uuid("incident_id").notNull(),
+    source: companionV3WorkSourceEnum("source").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    incidentFk: foreignKey({
+      columns: [t.incidentId, t.orgId, t.companionId],
+      foreignColumns: [
+        companionV3ExternalIncidents.id,
+        companionV3ExternalIncidents.orgId,
+        companionV3ExternalIncidents.companionId,
+      ],
+      name: "companion_v3_external_incident_occurrences_incident_fk",
+    }).onDelete("cascade"),
+    slo: index("companion_v3_external_incident_occurrences_slo_idx")
+      .on(t.occurredAt, t.incidentId, t.source),
+  }),
+);
+
+/** SLO-only external failures for which no exact dependency identity was available. */
+export const companionV3ExternalUnattributedOccurrences = pgTable(
+  "companion_v3_external_unattributed_occurrences",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    companionId: uuid("companion_id").notNull(),
+    failureClass: companionV3ExternalFailureClassEnum("failure_class").notNull(),
+    source: companionV3WorkSourceEnum("source").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    instanceFk: foreignKey({
+      columns: [t.orgId, t.companionId],
+      foreignColumns: [companionV3Instances.orgId, companionV3Instances.companionId],
+      name: "companion_v3_external_unattributed_occurrences_instance_fk",
+    }).onDelete("cascade"),
+    slo: index("companion_v3_external_unattributed_occurrences_slo_idx")
+      .on(t.occurredAt, t.failureClass, t.source),
+  }),
+);
+
+/** Runtime-drained idempotent open/recovery delivery checkpoints for external incidents. */
+export const companionV3ExternalIncidentSignals = pgTable(
+  "companion_v3_external_incident_signals",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    companionId: uuid("companion_id").notNull(),
+    incidentId: uuid("incident_id").notNull(),
+    kind: text("kind").notNull(),
+    failureClass: companionV3ExternalFailureClassEnum("failure_class").notNull(),
+    source: companionV3WorkSourceEnum("source").notNull(),
+    stableCode: text("stable_code").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    claimToken: uuid("claim_token"),
+    claimEpoch: bigint("claim_epoch", { mode: "bigint" }).notNull().default(0n),
+    claimedBy: text("claimed_by"),
+    claimExpiresAt: timestamp("claim_expires_at", { withTimezone: true }),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+  },
+  (t) => ({
+    incidentFk: foreignKey({
+      columns: [t.incidentId, t.orgId, t.companionId],
+      foreignColumns: [
+        companionV3ExternalIncidents.id,
+        companionV3ExternalIncidents.orgId,
+        companionV3ExternalIncidents.companionId,
+      ],
+      name: "companion_v3_external_incident_signals_incident_fk",
+    }).onDelete("cascade"),
+    incidentKind: unique("companion_v3_external_incident_signals_incident_kind_uq")
+      .on(t.incidentId, t.kind),
+    pending: index("companion_v3_external_incident_signals_pending_idx")
+      .on(t.createdAt, t.id)
+      .where(sql`${t.acknowledgedAt} is null`),
+    kindCheck: check(
+      "companion_v3_external_incident_signals_kind_check",
+      sql`${t.kind} in ('opened','recovered')`,
+    ),
+    codeCheck: check(
+      "companion_v3_external_incident_signals_code_check",
+      sql`${t.stableCode} ~ '^[a-z][a-z0-9_]{0,63}$'`,
+    ),
+    claimCheck: check(
+      "companion_v3_external_incident_signals_claim_check",
+      sql`(${t.claimToken} is null and ${t.claimedBy} is null and ${t.claimExpiresAt} is null) or (${t.claimToken} is not null and ${t.claimedBy} is not null and ${t.claimExpiresAt} is not null)`,
     ),
   }),
 );

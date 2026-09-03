@@ -152,6 +152,11 @@ export const companionTurnSchema = z.object({
   /** Server-computed durable replying fact. Clients must not infer it from transcript tails. */
   replying: z.boolean(),
   error: companionRuntimeSafeErrorSchema.nullable(),
+  external_block: z.object({
+    classification: z.enum(["box", "model", "plugin_provider", "authority"]),
+    source: z.enum(["main", "routine", "trigger", "delegation"]),
+    message: z.string().min(1).max(500),
+  }).strict().nullable().optional(),
   state_changed_at: companionRuntimeTimestampSchema,
   settled_at: companionRuntimeTimestampSchema.nullable(),
   created_at: companionRuntimeTimestampSchema,

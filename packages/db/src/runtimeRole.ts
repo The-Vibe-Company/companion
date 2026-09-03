@@ -166,6 +166,17 @@ WITH runtime_role AS (
     ('public.companion_v3_runtime_project_background_page_v8(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'),
     ('public.companion_v3_runtime_sweep_background_deadlines_v8(integer)'),
     ('public.companion_v3_runtime_complete_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)')
+), external_incident_required(signature) AS (
+  VALUES
+    ('public.companion_v3_runtime_claim_background_v9(text,public.companion_v3_lane,integer,integer)'),
+    ('public.companion_v3_runtime_claim_warm_v9(text,public.companion_v3_lane,integer,integer)'),
+    ('public.companion_v3_runtime_defer_external_v9(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,public.companion_v3_external_failure_class,public.companion_v3_work_source,text,text,text,double precision,integer)'),
+    ('public.companion_v3_runtime_defer_preparation_external_v9(uuid,uuid,uuid,uuid,bigint,bigint,public.companion_v3_external_failure_class,text,text,text,integer,integer)'),
+    ('public.companion_v3_runtime_recover_external_v9(uuid,uuid,public.companion_v3_external_failure_class,text,integer)'),
+    ('public.companion_v3_runtime_recover_external_turn_v9(uuid,uuid,uuid,integer)'),
+    ('public.companion_v3_runtime_claim_external_incident_signal_v9(text,integer,integer)'),
+    ('public.companion_v3_runtime_ack_external_incident_signal_v9(uuid,uuid,bigint,integer)'),
+    ('public.companion_v3_runtime_external_incident_facts_v9(timestamp with time zone,timestamp with time zone,integer)')
 ), required_functions AS (
   SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
   FROM required
@@ -182,6 +193,12 @@ WITH runtime_role AS (
   FROM background_trigger_required
   WHERE pg_catalog.to_regprocedure(
     'public.companion_v3_runtime_complete_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'
+  ) IS NOT NULL
+  UNION ALL
+  SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
+  FROM external_incident_required
+  WHERE pg_catalog.to_regprocedure(
+    'public.companion_v3_runtime_defer_external_v9(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,public.companion_v3_external_failure_class,public.companion_v3_work_source,text,text,text,double precision,integer)'
   ) IS NOT NULL
 ), public_relations AS (
   SELECT relation.oid, relation.relkind

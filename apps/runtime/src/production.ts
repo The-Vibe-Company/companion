@@ -164,6 +164,28 @@ export async function buildProductionRuntimeService(
     await database.verifyRole();
     const store = factories.createStore(database);
     const log = createSentryRuntimeProcessLog(createJsonRuntimeProcessLog());
+    const externalIncidentOptions = {
+      onExternalIncident: (incident: {
+        signalId: string;
+        incidentId: string;
+        state: "opened" | "recovered";
+        classification: "box" | "model" | "plugin_provider" | "authority";
+        source: "main" | "routine" | "trigger" | "delegation";
+        stableCode?: string;
+      }) => {
+        const record = {
+          ts: new Date().toISOString(),
+          event: `runtime.external_incident.${incident.classification}.${incident.state}`,
+          classification: incident.classification,
+          source: incident.source,
+          signal_id: incident.signalId,
+          incident_id: incident.incidentId,
+          ...(incident.stableCode ? { code: incident.stableCode } : {}),
+        };
+        if (incident.state === "opened") log.error(record);
+        else log.warn(record);
+      },
+    };
     if (!config.companionsEnabled) {
       const kernel = factories.createKernel({
         store,
@@ -365,19 +387,26 @@ export async function buildProductionRuntimeService(
       },
     });
     const runtimeV3TurnPersistence = createRuntimeV3PostgresWarmConvergence(database.sql, {
-        enabledLanes: new Set(["main"]),
-      });
+      enabledLanes: new Set(["main"]),
+      ...externalIncidentOptions,
+    });
     const runtimeV3Turns = createRuntimeV3Convergence({
       persistence: runtimeV3TurnPersistence,
       advance: createRuntimeV3WarmTurnAdvance({
-        persistence: createRuntimeV3PostgresWarmTurnPersistence(database.sql),
+        persistence: createRuntimeV3PostgresWarmTurnPersistence(
+          database.sql, externalIncidentOptions,
+        ),
         pi: createRuntimeV3WarmPi(pi),
       }),
     });
     const runtimeV3Background = createRuntimeV3Convergence({
-      persistence: createRuntimeV3PostgresBackgroundConvergence(database.sql),
+      persistence: createRuntimeV3PostgresBackgroundConvergence(
+        database.sql, externalIncidentOptions,
+      ),
       advance: createRuntimeV3WarmTurnAdvance({
-        persistence: createRuntimeV3PostgresBackgroundTurnPersistence(database.sql),
+        persistence: createRuntimeV3PostgresBackgroundTurnPersistence(
+          database.sql, externalIncidentOptions,
+        ),
         pi: createRuntimeV3RoutinePi(pi),
       }),
     });
@@ -387,7 +416,9 @@ export async function buildProductionRuntimeService(
         box,
       }),
       createRuntimeV3Preparation({
-        persistence: createRuntimeV3PostgresPreparationPersistence(database.sql),
+        persistence: createRuntimeV3PostgresPreparationPersistence(
+          database.sql, externalIncidentOptions,
+        ),
         box,
         preparationStager: material.preparationStager,
         pi,
