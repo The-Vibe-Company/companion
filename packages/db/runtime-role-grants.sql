@@ -1159,6 +1159,15 @@ BEGIN
       ];
     END IF;
 
+    IF pg_catalog.to_regprocedure(
+      'public.companion_v3_runtime_record_native_fallback_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,jsonb,integer)'
+    ) IS NOT NULL THEN
+      companion_runtime_functions := companion_runtime_functions || ARRAY[
+        'public.companion_v3_runtime_record_native_fallback_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,jsonb,integer)'::regprocedure,
+        'public.companion_v3_runtime_read_native_fallback_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure
+      ];
+    END IF;
+
     -- 0179 is the contraction point: the API keeps only v3 write entry points and the runtime
     -- keeps only v3 progression plus the read-only desktop handoff. Historical v2 functions stay
     -- owner-only for the offline purge/rehearsal and can never be claimed by a process login.

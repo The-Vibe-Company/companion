@@ -848,6 +848,45 @@ describe("Runtime v3 progression interface", () => {
     expect(acknowledge).not.toHaveBeenCalled();
   });
 
+  it("keeps settled-without-result terminal and visible as pi_result_missing", async () => {
+    const project = vi.fn().mockResolvedValue(true);
+    const acknowledge = vi.fn().mockResolvedValue(1n);
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1", content: "finish", cursor: 0n,
+        }),
+        beginAdmission: vi.fn(), recordAdmission: vi.fn(), project,
+      },
+      pi: {
+        prompt: vi.fn(),
+        read: vi.fn().mockResolvedValue({
+          events: [{
+            sequence: 1n, invocationId: "invocation-1", attemptId: acceptedTurn.id,
+            kind: "pi_event", event: { type: "agent_settled" },
+          }],
+          nextCursor: 1n, acknowledgedCursor: 0n, hasMore: false,
+        }),
+        acknowledge,
+      },
+    });
+
+    await expect(advance({
+      ...mainClaim, turn: { ...acceptedTurn, state: "running" as const },
+    })).resolves.toEqual({
+      kind: "failed",
+      code: "pi_result_missing",
+      message: "Pi settled without an assistant result.",
+      action: "none",
+    });
+    expect(project).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ assistant: [], assistantFallbacks: [], settled: true }),
+      expect.any(AbortSignal),
+    );
+    expect(acknowledge).toHaveBeenCalledOnce();
+  });
+
   it("does not reread the outbox after a committed harvest is taken over", async () => {
     const harvest = vi.fn();
     const recordOutputs = vi.fn();

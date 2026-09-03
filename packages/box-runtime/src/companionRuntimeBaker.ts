@@ -2,7 +2,10 @@
 import { COMPANION_BUDGETS_BASE } from "@companion/contracts";
 
 import { BoxRuntimeAdapterError, type BoxRuntimeLifecycleClient } from "./boxMaintenanceClient";
-import type { CompanionBoxRuntime } from "./boxCompanionRuntime";
+import {
+  BoxRuntimeProviderError,
+  type CompanionBoxRuntime,
+} from "./boxCompanionRuntime";
 import type { CompanionRuntimeSkill } from "./companionPiInjection";
 import {
   isCompanionRuntimeImageName,
@@ -18,6 +21,10 @@ const SNAPSHOT_POLL_INTERVAL_MS = 2_000;
 // the bake holds a durable registry lease, so waiting here is safe and cheaper than failing.
 const BOX_READY_TIMEOUT_MS = 900_000;
 const SNAPSHOT_READY_TIMEOUT_MS = 600_000;
+// A freshly provisioned/resumed Box can report a runnable lifecycle state before its command
+// endpoint accepts work. Keep this retry policy local to image baking: normal runtime commands must
+// retain their single-dispatch/explicit-failure semantics.
+const IMAGE_BAKE_READINESS_RETRY_DELAYS_MS = [1_000, 2_000, 5_000, 10_000, 30_000] as const;
 // `provisioned` is a bootable disk: staging installs layout over SSH, so a bake may proceed
 // without waiting for the provider's own boot handshake to reach its terminal ready state.
 const READY_STATES = new Set(["ready", "idle", "running", "provisioned"]);
@@ -38,6 +45,8 @@ export async function bakeCompanionRuntimeImageOnce(input: {
   now?: () => number;
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
   signal: AbortSignal;
+  /** Absolute outer attempt deadline; the readiness retry never sleeps beyond it. */
+  deadlineAt?: number;
   /** Persists the provider Box identity immediately after create, before layout side effects. */
   onBoxCreated?: (input: { boxId: string; parentImageName: string | null }) => Promise<void>;
   /** Revalidates the builder epoch immediately before the bounded provider snapshot write. */
@@ -58,6 +67,7 @@ export async function bakeCompanionRuntimeImageOnce(input: {
     now: input.now ?? Date.now,
     sleep: input.sleep ?? defaultSleep,
     signal: input.signal,
+    deadlineAt: input.deadlineAt,
     onBoxCreated: input.onBoxCreated,
     onBeforeSnapshotPublish: input.onBeforeSnapshotPublish,
     onBoxDeletionIntentRecorded: input.onBoxDeletionIntentRecorded,
@@ -76,6 +86,7 @@ async function ensureImage(input: {
   now: () => number;
   sleep: (ms: number, signal: AbortSignal) => Promise<void>;
   signal: AbortSignal;
+  deadlineAt?: number;
   onBoxCreated?: (input: { boxId: string; parentImageName: string | null }) => Promise<void>;
   onBeforeSnapshotPublish?: (input: { boxId: string }) => Promise<void>;
   onBoxDeletionIntentRecorded?: (input: { boxId: string }) => Promise<void>;
@@ -102,29 +113,36 @@ async function ensureImage(input: {
   let boxId: string | null = null;
   try {
     const created = await createBakerBox(input, parent);
-    boxId = created.boxId;
-    await input.onBoxCreated?.({ boxId, parentImageName: created.parentImageName });
+    const bakerBoxId = created.boxId;
+    boxId = bakerBoxId;
+    await input.onBoxCreated?.({ boxId: bakerBoxId, parentImageName: created.parentImageName });
     await input.runtime.refreshTtl({
-      boxId,
+      boxId: bakerBoxId,
       ttlSeconds: BAKER_WORK_TTL_SECONDS,
       signal: input.signal,
     });
-    await waitBoxReady(input, boxId);
-    await input.runtime.refreshPiLayout({ boxId, signal: input.signal });
+    await waitBoxReady(input, bakerBoxId);
+    // The provider may expose `ready`/`provisioned` just before its command endpoint is usable.
+    // This is the only post-create command in the baker that receives this narrow 409 treatment;
+    // status, snapshot, cleanup, and ordinary Companion runtime paths remain fail-fast.
+    await retryImageBakeReadiness(input, () => input.runtime.refreshPiLayout({
+      boxId: bakerBoxId,
+      signal: input.signal,
+    }));
     if (input.bundledSkill) {
       if (!input.runtime.prepareRuntimeImage) {
         throw new Error("The runtime image warmup adapter is unavailable.");
       }
       await input.runtime.prepareRuntimeImage({
-        boxId,
+        boxId: bakerBoxId,
         bundledSkill: input.bundledSkill,
         signal: input.signal,
       });
     }
-    await input.onBeforeSnapshotPublish?.({ boxId });
+    await input.onBeforeSnapshotPublish?.({ boxId: bakerBoxId });
     try {
       await input.lifecycle.saveNamedSnapshot({
-        boxId,
+        boxId: bakerBoxId,
         name: input.identity.imageName,
         deadlineAt: input.now() + 30_000,
         signal: input.signal,
@@ -256,8 +274,9 @@ async function waitBoxReady(input: {
   sleep: (ms: number, signal: AbortSignal) => Promise<void>;
   now: () => number;
   signal: AbortSignal;
+  deadlineAt?: number;
 }, boxId: string): Promise<void> {
-  const deadline = input.now() + BOX_READY_TIMEOUT_MS;
+  const deadline = Math.min(input.deadlineAt ?? Number.POSITIVE_INFINITY, input.now() + BOX_READY_TIMEOUT_MS);
   while (input.now() < deadline) {
     input.signal.throwIfAborted();
     const observed = await input.runtime.existingBoxStatus({ boxId, signal: input.signal });
@@ -268,6 +287,49 @@ async function waitBoxReady(input: {
     await input.sleep(READY_POLL_INTERVAL_MS, input.signal);
   }
   throw new Error("The runtime image baker Box did not become ready before its deadline.");
+}
+
+/**
+ * Retry only the first layout command after the baker Box reports ready. Box command HTTP 409 is a
+ * transient provider readiness race here; every other status and every other baker operation keeps
+ * its original fail-fast behavior. The caller's signal and outer attempt deadline fence each retry.
+ */
+async function retryImageBakeReadiness<T>(
+  input: {
+    now: () => number;
+    sleep: (ms: number, signal: AbortSignal) => Promise<void>;
+    signal: AbortSignal;
+    deadlineAt?: number;
+  },
+  operation: () => Promise<T>,
+): Promise<T> {
+  const deadlineAt = input.deadlineAt ?? input.now() + BOX_READY_TIMEOUT_MS;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= IMAGE_BAKE_READINESS_RETRY_DELAYS_MS.length; attempt += 1) {
+    input.signal.throwIfAborted();
+    if (attempt > 0) {
+      const delayMs = IMAGE_BAKE_READINESS_RETRY_DELAYS_MS[attempt - 1]!;
+      const remainingMs = deadlineAt - input.now();
+      if (remainingMs <= delayMs) throw lastError;
+      await input.sleep(delayMs, input.signal);
+      input.signal.throwIfAborted();
+      if (input.now() >= deadlineAt) throw lastError;
+    }
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (!isTransientImageBakeReadinessError(error)
+        || attempt === IMAGE_BAKE_READINESS_RETRY_DELAYS_MS.length) {
+        throw error;
+      }
+    }
+  }
+  throw lastError ?? new Error("The runtime image baker readiness retry did not settle.");
+}
+
+function isTransientImageBakeReadinessError(error: unknown): boolean {
+  return error instanceof BoxRuntimeProviderError && error.status === 409;
 }
 
 async function waitNamedSnapshot(input: {

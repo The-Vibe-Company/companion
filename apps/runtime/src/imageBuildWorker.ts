@@ -96,6 +96,12 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
           attemptController.abort(new Error("The image build attempt exceeded its budget."));
         }, attemptBudgetMs);
         const bake = options.bakeOnce ?? bakeCompanionRuntimeImageOnce;
+        // The claim may still point at no Box when this attempt creates one. Keep the provider
+        // identity and cleanup checkpoints local to this attempt so failure logs never regress to
+        // the stale nullable claim projection.
+        let buildBoxId = claim.buildBoxId;
+        let buildDeleteIntentRecorded = claim.buildDeleteIntentRecorded;
+        let buildDeleteOperationId = claim.buildDeleteOperationId;
         const bakeInput: Parameters<typeof bakeCompanionRuntimeImageOnce>[0] = {
           identity: options.identity,
           lifecycle: options.lifecycle,
@@ -111,7 +117,9 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
             ) => options.runtime().prepareRuntimeImage?.(input),
           },
           signal: attemptController.signal,
+          deadlineAt: now() + attemptBudgetMs,
           onBoxCreated: async ({ boxId }) => {
+            buildBoxId = boxId;
             const marked = await options.registry.markBuildingBox({
               digest: claim.digest,
               claimEpoch: claim.claimEpoch,
@@ -130,6 +138,7 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
             }
           },
           onBoxDeleted: async ({ boxId }) => {
+            buildBoxId = boxId;
             const cleared = await options.registry.clearBuildingBox({
               digest: claim.digest,
               claimEpoch: claim.claimEpoch,
@@ -138,6 +147,8 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
             if (!cleared) throw new Error("The image build lease was lost after Box cleanup.");
           },
           onBoxDeletionIntentRecorded: async ({ boxId }) => {
+            buildBoxId = boxId;
+            buildDeleteIntentRecorded = true;
             const marked = await options.registry.markBuildingBoxDeletionIntent({
               digest: claim.digest,
               claimEpoch: claim.claimEpoch,
@@ -148,6 +159,8 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
             }
           },
           onBoxDeletionRequested: async ({ boxId, operationId }) => {
+            buildBoxId = boxId;
+            buildDeleteOperationId = operationId;
             const marked = await options.registry.markBuildingBoxDeletion({
               digest: claim.digest,
               claimEpoch: claim.claimEpoch,
@@ -164,8 +177,9 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
               ts: new Date(now()).toISOString(),
               event: "runtime.image_build_cleanup_failed",
               digest: claim.digest,
-              buildBoxId: claim.buildBoxId,
-              buildDeleteOperationId: claim.buildDeleteOperationId,
+              buildBoxId,
+              buildDeleteIntentRecorded,
+              buildDeleteOperationId,
               error: IMAGE_BUILD_CLEANUP_FAILURE_MESSAGE,
             });
           },

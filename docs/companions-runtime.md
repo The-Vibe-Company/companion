@@ -474,6 +474,9 @@ Runtime bakes the current image marker into a throwaway baker Box (never a tenan
 creates new generation Boxes with `from` that snapshot so the first send skips the five-minute
 package install. The baker Box is created with the five-minute unnamed-orphan TTL, then patched to
 one hour so layout and snapshot can finish; each attempt has a strict 40-minute outer budget.
+Its id is checkpointed before the first follow-up command. A provider HTTP `409` from that first
+layout command is treated as a transient post-create readiness race only in this image-bake path,
+with bounded 1/2/5/10/30-second backoff fenced by cancellation and the same outer attempt deadline.
 Before publishing, it writes a `.boxignore` that excludes only regenerable logs, transient staging
 archives, credentials, attachments, and outbox data; embeds the static Companion-skill archive;
 archives and resumes the baker Box; warms Node/Pi; and requires a stable `.ascii/playbook.json`. A
@@ -1002,6 +1005,16 @@ before Pi executes that tool batch. Runtime records the tool lifecycle separatel
 assistant event from the chat projection. Only the later assistant message without a tool call is
 shown as the answer, so the thread never exposes pre-tool narration while tool and decision cards
 remain visible and durable.
+
+An assistant `message_end` without a tool call remains the primary final-result shape. Runtime also
+recognizes Pi's documented terminal copies: at `agent_settled`, and only if no primary assistant was
+already projected, it promotes `turn_end.message` or otherwise the final usable assistant in
+`agent_end.messages`. User messages, tool messages, and assistant tool-call narration are never
+eligible. The redacted candidate is checkpointed on the Turn before its journal page is
+acknowledged, because a later page may contain `agent_settled` after executor takeover. Re-reading
+the page is idempotent. Main turns project the candidate into the shared transcript; background
+routine turns project it into their private run transcript. If no usable result exists, the main
+turn still settles visibly as `pi_result_missing`; `agent_settled` remains the sole quiescence proof.
 
 **Outputs.** The layout-14 broker creates and empties `~/outbox` when it binds a new response root,
 immediately before prompt delivery; native steers never erase output already produced by that

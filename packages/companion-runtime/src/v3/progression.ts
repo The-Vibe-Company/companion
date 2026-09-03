@@ -1,6 +1,7 @@
 import { safeRuntimeError } from "../errors";
 import {
   classifyPiJournalPage,
+  type PiAssistantFallbackProjection,
   type RuntimePiProjection,
   type ValidatedPiJournalRead,
 } from "../piEvents";
@@ -494,6 +495,8 @@ export interface RuntimeV3WarmTurnMaterial {
 export interface RuntimeV3WarmTurnProjection {
   throughCursor: bigint;
   assistant: Array<{ eventId: string; content: string }>;
+  /** Durable terminal-envelope candidates; persistence promotes one only at settlement. */
+  assistantFallbacks?: PiAssistantFallbackProjection[];
   compactions?: Array<{
     cursor: bigint;
     summary: string;
@@ -1282,6 +1285,7 @@ export function createRuntimeV3WarmTurnAdvance(
         const projection = {
           throughCursor: classified.throughCursor,
           assistant,
+          assistantFallbacks: classified.assistantFallbacks,
           compactions: classified.projections.flatMap((item) => item.type === "compaction"
             ? [{
               cursor: item.sequence,

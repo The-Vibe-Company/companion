@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { BoxRuntimeAdapterError, type BoxRuntimeLifecycleClient } from "./boxMaintenanceClient";
+import { BoxRuntimeProviderError } from "./boxCompanionRuntime";
 import {
   bakeCompanionRuntimeImageOnce,
   deleteCompanionRuntimeBakerBox,
@@ -64,6 +65,10 @@ const bundledSkill = {
   checksum: `sha256:${"1".repeat(64)}`,
   archive: Buffer.from("bundled"),
 };
+
+function providerError(status: number): BoxRuntimeProviderError {
+  return new BoxRuntimeProviderError("The Box command was not ready", status);
+}
 
 describe("bakeCompanionRuntimeImageOnce", () => {
   it("reuses a ready named snapshot without creating a baker Box", async () => {
@@ -167,6 +172,151 @@ describe("bakeCompanionRuntimeImageOnce", () => {
     const cleanupInput = vi.mocked(client.deletePermanentlyAndWait).mock.calls[0]?.[0];
     expect(cleanupInput?.signal).not.toBe(attemptController.signal);
     expect(cleanupInput?.signal?.aborted).toBe(false);
+  });
+
+  it("checkpoints the created Box before any follow-up lifecycle or command work", async () => {
+    const events: string[] = [];
+    const getNamedSnapshot = vi.fn()
+      .mockImplementationOnce(async () => null)
+      .mockResolvedValue(snapshot(identity.imageName));
+    const client = lifecycle({
+      getNamedSnapshot,
+      createEphemeralBox: vi.fn(async () => {
+        events.push("created");
+        return { boxId: "bx_23456789" };
+      }),
+    });
+    const onBoxCreated = vi.fn(async () => {
+      events.push("checkpointed");
+    });
+    const refreshTtl = vi.fn(async () => {
+      events.push("ttl");
+    });
+    const existingBoxStatus = vi.fn(async () => {
+      events.push("status");
+      return { boxId: "bx_23456789", state: "ready" as const };
+    });
+    const refreshPiLayout = vi.fn(async () => {
+      events.push("layout");
+      return { boxId: "bx_23456789", applied: "base" as const };
+    });
+
+    await expect(bakeCompanionRuntimeImageOnce({
+      identity,
+      lifecycle: client,
+      runtime: runtime({ existingBoxStatus, refreshTtl, refreshPiLayout }),
+      onBoxCreated,
+      signal: new AbortController().signal,
+    })).resolves.toMatchObject({ ready: true, baked: true });
+
+    expect(events.slice(0, 5)).toEqual([
+      "created",
+      "checkpointed",
+      "ttl",
+      "status",
+      "layout",
+    ]);
+    expect(onBoxCreated).toHaveBeenCalledWith({
+      boxId: "bx_23456789",
+      parentImageName: null,
+    });
+    expect(client.deletePermanentlyAndWait).toHaveBeenCalledWith(expect.objectContaining({
+      boxId: "bx_23456789",
+    }));
+  });
+
+  it("retries only an immediate post-create 409 with bounded exponential backoff", async () => {
+    const sleeps: number[] = [];
+    const getNamedSnapshot = vi.fn()
+      .mockImplementationOnce(async () => null)
+      .mockResolvedValue(snapshot(identity.imageName));
+    const refreshPiLayout = vi.fn()
+      .mockRejectedValueOnce(providerError(409))
+      .mockRejectedValueOnce(providerError(409))
+      .mockResolvedValue({ boxId: "bx_23456789", applied: "base" as const });
+
+    await expect(bakeCompanionRuntimeImageOnce({
+      identity,
+      lifecycle: lifecycle({ getNamedSnapshot }),
+      runtime: runtime({ refreshPiLayout }),
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+      signal: new AbortController().signal,
+    })).resolves.toEqual({
+      name: identity.imageName,
+      ready: true,
+      baked: true,
+      parentImageName: null,
+    });
+
+    expect(refreshPiLayout).toHaveBeenCalledTimes(3);
+    expect(sleeps).toEqual([1_000, 2_000]);
+  });
+
+  it("fails fast for a non-409 layout error and does not retry it", async () => {
+    const failure = providerError(500);
+    const sleep = vi.fn(async () => undefined);
+    const refreshPiLayout = vi.fn().mockRejectedValue(failure);
+
+    await expect(bakeCompanionRuntimeImageOnce({
+      identity,
+      lifecycle: lifecycle(),
+      runtime: runtime({ refreshPiLayout }),
+      sleep,
+      signal: new AbortController().signal,
+    })).rejects.toBe(failure);
+
+    expect(refreshPiLayout).toHaveBeenCalledOnce();
+    expect(sleep).not.toHaveBeenCalled();
+  });
+
+  it("stops readiness retries at the attempt deadline", async () => {
+    let clock = 0;
+    const sleeps: number[] = [];
+    const refreshPiLayout = vi.fn()
+      .mockRejectedValueOnce(providerError(409))
+      .mockRejectedValueOnce(providerError(409));
+
+    await expect(bakeCompanionRuntimeImageOnce({
+      identity,
+      lifecycle: lifecycle({
+        getNamedSnapshot: vi.fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue(snapshot(identity.imageName)),
+      }),
+      runtime: runtime({ refreshPiLayout }),
+      now: () => clock,
+      deadlineAt: 1_500,
+      sleep: async (ms) => {
+        sleeps.push(ms);
+        clock += ms;
+      },
+      signal: new AbortController().signal,
+    })).rejects.toMatchObject({ status: 409 });
+
+    expect(refreshPiLayout).toHaveBeenCalledTimes(2);
+    expect(sleeps).toEqual([1_000]);
+  });
+
+  it("cancels readiness backoff through the attempt signal", async () => {
+    const controller = new AbortController();
+    const refreshPiLayout = vi.fn().mockRejectedValue(providerError(409));
+    const sleep = vi.fn(async (_ms: number, signal: AbortSignal) => {
+      controller.abort(new Error("image bake cancelled"));
+      signal.throwIfAborted();
+    });
+
+    await expect(bakeCompanionRuntimeImageOnce({
+      identity,
+      lifecycle: lifecycle(),
+      runtime: runtime({ refreshPiLayout }),
+      sleep,
+      signal: controller.signal,
+    })).rejects.toThrow("image bake cancelled");
+
+    expect(refreshPiLayout).toHaveBeenCalledOnce();
+    expect(sleep).toHaveBeenCalledWith(1_000, controller.signal);
   });
 
   it("falls back to an empty baker Box when the parent snapshot disappeared", async () => {

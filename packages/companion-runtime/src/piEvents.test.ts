@@ -20,6 +20,27 @@ function bigintAwareReplacer(_key: string, value: SnapshotValue): SnapshotValue 
     : value;
 }
 
+function classifyEvents(events: Array<{ [key: string]: SnapshotValue }>, after = 0n) {
+  const rows = events.map((event, index) => ({
+    sequence: Number(after) + index + 1,
+    invocationId: PI_INVOCATION_ID,
+    attemptId: ATTEMPT_ID,
+    kind: "pi_event",
+    event,
+  }));
+  return classifyPiJournalPage(validatePiJournalRead({
+    value: {
+      events: rows,
+      nextCursor: Number(after) + rows.length,
+      acknowledgedCursor: Number(after),
+      hasMore: false,
+    },
+    after,
+    attemptId: ATTEMPT_ID,
+    invocationId: PI_INVOCATION_ID,
+  }));
+}
+
 describe("Pi journal validation and projection", () => {
   it("projects accepted compaction metadata and routine terminal calls without generic tool cards", () => {
     const page = validatePiJournalRead({
@@ -398,6 +419,117 @@ describe("Pi journal validation and projection", () => {
       expect.objectContaining({ type: "tool" }),
     ]));
     expect(JSON.stringify(projections, bigintAwareReplacer)).not.toContain("inspect that now");
+  });
+
+  it("keeps message_end primary while retaining documented terminal fallback candidates", () => {
+    const classified = classifyEvents([
+      {
+        type: "message_end",
+        message: { role: "assistant", content: [{ type: "text", text: "Primary answer" }] },
+      },
+      {
+        type: "turn_end",
+        message: { role: "assistant", content: [{ type: "text", text: "Turn copy" }] },
+      },
+      {
+        type: "agent_end",
+        messages: [{ role: "assistant", content: [{ type: "text", text: "Agent copy" }] }],
+      },
+      { type: "agent_settled" },
+    ]);
+
+    expect(classified.projections.filter((item) => item.type === "assistant")).toEqual([
+      expect.objectContaining({ content: "Primary answer" }),
+    ]);
+    expect(classified.assistantFallbacks).toEqual([
+      { sequence: 2n, source: "turn_end", content: "Turn copy" },
+      { sequence: 3n, source: "agent_end", content: "Agent copy" },
+    ]);
+    expect(classified.settled).toBe(true);
+  });
+
+  it("retains turn_end.message as the preferred usable terminal fallback", () => {
+    const classified = classifyEvents([
+      {
+        type: "turn_end",
+        message: { role: "assistant", content: [{ type: "text", text: "Recovered answer" }] },
+      },
+      { type: "agent_settled" },
+    ]);
+
+    expect(classified.assistantFallbacks).toEqual([
+      { sequence: 1n, source: "turn_end", content: "Recovered answer" },
+    ]);
+  });
+
+  it("retains only the final usable assistant from agent_end.messages", () => {
+    const classified = classifyEvents([
+      {
+        type: "agent_end",
+        messages: [
+          { role: "assistant", content: [{ type: "text", text: "Earlier answer" }] },
+          { role: "tool", content: [{ type: "text", text: "Tool narration" }] },
+          { role: "assistant", content: [{ type: "text", text: "Final answer" }] },
+        ],
+      },
+      { type: "agent_settled" },
+    ]);
+
+    expect(classified.assistantFallbacks).toEqual([
+      { sequence: 1n, source: "agent_end", content: "Final answer" },
+    ]);
+    expect(JSON.stringify(classified.assistantFallbacks, bigintAwareReplacer))
+      .not.toContain("Tool narration");
+  });
+
+  it("never retains user, tool-only, or assistant tool-call narration as a fallback", () => {
+    const classified = classifyEvents([
+      { type: "turn_end", message: { role: "user", content: "User copy" } },
+      {
+        type: "agent_end",
+        messages: [
+          { role: "tool", content: [{ type: "text", text: "Tool result" }] },
+          {
+            role: "assistant",
+            content: [
+              { type: "text", text: "I will call a tool" },
+              { type: "toolCall", name: "read", arguments: { path: "README.md" } },
+            ],
+          },
+        ],
+      },
+      { type: "agent_settled" },
+    ]);
+
+    expect(classified.assistantFallbacks).toEqual([]);
+    expect(classified.projections).toEqual([{ sequence: 3n, type: "settled" }]);
+  });
+
+  it("classifies terminal candidates deterministically across page boundaries and re-reads", () => {
+    const first = classifyEvents([{
+      type: "turn_end",
+      message: { role: "assistant", content: [{ type: "text", text: "Page one" }] },
+    }]);
+    const replayed = classifyEvents([{
+      type: "turn_end",
+      message: { role: "assistant", content: [{ type: "text", text: "Page one" }] },
+    }]);
+    const second = classifyEvents([{ type: "agent_settled" }], 1n);
+
+    expect(replayed.assistantFallbacks).toEqual(first.assistantFallbacks);
+    expect(first).toMatchObject({ throughCursor: 1n, settled: false });
+    expect(second).toMatchObject({ throughCursor: 2n, settled: true });
+  });
+
+  it("keeps agent_settled terminal and result-free when no documented envelope is usable", () => {
+    const classified = classifyEvents([
+      { type: "agent_end", messages: [{ role: "assistant", content: [] }] },
+      { type: "agent_settled" },
+    ]);
+
+    expect(classified.assistantFallbacks).toEqual([]);
+    expect(classified.settled).toBe(true);
+    expect(classified.projections).toEqual([{ sequence: 2n, type: "settled" }]);
   });
 
   it("redacts exact credentials from disclosed tool arguments and results", () => {

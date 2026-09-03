@@ -792,6 +792,46 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
       return rows[0]?.recorded === true;
     },
     async project(claim, projection, signal) {
+      const fallbacks = projection.assistantFallbacks ?? [];
+      if (fallbacks.length > 0) {
+        const recorded = await abortable(sql<Array<{ recorded: boolean }>>`
+          select public.companion_v3_runtime_record_native_fallback_v8(
+            ${claim.orgId}::uuid,
+            ${claim.companionId}::uuid,
+            ${claim.turn.lane},
+            ${claim.turn.id}::uuid,
+            ${claim.fence.token}::uuid,
+            ${claim.fence.epoch.toString()}::bigint,
+            ${claim.fence.gateEpoch.toString()}::bigint,
+            ${sql.json(fallbacks.map((fallback) => ({
+              ...fallback,
+              sequence: fallback.sequence.toString(),
+            })))}::jsonb,
+            8
+          ) as recorded
+        `, signal);
+        if (recorded[0]?.recorded !== true) return false;
+      }
+      let assistant = projection.assistant;
+      if (projection.settled && assistant.length === 0) {
+        const fallback = await abortable(sql<Array<{ sequence: string; content: string }>>`
+          select sequence::text, content
+          from public.companion_v3_runtime_read_native_fallback_v8(
+            ${claim.orgId}::uuid,
+            ${claim.companionId}::uuid,
+            ${claim.turn.lane},
+            ${claim.turn.id}::uuid,
+            ${claim.fence.token}::uuid,
+            ${claim.fence.epoch.toString()}::bigint,
+            ${claim.fence.gateEpoch.toString()}::bigint,
+            8
+          )
+        `, signal);
+        assistant = fallback.map((item) => ({
+          eventId: `v3:${claim.turn.id}:${item.sequence}`,
+          content: item.content,
+        }));
+      }
       const rows = await abortable(sql<Array<{ projected: string | null }>>`
         select public.companion_v3_runtime_project_native_page_v7(
           ${claim.orgId}::uuid,
@@ -802,7 +842,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint,
           ${projection.throughCursor.toString()}::bigint,
-          ${sql.json(projection.assistant)}::jsonb,
+          ${sql.json(assistant)}::jsonb,
           ${sql.json((projection.compactions ?? []).map((item) => ({
             ...item,
             cursor: item.cursor.toString(),
@@ -961,13 +1001,49 @@ export function createRuntimeV3PostgresBackgroundTurnPersistence(
       return rows[0]?.begun === true;
     },
     async project(claim, projection, signal) {
+      const fallbacks = projection.assistantFallbacks ?? [];
+      if (fallbacks.length > 0) {
+        const recorded = await abortable(sql<Array<{ recorded: boolean }>>`
+          select public.companion_v3_runtime_record_native_fallback_v8(
+            ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.turn.lane},
+            ${claim.turn.id}::uuid, ${claim.fence.token}::uuid,
+            ${claim.fence.epoch.toString()}::bigint,
+            ${claim.fence.gateEpoch.toString()}::bigint,
+            ${sql.json(fallbacks.map((fallback) => ({
+              ...fallback, sequence: fallback.sequence.toString(),
+            })))}::jsonb, 8
+          ) as recorded
+        `, signal);
+        if (recorded[0]?.recorded !== true) return false;
+      }
+      let privateEntries = projection.privateEntries ?? [];
+      if (projection.settled && !privateEntries.some((item) => item.type === "assistant")) {
+        const fallback = await abortable(sql<Array<{ sequence: string; content: string }>>`
+          select sequence::text, content
+          from public.companion_v3_runtime_read_native_fallback_v8(
+            ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.turn.lane},
+            ${claim.turn.id}::uuid, ${claim.fence.token}::uuid,
+            ${claim.fence.epoch.toString()}::bigint,
+            ${claim.fence.gateEpoch.toString()}::bigint, 8
+          )
+        `, signal);
+        privateEntries = [...privateEntries, ...fallback.map((item) => {
+          const sequence = BigInt(item.sequence);
+          return {
+            sequence,
+            type: "assistant" as const,
+            entry_key: `assistant:${item.sequence}`,
+            content: item.content,
+          };
+        })].sort((left, right) => left.sequence < right.sequence ? -1 : 1);
+      }
       const rows = await abortable(sql<Array<{ projected: string | null }>>`
         select public.companion_v3_runtime_project_background_page_v9(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.turn.id}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint,
           ${projection.throughCursor.toString()}::bigint,
-          ${sql.json((projection.privateEntries ?? []).map((item) => ({
+          ${sql.json(privateEntries.map((item) => ({
             ...item, sequence: item.sequence.toString(),
           })))}::jsonb,
           ${sql.json((projection.decisions ?? []).map((item) => ({

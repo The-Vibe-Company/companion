@@ -1478,6 +1478,15 @@ export const companionV3Turns = pgTable(
     activityCursor: bigint("activity_cursor", { mode: "number" }).notNull().default(0),
     correlatedActivityCursor: bigint("correlated_activity_cursor", { mode: "number" })
       .notNull().default(0),
+    /** Redacted assistant candidate retained from Pi's documented terminal envelopes. */
+    terminalAssistantFallbackSource: text("terminal_assistant_fallback_source"),
+    terminalAssistantFallbackCursor: bigint("terminal_assistant_fallback_cursor", {
+      mode: "number",
+    }),
+    terminalAssistantFallbackContent: text("terminal_assistant_fallback_content"),
+    terminalAssistantFallbackAdmittedAt: timestamp("terminal_assistant_fallback_admitted_at", {
+      withTimezone: true,
+    }),
     lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
     firstActivityAt: timestamp("first_activity_at", { withTimezone: true }),
     inactivityDeadlineAt: timestamp("inactivity_deadline_at", { withTimezone: true }),
@@ -1568,6 +1577,10 @@ export const companionV3Turns = pgTable(
     cursorCheck: check(
       "companion_v3_turns_cursor_check",
       sql`${t.activityCursor} >= 0 and ${t.correlatedActivityCursor} >= 0 and ${t.correlatedActivityCursor} <= ${t.activityCursor} and (${t.admissionCursor} is null or ${t.admissionCursor} >= 0)`,
+    ),
+    terminalAssistantFallbackCheck: check(
+      "companion_v3_turns_terminal_assistant_fallback_check",
+      sql`(${t.terminalAssistantFallbackSource} is null and ${t.terminalAssistantFallbackCursor} is null and ${t.terminalAssistantFallbackContent} is null and ${t.terminalAssistantFallbackAdmittedAt} is null) or (${t.terminalAssistantFallbackSource} is not null and ${t.terminalAssistantFallbackCursor} is not null and ${t.terminalAssistantFallbackContent} is not null and ${t.terminalAssistantFallbackAdmittedAt} is not null and ${t.terminalAssistantFallbackSource} in ('turn_end', 'agent_end') and ${t.terminalAssistantFallbackCursor} >= 0 and char_length(${t.terminalAssistantFallbackContent}) between 1 and 100000)`,
     ),
     admissionCheck: check(
       "companion_v3_turns_admission_check",

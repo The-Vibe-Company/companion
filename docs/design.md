@@ -360,6 +360,9 @@ Lifecycle and broker-observation calls that are known idempotent retry network, 
 failures up to five times with jittered 1/2/5/10/30-second backoff. Observation-only broker state
 and journal reads also retry `409` while the provider is temporarily transitioning the Box. Every
 claim revalidates the lease before Box contact. Prompt and decision writes never use this path.
+The throwaway image baker has one additional, local readiness exception: after it checkpoints a
+new baker Box id, the first layout command retries provider HTTP `409` with bounded exponential
+backoff inside the existing build-attempt deadline. Tenant Companion commands remain unchanged.
 When the direct hosted-agent endpoint fails, runtime stays on the safe exec fallback and re-probes
 only through broker state with bounded exponential backoff. Reading the same durable endpoint on a
 later claim preserves that suspect state; only a newer staging observation or a successful probe
@@ -439,6 +442,12 @@ Layout 14 installs a small Node broker under systemd between runtime commands an
   exit separately;
 - malformed or oversized lines advance without persisting their raw content;
 - unknown event types are counted and ignored rather than treated as user-fatal errors.
+
+Assistant `message_end` remains the primary result projection. Pi's documented `turn_end.message`
+and `agent_end.messages` envelopes are retained only as redacted, bounded fallback candidates and
+promoted at `agent_settled` only when no primary assistant result exists. The candidate checkpoint
+lives on the Turn because acknowledged journal pages may be separated from `agent_settled` by an
+executor takeover. The same rule feeds main transcripts and private background routine entries.
 
 The routine cutover extends this broker layout without adding a second harness or runtime owner. A
 routine-origin turn is serialized by the Companion's `background` PostgreSQL lease while the `main`

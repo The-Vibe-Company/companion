@@ -247,6 +247,73 @@ describe("image build worker", () => {
     })]);
   });
 
+  it("logs the newly created Box identity when baker cleanup fails", async () => {
+    vi.mocked(bakeCompanionRuntimeImageOnce).mockImplementation(async (input) => {
+      await input.onBoxCreated?.({ boxId: "bx_newbaker", parentImageName: null });
+      await input.onBoxDeletionIntentRecorded?.({ boxId: "bx_newbaker" });
+      await input.onBoxDeletionRequested?.({
+        boxId: "bx_newbaker",
+        operationId: "bdop_00000000000000000000000000000001",
+      });
+      input.onCleanupError?.(new Error("cleanup failed"), "baker_box_delete");
+      return {
+        name: IDENTITY.imageName,
+        ready: true,
+        parentImageName: null,
+      };
+    });
+    const { calls, controller, done, log } = harness();
+    await vi.waitFor(() => expect(calls.outcomes).toHaveLength(1));
+    controller.abort();
+    await done;
+
+    expect(log?.records).toContainEqual(expect.objectContaining({
+      event: "runtime.image_build_cleanup_failed",
+      buildBoxId: "bx_newbaker",
+      buildDeleteIntentRecorded: true,
+      buildDeleteOperationId: "bdop_00000000000000000000000000000001",
+    }));
+  });
+
+  it("keeps image readiness independent from a cold create fallback", async () => {
+    const getByDigest = vi.fn(async () => ({
+      digest: IDENTITY.imageMarker,
+      imageName: IDENTITY.imageName,
+      status: "building" as const,
+      parentImageName: null,
+      buildBoxId: null,
+      buildDeleteIntentRecorded: false,
+      buildDeleteOperationId: null,
+      attemptCount: 1,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      leaseExpiresAt: null,
+    }));
+    const worker = createImageBuildWorker({
+      registry: {
+        async requestImage() {
+          throw new Error("not used");
+        },
+        async claimImageBuild() {
+          throw new Error("not used");
+        },
+        getByDigest,
+      } as never,
+      identity: IDENTITY,
+      lifecycle: {} as never,
+      runtime: () => {
+        throw new Error("cold fallback must not contact runtime image builder");
+      },
+      executorId: "executor-1",
+      bakeOnce: bakeCompanionRuntimeImageOnce as never,
+      log: capturingLog(),
+    });
+
+    await expect(worker.source().availability(new AbortController().signal)).resolves.toBe("building");
+    expect(getByDigest).toHaveBeenCalledOnce();
+    expect(bakeCompanionRuntimeImageOnce).not.toHaveBeenCalled();
+  });
+
   it("persists a failure instead of publishing a snapshot that never became ready", async () => {
     vi.mocked(bakeCompanionRuntimeImageOnce).mockResolvedValue({
       name: IDENTITY.imageName,

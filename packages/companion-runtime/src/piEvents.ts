@@ -153,8 +153,20 @@ export type RuntimePiProjection =
   | { sequence: bigint; type: "settled" }
   | { sequence: bigint; type: "process_exit"; code: number | null; signal: string | null };
 
+/**
+ * A documented terminal-envelope copy of the final assistant message. Runtime v3 checkpoints
+ * these candidates separately and promotes exactly one only when `agent_settled` proves the
+ * response is quiescent and no primary `message_end` result exists.
+ */
+export interface PiAssistantFallbackProjection {
+  sequence: bigint;
+  source: "turn_end" | "agent_end";
+  content: string;
+}
+
 export interface ClassifiedPiJournalPage {
   projections: RuntimePiProjection[];
+  assistantFallbacks: PiAssistantFallbackProjection[];
   throughCursor: bigint;
   unknownEvents: number;
   activity: boolean;
@@ -418,14 +430,13 @@ function contentBlocks(message: Record<string, unknown>): Record<string, unknown
     : [];
 }
 
-function assistantProjection(
+function assistantMessageProjection(
   sequence: bigint,
-  event: Record<string, unknown>,
+  messageValue: unknown,
   redact: RuntimeVisibleTextRedactor,
 ): Extract<RuntimePiProjection, { type: "assistant" }> | null {
-  if (event.type !== "message_end") return null;
-  if (!event.message || typeof event.message !== "object" || Array.isArray(event.message)) return null;
-  const message = event.message as Record<string, unknown>;
+  if (!messageValue || typeof messageValue !== "object" || Array.isArray(messageValue)) return null;
+  const message = messageValue as Record<string, unknown>;
   if (message.role !== "assistant") return null;
   const blocks = contentBlocks(message);
   // Pi emits one completed assistant message before executing each tool batch, then another model
@@ -457,6 +468,35 @@ function assistantProjection(
     content: bounded(content, MAX_ASSISTANT),
     ...(text && redactedReasoning ? { reasoning: boundedReasoning(redactedReasoning) } : {}),
   };
+}
+
+function assistantProjection(
+  sequence: bigint,
+  event: Record<string, unknown>,
+  redact: RuntimeVisibleTextRedactor,
+): Extract<RuntimePiProjection, { type: "assistant" }> | null {
+  return event.type === "message_end"
+    ? assistantMessageProjection(sequence, event.message, redact)
+    : null;
+}
+
+function assistantFallbackProjection(
+  sequence: bigint,
+  event: Record<string, unknown>,
+  redact: RuntimeVisibleTextRedactor,
+): PiAssistantFallbackProjection | null {
+  if (event.type === "turn_end") {
+    const assistant = assistantMessageProjection(sequence, event.message, redact);
+    return assistant
+      ? { sequence, source: "turn_end", content: assistant.content }
+      : null;
+  }
+  if (event.type !== "agent_end" || !Array.isArray(event.messages)) return null;
+  for (let index = event.messages.length - 1; index >= 0; index -= 1) {
+    const assistant = assistantMessageProjection(sequence, event.messages[index], redact);
+    if (assistant) return { sequence, source: "agent_end", content: assistant.content };
+  }
+  return null;
 }
 
 function dictionary(value: unknown): Record<string, unknown> | null {
@@ -1136,6 +1176,8 @@ export function classifyPiJournalPage(
   redact: RuntimeVisibleTextRedactor = genericRuntimeVisibleTextRedactor,
 ): ClassifiedPiJournalPage {
   const projections: RuntimePiProjection[] = [];
+  let turnEndFallback: PiAssistantFallbackProjection | null = null;
+  let agentEndFallback: PiAssistantFallbackProjection | null = null;
   let unknownEvents = 0;
   let activity = false;
   let needsInput = false;
@@ -1186,6 +1228,9 @@ export function classifyPiJournalPage(
     }
     const assistant = assistantProjection(record.sequence, record.event, redact);
     if (assistant) projections.push(assistant);
+    const assistantFallback = assistantFallbackProjection(record.sequence, record.event, redact);
+    if (assistantFallback?.source === "turn_end") turnEndFallback = assistantFallback;
+    if (assistantFallback?.source === "agent_end") agentEndFallback = assistantFallback;
     const tool = toolProjection(record.sequence, record.event, redact);
     if (tool) projections.push(tool);
     if (ACTIVITY_EVENT_TYPES.has(eventType)) {
@@ -1198,6 +1243,9 @@ export function classifyPiJournalPage(
 
   return {
     projections,
+    assistantFallbacks: [turnEndFallback, agentEndFallback]
+      .filter((item): item is PiAssistantFallbackProjection => item !== null)
+      .sort((left, right) => left.sequence < right.sequence ? -1 : 1),
     throughCursor: page.nextCursor,
     unknownEvents,
     activity,

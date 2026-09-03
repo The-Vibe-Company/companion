@@ -144,7 +144,9 @@ WITH runtime_role AS (
     ('public.companion_v3_runtime_authorize_warm_turn_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'),
     ('public.companion_v3_runtime_authorize_background_v9(uuid,uuid,uuid,uuid,bigint,bigint,integer)'),
     ('public.companion_v3_runtime_begin_background_admission_v9(uuid,uuid,uuid,uuid,bigint,bigint,text,bigint,integer)'),
-    ('public.companion_v3_runtime_project_background_page_v9(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)')
+    ('public.companion_v3_runtime_project_background_page_v9(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'),
+    ('public.companion_v3_runtime_record_native_fallback_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,jsonb,integer)'),
+    ('public.companion_v3_runtime_read_native_fallback_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)')
 ), decision_required(signature) AS (
   VALUES
     ('public.companion_v3_runtime_claim_warm_v6(text,public.companion_v3_lane,integer,integer)'),
