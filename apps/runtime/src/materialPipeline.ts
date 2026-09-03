@@ -438,12 +438,19 @@ export function createRuntimeMaterialPipeline(input: {
       if (stage.material.attachments.some((attachment) => now() >= attachment.expiresAt.getTime())) {
         throw new RuntimeAttachmentExpiredError();
       }
-      return await (input.fileRuntime?.() ?? input.runtime()).stageAttachments({
+      const staged = await (input.fileRuntime?.() ?? input.runtime()).stageAttachments({
         boxId: stage.boxId,
         messageId: messageIdFromEventId(stage.messageEventId),
         files,
         signal: stage.signal,
       });
+      // There is no targeted Box delete seam for one staged message. If the fixed deadline crosses
+      // during the read-only write, keep the bytes unreachable: do not return paths to the engine,
+      // so it cannot append them to the prompt or dispatch Pi.
+      if (stage.material.attachments.some((attachment) => now() >= attachment.expiresAt.getTime())) {
+        throw new RuntimeAttachmentExpiredError();
+      }
+      return staged;
     },
   };
   const outboxHarvester: RuntimeOutboxHarvester = {

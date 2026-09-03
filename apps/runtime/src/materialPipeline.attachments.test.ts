@@ -205,6 +205,27 @@ describe("staging a member's attachments onto the Box", () => {
       .rejects.toMatchObject({ stableCode: "attachment_expired" });
     expect(stageAttachments).not.toHaveBeenCalled();
   });
+
+  it("does not expose staged paths when expiry crosses during the Box write", async () => {
+    let clock = Date.parse("2026-09-24T23:59:59.000Z");
+    const stageAttachments = vi.fn(async () => {
+      clock = Date.parse("2026-09-25T00:00:00.000Z");
+      return [{
+        position: 0,
+        filename: "chart-0.png",
+        contentType: "image/png",
+        byteSize: PNG.byteLength,
+        path: "~/attachments/message/0-chart-0.png",
+      }];
+    });
+
+    await expect(pipeline({
+      runtime: { stageAttachments },
+      now: () => clock,
+    }).attachmentStager.stageAttachments(stageInput([attachment(PNG)])))
+      .rejects.toMatchObject({ stableCode: "attachment_expired" });
+    expect(stageAttachments).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("harvesting Pi's outbox", () => {
