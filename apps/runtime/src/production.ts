@@ -316,6 +316,11 @@ export async function buildProductionRuntimeService(
         if (!storage) throw new Error("runtime archive storage is closed");
         return await storage.load(storagePath, signal);
       },
+      loadAttachment: async (storageKey, signal) => {
+        const storage = archiveStorage;
+        if (!storage) throw new Error("runtime attachment storage is closed");
+        return await storage.load(storageKey, signal);
+      },
       storeAttachment: async (stored) => {
         const storage = archiveStorage;
         if (!storage) throw new Error("runtime archive storage is closed");
@@ -358,6 +363,7 @@ export async function buildProductionRuntimeService(
           database.sql, externalIncidentOptions,
         ),
         pi: createRuntimeV3WarmPi(pi),
+        inputAttachments: material.inputAttachmentStager,
         outbox: {
           harvest: async (input) => await material.outboxHarvester.harvestOutbox({
             orgId: input.orgId,

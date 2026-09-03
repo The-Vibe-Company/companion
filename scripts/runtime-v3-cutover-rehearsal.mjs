@@ -2,6 +2,23 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
+const providerCredentialPatterns = [
+  /^(?:COMPANION_)?(?:BOX|ASCII).*API_KEY$/,
+  /^COMPANION_(?:BOX_E2E_ZAI|IOS_LOCAL_ZAI|GEMINI_TRANSCRIPTION)_API_KEY$/,
+  /^COMPANION_MCP_[A-Z0-9_]+_CLIENT_SECRET$/,
+  /^(?:GITHUB_APP_PRIVATE_KEY|GITHUB_APP_CLIENT_SECRET|GOOGLE_CLIENT_SECRET)$/,
+  /^(?:ANTHROPIC|OPENAI|GOOGLE|GEMINI|ZAI|XAI|MISTRAL|OPENROUTER|GROQ|COHERE|TOGETHER|FIREWORKS)(?:_[A-Z0-9]+)*_(?:API_KEY|ACCESS_TOKEN|TOKEN|SECRET)$/,
+];
+const presentProviderCredentials = Object.keys(process.env)
+  .filter((key) => process.env[key]?.trim())
+  .filter((key) => providerCredentialPatterns.some((pattern) => pattern.test(key)))
+  .sort();
+if (presentProviderCredentials.length > 0) {
+  throw new Error(
+    `Runtime v3 cutover rehearsal refuses provider credentials: ${presentProviderCredentials.join(", ")}`,
+  );
+}
+
 const databaseUrl = process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_MIGRATION_URL is required for the disposable rehearsal");
 const database = new URL(databaseUrl);
@@ -28,9 +45,6 @@ const environment = {
   DATABASE_URL: databaseUrl,
   DATABASE_MIGRATION_URL: databaseUrl,
 };
-for (const key of Object.keys(environment)) {
-  if (/^(?:COMPANION_)?(?:BOX|ASCII).*API_KEY$/.test(key)) delete environment[key];
-}
 environment.COMPANION_COMPANIONS_ENABLED = "false";
 environment.COMPANION_DEV_BOX_MODE = "sim";
 

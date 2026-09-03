@@ -361,9 +361,19 @@ interface WarmMaterialRow {
   activityCursor: string;
   recoveryDeferred: boolean;
   outputsHarvested: boolean;
+  messageEventId: string;
+  attachments: Array<{
+    storage_key: string;
+    content_type: string;
+    byte_size: number;
+    sha256: string;
+    filename: string;
+    position: number;
+    expires_at: string;
+  }>;
 }
 
-interface RoutineMaterialRow extends WarmMaterialRow {
+interface RoutineMaterialRow extends Omit<WarmMaterialRow, "messageEventId" | "attachments"> {
   persona: string | null;
   backgroundKind: "routine" | "trigger";
   validationOnly: boolean;
@@ -713,7 +723,8 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
       const rows = await abortable(sql<WarmMaterialRow[]>`
         select box_id as "boxId", pi_invocation_id as "piInvocationId",
           content, activity_cursor::text as "activityCursor",
-          recovery_deferred as "recoveryDeferred",outputs_harvested as "outputsHarvested"
+          recovery_deferred as "recoveryDeferred",outputs_harvested as "outputsHarvested",
+          message_event_id as "messageEventId",attachments
         from public.companion_v3_runtime_authorize_warm_turn_v8(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
@@ -734,6 +745,16 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           cursor: BigInt(row.activityCursor),
           recoveryDeferred: row.recoveryDeferred,
           outputsHarvested: row.outputsHarvested,
+          messageEventId: row.messageEventId,
+          inputAttachments: row.attachments.map((attachment) => ({
+            storageKey: attachment.storage_key,
+            contentType: attachment.content_type,
+            byteSize: attachment.byte_size,
+            sha256: attachment.sha256,
+            filename: attachment.filename,
+            position: attachment.position,
+            expiresAt: new Date(attachment.expires_at),
+          })),
         }
         : null;
     },

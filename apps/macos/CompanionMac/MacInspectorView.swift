@@ -656,6 +656,7 @@ private struct CompanionMacRestartButtons: View {
                 requestID: id
             )
             lifecycle = accepted
+            sawRecycleProjection = accepted.intent == .recyclePi
             working = false
             if accepted.isActive {
                 await poll()

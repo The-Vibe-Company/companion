@@ -63,6 +63,7 @@ function pipeline(stageExistingBox = vi.fn()) {
     },
     runtime: () => fakeRuntime(stageExistingBox),
     loadSkillArchive: vi.fn(),
+    loadAttachment: vi.fn(),
     storeAttachment: vi.fn(),
   });
 }

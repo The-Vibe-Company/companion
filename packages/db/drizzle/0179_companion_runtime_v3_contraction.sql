@@ -778,9 +778,9 @@ CREATE FUNCTION public.companion_v3_runtime_authorize_warm_turn_v8(
   p_org_id uuid,p_companion_id uuid,p_lane public.companion_v3_lane,p_turn_id uuid,
   p_claim_token uuid,p_claim_epoch bigint,p_gate_epoch bigint,p_protocol integer
 ) RETURNS TABLE(box_id text,pi_invocation_id text,content text,activity_cursor bigint,
-  recovery_deferred boolean,outputs_harvested boolean)
+  recovery_deferred boolean,outputs_harvested boolean,message_event_id text,attachments jsonb)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET row_security=on AS $$
-DECLARE v_material record;v_harvested boolean;
+DECLARE v_material record;v_harvested boolean;v_message_event_id text;v_attachments jsonb;
 BEGIN
   IF p_protocol<>8 THEN
     RAISE EXCEPTION 'Runtime v3 protocol 8 is required' USING ERRCODE='42501';
@@ -790,16 +790,28 @@ BEGIN
     p_org_id,p_companion_id,p_lane,p_turn_id,p_claim_token,p_claim_epoch,p_gate_epoch,7
   ) authorized;
   IF NOT FOUND THEN RETURN; END IF;
-  SELECT turn_row.outputs_harvested_at IS NOT NULL INTO v_harvested
+  SELECT turn_row.outputs_harvested_at IS NOT NULL,turn_row.message_event_id,
+    COALESCE(jsonb_agg(jsonb_build_object(
+      'storage_key',attachment.storage_key,'content_type',attachment.content_type,
+      'byte_size',attachment.byte_size,'sha256',attachment.sha256,
+      'filename',attachment.filename,'position',attachment.position,
+      'expires_at',attachment.expires_at
+    ) ORDER BY attachment.position) FILTER (WHERE attachment.id IS NOT NULL),'[]'::jsonb)
+    INTO v_harvested,v_message_event_id,v_attachments
   FROM public.companion_v3_lane_leases lease
   JOIN public.companion_v3_turns turn_row ON turn_row.org_id=lease.org_id
     AND turn_row.companion_id=lease.companion_id AND turn_row.id=lease.turn_id
+  LEFT JOIN public.companion_message_attachments attachment
+    ON attachment.org_id=turn_row.org_id AND attachment.companion_id=turn_row.companion_id
+    AND attachment.entry_event_id=turn_row.message_event_id AND attachment.kind='user_upload'
   WHERE lease.org_id=p_org_id AND lease.companion_id=p_companion_id AND lease.lane=p_lane
     AND lease.turn_id=p_turn_id AND lease.claim_token=p_claim_token
-    AND lease.claim_epoch=p_claim_epoch AND lease.gate_epoch=p_gate_epoch;
+    AND lease.claim_epoch=p_claim_epoch AND lease.gate_epoch=p_gate_epoch
+  GROUP BY turn_row.outputs_harvested_at,turn_row.message_event_id;
   IF NOT FOUND THEN RETURN; END IF;
   RETURN QUERY SELECT v_material.box_id,v_material.pi_invocation_id,v_material.content,
-    v_material.activity_cursor,v_material.recovery_deferred,v_harvested;
+    v_material.activity_cursor,v_material.recovery_deferred,v_harvested,
+    v_message_event_id,v_attachments;
 END $$;
 --> statement-breakpoint
 

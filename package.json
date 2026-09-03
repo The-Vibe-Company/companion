@@ -52,7 +52,7 @@
     "test:e2e": "node scripts/ci-playwright-policy.mjs && playwright test",
     "ci:quality": "turbo run lint typecheck test --continue=dependencies-successful",
     "verify:change": "node scripts/verify-change.mjs",
-    "verify:runtime-v3-contraction": "node scripts/runtime-v3-contraction-guard.mjs",
+    "verify:runtime-v3-contraction": "node --test scripts/runtime-v3-contraction-guard.test.mjs scripts/runtime-v3-cutover-rehearsal.test.mjs && node scripts/runtime-v3-contraction-guard.mjs",
     "rehearse:runtime-v3-cutover": "node scripts/runtime-v3-cutover-rehearsal.mjs",
     "browser:smoke": "bash scripts/agent-browser-smoke.sh",
     "box:lab:doctor": "bash scripts/box-lab.sh doctor",

@@ -943,23 +943,25 @@ companion-attachments/{org}/{companion}/{client-message-id}/{position}-{sha256}
 companion-attachments/{org}/{companion}/outputs/{turn-id}/{index}-{sha256}
 ```
 
-A retried send therefore re-uploads identical bytes to identical keys, so the `PUT` is idempotent and
+A replayed send therefore re-uploads identical bytes to identical keys, so the `PUT` is idempotent and
 leaves no orphan. The durable replay compares `(position, content_type, byte_size, filename, sha256)`
 and ignores row ids and keys: identical bytes are the same intent, and a different file at the same
 position raises the existing `client_message_id was reused with different message intent` conflict. A
 send whose transaction does not commit deletes exactly the keys that request wrote. The successful
-upload timestamp fixes `expires_at` at exactly 30 days later. Replay, reads, downloads, wake, retry,
-and restaging never update either timestamp; uploading the bytes again under a new message creates a
+upload timestamp fixes `expires_at` at exactly 30 days later. Replay, reads, downloads, wake, and
+restaging never update either timestamp; uploading the bytes again under a new message creates a
 new attachment and a new 30-day window.
 
 **Staging.** Before dispatch, runtime downloads each file, verifies
 its digest against what the control plane accepted, and writes it read-only to
 `~/attachments/<client-message-id>/<position>-<filename>`. A turn carrying an image first requires
 `image` in Pi's live `get_state.model.input`; a text-only model fails the turn with `switch_model`
-before a single byte reaches the Box. Staging is retried as an idempotent lifecycle call and, when
-those retries are exhausted, fails the turn with `attachment_staging_failed` and action `retry` —
-never `interrupted`, because no dispatch intent exists yet and the queue must be released. A retry
-rewrites the same paths.
+before a single byte reaches the Box. Runtime v3 reads the attachment rows only through the fenced
+Turn authorization, verifies size and SHA-256 after each object read, and replaces the same Box path
+set before admission. An expired upload fails with `attachment_expired`; a digest, object-storage, or
+Box staging failure fails with `attachment_staging_failed`. Both are proven-negative terminal results
+with action `none`: no Pi prompt was admitted, the lane is released, and the member can send a new
+message after correcting the file or dependency.
 
 The prompt Pi receives is the member's message plus a deterministic suffix naming each staged path,
 its content type, and its size. The suffix is composed at dispatch and never stored, so the

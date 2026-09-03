@@ -1408,6 +1408,47 @@ describe("Runtime v3 progression facts", () => {
     expect(prepared).toEqual([{ commandId: command }]);
   });
 
+  it("authorizes exact Turn input attachments for v3 staging", async () => {
+    const messageId = randomUUID();
+    const sha256 = "b".repeat(64);
+    const storageKey = `companion-attachments/${ids.org}/${ids.companion}/${messageId}/0-${sha256}`;
+    await seedPreparedV3("invocation-attachment");
+    await asApi(async (sql) => {
+      await sql`select turn from public.companion_v3_api_enqueue_turn(
+        ${ids.org}::uuid,${ids.companion}::uuid,${messageId}::uuid,
+        'inspect the attachment','web',${sql.json([{
+          position: 0,
+          storage_key: storageKey,
+          content_type: "text/plain",
+          byte_size: 12,
+          sha256,
+          filename: "notes.txt",
+        }])}::jsonb
+      )`;
+    });
+    const convergence = createRuntimeV3PostgresWarmConvergence(runtimeSql);
+    const claim = await convergence.claimLane({
+      executorId: "runtime-input-attachment",
+      lane: "main",
+    });
+    expect(claim).not.toBeNull();
+    const material = await createRuntimeV3PostgresWarmTurnPersistence(runtimeSql)
+      .authorize(claim!);
+
+    expect(material).toMatchObject({
+      messageEventId: `msg:${messageId}`,
+      inputAttachments: [{
+        storageKey,
+        contentType: "text/plain",
+        byteSize: 12,
+        sha256,
+        filename: "notes.txt",
+        position: 0,
+        expiresAt: expect.any(Date),
+      }],
+    });
+  });
+
   it("preserves the acceptance wake path when a created Box later reaches Pi admission", async () => {
     const command = randomUUID();
     await admitMain(command);

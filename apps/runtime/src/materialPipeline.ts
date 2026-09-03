@@ -5,6 +5,7 @@ import { COMPANION_SKILL_KEY, companionSkillDir } from "@companion/companion-ski
 import { getCompanionSkillPackage } from "@companion/companion-skill/package";
 import {
   BoxRuntimeProviderError,
+  type CompanionAttachmentFile,
   type CompanionBoxRuntime,
   type CompanionRuntimeSkill,
 } from "@companion/box-runtime";
@@ -16,7 +17,9 @@ import type {
   RuntimeOutputAttachment,
   RuntimeV3PreparationClaim,
   RuntimeV3PreparationStager,
+  RuntimeV3InputAttachmentStager,
 } from "@companion/companion-runtime/v3/internal";
+import { RuntimeV3InputAttachmentError } from "@companion/companion-runtime/v3/internal";
 import {
   COMPANION_ATTACHMENT_MAX_BYTES,
   COMPANION_OUTPUT_ATTACHMENT_MAX_COUNT,
@@ -37,6 +40,7 @@ import {
 
 export interface RuntimeMaterialPipeline {
   preparationStager: RuntimeV3PreparationStager;
+  inputAttachmentStager: RuntimeV3InputAttachmentStager;
   outboxHarvester: RuntimeV3OutboxHarvester;
 }
 
@@ -69,8 +73,10 @@ export function createRuntimeMaterialPipeline(input: {
   runtime(): CompanionBoxRuntime;
   /** Direct hosted-agent data path for chat files/outbox; lifecycle and staging stay on runtime(). */
   fileRuntime?: () => Pick<CompanionBoxRuntime,
-    "clearOutbox" | "listOutbox" | "readOutboxFile">;
+    "stageAttachments" | "clearOutbox" | "listOutbox" | "readOutboxFile">;
   loadSkillArchive(storagePath: string, signal: AbortSignal): Promise<Buffer>;
+  /** Read one already-authorized chat upload from object storage. */
+  loadAttachment(storageKey: string, signal: AbortSignal): Promise<Buffer>;
   /** Store one harvested image under its content address and answer with the key it landed on. */
   storeAttachment(input: {
     key: string;
@@ -191,6 +197,70 @@ export function createRuntimeMaterialPipeline(input: {
       };
     },
   };
+  const inputAttachmentStager: RuntimeV3InputAttachmentStager = {
+    async stage(stage) {
+      const fileRuntime = input.fileRuntime?.() ?? input.runtime();
+      const messageId = messageIdFromEventId(stage.messageEventId);
+      const clearStaging = async (): Promise<void> => {
+        await fileRuntime.stageAttachments({
+          boxId: stage.boxId,
+          messageId,
+          files: [],
+          signal: AbortSignal.timeout(30_000),
+        });
+      };
+      const failExpired = async (): Promise<never> => {
+        await clearStaging();
+        throw new RuntimeV3InputAttachmentError(
+          "attachment_expired",
+          "The files attached to this message have expired and must be uploaded again.",
+        );
+      };
+      const files: CompanionAttachmentFile[] = [];
+      try {
+        for (const attachment of stage.attachments) {
+          if (now() >= attachment.expiresAt.getTime()) await failExpired();
+          const bytes = await input.loadAttachment(attachment.storageKey, stage.signal);
+          const digest = createHash("sha256").update(bytes).digest("hex");
+          if (bytes.byteLength !== attachment.byteSize || digest !== attachment.sha256) {
+            throw new RuntimeV3InputAttachmentError(
+              "attachment_staging_failed",
+              "The files attached to this message could not be verified.",
+            );
+          }
+          files.push({
+            position: attachment.position,
+            filename: attachment.filename,
+            contentType: attachment.contentType,
+            bytes,
+          });
+        }
+        if (stage.attachments.some((attachment) => now() >= attachment.expiresAt.getTime())) {
+          await failExpired();
+        }
+        const staged = await fileRuntime.stageAttachments({
+          boxId: stage.boxId,
+          messageId,
+          files,
+          signal: stage.signal,
+        });
+        if (stage.attachments.some((attachment) => now() >= attachment.expiresAt.getTime())) {
+          await failExpired();
+        }
+        return staged;
+      } catch (error) {
+        if (error instanceof RuntimeV3InputAttachmentError && error.code === "attachment_expired") {
+          throw error;
+        }
+        await clearStaging();
+        if (error instanceof RuntimeV3InputAttachmentError) throw error;
+        throw new RuntimeV3InputAttachmentError(
+          "attachment_staging_failed",
+          "The files attached to this message could not be staged on the Companion Box.",
+        );
+      }
+    },
+  };
   const outboxHarvester: RuntimeV3OutboxHarvester = {
     async clearOutbox({ boxId, signal }) {
       await (input.fileRuntime?.() ?? input.runtime()).clearOutbox({ boxId, signal });
@@ -277,8 +347,18 @@ export function createRuntimeMaterialPipeline(input: {
   };
   return {
     preparationStager,
+    inputAttachmentStager,
     outboxHarvester,
   };
+}
+
+const MESSAGE_EVENT_ID_PATTERN
+  = /^msg:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
+
+function messageIdFromEventId(messageEventId: string): string {
+  const messageId = MESSAGE_EVENT_ID_PATTERN.exec(messageEventId)?.[1];
+  if (!messageId) throw new RuntimeMaterialError("runtime_material_invalid");
+  return messageId;
 }
 
 function preparationMaterial(claim: RuntimeV3PreparationClaim): RuntimeMaterialRows {

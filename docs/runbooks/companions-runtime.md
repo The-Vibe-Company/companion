@@ -474,15 +474,15 @@ Attachment codes are deliberately distinct, because they mean different things a
 - `model_image_input_unsupported` (action `switch_model`): the turn carried an image and Pi reported
   a text-only model. Nothing reached the Box. Change the Companion's model and retry; do not attempt
   to convert or strip the image on the member's behalf.
-- `attachment_staging_failed` (action `retry`): object storage or the Box file API refused the
-  staging writes until the bounded retries were exhausted. No prompt was dispatched, so this is a
-  proven negative — the queue is released and a retry rewrites the identical paths. Check object
-  storage reachability from the runtime before advising a retry loop.
-- `outbox_harvest_failed`: the turn itself succeeded and its reply is durable; only some of the
-  images Pi left behind could be read back. It is a runtime process log (`event`,
-  `companion_id`, `attempt_id`, `recovered`), not a persisted attempt error -- a succeeded attempt
-  carries no error -- so search the runtime logs rather than the turn row. Never reclassify this as a
-  failed turn. Look for a Box command-transport problem or an outbox file rewritten while being read.
+- `attachment_staging_failed` (action `none`): object storage, digest verification, or the Box file
+  API refused the v3 staging boundary. No prompt was dispatched, so this is a proven negative and
+  the lane is released. Check object storage and Box file reachability, then ask the member to send
+  a new message; there is no compatibility Retry endpoint.
+- `runtime.v3.outbox_harvest_degraded`: the Turn itself succeeded and its reply is durable; only some
+  images Pi left behind could be read back. It is an expurgated runtime process event, not a
+  persisted Turn error, so search runtime logs rather than inventing an attempt record. Never
+  reclassify this as a failed Turn. Look for a Box command-transport problem or an outbox file
+  rewritten while being read.
 
 A member reporting a missing image on a succeeded turn is the third case, not the first two. The
 outbox is emptied before every dispatch, so an image that never appeared was never harvested rather

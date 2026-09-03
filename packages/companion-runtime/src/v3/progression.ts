@@ -31,6 +31,34 @@ export interface RuntimeOutputAttachment {
   filename: string;
   uploadedAt: Date;
 }
+
+/** One user-uploaded file authorized for this durable Turn. */
+export interface RuntimeV3InputAttachment {
+  storageKey: string;
+  contentType: string;
+  byteSize: number;
+  sha256: string;
+  filename: string;
+  position: number;
+  expiresAt: Date;
+}
+
+/** Pi-visible location returned only after the runtime has verified and staged the bytes. */
+export interface RuntimeV3StagedInputAttachment {
+  path: string;
+  contentType: string;
+  byteSize: number;
+}
+
+export class RuntimeV3InputAttachmentError extends Error {
+  constructor(
+    readonly code: "attachment_expired" | "attachment_staging_failed",
+    message: string,
+  ) {
+    super(message);
+    this.name = "RuntimeV3InputAttachmentError";
+  }
+}
 import {
   RuntimeExternalDependencyError,
   RuntimeTerminalPreparationError,
@@ -456,6 +484,8 @@ export interface RuntimeV3WarmTurnMaterial {
   validationOnly?: boolean;
   directWorkspace?: boolean;
   persona?: string | null;
+  messageEventId?: string;
+  inputAttachments?: RuntimeV3InputAttachment[];
 }
 
 export interface RuntimeV3WarmTurnProjection {
@@ -599,11 +629,32 @@ export interface RuntimeV3TurnOutbox {
   clear(input: { boxId: string; signal: AbortSignal }): Promise<void>;
 }
 
+export interface RuntimeV3InputAttachmentStager {
+  stage(input: {
+    boxId: string;
+    messageEventId: string;
+    attachments: RuntimeV3InputAttachment[];
+    signal: AbortSignal;
+  }): Promise<RuntimeV3StagedInputAttachment[]>;
+}
+
 export interface RuntimeV3WarmTurnAdvanceOptions {
   persistence: RuntimeV3WarmTurnPersistence;
   pi: RuntimeV3WarmPi;
+  inputAttachments?: RuntimeV3InputAttachmentStager;
   outbox?: RuntimeV3TurnOutbox;
   onOutboxDegraded?: () => void;
+}
+
+function inputAttachmentPromptSuffix(
+  staged: readonly RuntimeV3StagedInputAttachment[],
+): string {
+  if (staged.length === 0) return "";
+  const lines = staged.map((attachment, index) =>
+    `${index + 1}. ${attachment.path} (${attachment.contentType}, ${attachment.byteSize} bytes)`);
+  const plural = staged.length === 1 ? "file" : "files";
+  return `\n\n--- The user attached ${staged.length} ${plural}, staged read-only at:\n`
+    + `${lines.join("\n")}\n`;
 }
 
 const LANE_CONVERGENCE_LIMIT = 16;
@@ -880,6 +931,32 @@ export function createRuntimeV3WarmTurnAdvance(
         return { kind: "ack_completed" };
       }
       if (claim.turn.state === "queued") {
+        const inputAttachments = material.inputAttachments ?? [];
+        let stagedAttachments: RuntimeV3StagedInputAttachment[] = [];
+        if (inputAttachments.length > 0) {
+          const stager = options.inputAttachments;
+          const messageEventId = material.messageEventId;
+          if (!stager || !messageEventId) {
+            return {
+              kind: "failed",
+              code: "attachment_staging_unavailable",
+              message: "The files attached to this message could not be prepared.",
+              action: "none",
+            };
+          }
+          stagedAttachments = await stager.stage({
+            boxId: material.boxId,
+            messageEventId,
+            attachments: inputAttachments,
+            signal: boundedSignal(signal, COMPANION_RUNTIME_V3_BUDGETS.heartbeatCommandMs),
+          });
+        }
+        if (options.outbox && !material.backgroundRoutine) {
+          await options.outbox.clear({
+            boxId: material.boxId,
+            signal: boundedSignal(signal, COMPANION_RUNTIME_V3_BUDGETS.heartbeatCommandMs),
+          });
+        }
         const admissionFence = { invocationId: material.piInvocationId, cursor: material.cursor };
         const begun = signal
           ? await options.persistence.beginAdmission(claim, admissionFence, signal)
@@ -901,7 +978,7 @@ export function createRuntimeV3WarmTurnAdvance(
           commandId: claim.turn.commandId,
           turnId: claim.turn.id,
           expectedInvocationId: material.piInvocationId,
-          message: material.content,
+          message: material.content + inputAttachmentPromptSuffix(stagedAttachments),
           persona: material.persona,
           validationOnly: material.validationOnly,
           directWorkspace: material.directWorkspace,
@@ -1267,8 +1344,16 @@ export function createRuntimeV3WarmTurnAdvance(
         if (!page.hasMore) return { kind: "release" };
       }
       return { kind: "release" };
-    } catch {
+    } catch (error) {
       if (signal?.aborted) return { kind: "release" };
+      if (error instanceof RuntimeV3InputAttachmentError) {
+        return {
+          kind: "failed",
+          code: error.code,
+          message: error.message,
+          action: "none",
+        };
+      }
       if (projectionPendingAck === "terminal") {
         return { kind: "retry_ack" };
       }

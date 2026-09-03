@@ -269,6 +269,65 @@ describe("Runtime v3 progression interface", () => {
     expect(prompt).not.toHaveBeenCalled();
   });
 
+  it("stages authorized input files and clears the outbox before Pi admission", async () => {
+    const stage = vi.fn().mockResolvedValue([{
+      path: "~/attachments/2f883a91-92dd-4fec-b674-b7d250f81f61/0-notes.txt",
+      contentType: "text/plain",
+      byteSize: 5,
+    }]);
+    const clear = vi.fn().mockResolvedValue(undefined);
+    const beginAdmission = vi.fn().mockResolvedValue(true);
+    const prompt = vi.fn().mockResolvedValue({
+      outcome: "rejected" as const,
+      code: "pi_prompt_refused",
+    });
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789",
+          piInvocationId: "invocation-1",
+          content: "Read this",
+          cursor: 0n,
+          messageEventId: `msg:${acceptedTurn.id}`,
+          inputAttachments: [{
+            storageKey: "companion-attachments/object",
+            contentType: "text/plain",
+            byteSize: 5,
+            sha256: "a".repeat(64),
+            filename: "notes.txt",
+            position: 0,
+            expiresAt: new Date("2026-10-01T00:00:00.000Z"),
+          }],
+        }),
+        beginAdmission,
+        recordAdmission: vi.fn(),
+        project: vi.fn(),
+      },
+      pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
+      inputAttachments: { stage },
+      outbox: { harvest: vi.fn(), clear },
+    });
+
+    await expect(advance(mainClaim)).resolves.toMatchObject({
+      kind: "external_retry",
+      failureClass: "box",
+    });
+    expect(stage).toHaveBeenCalledWith(expect.objectContaining({
+      messageEventId: `msg:${acceptedTurn.id}`,
+    }));
+    expect(prompt).toHaveBeenCalledWith(expect.objectContaining({
+      message: expect.stringContaining(
+        "~/attachments/2f883a91-92dd-4fec-b674-b7d250f81f61/0-notes.txt (text/plain, 5 bytes)",
+      ),
+    }));
+    expect(stage.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY)
+      .toBeLessThan(clear.mock.invocationCallOrder[0] ?? Number.NEGATIVE_INFINITY);
+    expect(clear.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY)
+      .toBeLessThan(beginAdmission.mock.invocationCallOrder[0] ?? Number.NEGATIVE_INFINITY);
+    expect(beginAdmission.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY)
+      .toBeLessThan(prompt.mock.invocationCallOrder[0] ?? Number.NEGATIVE_INFINITY);
+  });
+
   it.each([
     ["pi_prompt_refused", "box", "This work is blocked because its Box is unavailable."],
     ["model_unavailable", "model", "This work is blocked until the selected model is usable again."],

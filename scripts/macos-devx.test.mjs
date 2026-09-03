@@ -54,7 +54,7 @@ test("the Mac redesign keeps three native zones and the shared Grok Bot grammar"
   assert.match(inspector, /CharacterMarkShape\.allCases/);
   assert.match(inspector, /Intelligence[\s\S]*?Routines[\s\S]*?Skills & triggers[\s\S]*?Connected accounts/);
   assert.match(inspector, /\.onChange\(of: companion\)[\s\S]*?model\.reconcile\(updated\)/);
-  assert.match(inspector, /let accepted = try await sessionStore\.restartCompanion[\s\S]*?lifecycle = accepted[\s\S]*?await poll/);
+  assert.match(inspector, /let accepted = try await sessionStore\.restartCompanion[\s\S]*?lifecycle = accepted[\s\S]*?sawRecycleProjection = accepted\.intent == \.recyclePi[\s\S]*?await poll/);
   assert.match(inspector, /\.onChange\(of: companion\.runtime\.latestLifecycle\)[\s\S]*?adopt\(latest\)/);
   assert.match(inspector, /latest\.intent == \.recyclePi[\s\S]*?latest\.isActive[\s\S]*?await poll/);
   assert.match(inspector, /latest\.intent == \.prepare[\s\S]*?sawRecycleProjection[\s\S]*?lifecycle = latest/);

@@ -31,6 +31,7 @@ function pipeline(input: {
     contentType: string;
     signal: AbortSignal;
   }) => Promise<void>;
+  loadAttachment?: (storageKey: string, signal: AbortSignal) => Promise<Buffer>;
   now?: () => number;
 }) {
   const options = {
@@ -45,6 +46,7 @@ function pipeline(input: {
     // SAFETY: each test supplies every outbox method it invokes.
     runtime: () => input.runtime as CompanionBoxRuntime,
     loadSkillArchive: vi.fn(),
+    loadAttachment: input.loadAttachment ?? vi.fn(),
     storeAttachment: input.storeAttachment ?? vi.fn(async () => undefined),
   };
   if (input.now) Object.assign(options, { now: input.now });
@@ -71,6 +73,71 @@ function harvestRuntime(entries: ReturnType<typeof outboxEntry>[], bytes: Buffer
     })),
   };
 }
+
+describe("Runtime v3 inbound attachment staging", () => {
+  it("verifies durable bytes and stages them under the client message identity", async () => {
+    const bytes = Buffer.from("hello attachment");
+    const stageAttachments = vi.fn(async ({ messageId, files }:
+      Parameters<CompanionBoxRuntime["stageAttachments"]>[0]) => files.map((file) => ({
+      position: file.position,
+      filename: file.filename,
+      contentType: file.contentType,
+      byteSize: file.bytes.byteLength,
+      path: `~/attachments/${messageId}/${file.position}-${file.filename}`,
+    })));
+    const storageKey = `companion-attachments/${orgId}/${companionId}/${turnId}/0-${digest(bytes)}`;
+    const expiresAt = new Date(Date.now() + 60_000);
+    const result = await pipeline({
+      runtime: { stageAttachments },
+      loadAttachment: vi.fn().mockResolvedValue(bytes),
+    }).inputAttachmentStager.stage({
+      boxId: "bx_23456789",
+      messageEventId: `msg:${turnId}`,
+      attachments: [{
+        storageKey,
+        contentType: "text/plain",
+        byteSize: bytes.byteLength,
+        sha256: digest(bytes),
+        filename: "notes.txt",
+        position: 0,
+        expiresAt,
+      }],
+      signal: new AbortController().signal,
+    });
+
+    expect(stageAttachments).toHaveBeenCalledWith(expect.objectContaining({
+      boxId: "bx_23456789",
+      messageId: turnId,
+      files: [expect.objectContaining({ bytes, filename: "notes.txt", position: 0 })],
+    }));
+    expect(result).toEqual([expect.objectContaining({
+      path: `~/attachments/${turnId}/0-notes.txt`,
+    })]);
+  });
+
+  it("clears staged bytes and fails closed when the object digest differs", async () => {
+    const expected = Buffer.from("expected");
+    const stageAttachments = vi.fn().mockResolvedValue([]);
+    await expect(pipeline({
+      runtime: { stageAttachments },
+      loadAttachment: vi.fn().mockResolvedValue(Buffer.from("tampered")),
+    }).inputAttachmentStager.stage({
+      boxId: "bx_23456789",
+      messageEventId: `msg:${turnId}`,
+      attachments: [{
+        storageKey: "companion-attachments/example",
+        contentType: "text/plain",
+        byteSize: expected.byteLength,
+        sha256: digest(expected),
+        filename: "notes.txt",
+        position: 0,
+        expiresAt: new Date(Date.now() + 60_000),
+      }],
+      signal: new AbortController().signal,
+    })).rejects.toMatchObject({ code: "attachment_staging_failed" });
+    expect(stageAttachments).toHaveBeenCalledWith(expect.objectContaining({ files: [] }));
+  });
+});
 
 describe("Runtime v3 Pi outbox harvest", () => {
   it("stores an image under the exact tenant/Companion/Turn content address", async () => {
