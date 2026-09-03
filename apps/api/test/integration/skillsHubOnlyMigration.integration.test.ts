@@ -60,6 +60,7 @@ describe("Skills Hub-only database migration", () => {
               'companion_v3_runtime_project_native_page_v4',
               'companion_v3_runtime_project_native_page_v5',
               'companion_v3_runtime_project_native_page_v6',
+              'companion_v3_runtime_project_native_page_v7',
               'companion_v3_runtime_project_routine_page',
               'companion_v3_runtime_project_background_page_v7',
               'companion_v3_runtime_project_background_page_v8'
