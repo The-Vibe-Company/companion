@@ -83,9 +83,9 @@ public struct CompanionRosterState: Sendable {
     @discardableResult
     public mutating func reconcileDeletionResponse(
         companionID: String,
-        operation: CompanionLifecycleReceipt
+        lifecycle: CompanionLifecycleReceipt
     ) -> CompanionSummary? {
-        guard !operation.isActive else {
+        guard !lifecycle.isActive else {
             acceptDeletion(companionID: companionID)
             return nil
         }

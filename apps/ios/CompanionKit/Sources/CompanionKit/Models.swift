@@ -327,7 +327,6 @@ public struct CompanionLifecycleReceipt: Codable, Identifiable, Hashable, Sendab
     public let error: CompanionRuntimeSafeError?
 
     public var id: String { revision }
-    public var kind: CompanionLifecycleIntent { intent }
 
     enum CodingKeys: String, CodingKey {
         case intent
@@ -361,7 +360,7 @@ public struct CompanionLifecycleReceipt: Codable, Identifiable, Hashable, Sendab
     }
 
     public var isActive: Bool {
-        intent != .prepare
+        status == .pending || status == .running
     }
 }
 
@@ -510,7 +509,7 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
     }
 
     public var deletionLifecycle: CompanionLifecycleReceipt? {
-        guard runtime.latestLifecycle?.kind == .delete else { return nil }
+        guard runtime.latestLifecycle?.intent == .delete else { return nil }
         return runtime.latestLifecycle
     }
 
@@ -535,10 +534,10 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
     }
 
     public func reconcilingParentProjection(from previous: CompanionSummary) -> CompanionSummary {
-        let incomingOperationID = runtime.latestLifecycle?.id
-        let previousOperation = previous.runtime.latestLifecycle
-        let parentRuntimeIsStale = previousOperation?.isActive == true
-            && incomingOperationID != previousOperation?.id
+        let incomingLifecycleID = runtime.latestLifecycle?.id
+        let previousLifecycle = previous.runtime.latestLifecycle
+        let parentRuntimeIsStale = previousLifecycle?.isActive == true
+            && incomingLifecycleID != previousLifecycle?.id
         return CompanionSummary(
             id: id,
             name: name,

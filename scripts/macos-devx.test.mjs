@@ -54,9 +54,10 @@ test("the Mac redesign keeps three native zones and the shared Grok Bot grammar"
   assert.match(inspector, /CharacterMarkShape\.allCases/);
   assert.match(inspector, /Intelligence[\s\S]*?Routines[\s\S]*?Skills & triggers[\s\S]*?Connected accounts/);
   assert.match(inspector, /\.onChange\(of: companion\)[\s\S]*?model\.reconcile\(updated\)/);
-  assert.match(inspector, /let accepted = try await sessionStore\.restartCompanion[\s\S]*?operation = accepted[\s\S]*?await poll/);
-  assert.match(inspector, /\.onChange\(of: companion\.runtime\.latestOperation\)[\s\S]*?adopt\(latest\)/);
-  assert.match(inspector, /latest\.kind == \.restartPi[\s\S]*?latest\.isActive[\s\S]*?await poll/);
+  assert.match(inspector, /let accepted = try await sessionStore\.restartCompanion[\s\S]*?lifecycle = accepted[\s\S]*?await poll/);
+  assert.match(inspector, /\.onChange\(of: companion\.runtime\.latestLifecycle\)[\s\S]*?adopt\(latest\)/);
+  assert.match(inspector, /latest\.intent == \.recyclePi[\s\S]*?latest\.isActive[\s\S]*?await poll/);
+  assert.match(inspector, /latest\.intent == \.prepare[\s\S]*?sawRecycleProjection[\s\S]*?lifecycle = latest/);
   assert.doesNotMatch(inspector, /Button\("Restart Server"\)|target = \.box/);
   assert.doesNotMatch(inspector, /try\? await sessionStore\.restartCompanion/);
   assert.match(inspector, /memberTimezone: model\.sessionStore\.memberTimezone \?\? TimeZone\.current\.identifier/);
@@ -111,12 +112,12 @@ test("the macOS bootstrap keeps credentials, mutations, and native inputs lifecy
   assert.match(chatView, /\.onChange\(of: companion\)[\s\S]*?model\.updateCompanion/);
   assert.match(chatView, /startAccessingSecurityScopedResource\(\)[\s\S]*?stopAccessingSecurityScopedResource\(\)/);
   assert.match(workspaceView, /func duplicate[\s\S]*?guard companion\.access\.canDeleteCompanion/);
-  assert.match(workspaceView, /reconcileDeletionResponse[\s\S]*?operation\.isActive/);
+  assert.match(workspaceView, /reconcileDeletionResponse[\s\S]*?lifecycle\.isActive/);
   assert.match(workspaceView, /pendingDeletionIDs\.insert\(companion\.id\)/);
   assert.match(workspaceView, /if deletionRequestsInFlight\.isEmpty[\s\S]*?rosterState\.reconcile/);
   assert.match(deleteFunction, /deletionRequestsInFlight\.insert\(companion\.id\)[\s\S]*?removeOptimistically/);
   assert.match(deleteFunction, /catch \{[\s\S]*?deletionRequestsInFlight\.remove\(companion\.id\)[\s\S]*?pendingDeletionIDs\.remove\(companion\.id\)[\s\S]*?restoreDeletion/);
-  assert.match(workspaceView, /visibleCompanionsReconcilingDeletions[\s\S]*?companion\.deletionOperation\?\.isActive == true[\s\S]*?retainedPendingIDs\.insert/);
+  assert.match(workspaceView, /visibleCompanionsReconcilingDeletions[\s\S]*?companion\.deletionLifecycle\?\.isActive == true[\s\S]*?retainedPendingIDs\.insert/);
   assert.match(workspaceView, /func duplicate[\s\S]*?!isDeletionInProgress\(companion\)/);
   assert.match(workspaceView, /performMemberStateUpdate[\s\S]*?!isDeletionInProgress\(companion\)/);
   assert.match(settings, /oauth\?\.flow == \.deviceCode[\s\S]*?pollCompanionProviderOAuth\(\)/);

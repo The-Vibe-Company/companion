@@ -568,11 +568,12 @@ private struct CompanionMacRestartButtons: View {
     let sessionStore: SessionStore
     @State private var target: CompanionRuntimeRestartTarget?
     @State private var working = false
-    @State private var operation: CompanionOperationSummary?
+    @State private var lifecycle: CompanionLifecycleReceipt?
     @State private var requestID: UUID?
     @State private var requestTarget: CompanionRuntimeRestartTarget?
     @State private var errorMessage: String?
     @State private var restartTask: Task<Void, Never>?
+    @State private var sawRecycleProjection = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -580,10 +581,10 @@ private struct CompanionMacRestartButtons: View {
                 .font(.system(size: 13))
                 .foregroundStyle(CompanionIOSTheme.textSecondary)
             Button("Restart") { target = .pi }
-            if let operation {
-                Label(operationLabel(operation), systemImage: operationSymbol(operation))
+            if let lifecycle {
+                Label(lifecycleLabel(lifecycle), systemImage: lifecycleSymbol(lifecycle))
                     .font(.system(size: 13))
-                    .foregroundStyle(operationColor(operation))
+                    .foregroundStyle(lifecycleColor(lifecycle))
             }
             if let errorMessage {
                 Text(errorMessage)
@@ -594,7 +595,7 @@ private struct CompanionMacRestartButtons: View {
         .buttonStyle(.plain)
         .foregroundStyle(CompanionIOSTheme.linkBlue)
         .padding(16)
-        .disabled(working || operation?.isActive == true)
+        .disabled(working || lifecycle?.isActive == true)
         .confirmationDialog(
             "Restart the Companion?",
             isPresented: Binding(get: { target != nil }, set: { if !$0 { target = nil } })
@@ -609,21 +610,35 @@ private struct CompanionMacRestartButtons: View {
         } message: {
             Text("Active work may be interrupted. Pi is recycled asynchronously; the Box and saved files remain in place.")
         }
-        .onAppear { adopt(companion.runtime.latestOperation) }
-        .onChange(of: companion.runtime.latestOperation) { _, latest in
+        .onAppear { adopt(companion.runtime.latestLifecycle) }
+        .onChange(of: companion.runtime.latestLifecycle) { _, latest in
             adopt(latest)
         }
         .onDisappear { restartTask?.cancel() }
     }
 
-    private func adopt(_ latest: CompanionOperationSummary?) {
-        guard let latest,
-              latest.kind == .restartPi,
-              operation?.id != latest.id || operation?.status != latest.status else { return }
-        operation = latest
-        guard latest.isActive else { return }
+    private func adopt(_ latest: CompanionLifecycleReceipt?) {
+        guard let latest else { return }
+        if latest.intent == .prepare,
+           lifecycle?.intent == .recyclePi,
+           sawRecycleProjection {
+            lifecycle = latest
+            sawRecycleProjection = false
+            requestID = nil
+            requestTarget = nil
+            return
+        }
+        guard latest.intent == .recyclePi,
+              lifecycle?.id != latest.id || lifecycle?.status != latest.status else { return }
+        sawRecycleProjection = true
+        lifecycle = latest
+        guard latest.isActive else {
+            requestID = nil
+            requestTarget = nil
+            return
+        }
         restartTask?.cancel()
-        restartTask = Task { await poll(operationID: latest.id) }
+        restartTask = Task { await poll() }
     }
 
     private func restart(_ selected: CompanionRuntimeRestartTarget) async {
@@ -633,16 +648,17 @@ private struct CompanionMacRestartButtons: View {
         let id = requestID ?? UUID()
         requestID = id
         requestTarget = selected
+        sawRecycleProjection = false
         do {
             let accepted = try await sessionStore.restartCompanion(
                 companionID: companion.id,
                 target: selected,
                 requestID: id
             )
-            operation = accepted
+            lifecycle = accepted
             working = false
             if accepted.isActive {
-                await poll(operationID: accepted.id)
+                await poll()
             } else {
                 requestID = nil
                 requestTarget = nil
@@ -656,16 +672,26 @@ private struct CompanionMacRestartButtons: View {
         }
     }
 
-    private func poll(operationID: String) async {
+    private func poll() async {
         var attempts = 0
-        while !Task.isCancelled, operation?.isActive == true, attempts < 150 {
+        while !Task.isCancelled, lifecycle?.isActive == true, attempts < 150 {
             attempts += 1
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled else { return }
             do {
                 let updated = try await sessionStore.companionRuntime(companionID: companion.id)
-                guard let latest = updated.runtime.latestOperation, latest.id == operationID else { continue }
-                operation = latest
+                guard let latest = updated.runtime.latestLifecycle else { continue }
+                if latest.intent == .prepare {
+                    guard sawRecycleProjection else { continue }
+                    lifecycle = latest
+                    sawRecycleProjection = false
+                    requestID = nil
+                    requestTarget = nil
+                    continue
+                }
+                guard latest.intent == .recyclePi else { continue }
+                sawRecycleProjection = true
+                lifecycle = latest
                 if !latest.isActive {
                     requestID = nil
                     requestTarget = nil
@@ -674,25 +700,25 @@ private struct CompanionMacRestartButtons: View {
                 errorMessage = companionMacErrorMessage(error, fallback: "Restart status is temporarily unavailable.")
             }
         }
-        if attempts == 150, operation?.isActive == true {
+        if attempts == 150, lifecycle?.isActive == true {
             errorMessage = "Restart status is taking longer than expected."
         }
     }
 
-    private func operationLabel(_ operation: CompanionOperationSummary) -> String {
-        switch operation.status {
+    private func lifecycleLabel(_ lifecycle: CompanionLifecycleReceipt) -> String {
+        switch lifecycle.status {
         case .pending: "Restart queued"
         case .running: "Restarting…"
         case .succeeded: "Restarted"
-        case .failed: operation.error?.message ?? "Restart failed"
+        case .failed: lifecycle.error?.message ?? "Restart failed"
         case .interrupted: "Restart interrupted"
         case .cancelled: "Restart cancelled"
         case .unknown: "Restart status unknown"
         }
     }
 
-    private func operationSymbol(_ operation: CompanionOperationSummary) -> String {
-        switch operation.status {
+    private func lifecycleSymbol(_ lifecycle: CompanionLifecycleReceipt) -> String {
+        switch lifecycle.status {
         case .pending, .running: "arrow.triangle.2.circlepath"
         case .succeeded: "checkmark.circle.fill"
         case .failed, .interrupted, .cancelled: "exclamationmark.triangle.fill"
@@ -700,8 +726,8 @@ private struct CompanionMacRestartButtons: View {
         }
     }
 
-    private func operationColor(_ operation: CompanionOperationSummary) -> Color {
-        switch operation.status {
+    private func lifecycleColor(_ lifecycle: CompanionLifecycleReceipt) -> Color {
+        switch lifecycle.status {
         case .pending, .running, .unknown: CompanionIOSTheme.textSecondary
         case .succeeded: CompanionIOSTheme.successText
         case .failed, .interrupted, .cancelled: CompanionIOSTheme.dangerText

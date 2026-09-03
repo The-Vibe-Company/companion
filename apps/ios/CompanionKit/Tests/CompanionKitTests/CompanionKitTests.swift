@@ -603,9 +603,9 @@ func decodesCompanionSettingsAuthorityAndDurableDeletion() throws {
       "unread":false,
       "last_message":null,
       "runtime":{
-        "state":"running",
+        "state":"error",
         "replying":false,
-        "last_error":null,
+        "last_error":"Deletion could not complete.",
         "provider_ids":["anthropic"],
         "lifecycle_intent":"delete"
       }
@@ -618,6 +618,8 @@ func decodesCompanionSettingsAuthorityAndDurableDeletion() throws {
     #expect(companion.runtime.providerIDs == ["anthropic"])
     #expect(companion.deletionLifecycle?.intent == .delete)
     #expect(companion.deletionLifecycle?.error?.message == "Deletion could not complete.")
+    #expect(companion.deletionLifecycle?.status == .failed)
+    #expect(companion.deletionLifecycle?.isActive == false)
 }
 
 @Test
@@ -818,7 +820,7 @@ func rosterKeepsAnAcceptedDeletionRemovedUntilTheServerReconcilesIt() throws {
     var roster = CompanionRosterState(companions: [luna, nova])
 
     roster.removeOptimistically(companionID: luna.id)
-    roster.reconcileDeletionResponse(companionID: luna.id, operation: lifecycle)
+    roster.reconcileDeletionResponse(companionID: luna.id, lifecycle: lifecycle)
 
     #expect(roster.companions.map(\.id) == [nova.id])
     #expect(roster.restoreDeletion(companionID: luna.id) == nil)
@@ -1871,7 +1873,6 @@ func decodesOnlyUnresolvedLegacyInterruptionAsVisible() throws {
         "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
         "status":"interrupted",
         "queue_sequence":20,
-        ,
         "replying":false,
         "error":{"code":"cold_start_deadline_exceeded","message":"The Companion did not start before its deadline.","action":"retry"},
         "state_changed_at":"2026-08-26T05:59:33.505Z",
@@ -1962,7 +1963,6 @@ func hidesAutoAbandonedInterruptionFromConversationTail() throws {
         "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
         "status":"interrupted",
         "queue_sequence":20,
-        ,
         "replying":false,
         "error":{"code":"turn_stalled","message":"The Companion stopped making progress.","action":"none"},
         "state_changed_at":"2026-08-26T05:59:33.505Z",
@@ -3150,13 +3150,13 @@ func usesRealCompanionManagementRoutesAndRetainsProviderOAuthAuthority() async t
         #expect(apiError.status == 0)
         #expect(apiError.code == "network_error")
     }
-    let deleteOperation = try await client.deleteCompanion(
+    let deleteLifecycle = try await client.deleteCompanion(
         companionID: companion.id,
         requestID: deleteRequestID
     )
     #expect(ManagementMockURLProtocol.deleteAttempts == 2)
-    #expect(deleteOperation.kind == .delete)
-    #expect(deleteOperation.status == .pending)
+    #expect(deleteLifecycle.intent == .delete)
+    #expect(deleteLifecycle.status == .pending)
 
     let plugin = try await client.saveCompanionPlugin(.init(
         provider: "custom",

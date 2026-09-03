@@ -112,9 +112,9 @@ struct CompanionDetailDemoView: View {
                             deletionRequested = true
                             showingDetails = false
                         },
-                        onDeletionAccepted: { _, operation in
-                            deletionRequested = operation.isActive
-                            showingDetails = !operation.isActive
+                        onDeletionAccepted: { _, lifecycle in
+                            deletionRequested = lifecycle.isActive
+                            showingDetails = !lifecycle.isActive
                         },
                         services: CompanionDetailDemoFixtures.services(access: access)
                     )

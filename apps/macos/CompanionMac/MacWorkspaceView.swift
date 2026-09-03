@@ -83,7 +83,7 @@ final class CompanionMacWorkspaceModel {
                 $0.runtime.replying
                     || $0.runtime.state == .provisioning
                     || $0.runtime.state == .stopping
-                    || $0.deletionOperation?.isActive == true
+                    || $0.deletionLifecycle?.isActive == true
             }
             try? await Task.sleep(for: .seconds(hasActiveWork ? 8 : 45))
             guard !Task.isCancelled else { return }
@@ -194,22 +194,22 @@ final class CompanionMacWorkspaceModel {
         if selectedCompanionID == companion.id { selectedCompanionID = nil }
         Task {
             do {
-                let operation = try await sessionStore.deleteCompanion(
+                let lifecycle = try await sessionStore.deleteCompanion(
                     companionID: companion.id,
                     requestID: UUID()
                 )
                 deletionRequestsInFlight.remove(companion.id)
-                if !operation.isActive { pendingDeletionIDs.remove(companion.id) }
+                if !lifecycle.isActive { pendingDeletionIDs.remove(companion.id) }
                 let restored = rosterState.reconcileDeletionResponse(
                     companionID: companion.id,
-                    operation: operation
+                    lifecycle: lifecycle
                 )
-                if operation.isActive {
+                if lifecycle.isActive {
                     actionMessage = "Deletion requested for \(companion.name)."
                 } else {
                     if wasSelected, restored != nil { selectedCompanionID = companion.id }
                     actionMessage = nil
-                    actionError = operation.error?.message ?? "\(companion.name) could not be deleted and was restored."
+                    actionError = lifecycle.error?.message ?? "\(companion.name) could not be deleted and was restored."
                 }
             } catch {
                 deletionRequestsInFlight.remove(companion.id)
@@ -249,7 +249,7 @@ final class CompanionMacWorkspaceModel {
     }
 
     private func isDeletionInProgress(_ companion: CompanionSummary) -> Bool {
-        pendingDeletionIDs.contains(companion.id) || companion.deletionOperation?.isActive == true
+        pendingDeletionIDs.contains(companion.id) || companion.deletionLifecycle?.isActive == true
     }
 
     private func loadSectionsResult() async -> Result<[CompanionSection], Error> {
@@ -271,13 +271,13 @@ final class CompanionMacWorkspaceModel {
         var visible: [CompanionSummary] = []
 
         for companion in next {
-            if companion.deletionOperation?.isActive == true {
+            if companion.deletionLifecycle?.isActive == true {
                 retainedPendingIDs.insert(companion.id)
                 continue
             }
-            if pendingDeletionIDs.contains(companion.id), companion.deletionOperation == nil {
-                // A list response can briefly lag the accepted delete operation. Keep that stale
-                // projection hidden until the API reports a terminal operation or removes it.
+            if pendingDeletionIDs.contains(companion.id), companion.deletionLifecycle == nil {
+                // A list response can briefly lag the accepted delete lifecycle. Keep that stale
+                // projection hidden until the API reports a terminal lifecycle or removes it.
                 retainedPendingIDs.insert(companion.id)
                 continue
             }

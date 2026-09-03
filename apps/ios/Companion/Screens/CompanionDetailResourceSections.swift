@@ -768,9 +768,9 @@ struct CompanionResourceSections: View {
     }
 
     private var runtimeMessage: String {
-        if let operation = latestLifecycle {
-            let label = lifecycleLabel(operation.kind)
-            switch operation.status {
+        if let lifecycle = latestLifecycle {
+            let label = lifecycleLabel(lifecycle.intent)
+            switch lifecycle.status {
             case .pending:
                 return "\(label) is queued. Status refreshes automatically."
             case .running:
@@ -780,9 +780,9 @@ struct CompanionResourceSections: View {
             case .succeeded:
                 return "\(label) completed."
             case .failed, .interrupted, .cancelled:
-                return operation.error?.message ?? "\(label) did not complete. Retry when it is safe."
+                return lifecycle.error?.message ?? "\(label) did not complete. Retry when it is safe."
             case .unknown:
-                return "Runtime operation status is unavailable."
+                return "Runtime lifecycle status is unavailable."
             }
         }
         if let lastError = currentCompanion.runtime.lastError, !lastError.isEmpty { return lastError }
@@ -794,18 +794,18 @@ struct CompanionResourceSections: View {
     }
 
     private var runtimeMessageColor: Color {
-        guard let operation = latestLifecycle else {
+        guard let lifecycle = latestLifecycle else {
             return currentCompanion.runtime.state == .error ? .companionDanger : .companionMuted
         }
-        switch operation.status {
+        switch lifecycle.status {
         case .failed, .interrupted, .cancelled: return .companionDanger
         default: return .companionMuted
         }
     }
 
     private var runtimePollingID: String {
-        let operation = latestLifecycle
-        return "\(currentCompanion.id):\(operation?.id ?? "none"):\(operation?.status.rawValue ?? "none"):\(currentCompanion.runtime.state.rawValue)"
+        let lifecycle = latestLifecycle
+        return "\(currentCompanion.id):\(lifecycle?.id ?? "none"):\(lifecycle?.status.rawValue ?? "none"):\(currentCompanion.runtime.state.rawValue)"
     }
 
     private var needsRuntimePolling: Bool {
@@ -1155,18 +1155,18 @@ struct CompanionResourceSections: View {
         let requestID = restartRequestIDs[target] ?? UUID()
         restartRequestIDs[target] = requestID
         do {
-            let operation: CompanionLifecycleReceipt
+            let lifecycle: CompanionLifecycleReceipt
             if let services {
-                operation = try await services.restart(target, requestID)
+                lifecycle = try await services.restart(target, requestID)
             } else {
-                operation = try await sessionStore.restartCompanion(
+                lifecycle = try await sessionStore.restartCompanion(
                     companionID: currentCompanion.id,
                     target: target,
                     requestID: requestID
                 )
             }
             restartRequestIDs[target] = nil
-            acceptedLifecycle = operation
+            acceptedLifecycle = lifecycle
             success = "Restart accepted. It joins any recovery already in progress."
         } catch {
             if let apiError = error as? APIError, apiError.status == 0 {

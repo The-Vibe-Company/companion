@@ -814,8 +814,8 @@ struct CompanionListView: View {
 
     private func deleteMenuLabel(for companion: CompanionSummary) -> String {
         if deleteRequestIDs[companion.id] != nil { return "Retry Delete" }
-        guard let operation = effectiveDeletion(for: companion) else { return "Delete Companion" }
-        if operation.status == .failed || operation.status == .interrupted || operation.status == .cancelled {
+        guard let lifecycle = effectiveDeletion(for: companion) else { return "Delete Companion" }
+        if lifecycle.status == .failed || lifecycle.status == .interrupted || lifecycle.status == .cancelled {
             return "Retry Delete"
         }
         return "Delete Companion"
@@ -832,17 +832,17 @@ struct CompanionListView: View {
         deleteRequestIDs[companion.id] = requestID
         beginOptimisticDeletion(companion, requestID)
         do {
-            let operation: CompanionLifecycleReceipt
+            let lifecycle: CompanionLifecycleReceipt
             if let services {
-                operation = try await services.deleteCompanion(companion.id, requestID)
+                lifecycle = try await services.deleteCompanion(companion.id, requestID)
             } else {
-                operation = try await sessionStore.deleteCompanion(
+                lifecycle = try await sessionStore.deleteCompanion(
                     companionID: companion.id,
                     requestID: requestID
                 )
             }
             deleteRequestIDs[companion.id] = nil
-            deletionAccepted(companion.id, operation)
+            deletionAccepted(companion.id, lifecycle)
         } catch {
             deletionFailed(companion, requestID, error)
         }
@@ -872,15 +872,15 @@ struct CompanionListView: View {
         AccessibilityNotification.Announcement("\(companion.name) removed.").post()
     }
 
-    private func deletionAccepted(_ companionID: String, _ operation: CompanionLifecycleReceipt) {
+    private func deletionAccepted(_ companionID: String, _ lifecycle: CompanionLifecycleReceipt) {
         deletingCompanionIDs.remove(companionID)
         deleteRequestIDs[companionID] = nil
-        let restored = reconcileDeletionResponse(companionID: companionID, operation: operation)
-        guard operation.isActive else {
+        let restored = reconcileDeletionResponse(companionID: companionID, lifecycle: lifecycle)
+        guard lifecycle.isActive else {
             let name = restored?.name
                 ?? companions.first(where: { $0.id == companionID })?.name
                 ?? "Companion"
-            let message = operation.error?.message ?? "\(name) could not be deleted."
+            let message = lifecycle.error?.message ?? "\(name) could not be deleted."
             rosterActionError = restored == nil ? message : "\(message) \(name) was restored."
             rosterNotice = nil
             announceRestoration(restored)
@@ -928,14 +928,14 @@ struct CompanionListView: View {
 
     private func reconcileDeletionResponse(
         companionID: String,
-        operation: CompanionLifecycleReceipt
+        lifecycle: CompanionLifecycleReceipt
     ) -> CompanionSummary? {
         if reduceMotion {
-            return rosterState.reconcileDeletionResponse(companionID: companionID, operation: operation)
+            return rosterState.reconcileDeletionResponse(companionID: companionID, lifecycle: lifecycle)
         }
         var restored: CompanionSummary?
         withAnimation(.easeOut(duration: 0.2)) {
-            restored = rosterState.reconcileDeletionResponse(companionID: companionID, operation: operation)
+            restored = rosterState.reconcileDeletionResponse(companionID: companionID, lifecycle: lifecycle)
         }
         return restored
     }
