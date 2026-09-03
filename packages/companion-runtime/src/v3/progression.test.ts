@@ -403,6 +403,96 @@ describe("Runtime v3 progression interface", () => {
     expect(finishDecisionAction).toHaveBeenCalledOnce();
   });
 
+  it.each(["no_active_attempt", "attempt_mismatch"])(
+    "checkpoints a proven-obsolete decision response (%s) before settling the terminal journal",
+    async (code) => {
+      const finishDecisionAction = vi.fn().mockResolvedValue(true);
+      const respondExtensionUi = vi.fn().mockResolvedValue({
+        outcome: "rejected" as const,
+        code,
+      });
+      const read = vi.fn().mockResolvedValue({
+        events: [
+          {
+            sequence: 1n, invocationId: "invocation-1", attemptId: acceptedTurn.id,
+            kind: "pi_event" as const,
+            event: {
+              type: "message_end" as const,
+              message: {
+                role: "assistant" as const,
+                content: [{ type: "text" as const, text: "Already settled." }],
+                stopReason: "stop" as const,
+              },
+            },
+          },
+          {
+            sequence: 2n, invocationId: "invocation-1", attemptId: acceptedTurn.id,
+            kind: "pi_event" as const, event: { type: "agent_settled" as const },
+          },
+        ],
+        nextCursor: 2n, acknowledgedCursor: 0n, hasMore: false,
+      });
+      const acknowledge = vi.fn().mockResolvedValue(2n);
+      const advance = createRuntimeV3WarmTurnAdvance({
+        persistence: {
+          authorize: vi.fn().mockResolvedValue({
+            boxId: "bx_23456789", piInvocationId: "invocation-1", content: "waiting", cursor: 0n,
+          }),
+          beginAdmission: vi.fn(), recordAdmission: vi.fn(),
+          beginDecisionAction: vi.fn().mockResolvedValue({
+            kind: "respond", decisionId: "85312651-3171-4ac8-a99c-8af0875951aa",
+            commandId: "bfdd76e0-a78e-4fc7-8230-f4dfd3caf391",
+            response: { type: "extension_ui_response", id: "question-1", value: "Proceed" },
+          }),
+          finishDecisionAction,
+          project: vi.fn().mockResolvedValue("succeeded"),
+        },
+        pi: { prompt: vi.fn(), respondExtensionUi, read, acknowledge },
+      });
+      const claim = { ...mainClaim, turn: { ...acceptedTurn, state: "running" as const } };
+
+      await expect(advance(claim)).resolves.toEqual({ kind: "ack_completed" });
+      expect(respondExtensionUi).toHaveBeenCalledOnce();
+      expect(finishDecisionAction).toHaveBeenCalledWith(claim, {
+        decisionId: "85312651-3171-4ac8-a99c-8af0875951aa",
+        kind: "obsolete",
+        invocationId: "invocation-1",
+      });
+      expect(read).toHaveBeenCalledOnce();
+      expect(acknowledge).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("keeps a transiently refused decision response reclaimable", async () => {
+    const finishDecisionAction = vi.fn();
+    const read = vi.fn();
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1", content: "waiting", cursor: 0n,
+        }),
+        beginAdmission: vi.fn(), recordAdmission: vi.fn(), project: vi.fn(),
+        beginDecisionAction: vi.fn().mockResolvedValue({
+          kind: "respond", decisionId: "85312651-3171-4ac8-a99c-8af0875951aa",
+          commandId: "bfdd76e0-a78e-4fc7-8230-f4dfd3caf391",
+          response: { type: "extension_ui_response", id: "question-1", value: "Proceed" },
+        }),
+        finishDecisionAction,
+      },
+      pi: {
+        prompt: vi.fn(), read, acknowledge: vi.fn(),
+        respondExtensionUi: vi.fn().mockResolvedValue({
+          outcome: "rejected" as const, code: "pi_decision_refused",
+        }),
+      },
+    });
+    const claim = { ...mainClaim, turn: { ...acceptedTurn, state: "running" as const } };
+
+    await expect(advance(claim)).resolves.toEqual({ kind: "release" });
+    expect(finishDecisionAction).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
+  });
+
   it("releases a decision handoff whose durable begin reply was lost before Pi", async () => {
     const respondExtensionUi = vi.fn();
     const advance = createRuntimeV3WarmTurnAdvance({

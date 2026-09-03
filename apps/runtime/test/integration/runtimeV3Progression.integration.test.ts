@@ -1484,6 +1484,80 @@ describe("Runtime v3 progression facts", () => {
     expect(stored).toEqual({ bytes: 32_000 });
   });
 
+  it("settles the terminal journal after Pi proves an answered decision obsolete", async () => {
+    const invocationId = "invocation-obsolete-decision";
+    const staged = await stageAskUser({
+      lane: "main", requestKey: "obsolete-decision", invocationId,
+    });
+    await expect(staged.convergence.completeProgression(staged.claim, { kind: "release" }))
+      .resolves.toBe(true);
+    await asApi(async (sql) => {
+      await sql`select public.companion_v3_api_answer_decision(
+        ${ids.org}::uuid,${ids.companion}::uuid,'obsolete-decision','answer','Continue')`;
+    });
+    const claim = await staged.convergence.claimLane({
+      executorId: "runtime-obsolete-decision", lane: "main",
+    });
+    expect(claim?.turn).toMatchObject({ id: staged.turnId, state: "running" });
+    const respondExtensionUi = vi.fn().mockResolvedValue({
+      outcome: "rejected" as const, code: "no_active_attempt",
+    });
+    const read = vi.fn(async () => ({
+      events: [
+        {
+          sequence: 2n, invocationId, attemptId: staged.turnId,
+          kind: "pi_event" as const,
+          event: {
+            type: "message_end" as const,
+            message: {
+              role: "assistant" as const,
+              content: [{ type: "text" as const, text: "Already completed." }],
+              stopReason: "stop" as const,
+            },
+          },
+        },
+        {
+          sequence: 3n, invocationId, attemptId: staged.turnId,
+          kind: "pi_event" as const, event: { type: "agent_settled" as const },
+        },
+      ],
+      nextCursor: 3n, acknowledgedCursor: 1n, hasMore: false,
+    }));
+    const acknowledge = vi.fn(async (input: { through: bigint }) => input.through);
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: staged.persistence,
+      pi: { prompt: vi.fn(), respondExtensionUi, read, acknowledge },
+    });
+
+    await expect(advance(claim!)).resolves.toEqual({ kind: "ack_completed" });
+    await expect(staged.convergence.completeProgression(claim!, { kind: "ack_completed" }))
+      .resolves.toBe(true);
+    expect(respondExtensionUi).toHaveBeenCalledOnce();
+    expect(read).toHaveBeenCalledOnce();
+    expect(acknowledge).toHaveBeenCalledOnce();
+    const [settled] = await ownerSql<Array<{
+      turnState: string; deliveryState: string; commandId: string | null; detachedAt: Date | null;
+    }>>`select turn_row.state::text as "turnState",
+      decision.delivery_state::text as "deliveryState",decision.command_id as "commandId",
+      decision.detached_at as "detachedAt"
+      from public.companion_v3_turns turn_row
+      join public.companion_v3_decisions decision on decision.turn_id=turn_row.id
+      where turn_row.id=${staged.turnId}::uuid`;
+    expect(settled).toEqual({
+      turnState: "succeeded", deliveryState: "cancelled", commandId: null, detachedAt: null,
+    });
+
+    const nextCommand = randomUUID();
+    await asApi(async (sql) => {
+      await sql`select turn from public.companion_v3_api_enqueue_warm_turn(
+        ${ids.org}::uuid,${ids.companion}::uuid,${nextCommand}::uuid,'work after obsolete answer')`;
+    });
+    const next = await staged.convergence.claimLane({
+      executorId: "runtime-after-obsolete-decision", lane: "main",
+    });
+    expect(next?.turn).toMatchObject({ commandId: nextCommand, state: "queued" });
+  });
+
   it("reclaims a decision write intent after the executor dies before contacting Pi", async () => {
     const staged = await stageAskUser({
       lane: "main", requestKey: "takeover-question", invocationId: "invocation-takeover",
