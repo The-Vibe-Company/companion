@@ -1884,6 +1884,7 @@ export const companionDeferredPiRestarts = pgTable(
     companionId: uuid("companion_id").notNull(),
     sourceTurnId: uuid("source_turn_id").notNull(),
     sourceAttemptId: uuid("source_attempt_id").notNull(),
+    sourcePiInvocationId: text("source_pi_invocation_id").notNull(),
     actorId: text("actor_id").notNull(),
     clientSurface: companionClientSurfaceEnum("client_surface"),
     status: text("status").notNull().default("pending"),

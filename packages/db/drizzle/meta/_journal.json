@@ -1233,6 +1233,13 @@
       "when": 1793362000000,
       "tag": "0175_companion_runtime_v3_deferred_pi_restart",
       "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1793365600000,
+      "tag": "0176_companion_runtime_v3_control_followups",
+      "breakpoints": true
     }
   ]
 }

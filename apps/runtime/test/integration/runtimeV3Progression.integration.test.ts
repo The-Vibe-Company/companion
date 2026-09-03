@@ -5090,6 +5090,53 @@ describe("Runtime v3 progression facts", () => {
     }
   });
 
+  it("enqueues applied control continuations only as Runtime v3 Turns", async () => {
+    const invocationId = `pi-control-continuation-${suffix}`;
+    const requestId = randomUUID();
+    const sourceCommandId = randomUUID();
+    await seedPreparedV3(invocationId);
+    let sourceTurnId = "";
+    await asApi(async (sql) => {
+      const source = await sql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_v3_api_enqueue_warm_turn(
+          ${ids.org}::uuid,${ids.companion}::uuid,${sourceCommandId}::uuid,'request a model change')`;
+      sourceTurnId=source[0]!.turn.id;
+    });
+    await ownerSql`insert into public.companion_control_requests(
+      id,org_id,companion_id,source_turn_id,source_attempt_id,requested_by_id,
+      kind,action,summary,payload,request_key,request_digest,required_access,status,
+      expires_at,decided_at,applied_at
+    ) values(
+      ${requestId}::uuid,${ids.org}::uuid,${ids.companion}::uuid,
+      ${sourceTurnId}::uuid,${sourceTurnId}::uuid,${ids.owner},
+      'model_change','set_model','Use the approved model','{}'::jsonb,
+      ${`continuation-${suffix}`},${"b".repeat(64)},'editor','applied',
+      clock_timestamp()+interval '1 hour',clock_timestamp(),clock_timestamp()
+    )`;
+    await asApi(async (sql) => {
+      const first = await sql<Array<{ turn: { id: string; status: string } }>>`
+        select public.companion_api_enqueue_control_continuation(
+          ${ids.org}::uuid,${ids.companion}::uuid,${requestId}::uuid,
+          'Continue after the approved model change') as turn`;
+      const replay = await sql<Array<{ turn: { id: string; status: string } }>>`
+        select public.companion_api_enqueue_control_continuation(
+          ${ids.org}::uuid,${ids.companion}::uuid,${requestId}::uuid,
+          'Continue after the approved model change') as turn`;
+      expect(first).toEqual([{ turn: expect.objectContaining({ status: "queued" }) }]);
+      expect(replay).toEqual(first);
+    });
+    expect(await ownerSql`select count(*)::int as count from public.companion_v3_turns
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+        and client_message_id=${requestId}::uuid`).toEqual([{ count: 1 }]);
+    expect(await ownerSql`select count(*)::int as count from public.companion_turns
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+        and client_message_id=${requestId}::uuid`).toEqual([{ count: 0 }]);
+    expect(await ownerSql`select continuation_turn_id is not null as linked
+      from public.companion_control_requests
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+        and id=${requestId}::uuid`).toEqual([{ linked: true }]);
+  });
+
   it("defers one control-token Pi restart onto the Runtime v3 recycle path", async () => {
     const invocationId = `pi-control-restart-${suffix}`;
     const nextInvocationId = `pi-control-restarted-${suffix}`;
@@ -5155,6 +5202,11 @@ describe("Runtime v3 progression facts", () => {
         await holdScheduleTransaction;
       });
       await scheduleInserted;
+      await ownerSql`select public.companion_v3_invalidate_preparation(
+        ${ids.org}::uuid,${ids.companion}::uuid)`;
+      expect(await ownerSql`select pi_invocation_id from public.companion_v3_instances
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`)
+        .toEqual([{ pi_invocation_id: null }]);
       let markSettlementStarted = (pid: number) => { void pid; };
       const settlementStarted = new Promise<number>((resolve) => {
         markSettlementStarted = resolve;
@@ -5187,9 +5239,10 @@ describe("Runtime v3 progression facts", () => {
           ${ids.org}::uuid,${ids.companion}::uuid,${randomUUID()}::uuid,
           ${turnId}::uuid,${turnId}::uuid)`;
       })).rejects.toMatchObject({ code: "42501" });
-      expect(await ownerSql`select id,status,source_turn_id,source_attempt_id
+      expect(await ownerSql`select id,status,source_turn_id,source_attempt_id,source_pi_invocation_id
         from public.companion_deferred_pi_restarts where id=${restartId}::uuid`).toEqual([{
         id: restartId,status: "enqueued",source_turn_id: turnId,source_attempt_id: turnId,
+        source_pi_invocation_id: invocationId,
       }]);
       expect(await ownerSql`select pi_recycle_checkpoint,recycle_pi_invocation_id,recovery_turn_id,
           lifecycle_state::text,desired_lifecycle::text
