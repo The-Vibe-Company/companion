@@ -79,13 +79,20 @@ export function createRuntimeV3RoutinePi(
         attemptId: input.turnId,
         invocationId: input.invocationId,
       });
+      const terminal = page.events.some((record) => {
+        if (record.kind === "pi_process_exit") return true;
+        return record.event.type === "agent_settled"
+          || (record.event.type === "tool_execution_start"
+            && JSON.stringify(record.event).includes("surface_to_main"));
+      });
       const active = activeByBox.get(input.boxId);
       if (active?.runId === input.turnId) {
-        active.terminal = page.events.some((record) => {
-          if (record.kind === "pi_process_exit") return true;
-          return record.event.type === "agent_settled"
-            || (record.event.type === "tool_execution_start"
-              && JSON.stringify(record.event).includes("surface_to_main"));
+        active.terminal = terminal;
+      } else {
+        activeByBox.set(input.boxId, {
+          runId: input.turnId,
+          invocationId: input.invocationId,
+          terminal,
         });
       }
       return page;

@@ -85,4 +85,51 @@ describe("Runtime v3 routine Pi adapter", () => {
       expectedInvocationId: invocationId,
     }));
   });
+
+  it("keeps a resumed routine alive until a terminal page is acknowledged", async () => {
+    const read = vi.fn()
+      .mockResolvedValueOnce({
+        events: [{
+          sequence: 1,
+          invocationId,
+          attemptId: turnId,
+          kind: "pi_event",
+          event: { type: "message_update" },
+        }],
+        nextCursor: 1,
+        acknowledgedCursor: 0,
+        hasMore: false,
+      })
+      .mockResolvedValueOnce({
+        events: [{
+          sequence: 2,
+          invocationId,
+          attemptId: turnId,
+          kind: "pi_event",
+          event: { type: "agent_settled" },
+        }],
+        nextCursor: 2,
+        acknowledgedCursor: 1,
+        hasMore: false,
+      });
+    const { pi, routine } = control({ read });
+    const adapter = createRuntimeV3RoutinePi(pi);
+
+    await adapter.read({ boxId, turnId, invocationId, after: 0n });
+    await expect(adapter.acknowledge({
+      boxId, turnId, invocationId, through: 1n,
+    })).resolves.toBe(1n);
+    expect(routine.ack).toHaveBeenCalledWith(expect.objectContaining({ runId: turnId, through: 1n }));
+    expect(routine.terminate).not.toHaveBeenCalled();
+
+    await adapter.read({ boxId, turnId, invocationId, after: 1n });
+    await expect(adapter.acknowledge({
+      boxId, turnId, invocationId, through: 2n,
+    })).resolves.toBe(2n);
+    expect(routine.terminate).toHaveBeenCalledOnce();
+    expect(routine.terminate).toHaveBeenCalledWith(expect.objectContaining({
+      runId: turnId,
+      expectedInvocationId: invocationId,
+    }));
+  });
 });
