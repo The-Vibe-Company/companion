@@ -387,6 +387,7 @@ RETURNS text LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public SET row_security = on AS $$
 DECLARE
   v_projected text; v_item jsonb; v_invocation text; v_existing text;
+  v_notice_pending boolean := false; v_notice_applied boolean := false;
   v_notice constant text := 'I may have forgotten part of our earlier conversation while recovering.';
 BEGIN
   IF p_protocol IS DISTINCT FROM 5 OR jsonb_typeof(p_compactions) IS DISTINCT FROM 'array'
@@ -394,16 +395,19 @@ BEGIN
     RAISE EXCEPTION 'invalid Runtime v3 projection protocol 5' USING ERRCODE = '22023';
   END IF;
   IF jsonb_array_length(p_assistant) = 1 THEN
+    SELECT instance.context_loss_notice_pending INTO v_notice_pending
+    FROM public.companion_v3_instances instance
+    WHERE instance.org_id = p_org_id AND instance.companion_id = p_companion_id
+    FOR UPDATE;
     SELECT entry.content INTO v_existing FROM public.companion_transcript_entries entry
     WHERE entry.org_id = p_org_id AND entry.companion_id = p_companion_id
       AND entry.event_id = p_assistant->0->>'eventId';
     IF v_existing IS NOT NULL THEN
       p_assistant := jsonb_build_array(jsonb_set(p_assistant->0, '{content}', to_jsonb(v_existing)));
-    ELSIF EXISTS (SELECT 1 FROM public.companion_v3_instances instance
-      WHERE instance.org_id = p_org_id AND instance.companion_id = p_companion_id
-        AND instance.context_loss_notice_pending) THEN
+    ELSIF v_notice_pending THEN
       p_assistant := jsonb_build_array(jsonb_set(p_assistant->0, '{content}',
         to_jsonb(v_notice || E'\n\n' || (p_assistant->0->>'content'))));
+      v_notice_applied := true;
     END IF;
   END IF;
   v_projected := public.companion_v3_runtime_project_native_page_v4(
@@ -430,7 +434,7 @@ BEGIN
       encode(sha256(convert_to(v_item->>'summary','UTF8')),'hex'),clock_timestamp())
     ON CONFLICT DO NOTHING;
   END LOOP;
-  IF jsonb_array_length(p_assistant) > 0 THEN
+  IF v_notice_applied THEN
     UPDATE public.companion_v3_instances SET context_loss_notice_pending = false,
       updated_at = clock_timestamp()
     WHERE org_id = p_org_id AND companion_id = p_companion_id

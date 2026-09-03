@@ -2212,6 +2212,115 @@ describe("Runtime v3 progression facts", () => {
     );
   });
 
+  it("atomically emits one context-loss notice across concurrent lanes", async () => {
+    const warning = "I may have forgotten part of our earlier conversation while recovering.";
+    await seedPreparedV3("invocation-notice-race");
+    await ownerSql`update public.companion_v3_instances
+      set context_loss_notice_pending = true, recovery_context = null
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
+
+    const mainCommand = randomUUID();
+    const backgroundCommand = randomUUID();
+    await asApi(async (sql) => {
+      await sql`select turn from public.companion_v3_api_enqueue_warm_turn(
+        ${ids.org}::uuid, ${ids.companion}::uuid, ${mainCommand}::uuid, 'main after recovery'
+      )`;
+    });
+    await ownerSql`
+      with advanced as (
+        update public.companion_threads set next_ordinal = next_ordinal + 1,
+          projection_sequence = projection_sequence + 1
+        where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid
+        returning next_ordinal - 1 as ordinal, projection_sequence
+      )
+      insert into public.companion_transcript_entries(
+        org_id, companion_id, event_id, ordinal, projection_sequence, role, content
+      ) select ${ids.org}::uuid, ${ids.companion}::uuid, ${`msg:${backgroundCommand}`},
+        ordinal, projection_sequence, 'user', 'background after recovery' from advanced`;
+    await workerSql`select * from public.companion_v3_worker_admit_turn(
+      ${ids.org}::uuid, ${ids.companion}::uuid, ${backgroundCommand}::uuid,
+      ${`msg:${backgroundCommand}`}, ${ids.owner}
+    )`;
+
+    const convergence = createRuntimeV3PostgresWarmConvergence(runtimeSql);
+    const projection = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
+    const refusedMain = await convergence.claimLane({
+      executorId: "runtime-notice-refused", lane: "main",
+    });
+    expect(refusedMain).not.toBeNull();
+    await expect(projection.beginAdmission(refusedMain!, {
+      invocationId: "invocation-notice-race", cursor: 0n,
+    })).resolves.toBe(true);
+    await expect(convergence.completeProgression(refusedMain!, { kind: "release" }))
+      .resolves.toBe(true);
+    const [afterRefusal] = await ownerSql<Array<{ pending: boolean }>>`
+      select context_loss_notice_pending as pending from public.companion_v3_instances
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
+    expect(afterRefusal?.pending).toBe(true);
+
+    const main = await convergence.claimLane({ executorId: "runtime-notice-main", lane: "main" });
+    const background = await convergence.claimLane({
+      executorId: "runtime-notice-background", lane: "background",
+    });
+    expect(main).not.toBeNull();
+    expect(background).not.toBeNull();
+    for (const claim of [main!, background!]) {
+      const material = await projection.authorize(claim);
+      expect(material).not.toBeNull();
+      await expect(projection.beginAdmission(claim, {
+        invocationId: material!.piInvocationId, cursor: material!.cursor,
+      })).resolves.toBe(true);
+      await expect(projection.recordAdmission(claim, {
+        invocationId: material!.piInvocationId,
+        responseTurnId: claim.turn.id,
+        cursor: material!.cursor,
+      })).resolves.toBe(true);
+    }
+
+    await expect(projection.project(main!, {
+      throughCursor: 1n, assistant: [], needsInput: false,
+      settled: false, processExited: false, activity: true,
+    })).resolves.toBe(true);
+    await expect(projection.project({
+      ...background!, fence: { ...background!.fence, token: randomUUID() },
+    }, {
+      throughCursor: 1n,
+      assistant: [{ eventId: `v3:${background!.turn.id}:1`, content: "fenced" }],
+      needsInput: false, settled: true, processExited: false, activity: true,
+    })).resolves.toBe(false);
+    const [beforeConcurrentReplies] = await ownerSql<Array<{ pending: boolean }>>`
+      select context_loss_notice_pending as pending from public.companion_v3_instances
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
+    expect(beforeConcurrentReplies?.pending).toBe(true);
+
+    const mainEventId = `v3:${main!.turn.id}:2`;
+    const backgroundEventId = `v3:${background!.turn.id}:1`;
+    await expect(Promise.all([
+      projection.project(main!, {
+        throughCursor: 2n,
+        assistant: [{ eventId: mainEventId, content: "Main answer." }],
+        needsInput: false, settled: true, processExited: false, activity: true,
+      }),
+      projection.project(background!, {
+        throughCursor: 1n,
+        assistant: [{ eventId: backgroundEventId, content: "Background answer." }],
+        needsInput: false, settled: true, processExited: false, activity: true,
+      }),
+    ])).resolves.toEqual(["succeeded", "succeeded"]);
+
+    const replies = await ownerSql<Array<{ content: string }>>`
+      select content from public.companion_transcript_entries
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid
+        and event_id in (${mainEventId}, ${backgroundEventId}) order by ordinal`;
+    expect(replies).toHaveLength(2);
+    expect(replies[0]!.content.startsWith(`${warning}\n\n`)).toBe(true);
+    expect(replies.filter((reply) => reply.content.startsWith(`${warning}\n\n`))).toHaveLength(1);
+    const [afterConcurrentReplies] = await ownerSql<Array<{ pending: boolean }>>`
+      select context_loss_notice_pending as pending from public.companion_v3_instances
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
+    expect(afterConcurrentReplies?.pending).toBe(false);
+  });
+
   it("sweeps inactivity and absolute deadlines while needs-input pauses only inactivity", async () => {
     await seedPreparedV3("invocation-deadlines");
     const persistence = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
