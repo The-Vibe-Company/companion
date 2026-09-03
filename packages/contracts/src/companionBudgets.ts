@@ -229,7 +229,12 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_v3_runtime_authorize_warm_turn: ["2 hours 5 minutes"],
   companion_v3_runtime_claim_preparation: ["2 hours 5 minutes"],
   companion_v3_runtime_checkpoint_preparation: ["2 hours 5 minutes"],
-  companion_v3_bound_turn_clocks: ["2 hours", "10 minutes", "10 minutes"],
+  companion_v3_bound_turn_clocks: ["2 hours", "10 minutes", "10 minutes", "10 minutes"],
+  companion_v3_api_answer_decision: ["10 minutes"],
+  companion_v3_runtime_project_native_page_v6: ["10 minutes"],
+  companion_v3_runtime_claim_warm_v6: ["2 hours 5 minutes"],
+  companion_v3_runtime_sweep_decisions: ["10 minutes"],
+  companion_v3_api_enqueue_warm_turn: ["10 minutes"],
   companion_v3_bound_preparation_clock: ["2 hours 15 minutes"],
   // Runtime v3 archives the persistent Box after one hour without newly admitted work.
   companion_v3_runtime_claim_lifecycle: ["1 hour"],

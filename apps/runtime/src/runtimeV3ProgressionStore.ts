@@ -46,7 +46,7 @@ interface ClaimRow {
 }
 
 interface TerminalCompletion {
-  outcome: "release" | "detached" | "ack_completed" | "retry_ack" | "succeeded" | "failed" | "interrupted";
+  outcome: "release" | "detached" | "ack_completed" | "retry_ack" | "succeeded" | "failed" | "interrupted" | "decision_ambiguous";
   code: string | null;
   message: string | null;
   action: string | null;
@@ -73,7 +73,11 @@ function turnFromRow(row: {
 }
 
 function terminalInput(outcome: RuntimeV3DurableOutcome): TerminalCompletion {
-  if (outcome.kind === "failed" || outcome.kind === "interrupted") {
+  if (
+    outcome.kind === "failed"
+    || outcome.kind === "interrupted"
+    || outcome.kind === "decision_ambiguous"
+  ) {
     return {
       outcome: outcome.kind,
       code: outcome.error.code,

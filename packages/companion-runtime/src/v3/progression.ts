@@ -102,7 +102,8 @@ export type RuntimeV3ProgressionOutcome =
   | { kind: "retry_ack" }
   | { kind: "succeeded" }
   | { kind: "failed"; code: string; message: unknown; action: RuntimeV3ErrorAction }
-  | { kind: "interrupted"; code: string; message: unknown; action: RuntimeV3ErrorAction };
+  | { kind: "interrupted"; code: string; message: unknown; action: RuntimeV3ErrorAction }
+  | { kind: "decision_ambiguous"; code: string; message: unknown; action: RuntimeV3ErrorAction };
 
 export type RuntimeV3ErrorAction = Exclude<ErrorAction, "restart_box">;
 
@@ -113,7 +114,8 @@ export type RuntimeV3DurableOutcome =
   | { kind: "retry_ack" }
   | { kind: "succeeded" }
   | { kind: "failed"; error: SafeRuntimeError }
-  | { kind: "interrupted"; error: SafeRuntimeError };
+  | { kind: "interrupted"; error: SafeRuntimeError }
+  | { kind: "decision_ambiguous"; error: SafeRuntimeError };
 
 export interface RuntimeV3AdmissionPersistence {
   admitTurn(input: RuntimeV3Admission): Promise<RuntimeV3Turn>;
@@ -405,7 +407,7 @@ export interface RuntimeV3WarmTurnPersistence {
     claim: RuntimeV3Claim,
     signal?: AbortSignal,
   ): Promise<{
-    kind: "respond" | "detach";
+    kind: "respond" | "detach" | "complete_detached";
     decisionId: string;
     commandId: string;
     response: RuntimeV3DecisionResponse | null;
@@ -500,7 +502,11 @@ function boundedSignal(signal: AbortSignal | undefined, timeoutMs: number): Abor
 }
 
 function durableOutcome(outcome: RuntimeV3ProgressionOutcome): RuntimeV3DurableOutcome {
-  if (outcome.kind !== "failed" && outcome.kind !== "interrupted") return outcome;
+  if (
+    outcome.kind !== "failed"
+    && outcome.kind !== "interrupted"
+    && outcome.kind !== "decision_ambiguous"
+  ) return outcome;
   return {
     kind: outcome.kind,
     error: safeRuntimeError({
@@ -524,7 +530,9 @@ export function createRuntimeV3WarmTurnAdvance(
     let projectionWriteIntent = false;
     let prePiHandoff = false;
     let admissionWriteIntent = false;
-    let decisionWriteIntent = false;
+    let decisionHandoff = false;
+    let decisionPiWriteIntent = false;
+    let decisionCheckpointPending = false;
     let durableAdmissionRecorded = false;
     let inactivityDeadlineAt = claim.turn.inactivityDeadlineAt ?? null;
     let absoluteDeadlineAt = claim.turn.absoluteDeadlineAt ?? null;
@@ -653,11 +661,14 @@ export function createRuntimeV3WarmTurnAdvance(
         if (!options.persistence.beginDecisionAction || !options.persistence.finishDecisionAction) {
           return null;
         }
+        decisionHandoff = true;
         const action = signal
           ? await options.persistence.beginDecisionAction(claim, signal)
           : await options.persistence.beginDecisionAction(claim);
+        decisionHandoff = false;
         if (!action) return null;
-        decisionWriteIntent = true;
+        if (action.kind === "complete_detached") return { kind: "detached" };
+        decisionPiWriteIntent = true;
         const actionSignal = boundedSignal(
           signal,
           COMPANION_RUNTIME_V3_BUDGETS.heartbeatCommandMs,
@@ -676,10 +687,9 @@ export function createRuntimeV3WarmTurnAdvance(
             response: action.response!,
             signal: actionSignal,
           });
-        signal?.throwIfAborted();
-        if (!write || write.outcome !== "accepted") {
+        if (!write || write.outcome === "ambiguous") {
           return {
-            kind: "interrupted",
+            kind: "decision_ambiguous",
             code: action.kind === "detach" ? "pi_detach_ambiguous" : "pi_decision_ambiguous",
             message: action.kind === "detach"
               ? "The background question was detached, but Pi termination was not confirmed."
@@ -687,6 +697,13 @@ export function createRuntimeV3WarmTurnAdvance(
             action: "none",
           };
         }
+        if (write.outcome !== "accepted") {
+          decisionPiWriteIntent = false;
+          return { kind: "release" };
+        }
+        decisionPiWriteIntent = false;
+        decisionCheckpointPending = true;
+        signal?.throwIfAborted();
         const finished = signal
           ? await options.persistence.finishDecisionAction(claim, {
             decisionId: action.decisionId,
@@ -698,6 +715,7 @@ export function createRuntimeV3WarmTurnAdvance(
             kind: action.kind,
             invocationId: write.invocationId,
           });
+        decisionCheckpointPending = false;
         if (!finished) {
           return {
             kind: "interrupted",
@@ -706,7 +724,6 @@ export function createRuntimeV3WarmTurnAdvance(
             action: "none",
           };
         }
-        decisionWriteIntent = false;
         return action.kind === "detach" ? { kind: "detached" } : null;
       };
 
@@ -863,9 +880,10 @@ export function createRuntimeV3WarmTurnAdvance(
           action: "none",
         };
       }
-      if (decisionWriteIntent) {
+      if (decisionHandoff || decisionCheckpointPending) return { kind: "release" };
+      if (decisionPiWriteIntent) {
         return {
-          kind: "interrupted",
+          kind: "decision_ambiguous",
           code: "pi_decision_outcome_unknown",
           message: "Pi may have received the decision action; it will not be attempted again.",
           action: "none",
