@@ -754,7 +754,7 @@ BEGIN
     RETURN public.companion_v3_runtime_complete_v6(p_org_id,p_companion_id,p_lane,p_turn_id,
       p_claim_token,p_claim_epoch,p_gate_epoch,p_outcome,p_code,p_message,p_action,6);
   END IF;
-  SELECT turn_row,run INTO v_turn,v_run FROM public.companion_v3_lane_leases lease
+  SELECT turn_row.* INTO v_turn FROM public.companion_v3_lane_leases lease
   JOIN public.companion_runtime_control control ON control.id='runtime-v2' AND control.enabled
     AND control.gate_epoch=p_gate_epoch
   JOIN public.companion_v3_turns turn_row ON turn_row.org_id=lease.org_id
@@ -766,6 +766,8 @@ BEGIN
     AND lease.claim_epoch=p_claim_epoch AND lease.gate_epoch=p_gate_epoch AND lease.expires_at>v_now
   FOR UPDATE OF lease,turn_row,run;
   IF NOT FOUND THEN RETURN false;END IF;
+  SELECT run.* INTO STRICT v_run FROM public.companion_v3_routine_runs run
+    WHERE run.org_id=p_org_id AND run.companion_id=p_companion_id AND run.turn_id=p_turn_id;
 
   -- Cooperative polling and terminal-ACK retry release only the lease. Durable admission,
   -- invocation, cursors, deadlines, and retry count remain unchanged for takeover.
