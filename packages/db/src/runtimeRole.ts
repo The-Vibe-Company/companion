@@ -29,8 +29,6 @@ const RUNTIME_DATABASE_ROLE_MESSAGES = {
     "Runtime database role has an unexpected SECURITY DEFINER grant; reapply the runtime grants",
 } satisfies Record<RuntimeDatabaseRoleFailure, string>;
 
-const REQUIRED_PROTECTED_RELATION_COUNT = 19;
-
 export class RuntimeDatabaseRoleError extends Error {
   readonly failure: RuntimeDatabaseRoleFailure;
   readonly stableCode: string;
@@ -56,6 +54,7 @@ interface RuntimeRoleProfile {
   ownsRelations: boolean;
   ownsFunctionsOrTypes: boolean;
   protectedRelationCount: number;
+  requiredProtectedRelationCount: number;
   hasPublicRelationPrivileges: boolean;
   requiredFunctionsReady: boolean;
   ownsRequiredFunctions: boolean;
@@ -67,6 +66,8 @@ WITH runtime_role AS (
   SELECT oid, rolcanlogin, rolsuper, rolbypassrls, rolinherit
   FROM pg_catalog.pg_roles
   WHERE rolname = current_user
+), decision_schema AS (
+  SELECT pg_catalog.to_regclass('public.companion_v3_decisions') IS NOT NULL AS available
 ), required(signature) AS (
   VALUES
     ('public.companion_runtime_gate_status()'),
@@ -137,9 +138,21 @@ WITH runtime_role AS (
     ('public.companion_v3_runtime_record_native_admission_v5(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,uuid,bigint,integer)'),
     ('public.companion_v3_runtime_project_native_page_v5(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,boolean,boolean,text,integer)'),
     ('public.companion_v3_runtime_measurement_facts(timestamp with time zone,timestamp with time zone,integer)')
+), decision_required(signature) AS (
+  VALUES
+    ('public.companion_v3_runtime_claim_warm_v6(text,public.companion_v3_lane,integer,integer)'),
+    ('public.companion_v3_runtime_project_native_page_v6(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'),
+    ('public.companion_v3_runtime_begin_decision_action(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'),
+    ('public.companion_v3_runtime_finish_decision_action(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,uuid,text,text,integer)'),
+    ('public.companion_v3_runtime_complete_v6(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'),
+    ('public.companion_v3_runtime_sweep_decisions(public.companion_v3_lane,integer)')
 ), required_functions AS (
   SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
   FROM required
+  UNION ALL
+  SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
+  FROM decision_required CROSS JOIN decision_schema
+  WHERE decision_schema.available
 ), public_relations AS (
   SELECT relation.oid, relation.relkind
   FROM pg_catalog.pg_class relation
@@ -204,6 +217,8 @@ SELECT
     SELECT 1 FROM pg_catalog.pg_type type WHERE type.typowner = role.oid
   ) AS "ownsFunctionsOrTypes",
   (SELECT count(*)::int FROM protected_relations) AS "protectedRelationCount",
+  (SELECT 19 + CASE WHEN available THEN 1 ELSE 0 END FROM decision_schema)
+    AS "requiredProtectedRelationCount",
   EXISTS (
     SELECT 1
     FROM public_relations relation
@@ -275,7 +290,7 @@ export async function verifyRuntimeDatabaseRole(
     || profile.ownsFunctionsOrTypes !== false
   ) throw new RuntimeDatabaseRoleError("object_ownership");
   if (
-    profile.protectedRelationCount !== REQUIRED_PROTECTED_RELATION_COUNT
+    profile.protectedRelationCount !== profile.requiredProtectedRelationCount
     || profile.requiredFunctionsReady !== true
   ) {
     throw new RuntimeDatabaseRoleError("release_schema_incomplete");

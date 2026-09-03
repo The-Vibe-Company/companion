@@ -21,6 +21,7 @@ const validProfile = {
   ownsRelations: false,
   ownsFunctionsOrTypes: false,
   protectedRelationCount: 19,
+  requiredProtectedRelationCount: 19,
   hasPublicRelationPrivileges: false,
   requiredFunctionsReady: true,
   ownsRequiredFunctions: false,
@@ -75,6 +76,7 @@ describe("runtime database role verification", () => {
     expect(query).toContain("companion_routine_context_substrates");
     expect(query).toContain("companion_v3_runtime_claim");
     expect(query).toContain("companion_v3_runtime_complete");
+    expect(query).toContain("companion_v3_runtime_sweep_decisions");
     expect(query).toContain("companion_v3_lane_leases");
   });
 

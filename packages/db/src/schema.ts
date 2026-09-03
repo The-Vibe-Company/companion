@@ -1598,7 +1598,7 @@ export const companionV3Decisions = pgTable(
     ),
     responseCheck: check(
       "companion_v3_decisions_response_check",
-      sql`(${t.responseText} is null or octet_length(${t.responseText}) <= 24000) and ((${t.decisionStatus} = 'pending' and ${t.actorId} is null and ${t.responseText} is null and ${t.respondedAt} is null) or (${t.decisionStatus} = 'answered' and ${t.actorId} is not null and ${t.responseText} is not null and ${t.respondedAt} is not null) or (${t.decisionStatus} in ('denied','expired','cancelled') and ${t.responseText} is null and ${t.respondedAt} is not null))`,
+      sql`(${t.responseText} is null or octet_length(${t.responseText}) <= 32000) and ((${t.decisionStatus} = 'pending' and ${t.actorId} is null and ${t.responseText} is null and ${t.respondedAt} is null) or (${t.decisionStatus} = 'answered' and ${t.actorId} is not null and ${t.responseText} is not null and ${t.respondedAt} is not null) or (${t.decisionStatus} in ('denied','expired','cancelled') and ${t.responseText} is null and ${t.respondedAt} is not null))`,
     ),
     deliveryCheck: check(
       "companion_v3_decisions_delivery_check",

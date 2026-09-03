@@ -403,6 +403,87 @@ describe("Runtime v3 progression interface", () => {
     expect(finishDecisionAction).toHaveBeenCalledOnce();
   });
 
+  it("releases a decision handoff whose durable begin reply was lost before Pi", async () => {
+    const respondExtensionUi = vi.fn();
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1", content: "waiting", cursor: 0n,
+        }),
+        beginAdmission: vi.fn(), recordAdmission: vi.fn(), project: vi.fn(),
+        beginDecisionAction: vi.fn().mockRejectedValue(new Error("commit reply lost")),
+        finishDecisionAction: vi.fn(),
+      },
+      pi: { prompt: vi.fn(), read: vi.fn(), acknowledge: vi.fn(), respondExtensionUi },
+    });
+    const claim = { ...mainClaim, turn: { ...acceptedTurn, state: "running" as const } };
+
+    await expect(advance(claim)).resolves.toEqual({ kind: "release" });
+    expect(respondExtensionUi).not.toHaveBeenCalled();
+  });
+
+  it("terminalizes an ambiguous decision write instead of replaying it", async () => {
+    const respondExtensionUi = vi.fn(async () => {
+      throw new Error("ledger fsync failed after the send");
+    });
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1", content: "waiting", cursor: 0n,
+        }),
+        beginAdmission: vi.fn(), recordAdmission: vi.fn(), project: vi.fn(),
+        beginDecisionAction: vi.fn().mockResolvedValue({
+          kind: "respond", decisionId: "85312651-3171-4ac8-a99c-8af0875951aa",
+          commandId: "bfdd76e0-a78e-4fc7-8230-f4dfd3caf391",
+          response: { type: "extension_ui_response", id: "question-1", value: "Proceed" },
+        }),
+        finishDecisionAction: vi.fn(),
+      },
+      pi: { prompt: vi.fn(), read: vi.fn(), acknowledge: vi.fn(), respondExtensionUi },
+    });
+    const claim = { ...mainClaim, turn: { ...acceptedTurn, state: "running" as const } };
+
+    await expect(advance(claim)).resolves.toMatchObject({
+      kind: "decision_ambiguous", code: "pi_decision_outcome_unknown",
+    });
+    expect(respondExtensionUi).toHaveBeenCalledOnce();
+  });
+
+  it("completes a durably detached background Turn after its checkpoint reply is lost", async () => {
+    const abort = vi.fn().mockResolvedValue({
+      outcome: "accepted" as const, invocationId: "invocation-1",
+    });
+    const beginDecisionAction = vi.fn()
+      .mockResolvedValueOnce({
+        kind: "detach", decisionId: "85312651-3171-4ac8-a99c-8af0875951aa",
+        commandId: "bfdd76e0-a78e-4fc7-8230-f4dfd3caf391", response: null,
+      })
+      .mockResolvedValueOnce({
+        kind: "complete_detached", decisionId: "85312651-3171-4ac8-a99c-8af0875951aa",
+        commandId: "85312651-3171-4ac8-a99c-8af0875951aa", response: null,
+      });
+    const persistence = {
+      authorize: vi.fn().mockResolvedValue({
+        boxId: "bx_23456789", piInvocationId: "invocation-1", content: "background", cursor: 0n,
+      }),
+      beginAdmission: vi.fn(), recordAdmission: vi.fn(), project: vi.fn(),
+      beginDecisionAction,
+      finishDecisionAction: vi.fn().mockRejectedValueOnce(new Error("checkpoint reply lost")),
+    };
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence,
+      pi: { prompt: vi.fn(), read: vi.fn(), acknowledge: vi.fn(), abort },
+    });
+    const claim = {
+      ...mainClaim,
+      turn: { ...acceptedTurn, lane: "background" as const, state: "needs_input" as const },
+    };
+
+    await expect(advance(claim)).resolves.toEqual({ kind: "release" });
+    await expect(advance(claim)).resolves.toEqual({ kind: "detached" });
+    expect(abort).toHaveBeenCalledOnce();
+  });
+
   it("aborts a background Turn after persisting its detached ask_user identity", async () => {
     const turn = { ...acceptedTurn, lane: "background" as const };
     const claim = { ...mainClaim, turn };
