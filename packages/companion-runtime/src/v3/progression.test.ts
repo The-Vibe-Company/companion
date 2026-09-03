@@ -607,6 +607,7 @@ describe("Runtime v3 progression interface", () => {
   it("aborts Pi before durably cancelling an accepted delegated main Turn", async () => {
     const pendingDelegationCancel = vi.fn().mockResolvedValue({
       turnId: "85312651-3171-4ac8-a99c-8af0875951aa",
+      responseTurnId: acceptedTurn.id,
       commandId: "bfdd76e0-a78e-4fc7-8230-f4dfd3caf391",
     });
     const finishDelegationCancel = vi.fn().mockResolvedValue(true);
@@ -635,6 +636,45 @@ describe("Runtime v3 progression interface", () => {
     expect(finishDelegationCancel).toHaveBeenCalledWith(claim, {
       turnId: "85312651-3171-4ac8-a99c-8af0875951aa",
     });
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it("rechecks cancellation after admission before releasing a native steer", async () => {
+    const responseTurnId = "72f04ea8-8f87-4d53-813a-1d9c4cf46caa";
+    const pendingDelegationCancel = vi.fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        turnId: acceptedTurn.id,
+        responseTurnId,
+        commandId: "bfdd76e0-a78e-4fc7-8230-f4dfd3caf391",
+      });
+    const abort = vi.fn().mockResolvedValue({
+      outcome: "accepted" as const, invocationId: "invocation-1",
+    });
+    const read = vi.fn();
+    const finishDelegationCancel = vi.fn().mockResolvedValue(true);
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789",piInvocationId: "invocation-1",content: "steer",cursor: 0n,
+        }),
+        beginAdmission: vi.fn().mockResolvedValue(true),
+        recordAdmission: vi.fn().mockResolvedValue(true),
+        project: vi.fn(),pendingDelegationCancel,finishDelegationCancel,
+      },
+      pi: {
+        prompt: vi.fn().mockResolvedValue({
+          outcome: "accepted" as const,invocationId: "invocation-1",
+          responseAttemptId: responseTurnId,initialCursor: 0n,
+        }),
+        read,acknowledge: vi.fn(),abort,
+      },
+    });
+
+    await expect(advance(mainClaim)).resolves.toEqual({ kind: "release" });
+    expect(pendingDelegationCancel).toHaveBeenCalledTimes(2);
+    expect(abort).toHaveBeenCalledWith(expect.objectContaining({ turnId: responseTurnId }));
+    expect(finishDelegationCancel).toHaveBeenCalledOnce();
     expect(read).not.toHaveBeenCalled();
   });
 

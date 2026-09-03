@@ -419,7 +419,7 @@ export interface RuntimeV3WarmTurnPersistence {
   pendingDelegationCancel?(
     claim: RuntimeV3Claim,
     signal?: AbortSignal,
-  ): Promise<{ turnId: string; commandId: string } | null>;
+  ): Promise<{ turnId: string; responseTurnId: string; commandId: string } | null>;
   finishDelegationCancel?(
     claim: RuntimeV3Claim,
     input: { turnId: string },
@@ -614,8 +614,9 @@ export function createRuntimeV3WarmTurnAdvance(
       signal?.throwIfAborted();
       let invocationId = material.piInvocationId;
       let cursor = material.cursor;
-      if (options.persistence.pendingDelegationCancel
-        && options.persistence.finishDelegationCancel && options.pi.abort) {
+      const cancelDelegation = async (): Promise<boolean> => {
+        if (!options.persistence.pendingDelegationCancel
+          || !options.persistence.finishDelegationCancel || !options.pi.abort) return false;
         const cancellation = signal
           ? await options.persistence.pendingDelegationCancel(claim, signal)
           : await options.persistence.pendingDelegationCancel(claim);
@@ -624,7 +625,7 @@ export function createRuntimeV3WarmTurnAdvance(
           const cancelled = await options.pi.abort({
             boxId: material.boxId,
             commandId: cancellation.commandId,
-            turnId: claim.turn.id,
+            turnId: cancellation.responseTurnId,
             signal: boundedSignal(signal, COMPANION_RUNTIME_V3_BUDGETS.heartbeatCommandMs),
           });
           cancellationPiWriteIntent = false;
@@ -632,7 +633,7 @@ export function createRuntimeV3WarmTurnAdvance(
             || (cancelled.outcome === "rejected"
               && cancelled.code !== "no_active_attempt"
               && cancelled.code !== "attempt_mismatch")) {
-            return { kind: "release" };
+            return true;
           }
           signal?.throwIfAborted();
           cancellationFinishPending = true;
@@ -644,12 +645,14 @@ export function createRuntimeV3WarmTurnAdvance(
               claim, { turnId: cancellation.turnId },
             )) {
             cancellationFinishPending = false;
-            return { kind: "release" };
+            return true;
           }
           cancellationFinishPending = false;
-          return { kind: "release" };
+          return true;
         }
-      }
+        return false;
+      };
+      if (await cancelDelegation()) return { kind: "release" };
       if (claim.turn.state === "succeeded" || claim.turn.state === "failed") {
         projectionPendingAck = "terminal";
         await options.pi.acknowledge({
@@ -739,6 +742,7 @@ export function createRuntimeV3WarmTurnAdvance(
         ));
         invocationId = admission.invocationId;
         cursor = admission.initialCursor;
+        if (await cancelDelegation()) return { kind: "release" };
         if (admission.responseAttemptId && admission.responseAttemptId !== claim.turn.id) {
           return { kind: "release" };
         }

@@ -603,8 +603,11 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
         : projected === "projected";
     },
     async pendingDelegationCancel(claim, signal) {
-      const rows = await abortable(sql<Array<{ turnId: string; commandId: string }>>`
-        select turn_id as "turnId",command_id as "commandId"
+      const rows = await abortable(sql<Array<{
+        turnId: string; responseTurnId: string; commandId: string;
+      }>>`
+        select turn_id as "turnId",response_turn_id as "responseTurnId",
+          command_id as "commandId"
         from public.companion_v3_runtime_pending_delegation_cancel(
           ${claim.orgId}::uuid,${claim.companionId}::uuid,${claim.turn.id}::uuid,
           ${claim.fence.token}::uuid,${claim.fence.epoch.toString()}::bigint,

@@ -501,7 +501,7 @@ REVOKE ALL ON FUNCTION public.companion_v3_api_cancel_delegation_turn(uuid,uuid,
 CREATE FUNCTION public.companion_v3_runtime_pending_delegation_cancel(
   p_org_id uuid,p_companion_id uuid,p_turn_id uuid,p_claim_token uuid,
   p_claim_epoch bigint,p_gate_epoch bigint,p_protocol integer
-) RETURNS TABLE(turn_id uuid,command_id uuid)
+) RETURNS TABLE(turn_id uuid,response_turn_id uuid,command_id uuid)
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public SET row_security=on AS $$
 DECLARE v_now timestamptz:=clock_timestamp();
@@ -510,12 +510,17 @@ BEGIN
     RAISE EXCEPTION 'Runtime v3 protocol 7 is required' USING ERRCODE='42501';
   END IF;
   RETURN QUERY
-  SELECT candidate.id,candidate.delegation_cancel_command_id
+  SELECT candidate.id,root_turn.id,candidate.delegation_cancel_command_id
   FROM public.companion_v3_lane_leases lease
   JOIN public.companion_runtime_control control ON control.id='runtime-v2'
     AND control.enabled AND control.gate_epoch=p_gate_epoch
-  JOIN public.companion_v3_turns root_turn ON root_turn.org_id=lease.org_id
-    AND root_turn.companion_id=lease.companion_id AND root_turn.id=lease.turn_id
+  JOIN public.companion_v3_turns claimed_turn ON claimed_turn.org_id=lease.org_id
+    AND claimed_turn.companion_id=lease.companion_id AND claimed_turn.id=lease.turn_id
+    AND claimed_turn.lane='main' AND claimed_turn.admission_state='accepted'
+    AND claimed_turn.state IN ('admitted','running','needs_input')
+  JOIN public.companion_v3_turns root_turn ON root_turn.org_id=claimed_turn.org_id
+    AND root_turn.companion_id=claimed_turn.companion_id
+    AND root_turn.id=COALESCE(claimed_turn.response_turn_id,claimed_turn.id)
     AND root_turn.lane='main' AND root_turn.admission_state='accepted'
     AND root_turn.state IN ('admitted','running','needs_input')
     AND root_turn.response_turn_id=root_turn.id
@@ -543,17 +548,23 @@ CREATE FUNCTION public.companion_v3_runtime_finish_delegation_cancel(
   p_claim_token uuid,p_claim_epoch bigint,p_gate_epoch bigint,p_protocol integer
 ) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public SET row_security=on AS $$
-DECLARE v_now timestamptz:=clock_timestamp();
+DECLARE v_now timestamptz:=clock_timestamp();v_response_turn_id uuid;
 BEGIN
   PERFORM pg_catalog.set_config('app.companion_runtime_protocol','2',true);
   IF p_protocol<>7 THEN
     RAISE EXCEPTION 'Runtime v3 protocol 7 is required' USING ERRCODE='42501';
   END IF;
-  PERFORM 1 FROM public.companion_v3_lane_leases lease
+  SELECT root_turn.id INTO v_response_turn_id
+  FROM public.companion_v3_lane_leases lease
   JOIN public.companion_runtime_control control ON control.id='runtime-v2'
     AND control.enabled AND control.gate_epoch=p_gate_epoch
-  JOIN public.companion_v3_turns root_turn ON root_turn.org_id=lease.org_id
-    AND root_turn.companion_id=lease.companion_id AND root_turn.id=lease.turn_id
+  JOIN public.companion_v3_turns claimed_turn ON claimed_turn.org_id=lease.org_id
+    AND claimed_turn.companion_id=lease.companion_id AND claimed_turn.id=lease.turn_id
+    AND claimed_turn.lane='main' AND claimed_turn.admission_state='accepted'
+    AND claimed_turn.state IN ('admitted','running','needs_input')
+  JOIN public.companion_v3_turns root_turn ON root_turn.org_id=claimed_turn.org_id
+    AND root_turn.companion_id=claimed_turn.companion_id
+    AND root_turn.id=COALESCE(claimed_turn.response_turn_id,claimed_turn.id)
     AND root_turn.lane='main' AND root_turn.admission_state='accepted'
     AND root_turn.state IN ('admitted','running','needs_input')
     AND root_turn.response_turn_id=root_turn.id
@@ -569,7 +580,7 @@ BEGIN
     AND lease.turn_id=p_turn_id AND lease.claim_token=p_claim_token
     AND lease.claim_epoch=p_claim_epoch AND lease.gate_epoch=p_gate_epoch
     AND lease.expires_at>v_now
-  FOR UPDATE OF lease,root_turn,requested;
+  FOR UPDATE OF lease,claimed_turn,root_turn,requested;
   IF NOT FOUND THEN RETURN false;END IF;
   UPDATE public.companion_v3_turns turn_row SET state='cancelled',outcome='cancelled',
     outcome_code=NULL,outcome_message=NULL,outcome_action=NULL,
@@ -577,7 +588,7 @@ BEGIN
   WHERE turn_row.org_id=p_org_id AND turn_row.companion_id=p_companion_id
     AND turn_row.lane='main' AND turn_row.admission_state='accepted'
     AND turn_row.state IN ('admitted','running','needs_input')
-    AND (turn_row.id=p_turn_id OR turn_row.response_turn_id=p_turn_id);
+    AND (turn_row.id=v_response_turn_id OR turn_row.response_turn_id=v_response_turn_id);
   IF NOT FOUND THEN RETURN false;END IF;
   UPDATE public.companion_threads SET projection_sequence=projection_sequence+1,updated_at=v_now
   WHERE org_id=p_org_id AND companion_id=p_companion_id;

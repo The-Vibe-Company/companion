@@ -5250,9 +5250,10 @@ describe("Runtime v3 progression facts", () => {
         where turn_row.delegation_return_id=${relay.delegation.id}::uuid`)
         .toEqual([{ length: 16384 }]);
 
+      const cancelResponseRoot = await enqueue(targetC,"active response before delegated steer");
+      await makeActive(cancelResponseRoot.turnId,targetC);
       const cancelled = await delegate({ source: ids.companion,target: targetC,
         sourceTurn: source.turnId,key: "cancel-v3",mode: "notify",content: "cancel target" });
-      await makeActive(cancelled.target_turn.id,targetC);
       const cancelClaimToken = randomUUID();
       await ownerSql`update public.companion_v3_lane_leases set claim_token=${cancelClaimToken}::uuid,
         claim_epoch=claim_epoch+1,gate_epoch=(select gate_epoch from public.companion_runtime_control
@@ -5260,16 +5261,6 @@ describe("Runtime v3 progression facts", () => {
         claimed_at=clock_timestamp(),renewed_at=clock_timestamp(),
         expires_at=clock_timestamp()+interval '30 seconds'
         where org_id=${ids.org}::uuid and companion_id=${targetC}::uuid and lane='main'`;
-      await asApi(async (sql) => {
-        const first = await sql<Array<{ turn: { status: string } }>>`
-          select turn from public.companion_v3_api_cancel_delegation_turn(
-            ${ids.org}::uuid,${ids.companion}::uuid,${cancelled.delegation.id}::uuid)`;
-        const replay = await sql<Array<{ turn: { status: string } }>>`
-          select turn from public.companion_v3_api_cancel_delegation_turn(
-            ${ids.org}::uuid,${ids.companion}::uuid,${cancelled.delegation.id}::uuid)`;
-        expect(first[0]?.turn.status).toBe("running");
-        expect(replay[0]?.turn.status).toBe("running");
-      });
       const [cancelFacts] = await ownerSql<Array<{
         commandId: string; claimEpoch: string; gateEpoch: string;
       }>>`select turn_row.command_id as "commandId",lease.claim_epoch::text as "claimEpoch",
@@ -5285,7 +5276,7 @@ describe("Runtime v3 progression facts", () => {
           id: cancelled.target_turn.id,
           commandId: cancelFacts!.commandId,
           lane: "main" as const,
-          state: "running" as const,
+          state: "queued" as const,
         },
         fence: {
           token: cancelClaimToken,
@@ -5294,25 +5285,44 @@ describe("Runtime v3 progression facts", () => {
         },
       };
       const cancellationPersistence = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
-      await expect(cancellationPersistence.pendingDelegationCancel!(cancelClaim)).resolves.toEqual({
-        turnId: cancelled.target_turn.id,
-        commandId: expect.any(String),
-      });
       const abort = vi.fn().mockResolvedValue({
         outcome: "accepted" as const,invocationId: "pi-target-c",
       });
+      const prompt = vi.fn(async () => {
+        await asApi(async (sql) => {
+          const requested = await sql<Array<{ turn: { status: string } }>>`
+            select turn from public.companion_v3_api_cancel_delegation_turn(
+              ${ids.org}::uuid,${ids.companion}::uuid,${cancelled.delegation.id}::uuid)`;
+          expect(requested[0]?.turn.status).toBe("queued");
+        });
+        return {
+          outcome: "accepted" as const,invocationId: "pi-target-c",
+          responseAttemptId: cancelResponseRoot.turnId,initialCursor: 0n,
+        };
+      });
       await expect(createRuntimeV3WarmTurnAdvance({
         persistence: cancellationPersistence,
-        pi: { prompt: vi.fn(),read: vi.fn(),acknowledge: vi.fn(),abort },
+        pi: { prompt,read: vi.fn(),acknowledge: vi.fn(),abort },
       })(cancelClaim)).resolves.toEqual({ kind: "release" });
+      expect(prompt).toHaveBeenCalledOnce();
       expect(abort).toHaveBeenCalledWith(expect.objectContaining({
-        boxId: "bx_23456789",turnId: cancelled.target_turn.id,
+        boxId: "bx_23456789",turnId: cancelResponseRoot.turnId,
       }));
       await expect(createRuntimeV3PostgresWarmConvergence(runtimeSql).completeProgression(
         cancelClaim,{ kind: "release" },
       )).resolves.toBe(true);
-      expect(await ownerSql`select state::text as state from public.companion_v3_turns
-        where id=${cancelled.target_turn.id}::uuid`).toEqual([{ state: "cancelled" }]);
+      expect(await ownerSql`select id,state::text as state from public.companion_v3_turns
+        where id in (${cancelResponseRoot.turnId}::uuid,${cancelled.target_turn.id}::uuid)
+        order by id`).toEqual([
+          { id: [cancelResponseRoot.turnId,cancelled.target_turn.id].sort()[0],state: "cancelled" },
+          { id: [cancelResponseRoot.turnId,cancelled.target_turn.id].sort()[1],state: "cancelled" },
+        ]);
+      await asApi(async (sql) => {
+        const replay = await sql<Array<{ turn: { status: string } }>>`
+          select turn from public.companion_v3_api_cancel_delegation_turn(
+            ${ids.org}::uuid,${ids.companion}::uuid,${cancelled.delegation.id}::uuid)`;
+        expect(replay[0]?.turn.status).toBe("cancelled");
+      });
       const afterCancellation = await enqueue(targetC,"ordinary work after cancellation");
       expect(await ownerSql`select id,state::text as state from public.companion_v3_turns
         where org_id=${ids.org}::uuid and companion_id=${targetC}::uuid
