@@ -208,7 +208,8 @@ describe("staging a member's attachments onto the Box", () => {
 
   it("does not expose staged paths when expiry crosses during the Box write", async () => {
     let clock = Date.parse("2026-09-24T23:59:59.000Z");
-    const stageAttachments = vi.fn(async () => {
+    const stageAttachments = vi.fn(async (input: { files: unknown[] }) => {
+      if (input.files.length === 0) return [];
       clock = Date.parse("2026-09-25T00:00:00.000Z");
       return [{
         position: 0,
@@ -224,7 +225,8 @@ describe("staging a member's attachments onto the Box", () => {
       now: () => clock,
     }).attachmentStager.stageAttachments(stageInput([attachment(PNG)])))
       .rejects.toMatchObject({ stableCode: "attachment_expired" });
-    expect(stageAttachments).toHaveBeenCalledTimes(1);
+    expect(stageAttachments).toHaveBeenCalledTimes(2);
+    expect(stageAttachments).toHaveBeenLastCalledWith(expect.objectContaining({ files: [] }));
   });
 });
 

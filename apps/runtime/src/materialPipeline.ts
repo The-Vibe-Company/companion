@@ -438,16 +438,29 @@ export function createRuntimeMaterialPipeline(input: {
       if (stage.material.attachments.some((attachment) => now() >= attachment.expiresAt.getTime())) {
         throw new RuntimeAttachmentExpiredError();
       }
-      const staged = await (input.fileRuntime?.() ?? input.runtime()).stageAttachments({
+      const fileRuntime = input.fileRuntime?.() ?? input.runtime();
+      const messageId = messageIdFromEventId(stage.messageEventId);
+      const staged = await fileRuntime.stageAttachments({
         boxId: stage.boxId,
-        messageId: messageIdFromEventId(stage.messageEventId),
+        messageId,
         files,
         signal: stage.signal,
       });
-      // There is no targeted Box delete seam for one staged message. If the fixed deadline crosses
-      // during the read-only write, keep the bytes unreachable: do not return paths to the engine,
-      // so it cannot append them to the prompt or dispatch Pi.
+      // The existing idempotent staging seam replaces the whole scratch root. If the deadline
+      // crosses during the Box write, immediately replace it with an empty staging set before
+      // withholding paths from the engine, so neither disk bytes nor a Pi-visible prompt survive.
       if (stage.material.attachments.some((attachment) => now() >= attachment.expiresAt.getTime())) {
+        try {
+          await fileRuntime.stageAttachments({
+            boxId: stage.boxId,
+            messageId,
+            files: [],
+            signal: stage.signal,
+          });
+        } catch {
+          // The expiry outcome remains stable and never dispatches Pi even if Box cleanup is
+          // temporarily unavailable; the next staging call replaces the scratch root again.
+        }
         throw new RuntimeAttachmentExpiredError();
       }
       return staged;
