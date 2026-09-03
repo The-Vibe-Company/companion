@@ -24,11 +24,12 @@ BEGIN
   IF p_token_hash IS NULL OR p_token_hash!~'^[0-9a-f]{64}$' THEN RETURN; END IF;
   RETURN QUERY
   UPDATE public.companion_control_tokens token SET last_used_at=v_now
-  FROM public.companion_runtime_instances instance,public.companion_v3_turns turn_row,
+  FROM public.companion_v3_instances instance,public.companion_v3_turns turn_row,
        public.memberships membership
   WHERE token.token_hash=p_token_hash AND token.revoked_at IS NULL AND token.expires_at>v_now
     AND instance.org_id=token.org_id AND instance.companion_id=token.companion_id
-    AND instance.control_token_id=token.id AND instance.retirement_state='active'
+    AND instance.control_token_id=token.id AND instance.lifecycle_state='active'
+    AND instance.desired_lifecycle='prepare'
     AND turn_row.org_id=token.org_id AND turn_row.companion_id=token.companion_id
     AND turn_row.actor_id=token.staged_actor_id AND turn_row.lane='main'
     AND turn_row.state IN ('admitted','running','needs_input')

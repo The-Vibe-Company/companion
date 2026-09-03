@@ -5152,7 +5152,7 @@ describe("Runtime v3 progression facts", () => {
         id,org_id,companion_id,staged_actor_id,token_prefix,token_hash,expires_at)
         values(${controlTokenId}::uuid,${ids.org}::uuid,${ids.companion}::uuid,${ids.owner},
           ${rawControlToken.slice(0,14)},${controlTokenHash},clock_timestamp()+interval '1 hour')`;
-      await ownerSql`update public.companion_runtime_instances set control_token_id=${controlTokenId}::uuid
+      await ownerSql`update public.companion_v3_instances set control_token_id=${controlTokenId}::uuid
         where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
       expect(await apiSql`select turn_id,attempt_id from public.companion_resolve_control_token(
         ${controlTokenHash})`).toEqual([{ turn_id: source.turnId,attempt_id: source.turnId }]);
@@ -5272,7 +5272,7 @@ describe("Runtime v3 progression facts", () => {
         .rejects.toMatchObject({ code: "54000" });
     } finally {
       await ownerSql`delete from public.companion_delegations where org_id=${ids.org}::uuid`;
-      await ownerSql`update public.companion_runtime_instances set control_token_id=null
+      await ownerSql`update public.companion_v3_instances set control_token_id=null
         where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
       await ownerSql`delete from public.companion_control_tokens where id=${controlTokenId}::uuid`;
       await ownerSql`delete from public.companion_v3_instances
