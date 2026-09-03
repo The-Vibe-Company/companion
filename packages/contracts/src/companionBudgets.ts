@@ -193,6 +193,8 @@ export function sqlIntervalToMs(literal: string): number {
  */
 // oxlint-disable-next-line anti-slop/no-known-value-widening -- Named SQL-interval contract indexed by pg function name at test time; the explicit Record IS the owner contract.
 export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly string[]>> = {
+  // Fixed attachment-byte retention: exactly thirty days from upload completion.
+  companion_set_attachment_expiry: ["720 hours"],
   // Control request approval window.
   companion_api_create_control_request: ["24 hours"],
   // turnAbsoluteDeadlineMs + claim-time coldStartDeadlineMs.

@@ -350,6 +350,8 @@ function decodeAttachments(row: RuntimeSqlRow): RuntimeAttachment[] {
     const contentType = nullableText(attachment, "content_type");
     const sha256 = nullableText(attachment, "sha256");
     const filename = nullableText(attachment, "filename");
+    const expiresAtText = nullableText(attachment, "expires_at");
+    const expiresAt = expiresAtText === null ? null : new Date(expiresAtText);
     const byteSize = numberValue(attachment.byte_size);
     const position = numberValue(attachment.position);
     if (
@@ -362,6 +364,8 @@ function decodeAttachments(row: RuntimeSqlRow): RuntimeAttachment[] {
       || !SHA256_PATTERN.test(sha256)
       || filename === null
       || !COMPANION_ATTACHMENT_FILENAME_PATTERN.test(filename)
+      || expiresAt === null
+      || !Number.isFinite(expiresAt.getTime())
       || byteSize === null
       || byteSize < 1
       || byteSize > COMPANION_ATTACHMENT_MAX_BYTES
@@ -375,6 +379,7 @@ function decodeAttachments(row: RuntimeSqlRow): RuntimeAttachment[] {
       sha256,
       filename,
       position: index,
+      expiresAt,
     };
   });
 }

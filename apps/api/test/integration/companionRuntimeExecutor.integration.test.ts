@@ -2855,6 +2855,45 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     }
   });
 
+  it("accepts a rolling runtime's Pi output without uploaded_at", async () => {
+    if (!sql) throw new Error("runtime executor database is not initialized");
+    const fixture = await createCompanion({ boxReady: true });
+    await asOwnerV2((tx) => tx`
+      update companion_turn_attempts
+      set checkpoint = 'agent_settled', event_cursor = 4
+      where id = ${fixture.attemptId}::uuid
+    `);
+    const claim = await claimWork();
+    try {
+      const activityAt = new Date(Date.now() - 3_000);
+      const legacyOutputs = [{
+        storage_key: `companion-attachments/${ids.orgA}/${fixture.companionId}/outputs/${fixture.attemptId}/0-${"f".repeat(64)}`,
+        content_type: "image/png",
+        byte_size: 256,
+        sha256: "f".repeat(64),
+        filename: "legacy-plot.png",
+        position: 0,
+      }];
+      const [recorded] = await asRuntime((tx) => tx<Array<{ recorded: number }>>`
+        select recorded from public.companion_runtime_record_attempt_outputs(
+          ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.claimToken}::uuid,
+          ${claim.claimEpoch}::bigint, ${claim.gateEpoch}::bigint, ${executorId},
+          'attempt', ${claim.workId}::uuid, ${tx.json(legacyOutputs)}::jsonb, ${activityAt}
+        )
+      `);
+      expect(recorded?.recorded).toBe(1);
+      const [retention] = await sql<Array<{ uploaded_at: Date; fixed: boolean }>>`
+        select uploaded_at,
+          expires_at = uploaded_at + interval '720 hours' as fixed
+        from companion_message_attachments
+        where companion_id = ${fixture.companionId}::uuid and kind = 'pi_output'
+      `;
+      expect(retention).toEqual({ uploaded_at: activityAt, fixed: true });
+    } finally {
+      await removeCompanion(fixture.companionId);
+    }
+  });
+
   it("refuses attempt outputs that are not bounded images", async () => {
     const fixture = await createCompanion({ boxReady: true });
     if (!sql) throw new Error("runtime executor database is not initialized");

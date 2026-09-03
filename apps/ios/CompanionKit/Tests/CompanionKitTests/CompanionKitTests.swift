@@ -1421,7 +1421,9 @@ func decodesAttachmentMetadataWithoutAStorageURL() throws {
         "content_type":"image/png",
         "byte_size":2048,
         "filename":"Q3_chart.PNG",
-        "position":0
+        "position":0,
+        "availability":"available",
+        "expires_at":"2026-09-23T11:00:00.000000Z"
       }],
       "created_at":"2026-08-24T11:00:00.000Z"
     }
@@ -1432,7 +1434,7 @@ func decodesAttachmentMetadataWithoutAStorageURL() throws {
     #expect(attachment.byteSize == 2_048)
     #expect(attachment.filename == "Q3_chart.PNG")
     #expect(attachment.availability == .available)
-    #expect(attachment.expiresAt == nil)
+    #expect(attachment.expiresAt == "2026-09-23T11:00:00.000000Z")
 }
 
 @Test
@@ -1453,7 +1455,8 @@ func decodesExpiredAttachmentMetadataWithoutAStorageURL() throws {
         "byte_size":2048,
         "filename":"report.pdf",
         "position":0,
-        "availability":"expired"
+        "availability":"expired",
+        "expires_at":"2026-09-23T11:00:00.000000Z"
       }],
       "created_at":"2026-08-24T11:00:00.000Z"
     }
@@ -1461,6 +1464,7 @@ func decodesExpiredAttachmentMetadataWithoutAStorageURL() throws {
     let attachment = try #require(entry.attachments.first)
     #expect(attachment.availability == .expired)
     #expect(attachment.filename == "report.pdf")
+    #expect(attachment.expiresAt == "2026-09-23T11:00:00.000000Z")
 }
 
 @Test

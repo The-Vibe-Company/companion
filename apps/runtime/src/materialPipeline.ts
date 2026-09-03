@@ -9,6 +9,7 @@ import {
 } from "@companion/box-runtime";
 import {
   RUNTIME_LEASE_SECONDS,
+  RuntimeAttachmentExpiredError,
   createRuntimeVisibleTextRedactor,
   type RuntimeAttachmentStager,
   type RuntimeMaterialProvider,
@@ -406,6 +407,9 @@ export function createRuntimeMaterialPipeline(input: {
     async stageAttachments(stage) {
       const files = [];
       for (const attachment of stage.material.attachments) {
+        if (now() >= attachment.expiresAt.getTime()) {
+          throw new RuntimeAttachmentExpiredError();
+        }
         const bytes = await input.loadAttachment(attachment.storageKey, stage.signal);
         // The digest is checked against what the control plane accepted, not against what object
         // storage happened to return. A truncated read, a rewritten object, or the wrong key all
@@ -413,6 +417,9 @@ export function createRuntimeMaterialPipeline(input: {
         const digest = createHash("sha256").update(bytes).digest("hex");
         if (bytes.byteLength !== attachment.byteSize || digest !== attachment.sha256) {
           throw new RuntimeMaterialError("runtime_material_invalid");
+        }
+        if (now() >= attachment.expiresAt.getTime()) {
+          throw new RuntimeAttachmentExpiredError();
         }
         files.push({
           position: attachment.position,
@@ -428,6 +435,9 @@ export function createRuntimeMaterialPipeline(input: {
         material: stage.material,
         authorization: stage.authorization,
       });
+      if (stage.material.attachments.some((attachment) => now() >= attachment.expiresAt.getTime())) {
+        throw new RuntimeAttachmentExpiredError();
+      }
       return await (input.fileRuntime?.() ?? input.runtime()).stageAttachments({
         boxId: stage.boxId,
         messageId: messageIdFromEventId(stage.messageEventId),

@@ -75,6 +75,7 @@ function attachment(bytes: Buffer, position = 0) {
     sha256: digest(bytes),
     filename: `chart-${position}.png`,
     position,
+    expiresAt: new Date("2026-09-25T00:00:00.000Z"),
   };
 }
 
@@ -185,6 +186,23 @@ describe("staging a member's attachments onto the Box", () => {
       runtime: { stageAttachments },
       loadAttachment: async () => { throw new Error("object storage is unreachable"); },
     }).attachmentStager.stageAttachments(stageInput([attachment(PNG)]))).rejects.toThrow();
+    expect(stageAttachments).not.toHaveBeenCalled();
+  });
+
+  it("rechecks the immutable deadline after object read and before Box staging", async () => {
+    let clock = Date.parse("2026-09-24T23:59:59.000Z");
+    const stageAttachments = vi.fn();
+    const loadAttachment = vi.fn(async () => {
+      clock = Date.parse("2026-09-25T00:00:00.000Z");
+      return PNG;
+    });
+
+    await expect(pipeline({
+      runtime: { stageAttachments },
+      loadAttachment,
+      now: () => clock,
+    }).attachmentStager.stageAttachments(stageInput([attachment(PNG)])))
+      .rejects.toMatchObject({ stableCode: "attachment_expired" });
     expect(stageAttachments).not.toHaveBeenCalled();
   });
 });

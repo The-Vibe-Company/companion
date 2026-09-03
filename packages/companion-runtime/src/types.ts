@@ -430,6 +430,8 @@ export interface RuntimeAttachment {
   sha256: string;
   filename: string;
   position: number;
+  /** Immutable storage deadline, rechecked immediately before every external staging boundary. */
+  expiresAt: Date;
 }
 
 /** Sensitive values remain opaque to this package and are never included in errors or health. */
