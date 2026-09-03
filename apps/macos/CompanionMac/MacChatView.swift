@@ -26,11 +26,18 @@ final class CompanionMacChatModel {
     }
 
     var canSend: Bool {
-        companion.access.canEditCompanionSettings && thread?.canSend == true && thread?.readOnly == false
+        CompanionMacSendProjection.evaluate(
+            threadCanSend: thread?.canSend,
+            readOnly: thread?.readOnly
+        )
     }
 
     var isReplying: Bool {
-        thread?.activeTurn?.replying == true || companion.runtime.replying
+        CompanionMacReplyingProjection.evaluate(
+            threadLoaded: thread != nil,
+            activeTurnReplying: thread?.activeTurn?.replying,
+            rosterReplying: companion.runtime.replying
+        )
     }
 
     var statusLine: String {
@@ -339,8 +346,11 @@ struct CompanionMacChatView: View {
                                 queuedCount: thread.queuedCount
                             )
                             .id("interrupted-\(interruptedTurn.id)")
-                        } else if thread.queuedCount > 0 {
-                            CompanionMacQueuedStateView(count: thread.queuedCount)
+                        } else if let waitingMessage = CompanionRecoveryPresentation.waitingMessage(for: thread) {
+                            CompanionMacQueuedStateView(
+                                message: waitingMessage,
+                                external: thread.queuedTurn?.externalBlock != nil
+                            )
                         }
                     }
                     if let actionError = model.actionError {
@@ -986,39 +996,21 @@ private struct CompanionMacAttachmentView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        Button {
-            Task { await openPreview() }
-        } label: {
-            HStack(spacing: 10) {
-                if let image {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 220, maxHeight: 140)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                } else {
-                    Image(systemName: "doc.text.fill")
-                        .font(.system(size: 18))
-                        .foregroundStyle(CompanionIOSTheme.textPrimary)
-                        .frame(width: 36, height: 36)
-                        .background(CompanionIOSTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        Group {
+            if CompanionMacAttachmentProjection.canOpen(attachment.availability) {
+                Button {
+                    Task { await openPreview() }
+                } label: {
+                    attachmentCard
                 }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(attachment.filename)
-                        .font(.system(size: 14, weight: .semibold))
-                        .lineLimit(1)
-                    Text(ByteCountFormatter.string(fromByteCount: Int64(attachment.byteSize), countStyle: .file))
-                        .font(.system(size: 12).monospacedDigit())
-                        .foregroundStyle(CompanionIOSTheme.textSecondary)
-                }
-                if opening { ProgressView().controlSize(.small) }
+                .buttonStyle(.plain)
+                .disabled(opening)
+            } else {
+                attachmentCard
             }
-            .padding(10)
-            .background(CompanionIOSTheme.innerBubble, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .buttonStyle(.plain)
-        .disabled(opening)
         .task {
+            guard CompanionMacAttachmentProjection.canOpen(attachment.availability) else { return }
             guard attachment.kind == .piOutput, attachment.contentType.isImage else { return }
             guard let data = try? await sessionStore.attachmentData(
                 companionID: companionID,
@@ -1039,7 +1031,40 @@ private struct CompanionMacAttachmentView: View {
         .onDisappear { removePreviewFile() }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Attachment \(attachment.filename)")
-        .accessibilityHint("Opens a file preview")
+        .accessibilityHint(CompanionMacAttachmentProjection.canOpen(attachment.availability)
+            ? "Opens a file preview" : "Expired and no longer available")
+    }
+
+    private var attachmentCard: some View {
+        HStack(spacing: 10) {
+            if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 220, maxHeight: 140)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            } else {
+                Image(systemName: attachment.availability == .expired
+                    ? "clock.badge.exclamationmark" : "doc.text.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(CompanionIOSTheme.textPrimary)
+                    .frame(width: 36, height: 36)
+                    .background(CompanionIOSTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(attachment.filename)
+                    .font(.system(size: 14, weight: .semibold))
+                    .lineLimit(1)
+                Text(attachment.availability == .expired
+                    ? "Expired"
+                    : ByteCountFormatter.string(fromByteCount: Int64(attachment.byteSize), countStyle: .file))
+                    .font(.system(size: 12).monospacedDigit())
+                    .foregroundStyle(CompanionIOSTheme.textSecondary)
+            }
+            if opening { ProgressView().controlSize(.small) }
+        }
+        .padding(10)
+        .background(CompanionIOSTheme.innerBubble, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private func openPreview() async {
@@ -1105,12 +1130,13 @@ private struct CompanionMacInterruptedTurnNotice: View {
 }
 
 private struct CompanionMacQueuedStateView: View {
-    let count: Int
+    let message: String
+    let external: Bool
 
     var body: some View {
         Label(
-            "\(count) message\(count == 1 ? "" : "s") queued. They will run in order.",
-            systemImage: "clock"
+            message,
+            systemImage: external ? "exclamationmark.triangle" : "clock"
         )
         .font(.callout)
         .foregroundStyle(Color.companionMacMuted)

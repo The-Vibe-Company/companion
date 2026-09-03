@@ -2574,16 +2574,45 @@ describe("Runtime v3 progression facts", () => {
     expect(firstSend[0]!.replayed).toBe(false);
     expect(replay).toEqual([{ turn: expect.objectContaining({ id: firstSend[0]!.turn.id }), replayed: true }]);
 
-    let queued: Array<{ queuedCount: number; isReplying: boolean }> = [];
+    let queued: Array<{
+      queuedCount: number;
+      queuedTurn: { status: string };
+      preparation: { state: string; taking_longer_than_expected: boolean };
+      backgroundBusy: boolean;
+      isReplying: boolean;
+    }> = [];
     await asApi(async (sql) => {
-      queued = await sql<Array<{ queuedCount: number; isReplying: boolean }>>`
-        select queued_count as "queuedCount", is_replying as "isReplying"
+      queued = await sql`
+        select queued_count as "queuedCount", queued_turn as "queuedTurn",
+          preparation, background_busy as "backgroundBusy", is_replying as "isReplying"
         from public.companion_v3_api_read_projection(
           ${ids.org}::uuid, ${ids.companion}::uuid,
           ${sql.json([`msg:${first}`, `msg:${second}`])}::jsonb
         )`;
     });
-    expect(queued).toEqual([{ queuedCount: 2, isReplying: false }]);
+    expect(queued).toEqual([{
+      queuedCount: 2,
+      queuedTurn: expect.objectContaining({ status: "queued" }),
+      preparation: { state: "queued", taking_longer_than_expected: false },
+      backgroundBusy: false,
+      isReplying: false,
+    }]);
+
+    await ownerSql`update public.companion_v3_turns set
+      accepted_at=clock_timestamp()-interval '16 seconds',
+      first_claimed_at=clock_timestamp()-interval '15 seconds',
+      last_claimed_at=clock_timestamp()-interval '15 seconds',claim_count=1
+      where id=${firstSend[0]!.turn.id}::uuid`;
+    await asApi(async (sql) => {
+      const delayed = await sql<Array<{ preparation: { taking_longer_than_expected: boolean } }>>`
+        select preparation from public.companion_v3_api_read_projection(
+          ${ids.org}::uuid, ${ids.companion}::uuid, '[]'::jsonb
+        )`;
+      expect(delayed[0]!.preparation.taking_longer_than_expected).toBe(true);
+    });
+    await ownerSql`update public.companion_v3_turns set
+      first_claimed_at=null,last_claimed_at=null,claim_count=0
+      where id=${firstSend[0]!.turn.id}::uuid`;
 
     const basePersistence = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
     const admissionReplying: boolean[] = [];
@@ -2592,12 +2621,13 @@ describe("Runtime v3 progression facts", () => {
       async recordAdmission(...args: Parameters<typeof basePersistence.recordAdmission>) {
         const recorded = await basePersistence.recordAdmission(...args);
         await asApi(async (sql) => {
-          const rows = await sql<Array<{ isReplying: boolean }>>`
-            select is_replying as "isReplying"
+          const rows = await sql<Array<{ isReplying: boolean; preparation: unknown }>>`
+            select is_replying as "isReplying",preparation
             from public.companion_v3_api_read_projection(
               ${ids.org}::uuid, ${ids.companion}::uuid, '[]'::jsonb
             )`;
           admissionReplying.push(rows[0]!.isReplying);
+          expect(rows[0]!.preparation).toBeNull();
         });
         return recorded;
       },
@@ -2764,6 +2794,58 @@ describe("Runtime v3 progression facts", () => {
         )`;
     });
     expect(terminal).toEqual([{ activeTurn: null, queuedCount: 0, isReplying: false }]);
+  });
+
+  it("queues the shared Pi-only Restart while cold and joins the resulting Runtime v3 repair", async () => {
+    await ownerSql`insert into public.companion_runtime_instances(org_id,companion_id)
+      values(${ids.org}::uuid,${ids.companion}::uuid) on conflict(companion_id) do nothing`;
+    await seedPreparedV3("invocation-manual-restart");
+    // A staged, not-yet-prepared instance is cold. Advanced recovery must remain requestable and
+    // recycle its existing Pi without waking or restarting the Box.
+    await ownerSql`update public.companion_v3_instances set
+      preparation_checkpoint='staged',prepared_at=null
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
+    const firstRequest = randomUUID();
+    const joinedRequest = randomUUID();
+
+    await asApi(async (sql) => {
+      const first = await sql<Array<{ operation: { kind: string; status: string } }>>`
+        select operation from public.companion_v3_api_restart_pi(
+          ${ids.org}::uuid,${ids.companion}::uuid,${firstRequest}::uuid,'web'
+        )`;
+      expect(first).toEqual([{
+        operation: expect.objectContaining({ kind: "restart_pi", status: "running" }),
+      }]);
+      const joined = await sql<Array<{ operation: { kind: string; status: string } }>>`
+        select operation from public.companion_v3_api_restart_pi(
+          ${ids.org}::uuid,${ids.companion}::uuid,${joinedRequest}::uuid,'native_mobile'
+        )`;
+      expect(joined).toEqual([{
+        operation: expect.objectContaining({ kind: "restart_pi", status: "pending" }),
+      }]);
+    });
+
+    expect(await ownerSql`select pi_recycle_checkpoint,recycle_pi_invocation_id
+      from public.companion_v3_instances
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`).toEqual([{
+      pi_recycle_checkpoint: "terminate",
+      recycle_pi_invocation_id: "invocation-manual-restart",
+    }]);
+    expect(await ownerSql`select status::text,checkpoint from public.companion_operations
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+        and request_id in (${firstRequest}::uuid,${joinedRequest}::uuid)
+        and kind='restart_pi' order by queue_sequence`).toEqual([
+      { status: "running", checkpoint: "restarting_pi" },
+      { status: "pending", checkpoint: "restarting_pi" },
+    ]);
+
+    await ownerSql`update public.companion_v3_instances set
+      pi_recycle_checkpoint=null,recycle_pi_invocation_id=null,recovery_turn_id=null
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
+    expect(await ownerSql`select status::text from public.companion_operations
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+        and request_id in (${firstRequest}::uuid,${joinedRequest}::uuid)
+      order by queue_sequence`).toEqual([{ status: "succeeded" },{ status: "succeeded" }]);
   });
 
   it("reclaims the same oldest queued Turn after a proven pre-admission refusal", async () => {

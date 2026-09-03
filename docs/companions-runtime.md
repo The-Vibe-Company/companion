@@ -411,6 +411,21 @@ largest byte-bounded suffix of complete durable entries, never the ambiguous com
 possible-context-loss bit prefixes exactly one sentence to the next projected Companion reply and
 is cleared atomically with that projection; proven complete continuity remains silent.
 
+The thread projection also carries the oldest queued main Turn, its aggregate external block when
+present, a server-classified preparation reason, a background-lane busy bit, and a durable
+`taking_longer_than_expected` decision. The latter is true only after correlated progress crosses
+the wake path's p99 target: 15 seconds warm, 90 seconds from archive, or 120 seconds from creation.
+Web, iOS, and macOS therefore render “Je me réveille” first and “Ça prend plus de temps que prévu”
+only from the same server fact, with queue count but no countdown or ETA. None of these states alters
+Owner/Editor `can_send`; Viewer receives the same safe projection through PostgreSQL without Box
+contact. Replying remains the separate positive-admission fact and is false for `needs_input` and
+all terminal states.
+
+During rollout, the only advanced first-party recovery control is Restart. Its shared request
+contract accepts Pi only, is asynchronous, joins an existing Pi recovery instead of duplicating it,
+and warns that active work may be interrupted. It never restarts or replaces the Box. First-party
+clients expose no Wake, Full Box, or ambiguous-work Retry action.
+
 Pi command responses carry the command id; general Pi events do not. The broker therefore owns the
 one-active-attempt association. An `agent_settled` for that association ends the attempt only when
 its shape is explicitly supported. Tool and `ask_user` activity renews the turn's correlated
@@ -1293,7 +1308,7 @@ The following always read PostgreSQL only:
 - Companion list and detail;
 - default runtime status;
 - thread/transcript;
-- active turn and queued count;
+- active turn, queued head/count, preparation reason, and independent background-busy state;
 - Viewer access;
 - ordinary settled polling.
 

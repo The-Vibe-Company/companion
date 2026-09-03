@@ -835,6 +835,17 @@ struct ChatView: View {
         onThinkingTap: @escaping () -> Void
     ) -> some View {
         VStack(spacing: 8) {
+            if let thread,
+               let waitingMessage = CompanionRecoveryPresentation.waitingMessage(for: thread) {
+                Label(waitingMessage, systemImage: thread.queuedTurn?.externalBlock == nil
+                    ? "clock" : "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(CompanionIOSTheme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .accessibilityIdentifier("chat.runtime-waiting")
+            }
+
             if !queuedEntries.isEmpty {
                 CompanionQueuedMessagesView(
                     entries: queuedEntries,

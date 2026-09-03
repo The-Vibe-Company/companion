@@ -576,10 +576,10 @@ private struct CompanionMacRestartButtons: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Button("Restart Companion") { target = .pi }
-                Button("Restart Server") { target = .box }
-            }
+            Text("Advanced recovery recycles only Pi. It joins automatic recovery and keeps the Box and saved files in place.")
+                .font(.system(size: 13))
+                .foregroundStyle(CompanionIOSTheme.textSecondary)
+            Button("Restart") { target = .pi }
             if let operation {
                 Label(operationLabel(operation), systemImage: operationSymbol(operation))
                     .font(.system(size: 13))
@@ -596,7 +596,7 @@ private struct CompanionMacRestartButtons: View {
         .padding(16)
         .disabled(working || operation?.isActive == true)
         .confirmationDialog(
-            target == .box ? "Restart the server?" : "Restart the Companion?",
+            "Restart the Companion?",
             isPresented: Binding(get: { target != nil }, set: { if !$0 { target = nil } })
         ) {
             Button("Restart", role: .destructive) {
@@ -606,6 +606,8 @@ private struct CompanionMacRestartButtons: View {
                 restartTask = Task { await restart(selected) }
             }
             Button("Cancel", role: .cancel) { target = nil }
+        } message: {
+            Text("Active work may be interrupted. Pi is recycled asynchronously; the Box and saved files remain in place.")
         }
         .onAppear { adopt(companion.runtime.latestOperation) }
         .onChange(of: companion.runtime.latestOperation) { _, latest in
@@ -616,7 +618,7 @@ private struct CompanionMacRestartButtons: View {
 
     private func adopt(_ latest: CompanionOperationSummary?) {
         guard let latest,
-              latest.kind == .restartPi || latest.kind == .restartBox,
+              latest.kind == .restartPi,
               operation?.id != latest.id || operation?.status != latest.status else { return }
         operation = latest
         guard latest.isActive else { return }

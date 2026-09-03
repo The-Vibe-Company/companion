@@ -1247,6 +1247,13 @@
       "when": 1793369200000,
       "tag": "0177_companion_runtime_v3_external_incidents",
       "breakpoints": true
+    },
+    {
+      "idx": 178,
+      "version": "7",
+      "when": 1793372800000,
+      "tag": "0178_companion_runtime_v3_client_recovery",
+      "breakpoints": true
     }
   ]
 }

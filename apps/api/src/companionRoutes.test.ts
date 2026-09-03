@@ -1713,7 +1713,6 @@ describe("Companions Runtime v2 API", () => {
     ["start", `/v1/companions/${COMPANION_ID}/runtime/start`, "POST", {}, "start"],
     ["stop", `/v1/companions/${COMPANION_ID}/runtime/stop`, "POST", undefined, "stop"],
     ["restart Pi", `/v1/companions/${COMPANION_ID}/runtime/restart`, "POST", { target: "pi" }, "restart_pi"],
-    ["restart Box", `/v1/companions/${COMPANION_ID}/runtime/restart`, "POST", { target: "box" }, "restart_box"],
   ])("accepts %s as a durable operation", async (_label, path, method, body, kind) => {
     const app = appWithRoutes();
     const headers = new Headers({ "Idempotency-Key": RETRY_ID });
@@ -1737,7 +1736,20 @@ describe("Companions Runtime v2 API", () => {
 
   it("rejects lifecycle work without a caller-owned idempotency key", async () => {
     const response = await appWithRoutes().request(
-      jsonPost(`/v1/companions/${COMPANION_ID}/runtime/restart`, { target: "box" }),
+      jsonPost(`/v1/companions/${COMPANION_ID}/runtime/restart`, { target: "pi" }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(coreMocks.enqueueCompanionOperationV2).not.toHaveBeenCalled();
+  });
+
+  it("rejects the removed full-Box restart target", async () => {
+    const response = await appWithRoutes().request(
+      new Request(`http://localhost/v1/companions/${COMPANION_ID}/runtime/restart`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "Idempotency-Key": RETRY_ID },
+        body: JSON.stringify({ target: "box" }),
+      }),
     );
 
     expect(response.status).toBe(400);

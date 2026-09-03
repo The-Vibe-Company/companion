@@ -94,7 +94,21 @@ export function composerHint(input: {
   }
 
   if (queued > 0) {
-    return `${queued} message${queued === 1 ? " is" : "s are"} saved and queued.`;
+    const queueSuffix = `${queued} message${queued === 1 ? " is" : "s are"} saved and queued.`;
+    const externalBlock = input.thread?.queued_turn?.external_block;
+    if (externalBlock) {
+      return `External service issue: ${externalBlock.message} ${queueSuffix}`;
+    }
+    if (input.thread?.preparation?.taking_longer_than_expected === true) {
+      return `Ça prend plus de temps que prévu. ${queueSuffix}`;
+    }
+    if (input.thread?.preparation) {
+      return `Je me réveille. ${queueSuffix}`;
+    }
+    return queueSuffix;
+  }
+  if (input.thread?.background_busy === true) {
+    return "Background work is running. You can keep messaging.";
   }
   if (input.state === "provisioning" || input.state === "stopping") {
     return "A runtime change is in progress. Messages remain durable and ordered.";

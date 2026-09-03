@@ -4,6 +4,18 @@ import XCTest
 @testable import CompanionMac
 
 final class MacProjectionTests: XCTestCase {
+    func testFreshThreadAuthorizationOverridesAStaleRosterRole() {
+        XCTAssertTrue(CompanionMacSendProjection.evaluate(threadCanSend: true, readOnly: false))
+        XCTAssertFalse(CompanionMacSendProjection.evaluate(threadCanSend: false, readOnly: false))
+        XCTAssertFalse(CompanionMacSendProjection.evaluate(threadCanSend: true, readOnly: true))
+        XCTAssertFalse(CompanionMacSendProjection.evaluate(threadCanSend: nil, readOnly: nil))
+    }
+
+    func testExpiredAttachmentHasNoPreviewTarget() {
+        XCTAssertTrue(CompanionMacAttachmentProjection.canOpen(.available))
+        XCTAssertFalse(CompanionMacAttachmentProjection.canOpen(.expired))
+    }
+
     func testMacRosterUsesSharedOwnerSectionsAndOmitsHiddenRows() throws {
         let companions = try makeCompanions()
         let sections = try JSONDecoder().decode([CompanionSection].self, from: Data(#"""
@@ -41,6 +53,29 @@ final class MacProjectionTests: XCTestCase {
             CompanionMacDesktopEligibility.evaluate(access: .owner, runtimeState: .stopped),
             .boxNotRunning
         )
+    }
+
+    func testReplyingStopsWhenTheLoadedThreadClearsItsAdmissionProjection() {
+        XCTAssertTrue(CompanionMacReplyingProjection.evaluate(
+            threadLoaded: false,
+            activeTurnReplying: nil,
+            rosterReplying: true
+        ))
+        XCTAssertFalse(CompanionMacReplyingProjection.evaluate(
+            threadLoaded: true,
+            activeTurnReplying: nil,
+            rosterReplying: true
+        ))
+        XCTAssertFalse(CompanionMacReplyingProjection.evaluate(
+            threadLoaded: true,
+            activeTurnReplying: false,
+            rosterReplying: true
+        ))
+        XCTAssertTrue(CompanionMacReplyingProjection.evaluate(
+            threadLoaded: true,
+            activeTurnReplying: true,
+            rosterReplying: false
+        ))
     }
 
     @MainActor

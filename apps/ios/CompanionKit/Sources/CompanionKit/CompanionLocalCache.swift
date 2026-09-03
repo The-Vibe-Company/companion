@@ -124,6 +124,9 @@ extension CompanionThread {
             entries: entries,
             activeTurn: activeTurn,
             queuedCount: queuedCount,
+            queuedTurn: queuedTurn,
+            preparation: preparation,
+            backgroundBusy: backgroundBusy,
             interruptedTurn: interruptedTurn
         )
     }

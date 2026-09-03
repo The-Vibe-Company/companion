@@ -6,6 +6,7 @@ import {
   companionActiveTurnSchema,
   companionInterruptedTurnSchema,
   companionLatestOperationSchema,
+  companionQueuedTurnSchema,
   companionRecoveryStatusSchema,
   companionRuntimeSafeErrorSchema,
   companionTurnStatusSchema,
@@ -2022,6 +2023,14 @@ export const companionTranscriptEntrySchema = companionTranscriptEntryObjectSche
 export type CompanionTranscriptEntry = z.infer<typeof companionTranscriptEntrySchema>;
 export type CompanionTranscriptRole = CompanionTranscriptEntry["role"];
 
+/** Durable, server-classified reason why the FIFO head has not reached Pi admission yet. */
+export const companionPreparationSchema = z.object({
+  state: z.enum(["cold", "queued", "repairing", "externally_blocked"]),
+  /** True only after the wake-path p99 was crossed and Runtime v3 recorded correlated progress. */
+  taking_longer_than_expected: z.boolean(),
+}).strict();
+export type CompanionPreparation = z.infer<typeof companionPreparationSchema>;
+
 /**
  * One Companion owns exactly one chat thread. The payload is the control-plane read model, so a
  * Viewer reads it without any Box contact; `can_send` reflects the Owner/Editor run boundary.
@@ -2040,6 +2049,12 @@ export const companionThreadSchema = z.object({
   active_turn: companionActiveTurnSchema.nullable(),
   /** Exact number of later turns still ordered in PostgreSQL. */
   queued_count: z.number().int().nonnegative(),
+  /** FIFO head while it remains queued; carries a safe aggregate external block when present. */
+  queued_turn: companionQueuedTurnSchema.nullable().optional(),
+  /** PostgreSQL-only preparation projection. Clients never infer this from Box state or clocks. */
+  preparation: companionPreparationSchema.nullable().optional(),
+  /** Independent durable background-lane work never makes the main composer unavailable. */
+  background_busy: z.boolean().optional(),
   /** An unresolved ambiguous turn while its exact automatic cleanup is visible, if any. */
   interrupted_turn: companionInterruptedTurnSchema.nullable(),
   last_message_at: z.string().datetime().nullable(),

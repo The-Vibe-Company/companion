@@ -66,6 +66,9 @@ public struct CompanionThreadMetadata: Codable, Equatable, Sendable {
     public let transcriptionAvailable: Bool?
     public let activeTurn: CompanionTurn?
     public let queuedCount: Int
+    public let queuedTurn: CompanionTurn?
+    public let preparation: CompanionPreparation?
+    public let backgroundBusy: Bool?
     public let interruptedTurn: CompanionTurn?
 
     enum CodingKeys: String, CodingKey {
@@ -76,6 +79,9 @@ public struct CompanionThreadMetadata: Codable, Equatable, Sendable {
         case transcriptionAvailable = "transcription_available"
         case activeTurn = "active_turn"
         case queuedCount = "queued_count"
+        case queuedTurn = "queued_turn"
+        case preparation
+        case backgroundBusy = "background_busy"
         case interruptedTurn = "interrupted_turn"
     }
 
@@ -89,6 +95,9 @@ public struct CompanionThreadMetadata: Codable, Equatable, Sendable {
             entries: entries,
             activeTurn: activeTurn,
             queuedCount: queuedCount,
+            queuedTurn: queuedTurn,
+            preparation: preparation,
+            backgroundBusy: backgroundBusy,
             interruptedTurn: interruptedTurn
         )
     }

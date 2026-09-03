@@ -342,6 +342,21 @@ describe("CompanionThread", () => {
     expect(markup).not.toContain(">Wake<");
   });
 
+  it("keeps the authorized composer available throughout durable cold preparation", () => {
+    const markup = render({
+      companion: asleep,
+      thread: thread({
+        queued_count: 1,
+        preparation: { state: "cold", taking_longer_than_expected: false },
+      }),
+    });
+
+    expect(markup).toContain("Je me réveille");
+    expect(markup).toContain("Message Luna");
+    expect(markup).not.toContain("Retry");
+    expect(markup).not.toContain(">Wake<");
+  });
+
   it("reports an active turn from its durable state", () => {
     const waiting = thread({ active_turn: activeTurn("running", true) });
     const running = render({ thread: waiting });

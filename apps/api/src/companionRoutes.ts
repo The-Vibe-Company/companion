@@ -3085,7 +3085,7 @@ export function registerCompanionRoutes(
   app.post("/v1/companions/:id/runtime/restart", async (c) => {
     try {
       const companionId = companionIdSchema.parse(c.req.param("id"));
-      const body = restartCompanionRuntimeInputSchema.parse(await c.req.json());
+      restartCompanionRuntimeInputSchema.parse(await c.req.json());
       const requestId = companionOperationRequestIdSchema.parse(
         c.req.header(COMPANION_OPERATION_IDEMPOTENCY_HEADER),
       );
@@ -3093,7 +3093,7 @@ export function registerCompanionRoutes(
         c,
         companionId,
         requestId,
-        body.target === "pi" ? "restart_pi" : "restart_box",
+        "restart_pi",
       );
       return c.json({ operation: accepted.operation }, 202);
     } catch (error) {

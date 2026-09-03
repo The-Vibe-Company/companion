@@ -1469,25 +1469,18 @@ final class CompanionUITests: XCTestCase {
 
         let restart = scrollToButton("companion.details.restart.companion", in: app)
         restart.tap()
-        let confirm = app.sheets.buttons["Restart Companion"]
+        let confirm = app.sheets.buttons["Restart"]
         XCTAssertTrue(confirm.waitForExistence(timeout: 2))
         confirm.tap()
         XCTAssertTrue(app.staticTexts[
-            "Companion restart accepted. It will run after earlier runtime work."
+            "Restart accepted. It joins any recovery already in progress."
         ].waitForExistence(timeout: 2))
     }
 
     @MainActor
-    func testOwnerConfirmsFullServerRestartWithInterruptionCopy() throws {
+    func testOwnerHasNoServerRestartControl() throws {
         let app = launchCompanionDetails(access: "owner")
-
-        let restart = scrollToButton("companion.details.restart.server", in: app)
-        restart.tap()
-        XCTAssertTrue(app.staticTexts[
-            "This queues a full server restart. Active work is interrupted, but the Companion and its saved files remain."
-        ].waitForExistence(timeout: 2))
-        let confirm = app.sheets.buttons["Restart server"]
-        XCTAssertTrue(confirm.exists)
+        XCTAssertFalse(app.buttons["companion.details.restart.server"].exists)
     }
 
     @MainActor

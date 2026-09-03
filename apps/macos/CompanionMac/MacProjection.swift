@@ -1,4 +1,31 @@
 import CompanionKit
+
+/// The loaded thread is the authorization projection for chat. Roster ACL data can be stale after
+/// a role change, so it must not overrule a fresh `can_send` response.
+public enum CompanionMacSendProjection {
+    public static func evaluate(threadCanSend: Bool?, readOnly: Bool?) -> Bool {
+        threadCanSend == true && readOnly == false
+    }
+}
+
+public enum CompanionMacAttachmentProjection {
+    public static func canOpen(_ availability: CompanionAttachment.Availability) -> Bool {
+        availability == .available
+    }
+}
+
+/// Once the thread has loaded it is the sole authority for replying. A stale roster bit must not
+/// keep typing visible after `needs_input` or terminal settlement.
+public enum CompanionMacReplyingProjection {
+    public static func evaluate(
+        threadLoaded: Bool,
+        activeTurnReplying: Bool?,
+        rosterReplying: Bool
+    ) -> Bool {
+        threadLoaded ? activeTurnReplying == true : rosterReplying
+    }
+}
+
 /// The macOS client must not offer a desktop handoff to a Viewer or to a Box that is not already
 /// running. Keeping that decision in a pure projection makes it testable without UI hosting or a
 /// network session and gives toolbar/menu surfaces one source of truth.

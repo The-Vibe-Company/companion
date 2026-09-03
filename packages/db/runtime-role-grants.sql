@@ -959,7 +959,8 @@ BEGIN
         'public.companion_v3_api_admit_turn(uuid,uuid,uuid,text)'::regprocedure,
         'public.companion_v3_api_desire_lifecycle(uuid,uuid,public.companion_v3_lifecycle_intent)'::regprocedure,
         'public.companion_v3_api_enqueue_warm_turn(uuid,uuid,uuid,text)'::regprocedure,
-        'public.companion_v3_api_read_projection(uuid,uuid,jsonb)'::regprocedure
+        'public.companion_v3_api_read_projection(uuid,uuid,jsonb)'::regprocedure,
+        'public.companion_v3_api_restart_pi(uuid,uuid,uuid,public.companion_client_surface)'::regprocedure
       ];
       worker_functions := worker_functions || ARRAY[
         'public.companion_v3_worker_admit_turn(uuid,uuid,uuid,text,text)'::regprocedure
@@ -1052,6 +1053,8 @@ BEGIN
         END IF;
       END IF;
       internal_runtime_functions := internal_runtime_functions || ARRAY[
+        'public.companion_v3_settle_manual_restart()'::regprocedure,
+        'public.companion_v3_cancel_deferred_manual_restart()'::regprocedure,
         'public.companion_v3_admit_turn(uuid,uuid,uuid,text,text,public.companion_v3_lane)'::regprocedure,
         'public.companion_v3_public_turn(public.companion_v3_turns)'::regprocedure
       ];

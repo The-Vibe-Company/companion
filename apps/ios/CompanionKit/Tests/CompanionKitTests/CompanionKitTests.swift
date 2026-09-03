@@ -1121,14 +1121,6 @@ func usesCompanionPluginSelectionAndRuntimeLifecycleRoutes() async throws {
     #expect(piOperation.kind == .restartPi)
     #expect(piOperation.status == .pending)
 
-    let boxRequestID = try #require(UUID(uuidString: "25f3701c-af66-4e56-ae1d-4a0f31cd5999"))
-    let boxOperation = try await client.restartCompanion(
-        companionID: companionID,
-        target: .box,
-        requestID: boxRequestID
-    )
-    #expect(boxOperation.kind == .restartBox)
-    #expect(boxOperation.status == .pending)
 }
 
 @Test
@@ -1435,6 +1427,61 @@ func decodesAttachmentMetadataWithoutAStorageURL() throws {
     #expect(attachment.filename == "Q3_chart.PNG")
     #expect(attachment.availability == .available)
     #expect(attachment.expiresAt == "2026-09-23T11:00:00.000000Z")
+}
+
+@Test
+func decodesRuntimeV3RecoveryProjectionAndSharedWaitingCopy() throws {
+    let thread = try JSONDecoder().decode(CompanionThread.self, from: Data(#"""
+    {
+      "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
+      "viewer_id":"owner-1","read_only":false,"can_send":true,"entries":[],
+      "active_turn":null,"queued_count":2,
+      "queued_turn":{
+        "id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
+        "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "status":"queued","queue_sequence":20,"latest_attempt":null,
+        "admission_state":"pending","admitted_at":null,"replying":false,"error":null,
+        "external_block":{"classification":"model","source":"main","message":"The selected model is unavailable."},
+        "state_changed_at":"2026-08-26T05:55:12.466Z","settled_at":null,
+        "created_at":"2026-08-26T05:55:12.466Z","updated_at":"2026-08-26T05:55:12.466Z"
+      },
+      "preparation":{"state":"externally_blocked","taking_longer_than_expected":true},
+      "background_busy":true,"interrupted_turn":null
+    }
+    """#.utf8))
+
+    #expect(thread.canSend)
+    #expect(thread.queuedTurn?.admissionState == .pending)
+    #expect(thread.queuedTurn?.externalBlock?.classification == "model")
+    #expect(thread.preparation?.state == .externallyBlocked)
+    #expect(thread.backgroundBusy == true)
+    #expect(CompanionRecoveryPresentation.waitingMessage(for: thread)
+        == "External service issue: The selected model is unavailable. 2 messages are saved and queued.")
+}
+
+@Test
+func recoveryWaitingCopyUsesServerP99FactWithoutAnETA() throws {
+    func thread(takingLonger: Bool) throws -> CompanionThread {
+        try JSONDecoder().decode(CompanionThread.self, from: Data(#"""
+        {
+          "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
+          "viewer_id":"owner-1","read_only":false,"can_send":true,"entries":[],
+          "active_turn":null,"queued_count":1,"queued_turn":null,
+          "preparation":{"state":"repairing","taking_longer_than_expected":\#(takingLonger)},
+          "background_busy":false,"interrupted_turn":null
+        }
+        """#.utf8))
+    }
+
+    #expect(CompanionRecoveryPresentation.waitingMessage(for: try thread(takingLonger: false))
+        == "Je me réveille. 1 message is saved and queued.")
+    let delayed = try #require(CompanionRecoveryPresentation.waitingMessage(
+        for: try thread(takingLonger: true)
+    ))
+    #expect(delayed == "Ça prend plus de temps que prévu. 1 message is saved and queued.")
+    #expect(!delayed.localizedCaseInsensitiveContains("minute"))
+    #expect(!delayed.contains(":"))
 }
 
 @Test

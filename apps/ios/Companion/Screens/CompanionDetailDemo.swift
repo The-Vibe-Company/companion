@@ -304,9 +304,9 @@ private enum CompanionDetailDemoFixtures {
     }
 
     private static func restartOperation(
-        _ target: CompanionRuntimeRestartTarget
+        _: CompanionRuntimeRestartTarget
     ) -> CompanionOperationSummary {
-        decode(#"{"id":"77777777-7777-4777-8777-777777777777","kind":"\#(target == .pi ? "restart_pi" : "restart_box")","status":"pending","error":null}"#)
+        decode(#"{"id":"77777777-7777-4777-8777-777777777777","kind":"restart_pi","status":"pending","error":null}"#)
     }
 
     private static func companion(

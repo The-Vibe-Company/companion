@@ -120,11 +120,7 @@ struct CompanionResourceSections: View {
             }
             Button("Cancel", role: .cancel) { restartTarget = nil }
         } message: {
-            if restartTarget == .box {
-                Text("This queues a full server restart. Active work is interrupted, but the Companion and its saved files remain.")
-            } else {
-                Text("This queues a fresh Companion process. The server and saved files remain in place.")
-            }
+            Text("This asynchronously recycles Pi and joins any automatic recovery already running. Active work may be interrupted; the Box and saved files remain in place.")
         }
         .confirmationDialog(
             "Add connected plugin",
@@ -590,21 +586,18 @@ struct CompanionResourceSections: View {
                     .accessibilityIdentifier("companion.details.runtime.status")
 
                 if canEdit {
-                    Button("Restart Companion", systemImage: "arrow.clockwise") {
+                    Text("Advanced recovery recycles only the Companion process. The Box and its files stay in place.")
+                        .font(.caption)
+                        .foregroundStyle(Color.companionMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Button("Restart", systemImage: "arrow.clockwise") {
                         restartTarget = .pi
                     }
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                     .disabled(runtimeControlsDisabled)
-                    .accessibilityHint("Restarts the agent process while keeping the server online")
+                    .accessibilityHint("May interrupt active work; recycles Pi asynchronously and keeps the Box online")
                     .accessibilityIdentifier("companion.details.restart.companion")
-
-                    Button("Restart server", systemImage: "server.rack") {
-                        restartTarget = .box
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    .disabled(runtimeControlsDisabled)
-                    .accessibilityHint("Restarts the full Box and interrupts active work")
-                    .accessibilityIdentifier("companion.details.restart.server")
                 } else {
                     Text("You have read-only access. An Owner or Editor can restart this Companion.")
                         .font(.caption)
@@ -772,7 +765,6 @@ struct CompanionResourceSections: View {
             || mutatingPluginID != nil
             || operationActive
             || hasUnsavedSettings
-            || !runtimeOnline
     }
 
     private var runtimeMessage: String {
@@ -796,9 +788,9 @@ struct CompanionResourceSections: View {
         if let lastError = currentCompanion.runtime.lastError, !lastError.isEmpty { return lastError }
         if runtimeOnline {
             if hasUnsavedSettings { return "Save your Companion settings before restarting." }
-            return "Restart the Companion process for a fresh agent, or restart the full server for Box-level recovery."
+            return "Advanced recovery asynchronously recycles Pi while the Box and saved files stay in place."
         }
-        return "This Companion must be Online before it can restart. Send a message to start it."
+        return "Advanced recovery remains available while this Companion is offline. It recycles Pi only; sending remains the normal wake action."
     }
 
     private var runtimeMessageColor: Color {
@@ -823,21 +815,18 @@ struct CompanionResourceSections: View {
     }
 
     private var restartConfirmationTitle: String {
-        switch restartTarget {
-        case .pi: "Restart \(currentCompanion.name)?"
-        case .box: "Restart \(currentCompanion.name)'s server?"
-        case nil: "Restart Companion?"
-        }
+        restartTarget == nil ? "Restart Companion?" : "Restart \(currentCompanion.name)?"
     }
 
     private func restartConfirmationButton(_ target: CompanionRuntimeRestartTarget) -> String {
-        target == .pi ? "Restart Companion" : "Restart server"
+        _ = target
+        return "Restart"
     }
 
     private func operationLabel(_ kind: CompanionOperationKind) -> String {
         switch kind {
         case .restartPi: "Companion restart"
-        case .restartBox: "Server restart"
+        case .restartBox: "Previous server operation"
         case .applySettings: "Settings apply"
         case .start: "Start"
         case .stop: "Stop"
@@ -1158,7 +1147,6 @@ struct CompanionResourceSections: View {
 
     private func restart(_ target: CompanionRuntimeRestartTarget) async {
         guard canEdit,
-              runtimeOnline,
               !hasUnsavedSettings,
               !operationActive,
               restartingTarget == nil else { return }
@@ -1181,9 +1169,7 @@ struct CompanionResourceSections: View {
             }
             restartRequestIDs[target] = nil
             acceptedOperation = operation
-            success = target == .pi
-                ? "Companion restart accepted. It will run after earlier runtime work."
-                : "Server restart accepted. It will run after earlier runtime work."
+            success = "Restart accepted. It joins any recovery already in progress."
         } catch {
             if let apiError = error as? APIError, apiError.status == 0 {
                 self.error = "The restart response was not received. Retry safely reuses the same request."
@@ -1291,8 +1277,8 @@ enum CompanionResourceDemoFixtures {
         [decode(#"{"id":"55555555-5555-4555-8555-555555555555","provider":"github","label":"work","transport":"http","endpoint":"https://api.githubcopilot.com/mcp","connected":true,"created_at":"2026-08-25T08:00:00.000Z","updated_at":"2026-08-25T08:00:00.000Z"}"#)]
     }
 
-    static func restartOperation(_ target: CompanionRuntimeRestartTarget) -> CompanionOperationSummary {
-        decode(#"{"id":"77777777-7777-4777-8777-777777777777","kind":"\#(target == .pi ? "restart_pi" : "restart_box")","status":"pending","error":null}"#)
+    static func restartOperation(_: CompanionRuntimeRestartTarget) -> CompanionOperationSummary {
+        decode(#"{"id":"77777777-7777-4777-8777-777777777777","kind":"restart_pi","status":"pending","error":null}"#)
     }
 
     private static func decode<Value: Decodable>(_ json: String) -> Value {

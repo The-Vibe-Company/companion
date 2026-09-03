@@ -107,6 +107,30 @@ function interruptedTurn(): NonNullable<CompanionThread["interrupted_turn"]> {
   };
 }
 
+function queuedTurn(externalMessage?: string): NonNullable<CompanionThread["queued_turn"]> {
+  return {
+    id: turnId,
+    companion_id: companionId,
+    client_message_id: "44444444-4444-4444-8444-444444444444",
+    status: "queued",
+    queue_sequence: 1,
+    latest_attempt: null,
+    admission_state: "pending",
+    admitted_at: null,
+    replying: false,
+    error: null,
+    external_block: externalMessage ? {
+      classification: "model",
+      source: "main",
+      message: externalMessage,
+    } : null,
+    state_changed_at: now,
+    settled_at: null,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
 describe("transcriptDisplayContent", () => {
   it.each([
     ["Pi ended the turn without a visible reply.", "Luna ended the turn without a visible reply."],
@@ -125,6 +149,14 @@ describe("transcriptDisplayContent", () => {
       }),
       "Luna",
     )).toBe("Luna stopped; pi.dev, Pipedream, Piñata, and αPi stayed available.");
+  });
+
+  it("keeps the context-loss disclosure in the Companion's own assistant message", () => {
+    const disclosure = "I may have forgotten part of our earlier conversation while recovering.";
+    expect(transcriptDisplayContent(entry({ role: "assistant", content: disclosure }), "Luna"))
+      .toBe(disclosure);
+    expect(transcriptAuthor(entry({ role: "assistant", content: disclosure }), "user-1", "Luna"))
+      .toBe("Luna");
   });
 
   it.each(["user", "assistant", "tool", "decision"] as const)(
@@ -179,6 +211,12 @@ describe("replyExpected", () => {
     expect(replyExpected(thread({ active_turn: activeTurn("dispatching") }))).toBe(false);
     expect(replyExpected(null)).toBe(false);
   });
+
+  it("shows replying only for the server-projected positive Pi admission", () => {
+    expect(replyExpected(thread({ active_turn: activeTurn("running", true) }))).toBe(true);
+    expect(replyExpected(thread({ active_turn: activeTurn("needs_input", false) }))).toBe(false);
+    expect(replyExpected(thread({ active_turn: null }))).toBe(false);
+  });
 });
 
 describe("composerHint", () => {
@@ -219,5 +257,39 @@ describe("composerHint", () => {
     })).toBe("1 message is saved and queued.");
     expect(composerHint({ thread: thread(), companionName: "Luna", state: "stopping" }))
       .toBe("A runtime change is in progress. Messages remain durable and ordered.");
+  });
+
+  it("uses durable wake progress without a countdown or ETA", () => {
+    expect(composerHint({
+      thread: thread({
+        queued_count: 1,
+        queued_turn: queuedTurn(),
+        preparation: { state: "cold", taking_longer_than_expected: false },
+      }),
+      companionName: "Luna",
+      state: "not_created",
+    })).toBe("Je me réveille. 1 message is saved and queued.");
+    expect(composerHint({
+      thread: thread({
+        queued_count: 2,
+        queued_turn: queuedTurn(),
+        preparation: { state: "repairing", taking_longer_than_expected: true },
+      }),
+      companionName: "Luna",
+      state: "running",
+    })).toBe("Ça prend plus de temps que prévu. 2 messages are saved and queued.");
+  });
+
+  it("surfaces the aggregate external block and keeps background work non-blocking", () => {
+    expect(composerHint({
+      thread: thread({ queued_count: 1, queued_turn: queuedTurn("The selected model is unavailable.") }),
+      companionName: "Luna",
+      state: "error",
+    })).toBe("External service issue: The selected model is unavailable. 1 message is saved and queued.");
+    expect(composerHint({
+      thread: thread({ background_busy: true }),
+      companionName: "Luna",
+      state: "running",
+    })).toBe("Background work is running. You can keep messaging.");
   });
 });

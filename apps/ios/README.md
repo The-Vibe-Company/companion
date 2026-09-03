@@ -78,10 +78,10 @@ Companion without an attachment step. GitHub and Sentry normally share their enc
 credential; Linear and supported fallbacks use one encrypted member-level API key. Creation and chat
 approval let Companion register the remote webhook end to end, without a callback-URL prompt or
 manual provider-console setup. The platform URL and secret rotation remain collapsed technical controls for editors only. The
-details page queues the existing Pi-only restart as **Restart Companion** and the existing full-Box
-restart as **Restart server**; both are
-confirmed, idempotent lifecycle intents whose PostgreSQL-projected queued/stopping/starting/completed
-state is polled without contacting Box or Pi. Viewer sees the page read-only, including redacted
+details page exposes one temporary advanced **Restart** action. It asynchronously recycles Pi,
+joins any automatic recovery already in progress, preserves the Box and saved files, and warns
+before interrupting active work. Its PostgreSQL-projected state is polled without contacting Box or
+Pi. Viewer sees the page read-only, including redacted
 unavailable plugin selections, and never receives mutation or restart controls. The
 native thread renders every durable decision request. Owner and Editor can answer `ask_user`,
 approve or deny asynchronous Companion control changes for models, OAuth, routines, triggers, and
@@ -211,7 +211,7 @@ Use this manual production-like check:
    ```
 
 5. Confirm the app projects `stopped`, send another message, and verify the existing Box resumes
-   and replies. Then exercise **Restart Companion** and **Restart server** in settings.
+   and replies. Then exercise the advanced **Restart** action in settings.
 6. Delete the Companion in the app when cleanup is wanted and wait for it to disappear; this is the
    product path that permanently deletes its Box.
 

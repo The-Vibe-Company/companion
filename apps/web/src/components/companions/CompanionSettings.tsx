@@ -6,7 +6,6 @@ import type {
   CompanionLatestOperation,
   CompanionProvidersResponse,
 } from "@companion/contracts";
-import type { RestartCompanionRuntimeInput } from "@companion/contracts/companion-runtime";
 import { ApiFetchError } from "@/lib/apiClient";
 import {
   deleteCompanion,
@@ -49,9 +48,9 @@ function operationNotice(
           message: "Deletion accepted. This Companion remains visible until its Box is permanently deleted.",
         };
       case "restart_pi":
-        return { operationId, message: "Pi restart accepted. It will run after earlier runtime work." };
+        return { operationId, message: "Restart accepted. It joins any recovery already in progress." };
       case "restart_box":
-        return { operationId, message: "Full Box restart accepted. It will run after earlier runtime work." };
+        return { operationId, message: "A previous server operation is still pending." };
       default:
         return null;
     }
@@ -61,9 +60,9 @@ function operationNotice(
     case "delete":
       return { operationId, message: "Deletion completed." };
     case "restart_pi":
-      return { operationId, message: "Pi restart completed." };
+      return { operationId, message: "Restart completed." };
     case "restart_box":
-      return { operationId, message: "Full Box restart completed." };
+      return { operationId, message: "The previous server operation completed." };
     case "stop":
       return { operationId, message: "Stop completed." };
     case "start":
@@ -80,9 +79,9 @@ function operationFailureMessage(operation: CompanionLatestOperation | null): st
   const label = operation.kind === "delete"
     ? "Deletion"
     : operation.kind === "restart_pi"
-      ? "Pi restart"
+      ? "Restart"
       : operation.kind === "restart_box"
-        ? "Full Box restart"
+        ? "Server operation"
         : operation.kind === "apply_settings"
           ? "Settings apply"
           : operation.kind === "start"
@@ -130,9 +129,8 @@ export function CompanionSettings({
   });
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [confirmingBoxRestart, setConfirmingBoxRestart] = useState(false);
-  const [restartTarget, setRestartTarget] = useState<RestartCompanionRuntimeInput["target"]>("pi");
-  const [restarting, setRestarting] = useState<RestartCompanionRuntimeInput["target"] | null>(null);
+  const [confirmingRestart, setConfirmingRestart] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   const [runtimeSnapshot, setRuntimeSnapshot] = useState(companion.runtime);
   const [latestOperation, setLatestOperation] = useState(companion.runtime.latest_operation ?? null);
   const [runtimeNotice, setRuntimeNotice] = useState<RuntimeNotice | null>(null);
@@ -144,17 +142,13 @@ export function CompanionSettings({
   const [latest, setLatest] = useState(companion);
   const syncReadRef = useRef(0);
   const deleteRequestIdRef = useRef<string | null>(null);
-  const restartRequestIdRef = useRef<
-    Partial<Record<RestartCompanionRuntimeInput["target"], string>>
-  >({});
+  const restartRequestIdRef = useRef<string | null>(null);
   const onSavedRef = useRef(onSaved);
   const onDeletedRef = useRef(onDeleted);
   onSavedRef.current = onSaved;
   onDeletedRef.current = onDeleted;
   const canEdit = companion.access === "owner" || companion.access === "editor";
   const canDelete = companion.access === "owner";
-  const restartable = runtimeSnapshot.box_id !== null
-    && (runtimeSnapshot.state === "running" || runtimeSnapshot.state === "error");
 
   useEffect(() => {
     setRuntimeSnapshot(companion.runtime);
@@ -177,13 +171,7 @@ export function CompanionSettings({
 
   const operationActive = latestOperation !== null
     && (latestOperation.status === "pending" || latestOperation.status === "running");
-  const pendingRestartTarget: RestartCompanionRuntimeInput["target"] | null = operationActive
-    ? latestOperation.kind === "restart_pi"
-      ? "pi"
-      : latestOperation.kind === "restart_box"
-        ? "box"
-        : null
-    : null;
+  const restartActive = operationActive && latestOperation.kind === "restart_pi";
   const deletionActive = operationActive && latestOperation?.kind === "delete";
   const deletionRetryable = latestOperation?.kind === "delete"
     && (latestOperation.status === "failed"
@@ -201,12 +189,12 @@ export function CompanionSettings({
           : "Stop is in progress. Status refreshes every three seconds."
         : latestOperation.kind === "restart_pi"
           ? operationPending
-            ? "Pi restart is queued. Status refreshes every three seconds."
-            : "Pi restart is in progress. Status refreshes every three seconds."
+            ? "Restart is queued. It joins any recovery already in progress."
+            : "Restart is in progress. Status refreshes automatically."
           : latestOperation.kind === "restart_box"
             ? operationPending
-              ? "Full Box restart is queued. Status refreshes every three seconds."
-              : "Full Box restart is in progress. Status refreshes every three seconds."
+              ? "A previous server operation is queued."
+              : "A previous server operation is in progress."
             : latestOperation.kind === "start"
               ? operationPending
                 ? "Start is queued. Status refreshes every three seconds."
@@ -241,7 +229,7 @@ export function CompanionSettings({
         }
         setLatest(next);
         onSavedRef.current(next);
-        if (pendingRestartTarget === null
+        if (!restartActive
           || next.runtime.state === "provisioning"
           || next.runtime.state === "stopping") return;
         if (next.runtime.state === "error") {
@@ -255,9 +243,7 @@ export function CompanionSettings({
           && ["failed", "interrupted", "cancelled"].includes(nextOperation.status)) return;
         setRuntimeNotice({
           operationId: nextOperation?.id ?? null,
-          message: pendingRestartTarget === "pi"
-            ? "Pi restart completed."
-            : "Full Box restart completed.",
+          message: "Restart completed.",
         });
       } catch (cause) {
         if (!active) return;
@@ -271,7 +257,7 @@ export function CompanionSettings({
       active = false;
       clearInterval(timer);
     };
-  }, [companion.id, deletionActive, lifecycleActive, orgId, pendingRestartTarget]);
+  }, [companion.id, deletionActive, lifecycleActive, orgId, restartActive]);
 
   const skillsPending = latest.runtime.skills_applied_revision < latest.runtime.skills_revision;
   const skillApplyingOperation = latest.runtime.latest_operation;
@@ -428,25 +414,25 @@ export function CompanionSettings({
     }
   };
 
-  const restart = async (target: RestartCompanionRuntimeInput["target"]) => {
-    if (!canEdit || changed || !restartable || deletionActive || pendingRestartTarget !== null) return;
+  const restart = async () => {
+    if (!canEdit || changed || deletionActive || restartActive) return;
     setBusy(true);
-    setRestarting(target);
+    setRestarting(true);
     setError(null);
     setRuntimeNotice(null);
-    const requestId = restartRequestIdRef.current[target] ?? crypto.randomUUID();
-    restartRequestIdRef.current[target] = requestId;
+    const requestId = restartRequestIdRef.current ?? crypto.randomUUID();
+    restartRequestIdRef.current = requestId;
     try {
-      const operation = await restartCompanionRuntime(orgId, companion.id, { target }, requestId);
-      delete restartRequestIdRef.current[target];
+      const operation = await restartCompanionRuntime(orgId, companion.id, { target: "pi" }, requestId);
+      restartRequestIdRef.current = null;
       setLatestOperation(operation);
       setRuntimeNotice(operationNotice(operation));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "This Companion could not be restarted.");
     } finally {
       setBusy(false);
-      setRestarting(null);
-      setConfirmingBoxRestart(false);
+      setRestarting(false);
+      setConfirmingRestart(false);
     }
   };
 
@@ -577,67 +563,21 @@ export function CompanionSettings({
         {canEdit && (
           <section className="companions-settings__runtime" aria-labelledby="restart-companion-title">
             <div>
-              <h2 id="restart-companion-title">Restart Companion</h2>
-              <p>Restart Pi for a fresh agent process, or restart the full Box for server-level recovery.</p>
+              <h2 id="restart-companion-title">Advanced recovery</h2>
+              <p>Restart recycles the Companion process asynchronously. The Box and its files stay in place.</p>
             </div>
-
-            <fieldset
-              className="companions-settings__restart-options"
-              disabled={
-                busy
-                || changed
-                || deletionActive
-                || pendingRestartTarget !== null
-                || !restartable
-              }
-              aria-describedby="restart-companion-hint"
-            >
-              <legend className="sr-only">Restart scope</legend>
-              <label>
-                <input
-                  type="radio"
-                  name="restart-target"
-                  value="pi"
-                  checked={restartTarget === "pi"}
-                  onChange={() => setRestartTarget("pi")}
-                />
-                <span>
-                  <strong>Pi only</strong>
-                  <small>Restarts the agent process. The Box stays online.</small>
-                </span>
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="restart-target"
-                  value="box"
-                  checked={restartTarget === "box"}
-                  onChange={() => setRestartTarget("box")}
-                />
-                <span>
-                  <strong>Full Box</strong>
-                  <small>Restarts the server and interrupts active work.</small>
-                </span>
-              </label>
-            </fieldset>
 
             <div className="companions-settings__restart-action">
               <p className="companions-settings__hint" id="restart-companion-hint">
                 {deletionActive
                   ? "Companion deletion is in progress. Runtime controls are unavailable."
-                  : pendingRestartTarget !== null
-                    ? "The accepted restart is still running. Status refreshes every three seconds."
-                  : !restartable
-                    ? runtimeSnapshot.box_id === null
-                      || runtimeSnapshot.state === "not_created"
-                      || runtimeSnapshot.state === "stopped"
-                      ? "Send a message to start this Companion before restarting it."
-                      : "Wait for the current runtime change to finish before restarting."
-                    : changed
+                  : restartActive
+                    ? "The accepted restart is still running. A concurrent automatic recovery is joined, not duplicated."
+                  : changed
                       ? "Save your changes before restarting."
-                      : restartTarget === "pi"
-                        ? "Pi restarts with the saved provider, model, skills, and plugins."
-                        : "Full Box restart requires confirmation."}
+                      : runtimeSnapshot.state === "not_created" || runtimeSnapshot.state === "stopped"
+                        ? "Pi-only recovery remains available while this Companion is offline. Sending remains the normal wake action."
+                        : "Restart can interrupt active work. You will confirm before the Pi process is recycled."}
               </p>
               <button
                 type="button"
@@ -646,23 +586,11 @@ export function CompanionSettings({
                   busy
                   || changed
                   || deletionActive
-                  || pendingRestartTarget !== null
-                  || !restartable
+                  || restartActive
                 }
-                onClick={() => {
-                  if (restartTarget === "box") setConfirmingBoxRestart(true);
-                  else void restart("pi");
-                }}
+                onClick={() => setConfirmingRestart(true)}
               >
-                {restarting === "pi"
-                  ? "Restarting Pi..."
-                  : restarting === "box"
-                    ? "Restarting Box..."
-                    : pendingRestartTarget !== null
-                      ? "Restart queued..."
-                    : restartTarget === "pi"
-                      ? "Restart Pi"
-                      : "Restart full Box"}
+                {restarting ? "Restarting..." : restartActive ? "Restart queued..." : "Restart"}
               </button>
             </div>
           </section>
@@ -752,12 +680,12 @@ export function CompanionSettings({
         />
       )}
 
-      {confirmingBoxRestart && (
+      {confirmingRestart && (
         <Dialog
           icon="refresh-cw"
-          title={`Restart ${companion.name}'s full Box?`}
-          desc="This queues a full server restart. Any active work is interrupted, but the Companion and its saved files remain."
-          onClose={() => setConfirmingBoxRestart(false)}
+          title={`Restart ${companion.name}?`}
+          desc="This asynchronously recycles Pi and joins any automatic recovery already running. Active work may be interrupted; the Box and saved files remain in place."
+          onClose={() => setConfirmingRestart(false)}
           closeDisabled={busy}
           className="og-dialog companions-restart-dialog"
           foot={(
@@ -766,17 +694,17 @@ export function CompanionSettings({
                 type="button"
                 className="cds-btn cds-btn--secondary cds-btn--md"
                 disabled={busy}
-                onClick={() => setConfirmingBoxRestart(false)}
+                onClick={() => setConfirmingRestart(false)}
               >
-                Keep Box running
+                Cancel
               </button>
               <button
                 type="button"
                 className="cds-btn cds-btn--primary cds-btn--md"
                 disabled={busy}
-                onClick={() => void restart("box")}
+                onClick={() => void restart()}
               >
-                {restarting === "box" ? "Restarting Box..." : "Restart full Box"}
+                {restarting ? "Restarting..." : "Restart"}
               </button>
             </>
           )}

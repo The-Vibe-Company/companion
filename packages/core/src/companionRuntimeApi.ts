@@ -24,6 +24,8 @@ import {
   companionAttachmentUploadSchema,
   companionDecisionProposalSchema,
   companionOperationSchema,
+  companionPreparationSchema,
+  companionQueuedTurnSchema,
   companionRoutineNotifyReturnSchema,
   companionRecoveryStatusSchema,
   companionSelectedMcpAccountIdsSchema,
@@ -577,6 +579,9 @@ type ThreadReadRow = {
 type RuntimeV3ThreadProjectionRow = {
   active_turn: unknown;
   queued_count: number | string;
+  queued_turn?: unknown;
+  preparation?: unknown;
+  background_busy?: boolean;
   is_replying: boolean;
   message_turns: unknown;
 };
@@ -633,6 +638,16 @@ function mergedRuntimeQueuedCount(
   v3: RuntimeV3ThreadProjectionRow | null,
 ): number {
   return integer(v2) + (v3 ? integer(v3.queued_count) : 0);
+}
+
+function runtimeV3QueuedTurn(v3: RuntimeV3ThreadProjectionRow | null): CompanionTurn | null {
+  if (v3?.queued_turn === null || v3?.queued_turn === undefined) return null;
+  return companionQueuedTurnSchema.parse(v3.queued_turn);
+}
+
+function runtimeV3Preparation(v3: RuntimeV3ThreadProjectionRow | null) {
+  if (v3?.preparation === null || v3?.preparation === undefined) return null;
+  return companionPreparationSchema.parse(v3.preparation);
 }
 
 export type RoutineNotifyReturn = CompanionRoutineNotifyReturn;
@@ -806,6 +821,9 @@ async function readCompanionThreadProjection(input: {
     entries,
     active_turn: activeTurn?.status === "interrupted" ? null : activeTurn,
     queued_count: queuedCount,
+    queued_turn: runtimeV3QueuedTurn(v3),
+    preparation: runtimeV3Preparation(v3),
+    background_busy: v3?.background_busy === true,
     interrupted_turn:
       interruptedTurn?.status === "interrupted" && interruptedTurn.resolution === null
         ? interruptedTurn
@@ -910,6 +928,9 @@ function companionThreadMetadata(input: {
     can_send: input.row.access_role !== "viewer",
     active_turn: activeTurn?.status === "interrupted" ? null : activeTurn,
     queued_count: mergedRuntimeQueuedCount(input.row.queued_count, input.runtimeV3 ?? null),
+    queued_turn: runtimeV3QueuedTurn(input.runtimeV3 ?? null),
+    preparation: runtimeV3Preparation(input.runtimeV3 ?? null),
+    background_busy: input.runtimeV3?.background_busy === true,
     interrupted_turn:
       interruptedTurn?.status === "interrupted" && interruptedTurn.resolution === null
         ? interruptedTurn
@@ -1188,6 +1209,23 @@ export async function enqueueCompanionOperationV2(input: {
   clientSurface: CompanionClientSurface;
   database: Db;
 }): Promise<{ operation: CompanionOperation; replayed: boolean }> {
+  if (input.kind === "restart_pi") {
+    const v3Result = await input.database.execute(sql`
+      select * from public.companion_v3_api_restart_pi(
+        ${input.orgId}::uuid,
+        ${input.companionId}::uuid,
+        ${input.requestId}::uuid,
+        ${input.clientSurface}::companion_client_surface
+      )
+    `);
+    const [v3Row] = rows<{ operation: unknown; replayed: boolean }>(v3Result);
+    if (v3Row) {
+      return {
+        operation: companionOperationSchema.parse(v3Row.operation),
+        replayed: v3Row.replayed,
+      };
+    }
+  }
   const result = await input.database.execute(sql`
     select * from public.companion_api_enqueue_operation(
       ${input.orgId}::uuid,

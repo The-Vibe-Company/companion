@@ -253,17 +253,12 @@ describe("Companion provider contracts", () => {
     })).toThrow();
   });
 
-  it("accepts only the two explicit runtime restart targets", () => {
+  it("accepts only the temporary Pi-only runtime restart", () => {
     expect(restartCompanionRuntimeInputSchema.parse({ target: "pi" })).toEqual({ target: "pi" });
-    expect(restartCompanionRuntimeInputSchema.parse({ target: "box" })).toEqual({ target: "box" });
-    expect(restartCompanionRuntimeInputSchema.parse({ target: "box", continuation: true })).toEqual({
-      target: "box",
-      continuation: true,
-    });
+    expect(() => restartCompanionRuntimeInputSchema.parse({ target: "box" })).toThrow();
     expect(() => restartCompanionRuntimeInputSchema.parse({ target: "server" })).toThrow();
     expect(() => restartCompanionRuntimeInputSchema.parse({ target: "pi", wake: true })).toThrow();
     expect(() => restartCompanionRuntimeInputSchema.parse({ target: "pi", continuation: true })).toThrow();
-    expect(() => restartCompanionRuntimeInputSchema.parse({ target: "box", continuation: false })).toThrow();
   });
 
   it("persists skill selection on update and refuses Skills Hub access fields", () => {

@@ -265,6 +265,15 @@ The first later admission receives a hash-validated compacted summary and the gr
 suffix of complete durable transcript entries, excluding the ambiguous message. A durable loss bit
 adds one fixed context-loss sentence to the beginning of the next Companion answer exactly once.
 
+Migration 0178 projects the shared Runtime v3 recovery experience from PostgreSQL. Thread reads
+carry the queued FIFO head, a server-classified cold/queued/repairing/external state, independent
+background activity, and a `taking_longer_than_expected` fact. That fact requires correlated durable
+progress and crosses the accepted wake path's measured p99 (15 seconds warm, 90 seconds archived,
+120 seconds creation); clients never run a countdown or derive an ETA. Owner/Editor `can_send`
+remains independent from every runtime state, while Viewer reads remain PostgreSQL-only. The single
+temporary Restart capability accepts only `target: pi`, recycles no Box, and first-party clients
+warn before it can interrupt active work; Wake, ambiguous Retry, and Full Box controls are absent.
+
 Migration 0174 moves directed delegation onto that same progression. A control invocation is bound
 to its accepted ordinary v3 main Turn; enqueue atomically adds one ordinary target main Turn and its
 durable source/root lineage. PostgreSQL revalidates both Companion ACLs, the persistent peer grant,

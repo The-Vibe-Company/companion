@@ -1114,6 +1114,19 @@ test("iOS navigation has one Companion details route and no legacy resource page
   }
   assert.match(resources, /companion\.details\.resources/);
   assert.match(resources, /companion\.details\.plugin-account\./);
+  assert.match(resources, /Advanced recovery asynchronously recycles Pi while the Box and saved files stay in place\./);
+  assert.match(resources, /Advanced recovery remains available while this Companion is offline\./);
+  assert.doesNotMatch(resources, /restart the full server|Full Box|must be Online before it can restart/);
+  const runtimeControlsDisabled = resources.slice(
+    resources.indexOf("private var runtimeControlsDisabled"),
+    resources.indexOf("private var runtimeMessage", resources.indexOf("private var runtimeControlsDisabled")),
+  );
+  const restartFunction = resources.slice(
+    resources.indexOf("private func restart(_ target"),
+    resources.indexOf("private func deleteCompanion", resources.indexOf("private func restart(_ target")),
+  );
+  assert.doesNotMatch(runtimeControlsDisabled, /runtimeOnline/);
+  assert.doesNotMatch(restartFunction, /runtimeOnline/);
   assert.match(resources, /background\(CompanionIOSTheme\.chip, in: Capsule\(\)\)/);
   assert.doesNotMatch(details, /CompanionLegacySettingsView|companion\.details\.settings/);
   assert.doesNotMatch(resources, /struct CompanionConnectedResourcesView|navigationTitle\("Connected resources"\)/);

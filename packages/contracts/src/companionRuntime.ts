@@ -355,17 +355,8 @@ export type RetryCompanionTurnAcceptedResponse = z.infer<
 export const cancelCompanionTurnInputSchema = z.object({}).strict();
 export type CancelCompanionTurnInput = z.infer<typeof cancelCompanionTurnInputSchema>;
 
-/**
- * The two operator restart scopes exposed by Companion settings. `pi` recycles only the daemon in
- * an already-running Box; `box` restarts the whole machine. A continuation repeats an
- * already-accepted full-Box restart with the same idempotency header, without turning a delayed
- * client retry into a second restart.
- */
-export const restartCompanionRuntimeInputSchema = z.discriminatedUnion("target", [
-  z.object({ target: z.literal("pi") }).strict(),
-  z.object({
-    target: z.literal("box"),
-    continuation: z.literal(true).optional(),
-  }).strict(),
-]);
+/** Temporary rollout failsafe. Restart always means an asynchronous Pi-only recycle. */
+export const restartCompanionRuntimeInputSchema = z.object({
+  target: z.literal("pi"),
+}).strict();
 export type RestartCompanionRuntimeInput = z.infer<typeof restartCompanionRuntimeInputSchema>;

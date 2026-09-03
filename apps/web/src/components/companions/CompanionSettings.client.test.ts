@@ -181,6 +181,11 @@ async function click(control: HTMLElement) {
   await act(async () => control.click());
 }
 
+async function confirmRestart(container: HTMLElement) {
+  await click(button(container, "Restart"));
+  await click(button(document.querySelector<HTMLElement>('[role="dialog"]')!, "Restart"));
+}
+
 describe("CompanionSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -200,10 +205,10 @@ describe("CompanionSettings", () => {
     companionApi.restartCompanionRuntime.mockImplementation(async (
       _orgId: string,
       _companionId: string,
-      input: { target: "pi" | "box" },
+      _input: { target: "pi" },
     ): Promise<CompanionOperation> => ({
       ...operation,
-      kind: input.target === "pi" ? "restart_pi" : "restart_box",
+      kind: "restart_pi",
     }));
   });
 
@@ -266,7 +271,11 @@ describe("CompanionSettings", () => {
     const online = companion("editor", "running");
     const { container, onSaved } = await mount(online);
 
-    await click(button(container, "Restart Pi"));
+    await click(button(container, "Restart"));
+    expect(companionApi.restartCompanionRuntime).not.toHaveBeenCalled();
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
+    expect(dialog.textContent).toContain("Active work may be interrupted");
+    await click(button(dialog, "Restart"));
 
     expect(companionApi.restartCompanionRuntime).toHaveBeenCalledWith(
       "org-1",
@@ -275,8 +284,8 @@ describe("CompanionSettings", () => {
       expect.stringMatching(UUID),
     );
     expect(onSaved).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("Pi restart accepted.");
-    expect(container.textContent).not.toContain("Pi restarted.");
+    expect(container.textContent).toContain("Restart accepted.");
+    expect(container.textContent).not.toContain("Restart completed.");
   });
 
   it("keeps Pi recovery available while an existing runtime is in Error", async () => {
@@ -287,8 +296,9 @@ describe("CompanionSettings", () => {
     };
     const { container } = await mount(failed);
 
-    expect(button(container, "Restart Pi").disabled).toBe(false);
-    await click(button(container, "Restart Pi"));
+    expect(button(container, "Restart").disabled).toBe(false);
+    await click(button(container, "Restart"));
+    await click(button(document.querySelector<HTMLElement>('[role="dialog"]')!, "Restart"));
 
     expect(companionApi.restartCompanionRuntime).toHaveBeenCalledWith(
       "org-1",
@@ -298,40 +308,45 @@ describe("CompanionSettings", () => {
     );
   });
 
-  it("keeps restart controls unavailable for an explicitly stopped Companion", async () => {
+  it("accepts Pi-only recovery while an explicitly stopped Companion is offline", async () => {
     const { container } = await mount(companion("owner", "stopped"));
 
-    expect(button(container, "Restart Pi").disabled).toBe(true);
+    expect(button(container, "Restart").disabled).toBe(false);
     expect(container.textContent).toContain(
-      "Send a message to start this Companion before restarting it.",
+      "Pi-only recovery remains available while this Companion is offline.",
     );
-  });
-
-  it("requires confirmation before queueing an explicit full Box restart", async () => {
-    const { container } = await mount(companion("owner", "running"));
-    const box = container.querySelector<HTMLInputElement>('input[value="box"]')!;
-    await act(async () => box.click());
-
-    await click(button(container, "Restart full Box"));
-    expect(companionApi.restartCompanionRuntime).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("Restart Luna's full Box?");
-
-    const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
-    await click(button(dialog, "Restart full Box"));
+    await click(button(container, "Restart"));
+    await click(button(document.querySelector<HTMLElement>('[role="dialog"]')!, "Restart"));
     expect(companionApi.restartCompanionRuntime).toHaveBeenCalledWith(
       "org-1",
       companionId,
-      { target: "box" },
+      { target: "pi" },
       expect.stringMatching(UUID),
     );
-    expect(container.textContent).toContain("Full Box restart accepted.");
+  });
+
+  it("exposes no full-Box control and sends only the Pi restart capability", async () => {
+    const { container } = await mount(companion("owner", "running"));
+    expect(container.querySelector('input[value="box"]')).toBeNull();
+    expect(container.textContent).not.toContain("Full Box");
+    await click(button(container, "Restart"));
+    expect(companionApi.restartCompanionRuntime).not.toHaveBeenCalled();
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
+    await click(button(dialog, "Restart"));
+    expect(companionApi.restartCompanionRuntime).toHaveBeenCalledWith(
+      "org-1",
+      companionId,
+      { target: "pi" },
+      expect.stringMatching(UUID),
+    );
   });
 
   it("surfaces a refused restart as an explicit error", async () => {
     companionApi.restartCompanionRuntime.mockRejectedValue(new Error("Restart was refused."));
     const { container } = await mount(companion("owner", "running"));
 
-    await click(button(container, "Restart Pi"));
+    await click(button(container, "Restart"));
+    await click(button(document.querySelector<HTMLElement>('[role="dialog"]')!, "Restart"));
 
     expect(container.querySelector("[role='alert']")?.textContent).toContain("Restart was refused.");
     expect(container.textContent).not.toContain("restart accepted");
@@ -343,8 +358,8 @@ describe("CompanionSettings", () => {
       .mockResolvedValueOnce(operation);
     const { container } = await mount(companion("owner", "running"));
 
-    await click(button(container, "Restart Pi"));
-    await click(button(container, "Restart Pi"));
+    await confirmRestart(container);
+    await confirmRestart(container);
 
     expect(companionApi.restartCompanionRuntime).toHaveBeenCalledTimes(2);
     expect(companionApi.restartCompanionRuntime.mock.calls[1]?.[3]).toBe(
@@ -378,16 +393,16 @@ describe("CompanionSettings", () => {
       .mockResolvedValueOnce(runningReplay);
     const { container } = await mount(companion("owner", "running"));
 
-    await click(button(container, "Restart Pi"));
-    await click(button(container, "Restart Pi"));
+    await confirmRestart(container);
+    await confirmRestart(container);
 
-    expect(container.textContent).toContain("Pi restart is in progress.");
-    expect(container.textContent).not.toContain("Pi restart accepted.");
+    expect(container.textContent).toContain("Restart is in progress.");
+    expect(container.textContent).not.toContain("Restart accepted.");
 
     await act(async () => vi.advanceTimersByTimeAsync(3_000));
 
-    expect(container.textContent).toContain("Pi restart is in progress.");
-    expect(container.textContent).not.toContain("Pi restart completed.");
+    expect(container.textContent).toContain("Restart is in progress.");
+    expect(container.textContent).not.toContain("Restart completed.");
   });
 
   it("presents a succeeded restart replay as completed instead of newly accepted", async () => {
@@ -404,11 +419,11 @@ describe("CompanionSettings", () => {
       .mockResolvedValueOnce(succeededReplay);
     const { container } = await mount(companion("owner", "running"));
 
-    await click(button(container, "Restart Pi"));
-    await click(button(container, "Restart Pi"));
+    await confirmRestart(container);
+    await confirmRestart(container);
 
-    expect(container.textContent).toContain("Pi restart completed.");
-    expect(container.textContent).not.toContain("Pi restart accepted.");
+    expect(container.textContent).toContain("Restart completed.");
+    expect(container.textContent).not.toContain("Restart accepted.");
   });
 
   it("polls an accepted restart every three seconds and surfaces its durable failure", async () => {
@@ -424,8 +439,8 @@ describe("CompanionSettings", () => {
     companionApi.getCompanionRuntime.mockResolvedValue(failed);
     const { container } = await mount(companion("owner", "running"));
 
-    await click(button(container, "Restart Pi"));
-    expect(container.textContent).toContain("Pi restart accepted.");
+    await confirmRestart(container);
+    expect(container.textContent).toContain("Restart accepted.");
     expect(companionApi.getCompanionRuntime).not.toHaveBeenCalled();
 
     await act(async () => vi.advanceTimersByTimeAsync(3_000));
@@ -434,7 +449,7 @@ describe("CompanionSettings", () => {
     expect(container.querySelector("[role='alert']")?.textContent).toContain(
       "Pi could not stay running.",
     );
-    expect(container.textContent).not.toContain("Pi restart accepted.");
+    expect(container.textContent).not.toContain("Restart accepted.");
   });
 
   it("clears a transient restart polling error after a successful refresh", async () => {
@@ -444,7 +459,7 @@ describe("CompanionSettings", () => {
       .mockResolvedValueOnce(companion("owner", "running"));
     const { container } = await mount(companion("owner", "running"));
 
-    await click(button(container, "Restart Pi"));
+    await confirmRestart(container);
     await act(async () => vi.advanceTimersByTimeAsync(3_000));
     expect(container.querySelector("[role='alert']")?.textContent).toContain(
       "Restart status could not be refreshed: Network unavailable.",
@@ -452,7 +467,7 @@ describe("CompanionSettings", () => {
 
     await act(async () => vi.advanceTimersByTimeAsync(3_000));
     expect(container.querySelector("[role='alert']")).toBeNull();
-    expect(container.textContent).toContain("Pi restart completed.");
+    expect(container.textContent).toContain("Restart completed.");
   });
 
   it("keeps an accepted deletion visible until permanent Box deletion is confirmed", async () => {
@@ -624,7 +639,7 @@ describe("CompanionSettings", () => {
       latest_operation: {
         id: operation.id,
         source_turn_id: null,
-        kind: "restart_box",
+        kind: "restart_pi",
         status: "running",
         error: null,
       },
@@ -632,7 +647,7 @@ describe("CompanionSettings", () => {
     companionApi.getCompanionRuntime.mockResolvedValue(reloaded);
 
     const { container } = await mount(reloaded);
-    expect(container.textContent).toContain("Full Box restart is in progress");
+    expect(container.textContent).toContain("Restart is in progress");
     expect(button(container, "Restart queued...").disabled).toBe(true);
 
     await act(async () => vi.advanceTimersByTimeAsync(3_000));

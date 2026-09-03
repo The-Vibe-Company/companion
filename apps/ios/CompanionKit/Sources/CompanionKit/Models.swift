@@ -235,7 +235,6 @@ public enum CompanionDaemonState: String, Codable, Hashable, Sendable {
 
 public enum CompanionRuntimeRestartTarget: String, Codable, Equatable, Hashable, Sendable {
     case pi
-    case box
 }
 
 /// The transport used by a freshly minted Box desktop stream.
@@ -2718,6 +2717,47 @@ public struct CompanionTurnAttempt: Codable, Equatable, Sendable {
     }
 }
 
+public enum CompanionTurnAdmissionState: String, Codable, Equatable, Sendable {
+    case pending
+    case accepted
+    case ambiguous
+    case unknown
+
+    public init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        self = Self(rawValue: value) ?? .unknown
+    }
+}
+
+public struct CompanionExternalBlock: Codable, Equatable, Sendable {
+    public let classification: String
+    public let source: String
+    public let message: String
+}
+
+public enum CompanionPreparationState: String, Codable, Equatable, Sendable {
+    case cold
+    case queued
+    case repairing
+    case externallyBlocked = "externally_blocked"
+    case unknown
+
+    public init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        self = Self(rawValue: value) ?? .unknown
+    }
+}
+
+public struct CompanionPreparation: Codable, Equatable, Sendable {
+    public let state: CompanionPreparationState
+    public let takingLongerThanExpected: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case state
+        case takingLongerThanExpected = "taking_longer_than_expected"
+    }
+}
+
 public struct CompanionTurn: Codable, Identifiable, Equatable, Sendable {
     public let id: String
     public let companionID: String
@@ -2725,8 +2765,11 @@ public struct CompanionTurn: Codable, Identifiable, Equatable, Sendable {
     public let status: CompanionTurnStatus
     public let queueSequence: Int
     public let latestAttempt: CompanionTurnAttempt?
+    public let admissionState: CompanionTurnAdmissionState?
+    public let admittedAt: String?
     public let replying: Bool
     public let error: CompanionRuntimeSafeError?
+    public let externalBlock: CompanionExternalBlock?
     public let stateChangedAt: String
     public let settledAt: String?
     public let createdAt: String
@@ -2741,8 +2784,11 @@ public struct CompanionTurn: Codable, Identifiable, Equatable, Sendable {
         case status
         case queueSequence = "queue_sequence"
         case latestAttempt = "latest_attempt"
+        case admissionState = "admission_state"
+        case admittedAt = "admitted_at"
         case replying
         case error
+        case externalBlock = "external_block"
         case stateChangedAt = "state_changed_at"
         case settledAt = "settled_at"
         case createdAt = "created_at"
@@ -2761,6 +2807,9 @@ public struct CompanionThread: Codable, Equatable, Sendable {
     public let entries: [TranscriptEntry]
     public let activeTurn: CompanionTurn?
     public let queuedCount: Int
+    public let queuedTurn: CompanionTurn?
+    public let preparation: CompanionPreparation?
+    public let backgroundBusy: Bool?
     public let interruptedTurn: CompanionTurn?
 
     /// Only unresolved legacy interruptions can still represent an actionable tail state.
@@ -2781,6 +2830,9 @@ public struct CompanionThread: Codable, Equatable, Sendable {
         case entries
         case activeTurn = "active_turn"
         case queuedCount = "queued_count"
+        case queuedTurn = "queued_turn"
+        case preparation
+        case backgroundBusy = "background_busy"
         case interruptedTurn = "interrupted_turn"
     }
 }

@@ -610,6 +610,9 @@ func threadDeltaKeepsFullLiveHistoryAndResetsExceptionalHistory() throws {
             transcriptionAvailable: thread.transcriptionAvailable,
             activeTurn: thread.activeTurn,
             queuedCount: thread.queuedCount,
+            queuedTurn: thread.queuedTurn,
+            preparation: thread.preparation,
+            backgroundBusy: thread.backgroundBusy,
             interruptedTurn: thread.interruptedTurn
         )
     )
@@ -656,6 +659,9 @@ func threadDeltaClearsCachedInterruptedTailAfterServerSettlement() throws {
             transcriptionAvailable: interrupted.transcriptionAvailable,
             activeTurn: nil,
             queuedCount: 0,
+            queuedTurn: nil,
+            preparation: nil,
+            backgroundBusy: false,
             interruptedTurn: nil
         )
     )
@@ -682,6 +688,9 @@ func threadWindowsAndDeltasPreserveRoutineNotifyGroupingEvidence() throws {
         transcriptionAvailable: thread.transcriptionAvailable,
         activeTurn: thread.activeTurn,
         queuedCount: thread.queuedCount,
+        queuedTurn: thread.queuedTurn,
+        preparation: thread.preparation,
+        backgroundBusy: thread.backgroundBusy,
         interruptedTurn: thread.interruptedTurn
     )
     let firstEntries = routineNotifyPair(

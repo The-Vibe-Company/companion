@@ -56,7 +56,8 @@ test("the Mac redesign keeps three native zones and the shared Grok Bot grammar"
   assert.match(inspector, /\.onChange\(of: companion\)[\s\S]*?model\.reconcile\(updated\)/);
   assert.match(inspector, /let accepted = try await sessionStore\.restartCompanion[\s\S]*?operation = accepted[\s\S]*?await poll/);
   assert.match(inspector, /\.onChange\(of: companion\.runtime\.latestOperation\)[\s\S]*?adopt\(latest\)/);
-  assert.match(inspector, /latest\.kind == \.restartPi \|\| latest\.kind == \.restartBox[\s\S]*?latest\.isActive[\s\S]*?await poll/);
+  assert.match(inspector, /latest\.kind == \.restartPi[\s\S]*?latest\.isActive[\s\S]*?await poll/);
+  assert.doesNotMatch(inspector, /Button\("Restart Server"\)|target = \.box/);
   assert.doesNotMatch(inspector, /try\? await sessionStore\.restartCompanion/);
   assert.match(inspector, /memberTimezone: model\.sessionStore\.memberTimezone \?\? TimeZone\.current\.identifier/);
   assert.match(design, /CharacterMark\(/);
