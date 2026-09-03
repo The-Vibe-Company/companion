@@ -128,6 +128,7 @@ WITH runtime_role AS (
     ('public.companion_v3_runtime_finalize_delete(uuid,uuid,uuid,bigint,bigint,integer)'),
     ('public.companion_v3_runtime_checkpoint_preparation_v6(uuid,uuid,uuid,bigint,bigint,text,text,text,text,integer,bigint,integer,text,timestamp with time zone,integer)'),
     ('public.companion_v3_runtime_checkpoint_pi_recycle(uuid,uuid,uuid,bigint,bigint,text,text,integer)'),
+    ('public.companion_v3_runtime_reconcile_pi_recycle_invocation(uuid,uuid,uuid,bigint,bigint,text,text,integer)'),
     ('public.companion_v3_runtime_defer_preparation(uuid,uuid,uuid,bigint,bigint,integer,text,text,integer)'),
     ('public.companion_v3_runtime_reauthorize_preparation(uuid,uuid,uuid,bigint,bigint,text,integer,integer)'),
     ('public.companion_v3_runtime_mint_preparation_credentials(uuid,uuid,uuid,bigint,bigint,text,integer,integer)'),

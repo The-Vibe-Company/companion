@@ -157,7 +157,7 @@ describe("Runtime v3 progression interface", () => {
     expect(prompt).not.toHaveBeenCalled();
   });
 
-  it("interrupts without contacting Pi when the admission fence is lost after authorization", async () => {
+  it("releases without contacting Pi when the pre-Pi admission fence is refused", async () => {
     const prompt = vi.fn();
     const beginAdmission = vi.fn().mockResolvedValue(false);
     const advance = createRuntimeV3WarmTurnAdvance({
@@ -173,15 +173,147 @@ describe("Runtime v3 progression interface", () => {
       pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
     });
 
-    await expect(advance(mainClaim)).resolves.toEqual({
-      kind: "interrupted",
-      code: "pi_admission_fence_lost",
-      message: "Pi admission could not be fenced safely.",
-      action: "none",
-    });
+    await expect(advance(mainClaim)).resolves.toEqual({ kind: "release" });
     expect(beginAdmission).toHaveBeenCalledOnce();
     expect(prompt).not.toHaveBeenCalled();
   });
+
+  it("hands off an authorization reservation whose committed response is lost", async () => {
+    const prompt = vi.fn();
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn(async () => {
+          throw new Error("authorization response lost after reservation");
+        }),
+        beginAdmission: vi.fn(), recordAdmission: vi.fn(), project: vi.fn(),
+      },
+      pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
+    });
+
+    await expect(advance(mainClaim)).resolves.toEqual({ kind: "release" });
+    expect(prompt).not.toHaveBeenCalled();
+  });
+
+  it("hands off a committed pre-Pi fence when shutdown arrives before prompt", async () => {
+    const controller = new AbortController();
+    const prompt = vi.fn();
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1",
+          content: "fenced before shutdown", cursor: 0n,
+        }),
+        beginAdmission: vi.fn(async () => {
+          controller.abort();
+          return true;
+        }),
+        recordAdmission: vi.fn(), project: vi.fn(),
+      },
+      pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
+    });
+
+    await expect(advance(mainClaim, controller.signal)).resolves.toEqual({ kind: "release" });
+    expect(prompt).not.toHaveBeenCalled();
+  });
+
+  it("hands off after a positive admission record commits as shutdown arrives", async () => {
+    const controller = new AbortController();
+    const prompt = vi.fn().mockResolvedValue({
+      outcome: "accepted" as const, invocationId: "invocation-1", initialCursor: 0n,
+    });
+    const project = vi.fn();
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1",
+          content: "record before shutdown", cursor: 0n,
+        }),
+        beginAdmission: vi.fn().mockResolvedValue(true),
+        recordAdmission: vi.fn(async () => {
+          controller.abort();
+          return true;
+        }),
+        project,
+      },
+      pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
+    });
+
+    await expect(advance(mainClaim, controller.signal)).resolves.toEqual({ kind: "release" });
+    expect(prompt).toHaveBeenCalledOnce();
+    expect(project).not.toHaveBeenCalled();
+  });
+
+  it("keeps a proven prompt refusal queued when shutdown arrives with the response", async () => {
+    const controller = new AbortController();
+    const recordAdmission = vi.fn();
+    const prompt = vi.fn(async () => {
+      controller.abort();
+      return { outcome: "rejected" as const, code: "pi_prompt_refused" };
+    });
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1",
+          content: "refuse before shutdown", cursor: 0n,
+        }),
+        beginAdmission: vi.fn().mockResolvedValue(true), recordAdmission,
+        project: vi.fn(),
+      },
+      pi: { prompt, read: vi.fn(), acknowledge: vi.fn() },
+    });
+
+    await expect(advance(mainClaim, controller.signal)).resolves.toEqual({ kind: "release" });
+    expect(prompt).toHaveBeenCalledOnce();
+    expect(recordAdmission).not.toHaveBeenCalled();
+  });
+
+  it.each(["nonterminal", "terminal"] as const)(
+    "hands off when a %s projection may have committed before its transport failed",
+    async (shape) => {
+      const events = shape === "terminal"
+        ? [{
+          sequence: 1n, invocationId: "invocation-1", attemptId: acceptedTurn.id,
+          kind: "pi_event" as const,
+          event: { type: "agent_settled" as const },
+        }]
+        : [{
+          sequence: 1n, invocationId: "invocation-1", attemptId: acceptedTurn.id,
+          kind: "pi_event" as const,
+          event: { type: "message_start" as const },
+        }];
+      const project = vi.fn(async () => {
+        throw new Error("projection response lost after commit");
+      });
+      const advance = createRuntimeV3WarmTurnAdvance({
+        persistence: {
+          authorize: vi.fn().mockResolvedValue({
+            boxId: "bx_23456789", piInvocationId: "invocation-1",
+            content: "resume projection", cursor: 0n,
+          }),
+          beginAdmission: vi.fn(), recordAdmission: vi.fn(), project,
+        },
+        pi: {
+          prompt: vi.fn(),
+          read: vi.fn().mockResolvedValue({
+            events, nextCursor: 1n, acknowledgedCursor: 0n, hasMore: false,
+          }),
+          acknowledge: vi.fn(),
+        },
+      });
+      const activeClaim = {
+        ...mainClaim,
+        turn: {
+          ...acceptedTurn,
+          state: "admitted" as const,
+          inactivityDeadlineAt: new Date(Date.now() + 60_000),
+          absoluteDeadlineAt: new Date(Date.now() + 120_000),
+        },
+      };
+
+      await expect(advance(activeClaim)).resolves.toEqual({ kind: "release" });
+      expect(project).toHaveBeenCalledOnce();
+    },
+  );
 
   it("preserves needs-input across unknown pages until correlated activity resumes it", async () => {
     const project = vi.fn().mockResolvedValue(true);

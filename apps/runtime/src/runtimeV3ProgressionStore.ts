@@ -404,6 +404,17 @@ export function createRuntimeV3PostgresPreparationPersistence(
       `, signal);
       return rows[0]?.checkpointed === true;
     },
+    async reconcilePiRecycleInvocation(claim, input, signal) {
+      const rows = await abortable(sql<Array<{ reconciled: boolean }>>`
+        select public.companion_v3_runtime_reconcile_pi_recycle_invocation(
+          ${claim.orgId}::uuid, ${claim.companionId}::uuid,
+          ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,
+          ${input.expectedInvocationId}, ${input.observedInvocationId}, 6
+        ) as reconciled
+      `, signal);
+      return rows[0]?.reconciled === true;
+    },
     async defer(claim, input, signal) {
       const rows = await abortable(sql<Array<{ deferred: boolean }>>`
         select public.companion_v3_runtime_defer_preparation(
