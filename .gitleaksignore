@@ -34,3 +34,5 @@ a30e3cf92fcfbe99e33402deee30505dc2b3d3b7:packages/contracts/test/companions.test
 # exact inventory/reconciliation behavior. Keep both historical findings fingerprint-specific.
 5bbc924152ca00f9f83eaa15f7c3321065a1e0e3:apps/runtime/src/companionV2Purge.test.ts:generic-api-key:52
 5bbc924152ca00f9f83eaa15f7c3321065a1e0e3:apps/runtime/src/companionV2Purge.test.ts:generic-api-key:66
+edf96916b33d636529965f763a00233499eabd94:apps/runtime/src/companionV2Purge.test.ts:generic-api-key:75
+edf96916b33d636529965f763a00233499eabd94:apps/runtime/src/companionV2Purge.test.ts:generic-api-key:89
