@@ -269,8 +269,8 @@ describe("Runtime v3 progression interface", () => {
 
   it.each(["nonterminal", "terminal"] as const)(
     "hands off when a %s projection may have committed before its transport failed",
-    async (shape) => {
-      const events = shape === "terminal"
+    async (projectionKind) => {
+      const events = projectionKind === "terminal"
         ? [{
           sequence: 1n, invocationId: "invocation-1", attemptId: acceptedTurn.id,
           kind: "pi_event" as const,
