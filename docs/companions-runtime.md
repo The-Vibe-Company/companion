@@ -1403,12 +1403,13 @@ storage/Box/snapshot inventory covers those resources, and complete authenticate
 or Sentry lookup covers remote triggers. Proven absence closes the target without another DELETE.
 Every Box target, including one with a recorded operation, is reconciled through fresh authenticated
 ordinary inventory first; absence is authoritative admission evidence and preserves any recorded
-operation id, while a still-visible operation-bearing Box resumes by polling. A newly accepted
-deletion is reconciled again immediately after its operation checkpoint, so an already-absent Box
-settles without waiting for physical erasure. Fresh visibility without an operation proves the
-provider's documented immediate-removal admission boundary was not crossed and permits a new
-request. An unavailable, malformed, or unknown observation fails closed; known-negative DELETE
-rejection is retried only after backoff.
+operation id, while a still-visible operation-bearing Box resumes by polling. Every nonterminal
+operation observation is followed by another ordinary inventory read, so later authoritative
+absence also settles without waiting for physical erasure. A newly accepted deletion receives the
+same reconciliation immediately after its operation checkpoint. Fresh visibility without an
+operation proves the provider's documented immediate-removal admission boundary was not crossed and
+permits a new request. An unavailable, malformed, or unknown observation fails closed;
+known-negative DELETE rejection is retried only after backoff.
 Automatic trigger registrations whose create may have committed before `remote_hook_id` was saved
 remain purge targets whenever their provider account is still owned. Report and dry-run inventory
 their provider, account, and non-secret locator without selecting or serializing the callback

@@ -267,10 +267,11 @@ returns `202` and immediately removes the Box from ordinary reads while the reta
 operation completes; [data retention](https://docs.ascii.dev/box/data-retention.md) is separate from
 that admission boundary. Therefore fresh authenticated ordinary inventory is checked before a
 recorded operation is polled; absence records `absent` without replay and retains the operation id
-as admission evidence. After a newly accepted deletion is checkpointed, the same inventory check
-may settle an already-absent Box without waiting for physical erasure. Only a still-visible Box with
-a recorded operation is polled, while fresh visibility without one proves admission did not occur
-and permits a new attempt. `absent` does not claim that physical erasure has finished. Malformed,
+as admission evidence. After a newly accepted deletion is checkpointed and after every nonterminal
+operation observation, the same inventory check may settle an absent Box without waiting for
+physical erasure. Only a still-visible Box with a recorded operation continues polling, while fresh
+visibility without one proves admission did not occur and permits a new attempt. `absent` does not
+claim that physical erasure has finished. Malformed,
 unsupported, unknown, or unavailable reads fail closed. A known-negative DELETE rejection returns
 to retryable state with bounded backoff.
 

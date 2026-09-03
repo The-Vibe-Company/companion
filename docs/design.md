@@ -327,9 +327,10 @@ recorded Box operation. `requesting` targets are never blindly replayed: current
 storage/Box/snapshot inventory and authenticated provider-specific trigger lookup first prove
 whether the resource is present or absent. For Box DELETE, fresh authenticated ordinary inventory
 is authoritative before polling: absence closes the ledger while preserving any durable operation
-id, and a still-visible Box with an operation resumes that poll. A newly accepted deletion repeats
-the inventory check after its operation checkpoint, so absence may settle without waiting for
-physical erasure. Without an operation id, fresh visibility means the documented immediate-removal
+id, and a still-visible Box with an operation resumes that poll. Each nonterminal operation
+observation repeats the inventory check, so later absence may settle without waiting for physical
+erasure; a newly accepted deletion receives the same check after its operation checkpoint. Without
+an operation id, fresh visibility means the documented immediate-removal
 boundary was not crossed and permits a new attempt. Unknown or malformed reads fail closed.
 Known-negative Box failures return to `discovered` with a bounded backoff. The owner-only runtime
 enable function takes the same advisory lock, so it cannot reactivate claims during provider cleanup.

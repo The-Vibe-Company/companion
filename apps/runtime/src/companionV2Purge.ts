@@ -708,6 +708,7 @@ export async function removeCompanionV2BoxTarget(input: {
     });
     await input.journal.markOperation(input.target.key, operation, true);
     if (operation.status === "completed") return "completed";
+    if (!await companionV2BoxPresent(input.boxClient, input.target.key)) return "absent";
   }
 }
 

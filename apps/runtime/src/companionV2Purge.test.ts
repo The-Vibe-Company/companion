@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { BoxRuntimeAdapterError } from "@companion/box-runtime";
 
 import {
@@ -350,6 +350,71 @@ describe("Runtime v2 external purge checkpoints", () => {
       boxClient,
     })).resolves.toBe("absent");
     expect(checkpoints).toEqual([operationId]);
+  });
+
+  it("settles when a Box disappears during nonterminal operation polling", async () => {
+    vi.useFakeTimers();
+    try {
+      const operationId = "bdop_dddddddddddddddddddddddddddddddd";
+      const operationCheckpoints: string[] = [];
+      let inventoryReads = 0;
+      let operationReads = 0;
+      const removal = removeCompanionV2BoxTarget({
+        target: {
+          kind: "box",
+          key: "bx_delayed_absence",
+          evidence: ["provider-name:companion-generation"],
+        },
+        journal: {
+          async markRequesting() {},
+          async markAbsent() {},
+          async markOperation(_boxId, operation) {
+            operationCheckpoints.push(operation.id);
+          },
+          async markError() {},
+        },
+        boxClient: {
+          async requestPermanentDeletion() {
+            return {
+              outcome: "accepted" as const,
+              operation: {
+                id: operationId,
+                targetId: "bx_delayed_absence",
+                status: "pending" as const,
+                attemptCount: 0,
+                requestedAt: new Date(0).toISOString(),
+                completedAt: null,
+              },
+            };
+          },
+          async listAllBoxes() {
+            inventoryReads += 1;
+            return inventoryReads === 1 ? [{ id: "bx_delayed_absence" }] : [];
+          },
+          async getDeletionOperation() {
+            operationReads += 1;
+            return {
+              id: operationId,
+              targetId: "bx_delayed_absence",
+              status: "blocked" as const,
+              attemptCount: 1,
+              requestedAt: new Date(0).toISOString(),
+              completedAt: null,
+            };
+          },
+        },
+      });
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      await expect(removal).resolves.toBe("absent");
+      expect({ inventoryReads, operationReads, operationCheckpoints }).toEqual({
+        inventoryReads: 2,
+        operationReads: 1,
+        operationCheckpoints: [operationId, operationId],
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("fails closed on unavailable or malformed Box reconciliation reads", async () => {
