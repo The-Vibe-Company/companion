@@ -420,11 +420,6 @@ DECLARE
   v_definition text := pg_catalog.pg_get_functiondef(pg_catalog.to_regprocedure(
     'public.companion_runtime_record_attempt_outputs(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,jsonb,timestamp with time zone)'
   ));
-  v_old_validation text := $old$WHERE jsonb_typeof(part.value) <> 'object'
-      OR COALESCE(part.value ->> 'position', '') <> (part.ordinality - 1)::text$old$;
-  v_new_validation text := $new$WHERE jsonb_typeof(part.value) <> 'object'
-      OR part.value ->> 'uploaded_at' IS NULL
-      OR COALESCE(part.value ->> 'position', '') <> (part.ordinality - 1)::text$new$;
   v_old_columns text := $old$content_type, byte_size, sha256, filename, position, created_at$old$;
   v_new_columns text := $new$content_type, byte_size, sha256, filename, position, uploaded_at, created_at$new$;
   v_old_values text := $old$part.value ->> 'filename',
@@ -432,12 +427,10 @@ DECLARE
       v_now$old$;
   v_new_values text := $new$part.value ->> 'filename',
       (part.ordinality - 1)::integer,
-      (part.value ->> 'uploaded_at')::timestamp with time zone,
+      COALESCE((part.value ->> 'uploaded_at')::timestamp with time zone, p_activity_at, v_now),
       v_now$new$;
 BEGIN
   IF v_definition IS NULL
-     OR (char_length(v_definition) - char_length(replace(v_definition, v_old_validation, '')))
-          / char_length(v_old_validation) <> 1
      OR (char_length(v_definition) - char_length(replace(v_definition, v_old_columns, '')))
           / char_length(v_old_columns) <> 1
      OR (char_length(v_definition) - char_length(replace(v_definition, v_old_values, '')))
@@ -446,12 +439,37 @@ BEGIN
       USING ERRCODE = '55000';
   END IF;
   EXECUTE replace(
-    replace(replace(v_definition, v_old_validation, v_new_validation), v_old_columns, v_new_columns),
+    replace(v_definition, v_old_columns, v_new_columns),
     v_old_values,
     v_new_values
   );
 END
 $companion_attachment_output_upload_time$;
+--> statement-breakpoint
+
+-- Carry the immutable deadline through runtime material. The runtime checks it again after object
+-- reads and at the final Box boundary, closing the race where material was authorized just before
+-- expiry but asynchronous staging began after it.
+DO $companion_attachment_material_deadline$
+DECLARE
+  v_definition text := pg_catalog.pg_get_functiondef(pg_catalog.to_regprocedure(
+    'public.companion_runtime_get_material(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,integer)'
+  ));
+  v_old text := $old$'filename', attachment.filename,
+        'position', attachment.position$old$;
+  v_new text := $new$'filename', attachment.filename,
+        'position', attachment.position,
+        'expires_at', attachment.expires_at$new$;
+BEGIN
+  IF v_definition IS NULL
+     OR (char_length(v_definition) - char_length(replace(v_definition, v_old, '')))
+          / char_length(v_old) <> 1 THEN
+    RAISE EXCEPTION 'Companion material deadline rewrite did not match the expected function'
+      USING ERRCODE = '55000';
+  END IF;
+  EXECUTE replace(v_definition, v_old, v_new);
+END
+$companion_attachment_material_deadline$;
 --> statement-breakpoint
 
 -- Preserve the current material function behind a non-callable implementation name, then put an

@@ -27,7 +27,7 @@ import {
   retryIdempotentObservation,
   type IdempotentObservationCall,
 } from "./retry";
-import { RuntimeStoreIndeterminateError } from "./store";
+import { RuntimeAttachmentExpiredError, RuntimeStoreIndeterminateError } from "./store";
 import { refreshWarmCompanionLayout } from "./layoutRefresh";
 import type {
   AttemptRuntimeClaim,
@@ -1559,6 +1559,13 @@ async function stageAttachments(
     });
   } catch (error) {
     if (mustAbandonRuntimeExecution(error)) throw error;
+    if (error instanceof RuntimeAttachmentExpiredError) {
+      throw new RuntimeInvariantError({
+        code: error.stableCode,
+        message: error.message,
+        action: error.action,
+      });
+    }
     throw new RuntimeInvariantError({
       code: "attachment_staging_failed",
       message: "The files attached to this message could not be staged on the Companion's Box.",

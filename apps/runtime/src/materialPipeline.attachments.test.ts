@@ -75,6 +75,7 @@ function attachment(bytes: Buffer, position = 0) {
     sha256: digest(bytes),
     filename: `chart-${position}.png`,
     position,
+    expiresAt: new Date("2026-09-25T00:00:00.000Z"),
   };
 }
 
@@ -186,6 +187,66 @@ describe("staging a member's attachments onto the Box", () => {
       loadAttachment: async () => { throw new Error("object storage is unreachable"); },
     }).attachmentStager.stageAttachments(stageInput([attachment(PNG)]))).rejects.toThrow();
     expect(stageAttachments).not.toHaveBeenCalled();
+  });
+
+  it("rechecks the immutable deadline after object read and before Box staging", async () => {
+    let clock = Date.parse("2026-09-24T23:59:59.000Z");
+    const stageAttachments = vi.fn();
+    const loadAttachment = vi.fn(async () => {
+      clock = Date.parse("2026-09-25T00:00:00.000Z");
+      return PNG;
+    });
+
+    await expect(pipeline({
+      runtime: { stageAttachments },
+      loadAttachment,
+      now: () => clock,
+    }).attachmentStager.stageAttachments(stageInput([attachment(PNG)])))
+      .rejects.toMatchObject({ stableCode: "attachment_expired" });
+    expect(stageAttachments).toHaveBeenCalledTimes(1);
+    expect(stageAttachments).toHaveBeenCalledWith(expect.objectContaining({ files: [] }));
+  });
+
+  it("does not expose staged paths when expiry crosses during the Box write", async () => {
+    let clock = Date.parse("2026-09-24T23:59:59.000Z");
+    const stageAttachments = vi.fn(async (input: { files: unknown[] }) => {
+      if (input.files.length === 0) return [];
+      clock = Date.parse("2026-09-25T00:00:00.000Z");
+      return [{
+        position: 0,
+        filename: "chart-0.png",
+        contentType: "image/png",
+        byteSize: PNG.byteLength,
+        path: "~/attachments/message/0-chart-0.png",
+      }];
+    });
+
+    await expect(pipeline({
+      runtime: { stageAttachments },
+      now: () => clock,
+    }).attachmentStager.stageAttachments(stageInput([attachment(PNG)])))
+      .rejects.toMatchObject({ stableCode: "attachment_expired" });
+    expect(stageAttachments).toHaveBeenCalledTimes(2);
+    expect(stageAttachments).toHaveBeenLastCalledWith(expect.objectContaining({ files: [] }));
+  });
+
+  it("keeps a failed expiry cleanup retryable without exposing paths", async () => {
+    let clock = Date.parse("2026-09-24T23:59:59.000Z");
+    const retryable = Object.assign(new Error("Box cleanup unavailable"), {
+      retryable: true,
+    });
+    const stageAttachments = vi.fn(async (input: { files: unknown[] }) => {
+      if (input.files.length === 0) throw retryable;
+      clock = Date.parse("2026-09-25T00:00:00.000Z");
+      return [];
+    });
+
+    await expect(pipeline({
+      runtime: { stageAttachments },
+      now: () => clock,
+    }).attachmentStager.stageAttachments(stageInput([attachment(PNG)]))).rejects.toBe(retryable);
+    expect(stageAttachments).toHaveBeenCalledTimes(2);
+    expect(stageAttachments).toHaveBeenLastCalledWith(expect.objectContaining({ files: [] }));
   });
 });
 

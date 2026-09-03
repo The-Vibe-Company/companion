@@ -49,7 +49,7 @@ public struct CompanionAttachment: Codable, Identifiable, Equatable, Sendable {
     public let filename: String
     public let position: Int
     public let availability: Availability
-    public let expiresAt: Date?
+    public let expiresAt: String?
 
     public enum Availability: String, Codable, Equatable, Sendable {
         case available
@@ -77,7 +77,7 @@ public struct CompanionAttachment: Codable, Identifiable, Equatable, Sendable {
         position = try container.decode(Int.self, forKey: .position)
         availability = try container.decodeIfPresent(Availability.self, forKey: .availability)
             ?? .available
-        expiresAt = try container.decodeIfPresent(Date.self, forKey: .expiresAt)
+        expiresAt = try container.decodeIfPresent(String.self, forKey: .expiresAt)
     }
 }
 

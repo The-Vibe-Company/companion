@@ -204,6 +204,7 @@ describe("PostgresRuntimeStore", () => {
         sha256: "a".repeat(64),
         filename: "chart.png",
         position: 0,
+        expires_at: "2026-09-25T00:00:00.000Z",
       }],
       credential_snapshot_matches: true,
       box_id: "bx_2345678a",
@@ -221,7 +222,12 @@ describe("PostgresRuntimeStore", () => {
       turnStartedAt: new Date("2026-08-26T13:42:17.000Z"),
       memberTimezone: "America/New_York",
       hasVisibleOutput: true,
-      attachments: [{ filename: "chart.png", contentType: "image/png", position: 0 }],
+      attachments: [{
+        filename: "chart.png",
+        contentType: "image/png",
+        position: 0,
+        expiresAt: new Date("2026-09-25T00:00:00.000Z"),
+      }],
       boxId: "bx_2345678a",
       agentEndpoint: null,
     });

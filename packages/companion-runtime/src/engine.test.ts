@@ -4,6 +4,7 @@ import { RuntimeEngine } from "./engine";
 import { turnContextPromptSuffix } from "./attempt";
 import type { RuntimeProcessLog } from "./logging";
 import {
+  RuntimeAttachmentExpiredError,
   RuntimeStoreContractError,
   RuntimeStoreIndeterminateError,
 } from "./store";
@@ -40,6 +41,7 @@ function imageAttachment() {
     sha256: "a".repeat(64),
     filename: "chart.png",
     position: 0,
+    expiresAt: new Date("2026-09-25T00:00:00.000Z"),
   };
 }
 
@@ -52,6 +54,7 @@ function documentAttachment() {
     sha256: "b".repeat(64),
     filename: "report.pdf",
     position: 1,
+    expiresAt: new Date("2026-09-25T00:00:00.000Z"),
   };
 }
 
@@ -2053,6 +2056,33 @@ describe("RuntimeEngine attempts", () => {
     expect(store.settlements[0]?.error).toMatchObject({
       code: "attachment_staging_failed",
       action: "retry",
+    });
+  });
+
+  it("fails closed when attachment expiry crosses during staging, before dispatch", async () => {
+    const claim = attemptClaim();
+    const store = new MemoryRuntimeStore({
+      authorization: attemptAuthorization(claim),
+      material: attemptMaterial({ attachments: [imageAttachment()] }),
+    });
+    const ports = fakePorts(store);
+    const brokerState = ports.pi.brokerState;
+    ports.pi.brokerState = async (input) => ({
+      ...await brokerState(input),
+      modelInput: ["text", "image"],
+    });
+    ports.attachmentStager.stageAttachments = async () => {
+      throw new RuntimeAttachmentExpiredError();
+    };
+
+    const result = await new RuntimeEngine(engineDependencies({ store, ports })).execute(claim);
+
+    expect(result.outcome).toBe("failed");
+    expect(ports.promptCalls).toHaveLength(0);
+    expect(store.checkpoints).toHaveLength(0);
+    expect(store.settlements[0]?.error).toMatchObject({
+      code: "attachment_expired",
+      action: "none",
     });
   });
 
