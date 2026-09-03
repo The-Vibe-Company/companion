@@ -26,7 +26,7 @@ slow, local-only final validation and is intentionally not part of CI.
 | A due Companion routine fires exactly once per scheduled instant, and queued routine work is skipped on disable/delete or after ten minutes | Duplicate turn after worker retry, catch-up after flag-off, stuck work after a routine mutation, or a routine row blocking a user message | Core + worker + runtime + PostgreSQL | Drop uuidv5 stamping, the ten-minute cleanup, generation match, or the lane fence |
 | A Companion response notifies only its still-authorized durable author | Cross-user preview disclosure, duplicate push, stale-device delivery, or cancelled-turn alert | Contracts + HTTP + worker + PostgreSQL + iOS | Skip claim-time ACL revalidation or event uniqueness |
 | The API persists runtime intent but never contacts Box/Pi | Lost work after `202`, request-held lifecycle, or duplicate executor | HTTP + provider spy + PostgreSQL | Construct the Box adapter in an API route |
-| One main attempt and one isolated routine attempt may run together, while each lane stays ordered and independently fenced | Main messages blocked by routines, same-lane concurrent prompts, cross-lane takeover, or queue reordering | Runtime unit + PostgreSQL + simulator | Merge lane leases, remove per-lane uniqueness, or broaden retry/cancel/preemption |
+| One main Turn and one isolated routine Turn may run together, while each lane stays ordered and independently fenced | Main messages blocked by routines, same-lane concurrent prompts, cross-lane takeover, or queue reordering | Runtime unit + PostgreSQL + simulator | Merge lane leases, remove per-lane uniqueness, or broaden lane settlement/preemption |
 | Runtime lease epoch fences stale writers | A dead replica checkpoints or settles after takeover | Two runtime replicas + PostgreSQL | Remove epoch from checkpoint/settle predicate |
 | Runtime images are optional accelerators with one durable builder | Missing/pending/stale/failed image delays a Turn, a stale builder publishes/deletes another resource, retry sleeps in a lane, or fallback becomes a chat failure | Runtime unit + PostgreSQL + simulator | Wait for image readiness, remove the publish/delete fence, or couple image retry to a Turn |
 | The generated layout installs and restarts the pinned Pi on Box-like Linux | Shell-only tests pass while npm/bundle installation, user systemd, archive/resume, or snapshot clone is broken | Box Lab on isolated Linux `x86_64` | Break the generated setup script, user bus, invocation check, or `/run` handling |
@@ -35,7 +35,8 @@ slow, local-only final validation and is intentionally not part of CI.
 | Viewer and ordinary reads never contact or wake Box | Read causes spend, secret access, or lifecycle mutation | HTTP + browser + provider spy | Instantiate Box before the runner guard |
 | Provider/MCP secrets stay write-only and runtime errors stay expurgated | Token, signed URL, provider payload, or Pi line persisted | Core + runtime + HTTP + logs | Return raw adapter error text |
 | Permanent legacy purge deletes external ownership before rows | Orphan Box or irrecoverable ownership loss | Command + PostgreSQL + provider contract | Delete the row before provider confirmation |
-| Runtime v2 purge is resumable, expurgated, and preserves the Skills Hub | Duplicate provider effects, orphan object/webhook/Box, leaked content, or collateral data loss | Command + disposable fully migrated PostgreSQL + object/provider adapters | Remove the pre-effect checkpoint, terminal-target skip, ownership guard, or preservation fingerprint |
+| Offline Runtime v2 purge is resumable, expurgated, and preserves the Skills Hub | Duplicate provider effects, orphan object/webhook/Box, leaked content, or collateral data loss | Command + disposable fully migrated PostgreSQL + object/provider adapters | Remove the pre-effect checkpoint, terminal-target skip, ownership guard, or preservation fingerprint |
+| Production activation uses complete approved evidence | Loss, replay, stale-fence settlement, privacy breach, a lane blocked over 15 minutes, or activation before seven dedicated canary days | Aggregate acceptance report + disposable PostgreSQL + simulator + reviewed canary evidence | Omit one SLO series, accept an unavailable source, or shorten the canary window |
 | API, worker, and runtime database roles stay separated | API/runtime claims the other's work, API bypasses a Companion capability function, or worker reads Companion state | Migrated PostgreSQL | Grant the opposite process function/table or forge the Runtime protocol GUC |
 | Billing changes stay outside the runtime overhaul | Undocumented runtime entitlement or Skills access change | Contracts + Core + web | Add a runtime quota or bypass an existing skill limit |
 
@@ -50,7 +51,7 @@ slow, local-only final validation and is intentionally not part of CI.
 - Storage, GitHub, Skill Database, Box, and Pi adapters receive shared contract and idempotency
   coverage at their actual boundary.
 - Historical Skills Hub migration replay remains covered independently of the new Companion purge;
-  changing Runtime v2 must not weaken old external-resource cleanup guarantees.
+  changing the offline historical purge must not weaken old external-resource cleanup guarantees.
 
 ## Runtime test layers
 
@@ -81,7 +82,7 @@ the provider operation id, and a visible thread until absence is confirmed. The 
 Viewer projection read does not move the accepted-work clock, explicit Stop archives, and both a
 member message and a due background Turn resume through complete current staging before Pi.
 
-The Runtime v2 purge suite creates a disposable database, replays the complete migration history,
+The offline Runtime v2 purge suite creates a disposable database, replays the complete migration history,
 and uses deterministic trigger, object-store, named-snapshot, and Box adapters. It proves inventory
 creates no ledger or provider effect, external effects precede row deletion, authoritative absence
 is terminal, a mid-purge provider failure keeps ownership intact, and retry does not repeat completed
@@ -96,6 +97,12 @@ Companion-domain inventory, immutable expurgated
 evidence, and an identical preservation fingerprint covering tenant, Skills/secrets/Skill Database,
 billing/audit, and reusable encrypted connection data. No test may invoke destructive mode against
 a shared database or real provider.
+
+Cutover rehearsal uses only disposable PostgreSQL, deterministic provider doubles, the Box/Pi
+simulator, and local Box Lab. It proves flag-off blocks every v3 claim throughout the destructive
+window, external targets precede row deletion, restart observes before repeating work, rollback
+leaves v3 disabled without a v2 execution path, and the final evidence report fails closed when any
+required source is unavailable. Production/live-provider mutation is outside automated acceptance.
 
 Skill synchronization coverage distinguishes publication-only available revisions from required
 selection revisions. PostgreSQL tests prove wake and desktop accept `applied >= required` while a
@@ -188,7 +195,7 @@ live canary does not replace local installation acceptance.
 
 ### Unit and protocol
 
-- Cover every valid/invalid turn transition, operation precedence, retry/cancel idempotence,
+- Cover every valid/invalid Turn transition, lifecycle precedence, bounded requeue/cancel idempotence,
   lifecycle retry classification, both deadlines, LF-strict parsing, event segmentation,
   expurgation, and text/vision model classification.
 - Inject unknown events and malformed or oversized lines. They advance the journal, increment
@@ -213,8 +220,8 @@ live canary does not replace local installation acceptance.
   cooldown. Provider-delete failure must retain `build_box_id` for takeover reconciliation.
   An accepted image-builder deletion persists its provider operation id, treats `blocked` as
   incomplete, and resumes polling without a second `DELETE`.
-- Cover multiple pending operations but one running operation, one active attempt per lane, ordered turns,
-  idempotent `client_message_id`, unique `retry_id`, configuration revision ordering, and kill-switch
+- Cover idempotent lifecycle requests, one active Turn per lane, ordered Turns,
+  idempotent `client_message_id`, configuration revision ordering, and kill-switch
   claims.
 - Enqueue a routine turn first, then an ordinary user turn; prove one main claim takes the user turn,
   the routine remains queued, and a routine-lane claim takes it independently. Disable and delete
@@ -223,9 +230,9 @@ live canary does not replace local installation acceptance.
   Age a queued routine turn beyond ten minutes and prove the runtime claim sweep settles it before
   claiming an ordinary main turn. Verify the 0145 migration backfill settles old rows for both live
   and already-deleted definitions, while stale/disabled gate epochs perform no cleanup. Claim a
-  routine-origin cold Start, disable its source routine, and prove renewal denies further Box work;
+  routine-origin preparation, disable its source routine, and prove renewal denies further Box work;
   expire that executor lease and prove the next sweep terminalizes the orphan before claiming the
-  later ordinary user's Start.
+  later ordinary user's preparation.
 - Replay migrations from an historical snapshot and test legacy purge report, dry-run, confirmation,
   advisory lock, Box `404`, provider error, resume after partial progress, and preservation of
   provider/MCP encrypted rows.
@@ -238,8 +245,8 @@ Run API + worker + runtime + web + migrated PostgreSQL + Box/Pi simulator and pr
 - closing the browser and killing API after `202` does not affect completion;
 - killing the runtime after each checkpoint causes takeover within 45 seconds without duplicate
   prompt or Box;
-- two concurrent sends execute in order, one Pi attempt at a time;
-- `ask_user` persists a decision and resumes the same attempt;
+- two concurrent sends execute in order, one Pi admission at a time;
+- `ask_user` persists a decision and resumes the same Turn;
 - a pending `ask_user` remains actionable without an inactivity stall for up to the two-hour
   absolute deadline, while asynchronous control approvals do not hold Pi or an HTTP request open;
 - a follow-up sent while a warm Pi is busy stays queued without a cold-start deadline, then is
@@ -249,7 +256,7 @@ Run API + worker + runtime + web + migrated PostgreSQL + Box/Pi simulator and pr
 - `companion_request_routine_change` and `companion_request_trigger_change` project durable cards;
   create/update/enable/disable/delete/rotate apply once, while deny, expiry, and revoked authority
   leave definitions and provider registration unchanged;
-- control tokens are attempt-fenced and absent from Pi's environment; routine/trigger turns cannot
+- control tokens are Turn-fenced and absent from Pi's environment; routine/trigger turns cannot
   call the MCP; deferred Pi restart executes exactly once after source settlement;
 - provider registration plus trigger fire proves delivery-id deduplication, source-neutral FIFO with
   routines, one background claim, capability-free validation, silent/notify/relay exactly once,
@@ -258,7 +265,7 @@ Run API + worker + runtime + web + migrated PostgreSQL + Box/Pi simulator and pr
   terminal target state, and durable return-delivery failure;
 - provider failure, Pi silence, crash loop, unknown event, and oversized line end visibly;
 - a vision model reads the checked-in image fixture and a text-only model fails explicitly;
-- stop then send, explicit Pi restart, explicit Full Box restart, and deletion during a queue obey
+- stop then send, explicit Pi restart, and deletion during a queue obey
   precedence;
 - accepted permanent deletion sends `DELETE` exactly once, performs one operation GET per claim,
   leaves no runtime slot occupied during 5/15/30/60-second PostgreSQL backoff, survives runtime
@@ -322,7 +329,7 @@ APP_URL=http://127.0.0.1:<port> pnpm browser:smoke
 
 Changed Companion paths need focused manual `agent-browser` checks. Verify truthful status,
 PostgreSQL-only Viewer reads, queue count, input-needed cards, automatic exact-cleanup status and
-no-replay copy, an always-mounted composer, explicit Full Box confirmation, attachment chips and
+no-replay copy, an always-mounted composer, Pi-only Restart confirmation, attachment chips and
 inline images inside the message they belong to, a metadata-only expired attachment with no download target, a
 routine fire that shows `Routine: <name>` with the prompt hidden in the thread and on the list row,
 a context-panel routine create,

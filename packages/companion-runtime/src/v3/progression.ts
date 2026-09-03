@@ -15,6 +15,7 @@ import type {
   RuntimeV3McpRef,
   RuntimeV3ProviderMaterial,
   RuntimeV3SkillMaterial,
+  RuntimeOutputAttachment,
 } from "../types";
 export type {
   RuntimeV3McpMaterial,
@@ -434,6 +435,7 @@ export interface RuntimeV3WarmTurnMaterial {
   content: string;
   cursor: bigint;
   recoveryDeferred?: boolean;
+  outputsHarvested?: boolean;
   /** Routine work runs in its own Pi session while sharing the durable Box workspace. */
   backgroundRoutine?: boolean;
   backgroundKind?: "routine" | "trigger";
@@ -483,6 +485,11 @@ export interface RuntimeV3WarmTurnPersistence {
     projection: RuntimeV3WarmTurnProjection,
     signal?: AbortSignal,
   ): Promise<boolean | "succeeded" | "failed" | "detached" | "cancel_pending">;
+  recordOutputs?(
+    claim: RuntimeV3Claim,
+    input: { attachments: RuntimeOutputAttachment[]; activityAt: Date },
+    signal?: AbortSignal,
+  ): Promise<boolean>;
   recoverExternal?(claim: RuntimeV3Claim, signal?: AbortSignal): Promise<boolean>;
   pendingDelegationCancel?(
     claim: RuntimeV3Claim,
@@ -565,9 +572,24 @@ export interface RuntimeV3WarmPi {
   }): Promise<{ outcome: "accepted"; invocationId: string } | { outcome: "rejected" | "ambiguous"; code: string }>;
 }
 
+/** Turn-named facade over the broker's legacy `attempt_id` transport field. */
+export interface RuntimeV3TurnOutbox {
+  harvest(input: {
+    orgId: string;
+    companionId: string;
+    boxId: string;
+    turnId: string;
+    deadlineAt: Date;
+    signal: AbortSignal;
+  }): Promise<{ attachments: RuntimeOutputAttachment[]; incomplete: boolean }>;
+  clear(input: { boxId: string; signal: AbortSignal }): Promise<void>;
+}
+
 export interface RuntimeV3WarmTurnAdvanceOptions {
   persistence: RuntimeV3WarmTurnPersistence;
   pi: RuntimeV3WarmPi;
+  outbox?: RuntimeV3TurnOutbox;
+  onOutboxDegraded?: () => void;
 }
 
 const LANE_CONVERGENCE_LIMIT = 16;
@@ -1098,6 +1120,42 @@ export function createRuntimeV3WarmTurnAdvance(
             message: "Pi produced more than one assistant result for the Turn.",
             action: "none",
           };
+        }
+        if (classified.settled && !material.backgroundRoutine && options.outbox
+          && !material.outputsHarvested) {
+          if (!options.persistence.recordOutputs) {
+            throw new Error("Runtime v3 outbox persistence is unavailable");
+          }
+          const outboxSignal = boundedSignal(
+            signal,
+            COMPANION_RUNTIME_V3_BUDGETS.heartbeatSettlementMs,
+          );
+          let harvested: { attachments: RuntimeOutputAttachment[]; incomplete: boolean };
+          try {
+            harvested = await options.outbox.harvest({
+              orgId: claim.orgId,
+              companionId: claim.companionId,
+              boxId: material.boxId,
+              turnId: claim.turn.id,
+              deadlineAt: new Date(
+                Date.now() + COMPANION_RUNTIME_V3_BUDGETS.heartbeatSettlementMs,
+              ),
+              signal: outboxSignal,
+            });
+          } catch {
+            harvested = { attachments: [], incomplete: true };
+          }
+          const recorded = await options.persistence.recordOutputs(claim, {
+            attachments: harvested.attachments,
+            activityAt: new Date(),
+          }, outboxSignal);
+          if (!recorded) return { kind: "release" };
+          if (harvested.incomplete) options.onOutboxDegraded?.();
+          try {
+            await options.outbox.clear({ boxId: material.boxId, signal: outboxSignal });
+          } catch {
+            options.onOutboxDegraded?.();
+          }
         }
         const projection = {
           throughCursor: classified.throughCursor,

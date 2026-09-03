@@ -18,7 +18,7 @@ import {
   type CompanionStagedAttachment,
   type CompanionOutboxEntry,
   type CompanionOutboxFile,
-  type CompanionBoxRuntimeV2,
+  type CompanionBoxRuntime,
 } from "@companion/box-runtime";
 import { COMPANION_BUDGETS_BASE } from "@companion/contracts";
 import { decryptOpaqueValue } from "@companion/core";
@@ -314,7 +314,7 @@ export interface DirectAgentCalls {
   }): Promise<CompanionOutboxFile>;
 }
 
-export type DirectBoxDataTransport = Pick<CompanionBoxRuntimeV2,
+export type DirectBoxDataTransport = Pick<CompanionBoxRuntime,
   "stageAttachments" | "clearOutbox" | "listOutbox" | "readOutboxFile">;
 
 export function createDirectBoxDataTransport(options: {

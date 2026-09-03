@@ -9,14 +9,14 @@ import { z } from "zod";
 import {
   assignCompanionSection,
   createCompanionSection,
-  createCompanionV2,
+  createCompanionWithRuntime,
   deleteCompanionSection,
-  duplicateCompanionV2,
+  duplicateCompanionWithRuntime,
   listCompanionSections,
   reorderCompanionSections,
   saveCompanionProvider,
-  setCompanionWorkspaceShareV2,
-  updateCompanionMemberStateV2,
+  setCompanionWorkspaceShare,
+  updateCompanionMemberState,
 } from "@companion/core";
 import { schema, withTenantContext, type Db } from "@companion/db";
 
@@ -122,7 +122,7 @@ describe("Companion sections", () => {
       masterKey,
       database: integrationDb,
     });
-    companionId = (await asActor(fixture.developer, (database) => createCompanionV2({
+    companionId = (await asActor(fixture.developer, (database) => createCompanionWithRuntime({
       actor: fixture.developer,
       orgId: fixture.orgA,
       name: "Luna",
@@ -130,7 +130,7 @@ describe("Companion sections", () => {
       modelId: "claude-opus-4-8",
       database,
     }))).id;
-    await asActor(fixture.developer, (database) => setCompanionWorkspaceShareV2({
+    await asActor(fixture.developer, (database) => setCompanionWorkspaceShare({
       actor: fixture.developer,
       orgId: fixture.orgA,
       companionId,
@@ -213,7 +213,7 @@ describe("Companion sections", () => {
     expect(reordered.filter((section) => section.owner_id === fixture.developer.id).map((section) => section.id))
       .toEqual([personal.id, work.id]);
 
-    const duplicate = await asActor(fixture.developer, (database) => duplicateCompanionV2({
+    const duplicate = await asActor(fixture.developer, (database) => duplicateCompanionWithRuntime({
       actor: fixture.developer,
       orgId: fixture.orgA,
       companionId,
@@ -304,7 +304,7 @@ describe("Companion sections", () => {
     `;
     expect(before[0]?.inserted).toBe(1);
 
-    const muted = await asApiActor(fixture.developer, (database) => updateCompanionMemberStateV2({
+    const muted = await asApiActor(fixture.developer, (database) => updateCompanionMemberState({
       actor: fixture.developer,
       orgId: fixture.orgA,
       companionId,
@@ -325,7 +325,7 @@ describe("Companion sections", () => {
     `;
     expect(after[0]?.inserted).toBe(0);
 
-    const viewer = await asActor(fixture.admin, (database) => updateCompanionMemberStateV2({
+    const viewer = await asActor(fixture.admin, (database) => updateCompanionMemberState({
       actor: fixture.admin,
       orgId: fixture.orgA,
       companionId,
@@ -333,7 +333,7 @@ describe("Companion sections", () => {
       database,
     }));
     expect(viewer.muted).toBe(false);
-    expect((await asActor(fixture.developer, (database) => updateCompanionMemberStateV2({
+    expect((await asActor(fixture.developer, (database) => updateCompanionMemberState({
       actor: fixture.developer,
       orgId: fixture.orgA,
       companionId,

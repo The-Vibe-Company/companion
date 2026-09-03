@@ -52,12 +52,10 @@ claim, retries with bounded jittered 5/15/30/60/300-second backoff, and resumes 
 one recovery signal. FIFO remains local to each independently progressing main/background lane.
 Runtime redelivers the same durable incident signal after a delivery crash until it is acknowledged;
 an acknowledged open or recovery signal is not delivered again.
-Hosted runtime protocol 7 never replays a prompt whose dispatch outcome is ambiguous. It retries a
-resource-independent durable cleanup that terminates only the captured Pi invocation, preserves the
-original interruption, then marks that occurrence `auto_abandoned` and releases its execution lane.
-There is no human Retry/Cancel gate; later work continues automatically after exact cleanup proof.
-Runtime v3 closes the same safety case without a recovery operation: an outcome-unknown admission
-is immediately interrupted and never replayed, its lane is released, and `Prepared` is invalidated.
+Hosted Runtime v3 is the only execution path. A Turn carries command, admission, activity, and
+outcome facts without an attempt table, derived Start operation, or legacy retry executor. An
+outcome-unknown admission is immediately interrupted and never replayed, its lane is released, and
+`Prepared` is invalidated.
 The runtime recycles only the exactly captured Pi invocation on the same persistent Box, rebuilds
 from validated durable summary and complete bounded history under freshly resolved authority, and
 then admits later work. If continuity may be incomplete, the next hosted Companion answer begins
@@ -76,7 +74,9 @@ forward, or manage them through this skill or its Agent Auth client. Owner-scope
 section membership, and each member's notification mute preference are first-party control-plane
 settings too; they never change Box/Pi state and are not Skills Hub labels or Agent Auth APIs.
 Never use a skill command to
-wake, retry, cancel, restart, stop, or delete a hosted Companion. Scheduled routines are the
+wake, retry, cancel, restart, stop, or delete a hosted Companion. The temporary Pi-only Restart
+control exists only in `companion-control`, never restarts the Box, and may be removed after the
+post-launch evidence review. Scheduled routines are the
 sanctioned wake-on-a-schedule path and webhook triggers are the sanctioned wake-on-an-event path;
 their mutations are gated by Owner/Editor approval through `companion-control`, never Agent Auth.
 After Runtime v3 cutover, the persistent Box archives after one hour without newly accepted member
@@ -1418,7 +1418,7 @@ skills view shows the correct status and version. Report the version from this s
 `companion.json.version`:
 
 ```sh
-printf '%s' '{"action":"api","method":"POST","path":"/local-skills/companion/installed","body":{"version":"1.110.1","agent":"<your assistant name>"}}' \
+printf '%s' '{"action":"api","method":"POST","path":"/local-skills/companion/installed","body":{"version":"1.111.0","agent":"<your assistant name>"}}' \
   | node scripts/companion-agent-client.mjs
 ```
 

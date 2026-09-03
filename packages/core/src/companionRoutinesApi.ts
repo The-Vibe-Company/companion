@@ -23,7 +23,7 @@ import {
   CompanionDecisionConflictError,
   CompanionDecisionNotFoundError,
 } from "./companions";
-import { getCompanionDecisionV2 } from "./companionRuntimeApi";
+import { getCompanionDecision } from "./companionRuntimeApi";
 import {
   computeNextFireAt,
   validateRoutineSchedule,
@@ -150,7 +150,7 @@ function scheduleNextFire(cron: string, timezone: string, enabled: boolean, afte
   return validated.nextFireAt;
 }
 
-export async function listCompanionRoutinesV2(input: {
+export async function listCompanionRoutines(input: {
   orgId: string;
   companionId: string;
   database: Db;
@@ -165,7 +165,7 @@ export async function listCompanionRoutinesV2(input: {
 }
 
 /** PostgreSQL-only routine history read; this never contacts or wakes the Companion Box. */
-export async function listCompanionRoutineRunsV2(input: {
+export async function listCompanionRoutineRuns(input: {
   orgId: string;
   companionId: string;
   routineId: string;
@@ -203,7 +203,7 @@ export async function listCompanionRoutineRunsV2(input: {
 }
 
 /** Read one run by its durable turn id, including only its private routine-session transcript. */
-export async function getCompanionRoutineRunV2(input: {
+export async function getCompanionRoutineRun(input: {
   orgId: string;
   companionId: string;
   runId: string;
@@ -236,7 +236,7 @@ export async function getCompanionRoutineRunV2(input: {
   });
 }
 
-export async function createCompanionRoutineV2(input: {
+export async function createCompanionRoutine(input: {
   orgId: string;
   companionId: string;
   id?: string;
@@ -273,7 +273,7 @@ export async function createCompanionRoutineV2(input: {
   return companionRoutineSchema.parse(row.routine);
 }
 
-export async function updateCompanionRoutineV2(input: {
+export async function updateCompanionRoutine(input: {
   orgId: string;
   companionId: string;
   routineId: string;
@@ -284,7 +284,7 @@ export async function updateCompanionRoutineV2(input: {
   enabled?: boolean;
   database: Db;
 }): Promise<CompanionRoutine> {
-  const routines = await listCompanionRoutinesV2(input);
+  const routines = await listCompanionRoutines(input);
   const current = routines.find((routine) => routine.id === input.routineId);
   if (!current) throw new CompanionRoutineNotFoundError();
   const draft = companionRoutineDraftSchema.parse({
@@ -319,7 +319,7 @@ export async function updateCompanionRoutineV2(input: {
   }
 }
 
-export async function deleteCompanionRoutineV2(input: {
+export async function deleteCompanionRoutine(input: {
   orgId: string;
   companionId: string;
   routineId: string;
@@ -340,7 +340,7 @@ export async function deleteCompanionRoutineV2(input: {
   }
 }
 
-export async function answerCompanionRoutineDecisionV2(input: {
+export async function answerCompanionRoutineDecision(input: {
   orgId: string;
   companionId: string;
   requestId: string;
@@ -350,9 +350,9 @@ export async function answerCompanionRoutineDecisionV2(input: {
   let routineId: string | null = null;
   let nextFireAt: Date | null = null;
   if (input.decision === "allow") {
-    let pending: Awaited<ReturnType<typeof getCompanionDecisionV2>>;
+    let pending: Awaited<ReturnType<typeof getCompanionDecision>>;
     try {
-      pending = await getCompanionDecisionV2({
+      pending = await getCompanionDecision({
         orgId: input.orgId,
         companionId: input.companionId,
         requestId: input.requestId,

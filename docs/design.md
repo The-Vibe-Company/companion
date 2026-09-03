@@ -1,6 +1,6 @@
 # Companion architecture — Skills Hub and optional Companions
 
-This document describes the as-built Runtime v2 architecture. Companion is always a Skills Hub.
+This document describes the as-built Runtime v3 architecture. Companion is always a Skills Hub.
 Behind the existing Companions feature gate, it also hosts named, persistent Box/Pi teammates
 through a dedicated runtime service. The runtime is intentionally narrower than a generic agent
 platform: one Companion is one Box, one Pi daemon, and one durable thread. The guarded final cutover
@@ -98,20 +98,21 @@ APNs deliveries for the Companion and prevents future enqueue until unmuted. It 
 unread state, thread contents, another member's preference, or Box/Pi state. Both section and mute
 writes remain behind actor-scoped `SECURITY DEFINER` capabilities; Agent Auth has no access.
 
-## Runtime v2 write model
+## Runtime v3 write model
 
 Runtime state is explicit and durable:
 
-- `companion_runtime_instances` owns generation, canonical Box id, observed Box/Pi state, layout,
-  invocation id, and applied configuration revision.
-- `companion_turns` owns `client_message_id`, initiating actor/surface, queue state, inactivity and
-  absolute deadlines, and one stable expurgated error.
-- `companion_turn_attempts` owns execution lane (`main` or `routine`), historical retry identity, Pi
-  invocation, dispatch/acknowledgement, correlated event cursor, and outcome.
-- `companion_operations` owns start, stop, Pi restart, Box restart, settings apply, and delete intent
-  plus checkpoints. Multiple operations may wait; one may run per Companion.
-- `companion_runtime_leases` owns independent `main` and `routine` claim tokens, globally increasing
-  attempt epochs, executor ids, and expiries used to fence every checkpoint and settlement.
+- `companion_v3_instances` owns the canonical Box id, desired lifecycle revision, preparation and
+  Pi-recycle checkpoints, actor/revision-bound `Prepared` proof, current invocation, and bounded
+  expurgated lifecycle errors.
+- `companion_v3_turns` owns `client_message_id`, command identity, `main` or `background` lane,
+  FIFO sequence, admission/activity/outcome facts, durable deadlines, and one stable expurgated
+  error. Runtime v3 has no attempt table and no derived Start operation.
+- `companion_v3_lifecycle_requests` idempotently records Owner/Editor prepare, archive, Pi recycle,
+  and Owner-only delete intent while provider progress remains on the aggregate.
+- `companion_v3_lane_leases` owns independently fenced `main` and `background` claim tokens,
+  monotonically increasing epochs, executor ids, and expiries used by every checkpoint and
+  settlement.
 - `companion_images` owns provider-wide content-addressed image intent, published build status,
   bounded retry state, and the epoch-fenced single-builder lease used only by `apps/runtime`. It is
   an optional accelerator: Box creation clones only an already-ready digest and otherwise starts
@@ -153,31 +154,28 @@ communication avatar, with no control-plane avatar endpoint or network fetch.
 
 One `(companion_id, client_message_id)` produces exactly one turn. The transaction that stores the
 user message also stores that turn. A duplicate POST resolves to the same row. An ambiguous
-occurrence is never dispatched again. `retry_id` remains only as historical data on attempts made
-before protocol 6.
+occurrence is never dispatched again.
 
 Turn states are:
 
 ```text
-queued → starting → dispatching → running ↔ needs_input
-                                      └→ succeeded | failed | interrupted | cancelled
+queued → admitted → running ↔ needs_input
+                       └→ succeeded | failed | interrupted | cancelled
 ```
 
 Only one occurrence is active per execution lane. One ordinary main occurrence and one background
-routine occurrence may run concurrently; later turns remain ordered within their lane. An interrupted turn
-creates one idempotent lane-local `restart_pi + trigger=recovery` cleanup. Its narrow authorization
-does not load the old actor, provider/model, Skill, MCP, token, or message material. Runtime first
-re-observes the known Box; an absent or provider-archived Box proves the exact invocation no longer
-exists, while a live Box requires exact invocation termination. Main cleanup compares the captured
-systemd `InvocationID`; routine cleanup uses its run-scoped invocation. A newer invocation is never
-stopped. Runtime checkpoints `cleanup_complete`, marks the occurrence `auto_abandoned`, and releases
-the lane without staging or replaying its prompt. Cleanup retries with a maximum five-minute backoff
-and a fresh fixed ten-minute budget per claim cycle. Backoff still fences a new Start on that lane;
-if rolling deployment exposes already-active same-lane work, Runtime reclaims it before cleanup.
-Settings revisions accepted during a turn apply before the next main turn without waiting for
-ordinary background work. On a warm Box, configuration is published as
-applied only after runtime stages the exact snapshot, restarts Pi, and observes a different idle Pi
-invocation; takeover repeats those idempotent steps if their final observation was lost.
+occurrence may run concurrently; later turns remain ordered within their lane. An outcome-unknown
+admission becomes `interrupted` and releases the lane in the same fenced transaction. Runtime
+invalidates `Prepared`, captures the exact Pi invocation, and never creates a replacement attempt,
+recovery operation, or Retry path. Preparation terminates only that invocation on the same Box,
+restages current authorized material, proves a different idle invocation, and reconstructs bounded
+continuity before admitting later work. A newer invocation is never stopped and the ambiguous
+command is never included in recovery context.
+
+Settings revisions accepted during a Turn apply before the next main Turn without waiting for
+ordinary background work. On a warm Box, configuration is published as applied only after runtime
+atomically stages the exact actor-bound snapshot and observes a different idle Pi invocation;
+takeover repeats those idempotent steps if their final observation was lost.
 
 Each due instant persists exactly one Owner-authored ordinary v3 background Turn. Preparation is
 bound to that Owner and current resource revisions before Box contact. A newer due
@@ -208,26 +206,21 @@ sooner, remains an ordinary queued turn, and never supplies an implicit answer o
 approval action. A background question instead keeps its durable card identity while
 runtime aborts and terminalizes that occurrence, releasing its Pi execution and background lane;
 the first current Owner/Editor answer may settle only the detached card and never revives the Turn.
-That queued turn has
-no attempt or cold-start deadline while its Start prerequisite is waiting. Runtime starts the fixed
-three-minute cold-start window only when it first claims that Start, and a takeover preserves it. If
-that cycle times out before any prompt can be dispatched, PostgreSQL re-enqueues the same Start with
-bounded backoff and a fresh cycle budget while the accepted message remains `queued`.
 
 Background ownership never gates main lifecycle or preparation. The main cold-start budget and Pi
 repair progress on their own scheduler clock while one background occurrence uses its separate
 lane fence; an acknowledged prompt is thereafter governed only by turn deadlines.
 
-The stateless loopback `companion-control` MCP is staged on every ordinary main attempt. Direct
+The stateless loopback `companion-control` MCP is staged for every ordinary main Turn. Direct
 configuration mutations persist desired state and report `apply_pending`; sensitive mutations
 persist an asynchronous control request and return immediately. Approval applies once in the API
 and may enqueue an ordinary FIFO continuation. Routine and trigger turns never receive this MCP.
 Directed peer grants allow bounded text delegations without introducing a Group or Room aggregate.
 
-### Runtime v3 warm-text progression seam
+### Runtime v3 progression
 
-Migration 0159 is the expand half of the Runtime v3 wide refactor. It adds separate
-`companion_v3_instances`, `companion_v3_turns`, and retained per-lane lease facts beside Runtime v2.
+Migration 0159 introduced the Runtime v3 progression model:
+`companion_v3_instances`, `companion_v3_turns`, and retained per-lane lease facts.
 A v3 Turn owns its command identity, lane, Pi-admission facts, activity cursor, and outcome; there
 is deliberately no v3 attempt table or derived Start operation. PostgreSQL owns idempotent
 admission, independent `main`/`background` FIFO, and monotonic fence epochs. TypeScript exposes one
@@ -248,11 +241,10 @@ runtime revalidates membership, Companion Editor access, personal-resource owner
 and credential generations immediately before Box and Pi effects. Changed, revoked, or expiring
 material clears warm readiness and converges through a complete restage before the next admission.
 The API atomically persists the user entry and Turn and returns without Box credentials; the runtime
-composition claims only the v3 `main` lane, reauthorizes the actor, dispatches through the existing
+composition claims only v3 work, reauthorizes the actor, dispatches through the existing
 Pi transport, records positive admission before `replying`, and projects one assistant result into
-the durable thread before ACK and terminal settlement. Legacy aggregates without a v3 projection,
-files, routines, and background work remain on their prior paths in this stack. Protocol-3 claims
-still fail closed under the shared runtime gate and carry its epoch, so stale executors cannot
+the durable thread before ACK and terminal settlement. All main and background work follows this
+model. Claims fail closed under the shared runtime gate and carry its epoch, so stale executors cannot
 project or settle. There is still no v3 attempt table or derived Start operation.
 
 Migration 0169 makes an outcome-unknown v3 Pi admission self-healing without replay. The durable
@@ -360,18 +352,15 @@ execution interrupts only the scheduler's backoff sleep so a start can hand its 
 directly to the queued turn. `/healthz` fails when PostgreSQL, the claim loop, or the
 latest sweep is unhealthy.
 
-Protocol 7 is the claim boundary for cleanup isolation and queue repair. Protocol-6 executors may
-finish an already-held lease but receive no new work. Migration 0157 rearms stale or missing cleanup
-rows without racing a live lease and removes cold deadlines created before an unclaimed Start.
+The production composition owns only Runtime v3 convergence: main lifecycle/preparation/Turn work,
+background Turn work, and deadline enforcement run on independent clocks. There is no reachable
+legacy kernel or store. The background scheduler cannot retain main chat, preparation, or Pi
+repair; permanent delete remains the destructive exception.
 
-Main-lane precedence is permanent delete, explicit stop/restart, main decision response, active main
-attempt, configuration apply, next main turn, then health observation. The background lane orders
-its active routine and next occurrence without priority or preemption. Its separate scheduler cannot
-retain main chat, preparation, or Pi repair; permanent delete remains the destructive exception.
 Lifecycle and broker-observation calls that are known idempotent retry network, `429`, and `5xx`
 failures up to five times with jittered 1/2/5/10/30-second backoff. Observation-only broker state
 and journal reads also retry `409` while the provider is temporarily transitioning the Box. Every
-attempt revalidates the lease before Box contact. Prompt and decision writes never use this path.
+claim revalidates the lease before Box contact. Prompt and decision writes never use this path.
 When the direct hosted-agent endpoint fails, runtime stays on the safe exec fallback and re-probes
 only through broker state with bounded exponential backoff. Reading the same durable endpoint on a
 later claim preserves that suspect state; only a newer staging observation or a successful probe
@@ -386,7 +375,7 @@ runtime searches every Box-list page for that exact name and adopts one canonica
 public create request cannot set a name, Runtime v3 supplies a durable provider `Idempotency-Key`,
 checkpoints the acknowledged Box id, then applies the name and
 six-hour TTL through an idempotent PATCH. Runtime v3 retries an ambiguous create only with the same
-durable key and byte-equivalent body; the retained unkeyed Runtime v2 path remains non-replayable.
+durable key and byte-equivalent body.
 After naming, runtime lists again and permanently deletes duplicates. Permanent deletion is provider
 operation tracking, not stop/archive.
 
@@ -399,7 +388,7 @@ attempt count. Invalid responses and non-retryable errors retain the normal expu
 failure. The protocol-versioned claim entrypoint prevents an older runtime from claiming these rows
 during a rolling deploy.
 
-Every prompt write carries the attempt's durable `command_id`. The on-Box broker fsyncs its positive
+Every prompt write carries the Turn's durable `command_id`. The on-Box broker fsyncs its positive
 Pi acknowledgement before answering and serves that exact result through `dispatch_status`. If the
 direct HTTP response is lost, runtime spends at most 30 seconds resolving the same command id and
 may repeat only that idempotent broker command; an executor takeover performs the same lookup. This
@@ -407,22 +396,21 @@ command is durably bound to the Pi invocation current at its write intent, and t
 refuses a changed instance before network I/O while the broker refuses a stale invocation before
 any Pi call. This is resolution of a proven broker fact, not replay of an
 ambiguous external effect. If no matching
-ledger fact can be recovered, the attempt becomes `interrupted`, no exec fallback or new prompt is
-sent, and one cleanup-only internal recovery terminates the exact invocation without loading
-message resources or staging Pi. The UI warns that an earlier
-external effect may have succeeded; after cleanup, `auto_abandoned` releases later work without
-replay.
+ledger fact can be recovered, the Turn becomes `interrupted`, its lane is released, and no exec
+fallback or new prompt is sent. `Prepared` is invalidated; ordinary preparation terminates the
+exact invocation, rebuilds bounded continuity, and restages before later work. The UI warns that an
+earlier external effect may have succeeded.
 
 Immediately before dispatch, runtime adds one fixed-format metadata block to the newest user
-message: the attempt's durable `started_at` rendered with an offset plus the initiating member's
-IANA timezone pinned on that attempt's first authorized material read. The staged system prompt and prior transcript stay a stable cache prefix; the
+message: the Turn's durable admission time rendered with an offset plus the initiating member's
+IANA timezone pinned on its authorized material read. The staged system prompt and prior transcript stay a stable cache prefix; the
 changing time therefore lives only in the per-turn suffix. Takeover reconstructs the same bytes
 from durable data. Exact seconds are retained because rounding provides no additional prefix-cache
 reuse at that position, and an unset profile deterministically falls back to UTC.
 
 Disabling the existing Companions flag blocks new claims. Active work reaches a safe checkpoint and
-becomes interrupted. This kill switch is the operational rollback after v2 data exists; a legacy
-executor must never process v2 rows.
+becomes interrupted. This kill switch is the only operational rollback: it disables v3 and never
+reactivates a legacy executor.
 
 A normal runtime process shutdown is a replica handoff, not that kill switch. It stops new claims
 and local lease renewal without settling active work; the next replica takes over after lease expiry.
@@ -448,7 +436,7 @@ Layout 14 installs a small Node broker under systemd between runtime commands an
 - an owner-only Unix socket (`0600`) carries correlated `get_state`, `prompt`, and decision commands;
 - a segmented, monotonic event journal survives consumer restart and advances only through explicit
   acknowledgement;
-- the broker binds the sole active attempt to events through `agent_settled` and records Pi process
+- the broker binds the sole active Turn to events through `agent_settled` and records Pi process
   exit separately;
 - malformed or oversized lines advance without persisting their raw content;
 - unknown event types are counted and ignored rather than treated as user-fatal errors.
@@ -587,8 +575,9 @@ Apple Universal Link and the production-signed app makes no general self-hosted-
 PostgreSQL distinguishes the latest available selected-Skills revision from the minimum revision
 required before dispatch. A publication advances only the available revision, so waking a Box
 reuses its installed immutable version snapshot. Explicit selection and invalidation changes remain
-blocking. User Stop, Restart Pi, Full Box restart, and settings apply stop Pi before atomically
-replacing the tree. A failed publication update preserves the old tree and does not block lifecycle.
+blocking. User Stop, the temporary Pi-only Restart, and settings apply stop Pi before atomically
+replacing the tree. No Full Box restart control is exposed. A failed publication update preserves
+the old tree and does not block lifecycle.
 
 Every Companion may also call the Skills Hub API itself, with the same scopes: skills read/write,
 secret reads, and Skill Database read/write. Access is unconditional, so no surface asks anyone to
@@ -598,8 +587,8 @@ mints a short-lived `source_type = 'companion'` token acting as the settings act
 Each request re-checks that the Companion still exists for that member, so deleting the Companion or
 removing the member refuses it immediately; `/v1/companions*` remains cookie-only.
 
-An attempt pins the exact provider and MCP credential revisions before prompt dispatch. A takeover
-that observes a later generation interrupts an already-accepted attempt instead of interpreting
+The Turn pins the exact provider and MCP credential revisions before prompt dispatch. A takeover
+that observes a later generation interrupts an already-admitted Turn instead of interpreting
 unprojected events with a different connection. A terminal projection already committed is read
 through a separate fenced metadata-only function, then ACKed and settled without credential
 material. For each selected OAuth account, staging writes only its account id, stable credential
@@ -653,8 +642,8 @@ not OAuth access tokens. That expiry becomes active only after a different idle 
 observed. A warm non-native send
 dispatches directly only while the snapshot is bound to the current Pi invocation and has more than
 two hours and five minutes remaining. Eligibility is checked both at enqueue and again under the
-runtime lease immediately before claim; otherwise the ordinary `start` operation restages and
-recycles Pi without a Full Box restart. Changing the observed invocation or minting a replacement
+runtime lease immediately before claim; otherwise ordinary preparation restages and recycles Pi
+without replacing the Box. Changing the observed invocation or minting a replacement
 Hub token invalidates the old proof before another turn can use it.
 Migration 0110 versions the Runtime claim entrypoint. Replicas from before 0110 retain their
 current lease but the legacy four-argument claim returns no new work after the migration commits.
@@ -702,8 +691,8 @@ proposals (`kind: config` plus a bounded `proposal` object) dispatch to
 `companion_api_answer_config_decision` after the route validates `model_id` against the provider
 catalog. The web thread shows a dedicated config card that names the Companion as proposer, lists
 diffs from already-loaded skill/plugin/model names, and keeps the card pending when apply fails.
-`POST /v1/companions/:id/turns/:turnId/retry` remains wire-compatible for old clients: it only
-observes or re-enqueues the exact automatic cleanup and never creates another turn attempt.
+The historical retry route remains wire-compatible for already-shipped clients but is not a Runtime
+v3 execution surface: it returns the durable Turn state and cannot claim, dispatch, or enqueue work.
 `POST /v1/companions/:id/turns/:turnId/cancel` remains the explicit stop/dequeue path for active or
 queued work and returns the stable state without mutation for terminal interruptions.
 
@@ -757,7 +746,7 @@ unregistered definitions are skipped.
 
 The web retains polling: three seconds while activity is present, slower when settled. There is no
 SSE or Box push agent. “Companion is replying…” derives only from an acknowledged, non-terminal
-attempt; the companion read model carries the same ACK-gated fact as `runtime.replying`, so roster
+Turn; the companion read model carries the same ACK-gated fact as `runtime.replying`, so roster
 surfaces animate a working Companion without a thread read. Viewer/list/thread/status reads remain
 PostgreSQL-only.
 
@@ -802,26 +791,29 @@ fresh Lux desktop handoff in a dedicated `WKWebView` window; the secret-bearing 
 memory-only, each reconnect remints it, and Viewer or asleep-Box states expose no desktop control.
 
 Sending is the sole normal wake path. There is no Wake button or first-keystroke prewarm. Successful
-Pi acceptance refreshes Box TTL to six hours. Ambiguous-turn cleanup only terminates the captured Pi
-invocation; it never resumes or restarts the Box and never stages or starts Pi. Full Box
-restart requires explicit confirmation; it re-observes the known Box and, if already archived,
-skips impossible Pi stop commands before resuming it. Permanent delete is cleanup rather than healing.
-Before a new prompt write intent, a stale active-attempt binding or unacknowledged broker tail causes
+Pi acceptance refreshes Box TTL to six hours. Prepared-state invalidation terminates only the
+captured Pi invocation; it never resumes or restarts the Box and never stages or starts Pi. No Full
+Box restart control is exposed. Permanent delete is cleanup rather than healing.
+Before a new prompt write intent, a stale active-Turn binding or unacknowledged broker tail causes
 one Pi-only recycle and a fresh idle proof; failure to obtain that proof remains an actionable
 `restart_pi` error and no prompt is dispatched.
 
 ## Legacy purge and rollout
 
-Runtime v2 does not backfill legacy ordinals, transcripts, Companions, or Boxes. Before cutover, an
-operator runs a one-shot command in report, dry-run, then
-`purge --confirm-delete-all-companions` mode with the feature flag disabled and an advisory lock.
+The historical Runtime v2 state is removed offline before Runtime v3 activation; no ordinal,
+transcript, Companion, or Box is backfilled. The repository Owner explicitly authorizes production
+purge after reviewing report and dry-run output. The feature flag and database gate stay disabled,
+all v2 and v3 leases are neutral, and an advisory lock prevents activation throughout the
+destructive window.
 
 The purge inventories DB `box_id` ownership and exact legacy naming formats, prints the targets,
 requests permanent Box deletion, records the provider operation id, and waits for completion. A
-provider `404` means already deleted; every other error blocks cutover. Only after external deletion
-is confirmed may PostgreSQL remove legacy Companions, pools, shares, member state, threads,
-transcripts, and leases. Provider connections, MCP accounts, Skills, secrets, organizations, users,
-billing, and audit rows survive.
+provider's authoritative absence means already deleted; unavailable or ambiguous evidence is a
+NO-GO. Every other error blocks cutover with ownership rows intact. The resumable ledger observes
+or polls before retry and never repeats a confirmed external effect. Only after every external
+target is confirmed absent may PostgreSQL remove legacy Companions and runtime rows. Provider
+connections, MCP accounts, Skills, secrets, organizations, users, memberships, Skill Databases,
+billing, and audit rows survive and are protected by the final preservation fingerprint.
 
 The stacked rollout temporarily retained old runtime columns without backfilling them. The final
 migration removes those columns together with every old executor, watermark, pool, reconciler,
@@ -829,9 +821,12 @@ mutating purge function, and legacy grant. The release process admits that migra
 confirming there is no open P0/P1 runtime issue and the purge report is empty. The provider-operation
 ledger remains owner-readable cutover evidence.
 
-The feature flag remained disabled between purge and the asynchronous API/web cutover. Once v2 rows
-exist, rollback uses the kill switch rather than a legacy binary; no legacy executor may process
-them.
+The feature flag remains disabled from purge start through deployment of the v3-only runtime. A
+production go decision additionally requires approved SLO thresholds, zero observed loss, replay,
+stale-fence settlement, or privacy breach, no lane blocked beyond 15 minutes, and at least seven
+dedicated canary days. Missing external evidence is a NO-GO. Enabling 100% of the allowlist is a
+separate explicit repository-Owner decision. Rollback disables v3 claims and rolls forward; it
+never runs a v2 binary or executor.
 
 ## Explicit exclusions
 
@@ -841,7 +836,7 @@ provider, Box pool, generic provider marketplace, container catalog, deployment 
 builder. Native client dictation that transiently converts microphone audio into editable composer
 text is not a voice turn and never reaches Box or Pi. Bounded chat files, scheduled Companion
 routines, and webhook-fired Companion triggers are in scope.
-No SSE, Box-to-control-plane push agent, detached API executor, automatic Full Box recovery,
+No SSE, Box-to-control-plane push agent, detached API executor, Full Box restart or recovery,
 automatic ambiguous-prompt replay, or global learned model-capability table.
 
 ## Deployment

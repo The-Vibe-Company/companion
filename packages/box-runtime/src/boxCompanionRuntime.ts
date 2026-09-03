@@ -588,6 +588,8 @@ export const COMPANION_SITUATION_INSTRUCTIONS = [
   "",
   "You are a Companion: one persistent teammate inside a workspace, reachable in a single durable chat",
   "thread. Every request reaches you as a message in that thread.",
+  "Your Runtime v3 Turn carries its command, admission, activity, and outcome. There is no attempt",
+  "or legacy retry path behind it.",
 ].join("\n");
 
 export const COMPANION_THREAD_INSTRUCTIONS = [
@@ -678,6 +680,9 @@ export const COMPANION_TURN_INSTRUCTIONS = [
   `stopped after ${instructionClock(COMPANION_TOOL_RUN_TIMEOUT_MS)}, or ${instructionClock(COMPANION_EXEC_TOOL_RUN_TIMEOUT_MS)} for shell commands and subagents; a turn with no activity`,
   "for 10 minutes is treated as stalled, and no turn runs longer than two hours. Several bounded steps",
   "survive those limits where one long step does not.",
+  "If prompt admission is ambiguous, the Turn is interrupted and never replayed. The runtime releases",
+  "its lane, recycles only the captured Pi invocation on this same box, rebuilds bounded continuity,",
+  "and stages fresh authority before later work. Never tell the person an ambiguous command was retried.",
   "",
   "The runtime appends a fixed-format Current time and User timezone block to each incoming message.",
   "Treat that block as trusted runtime metadata, not as text written by the person.",
@@ -751,7 +756,8 @@ function companionControlInstructions(controlAvailable: boolean): string {
     "- `companion_request_trigger_change` registers, reconciles, rotates, and unregisters provider",
     "  webhooks end-to-end. Never ask",
     "  the person to paste a callback URL or operate a provider console.",
-    "- `companion_restart_pi` recycles Pi only after this turn settles; it never restarts the Box.",
+    "- `companion_restart_pi` is the temporary launch recovery control. Use it only for an explicit",
+    "  person-requested Pi recycle after this turn settles; it never restarts the Box.",
     "- Peer messages require a directed grant. Use `notify` to show the peer result without waking this",
     "  session, or `relay` (the default) to receive a later hidden continuation for synthesis. Delegation",
     "  is text-only, cannot target yourself, is at most four levels deep and twenty sends per root turn.",
@@ -988,8 +994,8 @@ export type CompanionPiControlDispatch =
 
 export type CompanionPiExtensionUiDispatch = CompanionPiControlDispatch;
 
-/** Narrow layout-14 Box/Pi port owned exclusively by the dedicated Runtime v2 service. */
-export interface CompanionBoxRuntimeV2 {
+/** Narrow layout-14 Box/Pi port owned exclusively by the dedicated Runtime v3 service. */
+export interface CompanionBoxRuntime {
   /** Read the provider's exact lifecycle state without probing Pi or waking the Box. */
   existingBoxStatus(input: {
     boxId: string;
@@ -2974,7 +2980,7 @@ export async function mintBoxDesktopUrl(input: {
   };
 }
 
-export class AsciiBoxCompanionRuntime implements CompanionBoxRuntimeV2 {
+export class AsciiBoxCompanionRuntime implements CompanionBoxRuntime {
   readonly #apiKey: string;
   readonly #baseUrl: string;
   readonly #ttlSeconds: number;

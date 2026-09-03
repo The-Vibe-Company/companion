@@ -3,7 +3,7 @@ import {
   bakeCompanionRuntimeImageOnce,
   deleteCompanionRuntimeBakerBox,
   type BoxRuntimeLifecycleClient,
-  type CompanionBoxRuntimeV2,
+  type CompanionBoxRuntime,
   type CompanionPiLayoutIdentity,
   type CompanionRuntimeSkill,
 } from "@companion/box-runtime";
@@ -35,7 +35,7 @@ export interface ImageBuildWorkerOptions {
   registry: CompanionImageRegistry;
   identity: CompanionPiLayoutIdentity;
   lifecycle: BoxRuntimeLifecycleClient;
-  runtime(): CompanionBoxRuntimeV2;
+  runtime(): CompanionBoxRuntime;
   bundledSkill?: CompanionRuntimeSkill;
   /** Injected for tests; defaults to the single-attempt provider bake. */
   bakeOnce?: typeof bakeCompanionRuntimeImageOnce;
@@ -100,14 +100,14 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
           identity: options.identity,
           lifecycle: options.lifecycle,
           runtime: {
-            existingBoxStatus: (input: Parameters<CompanionBoxRuntimeV2["existingBoxStatus"]>[0]) =>
+            existingBoxStatus: (input: Parameters<CompanionBoxRuntime["existingBoxStatus"]>[0]) =>
               options.runtime().existingBoxStatus(input),
-            refreshPiLayout: (input: Parameters<CompanionBoxRuntimeV2["refreshPiLayout"]>[0]) =>
+            refreshPiLayout: (input: Parameters<CompanionBoxRuntime["refreshPiLayout"]>[0]) =>
               options.runtime().refreshPiLayout(input),
-            refreshTtl: (input: Parameters<CompanionBoxRuntimeV2["refreshTtl"]>[0]) =>
+            refreshTtl: (input: Parameters<CompanionBoxRuntime["refreshTtl"]>[0]) =>
               options.runtime().refreshTtl(input),
             prepareRuntimeImage: (
-              input: Parameters<NonNullable<CompanionBoxRuntimeV2["prepareRuntimeImage"]>>[0],
+              input: Parameters<NonNullable<CompanionBoxRuntime["prepareRuntimeImage"]>>[0],
             ) => options.runtime().prepareRuntimeImage?.(input),
           },
           signal: attemptController.signal,
@@ -211,7 +211,7 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
               parentImageName: baked.parentImageName,
             });
           }
-        } catch (error) {
+        } catch {
           clearTimeout(budgetTimer);
           signal.removeEventListener("abort", abortRun);
           if (signal.aborted) return;
@@ -245,7 +245,7 @@ export function createImageBuildWorker(options: ImageBuildWorkerOptions): ImageB
             imageName: claim.imageName,
           });
         }
-      } catch (error) {
+      } catch {
         if (signal.aborted) return;
         options.log.warn({
           ts: new Date(now()).toISOString(),

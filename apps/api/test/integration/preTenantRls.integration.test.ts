@@ -325,7 +325,7 @@ describe("pre-tenant PostgreSQL RLS boundary", () => {
         has_function_privilege(${workerRole}, 'public.companion_runtime_get_material(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,integer)', 'EXECUTE') as "workerOwnsRuntime",
         has_function_privilege(${companionRuntimeRole}, 'public.companion_list_user_orgs(text)', 'EXECUTE') as "runtimeOwnsApi",
         has_function_privilege(${companionRuntimeRole}, 'public.companion_claim_github_sync_destinations(text,integer,integer)', 'EXECUTE') as "runtimeOwnsWorker",
-        has_function_privilege(${companionRuntimeRole}, 'public.companion_runtime_get_material(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,integer)', 'EXECUTE') as "runtimeOwnsRuntime",
+        has_function_privilege(${companionRuntimeRole}, 'public.companion_v3_runtime_claim_lifecycle(text,integer,integer)', 'EXECUTE') as "runtimeOwnsRuntime",
         has_table_privilege(${apiRole}, 'public.companion_turns', 'SELECT') as "apiReadsPrivateRuntime",
         has_table_privilege(${workerRole}, 'public.companion_turns', 'SELECT') as "workerReadsPrivateRuntime",
         has_table_privilege(${companionRuntimeRole}, 'public.companion_turns', 'SELECT') as "runtimeReadsPrivateRuntime",

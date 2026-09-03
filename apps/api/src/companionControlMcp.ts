@@ -21,20 +21,20 @@ import {
   finishCompanionControlInvocation,
   getCompanionDelegation,
   getCompanionProviderCatalog,
-  getCompanionV2,
+  getCompanionRuntimeView,
   listCompanionControlPeers,
   listCompanionControlPlugins,
   listCompanionControlSkills,
   listCompanionDelegations,
-  listCompanionRoutineRunsV2,
-  listCompanionRoutinesV2,
-  listCompanionTriggerRunsV2,
-  listCompanionTriggersV2,
+  listCompanionRoutineRuns,
+  listCompanionRoutines,
+  listCompanionTriggerRuns,
+  listCompanionTriggers,
   registerCompanionControlInvocation,
   scheduleCompanionPiRestart,
   updateCompanionControlPlugin,
   updateCompanionControlSkills,
-  updateCompanionV2,
+  updateCompanionWithRuntime,
   type CompanionControlAuthorization,
 } from "@companion/core";
 import type { Db } from "@companion/db";
@@ -84,7 +84,7 @@ export interface CompanionControlMcpDependencies {
   finishCompanionControlInvocation: typeof finishCompanionControlInvocation;
   getCompanionDelegation: typeof getCompanionDelegation;
   registerCompanionControlInvocation: typeof registerCompanionControlInvocation;
-  updateCompanionV2: typeof updateCompanionV2;
+  updateCompanionWithRuntime: typeof updateCompanionWithRuntime;
 }
 
 const defaultDependencies: CompanionControlMcpDependencies = {
@@ -93,7 +93,7 @@ const defaultDependencies: CompanionControlMcpDependencies = {
   finishCompanionControlInvocation,
   getCompanionDelegation,
   registerCompanionControlInvocation,
-  updateCompanionV2,
+  updateCompanionWithRuntime,
 };
 
 function canonical(value: CompanionControlJsonValue): string {
@@ -219,14 +219,14 @@ export async function executeCompanionControlMcp(input: {
     switch (call.params.name) {
       case "companion_get_self": {
         emptySchema.parse(args);
-        return ok(call.id, await getCompanionV2(context));
+        return ok(call.id, await getCompanionRuntimeView(context));
       }
       case "companion_update_self": {
         const body = updateSelfSchema.parse(args);
         const patch: Record<string, string> = {};
         if (body.name !== undefined) patch.name = body.name;
         if (body.instructions !== undefined) patch.persona = body.instructions;
-        const companion = await dependencies.updateCompanionV2({ ...context, patch });
+        const companion = await dependencies.updateCompanionWithRuntime({ ...context, patch });
         return ok(call.id, { companion, apply_pending: body.instructions !== undefined });
       }
       case "companion_list_skills":
@@ -239,7 +239,7 @@ export async function executeCompanionControlMcp(input: {
       }
       case "companion_list_models": {
         emptySchema.parse(args);
-        const companion = await getCompanionV2(context);
+        const companion = await getCompanionRuntimeView(context);
         const providerId = companion.runtime.provider_ids[0] ?? null;
         const provider = (await getCompanionProviderCatalog()).find((item) => item.id === providerId);
         return ok(call.id, { provider_id: providerId, selected_model_id: companion.model_id, models: provider?.models ?? [] });
@@ -275,15 +275,15 @@ export async function executeCompanionControlMcp(input: {
       }
       case "companion_list_routines":
         emptySchema.parse(args);
-        return ok(call.id, { routines: await listCompanionRoutinesV2(context) });
+        return ok(call.id, { routines: await listCompanionRoutines(context) });
       case "companion_get_routine": {
         const body = routineIdSchema.parse(args);
-        const routine = (await listCompanionRoutinesV2(context)).find((item) => item.id === body.routine_id);
+        const routine = (await listCompanionRoutines(context)).find((item) => item.id === body.routine_id);
         return routine ? ok(call.id, { routine }) : failure(call.id, "Routine not found.");
       }
       case "companion_list_routine_runs": {
         const body = routineRunsSchema.parse(args);
-        return ok(call.id, await listCompanionRoutineRunsV2({ ...context, routineId: body.routine_id, limit: body.limit }));
+        return ok(call.id, await listCompanionRoutineRuns({ ...context, routineId: body.routine_id, limit: body.limit }));
       }
       case "companion_request_routine_change": {
         const body = companionRequestRoutineChangeInputSchema.parse(args);
@@ -297,14 +297,14 @@ export async function executeCompanionControlMcp(input: {
       case "companion_list_triggers":
         emptySchema.parse(args);
         return ok(call.id, {
-          triggers: (await listCompanionTriggersV2({
+          triggers: (await listCompanionTriggers({
             ...context,
             webhookBaseUrl: "https://companion.invalid",
           })).map(redactCompanionControlTrigger),
         });
       case "companion_get_trigger": {
         const body = triggerIdSchema.parse(args);
-        const trigger = (await listCompanionTriggersV2({ ...context, webhookBaseUrl: "https://companion.invalid" }))
+        const trigger = (await listCompanionTriggers({ ...context, webhookBaseUrl: "https://companion.invalid" }))
           .find((item) => item.id === body.trigger_id);
         return trigger
           ? ok(call.id, { trigger: redactCompanionControlTrigger(trigger) })
@@ -312,7 +312,7 @@ export async function executeCompanionControlMcp(input: {
       }
       case "companion_list_trigger_runs": {
         const body = triggerRunsSchema.parse(args);
-        return ok(call.id, await listCompanionTriggerRunsV2({ ...context, triggerId: body.trigger_id, limit: body.limit }));
+        return ok(call.id, await listCompanionTriggerRuns({ ...context, triggerId: body.trigger_id, limit: body.limit }));
       }
       case "companion_request_trigger_change": {
         const body = companionRequestTriggerChangeInputSchema.parse(args);
@@ -341,7 +341,7 @@ export async function executeCompanionControlMcp(input: {
       case "companion_send_message": {
         const body = companionSendPeerMessageInputSchema.parse(args);
         const identity = callIdentity(a, call.id, call.params.name, args);
-        const self = await getCompanionV2(context);
+        const self = await getCompanionRuntimeView(context);
         const clientMessageId = deterministicControlUuid(identity.digest, "delegation-message");
         const accepted = await enqueueCompanionDelegation({
           authorization: a,

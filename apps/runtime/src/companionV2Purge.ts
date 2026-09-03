@@ -8,8 +8,8 @@ import {
   type BoxRuntimeLifecycleClient,
 } from "@companion/box-runtime";
 import {
-  inspectCompanionTriggerWebhookV2,
-  unregisterCompanionTriggerWebhookV2,
+  inspectCompanionTriggerWebhook,
+  unregisterCompanionTriggerWebhook,
   loadSecretsMasterKey,
 } from "@companion/core";
 import { createDatabase, withTenantContextOn } from "@companion/db";
@@ -619,7 +619,7 @@ async function seedCompanionV2PurgeLedger(
   });
 }
 
-function createCompanionV2PurgeJournal(client: CompanionV2PurgeSql): CompanionV2PurgeJournal {
+function createCompanionWithRuntimePurgeJournal(client: CompanionV2PurgeSql): CompanionV2PurgeJournal {
   return {
     async markRequesting(target) {
       await client`
@@ -757,7 +757,7 @@ async function removeCompanionV2Target(input: {
   return withTenantContextOn(
     database,
     { orgId: owner.orgId, userId: owner.ownerId },
-    async (tenantDatabase) => unregisterCompanionTriggerWebhookV2({
+    async (tenantDatabase) => unregisterCompanionTriggerWebhook({
       orgId: owner.orgId,
       companionId: owner.companionId,
       triggerId: owner.triggerId,
@@ -786,7 +786,7 @@ async function inspectCompanionV2Trigger(input: {
   return withTenantContextOn(
     database,
     { orgId: input.owner.orgId, userId: input.owner.ownerId },
-    async (tenantDatabase) => inspectCompanionTriggerWebhookV2({
+    async (tenantDatabase) => inspectCompanionTriggerWebhook({
       orgId: input.owner.orgId,
       companionId: input.owner.companionId,
       triggerId: input.owner.triggerId,
@@ -885,7 +885,7 @@ export async function executeConfirmedCompanionV2Purge(input: {
 
   await seedCompanionV2PurgeLedger(input.client, input.initialInventory);
   const targets = await loadCompanionV2PurgeTargets(input.client);
-  const journal = createCompanionV2PurgeJournal(input.client);
+  const journal = createCompanionWithRuntimePurgeJournal(input.client);
   const objectStore = input.objectStore ?? productionObjectStore();
   const providerPresent = async (target: CompanionV2PurgeTarget): Promise<boolean> => {
     if (target.kind === "trigger") {

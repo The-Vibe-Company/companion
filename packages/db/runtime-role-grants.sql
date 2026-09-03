@@ -423,9 +423,6 @@ BEGIN
     ];
     internal_runtime_functions := ARRAY[
       'public.companion_runtime_create_lease_row()'::regprocedure,
-      'public.companion_runtime_assert_v2_mutation()'::regprocedure,
-      'public.companion_runtime_require_v2_mutation()'::regprocedure,
-      'public.companion_runtime_require_instance_at_commit()'::regprocedure,
       'public.companion_runtime_assign_turn_sequence()'::regprocedure,
       'public.companion_runtime_assign_operation_intent()'::regprocedure,
       'public.companion_runtime_assign_attempt_snapshot()'::regprocedure,
@@ -1108,9 +1105,6 @@ BEGIN
         'public.companion_v3_runtime_claim_warm_v7(text,public.companion_v3_lane,integer,integer)'::regprocedure,
         'public.companion_v3_runtime_claim_routine_v7(text,public.companion_v3_lane,integer,integer)'::regprocedure,
         'public.companion_v3_runtime_authorize_warm_turn_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure,
-        'public.companion_v3_runtime_authorize_routine(uuid,uuid,uuid,uuid,bigint,bigint,integer)'::regprocedure,
-        'public.companion_v3_runtime_begin_routine_admission(uuid,uuid,uuid,uuid,bigint,bigint,text,bigint,integer)'::regprocedure,
-        'public.companion_v3_runtime_project_routine_page(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'::regprocedure,
         'public.companion_v3_runtime_sweep_routine_deadlines_v7(integer)'::regprocedure,
         'public.companion_v3_runtime_complete_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure
       ];
@@ -1122,8 +1116,6 @@ BEGIN
       companion_runtime_functions := companion_runtime_functions || ARRAY[
         'public.companion_v3_runtime_claim_background_v8(text,public.companion_v3_lane,integer,integer)'::regprocedure,
         'public.companion_v3_runtime_claim_warm_v8(text,public.companion_v3_lane,integer,integer)'::regprocedure,
-        'public.companion_v3_runtime_authorize_background_v8(uuid,uuid,uuid,uuid,bigint,bigint,integer)'::regprocedure,
-        'public.companion_v3_runtime_project_background_page_v8(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'::regprocedure,
         'public.companion_v3_runtime_sweep_background_deadlines_v8(integer)'::regprocedure,
         'public.companion_v3_runtime_complete_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure
       ];
@@ -1167,6 +1159,16 @@ BEGIN
       FROM unnest(companion_api_functions) function_oid
       JOIN pg_catalog.pg_proc procedure ON procedure.oid=function_oid
       WHERE procedure.proname NOT IN (
+        'companion_api_create_companion',
+        'companion_api_update_companion',
+        'companion_api_set_initial_provider',
+        'companion_api_bump_skill_revision',
+        'companion_api_require_skill_revision',
+        'companion_api_update_member_state_v2',
+        'companion_api_read_runtime',
+        'companion_api_list_runtime',
+        'companion_api_read_skill_sync',
+        'companion_api_list_skill_sync',
         'companion_api_enqueue_turn',
         'companion_api_enqueue_operation',
         'companion_api_retry_turn',
@@ -1175,6 +1177,17 @@ BEGIN
         'companion_api_get_decision'
       );
       companion_api_functions := companion_api_functions || ARRAY[
+        'public.companion_v3_api_create_companion(uuid,text,text,text,text,jsonb,boolean,jsonb,uuid,smallint,smallint,smallint,smallint)'::regprocedure,
+        'public.companion_v3_api_update_companion(uuid,uuid,jsonb)'::regprocedure,
+        'public.companion_v3_api_set_initial_provider(uuid,uuid,text,text)'::regprocedure,
+        'public.companion_v3_api_bump_skill_revision(uuid,uuid)'::regprocedure,
+        'public.companion_v3_api_require_skill_revision(uuid,uuid)'::regprocedure,
+        'public.companion_v3_api_update_member_state(uuid,uuid,boolean,boolean,boolean,boolean)'::regprocedure,
+        'public.companion_v3_api_request_pi_recycle(uuid,uuid,uuid)'::regprocedure,
+        'public.companion_v3_api_read_runtime(uuid,uuid)'::regprocedure,
+        'public.companion_v3_api_list_runtime(uuid)'::regprocedure,
+        'public.companion_v3_api_read_skill_sync(uuid,uuid)'::regprocedure,
+        'public.companion_v3_api_list_skill_sync(uuid)'::regprocedure,
         'public.companion_v3_api_enqueue_turn(uuid,uuid,uuid,text,public.companion_client_surface,jsonb)'::regprocedure,
         'public.companion_v3_api_cancel_turn(uuid,uuid,uuid)'::regprocedure,
         'public.companion_v3_api_answer_decision(uuid,uuid,text,text,text)'::regprocedure,
@@ -1193,6 +1206,24 @@ BEGIN
            'companion_runtime_authorize_desktop',
            'companion_runtime_consume_desktop_request'
          );
+      SELECT COALESCE(array_agg(function_oid), ARRAY[]::regprocedure[])
+      INTO companion_runtime_functions
+      FROM unnest(companion_runtime_functions) function_oid
+      JOIN pg_catalog.pg_proc procedure ON procedure.oid=function_oid
+      WHERE procedure.proname NOT IN (
+        'companion_v3_runtime_authorize_routine',
+        'companion_v3_runtime_begin_routine_admission',
+        'companion_v3_runtime_project_routine_page',
+        'companion_v3_runtime_authorize_background_v8',
+        'companion_v3_runtime_project_background_page_v8'
+      );
+      companion_runtime_functions := companion_runtime_functions || ARRAY[
+        'public.companion_v3_runtime_record_turn_outputs(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,jsonb,timestamp with time zone,integer)'::regprocedure,
+        'public.companion_v3_runtime_authorize_warm_turn_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure,
+        'public.companion_v3_runtime_authorize_background_v9(uuid,uuid,uuid,uuid,bigint,bigint,integer)'::regprocedure,
+        'public.companion_v3_runtime_begin_background_admission_v9(uuid,uuid,uuid,uuid,bigint,bigint,text,bigint,integer)'::regprocedure,
+        'public.companion_v3_runtime_project_background_page_v9(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'::regprocedure
+      ];
     END IF;
 
     -- A migration owner can carry arbitrary ALTER DEFAULT PRIVILEGES grants installed by an

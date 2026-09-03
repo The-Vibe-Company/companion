@@ -979,11 +979,11 @@ export const companionV2PurgeTargets = pgTable(
   }),
 );
 
-/** Authoritative singleton kill switch for the isolated Runtime v2 role. */
+/** Authoritative singleton kill switch for the isolated Runtime v3 owner. */
 export const companionRuntimeControl = pgTable(
   "companion_runtime_control",
   {
-    id: text("id").primaryKey().notNull().default("runtime-v2"),
+    id: text("id").primaryKey().notNull().default("runtime-v3"),
     enabled: boolean("enabled").notNull().default(false),
     gateEpoch: bigint("gate_epoch", { mode: "number" }).notNull().default(1),
     enabledAt: timestamp("enabled_at", { withTimezone: true }),
@@ -992,7 +992,7 @@ export const companionRuntimeControl = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => ({
-    singleton: check("companion_runtime_control_singleton_check", sql`${t.id} = 'runtime-v2'`),
+    singleton: check("companion_runtime_control_singleton_check", sql`${t.id} = 'runtime-v3'`),
     epoch: check("companion_runtime_control_epoch_check", sql`${t.gateEpoch} >= 1`),
     state: check(
       "companion_runtime_control_state_check",
@@ -1321,6 +1321,7 @@ export const companionV3Instances = pgTable(
     desiredLifecycleRevision: bigint("desired_lifecycle_revision", { mode: "number" }).notNull().default(1),
     desiredLifecycleActorId: text("desired_lifecycle_actor_id"),
     desiredLifecycleRequestId: uuid("desired_lifecycle_request_id"),
+    desiredSettingsRevision: bigint("desired_settings_revision", { mode: "number" }).notNull().default(1),
     lifecycleState: companionV3LifecycleStateEnum("lifecycle_state").notNull().default("active"),
     lastWorkAcceptedAt: timestamp("last_work_accepted_at", { withTimezone: true }).notNull().defaultNow(),
     lifecycleAvailableAt: timestamp("lifecycle_available_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1385,7 +1386,7 @@ export const companionV3Instances = pgTable(
     }).onDelete("cascade"),
     revisionCheck: check(
       "companion_v3_instances_revision_check",
-      sql`${t.desiredLifecycleRevision} >= 1 and ${t.nextMainSequence} >= 1 and ${t.nextBackgroundSequence} >= 1`,
+      sql`${t.desiredLifecycleRevision} >= 1 and ${t.desiredSettingsRevision} >= 1 and ${t.nextMainSequence} >= 1 and ${t.nextBackgroundSequence} >= 1`,
     ),
     actorCheck: check(
       "companion_v3_instances_actor_check",
@@ -1472,6 +1473,7 @@ export const companionV3Turns = pgTable(
     responseTurnId: uuid("response_turn_id"),
     terminalCursor: bigint("terminal_cursor", { mode: "number" }),
     journalAckPending: boolean("journal_ack_pending").notNull().default(false),
+    outputsHarvestedAt: timestamp("outputs_harvested_at", { withTimezone: true }),
     admissionCursor: bigint("admission_cursor", { mode: "number" }),
     activityCursor: bigint("activity_cursor", { mode: "number" }).notNull().default(0),
     correlatedActivityCursor: bigint("correlated_activity_cursor", { mode: "number" })

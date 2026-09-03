@@ -2,15 +2,15 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  createCompanionV2,
-  enqueueCompanionTurnV2,
-  getCompanionV2,
-  listCompanionsV2,
-  readCompanionThreadV2,
+  createCompanionWithRuntime,
+  enqueueCompanionTurn,
+  getCompanionRuntimeView,
+  listCompanionRuntimeViews,
+  readCompanionThread,
   saveCompanionProvider,
-  setCompanionWorkspaceShareV2,
-  syncCompanionThreadV2,
-  updateCompanionMemberStateV2,
+  setCompanionWorkspaceShare,
+  syncCompanionThread,
+  updateCompanionMemberState,
 } from "@companion/core";
 import { schema, withTenantContext, type Db } from "@companion/db";
 import {
@@ -51,7 +51,7 @@ describe("Runtime v2 Companion member state", () => {
       database: integrationDb,
     });
 
-    const alpha = await asActor(fixture.developer, (database) => createCompanionV2({
+    const alpha = await asActor(fixture.developer, (database) => createCompanionWithRuntime({
       actor: fixture.developer,
       orgId: fixture.orgA,
       name: "Alpha",
@@ -60,7 +60,7 @@ describe("Runtime v2 Companion member state", () => {
       modelId: "claude-opus-4-8",
       database,
     }));
-    const beta = await asActor(fixture.developer, (database) => createCompanionV2({
+    const beta = await asActor(fixture.developer, (database) => createCompanionWithRuntime({
       actor: fixture.developer,
       orgId: fixture.orgA,
       name: "Beta",
@@ -73,7 +73,7 @@ describe("Runtime v2 Companion member state", () => {
     betaId = beta.id;
 
     for (const companionId of [alphaId, betaId]) {
-      await asActor(fixture.developer, (database) => setCompanionWorkspaceShareV2({
+      await asActor(fixture.developer, (database) => setCompanionWorkspaceShare({
         actor: fixture.developer,
         orgId: fixture.orgA,
         companionId,
@@ -93,21 +93,21 @@ describe("Runtime v2 Companion member state", () => {
   });
 
   it("keeps pin order stable per member and hide/unhide never deletes runtime state", async () => {
-    const before = await asActor(fixture.developer, (database) => listCompanionsV2({
+    const before = await asActor(fixture.developer, (database) => listCompanionRuntimeViews({
       actor: fixture.developer,
       orgId: fixture.orgA,
       database,
     }));
     expect(before.map((companion) => companion.name)).toEqual(["Beta", "Alpha"]);
 
-    await asActor(fixture.developer, (database) => updateCompanionMemberStateV2({
+    await asActor(fixture.developer, (database) => updateCompanionMemberState({
       actor: fixture.developer,
       orgId: fixture.orgA,
       companionId: alphaId,
       patch: { pinned: true },
       database,
     }));
-    await asActor(fixture.developer, (database) => updateCompanionMemberStateV2({
+    await asActor(fixture.developer, (database) => updateCompanionMemberState({
       actor: fixture.developer,
       orgId: fixture.orgA,
       companionId: betaId,
@@ -115,21 +115,21 @@ describe("Runtime v2 Companion member state", () => {
       database,
     }));
 
-    const ownerPinned = await asActor(fixture.developer, (database) => listCompanionsV2({
+    const ownerPinned = await asActor(fixture.developer, (database) => listCompanionRuntimeViews({
       actor: fixture.developer,
       orgId: fixture.orgA,
       database,
     }));
     expect(ownerPinned.map((companion) => companion.id)).toEqual([alphaId, betaId]);
 
-    await asActor(fixture.admin, (database) => updateCompanionMemberStateV2({
+    await asActor(fixture.admin, (database) => updateCompanionMemberState({
       actor: fixture.admin,
       orgId: fixture.orgA,
       companionId: betaId,
       patch: { pinned: true },
       database,
     }));
-    const viewerPinned = await asActor(fixture.admin, (database) => listCompanionsV2({
+    const viewerPinned = await asActor(fixture.admin, (database) => listCompanionRuntimeViews({
       actor: fixture.admin,
       orgId: fixture.orgA,
       database,
@@ -155,7 +155,7 @@ describe("Runtime v2 Companion member state", () => {
         eq(schema.companionRuntimeInstances.companionId, alphaId),
       ));
 
-    const hidden = await asActor(fixture.developer, (database) => updateCompanionMemberStateV2({
+    const hidden = await asActor(fixture.developer, (database) => updateCompanionMemberState({
       actor: fixture.developer,
       orgId: fixture.orgA,
       companionId: alphaId,
@@ -174,7 +174,7 @@ describe("Runtime v2 Companion member state", () => {
       piInvocationId: provisionedIdentity.invocationId,
     });
 
-    const unhidden = await asActor(fixture.developer, (database) => updateCompanionMemberStateV2({
+    const unhidden = await asActor(fixture.developer, (database) => updateCompanionMemberState({
       actor: fixture.developer,
       orgId: fixture.orgA,
       companionId: alphaId,
@@ -187,7 +187,7 @@ describe("Runtime v2 Companion member state", () => {
 
   it("tracks unread independently for a Viewer and returns the previous read ordinal", async () => {
     const send = (content: string) => asActor(fixture.developer, async (database) => {
-      const accepted = await enqueueCompanionTurnV2({
+      const accepted = await enqueueCompanionTurn({
         actor: fixture.developer,
         orgId: fixture.orgA,
         companionId: alphaId,
@@ -196,7 +196,7 @@ describe("Runtime v2 Companion member state", () => {
         clientSurface: "web",
         database,
       });
-      await readCompanionThreadV2({
+      await readCompanionThread({
         actor: fixture.developer,
         orgId: fixture.orgA,
         companionId: alphaId,
@@ -206,7 +206,7 @@ describe("Runtime v2 Companion member state", () => {
     });
 
     await send("First message");
-    const sender = await asActor(fixture.developer, (database) => getCompanionV2({
+    const sender = await asActor(fixture.developer, (database) => getCompanionRuntimeView({
       actor: fixture.developer,
       orgId: fixture.orgA,
       companionId: alphaId,
@@ -214,7 +214,7 @@ describe("Runtime v2 Companion member state", () => {
     }));
     expect(sender.unread).toBe(false);
 
-    const viewerBefore = await asActor(fixture.admin, (database) => getCompanionV2({
+    const viewerBefore = await asActor(fixture.admin, (database) => getCompanionRuntimeView({
       actor: fixture.admin,
       orgId: fixture.orgA,
       companionId: alphaId,
@@ -222,14 +222,14 @@ describe("Runtime v2 Companion member state", () => {
     }));
     expect(viewerBefore.unread).toBe(true);
 
-    const firstOpen = await asActor(fixture.admin, (database) => readCompanionThreadV2({
+    const firstOpen = await asActor(fixture.admin, (database) => readCompanionThread({
       actor: fixture.admin,
       orgId: fixture.orgA,
       companionId: alphaId,
       database,
     }));
     expect(firstOpen.last_read_ordinal).toBeNull();
-    expect((await asActor(fixture.admin, (database) => getCompanionV2({
+    expect((await asActor(fixture.admin, (database) => getCompanionRuntimeView({
       actor: fixture.admin,
       orgId: fixture.orgA,
       companionId: alphaId,
@@ -237,49 +237,49 @@ describe("Runtime v2 Companion member state", () => {
     }))).unread).toBe(false);
 
     await send("Second message");
-    expect((await asActor(fixture.admin, (database) => getCompanionV2({
+    expect((await asActor(fixture.admin, (database) => getCompanionRuntimeView({
       actor: fixture.admin,
       orgId: fixture.orgA,
       companionId: alphaId,
       database,
     }))).unread).toBe(true);
 
-    const backgroundSync = await asActor(fixture.admin, (database) => syncCompanionThreadV2({
+    const backgroundSync = await asActor(fixture.admin, (database) => syncCompanionThread({
       actor: fixture.admin,
       orgId: fixture.orgA,
       companionId: alphaId,
       database,
     }));
     expect(backgroundSync.entries.at(-1)?.content).toBe("Second message");
-    expect((await asActor(fixture.admin, (database) => getCompanionV2({
+    expect((await asActor(fixture.admin, (database) => getCompanionRuntimeView({
       actor: fixture.admin,
       orgId: fixture.orgA,
       companionId: alphaId,
       database,
     }))).unread).toBe(true);
 
-    const secondOpen = await asActor(fixture.admin, (database) => readCompanionThreadV2({
+    const secondOpen = await asActor(fixture.admin, (database) => readCompanionThread({
       actor: fixture.admin,
       orgId: fixture.orgA,
       companionId: alphaId,
       database,
     }));
     expect(secondOpen.last_read_ordinal).toBe(0);
-    expect((await asActor(fixture.admin, (database) => getCompanionV2({
+    expect((await asActor(fixture.admin, (database) => getCompanionRuntimeView({
       actor: fixture.admin,
       orgId: fixture.orgA,
       companionId: alphaId,
       database,
     }))).unread).toBe(false);
 
-    await asActor(fixture.admin, (database) => updateCompanionMemberStateV2({
+    await asActor(fixture.admin, (database) => updateCompanionMemberState({
       actor: fixture.admin,
       orgId: fixture.orgA,
       companionId: alphaId,
       patch: { unread: true },
       database,
     }));
-    expect((await asActor(fixture.admin, (database) => getCompanionV2({
+    expect((await asActor(fixture.admin, (database) => getCompanionRuntimeView({
       actor: fixture.admin,
       orgId: fixture.orgA,
       companionId: alphaId,

@@ -15,7 +15,7 @@ import {
 } from "@companion/companion-runtime/v3/internal";
 import {
   BoxRuntimeProviderError,
-  type CompanionBoxRuntimeV2,
+  type CompanionBoxRuntime,
 } from "@companion/box-runtime";
 
 import {
@@ -893,12 +893,12 @@ function snakeEnvelope(envelope: {
 
 function fakeRuntime(
   stageExistingBox: (
-    ...args: Parameters<CompanionBoxRuntimeV2["stageExistingBox"]>
+    ...args: Parameters<CompanionBoxRuntime["stageExistingBox"]>
   ) => Promise<{ boxId: string; diskLayoutVersion: 14 }>,
-): CompanionBoxRuntimeV2 {
+): CompanionBoxRuntime {
   // SAFETY: The pipeline tests exercise only `stageExistingBox`; every other runtime call is
   // unreachable in these cases and the fake is intentionally scoped to that seam.
-  return { stageExistingBox } as CompanionBoxRuntimeV2;
+  return { stageExistingBox } as CompanionBoxRuntime;
 }
 
 type MaterialTestStore = Pick<

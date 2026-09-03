@@ -9,7 +9,7 @@ import {
 import type { Db } from "@companion/db";
 
 import type { ActorContext } from "./services";
-import { getCompanionV2 } from "./companionRuntimeApi";
+import { getCompanionRuntimeView } from "./companionRuntimeApi";
 
 const sectionRowSchema = z.object({
   id: z.string().uuid(),
@@ -127,5 +127,5 @@ export async function assignCompanionSection(input: {
       ${input.orgId}::uuid, ${input.companionId}::uuid, ${input.sectionId}::uuid
     )
   `);
-  return getCompanionV2(input);
+  return getCompanionRuntimeView(input);
 }

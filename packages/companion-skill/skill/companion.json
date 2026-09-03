@@ -1,7 +1,7 @@
 {
   "$schema": "https://thecompanion.sh/schemas/companion-manifest.v2.schema.json",
   "name": "companion",
-  "version": "1.110.1",
+  "version": "1.111.0",
   "icon": "boxes",
   "title": "Companion",
   "description": "Manage and safely install SKILL.md packages through delegated Agent Auth, including pinned public releases, publishing, updates, dependencies, secrets, hosted Skill Databases, local install tracking, and Companion self-update.",
@@ -28,6 +28,14 @@
       "evals/evals.json"
     ],
     "changelog": [
+      {
+        "version": "1.111.0",
+        "date": "2026-09-03",
+        "changes": [
+          "Documents the v3-only hosted runtime, Turn-owned admission and outcome facts, and no-replay recovery without an attempt or legacy executor.",
+          "Clarifies that Pi-only Restart is a temporary launch control and never restarts the persistent Box."
+        ]
+      },
       {
         "version": "1.110.1",
         "date": "2026-09-03",

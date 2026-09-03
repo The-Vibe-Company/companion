@@ -23,7 +23,7 @@ import {
   type TriggerHistoryTarget,
 } from "./CompanionTriggerHistory";
 import type { CompanionTriggerHistoryApi } from "./CompanionTriggerHistoryTypes";
-import type { CompanionTriggerAccountOption, CompanionTriggerV2 } from "./CompanionTriggerTypes";
+import type { CompanionTriggerAccountOption } from "./CompanionTriggerTypes";
 import { replyExpected } from "./transcript";
 import { useVisualViewportPin } from "./useVisualViewportPin";
 
@@ -201,7 +201,7 @@ export function CompanionThread({
       : null;
     setRoutineHistory({ routineId: routine.id, runId: routine.run_id ?? null, name: routine.name });
   }, []);
-  const openTriggerHistory = useCallback((trigger: CompanionTriggerV2) => {
+  const openTriggerHistory = useCallback((trigger: CompanionTrigger) => {
     if (!contextTriggerHistoryApi) return;
     triggerHistoryOpenerRef.current = document.activeElement instanceof HTMLElement
       ? document.activeElement

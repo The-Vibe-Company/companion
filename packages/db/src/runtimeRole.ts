@@ -139,7 +139,12 @@ WITH runtime_role AS (
     ('public.companion_v3_runtime_authorize_warm_turn_v5(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'),
     ('public.companion_v3_runtime_record_native_admission_v5(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,uuid,bigint,integer)'),
     ('public.companion_v3_runtime_project_native_page_v5(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,boolean,boolean,text,integer)'),
-    ('public.companion_v3_runtime_measurement_facts(timestamp with time zone,timestamp with time zone,integer)')
+    ('public.companion_v3_runtime_measurement_facts(timestamp with time zone,timestamp with time zone,integer)'),
+    ('public.companion_v3_runtime_record_turn_outputs(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,jsonb,timestamp with time zone,integer)'),
+    ('public.companion_v3_runtime_authorize_warm_turn_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'),
+    ('public.companion_v3_runtime_authorize_background_v9(uuid,uuid,uuid,uuid,bigint,bigint,integer)'),
+    ('public.companion_v3_runtime_begin_background_admission_v9(uuid,uuid,uuid,uuid,bigint,bigint,text,bigint,integer)'),
+    ('public.companion_v3_runtime_project_background_page_v9(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)')
 ), decision_required(signature) AS (
   VALUES
     ('public.companion_v3_runtime_claim_warm_v6(text,public.companion_v3_lane,integer,integer)'),
@@ -153,17 +158,12 @@ WITH runtime_role AS (
     ('public.companion_v3_runtime_claim_warm_v7(text,public.companion_v3_lane,integer,integer)'),
     ('public.companion_v3_runtime_claim_routine_v7(text,public.companion_v3_lane,integer,integer)'),
     ('public.companion_v3_runtime_authorize_warm_turn_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'),
-    ('public.companion_v3_runtime_authorize_routine(uuid,uuid,uuid,uuid,bigint,bigint,integer)'),
-    ('public.companion_v3_runtime_begin_routine_admission(uuid,uuid,uuid,uuid,bigint,bigint,text,bigint,integer)'),
-    ('public.companion_v3_runtime_project_routine_page(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'),
     ('public.companion_v3_runtime_sweep_routine_deadlines_v7(integer)'),
     ('public.companion_v3_runtime_complete_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)')
 ), background_trigger_required(signature) AS (
   VALUES
     ('public.companion_v3_runtime_claim_background_v8(text,public.companion_v3_lane,integer,integer)'),
     ('public.companion_v3_runtime_claim_warm_v8(text,public.companion_v3_lane,integer,integer)'),
-    ('public.companion_v3_runtime_authorize_background_v8(uuid,uuid,uuid,uuid,bigint,bigint,integer)'),
-    ('public.companion_v3_runtime_project_background_page_v8(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'),
     ('public.companion_v3_runtime_sweep_background_deadlines_v8(integer)'),
     ('public.companion_v3_runtime_complete_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)')
 ), external_incident_required(signature) AS (

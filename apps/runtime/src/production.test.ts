@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type {
   AsciiBoxMaintenanceClientOptions,
   BoxRuntimeLifecycleClient,
-  CompanionBoxRuntimeV2,
+  CompanionBoxRuntime,
 } from "@companion/box-runtime";
 
 import type { RuntimeApplicationScheduler } from "./application";
@@ -42,7 +42,7 @@ function database(): RuntimeDatabase {
   };
 }
 
-function runtimeFixture(): CompanionBoxRuntimeV2 {
+function runtimeFixture(): CompanionBoxRuntime {
   return {
     existingBoxStatus: vi.fn(async (input: { boxId: string }) => ({
       boxId: input.boxId,
@@ -60,7 +60,7 @@ function runtimeFixture(): CompanionBoxRuntimeV2 {
       imageMarker: "14:base:overlay=overlay:skill=none:boot=1",
       imageName: "companion-l14-aaaaaaaaaaaa",
     }),
-  } as unknown as CompanionBoxRuntimeV2;
+  } as unknown as CompanionBoxRuntime;
 }
 
 function archiveStorage(close: () => void = vi.fn()): RuntimeArchiveStorage {
@@ -104,7 +104,7 @@ describe("production runtime composition", () => {
     const db = database();
     let schedulerInput: RuntimeV3SchedulerOptions | undefined;
     const createLifecycle = vi.fn(() => ({} as BoxRuntimeLifecycleClient));
-    const createBoxRuntime = vi.fn(() => ({} as CompanionBoxRuntimeV2));
+    const createBoxRuntime = vi.fn(() => ({} as CompanionBoxRuntime));
     const createArchiveStorage = vi.fn(() => archiveStorage());
     const loadBundledSkill = vi.fn();
     const factories = {

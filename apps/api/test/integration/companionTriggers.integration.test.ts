@@ -5,30 +5,30 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   CompanionTriggerDecisionUpdateError,
   CompanionTriggerNotFoundError,
-  answerCompanionTriggerDecisionV2,
+  answerCompanionTriggerDecision,
   composeTriggerPrompt,
-  createCompanionTriggerV2,
-  createCompanionV2,
-  deleteCompanionTriggerV2,
+  createCompanionTrigger,
+  createCompanionWithRuntime,
+  deleteCompanionTrigger,
   deleteCompanionPlugin,
   failCompanionTriggerFire,
   fireCompanionTrigger,
   getCompanionTriggerForWebhook,
-  getCompanionTriggerRunV2,
-  inspectCompanionTriggerWebhookV2,
-  listCompanionTriggerRunsV2,
-  listCompanionTriggersV2,
-  registerCompanionTriggerWebhookV2,
+  getCompanionTriggerRun,
+  inspectCompanionTriggerWebhook,
+  listCompanionTriggerRuns,
+  listCompanionTriggers,
+  registerCompanionTriggerWebhook,
   ensureOAuthCompanionTriggerProviderAccount,
-  rotateCompanionTriggerSecretV2,
+  rotateCompanionTriggerSecret,
   saveCompanionTriggerProviderAccount,
   saveCompanionPlugin,
   saveCompanionPluginTriggerKey,
   saveCompanionProvider,
-  setCompanionWorkspaceShareV2,
+  setCompanionWorkspaceShare,
   triggerFireMessageId,
-  unregisterCompanionTriggerWebhookV2,
-  updateCompanionTriggerV2,
+  unregisterCompanionTriggerWebhook,
+  updateCompanionTrigger,
 } from "@companion/core";
 import { COMPANION_TRIGGER_MAX_PER_COMPANION } from "@companion/contracts";
 import { schema, withTenantContext, type Db } from "@companion/db";
@@ -112,6 +112,11 @@ describe("Companion triggers over the real database", () => {
     };
   }
 
+  async function seedPersistedProposalRuntime(): Promise<void> {
+    await integrationSql`insert into companion_runtime_instances(org_id,companion_id)
+      values(${fixture.orgA}::uuid,${companionId}::uuid) on conflict do nothing`;
+  }
+
   function createTrigger(
     actor: TestActor,
     name: string,
@@ -123,7 +128,7 @@ describe("Companion triggers over the real database", () => {
       enabled?: boolean;
     } = {},
   ) {
-    return asActor(actor, (database) => createCompanionTriggerV2({
+    return asActor(actor, (database) => createCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       ...draft(name),
@@ -153,7 +158,7 @@ describe("Companion triggers over the real database", () => {
       masterKey,
       database: integrationDb,
     });
-    const companion = await asActor(fixture.owner, (database) => createCompanionV2({
+    const companion = await asActor(fixture.owner, (database) => createCompanionWithRuntime({
       actor: fixture.owner,
       orgId: fixture.orgA,
       name: "Trigger runner",
@@ -225,7 +230,7 @@ describe("Companion triggers over the real database", () => {
     });
     const originalSecret = webhookSecretOf(created);
 
-    const listed = await asActor(fixture.owner, (database) => listCompanionTriggersV2({
+    const listed = await asActor(fixture.owner, (database) => listCompanionTriggers({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -234,7 +239,7 @@ describe("Companion triggers over the real database", () => {
     expect(listed).toEqual([created]);
 
     // An ordinary update never touches the secret: the registered callback keeps working.
-    const disabled = await asActor(fixture.owner, (database) => updateCompanionTriggerV2({
+    const disabled = await asActor(fixture.owner, (database) => updateCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       triggerId: created.id,
@@ -246,7 +251,7 @@ describe("Companion triggers over the real database", () => {
     expect(disabled.webhook_url).toBe(created.webhook_url);
 
     // Rotation is the only secret change; the old URL dies at the next request.
-    const rotated = await asActor(fixture.owner, (database) => rotateCompanionTriggerSecretV2({
+    const rotated = await asActor(fixture.owner, (database) => rotateCompanionTriggerSecret({
       orgId: fixture.orgA,
       companionId,
       triggerId: created.id,
@@ -264,19 +269,19 @@ describe("Companion triggers over the real database", () => {
     expect(stored?.secret).toBe(rotatedSecret);
     expect(stored?.secret).not.toBe(originalSecret);
 
-    await asActor(fixture.owner, (database) => deleteCompanionTriggerV2({
+    await asActor(fixture.owner, (database) => deleteCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       triggerId: created.id,
       database,
     }));
-    await expect(asActor(fixture.owner, (database) => listCompanionTriggersV2({
+    await expect(asActor(fixture.owner, (database) => listCompanionTriggers({
       orgId: fixture.orgA,
       companionId,
       database,
       webhookBaseUrl: WEBHOOK_BASE_URL,
     }))).resolves.toEqual([]);
-    await expect(asActor(fixture.owner, (database) => deleteCompanionTriggerV2({
+    await expect(asActor(fixture.owner, (database) => deleteCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       triggerId: created.id,
@@ -286,7 +291,7 @@ describe("Companion triggers over the real database", () => {
 
   it("shows a Viewer the trigger but never its webhook secret", async () => {
     const created = await createTrigger(fixture.owner, "CI failed on main");
-    await asActor(fixture.owner, (database) => setCompanionWorkspaceShareV2({
+    await asActor(fixture.owner, (database) => setCompanionWorkspaceShare({
       actor: fixture.owner,
       orgId: fixture.orgA,
       companionId,
@@ -294,7 +299,7 @@ describe("Companion triggers over the real database", () => {
       database,
     }));
 
-    const viewerList = await asActor(fixture.developer, (database) => listCompanionTriggersV2({
+    const viewerList = await asActor(fixture.developer, (database) => listCompanionTriggers({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -326,7 +331,7 @@ describe("Companion triggers over the real database", () => {
   it("refuses Viewer writes, non-members, cross-tenant reads, and a revoked editor", async () => {
     const created = await createTrigger(fixture.owner, "CI failed on main");
 
-    await asActor(fixture.owner, (database) => setCompanionWorkspaceShareV2({
+    await asActor(fixture.owner, (database) => setCompanionWorkspaceShare({
       actor: fixture.owner,
       orgId: fixture.orgA,
       companionId,
@@ -334,7 +339,7 @@ describe("Companion triggers over the real database", () => {
       database,
     }));
     await expectSqlState(createTrigger(fixture.developer, "Viewer trigger"), "42501");
-    await expectSqlState(asActor(fixture.developer, (database) => updateCompanionTriggerV2({
+    await expectSqlState(asActor(fixture.developer, (database) => updateCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       triggerId: created.id,
@@ -342,14 +347,14 @@ describe("Companion triggers over the real database", () => {
       database,
       webhookBaseUrl: WEBHOOK_BASE_URL,
     })), "42501");
-    await expectSqlState(asActor(fixture.developer, (database) => rotateCompanionTriggerSecretV2({
+    await expectSqlState(asActor(fixture.developer, (database) => rotateCompanionTriggerSecret({
       orgId: fixture.orgA,
       companionId,
       triggerId: created.id,
       database,
       webhookBaseUrl: WEBHOOK_BASE_URL,
     })), "42501");
-    await expectSqlState(asActor(fixture.developer, (database) => deleteCompanionTriggerV2({
+    await expectSqlState(asActor(fixture.developer, (database) => deleteCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       triggerId: created.id,
@@ -357,7 +362,7 @@ describe("Companion triggers over the real database", () => {
     })), "42501");
 
     // Editor access is exactly enough for the whole CRUD surface.
-    await asActor(fixture.owner, (database) => setCompanionWorkspaceShareV2({
+    await asActor(fixture.owner, (database) => setCompanionWorkspaceShare({
       actor: fixture.owner,
       orgId: fixture.orgA,
       companionId,
@@ -366,7 +371,7 @@ describe("Companion triggers over the real database", () => {
     }));
     const editorTrigger = await createTrigger(fixture.developer, "Editor trigger");
     expect(editorTrigger.webhook_url).not.toBeNull();
-    await asActor(fixture.developer, (database) => deleteCompanionTriggerV2({
+    await asActor(fixture.developer, (database) => deleteCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       triggerId: editorTrigger.id,
@@ -376,7 +381,7 @@ describe("Companion triggers over the real database", () => {
     // A member of another workspace is nobody here, whichever tenant context they present.
     await expectSqlState(withTenantContext(
       { orgId: fixture.orgA, userId: fixture.outsider.id },
-      (database) => listCompanionTriggersV2({
+      (database) => listCompanionTriggers({
         orgId: fixture.orgA,
         companionId,
         database,
@@ -385,7 +390,7 @@ describe("Companion triggers over the real database", () => {
     ), "42501");
     await expectSqlState(withTenantContext(
       { orgId: fixture.orgB, userId: fixture.outsider.id },
-      (database) => listCompanionTriggersV2({
+      (database) => listCompanionTriggers({
         orgId: fixture.orgB,
         companionId,
         database,
@@ -444,7 +449,7 @@ describe("Companion triggers over the real database", () => {
     });
 
     // `custom` needs no plugin.
-    const custom = await asActor(fixture.owner, (database) => createCompanionTriggerV2({
+    const custom = await asActor(fixture.owner, (database) => createCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       name: "Custom hook",
@@ -455,7 +460,7 @@ describe("Companion triggers over the real database", () => {
     }));
     expect(custom.provider).toBe("custom");
 
-    const updated = await asActor(fixture.owner, (database) => updateCompanionTriggerV2({
+    const updated = await asActor(fixture.owner, (database) => updateCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       triggerId: custom.id,
@@ -472,7 +477,7 @@ describe("Companion triggers over the real database", () => {
       .where(eq(schema.companions.id, companionId));
     const attached = await createTrigger(fixture.owner, "With github plugin");
     expect(attached).toMatchObject({ provider: "github", provider_account_id: providerAccount!.id });
-    await asActor(fixture.owner, (database) => updateCompanionTriggerV2({
+    await asActor(fixture.owner, (database) => updateCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       triggerId: custom.id,
@@ -492,7 +497,7 @@ describe("Companion triggers over the real database", () => {
         eq(schema.companionMcpAccounts.provider, "github"),
       ));
     const first = await createTrigger(fixture.owner, "First shared trigger");
-    const secondCompanion = await asActor(fixture.owner, (database) => createCompanionV2({
+    const secondCompanion = await asActor(fixture.owner, (database) => createCompanionWithRuntime({
       actor: fixture.owner,
       orgId: fixture.orgA,
       name: "Second trigger runner",
@@ -501,7 +506,7 @@ describe("Companion triggers over the real database", () => {
       modelId: "claude-opus-4-8",
       database,
     }));
-    const second = await asActor(fixture.owner, (database) => createCompanionTriggerV2({
+    const second = await asActor(fixture.owner, (database) => createCompanionTrigger({
       orgId: fixture.orgA,
       companionId: secondCompanion.id,
       ...draft("Second shared trigger"),
@@ -657,7 +662,7 @@ describe("Companion triggers over the real database", () => {
       settledAt: new Date(),
     }).where(eq(schema.companionV3RoutineRuns.turnId, runId));
 
-    const history = await asActor(fixture.owner, (database) => listCompanionTriggerRunsV2({
+    const history = await asActor(fixture.owner, (database) => listCompanionTriggerRuns({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -674,7 +679,7 @@ describe("Companion triggers over the real database", () => {
         relay_turn_id: null,
       }],
     });
-    const detail = await asActor(fixture.owner, (database) => getCompanionTriggerRunV2({
+    const detail = await asActor(fixture.owner, (database) => getCompanionTriggerRun({
       orgId: fixture.orgA,
       companionId,
       runId,
@@ -814,7 +819,7 @@ describe("Companion triggers over the real database", () => {
   });
 
   it("decouples definitions from delivery metadata and records shared-credential registrations", async () => {
-    const incomplete = await asActor(fixture.owner, (database) => createCompanionTriggerV2({
+    const incomplete = await asActor(fixture.owner, (database) => createCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       name: "No target",
@@ -824,7 +829,7 @@ describe("Companion triggers over the real database", () => {
       webhookBaseUrl: WEBHOOK_BASE_URL,
     }));
     expect(incomplete.provider).toBe("github");
-    const customWithTarget = await asActor(fixture.owner, (database) => createCompanionTriggerV2({
+    const customWithTarget = await asActor(fixture.owner, (database) => createCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       name: "Custom with target",
@@ -851,7 +856,7 @@ describe("Companion triggers over the real database", () => {
     // A rejected registration persists its failure instead of silently staying manual.
     // Legacy consent without admin:repo_hook and revoked tokens are ordinary retryable failures.
     const failingFetch = asFetch(async () => new Response("{}", { status: 403 }));
-    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -873,7 +878,7 @@ describe("Companion triggers over the real database", () => {
       }
       return new Response(JSON.stringify({ id: 424242 }), { status: 201 });
     });
-    await asActor(fixture.owner, (database) => registerCompanionTriggerWebhookV2({
+    await asActor(fixture.owner, (database) => registerCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -907,7 +912,7 @@ describe("Companion triggers over the real database", () => {
         ? JSON.parse(String(requests[1]!.init.body)).config.url
         : "" },
     }]), { status: 200 }));
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -917,7 +922,7 @@ describe("Companion triggers over the real database", () => {
       fetch: reconcilePresent,
     }))).resolves.toBe("present");
     const paginatedGitHubRequests: string[] = [];
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -945,7 +950,7 @@ describe("Companion triggers over the real database", () => {
       "https://api.github.com/repos/acme/demo/hooks?per_page=100&page=2",
     ]);
     const canonicalGitHubRequests: string[] = [];
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -972,7 +977,7 @@ describe("Companion triggers over the real database", () => {
       "https://api.github.com/repos/acme/demo/hooks?per_page=100&page=1",
       "https://api.github.com/repositories/123456/hooks?per_page=100&page=2",
     ]);
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -984,7 +989,7 @@ describe("Companion triggers over the real database", () => {
         config: { url: "https://example.test/not-this-trigger" },
       }]), { status: 200 })),
     }))).resolves.toBe("absent");
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -993,7 +998,7 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: asFetch(async () => new Response(null, { status: 404 })),
     }))).rejects.toMatchObject({ code: "provider_rejected" });
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1002,7 +1007,7 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: asFetch(async () => new Response(JSON.stringify({ id: 424242 }), { status: 200 })),
     }))).rejects.toMatchObject({ code: "provider_rejected" });
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1017,7 +1022,7 @@ describe("Companion triggers over the real database", () => {
       })),
     }))).rejects.toMatchObject({ code: "provider_rejected" });
     let quotedPage = 0;
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1052,7 +1057,7 @@ describe("Companion triggers over the real database", () => {
       '<https://api.github.com/repos/acme/demo/hooks?per_page=100&page=1>; rel=next',
     ];
     for (const link of invalidLinkHeaders) {
-      await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
         orgId: fixture.orgA,
         companionId,
         triggerId: trigger.id,
@@ -1066,7 +1071,7 @@ describe("Companion triggers over the real database", () => {
       }))).rejects.toMatchObject({ code: "provider_rejected" });
     }
     let boundedPageCalls = 0;
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1102,7 +1107,7 @@ describe("Companion triggers over the real database", () => {
             config: { url: trigger.webhook_url },
           }] : []), { status: 200 });
     });
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1111,7 +1116,7 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: ambiguousHookFetch,
     }))).resolves.toBe("present");
-    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1121,7 +1126,7 @@ describe("Companion triggers over the real database", () => {
       fetch: ambiguousHookFetch,
       preserveRegistration: true,
     }))).rejects.toMatchObject({ code: "provider_rejected" });
-    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1160,7 +1165,7 @@ describe("Companion triggers over the real database", () => {
     });
     await integrationDb.update(schema.companionTriggers).set({ target: {} })
       .where(eq(schema.companionTriggers.id, trigger.id));
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1169,7 +1174,7 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: malformedLookup,
     }))).rejects.toMatchObject({ code: "provider_rejected" });
-    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1183,7 +1188,7 @@ describe("Companion triggers over the real database", () => {
     await integrationDb.update(schema.companionTriggers).set({
       target: { repo: "acme/demo", events: ["push"] },
     }).where(eq(schema.companionTriggers.id, trigger.id));
-    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1198,7 +1203,7 @@ describe("Companion triggers over the real database", () => {
       deleteRequests.push(String(url));
       return new Response(null, { status: 204 });
     });
-    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1213,7 +1218,7 @@ describe("Companion triggers over the real database", () => {
     expect(row.remoteHookId).toBe("424242");
     expect(deleteRequests[0]).toBe("https://api.github.com/repos/acme/demo/hooks/424242");
     const reconcileAbsent = asFetch(async () => new Response(JSON.stringify([]), { status: 200 }));
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1222,7 +1227,7 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: reconcileAbsent,
     }))).resolves.toBe("absent");
-    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1245,7 +1250,7 @@ describe("Companion triggers over the real database", () => {
       }
       throw new Error("connection closed after provider commit");
     });
-    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1267,7 +1272,7 @@ describe("Companion triggers over the real database", () => {
         config: { url: `${WEBHOOK_BASE_URL}/v1/hooks/triggers/${trigger.id}/${callbackUrl}` },
       }]), { status: 200 });
     });
-    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1291,7 +1296,7 @@ describe("Companion triggers over the real database", () => {
     await integrationDb.update(schema.companions)
       .set({ selectedMcpAccountIds: [linearAccount.id] })
       .where(eq(schema.companions.id, companionId));
-    const linearTrigger = await asActor(fixture.owner, (database) => createCompanionTriggerV2({
+    const linearTrigger = await asActor(fixture.owner, (database) => createCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       name: "New ticket",
@@ -1300,7 +1305,7 @@ describe("Companion triggers over the real database", () => {
       database,
       webhookBaseUrl: WEBHOOK_BASE_URL,
     }));
-    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: linearTrigger.id,
@@ -1321,7 +1326,7 @@ describe("Companion triggers over the real database", () => {
     await integrationDb.update(schema.companions)
       .set({ selectedMcpAccountIds: [linearAccount.id] })
       .where(eq(schema.companions.id, companionId));
-    const trigger = await asActor(fixture.owner, (database) => createCompanionTriggerV2({
+    const trigger = await asActor(fixture.owner, (database) => createCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       name: "New ticket",
@@ -1332,7 +1337,7 @@ describe("Companion triggers over the real database", () => {
     }));
 
     // Without a stored trigger key the registration says exactly what is missing.
-    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1363,7 +1368,7 @@ describe("Companion triggers over the real database", () => {
         data: { webhookSubscriptionCreate: { success: true, webhookSubscription: { id: "linear-hook-1" } } },
       }), { status: 200 });
     });
-    const outcome = await asActor(fixture.owner, (database) => registerCompanionTriggerWebhookV2({
+    const outcome = await asActor(fixture.owner, (database) => registerCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1385,7 +1390,7 @@ describe("Companion triggers over the real database", () => {
     // SAFETY: this request's headers were built by registerLinearTriggerWebhook as a plain string record.
     expect((requests[0]!.init.headers as Record<string, string>).authorization)
       .toBe("lin_api_integration_key");
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1399,7 +1404,7 @@ describe("Companion triggers over the real database", () => {
         } },
       }), { status: 200 })),
     }))).resolves.toBe("present");
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1416,7 +1421,7 @@ describe("Companion triggers over the real database", () => {
       errors: [{ message: "subscription could not be removed" }],
       data: { webhookSubscriptionDelete: { success: false } },
     }), { status: 200 }));
-    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1437,7 +1442,7 @@ describe("Companion triggers over the real database", () => {
         data: { webhookSubscriptionDelete: { success: true } },
       }), { status: 200 });
     });
-    await asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+    await asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1477,7 +1482,7 @@ describe("Companion triggers over the real database", () => {
       return new Response(JSON.stringify({ id: 717171 }), { status: 201 });
     });
 
-    const first = asActor(fixture.owner, (database) => registerCompanionTriggerWebhookV2({
+    const first = asActor(fixture.owner, (database) => registerCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1487,7 +1492,7 @@ describe("Companion triggers over the real database", () => {
       fetch: firstFetch,
     }));
     await createStarted;
-    const second = asActor(fixture.owner, (database) => registerCompanionTriggerWebhookV2({
+    const second = asActor(fixture.owner, (database) => registerCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1519,7 +1524,7 @@ describe("Companion triggers over the real database", () => {
       masterKey,
       database: integrationDb,
     });
-    const trigger = await asActor(fixture.owner, (database) => createCompanionTriggerV2({
+    const trigger = await asActor(fixture.owner, (database) => createCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       name: "New Sentry issue",
@@ -1537,7 +1542,7 @@ describe("Companion triggers over the real database", () => {
       return new Response(JSON.stringify({ id: "sentry-hook-1" }), { status: 201 });
     });
 
-    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1568,7 +1573,7 @@ describe("Companion triggers over the real database", () => {
     });
     await integrationDb.update(schema.companionTriggers).set({ registrationStatus: "failed" })
       .where(eq(schema.companionTriggers.id, trigger.id));
-    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => registerCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1578,7 +1583,7 @@ describe("Companion triggers over the real database", () => {
       fetch: existingFetch,
     }))).resolves.toEqual({ status: "registered", remote_hook_id: "sentry-hook-1" });
     expect(duplicateCreateCalls).toBe(1);
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1588,7 +1593,7 @@ describe("Companion triggers over the real database", () => {
       fetch: existingFetch,
     }))).resolves.toBe("present");
     let terminalPageCalls = 0;
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1607,7 +1612,7 @@ describe("Companion triggers over the real database", () => {
     }))).resolves.toBe("absent");
     expect(terminalPageCalls).toBe(1);
     let nextPageCalls = 0;
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1642,7 +1647,7 @@ describe("Companion triggers over the real database", () => {
       '<https://sentry.io/api/0/projects/acme/frontend/hooks/?cursor=previous>; rel=previous; results=false',
     ];
     for (const [index, link] of invalidSentryPagination.entries()) {
-      await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+      await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
         orgId: fixture.orgA,
         companionId,
         triggerId: trigger.id,
@@ -1657,7 +1662,7 @@ describe("Companion triggers over the real database", () => {
         })),
       }))).rejects.toMatchObject({ code: "provider_rejected" });
     }
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1669,7 +1674,7 @@ describe("Companion triggers over the real database", () => {
         headers: { link: '<https://untrusted.invalid/hooks/?cursor=next>; rel="next"' },
       })),
     }))).rejects.toMatchObject({ code: "provider_rejected" });
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1680,7 +1685,7 @@ describe("Companion triggers over the real database", () => {
     }))).rejects.toMatchObject({ code: "provider_rejected" });
     await integrationDb.update(schema.companionTriggers).set({ target: {} })
       .where(eq(schema.companionTriggers.id, trigger.id));
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1689,7 +1694,7 @@ describe("Companion triggers over the real database", () => {
       database,
       fetch: existingFetch,
     }))).rejects.toMatchObject({ code: "provider_rejected" });
-    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => unregisterCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1702,7 +1707,7 @@ describe("Companion triggers over the real database", () => {
     await integrationDb.update(schema.companionTriggers).set({
       target: { organization: "acme", project: "frontend", events: ["error"] },
     }).where(eq(schema.companionTriggers.id, trigger.id));
-    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhookV2({
+    await expect(asActor(fixture.owner, (database) => inspectCompanionTriggerWebhook({
       orgId: fixture.orgA,
       companionId,
       triggerId: trigger.id,
@@ -1714,6 +1719,7 @@ describe("Companion triggers over the real database", () => {
   });
 
   it("applies an approved trigger proposal under the approver and refuses every other path", async () => {
+    await seedPersistedProposalRuntime();
     const proposal = {
       kind: "trigger",
       name: "CI failed on main",
@@ -1819,21 +1825,21 @@ describe("Companion triggers over the real database", () => {
     }
 
     // The approver is a workspace Editor, not the Owner: the created row must be theirs.
-    await asActor(fixture.owner, (database) => setCompanionWorkspaceShareV2({
+    await asActor(fixture.owner, (database) => setCompanionWorkspaceShare({
       actor: fixture.owner,
       orgId: fixture.orgA,
       companionId,
       role: "editor",
       database,
     }));
-    await asActor(fixture.developer, (database) => answerCompanionTriggerDecisionV2({
+    await asActor(fixture.developer, (database) => answerCompanionTriggerDecision({
       orgId: fixture.orgA,
       companionId,
       requestId: allowKey,
       decision: "allow",
       database,
     }));
-    const triggers = await asActor(fixture.owner, (database) => listCompanionTriggersV2({
+    const triggers = await asActor(fixture.owner, (database) => listCompanionTriggers({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -1854,14 +1860,14 @@ describe("Companion triggers over the real database", () => {
     expect(created.secret).toMatch(SECRET_PATTERN);
 
     // Replaying the same allow is idempotent for the same approver: still exactly one trigger.
-    await asActor(fixture.developer, (database) => answerCompanionTriggerDecisionV2({
+    await asActor(fixture.developer, (database) => answerCompanionTriggerDecision({
       orgId: fixture.orgA,
       companionId,
       requestId: allowKey,
       decision: "allow",
       database,
     }));
-    await expect(asActor(fixture.owner, (database) => listCompanionTriggersV2({
+    await expect(asActor(fixture.owner, (database) => listCompanionTriggers({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -1869,14 +1875,14 @@ describe("Companion triggers over the real database", () => {
     }))).resolves.toHaveLength(1);
 
     // Deny settles the delivery and creates nothing.
-    await asActor(fixture.developer, (database) => answerCompanionTriggerDecisionV2({
+    await asActor(fixture.developer, (database) => answerCompanionTriggerDecision({
       orgId: fixture.orgA,
       companionId,
       requestId: denyKey,
       decision: "deny",
       database,
     }));
-    await expect(asActor(fixture.owner, (database) => listCompanionTriggersV2({
+    await expect(asActor(fixture.owner, (database) => listCompanionTriggers({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -1896,7 +1902,7 @@ describe("Companion triggers over the real database", () => {
     `)), "22023");
 
     // An expired card cannot be approved into a live webhook.
-    await expect(asActor(fixture.developer, (database) => answerCompanionTriggerDecisionV2({
+    await expect(asActor(fixture.developer, (database) => answerCompanionTriggerDecision({
       orgId: fixture.orgA,
       companionId,
       requestId: expiredKey,
@@ -1911,6 +1917,7 @@ describe("Companion triggers over the real database", () => {
   });
 
   it("recovers unavailable proposal account ids without crossing the approver boundary", async () => {
+    await seedPersistedProposalRuntime();
     const [ownerProviderAccount] = await integrationDb
       .select({ id: schema.companionTriggerProviderAccounts.id })
       .from(schema.companionTriggerProviderAccounts)
@@ -2055,7 +2062,7 @@ describe("Companion triggers over the real database", () => {
     }
 
     for (const request of [requests[0]!, requests[2]!, requests[3]!]) {
-      await asActor(fixture.owner, (database) => answerCompanionTriggerDecisionV2({
+      await asActor(fixture.owner, (database) => answerCompanionTriggerDecision({
         orgId: fixture.orgA,
         companionId,
         requestId: request.key,
@@ -2072,14 +2079,14 @@ describe("Companion triggers over the real database", () => {
       database: integrationDb,
     });
     // A valid historical choice remains authoritative even after fallback becomes ambiguous.
-    await asActor(fixture.owner, (database) => answerCompanionTriggerDecisionV2({
+    await asActor(fixture.owner, (database) => answerCompanionTriggerDecision({
       orgId: fixture.orgA,
       companionId,
       requestId: requests[1]!.key,
       decision: "allow",
       database,
     }));
-    const recovered = await asActor(fixture.owner, (database) => listCompanionTriggersV2({
+    const recovered = await asActor(fixture.owner, (database) => listCompanionTriggers({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -2089,7 +2096,7 @@ describe("Companion triggers over the real database", () => {
     expect(recovered.every((trigger) =>
       trigger.provider_account_id === ownerProviderAccount!.id)).toBe(true);
 
-    await expect(asActor(fixture.owner, (database) => answerCompanionTriggerDecisionV2({
+    await expect(asActor(fixture.owner, (database) => answerCompanionTriggerDecision({
       orgId: fixture.orgA,
       companionId,
       requestId: requests[4]!.key,
@@ -2105,14 +2112,14 @@ describe("Companion triggers over the real database", () => {
       .from(schema.companionDecisionDeliveries)
       .where(eq(schema.companionDecisionDeliveries.requestKey, requests[4]!.key));
     expect(ambiguousDelivery).toEqual({ status: "pending" });
-    expect(await asActor(fixture.owner, (database) => listCompanionTriggersV2({
+    expect(await asActor(fixture.owner, (database) => listCompanionTriggers({
       orgId: fixture.orgA,
       companionId,
       database,
       webhookBaseUrl: WEBHOOK_BASE_URL,
     }))).toHaveLength(4);
 
-    await expectSqlState(asActor(fixture.owner, (database) => createCompanionTriggerV2({
+    await expectSqlState(asActor(fixture.owner, (database) => createCompanionTrigger({
       orgId: fixture.orgA,
       companionId,
       ...draft("Direct invalid account"),

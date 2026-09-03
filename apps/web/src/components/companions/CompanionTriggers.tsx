@@ -22,9 +22,8 @@ import { PluginMark } from "./PluginMark";
 import { detectedBrowserTimeZone, formatMemberDateTime } from "@/lib/timezones";
 import {
   type CompanionTriggerAccountOption,
-  type CompanionTriggerV2,
-  type CompanionTriggerV2Mode,
-  type CompanionTriggerV2Provider,
+  type CompanionTriggerMode,
+  type CompanionTriggerProvider,
 } from "./CompanionTriggerTypes";
 
 export interface CompanionTriggersApi {
@@ -50,36 +49,36 @@ const PROVIDER_LABELS = {
   github: "GitHub",
   sentry: "Sentry",
   custom: "Custom",
-} satisfies Record<CompanionTriggerV2Provider, string>;
+} satisfies Record<CompanionTriggerProvider, string>;
 
 const MODE_LABELS = {
   notify: "Notify me",
   relay: "Ask the Companion",
-} satisfies Record<CompanionTriggerV2Mode, string>;
+} satisfies Record<CompanionTriggerMode, string>;
 
 const MODE_DESCRIPTIONS = {
   notify: "Show the event in the thread without starting a main Companion turn.",
   relay: "Show the event and ask the main Companion to do the requested work.",
-} satisfies Record<CompanionTriggerV2Mode, string>;
+} satisfies Record<CompanionTriggerMode, string>;
 
-const TRIGGER_MODES = ["notify", "relay"] satisfies CompanionTriggerV2Mode[];
-const REMOTE_TRIGGER_PROVIDERS = ["github", "linear", "sentry"] satisfies CompanionTriggerV2Provider[];
+const TRIGGER_MODES = ["notify", "relay"] satisfies CompanionTriggerMode[];
+const REMOTE_TRIGGER_PROVIDERS = ["github", "linear", "sentry"] satisfies CompanionTriggerProvider[];
 type RemoteTriggerProvider = (typeof REMOTE_TRIGGER_PROVIDERS)[number];
 
-type TriggerEditorValue = CompanionTriggerV2;
+type TriggerEditorValue = CompanionTrigger;
 type TriggerChangeHandler = (triggers: CompanionTrigger[]) => void;
 
-function providerLabel(provider: CompanionTriggerV2Provider): string {
+function providerLabel(provider: CompanionTriggerProvider): string {
   return PROVIDER_LABELS[provider];
 }
 
-function providerMark(provider: CompanionTriggerV2Provider) {
+function providerMark(provider: CompanionTriggerProvider) {
   return provider === "webhook"
     ? <Icon name="link-2" size={15} />
     : <PluginMark provider={provider} variant="glyph" />;
 }
 
-function isProvider(provider: string): provider is CompanionTriggerV2Provider {
+function isProvider(provider: string): provider is CompanionTriggerProvider {
   return provider === "webhook" || provider === "linear" || provider === "github"
     || provider === "sentry" || provider === "custom";
 }
@@ -89,7 +88,7 @@ function isRemoteTriggerProvider(provider: string): provider is RemoteTriggerPro
 }
 
 function eligibleAccountsFor(
-  provider: CompanionTriggerV2Provider,
+  provider: CompanionTriggerProvider,
   accounts: readonly CompanionTriggerAccountOption[],
 ): CompanionTriggerAccountOption[] {
   // Generic/custom webhooks are not backed by a connected member account. Provider-backed triggers
@@ -99,7 +98,7 @@ function eligibleAccountsFor(
 }
 
 function triggerProviderConnected(
-  trigger: CompanionTriggerV2,
+  trigger: CompanionTrigger,
   accounts: readonly CompanionTriggerAccountOption[],
 ): boolean {
   if (!isRemoteTriggerProvider(trigger.provider)) return true;
@@ -112,8 +111,8 @@ function triggerProviderConnected(
 function selectableProvidersFor(
   initial: TriggerEditorValue | null,
   accounts: readonly CompanionTriggerAccountOption[],
-): CompanionTriggerV2Provider[] {
-  const providers: CompanionTriggerV2Provider[] = REMOTE_TRIGGER_PROVIDERS.filter((provider) => (
+): CompanionTriggerProvider[] {
+  const providers: CompanionTriggerProvider[] = REMOTE_TRIGGER_PROVIDERS.filter((provider) => (
     accounts.some((account) => account.status === "connected" && account.provider === provider)
   ));
   // Existing legacy/manual triggers remain inspectable and editable, but those providers are not
@@ -123,7 +122,7 @@ function selectableProvidersFor(
 }
 
 function triggerTarget(
-  provider: CompanionTriggerV2Provider,
+  provider: CompanionTriggerProvider,
   repo: string,
   organization: string,
   project: string,
@@ -141,14 +140,14 @@ function triggerTarget(
   return null;
 }
 
-function registrationLabel(trigger: CompanionTriggerV2): string {
+function registrationLabel(trigger: CompanionTrigger): string {
   if (trigger.registration_status === "registered") return "Registered";
   if (trigger.registration_status === "failed") return "Registration failed";
   if (trigger.registration_status === "unregistered") return "Unregistered";
   return "Manual fallback";
 }
 
-function registrationTone(trigger: CompanionTriggerV2): "neutral" | "ok" | "danger" {
+function registrationTone(trigger: CompanionTrigger): "neutral" | "ok" | "danger" {
   if (trigger.registration_status === "registered") return "ok";
   if (trigger.registration_status === "failed") return "danger";
   return "neutral";
@@ -168,7 +167,7 @@ function TriggerEditor({
   api: CompanionTriggersApi;
   initial: TriggerEditorValue | null;
   accountOptions: readonly CompanionTriggerAccountOption[];
-  onSaved: (trigger: CompanionTriggerV2) => void;
+  onSaved: (trigger: CompanionTrigger) => void;
   onClose: () => void;
 }) {
   const selectableProviders = useMemo(
@@ -178,10 +177,10 @@ function TriggerEditor({
   const defaultProvider = selectableProviders[0] ?? "github";
   const [name, setName] = useState(initial?.name ?? "");
   const [prompt, setPrompt] = useState(initial?.prompt ?? "");
-  const [provider, setProvider] = useState<CompanionTriggerV2Provider>(
+  const [provider, setProvider] = useState<CompanionTriggerProvider>(
     initial?.provider ?? defaultProvider,
   );
-  const [mode, setMode] = useState<CompanionTriggerV2Mode>(initial?.mode ?? "relay");
+  const [mode, setMode] = useState<CompanionTriggerMode>(initial?.mode ?? "relay");
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
   const [repo, setRepo] = useState(initial?.target?.repo ?? "");
   const [organization, setOrganization] = useState(initial?.target?.organization ?? "");
@@ -465,12 +464,12 @@ export function CompanionTriggers({
   /** All credential-free member account projections; never filter by Companion MCP attachments. */
   accountOptions?: readonly CompanionTriggerAccountOption[];
   onChange: TriggerChangeHandler;
-  onOpenHistory?: (trigger: CompanionTriggerV2) => void;
+  onOpenHistory?: (trigger: CompanionTrigger) => void;
   onManageProviders?: () => void;
   api?: CompanionTriggersApi;
 }) {
   const displayTimezone = memberTimezone ?? detectedBrowserTimeZone();
-  const [editing, setEditing] = useState<CompanionTriggerV2 | null | "new">(null);
+  const [editing, setEditing] = useState<CompanionTrigger | null | "new">(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -486,7 +485,7 @@ export function CompanionTriggers({
     if (copyResetRef.current) clearTimeout(copyResetRef.current);
   }, []);
 
-  async function toggle(trigger: CompanionTriggerV2) {
+  async function toggle(trigger: CompanionTrigger) {
     if (!canEdit || busyId) return;
     setBusyId(trigger.id);
     setActionError(null);
@@ -503,7 +502,7 @@ export function CompanionTriggers({
     }
   }
 
-  async function remove(trigger: CompanionTriggerV2) {
+  async function remove(trigger: CompanionTrigger) {
     if (!canEdit || busyId) return;
     setBusyId(trigger.id);
     setActionError(null);
@@ -520,7 +519,7 @@ export function CompanionTriggers({
 
   // Rotation silently breaks the external service still posting to the old URL, so it takes a
   // second explicit click rather than firing on the first.
-  async function rotate(trigger: CompanionTriggerV2) {
+  async function rotate(trigger: CompanionTrigger) {
     if (!canEdit || busyId) return;
     if (confirmingRotateId !== trigger.id) {
       setConfirmingRotateId(trigger.id);
@@ -539,7 +538,7 @@ export function CompanionTriggers({
     }
   }
 
-  async function retryRegistration(trigger: CompanionTriggerV2) {
+  async function retryRegistration(trigger: CompanionTrigger) {
     if (!canEdit || busyId) return;
     if (!api.retryCompanionTriggerRegistration) {
       setActionError("Registration retry is not available yet.");
@@ -557,7 +556,7 @@ export function CompanionTriggers({
     }
   }
 
-  async function copy(trigger: CompanionTriggerV2) {
+  async function copy(trigger: CompanionTrigger) {
     if (!trigger.webhook_url) return;
     try {
       await navigator.clipboard.writeText(trigger.webhook_url);

@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { RuntimeAuthorization, RuntimeWorkMaterial } from "@companion/companion-runtime/runtime-support";
-import type { CompanionBoxRuntimeV2 } from "@companion/box-runtime";
+import type { CompanionBoxRuntime } from "@companion/box-runtime";
 
 import { createRuntimeMaterialPipeline } from "./materialPipeline";
 import { RuntimeMaterialError } from "./resourceMaterial";
@@ -84,7 +84,7 @@ function outboxEntry(name: string, bytes: Buffer) {
 }
 
 function pipeline(input: {
-  runtime: Partial<CompanionBoxRuntimeV2>;
+  runtime: Partial<CompanionBoxRuntime>;
   loadAttachment?: (key: string, signal: AbortSignal) => Promise<Buffer>;
   storeAttachment?: (stored: {
     key: string;
@@ -103,7 +103,7 @@ function pipeline(input: {
       checksum: `sha256:${"1".repeat(64)}`,
       archive: Buffer.from("bundled"),
     },
-    runtime: () => input.runtime as CompanionBoxRuntimeV2,
+    runtime: () => input.runtime as CompanionBoxRuntime,
     loadSkillArchive: vi.fn(),
     loadAttachment: input.loadAttachment ?? vi.fn(async () => PNG),
     storeAttachment: input.storeAttachment ?? vi.fn(async () => undefined),

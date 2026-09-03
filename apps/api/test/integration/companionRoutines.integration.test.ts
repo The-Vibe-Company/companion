@@ -2,22 +2,22 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  answerCompanionRoutineDecisionV2,
+  answerCompanionRoutineDecision,
   claimDueCompanionRoutines,
-  createCompanionRoutineV2,
-  createCompanionV2,
-  deleteCompanionRoutineV2,
+  createCompanionRoutine,
+  createCompanionWithRuntime,
+  deleteCompanionRoutine,
   fireCompanionRoutine,
   failCompanionRoutineFire,
-  listCompanionRoutinesV2,
-  listCompanionRoutineRunsV2,
-  getCompanionRoutineRunV2,
-  listCompanionsV2,
-  readCompanionThreadV2,
+  listCompanionRoutines,
+  listCompanionRoutineRuns,
+  getCompanionRoutineRun,
+  listCompanionRuntimeViews,
+  readCompanionThread,
   routineFireMessageId,
   saveCompanionProvider,
-  setCompanionWorkspaceShareV2,
-  updateCompanionRoutineV2,
+  setCompanionWorkspaceShare,
+  updateCompanionRoutine,
 } from "@companion/core";
 import { COMPANION_ROUTINE_MAX_PER_COMPANION } from "@companion/contracts";
 import { schema, withTenantContext, type Db } from "@companion/db";
@@ -48,6 +48,11 @@ describe("Companion routines over the real database", () => {
     return { name, prompt: `Write the ${name} summary.`, cron, timezone: "UTC" };
   }
 
+  async function seedPersistedProposalRuntime(): Promise<void> {
+    await integrationSql`insert into companion_runtime_instances(org_id,companion_id)
+      values(${fixture.orgA}::uuid,${companionId}::uuid) on conflict do nothing`;
+  }
+
   async function seedRoutineProposal(input: {
     requestKey: string;
     proposal: {
@@ -58,6 +63,7 @@ describe("Companion routines over the real database", () => {
       timezone: string;
     };
   }): Promise<void> {
+    await seedPersistedProposalRuntime();
     const turnId = randomUUID();
     const attemptId = randomUUID();
     const clientMessageId = randomUUID();
@@ -152,7 +158,7 @@ describe("Companion routines over the real database", () => {
       masterKey,
       database: integrationDb,
     });
-    const companion = await asActor(fixture.owner, (database) => createCompanionV2({
+    const companion = await asActor(fixture.owner, (database) => createCompanionWithRuntime({
       actor: fixture.owner,
       orgId: fixture.orgA,
       name: "Routine runner",
@@ -174,7 +180,7 @@ describe("Companion routines over the real database", () => {
   });
 
   it("creates, lists, updates, and deletes a routine through the ordinary tenant boundary", async () => {
-    const created = await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    const created = await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Daily standup"),
@@ -185,14 +191,14 @@ describe("Companion routines over the real database", () => {
     expect(created.next_fire_at).not.toBeNull();
     expect(new Date(created.next_fire_at!).getTime()).toBeGreaterThan(Date.now());
 
-    const listed = await asActor(fixture.owner, (database) => listCompanionRoutinesV2({
+    const listed = await asActor(fixture.owner, (database) => listCompanionRoutines({
       orgId: fixture.orgA,
       companionId,
       database,
     }));
     expect(listed).toEqual([created]);
 
-    const disabled = await asActor(fixture.owner, (database) => updateCompanionRoutineV2({
+    const disabled = await asActor(fixture.owner, (database) => updateCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       routineId: created.id,
@@ -201,7 +207,7 @@ describe("Companion routines over the real database", () => {
     }));
     expect(disabled).toMatchObject({ enabled: false, next_fire_at: null });
 
-    const reenabled = await asActor(fixture.owner, (database) => updateCompanionRoutineV2({
+    const reenabled = await asActor(fixture.owner, (database) => updateCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       routineId: created.id,
@@ -212,13 +218,13 @@ describe("Companion routines over the real database", () => {
     expect(reenabled.cron).toBe("*/30 * * * *");
     expect(reenabled.next_fire_at).not.toBeNull();
 
-    await asActor(fixture.owner, (database) => deleteCompanionRoutineV2({
+    await asActor(fixture.owner, (database) => deleteCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       routineId: created.id,
       database,
     }));
-    await expect(asActor(fixture.owner, (database) => listCompanionRoutinesV2({
+    await expect(asActor(fixture.owner, (database) => listCompanionRoutines({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -226,7 +232,7 @@ describe("Companion routines over the real database", () => {
   });
 
   it("approves a same-name proposal in place, resets failures, and returns the routine", async () => {
-    const existing = await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    const existing = await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Daily standup"),
@@ -260,7 +266,7 @@ describe("Companion routines over the real database", () => {
     await seedRoutineProposal({ requestKey, proposal });
 
     const approved = await asActor(fixture.owner, (database) =>
-      answerCompanionRoutineDecisionV2({
+      answerCompanionRoutineDecision({
         orgId: fixture.orgA,
         companionId,
         requestId: requestKey,
@@ -302,7 +308,7 @@ describe("Companion routines over the real database", () => {
       database: integrationDb,
     });
 
-    const routines = await asActor(fixture.owner, (database) => listCompanionRoutinesV2({
+    const routines = await asActor(fixture.owner, (database) => listCompanionRoutines({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -333,7 +339,7 @@ describe("Companion routines over the real database", () => {
   });
 
   it("creates a fresh routine when the proposed same-name routine was deleted", async () => {
-    const existing = await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    const existing = await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Daily standup"),
@@ -348,7 +354,7 @@ describe("Companion routines over the real database", () => {
     };
     const requestKey = randomUUID();
     await seedRoutineProposal({ requestKey, proposal });
-    await asActor(fixture.owner, (database) => deleteCompanionRoutineV2({
+    await asActor(fixture.owner, (database) => deleteCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       routineId: existing.id,
@@ -356,7 +362,7 @@ describe("Companion routines over the real database", () => {
     }));
 
     const approved = await asActor(fixture.owner, (database) =>
-      answerCompanionRoutineDecisionV2({
+      answerCompanionRoutineDecision({
         orgId: fixture.orgA,
         companionId,
         requestId: requestKey,
@@ -372,7 +378,7 @@ describe("Companion routines over the real database", () => {
     });
     expect(approved?.id).toEqual(expect.any(String));
     expect(approved?.id).not.toBe(existing.id);
-    await expect(asActor(fixture.owner, (database) => listCompanionRoutinesV2({
+    await expect(asActor(fixture.owner, (database) => listCompanionRoutines({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -380,13 +386,13 @@ describe("Companion routines over the real database", () => {
   });
 
   it("refuses an unschedulable cadence, a Viewer write, an outsider, and the eleventh routine", async () => {
-    await expect(asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    await expect(asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Too eager", "* * * * *"),
       database,
     }))).rejects.toMatchObject({ code: "interval_too_short" });
-    await expect(asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    await expect(asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Nowhere", "0 9 * * 1-5"),
@@ -394,14 +400,14 @@ describe("Companion routines over the real database", () => {
       database,
     }))).rejects.toMatchObject({ code: "invalid_timezone" });
 
-    await asActor(fixture.owner, (database) => setCompanionWorkspaceShareV2({
+    await asActor(fixture.owner, (database) => setCompanionWorkspaceShare({
       actor: fixture.owner,
       orgId: fixture.orgA,
       companionId,
       role: "viewer",
       database,
     }));
-    await expect(asActor(fixture.developer, (database) => createCompanionRoutineV2({
+    await expect(asActor(fixture.developer, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Viewer routine"),
@@ -409,18 +415,18 @@ describe("Companion routines over the real database", () => {
     }))).rejects.toThrow();
     await expect(withTenantContext(
       { orgId: fixture.orgB, userId: fixture.outsider.id },
-      (database) => listCompanionRoutinesV2({ orgId: fixture.orgB, companionId, database }),
+      (database) => listCompanionRoutines({ orgId: fixture.orgB, companionId, database }),
     )).rejects.toThrow();
 
     for (let index = 0; index < COMPANION_ROUTINE_MAX_PER_COMPANION; index += 1) {
-      await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+      await asActor(fixture.owner, (database) => createCompanionRoutine({
         orgId: fixture.orgA,
         companionId,
         ...draft(`Routine ${index}`),
         database,
       }));
     }
-    await expect(asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    await expect(asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("One too many"),
@@ -429,7 +435,7 @@ describe("Companion routines over the real database", () => {
   });
 
   it("claims a due routine, fires it once as the Owner, and hides the prompt behind its name", async () => {
-    const created = await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    const created = await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Daily standup"),
@@ -462,7 +468,7 @@ describe("Companion routines over the real database", () => {
     });
     expect(fired).toEqual({ outcome: "fired", replayed: false });
 
-    const thread = await asActor(fixture.owner, (database) => readCompanionThreadV2({
+    const thread = await asActor(fixture.owner, (database) => readCompanionThread({
       actor: fixture.owner,
       orgId: fixture.orgA,
       companionId,
@@ -482,14 +488,14 @@ describe("Companion routines over the real database", () => {
 
     // The conversation list is read by everyone who can see the Companion, and the fire is recorded
     // as the Owner. Leaking the prompt there would read as something the Owner just typed.
-    const [listed] = await asActor(fixture.owner, (database) => listCompanionsV2({
+    const [listed] = await asActor(fixture.owner, (database) => listCompanionRuntimeViews({
       actor: fixture.owner,
       orgId: fixture.orgA,
       database,
     }));
     expect(JSON.stringify(listed!.last_message)).not.toContain("Write the Daily standup summary.");
 
-    const [after] = await asActor(fixture.owner, (database) => listCompanionRoutinesV2({
+    const [after] = await asActor(fixture.owner, (database) => listCompanionRoutines({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -499,7 +505,7 @@ describe("Companion routines over the real database", () => {
   });
 
   it("records a classified fire failure without persisting a provider payload", async () => {
-    const created = await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    const created = await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Flaky"),
@@ -524,7 +530,7 @@ describe("Companion routines over the real database", () => {
       database: integrationDb,
     });
 
-    const [after] = await asActor(fixture.owner, (database) => listCompanionRoutinesV2({
+    const [after] = await asActor(fixture.owner, (database) => listCompanionRoutines({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -538,7 +544,7 @@ describe("Companion routines over the real database", () => {
   });
 
   it("atomically cancels queued routine turns on disable and delete, and rolls back the purge", async () => {
-    const created = await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    const created = await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Queue cleanup"),
@@ -604,7 +610,7 @@ describe("Companion routines over the real database", () => {
     `;
     expect(startAfterRollback).toEqual([]);
 
-    await asActor(fixture.owner, (database) => updateCompanionRoutineV2({
+    await asActor(fixture.owner, (database) => updateCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       routineId: created.id,
@@ -637,7 +643,7 @@ describe("Companion routines over the real database", () => {
       .where(eq(schema.companionRoutines.id, created.id));
     expect(disabledRoutine?.failures).toBe(0);
 
-    await asActor(fixture.owner, (database) => updateCompanionRoutineV2({
+    await asActor(fixture.owner, (database) => updateCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       routineId: created.id,
@@ -645,7 +651,7 @@ describe("Companion routines over the real database", () => {
       database,
     }));
     const deletedTurnId = await fireQueued("integration-routine-delete-cleanup");
-    await asActor(fixture.owner, (database) => deleteCompanionRoutineV2({
+    await asActor(fixture.owner, (database) => deleteCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       routineId: created.id,
@@ -680,7 +686,7 @@ describe("Companion routines over the real database", () => {
   });
 
   it("keeps cancellations and execution failures in history without auto-disabling the routine", async () => {
-    const created = await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    const created = await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Failure accounting"),
@@ -749,7 +755,7 @@ describe("Companion routines over the real database", () => {
         "Routine Pi session was cancelled before launch.",
       );
     }
-    let [after] = await asActor(fixture.owner, (database) => listCompanionRoutinesV2({
+    let [after] = await asActor(fixture.owner, (database) => listCompanionRoutines({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -759,7 +765,7 @@ describe("Companion routines over the real database", () => {
     for (let index = 0; index < 5; index += 1) {
       await settleNextRun("failed", "provider_unavailable", "The routine provider is unavailable.");
     }
-    [after] = await asActor(fixture.owner, (database) => listCompanionRoutinesV2({
+    [after] = await asActor(fixture.owner, (database) => listCompanionRoutines({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -780,7 +786,7 @@ describe("Companion routines over the real database", () => {
 
   it("does not apply an old run outcome to a recreated routine generation", async () => {
     const routineId = randomUUID();
-    await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       id: routineId,
@@ -811,13 +817,13 @@ describe("Companion routines over the real database", () => {
     });
     if (!oldRun) throw new Error("expected the original routine run");
 
-    await asActor(fixture.owner, (database) => deleteCompanionRoutineV2({
+    await asActor(fixture.owner, (database) => deleteCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       routineId,
       database,
     }));
-    await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       id: routineId,
@@ -838,7 +844,7 @@ describe("Companion routines over the real database", () => {
       `;
     });
 
-    const [replacement] = await asActor(fixture.owner, (database) => listCompanionRoutinesV2({
+    const [replacement] = await asActor(fixture.owner, (database) => listCompanionRoutines({
       orgId: fixture.orgA,
       companionId,
       database,
@@ -853,7 +859,7 @@ describe("Companion routines over the real database", () => {
   });
 
   it("keeps private run history tenant-scoped and references one notify payload in the main thread", async () => {
-    const created = await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    const created = await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Deployment check"),
@@ -936,7 +942,7 @@ describe("Companion routines over the real database", () => {
       `;
     });
 
-    const projectedThread = await asActor(fixture.owner, (database) => readCompanionThreadV2({
+    const projectedThread = await asActor(fixture.owner, (database) => readCompanionThread({
       actor: fixture.owner,
       orgId: fixture.orgA,
       companionId,
@@ -954,7 +960,7 @@ describe("Companion routines over the real database", () => {
         outcome_message='Reconnect the routine provider credential.',
         outcome_action='reconnect_provider',updated_at=now() where id=${run!.id}::uuid
     `;
-    const ownerDetail = await asActor(fixture.owner, (database) => getCompanionRoutineRunV2({
+    const ownerDetail = await asActor(fixture.owner, (database) => getCompanionRoutineRun({
       orgId: fixture.orgA,
       companionId,
       runId: run!.id,
@@ -966,7 +972,7 @@ describe("Companion routines over the real database", () => {
       action: "reconnect_provider",
     });
 
-    await asActor(fixture.owner, (database) => setCompanionWorkspaceShareV2({
+    await asActor(fixture.owner, (database) => setCompanionWorkspaceShare({
       actor: fixture.owner,
       orgId: fixture.orgA,
       companionId,
@@ -974,7 +980,7 @@ describe("Companion routines over the real database", () => {
       database,
     }));
     const viewerHistory = await asActor(fixture.developer, (database) =>
-      listCompanionRoutineRunsV2({
+      listCompanionRoutineRuns({
         orgId: fixture.orgA,
         companionId,
         routineId: created.id,
@@ -989,7 +995,7 @@ describe("Companion routines over the real database", () => {
       main_entry_event_id: mainEntryEventId,
       relay_turn_id: null,
     });
-    const detail = await asActor(fixture.developer, (database) => getCompanionRoutineRunV2({
+    const detail = await asActor(fixture.developer, (database) => getCompanionRoutineRun({
       orgId: fixture.orgA,
       companionId,
       runId: run!.id,
@@ -1001,7 +1007,7 @@ describe("Companion routines over the real database", () => {
       content: "Inspected the deployment before returning.",
     })]);
     expect(detail.next_entry_cursor).toBe(0);
-    const secondPage = await asActor(fixture.developer, (database) => getCompanionRoutineRunV2({
+    const secondPage = await asActor(fixture.developer, (database) => getCompanionRoutineRun({
       orgId: fixture.orgA,
       companionId,
       runId: run!.id,
@@ -1023,7 +1029,7 @@ describe("Companion routines over the real database", () => {
 
     await expect(withTenantContext(
       { orgId: fixture.orgB, userId: fixture.outsider.id },
-      (database) => getCompanionRoutineRunV2({
+      (database) => getCompanionRoutineRun({
         orgId: fixture.orgB,
         companionId,
         runId: run!.id,
@@ -1031,13 +1037,13 @@ describe("Companion routines over the real database", () => {
       }),
     )).rejects.toThrow();
 
-    await asActor(fixture.owner, (database) => deleteCompanionRoutineV2({
+    await asActor(fixture.owner, (database) => deleteCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       routineId: created.id,
       database,
     }));
-    await expect(asActor(fixture.developer, (database) => listCompanionRoutineRunsV2({
+    await expect(asActor(fixture.developer, (database) => listCompanionRoutineRuns({
       orgId: fixture.orgA,
       companionId,
       routineId: created.id,
@@ -1046,7 +1052,7 @@ describe("Companion routines over the real database", () => {
   });
 
   it("projects an additive-rollout main-session reply as a virtual notify result", async () => {
-    const created = await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    const created = await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Legacy compatibility"),
@@ -1106,7 +1112,7 @@ describe("Companion routines over the real database", () => {
       })
       .where(eq(schema.companionTurns.id, run!.id));
 
-    const history = await asActor(fixture.owner, (database) => listCompanionRoutineRunsV2({
+    const history = await asActor(fixture.owner, (database) => listCompanionRoutineRuns({
       orgId: fixture.orgA,
       companionId,
       routineId: created.id,
@@ -1120,7 +1126,7 @@ describe("Companion routines over the real database", () => {
       main_entry_event_id: legacyReplyEventId,
       relay_turn_id: null,
     })]));
-    const detail = await asActor(fixture.owner, (database) => getCompanionRoutineRunV2({
+    const detail = await asActor(fixture.owner, (database) => getCompanionRoutineRun({
       orgId: fixture.orgA,
       companionId,
       runId: run!.id,
@@ -1136,7 +1142,7 @@ describe("Companion routines over the real database", () => {
   });
 
   it("references a hidden ordinary turn for relay without projecting its synthetic prompt", async () => {
-    const created = await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    const created = await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Relay check"),
@@ -1211,7 +1217,7 @@ describe("Companion routines over the real database", () => {
       state: "queued",
     });
 
-    const projectedThread = await asActor(fixture.owner, (database) => readCompanionThreadV2({
+    const projectedThread = await asActor(fixture.owner, (database) => readCompanionThread({
       actor: fixture.owner,
       orgId: fixture.orgA,
       companionId,
@@ -1225,7 +1231,7 @@ describe("Companion routines over the real database", () => {
   });
 
   it("keeps a claimed instant comparable after the worker's JavaScript round trip", async () => {
-    const created = await asActor(fixture.owner, (database) => createCompanionRoutineV2({
+    const created = await asActor(fixture.owner, (database) => createCompanionRoutine({
       orgId: fixture.orgA,
       companionId,
       ...draft("Precision"),
@@ -1260,6 +1266,7 @@ describe("Companion routines over the real database", () => {
   });
 
   it("denies an expired routine proposal without creating a routine", async () => {
+    await seedPersistedProposalRuntime();
     const turnId = randomUUID();
     const attemptId = randomUUID();
     const clientMessageId = randomUUID();
@@ -1352,7 +1359,7 @@ describe("Companion routines over the real database", () => {
       )
     `;
 
-    await asActor(fixture.owner, (database) => answerCompanionRoutineDecisionV2({
+    await asActor(fixture.owner, (database) => answerCompanionRoutineDecision({
       orgId: fixture.orgA,
       companionId,
       requestId: requestKey,
@@ -1375,7 +1382,7 @@ describe("Companion routines over the real database", () => {
         ${expiresAt.toISOString()}, ${JSON.stringify(proposal)}::jsonb
       )
     `;
-    await asActor(fixture.owner, (database) => answerCompanionRoutineDecisionV2({
+    await asActor(fixture.owner, (database) => answerCompanionRoutineDecision({
       orgId: fixture.orgA,
       companionId,
       requestId: sweptRequestKey,
@@ -1395,7 +1402,7 @@ describe("Companion routines over the real database", () => {
         ${JSON.stringify(proposal)}::jsonb
       )
     `;
-    await expect(asActor(fixture.owner, (database) => answerCompanionRoutineDecisionV2({
+    await expect(asActor(fixture.owner, (database) => answerCompanionRoutineDecision({
       orgId: fixture.orgA,
       companionId,
       requestId: expiredAllowRequestKey,
@@ -1407,7 +1414,7 @@ describe("Companion routines over the real database", () => {
       message: "Unable to apply the routine proposal. Please try again.",
     });
 
-    await expect(asActor(fixture.owner, (database) => listCompanionRoutinesV2({
+    await expect(asActor(fixture.owner, (database) => listCompanionRoutines({
       orgId: fixture.orgA,
       companionId,
       database,

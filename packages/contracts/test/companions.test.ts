@@ -43,6 +43,7 @@ import {
   companionTranscriptEntrySchema,
   companionSharesSchema,
   createCompanionInputSchema,
+  decideCompanionDecisionInputSchema,
   saveCompanionProviderInputSchema,
   saveCompanionPluginInputSchema,
   sendCompanionMessageAcceptedResponseSchema,
@@ -891,6 +892,18 @@ describe("Companion chat contracts", () => {
       created_at: "2026-08-19T12:00:00.000Z",
       updated_at: "2026-08-19T12:00:00.000Z",
     }).name).toBe("Standup");
+  });
+
+  it("bounds decision answers by Unicode characters instead of UTF-16 code units", () => {
+    const answer = "😀".repeat(8_000);
+    expect(decideCompanionDecisionInputSchema.parse({ action: "answer", answer })).toEqual({
+      action: "answer",
+      answer,
+    });
+    expect(() => decideCompanionDecisionInputSchema.parse({
+      action: "answer",
+      answer: `${answer}a`,
+    })).toThrow();
   });
 
   it("keeps surfaced routine payloads out of the private run transcript contract", () => {

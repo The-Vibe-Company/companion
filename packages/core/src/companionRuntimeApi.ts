@@ -8,7 +8,6 @@ import type {
   CompanionAccess,
   CompanionAttachmentUpload,
   CompanionClientSurface,
-  CompanionOperation,
   CompanionShareRole,
   CompanionThread,
   CompanionThreadDeltaResponse,
@@ -22,7 +21,6 @@ import {
   COMPANION_THREAD_DELTA_MAX_CHANGES,
   companionAttachmentUploadSchema,
   companionDecisionProposalSchema,
-  companionOperationSchema,
   companionPreparationSchema,
   companionQueuedTurnSchema,
   companionRoutineNotifyReturnSchema,
@@ -130,47 +128,9 @@ function parseTurn(value: unknown, recoveryStatus?: unknown): CompanionTurn | nu
   });
 }
 
-function parseOperation(value: unknown): CompanionOperation | null {
-  if (value === null || value === undefined) return null;
-  return companionOperationSchema.parse(value);
-}
-
-function projectedOperation(
-  operation: CompanionOperation | null,
-  viewer: boolean,
-): Companion["runtime"]["latest_operation"] {
-  if (!operation) return null;
-  return {
-    id: operation.id,
-    source_turn_id: operation.source_turn_id,
-    kind: operation.kind,
-    status: operation.status,
-    error: operation.error
-      ? viewer
-        ? {
-            code: "runtime_unavailable",
-            message: "Companion runtime needs attention.",
-            action: "none",
-          }
-        : operation.error
-      : null,
-  };
-}
-
-function projectedRuntimeState(
-  row: RuntimeReadRow,
-  latestOperation: CompanionOperation | null,
-): Companion["runtime"]["state"] {
-  const lifecycleFailed = latestOperation?.status === "failed"
-    || latestOperation?.status === "interrupted";
-
+function projectedRuntimeState(row: RuntimeReadRow): Companion["runtime"]["state"] {
   if (row.retirement_state === "retired") return "stopped";
   if (["requested", "pending", "blocked"].includes(row.retirement_state)) return "stopping";
-
-  if (latestOperation && ["pending", "running"].includes(latestOperation.status)) {
-    if (["delete", "stop", "restart_box"].includes(latestOperation.kind)) return "stopping";
-    return "provisioning";
-  }
 
   if (
     row.box_state === "error"
@@ -178,28 +138,20 @@ function projectedRuntimeState(
   ) return "error";
 
   if (row.box_state === "absent") {
-    if (latestOperation?.status === "failed" || latestOperation?.status === "interrupted") {
-      return "error";
-    }
-    return latestOperation?.kind === "stop" && latestOperation.status === "succeeded"
-      ? "stopped"
-      : "not_created";
+    return "not_created";
   }
   if (row.box_state === "archived") return "stopped";
   if (row.box_state === "archiving") return "stopping";
   if (row.box_state === "initializing" || row.box_state === "provisioning") {
-    return lifecycleFailed ? "error" : "provisioning";
+    return "provisioning";
   }
   if (["ready", "idle", "running"].includes(row.box_state)) {
     if (row.pi_state === "starting" || row.pi_state === "absent") {
-      return lifecycleFailed ? "error" : "provisioning";
+      return "provisioning";
     }
     return "running";
   }
-  return row.last_error_code
-      || lifecycleFailed
-    ? "error"
-    : "not_created";
+  return row.last_error_code ? "error" : "not_created";
 }
 
 function projectedDaemonState(row: RuntimeReadRow): Companion["runtime"]["daemon_state"] {
@@ -214,20 +166,15 @@ function projectedDaemonState(row: RuntimeReadRow): Companion["runtime"]["daemon
   }
 }
 
-export function projectCompanionRuntimeV2(
+export function projectCompanionRuntime(
   companion: Companion,
   row: RuntimeReadRow,
 ): Companion {
-  const latestOperation = parseOperation(row.latest_operation);
   const lastObservedAt = iso(row.last_observed_at) ?? companion.runtime.last_observed_at;
   const runnableBox = ["ready", "idle", "running"].includes(row.box_state);
-  const runtimeState = projectedRuntimeState(row, latestOperation);
-  const operationError = latestOperation
-    && ["failed", "interrupted"].includes(latestOperation.status)
-    ? latestOperation.error
-    : null;
+  const runtimeState = projectedRuntimeState(row);
   const runtimeError = runtimeState === "error"
-    ? row.last_error_message ?? operationError?.message
+    ? row.last_error_message
     : null;
   const skillsError = row.skills_update_error_message ?? companion.runtime.skills_last_error;
   return {
@@ -252,8 +199,7 @@ export function projectCompanionRuntimeV2(
         : null,
       skills_applied_revision: integer(row.applied_skills_revision),
       skills_revision: integer(row.skills_available_revision),
-      // Runtime v2 deliberately stores the monotonic revision, not an approximate timestamp. The
-      // UI can say "up to date" without mislabeling a later health observation as the apply time.
+      // Runtime v3 stores the monotonic revision, not an approximate timestamp.
       skills_applied_at: null,
       skills_last_error: skillsError
         ? row.access_role === "viewer"
@@ -261,23 +207,23 @@ export function projectCompanionRuntimeV2(
           : skillsError
         : null,
       last_observed_at: lastObservedAt,
-      latest_operation: projectedOperation(latestOperation, row.access_role === "viewer"),
+      latest_operation: null,
     },
   };
 }
 
-export async function readCompanionRuntimeV2(input: {
+export async function readCompanionRuntime(input: {
   orgId: string;
   companionId: string;
   database: Db;
 }): Promise<RuntimeReadRow> {
   const result = await input.database.execute(sql`
-    select * from public.companion_api_read_runtime(
+    select * from public.companion_v3_api_read_runtime(
       ${input.orgId}::uuid, ${input.companionId}::uuid
     )
   `);
   const syncResult = await input.database.execute(sql`
-    select * from public.companion_api_read_skill_sync(
+    select * from public.companion_v3_api_read_skill_sync(
       ${input.orgId}::uuid, ${input.companionId}::uuid
     )
   `);
@@ -290,7 +236,7 @@ export async function readCompanionRuntimeV2(input: {
   return row;
 }
 
-export async function getCompanionV2(input: {
+export async function getCompanionRuntimeView(input: {
   actor: ActorContext;
   orgId: string;
   companionId: string;
@@ -298,11 +244,11 @@ export async function getCompanionV2(input: {
   database: Db;
 }): Promise<Companion> {
   const companion = await getCompanion(input);
-  const runtime = await readCompanionRuntimeV2(input);
-  return projectCompanionRuntimeV2(companion, runtime);
+  const runtime = await readCompanionRuntime(input);
+  return projectCompanionRuntime(companion, runtime);
 }
 
-export async function listCompanionsV2(input: {
+export async function listCompanionRuntimeViews(input: {
   actor: ActorContext;
   orgId: string;
   withLastMessage?: boolean;
@@ -311,10 +257,10 @@ export async function listCompanionsV2(input: {
   const companions = await listCompanions(input);
   if (companions.length === 0) return [];
   const result = await input.database.execute(sql`
-    select * from public.companion_api_list_runtime(${input.orgId}::uuid)
+    select * from public.companion_v3_api_list_runtime(${input.orgId}::uuid)
   `);
   const syncResult = await input.database.execute(sql`
-    select * from public.companion_api_list_skill_sync(${input.orgId}::uuid)
+    select * from public.companion_v3_api_list_skill_sync(${input.orgId}::uuid)
   `);
   const syncs = new Map(rows<Pick<RuntimeReadRow,
     "skills_available_revision" | "skills_update_error_message"> & { companion_id: string }>(
@@ -328,11 +274,11 @@ export async function listCompanionsV2(input: {
     const runtime = runtimes.get(companion.id);
     const sync = syncs.get(companion.id);
     if (!runtime || !sync) throw new Error("companion runtime projection is unavailable");
-    return projectCompanionRuntimeV2(companion, { ...runtime, ...sync });
+    return projectCompanionRuntime(companion, { ...runtime, ...sync });
   });
 }
 
-export async function createCompanionV2(input: {
+export async function createCompanionWithRuntime(input: {
   actor: ActorContext;
   orgId: string;
   name: string;
@@ -394,10 +340,10 @@ export async function createCompanionV2(input: {
   /* oxlint-enable anti-slop/no-shape-in-symbol-names */
   const [created] = rows<{ companion_id: string }>(result);
   if (!created) throw new Error("failed to create Companion runtime projection");
-  return getCompanionV2({ ...input, companionId: created.companion_id });
+  return getCompanionRuntimeView({ ...input, companionId: created.companion_id });
 }
 
-export async function updateCompanionV2(input: {
+export async function updateCompanionWithRuntime(input: {
   actor: ActorContext;
   orgId: string;
   companionId: string;
@@ -406,7 +352,7 @@ export async function updateCompanionV2(input: {
 }): Promise<Companion> {
   const patch = { ...input.patch };
   if ("provider_id" in patch || "model_id" in patch) {
-    const current = await getCompanionV2(input);
+    const current = await getCompanionRuntimeView(input);
     if (current.access === "viewer") throw new CompanionSettingsForbiddenError();
     const currentProviderId = current.runtime.provider_ids[0];
     const providerId = typeof patch.provider_id === "string" ? patch.provider_id : currentProviderId;
@@ -429,23 +375,23 @@ export async function updateCompanionV2(input: {
     patch.model_id = modelId;
   }
   await input.database.execute(sql`
-    select * from public.companion_api_update_companion(
+    select * from public.companion_v3_api_update_companion(
       ${input.orgId}::uuid,
       ${input.companionId}::uuid,
       ${JSON.stringify(patch)}::jsonb
     )
   `);
-  return getCompanionV2(input);
+  return getCompanionRuntimeView(input);
 }
 
-export async function setCompanionProviderV2(input: {
+export async function setCompanionProvider(input: {
   actor: ActorContext;
   orgId: string;
   companionId: string;
   providerId: string;
   database: Db;
 }): Promise<Companion> {
-  const current = await getCompanionV2(input);
+  const current = await getCompanionRuntimeView(input);
   if (current.access !== "owner") throw new CompanionSettingsForbiddenError();
   if (current.runtime.provider_ids.length > 0) {
     throw new CompanionRuntimeTransitionError(
@@ -465,7 +411,7 @@ export async function setCompanionProviderV2(input: {
   }
   try {
     await input.database.execute(sql`
-      select * from public.companion_api_set_initial_provider(
+      select * from public.companion_v3_api_set_initial_provider(
         ${input.orgId}::uuid,
         ${input.companionId}::uuid,
         ${input.providerId}::text,
@@ -480,16 +426,16 @@ export async function setCompanionProviderV2(input: {
     }
     throw error;
   }
-  return getCompanionV2(input);
+  return getCompanionRuntimeView(input);
 }
 
-export async function duplicateCompanionV2(input: {
+export async function duplicateCompanionWithRuntime(input: {
   actor: ActorContext;
   orgId: string;
   companionId: string;
   database: Db;
 }): Promise<Companion> {
-  const source = await getCompanionV2(input);
+  const source = await getCompanionRuntimeView(input);
   if (source.access !== "owner") throw new CompanionDuplicateForbiddenError();
   const providerId = source.runtime.provider_ids[0];
   if (!providerId || !source.model_id) {
@@ -500,7 +446,7 @@ export async function duplicateCompanionV2(input: {
     );
   }
   const suffix = " copy";
-  const cloned = await createCompanionV2({
+  const cloned = await createCompanionWithRuntime({
     actor: input.actor,
     orgId: input.orgId,
     name: `${source.name.slice(0, 120 - suffix.length).trimEnd()}${suffix}`,
@@ -519,12 +465,12 @@ export async function duplicateCompanionV2(input: {
         ${input.orgId}::uuid, ${cloned.id}::uuid, ${source.section_id}::uuid
       )
     `);
-    return getCompanionV2({ ...input, companionId: cloned.id });
+    return getCompanionRuntimeView({ ...input, companionId: cloned.id });
   }
   return cloned;
 }
 
-export async function updateCompanionMemberStateV2(input: {
+export async function updateCompanionMemberState(input: {
   actor: ActorContext;
   orgId: string;
   companionId: string;
@@ -532,7 +478,7 @@ export async function updateCompanionMemberStateV2(input: {
   database: Db;
 }): Promise<Companion> {
   await input.database.execute(sql`
-    select * from public.companion_api_update_member_state_v2(
+    select * from public.companion_v3_api_update_member_state(
       ${input.orgId}::uuid,
       ${input.companionId}::uuid,
       ${input.patch.pinned ?? null}::boolean,
@@ -541,10 +487,10 @@ export async function updateCompanionMemberStateV2(input: {
       ${input.patch.unread ?? null}::boolean
     )
   `);
-  return getCompanionV2(input);
+  return getCompanionRuntimeView(input);
 }
 
-export async function setCompanionWorkspaceShareV2(input: {
+export async function setCompanionWorkspaceShare(input: {
   actor: ActorContext;
   orgId: string;
   companionId: string;
@@ -835,7 +781,7 @@ async function readCompanionThreadProjection(input: {
 }
 
 /** Opening the thread advances this member's unread watermark. */
-export async function readCompanionThreadV2(input: {
+export async function readCompanionThread(input: {
   actor: ActorContext;
   orgId: string;
   companionId: string;
@@ -845,7 +791,7 @@ export async function readCompanionThreadV2(input: {
 }
 
 /** Background delta reads preserve unread state while returning the identical projection shape. */
-export async function syncCompanionThreadV2(input: {
+export async function syncCompanionThread(input: {
   actor: ActorContext;
   orgId: string;
   companionId: string;
@@ -942,7 +888,7 @@ function companionThreadMetadata(input: {
 }
 
 /** Open one bounded recent/history window. Only the initial window advances this viewer's watermark. */
-export async function readCompanionThreadWindowV2(input: {
+export async function readCompanionThreadWindow(input: {
   actor: ActorContext;
   orgId: string;
   companionId: string;
@@ -1010,7 +956,7 @@ export async function readCompanionThreadWindowV2(input: {
 }
 
 /** Read at most 200 changed projections without aggregating the unchanged transcript. */
-export async function readCompanionThreadChangesV2(input: {
+export async function readCompanionThreadChanges(input: {
   actor: ActorContext;
   orgId: string;
   companionId: string;
@@ -1073,7 +1019,7 @@ export async function readCompanionThreadChangesV2(input: {
 }
 
 /** Capture the sequence before a legacy full comparison so a concurrent write cannot be skipped. */
-export async function readCompanionThreadProjectionSequenceV2(input: {
+export async function readCompanionThreadProjectionSequence(input: {
   actor: ActorContext;
   orgId: string;
   companionId: string;
@@ -1105,7 +1051,7 @@ export async function enqueueCompanionTurn(input: {
    */
   attachments?: CompanionAttachmentUpload[];
   database: Db;
-}): Promise<{ turn: CompanionTurn; operation: CompanionOperation | null; replayed: boolean }> {
+}): Promise<{ turn: CompanionTurn; replayed: boolean }> {
   const attachments = (input.attachments ?? []).map((attachment) =>
     companionAttachmentUploadSchema.parse(attachment));
   const result = await input.database.execute(sql`
@@ -1122,13 +1068,9 @@ export async function enqueueCompanionTurn(input: {
   if (!row) throw new Error("failed to enqueue Companion turn");
   return {
     turn: companionTurnSchema.parse(row.turn),
-    operation: null,
     replayed: row.replayed,
   };
 }
-
-/** Compatibility export for callers not yet renamed; behavior routes prepared warm text to v3. */
-export const enqueueCompanionTurnV2 = enqueueCompanionTurn;
 
 export interface CompanionAttachmentAsset {
   storageKey: string | null;
@@ -1147,7 +1089,7 @@ export interface CompanionAttachmentAsset {
  * reader who loses access stops being able to fetch the file at the next request rather than at the
  * next cache expiry. The storage key never leaves the server.
  */
-export async function readCompanionAttachmentV2(input: {
+export async function readCompanionAttachment(input: {
   actor: ActorContext;
   orgId: string;
   companionId: string;
@@ -1189,21 +1131,22 @@ export async function desireCompanionLifecycleV3(input: {
   intent: "archive" | "delete" | "recycle_pi";
   database: Db;
 }): Promise<{ intent: "archive" | "delete" | "recycle_pi"; revision: string }> {
-  const result = await input.database.execute(sql`
-    select intent::text, revision::text
-    from public.companion_v3_api_desire_lifecycle(
-      ${input.orgId}::uuid,
-      ${input.companionId}::uuid,
-      ${input.intent}::companion_v3_lifecycle_intent,
-      ${input.requestId}::uuid
-    )
-  `);
+  const result = input.intent === "recycle_pi"
+    ? await input.database.execute(sql`
+      select intent::text,revision::text from public.companion_v3_api_request_pi_recycle(
+        ${input.orgId}::uuid,${input.companionId}::uuid,${input.requestId}::uuid)
+    `)
+    : await input.database.execute(sql`
+      select intent::text, revision::text from public.companion_v3_api_desire_lifecycle(
+        ${input.orgId}::uuid,${input.companionId}::uuid,
+        ${input.intent}::companion_v3_lifecycle_intent,${input.requestId}::uuid)
+    `);
   const [row] = rows<{ intent: "archive" | "delete" | "recycle_pi"; revision: string }>(result);
   if (!row) throw new Error("failed to record Companion lifecycle intent");
   return row;
 }
 
-export async function answerCompanionDecisionV2(input: {
+export async function answerCompanionDecision(input: {
   orgId: string;
   companionId: string;
   requestId: string;
@@ -1233,7 +1176,7 @@ export type CompanionDecisionRecord = {
   expiresAt: string;
 };
 
-export async function getCompanionDecisionV2(input: {
+export async function getCompanionDecision(input: {
   orgId: string;
   companionId: string;
   requestId: string;
@@ -1255,17 +1198,53 @@ export async function getCompanionDecisionV2(input: {
     proposal: unknown;
     expires_at: Date | string;
   }>(v3Result);
-  if (!v3Row) throw new CompanionDecisionNotFoundError();
-  return {
-    requestKey: v3Row.request_key,
-    requestKind: v3Row.request_kind,
-    decisionStatus: v3Row.decision_status,
-    proposal: null,
-    expiresAt: iso(v3Row.expires_at) ?? new Date(v3Row.expires_at).toISOString(),
-  };
+  if (v3Row) {
+    return {
+      requestKey: v3Row.request_key,
+      requestKind: v3Row.request_kind,
+      decisionStatus: v3Row.decision_status,
+      proposal: companionDecisionProposalSchema.nullable().parse(v3Row.proposal),
+      expiresAt: iso(v3Row.expires_at) ?? new Date(v3Row.expires_at).toISOString(),
+    };
+  }
+
+  // Legacy routine/trigger proposal cards remain answerable after the cutover even though Pi no
+  // longer receives proposal tools. This read-only compatibility store cannot create or claim a
+  // Runtime v2 attempt; it only resolves an already-persisted transcript decision by request key.
+  try {
+    const proposalResult = await input.database.execute(sql`
+      select request_key, request_kind::text as request_kind,
+        decision_status::text as decision_status, proposal, expires_at
+      from public.companion_api_get_decision(
+        ${input.orgId}::uuid,
+        ${input.companionId}::uuid,
+        ${input.requestId}
+      )
+    `);
+    const [proposalRow] = rows<{
+      request_key: string;
+      request_kind: string;
+      decision_status: string;
+      proposal: unknown;
+      expires_at: Date | string;
+    }>(proposalResult);
+    if (!proposalRow) throw new CompanionDecisionNotFoundError();
+    return {
+      requestKey: proposalRow.request_key,
+      requestKind: proposalRow.request_kind,
+      decisionStatus: proposalRow.decision_status,
+      proposal: companionDecisionProposalSchema.nullable().parse(proposalRow.proposal),
+      expiresAt: iso(proposalRow.expires_at) ?? new Date(proposalRow.expires_at).toISOString(),
+    };
+  } catch (error) {
+    if (error instanceof CompanionDecisionNotFoundError || hasDatabaseErrorCode(error, "P0002")) {
+      throw new CompanionDecisionNotFoundError();
+    }
+    throw error;
+  }
 }
 
-export async function answerCompanionConfigDecisionV2(input: {
+export async function answerCompanionConfigDecision(input: {
   orgId: string;
   companionId: string;
   requestId: string;
@@ -1282,7 +1261,7 @@ export async function answerCompanionConfigDecisionV2(input: {
   `);
 }
 
-export async function cancelCompanionTurnV2(input: {
+export async function cancelCompanionTurn(input: {
   orgId: string;
   companionId: string;
   turnId: string;
@@ -1300,13 +1279,13 @@ export async function cancelCompanionTurnV2(input: {
   return companionTurnSchema.parse(row.turn);
 }
 
-export async function bumpCompanionSkillAvailableRevisionV2(input: {
+export async function bumpCompanionSkillAvailableRevision(input: {
   orgId: string;
   skillId: string;
   database: Db;
 }): Promise<number> {
   const result = await input.database.execute(sql`
-    select public.companion_api_bump_skill_revision(
+    select public.companion_v3_api_bump_skill_revision(
       ${input.orgId}::uuid,
       ${input.skillId}::uuid
     ) as changed
@@ -1314,13 +1293,13 @@ export async function bumpCompanionSkillAvailableRevisionV2(input: {
   return integer(rows<{ changed: number | string }>(result)[0]?.changed);
 }
 
-export async function bumpCompanionSkillRevisionV2(input: {
+export async function bumpCompanionSkillRevision(input: {
   orgId: string;
   skillId: string;
   database: Db;
 }): Promise<number> {
   const result = await input.database.execute(sql`
-    select public.companion_api_require_skill_revision(
+    select public.companion_v3_api_require_skill_revision(
       ${input.orgId}::uuid, ${input.skillId}::uuid
     ) as changed
   `);

@@ -3,7 +3,7 @@ import {
   observedBoxStateFromProvider,
   BoxRuntimeAdapterError,
   type BoxRuntimeLifecycleClient,
-  type CompanionBoxRuntimeV2,
+  type CompanionBoxRuntime,
   type BoxState,
 } from "@companion/box-runtime";
 import { createHash } from "node:crypto";
@@ -37,7 +37,7 @@ export interface RuntimeImageSource {
 export interface RuntimeBoxAdapterOptions {
   lifecycle: BoxRuntimeLifecycleClient;
   /** Fresh adapter per port call prevents one staging call's signal budget leaking into another. */
-  runtime(): CompanionBoxRuntimeV2;
+  runtime(): CompanionBoxRuntime;
   /** Named snapshot source to clone when the baker has a ready layout image. */
   runtimeImage?: RuntimeImageSource;
   /** Structured create evidence: fromImage, fallback reason, and timings. Never secrets. */
@@ -334,7 +334,7 @@ export function createRuntimePiControl(options: RuntimeBoxAdapterOptions): Runti
 }
 
 function writeOutcome(
-  result: Awaited<ReturnType<CompanionBoxRuntimeV2["dispatchAbort"]>>,
+  result: Awaited<ReturnType<CompanionBoxRuntime["dispatchAbort"]>>,
 ): BrokerWriteOutcome {
   if (result.outcome === "refused") return { outcome: "rejected", code: result.code };
   if (result.outcome === "ambiguous") return { outcome: "ambiguous", code: result.code };
@@ -345,7 +345,7 @@ function writeOutcome(
 }
 
 function promptWriteOutcome(
-  result: Awaited<ReturnType<CompanionBoxRuntimeV2["dispatchPrompt"]>>,
+  result: Awaited<ReturnType<CompanionBoxRuntime["dispatchPrompt"]>>,
 ): BrokerPromptWriteOutcome {
   if (result.outcome === "refused") {
     return {
@@ -365,7 +365,7 @@ function promptWriteOutcome(
 }
 
 function brokerState(
-  state: Awaited<ReturnType<CompanionBoxRuntimeV2["brokerState"]>>,
+  state: Awaited<ReturnType<CompanionBoxRuntime["brokerState"]>>,
   expectedLayoutMarker: string,
 ): Awaited<ReturnType<RuntimePiControl["brokerState"]>> {
   return {

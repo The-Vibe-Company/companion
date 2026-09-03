@@ -1,7 +1,7 @@
-# Companions Runtime v2 operations
+# Companions Runtime v3 operations
 
-This runbook covers the production Runtime v2 boundary: migration and cutover, permanent legacy
-purge, kill switch, incident response, and rollback. The state
+This runbook covers the production Runtime v3 boundary: offline historical purge, cutover, kill
+switch, incident response, and rollback. The state
 machine and protocol contract remain authoritative in `docs/companions-runtime.md`; Railway-specific
 configuration lives in `deploy/railway/README.md`.
 
@@ -11,7 +11,7 @@ re-enable procedure live in the
 
 ## Safety rules
 
-- `apps/runtime` is the only long-lived process with the Box key or permission to claim Runtime v2
+- `apps/runtime` is the only long-lived process with the Box key or permission to claim Runtime v3
   work. API and worker must not receive either capability.
 - Run schema changes as the migration owner in an ephemeral release job. Never inject that owner
   credential into a long-lived process. Run API, worker, and runtime through three distinct `LOGIN
@@ -21,10 +21,10 @@ re-enable procedure live in the
   `node dist/index.js`; it is never a migration hook.
 - Keep the runtime desktop endpoint private even though requests are HMAC authenticated. Never
   persist or log its returned signed URL.
-- Never replay a dispatch once the prompt may have been written. Protocol 7 marks it interrupted,
-  terminates the exact Pi invocation through resource-independent internal cleanup, records
-  `auto_abandoned`, and releases the lane automatically.
-- Never use Full Box restart as automatic repair. Never delete a Box unless an explicit user delete
+- Never replay a dispatch once the prompt may have been written. Runtime v3 interrupts the Turn,
+  releases its lane, invalidates `Prepared`, and recycles only the captured Pi invocation before
+  later work.
+- No Full Box restart control exists. Never delete a Box unless an explicit user delete
   or the audited legacy-purge procedure owns it.
 - Do not put provider payloads, tokens, signed URLs, raw Pi lines, auth files, or decrypted material
   in a command transcript, incident ticket, log search, or database error field.
@@ -55,11 +55,14 @@ purge report checksum for every production change. Do not record secret values.
    the runtime drain timeout below its fixed 30-second lease.
 6. Check API `/health`, runtime `/healthz`, login, Skills browser smoke, and public package download.
 
-For ordinary compatible Runtime v2 releases, use rolling deployment. One runtime replica receiving
+For ordinary compatible Runtime v3 releases, use rolling deployment. One runtime replica receiving
 SIGTERM stops new claims, reaches bounded safe checkpoints, and releases or loses its leases; another
 replica must take over within 45 seconds. Do not clear lease rows or edit epochs manually.
 
-### Protocol 7 automatic-cleanup repair (migration 0157)
+### Historical Runtime v2 protocol-7 repair (migration 0157)
+
+This subsection is retained only for offline migration evidence. It is not a production executor or
+rollback procedure after the Runtime v3 cutover.
 
 Deploy migration 0157 and the protocol-7 runtime from the same immutable SHA. Run the migration
 first: protocol-5 and protocol-6 executors may finish compatible leases already held but receive no
@@ -85,7 +88,7 @@ pre-dispatch Start instead of expiring its message. After rollout, require:
 Use the Companions gate as the operational kill switch if rollout must stop. Roll forward with a
 corrected protocol-7 runtime; never restore an earlier claim protocol or down-migrate the repair.
 
-### Verify queued routine cleanup (migration 0145)
+### Historical Runtime v2 queued-routine cleanup (migration 0145)
 
 Migration 0145 preserves routine turn/message history while settling stale executable work. After
 the release job commits, record the migration output and run these read-only checks as the migration
@@ -213,15 +216,17 @@ rows. Save the final report and its checksum. It must show:
 
 Do not deploy final legacy-removal migrations when any item remains.
 
-## Runtime v2 purge before Runtime v3
+## Offline Runtime v2 purge before Runtime v3
 
 THE-511 installs this command and migration but does **not** authorize a production purge. Use this
-section only in a separately approved Runtime v3 cutover change. The historical `companionPurge.js`
+section only after an explicit repository-Owner production-purge decision in the approved Runtime
+v3 cutover change. The historical `companionPurge.js`
 procedure above remains the pre-v2 migration path and must not be substituted.
 
-Prepare a backup, deploy with `COMPANION_COMPANIONS_ENABLED=false`, disable the `runtime-v2`
-PostgreSQL gate through the existing operational procedure, and wait until both v2 and dormant v3
-lease tables have no claim token. Run only from an ephemeral private execution of the runtime image.
+Prepare a backup, deploy with `COMPANION_COMPANIONS_ENABLED=false`, disable the PostgreSQL runtime
+gate through the existing operational procedure, and prove every v2 and v3 lease neutral. The
+feature and gate remain off for the entire destructive window, blocking all main, background,
+preparation, lifecycle, and deadline claims. Run only from an ephemeral private execution of the runtime image.
 Supply the migration-owner URL, Box inventory credential, object-storage credential, public web base
 URL, and—only for confirmed remote-trigger removal—the secrets master key. Never add the migration
 URL or master key to a long-lived service merely to run inventory.
@@ -274,58 +279,56 @@ match. It covers organizations, users, memberships, Skills and secrets, Skill Da
 audit, encrypted provider connections, MCP accounts, trigger-provider credentials, and plugin
 trigger keys without treating legitimate activity during provider cleanup as purge damage.
 
-## Runtime v2 cutover
+## Runtime v3 production cutover
 
-1. Complete and archive the legacy purge report while the feature flag and database gate are off.
-2. Deploy the asynchronous API/web, dedicated runtime, separated role grants, and Runtime v2 schema
-   from one compatible stack. No legacy executor may be restarted against v2 rows.
-3. Configure on web, API, worker, and runtime. The worker reads the flag only to decide whether
-   Companion routines may enqueue turns, and still holds no Box credential:
+### Local rehearsal
 
-   ```dotenv
-   COMPANION_COMPANIONS_ENABLED=true
-   COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS=example.com
-   ```
+Use only disposable loopback PostgreSQL and the deterministic simulator. The package command strips
+Box credentials, forces the feature off and simulator mode, and refuses a non-loopback database.
+It must never run against production or a live provider:
 
-4. Give API only its private runtime URL and the desktop HMAC. Give runtime its dedicated DB URL,
-   Box/Pi configuration, the same HMAC, envelope master key, public API origin, and read-only Skill
-   archive access. Confirm API and worker environments contain no Box key.
-5. Deploy runtime first, then API, worker, and web, with Companion traffic still quiesced. Require runtime
-   `/healthz` to report PostgreSQL, claim loop, and sweep freshness healthy.
-6. As the migration owner, read the compare-and-set epoch:
+```bash
+DATABASE_MIGRATION_URL=postgres://...@127.0.0.1:5432/companion_rehearsal \
+  pnpm rehearse:runtime-v3-cutover
+```
 
-   ```sql
-   select enabled, gate_epoch, updated_at
-   from public.companion_runtime_gate_status();
-   ```
+The report must name the underlying test and pass every phase: claims off; report, dry-run, and
+confirmed purge; empty inventory; v3 create; chat plus Pi steer; one background routine or trigger
+Turn; archive/sleep then wake the same Box; and permanent delete. A missing phase or test failure
+fails the rehearsal. The script uses only disposable provider adapters; it performs no production
+purge or live-provider mutation.
 
-7. If it is disabled and the observation is still current, enable it with a traceable change id:
+### Production go/no-go
 
-   ```sql
-   select enabled, gate_epoch, updated_at
-   from public.companion_runtime_enable(<observed_gate_epoch>, 'cutover-<change-id>');
-   ```
+The repository Owner approves the SLO thresholds before the dedicated canary begins. Go requires:
 
-   A stale-epoch failure is protective. Re-read state and investigate who changed it; do not retry
-   with a guessed epoch. Runtime deliberately cannot enable this gate itself.
-8. Restore traffic. Execute the acceptance smoke: cold send to durable reply, desktop authorization,
-   stop, send-as-wake, second reply, and permanent delete. Confirm Viewer and cross-tenant reads made
-   no Box call.
+- complete acceptance reports and external evidence for at least seven dedicated canary days;
+- zero observed accepted-work loss, ambiguous replay, stale-fence settlement, or privacy breach;
+- no main or background lane blocked longer than 15 minutes;
+- green PostgreSQL, v3 main/background/deadline loops, and current sweep freshness;
+- an empty, immutable purge report whose preservation fingerprint covers organizations, users,
+  memberships, Skills and secrets, Skill Databases, billing, audit, encrypted provider connections,
+  MCP accounts, trigger-provider credentials, and plugin trigger keys.
 
-The guarded final legacy-removal migration in this release may be deployed only when there is no
-open P0/P1 runtime issue and the purge report is empty. An installation missing either prerequisite
-must remain on its disabled purge-capable release; there is no compatibility mode in the final
-runtime.
+Unavailable, incomplete, or contradictory external evidence is a NO-GO. Production purge and 100%
+allowlisted activation are separate explicit repository-Owner decisions; neither is implied by a
+passing rehearsal or canary.
 
-Immediately before that final migration, disable the database gate again with its observed epoch,
-set the three feature-flag consumers false, and wait until every lease is neutral. Migration 0094
-rejects an enabled gate or active claim even when the earlier purge evidence is complete. Re-run the
-saved purge report. If a historical union database role exists, make it `NOLOGIN`, wait until
-`pg_stat_activity` has no session for it, remove its memberships, and configure
-`DATABASE_RETIRED_RUNTIME_ROLE`; the grants preflight removes its current and default ACLs before
-0094. Deploy the final migration through the one-shot release job, require `Completed`, and only then
-deploy all four processes from that same commit before following the explicit enable procedure
-above. These prerequisites do not authorize migrating while Runtime v2 is still claiming work.
+### Activation
+
+1. Complete the explicitly approved offline purge with the feature flag and database gate disabled;
+   keep them off until the v3-only stack is deployed and every lease is neutral.
+2. Deploy API, worker, runtime, and web from one immutable release. Confirm only `apps/runtime` has
+   the Box key and runtime database role, and confirm no binary imports or composes a v2 executor.
+3. Require runtime `/healthz` and every approved go/no-go item above to pass.
+4. The migration owner reads the gate epoch and performs the compare-and-set enable with the
+   approved change id. A stale epoch is a NO-GO, not permission to guess or retry.
+5. The repository Owner separately authorizes 100% allowlisted activation. Restore traffic and run
+   the approved smoke without recording credentials, provider payloads, transcripts, or signed URLs.
+
+The temporary Pi-only Restart control remains available during launch. Evaluate its removal only
+after 30 complete days of post-launch evidence; the review is not automatic authorization to remove
+or retain it.
 
 ## Kill switch
 
@@ -341,7 +344,7 @@ broken fencing, corrupt projection, or any incident where continued claims may c
    from public.companion_runtime_disable(<observed_gate_epoch>, 'incident-<id>');
    ```
 
-   This increments the epoch, invalidates leases, interrupts active attempts/operations, and fences
+   This increments the epoch, invalidates leases, interrupts active Turns/lifecycle work, and fences
    later checkpoints. A provider request already on the wire may still have succeeded externally.
 2. Set `COMPANION_COMPANIONS_ENABLED=false` on runtime, API, and web and deploy runtime first. This
    prevents new claims and then removes new Companion intent/navigation at ingress.
@@ -354,11 +357,11 @@ fence when waiting for a rolling deployment is unsafe.
 
 ### Re-enable
 
-Re-enable only after the cause is corrected, an empty-claim dry observation is healthy, and an
-Owner/Editor communication plan exists for interrupted turns. Deploy all three flag consumers with
-the flag on, verify `/healthz`, then have the migration owner call `companion_runtime_enable` with
-the newly observed epoch. Protocol 7 backfills interrupted turns into automatic recovery; enabling
-the gate never replays them.
+Re-enable only after the cause is corrected, the full production go/no-go evidence remains
+available, and an Owner/Editor communication plan exists for interrupted Turns. Deploy all flag
+consumers with claims still off, verify `/healthz`, then have the migration owner call
+`companion_runtime_enable` with the newly observed epoch. Enabling the gate never replays an
+interrupted Turn.
 
 ## Incident response
 
@@ -512,12 +515,13 @@ for stable identifiers and error codes; do not broaden collection to raw bodies.
 
 ## Rollback
 
-After Runtime v2 data exists, rollback means **kill switch plus roll-forward-compatible v2 code**:
+Rollback means **disable Runtime v3 and roll forward**:
 
 1. Fence the database gate and set the three flag consumers false.
 2. Snapshot PostgreSQL and inventory external Box operations before changing code.
-3. Deploy the last known-good build only if it understands the current Runtime v2 schema and fencing
-   protocol. Never deploy a legacy API/worker executor and never replay interrupted attempts.
+3. Deploy only a v3-only build that understands the current schema and fencing protocol. A v2
+   kernel, store, claimer, or executor is never a rollback target; interrupted Turns are never
+   replayed.
 4. Repair forward, run simulator/PostgreSQL acceptance, deploy with claims still off, then follow the
    explicit re-enable procedure.
 

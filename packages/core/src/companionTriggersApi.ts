@@ -29,7 +29,7 @@ import {
   CompanionDecisionConflictError,
   CompanionDecisionNotFoundError,
 } from "./companions";
-import { getCompanionDecisionV2 } from "./companionRuntimeApi";
+import { getCompanionDecision } from "./companionRuntimeApi";
 import { sanitizeCompanionRuntimeError } from "./companionRuntimeErrors";
 
 const databaseErrorNodeSchema = z.object({
@@ -164,7 +164,7 @@ function parseTrigger<T>(
   });
 }
 
-export async function listCompanionTriggersV2(input: {
+export async function listCompanionTriggers(input: {
   orgId: string;
   companionId: string;
   database: Db;
@@ -182,7 +182,7 @@ export async function listCompanionTriggersV2(input: {
 }
 
 /** PostgreSQL-only trigger history read; this never contacts or wakes the Companion Box. */
-export async function listCompanionTriggerRunsV2(input: {
+export async function listCompanionTriggerRuns(input: {
   orgId: string;
   companionId: string;
   triggerId: string;
@@ -208,7 +208,7 @@ export async function listCompanionTriggerRunsV2(input: {
 }
 
 /** Read one trigger validation run, including only its private isolated transcript. */
-export async function getCompanionTriggerRunV2(input: {
+export async function getCompanionTriggerRun(input: {
   orgId: string;
   companionId: string;
   runId: string;
@@ -231,7 +231,7 @@ export async function getCompanionTriggerRunV2(input: {
   return companionTriggerRunDetailSchema.parse(row.run);
 }
 
-export async function createCompanionTriggerV2(input: {
+export async function createCompanionTrigger(input: {
   orgId: string;
   companionId: string;
   id?: string;
@@ -275,7 +275,7 @@ export async function createCompanionTriggerV2(input: {
   return parseTrigger(row.trigger, input.webhookBaseUrl);
 }
 
-export async function updateCompanionTriggerV2(input: {
+export async function updateCompanionTrigger(input: {
   orgId: string;
   companionId: string;
   triggerId: string;
@@ -289,7 +289,7 @@ export async function updateCompanionTriggerV2(input: {
   database: Db;
   webhookBaseUrl: string;
 }): Promise<CompanionTrigger> {
-  const triggers = await listCompanionTriggersV2(input);
+  const triggers = await listCompanionTriggers(input);
   const current = triggers.find((trigger) => trigger.id === input.triggerId);
   if (!current) throw new CompanionTriggerNotFoundError();
   const draft = companionTriggerDraftSchema.parse({
@@ -328,7 +328,7 @@ export async function updateCompanionTriggerV2(input: {
   }
 }
 
-export async function deleteCompanionTriggerV2(input: {
+export async function deleteCompanionTrigger(input: {
   orgId: string;
   companionId: string;
   triggerId: string;
@@ -348,7 +348,7 @@ export async function deleteCompanionTriggerV2(input: {
   }
 }
 
-export async function rotateCompanionTriggerSecretV2(input: {
+export async function rotateCompanionTriggerSecret(input: {
   orgId: string;
   companionId: string;
   triggerId: string;
@@ -373,7 +373,7 @@ export async function rotateCompanionTriggerSecretV2(input: {
   }
 }
 
-export async function answerCompanionTriggerDecisionV2(input: {
+export async function answerCompanionTriggerDecision(input: {
   orgId: string;
   companionId: string;
   requestId: string;
@@ -383,9 +383,9 @@ export async function answerCompanionTriggerDecisionV2(input: {
   let triggerId: string | null = null;
   let secret: string | null = null;
   if (input.decision === "allow") {
-    let pending: Awaited<ReturnType<typeof getCompanionDecisionV2>>;
+    let pending: Awaited<ReturnType<typeof getCompanionDecision>>;
     try {
-      pending = await getCompanionDecisionV2({
+      pending = await getCompanionDecision({
         orgId: input.orgId,
         companionId: input.companionId,
         requestId: input.requestId,

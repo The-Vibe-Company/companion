@@ -2,7 +2,7 @@
 import { COMPANION_BUDGETS_BASE } from "@companion/contracts";
 
 import { BoxRuntimeAdapterError, type BoxRuntimeLifecycleClient } from "./boxMaintenanceClient";
-import type { CompanionBoxRuntimeV2 } from "./boxCompanionRuntime";
+import type { CompanionBoxRuntime } from "./boxCompanionRuntime";
 import type { CompanionRuntimeSkill } from "./companionPiInjection";
 import {
   isCompanionRuntimeImageName,
@@ -31,9 +31,9 @@ export async function bakeCompanionRuntimeImageOnce(input: {
   identity: CompanionPiLayoutIdentity;
   lifecycle: BoxRuntimeLifecycleClient;
   runtime: Pick<
-    CompanionBoxRuntimeV2,
+    CompanionBoxRuntime,
     "existingBoxStatus" | "refreshPiLayout" | "refreshTtl"
-  > & Partial<Pick<CompanionBoxRuntimeV2, "prepareRuntimeImage">>;
+  > & Partial<Pick<CompanionBoxRuntime, "prepareRuntimeImage">>;
   bundledSkill?: CompanionRuntimeSkill;
   now?: () => number;
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
@@ -70,8 +70,8 @@ export async function bakeCompanionRuntimeImageOnce(input: {
 async function ensureImage(input: {
   identity: CompanionPiLayoutIdentity;
   lifecycle: BoxRuntimeLifecycleClient;
-  runtime: Pick<CompanionBoxRuntimeV2, "existingBoxStatus" | "refreshPiLayout" | "refreshTtl">
-    & Partial<Pick<CompanionBoxRuntimeV2, "prepareRuntimeImage">>;
+  runtime: Pick<CompanionBoxRuntime, "existingBoxStatus" | "refreshPiLayout" | "refreshTtl">
+    & Partial<Pick<CompanionBoxRuntime, "prepareRuntimeImage">>;
   bundledSkill?: CompanionRuntimeSkill;
   now: () => number;
   sleep: (ms: number, signal: AbortSignal) => Promise<void>;
@@ -252,7 +252,7 @@ async function selectParentSnapshot(input: {
 }
 
 async function waitBoxReady(input: {
-  runtime: Pick<CompanionBoxRuntimeV2, "existingBoxStatus">;
+  runtime: Pick<CompanionBoxRuntime, "existingBoxStatus">;
   sleep: (ms: number, signal: AbortSignal) => Promise<void>;
   now: () => number;
   signal: AbortSignal;

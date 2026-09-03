@@ -1,6 +1,6 @@
 /* oxlint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-chained-type-assertions, anti-slop/no-unsafe-dictionary-type, anti-slop/no-known-value-widening -- Lifecycle fixtures are hand-written fakes matching the used client surface exactly. */
 import { describe, expect, it, vi } from "vitest";
-import { BoxRuntimeAdapterError, type BoxRuntimeLifecycleClient, type CompanionBoxRuntimeV2 } from "@companion/box-runtime";
+import { BoxRuntimeAdapterError, type BoxRuntimeLifecycleClient, type CompanionBoxRuntime } from "@companion/box-runtime";
 import type { RuntimeProcessLog } from "@companion/companion-runtime/runtime-support";
 
 import {
@@ -49,11 +49,11 @@ function lifecycle(overrides: Partial<BoxRuntimeLifecycleClient> = {}): BoxRunti
   } as BoxRuntimeLifecycleClient;
 }
 
-function boxRuntime(overrides: Partial<CompanionBoxRuntimeV2> = {}): CompanionBoxRuntimeV2 {
+function boxRuntime(overrides: Partial<CompanionBoxRuntime> = {}): CompanionBoxRuntime {
   return {
     layoutIdentity: () => ({ fullMarker: "layout-current" }),
     ...overrides,
-  } as CompanionBoxRuntimeV2;
+  } as CompanionBoxRuntime;
 }
 
 describe("runtime Box/Pi port adapters", () => {
@@ -562,7 +562,7 @@ describe("runtime Box/Pi port adapters", () => {
       runtime: () => boxRuntime({
         dispatchPrompt,
         ackEvents,
-        readEvents: readEvents as unknown as CompanionBoxRuntimeV2["readEvents"],
+        readEvents: readEvents as unknown as CompanionBoxRuntime["readEvents"],
       }),
     });
     const request = {

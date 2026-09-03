@@ -1,4 +1,4 @@
-import { bumpCompanionSkillAvailableRevisionV2 } from "@companion/core";
+import { bumpCompanionSkillAvailableRevision } from "@companion/core";
 import type { ActorContext } from "@companion/core/services";
 import { withTenantContext } from "@companion/db";
 
@@ -16,7 +16,7 @@ export async function syncPublishedSkillToOnlineCompanions(input: {
   // while runtime execution is disabled so re-enable cannot treat a stale Box as current.
   await withTenantContext(
     { orgId: input.orgId, userId: input.actor.id },
-    (database) => bumpCompanionSkillAvailableRevisionV2({
+    (database) => bumpCompanionSkillAvailableRevision({
       orgId: input.orgId,
       skillId: input.skillId,
       database,

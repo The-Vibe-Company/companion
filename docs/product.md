@@ -83,17 +83,24 @@ decisions, settings, and lifecycle operations and returns `202`; it never contac
 dedicated runtime service serializes work per Companion execution lane, revalidates current authority and selected
 resources, and owns every provider side effect.
 
+The deployed executor is Runtime v3 only. One durable v3 Turn carries command, admission, activity,
+and outcome facts; there is no live v2 kernel, v2 store, attempt table, or derived Start operation.
+The feature flag and database gate fence every main, background, preparation, lifecycle, and
+deadline claim. Rollback disables v3 claims and rolls forward; it never revives a v2 executor.
+
 Sending is the only normal wake path. There is no Wake button and no keystroke prewarm. Pi must be
-idle before main dispatch, only one attempt may be active per lane, and queued turns preserve lane
-order. One isolated routine attempt may run alongside one ordinary main attempt. An attempt
-without a provable Pi acknowledgement becomes `interrupted` and is never replayed. Protocol 7 uses
-resource-independent cleanup to terminate only its exact Pi invocation, marks that occurrence
-`auto_abandoned`, and continues the lane; cleanup retries with bounded backoff without blocking an
-independently warm lane. It never stages resources, restarts Pi, or resumes/restarts the Box. Full
-Box restart is always an explicit, confirmed Editor/Owner action.
+idle before main dispatch, only one Turn may be active per lane, and queued Turns preserve lane
+order. One isolated background Turn may run alongside one ordinary main Turn. An admission without
+provable acknowledgement becomes `interrupted`, releases its lane, and is never replayed. Runtime
+invalidates `Prepared`, recycles only the captured Pi invocation on the same Box, and rebuilds
+continuity before later work. The temporary Pi-only Restart control is reviewed for removal only
+after 30 days of post-launch evidence; it never restarts or replaces the Box.
 
 Provider connections and member MCP accounts are envelope-encrypted and survive the one-time legacy
 Companion purge. Old Companions, Boxes, transcripts, runtime rows, pools, and leases do not migrate.
+The offline purge removes external ownership before database rows, fails closed when any inventory
+or absence evidence is unavailable, and resumes without repeating a confirmed provider effect.
+Production purge and 100% allowlisted activation are separate explicit repository-Owner decisions.
 
 The product-owned plugin catalog includes Slack as a per-member labeled Bot User OAuth account. A
 Companion may send bounded messages to a known Slack conversation or thread through its selected
@@ -129,6 +136,6 @@ triggers, sharing, settings, and the remaining browser workflows migrate milesto
 Native iOS dictation is an input method exception: compressed microphone audio is transiently sent
 through the API and transcribed with a bounded window of recent user/assistant messages as context.
 It becomes editable composer text before an ordinary message is sent, creates no audio turn, and
-does not change Runtime v2. Neither audio nor the provider response is persisted. A deployment-owned
+does not enter the hosted runtime. Neither audio nor the provider response is persisted. A deployment-owned
 API key enables it for every workspace; without that key, the API reports the capability unavailable
 and native clients hide the microphone.

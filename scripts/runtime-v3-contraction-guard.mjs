@@ -42,8 +42,28 @@ export function assertRuntimeV3Contraction() {
     /companion_api_enqueue_operation\(/,
     /companion_api_retry_turn\(/,
     /companion_v3_api_restart_pi\(/,
+    /companion_api_create_companion\(/,
+    /companion_api_update_companion\(/,
+    /companion_api_set_initial_provider\(/,
+    /companion_api_update_member_state_v2\(/,
+    /companion_api_(?:read|list)_runtime\(/,
+    /companion_api_(?:read|list)_skill_sync\(/,
+    /companion_api_(?:bump|require)_skill_revision\(/,
     /export async function retryCompanionTurnV2/,
     /export async function enqueueCompanionOperationV2/,
+    /projectCompanionRuntimeV2/,
+    /readCompanionRuntimeV2/,
+    /getCompanionDecisionV2/,
+    /answerCompanion(?:Config|Routine|Trigger)?DecisionV2/,
+  ]);
+  reject("packages/core/src/companionRoutinesApi.ts", [
+    /export async function \w+V2/,
+  ]);
+  reject("packages/core/src/companionTriggersApi.ts", [
+    /export async function \w+V2/,
+  ]);
+  reject("packages/core/src/companionTriggerWebhookRegistration.ts", [
+    /export async function \w+V2/,
   ]);
   reject("packages/contracts/src/companionRuntime.ts", [
     /retryCompanionTurnInputSchema/,
@@ -59,11 +79,26 @@ export function assertRuntimeV3Contraction() {
     /\.\/retry/,
     /\.\/store/,
   ]);
+  reject("packages/box-runtime/src/boxCompanionRuntime.ts", [
+    /CompanionBoxRuntimeV2/,
+  ]);
+  reject("apps/web/src/components/companions/CompanionTriggerTypes.ts", [
+    /CompanionTriggerV2/,
+    /Trigger v2/,
+  ]);
   reject("packages/db/src/schema.ts", [
     /export const companionTurnAttempts/,
     /export const companionOperations/,
     /export const companionOperationKindEnum/,
     /export const companionAttemptStatusEnum/,
+    /default\("runtime-v2"\)/,
+    /\$\{t\.id\} = 'runtime-v2'/,
+    /kill switch for the isolated Runtime v2 role/,
+  ]);
+  reject("packages/db/drizzle/0179_companion_runtime_v3_contraction.sql", [
+    /PERFORM\s+pg_catalog\.set_config\(\s*'app\.companion_runtime_protocol'\s*,\s*'2'/,
+    /FROM\s+public\.companion_api_create_companion\(/,
+    /control\.id='runtime-v2'/,
   ]);
   requireText("packages/db/runtime-role-grants.sql", [
     "procedure.proname LIKE 'companion_v3_runtime_%'",
@@ -72,6 +107,23 @@ export function assertRuntimeV3Contraction() {
     "'companion_api_retry_turn'",
   ]);
   requireText("packages/db/drizzle/0179_companion_runtime_v3_contraction.sql", [
+    "DROP TRIGGER companions_runtime_v2_mutation_fence",
+    "DROP TRIGGER companion_transcript_entries_runtime_v2_mutation_fence",
+    "DROP TRIGGER companions_require_runtime_v2_instance",
+    "DROP FUNCTION public.companion_runtime_require_v2_mutation()",
+    "DROP FUNCTION public.companion_runtime_assert_v2_mutation()",
+    "DROP FUNCTION public.companion_runtime_require_instance_at_commit()",
+    "DROP FUNCTION public.companion_v3_settle_manual_restart()",
+    "UPDATE public.companion_runtime_control SET id='runtime-v3' WHERE id='runtime-v2'",
+    "CREATE OR REPLACE FUNCTION public.companion_v3_api_create_companion",
+    "CREATE FUNCTION public.companion_v3_api_update_companion",
+    "CREATE FUNCTION public.companion_v3_api_set_initial_provider",
+    "CREATE FUNCTION public.companion_v3_api_update_member_state",
+    "CREATE FUNCTION public.companion_v3_api_read_runtime",
+    "CREATE FUNCTION public.companion_v3_api_list_runtime",
+    "procedure.proname LIKE 'companion_v3_%'",
+    "procedure.prosrc LIKE '%app.companion_runtime_protocol%'",
+    "pg_catalog.replace(v_definition,'''runtime-v2''','''runtime-v3''')",
     "companion_v3_api_enqueue_turn",
     "companion_v3_api_cancel_turn",
     "REVOKE EXECUTE ON FUNCTION public.companion_v3_api_restart_pi",

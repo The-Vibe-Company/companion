@@ -634,7 +634,7 @@ async function findTriggerWebhook(input: {
   );
 }
 
-export async function inspectCompanionTriggerWebhookV2(input: {
+export async function inspectCompanionTriggerWebhook(input: {
   orgId: string;
   companionId: string;
   triggerId: string;
@@ -949,7 +949,7 @@ async function recoverSentryRegistration(
  * exception: the failure row must survive the caller's transaction. Missing, ambiguous, revoked,
  * or insufficient credentials are persisted as failed registration state for an explicit retry.
  */
-export async function registerCompanionTriggerWebhookV2(input: {
+export async function registerCompanionTriggerWebhook(input: {
   orgId: string;
   companionId: string;
   triggerId: string;
@@ -1140,7 +1140,7 @@ async function recoverGitHubRegistration(
   return { status: "failed", error: message };
 }
 
-export async function unregisterCompanionTriggerWebhookV2(input: {
+export async function unregisterCompanionTriggerWebhook(input: {
   orgId: string;
   companionId: string;
   triggerId: string;

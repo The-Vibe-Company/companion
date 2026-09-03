@@ -1,9 +1,10 @@
-# Routine isolation production cutover and recovery
+# Historical Runtime v2 routine-isolation cutover
 
-Use this runbook to deploy or recover the run-scoped Pi execution path for scheduled Companion
-routines. It supplements [the Runtime v2 runbook](./companions-runtime.md) and
-[the Railway deployment guide](../../deploy/railway/README.md). It does not authorize direct
-production database writes or Box deletion/restart.
+This archived runbook records the migration 0138 cutover to run-scoped Pi execution for scheduled
+Companion routines. It is retained only for migration replay and historical incident evidence; it
+does not authorize activation, rollback, direct production database writes, or Box deletion/restart
+for the v3-only runtime. Current operations live in
+[the Runtime v3 runbook](./companions-runtime.md).
 
 ## Current contract and deploy gates
 

@@ -360,6 +360,7 @@ interface WarmMaterialRow {
   content: string;
   activityCursor: string;
   recoveryDeferred: boolean;
+  outputsHarvested: boolean;
 }
 
 interface RoutineMaterialRow extends WarmMaterialRow {
@@ -712,8 +713,8 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
       const rows = await abortable(sql<WarmMaterialRow[]>`
         select box_id as "boxId", pi_invocation_id as "piInvocationId",
           content, activity_cursor::text as "activityCursor",
-          recovery_deferred as "recoveryDeferred"
-        from public.companion_v3_runtime_authorize_warm_turn_v7(
+          recovery_deferred as "recoveryDeferred",outputs_harvested as "outputsHarvested"
+        from public.companion_v3_runtime_authorize_warm_turn_v8(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
           ${claim.turn.lane},
@@ -721,7 +722,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           ${claim.fence.token}::uuid,
           ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint,
-          7
+          8
         )
       `, signal);
       const row = rows[0];
@@ -732,6 +733,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           content: row.content,
           cursor: BigInt(row.activityCursor),
           recoveryDeferred: row.recoveryDeferred,
+          outputsHarvested: row.outputsHarvested,
         }
         : null;
     },
@@ -799,6 +801,33 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
         || projected === "cancel_pending"
         ? projected
         : projected === "projected";
+    },
+    async recordOutputs(claim, input, signal) {
+      const attachments = input.attachments.map((attachment, position) => ({
+        storage_key: attachment.storageKey,
+        content_type: attachment.contentType,
+        byte_size: attachment.byteSize,
+        sha256: attachment.sha256,
+        filename: attachment.filename,
+        position,
+        uploaded_at: attachment.uploadedAt.toISOString(),
+      }));
+      const rows = await abortable(sql<Array<{ recorded: number }>>`
+        select recorded
+        from public.companion_v3_runtime_record_turn_outputs(
+          ${claim.orgId}::uuid,
+          ${claim.companionId}::uuid,
+          ${claim.turn.lane},
+          ${claim.turn.id}::uuid,
+          ${claim.fence.token}::uuid,
+          ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,
+          ${sql.json(attachments)}::jsonb,
+          ${input.activityAt.toISOString()}::timestamptz,
+          3
+        )
+      `, signal);
+      return rows[0] !== undefined;
     },
     async pendingDelegationCancel(claim, signal) {
       const rows = await abortable(sql<Array<{
@@ -874,13 +903,14 @@ export function createRuntimeV3PostgresBackgroundTurnPersistence(
     async authorize(claim, signal) {
       const rows = await abortable(sql<RoutineMaterialRow[]>`
         select box_id as "boxId", pi_invocation_id as "piInvocationId", content,
-          activity_cursor::text as "activityCursor", false as "recoveryDeferred", persona,
+          activity_cursor::text as "activityCursor", recovery_deferred as "recoveryDeferred",
+          outputs_harvested as "outputsHarvested", persona,
           background_kind as "backgroundKind", validation_only as "validationOnly",
           direct_workspace as "directWorkspace"
-        from public.companion_v3_runtime_authorize_background_v8(
+        from public.companion_v3_runtime_authorize_background_v9(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.turn.id}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
-          ${claim.fence.gateEpoch.toString()}::bigint, 8
+          ${claim.fence.gateEpoch.toString()}::bigint, 9
         )
       `, signal);
       const row = rows[0];
@@ -889,7 +919,8 @@ export function createRuntimeV3PostgresBackgroundTurnPersistence(
         piInvocationId: row.piInvocationId,
         content: row.content,
         cursor: BigInt(row.activityCursor),
-        recoveryDeferred: false,
+        recoveryDeferred: row.recoveryDeferred,
+        outputsHarvested: row.outputsHarvested,
         backgroundRoutine: true,
         backgroundKind: row.backgroundKind,
         validationOnly: row.validationOnly,
@@ -899,18 +930,18 @@ export function createRuntimeV3PostgresBackgroundTurnPersistence(
     },
     async beginAdmission(claim, input, signal) {
       const rows = await abortable(sql<Array<{ begun: boolean }>>`
-        select public.companion_v3_runtime_begin_routine_admission(
+        select public.companion_v3_runtime_begin_background_admission_v9(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.turn.id}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint, ${input.invocationId},
-          ${input.cursor.toString()}::bigint, 7
+          ${input.cursor.toString()}::bigint, 9
         ) as begun
       `, signal);
       return rows[0]?.begun === true;
     },
     async project(claim, projection, signal) {
       const rows = await abortable(sql<Array<{ projected: string | null }>>`
-        select public.companion_v3_runtime_project_background_page_v8(
+        select public.companion_v3_runtime_project_background_page_v9(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.turn.id}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint,
@@ -926,7 +957,7 @@ export function createRuntimeV3PostgresBackgroundTurnPersistence(
           })))}::jsonb,
           ${projection.needsInput}, ${projection.activity},
           ${projection.processExited ? "process_exit" : projection.settled ? "settled" : null},
-          8
+          9
         ) as projected
       `, signal);
       const projected = rows[0]?.projected;

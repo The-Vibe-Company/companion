@@ -5,7 +5,7 @@ import { COMPANION_SKILL_KEY, companionSkillDir } from "@companion/companion-ski
 import { getCompanionSkillPackage } from "@companion/companion-skill/package";
 import {
   BoxRuntimeProviderError,
-  type CompanionBoxRuntimeV2,
+  type CompanionBoxRuntime,
   type CompanionRuntimeSkill,
 } from "@companion/box-runtime";
 import {
@@ -71,9 +71,9 @@ export function createRuntimeMaterialPipeline(input: {
   masterKey: Buffer;
   apiUrl: string;
   bundledSkill: CompanionRuntimeSkill;
-  runtime(): CompanionBoxRuntimeV2;
+  runtime(): CompanionBoxRuntime;
   /** Direct hosted-agent data path for chat files/outbox; lifecycle and staging stay on runtime(). */
-  fileRuntime?: () => Pick<CompanionBoxRuntimeV2,
+  fileRuntime?: () => Pick<CompanionBoxRuntime,
     "stageAttachments" | "clearOutbox" | "listOutbox" | "readOutboxFile">;
   loadSkillArchive(storagePath: string, signal: AbortSignal): Promise<Buffer>;
   /** Object-storage read for one chat attachment. Same bucket, deliberately a separate seam. */

@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const coreMocks = vi.hoisted(() => ({
-  bumpCompanionSkillAvailableRevisionV2: vi.fn(async () => 2),
+  bumpCompanionSkillAvailableRevision: vi.fn(async () => 2),
 }));
 
 const database = { tenant: true };
@@ -43,7 +43,7 @@ describe("syncPublishedSkillToOnlineCompanions", () => {
       { orgId, userId: actor.id },
       expect.any(Function),
     );
-    expect(coreMocks.bumpCompanionSkillAvailableRevisionV2).toHaveBeenCalledWith({
+    expect(coreMocks.bumpCompanionSkillAvailableRevision).toHaveBeenCalledWith({
       orgId,
       skillId,
       database,
@@ -59,7 +59,7 @@ describe("syncPublishedSkillToOnlineCompanions", () => {
     });
 
     expect(dbMocks.withTenantContext).toHaveBeenCalledOnce();
-    expect(coreMocks.bumpCompanionSkillAvailableRevisionV2).toHaveBeenCalledWith({
+    expect(coreMocks.bumpCompanionSkillAvailableRevision).toHaveBeenCalledWith({
       orgId,
       skillId,
       database,
@@ -78,6 +78,6 @@ describe("syncPublishedSkillToOnlineCompanions", () => {
       },
     })).resolves.toBeUndefined();
 
-    expect(coreMocks.bumpCompanionSkillAvailableRevisionV2).toHaveBeenCalledOnce();
+    expect(coreMocks.bumpCompanionSkillAvailableRevision).toHaveBeenCalledOnce();
   });
 });

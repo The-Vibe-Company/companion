@@ -4,7 +4,7 @@ import {
   CompanionPluginOAuthRevokedError,
   CompanionNotFoundError,
   CompanionPluginConflictError,
-  createCompanionV2,
+  createCompanionWithRuntime,
   deleteCompanionPlugin,
   issueCompanionMcpAccessToken,
   listCompanionPlugins,
@@ -166,7 +166,7 @@ describe("member-private Companion MCP connections", () => {
     const companion = await withTenantContext({
       orgId: fixture.orgA,
       userId: fixture.owner.id,
-    }, async (database) => await createCompanionV2({
+    }, async (database) => await createCompanionWithRuntime({
       actor: fixture.owner,
       orgId: fixture.orgA,
       name: "Revocation verifier",

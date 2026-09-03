@@ -19,6 +19,12 @@ const identifiers = {
   orgId: "22222222-2222-4222-8222-222222222222",
 };
 
+interface CapturedRequest {
+  url: string | null;
+  init: RequestInit | null;
+  rawBody: Buffer | null;
+}
+
 function environment(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return {
     COMPANION_RUNTIME_PRIVATE_URL: "http://runtime.internal:4100",
@@ -29,10 +35,11 @@ function environment(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
 
 describe("Runtime desktop private client", () => {
   it("signs the exact serialized body and fixed private path", async () => {
-    const captured: { url?: string; init?: RequestInit; rawBody?: Buffer } = {};
+    const captured: CapturedRequest = { url: null, init: null, rawBody: null };
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       captured.url = input.toString();
-      captured.init = init;
+      captured.init = init ?? null;
+      // SAFETY: mintCompanionDesktop always sends its serialized JSON request as body bytes.
       captured.rawBody = Buffer.from(init?.body as Uint8Array);
       return Response.json({
         desktop_url: "https://desktop.example.test/short-lived?token=secret",
@@ -45,6 +52,7 @@ describe("Runtime desktop private client", () => {
     const desktop = await mintCompanionDesktop({
       env: environment(),
       ...identifiers,
+      // SAFETY: this fixture implements the fetch call shape exercised by the desktop client.
       fetch: fetchMock as typeof fetch,
       now: () => NOW_MS,
     });
@@ -111,8 +119,9 @@ describe("Runtime desktop private client", () => {
         COMPANION_RUNTIME_PRIVATE_URL: "https://runtime-secret.internal/private?not-used=1",
       }),
       ...identifiers,
+      // SAFETY: this fixture implements the fetch call shape exercised by the desktop client.
       fetch: fetchMock as typeof fetch,
-    }).catch((caught: unknown) => caught);
+    }).catch((caught: RuntimeDesktopClientError) => caught);
 
     // Invalid private configuration is rejected before fetch and exposes neither value.
     expect(error).toBeInstanceOf(RuntimeDesktopClientError);
@@ -134,8 +143,9 @@ describe("Runtime desktop private client", () => {
     const error = await mintCompanionDesktop({
       env: environment(),
       ...identifiers,
+      // SAFETY: this fixture implements the fetch call shape exercised by the desktop client.
       fetch: vi.fn(async () => new Response(sensitivePayload, { status })) as typeof fetch,
-    }).catch((caught: unknown) => caught);
+    }).catch((caught: RuntimeDesktopClientError) => caught);
 
     expect(error).toBeInstanceOf(RuntimeDesktopClientError);
     expect(error).toMatchObject({ code, message: "Companion desktop is unavailable." });
@@ -156,6 +166,7 @@ describe("Runtime desktop private client", () => {
         COMPANION_RUNTIME_DESKTOP_HMAC_SECRET: SECRET_BASE64.replace(/=+$/, ""),
       }),
       ...identifiers,
+      // SAFETY: this fixture implements the fetch call shape exercised by the desktop client.
       fetch: fetchMock as typeof fetch,
       now: () => NOW_MS,
     })).resolves.toMatchObject({ provisioning: false });
@@ -166,10 +177,11 @@ describe("Runtime desktop private client", () => {
     const thrown = await mintCompanionDesktop({
       env: environment(),
       ...identifiers,
+      // SAFETY: this fixture implements the fetch call shape exercised by the desktop client.
       fetch: vi.fn(async () => {
         throw new Error("runtime.internal token=transport-secret");
       }) as typeof fetch,
-    }).catch((caught: unknown) => caught);
+    }).catch((caught: RuntimeDesktopClientError) => caught);
     expect(thrown).toMatchObject({
       code: "unavailable",
       message: "Companion desktop is unavailable.",
@@ -179,13 +191,14 @@ describe("Runtime desktop private client", () => {
     const invalid = await mintCompanionDesktop({
       env: environment(),
       ...identifiers,
+      // SAFETY: this fixture implements the fetch call shape exercised by the desktop client.
       fetch: vi.fn(async () => Response.json({
         desktop_url: "https://box.invalid/?token=response-secret",
         provisioning: false,
         automation: "unexpected",
         transport: "vnc",
       })) as typeof fetch,
-    }).catch((caught: unknown) => caught);
+    }).catch((caught: RuntimeDesktopClientError) => caught);
     expect(invalid).toMatchObject({
       code: "unavailable",
       message: "Companion desktop is unavailable.",

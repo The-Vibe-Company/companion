@@ -283,14 +283,6 @@ function directTransportEnv(raw: string | undefined): "off" | "shadow" | "on" {
   throw new RuntimeServiceConfigError("COMPANION_DIRECT_TRANSPORT must be off, shadow, or on");
 }
 
-function booleanEnv(raw: string | undefined, name: string): boolean {
-  if (raw === undefined || raw.trim() === "") return false;
-  const normalized = raw.trim().toLowerCase();
-  if (normalized === "true" || normalized === "1") return true;
-  if (normalized === "false" || normalized === "0") return false;
-  throw new RuntimeServiceConfigError(`${name} must be true or false`);
-}
-
 function privateListenHost(host: string): string {
   const normalized = host.toLowerCase();
   // Wildcards are required when API and runtime are separate private-network containers. They are

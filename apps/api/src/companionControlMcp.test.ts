@@ -13,7 +13,7 @@ const dependencies: CompanionControlMcpDependencies = {
   finishCompanionControlInvocation: vi.fn(),
   getCompanionDelegation: vi.fn(),
   registerCompanionControlInvocation: vi.fn(),
-  updateCompanionV2: vi.fn(),
+  updateCompanionWithRuntime: vi.fn(),
 };
 
 const authorization: CompanionControlAuthorization = {
@@ -79,7 +79,7 @@ describe("executeCompanionControlMcp idempotence", () => {
     vi.clearAllMocks();
     vi.mocked(dependencies.companionControlActor)
       .mockResolvedValue({ id: "actor-1", email: "owner@example.com", name: "Owner" });
-    vi.mocked(dependencies.updateCompanionV2).mockResolvedValue(companion);
+    vi.mocked(dependencies.updateCompanionWithRuntime).mockResolvedValue(companion);
     vi.mocked(dependencies.finishCompanionControlInvocation).mockImplementation(async ({ result }) => result);
   });
 
@@ -101,7 +101,7 @@ describe("executeCompanionControlMcp idempotence", () => {
     });
 
     expect(replay).toEqual(first);
-    expect(dependencies.updateCompanionV2).toHaveBeenCalledTimes(1);
+    expect(dependencies.updateCompanionWithRuntime).toHaveBeenCalledTimes(1);
     expect(dependencies.finishCompanionControlInvocation).toHaveBeenCalledTimes(1);
   });
 
@@ -119,7 +119,7 @@ describe("executeCompanionControlMcp idempotence", () => {
       result: { isError: true },
     });
     expect(dependencies.companionControlActor).not.toHaveBeenCalled();
-    expect(dependencies.updateCompanionV2).not.toHaveBeenCalled();
+    expect(dependencies.updateCompanionWithRuntime).not.toHaveBeenCalled();
     expect(dependencies.finishCompanionControlInvocation).not.toHaveBeenCalled();
   });
 

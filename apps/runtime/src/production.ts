@@ -5,7 +5,7 @@ import {
   type AsciiBoxMaintenanceClientOptions,
   type BoxProviderCallTiming,
   type BoxRuntimeLifecycleClient,
-  type CompanionBoxRuntimeV2,
+  type CompanionBoxRuntime,
   type CompanionRuntimeSkill,
 } from "@companion/box-runtime";
 import {
@@ -96,7 +96,7 @@ export interface RuntimeProductionFactories {
       /** Mints a fresh presigned Pi-bundle download URL per layout script generation. */
       bundleUrlProvider?: () => Promise<string>;
     },
-  ): CompanionBoxRuntimeV2;
+  ): CompanionBoxRuntime;
   createArchiveStorage(): RuntimeArchiveStorage;
   loadBundledSkill(): Promise<CompanionRuntimeSkill>;
   createScheduler(input: RuntimeV3SchedulerOptions): RuntimeApplicationScheduler;
@@ -241,7 +241,7 @@ export async function buildProductionRuntimeService(
       // both the Box credential and the S3 credential, so presigning happens here and nowhere else.
       ...(bundleUrlProvider ? { bundleUrlProvider } : {}),
     };
-    const freshRuntime = (): CompanionBoxRuntimeV2 => factories.createBoxRuntime(
+    const freshRuntime = (): CompanionBoxRuntime => factories.createBoxRuntime(
       boxEnv,
       runtimeTiming,
     );
@@ -365,6 +365,23 @@ export async function buildProductionRuntimeService(
           database.sql, externalIncidentOptions,
         ),
         pi: createRuntimeV3WarmPi(pi),
+        outbox: {
+          harvest: async (input) => await material.outboxHarvester.harvestOutbox({
+            orgId: input.orgId,
+            companionId: input.companionId,
+            boxId: input.boxId,
+            // The broker/material seam retains `attemptId`; Runtime v3 supplies its Turn id.
+            attemptId: input.turnId,
+            deadlineAt: input.deadlineAt,
+            signal: input.signal,
+          }),
+          clear: async (input) => await material.outboxHarvester.clearOutbox(input),
+        },
+        onOutboxDegraded: () => log.warn({
+          ts: new Date().toISOString(),
+          event: "runtime.v3.outbox_harvest_degraded",
+          error: "One or more Pi output images could not be persisted.",
+        }),
       }),
     });
     const runtimeV3Background = createRuntimeV3Convergence({

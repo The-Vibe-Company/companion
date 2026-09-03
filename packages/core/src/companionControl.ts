@@ -22,7 +22,7 @@ import {
   resolveCompanionSelectedMcpAccountIds,
   resolveCompanionSelectedSkillIds,
 } from "./companions";
-import { getCompanionV2, updateCompanionV2 } from "./companionRuntimeApi";
+import { getCompanionRuntimeView, updateCompanionWithRuntime } from "./companionRuntimeApi";
 import { resolvePreTenantCompanionControlToken } from "./preTenant";
 
 const CONTROL_TOKEN = /^cmp_ctl_[0-9a-f]{48}$/;
@@ -309,7 +309,7 @@ export async function listCompanionControlSkills(input: {
   database: Db;
 }) {
   const [companion, skills] = await Promise.all([
-    getCompanionV2(input),
+    getCompanionRuntimeView(input),
     listSkills({ actor: input.actor, orgId: input.orgId, library: "accessible", database: input.database }),
   ]);
   const selected = new Set(companion.selected_skill_ids);
@@ -332,7 +332,7 @@ export async function updateCompanionControlSkills(input: {
   remove: string[];
   database: Db;
 }) {
-  const current = await getCompanionV2(input);
+  const current = await getCompanionRuntimeView(input);
   const desired = [...new Set([
     ...current.selected_skill_ids.filter((id) => !input.remove.includes(id)),
     ...input.add,
@@ -344,7 +344,7 @@ export async function updateCompanionControlSkills(input: {
     previouslySelectedSkillIds: current.selected_skill_ids,
     database: input.database,
   });
-  return await updateCompanionV2({ ...input, patch: { selected_skill_ids: selected } });
+  return await updateCompanionWithRuntime({ ...input, patch: { selected_skill_ids: selected } });
 }
 
 export async function listCompanionControlPlugins(input: {
@@ -354,7 +354,7 @@ export async function listCompanionControlPlugins(input: {
   database: Db;
 }) {
   const [companion, accounts] = await Promise.all([
-    getCompanionV2(input),
+    getCompanionRuntimeView(input),
     listCompanionPlugins(input),
   ]);
   const selected = new Set(companion.selected_mcp_account_ids);
@@ -369,7 +369,7 @@ export async function updateCompanionControlPlugin(input: {
   selected: boolean;
   database: Db;
 }) {
-  const current = await getCompanionV2(input);
+  const current = await getCompanionRuntimeView(input);
   const ids = input.selected
     ? [...new Set([...current.selected_mcp_account_ids, input.accountId])]
     : current.selected_mcp_account_ids.filter((id) => id !== input.accountId);
@@ -380,7 +380,7 @@ export async function updateCompanionControlPlugin(input: {
     previouslySelectedMcpAccountIds: current.selected_mcp_account_ids,
     database: input.database,
   });
-  return await updateCompanionV2({ ...input, patch: { selected_mcp_account_ids: selected } });
+  return await updateCompanionWithRuntime({ ...input, patch: { selected_mcp_account_ids: selected } });
 }
 
 export interface CompanionControlPeer {

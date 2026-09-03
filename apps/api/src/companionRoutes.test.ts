@@ -20,7 +20,6 @@ const COMPANION_ID = "11111111-1111-4111-8111-111111111111";
 const TURN_ID = "22222222-2222-4222-8222-222222222222";
 const MESSAGE_ID = "33333333-3333-4333-8333-333333333333";
 const RETRY_ID = "44444444-4444-4444-8444-444444444444";
-const OPERATION_ID = "55555555-5555-4555-8555-555555555555";
 const ORG_ID = "66666666-6666-4666-8666-666666666666";
 const INSTALLATION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const TRIGGER_ID = "99999999-9999-4999-8999-999999999999";
@@ -40,51 +39,51 @@ const contextMocks = {
 };
 
 const coreMocks = {
-  answerCompanionConfigDecisionV2: vi.fn<typeof coreModule.answerCompanionConfigDecisionV2>(),
-  answerCompanionDecisionV2: vi.fn<typeof coreModule.answerCompanionDecisionV2>(),
-  readCompanionAttachmentV2: vi.fn<typeof coreModule.readCompanionAttachmentV2>(),
-  cancelCompanionTurnV2: vi.fn<typeof coreModule.cancelCompanionTurnV2>(),
-  createCompanionV2: vi.fn<typeof coreModule.createCompanionV2>(),
-  duplicateCompanionV2: vi.fn<typeof coreModule.duplicateCompanionV2>(),
+  answerCompanionConfigDecision: vi.fn<typeof coreModule.answerCompanionConfigDecision>(),
+  answerCompanionDecision: vi.fn<typeof coreModule.answerCompanionDecision>(),
+  readCompanionAttachment: vi.fn<typeof coreModule.readCompanionAttachment>(),
+  cancelCompanionTurn: vi.fn<typeof coreModule.cancelCompanionTurn>(),
+  createCompanionWithRuntime: vi.fn<typeof coreModule.createCompanionWithRuntime>(),
+  duplicateCompanionWithRuntime: vi.fn<typeof coreModule.duplicateCompanionWithRuntime>(),
   desireCompanionLifecycleV3: vi.fn<typeof coreModule.desireCompanionLifecycleV3>(),
   enqueueCompanionTurn: vi.fn<typeof coreModule.enqueueCompanionTurn>(),
-  getCompanionDecisionV2: vi.fn<typeof coreModule.getCompanionDecisionV2>(),
-  getCompanionRoutineRunV2: vi.fn<typeof coreModule.getCompanionRoutineRunV2>(),
-  getCompanionV2: vi.fn<typeof coreModule.getCompanionV2>(),
-  listCompanionsV2: vi.fn<typeof coreModule.listCompanionsV2>(),
-  listCompanionRoutinesV2: vi.fn<typeof coreModule.listCompanionRoutinesV2>(),
-  listCompanionRoutineRunsV2: vi.fn<typeof coreModule.listCompanionRoutineRunsV2>(),
-  createCompanionRoutineV2: vi.fn<typeof coreModule.createCompanionRoutineV2>(),
-  updateCompanionRoutineV2: vi.fn<typeof coreModule.updateCompanionRoutineV2>(),
-  deleteCompanionRoutineV2: vi.fn<typeof coreModule.deleteCompanionRoutineV2>(),
-  answerCompanionRoutineDecisionV2: vi.fn<typeof coreModule.answerCompanionRoutineDecisionV2>(),
-  listCompanionTriggersV2: vi.fn<typeof coreModule.listCompanionTriggersV2>(),
+  getCompanionDecision: vi.fn<typeof coreModule.getCompanionDecision>(),
+  getCompanionRoutineRun: vi.fn<typeof coreModule.getCompanionRoutineRun>(),
+  getCompanionRuntimeView: vi.fn<typeof coreModule.getCompanionRuntimeView>(),
+  listCompanionRuntimeViews: vi.fn<typeof coreModule.listCompanionRuntimeViews>(),
+  listCompanionRoutines: vi.fn<typeof coreModule.listCompanionRoutines>(),
+  listCompanionRoutineRuns: vi.fn<typeof coreModule.listCompanionRoutineRuns>(),
+  createCompanionRoutine: vi.fn<typeof coreModule.createCompanionRoutine>(),
+  updateCompanionRoutine: vi.fn<typeof coreModule.updateCompanionRoutine>(),
+  deleteCompanionRoutine: vi.fn<typeof coreModule.deleteCompanionRoutine>(),
+  answerCompanionRoutineDecision: vi.fn<typeof coreModule.answerCompanionRoutineDecision>(),
+  listCompanionTriggers: vi.fn<typeof coreModule.listCompanionTriggers>(),
   listCompanionTriggerProviderAccounts: vi.fn<typeof coreModule.listCompanionTriggerProviderAccounts>(),
   saveCompanionTriggerProviderAccount: vi.fn<typeof coreModule.saveCompanionTriggerProviderAccount>(),
   disconnectCompanionTriggerProviderAccount: vi.fn<typeof coreModule.disconnectCompanionTriggerProviderAccount>(),
   ensureOAuthCompanionTriggerProviderAccount: vi.fn<typeof coreModule.ensureOAuthCompanionTriggerProviderAccount>(),
-  listCompanionTriggerRunsV2: vi.fn<typeof coreModule.listCompanionTriggerRunsV2>(),
-  getCompanionTriggerRunV2: vi.fn<typeof coreModule.getCompanionTriggerRunV2>(),
-  createCompanionTriggerV2: vi.fn<typeof coreModule.createCompanionTriggerV2>(),
-  updateCompanionTriggerV2: vi.fn<typeof coreModule.updateCompanionTriggerV2>(),
-  deleteCompanionTriggerV2: vi.fn<typeof coreModule.deleteCompanionTriggerV2>(),
-  rotateCompanionTriggerSecretV2: vi.fn<typeof coreModule.rotateCompanionTriggerSecretV2>(),
-  answerCompanionTriggerDecisionV2: vi.fn<typeof coreModule.answerCompanionTriggerDecisionV2>(),
-  registerCompanionTriggerWebhookV2: vi.fn<typeof coreModule.registerCompanionTriggerWebhookV2>(),
-  unregisterCompanionTriggerWebhookV2: vi.fn<typeof coreModule.unregisterCompanionTriggerWebhookV2>(),
+  listCompanionTriggerRuns: vi.fn<typeof coreModule.listCompanionTriggerRuns>(),
+  getCompanionTriggerRun: vi.fn<typeof coreModule.getCompanionTriggerRun>(),
+  createCompanionTrigger: vi.fn<typeof coreModule.createCompanionTrigger>(),
+  updateCompanionTrigger: vi.fn<typeof coreModule.updateCompanionTrigger>(),
+  deleteCompanionTrigger: vi.fn<typeof coreModule.deleteCompanionTrigger>(),
+  rotateCompanionTriggerSecret: vi.fn<typeof coreModule.rotateCompanionTriggerSecret>(),
+  answerCompanionTriggerDecision: vi.fn<typeof coreModule.answerCompanionTriggerDecision>(),
+  registerCompanionTriggerWebhook: vi.fn<typeof coreModule.registerCompanionTriggerWebhook>(),
+  unregisterCompanionTriggerWebhook: vi.fn<typeof coreModule.unregisterCompanionTriggerWebhook>(),
   getCompanionTriggerForWebhook: vi.fn<typeof coreModule.getCompanionTriggerForWebhook>(),
   fireCompanionTrigger: vi.fn<typeof coreModule.fireCompanionTrigger>(),
   failCompanionTriggerFire: vi.fn<typeof coreModule.failCompanionTriggerFire>(),
-  readCompanionThreadChangesV2: vi.fn<typeof coreModule.readCompanionThreadChangesV2>(),
-  readCompanionThreadProjectionSequenceV2:
-    vi.fn<typeof coreModule.readCompanionThreadProjectionSequenceV2>(),
-  readCompanionThreadWindowV2: vi.fn<typeof coreModule.readCompanionThreadWindowV2>(),
-  readCompanionThreadV2: vi.fn<typeof coreModule.readCompanionThreadV2>(),
-  syncCompanionThreadV2: vi.fn<typeof coreModule.syncCompanionThreadV2>(),
-  setCompanionProviderV2: vi.fn<typeof coreModule.setCompanionProviderV2>(),
-  setCompanionWorkspaceShareV2: vi.fn<typeof coreModule.setCompanionWorkspaceShareV2>(),
-  updateCompanionMemberStateV2: vi.fn<typeof coreModule.updateCompanionMemberStateV2>(),
-  updateCompanionV2: vi.fn<typeof coreModule.updateCompanionV2>(),
+  readCompanionThreadChanges: vi.fn<typeof coreModule.readCompanionThreadChanges>(),
+  readCompanionThreadProjectionSequence:
+    vi.fn<typeof coreModule.readCompanionThreadProjectionSequence>(),
+  readCompanionThreadWindow: vi.fn<typeof coreModule.readCompanionThreadWindow>(),
+  readCompanionThread: vi.fn<typeof coreModule.readCompanionThread>(),
+  syncCompanionThread: vi.fn<typeof coreModule.syncCompanionThread>(),
+  setCompanionProvider: vi.fn<typeof coreModule.setCompanionProvider>(),
+  setCompanionWorkspaceShare: vi.fn<typeof coreModule.setCompanionWorkspaceShare>(),
+  updateCompanionMemberState: vi.fn<typeof coreModule.updateCompanionMemberState>(),
+  updateCompanionWithRuntime: vi.fn<typeof coreModule.updateCompanionWithRuntime>(),
   resolveCompanionMcpBrokerAuthorization: vi.fn<typeof coreModule.resolveCompanionMcpBrokerAuthorization>(),
   resolveCompanionControlAuthorization: vi.fn<typeof coreModule.resolveCompanionControlAuthorization>(),
   getCompanionControlRequest: vi.fn<typeof coreModule.getCompanionControlRequest>(),
@@ -240,23 +239,6 @@ const cancelledTurn = {
   settled_at: NOW,
 };
 
-const operation = {
-  id: OPERATION_ID,
-  companion_id: COMPANION_ID,
-  request_id: RETRY_ID,
-  source_turn_id: null,
-  kind: "start" as const,
-  trigger: "user" as const,
-  status: "pending" as const,
-  queue_sequence: 1,
-  checkpoint: "queued",
-  attempt_count: 0,
-  error: null,
-  created_at: NOW,
-  started_at: null,
-  settled_at: null,
-};
-
 const thread = {
   companion_id: COMPANION_ID,
   viewer_id: owner.id,
@@ -395,18 +377,18 @@ describe("Companions Runtime v2 API", () => {
       const message = error instanceof Error ? error.message : String(error);
       return Response.json({ ok: false, error: message }, { status });
     });
-    coreMocks.listCompanionsV2.mockResolvedValue([companion]);
+    coreMocks.listCompanionRuntimeViews.mockResolvedValue([companion]);
     coreMocks.listCompanionSections.mockResolvedValue([section]);
     coreMocks.createCompanionSection.mockResolvedValue(section);
     coreMocks.updateCompanionSection.mockResolvedValue(section);
     coreMocks.deleteCompanionSection.mockResolvedValue(2);
     coreMocks.reorderCompanionSections.mockResolvedValue([section]);
     coreMocks.assignCompanionSection.mockResolvedValue({ ...companion, section_id: SECTION_ID });
-    coreMocks.getCompanionV2.mockResolvedValue(companion);
-    coreMocks.readCompanionThreadV2.mockResolvedValue(thread);
-    coreMocks.syncCompanionThreadV2.mockResolvedValue(thread);
-    coreMocks.readCompanionThreadProjectionSequenceV2.mockResolvedValue(0n);
-    coreMocks.readCompanionThreadWindowV2.mockResolvedValue({
+    coreMocks.getCompanionRuntimeView.mockResolvedValue(companion);
+    coreMocks.readCompanionThread.mockResolvedValue(thread);
+    coreMocks.syncCompanionThread.mockResolvedValue(thread);
+    coreMocks.readCompanionThreadProjectionSequence.mockResolvedValue(0n);
+    coreMocks.readCompanionThreadWindow.mockResolvedValue({
       thread: threadMetadata,
       entries: [],
       older_cursor: null,
@@ -418,7 +400,7 @@ describe("Companions Runtime v2 API", () => {
       }),
       notify_returns: [],
     });
-    coreMocks.readCompanionThreadChangesV2.mockResolvedValue({
+    coreMocks.readCompanionThreadChanges.mockResolvedValue({
       cursor: coreModule.buildCompanionThreadSequenceCursor({
         orgId: ORG_ID,
         actorId: owner.id,
@@ -432,27 +414,26 @@ describe("Companions Runtime v2 API", () => {
       has_more: false,
       notify_returns: [],
     });
-    coreMocks.createCompanionV2.mockResolvedValue(companion);
-    coreMocks.duplicateCompanionV2.mockResolvedValue(companion);
-    coreMocks.updateCompanionV2.mockResolvedValue(companion);
-    coreMocks.updateCompanionMemberStateV2.mockResolvedValue(companion);
-    coreMocks.setCompanionProviderV2.mockResolvedValue(companion);
-    coreMocks.setCompanionWorkspaceShareV2.mockResolvedValue({
+    coreMocks.createCompanionWithRuntime.mockResolvedValue(companion);
+    coreMocks.duplicateCompanionWithRuntime.mockResolvedValue(companion);
+    coreMocks.updateCompanionWithRuntime.mockResolvedValue(companion);
+    coreMocks.updateCompanionMemberState.mockResolvedValue(companion);
+    coreMocks.setCompanionProvider.mockResolvedValue(companion);
+    coreMocks.setCompanionWorkspaceShare.mockResolvedValue({
       companion_id: COMPANION_ID,
       workspace_role: null,
     });
     coreMocks.enqueueCompanionTurn.mockResolvedValue({
       turn,
-      operation,
       replayed: false,
     });
     coreMocks.desireCompanionLifecycleV3.mockResolvedValue({
       intent: "delete",
       revision: "1",
     });
-    coreMocks.cancelCompanionTurnV2.mockResolvedValue(cancelledTurn);
-    coreMocks.answerCompanionDecisionV2.mockResolvedValue(undefined);
-    coreMocks.readCompanionAttachmentV2.mockResolvedValue({
+    coreMocks.cancelCompanionTurn.mockResolvedValue(cancelledTurn);
+    coreMocks.answerCompanionDecision.mockResolvedValue(undefined);
+    coreMocks.readCompanionAttachment.mockResolvedValue({
       storageKey: `companion-attachments/${ORG_ID}/${COMPANION_ID}/${MESSAGE_ID}/0-${"a".repeat(64)}`,
       contentType: "image/png",
       byteSize: 4,
@@ -464,12 +445,12 @@ describe("Companions Runtime v2 API", () => {
     storageMocks.putSkillArchive.mockResolvedValue(null);
     storageMocks.deleteStorageObject.mockResolvedValue(undefined);
     storageMocks.getSkillArchive.mockResolvedValue(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-    coreMocks.answerCompanionConfigDecisionV2.mockResolvedValue(undefined);
-    coreMocks.answerCompanionRoutineDecisionV2.mockResolvedValue(null);
-    coreMocks.listCompanionRoutinesV2.mockResolvedValue([]);
-    coreMocks.listCompanionRoutineRunsV2.mockResolvedValue({ runs: [], next_cursor: null });
-    coreMocks.answerCompanionTriggerDecisionV2.mockResolvedValue(undefined);
-    coreMocks.listCompanionTriggersV2.mockResolvedValue([]);
+    coreMocks.answerCompanionConfigDecision.mockResolvedValue(undefined);
+    coreMocks.answerCompanionRoutineDecision.mockResolvedValue(null);
+    coreMocks.listCompanionRoutines.mockResolvedValue([]);
+    coreMocks.listCompanionRoutineRuns.mockResolvedValue({ runs: [], next_cursor: null });
+    coreMocks.answerCompanionTriggerDecision.mockResolvedValue(undefined);
+    coreMocks.listCompanionTriggers.mockResolvedValue([]);
     coreMocks.listCompanionTriggerProviderAccounts.mockResolvedValue([triggerProviderAccount]);
     coreMocks.saveCompanionTriggerProviderAccount.mockResolvedValue(triggerProviderAccount);
     coreMocks.disconnectCompanionTriggerProviderAccount.mockResolvedValue({
@@ -477,7 +458,7 @@ describe("Companions Runtime v2 API", () => {
       status: "disconnected",
       mcp_account_id: null,
     });
-    coreMocks.getCompanionDecisionV2.mockResolvedValue({
+    coreMocks.getCompanionDecision.mockResolvedValue({
       requestKey: "question-1",
       requestKind: "question",
       decisionStatus: "pending",
@@ -780,7 +761,7 @@ describe("Companions Runtime v2 API", () => {
     const response = await appWithRoutes().request("/v1/companions");
     expect(response.status).toBe(403);
     expect(contextMocks.orgIdFromContext).not.toHaveBeenCalled();
-    expect(coreMocks.listCompanionsV2).not.toHaveBeenCalled();
+    expect(coreMocks.listCompanionRuntimeViews).not.toHaveBeenCalled();
   });
 
   it("serves list, detail, thread, and runtime projections from PostgreSQL only", async () => {
@@ -798,11 +779,11 @@ describe("Companions Runtime v2 API", () => {
       thread: { ...thread, transcription_available: true },
     });
     expect(await responses[3]!.json()).toEqual({ companion });
-    expect(coreMocks.listCompanionsV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.listCompanionRuntimeViews).toHaveBeenCalledWith(expect.objectContaining({
       withLastMessage: true,
     }));
-    expect(coreMocks.getCompanionV2).toHaveBeenCalledTimes(2);
-    expect(coreMocks.readCompanionThreadV2).toHaveBeenCalledOnce();
+    expect(coreMocks.getCompanionRuntimeView).toHaveBeenCalledTimes(2);
+    expect(coreMocks.readCompanionThread).toHaveBeenCalledOnce();
     for (const response of responses) {
       expect(response.headers.get("cache-control")).toBe("private, no-store");
     }
@@ -851,7 +832,7 @@ describe("Companions Runtime v2 API", () => {
       name: "Research updated",
       updated_at: "2026-08-29T00:01:00.000Z",
     };
-    coreMocks.listCompanionsV2.mockResolvedValue([updatedCompanion]);
+    coreMocks.listCompanionRuntimeViews.mockResolvedValue([updatedCompanion]);
     coreMocks.listCompanionSections.mockResolvedValue([]);
 
     const response = await app.request(
@@ -872,14 +853,14 @@ describe("Companions Runtime v2 API", () => {
     const app = appWithRoutes();
     const malformed = await app.request("/v1/companions/sync?cursor=not-a-cursor");
     expect(malformed.status).toBe(400);
-    expect(coreMocks.listCompanionsV2).not.toHaveBeenCalled();
+    expect(coreMocks.listCompanionRuntimeViews).not.toHaveBeenCalled();
     expect(coreMocks.listCompanionSections).not.toHaveBeenCalled();
 
     const oversized = await app.request(
       `/v1/companions/sync?cursor=${"a".repeat(256 * 1024 + 1)}`,
     );
     expect(oversized.status).toBe(400);
-    expect(coreMocks.listCompanionsV2).not.toHaveBeenCalled();
+    expect(coreMocks.listCompanionRuntimeViews).not.toHaveBeenCalled();
   });
 
   it("serves the API-projected routine notify group without flattening hidden history", async () => {
@@ -948,7 +929,7 @@ describe("Companions Runtime v2 API", () => {
         },
       }],
     };
-    coreMocks.readCompanionThreadV2.mockResolvedValue(groupedThread);
+    coreMocks.readCompanionThread.mockResolvedValue(groupedThread);
 
     const response = await appWithRoutes().request(`/v1/companions/${COMPANION_ID}/thread`);
     // SAFETY: This test controls the route mock and asserts the exact Companion thread response.
@@ -994,7 +975,7 @@ describe("Companions Runtime v2 API", () => {
     });
     const { entries: omittedViewerEntries, ...viewerMetadata } = threadWithInterruptedTurn("viewer");
     void omittedViewerEntries;
-    coreMocks.readCompanionThreadWindowV2.mockResolvedValue({
+    coreMocks.readCompanionThreadWindow.mockResolvedValue({
       thread: viewerMetadata,
       entries: [threadEntry("event:recent", 1_999, "recent")],
       older_cursor: olderCursor,
@@ -1022,7 +1003,7 @@ describe("Companions Runtime v2 API", () => {
       message: "Companion runtime needs attention.",
       action: "none",
     });
-    expect(coreMocks.readCompanionThreadWindowV2).toHaveBeenLastCalledWith(
+    expect(coreMocks.readCompanionThreadWindow).toHaveBeenLastCalledWith(
       expect.objectContaining({ beforeOrdinal: null, limit: 50 }),
     );
 
@@ -1030,10 +1011,10 @@ describe("Companions Runtime v2 API", () => {
       `/v1/companions/${COMPANION_ID}/thread-window?before=${encodeURIComponent(olderCursor)}&limit=50`,
     );
     expect(historyResponse.status).toBe(200);
-    expect(coreMocks.readCompanionThreadWindowV2).toHaveBeenLastCalledWith(
+    expect(coreMocks.readCompanionThreadWindow).toHaveBeenLastCalledWith(
       expect.objectContaining({ beforeOrdinal: 1_950, limit: 50 }),
     );
-    expect(coreMocks.readCompanionThreadV2).not.toHaveBeenCalled();
+    expect(coreMocks.readCompanionThread).not.toHaveBeenCalled();
   });
 
   it("uses a v2 sequence cursor for one bounded change page without reading full history", async () => {
@@ -1049,7 +1030,7 @@ describe("Companions Runtime v2 API", () => {
       companionId: COMPANION_ID,
       sequence: 8n,
     });
-    coreMocks.readCompanionThreadChangesV2.mockResolvedValue({
+    coreMocks.readCompanionThreadChanges.mockResolvedValue({
       cursor: nextCursor,
       reset_entries: false,
       changed_entries: [threadEntry("event:changed", 8, "changed")],
@@ -1068,10 +1049,10 @@ describe("Companions Runtime v2 API", () => {
       has_more: true,
       changed_entries: [{ event_id: "event:changed" }],
     });
-    expect(coreMocks.readCompanionThreadChangesV2).toHaveBeenCalledWith(
+    expect(coreMocks.readCompanionThreadChanges).toHaveBeenCalledWith(
       expect.objectContaining({ afterSequence: 7n }),
     );
-    expect(coreMocks.syncCompanionThreadV2).not.toHaveBeenCalled();
+    expect(coreMocks.syncCompanionThread).not.toHaveBeenCalled();
   });
 
   it("serves thread deltas with current metadata and deterministic entry ordering", async () => {
@@ -1083,7 +1064,7 @@ describe("Companions Runtime v2 API", () => {
         threadEntry("event:two", 4, "two"),
       ],
     };
-    coreMocks.syncCompanionThreadV2.mockResolvedValue(firstThread);
+    coreMocks.syncCompanionThread.mockResolvedValue(firstThread);
     const initialResponse = await app.request(`/v1/companions/${COMPANION_ID}/thread-delta`);
     // SAFETY: This test controls the route fixture and reads its successful JSON response shape.
     const initial = await initialResponse.json() as {
@@ -1105,7 +1086,7 @@ describe("Companions Runtime v2 API", () => {
         threadEntry("event:three", 1, "three"),
       ],
     };
-    coreMocks.syncCompanionThreadV2.mockResolvedValue(nextThread);
+    coreMocks.syncCompanionThread.mockResolvedValue(nextThread);
     const nextResponse = await app.request(
       `/v1/companions/${COMPANION_ID}/thread-delta?cursor=${encodeURIComponent(initial.cursor)}`,
     );
@@ -1135,7 +1116,7 @@ describe("Companions Runtime v2 API", () => {
       ...thread,
       entries: [threadEntry("event:initial", 1, "initial")],
     };
-    coreMocks.syncCompanionThreadV2.mockResolvedValue(initialThread);
+    coreMocks.syncCompanionThread.mockResolvedValue(initialThread);
     const initialResponse = await app.request(`/v1/companions/${COMPANION_ID}/thread-delta`);
     // SAFETY: Every successful thread-delta response carries the opaque cursor asserted here.
     const initial = await initialResponse.json() as { cursor: string };
@@ -1150,7 +1131,7 @@ describe("Companions Runtime v2 API", () => {
         threadEntry("event:beta", 2, "beta"),
       ],
     };
-    coreMocks.syncCompanionThreadV2.mockResolvedValue(queuedThread);
+    coreMocks.syncCompanionThread.mockResolvedValue(queuedThread);
     const response = await app.request(
       `/v1/companions/${COMPANION_ID}/thread-delta?cursor=${encodeURIComponent(initial.cursor)}`,
     );
@@ -1189,12 +1170,12 @@ describe("Companions Runtime v2 API", () => {
 
   it("replaces Viewer turn and attempt diagnostics with one generic non-actionable error", async () => {
     const viewerThread = threadWithInterruptedTurn("viewer");
-    coreMocks.readCompanionThreadV2.mockResolvedValue(viewerThread);
+    coreMocks.readCompanionThread.mockResolvedValue(viewerThread);
 
     const response = await appWithRoutes().request(
       `/v1/companions/${COMPANION_ID}/thread`,
     );
-    // SAFETY: this route serializes the fixture returned by readCompanionThreadV2.
+    // SAFETY: this route serializes the fixture returned by readCompanionThread.
     const payload = await response.json() as { thread: typeof viewerThread };
 
     expect(response.status).toBe(200);
@@ -1219,12 +1200,12 @@ describe("Companions Runtime v2 API", () => {
     "preserves full actionable thread diagnostics for %s access",
     async (access) => {
       const operatorThread = threadWithInterruptedTurn(access);
-      coreMocks.readCompanionThreadV2.mockResolvedValue(operatorThread);
+      coreMocks.readCompanionThread.mockResolvedValue(operatorThread);
 
       const response = await appWithRoutes().request(
         `/v1/companions/${COMPANION_ID}/thread`,
       );
-      // SAFETY: this route serializes the fixture returned by readCompanionThreadV2.
+      // SAFETY: this route serializes the fixture returned by readCompanionThread.
       const payload = await response.json() as { thread: typeof operatorThread };
 
       expect(response.status).toBe(200);
@@ -1239,8 +1220,8 @@ describe("Companions Runtime v2 API", () => {
       { method: "POST" },
     );
     expect(response.status).toBe(404);
-    expect(coreMocks.readCompanionThreadV2).not.toHaveBeenCalled();
-    expect(coreMocks.syncCompanionThreadV2).not.toHaveBeenCalled();
+    expect(coreMocks.readCompanionThread).not.toHaveBeenCalled();
+    expect(coreMocks.syncCompanionThread).not.toHaveBeenCalled();
   });
 
   it("rejects a malformed thread delta cursor before contacting the thread projection", async () => {
@@ -1248,7 +1229,7 @@ describe("Companions Runtime v2 API", () => {
       `/v1/companions/${COMPANION_ID}/thread-delta?cursor=not-a-cursor`,
     );
     expect(response.status).toBe(400);
-    expect(coreMocks.syncCompanionThreadV2).not.toHaveBeenCalled();
+    expect(coreMocks.syncCompanionThread).not.toHaveBeenCalled();
   });
 
   it("persists a send through the v2 enqueue boundary and returns only a bounded 202 ACK", async () => {
@@ -1267,7 +1248,7 @@ describe("Companions Runtime v2 API", () => {
       content: "Summarize the incident",
       clientSurface: "mobile_web",
     }));
-    expect(coreMocks.readCompanionThreadV2).not.toHaveBeenCalled();
+    expect(coreMocks.readCompanionThread).not.toHaveBeenCalled();
   });
 
   it("stores a multipart send's files under their content address before the turn", async () => {
@@ -1343,7 +1324,7 @@ describe("Companions Runtime v2 API", () => {
 
   it("refuses a Viewer's multipart send before it reads or stores a single byte", async () => {
     const app = appWithRoutes();
-    coreMocks.getCompanionV2.mockResolvedValue({ ...companion, access: "viewer" });
+    coreMocks.getCompanionRuntimeView.mockResolvedValue({ ...companion, access: "viewer" });
     const form = new FormData();
     form.set("content", "Look at this");
     form.set("client_message_id", MESSAGE_ID);
@@ -1456,7 +1437,7 @@ describe("Companions Runtime v2 API", () => {
 
   it("decides Companion access before the body-reading limit middleware runs", async () => {
     const app = appWithRoutes();
-    coreMocks.getCompanionV2.mockResolvedValue({ ...companion, access: "viewer" });
+    coreMocks.getCompanionRuntimeView.mockResolvedValue({ ...companion, access: "viewer" });
     const form = new FormData();
     form.set("content", "Look at this");
     form.set("client_message_id", MESSAGE_ID);
@@ -1471,7 +1452,7 @@ describe("Companions Runtime v2 API", () => {
     // by buffering the whole 64 MB first. Refusing in the middleware ahead of it is what keeps an
     // unauthorized caller from costing this process that heap.
     expect(response.status).toBe(403);
-    expect(coreMocks.getCompanionV2).toHaveBeenCalled();
+    expect(coreMocks.getCompanionRuntimeView).toHaveBeenCalled();
     expect(storageMocks.putSkillArchive).not.toHaveBeenCalled();
     expect(coreMocks.enqueueCompanionTurn).not.toHaveBeenCalled();
   });
@@ -1519,7 +1500,7 @@ describe("Companions Runtime v2 API", () => {
 
   it("lets a Viewer read an attachment without contacting the Box", async () => {
     const app = appWithRoutes();
-    coreMocks.getCompanionV2.mockResolvedValue({ ...companion, access: "viewer" });
+    coreMocks.getCompanionRuntimeView.mockResolvedValue({ ...companion, access: "viewer" });
 
     const response = await app.request(
       `http://localhost/v1/companions/${COMPANION_ID}/attachments/88888888-8888-4888-8888-888888888888`,
@@ -1557,7 +1538,7 @@ describe("Companions Runtime v2 API", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-cache");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(response.headers.get("content-disposition")).toBe('inline; filename="chart.png"');
-    expect(coreMocks.readCompanionAttachmentV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.readCompanionAttachment).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       attachmentId,
     }));
@@ -1565,7 +1546,7 @@ describe("Companions Runtime v2 API", () => {
 
   it("offers a document as a download rather than rendering it in the thread", async () => {
     const app = appWithRoutes();
-    coreMocks.readCompanionAttachmentV2.mockResolvedValue({
+    coreMocks.readCompanionAttachment.mockResolvedValue({
       storageKey: "companion-attachments/org/companion/message/0-digest",
       contentType: "application/pdf",
       byteSize: 5,
@@ -1584,7 +1565,7 @@ describe("Companions Runtime v2 API", () => {
 
   it("returns explicit expiry without reading object storage", async () => {
     const app = appWithRoutes();
-    coreMocks.readCompanionAttachmentV2.mockResolvedValue({
+    coreMocks.readCompanionAttachment.mockResolvedValue({
       storageKey: null,
       contentType: "application/pdf",
       byteSize: 5,
@@ -1605,7 +1586,7 @@ describe("Companions Runtime v2 API", () => {
 
   it("makes an unreadable thread and an unknown attachment indistinguishable", async () => {
     const app = appWithRoutes();
-    coreMocks.readCompanionAttachmentV2.mockRejectedValue(
+    coreMocks.readCompanionAttachment.mockRejectedValue(
       Object.assign(new Error("Companion not found"), { code: "P0002" }),
     );
 
@@ -1625,8 +1606,8 @@ describe("Companions Runtime v2 API", () => {
       client_surface: "web",
     };
     coreMocks.enqueueCompanionTurn
-      .mockResolvedValueOnce({ turn, operation, replayed: false })
-      .mockResolvedValueOnce({ turn, operation: null, replayed: true });
+      .mockResolvedValueOnce({ turn, replayed: false })
+      .mockResolvedValueOnce({ turn, replayed: true });
 
     const first = await app.request(jsonPost(`/v1/companions/${COMPANION_ID}/messages`, body));
     const replay = await app.request(jsonPost(`/v1/companions/${COMPANION_ID}/messages`, body));
@@ -1691,16 +1672,16 @@ describe("Companions Runtime v2 API", () => {
     ]);
 
     expect(responses.map((response) => response.status)).toEqual([201, 200, 200, 200, 200]);
-    expect(coreMocks.createCompanionV2).toHaveBeenCalledOnce();
-    expect(coreMocks.updateCompanionV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.createCompanionWithRuntime).toHaveBeenCalledOnce();
+    expect(coreMocks.updateCompanionWithRuntime).toHaveBeenCalledWith(expect.objectContaining({
       patch: { persona: "Updated" },
     }));
-    expect(coreMocks.updateCompanionMemberStateV2).toHaveBeenCalledOnce();
-    expect(coreMocks.updateCompanionMemberStateV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.updateCompanionMemberState).toHaveBeenCalledOnce();
+    expect(coreMocks.updateCompanionMemberState).toHaveBeenCalledWith(expect.objectContaining({
       patch: { muted: true },
     }));
-    expect(coreMocks.setCompanionProviderV2).toHaveBeenCalledOnce();
-    expect(coreMocks.setCompanionWorkspaceShareV2).toHaveBeenCalledOnce();
+    expect(coreMocks.setCompanionProvider).toHaveBeenCalledOnce();
+    expect(coreMocks.setCompanionWorkspaceShare).toHaveBeenCalledOnce();
   });
 
   it("accepts a temporary Pi restart as a Runtime v3 lifecycle desire", async () => {
@@ -1778,20 +1759,20 @@ describe("Companions Runtime v2 API", () => {
       turn: cancelledTurn,
       thread: projectedThread,
     });
-    expect(coreMocks.cancelCompanionTurnV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.cancelCompanionTurn).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       turnId: TURN_ID,
     }));
   });
 
   it.each([
-    ["Retry", `/v1/companions/${COMPANION_ID}/turns/${TURN_ID}/retry`, "POST"],
-    ["Start", `/v1/companions/${COMPANION_ID}/runtime/start`, "POST"],
-    ["Stop", `/v1/companions/${COMPANION_ID}/runtime/stop`, "POST"],
-  ])("does not register the removed %s compatibility endpoint", async (_label, path, method) => {
+    ["Retry", `/v1/companions/${COMPANION_ID}/turns/${TURN_ID}/retry`],
+    ["Start", `/v1/companions/${COMPANION_ID}/runtime/start`],
+    ["Stop", `/v1/companions/${COMPANION_ID}/runtime/stop`],
+  ])("does not register the removed %s compatibility endpoint", async (_label, path) => {
     const response = await appWithRoutes().request(
       new Request(`http://localhost${path}`, {
-        method,
+        method: "POST",
         headers: { "content-type": "application/json", "Idempotency-Key": RETRY_ID },
         body: JSON.stringify({ retry_id: RETRY_ID }),
       }),
@@ -1810,18 +1791,18 @@ describe("Companions Runtime v2 API", () => {
     );
     expect(response.status).toBe(202);
     await expect(response.json()).resolves.toEqual({ thread: projectedThread });
-    expect(coreMocks.answerCompanionDecisionV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.answerCompanionDecision).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       requestId: "question-1",
       decision: "answer",
       text: "Use the conservative option",
     }));
-    expect(coreMocks.answerCompanionConfigDecisionV2).not.toHaveBeenCalled();
-    expect(coreMocks.answerCompanionRoutineDecisionV2).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionConfigDecision).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionRoutineDecision).not.toHaveBeenCalled();
   });
 
   it("applies config proposals through the dedicated answer path", async () => {
-    coreMocks.getCompanionDecisionV2.mockResolvedValue({
+    coreMocks.getCompanionDecision.mockResolvedValue({
       requestKey: "config-1",
       requestKind: "config_proposal",
       decisionStatus: "pending",
@@ -1838,17 +1819,17 @@ describe("Companions Runtime v2 API", () => {
     );
     expect(response.status).toBe(202);
     await expect(response.json()).resolves.toEqual({ thread: projectedThread });
-    expect(coreMocks.answerCompanionConfigDecisionV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.answerCompanionConfigDecision).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       requestId: "config-1",
       decision: "allow",
     }));
-    expect(coreMocks.answerCompanionDecisionV2).not.toHaveBeenCalled();
-    expect(coreMocks.answerCompanionRoutineDecisionV2).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionDecision).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionRoutineDecision).not.toHaveBeenCalled();
   });
 
   it("applies routine proposals through the dedicated answer path", async () => {
-    coreMocks.getCompanionDecisionV2.mockResolvedValue({
+    coreMocks.getCompanionDecision.mockResolvedValue({
       requestKey: "routine-1",
       requestKind: "routine_proposal",
       decisionStatus: "pending",
@@ -1868,18 +1849,18 @@ describe("Companions Runtime v2 API", () => {
     );
     expect(response.status).toBe(202);
     await expect(response.json()).resolves.toEqual({ thread: projectedThread });
-    expect(coreMocks.answerCompanionRoutineDecisionV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.answerCompanionRoutineDecision).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       requestId: "routine-1",
       decision: "allow",
     }));
-    expect(coreMocks.answerCompanionConfigDecisionV2).not.toHaveBeenCalled();
-    expect(coreMocks.answerCompanionDecisionV2).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionConfigDecision).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionDecision).not.toHaveBeenCalled();
   });
 
   it("bounds routine proposal persistence failures without reflecting SQL diagnostics", async () => {
     const leakedId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-    coreMocks.getCompanionDecisionV2.mockResolvedValue({
+    coreMocks.getCompanionDecision.mockResolvedValue({
       requestKey: "routine-failure",
       requestKind: "routine_proposal",
       decisionStatus: "pending",
@@ -1892,7 +1873,7 @@ describe("Companions Runtime v2 API", () => {
       },
       expiresAt: NOW,
     });
-    coreMocks.answerCompanionRoutineDecisionV2.mockRejectedValueOnce(
+    coreMocks.answerCompanionRoutineDecision.mockRejectedValueOnce(
       new Error(`Failed query with bound routine id ${leakedId}`),
     );
 
@@ -1910,7 +1891,7 @@ describe("Companions Runtime v2 API", () => {
 
   it("bounds decision preflight failures before the proposal kind is known", async () => {
     const leakedId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
-    coreMocks.getCompanionDecisionV2.mockRejectedValueOnce(
+    coreMocks.getCompanionDecision.mockRejectedValueOnce(
       new Error(`Failed query with bound decision id ${leakedId}`),
     );
 
@@ -1928,7 +1909,7 @@ describe("Companions Runtime v2 API", () => {
   });
 
   it("treats deny as successful when expiry already closed the decision", async () => {
-    coreMocks.getCompanionDecisionV2.mockResolvedValue({
+    coreMocks.getCompanionDecision.mockResolvedValue({
       requestKey: "routine-expired",
       requestKind: "routine_proposal",
       decisionStatus: "expired",
@@ -1948,8 +1929,8 @@ describe("Companions Runtime v2 API", () => {
     );
     expect(response.status).toBe(202);
     await expect(response.json()).resolves.toEqual({ thread: projectedThread });
-    expect(coreMocks.answerCompanionRoutineDecisionV2).not.toHaveBeenCalled();
-    expect(coreMocks.answerCompanionDecisionV2).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionRoutineDecision).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionDecision).not.toHaveBeenCalled();
   });
 
   it("lists and creates Companion routines", async () => {
@@ -1970,8 +1951,8 @@ describe("Companions Runtime v2 API", () => {
       created_at: NOW,
       updated_at: NOW,
     };
-    coreMocks.listCompanionRoutinesV2.mockResolvedValue([routine]);
-    coreMocks.createCompanionRoutineV2.mockResolvedValue(routine);
+    coreMocks.listCompanionRoutines.mockResolvedValue([routine]);
+    coreMocks.createCompanionRoutine.mockResolvedValue(routine);
     const app = appWithRoutes();
     const listed = await app.request(`/v1/companions/${COMPANION_ID}/routines`);
     expect(listed.status).toBe(200);
@@ -2021,11 +2002,11 @@ describe("Companions Runtime v2 API", () => {
       }],
       next_entry_cursor: null,
     };
-    coreMocks.listCompanionRoutineRunsV2.mockResolvedValue({
+    coreMocks.listCompanionRoutineRuns.mockResolvedValue({
       runs: [summary],
       next_cursor: null,
     });
-    coreMocks.getCompanionRoutineRunV2.mockResolvedValue(detail);
+    coreMocks.getCompanionRoutineRun.mockResolvedValue(detail);
     const app = appWithRoutes();
 
     const listed = await app.request(
@@ -2034,7 +2015,7 @@ describe("Companions Runtime v2 API", () => {
     expect(listed.status).toBe(200);
     expect(listed.headers.get("cache-control")).toBe("private, no-store");
     await expect(listed.json()).resolves.toEqual({ runs: [summary], next_cursor: null });
-    expect(coreMocks.listCompanionRoutineRunsV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.listCompanionRoutineRuns).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       routineId,
       limit: 20,
@@ -2046,7 +2027,7 @@ describe("Companions Runtime v2 API", () => {
     expect(read.status).toBe(200);
     expect(read.headers.get("cache-control")).toBe("private, no-store");
     await expect(read.json()).resolves.toEqual({ run: detail });
-    expect(coreMocks.getCompanionRoutineRunV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.getCompanionRoutineRun).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       runId,
       entryLimit: 20,
@@ -2059,13 +2040,13 @@ describe("Companions Runtime v2 API", () => {
       `/v1/companions/${COMPANION_ID}/routines/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/runs?limit=101`,
     );
     expect(response.status).toBe(400);
-    expect(coreMocks.listCompanionRoutineRunsV2).not.toHaveBeenCalled();
+    expect(coreMocks.listCompanionRoutineRuns).not.toHaveBeenCalled();
 
     const detailResponse = await appWithRoutes().request(
       `/v1/companions/${COMPANION_ID}/routine-runs/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa?entry_limit=101`,
     );
     expect(detailResponse.status).toBe(400);
-    expect(coreMocks.getCompanionRoutineRunV2).not.toHaveBeenCalled();
+    expect(coreMocks.getCompanionRoutineRun).not.toHaveBeenCalled();
   });
 
   it("applies trigger proposals through the dedicated answer path", async () => {
@@ -2076,7 +2057,7 @@ describe("Companions Runtime v2 API", () => {
       remote_hook_id: "42",
       remote_hook_account_id: createdTrigger.provider_account_id,
     };
-    coreMocks.getCompanionDecisionV2.mockResolvedValue({
+    coreMocks.getCompanionDecision.mockResolvedValue({
       requestKey: "trigger-1",
       requestKind: "trigger_proposal",
       decisionStatus: "pending",
@@ -2089,11 +2070,11 @@ describe("Companions Runtime v2 API", () => {
       },
       expiresAt: NOW,
     });
-    coreMocks.answerCompanionTriggerDecisionV2.mockResolvedValueOnce({ trigger_id: TRIGGER_ID });
-    coreMocks.listCompanionTriggersV2
+    coreMocks.answerCompanionTriggerDecision.mockResolvedValueOnce({ trigger_id: TRIGGER_ID });
+    coreMocks.listCompanionTriggers
       .mockResolvedValueOnce([createdTrigger])
       .mockResolvedValueOnce([registeredTrigger]);
-    coreMocks.registerCompanionTriggerWebhookV2.mockResolvedValueOnce({
+    coreMocks.registerCompanionTriggerWebhook.mockResolvedValueOnce({
       status: "registered",
       remote_hook_id: "42",
     });
@@ -2104,18 +2085,18 @@ describe("Companions Runtime v2 API", () => {
     );
     expect(response.status).toBe(202);
     await expect(response.json()).resolves.toEqual({ thread: projectedThread });
-    expect(coreMocks.answerCompanionTriggerDecisionV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.answerCompanionTriggerDecision).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       requestId: "trigger-1",
       decision: "allow",
     }));
-    expect(coreMocks.registerCompanionTriggerWebhookV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.registerCompanionTriggerWebhook).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       triggerId: TRIGGER_ID,
     }));
-    expect(coreMocks.answerCompanionConfigDecisionV2).not.toHaveBeenCalled();
-    expect(coreMocks.answerCompanionRoutineDecisionV2).not.toHaveBeenCalled();
-    expect(coreMocks.answerCompanionDecisionV2).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionConfigDecision).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionRoutineDecision).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionDecision).not.toHaveBeenCalled();
   });
 
   it("accepts a trigger proposal when provider registration is durably failed", async () => {
@@ -2125,7 +2106,7 @@ describe("Companions Runtime v2 API", () => {
       remote_hook_account_id: proposedGithubTrigger.provider_account_id,
       last_registration_error: "github rejected the webhook (403)",
     };
-    coreMocks.getCompanionDecisionV2.mockResolvedValue({
+    coreMocks.getCompanionDecision.mockResolvedValue({
       requestKey: "trigger-registration-failure",
       requestKind: "trigger_proposal",
       decisionStatus: "pending",
@@ -2138,11 +2119,11 @@ describe("Companions Runtime v2 API", () => {
       },
       expiresAt: NOW,
     });
-    coreMocks.answerCompanionTriggerDecisionV2.mockResolvedValueOnce({ trigger_id: TRIGGER_ID });
-    coreMocks.listCompanionTriggersV2
+    coreMocks.answerCompanionTriggerDecision.mockResolvedValueOnce({ trigger_id: TRIGGER_ID });
+    coreMocks.listCompanionTriggers
       .mockResolvedValueOnce([proposedGithubTrigger])
       .mockResolvedValueOnce([failedTrigger]);
-    coreMocks.registerCompanionTriggerWebhookV2.mockResolvedValueOnce({
+    coreMocks.registerCompanionTriggerWebhook.mockResolvedValueOnce({
       status: "failed",
       error: failedTrigger.last_registration_error,
     });
@@ -2155,15 +2136,15 @@ describe("Companions Runtime v2 API", () => {
 
     expect(response.status).toBe(202);
     await expect(response.json()).resolves.toEqual({ thread: projectedThread });
-    expect(coreMocks.listCompanionTriggersV2).toHaveBeenCalledTimes(2);
-    expect(coreMocks.registerCompanionTriggerWebhookV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.listCompanionTriggers).toHaveBeenCalledTimes(2);
+    expect(coreMocks.registerCompanionTriggerWebhook).toHaveBeenCalledWith(expect.objectContaining({
       triggerId: TRIGGER_ID,
     }));
   });
 
   it("bounds trigger proposal persistence failures without reflecting SQL diagnostics", async () => {
     const leakedId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-    coreMocks.getCompanionDecisionV2.mockResolvedValue({
+    coreMocks.getCompanionDecision.mockResolvedValue({
       requestKey: "trigger-failure",
       requestKind: "trigger_proposal",
       decisionStatus: "pending",
@@ -2176,7 +2157,7 @@ describe("Companions Runtime v2 API", () => {
       },
       expiresAt: NOW,
     });
-    coreMocks.answerCompanionTriggerDecisionV2.mockRejectedValueOnce(
+    coreMocks.answerCompanionTriggerDecision.mockRejectedValueOnce(
       new CompanionTriggerDecisionUpdateError({
         cause: new Error(`Failed query with bound trigger id ${leakedId}`),
       }),
@@ -2195,7 +2176,7 @@ describe("Companions Runtime v2 API", () => {
   });
 
   it("refuses free text on a trigger proposal card", async () => {
-    coreMocks.getCompanionDecisionV2.mockResolvedValue({
+    coreMocks.getCompanionDecision.mockResolvedValue({
       requestKey: "trigger-1",
       requestKind: "trigger_proposal",
       decisionStatus: "pending",
@@ -2215,8 +2196,8 @@ describe("Companions Runtime v2 API", () => {
       }),
     );
     expect(response.status).toBe(400);
-    expect(coreMocks.answerCompanionTriggerDecisionV2).not.toHaveBeenCalled();
-    expect(coreMocks.answerCompanionDecisionV2).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionTriggerDecision).not.toHaveBeenCalled();
+    expect(coreMocks.answerCompanionDecision).not.toHaveBeenCalled();
   });
 
   it("lists, creates, updates, rotates, and deletes Companion triggers", async () => {
@@ -2243,11 +2224,11 @@ describe("Companions Runtime v2 API", () => {
       created_at: NOW,
       updated_at: NOW,
     };
-    coreMocks.listCompanionTriggersV2.mockResolvedValue([trigger]);
-    coreMocks.createCompanionTriggerV2.mockResolvedValue(trigger);
-    coreMocks.updateCompanionTriggerV2.mockResolvedValue({ ...trigger, enabled: false });
-    coreMocks.rotateCompanionTriggerSecretV2.mockResolvedValue(trigger);
-    coreMocks.deleteCompanionTriggerV2.mockResolvedValue(undefined);
+    coreMocks.listCompanionTriggers.mockResolvedValue([trigger]);
+    coreMocks.createCompanionTrigger.mockResolvedValue(trigger);
+    coreMocks.updateCompanionTrigger.mockResolvedValue({ ...trigger, enabled: false });
+    coreMocks.rotateCompanionTriggerSecret.mockResolvedValue(trigger);
+    coreMocks.deleteCompanionTrigger.mockResolvedValue(undefined);
     const app = appWithRoutes();
 
     const listed = await app.request(`/v1/companions/${COMPANION_ID}/triggers`);
@@ -2268,7 +2249,7 @@ describe("Companions Runtime v2 API", () => {
     );
     expect(created.status).toBe(201);
     await expect(created.json()).resolves.toEqual({ trigger });
-    expect(coreMocks.createCompanionTriggerV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.createCompanionTrigger).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       id: trigger.id,
       name: trigger.name,
@@ -2283,7 +2264,7 @@ describe("Companions Runtime v2 API", () => {
     });
     expect(updated.status).toBe(200);
     await expect(updated.json()).resolves.toEqual({ trigger: { ...trigger, enabled: false } });
-    expect(coreMocks.updateCompanionTriggerV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.updateCompanionTrigger).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       triggerId: TRIGGER_ID,
       enabled: false,
@@ -2295,7 +2276,7 @@ describe("Companions Runtime v2 API", () => {
     );
     expect(rotated.status).toBe(200);
     await expect(rotated.json()).resolves.toEqual({ trigger });
-    expect(coreMocks.rotateCompanionTriggerSecretV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.rotateCompanionTriggerSecret).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       triggerId: TRIGGER_ID,
     }));
@@ -2304,7 +2285,7 @@ describe("Companions Runtime v2 API", () => {
       method: "DELETE",
     });
     expect(deleted.status).toBe(204);
-    expect(coreMocks.deleteCompanionTriggerV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.deleteCompanionTrigger).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
       triggerId: TRIGGER_ID,
     }));
@@ -2348,7 +2329,7 @@ describe("Companions Runtime v2 API", () => {
     };
     coreMocks.getCompanionControlRequest.mockResolvedValue(controlRequest);
     coreMocks.decideCompanionControlRequest.mockResolvedValue(applying);
-    coreMocks.createCompanionTriggerV2.mockResolvedValue({
+    coreMocks.createCompanionTrigger.mockResolvedValue({
       ...proposedGithubTrigger,
       provider: "webhook",
     });
@@ -2407,10 +2388,10 @@ describe("Companions Runtime v2 API", () => {
       remote_hook_id: "43",
       last_registration_error: null,
     };
-    coreMocks.listCompanionTriggersV2
+    coreMocks.listCompanionTriggers
       .mockResolvedValueOnce([failedTrigger])
       .mockResolvedValueOnce([registered]);
-    coreMocks.registerCompanionTriggerWebhookV2.mockResolvedValueOnce({
+    coreMocks.registerCompanionTriggerWebhook.mockResolvedValueOnce({
       status: "registered",
       remote_hook_id: "43",
     });
@@ -2423,20 +2404,20 @@ describe("Companions Runtime v2 API", () => {
     await expect(retried.json()).resolves.toEqual({ trigger: registered });
 
     const history = { runs: [], next_cursor: null };
-    coreMocks.listCompanionTriggerRunsV2.mockResolvedValueOnce(history);
+    coreMocks.listCompanionTriggerRuns.mockResolvedValueOnce(history);
     const listed = await app.request(
       `/v1/companions/${COMPANION_ID}/triggers/${TRIGGER_ID}/runs?limit=25`,
     );
     expect(listed.status).toBe(200);
     await expect(listed.json()).resolves.toEqual(history);
-    expect(coreMocks.listCompanionTriggerRunsV2).toHaveBeenCalledWith(expect.objectContaining({
+    expect(coreMocks.listCompanionTriggerRuns).toHaveBeenCalledWith(expect.objectContaining({
       triggerId: TRIGGER_ID,
       limit: 25,
     }));
 
     // SAFETY: this route test only verifies transport passthrough; the core mock owns validation.
     const run = { run_id: TURN_ID, internal_entries: [], next_entry_cursor: null } as never;
-    coreMocks.getCompanionTriggerRunV2.mockResolvedValueOnce(run);
+    coreMocks.getCompanionTriggerRun.mockResolvedValueOnce(run);
     const detail = await app.request(
       `/v1/companions/${COMPANION_ID}/trigger-runs/${TURN_ID}?entry_limit=10`,
     );
@@ -2447,7 +2428,7 @@ describe("Companions Runtime v2 API", () => {
   it("maps trigger authorization, absence, and conflict failures onto their statuses", async () => {
     const app = appWithRoutes();
     // The SQL boundary refuses a Viewer write with SQLSTATE 42501; the route translates, only.
-    coreMocks.createCompanionTriggerV2.mockRejectedValue(
+    coreMocks.createCompanionTrigger.mockRejectedValue(
       Object.assign(new Error("Companion editor access is required"), { code: "42501" }),
     );
     const forbidden = await app.request(
@@ -2461,7 +2442,7 @@ describe("Companions Runtime v2 API", () => {
     expect(forbidden.status).toBe(403);
 
     // The dedicated not-found error and the raw SQLSTATE both read as an absent trigger.
-    coreMocks.updateCompanionTriggerV2.mockRejectedValue(new CompanionTriggerNotFoundError());
+    coreMocks.updateCompanionTrigger.mockRejectedValue(new CompanionTriggerNotFoundError());
     const missingPatch = await app.request(
       `/v1/companions/${COMPANION_ID}/triggers/${TRIGGER_ID}`,
       {
@@ -2471,7 +2452,7 @@ describe("Companions Runtime v2 API", () => {
       },
     );
     expect(missingPatch.status).toBe(404);
-    coreMocks.deleteCompanionTriggerV2.mockRejectedValue(
+    coreMocks.deleteCompanionTrigger.mockRejectedValue(
       Object.assign(new Error("Companion trigger not found"), { code: "P0002" }),
     );
     const missing = await app.request(`/v1/companions/${COMPANION_ID}/triggers/${TRIGGER_ID}`, {
@@ -2479,7 +2460,7 @@ describe("Companions Runtime v2 API", () => {
     });
     expect(missing.status).toBe(404);
 
-    coreMocks.createCompanionTriggerV2.mockRejectedValue(
+    coreMocks.createCompanionTrigger.mockRejectedValue(
       Object.assign(new Error("trigger id was reused with different trigger intent"), {
         code: "23505",
       }),
@@ -2495,7 +2476,7 @@ describe("Companions Runtime v2 API", () => {
     expect(conflicted.status).toBe(409);
 
     // A malformed body never reaches the core layer at all.
-    coreMocks.createCompanionTriggerV2.mockClear();
+    coreMocks.createCompanionTrigger.mockClear();
     const malformed = await app.request(
       jsonPost(`/v1/companions/${COMPANION_ID}/triggers`, {
         id: TRIGGER_ID,
@@ -2505,11 +2486,11 @@ describe("Companions Runtime v2 API", () => {
       }),
     );
     expect(malformed.status).toBe(400);
-    expect(coreMocks.createCompanionTriggerV2).not.toHaveBeenCalled();
+    expect(coreMocks.createCompanionTrigger).not.toHaveBeenCalled();
   });
 
   it("denies Viewer desktop access before calling the private Runtime service", async () => {
-    coreMocks.getCompanionV2.mockResolvedValue({ ...companion, access: "viewer" });
+    coreMocks.getCompanionRuntimeView.mockResolvedValue({ ...companion, access: "viewer" });
     const response = await appWithRoutes().request(
       `/v1/companions/${COMPANION_ID}/runtime/desktop`,
       { method: "POST" },
