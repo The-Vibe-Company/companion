@@ -545,6 +545,7 @@ CREATE FUNCTION public.companion_v3_runtime_finish_delegation_cancel(
 SET search_path=pg_catalog,public SET row_security=on AS $$
 DECLARE v_now timestamptz:=clock_timestamp();
 BEGIN
+  PERFORM pg_catalog.set_config('app.companion_runtime_protocol','2',true);
   IF p_protocol<>7 THEN
     RAISE EXCEPTION 'Runtime v3 protocol 7 is required' USING ERRCODE='42501';
   END IF;

@@ -581,6 +581,8 @@ export function createRuntimeV3WarmTurnAdvance(
     let decisionHandoff = false;
     let decisionPiWriteIntent = false;
     let decisionCheckpointPending = false;
+    let cancellationPiWriteIntent = false;
+    let cancellationFinishPending = false;
     let durableAdmissionRecorded = false;
     let inactivityDeadlineAt = claim.turn.inactivityDeadlineAt ?? null;
     let absoluteDeadlineAt = claim.turn.absoluteDeadlineAt ?? null;
@@ -618,12 +620,14 @@ export function createRuntimeV3WarmTurnAdvance(
           ? await options.persistence.pendingDelegationCancel(claim, signal)
           : await options.persistence.pendingDelegationCancel(claim);
         if (cancellation) {
+          cancellationPiWriteIntent = true;
           const cancelled = await options.pi.abort({
             boxId: material.boxId,
             commandId: cancellation.commandId,
             turnId: claim.turn.id,
             signal: boundedSignal(signal, COMPANION_RUNTIME_V3_BUDGETS.heartbeatCommandMs),
           });
+          cancellationPiWriteIntent = false;
           if (cancelled.outcome === "ambiguous"
             || (cancelled.outcome === "rejected"
               && cancelled.code !== "no_active_attempt"
@@ -631,13 +635,18 @@ export function createRuntimeV3WarmTurnAdvance(
             return { kind: "release" };
           }
           signal?.throwIfAborted();
+          cancellationFinishPending = true;
           if (signal
             ? await options.persistence.finishDelegationCancel(
               claim, { turnId: cancellation.turnId }, signal,
             )
             : await options.persistence.finishDelegationCancel(
               claim, { turnId: cancellation.turnId },
-            )) return { kind: "release" };
+            )) {
+            cancellationFinishPending = false;
+            return { kind: "release" };
+          }
+          cancellationFinishPending = false;
           return { kind: "release" };
         }
       }
@@ -1006,6 +1015,7 @@ export function createRuntimeV3WarmTurnAdvance(
         };
       }
       if (decisionHandoff || decisionCheckpointPending) return { kind: "release" };
+      if (cancellationPiWriteIntent || cancellationFinishPending) return { kind: "release" };
       if (decisionPiWriteIntent) {
         return {
           kind: "decision_ambiguous",

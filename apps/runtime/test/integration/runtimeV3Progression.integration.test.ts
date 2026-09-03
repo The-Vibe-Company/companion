@@ -5090,9 +5090,14 @@ describe("Runtime v3 progression facts", () => {
     const makeAdmitted = async (turnId: string, companionId: string, responseTurnId = turnId) => {
       await ownerSql`update public.companion_v3_turns set
         state='admitted',admission_state='accepted',admission_started_at=clock_timestamp(),
-        admitted_at=clock_timestamp(),pi_invocation_id=(select pi_invocation_id
+        admitted_at=clock_timestamp(),admission_kind=case when id=${responseTurnId}::uuid
+          then 'prompt'::public.companion_v3_admission_kind
+          else 'steer'::public.companion_v3_admission_kind end,
+        pi_invocation_id=coalesce((select pi_invocation_id from public.companion_v3_turns
+          where org_id=${ids.org}::uuid and companion_id=${companionId}::uuid
+            and id=${responseTurnId}::uuid),(select pi_invocation_id
           from public.companion_v3_instances where org_id=${ids.org}::uuid
-            and companion_id=${companionId}::uuid),response_turn_id=${responseTurnId}::uuid,
+            and companion_id=${companionId}::uuid)),response_turn_id=${responseTurnId}::uuid,
         admission_cursor=0,activity_cursor=0,correlated_activity_cursor=0,
         last_activity_at=clock_timestamp(),
         inactivity_deadline_at=clock_timestamp()+interval '10 minutes',
@@ -5106,10 +5111,10 @@ describe("Runtime v3 progression facts", () => {
         where org_id=${ids.org}::uuid and companion_id=${companionId}::uuid
           and id=${turnId}::uuid and state='admitted'`;
     };
-    const enqueue = async (companionId: string, content: string) => {
+    const enqueue = async (companionId: string, content: string, actorId = ids.owner) => {
       const clientId = randomUUID();
       let turnId = "";
-      await asApi(async (sql) => {
+      await asApiActor(ids.org,actorId,async (sql) => {
         const result = await sql<Array<{ turn: { id: string } }>>`
           select turn from public.companion_v3_api_enqueue_warm_turn(
             ${ids.org}::uuid,${companionId}::uuid,${clientId}::uuid,${content})`;
@@ -5120,12 +5125,13 @@ describe("Runtime v3 progression facts", () => {
     const delegate = async (input: {
       source: string; target: string; sourceTurn: string; clientId?: string;
       delegationId?: string; key: string; mode: "notify" | "relay"; content: string;
+      actorId?: string;
     }) => {
       const clientId = input.clientId ?? randomUUID();
       const delegationId = input.delegationId ?? randomUUID();
       const digest = createHash("sha256").update(input.content).digest("hex");
       let value!: { delegation: { id: string; root_turn_id: string; depth: number }; target_turn: { id: string } };
-      await asApi(async (sql) => {
+      await asApiActor(ids.org,input.actorId ?? ids.owner,async (sql) => {
         const result = await sql<Array<typeof value>>`
           select delegation,target_turn from public.companion_api_enqueue_delegation(
             ${ids.org}::uuid,${input.source}::uuid,${input.target}::uuid,
@@ -5229,6 +5235,7 @@ describe("Runtime v3 progression facts", () => {
       expect((await ownerSql<Array<{ count: string }>>`select count(*)::text as count
         from public.companion_v3_turns where companion_id=${ids.companion}::uuid`)[0]!.count)
         .toBe(sourceTurnCount[0]!.count);
+      await settle(ahead.turnId,targetB);
 
       const relay = await delegate({ source: ids.companion, target: targetC,
         sourceTurn: source.turnId, key: "relay", mode: "relay", content: "relay task" });
@@ -5287,6 +5294,10 @@ describe("Runtime v3 progression facts", () => {
         },
       };
       const cancellationPersistence = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
+      await expect(cancellationPersistence.pendingDelegationCancel!(cancelClaim)).resolves.toEqual({
+        turnId: cancelled.target_turn.id,
+        commandId: expect.any(String),
+      });
       const abort = vi.fn().mockResolvedValue({
         outcome: "accepted" as const,invocationId: "pi-target-c",
       });
@@ -5368,14 +5379,21 @@ describe("Runtime v3 progression facts", () => {
         await sql`select * from public.companion_api_grant_peer_access(
           ${ids.org}::uuid,${ids.companion}::uuid,${targetB}::uuid)`;
       });
+      await ownerSql`insert into public.companion_workspace_access(
+        org_id,companion_id,owner_id,role,granted_by)
+        values(${ids.org}::uuid,${targetB}::uuid,${ids.owner},'editor',${ids.owner})`;
+      const editorSource = await enqueue(ids.companion,"editor source work",ids.editor);
+      await makeAdmitted(editorSource.turnId,ids.companion,source.turnId);
       const acceptedBeforeMembershipRevocation = await delegate({
-        source: ids.companion,target: targetB,sourceTurn: source.turnId,
+        source: ids.companion,target: targetB,sourceTurn: editorSource.turnId,actorId: ids.editor,
         key: "return-member-revoked",mode: "notify",content: "accepted before membership loss",
       });
+      await seedPreparedV3("pi-target-b-member-revocation",targetB);
+      await makeActive(acceptedBeforeMembershipRevocation.target_turn.id,targetB);
       await ownerSql`delete from public.memberships
-        where org_id=${ids.org}::uuid and user_id=${ids.owner}`;
-      await expect(delegate({ source: ids.companion,target: targetB,
-        sourceTurn: source.turnId,key: "member-revoked-new",mode: "notify",content: "blocked" }))
+        where org_id=${ids.org}::uuid and user_id=${ids.editor}`;
+      await expect(delegate({ source: ids.companion,target: targetB,actorId: ids.editor,
+        sourceTurn: editorSource.turnId,key: "member-revoked-new",mode: "notify",content: "blocked" }))
         .rejects.toMatchObject({ code: "42501" });
       await settle(acceptedBeforeMembershipRevocation.target_turn.id,targetB,
         "membership-revoked result retained");
@@ -5396,8 +5414,6 @@ describe("Runtime v3 progression facts", () => {
         where companion_id=${ids.companion}::uuid
           and event_id=${`delegation:${acceptedBeforeMembershipRevocation.delegation.id}:delivery-failed`}`)
         .toEqual([{ delivery_status: "failed",delivery_error_code: "delegation_actor_revoked" }]);
-      await ownerSql`insert into public.memberships(org_id,user_id,org_role)
-        values(${ids.org}::uuid,${ids.owner},'owner')`;
       for (const companionId of [ids.companion,targetB]) {
         let entries: unknown[] = [];
         await asApi(async (sql) => {
