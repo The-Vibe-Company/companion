@@ -17,6 +17,7 @@ import {
   createRuntimeV3Lifecycle,
   createRuntimeV3Preparation,
   createRuntimeV3WarmTurnAdvance,
+  type RuntimeV3PreparationCredentials,
 } from "@companion/companion-runtime/v3/internal";
 import postgres from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -2184,7 +2185,9 @@ describe("Runtime v3 progression facts", () => {
       return { outcome: "terminated" as const };
     });
     const resetPiSession = vi.fn().mockResolvedValue(undefined);
-    const stagePreparation = vi.fn(async (input: { authorize: () => Promise<unknown> }) => {
+    const stagePreparation = vi.fn(async (input: {
+      authorize: () => Promise<RuntimeV3PreparationCredentials | null>;
+    }) => {
       expect(await input.authorize()).toBeTruthy();
       return {
         diskLayoutVersion: 14, appliedSettingsRevision: 1n, appliedSkillsRevision: 1,
