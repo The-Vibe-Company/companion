@@ -528,6 +528,8 @@ export interface RuntimeOutputAttachment {
   byteSize: number;
   sha256: string;
   filename: string;
+  /** Object-store upload completion, which alone anchors the immutable retention deadline. */
+  uploadedAt: Date;
 }
 
 export const DUPLICATE_CLEANUP_STATUSES = [

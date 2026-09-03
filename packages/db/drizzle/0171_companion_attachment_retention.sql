@@ -376,6 +376,84 @@ END
 $companion_attachment_enqueue_upload_time$;
 --> statement-breakpoint
 
+-- Replaying an accepted multipart message after its bytes expired must not adopt a newly recreated
+-- content-addressed object. Refuse the old client_message_id with a distinct constraint marker so
+-- the API can delete only the exact object this replay just uploaded; a genuine re-upload uses a
+-- new client_message_id and therefore creates a new attachment row and deadline.
+DO $companion_attachment_expired_replay$
+DECLARE
+  v_definition text := pg_catalog.pg_get_functiondef(pg_catalog.to_regprocedure(
+    'public.companion_api_enqueue_turn(uuid,uuid,uuid,text,public.companion_client_surface,jsonb,uuid,text,uuid,text)'
+  ));
+  v_old text := $old$IF FOUND THEN
+    v_replayed := true;$old$;
+  v_new text := $new$IF FOUND THEN
+    IF EXISTS (
+      SELECT 1
+      FROM public.companion_message_attachments attachment
+      WHERE attachment.org_id = p_org_id
+        AND attachment.companion_id = p_companion_id
+        AND attachment.entry_event_id = v_message_event_id
+        AND (attachment.expires_at <= v_now OR attachment.bytes_deleted_at IS NOT NULL)
+    ) THEN
+      RAISE EXCEPTION 'client_message_id attachment bytes expired; upload again'
+        USING ERRCODE = '23505', CONSTRAINT = 'companion_turn_attachments_expired';
+    END IF;
+    v_replayed := true;$new$;
+BEGIN
+  IF v_definition IS NULL
+     OR (char_length(v_definition) - char_length(replace(v_definition, v_old, '')))
+          / char_length(v_old) <> 1 THEN
+    RAISE EXCEPTION 'Companion expired-replay rewrite did not match the expected function'
+      USING ERRCODE = '55000';
+  END IF;
+  EXECUTE replace(v_definition, v_old, v_new);
+END
+$companion_attachment_expired_replay$;
+--> statement-breakpoint
+
+-- Pi output uploads use the same clock rule as member uploads. Harvest records the instant after
+-- the object write resolves, and this rewrite persists that instant instead of the later database
+-- activity/checkpoint timestamp.
+DO $companion_attachment_output_upload_time$
+DECLARE
+  v_definition text := pg_catalog.pg_get_functiondef(pg_catalog.to_regprocedure(
+    'public.companion_runtime_record_attempt_outputs(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,jsonb,timestamp with time zone)'
+  ));
+  v_old_validation text := $old$WHERE jsonb_typeof(part.value) <> 'object'
+      OR COALESCE(part.value ->> 'position', '') <> (part.ordinality - 1)::text$old$;
+  v_new_validation text := $new$WHERE jsonb_typeof(part.value) <> 'object'
+      OR part.value ->> 'uploaded_at' IS NULL
+      OR COALESCE(part.value ->> 'position', '') <> (part.ordinality - 1)::text$new$;
+  v_old_columns text := $old$content_type, byte_size, sha256, filename, position, created_at$old$;
+  v_new_columns text := $new$content_type, byte_size, sha256, filename, position, uploaded_at, created_at$new$;
+  v_old_values text := $old$part.value ->> 'filename',
+      (part.ordinality - 1)::integer,
+      v_now$old$;
+  v_new_values text := $new$part.value ->> 'filename',
+      (part.ordinality - 1)::integer,
+      (part.value ->> 'uploaded_at')::timestamp with time zone,
+      v_now$new$;
+BEGIN
+  IF v_definition IS NULL
+     OR (char_length(v_definition) - char_length(replace(v_definition, v_old_validation, '')))
+          / char_length(v_old_validation) <> 1
+     OR (char_length(v_definition) - char_length(replace(v_definition, v_old_columns, '')))
+          / char_length(v_old_columns) <> 1
+     OR (char_length(v_definition) - char_length(replace(v_definition, v_old_values, '')))
+          / char_length(v_old_values) <> 1 THEN
+    RAISE EXCEPTION 'Companion output upload-time rewrite did not match the expected function'
+      USING ERRCODE = '55000';
+  END IF;
+  EXECUTE replace(
+    replace(replace(v_definition, v_old_validation, v_new_validation), v_old_columns, v_new_columns),
+    v_old_values,
+    v_new_values
+  );
+END
+$companion_attachment_output_upload_time$;
+--> statement-breakpoint
+
 -- Preserve the current material function behind a non-callable implementation name, then put an
 -- expiry guard at the published signature. Old and new runtime replicas therefore fail closed at
 -- the same database boundary before they can read an object or contact Box.

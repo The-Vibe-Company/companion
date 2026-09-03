@@ -599,17 +599,39 @@ class CompanionAccessForbiddenError extends Error {
 
 const databaseErrorSchema = z.object({
   code: z.string().optional(),
+  constraint: z.string().optional(),
+  constraint_name: z.string().optional(),
   cause: z.unknown().optional(),
 }).passthrough();
 
-function databaseErrorCode<T>(error: T): string | null {
+function databaseErrorField<T>(error: T, field: "code" | "constraint"): string | null {
   const seen = new Set<object>();
   let current: unknown = error;
   while (current !== null && current !== undefined) {
     const parsed = databaseErrorSchema.safeParse(current);
     if (!parsed.success || seen.has(parsed.data)) break;
     seen.add(parsed.data);
-    if (parsed.data.code) return parsed.data.code;
+    const value = parsed.data[field];
+    if (value) return value;
+    current = parsed.data.cause;
+  }
+  return null;
+}
+
+function databaseErrorCode<T>(error: T): string | null {
+  return databaseErrorField(error, "code");
+}
+
+function databaseErrorConstraint<T>(error: T): string | null {
+  const direct = databaseErrorField(error, "constraint");
+  if (direct) return direct;
+  const seen = new Set<object>();
+  let current: unknown = error;
+  while (current !== null && current !== undefined) {
+    const parsed = databaseErrorSchema.safeParse(current);
+    if (!parsed.success || seen.has(parsed.data)) break;
+    seen.add(parsed.data);
+    if (parsed.data.constraint_name) return parsed.data.constraint_name;
     current = parsed.data.cause;
   }
   return null;
@@ -2702,7 +2724,9 @@ export function registerCompanionRoutes(
         // in `createdKeys`. Second -- in case a self-hosted object store ignores the conditional
         // header -- a replay conflict is never cleaned up at all: that error means a turn with this
         // client_message_id is already accepted, and these are its files.
-        if (databaseErrorCode(error) !== "23505") {
+        const expiredReplay = databaseErrorCode(error) === "23505"
+          && databaseErrorConstraint(error) === "companion_turn_attachments_expired";
+        if (databaseErrorCode(error) !== "23505" || expiredReplay) {
           await Promise.allSettled(createdKeys.map((created) => {
             const deletion: CompanionStorageDeleteInput = { key: created.key };
             if (created.etag) deletion.ifMatch = created.etag;

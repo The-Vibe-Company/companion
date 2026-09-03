@@ -2629,8 +2629,9 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     if (!sql) throw new Error("runtime executor database is not initialized");
     const fixture = await createCompanion({ boxReady: true });
     try {
-      const [turn] = await sql<Array<{ message_event_id: string }>>`
-        select message_event_id from companion_turns where id = ${fixture.turnId}::uuid
+      const [turn] = await sql<Array<{ message_event_id: string; client_message_id: string }>>`
+        select message_event_id, client_message_id::text
+        from companion_turns where id = ${fixture.turnId}::uuid
       `;
       const storageKey = `companion-attachments/${ids.orgA}/${fixture.companionId}/expired/0-${"e".repeat(64)}`;
       const [inserted] = await asOwnerV2((tx) => tx<Array<{ id: string }>>`
@@ -2702,6 +2703,32 @@ describe("Companion runtime executor PostgreSQL surface", () => {
         group by bytes_deleted_at
       `;
       expect(metadata).toEqual({ bytes_deleted: true, count: 1 });
+
+      // A retry after cleanup may upload the same content-addressed bytes again, but it must not
+      // attach them to the old message or inherit/slide its deadline. The route recognizes this
+      // distinct conflict and removes the exact object that retry just created.
+      await expect(asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx`
+          select * from public.companion_api_enqueue_turn(
+            ${ids.orgA}::uuid, ${fixture.companionId}::uuid,
+            ${turn!.client_message_id}::uuid, ${fixture.prompt}, 'web',
+            ${tx.json([{
+              storage_key: storageKey,
+              content_type: "application/pdf",
+              byte_size: 32,
+              sha256: "e".repeat(64),
+              filename: "old-report.pdf",
+              position: 0,
+              uploaded_at: new Date().toISOString(),
+            }])}::jsonb
+          )
+        `,
+      })).rejects.toMatchObject({
+        code: "23505",
+        constraint_name: "companion_turn_attachments_expired",
+      });
     } finally {
       await removeCompanion(fixture.companionId);
     }
@@ -2719,6 +2746,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     try {
     expect(claim.workKind).toBe("attempt");
 
+    const outputUploadedAt = new Date(Date.now() - 5_000).toISOString();
     const outputs = [{
       storage_key: `companion-attachments/${ids.orgA}/${fixture.companionId}/outputs/${fixture.attemptId}/0-${"d".repeat(64)}`,
       content_type: "image/png",
@@ -2726,6 +2754,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
       sha256: "d".repeat(64),
       filename: "plot.png",
       position: 0,
+      uploaded_at: outputUploadedAt,
     }];
     const record = () => asRuntime((tx) => tx<Array<{ recorded: number; has_visible_output: boolean }>>`
       select recorded, has_visible_output
@@ -2752,17 +2781,23 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     const [retention] = await sql<Array<{
       fixed: boolean;
       scheduled: boolean;
+      uploaded_at: Date;
     }>>`
       select
         attachment.expires_at = attachment.uploaded_at + interval '720 hours' as fixed,
-        deletion.available_at = attachment.expires_at as scheduled
+        deletion.available_at = attachment.expires_at as scheduled,
+        attachment.uploaded_at
       from companion_message_attachments attachment
       join skill_database_object_deletions deletion
         on deletion.companion_attachment_id = attachment.id
       where attachment.companion_id = ${fixture.companionId}::uuid
         and attachment.kind = 'pi_output'
     `;
-    expect(retention).toEqual({ fixed: true, scheduled: true });
+    expect(retention).toEqual({
+      fixed: true,
+      scheduled: true,
+      uploaded_at: new Date(outputUploadedAt),
+    });
     const entries = await sql<Array<{ event_id: string; ordinal: number; content: string }>>`
       select event_id, ordinal, content from companion_transcript_entries
       where companion_id = ${fixture.companionId}::uuid and role = 'assistant'

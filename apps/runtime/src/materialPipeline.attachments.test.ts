@@ -202,9 +202,14 @@ describe("harvesting Pi's outbox", () => {
 
   it("stores each image under its content address and reports a complete harvest", async () => {
     const stored: string[] = [];
+    let clock = Date.parse("2026-08-26T14:00:00.000Z");
     const result = await pipeline({
       runtime: harvestRuntime([outboxEntry("plot.png", PNG)]),
-      storeAttachment: async ({ key }) => { stored.push(key); },
+      storeAttachment: async ({ key }) => {
+        stored.push(key);
+        clock = Date.parse("2026-08-26T14:00:03.000Z");
+      },
+      now: () => clock,
     }).outboxHarvester.harvestOutbox(harvestInput());
 
     expect(result.incomplete).toBe(false);
@@ -213,6 +218,7 @@ describe("harvesting Pi's outbox", () => {
       byteSize: PNG.byteLength,
       sha256: digest(PNG),
       filename: "plot.png",
+      uploadedAt: new Date("2026-08-26T14:00:03.000Z"),
     })]);
     expect(stored).toEqual([
       `companion-attachments/${orgId}/${companionId}/outputs/${attemptId}/0-${digest(PNG)}`,

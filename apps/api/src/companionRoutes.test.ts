@@ -1415,6 +1415,33 @@ describe("Companions Runtime v2 API", () => {
     expect(storageMocks.deleteStorageObject).not.toHaveBeenCalled();
   });
 
+  it("removes bytes recreated by a replay after the accepted attachment expired", async () => {
+    const app = appWithRoutes();
+    storageMocks.putSkillArchive.mockResolvedValueOnce("expired-replay-etag");
+    coreMocks.enqueueCompanionTurn.mockRejectedValueOnce(
+      Object.assign(new Error("client_message_id attachment bytes expired; upload again"), {
+        code: "23505",
+        constraint_name: "companion_turn_attachments_expired",
+      }),
+    );
+    const form = new FormData();
+    form.set("content", "Look at this");
+    form.set("client_message_id", MESSAGE_ID);
+    form.append("file", new File([
+      new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]),
+    ], "a.pdf"));
+
+    const response = await app.request(new Request(
+      `http://localhost/v1/companions/${COMPANION_ID}/messages`,
+      { method: "POST", body: form },
+    ));
+
+    expect(response.status).toBe(409);
+    expect(storageMocks.deleteStorageObject).toHaveBeenCalledWith(expect.objectContaining({
+      ifMatch: "expired-replay-etag",
+    }));
+  });
+
   it("stores each attachment create-only so a retry cannot overwrite accepted bytes", async () => {
     const app = appWithRoutes();
     const form = new FormData();

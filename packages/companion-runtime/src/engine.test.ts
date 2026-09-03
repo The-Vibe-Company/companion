@@ -62,6 +62,7 @@ function harvestedImage() {
     byteSize: 512,
     sha256: "c".repeat(64),
     filename: "plot.png",
+    uploadedAt: new Date("2026-08-18T11:59:57.000Z"),
   };
 }
 

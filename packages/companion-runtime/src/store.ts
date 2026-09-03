@@ -1219,6 +1219,7 @@ export class PostgresRuntimeStore implements RuntimeStore {
         sha256: attachment.sha256,
         filename: attachment.filename,
         position,
+        uploaded_at: attachment.uploadedAt.toISOString(),
       }));
       const rows = await this.sql.unsafe<RuntimeSqlRow[]>(`
         SELECT recorded, has_visible_output

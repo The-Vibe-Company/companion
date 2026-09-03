@@ -498,6 +498,7 @@ export function createRuntimeMaterialPipeline(input: {
             contentType,
             signal: harvest.signal,
           });
+          const uploadedAt = new Date(now());
           total += file.bytes.byteLength;
           attachments.push({
             storageKey: key,
@@ -509,6 +510,7 @@ export function createRuntimeMaterialPipeline(input: {
               position: attachments.length,
               contentType,
             }),
+            uploadedAt,
           });
         } catch {
           incomplete = true;

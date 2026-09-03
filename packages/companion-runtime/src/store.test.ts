@@ -427,6 +427,7 @@ describe("PostgresRuntimeStore", () => {
           byteSize: 512,
           sha256: "d".repeat(64),
           filename: "plot.png",
+          uploadedAt: new Date("2026-08-18T11:59:57.000Z"),
         }],
         activityAt: new Date("2026-08-18T12:00:00.000Z"),
       },
@@ -443,6 +444,7 @@ describe("PostgresRuntimeStore", () => {
       content_type: "image/png",
       byte_size: 512,
       position: 0,
+      uploaded_at: "2026-08-18T11:59:57.000Z",
     })]);
   });
 
