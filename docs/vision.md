@@ -43,7 +43,7 @@ may hand images back, because showing a teammate something is part of talking to
 about that becomes a store of files with a life of its own. It does not add a generic model platform,
 agent builder, container catalog, deployment manager, or harness selection UI.
 
-Every ordinary main Pi attempt does receive one product-owned control MCP for its own identity,
+Every ordinary admitted main Turn does receive one product-owned control MCP for its own identity,
 Skills, plugins, routines, triggers, Pi recycle, and explicitly granted directed text delegations.
 Sensitive changes remain durable human-approved intent. This bounded source→target primitive is the
 foundation for future groups without introducing a group aggregate in this release.
@@ -51,7 +51,7 @@ foundation for future groups without introducing a group aggregate in this relea
 Pi is the only harness, box.ascii.dev is the only Box provider, and one Companion is always one Box,
 one main Pi session, and one thread. A routine may launch a run-scoped Pi process using that same
 harness and Box; it does not create another Companion or runtime owner. Sending a message is the
-only normal wake action. Full Box restart and
-permanent deletion remain explicit operator actions. Automatic interruption cleanup is Pi-only,
-terminates only the captured invocation, and gates only its affected lane until durable proof;
+only normal wake action. Archive and permanent deletion remain explicit lifecycle actions. An
+ambiguous delivery invalidates `Prepared`; runtime recycles only the captured Pi invocation and
+gates only its affected lane until durable proof;
 independent warm-lane work remains available.

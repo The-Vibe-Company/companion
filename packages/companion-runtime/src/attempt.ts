@@ -1497,7 +1497,7 @@ export async function handleAttempt(context: AttemptContext): Promise<RuntimeWor
       default:
         throw new RuntimeInvariantError({
           code: "attempt_checkpoint_invalid",
-          message: "The turn attempt reached an unsupported checkpoint.",
+          message: "The retired execution engine reached an unsupported checkpoint.",
           action: "none",
         });
     }

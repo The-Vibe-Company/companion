@@ -316,13 +316,6 @@ export async function buildProductionRuntimeService(
         if (!storage) throw new Error("runtime archive storage is closed");
         return await storage.load(storagePath, signal);
       },
-      // Chat attachments live in the same bucket as skill archives and are read through the same
-      // client, but they are a distinct seam so a test can fail one without touching the other.
-      loadAttachment: async (storageKey, signal) => {
-        const storage = archiveStorage;
-        if (!storage) throw new Error("runtime archive storage is closed");
-        return await storage.load(storageKey, signal);
-      },
       storeAttachment: async (stored) => {
         const storage = archiveStorage;
         if (!storage) throw new Error("runtime archive storage is closed");
@@ -370,8 +363,7 @@ export async function buildProductionRuntimeService(
             orgId: input.orgId,
             companionId: input.companionId,
             boxId: input.boxId,
-            // The broker/material seam retains `attemptId`; Runtime v3 supplies its Turn id.
-            attemptId: input.turnId,
+            turnId: input.turnId,
             deadlineAt: input.deadlineAt,
             signal: input.signal,
           }),
@@ -512,7 +504,7 @@ interface RuntimeGateRow {
   updated_at: Date;
 }
 
-/** PostgreSQL health and kill-switch port; it deliberately exposes no Runtime v2 claim methods. */
+/** PostgreSQL health and kill-switch port for Runtime v3 convergence. */
 function createRuntimeApplicationStore(database: RuntimeDatabase): RuntimeApplicationStore {
   const readGateStatus = async (
     query: string,

@@ -1,6 +1,6 @@
 /**
  * Narrow process support shared by Runtime v3 and the API desktop proxy.
- * No v2 kernel, scheduler, store, attempt, operation, retry, handler, or claim is exported.
+ * This module exposes transports and redaction helpers, never durable execution semantics.
  */
 export {
   DESKTOP_REQUEST_ID_HEADER,
@@ -14,7 +14,6 @@ export {
 export {
   expurgateRuntimeMessage,
 } from "./errors";
-export { RuntimeAttachmentExpiredError } from "./store";
 export { CompanionImageRegistry, IMAGE_BUILD_BACKOFF_MS } from "./imageRegistry";
 export {
   createJsonRuntimeProcessLog,
@@ -22,7 +21,6 @@ export {
 } from "./logging";
 export type { RuntimeLogRecord, RuntimeProcessLog } from "./logging";
 export { validatePiJournalRead } from "./piEvents";
-export { createRuntimeVisibleTextRedactor } from "./projectionRedaction";
 export {
   RuntimeExternalDependencyError,
   RuntimeTerminalPreparationError,
@@ -30,17 +28,11 @@ export {
 export type {
   BrokerPromptWriteOutcome,
   BrokerWriteOutcome,
-  RuntimeAttachmentStager,
   RuntimeBoxControl,
-  RuntimeMaterialProvider,
-  RuntimeOutboxHarvester,
-  RuntimePiControl,
-  RuntimeProjectionRedactorFactory,
-  RuntimeResourceStager,
 } from "./ports";
-export type {
-  RuntimeAuthorization,
-  RuntimeOutputAttachment,
-  RuntimeWorkMaterial,
-} from "./types";
+/**
+ * Runtime v3's narrow Pi transport. Its `attemptId` fields are the fixed Pi broker wire name and
+ * always carry the durable Turn id; they do not expose or identify a hosted-runtime attempt row.
+ */
+export type { RuntimePiControl as RuntimeV3PiTransport } from "./ports";
 export { decodeRuntimeV3PreparationSnapshot } from "./types";

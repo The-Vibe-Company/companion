@@ -84,7 +84,7 @@ dedicated runtime service serializes work per Companion execution lane, revalida
 resources, and owns every provider side effect.
 
 The deployed executor is Runtime v3 only. One durable v3 Turn carries command, admission, activity,
-and outcome facts; there is no live v2 kernel, v2 store, attempt table, or derived Start operation.
+and outcome facts directly.
 The feature flag and database gate fence every main, background, preparation, lifecycle, and
 deadline claim. Rollback disables v3 claims and rolls forward; it never revives a v2 executor.
 

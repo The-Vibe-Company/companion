@@ -270,7 +270,7 @@ export class BoxRuntimeAdapterError extends BoxRuntimeProviderError {
     retryable: boolean;
     outcomeUnknown: boolean;
   }) {
-    // Keep the inherited provider code for backwards-compatible operational branching. Runtime v2
+    // Keep the inherited provider code for provider-specific operational branching. Runtime v3
     // persists stableCode instead; providerCode is allowlisted to a bounded identifier below.
     super(input.message, input.status, input.providerCode ?? input.stableCode);
     this.stableCode = input.stableCode;
@@ -294,7 +294,7 @@ export interface BoxMaintenanceClient {
   } & BoxCallControl): Promise<BoxDeletionOperation>;
 }
 
-/** Additive Runtime v2 lifecycle surface; purge-only fakes may keep implementing the narrow base. */
+/** Runtime v3 lifecycle surface; purge-only fakes may keep implementing the narrow base. */
 export interface BoxRuntimeLifecycleClient extends BoxMaintenanceClient {
   findGenerationBoxes(input: {
     companionId: string;

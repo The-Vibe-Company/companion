@@ -32,7 +32,7 @@ interface RuntimeV3Loop {
   lastCompletedAt: Date | null;
 }
 
-/** Owns only Runtime v3 convergence; no Runtime v2 scheduler can be reached from this process. */
+/** Owns Runtime v3 lifecycle, main-Turn, background-Turn, and deadline convergence. */
 export function createRuntimeV3Scheduler(
   options: RuntimeV3SchedulerOptions,
 ): RuntimeApplicationScheduler {

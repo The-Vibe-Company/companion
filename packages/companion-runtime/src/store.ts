@@ -787,7 +787,7 @@ const AUTHORIZATION_COLUMNS = `
   source_dispatch_state,
   source_pi_invocation_id`;
 
-/** PostgreSQL implementation whose SQL surface consists only of Runtime v2 definer functions. */
+/** Retired PostgreSQL engine retained only for compile-time isolation from Runtime v3 composition. */
 export class PostgresRuntimeStore implements RuntimeStore {
   constructor(private readonly sql: RuntimeSqlClient) {}
 

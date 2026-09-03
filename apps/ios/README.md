@@ -204,10 +204,10 @@ Use this manual production-like check:
 2. Send a message and wait for the real Box/Pi/z.ai response.
 3. Close and reopen the app with `pnpm ios:dev`; confirm the roster and thread return before and
    after fresh synchronization.
-4. With the stack still running, stop exactly that Companion from a Conductor terminal:
+4. With the stack still running, archive exactly that Companion from a Conductor terminal:
 
    ```bash
-   pnpm ios:live:stop -- --companion "Exact Companion name or id"
+   pnpm ios:live:archive -- --companion "Exact Companion name or id"
    ```
 
 5. Confirm the app projects `stopped`, send another message, and verify the existing Box resumes

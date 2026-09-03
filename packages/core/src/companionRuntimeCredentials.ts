@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof, anti-slop/no-unknown-returns, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-chained-type-assertions, anti-slop/no-conditional-empty-object-spread -- This established encrypted-credential decoder validates every decrypted field before returning it; THE-528 changes only its runtime-contract wording. */
 import {
   companionMcpCredentialSchema,
   type CompanionMcpCredential,
@@ -67,7 +68,7 @@ function parseJsonCredential(input: {
 }
 
 /**
- * Decrypt one provider envelope already authorized and generation-pinned by Runtime v2 SQL.
+ * Decrypt one provider envelope already authorized and generation-pinned by Runtime v3 SQL.
  * Failures expose only a stable local error; neither ciphertext nor plaintext enters the message.
  */
 export function decryptCompanionProviderRuntimeCredential(
@@ -209,7 +210,7 @@ export function decryptCompanionMcpRuntimeCredential(
 
 /**
  * Prepare a refreshed MCP OAuth envelope for the lease-fenced generation CAS. The caller persists
- * it only through the narrow Runtime v2 function and must discard it if that CAS loses.
+ * it only through the narrow Runtime v3 function and must discard it if that CAS loses.
  */
 export function encryptCompanionMcpRuntimeCredential(input: {
   orgId: string;

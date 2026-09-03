@@ -587,7 +587,7 @@ bootstrap_database() {
   "${PSQL[@]}" -c "CREATE DATABASE $PG_DB OWNER $PG_OWNER_USER;" 2>/dev/null || true
   "${PSQL[@]}" -c "ALTER DATABASE $PG_DB OWNER TO $PG_OWNER_USER;" >/dev/null
   # Preserve Skills Hub data in pre-split local clusters: the former application owner may still
-  # own tables even though it must never execute Runtime v2. Transfer ownership, then disable its
+  # own tables even though it must never execute hosted runtime work. Transfer ownership, then disable its
   # login. No grants or compatibility executor are restored.
   if "${PSQL[@]}" -tAc "select 1 from pg_roles where rolname = 'companion'" | grep -qx 1; then
     "${PSQL[@]}" -d "$PG_DB" -c "REASSIGN OWNED BY companion TO $PG_OWNER_USER;" >/dev/null
@@ -746,14 +746,14 @@ migrate_and_seed() {
       | grep -qx 1; then
     local gate_epoch
     gate_epoch="$("${OWNER_PSQL[@]}" -tAc \
-      "select gate_epoch from public.companion_runtime_control where id = 'runtime-v2'")"
+      "select gate_epoch from public.companion_runtime_control where id = 'runtime-v3'")"
     case "$gate_epoch" in
-      ''|*[!0-9]*) die "Runtime v2 gate returned an invalid epoch: '$gate_epoch'" ;;
+      ''|*[!0-9]*) die "Runtime v3 gate returned an invalid epoch: '$gate_epoch'" ;;
     esac
     "${OWNER_PSQL[@]}" -c \
       "select * from public.companion_runtime_enable(${gate_epoch}::bigint, 'dev-conductor');" \
-      >/dev/null || die "Could not enable the local Runtime v2 gate"
-    ok "Runtime v2 gate enabled for local development"
+      >/dev/null || die "Could not enable the local Runtime v3 gate"
+    ok "Runtime v3 gate enabled for local development"
   fi
 
   local seed_env=(

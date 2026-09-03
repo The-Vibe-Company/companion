@@ -1276,7 +1276,8 @@ describe("Companion Runtime v2 PostgreSQL contract", () => {
       functions: Array<{ signature: string; execute: boolean | null }>;
     };
     expect(after.functions).toHaveLength(protectedSignatures.length);
-    expect(after.functions.every((entry) => !entry.execute)).toBe(true);
+    expect(after.functions.filter((entry) => entry.execute), "unscrubbed function grants")
+      .toEqual([]);
 
     const [defaults] = await runtimeSql<Array<{ executePrivileges: number }>>`
       select count(*)::int as "executePrivileges"

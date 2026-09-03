@@ -793,15 +793,15 @@ export function CompanionsApp({
 
   /**
    * Whether any Companion in the list is mid-work: replying, in a lifecycle transition, or carrying
-   * a pending operation such as a requested delete. While one is, the list polls at the fast
+   * a durable lifecycle intent such as a requested delete. While one is, the list polls fast so
    * cadence so its avatar and status track the work; a settled roster returns to the slow one.
    */
   const listWorkPending = companions.some((companion) =>
     companion.runtime.replying
     || companion.runtime.state === "provisioning"
     || companion.runtime.state === "stopping"
-    || (companion.runtime.latest_operation !== null
-      && ["pending", "running"].includes(companion.runtime.latest_operation.status)));
+    || companion.runtime.lifecycle_intent === "recycle_pi"
+    || companion.runtime.lifecycle_intent === "delete");
 
   /**
    * The conversation list re-reads every thread's last line on a slow cadence. It is the

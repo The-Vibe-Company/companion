@@ -5,13 +5,13 @@ import CompanionKit
 struct CompanionDetailServices {
     let listProviders: () async throws -> CompanionProvidersResponse
     let updateCompanion: (String, UpdateCompanionInput) async throws -> CompanionSummary
-    let deleteCompanion: (String, UUID) async throws -> CompanionOperationSummary
+    let deleteCompanion: (String, UUID) async throws -> CompanionLifecycleReceipt
     let connectedResources: () async throws -> CompanionConnectedResources
     let listPlugins: () async throws -> [CompanionPluginAccount]
     let listTriggerProviderAccounts: (() async throws -> [CompanionTriggerProviderAccount])?
     let updatePluginSelection: ([String]) async throws -> CompanionSummary
     let loadCompanion: () async throws -> CompanionSummary
-    let restart: (CompanionRuntimeRestartTarget, UUID) async throws -> CompanionOperationSummary
+    let restart: (CompanionRuntimeRestartTarget, UUID) async throws -> CompanionLifecycleReceipt
     let updateMemberState: ((String, CompanionMemberStatePatch) async throws -> CompanionSummary)?
     let listRoutines: (() async throws -> [CompanionRoutine])?
     let createRoutine: ((CreateCompanionRoutineInput) async throws -> CompanionRoutine)?
@@ -26,13 +26,13 @@ struct CompanionDetailServices {
     init(
         listProviders: @escaping () async throws -> CompanionProvidersResponse,
         updateCompanion: @escaping (String, UpdateCompanionInput) async throws -> CompanionSummary,
-        deleteCompanion: @escaping (String, UUID) async throws -> CompanionOperationSummary,
+        deleteCompanion: @escaping (String, UUID) async throws -> CompanionLifecycleReceipt,
         connectedResources: @escaping () async throws -> CompanionConnectedResources,
         listPlugins: @escaping () async throws -> [CompanionPluginAccount],
         listTriggerProviderAccounts: (() async throws -> [CompanionTriggerProviderAccount])? = nil,
         updatePluginSelection: @escaping ([String]) async throws -> CompanionSummary,
         loadCompanion: @escaping () async throws -> CompanionSummary,
-        restart: @escaping (CompanionRuntimeRestartTarget, UUID) async throws -> CompanionOperationSummary,
+        restart: @escaping (CompanionRuntimeRestartTarget, UUID) async throws -> CompanionLifecycleReceipt,
         updateMemberState: ((String, CompanionMemberStatePatch) async throws -> CompanionSummary)? = nil,
         listRoutines: (() async throws -> [CompanionRoutine])? = nil,
         createRoutine: ((CreateCompanionRoutineInput) async throws -> CompanionRoutine)? = nil,
@@ -141,7 +141,7 @@ private enum CompanionDetailDemoFixtures {
           "hidden":false,
           "unread":false,
           "last_message":{"preview":"Release notes are ready.","role":"assistant","created_at":"2026-08-25T08:00:00.000Z"},
-          "runtime":{"state":"running","daemon_state":"running","replying":false,"last_error":null,"provider_ids":["anthropic"],"latest_operation":null}
+          "runtime":{"state":"running","daemon_state":"running","replying":false,"last_error":null,"provider_ids":["anthropic"],"lifecycle_intent":"prepare"}
         }
         """#)
     }
@@ -292,7 +292,7 @@ private enum CompanionDetailDemoFixtures {
         """#)
     }
 
-    private static var deleteOperation: CompanionOperationSummary {
+    private static var deleteOperation: CompanionLifecycleReceipt {
         decode(#"""
         {
           "id":"14757274-8d64-455c-a394-334665a258f0",
@@ -305,7 +305,7 @@ private enum CompanionDetailDemoFixtures {
 
     private static func restartOperation(
         _: CompanionRuntimeRestartTarget
-    ) -> CompanionOperationSummary {
+    ) -> CompanionLifecycleReceipt {
         decode(#"{"id":"77777777-7777-4777-8777-777777777777","kind":"restart_pi","status":"pending","error":null}"#)
     }
 
@@ -333,7 +333,7 @@ private enum CompanionDetailDemoFixtures {
                 "replying": false,
                 "last_error": NSNull(),
                 "provider_ids": ["anthropic"],
-                "latest_operation": NSNull(),
+                "lifecycle_intent": "prepare",
             ],
         ]
         let data = try! JSONSerialization.data(withJSONObject: object)
@@ -367,7 +367,7 @@ private enum CompanionDetailDemoFixtures {
                 "replying": false,
                 "last_error": NSNull(),
                 "provider_ids": [input.providerID],
-                "latest_operation": NSNull(),
+                "lifecycle_intent": "prepare",
             ],
         ]
         let data = try! JSONSerialization.data(withJSONObject: object)

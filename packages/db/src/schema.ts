@@ -76,7 +76,7 @@ const companionOperationStatusEnum = pgEnum("companion_operation_status", [
 const companionOperationTriggerEnum = pgEnum("companion_operation_trigger", [
   "turn", "user", "settings", "recovery", "kill_switch",
 ]);
-export const companionRuntimeErrorActionEnum = pgEnum("companion_runtime_error_action", [
+const companionRuntimeErrorActionEnum = pgEnum("companion_runtime_error_action", [
   "retry", "cancel", "restart_pi", "restart_box", "switch_model",
   "reconnect_provider", "none",
 ]);
@@ -1013,7 +1013,7 @@ function companionTurnCompositeKeyColumns(): [AnyPgColumn, AnyPgColumn, AnyPgCol
   return [companionTurns.orgId, companionTurns.companionId, companionTurns.id];
 }
 
-/** Identifier-only one-Companion/one-Box/one-Pi Runtime v2 projection. */
+/** Identifier-only image-builder projection shared by Runtime v3 preparation. */
 export const companionImages = pgTable(
   "companion_images",
   {
@@ -2667,7 +2667,7 @@ export const companionMemberState = pgTable(
   }),
 );
 
-/** One durable chat sequence per Companion; Runtime v2 owns delivery and event cursors. */
+/** One durable chat sequence per Companion; Runtime v3 owns delivery and event cursors. */
 export const companionThreads = pgTable(
   "companion_threads",
   {

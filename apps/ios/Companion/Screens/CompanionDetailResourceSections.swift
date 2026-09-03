@@ -10,7 +10,7 @@ struct CompanionResourceSectionsServices {
     let listTriggerProviderAccounts: (() async throws -> [CompanionTriggerProviderAccount])?
     let updatePluginSelection: ([String]) async throws -> CompanionSummary
     let loadCompanion: () async throws -> CompanionSummary
-    let restart: (CompanionRuntimeRestartTarget, UUID) async throws -> CompanionOperationSummary
+    let restart: (CompanionRuntimeRestartTarget, UUID) async throws -> CompanionLifecycleReceipt
     let createTrigger: ((CreateCompanionTriggerInput) async throws -> CompanionTrigger)?
     let updateTrigger: ((String, UpdateCompanionTriggerInput) async throws -> CompanionTrigger)?
     let deleteTrigger: ((String) async throws -> Void)?
@@ -23,7 +23,7 @@ struct CompanionResourceSectionsServices {
         listTriggerProviderAccounts: (() async throws -> [CompanionTriggerProviderAccount])? = nil,
         updatePluginSelection: @escaping ([String]) async throws -> CompanionSummary,
         loadCompanion: @escaping () async throws -> CompanionSummary,
-        restart: @escaping (CompanionRuntimeRestartTarget, UUID) async throws -> CompanionOperationSummary,
+        restart: @escaping (CompanionRuntimeRestartTarget, UUID) async throws -> CompanionLifecycleReceipt,
         createTrigger: ((CreateCompanionTriggerInput) async throws -> CompanionTrigger)? = nil,
         updateTrigger: ((String, UpdateCompanionTriggerInput) async throws -> CompanionTrigger)? = nil,
         deleteTrigger: ((String) async throws -> Void)? = nil,
@@ -65,7 +65,7 @@ struct CompanionResourceSections: View {
     @State private var restartTarget: CompanionRuntimeRestartTarget?
     @State private var restartingTarget: CompanionRuntimeRestartTarget?
     @State private var restartRequestIDs: [CompanionRuntimeRestartTarget: UUID] = [:]
-    @State private var acceptedOperation: CompanionOperationSummary?
+    @State private var acceptedLifecycle: CompanionLifecycleReceipt?
     @State private var resourceActionError: String?
     @State private var busyResourceID: String?
     @State private var triggerToDelete: CompanionTrigger?
@@ -85,7 +85,7 @@ struct CompanionResourceSections: View {
         self.onCompanionUpdated = onCompanionUpdated
         self.services = services
         _currentCompanion = State(initialValue: companion)
-        _acceptedOperation = State(initialValue: companion.runtime.latestOperation)
+        _acceptedLifecycle = State(initialValue: companion.runtime.latestLifecycle)
     }
 
     var body: some View {
@@ -103,7 +103,7 @@ struct CompanionResourceSections: View {
         .task(id: runtimePollingID) { await pollRuntimeWhileNeeded() }
         .onChange(of: companion) { _, updated in
             currentCompanion = updated.reconcilingParentProjection(from: currentCompanion)
-            acceptedOperation = currentCompanion.runtime.latestOperation
+            acceptedLifecycle = currentCompanion.runtime.latestLifecycle
         }
         .confirmationDialog(
             restartConfirmationTitle,
@@ -266,7 +266,7 @@ struct CompanionResourceSections: View {
                         }
                         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                         .padding(.horizontal, 16)
-                        .disabled(mutatingPluginID != nil || operationActive)
+                        .disabled(mutatingPluginID != nil || lifecycleActive)
                         .accessibilityIdentifier("companion.details.plugins.add")
                     } else if currentCompanion.access == .editor {
                         resourceDivider
@@ -417,7 +417,7 @@ struct CompanionResourceSections: View {
                 }
                 .font(.caption.weight(.semibold))
                 .frame(minWidth: 44, minHeight: 44)
-                .disabled(mutatingPluginID != nil || operationActive)
+                .disabled(mutatingPluginID != nil || lifecycleActive)
                 .accessibilityLabel("Detach \(pluginProviderName(plugin.provider)) account \(plugin.label)")
                 .accessibilityIdentifier("companion.details.plugin.detach.\(plugin.id)")
             }
@@ -747,12 +747,12 @@ struct CompanionResourceSections: View {
         currentCompanion.access == .owner
     }
 
-    private var latestOperation: CompanionOperationSummary? {
-        acceptedOperation ?? currentCompanion.runtime.latestOperation
+    private var latestLifecycle: CompanionLifecycleReceipt? {
+        acceptedLifecycle ?? currentCompanion.runtime.latestLifecycle
     }
 
-    private var operationActive: Bool {
-        latestOperation?.isActive == true
+    private var lifecycleActive: Bool {
+        latestLifecycle?.isActive == true
     }
 
     private var runtimeOnline: Bool {
@@ -763,13 +763,13 @@ struct CompanionResourceSections: View {
     private var runtimeControlsDisabled: Bool {
         restartingTarget != nil
             || mutatingPluginID != nil
-            || operationActive
+            || lifecycleActive
             || hasUnsavedSettings
     }
 
     private var runtimeMessage: String {
-        if let operation = latestOperation {
-            let label = operationLabel(operation.kind)
+        if let operation = latestLifecycle {
+            let label = lifecycleLabel(operation.kind)
             switch operation.status {
             case .pending:
                 return "\(label) is queued. Status refreshes automatically."
@@ -794,7 +794,7 @@ struct CompanionResourceSections: View {
     }
 
     private var runtimeMessageColor: Color {
-        guard let operation = latestOperation else {
+        guard let operation = latestLifecycle else {
             return currentCompanion.runtime.state == .error ? .companionDanger : .companionMuted
         }
         switch operation.status {
@@ -804,12 +804,12 @@ struct CompanionResourceSections: View {
     }
 
     private var runtimePollingID: String {
-        let operation = latestOperation
+        let operation = latestLifecycle
         return "\(currentCompanion.id):\(operation?.id ?? "none"):\(operation?.status.rawValue ?? "none"):\(currentCompanion.runtime.state.rawValue)"
     }
 
     private var needsRuntimePolling: Bool {
-        operationActive
+        lifecycleActive
             || currentCompanion.runtime.state == .provisioning
             || currentCompanion.runtime.state == .stopping
     }
@@ -823,15 +823,13 @@ struct CompanionResourceSections: View {
         return "Restart"
     }
 
-    private func operationLabel(_ kind: CompanionOperationKind) -> String {
+    private func lifecycleLabel(_ kind: CompanionLifecycleIntent) -> String {
         switch kind {
-        case .restartPi: "Companion restart"
-        case .restartBox: "Previous server operation"
-        case .applySettings: "Settings apply"
-        case .start: "Start"
-        case .stop: "Stop"
+        case .recyclePi: "Companion restart"
+        case .archive: "Archive"
+        case .prepare: "Preparation"
         case .delete: "Deletion"
-        case .unknown: "Runtime operation"
+        case .unknown: "Runtime lifecycle"
         }
     }
 
@@ -1131,7 +1129,7 @@ struct CompanionResourceSections: View {
                 )
             }
             currentCompanion = updated.preservingListProjection(from: currentCompanion)
-            acceptedOperation = updated.runtime.latestOperation
+            acceptedLifecycle = updated.runtime.latestLifecycle
             onCompanionUpdated(currentCompanion)
             success = attached
                 ? "\(pluginProviderName(plugin.provider)) · \(plugin.label) attached."
@@ -1148,7 +1146,7 @@ struct CompanionResourceSections: View {
     private func restart(_ target: CompanionRuntimeRestartTarget) async {
         guard canEdit,
               !hasUnsavedSettings,
-              !operationActive,
+              !lifecycleActive,
               restartingTarget == nil else { return }
         restartingTarget = target
         restartTarget = nil
@@ -1157,7 +1155,7 @@ struct CompanionResourceSections: View {
         let requestID = restartRequestIDs[target] ?? UUID()
         restartRequestIDs[target] = requestID
         do {
-            let operation: CompanionOperationSummary
+            let operation: CompanionLifecycleReceipt
             if let services {
                 operation = try await services.restart(target, requestID)
             } else {
@@ -1168,7 +1166,7 @@ struct CompanionResourceSections: View {
                 )
             }
             restartRequestIDs[target] = nil
-            acceptedOperation = operation
+            acceptedLifecycle = operation
             success = "Restart accepted. It joins any recovery already in progress."
         } catch {
             if let apiError = error as? APIError, apiError.status == 0 {
@@ -1199,7 +1197,7 @@ struct CompanionResourceSections: View {
             }
             guard !Task.isCancelled else { return }
             currentCompanion = updated.preservingListProjection(from: currentCompanion)
-            acceptedOperation = updated.runtime.latestOperation
+            acceptedLifecycle = updated.runtime.latestLifecycle
         } catch {
             guard !Task.isCancelled else { return }
             self.error = companionDisplayMessage(error, fallback: "Restart status could not be refreshed.")
@@ -1277,7 +1275,7 @@ enum CompanionResourceDemoFixtures {
         [decode(#"{"id":"55555555-5555-4555-8555-555555555555","provider":"github","label":"work","transport":"http","endpoint":"https://api.githubcopilot.com/mcp","connected":true,"created_at":"2026-08-25T08:00:00.000Z","updated_at":"2026-08-25T08:00:00.000Z"}"#)]
     }
 
-    static func restartOperation(_: CompanionRuntimeRestartTarget) -> CompanionOperationSummary {
+    static func restartOperation(_: CompanionRuntimeRestartTarget) -> CompanionLifecycleReceipt {
         decode(#"{"id":"77777777-7777-4777-8777-777777777777","kind":"restart_pi","status":"pending","error":null}"#)
     }
 

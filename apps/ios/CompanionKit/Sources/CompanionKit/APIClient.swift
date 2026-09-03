@@ -99,8 +99,8 @@ public actor APIClient {
         let section: CompanionSection
     }
 
-    private struct OperationEnvelope: Decodable {
-        let operation: CompanionOperationSummary
+    private struct LifecycleEnvelope: Decodable {
+        let lifecycle: CompanionLifecycleReceipt
     }
 
     private struct TurnThreadEnvelope: Decodable {
@@ -807,30 +807,30 @@ public actor APIClient {
         companionID: String,
         target: CompanionRuntimeRestartTarget,
         requestID: UUID
-    ) async throws -> CompanionOperationSummary {
+    ) async throws -> CompanionLifecycleReceipt {
         let id = Self.encodedPathComponent(companionID)
         let body = try encoder.encode(["target": target.rawValue])
         return try await decode(
-            OperationEnvelope.self,
+            LifecycleEnvelope.self,
             path: "/v1/companions/\(id)/runtime/restart",
             method: "POST",
             body: body,
             additionalHeaders: ["Idempotency-Key": requestID.uuidString.lowercased()]
-        ).operation
+        ).lifecycle
     }
 
     public func deleteCompanion(
         companionID: String,
         requestID: UUID
-    ) async throws -> CompanionOperationSummary {
+    ) async throws -> CompanionLifecycleReceipt {
         let id = companionID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? companionID
         return try await decode(
-            OperationEnvelope.self,
+            LifecycleEnvelope.self,
             path: "/v1/companions/\(id)",
             method: "DELETE",
             body: nil,
             additionalHeaders: ["Idempotency-Key": requestID.uuidString.lowercased()]
-        ).operation
+        ).lifecycle
     }
 
     public func listCompanionProviders() async throws -> CompanionProvidersResponse {

@@ -716,8 +716,10 @@ describe("Companion triggers over the real database", () => {
         eq(schema.companionV3RoutineRuns.turnId, schema.companionV3Turns.id),
       ))
       .where(eq(schema.companionV3RoutineRuns.triggerSnapshotId, trigger.id));
-    expect(queued.map((row) => row.sequence)).toEqual([...queued.map((row) => row.sequence)]
-      .sort((left, right) => Number(left - right)));
+    const observedSequences = queued.map((row) => row.sequence);
+    expect(observedSequences).toEqual([...observedSequences].sort(
+      (left, right) => Number(left - right),
+    ));
     expect(queued).toHaveLength(3);
 
     // A disabled trigger never wakes anything and records no fire.

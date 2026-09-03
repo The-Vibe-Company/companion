@@ -194,9 +194,15 @@ describe("one-shot Runtime v2 purge on disposable PostgreSQL and provider fixtur
         .sort();
       const cutover = migrations.findIndex((name) => name.startsWith("0094_"));
       if (cutover < 0) throw new Error("Runtime v2 cutover migration is missing");
+      const contraction = migrations.findIndex((name) => name.startsWith("0179_"));
+      if (contraction < 0) throw new Error("Runtime v3 contraction migration is missing");
       for (const name of migrations.slice(0, cutover)) await applyMigrationFile(migrationSql, name);
       await applyRuntimeGrants(migrationSql);
-      for (const name of migrations.slice(cutover)) await applyMigrationFile(migrationSql, name);
+      // The destructive rehearsal intentionally runs against the last pre-contraction schema.
+      // Migration 0179 is deployed only after this owner-only purge has proved an empty inventory.
+      for (const name of migrations.slice(cutover, contraction)) {
+        await applyMigrationFile(migrationSql, name);
+      }
       await applyRuntimeGrants(migrationSql);
     } finally {
       await migrationSql.end({ timeout: 1 });

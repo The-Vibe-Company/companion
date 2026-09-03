@@ -65,6 +65,7 @@ describe("pre-tenant PostgreSQL RLS boundary", () => {
   async function withRuntimeRole<T>(fn: (tx: postgres.TransactionSql) => Promise<T>): Promise<T> {
     if (!runtimeRoleSql) throw new Error("pre-tenant runtime role is not initialized");
     const result = await runtimeRoleSql.begin(fn);
+    // SAFETY: postgres.begin preserves the callback's generic result but its declaration widens it.
     return result as T;
   }
 

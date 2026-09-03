@@ -111,7 +111,7 @@ type RuntimeReadRow = {
   active_turn: unknown;
   queued_count: number | string;
   interrupted_turn: unknown;
-  latest_operation: unknown;
+  lifecycle_intent: "prepare" | "archive" | "recycle_pi" | "delete";
   is_replying: boolean;
   last_observed_at?: Date | string | null;
 };
@@ -207,7 +207,7 @@ export function projectCompanionRuntime(
           : skillsError
         : null,
       last_observed_at: lastObservedAt,
-      latest_operation: null,
+      lifecycle_intent: row.lifecycle_intent,
     },
   };
 }
@@ -1210,7 +1210,7 @@ export async function getCompanionDecision(input: {
 
   // Legacy routine/trigger proposal cards remain answerable after the cutover even though Pi no
   // longer receives proposal tools. This read-only compatibility store cannot create or claim a
-  // Runtime v2 attempt; it only resolves an already-persisted transcript decision by request key.
+  // hosted executor; it only resolves an already-persisted transcript decision by request key.
   try {
     const proposalResult = await input.database.execute(sql`
       select request_key, request_kind::text as request_kind,

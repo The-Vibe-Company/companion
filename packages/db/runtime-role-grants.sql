@@ -433,6 +433,17 @@ BEGIN
       'public.companion_runtime_reject_responder_change()'::regprocedure,
       'public.companion_runtime_close_attempt_decisions(uuid,uuid,uuid,text,text,public.companion_runtime_error_action,uuid)'::regprocedure
     ];
+    -- These migration-era mutation fences are absent after 0179, but a grants replay against an
+    -- earlier cutover checkpoint must still scrub every unknown grantee from them.
+    SELECT internal_runtime_functions || COALESCE(
+      array_agg(pg_catalog.to_regprocedure(signature)), ARRAY[]::regprocedure[]
+    ) INTO internal_runtime_functions
+    FROM unnest(ARRAY[
+      'public.companion_runtime_assert_v2_mutation()',
+      'public.companion_runtime_require_v2_mutation()',
+      'public.companion_runtime_require_instance_at_commit()'
+    ]) retired(signature)
+    WHERE pg_catalog.to_regprocedure(signature) IS NOT NULL;
 
     -- 0091 and desktop-replay repair 0093 are additive, and the hook is also replayed by
     -- historical-migration tests. Resolve the executor surface only when the 0091 sentinel exists;

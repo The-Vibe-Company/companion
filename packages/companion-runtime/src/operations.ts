@@ -28,7 +28,7 @@ import type {
   RuntimeAuthorization,
 } from "./types";
 
-export const BOX_WARM_TTL_SECONDS = COMPANION_BUDGETS_BASE.boxWarmTtlSeconds;
+export const BOX_WARM_TTL_SECONDS = COMPANION_BUDGETS_BASE.boxProviderTtlSeconds;
 const PROVIDER_POLL_INTERVAL_MS = 1_000;
 // Waiting for a Box to leave provisioning is the one poll where every interval lands directly on
 // the member's send-to-ack latency, and a ready GET is cheap, so this loop polls four times as

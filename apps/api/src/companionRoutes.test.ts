@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as contextModule from "./context";
 import type { ApiVariables } from "./context";
-import type { CompanionThread } from "@companion/contracts";
+import type { Companion, CompanionThread } from "@companion/contracts";
 import {
   CompanionMcpBrokerAuthorizationError,
   CompanionTriggerDecisionUpdateError,
@@ -133,7 +133,7 @@ const owner = {
   name: "Owner",
 };
 
-const companion = {
+const companion: Companion = {
   id: COMPANION_ID,
   name: "Research",
   persona: "Check every source.",
@@ -152,7 +152,7 @@ const companion = {
     generation: 7,
     state: "running" as const,
     daemon_state: "running" as const,
-    box_id: "bx_runtime_v2",
+    box_id: "bx_runtime_v3",
     provider_ids: ["anthropic"],
     provider_credential_generation: null,
     disk_layout_version: 14,
@@ -166,7 +166,7 @@ const companion = {
     last_observed_at: NOW,
     last_started_at: NOW,
     last_stopped_at: null,
-    latest_operation: null,
+    lifecycle_intent: "prepare",
   },
   created_at: NOW,
   updated_at: NOW,
@@ -224,7 +224,6 @@ const turn = {
   client_message_id: MESSAGE_ID,
   status: "queued" as const,
   queue_sequence: 1,
-  latest_attempt: null,
   replying: false,
   error: null,
   state_changed_at: NOW,
@@ -291,28 +290,9 @@ const operatorTurnError = {
   action: "reconnect_provider" as const,
 };
 
-const operatorAttemptError = {
-  code: "pi_process_crashed",
-  message: "Pi exited after reading /root/.config/provider-private.json.",
-  action: "restart_pi" as const,
-};
-
 const interruptedTurn = {
   ...turn,
   status: "interrupted" as const,
-  latest_attempt: {
-    id: "77777777-7777-4777-8777-777777777777",
-    turn_id: TURN_ID,
-    attempt_number: 1,
-    retry_id: null,
-    status: "interrupted" as const,
-    dispatch_state: "ambiguous" as const,
-    pi_invocation_id: "pi-invocation-operator-only",
-    dispatch_accepted_at: null,
-    error: operatorAttemptError,
-    started_at: NOW,
-    settled_at: NOW,
-  },
   error: operatorTurnError,
   settled_at: NOW,
 };
@@ -368,7 +348,7 @@ function jsonPut(path: string, body: TestJsonValue): Request {
   });
 }
 
-describe("Companions Runtime v2 API", () => {
+describe("Companions Runtime v3 API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     contextMocks.actorFromContext.mockReturnValue(owner);
@@ -1168,7 +1148,7 @@ describe("Companions Runtime v2 API", () => {
     });
   });
 
-  it("replaces Viewer turn and attempt diagnostics with one generic non-actionable error", async () => {
+  it("replaces Viewer Turn diagnostics with one generic non-actionable error", async () => {
     const viewerThread = threadWithInterruptedTurn("viewer");
     coreMocks.readCompanionThread.mockResolvedValue(viewerThread);
 
@@ -1184,16 +1164,9 @@ describe("Companions Runtime v2 API", () => {
       message: "Companion runtime needs attention.",
       action: "none",
     });
-    expect(payload.thread.interrupted_turn.latest_attempt?.error).toEqual({
-      code: "runtime_unavailable",
-      message: "Companion runtime needs attention.",
-      action: "none",
-    });
     const serialized = JSON.stringify(payload);
     expect(serialized).not.toContain(operatorTurnError.code);
     expect(serialized).not.toContain(operatorTurnError.message);
-    expect(serialized).not.toContain(operatorAttemptError.code);
-    expect(serialized).not.toContain(operatorAttemptError.message);
   });
 
   it.each(["owner", "editor"] as const)(
@@ -1210,7 +1183,6 @@ describe("Companions Runtime v2 API", () => {
 
       expect(response.status).toBe(200);
       expect(payload.thread.interrupted_turn.error).toEqual(operatorTurnError);
-      expect(payload.thread.interrupted_turn.latest_attempt?.error).toEqual(operatorAttemptError);
     },
   );
 
@@ -2535,7 +2507,6 @@ describe("Companion trigger webhook", () => {
     client_message_id: MESSAGE_ID,
     status: "queued" as const,
     queue_sequence: 1,
-    latest_attempt: null,
     replying: false,
     error: null,
     state_changed_at: NOW,

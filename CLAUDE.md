@@ -22,9 +22,8 @@ consoles for work Companion can do with credentials it already holds.
 - A hosted Companion has an immutable Companion **Owner** and optional workspace-wide **Editor** or
   **Viewer** access. Owner/Editor may send and operate it; Viewer reads control-plane projections
   only and never contacts Box.
-- A **turn** is the durable result of one accepted `client_message_id`; a **turn attempt** is one
-  explicit dispatch try; an **operation** is durable lifecycle intent such as start, stop, restart,
-  settings apply, or delete.
+- A **Turn** is the durable command, admission, activity, and outcome for one accepted
+  `client_message_id`; **lifecycle intent** is prepare, archive, Pi recycle, or permanent delete.
 
 Do not introduce generic Projects or skill runs, multi-Bot orchestration, agent-to-agent handoffs,
 voice, another agent harness, another Box provider, or a deployment platform. Scheduled Companion
@@ -48,7 +47,7 @@ excluded product surface.
 - `packages/box-runtime`: ascii.dev transport, Box disk layout, and the Pi broker integration.
 - `packages/box-lab`: local developer-only Box API test double backed by isolated real Linux; it is
   neither a product runtime provider nor a replacement for `packages/box-sim`.
-- `packages/companion-runtime`: Runtime v2 state machine and durable execution engine.
+- `packages/companion-runtime`: Runtime v3 progression contracts and durable execution engine.
 - `apps/runtime`: the only process allowed to claim runtime work or contact Box/Pi.
 - `packages/db/runtime-role-grants.sql`: split API, worker, and runtime grants.
 - `apps/worker/src/supervisors.ts`: GitHub, billing, Skill Database cleanup, and Companion routines.
@@ -78,14 +77,13 @@ excluded product surface.
   owns a runtime lease.
 - `apps/runtime` is the sole lifecycle owner. The API and worker have no Box credential; runtime
   receives the Box key and only narrow `SECURITY DEFINER` claim/renew/checkpoint/settle access.
-- One `(companion_id, client_message_id)` creates exactly one turn. Only one attempt may be active
-  in each `main` or `routine` lane; later turns remain FIFO within their lane in PostgreSQL.
-- An ambiguous dispatch is never replayed automatically. It becomes `interrupted`; protocol 7
-  enqueues one cleanup-only internal `restart_pi` recovery, terminates the exact Pi invocation
-  without loading message resources, records `resolution = auto_abandoned`, and releases that lane.
-  Recovery retries with bounded backoff and never requires an Owner/Editor action.
-- Full Box restart is an explicit user action only. Automatic repair may recycle Pi but never
-  restart, replace, archive, or delete a healthy Box as healing.
+- One `(companion_id, client_message_id)` creates exactly one Turn. Only one Turn may be active
+  in each `main` or `background` lane; later Turns remain FIFO within their lane in PostgreSQL.
+- An ambiguous dispatch is never replayed automatically. It becomes `interrupted`, releases its
+  lane, invalidates `Prepared`, and causes preparation to recycle only the captured Pi invocation
+  before later work.
+- Automatic repair is Pi-scoped on the existing Box. Archive and permanent delete remain explicit
+  lifecycle intent; healing never replaces, archives, or deletes a healthy Box.
 - Runtime errors persist only a stable code, an expurgated message of at most 500 characters, and an
   allowed action. Never persist provider payloads, tokens, signed URLs, or raw Pi lines.
 
@@ -114,15 +112,15 @@ automatically; run `pnpm box:lab:doctor` for prerequisites. Conductor archive as
 remove only resources owned by the exact workspace. Box Lab is intentionally absent from CI because
 its full real-Linux acceptance is slow; run it locally as the final validation after the fast suites.
 
-## Companions Runtime v2 contract
+## Companions Runtime v3 contract
 
 - An Owner/Editor send persists the message, its attachments, and the turn atomically and returns
   `202` in under one second outside load; a send carrying files is bounded by the upload it performs
   first. Sending is the only normal wake action; there is no Wake button and no first-keystroke
   prewarm.
 - Turn states are
-  `queued → starting → dispatching → running ↔ needs_input → succeeded|failed|interrupted|cancelled`.
-  “Companion is replying…” is true only after Pi acknowledges the current attempt and before its
+  `queued → admitted → running ↔ needs_input → succeeded|failed|interrupted|cancelled`.
+  “Companion is replying…” is true only after Pi durably acknowledges the Turn and before its
   terminal settlement.
 - The runtime re-evaluates membership, Companion ACL, selected Skills, plugins, and provider access
   immediately before Box contact. Revoked authority fails closed.
@@ -144,15 +142,15 @@ its full real-Linux acceptance is slow; run it locally as the final validation a
 - A turn stalls after ten minutes without correlated activity and has a two-hour absolute deadline.
   A timed-out or ambiguous turn becomes visible and terminal immediately; its ambiguous prompt is
   never replayed and later work continues without a human action.
-- The compatibility Retry endpoint only observes or re-enqueues the same cleanup; it never creates
-  an attempt. Cancel remains the explicit stop/dequeue path for active or queued work and returns a
+- Cancel remains the explicit stop/dequeue path for cancellable active or queued work and returns a
   stable state without mutation for `interrupted` work.
-- Box stays warm for six hours after successful Pi acceptance. Reads, lists, ordinary status, and
-  Viewer access are PostgreSQL-only and never wake or observe Box directly.
+- Box archives after one hour without a newly admitted Turn. Its provider expiry guard and staged
+  credentials remain capped at six hours; neither changes the idle-archive decision. Reads, lists,
+  ordinary status, and Viewer access are PostgreSQL-only and never wake or observe Box directly.
 - Disabling the Companions flag stops new runtime claims. Active work reaches a safe checkpoint and
-  becomes interrupted. Re-enabling is the operational rollback; old executors must never process v2
-  rows.
-- Legacy Companions, transcripts, runtime state, and Boxes are purged fail-closed before v2 cutover;
+  becomes interrupted. Re-enabling is the operational rollback; retired executors and rows never
+  become reachable again.
+- Legacy Companions, transcripts, runtime state, and Boxes are purged fail-closed before v3 cutover;
   they are not migrated. Encrypted provider connections and member MCP accounts survive.
 
 ## Tests and completion

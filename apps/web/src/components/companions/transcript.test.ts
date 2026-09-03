@@ -11,7 +11,6 @@ import {
 
 const companionId = "11111111-1111-4111-8111-111111111111";
 const turnId = "22222222-2222-4222-8222-222222222222";
-const attemptId = "33333333-3333-4333-8333-333333333333";
 const now = "2026-08-12T12:00:00.000Z";
 
 function entry(overrides: Partial<CompanionTranscriptEntry> = {}): CompanionTranscriptEntry {
@@ -54,29 +53,17 @@ function thread(overrides: Partial<CompanionThread> = {}): CompanionThread {
 }
 
 function activeTurn(
-  status: "starting" | "dispatching" | "running" | "needs_input",
+  status: "admitted" | "running" | "needs_input",
   replying = false,
 ): NonNullable<CompanionThread["active_turn"]> {
-  const accepted = status === "running" && replying;
   return {
     id: turnId,
     companion_id: companionId,
     client_message_id: "44444444-4444-4444-8444-444444444444",
     status,
     queue_sequence: 1,
-    latest_attempt: {
-      id: attemptId,
-      turn_id: turnId,
-      attempt_number: 1,
-      retry_id: null,
-      status,
-      dispatch_state: accepted ? "accepted" : "pending",
-      pi_invocation_id: accepted ? "pi-1" : null,
-      dispatch_accepted_at: accepted ? now : null,
-      error: null,
-      started_at: now,
-      settled_at: null,
-    },
+    admission_state: "accepted",
+    admitted_at: now,
     replying,
     error: null,
     state_changed_at: now,
@@ -93,7 +80,6 @@ function interruptedTurn(): NonNullable<CompanionThread["interrupted_turn"]> {
     client_message_id: "44444444-4444-4444-8444-444444444444",
     status: "interrupted",
     queue_sequence: 1,
-    latest_attempt: null,
     replying: false,
     error: {
       code: "dispatch_ambiguous",
@@ -114,7 +100,6 @@ function queuedTurn(externalMessage?: string): NonNullable<CompanionThread["queu
     client_message_id: "44444444-4444-4444-8444-444444444444",
     status: "queued",
     queue_sequence: 1,
-    latest_attempt: null,
     admission_state: "pending",
     admitted_at: null,
     replying: false,
@@ -208,7 +193,7 @@ describe("replyExpected", () => {
 
   it("never infers replying from transcript shape or runtime lifecycle", () => {
     expect(replyExpected(thread({ entries: [entry()] }))).toBe(false);
-    expect(replyExpected(thread({ active_turn: activeTurn("dispatching") }))).toBe(false);
+    expect(replyExpected(thread({ active_turn: activeTurn("admitted") }))).toBe(false);
     expect(replyExpected(null)).toBe(false);
   });
 
@@ -227,7 +212,7 @@ describe("composerHint", () => {
 
   it("describes active and later ordered turns", () => {
     expect(composerHint({
-      thread: thread({ active_turn: activeTurn("starting"), queued_count: 2 }),
+      thread: thread({ active_turn: activeTurn("admitted"), queued_count: 2 }),
       companionName: "Luna",
       state: "provisioning",
     })).toBe("Luna is starting this turn. 2 later messages are queued.");

@@ -1994,7 +1994,7 @@ describe("Pi outbox maintenance", () => {
 
 describe("isolated routine Pi sessions", () => {
   const runId = "11111111-1111-4111-8111-111111111111";
-  const invocationId = `routine:${runId}:dispatch-v2:22222222-2222-4222-8222-222222222222`;
+  const invocationId = `background:${runId}:dispatch-v3:22222222-2222-4222-8222-222222222222`;
 
   it("rejects a non-UUID run id before contacting the Box", async () => {
     const fetch = vi.fn();

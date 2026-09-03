@@ -1,5 +1,9 @@
-import type { CompanionMcpAccount, CompanionMcpCredential } from "@companion/contracts";
-import { companionMcpAccountSchema } from "@companion/contracts";
+import type {
+  CompanionControlJsonValue,
+  CompanionMcpAccount,
+  CompanionMcpCredential,
+} from "@companion/contracts";
+import { companionControlJsonValueSchema, companionMcpAccountSchema } from "@companion/contracts";
 import {
   decryptCompanionMcpRuntimeCredential,
   decryptCompanionProviderRuntimeCredential,
@@ -8,17 +12,47 @@ import {
   type CompanionRuntimeProviderCredential,
 } from "@companion/core";
 import type { CompanionRuntimeSkill, CompanionStagedMcpAccount } from "@companion/box-runtime";
-import type { RuntimeAuthorization, RuntimeWorkMaterial } from "@companion/companion-runtime/runtime-support";
+import type { RuntimeV3PreparationClaim } from "@companion/companion-runtime/v3/internal";
 import { MAX_ARCHIVE_BYTES, skillChecksum, toTar } from "@companion/skills";
 
 export interface RuntimeMaterialRows {
-  providerMaterial: RuntimeMaterialRow[];
-  skillMaterial: RuntimeMaterialRow[];
-  mcpMaterial: RuntimeMaterialRow[];
+  providerMaterial: RuntimeProviderMaterial[];
+  skillMaterial: RuntimeSkillMaterial[];
+  mcpMaterial: RuntimeMcpMaterial[];
 }
 
-type RuntimeMaterialRow = RuntimeWorkMaterial["providerMaterial"][number];
-type RuntimeUntrustedValue = RuntimeMaterialRow[keyof RuntimeMaterialRow];
+interface RuntimeEncryptedMaterial {
+  credential_generation: string;
+  credential_version?: number;
+  ciphertext: string;
+  iv: string;
+  auth_tag: string;
+  wrapped_dek: string;
+  wrap_iv: string;
+  wrap_auth_tag: string;
+  key_id: string;
+}
+
+interface RuntimeProviderMaterial extends RuntimeEncryptedMaterial {
+  provider_id: string;
+  auth_method: string;
+  credential_version: number;
+}
+
+interface RuntimeSkillMaterial {
+  skill_id: string;
+  slug: string;
+  version_id: string;
+  version: string;
+  checksum: string;
+  size_bytes: number;
+  storage_path: string;
+}
+
+interface RuntimeMcpMaterial extends RuntimeEncryptedMaterial {
+  account_id: string;
+  account_config: unknown;
+}
 
 export interface ResolvedRuntimeResources {
   providerAuth: Record<string, CompanionRuntimeProviderCredential>;
@@ -36,7 +70,7 @@ export interface DecryptedRuntimeMcpRow {
 }
 
 function collectCredentialStrings(
-  value: RuntimeUntrustedValue,
+  value: CompanionControlJsonValue,
   output: Set<string>,
 ): void {
   const text = stringValue(value);
@@ -88,7 +122,7 @@ export function collectRuntimeCredentialSensitiveValues(input: {
         credentialGeneration: row.credentialGeneration,
         envelope: row.envelope,
       }, input.masterKey);
-      collectCredentialStrings(credential, values);
+      collectCredentialStrings(companionControlJsonValueSchema.parse(credential), values);
     }
     for (const row of decryptRuntimeMcpRows({
       orgId: input.orgId,
@@ -120,7 +154,7 @@ export class RuntimeMaterialError extends Error {
  */
 export function assertRuntimeMaterialSnapshot(input: {
   material: RuntimeMaterialRows;
-  authorization: Pick<RuntimeAuthorization, "providerRefs" | "skillRefs" | "mcpRefs">;
+  authorization: Pick<RuntimeV3PreparationClaim, "providerRefs" | "skillRefs" | "mcpRefs">;
 }): void {
   try {
     const materialProviders = input.material.providerMaterial.map((raw) => {
@@ -270,7 +304,7 @@ export async function resolveRuntimeResources(input: {
 
 export function decryptRuntimeMcpRows(input: {
   orgId: string;
-  mcpMaterial: RuntimeMaterialRow[];
+  mcpMaterial: RuntimeMcpMaterial[];
   masterKey: Buffer;
 }): DecryptedRuntimeMcpRow[] {
   try {
@@ -309,7 +343,7 @@ interface EncryptedRow {
   };
 }
 
-function providerRow(row: RuntimeMaterialRow): EncryptedRow & {
+function providerRow(row: RuntimeProviderMaterial): EncryptedRow & {
   providerId: string;
   authMethod: string;
   credentialVersion: number;
@@ -328,7 +362,7 @@ function providerRow(row: RuntimeMaterialRow): EncryptedRow & {
   };
 }
 
-function mcpRow(row: RuntimeMaterialRow): EncryptedRow & {
+function mcpRow(row: RuntimeMcpMaterial): EncryptedRow & {
   accountId: string;
   accountConfig: unknown;
 } {
@@ -339,7 +373,7 @@ function mcpRow(row: RuntimeMaterialRow): EncryptedRow & {
   };
 }
 
-function encryptedRow(row: RuntimeMaterialRow): EncryptedRow {
+function encryptedRow(row: RuntimeEncryptedMaterial): EncryptedRow {
   return {
     credentialGeneration: uuid(row.credential_generation),
     envelope: {
@@ -364,7 +398,7 @@ interface RuntimeSkillRow {
   storagePath: string;
 }
 
-function skillRow(row: RuntimeMaterialRow): RuntimeSkillRow {
+function skillRow(row: RuntimeSkillMaterial): RuntimeSkillRow {
   const checksum = boundedString(row.checksum);
   const sizeBytes = row.size_bytes;
   if (!/^sha256:[0-9a-f]{64}$/.test(checksum)) {
@@ -392,7 +426,7 @@ function sameUniqueRefs(left: string[], right: string[]): boolean {
   return [...leftSet].every((value) => rightSet.has(value));
 }
 
-function boundedString(value: RuntimeUntrustedValue, max = 1_000_000): string {
+function boundedString(value: string, max = 1_000_000): string {
   const text = stringValue(value);
   if (
     text === null
@@ -403,7 +437,7 @@ function boundedString(value: RuntimeUntrustedValue, max = 1_000_000): string {
   return text;
 }
 
-function stableString(value: RuntimeUntrustedValue, max: number): string {
+function stableString(value: string, max: number): string {
   const text = boundedString(value, max);
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._+@:/-]*$/.test(text)) {
     throw new RuntimeMaterialError("runtime_material_invalid");
@@ -411,7 +445,7 @@ function stableString(value: RuntimeUntrustedValue, max: number): string {
   return text;
 }
 
-function uuid(value: RuntimeUntrustedValue): string {
+function uuid(value: string): string {
   const text = boundedString(value, 36);
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text)) {
     throw new RuntimeMaterialError("runtime_material_invalid");
@@ -419,7 +453,7 @@ function uuid(value: RuntimeUntrustedValue): string {
   return text;
 }
 
-function stringValue(value: RuntimeUntrustedValue): string | null {
+function stringValue(value: CompanionControlJsonValue): string | null {
   const text = String(value);
   return value === text ? text : null;
 }

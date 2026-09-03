@@ -22,11 +22,11 @@ import {
 } from "./testDatabase";
 
 /**
- * Member list preferences and unread watermarks remain control-plane facts after Runtime v2.
- * These tests use the public v2 database functions, including their tenant GUC boundary, rather
- * than restoring any legacy transcript executor or delivery watermark.
+ * Member list preferences and unread watermarks remain Runtime v3 control-plane facts. These tests
+ * use the current tenant boundary and never restore a retired transcript executor or delivery
+ * watermark.
  */
-describe("Runtime v2 Companion member state", () => {
+describe("Runtime v3 Companion member state", () => {
   let fixture: IntegrationFixture;
   let alphaId: string;
   let betaId: string;
@@ -142,17 +142,21 @@ describe("Runtime v2 Companion member state", () => {
       invocationId: "pi-member-state-fixture",
     };
     await integrationDb
-      .update(schema.companionRuntimeInstances)
+      .update(schema.companionV3Instances)
       .set({
         boxId: provisionedIdentity.boxId,
-        boxState: "ready",
-        piState: "idle",
         piInvocationId: provisionedIdentity.invocationId,
-        diskLayoutVersion: 14,
+        preparationCheckpoint: "prepared",
+        boxReadyAt: new Date(),
+        stagingCompletedAt: new Date(),
+        preparedAt: new Date(),
+        preparedDiskLayoutVersion: 14,
+        preparedSkillsDigest: "a".repeat(64),
+        preparedMaterialExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
       })
       .where(and(
-        eq(schema.companionRuntimeInstances.orgId, fixture.orgA),
-        eq(schema.companionRuntimeInstances.companionId, alphaId),
+        eq(schema.companionV3Instances.orgId, fixture.orgA),
+        eq(schema.companionV3Instances.companionId, alphaId),
       ));
 
     const hidden = await asActor(fixture.developer, (database) => updateCompanionMemberState({
@@ -164,10 +168,10 @@ describe("Runtime v2 Companion member state", () => {
     }));
     expect(hidden.hidden).toBe(true);
     expect(hidden.runtime.box_id).toBe(provisionedIdentity.boxId);
-    expect(await integrationDb.query.companionRuntimeInstances.findFirst({
+    expect(await integrationDb.query.companionV3Instances.findFirst({
       where: and(
-        eq(schema.companionRuntimeInstances.orgId, fixture.orgA),
-        eq(schema.companionRuntimeInstances.companionId, alphaId),
+        eq(schema.companionV3Instances.orgId, fixture.orgA),
+        eq(schema.companionV3Instances.companionId, alphaId),
       ),
     })).toMatchObject({
       boxId: provisionedIdentity.boxId,

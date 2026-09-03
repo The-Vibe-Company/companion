@@ -208,6 +208,11 @@ export interface RuntimePiRoutineSessionControl {
   }): Promise<void>;
 }
 
+/**
+ * Internal shape of Runtime v3's Pi transport. The broker protocol calls its correlation token
+ * `attemptId`; current callers put the durable Turn id there and no attempt record exists.
+ * Export this to processes only through the `RuntimeV3PiTransport` name in runtime-support.
+ */
 export interface RuntimePiControl {
   stopPiDaemon(input: { boxId: string; signal: AbortSignal }): Promise<void>;
   /**

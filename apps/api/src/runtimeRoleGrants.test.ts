@@ -11,7 +11,7 @@ describe("Skills Hub runtime-role grants", () => {
     expect(sql).not.toMatch(/skill_run|project_workspace|project_worker|sandbox_usage|model_provider/i);
   });
 
-  it("keeps Runtime v2 state private and grants only its fenced executor functions", async () => {
+  it("keeps historical runtime state private and grants only fenced runtime functions", async () => {
     const sql = await readFile(await resolveRuntimeRoleGrantsFile(), "utf8");
     for (const table of [
       "companion_runtime_control",
@@ -75,9 +75,6 @@ describe("Skills Hub runtime-role grants", () => {
     expect(sql).toContain("'public.companion_runtime_enable(bigint,text)'::regprocedure");
     for (const helper of [
       "companion_runtime_create_lease_row()",
-      "companion_runtime_assert_v2_mutation()",
-      "companion_runtime_require_v2_mutation()",
-      "companion_runtime_require_instance_at_commit()",
       "companion_runtime_assign_turn_sequence()",
       "companion_runtime_assign_operation_intent()",
       "companion_runtime_assign_attempt_snapshot()",

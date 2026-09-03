@@ -489,7 +489,7 @@ CREATE FUNCTION public.companion_v3_api_read_runtime(
   applied_skills_revision integer,retirement_state public.companion_runtime_retirement_state,
   last_observed_at timestamptz,last_error_code text,last_error_message text,
   last_error_action public.companion_runtime_error_action,active_turn jsonb,queued_count integer,
-  interrupted_turn jsonb,latest_operation jsonb,is_replying boolean
+  interrupted_turn jsonb,lifecycle_intent public.companion_v3_lifecycle_intent,is_replying boolean
 ) LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path=pg_catalog,public SET row_security=on AS $$
 DECLARE v_actor text:=public.companion_api_actor(p_org_id);
@@ -535,7 +535,7 @@ BEGIN
     (SELECT count(*)::integer FROM public.companion_v3_turns queued
       WHERE queued.org_id=instance.org_id AND queued.companion_id=instance.companion_id
         AND queued.lane='main' AND queued.state='queued'),
-    interrupted_turn.value,NULL::jsonb,
+    interrupted_turn.value,instance.desired_lifecycle,
     active_turn.value IS NOT NULL AND COALESCE((active_turn.value->>'replying')::boolean,false)
   FROM public.companion_v3_instances instance
   JOIN public.companions companion ON companion.org_id=instance.org_id
@@ -563,7 +563,7 @@ RETURNS TABLE(
   applied_skills_revision integer,retirement_state public.companion_runtime_retirement_state,
   last_observed_at timestamptz,last_error_code text,last_error_message text,
   last_error_action public.companion_runtime_error_action,active_turn jsonb,queued_count integer,
-  interrupted_turn jsonb,latest_operation jsonb,is_replying boolean
+  interrupted_turn jsonb,lifecycle_intent public.companion_v3_lifecycle_intent,is_replying boolean
 ) LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path=pg_catalog,public SET row_security=on AS $$
 DECLARE v_actor text:=public.companion_api_actor(p_org_id);v_companion uuid;
@@ -614,7 +614,7 @@ RETURNS jsonb LANGUAGE sql STABLE SET search_path=pg_catalog,public AS $$
   SELECT jsonb_build_object(
     'id',p_turn.id,'companion_id',p_turn.companion_id,
     'client_message_id',p_turn.client_message_id,'status',p_turn.state,
-    'queue_sequence',p_turn.queue_sequence,'latest_attempt',NULL,
+    'queue_sequence',p_turn.queue_sequence,
     'admission_state',p_turn.admission_state,'admitted_at',p_turn.admitted_at,
     'replying',p_turn.admission_state='accepted' AND p_turn.state IN ('admitted','running'),
     'error',CASE

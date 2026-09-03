@@ -102,8 +102,8 @@ describe("companion budget invariants", () => {
     expect(budgets.materialMinTtlMs).toBe(125 * 60 * 1_000);
   });
 
-  it("hub tokens live exactly as long as the warm Box window", () => {
-    expect(budgets.hubTokenTtlSeconds).toBe(base.boxWarmTtlSeconds);
+  it("hub tokens live exactly as long as the provider expiry guard", () => {
+    expect(budgets.hubTokenTtlSeconds).toBe(base.boxProviderTtlSeconds);
   });
 
   it("settings activation shares the operation deadline", () => {

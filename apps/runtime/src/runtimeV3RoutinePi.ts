@@ -1,6 +1,6 @@
 import {
   validatePiJournalRead,
-  type RuntimePiControl,
+  type RuntimeV3PiTransport,
 } from "@companion/companion-runtime/runtime-support";
 import type { RuntimeV3WarmPi } from "@companion/companion-runtime/v3/internal";
 
@@ -16,7 +16,7 @@ function bounded(signal?: AbortSignal): AbortSignal {
  * The map is only an addressing aid for ACK; PostgreSQL remains the claim and fencing authority.
  */
 export function createRuntimeV3RoutinePi(
-  pi: Pick<RuntimePiControl, "routineSession">,
+  pi: Pick<RuntimeV3PiTransport, "routineSession">,
 ): RuntimeV3WarmPi {
   const routine = pi.routineSession;
   if (!routine) throw new Error("Runtime v3 routine Pi transport is unavailable");

@@ -558,10 +558,10 @@ enable_local_runtime_gate() {
   fi
   gate_epoch="$(docker compose -p "$COMPOSE_PROJECT_NAME" exec -T postgres \
     psql -At -U companion -d companion -c \
-      "select gate_epoch from public.companion_runtime_control where id = 'runtime-v2'")"
+      "select gate_epoch from public.companion_runtime_control where id = 'runtime-v3'")"
   case "$gate_epoch" in
     ''|*[!0-9]*)
-      log "Runtime v2 gate returned an invalid epoch: '$gate_epoch'"
+      log "Runtime v3 gate returned an invalid epoch: '$gate_epoch'"
       exit 1
       ;;
   esac
@@ -569,7 +569,7 @@ enable_local_runtime_gate() {
     psql -v ON_ERROR_STOP=1 -U companion -d companion -c \
       "select * from public.companion_runtime_enable(${gate_epoch}::bigint, 'dev-stack');" \
     >/dev/null
-  log "Runtime v2 gate enabled for local development"
+  log "Runtime v3 gate enabled for local development"
 }
 
 run_dev() {

@@ -29,8 +29,6 @@ export type CompanionRuntimeSafeError = z.infer<typeof companionRuntimeSafeError
 export const companionTurnStatusSchema = z.enum([
   "queued",
   "admitted",
-  "starting",
-  "dispatching",
   "running",
   "needs_input",
   "succeeded",
@@ -40,39 +38,11 @@ export const companionTurnStatusSchema = z.enum([
 ]);
 export type CompanionTurnStatus = z.infer<typeof companionTurnStatusSchema>;
 
-/** Exact per-turn state of protocol-7 automatic cleanup. Optional during rolling deploys. */
+/** Exact per-Turn state of fenced Pi recycle recovery. Optional during rolling deploys. */
 export const companionRecoveryStatusSchema = z.enum(["pending", "running", "completed"]);
 export type CompanionRecoveryStatus = z.infer<typeof companionRecoveryStatusSchema>;
 
-export const companionTurnAttemptStatusSchema = z.enum([
-  "starting",
-  "dispatching",
-  "running",
-  "needs_input",
-  "succeeded",
-  "failed",
-  "interrupted",
-  "cancelled",
-]);
-export type CompanionTurnAttemptStatus = z.infer<typeof companionTurnAttemptStatusSchema>;
-
-export const companionTurnDispatchStateSchema = z.enum([
-  "pending",
-  "write_intent",
-  "accepted",
-  "rejected",
-  "ambiguous",
-]);
-export type CompanionTurnDispatchState = z.infer<typeof companionTurnDispatchStateSchema>;
-
 const terminalTurnStatuses = new Set<CompanionTurnStatus>([
-  "succeeded",
-  "failed",
-  "interrupted",
-  "cancelled",
-]);
-
-const terminalAttemptStatuses = new Set<CompanionTurnAttemptStatus>([
   "succeeded",
   "failed",
   "interrupted",
@@ -109,30 +79,6 @@ function validateTerminalSettlement(
   }
 }
 
-export const companionTurnAttemptSchema = z.object({
-  id: z.string().uuid(),
-  turn_id: z.string().uuid(),
-  attempt_number: z.number().int().positive(),
-  retry_id: z.string().uuid().nullable(),
-  status: companionTurnAttemptStatusSchema,
-  dispatch_state: companionTurnDispatchStateSchema,
-  pi_invocation_id: z.string().min(1).max(200).nullable(),
-  dispatch_accepted_at: companionRuntimeTimestampSchema.nullable(),
-  error: companionRuntimeSafeErrorSchema.nullable(),
-  started_at: companionRuntimeTimestampSchema,
-  settled_at: companionRuntimeTimestampSchema.nullable(),
-}).strict().superRefine((attempt, context) => {
-  validateTerminalSettlement(attempt, terminalAttemptStatuses, context);
-  if ((attempt.dispatch_state === "accepted") !== (attempt.dispatch_accepted_at !== null)) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["dispatch_accepted_at"],
-      message: "dispatch_accepted_at must be present exactly after a positive Pi ACK",
-    });
-  }
-});
-export type CompanionTurnAttempt = z.infer<typeof companionTurnAttemptSchema>;
-
 export const companionTurnSchema = z.object({
   id: z.string().uuid(),
   companion_id: z.string().uuid(),
@@ -143,7 +89,6 @@ export const companionTurnSchema = z.object({
   /** Automatic cleanup for this exact occurrence; never inferred from Companion-wide lifecycle. */
   recovery_status: companionRecoveryStatusSchema.nullable().catch(null).optional(),
   queue_sequence: z.number().int().positive(),
-  latest_attempt: companionTurnAttemptSchema.nullable(),
   /** Runtime v3 owns Pi admission on the Turn itself and deliberately has no attempt row. */
   admission_state: z.enum(["pending", "accepted", "ambiguous"]).optional(),
   /** Present exactly after Runtime v3 has durably recorded a positive or ambiguous admission. */
@@ -162,7 +107,6 @@ export const companionTurnSchema = z.object({
   updated_at: companionRuntimeTimestampSchema,
 }).strict().superRefine((turn, context) => {
   validateTerminalSettlement(turn, terminalTurnStatuses, context);
-  const attempt = turn.latest_attempt;
   const v3Admission = turn.admission_state;
   if (
     v3Admission !== undefined
@@ -205,26 +149,14 @@ export const companionTurnSchema = z.object({
       message: "active recovery requires an unresolved interrupted turn",
     });
   }
-  if (attempt !== null && attempt.turn_id !== turn.id) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["latest_attempt", "turn_id"],
-      message: "latest_attempt must belong to its turn",
-    });
-  }
-  const replyIsDurablyAccepted = turn.status === "running"
-    && attempt?.status === "running"
-    && attempt.dispatch_state === "accepted"
-    && attempt.dispatch_accepted_at !== null;
-  const v3ReplyIsDurablyAccepted = attempt === null
-    && v3Admission === "accepted"
+  const replyIsDurablyAccepted = v3Admission === "accepted"
     && (turn.status === "admitted" || turn.status === "running")
     && turn.admitted_at != null;
-  if (turn.replying && !replyIsDurablyAccepted && !v3ReplyIsDurablyAccepted) {
+  if (turn.replying && !replyIsDurablyAccepted) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["replying"],
-      message: "replying requires a running turn with a positively acknowledged running attempt",
+      message: "replying requires a Turn with positively acknowledged Pi admission",
     });
   }
 });
@@ -232,8 +164,6 @@ export type CompanionTurn = z.infer<typeof companionTurnSchema>;
 
 const activeTurnStatuses = new Set<CompanionTurnStatus>([
   "admitted",
-  "starting",
-  "dispatching",
   "running",
   "needs_input",
 ]);
@@ -256,88 +186,12 @@ export const companionInterruptedTurnSchema = companionTurnSchema.refine(
 );
 export type CompanionInterruptedTurn = z.infer<typeof companionInterruptedTurnSchema>;
 
-export const companionOperationKindSchema = z.enum([
-  "delete",
-  "stop",
-  "restart_pi",
-  "start",
-  "apply_settings",
-]);
-export type CompanionOperationKind = z.infer<typeof companionOperationKindSchema>;
-
-export const companionOperationStatusSchema = z.enum([
-  "pending",
-  "running",
-  "succeeded",
-  "failed",
-  "interrupted",
-  "cancelled",
-]);
-export type CompanionOperationStatus = z.infer<typeof companionOperationStatusSchema>;
-
-export const companionOperationTriggerSchema = z.enum([
-  "turn",
-  "user",
-  "settings",
-  "recovery",
-  "kill_switch",
-]);
-export type CompanionOperationTrigger = z.infer<typeof companionOperationTriggerSchema>;
-
-const terminalOperationStatuses = new Set<CompanionOperationStatus>([
-  "succeeded",
-  "failed",
-  "interrupted",
-  "cancelled",
-]);
-
-export const companionOperationSchema = z.object({
-  id: z.string().uuid(),
-  companion_id: z.string().uuid(),
-  request_id: z.string().uuid().nullable(),
-  source_turn_id: z.string().uuid().nullable(),
-  kind: companionOperationKindSchema,
-  trigger: companionOperationTriggerSchema,
-  status: companionOperationStatusSchema,
-  queue_sequence: z.number().int().positive(),
-  checkpoint: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
-  attempt_count: z.number().int().nonnegative(),
-  error: companionRuntimeSafeErrorSchema.nullable(),
-  created_at: companionRuntimeTimestampSchema,
-  started_at: companionRuntimeTimestampSchema.nullable(),
-  settled_at: companionRuntimeTimestampSchema.nullable(),
-}).strict().superRefine((operation, context) => {
-  validateTerminalSettlement(operation, terminalOperationStatuses, context);
-});
-export type CompanionOperation = z.infer<typeof companionOperationSchema>;
-
-/**
- * Bounded lifecycle projection carried by ordinary Companion reads. The control plane exposes only
- * what a client needs to restore durable operation UI; provider checkpoints and request metadata do
- * not belong on the roster/thread read model.
- */
-export const companionLatestOperationSchema = z.object({
-  id: z.string().uuid(),
-  source_turn_id: z.string().uuid().nullable(),
-  kind: companionOperationKindSchema,
-  status: companionOperationStatusSchema,
-  error: companionRuntimeSafeErrorSchema.nullable(),
-}).strict();
-export type CompanionLatestOperation = z.infer<typeof companionLatestOperationSchema>;
-
-export const companionOperationAcceptedResponseSchema = z.object({
-  operation: companionOperationSchema,
-}).strict();
-export type CompanionOperationAcceptedResponse = z.infer<
-  typeof companionOperationAcceptedResponseSchema
->;
-
 /**
  * UUID carried by every explicit lifecycle request. Clients retain it until they receive the
- * accepted operation, so a lost `202` cannot enqueue the same destructive intent twice.
+ * accepted revision, so a lost `202` cannot enqueue the same destructive intent twice.
  */
-export const COMPANION_OPERATION_IDEMPOTENCY_HEADER = "Idempotency-Key";
-export const companionOperationRequestIdSchema = z.string().uuid();
+export const COMPANION_LIFECYCLE_IDEMPOTENCY_HEADER = "Idempotency-Key";
+export const companionLifecycleRequestIdSchema = z.string().uuid();
 
 export const cancelCompanionTurnInputSchema = z.object({}).strict();
 export type CancelCompanionTurnInput = z.infer<typeof cancelCompanionTurnInputSchema>;

@@ -1,4 +1,4 @@
-import type { RuntimePiControl } from "@companion/companion-runtime/runtime-support";
+import type { RuntimeV3PiTransport } from "@companion/companion-runtime/runtime-support";
 import { describe, expect, it, vi } from "vitest";
 
 import { createRuntimeV3RoutinePi } from "./runtimeV3RoutinePi";
@@ -6,9 +6,9 @@ import { createRuntimeV3RoutinePi } from "./runtimeV3RoutinePi";
 const boxId = "bx_23456789";
 const turnId = "11111111-1111-4111-8111-111111111111";
 const commandId = "22222222-2222-4222-8222-222222222222";
-const invocationId = `routine:${turnId}:dispatch-v2:${commandId}`;
+const invocationId = `background:${turnId}:dispatch-v3:${commandId}`;
 
-function control(overrides: Partial<NonNullable<RuntimePiControl["routineSession"]>> = {}) {
+function control(overrides: Partial<NonNullable<RuntimeV3PiTransport["routineSession"]>> = {}) {
   const routine = {
     start: vi.fn(async () => ({ state: "idle" as const, invocationId })),
     state: vi.fn(),

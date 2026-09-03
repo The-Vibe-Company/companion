@@ -916,10 +916,10 @@ struct ChatView: View {
 
     private var liveReasoningEventID: String? {
         guard isReplying,
-              let attemptID = thread?.activeTurn?.latestAttempt?.id.lowercased() else {
+              let turnID = thread?.activeTurn?.id.lowercased() else {
             return nil
         }
-        let eventPrefix = "v2:\(attemptID):"
+        let eventPrefix = "v3:\(turnID):"
         return entries.last(where: { entry in
             entry.role == "assistant"
                 && entry.eventID.lowercased().hasPrefix(eventPrefix)

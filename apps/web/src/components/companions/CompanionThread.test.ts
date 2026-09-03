@@ -9,29 +9,17 @@ const turnId = "22222222-2222-4222-8222-222222222222";
 const now = "2026-08-12T12:01:00.000Z";
 
 function activeTurn(
-  status: "starting" | "dispatching" | "running" | "needs_input",
+  status: "admitted" | "running" | "needs_input",
   replying = false,
 ): NonNullable<Thread["active_turn"]> {
-  const accepted = status === "running" && replying;
   return {
     id: turnId,
     companion_id: companionId,
     client_message_id: "33333333-3333-4333-8333-333333333333",
     status,
     queue_sequence: 1,
-    latest_attempt: {
-      id: "44444444-4444-4444-8444-444444444444",
-      turn_id: turnId,
-      attempt_number: 1,
-      retry_id: null,
-      status,
-      dispatch_state: accepted ? "accepted" : "pending",
-      pi_invocation_id: accepted ? "pi-1" : null,
-      dispatch_accepted_at: accepted ? now : null,
-      error: null,
-      started_at: now,
-      settled_at: null,
-    },
+    admission_state: "accepted",
+    admitted_at: now,
     replying,
     error: null,
     state_changed_at: now,
@@ -48,7 +36,6 @@ function interruptedTurn(): NonNullable<Thread["interrupted_turn"]> {
     client_message_id: "33333333-3333-4333-8333-333333333333",
     status: "interrupted",
     queue_sequence: 1,
-    latest_attempt: null,
     replying: false,
     error: {
       code: "dispatch_ambiguous",
@@ -95,7 +82,7 @@ function companion(overrides: Partial<Companion> = {}): Companion {
       last_observed_at: null,
       last_started_at: null,
       last_stopped_at: null,
-      latest_operation: null,
+      lifecycle_intent: "prepare",
     },
     created_at: "2026-08-12T12:00:00.000Z",
     updated_at: "2026-08-12T12:00:00.000Z",
@@ -378,7 +365,7 @@ describe("CompanionThread", () => {
       companion: companion({
         runtime: { ...companion().runtime, state: "provisioning", daemon_state: "starting" },
       }),
-      thread: thread({ active_turn: activeTurn("starting") }),
+      thread: thread({ active_turn: activeTurn("admitted") }),
     });
 
     expect(text(starting)).toContain("Starting");
@@ -630,7 +617,7 @@ describe("CompanionThread", () => {
     expect(render({ thread: awaiting })).toContain("is replying...");
     // Box state and transcript shape do not override the durable ACK fact.
     expect(render({ companion: asleep, thread: awaiting })).toContain("is replying...");
-    expect(render({ thread: thread({ active_turn: activeTurn("dispatching") }) }))
+    expect(render({ thread: thread({ active_turn: activeTurn("admitted") }) }))
       .not.toContain("is replying...");
     expect(render({})).not.toContain("is replying...");
   });

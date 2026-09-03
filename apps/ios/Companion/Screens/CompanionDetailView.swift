@@ -13,7 +13,7 @@ struct CompanionDetailView: View {
     /// so opening chat from details never creates a second chat/detail cycle on the stack.
     let onOpenChat: () -> Void
     let onDeletionStarted: (CompanionSummary, UUID) -> Void
-    let onDeletionAccepted: (String, CompanionOperationSummary) -> Void
+    let onDeletionAccepted: (String, CompanionLifecycleReceipt) -> Void
     let onDeletionFailed: (CompanionSummary, UUID, Error) -> Void
     private let services: CompanionDetailServices?
 
@@ -46,7 +46,7 @@ struct CompanionDetailView: View {
         onSaved: @escaping (CompanionSummary) -> Void,
         onOpenChat: @escaping () -> Void = {},
         onDeletionStarted: @escaping (CompanionSummary, UUID) -> Void = { _, _ in },
-        onDeletionAccepted: @escaping (String, CompanionOperationSummary) -> Void,
+        onDeletionAccepted: @escaping (String, CompanionLifecycleReceipt) -> Void,
         onDeletionFailed: @escaping (CompanionSummary, UUID, Error) -> Void = { _, _, _ in },
         services: CompanionDetailServices? = nil
     ) {
@@ -438,7 +438,7 @@ struct CompanionDetailView: View {
                 .disabled(deleting || deletionActive)
                 .accessibilityIdentifier("companion.details.delete")
 
-                if let message = model.companion.deletionOperation?.error?.message {
+                if let message = model.companion.deletionLifecycle?.error?.message {
                     Text(message)
                         .font(.system(size: 14))
                         .foregroundStyle(CompanionIOSTheme.danger)
@@ -566,13 +566,13 @@ struct CompanionDetailView: View {
     }
 
     private var deletionActive: Bool {
-        model.companion.deletionOperation?.isActive == true
+        model.companion.deletionLifecycle?.isActive == true
     }
 
     private var deleteLabel: String {
         if deleting { return "Deleting…" }
         if deleteRequestID != nil { return "Retry Delete" }
-        guard let operation = model.companion.deletionOperation else { return "Delete Companion" }
+        guard let operation = model.companion.deletionLifecycle else { return "Delete Companion" }
         if operation.isActive { return "Deletion requested" }
         if operation.status == .failed || operation.status == .interrupted || operation.status == .cancelled {
             return "Retry Delete"
@@ -795,7 +795,7 @@ struct CompanionDetailView: View {
         deleteRequestID = requestID
         onDeletionStarted(model.companion, requestID)
         do {
-            let operation: CompanionOperationSummary
+            let operation: CompanionLifecycleReceipt
             if let services {
                 operation = try await services.deleteCompanion(model.companion.id, requestID)
             } else {

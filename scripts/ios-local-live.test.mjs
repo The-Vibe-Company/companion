@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bootstrapLocalProvider, stopLocalCompanion } from "./ios-local-live.mjs";
+import { bootstrapLocalProvider, archiveLocalCompanion } from "./ios-local-live.mjs";
 
 function json(body, init = {}) {
   return new Response(JSON.stringify(body), {
@@ -16,7 +16,7 @@ function configuration(overrides = {}) {
     password: "adminadmin",
     zaiApiKey: "zai-local-secret",
     pollIntervalMs: 0,
-    stopTimeoutMs: 10_000,
+    archiveTimeoutMs: 10_000,
     ...overrides,
   };
 }
@@ -109,7 +109,7 @@ test("bootstrap never includes the z.ai credential in a surfaced API error", asy
   );
 });
 
-test("stop targets one exact Companion, reuses the public operation route, and waits for stopped", async () => {
+test("archive targets one exact Companion, uses the v3 lifecycle route, and waits for stopped", async () => {
   const requests = [];
   let runtimeReads = 0;
   const fetchImpl = async (request, options) => {
@@ -129,23 +129,23 @@ test("stop targets one exact Companion, reuses the public operation route, and w
         ],
       });
     }
-    if (record.url === "/v1/companions/companion-1/runtime/stop") {
-      return json({ operation: { id: "operation-stop", status: "pending" } }, { status: 202 });
+    if (record.url === "/v1/companions/companion-1/runtime/archive") {
+      return json({ lifecycle: { intent: "archive", revision: "2" } }, { status: 202 });
     }
     if (record.url === "/v1/companions/companion-1/runtime") {
       runtimeReads += 1;
       return json({
         companion: {
           runtime: runtimeReads === 1
-            ? { state: "stopping", latest_operation: { id: "operation-stop", status: "running" } }
-            : { state: "stopped", latest_operation: { id: "operation-stop", status: "succeeded" } },
+            ? { state: "stopping", lifecycle_intent: "archive" }
+            : { state: "stopped", lifecycle_intent: "archive" },
         },
       });
     }
     return json({ error: "unexpected_request" }, { status: 500 });
   };
 
-  const result = await stopLocalCompanion(
+  const result = await archiveLocalCompanion(
     configuration(),
     "Mobile Live",
     fetchImpl,
@@ -155,17 +155,17 @@ test("stop targets one exact Companion, reuses the public operation route, and w
   assert.deepEqual(result, {
     companionId: "companion-1",
     companionName: "Mobile Live",
-    operationId: "operation-stop",
+    lifecycleRevision: "2",
     state: "stopped",
   });
-  const stopRequest = requests.find((request) => request.url.endsWith("/runtime/stop"));
-  assert.equal(stopRequest.method, "POST");
-  assert.match(stopRequest.headers.get("idempotency-key"), /^[0-9a-f-]{36}$/);
-  assert.equal(stopRequest.headers.has("client_surface"), false);
+  const archiveRequest = requests.find((request) => request.url.endsWith("/runtime/archive"));
+  assert.equal(archiveRequest.method, "POST");
+  assert.match(archiveRequest.headers.get("idempotency-key"), /^[0-9a-f-]{36}$/);
+  assert.equal(archiveRequest.headers.has("client_surface"), false);
   assert.equal(runtimeReads, 2);
 });
 
-test("stop refuses ambiguous names before creating an operation", async () => {
+test("archive refuses ambiguous names before recording lifecycle intent", async () => {
   const requests = [];
   const fetchImpl = async (request, options) => {
     const record = { url: request.pathname, method: options.method ?? "GET" };
@@ -182,13 +182,13 @@ test("stop refuses ambiguous names before creating an operation", async () => {
   };
 
   await assert.rejects(
-    stopLocalCompanion(configuration(), "Duplicate", fetchImpl),
+    archiveLocalCompanion(configuration(), "Duplicate", fetchImpl),
     /multiple Companions match/,
   );
-  assert.equal(requests.some((request) => request.url.endsWith("/runtime/stop")), false);
+  assert.equal(requests.some((request) => request.url.endsWith("/runtime/archive")), false);
 });
 
-test("stop is idempotent when the exact Companion is already stopped", async () => {
+test("archive is idempotent when the exact Companion is already stopped", async () => {
   const requests = [];
   const fetchImpl = async (request, options) => {
     const record = { url: request.pathname, method: options.method ?? "GET" };
@@ -201,25 +201,25 @@ test("stop is idempotent when the exact Companion is already stopped", async () 
         name: "Already Stopped",
         runtime: {
           state: "stopped",
-          latest_operation: { id: "operation-previous", status: "succeeded" },
+          lifecycle_intent: "archive",
         },
       }] });
     }
     return json({ error: "unexpected_request" }, { status: 500 });
   };
 
-  const result = await stopLocalCompanion(configuration(), "Already Stopped", fetchImpl);
+  const result = await archiveLocalCompanion(configuration(), "Already Stopped", fetchImpl);
 
   assert.deepEqual(result, {
     companionId: "companion-stopped",
     companionName: "Already Stopped",
-    operationId: "operation-previous",
+    lifecycleRevision: null,
     state: "stopped",
   });
-  assert.equal(requests.some((request) => request.url.endsWith("/runtime/stop")), false);
+  assert.equal(requests.some((request) => request.url.endsWith("/runtime/archive")), false);
 });
 
-test("stop fails visibly when the durable operation fails", async () => {
+test("archive fails visibly when the durable lifecycle enters error", async () => {
   const fetchImpl = async (request, options) => {
     const record = { url: request.pathname, method: options.method ?? "GET" };
     const auth = authenticatedResponse(record);
@@ -227,15 +227,15 @@ test("stop fails visibly when the durable operation fails", async () => {
     if (record.url === "/v1/companions") {
       return json({ companions: [{ id: "companion-1", name: "Mobile Live" }] });
     }
-    if (record.url.endsWith("/runtime/stop")) {
-      return json({ operation: { id: "operation-stop", status: "pending" } }, { status: 202 });
+    if (record.url.endsWith("/runtime/archive")) {
+      return json({ lifecycle: { intent: "archive", revision: "2" } }, { status: 202 });
     }
     if (record.url.endsWith("/runtime")) {
       return json({
         companion: {
           runtime: {
             state: "error",
-            latest_operation: { id: "operation-stop", status: "failed" },
+            lifecycle_intent: "archive",
           },
         },
       });
@@ -244,7 +244,7 @@ test("stop fails visibly when the durable operation fails", async () => {
   };
 
   await assert.rejects(
-    stopLocalCompanion(configuration(), "companion-1", fetchImpl),
-    /stop operation ended as failed/,
+    archiveLocalCompanion(configuration(), "companion-1", fetchImpl),
+    /archive lifecycle entered an error state/,
   );
 });

@@ -597,7 +597,7 @@ describe("runtime Box/Pi port adapters", () => {
 
   it("addresses every routine Pi operation by run id and exposes terminal teardown", async () => {
     const runId = "11111111-1111-4111-8111-111111111111";
-    const routineInvocationId = `routine:${runId}:dispatch-v2:invocation`;
+    const routineInvocationId = `background:${runId}:dispatch-v3:invocation`;
     const startRoutineSession = vi.fn(async () => ({ state: "idle" as const, invocationId: routineInvocationId }));
     const routineSessionState = vi.fn(async () => ({
       invocationId: routineInvocationId,

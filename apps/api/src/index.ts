@@ -3,7 +3,7 @@ import "./sentry";
 import { captureServerError, Sentry } from "./sentry";
 import { serve } from "@hono/node-server";
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
@@ -168,7 +168,6 @@ import {
   issueTokenInputSchema,
   refreshTokenResponseSchema,
   joinOnboardingOrgInputSchema,
-  labelPathSchema,
   orgSettingsResponseSchema,
   skillNamingPolicyResponseSchema,
   publishSkillInputSchema,
@@ -182,7 +181,6 @@ import {
   setLabelIconInputSchema,
   skillFrontmatterSchema,
   skillFilterPreferencesInputSchema,
-  companionDependencySlugs,
   companionManifestV2JsonSchema,
   updateOrgInputSchema,
   resolveOrgLogoContentType,
@@ -218,8 +216,6 @@ import {
   getSkillArchive,
   getSkillArchiveWithEtag,
   isStoragePreconditionFailure,
-  headSkillArchive,
-  InvalidSkillArchiveRangeError,
   getOrgLogo,
   publicSkillReleaseKey,
   putPublicSkillReleaseSnapshot,
@@ -230,9 +226,7 @@ import {
   skillArchiveKey,
   skillDatabaseKey,
   putSkillArchive,
-  resolveSkillArchiveByteRange,
   signedSkillArchiveUrl,
-  streamSkillArchive,
 } from "@companion/storage";
 import { SqliteWasmSkillDatabaseRuntime } from "@companion/skilldb";
 import {
@@ -251,7 +245,7 @@ import {
   unpackAnyTo,
   validateSkillArchive,
 } from "@companion/skills";
-import { sql as postgresSql, withTenantContext, type Db } from "@companion/db";
+import { withTenantContext, type Db } from "@companion/db";
 import { auth, registerAgentCapabilityExecutor } from "@companion/auth";
 import { inviteEmail, sendTransactionalEmail } from "@companion/email";
 import {
@@ -714,13 +708,6 @@ async function resolvePublishTarget(input: {
     const latest = versions.map((v) => v.version).sort((a, b) => compareSemver(b, a))[0];
     return { skillId: existing.id, version: latest ? bumpSemver(latest, "patch") : "1.0.0" };
   });
-}
-
-function parseBoolean(value: string | undefined): boolean {
-  if (value == null || value === "") return false;
-  if (["true", "1", "yes", "on"].includes(value.toLowerCase())) return true;
-  if (["false", "0", "no", "off"].includes(value.toLowerCase())) return false;
-  throw new Error("everyone must be true or false");
 }
 
 /** Collect a repeatable form/query field into a de-duped, comma-splittable string list. */

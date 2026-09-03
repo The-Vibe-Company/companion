@@ -32,7 +32,7 @@ unset_database_env() {
 # namespace as private by default and retain only the settings owned by the selected process. Shell,
 # package-manager and terminal variables remain untouched. Provider keys such as OPENAI_API_KEY or
 # ZAI_API_KEY match the explicit provider namespace or the credential-shape fallback and are removed:
-# provider credentials enter Runtime v2 through encrypted PostgreSQL material, never a shared env.
+# provider credentials enter the runtime through encrypted PostgreSQL material, never a shared env.
 scrub_application_env() {
   local process_role="$1"
   local name

@@ -81,14 +81,11 @@ export function composerHint(input: {
     const queuedSuffix = queued > 0
       ? ` ${queued} later message${queued === 1 ? " is" : "s are"} queued.`
       : "";
-    if (active.status === "starting") {
-      return `${input.companionName} is starting this turn.${queuedSuffix}`;
-    }
-    if (active.status === "dispatching") {
-      return `Sending this turn to ${input.companionName}.${queuedSuffix}`;
-    }
     if (active.status === "needs_input") {
       return `Answer the request above to continue this turn.${queuedSuffix}`;
+    }
+    if (active.status === "admitted" && input.state === "provisioning") {
+      return `${input.companionName} is starting this turn.${queuedSuffix}`;
     }
     return `${input.companionName} is working on this turn.${queuedSuffix}`;
   }

@@ -90,7 +90,7 @@ private enum CompanionTranscriptWindowDemoFixtures {
       "hidden":false,
       "unread":false,
       "last_message":{"preview":"The release matrix is now stable.","role":"assistant","created_at":"2026-08-26T12:00:00.000Z"},
-      "runtime":{"state":"running","replying":true,"last_error":null,"provider_ids":["anthropic"],"latest_operation":null}
+      "runtime":{"state":"running","replying":true,"last_error":null,"provider_ids":["anthropic"],"lifecycle_intent":"prepare"}
     }
     """#)
 
@@ -106,7 +106,7 @@ private enum CompanionTranscriptWindowDemoFixtures {
       "hidden":false,
       "unread":false,
       "last_message":{"preview":"The second release matrix is stable.","role":"assistant","created_at":"2026-08-26T12:00:00.000Z"},
-      "runtime":{"state":"running","replying":false,"last_error":null,"provider_ids":["anthropic"],"latest_operation":null}
+      "runtime":{"state":"running","replying":false,"last_error":null,"provider_ids":["anthropic"],"lifecycle_intent":"prepare"}
     }
     """#)
 
@@ -238,7 +238,8 @@ private enum CompanionTranscriptWindowDemoFixtures {
                 "client_message_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
                 "status": "running",
                 "queue_sequence": queuedOrdinal + 2,
-                "latest_attempt": NSNull(),
+                "admission_state": "accepted",
+                "admitted_at": "2026-08-26T12:00:00.000Z",
                 "replying": true,
                 "error": NSNull(),
                 "state_changed_at": "2026-08-26T12:00:00.000Z",

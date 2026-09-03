@@ -62,7 +62,7 @@ const companion: Companion = {
     last_observed_at: NOW,
     last_started_at: NOW,
     last_stopped_at: null,
-    latest_operation: null,
+    lifecycle_intent: "prepare",
   },
   created_at: NOW,
   updated_at: NOW,

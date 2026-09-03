@@ -926,7 +926,7 @@ test("the local live iOS action uses Conductor nonconcurrency and the existing s
   assert.match(settings, /^\[scripts\.run\."iOS \(live Box\)"\]$/m);
   assert.match(settings, /^command = "pnpm ios:live"$/m);
   assert.equal(packageJson.scripts["ios:live"], "bash scripts/dev-ios-live.sh");
-  assert.equal(packageJson.scripts["ios:live:stop"], "bash scripts/dev-ios-live.sh stop");
+  assert.equal(packageJson.scripts["ios:live:archive"], "bash scripts/dev-ios-live.sh archive");
   assert.match(launcher, /COMPANION_DEV_BOX_MODE=live/);
   assert.match(launcher, /bash scripts\/dev-conductor\.sh/);
   assert.match(launcher, /bash scripts\/dev-ios-live\.sh client/);

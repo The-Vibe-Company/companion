@@ -799,7 +799,7 @@ test ! -e "/run/user/$(id -u)/companion/providers.env"`);
     await assertStagedPermissions(server.baseUrl, options.config.apiKey, created.boxId);
     const resumed = await runtime.startPiDaemon({ boxId: created.boxId });
     if (resumed.invocationId === restarted.invocationId) {
-      throw new Error("Full Box resume kept the previous systemd InvocationID");
+      throw new Error("Box resume kept the previous systemd InvocationID");
     }
     await assertRunningSecurity(server.baseUrl, options.config.apiKey, created.boxId);
     await sendPrompt(runtime, created.boxId);

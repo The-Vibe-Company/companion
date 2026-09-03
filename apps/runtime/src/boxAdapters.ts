@@ -12,7 +12,7 @@ import type {
   BrokerWriteOutcome,
   BrokerPromptWriteOutcome,
   RuntimeBoxControl,
-  RuntimePiControl,
+  RuntimeV3PiTransport,
   RuntimeProcessLog,
 } from "@companion/companion-runtime/runtime-support";
 
@@ -195,7 +195,7 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
   };
 }
 
-export function createRuntimePiControl(options: RuntimeBoxAdapterOptions): RuntimePiControl {
+export function createRuntimePiControl(options: RuntimeBoxAdapterOptions): RuntimeV3PiTransport {
   return {
     async stopPiDaemon(input) {
       await options.runtime().stopPiDaemon(input);
@@ -367,7 +367,7 @@ function promptWriteOutcome(
 function brokerState(
   state: Awaited<ReturnType<CompanionBoxRuntime["brokerState"]>>,
   expectedLayoutMarker: string,
-): Awaited<ReturnType<RuntimePiControl["brokerState"]>> {
+): Awaited<ReturnType<RuntimeV3PiTransport["brokerState"]>> {
   return {
     ...state,
     layoutCurrent: state.layoutMarker === expectedLayoutMarker,

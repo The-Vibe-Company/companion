@@ -93,6 +93,7 @@ interface BoxSimState {
     };
   }>;
   deletions: Array<{ id: string; targetId: string; status: string }>;
+  faults: Array<{ id: string; point: string; visits: number; fired: number }>;
   requests: Array<{ surface: string; method: string; path: string }>;
 }
 
@@ -123,7 +124,6 @@ let runtimeProcess: ManagedProcess | undefined;
 let boxProcess: ManagedProcess | undefined;
 let sessionCookie = "";
 let orgId = "";
-let userId = "";
 let companionId = "";
 
 function databaseRoleUrl(
@@ -715,20 +715,6 @@ async function boxControl<T>(path: string, init: RequestInit = {}): Promise<T> {
   return await response.json() as T;
 }
 
-async function boxProvider<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${boxBase}${path}`, {
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${boxApiKey}`,
-      ...init.headers,
-    },
-    signal: init.signal ?? AbortSignal.timeout(5_000),
-  });
-  if (!response.ok) throw new Error(`Box simulator provider ${path} returned ${response.status}`);
-  return await response.json() as T;
-}
-
 async function simulatorState(): Promise<BoxSimState> {
   const result = await boxControl<{ state: BoxSimState }>("/state");
   return result.state;
@@ -789,14 +775,13 @@ beforeAll(async () => {
     },
   );
 
-  const [identity] = await databaseSql<Array<{ userId: string; orgId: string }>>`
-    select u.id as "userId", m.org_id::text as "orgId"
+  const [identity] = await databaseSql<Array<{ orgId: string }>>`
+    select m.org_id::text as "orgId"
     from "user" u join memberships m on m.user_id = u.id
     where u.email = ${email}
     order by m.created_at limit 1
   `;
   if (!identity) throw new Error("seed did not create a tenant identity");
-  userId = identity.userId;
   orgId = identity.orgId;
 
   await signIn();
@@ -839,8 +824,16 @@ describe("Runtime v3 real-process control plane", () => {
   it("accepts an immediate cold Turn and answers after an idempotent create fault", async () => {
     assertProcessAlive(apiProcess);
     assertProcessAlive(runtimeProcess);
+    // The runtime image builder shares the provider account. Let its one startup create settle so
+    // the global deterministic fault below can only belong to this Companion generation.
+    await waitFor("runtime image builder settlement", async () => {
+      const [image] = await databaseSql!<Array<{ status: string }>>`
+        select status::text from companion_images order by requested_at desc limit 1
+      `;
+      return image && ["ready", "failed"].includes(image.status);
+    }, 60_000);
     const before = await simulatorState();
-    await boxControl("/faults", {
+    const injected = await boxControl<{ fault: { id: string } }>("/faults", {
       method: "POST",
       body: JSON.stringify({
         point: "box.create.idempotent.after",
@@ -925,6 +918,13 @@ describe("Runtime v3 real-process control plane", () => {
     expect(recoveryProof).toEqual({ opened: 1, recovered: 1, recoveredBeforeSettlement: true });
 
     const after = await simulatorState();
+    const firedFault = after.faults.find((fault) => fault.id === injected.fault.id);
+    expect(firedFault).toMatchObject({
+      point: "box.create.idempotent.after",
+      fired: 1,
+    });
+    if (!firedFault) throw new Error("the scoped create fault was not retained by the simulator");
+    expect(firedFault.visits).toBeGreaterThanOrEqual(2);
     const oldBoxIds = new Set(before.boxes.map((box) => box.id));
     const createRequestsBefore = before.requests.filter((request) =>
       request.surface === "box" && request.method === "POST" && request.path === "/boxes").length;

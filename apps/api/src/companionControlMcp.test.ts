@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@companion/db";
 import type { CompanionControlAuthorization } from "@companion/core";
-import type { CompanionControlJsonValue } from "@companion/contracts";
+import type { Companion, CompanionControlJsonValue } from "@companion/contracts";
 import {
   executeCompanionControlMcp,
   type CompanionControlMcpDependencies,
@@ -23,7 +23,7 @@ const authorization: CompanionControlAuthorization = {
   turnId: "33333333-3333-4333-8333-333333333333",
   attemptId: "44444444-4444-4444-8444-444444444444",
 };
-const companion = {
+const companion: Companion = {
   id: authorization.companionId,
   name: "Renamed",
   persona: null,
@@ -56,7 +56,7 @@ const companion = {
     last_observed_at: null,
     last_started_at: null,
     last_stopped_at: null,
-    latest_operation: null,
+    lifecycle_intent: "prepare",
   },
   created_at: "2026-09-01T00:00:00.000Z",
   updated_at: "2026-09-01T00:00:00.000Z",
@@ -171,7 +171,6 @@ describe("executeCompanionControlMcp idempotence", () => {
       client_message_id: "88888888-8888-4888-8888-888888888888",
       status: "cancelled",
       queue_sequence: 1,
-      latest_attempt: null,
       admission_state: "pending",
       admitted_at: null,
       replying: false,

@@ -5,7 +5,7 @@ import type { RuntimeAuthorization } from "./types";
 
 /**
  * Keep a warm Companion on the current broker/packages without replacing its disk. Overlay updates
- * are seconds; a pin change still installs in place. Full Box restart remains an explicit user action.
+ * are seconds; a pin change still installs in place. Runtime v3 may recycle Pi, never restart the Box.
  *
  * This does not persist a new Pi invocation. Attempt work cannot observe instances, so callers that
  * can (health, still at `observing`) record the returned id themselves — with idle proof, per the

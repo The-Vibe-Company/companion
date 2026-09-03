@@ -6,7 +6,6 @@ import {
 } from "../piEvents";
 import { COMPANION_BUDGETS, COMPANION_RUNTIME_V3_BUDGETS } from "@companion/contracts";
 import type {
-  ErrorAction,
   ProviderRef,
   RuntimeConfigCatalog,
   SafeRuntimeError,
@@ -15,7 +14,6 @@ import type {
   RuntimeV3McpRef,
   RuntimeV3ProviderMaterial,
   RuntimeV3SkillMaterial,
-  RuntimeOutputAttachment,
 } from "../types";
 export type {
   RuntimeV3McpMaterial,
@@ -23,6 +21,16 @@ export type {
   RuntimeV3ProviderMaterial,
   RuntimeV3SkillMaterial,
 } from "../types";
+
+/** One image harvested from Pi's outbox and stored under this Turn's content-addressed key. */
+export interface RuntimeOutputAttachment {
+  storageKey: string;
+  contentType: string;
+  byteSize: number;
+  sha256: string;
+  filename: string;
+  uploadedAt: Date;
+}
 import {
   RuntimeExternalDependencyError,
   RuntimeTerminalPreparationError,
@@ -159,7 +167,13 @@ export type RuntimeV3ProgressionOutcome =
     message: unknown;
   };
 
-export type RuntimeV3ErrorAction = Exclude<ErrorAction, "restart_box">;
+export type RuntimeV3ErrorAction =
+  | "retry"
+  | "cancel"
+  | "restart_pi"
+  | "switch_model"
+  | "reconnect_provider"
+  | "none";
 
 export type RuntimeV3DurableOutcome =
   | { kind: "release" }
@@ -1130,9 +1144,7 @@ export function createRuntimeV3WarmTurnAdvance(
             signal,
             COMPANION_RUNTIME_V3_BUDGETS.heartbeatSettlementMs,
           );
-          let harvested: { attachments: RuntimeOutputAttachment[]; incomplete: boolean };
-          try {
-            harvested = await options.outbox.harvest({
+          const harvested = await options.outbox.harvest({
               orgId: claim.orgId,
               companionId: claim.companionId,
               boxId: material.boxId,
@@ -1141,10 +1153,10 @@ export function createRuntimeV3WarmTurnAdvance(
                 Date.now() + COMPANION_RUNTIME_V3_BUDGETS.heartbeatSettlementMs,
               ),
               signal: outboxSignal,
-            });
-          } catch {
-            harvested = { attachments: [], incomplete: true };
-          }
+            }).catch(() => ({
+              attachments: [],
+              incomplete: true,
+            } satisfies Awaited<ReturnType<RuntimeV3TurnOutbox["harvest"]>>));
           const recorded = await options.persistence.recordOutputs(claim, {
             attachments: harvested.attachments,
             activityAt: new Date(),

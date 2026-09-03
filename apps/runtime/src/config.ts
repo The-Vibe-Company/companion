@@ -7,7 +7,7 @@ import { DESKTOP_REQUEST_MAX_SKEW_SECONDS } from "@companion/companion-runtime/r
 import { companionsEnabled, deploymentReleaseId } from "@companion/core";
 
 const DEFAULT_BOX_API_BASE = "https://ascii.dev/api/box/v1";
-const BOX_TTL_SECONDS = COMPANION_BUDGETS_BASE.boxWarmTtlSeconds;
+const BOX_TTL_SECONDS = COMPANION_BUDGETS_BASE.boxProviderTtlSeconds;
 const DEFAULT_CONCURRENCY = 8;
 const DEFAULT_SWEEP_INTERVAL_MS = COMPANION_BUDGETS_BASE.sweepIntervalMs;
 const DEFAULT_LEASE_SECONDS = COMPANION_BUDGETS_BASE.leaseSeconds;

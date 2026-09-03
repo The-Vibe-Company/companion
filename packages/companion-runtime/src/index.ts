@@ -1,4 +1,4 @@
-/** Public Runtime v3 contract. Retired v2 executor source is intentionally not exported. */
+/** Public Runtime v3 contract. */
 export {
   RUNTIME_V3_LANES,
   RUNTIME_V3_LIFECYCLE_INTENTS,

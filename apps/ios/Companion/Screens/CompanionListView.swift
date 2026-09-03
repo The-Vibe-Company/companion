@@ -9,7 +9,7 @@ struct CompanionListServices {
     let createSection: (String) async throws -> CompanionSection
     let deleteSection: (String) async throws -> Void
     let assignSection: (String, String?) async throws -> CompanionSummary
-    let deleteCompanion: (String, UUID) async throws -> CompanionOperationSummary
+    let deleteCompanion: (String, UUID) async throws -> CompanionLifecycleReceipt
     let updateMemberState: (String, CompanionMemberStatePatch) async throws -> CompanionSummary
     let duplicateCompanion: (String) async throws -> CompanionSummary
 }
@@ -448,7 +448,7 @@ struct CompanionListView: View {
         NavigationLink(value: CompanionRoute.chat(companion.id)) {
             CompanionRow(
                 companion: companion,
-                deletionOperation: effectiveDeletion(for: companion)
+                deletionLifecycle: effectiveDeletion(for: companion)
             )
         }
         .buttonStyle(.plain)
@@ -553,7 +553,7 @@ struct CompanionListView: View {
             sectionStore.reconcile(with: nextSections)
             let nextIDs = Set(next.map(\.id))
             let reconciledDeletionIDs = Set(next.compactMap { companion in
-                companion.deletionOperation == nil ? nil : companion.id
+                companion.deletionLifecycle == nil ? nil : companion.id
             })
             deleteRequestIDs = deleteRequestIDs.filter { companionID, _ in
                 nextIDs.contains(companionID) && !reconciledDeletionIDs.contains(companionID)
@@ -792,8 +792,8 @@ struct CompanionListView: View {
         }
     }
 
-    private func effectiveDeletion(for companion: CompanionSummary) -> CompanionOperationSummary? {
-        companion.deletionOperation
+    private func effectiveDeletion(for companion: CompanionSummary) -> CompanionLifecycleReceipt? {
+        companion.deletionLifecycle
     }
 
     private func canRequestDeletion(of companion: CompanionSummary) -> Bool {
@@ -806,7 +806,7 @@ struct CompanionListView: View {
         companion.runtime.replying
             || companion.runtime.state == .provisioning
             || companion.runtime.state == .stopping
-            || companion.runtime.latestOperation?.isActive == true
+            || companion.runtime.latestLifecycle?.isActive == true
             || deletingCompanionIDs.contains(companion.id)
             || deleteRequestIDs[companion.id] != nil
             || effectiveDeletion(for: companion)?.isActive == true
@@ -832,7 +832,7 @@ struct CompanionListView: View {
         deleteRequestIDs[companion.id] = requestID
         beginOptimisticDeletion(companion, requestID)
         do {
-            let operation: CompanionOperationSummary
+            let operation: CompanionLifecycleReceipt
             if let services {
                 operation = try await services.deleteCompanion(companion.id, requestID)
             } else {
@@ -872,7 +872,7 @@ struct CompanionListView: View {
         AccessibilityNotification.Announcement("\(companion.name) removed.").post()
     }
 
-    private func deletionAccepted(_ companionID: String, _ operation: CompanionOperationSummary) {
+    private func deletionAccepted(_ companionID: String, _ operation: CompanionLifecycleReceipt) {
         deletingCompanionIDs.remove(companionID)
         deleteRequestIDs[companionID] = nil
         let restored = reconcileDeletionResponse(companionID: companionID, operation: operation)
@@ -928,7 +928,7 @@ struct CompanionListView: View {
 
     private func reconcileDeletionResponse(
         companionID: String,
-        operation: CompanionOperationSummary
+        operation: CompanionLifecycleReceipt
     ) -> CompanionSummary? {
         if reduceMotion {
             return rosterState.reconcileDeletionResponse(companionID: companionID, operation: operation)
@@ -1035,7 +1035,7 @@ struct CompanionRosterDemoView: View {
 private final class CompanionRosterDemoState {
     private var firstRequestID: UUID?
 
-    func delete(companionID: String, requestID: UUID) throws -> CompanionOperationSummary {
+    func delete(companionID: String, requestID: UUID) throws -> CompanionLifecycleReceipt {
         guard companionID == CompanionRosterDemoFixtures.companionID else {
             throw APIError(status: 404, code: "not_found", message: "Companion not found.")
         }
@@ -1123,12 +1123,12 @@ private enum CompanionRosterDemoFixtures {
           "hidden":\#(hidden),
           "unread":\#(unread),
           "last_message":{"preview":"Release notes are ready.","role":"assistant","created_at":"2026-08-25T08:00:00.000Z"},
-          "runtime":{"state":"\#(runtimeState.rawValue)","replying":\#(replying),"last_error":null,"provider_ids":["anthropic"],"latest_operation":null}
+          "runtime":{"state":"\#(runtimeState.rawValue)","replying":\#(replying),"last_error":null,"provider_ids":["anthropic"],"lifecycle_intent":"prepare"}
         }
         """#)
     }
 
-    static var deleteOperation: CompanionOperationSummary {
+    static var deleteOperation: CompanionLifecycleReceipt {
         decode(#"""
         {
           "id":"14757274-8d64-455c-a394-334665a258f0",
@@ -1154,19 +1154,8 @@ private enum CompanionRosterDemoFixtures {
             "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
             "status":"running",
             "queue_sequence":1,
-            "latest_attempt":{
-              "id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-              "turn_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-              "attempt_number":1,
-              "retry_id":null,
-              "status":"running",
-              "dispatch_state":"accepted",
-              "pi_invocation_id":"pi-demo",
-              "dispatch_accepted_at":"2026-08-28T10:00:01.000Z",
-              "error":null,
-              "started_at":"2026-08-28T10:00:00.000Z",
-              "settled_at":null
-            },
+            "admission_state":"accepted",
+            "admitted_at":"2026-08-28T10:00:01.000Z",
             "replying":true,
             "error":null,
             "state_changed_at":"2026-08-28T10:00:00.000Z",
@@ -1271,7 +1260,7 @@ private enum CompanionRoute: Hashable {
 
 private struct CompanionRow: View {
     let companion: CompanionSummary
-    let deletionOperation: CompanionOperationSummary?
+    let deletionLifecycle: CompanionLifecycleReceipt?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -1315,11 +1304,11 @@ private struct CompanionRow: View {
     }
 
     private var preview: String {
-        guard let deletionOperation else {
+        guard let deletionLifecycle else {
             return companion.lastMessage?.preview ?? companion.persona ?? "No messages yet"
         }
-        if deletionOperation.isActive { return "Deletion requested" }
-        if let message = deletionOperation.error?.message { return message }
+        if deletionLifecycle.isActive { return "Deletion requested" }
+        if let message = deletionLifecycle.error?.message { return message }
         return companion.lastMessage?.preview ?? companion.persona ?? "No messages yet"
     }
 

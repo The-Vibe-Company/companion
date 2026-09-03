@@ -57,7 +57,7 @@ const companion: Companion = {
     last_observed_at: "2026-08-26T09:00:00.000Z",
     last_started_at: null,
     last_stopped_at: "2026-08-26T09:00:00.000Z",
-    latest_operation: null,
+    lifecycle_intent: "prepare",
   },
   created_at: "2026-08-20T09:00:00.000Z",
   updated_at: "2026-08-26T09:00:00.000Z",

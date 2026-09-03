@@ -24,7 +24,7 @@ import { COMPANION_BUDGETS_BASE } from "@companion/contracts";
 import { decryptOpaqueValue } from "@companion/core";
 import type {
   RuntimeLogRecord,
-  RuntimePiControl,
+  RuntimeV3PiTransport,
   RuntimeProcessLog,
 } from "@companion/companion-runtime/runtime-support";
 
@@ -38,7 +38,7 @@ export interface DirectAgentEndpoint extends CompanionBoxAgentEndpointCredential
  * every wake re-stages (re-registering the endpoint), so an observation older than the warm window
  * belongs to a Box that has since idled out; the exec transport handles it until the next staging.
  */
-export const DIRECT_ENDPOINT_FRESHNESS_MS = COMPANION_BUDGETS_BASE.boxWarmTtlSeconds * 1_000;
+export const DIRECT_ENDPOINT_FRESHNESS_MS = COMPANION_BUDGETS_BASE.boxProviderTtlSeconds * 1_000;
 /**
  * How long a suspect endpoint rests before the next brokerState call re-probes it. Keeps the
  * initial re-probe cheap under the exec fallback cadence (~2 state calls/s) without abandoning the
@@ -226,7 +226,7 @@ const FALLBACK: unique symbol = Symbol("direct-transport-fallback");
 
 export interface DirectRuntimePiControlOptions {
   mode: "shadow" | "on";
-  exec: RuntimePiControl;
+  exec: RuntimeV3PiTransport;
   registry: DirectBoxEndpointRegistry;
   /** Complete package+overlay marker of the deployed layout, for `layoutCurrent` parity. */
   layoutFullMarker: string;
@@ -410,7 +410,7 @@ export function createDirectBoxDataTransport(options: {
 }
 
 export interface DirectRuntimePiControl {
-  pi: RuntimePiControl;
+  pi: RuntimeV3PiTransport;
   /**
    * Per-Box event poll interval for the consume loop: 0 after a direct-served read (the 20 s wait
    * already happened server-side), the flat default while a Box is on the exec fallback.
@@ -473,7 +473,7 @@ export function createDirectRuntimePiControl(
 
   const brokerStateView = (
     state: CompanionPiBrokerState,
-  ): Awaited<ReturnType<RuntimePiControl["brokerState"]>> => ({
+  ): Awaited<ReturnType<RuntimeV3PiTransport["brokerState"]>> => ({
     invocationId: state.invocationId,
     layoutMarker: state.layoutMarker,
     layoutCurrent: state.layoutMarker === options.layoutFullMarker,
@@ -491,7 +491,7 @@ export function createDirectRuntimePiControl(
   const maybeShadowCompare = (
     boxId: string,
     signal: AbortSignal,
-    execPromise: Promise<Awaited<ReturnType<RuntimePiControl["brokerState"]>>>,
+    execPromise: Promise<Awaited<ReturnType<RuntimeV3PiTransport["brokerState"]>>>,
     execStartedAtMs: number,
   ): void => {
     const endpoint = options.registry.lookup(boxId);
@@ -517,7 +517,7 @@ export function createDirectRuntimePiControl(
           : "agent_unexpected";
       }
       const latencyDirectMs = now() - directStartedAtMs;
-      let exec: Awaited<ReturnType<RuntimePiControl["brokerState"]>>;
+      let exec: Awaited<ReturnType<RuntimeV3PiTransport["brokerState"]>>;
       let latencyExecMs: number;
       try {
         exec = await execPromise;
@@ -557,7 +557,7 @@ export function createDirectRuntimePiControl(
     };
   }
 
-  const pi: RuntimePiControl = {
+  const pi: RuntimeV3PiTransport = {
     ...options.exec,
     async brokerState(input) {
       const direct = await attemptDirect(
@@ -675,10 +675,10 @@ export function createDirectRuntimePiControl(
   };
 
   async function resolveDirectPrompt(
-    input: Parameters<NonNullable<RuntimePiControl["resolvePrompt"]>>[0],
+    input: Parameters<NonNullable<RuntimeV3PiTransport["resolvePrompt"]>>[0],
     endpoint: DirectAgentEndpoint,
     initialCode = "prompt_dispatch_unresolved",
-  ): Promise<Awaited<ReturnType<NonNullable<RuntimePiControl["resolvePrompt"]>>>> {
+  ): Promise<Awaited<ReturnType<NonNullable<RuntimeV3PiTransport["resolvePrompt"]>>>> {
     const deadline = now() + dispatchResolutionMs;
     let lastCode = initialCode;
     while (now() < deadline) {
@@ -728,14 +728,14 @@ function directPromptOutcome(input: {
   initialCursor?: number;
   code?: string;
   dependency?: { kind: "provider" | "grant"; id: string };
-}): Awaited<ReturnType<RuntimePiControl["prompt"]>> {
+}): Awaited<ReturnType<RuntimeV3PiTransport["prompt"]>> {
   if (
     input.outcome === "accepted"
     && typeof input.invocationId === "string"
     && Number.isSafeInteger(input.initialCursor)
     && Number(input.initialCursor) >= 0
   ) {
-    const accepted: Awaited<ReturnType<RuntimePiControl["prompt"]>> = {
+    const accepted: Awaited<ReturnType<RuntimeV3PiTransport["prompt"]>> = {
       outcome: "accepted",
       invocationId: input.invocationId,
       initialCursor: BigInt(Number(input.initialCursor)),
@@ -747,7 +747,7 @@ function directPromptOutcome(input: {
   }
   const code = input.code ?? "prompt_dispatch_unresolved";
   if (input.outcome === "refused") {
-    const rejected: Awaited<ReturnType<RuntimePiControl["prompt"]>> = {
+    const rejected: Awaited<ReturnType<RuntimeV3PiTransport["prompt"]>> = {
       outcome: "rejected",
       code,
     };
@@ -761,7 +761,7 @@ function directWriteOutcome(input: {
   outcome: "accepted" | "refused" | "ambiguous";
   invocationId?: string;
   code?: string;
-}): Awaited<ReturnType<RuntimePiControl["abort"]>> {
+}): Awaited<ReturnType<RuntimeV3PiTransport["abort"]>> {
   if (input.outcome === "accepted" && typeof input.invocationId === "string") {
     return { outcome: "accepted", invocationId: input.invocationId };
   }

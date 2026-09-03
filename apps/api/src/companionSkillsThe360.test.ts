@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-known-value-widening, anti-slop/no-module-mocking, anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- This legacy module-isolation harness predates the incremental gate; THE-528 changes only its required Runtime v3 projection fixture. */
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { CompanionWriteSkillsForbiddenError } from "@companion/core";
 
@@ -135,7 +136,7 @@ describe("Companion skill allow-list contracts", () => {
         last_observed_at: null,
         last_started_at: null,
         last_stopped_at: null,
-        latest_operation: null,
+        lifecycle_intent: "prepare",
       },
       created_at: "2026-08-14T12:00:00.000Z",
       updated_at: "2026-08-14T12:00:00.000Z",

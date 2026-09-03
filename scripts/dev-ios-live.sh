@@ -88,15 +88,15 @@ case "$command_name" in
   client)
     run_client
     ;;
-  stop)
+  archive)
     shift
-    exec bash scripts/dev-process.sh ios-local node scripts/ios-local-live.mjs stop "$@"
+    exec bash scripts/dev-process.sh ios-local node scripts/ios-local-live.mjs archive "$@"
     ;;
   -h|--help|help)
     printf '%s\n' \
       'Usage:' \
       '  bash scripts/dev-ios-live.sh' \
-      '  bash scripts/dev-ios-live.sh stop --companion <exact-name-or-id>'
+      '  bash scripts/dev-ios-live.sh archive --companion <exact-name-or-id>'
     ;;
   *)
     die "unknown command: $command_name"

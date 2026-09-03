@@ -539,7 +539,7 @@ private enum CreateCompanionDemoFixtures {
                 "replying": false,
                 "last_error": NSNull(),
                 "provider_ids": [input.providerID],
-                "latest_operation": NSNull(),
+                "lifecycle_intent": "prepare",
             ],
         ]
         let data = try! JSONSerialization.data(withJSONObject: object)

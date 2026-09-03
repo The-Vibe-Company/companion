@@ -37,6 +37,11 @@ export function assertRuntimeV3Contraction() {
     /runtime\/stop/,
     /enqueueCompanionOperationV2/,
   ]);
+  reject("scripts/ios-local-live.mjs", [
+    /runtime\/stop/,
+    /latest_operation/,
+    /\.body\?\.operation/,
+  ]);
   reject("packages/core/src/companionRuntimeApi.ts", [
     /companion_api_enqueue_turn\(/,
     /companion_api_enqueue_operation\(/,
@@ -68,8 +73,21 @@ export function assertRuntimeV3Contraction() {
   reject("packages/contracts/src/companionRuntime.ts", [
     /retryCompanionTurnInputSchema/,
     /restart_box/,
+    /latest_attempt/,
+    /CompanionTurnAttempt/,
+    /companionOperationSchema/,
+    /CompanionOperation/,
   ]);
-  reject("packages/contracts/src/companions.ts", [/startCompanionRuntimeInputSchema/]);
+  reject("packages/contracts/src/companionBudgets.ts", [
+    /Runtime v2/,
+    /Full Box/,
+    /protocol.?7/i,
+    /turn attempt/i,
+  ]);
+  reject("packages/contracts/src/companions.ts", [
+    /startCompanionRuntimeInputSchema/,
+    /latest_operation/,
+  ]);
   reject("packages/companion-runtime/src/index.ts", [
     /createRuntimeKernel/,
     /RuntimeScheduler/,
@@ -79,8 +97,35 @@ export function assertRuntimeV3Contraction() {
     /\.\/retry/,
     /\.\/store/,
   ]);
+  reject("packages/companion-runtime/src/runtimeSupport.ts", [
+    /\.\/store/,
+    /\bRuntimePiControl\s*,/,
+    /RuntimeAuthorization/,
+    /RuntimeWorkMaterial/,
+    /RuntimeAttachmentStager/,
+    /RuntimeMaterialProvider/,
+    /RuntimeResourceStager/,
+  ]);
+  requireText("packages/companion-runtime/src/runtimeSupport.ts", [
+    "RuntimePiControl as RuntimeV3PiTransport",
+    "always carry the durable Turn id",
+  ]);
   reject("packages/box-runtime/src/boxCompanionRuntime.ts", [
     /CompanionBoxRuntimeV2/,
+    /dispatch-v2/,
+    /Full Box/,
+    /legacy retry path/,
+  ]);
+  reject("apps/ios/CompanionKit/Sources/CompanionKit/Models.swift", [
+    /CompanionOperation/,
+    /latest_operation/,
+    /latest_attempt/,
+    /CompanionTurnAttempt/,
+    /restart_box/,
+  ]);
+  reject("apps/ios/CompanionKit/Sources/CompanionKit/APIClient.swift", [
+    /CompanionOperation/,
+    /OperationEnvelope/,
   ]);
   reject("apps/web/src/components/companions/CompanionTriggerTypes.ts", [
     /CompanionTriggerV2/,
@@ -91,6 +136,7 @@ export function assertRuntimeV3Contraction() {
     /export const companionOperations/,
     /export const companionOperationKindEnum/,
     /export const companionAttemptStatusEnum/,
+    /export const companionRuntimeErrorActionEnum/,
     /default\("runtime-v2"\)/,
     /\$\{t\.id\} = 'runtime-v2'/,
     /kill switch for the isolated Runtime v2 role/,
@@ -99,12 +145,14 @@ export function assertRuntimeV3Contraction() {
     /PERFORM\s+pg_catalog\.set_config\(\s*'app\.companion_runtime_protocol'\s*,\s*'2'/,
     /FROM\s+public\.companion_api_create_companion\(/,
     /control\.id='runtime-v2'/,
+    /CREATE FUNCTION public\.companion_v3_[\s\S]*set_config\(\s*'app\.companion_runtime_protocol'/,
   ]);
   requireText("packages/db/runtime-role-grants.sql", [
     "procedure.proname LIKE 'companion_v3_runtime_%'",
     "procedure.proname LIKE 'companion_runtime_image_%'",
     "'companion_api_enqueue_operation'",
     "'companion_api_retry_turn'",
+    "companion_v3_runtime_record_turn_outputs",
   ]);
   requireText("packages/db/drizzle/0179_companion_runtime_v3_contraction.sql", [
     "DROP TRIGGER companions_runtime_v2_mutation_fence",
@@ -128,6 +176,8 @@ export function assertRuntimeV3Contraction() {
     "companion_v3_api_cancel_turn",
     "REVOKE EXECUTE ON FUNCTION public.companion_v3_api_restart_pi",
     "DROP FUNCTION public.companion_v3_api_restart_pi",
+    "'companion-attachments/'||p_org_id::text||'/'||p_companion_id::text",
+    "'/outputs/'||p_turn_id::text||'/'||(part.ordinality-1)::text||'-'",
   ]);
 }
 

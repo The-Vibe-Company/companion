@@ -588,8 +588,8 @@ export const COMPANION_SITUATION_INSTRUCTIONS = [
   "",
   "You are a Companion: one persistent teammate inside a workspace, reachable in a single durable chat",
   "thread. Every request reaches you as a message in that thread.",
-  "Your Runtime v3 Turn carries its command, admission, activity, and outcome. There is no attempt",
-  "or legacy retry path behind it.",
+  "Your Runtime v3 Turn carries its command, admission, activity, and outcome. The Turn is the only",
+  "execution identity.",
 ].join("\n");
 
 export const COMPANION_THREAD_INSTRUCTIONS = [
@@ -1017,7 +1017,7 @@ export interface CompanionBoxRuntime {
   /**
    * Install or repair layout 14 on a Box that is already running. Overlay-only refreshes rewrite
    * the broker and unit without reinstalling packages, so a warm Companion can pick up a runtime
-   * deploy without a Full Box restart.
+   * deploy through an exact Pi recycle without replacing or restarting its persistent Box.
    */
   refreshPiLayout(input: { boxId: string; signal?: AbortSignal }): Promise<{
     boxId: string;
@@ -1278,15 +1278,12 @@ function routinePathsForRun(runId: string): CompanionPiRoutineSessionPaths {
 function validateRoutineInvocationId(
   paths: CompanionPiRoutineSessionPaths,
   invocationId: string,
-  requireDispatchV2: boolean,
 ): string {
-  const prefix = `routine:${paths.runId}:`;
-  const versionedPrefix = `${prefix}dispatch-v2:`;
+  const prefix = `background:${paths.runId}:dispatch-v3:`;
   if (
     invocationId.length < prefix.length + 1
     || invocationId.length > 256
     || !invocationId.startsWith(prefix)
-    || (requireDispatchV2 && !invocationId.startsWith(versionedPrefix))
     || !/^[A-Za-z0-9._:-]+$/.test(invocationId)
   ) {
     throw new BoxRuntimeProviderError(
@@ -5569,7 +5566,6 @@ done`,
     const invocationId = validateRoutineInvocationId(
       paths,
       input.expectedInvocationId,
-      true,
     );
     const prepared = await this.#command(
       input.boxId,
@@ -5936,7 +5932,6 @@ done`,
     const expectedInvocationId = validateRoutineInvocationId(
       paths,
       input.expectedInvocationId,
-      false,
     );
     const terminated = await this.#command(
       input.boxId,

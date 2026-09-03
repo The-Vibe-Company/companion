@@ -6,7 +6,7 @@ import {
   type CompanionPiBrokerState,
 } from "@companion/box-runtime";
 import { encryptOpaqueValue } from "@companion/core";
-import type { RuntimeLogRecord, RuntimePiControl } from "@companion/companion-runtime/runtime-support";
+import type { RuntimeLogRecord, RuntimeV3PiTransport } from "@companion/companion-runtime/runtime-support";
 
 import {
   createDirectBoxDataTransport,
@@ -56,7 +56,7 @@ function execBrokerState() {
   };
 }
 
-function execControl(): RuntimePiControl {
+function execControl(): RuntimeV3PiTransport {
   return {
     stopPiDaemon: vi.fn(async () => undefined),
     terminatePiInvocation: vi.fn(async () => ({ outcome: "terminated" as const })),

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Db } from "@companion/db";
 
 process.env.COMPANION_SECRETS_MASTER_KEY ??= Buffer.alloc(32, 7).toString("base64");
 
@@ -114,15 +115,27 @@ const serviceMocks = vi.hoisted(() => {
 });
 
 const dbMocks = vi.hoisted(() => ({
-  withTenantContext: vi.fn(async (_ctx: unknown, fn: (database: unknown) => unknown) => fn({})),
+  withTenantContext: vi.fn(async <T>(
+    _ctx: { orgId: string; userId: string },
+    fn: (database: Db) => Promise<T>,
+  ): Promise<T> => {
+    const database = {};
+    // SAFETY: every database-facing service is mocked; no Drizzle method is reachable in this test.
+    return await fn(database as Db);
+  }),
 }));
 
 const coreMocks = vi.hoisted(() => ({
   bumpCompanionSkillRevision: vi.fn(async () => 1),
 }));
 
+type MockSession = {
+  user: { id: string; email: string; name: string };
+  session: { id: string };
+} | null;
+
 const authMocks = vi.hoisted(() => ({
-  getSession: vi.fn(async (): Promise<unknown | null> => null),
+  getSession: vi.fn(async (): Promise<MockSession> => null),
   handler: vi.fn(),
 }));
 
@@ -132,10 +145,12 @@ const storageMocks = vi.hoisted(() => ({
 }));
 const skillsMocks = vi.hoisted(() => ({ tarGzToZip: vi.fn(async () => Buffer.from("public-zip-bytes")) }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- API registry isolation prevents binding a real server.
 vi.mock("@hono/node-server", () => ({
   serve: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- authentication is outside this route registry proof.
 vi.mock("@companion/auth", () => ({
   auth: {
     api: {
@@ -147,22 +162,27 @@ vi.mock("@companion/auth", () => ({
   registerAgentCapabilityExecutor: vi.fn(() => () => undefined),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- database services are replaced at the route boundary.
 vi.mock("@companion/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@companion/db")>()),
   ...dbMocks,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- core mutations are replaced at the route boundary.
 vi.mock("@companion/core", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@companion/core")>()),
   ...coreMocks,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- this registry proof supplies a complete fake service table.
 vi.mock("@companion/core/services", () => serviceMocks);
+// oxlint-disable-next-line anti-slop/no-module-mocking -- storage I/O is not part of route registration.
 vi.mock("@companion/storage", async (importActual) => ({
   ...(await importActual<typeof import("@companion/storage")>()),
   getSkillArchive: storageMocks.getSkillArchive,
   putPublicSkillReleaseSnapshot: storageMocks.putPublicSkillReleaseSnapshot,
 }));
+// oxlint-disable-next-line anti-slop/no-module-mocking -- archive conversion is not part of route registration.
 vi.mock("@companion/skills", async (importActual) => ({
   ...(await importActual<typeof import("@companion/skills")>()),
   tarGzToZip: skillsMocks.tarGzToZip,

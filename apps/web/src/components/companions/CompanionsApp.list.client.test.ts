@@ -8,7 +8,7 @@ import type {
   CompanionProvidersResponse,
   CompanionThread as Thread,
 } from "@companion/contracts";
-import { COMPANION_OPERATION_IDEMPOTENCY_HEADER } from "@companion/contracts/companion-runtime";
+import { COMPANION_LIFECYCLE_IDEMPOTENCY_HEADER } from "@companion/contracts/companion-runtime";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   COMPANION_PROVIDER_SETTINGS_CACHE_TTL_MS,
@@ -135,7 +135,7 @@ function companion(overrides: Partial<Companion> = {}): Companion {
       last_observed_at: null,
       last_started_at: null,
       last_stopped_at: null,
-      latest_operation: null,
+      lifecycle_intent: "prepare",
     },
     created_at: "2026-08-12T12:00:00.000Z",
     updated_at: "2026-08-12T12:00:00.000Z",
@@ -813,9 +813,9 @@ describe("CompanionsApp conversation list", () => {
       expect(request.method).toBe("DELETE");
     }
     // One operation however many confirms it takes: the retry replays the very same request id.
-    const requestId = requests[0]!.headers[COMPANION_OPERATION_IDEMPOTENCY_HEADER];
+    const requestId = requests[0]!.headers[COMPANION_LIFECYCLE_IDEMPOTENCY_HEADER];
     expect(requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-    expect(requests[1]!.headers[COMPANION_OPERATION_IDEMPOTENCY_HEADER]).toBe(requestId);
+    expect(requests[1]!.headers[COMPANION_LIFECYCLE_IDEMPOTENCY_HEADER]).toBe(requestId);
   });
 
   it("projects Stopping on the row once a delete is accepted, before the list drops it", async () => {

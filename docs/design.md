@@ -107,7 +107,7 @@ Runtime state is explicit and durable:
   expurgated lifecycle errors.
 - `companion_v3_turns` owns `client_message_id`, command identity, `main` or `background` lane,
   FIFO sequence, admission/activity/outcome facts, durable deadlines, and one stable expurgated
-  error. Runtime v3 has no attempt table and no derived Start operation.
+  error.
 - `companion_v3_lifecycle_requests` idempotently records Owner/Editor prepare, archive, Pi recycle,
   and Owner-only delete intent while provider progress remains on the aggregate.
 - `companion_v3_lane_leases` owns independently fenced `main` and `background` claim tokens,
@@ -166,8 +166,8 @@ queued → admitted → running ↔ needs_input
 Only one occurrence is active per execution lane. One ordinary main occurrence and one background
 occurrence may run concurrently; later turns remain ordered within their lane. An outcome-unknown
 admission becomes `interrupted` and releases the lane in the same fenced transaction. Runtime
-invalidates `Prepared`, captures the exact Pi invocation, and never creates a replacement attempt,
-recovery operation, or Retry path. Preparation terminates only that invocation on the same Box,
+invalidates `Prepared`, captures the exact Pi invocation, and never creates a replacement execution,
+or replays an ambiguous command. Preparation terminates only that invocation on the same Box,
 restages current authorized material, proves a different idle invocation, and reconstructs bounded
 continuity before admitting later work. A newer invocation is never stopped and the ambiguous
 command is never included in recovery context.
@@ -222,8 +222,8 @@ Directed peer grants allow bounded text delegations without introducing a Group 
 Migration 0159 introduced the Runtime v3 progression model:
 `companion_v3_instances`, `companion_v3_turns`, and retained per-lane lease facts.
 A v3 Turn owns its command identity, lane, Pi-admission facts, activity cursor, and outcome; there
-is deliberately no v3 attempt table or derived Start operation. PostgreSQL owns idempotent
-admission, independent `main`/`background` FIFO, and monotonic fence epochs. TypeScript exposes one
+is one durable identity from enqueue through settlement. PostgreSQL owns idempotent admission,
+independent `main`/`background` FIFO, and monotonic fence epochs. TypeScript exposes one
 deep progression interface—admit, record desired lifecycle, and converge—and keeps claim and
 completion choreography in its internal adapter.
 
@@ -232,8 +232,8 @@ atomically add the v3 aggregate and thread, so creation returns before Box/Pi wo
 text send is accepted as a queued v3 Turn. `apps/runtime` claims preparation independently, uses the
 provider's 24-hour `Idempotency-Key`, checkpoints the canonical Box id before any later lifecycle
 work, then records Box-ready, layout, and Pi-ready clocks before warm dispatch. Preparation failure
-only records an expurgated, bounded retry on the instance; it creates neither an attempt nor a
-derived Start/Wake operation and leaves the head Turn queued.
+only records an expurgated, bounded retry on the instance; it creates no second execution identity
+and leaves the head Turn queued.
 Migration 0165 deepens that preparation seam: `Prepared` is an actor-bound proof that the current
 model/provider, bundled and selected Skills, product plugins, composed instructions, selected
 member MCP accounts, and freshly minted Hub/MCP/control capabilities were staged atomically. The
@@ -245,13 +245,12 @@ composition claims only v3 work, reauthorizes the actor, dispatches through the 
 Pi transport, records positive admission before `replying`, and projects one assistant result into
 the durable thread before ACK and terminal settlement. All main and background work follows this
 model. Claims fail closed under the shared runtime gate and carry its epoch, so stale executors cannot
-project or settle. There is still no v3 attempt table or derived Start operation.
+project or settle.
 
 Migration 0169 makes an outcome-unknown v3 Pi admission self-healing without replay. The durable
 write intent pins the exact Pi invocation and starting cursor. Ambiguous completion interrupts the
 affected occurrence and releases its lane while invalidating `Prepared` in one PostgreSQL
-transaction; no attempt, recovery operation, or compatibility Retry is created. Ordinary
-preparation then terminates that invocation, quarantines only its main Pi session and broker facts,
+transaction. Ordinary preparation then terminates that invocation, quarantines only its main Pi session and broker facts,
 restages freshly authorized material on the same Box, and requires a different idle invocation.
 The first later admission receives a hash-validated compacted summary and the greatest bounded
 suffix of complete durable transcript entries, excluding the ambiguous message. A durable loss bit
@@ -264,7 +263,7 @@ progress and crosses the accepted wake path's measured p99 (15 seconds warm, 90 
 120 seconds creation); clients never run a countdown or derive an ETA. Owner/Editor `can_send`
 remains independent from every runtime state, while Viewer reads remain PostgreSQL-only. The single
 temporary Restart capability accepts only `target: pi`, recycles no Box, and first-party clients
-warn before it can interrupt active work; Wake, ambiguous Retry, and Full Box controls are absent.
+warn before it can interrupt active work. Sending remains the only ordinary wake path.
 
 Migration 0174 moves directed delegation onto that same progression. A control invocation is bound
 to its accepted ordinary v3 main Turn; enqueue atomically adds one ordinary target main Turn and its
@@ -275,8 +274,8 @@ terminal settlement. A terminal `notify` writes only a durable source-thread res
 adds exactly one ordinary source main Turn. Return failure is recorded in both threads and never
 removes the target result.
 
-Migration 0162 keeps release measurement on that same Turn instead of adding an observability
-attempt model. Acceptance, first/latest claim, Box ready, staging complete, Pi ready, prompt/steer
+Migration 0162 keeps release measurement on that same Turn. Acceptance, first/latest claim, Box
+ready, staging complete, Pi ready, prompt/steer
 admission, first correlated activity, and settlement are durable timestamps. Stable dimensions are
 limited to `main|background`, `warm|creation|archived_wake`, Box provider, model provider, and model
 id. The runtime-only measurement function omits organization, Companion, actor, command, transcript,
@@ -462,8 +461,8 @@ merge step, or filesystem lock. A
 `relay` return enters the ordinary main queue and does not inherit routine-lane ordering.
 
 The runtime instance and the run-scoped broker intentionally have different Pi invocation
-identities. A routine attempt pins its broker identity with the dispatch write intent and uses that
-attempt-bound value for event reads, projection, terminal acknowledgement, and cancellation. The
+identities. A background Turn pins its broker identity with the dispatch write intent and uses that
+Turn-bound value for event reads, projection, terminal acknowledgement, and cancellation. The
 main-instance identity remains reserved for ordinary Companion broker operations.
 
 That run-scoped Pi receives one routine-only terminal tool. Its first accepted call is the run's
@@ -534,7 +533,7 @@ domain-matched organization or create a minimal workspace before entering the pr
 does not introduce a client identifier as a product-capability or authorization boundary. Companion
 ownership is not a resource-access fallback: an Editor cannot stage an
 Owner's personal Skill or MCP account, and an Owner cannot stage an Editor's. A cross-actor decision
-is deliverable only when both actors can access the attempt's resources.
+is deliverable only when both actors can access the admitted Turn's resources.
 
 Native iOS treats authorized PostgreSQL projections as a local-first read model. A protected,
 backup-excluded SQLite database is scoped by organization plus member and stores the latest roster
@@ -575,8 +574,8 @@ Apple Universal Link and the production-signed app makes no general self-hosted-
 PostgreSQL distinguishes the latest available selected-Skills revision from the minimum revision
 required before dispatch. A publication advances only the available revision, so waking a Box
 reuses its installed immutable version snapshot. Explicit selection and invalidation changes remain
-blocking. User Stop, the temporary Pi-only Restart, and settings apply stop Pi before atomically
-replacing the tree. No Full Box restart control is exposed. A failed publication update preserves
+blocking. Archive intent, the temporary Pi-only Restart, and settings apply stop Pi before atomically
+replacing the tree. A failed publication update preserves
 the old tree and does not block lifecycle.
 
 Every Companion may also call the Skills Hub API itself, with the same scopes: skills read/write,
@@ -791,9 +790,9 @@ fresh Lux desktop handoff in a dedicated `WKWebView` window; the secret-bearing 
 memory-only, each reconnect remints it, and Viewer or asleep-Box states expose no desktop control.
 
 Sending is the sole normal wake path. There is no Wake button or first-keystroke prewarm. Successful
-Pi acceptance refreshes Box TTL to six hours. Prepared-state invalidation terminates only the
-captured Pi invocation; it never resumes or restarts the Box and never stages or starts Pi. No Full
-Box restart control is exposed. Permanent delete is cleanup rather than healing.
+Pi acceptance refreshes the provider expiry guard to six hours; independently, one hour without a
+newly admitted Turn makes the Box archiveable. Prepared-state invalidation terminates only the
+captured Pi invocation; it never resumes the Box and never stages Pi. Permanent delete is cleanup rather than healing.
 Before a new prompt write intent, a stale active-Turn binding or unacknowledged broker tail causes
 one Pi-only recycle and a fresh idle proof; failure to obtain that proof remains an actionable
 `restart_pi` error and no prompt is dispatched.
@@ -836,7 +835,7 @@ provider, Box pool, generic provider marketplace, container catalog, deployment 
 builder. Native client dictation that transiently converts microphone audio into editable composer
 text is not a voice turn and never reaches Box or Pi. Bounded chat files, scheduled Companion
 routines, and webhook-fired Companion triggers are in scope.
-No SSE, Box-to-control-plane push agent, detached API executor, Full Box restart or recovery,
+No SSE, Box-to-control-plane push agent, detached API executor, provider-level automatic repair,
 automatic ambiguous-prompt replay, or global learned model-capability table.
 
 ## Deployment

@@ -40,7 +40,7 @@
     "dev:check": "bash scripts/dev-stack-check.sh",
     "ios:dev": "bash apps/ios/scripts/dev-conductor.sh",
     "ios:live": "bash scripts/dev-ios-live.sh",
-    "ios:live:stop": "bash scripts/dev-ios-live.sh stop",
+    "ios:live:archive": "bash scripts/dev-ios-live.sh archive",
     "ios:test": "xcodebuildmcp swift-package test --package-path apps/ios/CompanionKit",
     "lint": "pnpm lint:anti-slop && turbo run lint",
     "lint:anti-slop": "node scripts/lint-anti-slop.mjs",

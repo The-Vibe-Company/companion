@@ -208,8 +208,8 @@ import {
   notificationInstallationIdSchema,
 } from "@companion/contracts/notifications";
 import {
-  COMPANION_OPERATION_IDEMPOTENCY_HEADER,
-  companionOperationRequestIdSchema,
+  COMPANION_LIFECYCLE_IDEMPOTENCY_HEADER,
+  companionLifecycleRequestIdSchema,
   restartCompanionRuntimeInputSchema,
 } from "@companion/contracts/companion-runtime";
 import { db, withTenantContext, type Db } from "@companion/db";
@@ -340,7 +340,7 @@ const VIEWER_RUNTIME_ERROR: CompanionRuntimeSafeError = {
 /**
  * A Viewer can follow durable progress, but runtime diagnostics and their recovery hints belong to
  * the Owner/Editor operating boundary. Keep the same turn shape so polling remains stable while
- * replacing both the turn-level and attempt-level error with one non-actionable projection.
+ * replacing its error with one non-actionable projection.
  */
 function projectTurnForHttp(
   turn: CompanionTurn | null,
@@ -350,14 +350,6 @@ function projectTurnForHttp(
   return {
     ...turn,
     error: turn.error === null ? null : { ...VIEWER_RUNTIME_ERROR },
-    latest_attempt: turn.latest_attempt === null
-      ? null
-      : {
-          ...turn.latest_attempt,
-          error: turn.latest_attempt.error === null
-            ? null
-            : { ...VIEWER_RUNTIME_ERROR },
-        },
   };
 }
 
@@ -2379,8 +2371,8 @@ export function registerCompanionRoutes(
   app.delete("/v1/companions/:id", async (c) => {
     try {
       const companionId = companionIdSchema.parse(c.req.param("id"));
-      const requestId = companionOperationRequestIdSchema.parse(
-        c.req.header(COMPANION_OPERATION_IDEMPOTENCY_HEADER),
+      const requestId = companionLifecycleRequestIdSchema.parse(
+        c.req.header(COMPANION_LIFECYCLE_IDEMPOTENCY_HEADER),
       );
       const accepted = await tenant(c, ({ orgId, database }) =>
         desireCompanionLifecycleV3({
@@ -3030,8 +3022,8 @@ export function registerCompanionRoutes(
     try {
       const companionId = companionIdSchema.parse(c.req.param("id"));
       restartCompanionRuntimeInputSchema.parse(await c.req.json());
-      const requestId = companionOperationRequestIdSchema.parse(
-        c.req.header(COMPANION_OPERATION_IDEMPOTENCY_HEADER),
+      const requestId = companionLifecycleRequestIdSchema.parse(
+        c.req.header(COMPANION_LIFECYCLE_IDEMPOTENCY_HEADER),
       );
       const accepted = await tenant(c, ({ orgId, database }) => desireCompanionLifecycleV3({
         orgId,
@@ -3049,8 +3041,8 @@ export function registerCompanionRoutes(
   app.post("/v1/companions/:id/runtime/archive", async (c) => {
     try {
       const companionId = companionIdSchema.parse(c.req.param("id"));
-      const requestId = companionOperationRequestIdSchema.parse(
-        c.req.header(COMPANION_OPERATION_IDEMPOTENCY_HEADER),
+      const requestId = companionLifecycleRequestIdSchema.parse(
+        c.req.header(COMPANION_LIFECYCLE_IDEMPOTENCY_HEADER),
       );
       const accepted = await tenant(c, ({ orgId, database }) => desireCompanionLifecycleV3({
         orgId,

@@ -286,13 +286,11 @@ public enum CompanionAccess: String, Codable, Hashable, Sendable {
     }
 }
 
-public enum CompanionOperationKind: String, Codable, Hashable, Sendable {
+public enum CompanionLifecycleIntent: String, Codable, Hashable, Sendable {
+    case prepare
+    case archive
+    case recyclePi = "recycle_pi"
     case delete
-    case stop
-    case restartPi = "restart_pi"
-    case restartBox = "restart_box"
-    case start
-    case applySettings = "apply_settings"
     case unknown
 
     public init(from decoder: Decoder) throws {
@@ -301,7 +299,7 @@ public enum CompanionOperationKind: String, Codable, Hashable, Sendable {
     }
 }
 
-public enum CompanionOperationStatus: String, Codable, Hashable, Sendable {
+public enum CompanionLifecycleStatus: String, Codable, Hashable, Sendable {
     case pending
     case running
     case succeeded
@@ -322,23 +320,48 @@ public struct CompanionRuntimeSafeError: Codable, Hashable, Sendable {
     public let action: String
 }
 
-public struct CompanionOperationSummary: Codable, Identifiable, Hashable, Sendable {
-    public let id: String
-    public let sourceTurnID: String?
-    public let kind: CompanionOperationKind
-    public let status: CompanionOperationStatus
+public struct CompanionLifecycleReceipt: Codable, Identifiable, Hashable, Sendable {
+    public let intent: CompanionLifecycleIntent
+    public let revision: String
+    public let status: CompanionLifecycleStatus
     public let error: CompanionRuntimeSafeError?
 
+    public var id: String { revision }
+    public var kind: CompanionLifecycleIntent { intent }
+
     enum CodingKeys: String, CodingKey {
-        case id
-        case sourceTurnID = "source_turn_id"
-        case kind
-        case status
-        case error
+        case intent
+        case revision
+    }
+
+    public init(
+        intent: CompanionLifecycleIntent,
+        revision: String,
+        status: CompanionLifecycleStatus = .pending,
+        error: CompanionRuntimeSafeError? = nil
+    ) {
+        self.intent = intent
+        self.revision = revision
+        self.status = status
+        self.error = error
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        intent = try container.decode(CompanionLifecycleIntent.self, forKey: .intent)
+        revision = try container.decode(String.self, forKey: .revision)
+        status = .pending
+        error = nil
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(intent, forKey: .intent)
+        try container.encode(revision, forKey: .revision)
     }
 
     public var isActive: Bool {
-        status == .pending || status == .running
+        intent != .prepare
     }
 }
 
@@ -391,7 +414,7 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
         public let replying: Bool
         public let lastError: String?
         public let providerIDs: [String]
-        public let latestOperation: CompanionOperationSummary?
+        public let latestLifecycle: CompanionLifecycleReceipt?
 
         enum CodingKeys: String, CodingKey {
             case state
@@ -399,7 +422,7 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
             case replying
             case lastError = "last_error"
             case providerIDs = "provider_ids"
-            case latestOperation = "latest_operation"
+            case lifecycleIntent = "lifecycle_intent"
         }
 
         public init(from decoder: Decoder) throws {
@@ -409,10 +432,42 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
             replying = try container.decodeIfPresent(Bool.self, forKey: .replying) ?? false
             lastError = try container.decodeIfPresent(String.self, forKey: .lastError)
             providerIDs = try container.decodeIfPresent([String].self, forKey: .providerIDs) ?? []
-            latestOperation = try container.decodeIfPresent(
-                CompanionOperationSummary.self,
-                forKey: .latestOperation
+            let lifecycleIntent = try container.decodeIfPresent(
+                CompanionLifecycleIntent.self,
+                forKey: .lifecycleIntent
             )
+            let lifecycleStatus: CompanionLifecycleStatus = if lifecycleIntent == .prepare {
+                .succeeded
+            } else if state == .error {
+                .failed
+            } else if state == .provisioning || state == .stopping {
+                .running
+            } else {
+                .pending
+            }
+            let lifecycleError = state == .error
+                ? lastError.map {
+                    CompanionRuntimeSafeError(code: "lifecycle_failed", message: $0, action: "retry")
+                }
+                : nil
+            latestLifecycle = lifecycleIntent.map {
+                CompanionLifecycleReceipt(
+                    intent: $0,
+                    revision: "projection:\($0.rawValue)",
+                    status: lifecycleStatus,
+                    error: lifecycleError
+                )
+            }
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(state, forKey: .state)
+            try container.encode(daemonState, forKey: .daemonState)
+            try container.encode(replying, forKey: .replying)
+            try container.encodeIfPresent(lastError, forKey: .lastError)
+            try container.encode(providerIDs, forKey: .providerIDs)
+            try container.encodeIfPresent(latestLifecycle?.intent, forKey: .lifecycleIntent)
         }
 
     }
@@ -454,9 +509,9 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
         runtime = try container.decode(Runtime.self, forKey: .runtime)
     }
 
-    public var deletionOperation: CompanionOperationSummary? {
-        guard runtime.latestOperation?.kind == .delete else { return nil }
-        return runtime.latestOperation
+    public var deletionLifecycle: CompanionLifecycleReceipt? {
+        guard runtime.latestLifecycle?.kind == .delete else { return nil }
+        return runtime.latestLifecycle
     }
 
     public func preservingListProjection(from previous: CompanionSummary) -> CompanionSummary {
@@ -480,8 +535,8 @@ public struct CompanionSummary: Codable, Identifiable, Hashable, Sendable {
     }
 
     public func reconcilingParentProjection(from previous: CompanionSummary) -> CompanionSummary {
-        let incomingOperationID = runtime.latestOperation?.id
-        let previousOperation = previous.runtime.latestOperation
+        let incomingOperationID = runtime.latestLifecycle?.id
+        let previousOperation = previous.runtime.latestLifecycle
         let parentRuntimeIsStale = previousOperation?.isActive == true
             && incomingOperationID != previousOperation?.id
         return CompanionSummary(
@@ -2642,8 +2697,7 @@ private extension Array {
 
 public enum CompanionTurnStatus: String, Codable, Equatable, Sendable {
     case queued
-    case starting
-    case dispatching
+    case admitted
     case running
     case needsInput = "needs_input"
     case succeeded
@@ -2655,65 +2709,6 @@ public enum CompanionTurnStatus: String, Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let value = try decoder.singleValueContainer().decode(String.self)
         self = Self(rawValue: value) ?? .unknown
-    }
-}
-
-public enum CompanionTurnAttemptStatus: String, Codable, Equatable, Sendable {
-    case starting
-    case dispatching
-    case running
-    case needsInput = "needs_input"
-    case succeeded
-    case failed
-    case interrupted
-    case cancelled
-    case unknown
-
-    public init(from decoder: Decoder) throws {
-        let value = try decoder.singleValueContainer().decode(String.self)
-        self = Self(rawValue: value) ?? .unknown
-    }
-}
-
-public enum CompanionTurnDispatchState: String, Codable, Equatable, Sendable {
-    case pending
-    case writeIntent = "write_intent"
-    case accepted
-    case rejected
-    case ambiguous
-    case unknown
-
-    public init(from decoder: Decoder) throws {
-        let value = try decoder.singleValueContainer().decode(String.self)
-        self = Self(rawValue: value) ?? .unknown
-    }
-}
-
-public struct CompanionTurnAttempt: Codable, Equatable, Sendable {
-    public let id: String
-    public let turnID: String
-    public let attemptNumber: Int
-    public let retryID: String?
-    public let status: CompanionTurnAttemptStatus
-    public let dispatchState: CompanionTurnDispatchState
-    public let piInvocationID: String?
-    public let dispatchAcceptedAt: String?
-    public let error: CompanionRuntimeSafeError?
-    public let startedAt: String
-    public let settledAt: String?
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case turnID = "turn_id"
-        case attemptNumber = "attempt_number"
-        case retryID = "retry_id"
-        case status
-        case dispatchState = "dispatch_state"
-        case piInvocationID = "pi_invocation_id"
-        case dispatchAcceptedAt = "dispatch_accepted_at"
-        case error
-        case startedAt = "started_at"
-        case settledAt = "settled_at"
     }
 }
 
@@ -2764,7 +2759,6 @@ public struct CompanionTurn: Codable, Identifiable, Equatable, Sendable {
     public let clientMessageID: String
     public let status: CompanionTurnStatus
     public let queueSequence: Int
-    public let latestAttempt: CompanionTurnAttempt?
     public let admissionState: CompanionTurnAdmissionState?
     public let admittedAt: String?
     public let replying: Bool
@@ -2783,7 +2777,6 @@ public struct CompanionTurn: Codable, Identifiable, Equatable, Sendable {
         case clientMessageID = "client_message_id"
         case status
         case queueSequence = "queue_sequence"
-        case latestAttempt = "latest_attempt"
         case admissionState = "admission_state"
         case admittedAt = "admitted_at"
         case replying

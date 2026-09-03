@@ -454,7 +454,6 @@ describe("Companion chat contracts", () => {
       client_message_id: clientMessageId,
       status: "queued",
       queue_sequence: 1,
-      latest_attempt: null,
       replying: false,
       error: null,
       state_changed_at: "2026-08-17T00:00:00.000Z",
@@ -1152,7 +1151,7 @@ describe("Companion conversation-list contracts", () => {
       last_observed_at: null,
       last_started_at: null,
       last_stopped_at: null,
-      latest_operation: null,
+      lifecycle_intent: "prepare",
     },
     created_at: "2026-08-14T09:00:00.000Z",
     updated_at: "2026-08-14T09:00:00.000Z",
@@ -1174,7 +1173,7 @@ describe("Companion conversation-list contracts", () => {
     expect(companionSchema.parse(companion).last_message).toBeNull();
   });
 
-  it("accepts layout zero before a Runtime v2 Box has been installed", () => {
+  it("accepts layout zero before a Companion Box has been installed", () => {
     expect(companionSchema.parse({
       ...companion,
       runtime: { ...companion.runtime, disk_layout_version: 0 },
@@ -1193,31 +1192,21 @@ describe("Companion conversation-list contracts", () => {
     })).toThrow();
   });
 
-  it("accepts only the temporary Pi operation in the legacy read projection", () => {
+  it("accepts only native Runtime v3 lifecycle intents", () => {
     const parsed = companionSchema.parse({
       ...companion,
       runtime: {
         ...companion.runtime,
-        latest_operation: {
-          id: "22222222-2222-4222-8222-222222222222",
-          source_turn_id: null,
-          kind: "restart_pi",
-          status: "running",
-          error: null,
-        },
+        lifecycle_intent: "recycle_pi",
       },
     });
 
-    expect(parsed.runtime.latest_operation).toEqual(expect.objectContaining({
-      kind: "restart_pi",
-      status: "running",
-    }));
-    expect(parsed.runtime.latest_operation).not.toHaveProperty("checkpoint");
+    expect(parsed.runtime.lifecycle_intent).toBe("recycle_pi");
     expect(() => companionSchema.parse({
       ...companion,
       runtime: {
         ...companion.runtime,
-        latest_operation: { ...parsed.runtime.latest_operation, kind: "restart_box" },
+        lifecycle_intent: "restart_box",
       },
     })).toThrow();
   });

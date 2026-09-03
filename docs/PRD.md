@@ -62,17 +62,14 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 - `POST /v1/companions/:id/messages` persists the message and turn atomically, idempotent on
   `(companion_id, client_message_id)`, then returns `202` without contacting Box.
 - Turn states are
-  `queued → starting → dispatching → running ↔ needs_input → succeeded|failed|interrupted|cancelled`.
+  `queued → admitted → running ↔ needs_input → succeeded|failed|interrupted|cancelled`.
   One occurrence is active in each `main` or `background` lane; later turns remain FIFO within their lane
   in PostgreSQL.
-- An ambiguous occurrence is never replayed. Protocol 7 enqueues resource-independent cleanup of
-  only the captured Pi invocation, preserves the original error, and marks the occurrence
-  `auto_abandoned` only after durable `cleanup_complete` proof. Cleanup retries automatically with
-  bounded backoff; first-party clients expose no Retry/Cancel controls for the interruption. The
-  compatibility Retry route only observes or re-enqueues the same cleanup and never creates an
-  attempt. Cancel remains the active/queued stop path.
-- A dedicated `apps/runtime` service is the only Box/Pi lifecycle owner. Durable operations,
-  checkpoints, leases, and attempt epochs let another replica continue after a crash without
+- An ambiguous occurrence is never replayed. Runtime interrupts that Turn, releases its lane,
+  invalidates `Prepared`, and recycles only the captured Pi invocation before later work. Cancel
+  remains the cancellable active/queued stop path.
+- A dedicated `apps/runtime` service is the only Box/Pi lifecycle owner. Durable lifecycle
+  checkpoints, leases, and fence epochs let another replica continue after a crash without
   accepting stale settlements.
 - Runtime revalidates membership, Companion ACL, selected Skills, plugins, and provider access
   before each Box interaction. A configuration change during a turn applies after settlement and
@@ -89,12 +86,12 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
   admitted member message or due background occurrence. Reads, status polling, Viewer access, and
   composer activity neither wake it nor extend that window; the next admitted occurrence resumes
   the same Box and completes current staging before Pi receives work.
-- Pi-only recycle is the automatic repair. Full Box restart and permanent deletion are explicit,
-  confirmed user operations; deletion is cleanup, never healing.
+- Pi-only recycle is the automatic repair. Archive and permanent deletion are explicit lifecycle
+  actions; deletion is cleanup, never healing.
 
 ### Companion control MCP and collaboration
 
-- Every ordinary main attempt receives a short-lived, attempt-fenced `companion-control` MCP
+- Every ordinary admitted main Turn receives a short-lived, Turn-fenced `companion-control` MCP
   capability through the loopback gateway. Pi never receives its bearer token in the environment.
 - Identity, short persona, Skills, existing plugin attachments, and deferred Pi recycle are direct.
   Model, OAuth, every routine/trigger mutation, and directed peer access use durable asynchronous

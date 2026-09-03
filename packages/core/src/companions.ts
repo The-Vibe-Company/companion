@@ -348,7 +348,7 @@ function toCompanion(
     muted: member.muted,
     unread: member.unread,
     last_message: lastMessage,
-    // Runtime v2 overlays this desired-state-only projection with the authorized PostgreSQL
+    // Runtime v3 overlays this desired-state-only projection with the authorized PostgreSQL
     // runtime view. Keeping the base neutral prevents ordinary roster reads from reaching Box or
     // depending on runtime-owned columns.
     runtime: {
@@ -369,7 +369,7 @@ function toCompanion(
       last_observed_at: null,
       last_started_at: null,
       last_stopped_at: null,
-      latest_operation: null,
+      lifecycle_intent: "prepare",
     },
     created_at: row.createdAt.toISOString(),
     updated_at: row.updatedAt.toISOString(),

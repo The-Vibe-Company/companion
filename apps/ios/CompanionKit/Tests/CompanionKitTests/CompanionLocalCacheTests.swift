@@ -131,7 +131,7 @@ private final class BackgroundRefreshURLProtocol: URLProtocol, @unchecked Sendab
                   "selected_mcp_account_ids":[],"icon":null,"section_id":null,"access":"owner",
                   "pinned":false,"hidden":false,"muted":false,"unread":false,"last_message":null,
                   "runtime":{"state":"running","daemon_state":"running","replying":false,
-                    "last_error":null,"provider_ids":[],"latest_operation":null}
+                    "last_error":null,"provider_ids":[],"lifecycle_intent":"prepare"}
                 }
               ],"deleted_companion_ids":[],
               "companion_ids":["33333333-3333-4333-8333-333333333333"],
@@ -637,7 +637,7 @@ func threadDeltaClearsCachedInterruptedTailAfterServerSettlement() throws {
         "id":"33333333-3333-4333-8333-333333333333",
         "companion_id":"22222222-2222-4222-8222-222222222222",
         "client_message_id":"44444444-4444-4444-8444-444444444444",
-        "status":"interrupted","queue_sequence":2,"latest_attempt":null,"replying":false,
+        "status":"interrupted","queue_sequence":2,"replying":false,
         "error":{"code":"cold_start_deadline_exceeded","message":"Did not start.","action":"retry"},
         "state_changed_at":"2026-08-29T00:00:00Z","settled_at":"2026-08-29T00:00:00Z",
         "created_at":"2026-08-29T00:00:00Z","updated_at":"2026-08-29T00:00:00Z"
@@ -1352,7 +1352,7 @@ private func companionSummary(
       "access":"owner","pinned":false,"hidden":false,"muted":false,"unread":false,
       "last_message":{"preview":"Ready","role":"assistant","created_at":"2026-08-29T00:00:00Z"},
       "runtime":{"state":"running","daemon_state":"running","replying":false,
-        "last_error":null,"provider_ids":[],"latest_operation":null}
+        "last_error":null,"provider_ids":[],"lifecycle_intent":"prepare"}
     }
     """#)
 }

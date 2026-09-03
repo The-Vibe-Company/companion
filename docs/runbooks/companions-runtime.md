@@ -24,8 +24,8 @@ re-enable procedure live in the
 - Never replay a dispatch once the prompt may have been written. Runtime v3 interrupts the Turn,
   releases its lane, invalidates `Prepared`, and recycles only the captured Pi invocation before
   later work.
-- No Full Box restart control exists. Never delete a Box unless an explicit user delete
-  or the audited legacy-purge procedure owns it.
+- Automatic repair is Pi-scoped on the existing Box. Never delete a Box unless an explicit user
+  delete or the audited legacy-purge procedure owns it.
 - Do not put provider payloads, tokens, signed URLs, raw Pi lines, auth files, or decrypted material
   in a command transcript, incident ticket, log search, or database error field.
 
@@ -382,26 +382,22 @@ Do not make the health endpoint public and do not weaken it to satisfy Railway r
 
 The ten-minute inactivity deadline and two-hour absolute deadline must settle visibly. If prompt
 write/ACK outcome is ambiguous, warn that earlier external effects may have succeeded and verify the
-internal `restart_pi` recovery is `pending` or `running`. It must never replay the prompt. Cleanup
-retries automatically with a backoff capped at five minutes, preserves the original error, and ends
-the occurrence as `auto_abandoned`; never manually mark it queued or create a replacement attempt.
-Recovery re-observes the known Box before Pi cleanup. A provider result of `absent` or `archived`
-is valid negative proof for both main and isolated-routine lanes: the projected Box state must be
-updated, no Pi command is sent, and the next ordinary send—not recovery—owns any archived-Box resume.
-If recovery age exceeds 15 minutes, inspect aggregate `runtime.recovery.metrics` and
-`runtime.recovery.stalled`, the exact lane lease, checkpoint, maximum attempt count, and expurgated
-operation code. The warning must not make `/healthz` red. A routine recovery in backoff must not
-prevent an independently warm main-chat claim.
+Turn is terminal `interrupted`, its lane lease is released, and `Prepared` is invalidated for the
+captured Pi invocation. The next preparation claim must re-observe the same Box, recycle only that
+captured invocation, restage current authorized material, and prove a different idle invocation. It
+must never replay the ambiguous command. A provider result of `absent` or `archived` is valid
+negative proof for the captured invocation: update the projected Box state, send no Pi command, and
+let the next ordinary send own any archived-Box resume. If any main or background lane exceeds 15
+minutes, the release decision is NO-GO; inspect its fenced lease, Turn state, preparation checkpoint,
+and expurgated error code. A blocked background convergence must not prevent an independently warm
+main-chat claim.
 
 While a turn is waiting in `needs_input`, its inactivity deadline is intentionally cleared. An
 `ask_user` decision returns control to Pi after ten minutes; asynchronous `companion-control`
-approvals never hold the attempt open. A newer member message
+approvals never hold the Turn open. A newer member message
 cancels the wait sooner, without becoming an implicit approval, and remains queued for its own turn.
-That queued follow-up may own an idempotent pending Start prerequisite, but it must have neither an
-attempt nor a cold-start deadline until runtime actually claims that Start. If an older deployment shows
-`turn_stalled` for the pending decision followed by `cold_start_deadline_exceeded` for a never-
-attempted message on an idle warm Box, deploy migration 0129 before retrying; do not restart or
-replace that healthy Box.
+That queued follow-up remains the same durable Turn while preparation converges. Do not edit Turn,
+lease, or preparation rows manually and do not replace a healthy Box.
 
 ### MCP OAuth refresh failed
 

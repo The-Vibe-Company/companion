@@ -3,7 +3,6 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type {
   Companion,
-  CompanionLatestOperation,
   CompanionProvidersResponse,
 } from "@companion/contracts";
 import { ApiFetchError } from "@/lib/apiClient";
@@ -30,63 +29,6 @@ import { CompanionIconPicker, type CompanionIconValue } from "./CompanionIconPic
 const SKILLS_SYNC_POLL_MS = 3_000;
 /** A stalled apply stops moving on its own; cap the poll instead of reading forever. */
 const SKILLS_SYNC_POLL_MAX_TICKS = 40;
-
-type RuntimeNotice = {
-  operationId: string | null;
-  message: string;
-};
-
-function operationNotice(
-  operation: Pick<CompanionLatestOperation, "id" | "kind" | "status">,
-): RuntimeNotice | null {
-  const operationId = operation.id;
-  if (operation.status === "pending") {
-    switch (operation.kind) {
-      case "delete":
-        return {
-          operationId,
-          message: "Deletion accepted. This Companion remains visible until its Box is permanently deleted.",
-        };
-      case "restart_pi":
-        return { operationId, message: "Restart accepted. It joins any recovery already in progress." };
-      default:
-        return null;
-    }
-  }
-  if (operation.status !== "succeeded") return null;
-  switch (operation.kind) {
-    case "delete":
-      return { operationId, message: "Deletion completed." };
-    case "restart_pi":
-      return { operationId, message: "Restart completed." };
-    case "stop":
-      return { operationId, message: "Stop completed." };
-    case "start":
-      return { operationId, message: "Start completed." };
-    case "apply_settings":
-      return { operationId, message: "Settings applied." };
-  }
-}
-
-function operationFailureMessage(operation: CompanionLatestOperation | null): string | null {
-  if (operation === null
-    || !["failed", "interrupted", "cancelled"].includes(operation.status)) return null;
-  if (operation.error?.message) return operation.error.message;
-  const label = operation.kind === "delete"
-    ? "Deletion"
-    : operation.kind === "restart_pi"
-      ? "Restart"
-      : operation.kind === "apply_settings"
-          ? "Settings apply"
-          : operation.kind === "start"
-            ? "Start"
-            : "Stop";
-  return operation.status === "failed"
-    ? `${label} failed.`
-    : operation.status === "interrupted"
-      ? `${label} was interrupted. Retry when it is safe.`
-      : `${label} was cancelled.`;
-}
 
 export function CompanionSettings({
   orgId,
@@ -126,8 +68,7 @@ export function CompanionSettings({
   const [confirmingRestart, setConfirmingRestart] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [runtimeSnapshot, setRuntimeSnapshot] = useState(companion.runtime);
-  const [latestOperation, setLatestOperation] = useState(companion.runtime.latest_operation ?? null);
-  const [runtimeNotice, setRuntimeNotice] = useState<RuntimeNotice | null>(null);
+  const [runtimeNotice, setRuntimeNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [hidden, setHidden] = useState(companion.hidden);
@@ -146,11 +87,6 @@ export function CompanionSettings({
 
   useEffect(() => {
     setRuntimeSnapshot(companion.runtime);
-    const nextOperation = companion.runtime.latest_operation ?? null;
-    setLatestOperation(nextOperation);
-    if (nextOperation !== null && nextOperation.status !== "pending") {
-      setRuntimeNotice(operationNotice(nextOperation));
-    }
   }, [companion.runtime]);
 
   useEffect(() => {
@@ -163,44 +99,15 @@ export function CompanionSettings({
     setLatest(companion);
   }, [companion]);
 
-  const operationActive = latestOperation !== null
-    && (latestOperation.status === "pending" || latestOperation.status === "running");
-  const restartActive = operationActive && latestOperation.kind === "restart_pi";
-  const deletionActive = operationActive && latestOperation?.kind === "delete";
-  const deletionRetryable = latestOperation?.kind === "delete"
-    && (latestOperation.status === "failed"
-      || latestOperation.status === "interrupted"
-      || latestOperation.status === "cancelled");
-  const operationPending = latestOperation?.status === "pending";
-  const durableOperationMessage = operationActive
-    ? latestOperation.kind === "delete"
-      ? operationPending
-        ? "Deletion is queued. This Companion remains until its Box is permanently deleted."
-        : "Deletion is in progress. This Companion remains until its Box is permanently deleted."
-      : latestOperation.kind === "stop"
-        ? operationPending
-          ? "Stop is queued. Status refreshes every three seconds."
-          : "Stop is in progress. Status refreshes every three seconds."
-        : latestOperation.kind === "restart_pi"
-          ? operationPending
-            ? "Restart is queued. It joins any recovery already in progress."
-            : "Restart is in progress. Status refreshes automatically."
-          : latestOperation.kind === "start"
-              ? operationPending
-                ? "Start is queued. Status refreshes every three seconds."
-                : "Start is in progress. Status refreshes every three seconds."
-              : operationPending
-                ? "Settings apply is queued. Status refreshes every three seconds."
-                : "Settings are being applied. Status refreshes every three seconds."
-    : null;
-  const runtimeMessage = runtimeNotice !== null
-    && (latestOperation === null
-      || runtimeNotice.operationId === null
-      || runtimeNotice.operationId === latestOperation.id)
-    ? runtimeNotice.message
-    : null;
-  const durableOperationError = operationFailureMessage(latestOperation);
-  const lifecycleActive = operationActive
+  const restartActive = runtimeSnapshot.lifecycle_intent === "recycle_pi";
+  const deletionActive = runtimeSnapshot.lifecycle_intent === "delete";
+  const deletionRetryable = deletionActive && runtimeSnapshot.state === "error";
+  const durableLifecycleMessage = deletionActive
+    ? "Deletion is in progress. This Companion remains until its Box is permanently deleted."
+    : restartActive
+      ? "Restart is in progress. It joins any recovery already running."
+      : null;
+  const lifecycleActive = restartActive || deletionActive
     || runtimeSnapshot.state === "provisioning"
     || runtimeSnapshot.state === "stopping";
   useEffect(() => {
@@ -212,11 +119,6 @@ export function CompanionSettings({
         if (!active) return;
         setError(null);
         setRuntimeSnapshot(next.runtime);
-        const nextOperation = next.runtime.latest_operation ?? null;
-        setLatestOperation(nextOperation);
-        if (nextOperation !== null && nextOperation.status !== "pending") {
-          setRuntimeNotice(operationNotice(nextOperation));
-        }
         setLatest(next);
         onSavedRef.current(next);
         if (!restartActive
@@ -227,14 +129,11 @@ export function CompanionSettings({
           setRuntimeNotice(null);
           return;
         }
-        if (nextOperation !== null
-          && (nextOperation.status === "pending" || nextOperation.status === "running")) return;
-        if (nextOperation !== null
-          && ["failed", "interrupted", "cancelled"].includes(nextOperation.status)) return;
-        setRuntimeNotice({
-          operationId: nextOperation?.id ?? null,
-          message: "Restart completed.",
-        });
+        if (next.runtime.lifecycle_intent === "recycle_pi") {
+          setRuntimeNotice(null);
+          return;
+        }
+        setRuntimeNotice("Restart completed.");
       } catch (cause) {
         if (!active) return;
         setError(cause instanceof Error
@@ -250,17 +149,13 @@ export function CompanionSettings({
   }, [companion.id, deletionActive, lifecycleActive, orgId, restartActive]);
 
   const skillsPending = latest.runtime.skills_applied_revision < latest.runtime.skills_revision;
-  const skillApplyingOperation = latest.runtime.latest_operation;
   // A publication alone never starts a fast poll: only a lifecycle that actually stops Pi can
   // advance this watermark.
   const skillsApplying = skillsPending
     && !deletionActive
     && !latest.runtime.skills_last_error
-    && skillApplyingOperation !== null
-    && ["stop", "restart_pi", "apply_settings"].includes(
-      skillApplyingOperation.kind,
-    )
-    && ["pending", "running"].includes(skillApplyingOperation.status);
+    && (latest.runtime.lifecycle_intent === "recycle_pi"
+      || latest.runtime.state === "provisioning");
   useEffect(() => {
     if (!skillsApplying) return;
     let ticks = 0;
@@ -283,7 +178,7 @@ export function CompanionSettings({
   // Permanent deletion is asynchronous. Keep this surface until PostgreSQL confirms the row is
   // gone, so a queued operation is never presented as if external Box deletion already succeeded.
   useEffect(() => {
-    if (!deletionActive) return;
+    if (!deletionActive || deletionRetryable) return;
     let active = true;
     const read = async () => {
       try {
@@ -291,11 +186,7 @@ export function CompanionSettings({
         if (!active) return;
         setError(null);
         setRuntimeSnapshot(next.runtime);
-        const nextOperation = next.runtime.latest_operation ?? null;
-        setLatestOperation(nextOperation);
-        if (nextOperation !== null && nextOperation.status !== "pending") {
-          setRuntimeNotice(operationNotice(nextOperation));
-        }
+        if (next.runtime.state === "error") setRuntimeNotice(null);
         setLatest(next);
         onSavedRef.current(next);
       } catch (cause) {
@@ -315,7 +206,7 @@ export function CompanionSettings({
       active = false;
       clearInterval(timer);
     };
-  }, [companion.id, deletionActive, orgId]);
+  }, [companion.id, deletionActive, deletionRetryable, orgId]);
 
   const changed = useMemo(
     () =>
@@ -391,10 +282,11 @@ export function CompanionSettings({
     const requestId = deleteRequestIdRef.current ?? crypto.randomUUID();
     deleteRequestIdRef.current = requestId;
     try {
-      await deleteCompanion(orgId, companion.id, requestId);
+      const accepted = await deleteCompanion(orgId, companion.id, requestId);
       deleteRequestIdRef.current = null;
       setConfirmingDelete(false);
-      setRuntimeNotice({ operationId: null, message: "Permanent deletion requested." });
+      setRuntimeSnapshot((current) => ({ ...current, lifecycle_intent: accepted.intent }));
+      setRuntimeNotice("Deletion accepted.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "This Companion could not be deleted.");
       setConfirmingDelete(false);
@@ -412,9 +304,15 @@ export function CompanionSettings({
     const requestId = restartRequestIdRef.current ?? crypto.randomUUID();
     restartRequestIdRef.current = requestId;
     try {
-      await restartCompanionRuntime(orgId, companion.id, { target: "pi" }, requestId);
+      const accepted = await restartCompanionRuntime(
+        orgId,
+        companion.id,
+        { target: "pi" },
+        requestId,
+      );
       restartRequestIdRef.current = null;
-      setRuntimeNotice({ operationId: null, message: "Pi restart requested." });
+      setRuntimeSnapshot((current) => ({ ...current, lifecycle_intent: accepted.intent }));
+      setRuntimeNotice("Restart accepted.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "This Companion could not be restarted.");
     } finally {
@@ -439,15 +337,15 @@ export function CompanionSettings({
       </header>
 
       <div className="companions-content companions-settings__content">
-        {(error ?? durableOperationError) && (
+        {(error ?? runtimeSnapshot.last_error) && (
           <div className="companions-error" role="alert">
-            {error ?? durableOperationError}
+            {error ?? runtimeSnapshot.last_error}
           </div>
         )}
         {saved && <div className="companions-settings__saved" role="status">Settings saved.</div>}
-        {(runtimeMessage ?? durableOperationMessage) && (
+        {(runtimeNotice ?? durableLifecycleMessage) && (
           <div className="companions-settings__saved" role="status">
-            {runtimeMessage ?? durableOperationMessage}
+            {runtimeNotice ?? durableLifecycleMessage}
           </div>
         )}
 
@@ -624,13 +522,13 @@ export function CompanionSettings({
             <button
               type="button"
               className="cds-btn cds-btn--danger cds-btn--md"
-              disabled={busy || deletionActive}
+              disabled={busy || (deletionActive && !deletionRetryable)}
               onClick={() => setConfirmingDelete(true)}
             >
-              {deletionActive
-                ? "Deletion requested"
-                : deletionRetryable
-                  ? "Retry Delete"
+              {deletionRetryable
+                ? "Retry Delete"
+                : deletionActive
+                  ? "Deletion requested"
                   : "Delete Companion"}
             </button>
           </section>

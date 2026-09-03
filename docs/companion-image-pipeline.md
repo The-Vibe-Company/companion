@@ -107,7 +107,7 @@ Semantics:
 - `authorizeSnapshotPublication(...)` — proves the exact epoch and baker Box still have enough
   lease headroom immediately before the bounded provider snapshot write.
 
-Consistent with every other Runtime v2 surface, no process role holds table privileges
+Consistent with every other Runtime v3 surface, no process role holds table privileges
 on `companion_images`. All access crosses narrow SECURITY DEFINER functions installed by
 migration 0123 and granted to the dedicated runtime role only; the role verifier's
 "no public relation privileges" invariant stays intact.

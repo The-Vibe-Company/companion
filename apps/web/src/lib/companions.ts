@@ -31,7 +31,7 @@ import type {
   UpdateCompanionTriggerInput,
 } from "@companion/contracts";
 import {
-  COMPANION_OPERATION_IDEMPOTENCY_HEADER,
+  COMPANION_LIFECYCLE_IDEMPOTENCY_HEADER,
   type RestartCompanionRuntimeInput,
 } from "@companion/contracts/companion-runtime";
 import { ApiFetchError, apiFetch } from "./apiClient";
@@ -46,10 +46,10 @@ function orgHeaders(orgId: string): HeadersInit {
   return { "x-companion-org": orgId };
 }
 
-function operationHeaders(orgId: string, requestId: string): HeadersInit {
+function lifecycleHeaders(orgId: string, requestId: string): HeadersInit {
   return {
     "x-companion-org": orgId,
-    [COMPANION_OPERATION_IDEMPOTENCY_HEADER]: requestId,
+    [COMPANION_LIFECYCLE_IDEMPOTENCY_HEADER]: requestId,
   };
 }
 
@@ -127,7 +127,7 @@ export async function deleteCompanion(
     `/v1/companions/${encodeURIComponent(companionId)}`,
     {
       method: "DELETE",
-      headers: operationHeaders(orgId, requestId),
+      headers: lifecycleHeaders(orgId, requestId),
     },
   );
   return result.lifecycle;
@@ -696,7 +696,7 @@ export async function restartCompanionRuntime(
     `/v1/companions/${encodeURIComponent(companionId)}/runtime/restart`,
     {
       method: "POST",
-      headers: operationHeaders(orgId, requestId),
+      headers: lifecycleHeaders(orgId, requestId),
       body: JSON.stringify(input),
     },
   );

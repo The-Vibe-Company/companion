@@ -34,7 +34,7 @@ const ACK_FILE = "ack.cursor";
 const COUNTERS_FILE = "counters.json";
 const DISPATCH_LEDGER_MAX_RECORDS = 64;
 
-/** Pi events understood by the Runtime v2 projection. New shapes are counted and ignored. */
+/** Pi events understood by the Runtime v3 projection. New shapes are counted and ignored. */
 export const COMPANION_PI_SUPPORTED_EVENT_TYPES = new Set([
   "agent_start",
   "agent_end",

@@ -607,13 +607,7 @@ func decodesCompanionSettingsAuthorityAndDurableDeletion() throws {
         "replying":false,
         "last_error":null,
         "provider_ids":["anthropic"],
-        "latest_operation":{
-          "id":"14757274-8d64-455c-a394-334665a258f0",
-          "source_turn_id":null,
-          "kind":"delete",
-          "status":"failed",
-          "error":{"code":"delete_failed","message":"Deletion could not complete.","action":"retry"}
-        }
+        "lifecycle_intent":"delete"
       }
     }
     """#.utf8)
@@ -622,8 +616,8 @@ func decodesCompanionSettingsAuthorityAndDurableDeletion() throws {
     #expect(companion.access.canEditCompanionSettings)
     #expect(companion.access.canDeleteCompanion)
     #expect(companion.runtime.providerIDs == ["anthropic"])
-    #expect(companion.deletionOperation?.status == .failed)
-    #expect(companion.deletionOperation?.error?.message == "Deletion could not complete.")
+    #expect(companion.deletionLifecycle?.intent == .delete)
+    #expect(companion.deletionLifecycle?.error?.message == "Deletion could not complete.")
 }
 
 @Test
@@ -820,11 +814,11 @@ func rosterRemovesACompanionOptimisticallyAndRestoresItsPositionAfterFailure() t
 func rosterKeepsAnAcceptedDeletionRemovedUntilTheServerReconcilesIt() throws {
     let luna = try rosterCompanion(id: "companion-1", name: "Luna")
     let nova = try rosterCompanion(id: "companion-2", name: "Nova")
-    let operation = try rosterDeletionOperation(status: "pending")
+    let lifecycle = try rosterDeletionLifecycle()
     var roster = CompanionRosterState(companions: [luna, nova])
 
     roster.removeOptimistically(companionID: luna.id)
-    roster.reconcileDeletionResponse(companionID: luna.id, operation: operation)
+    roster.reconcileDeletionResponse(companionID: luna.id, operation: lifecycle)
 
     #expect(roster.companions.map(\.id) == [nova.id])
     #expect(roster.restoreDeletion(companionID: luna.id) == nil)
@@ -832,19 +826,6 @@ func rosterKeepsAnAcceptedDeletionRemovedUntilTheServerReconcilesIt() throws {
     roster.reconcile(with: [luna, nova])
 
     #expect(roster.companions.map(\.id) == [luna.id, nova.id])
-}
-
-@Test
-func rosterRestoresATerminalDeletionReplayForAFreshRetry() throws {
-    let luna = try rosterCompanion(id: "companion-1", name: "Luna")
-    let operation = try rosterDeletionOperation(status: "failed")
-    var roster = CompanionRosterState(companions: [luna])
-
-    roster.removeOptimistically(companionID: luna.id)
-    let restored = roster.reconcileDeletionResponse(companionID: luna.id, operation: operation)
-
-    #expect(restored == luna)
-    #expect(roster.companions == [luna])
 }
 
 @Test
@@ -940,13 +921,11 @@ private func rosterCompanion(
     """#.utf8))
 }
 
-private func rosterDeletionOperation(status: String) throws -> CompanionOperationSummary {
-    try JSONDecoder().decode(CompanionOperationSummary.self, from: Data(#"""
+private func rosterDeletionLifecycle() throws -> CompanionLifecycleReceipt {
+    try JSONDecoder().decode(CompanionLifecycleReceipt.self, from: Data(#"""
     {
-      "id":"operation-1",
-      "kind":"delete",
-      "status":"\#(status)",
-      "error":null
+      "intent":"delete",
+      "revision":"2"
     }
     """#.utf8))
 }
@@ -969,13 +948,7 @@ func resourceScreenReconcilesParentRuntimeWithoutHidingFreshWork() throws {
         "replying":false,
         "last_error":null,
         "provider_ids":["anthropic"],
-        "latest_operation":{
-          "id":"14757274-8d64-455c-a394-334665a258f0",
-          "source_turn_id":null,
-          "kind":"restart_box",
-          "status":"pending",
-          "error":null
-        }
+        "lifecycle_intent":"recycle_pi"
       }
     }
     """#.utf8))
@@ -995,15 +968,15 @@ func resourceScreenReconcilesParentRuntimeWithoutHidingFreshWork() throws {
         "replying":false,
         "last_error":null,
         "provider_ids":["anthropic"],
-        "latest_operation":null
+        "lifecycle_intent":"prepare"
       }
     }
     """#.utf8))
     let protected = stale.reconcilingParentProjection(from: active)
-    #expect(protected.runtime.latestOperation?.status == .pending)
+    #expect(protected.runtime.latestLifecycle?.intent == .recyclePi)
 
     let fresh = active.reconcilingParentProjection(from: stale)
-    #expect(fresh.runtime.latestOperation?.status == .pending)
+    #expect(fresh.runtime.latestLifecycle?.intent == .recyclePi)
 }
 
 @Test
@@ -1062,19 +1035,15 @@ func usesCompanionPluginSelectionAndRuntimeLifecycleRoutes() async throws {
             let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: String])
             let target = try #require(json["target"])
             #expect(Set(json.keys) == Set(["target"]))
-            #expect(target == "pi" || target == "box")
-            let expectedRequestID = target == "pi"
-                ? "14f2690b-9e55-4d45-9d0c-3f9e20bc4888"
-                : "25f3701c-af66-4e56-ae1d-4a0f31cd5999"
-            #expect(request.value(forHTTPHeaderField: "Idempotency-Key") == expectedRequestID)
-            let operationKind = target == "pi" ? "restart_pi" : "restart_box"
+            #expect(target == "pi")
+            #expect(request.value(forHTTPHeaderField: "Idempotency-Key") == "14f2690b-9e55-4d45-9d0c-3f9e20bc4888")
             response = try #require(HTTPURLResponse(
                 url: requestURL,
                 statusCode: 202,
                 httpVersion: nil,
                 headerFields: nil
             ))
-            data = Data(#"{"operation":{"id":"14757274-8d64-455c-a394-334665a258f0","source_turn_id":null,"kind":"\#(operationKind)","status":"pending","error":null}}"#.utf8)
+            data = Data(#"{"lifecycle":{"intent":"recycle_pi","revision":"2"}}"#.utf8)
 
         default:
             Issue.record("Unexpected Companion management route: \(requestURL.absoluteString)")
@@ -1118,8 +1087,7 @@ func usesCompanionPluginSelectionAndRuntimeLifecycleRoutes() async throws {
         target: .pi,
         requestID: piRequestID
     )
-    #expect(piOperation.kind == .restartPi)
-    #expect(piOperation.status == .pending)
+    #expect(piOperation.intent == .recyclePi)
 
 }
 
@@ -1364,19 +1332,8 @@ func decodesActiveTurnAndTranscriptTurnIdentity() throws {
         "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
         "status":"running",
         "queue_sequence":20,
-        "latest_attempt":{
-          "id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-          "turn_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-          "attempt_number":1,
-          "retry_id":null,
-          "status":"running",
-          "dispatch_state":"accepted",
-          "pi_invocation_id":"pi-invocation-1",
-          "dispatch_accepted_at":"2026-08-26T06:00:01.000Z",
-          "error":null,
-          "started_at":"2026-08-26T06:00:00.000Z",
-          "settled_at":null
-        },
+        "admission_state":"accepted",
+        "admitted_at":"2026-08-26T06:00:01.000Z",
         "replying":true,
         "error":null,
         "state_changed_at":"2026-08-26T06:00:00.000Z",
@@ -1392,7 +1349,7 @@ func decodesActiveTurnAndTranscriptTurnIdentity() throws {
     let thread = try JSONDecoder().decode(CompanionThread.self, from: data)
     #expect(thread.activeTurn?.id == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
     #expect(thread.activeTurn?.replying == true)
-    #expect(thread.activeTurn?.latestAttempt?.id == "cccccccc-cccc-4ccc-8ccc-cccccccccccc")
+    #expect(thread.activeTurn?.admissionState == .accepted)
     #expect(thread.entries.first?.turnID == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 }
 
@@ -1440,7 +1397,7 @@ func decodesRuntimeV3RecoveryProjectionAndSharedWaitingCopy() throws {
         "id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
         "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
         "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-        "status":"queued","queue_sequence":20,"latest_attempt":null,
+        "status":"queued","queue_sequence":20,
         "admission_state":"pending","admitted_at":null,"replying":false,"error":null,
         "external_block":{"classification":"model","source":"main","message":"The selected model is unavailable."},
         "state_changed_at":"2026-08-26T05:55:12.466Z","settled_at":null,
@@ -1914,7 +1871,7 @@ func decodesOnlyUnresolvedLegacyInterruptionAsVisible() throws {
         "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
         "status":"interrupted",
         "queue_sequence":20,
-        "latest_attempt":null,
+        ,
         "replying":false,
         "error":{"code":"cold_start_deadline_exceeded","message":"The Companion did not start before its deadline.","action":"retry"},
         "state_changed_at":"2026-08-26T05:59:33.505Z",
@@ -1929,7 +1886,6 @@ func decodesOnlyUnresolvedLegacyInterruptionAsVisible() throws {
     #expect(thread.queuedCount == 2)
     #expect(thread.interruptedTurn?.status == .interrupted)
     #expect(thread.interruptedTurn?.error?.action == "retry")
-    #expect(thread.interruptedTurn?.latestAttempt == nil)
     #expect(thread.visibleInterruptedTurn?.id == thread.interruptedTurn?.id)
 }
 
@@ -1949,19 +1905,8 @@ func decodesInterruptedTurnAndItsAutomaticRecoveryStatus() throws {
         "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
         "status":"interrupted",
         "queue_sequence":20,
-        "latest_attempt":{
-          "id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-          "turn_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-          "attempt_number":1,
-          "retry_id":null,
-          "status":"interrupted",
-          "dispatch_state":"accepted",
-          "pi_invocation_id":"pi-interrupted-test",
-          "dispatch_accepted_at":"2026-08-26T05:56:00.000Z",
-          "error":{"code":"turn_stalled","message":"The Companion stopped making progress.","action":"none"},
-          "started_at":"2026-08-26T05:55:13.000Z",
-          "settled_at":"2026-08-26T05:59:33.505Z"
-        },
+        "admission_state":"accepted",
+        "admitted_at":"2026-08-26T05:56:00.000Z",
         "replying":false,
         "error":{"code":"turn_stalled","message":"The Companion stopped making progress.","action":"none"},
         "state_changed_at":"2026-08-26T05:59:33.505Z",
@@ -1978,7 +1923,7 @@ func decodesInterruptedTurnAndItsAutomaticRecoveryStatus() throws {
     #expect(thread.interruptedTurn?.status == .interrupted)
     #expect(thread.interruptedTurn?.error?.action == "none")
     #expect(thread.interruptedTurn?.recoveryStatus == .running)
-    #expect(thread.interruptedTurn?.latestAttempt?.piInvocationID == "pi-interrupted-test")
+    #expect(thread.interruptedTurn?.admissionState == .accepted)
 }
 
 @Test
@@ -1989,7 +1934,7 @@ func recoveryStatusToleratesAnOlderServerAndAFutureValue() throws {
           "id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
           "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
           "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-          "status":"interrupted","queue_sequence":20,"latest_attempt":null,"replying":false,
+          "status":"interrupted","queue_sequence":20,"replying":false,
           "error":null,"state_changed_at":"2026-08-26T05:59:33.505Z",
           "settled_at":"2026-08-26T05:59:33.505Z","created_at":"2026-08-26T05:55:12.466Z",
           "updated_at":"2026-08-26T05:59:33.505Z"\#(recoveryFragment)
@@ -2017,7 +1962,7 @@ func hidesAutoAbandonedInterruptionFromConversationTail() throws {
         "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
         "status":"interrupted",
         "queue_sequence":20,
-        "latest_attempt":null,
+        ,
         "replying":false,
         "error":{"code":"turn_stalled","message":"The Companion stopped making progress.","action":"none"},
         "state_changed_at":"2026-08-26T05:59:33.505Z",
@@ -2062,7 +2007,7 @@ func cancelsTurnsThroughSharedRoute() async throws {
             "id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
             "companion_id":"5b7d655e-36bb-4fbe-9acd-e56103759911",
             "client_message_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-            "status":"cancelled","queue_sequence":20,"latest_attempt":null,"replying":false,
+            "status":"cancelled","queue_sequence":20,"replying":false,
             "error":null,"state_changed_at":"2026-08-26T06:00:00.000Z",
             "settled_at":"2026-08-26T06:00:00.000Z","created_at":"2026-08-26T05:55:12.466Z",
             "updated_at":"2026-08-26T06:00:00.000Z"
@@ -3057,14 +3002,14 @@ func usesRealCompanionManagementRoutesAndRetainsProviderOAuthAuthority() async t
                 #expect(json["selected_skill_ids"] == nil)
                 #expect(json["selected_mcp_account_ids"] == nil)
                 response = try #require(HTTPURLResponse(url: requestURL, statusCode: 200, httpVersion: nil, headerFields: nil))
-                data = Data(#"{"companion":{"id":"c96ab360-00f3-4497-a51a-51442db8add1","name":"Luna Prime","persona":null,"model_id":"claude-sonnet","icon":{"shape":6,"mouth":1,"accessory":6,"color":2},"access":"owner","hidden":false,"unread":false,"last_message":null,"runtime":{"state":"running","replying":false,"last_error":null,"provider_ids":["anthropic"],"latest_operation":null}}}"#.utf8)
+                data = Data(#"{"companion":{"id":"c96ab360-00f3-4497-a51a-51442db8add1","name":"Luna Prime","persona":null,"model_id":"claude-sonnet","icon":{"shape":6,"mouth":1,"accessory":6,"color":2},"access":"owner","hidden":false,"unread":false,"last_message":null,"runtime":{"state":"running","replying":false,"last_error":null,"provider_ids":["anthropic"],"lifecycle_intent":"prepare"}}}"#.utf8)
             } else {
                 #expect(request.httpMethod == "DELETE")
                 #expect(request.value(forHTTPHeaderField: "Idempotency-Key") == "14f2690b-9e55-4d45-9d0c-3f9e20bc4888")
                 ManagementMockURLProtocol.deleteAttempts += 1
                 if ManagementMockURLProtocol.deleteAttempts == 1 { throw URLError(.networkConnectionLost) }
                 response = try #require(HTTPURLResponse(url: requestURL, statusCode: 202, httpVersion: nil, headerFields: nil))
-                data = Data(#"{"operation":{"id":"14757274-8d64-455c-a394-334665a258f0","kind":"delete","status":"pending","error":null}}"#.utf8)
+                data = Data(#"{"lifecycle":{"intent":"delete","revision":"2"}}"#.utf8)
             }
 
         case "/v1/companions/c96ab360-00f3-4497-a51a-51442db8add1/member-state":
@@ -3075,12 +3020,12 @@ func usesRealCompanionManagementRoutesAndRetainsProviderOAuthAuthority() async t
             #expect(json["hidden"] == nil)
             #expect(json["unread"] == nil)
             response = try #require(HTTPURLResponse(url: requestURL, statusCode: 200, httpVersion: nil, headerFields: nil))
-            data = Data(#"{"companion":{"id":"c96ab360-00f3-4497-a51a-51442db8add1","name":"Luna Prime","persona":null,"model_id":"claude-sonnet","icon":{"shape":6,"mouth":1,"accessory":6,"color":2},"access":"owner","pinned":true,"hidden":false,"unread":false,"last_message":null,"runtime":{"state":"running","replying":false,"last_error":null,"provider_ids":["anthropic"],"latest_operation":null}}}"#.utf8)
+            data = Data(#"{"companion":{"id":"c96ab360-00f3-4497-a51a-51442db8add1","name":"Luna Prime","persona":null,"model_id":"claude-sonnet","icon":{"shape":6,"mouth":1,"accessory":6,"color":2},"access":"owner","pinned":true,"hidden":false,"unread":false,"last_message":null,"runtime":{"state":"running","replying":false,"last_error":null,"provider_ids":["anthropic"],"lifecycle_intent":"prepare"}}}"#.utf8)
 
         case "/v1/companions/c96ab360-00f3-4497-a51a-51442db8add1/duplicate":
             #expect(request.httpMethod == "POST")
             response = try #require(HTTPURLResponse(url: requestURL, statusCode: 201, httpVersion: nil, headerFields: nil))
-            data = Data(#"{"companion":{"id":"a06a767f-2227-47d7-9e4b-b935f82cdd64","name":"Luna Prime copy","persona":null,"model_id":"claude-sonnet","icon":{"shape":6,"mouth":1,"accessory":6,"color":2},"access":"owner","pinned":false,"hidden":false,"unread":false,"last_message":null,"runtime":{"state":"not_created","replying":false,"last_error":null,"provider_ids":["anthropic"],"latest_operation":null}}}"#.utf8)
+            data = Data(#"{"companion":{"id":"a06a767f-2227-47d7-9e4b-b935f82cdd64","name":"Luna Prime copy","persona":null,"model_id":"claude-sonnet","icon":{"shape":6,"mouth":1,"accessory":6,"color":2},"access":"owner","pinned":false,"hidden":false,"unread":false,"last_message":null,"runtime":{"state":"not_created","replying":false,"last_error":null,"provider_ids":["anthropic"],"lifecycle_intent":"prepare"}}}"#.utf8)
 
         case "/v1/companion-plugins":
             #expect(request.httpMethod == "POST")

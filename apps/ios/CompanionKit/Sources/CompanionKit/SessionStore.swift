@@ -819,7 +819,7 @@ public final class SessionStore {
         companionID: String,
         target: CompanionRuntimeRestartTarget,
         requestID: UUID
-    ) async throws -> CompanionOperationSummary {
+    ) async throws -> CompanionLifecycleReceipt {
         do {
             let operation = try await client.restartCompanion(
                 companionID: companionID,
@@ -837,7 +837,7 @@ public final class SessionStore {
     public func deleteCompanion(
         companionID: String,
         requestID: UUID
-    ) async throws -> CompanionOperationSummary {
+    ) async throws -> CompanionLifecycleReceipt {
         do {
             let operation = try await client.deleteCompanion(
                 companionID: companionID,

@@ -53,7 +53,7 @@ one recovery signal. FIFO remains local to each independently progressing main/b
 Runtime redelivers the same durable incident signal after a delivery crash until it is acknowledged;
 an acknowledged open or recovery signal is not delivered again.
 Hosted Runtime v3 is the only execution path. A Turn carries command, admission, activity, and
-outcome facts without an attempt table, derived Start operation, or legacy retry executor. An
+outcome facts on the Turn itself. An
 outcome-unknown admission is immediately interrupted and never replayed, its lane is released, and
 `Prepared` is invalidated.
 The runtime recycles only the exactly captured Pi invocation on the same persistent Box, rebuilds
@@ -83,6 +83,8 @@ After Runtime v3 cutover, the persistent Box archives after one hour without new
 or background work. Reads, Viewer access, status polling, and composer activity do not wake it or
 extend that window; the next accepted occurrence resumes the same Box and completes current staging
 before Pi receives it. Stop uses this archive path, while permanent deletion remains Owner-only.
+The six-hour provider and credential expiry guards are independent safety ceilings, not the idle
+archive window.
 The control plane never executes package scripts; Pi may consume the selected skill
 instructions inside its isolated Box runtime.
 

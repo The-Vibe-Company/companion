@@ -113,11 +113,7 @@ function selectCompanion(companions, selector) {
   return matches[0];
 }
 
-function terminalFailure(operation) {
-  return operation && ["failed", "interrupted", "cancelled"].includes(operation.status);
-}
-
-export async function stopLocalCompanion(
+export async function archiveLocalCompanion(
   configuration,
   selector,
   fetchImpl = fetch,
@@ -135,20 +131,22 @@ export async function stopLocalCompanion(
     return {
       companionId: companion.id,
       companionName: companion.name,
-      operationId: companion.runtime.latest_operation?.id ?? null,
+      lifecycleRevision: null,
       state: "stopped",
     };
   }
   const accepted = (await api.request(
-    `/v1/companions/${encodeURIComponent(companion.id)}/runtime/stop`,
+    `/v1/companions/${encodeURIComponent(companion.id)}/runtime/archive`,
     {
       method: "POST",
       headers: { "Idempotency-Key": randomUUID() },
     },
-  )).body?.operation;
-  if (!accepted?.id) throw new Error("stop response returned no operation id");
+  )).body?.lifecycle;
+  if (accepted?.intent !== "archive" || !accepted.revision) {
+    throw new Error("archive response returned no lifecycle receipt");
+  }
 
-  const deadline = Date.now() + configuration.stopTimeoutMs;
+  const deadline = Date.now() + configuration.archiveTimeoutMs;
   while (Date.now() < deadline) {
     const projection = (await api.request(
       `/v1/companions/${encodeURIComponent(companion.id)}/runtime`,
@@ -157,17 +155,17 @@ export async function stopLocalCompanion(
       return {
         companionId: companion.id,
         companionName: companion.name,
-        operationId: accepted.id,
+        lifecycleRevision: accepted.revision,
         state: "stopped",
       };
     }
-    const operation = projection?.runtime?.latest_operation;
-    if (operation?.id === accepted.id && terminalFailure(operation)) {
-      throw new Error(`stop operation ended as ${operation.status}`);
+    if (projection?.runtime?.state === "error"
+        && projection.runtime.lifecycle_intent === "archive") {
+      throw new Error("archive lifecycle entered an error state");
     }
     await sleep(configuration.pollIntervalMs);
   }
-  throw new Error(`timed out waiting for "${companion.name}" to stop`);
+  throw new Error(`timed out waiting for "${companion.name}" to archive`);
 }
 
 function configuration() {
@@ -181,7 +179,7 @@ function configuration() {
     password: process.env.COMPANION_SEED_PASSWORD ?? "adminadmin",
     zaiApiKey: process.env.COMPANION_IOS_LOCAL_ZAI_API_KEY ?? "",
     pollIntervalMs: 2_000,
-    stopTimeoutMs: 15 * 60_000,
+    archiveTimeoutMs: 15 * 60_000,
   };
 }
 
@@ -198,11 +196,11 @@ if (import.meta.url === new URL(`file://${process.argv[1]}`).href) {
     if (command === "bootstrap") {
       const result = await bootstrapLocalProvider(config);
       console.log(`[ios-live] z.ai connected; default model ${result.modelId}`);
-    } else if (command === "stop") {
-      const result = await stopLocalCompanion(config, companionSelector(process.argv.slice(3)));
-      console.log(`[ios-live] ${result.companionName} is stopped and ready for a resume test`);
+    } else if (command === "archive") {
+      const result = await archiveLocalCompanion(config, companionSelector(process.argv.slice(3)));
+      console.log(`[ios-live] ${result.companionName} is archived and ready for a send-to-wake test`);
     } else {
-      throw new Error("usage: ios-local-live.mjs bootstrap | stop --companion <exact-name-or-id>");
+      throw new Error("usage: ios-local-live.mjs bootstrap | archive --companion <exact-name-or-id>");
     }
   } catch (error) {
     console.error(`[ios-live] ${error instanceof Error ? error.message : String(error)}`);

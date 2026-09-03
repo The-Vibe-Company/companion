@@ -102,7 +102,7 @@ function companionIn(
       last_observed_at: null,
       last_started_at: null,
       last_stopped_at: null,
-      latest_operation: null,
+      lifecycle_intent: "prepare",
     },
     created_at: "2026-08-12T12:00:00.000Z",
     updated_at: "2026-08-12T12:00:00.000Z",

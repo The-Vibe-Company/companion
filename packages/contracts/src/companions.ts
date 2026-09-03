@@ -5,7 +5,6 @@ import { COMPANION_BUDGETS_BASE } from "./companionBudgets";
 import {
   companionActiveTurnSchema,
   companionInterruptedTurnSchema,
-  companionLatestOperationSchema,
   companionQueuedTurnSchema,
   companionRecoveryStatusSchema,
   companionRuntimeSafeErrorSchema,
@@ -656,8 +655,8 @@ export const companionSchema = z.object({
     last_observed_at: z.string().datetime().nullable(),
     last_started_at: z.string().datetime().nullable(),
     last_stopped_at: z.string().datetime().nullable(),
-    /** Latest durable lifecycle intent, sufficient to restore operation UI after navigation/reload. */
-    latest_operation: companionLatestOperationSchema.nullable(),
+    /** Latest durable Runtime v3 lifecycle desire, sufficient to restore UI after navigation. */
+    lifecycle_intent: z.enum(["prepare", "archive", "recycle_pi", "delete"]),
   }),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),

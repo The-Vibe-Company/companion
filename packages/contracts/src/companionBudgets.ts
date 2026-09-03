@@ -14,7 +14,7 @@
 
 /** Hand-tuned base budgets. Derived values live in {@link deriveCompanionBudgets}. */
 export interface CompanionBudgetsBase {
-  /** Absolute wall-clock ceiling of one turn attempt. SQL twin: `interval '2 hours'`. */
+  /** Absolute wall-clock ceiling of one admitted Turn. SQL twin: `interval '2 hours'`. */
   turnAbsoluteDeadlineMs: number;
   /**
    * A turn with no correlated Pi activity for this long is stalled. SQL twin:
@@ -23,10 +23,10 @@ export interface CompanionBudgetsBase {
    */
   inactivityStallMs: number;
   /**
-   * From the first effective Start claim to Pi prompt acknowledgement on a cold Box. SQL twin:
-   * `interval '3 minutes'`. A lease takeover preserves the same deadline; a Start cycle that
-   * settles on this timeout is re-enqueued with no deadline, and its next claim receives one fresh
-   * fixed window without expiring or replaying the queued turn.
+   * From the first effective preparation claim to Pi prompt acknowledgement on a cold Box. SQL
+   * twin: `interval '3 minutes'`. A lease takeover preserves the same deadline; a preparation
+   * cycle that settles on this timeout is re-enqueued with no deadline, and its next claim receives
+   * one fresh fixed window without expiring or replaying the queued Turn.
    */
   coldStartDeadlineMs: number;
   /**
@@ -34,8 +34,8 @@ export interface CompanionBudgetsBase {
    * so a snapshot minted at claim time outlives the longest legal turn.
    */
   materialStagingReserveMs: number;
-  /** Box stays warm this long after successful Pi acceptance. SQL twin: `interval '6 hours'`. */
-  boxWarmTtlSeconds: number;
+  /** Provider-side expiry guard refreshed on acceptance; idle archive remains one hour. */
+  boxProviderTtlSeconds: number;
   /** Runtime work lease. SQL leases and every `leaseSeconds` call site share this. */
   leaseSeconds: number;
   /** Claim-loop sweep cadence of the runtime scheduler. */
@@ -52,7 +52,7 @@ export interface CompanionBudgetsBase {
   decisionTimeoutMs: number;
   /** One Box provider HTTP call (maintenance client, runtime adapters, lifecycle calls). */
   boxRequestTimeoutMs: number;
-  /** Absolute ceiling of one runtime operation (start/stop/restart/settings/delete). */
+  /** Absolute ceiling of one lifecycle effect (create/archive/delete/settings/Pi recycle). */
   operationDeadlineMs: number;
   /** Budget for installing the Pi layout onto a Box during staging. */
   layoutInstallBudgetMs: number;
@@ -70,7 +70,7 @@ export const COMPANION_BUDGETS_BASE = {
   inactivityStallMs: 10 * 60 * 1_000,
   coldStartDeadlineMs: 3 * 60 * 1_000,
   materialStagingReserveMs: 5 * 60 * 1_000,
-  boxWarmTtlSeconds: 21_600,
+  boxProviderTtlSeconds: 21_600,
   leaseSeconds: 30,
   sweepIntervalMs: 2_000,
   toolRunTimeoutMs: 90_000,
@@ -96,9 +96,9 @@ export interface CompanionBudgets extends CompanionBudgetsBase {
    * SQL twin: `interval '2 hours 5 minutes'`; TS twin: `COMPANION_RUNTIME_MATERIAL_MIN_TTL_MS`.
    */
   materialMinTtlMs: number;
-  /** Hub token TTL matches the Box warm window. SQL twin: `interval '6 hours'`. */
+  /** Hub token TTL matches the provider expiry guard. SQL twin: `interval '6 hours'`. */
   hubTokenTtlSeconds: number;
-  /** Settings activation is one operation; it shares the operation deadline. */
+  /** Settings activation is one lifecycle effect; it shares the lifecycle deadline. */
   settingsActivationDeadlineMs: number;
 }
 
@@ -109,7 +109,7 @@ export function deriveCompanionBudgets(base: CompanionBudgetsBase): CompanionBud
     renewIntervalMs: Math.floor((base.leaseSeconds * 1_000) / 3),
     shutdownDrainMs: base.leaseSeconds * 1_000 - 5_000,
     materialMinTtlMs: base.turnAbsoluteDeadlineMs + base.materialStagingReserveMs,
-    hubTokenTtlSeconds: base.boxWarmTtlSeconds,
+    hubTokenTtlSeconds: base.boxProviderTtlSeconds,
     settingsActivationDeadlineMs: base.operationDeadlineMs,
   };
 }
@@ -210,14 +210,14 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_runtime_record_attempt_outputs: ["10 minutes"],
   // inactivityStallMs re-armed for both the resumed turn and its delivery bookkeeping.
   companion_runtime_resume_after_decision_delivery: ["10 minutes", "10 minutes"],
-  // Prepare grace (x2) + materialMinTtlMs (x2). Cold-start time begins only when Start is claimed.
+  // Prepare grace (x2) + materialMinTtlMs (x2). Creation time begins only when preparation is claimed.
   companion_runtime_prepare_queued_turn_material: [
     "2 minutes",
     "2 hours 5 minutes",
     "2 minutes",
     "2 hours 5 minutes",
   ],
-  // Enqueue-time observation grace + materialMinTtlMs, rechecked before a warm attempt claim.
+  // Enqueue-time observation grace + materialMinTtlMs, rechecked before warm Turn admission.
   companion_runtime_main_turn_material_ready: ["2 minutes", "2 hours 5 minutes"],
   // Enqueue-time material grace + materialMinTtlMs.
   companion_api_enqueue_turn: ["2 minutes", "2 hours 5 minutes"],
@@ -236,12 +236,14 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_v3_api_answer_decision: ["10 minutes"],
   companion_v3_runtime_project_native_page_v6: ["10 minutes"],
   companion_v3_runtime_claim_warm_v6: ["2 hours 5 minutes"],
-  // Prepared-material TTL guard retained by the protocol-7 routine-only compatibility selector.
+  // Prepared-material TTL guard retained by the background-lane claim functions.
   companion_v3_runtime_claim_routine_v7: ["2 hours 5 minutes"],
   companion_v3_runtime_claim_background_internal_v7: ["2 hours 5 minutes"],
   companion_v3_runtime_defer_external_v9: ["2 hours"],
   companion_v3_runtime_external_incident_facts_v9: ["31 days"],
   companion_v3_runtime_project_background_page_v7: ["10 minutes"],
+  // Pi output retention plus the correlated activity stall-clock re-arm.
+  companion_v3_runtime_record_turn_outputs: ["30 days", "10 minutes"],
   // First-party preparation copy crosses the captured wake-path p99 only after correlated progress.
   companion_v3_api_read_projection: ["15 seconds", "90 seconds", "120 seconds"],
   // COMPANION_ROUTINE_MISSED_GRACE_MS twin used by the scheduler fire fence.

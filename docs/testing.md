@@ -61,8 +61,7 @@ record desired lifecycle, and converge; main and background claims are obtained 
 independently so a blocked main claim cannot serialize or starve background work. PostgreSQL tests
 prove idempotent command admission, per-lane FIFO, monotonic takeover epochs, stale-fence rejection,
 shared kill-switch epoch invalidation, invalid-boundary rejection before lease mutation, forced RLS,
-distinct API/worker/runtime function grants, protocol isolation from v2 executors, and the absence
-of a v3 attempt or derived Start-operation table. Async preparation tests create through the public
+distinct API/worker/runtime function grants, and isolation from every retired executor. Async preparation tests create through the public
 v3 acceptance seam, send before readiness, and fault Box create and Pi activation while proving the
 Turn remains queued with a bounded retry. The simulator replays a lost `POST /boxes` response from
 the same provider `Idempotency-Key` without creating a second Box. The warm-text tracer bullet additionally runs the
@@ -79,7 +78,7 @@ The persistent-Box lifecycle case advances the accepted-work clock past one hour
 after archive, resume, and provider-delete checkpoints, and changes executor ids for takeover. It
 must retain one Box id, one archive/resume call per accepted transition, exactly one provider DELETE,
 the provider operation id, and a visible thread until absence is confirmed. The same case proves a
-Viewer projection read does not move the accepted-work clock, explicit Stop archives, and both a
+Viewer projection read does not move the accepted-work clock, archive intent sleeps the Box, and both a
 member message and a due background Turn resume through complete current staging before Pi.
 
 The offline Runtime v2 purge suite creates a disposable database, replays the complete migration history,
@@ -115,7 +114,7 @@ and takeover around the installed-tree checkpoint.
 - Fake the Box HTTP contract for create, paginated list, state, resume, stop/archive, permanent
   delete and operation polling, commands, files, and desktop minting.
 - Keep create faithful to the public API: `202`, provider-generated name, no client name in the
-  request. Assert the acknowledged id is checkpointed before the generation-name/six-hour-TTL
+  request. Assert the acknowledged id is checkpointed before the generation-name/six-hour provider-expiry
   PATCH; Runtime v3 retries a lost create response with its durable provider idempotency key and
   never creates a second
   POST.
@@ -297,7 +296,7 @@ newest eligible failed delete with a retained provider operation id.
   as recovery.
 - Lease: 30 seconds, renewed every ten seconds; takeover under 45 seconds.
 - Cold start: success or an explicit bounded requeue under three minutes per cycle; a timeout before
-  dispatch leaves the same message queued with no attempt and a fresh next-cycle budget.
+  dispatch leaves the same message queued with a fresh next-cycle budget.
 - Human decision window: ten minutes; a newer member message ends it sooner. Both paths deliver a
   fail-closed cancellation to Pi, pause inactivity throughout `needs_input`, and never grant an
   approval.
