@@ -7,6 +7,8 @@ const localDatabase = "postgres://runtime@127.0.0.1:5432/disposable";
 for (const credential of [
   "COMPANION_BOX_API_KEY",
   "OPENAI_API_KEY",
+  "KIMI_API_KEY",
+  "MOONSHOT_API_KEY",
   "COMPANION_MCP_GITHUB_CLIENT_SECRET",
 ]) {
   test(`the disposable rehearsal refuses ${credential}`, () => {
