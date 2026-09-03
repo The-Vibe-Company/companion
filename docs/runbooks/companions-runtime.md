@@ -265,8 +265,11 @@ Absence closes the ledger without another DELETE. Box recovery follows the provi
 [permanent deletion](https://docs.ascii.dev/box/api/reference/boxes/permanently-delete-box-data.md)
 returns `202` and immediately removes the Box from ordinary reads while the retained `bdop_...`
 operation completes; [data retention](https://docs.ascii.dev/box/data-retention.md) is separate from
-that admission boundary. Therefore a recorded operation is polled, fresh authenticated absence
-without one is recorded `absent` without replay, and fresh visibility proves admission did not occur
+that admission boundary. Therefore fresh authenticated ordinary inventory is checked before a
+recorded operation is polled; absence records `absent` without replay and retains the operation id
+as admission evidence. After a newly accepted deletion is checkpointed, the same inventory check
+may settle an already-absent Box without waiting for physical erasure. Only a still-visible Box with
+a recorded operation is polled, while fresh visibility without one proves admission did not occur
 and permits a new attempt. `absent` does not claim that physical erasure has finished. Malformed,
 unsupported, unknown, or unavailable reads fail closed. A known-negative DELETE rejection returns
 to retryable state with bounded backoff.

@@ -1397,14 +1397,18 @@ skipped on retry. Sentry's
 [documented pagination contract](https://docs.sentry.io/api/pagination/) always exposes a `next`
 cursor, so that link must carry exactly one boolean `results` parameter: `false` is authoritative
 end-of-list and only `true` advances to the cursor. GitHub does not require that Sentry-specific
-parameter. A recorded Box operation is polled rather than resubmitted. A nonterminal retry performs an
+parameter. A recorded Box operation is never resubmitted. A nonterminal retry performs an
 authoritative provider observation first:
 storage/Box/snapshot inventory covers those resources, and complete authenticated GitHub, Linear,
-or Sentry lookup covers remote triggers. Proven absence closes the target without another DELETE; an
-operation-bearing Box resumes by polling. Without an operation id, fresh authenticated Box absence
-closes the target without replay, while fresh visibility proves the provider's documented
-immediate-removal admission boundary was not crossed and permits a new request. An unavailable or
-unknown observation fails closed; known-negative DELETE rejection is retried only after backoff.
+or Sentry lookup covers remote triggers. Proven absence closes the target without another DELETE.
+Every Box target, including one with a recorded operation, is reconciled through fresh authenticated
+ordinary inventory first; absence is authoritative admission evidence and preserves any recorded
+operation id, while a still-visible operation-bearing Box resumes by polling. A newly accepted
+deletion is reconciled again immediately after its operation checkpoint, so an already-absent Box
+settles without waiting for physical erasure. Fresh visibility without an operation proves the
+provider's documented immediate-removal admission boundary was not crossed and permits a new
+request. An unavailable, malformed, or unknown observation fails closed; known-negative DELETE
+rejection is retried only after backoff.
 Automatic trigger registrations whose create may have committed before `remote_hook_id` was saved
 remain purge targets whenever their provider account is still owned. Report and dry-run inventory
 their provider, account, and non-secret locator without selecting or serializing the callback

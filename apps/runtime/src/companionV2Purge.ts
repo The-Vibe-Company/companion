@@ -210,9 +210,7 @@ export async function processCompanionV2PurgeTargets(input: {
         })))(delay);
       }
     }
-    const present = target.kind === "box" && target.operationId
-      ? undefined
-      : await input.providerPresent(target);
+    const present = await input.providerPresent(target);
     if (present === false) {
       await input.journal.markComplete(target, "absent");
       continue;
@@ -654,14 +652,10 @@ function createCompanionWithRuntimePurgeJournal(client: CompanionV2PurgeSql): Co
   };
 }
 
-function boxJournal(
-  client: CompanionV2PurgeSql,
-  onTerminal: (outcome: "completed" | "absent") => void,
-): LegacyTargetJournal {
+function boxJournal(client: CompanionV2PurgeSql): LegacyTargetJournal {
   return {
     async markRequesting() {},
     async markAbsent(boxId) {
-      onTerminal("absent");
       await client`
         update public.companion_v2_purge_targets
         set operation_id = null, retry_after = null, updated_at = statement_timestamp()
@@ -669,7 +663,6 @@ function boxJournal(
       `;
     },
     async markOperation(boxId, operation) {
-      if (operation.status === "completed") onTerminal("completed");
       await client`
         update public.companion_v2_purge_targets
         set operation_id = ${operation.id}, retry_after = null, updated_at = statement_timestamp()
@@ -680,27 +673,27 @@ function boxJournal(
   };
 }
 
-async function removeCompanionV2BoxTarget(input: {
+export async function removeCompanionV2BoxTarget(input: {
   target: CompanionV2PurgeTarget;
-  client: CompanionV2PurgeSql;
-  boxClient: CompanionV2BoxPurgeClient;
+  journal: LegacyTargetJournal;
+  boxClient: Pick<CompanionV2BoxPurgeClient,
+    "listAllBoxes" | "requestPermanentDeletion" | "getDeletionOperation">;
   afterRequestAccepted?(target: CompanionV2PurgeTarget): Promise<void>;
   afterOperationCheckpoint?(target: CompanionV2PurgeTarget): Promise<void>;
 }): Promise<"completed" | "absent"> {
-  let outcome: "completed" | "absent" = "completed";
-  const journal = boxJournal(input.client, (terminal) => { outcome = terminal; });
   let operationId = input.target.operationId ?? null;
   if (!operationId) {
     const deletion = await input.boxClient.requestPermanentDeletion({ boxId: input.target.key });
     if (deletion.outcome === "absent") {
-      await journal.markAbsent(input.target.key);
+      await input.journal.markAbsent(input.target.key);
       return "absent";
     }
     await input.afterRequestAccepted?.(input.target);
     operationId = deletion.operation.id;
-    await journal.markOperation(input.target.key, deletion.operation, false);
+    await input.journal.markOperation(input.target.key, deletion.operation, false);
     await input.afterOperationCheckpoint?.(input.target);
-    if (deletion.operation.status === "completed") return outcome;
+    if (deletion.operation.status === "completed") return "completed";
+    if (!await companionV2BoxPresent(input.boxClient, input.target.key)) return "absent";
   }
 
   const deadline = Date.now() + BOX_DELETE_TIMEOUT_MS;
@@ -713,9 +706,20 @@ async function removeCompanionV2BoxTarget(input: {
       operationId,
       boxId: input.target.key,
     });
-    await journal.markOperation(input.target.key, operation, true);
-    if (operation.status === "completed") return outcome;
+    await input.journal.markOperation(input.target.key, operation, true);
+    if (operation.status === "completed") return "completed";
   }
+}
+
+export async function companionV2BoxPresent(
+  boxClient: { listAllBoxes(): Promise<readonly { id: string }[] | null> },
+  boxId: string,
+): Promise<boolean> {
+  const boxes = await boxClient.listAllBoxes();
+  if (!Array.isArray(boxes)) {
+    throw new Error("Box inventory returned a malformed response");
+  }
+  return boxes.some((box) => box.id === boxId);
 }
 
 async function removeCompanionV2Target(input: {
@@ -740,7 +744,7 @@ async function removeCompanionV2Target(input: {
   if (input.target.kind === "box") {
     return removeCompanionV2BoxTarget({
       target: input.target,
-      client: input.client,
+      journal: boxJournal(input.client),
       boxClient: input.boxClient,
       afterRequestAccepted: input.afterBoxRequestAccepted,
       afterOperationCheckpoint: input.afterBoxOperationCheckpoint,
@@ -917,7 +921,7 @@ export async function executeConfirmedCompanionV2Purge(input: {
     // reads immediately, before the retained bdop finishes. Presence therefore proves admission
     // did not occur; absence is sufficient to close this purge target without replaying DELETE.
     // https://docs.ascii.dev/box/api/reference/boxes/permanently-delete-box-data.md
-    return (await input.boxClient.listAllBoxes()).some((box) => box.id === target.key);
+    return companionV2BoxPresent(input.boxClient, target.key);
   };
   const processing: Parameters<typeof processCompanionV2PurgeTargets>[0] = {
     targets,

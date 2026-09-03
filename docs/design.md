@@ -322,15 +322,17 @@ The FK-free purge ledger stores only resource kind/key, bounded evidence, provid
 identity, terminal state, and expurgated failure text. Remote trigger registrations,
 attachment/output objects, named v2 snapshots, build Boxes, duplicate Boxes, and every generation
 Box are removed before the final SQL transaction. `404` is successful absence; another failure
-leaves all Companion ownership rows intact. A retry skips terminal targets and resumes any recorded
-Box operation. `requesting` targets are never blindly replayed: current storage/Box/snapshot
-inventory and authenticated provider-specific trigger lookup first prove whether the resource is
-present or absent. For Box DELETE, a durable operation id is always polled. Without one, fresh
-authenticated absence means the `202` admission was acquired (or the Box was already absent), so
-the ledger closes without replay; fresh visibility means the documented immediate-removal boundary
-was not crossed and permits a new attempt. Unknown reads fail closed. Known-negative Box failures
-return to `discovered` with a bounded backoff. The owner-only runtime enable function takes the same
-advisory lock, so it cannot reactivate claims during provider cleanup.
+leaves all Companion ownership rows intact. A retry skips terminal targets and never resubmits a
+recorded Box operation. `requesting` targets are never blindly replayed: current
+storage/Box/snapshot inventory and authenticated provider-specific trigger lookup first prove
+whether the resource is present or absent. For Box DELETE, fresh authenticated ordinary inventory
+is authoritative before polling: absence closes the ledger while preserving any durable operation
+id, and a still-visible Box with an operation resumes that poll. A newly accepted deletion repeats
+the inventory check after its operation checkpoint, so absence may settle without waiting for
+physical erasure. Without an operation id, fresh visibility means the documented immediate-removal
+boundary was not crossed and permits a new attempt. Unknown or malformed reads fail closed.
+Known-negative Box failures return to `discovered` with a bounded backoff. The owner-only runtime
+enable function takes the same advisory lock, so it cannot reactivate claims during provider cleanup.
 
 The finalizer deletes the Companion aggregate and all v2 runtime children. It locks preserved
 tables and takes the before/after baseline only around that final transaction; normal Skills Hub
