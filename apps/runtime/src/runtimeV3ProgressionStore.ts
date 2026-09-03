@@ -292,8 +292,14 @@ export function createRuntimeV3PostgresPreparationPersistence(
   sql: Sql,
 ): RuntimeV3PreparationPersistence {
   return {
-    async claim({ executorId }) {
-      const rows = await sql<PreparationClaimRow[]>`
+    async sweepDeadlines({ signal }) {
+      const rows = await abortable(sql<Array<{ swept: number }>>`
+        select public.companion_v3_runtime_sweep_preparation_deadlines(5) as swept
+      `, signal);
+      return rows[0]?.swept ?? 0;
+    },
+    async claim({ executorId, signal }) {
+      const rows = await abortable(sql<PreparationClaimRow[]>`
         select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
           command_id as "commandId", checkpoint, box_idempotency_key as "boxIdempotencyKey",
           box_id as "boxId", claim_token as "claimToken", claim_epoch::text as "claimEpoch",
@@ -310,7 +316,7 @@ export function createRuntimeV3PostgresPreparationPersistence(
         from public.companion_v3_runtime_claim_preparation_v6(
           ${executorId}, ${PREPARATION_LEASE_SECONDS}, 6
         )
-      `;
+      `, signal);
       const row = rows[0];
       const material = row ? decodeRuntimeV3PreparationSnapshot({
         provider_refs: row.providerRefs,
@@ -357,8 +363,8 @@ export function createRuntimeV3PostgresPreparationPersistence(
         },
       } : null;
     },
-    async checkpoint(claim, input) {
-      const rows = await sql<Array<{ checkpointed: boolean }>>`
+    async checkpoint(claim, input, signal) {
+      const rows = await abortable(sql<Array<{ checkpointed: boolean }>>`
         select public.companion_v3_runtime_checkpoint_preparation_v6(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
@@ -369,46 +375,46 @@ export function createRuntimeV3PostgresPreparationPersistence(
           ${input.appliedSkillsRevision ?? null}, ${input.skillsDigest ?? null},
           ${input.materialExpiresAt ?? null}, 6
         ) as checkpointed
-      `;
+      `, signal);
       return rows[0]?.checkpointed === true;
     },
-    async checkpointPiRecycle(claim, next) {
+    async checkpointPiRecycle(claim, next, signal) {
       const checkpoint = claim.piRecycleCheckpoint;
       if (!checkpoint) return false;
-      const rows = await sql<Array<{ checkpointed: boolean }>>`
+      const rows = await abortable(sql<Array<{ checkpointed: boolean }>>`
         select public.companion_v3_runtime_checkpoint_pi_recycle(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint,
           ${checkpoint}, ${next}, 6
         ) as checkpointed
-      `;
+      `, signal);
       return rows[0]?.checkpointed === true;
     },
-    async defer(claim, input) {
-      const rows = await sql<Array<{ deferred: boolean }>>`
+    async defer(claim, input, signal) {
+      const rows = await abortable(sql<Array<{ deferred: boolean }>>`
         select public.companion_v3_runtime_defer_preparation(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint, ${input.delaySeconds},
           ${input.error?.code ?? null}, ${input.error?.message ?? null}, 4
         ) as deferred
-      `;
+      `, signal);
       return rows[0]?.deferred === true;
     },
-    async reauthorize(claim) {
-      const rows = await sql<Array<{ authorized: boolean }>>`
+    async reauthorize(claim, signal) {
+      const rows = await abortable(sql<Array<{ authorized: boolean }>>`
         select public.companion_v3_runtime_reauthorize_preparation(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint, ${claim.executorId},
           ${PREPARATION_LEASE_SECONDS}, 4
         ) as authorized
-      `;
+      `, signal);
       return rows[0]?.authorized === true;
     },
-    async mintCredentials(claim) {
-      const rows = await sql<Array<{
+    async mintCredentials(claim, signal) {
+      const rows = await abortable(sql<Array<{
         hubToken: string;
         mcpBrokerToken: string | null;
         controlToken: string;
@@ -422,7 +428,7 @@ export function createRuntimeV3PostgresPreparationPersistence(
           ${claim.fence.gateEpoch.toString()}::bigint, ${claim.executorId},
           ${PREPARATION_LEASE_SECONDS}, 4
         )
-      `;
+      `, signal);
       return rows[0] ?? null;
     },
   };

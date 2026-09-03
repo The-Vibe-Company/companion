@@ -120,6 +120,7 @@ WITH runtime_role AS (
     ('public.companion_v3_runtime_claim_preparation_v6(text,integer,integer)'),
     ('public.companion_v3_runtime_begin_admission_v5(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,bigint,integer)'),
     ('public.companion_v3_runtime_sweep_deadlines(public.companion_v3_lane,integer)'),
+    ('public.companion_v3_runtime_sweep_preparation_deadlines(integer)'),
     ('public.companion_v3_runtime_claim_lifecycle(text,integer,integer)'),
     ('public.companion_v3_runtime_checkpoint_lifecycle(uuid,uuid,uuid,bigint,bigint,public.companion_v3_lifecycle_state,public.companion_v3_lifecycle_state,text,integer)'),
     ('public.companion_v3_runtime_defer_lifecycle(uuid,uuid,uuid,bigint,bigint,integer,text,text,integer)'),

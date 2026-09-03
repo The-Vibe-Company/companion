@@ -82,12 +82,16 @@ describe("Runtime v3 progression interface", () => {
     })).toEqual({ commandMs: 118 * 60_000, settlementMs: 2 * 60_000 });
   });
 
-  it("sweeps both lane deadlines without entering claim convergence", async () => {
-    const sweepLane = vi.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(2);
+  it("drains more than one bounded deadline batch per lane in one convergence", async () => {
+    const calls = { main: 0, background: 0 };
+    const sweepLane = vi.fn(async ({ lane }: { lane: "main" | "background" }) => {
+      calls[lane] += 1;
+      return calls[lane] === 1 ? 64 : lane === "main" ? 1 : 0;
+    });
     await expect(createRuntimeV3DeadlineSweep({ sweepLane }).converge({
       executorId: "runtime-deadline-sweep",
-    })).resolves.toEqual({ progressed: 3, exhausted: false });
-    expect(sweepLane).toHaveBeenCalledTimes(2);
+    })).resolves.toEqual({ progressed: 129, exhausted: false });
+    expect(sweepLane).toHaveBeenCalledTimes(4);
     expect(sweepLane).toHaveBeenCalledWith({ lane: "main", signal: undefined });
     expect(sweepLane).toHaveBeenCalledWith({ lane: "background", signal: undefined });
   });
@@ -134,6 +138,47 @@ describe("Runtime v3 progression interface", () => {
       code: "pi_admission_outcome_unknown",
     });
     expect(prompt).not.toHaveBeenCalled();
+  });
+
+  it("preserves needs-input across unknown pages until correlated activity resumes it", async () => {
+    const project = vi.fn().mockResolvedValue(true);
+    const read = vi.fn()
+      .mockResolvedValueOnce({
+        events: [{
+          sequence: 1n, invocationId: "invocation-1", attemptId: acceptedTurn.id,
+          kind: "pi_event", event: { type: "future_compaction_metadata" },
+        }],
+        nextCursor: 1n, acknowledgedCursor: 0n, hasMore: false,
+      })
+      .mockResolvedValueOnce({
+        events: [{
+          sequence: 2n, invocationId: "invocation-1", attemptId: acceptedTurn.id,
+          kind: "pi_event", event: { type: "message_start" },
+        }],
+        nextCursor: 2n, acknowledgedCursor: 1n, hasMore: false,
+      });
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1",
+          content: "waiting", cursor: 0n,
+        }),
+        beginAdmission: vi.fn(), recordAdmission: vi.fn(), project,
+      },
+      pi: { prompt: vi.fn(), read, acknowledge: vi.fn().mockResolvedValue(2n) },
+    });
+    const waitingClaim = {
+      ...mainClaim,
+      turn: {
+        ...mainClaim.turn, state: "needs_input" as const,
+        absoluteDeadlineAt: new Date(Date.now() + 60_000), inactivityDeadlineAt: null,
+      },
+    };
+
+    await expect(advance(waitingClaim)).resolves.toEqual({ kind: "release" });
+    await expect(advance(waitingClaim)).resolves.toEqual({ kind: "release" });
+    expect(project.mock.calls[0]?.[1]).toMatchObject({ needsInput: true, activity: false });
+    expect(project.mock.calls[1]?.[1]).toMatchObject({ needsInput: false, activity: true });
   });
 
   it("archives, resumes, and permanently deletes only the persistent Box", async () => {
@@ -427,6 +472,87 @@ describe("Runtime v3 progression interface", () => {
     expect(checkpointPiRecycle.mock.calls.map(([, next]) => next)).toEqual(["reset", "complete"]);
     expect(stagePreparation).toHaveBeenCalledTimes(1);
     expect(startPiDaemon).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["provider", "staging"] as const)(
+    "does not checkpoint or defer when shutdown interrupts %s preparation",
+    async (phase) => {
+      const controller = new AbortController();
+      const claim: RuntimeV3PreparationClaim = {
+        orgId: mainClaim.orgId, companionId: mainClaim.companionId,
+        turnId: acceptedTurn.id, commandId: acceptedTurn.commandId,
+        checkpoint: phase === "provider" ? "pending" : "box_ready",
+        boxIdempotencyKey: "11111111-1111-4111-8111-111111111111",
+        boxId: phase === "provider" ? null : "bx_23456789", createdAt: new Date(),
+        executorId: "runtime-shutdown-preparation", authorized: true, actorId: "actor-1",
+        modelId: "claude-test", persona: null, settingsRevision: 1n, skillsRevision: 1,
+        providerRefs: [], skillRefs: [], mcpRefs: [], providerMaterial: [], skillMaterial: [],
+        mcpMaterial: [], configCatalog: null, fence: mainClaim.fence,
+      };
+      const checkpoint = vi.fn().mockResolvedValue(true);
+      const defer = vi.fn().mockResolvedValue(true);
+      const preparation = createRuntimeV3Preparation({
+        persistence: {
+          claim: vi.fn().mockResolvedValueOnce(claim), checkpoint, defer,
+          reauthorize: vi.fn().mockResolvedValue(true), mintCredentials: vi.fn(),
+        },
+        box: {
+          createGenerationBox: vi.fn(async () => {
+            controller.abort(new Error("runtime shutdown"));
+            return { outcome: "created" as const, boxId: "bx_23456789", name: "canonical" };
+          }),
+          applyGenerationBoxSettings: vi.fn(), getStatus: vi.fn(),
+        },
+        preparationStager: {
+          stagePreparation: vi.fn(async () => {
+            controller.abort(new Error("runtime shutdown"));
+            return {
+              diskLayoutVersion: 14, appliedSettingsRevision: 1n, appliedSkillsRevision: 1,
+              skillsDigest: "a".repeat(64), materialExpiresAt: new Date(Date.now() + 60_000),
+            };
+          }),
+        },
+        pi: { startPiDaemon: vi.fn() },
+      });
+
+      await expect(preparation.converge({
+        executorId: "runtime-shutdown-preparation", signal: controller.signal,
+      })).resolves.toEqual({ progressed: 0, exhausted: false });
+      expect(checkpoint).not.toHaveBeenCalled();
+      expect(defer).not.toHaveBeenCalled();
+    },
+  );
+
+  it("never contacts Box for an already-expired preparation claim", async () => {
+    const createGenerationBox = vi.fn();
+    const checkpoint = vi.fn();
+    const defer = vi.fn();
+    const now = new Date("2026-09-03T00:00:00.000Z");
+    const preparation = createRuntimeV3Preparation({
+      persistence: {
+        claim: vi.fn().mockResolvedValueOnce({
+          orgId: mainClaim.orgId, companionId: mainClaim.companionId,
+          turnId: acceptedTurn.id, commandId: acceptedTurn.commandId,
+          checkpoint: "pending", boxIdempotencyKey: "11111111-1111-4111-8111-111111111111",
+          boxId: null, createdAt: now, deadlineAt: new Date(now.getTime() - 1),
+          executorId: "runtime-expired", authorized: true, actorId: "actor-1",
+          modelId: "claude-test", persona: null, settingsRevision: 1n, skillsRevision: 1,
+          providerRefs: [], skillRefs: [], mcpRefs: [], providerMaterial: [], skillMaterial: [],
+          mcpMaterial: [], configCatalog: null, fence: mainClaim.fence,
+        } satisfies RuntimeV3PreparationClaim),
+        checkpoint, defer, reauthorize: vi.fn(), mintCredentials: vi.fn(),
+      },
+      box: { createGenerationBox, applyGenerationBoxSettings: vi.fn(), getStatus: vi.fn() },
+      preparationStager: { stagePreparation: vi.fn() },
+      pi: { startPiDaemon: vi.fn() },
+      now: () => now,
+    });
+
+    await expect(preparation.converge({ executorId: "runtime-expired" }))
+      .resolves.toEqual({ progressed: 0, exhausted: false });
+    expect(createGenerationBox).not.toHaveBeenCalled();
+    expect(checkpoint).not.toHaveBeenCalled();
+    expect(defer).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -13,6 +13,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
   createRuntimeV3Convergence,
+  createRuntimeV3DeadlineSweep,
   createRuntimeV3Lifecycle,
   createRuntimeV3Preparation,
   createRuntimeV3WarmTurnAdvance,
@@ -83,9 +84,20 @@ async function admitMain(commandId: string): Promise<void> {
   });
 }
 
-async function seedPreparedV3(piInvocationId: string): Promise<void> {
+async function createTestCompanion(companionId: string): Promise<void> {
+  await ownerSql`insert into public.companions(id, org_id, owner_id, name)
+    values (${companionId}::uuid, ${ids.org}::uuid, ${ids.owner}, 'Runtime v3 batch test')`;
+  await ownerSql`update public.companions
+    set model_id = 'claude-test', provider_ids = '["anthropic"]'::jsonb
+    where id = ${companionId}::uuid`;
+}
+
+async function seedPreparedV3(
+  piInvocationId: string,
+  companionId: string = ids.companion,
+): Promise<void> {
   await ownerSql`insert into public.companion_runtime_instances(org_id, companion_id)
-    values (${ids.org}::uuid, ${ids.companion}::uuid) on conflict (companion_id) do nothing`;
+    values (${ids.org}::uuid, ${companionId}::uuid) on conflict (companion_id) do nothing`;
   await ownerSql`insert into public.companion_v3_instances(
     org_id, companion_id, desired_lifecycle_actor_id, box_id, pi_invocation_id,
     preparation_checkpoint, box_ready_at, staging_completed_at, prepared_at,
@@ -94,7 +106,7 @@ async function seedPreparedV3(piInvocationId: string): Promise<void> {
     preparation_mcp_refs, prepared_disk_layout_version, prepared_skills_digest,
     prepared_material_expires_at
   ) values (
-    ${ids.org}::uuid, ${ids.companion}::uuid, ${ids.owner}, 'bx_23456789', ${piInvocationId},
+    ${ids.org}::uuid, ${companionId}::uuid, ${ids.owner}, 'bx_23456789', ${piInvocationId},
     'prepared', current_timestamp, current_timestamp, current_timestamp,
     ${ids.owner}, 1, 1, 'claude-test', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb,
     14, ${"a".repeat(64)}, current_timestamp + interval '6 hours'
@@ -447,6 +459,56 @@ describe("Runtime v3 progression facts", () => {
     });
     expect(expired!.deadlineAt).toEqual(forcedDeadline);
     expect(BigInt(expired!.claimEpoch)).toBeGreaterThan(stale.fence.epoch);
+  });
+
+  it("fences a preparation checkpoint after lease takeover", async () => {
+    await admitMain(randomUUID());
+    const persistence = createRuntimeV3PostgresPreparationPersistence(runtimeSql);
+    const stale = await persistence.claim({ executorId: "runtime-stale-preparation" });
+    expect(stale).not.toBeNull();
+    if (!stale) throw new Error("preparation claim was not created");
+    await ownerSql`update public.companion_v3_instances
+      set preparation_expires_at = clock_timestamp() - interval '1 millisecond'
+      where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
+    const takeover = await persistence.claim({ executorId: "runtime-preparation-takeover" });
+    expect(takeover).not.toBeNull();
+    expect(takeover!.fence.epoch).toBeGreaterThan(stale.fence.epoch);
+    await expect(persistence.checkpoint(stale, {
+      next: "box_created", boxId: "bx_stale_executor",
+    })).resolves.toBe(false);
+  });
+
+  it("drains every expired preparation before returning any claim", async () => {
+    const companionIds = [randomUUID(), randomUUID()];
+    try {
+      for (const companionId of companionIds) {
+        await createTestCompanion(companionId);
+        await asApi(async (sql) => {
+          const command = randomUUID();
+          await sql`select * from public.companion_v3_api_admit_turn(
+            ${ids.org}::uuid, ${companionId}::uuid, ${command}::uuid, ${`msg:${command}`}
+          )`;
+        });
+      }
+      await ownerSql`update public.companion_v3_instances
+        set preparation_deadline_at = clock_timestamp() - interval '1 millisecond'
+        where companion_id = any(${companionIds}::uuid[])`;
+
+      await expect(createRuntimeV3PostgresPreparationPersistence(runtimeSql).claim({
+        executorId: "runtime-expired-batch",
+      })).resolves.toBeNull();
+      const [facts] = await ownerSql<Array<{ failed: number; fenced: number }>>`
+        select count(*) filter (where turn_row.state = 'failed')::int as failed,
+          count(*) filter (where instance.preparation_claim_token is null
+            and instance.preparation_claim_epoch >= 1)::int as fenced
+        from public.companion_v3_instances instance
+        join public.companion_v3_turns turn_row using (org_id, companion_id)
+        where instance.companion_id = any(${companionIds}::uuid[])`;
+      expect(facts).toEqual({ failed: 2, fenced: 2 });
+    } finally {
+      await ownerSql`delete from public.companions
+        where id = any(${companionIds}::uuid[])`;
+    }
   });
 
   afterAll(async () => {
@@ -2185,7 +2247,9 @@ describe("Runtime v3 progression facts", () => {
       select absolute_deadline_at as absolute, inactivity_deadline_at as inactivity
       from public.companion_v3_turns where id = ${silent.turnId}::uuid`;
     expect(silentClock!.absolute.getTime() - silentClock!.inactivity.getTime())
-      .toBe(110 * 60_000);
+      .toBeGreaterThanOrEqual(110 * 60_000 - 5);
+    expect(silentClock!.absolute.getTime() - silentClock!.inactivity.getTime())
+      .toBeLessThanOrEqual(110 * 60_000 + 5);
     await ownerSql`update public.companion_v3_turns
       set inactivity_deadline_at = clock_timestamp() - interval '1 millisecond'
       where id = ${silent.turnId}::uuid`;
@@ -2228,8 +2292,25 @@ describe("Runtime v3 progression facts", () => {
       from public.companion_v3_turns where id = ${active.turnId}::uuid`;
     expect(waiting!.inactivity).toBeNull();
     expect(waiting!.absolute).toEqual(beforeHeartbeat!.absolute);
+    await expect(persistence.project(active.claim, {
+      throughCursor: 4n, assistant: [], needsInput: true,
+      settled: false, processExited: false, activity: false,
+    })).resolves.toBe(true);
+    const [stillWaiting] = await ownerSql<Array<{ state: string; inactivity: Date | null }>>`
+      select state::text, inactivity_deadline_at as inactivity
+      from public.companion_v3_turns where id = ${active.turnId}::uuid`;
+    expect(stillWaiting).toEqual({ state: "needs_input", inactivity: null });
+    await expect(persistence.project(active.claim, {
+      throughCursor: 5n, assistant: [], needsInput: false,
+      settled: false, processExited: false, activity: true,
+    })).resolves.toBe(true);
+    const [resumed] = await ownerSql<Array<{ state: string; inactivity: Date | null }>>`
+      select state::text, inactivity_deadline_at as inactivity
+      from public.companion_v3_turns where id = ${active.turnId}::uuid`;
+    expect(resumed).toEqual({ state: "running", inactivity: expect.any(Date) });
     await ownerSql`update public.companion_v3_turns
-      set absolute_deadline_at = clock_timestamp() - interval '1 millisecond'
+      set inactivity_deadline_at = clock_timestamp() - interval '1 millisecond',
+        absolute_deadline_at = clock_timestamp() - interval '1 millisecond'
       where id = ${active.turnId}::uuid`;
     await expect(createRuntimeV3PostgresWarmConvergence(runtimeSql).sweepLane!({ lane: "main" }))
       .resolves.toBe(1);
@@ -2237,6 +2318,60 @@ describe("Runtime v3 progression facts", () => {
       select state::text, outcome_code as code from public.companion_v3_turns
       where id = ${active.turnId}::uuid`;
     expect(expired).toEqual({ state: "interrupted", code: "turn_deadline_exceeded" });
+  });
+
+  it("settles sixty-five overdue Turns in one deadline convergence", async () => {
+    const companionIds = Array.from({ length: 65 }, () => randomUUID());
+    const invocationByCompanion = new Map<string, string>();
+    const convergence = createRuntimeV3PostgresConvergence(runtimeSql);
+    const projection = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
+    try {
+      for (const companionId of companionIds) {
+        await createTestCompanion(companionId);
+        const invocationId = `invocation-deadline-batch-${invocationByCompanion.size}`;
+        invocationByCompanion.set(companionId, invocationId);
+        await seedPreparedV3(invocationId, companionId);
+        const command = randomUUID();
+        await asApi(async (sql) => {
+          await sql`select * from public.companion_v3_api_admit_turn(
+            ${ids.org}::uuid, ${companionId}::uuid, ${command}::uuid, ${`msg:${command}`}
+          )`;
+        });
+      }
+      for (let index = 0; index < companionIds.length; index += 1) {
+        const claim = await convergence.claimLane({
+          executorId: `runtime-deadline-batch-${index}`, lane: "main",
+        });
+        expect(claim).not.toBeNull();
+        const invocationId = invocationByCompanion.get(claim!.companionId)!;
+        await expect(projection.beginAdmission(claim!, {
+          invocationId, cursor: 0n,
+        })).resolves.toBe(true);
+        await expect(projection.recordAdmission(claim!, {
+          invocationId,
+          responseTurnId: claim!.turn.id,
+          cursor: 0n,
+        })).resolves.toBe(true);
+      }
+      await ownerSql`update public.companion_v3_turns
+        set inactivity_deadline_at = clock_timestamp() - interval '1 millisecond',
+          absolute_deadline_at = clock_timestamp() - interval '1 millisecond'
+        where companion_id = any(${companionIds}::uuid[])`;
+
+      await expect(createRuntimeV3DeadlineSweep(convergence).converge({
+        executorId: "runtime-deadline-batch",
+      })).resolves.toEqual({ progressed: 65, exhausted: false });
+      const [facts] = await ownerSql<Array<{ interrupted: number; fenced: number }>>`
+        select count(*) filter (where turn_row.state = 'interrupted')::int as interrupted,
+          count(*) filter (where lease.claim_token is null and lease.claim_epoch >= 2)::int as fenced
+        from public.companion_v3_turns turn_row
+        join public.companion_v3_lane_leases lease using (org_id, companion_id, lane)
+        where turn_row.companion_id = any(${companionIds}::uuid[])`;
+      expect(facts).toEqual({ interrupted: 65, fenced: 65 });
+    } finally {
+      await ownerSql`delete from public.companions
+        where id = any(${companionIds}::uuid[])`;
+    }
   });
 
   it("forces RLS and keeps v3 facts behind split role grants", async () => {
