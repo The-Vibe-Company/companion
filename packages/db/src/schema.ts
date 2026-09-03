@@ -1633,6 +1633,7 @@ export const companionV3RoutineRuns = pgTable(
     triggerSnapshotId: uuid("trigger_snapshot_id"),
     triggerName: text("trigger_name"),
     triggerMode: companionRoutineSurfaceModeEnum("trigger_mode"),
+    triggerRetryDeadlineAt: timestamp("trigger_retry_deadline_at", { withTimezone: true }),
     outcome: text("outcome").notNull().default("pending"),
     surfaceMode: companionRoutineSurfaceModeEnum("surface_mode"),
     mainEntryEventId: text("main_entry_event_id"),

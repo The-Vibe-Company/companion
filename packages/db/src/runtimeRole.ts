@@ -158,6 +158,14 @@ WITH runtime_role AS (
     ('public.companion_v3_runtime_project_routine_page(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'),
     ('public.companion_v3_runtime_sweep_routine_deadlines_v7(integer)'),
     ('public.companion_v3_runtime_complete_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)')
+), background_trigger_required(signature) AS (
+  VALUES
+    ('public.companion_v3_runtime_claim_background_v8(text,public.companion_v3_lane,integer,integer)'),
+    ('public.companion_v3_runtime_claim_warm_v8(text,public.companion_v3_lane,integer,integer)'),
+    ('public.companion_v3_runtime_authorize_background_v8(uuid,uuid,uuid,uuid,bigint,bigint,integer)'),
+    ('public.companion_v3_runtime_project_background_page_v8(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'),
+    ('public.companion_v3_runtime_sweep_background_deadlines_v8(integer)'),
+    ('public.companion_v3_runtime_complete_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)')
 ), required_functions AS (
   SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
   FROM required
@@ -169,6 +177,12 @@ WITH runtime_role AS (
   SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
   FROM routine_required CROSS JOIN routine_schema
   WHERE routine_schema.available
+  UNION ALL
+  SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
+  FROM background_trigger_required
+  WHERE pg_catalog.to_regprocedure(
+    'public.companion_v3_runtime_complete_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'
+  ) IS NOT NULL
 ), public_relations AS (
   SELECT relation.oid, relation.relkind
   FROM pg_catalog.pg_class relation
