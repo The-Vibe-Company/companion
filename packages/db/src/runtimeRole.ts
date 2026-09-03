@@ -166,6 +166,10 @@ WITH runtime_role AS (
     ('public.companion_v3_runtime_project_background_page_v8(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'),
     ('public.companion_v3_runtime_sweep_background_deadlines_v8(integer)'),
     ('public.companion_v3_runtime_complete_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)')
+), delegation_required(signature) AS (
+  VALUES
+    ('public.companion_v3_runtime_pending_delegation_cancel(uuid,uuid,uuid,uuid,bigint,bigint,integer)'),
+    ('public.companion_v3_runtime_finish_delegation_cancel(uuid,uuid,uuid,uuid,uuid,bigint,bigint,integer)')
 ), required_functions AS (
   SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
   FROM required
@@ -182,6 +186,12 @@ WITH runtime_role AS (
   FROM background_trigger_required
   WHERE pg_catalog.to_regprocedure(
     'public.companion_v3_runtime_complete_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'
+  ) IS NOT NULL
+  UNION ALL
+  SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
+  FROM delegation_required
+  WHERE pg_catalog.to_regprocedure(
+    'public.companion_v3_runtime_pending_delegation_cancel(uuid,uuid,uuid,uuid,bigint,bigint,integer)'
   ) IS NOT NULL
 ), public_relations AS (
   SELECT relation.oid, relation.relkind
