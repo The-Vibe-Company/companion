@@ -1135,6 +1135,141 @@ describe("Runtime v3 progression facts", () => {
     }
   });
 
+  it("requires exact identity for multi-provider claims before aggregating an incident", async () => {
+    const companionId = randomUUID();
+    const messageId = randomUUID();
+    try {
+      await createTestCompanion(companionId);
+      await ownerSql`insert into public.companion_runtime_instances(org_id,companion_id)
+        values(${ids.org}::uuid,${companionId}::uuid)`;
+      await ownerSql`insert into public.companion_provider_connections(
+        org_id,provider_id,auth_method,ciphertext,iv,auth_tag,
+        wrapped_dek,wrap_iv,wrap_auth_tag,key_id,connected_by
+      ) values
+        (${ids.org}::uuid,'github','api_key','ciphertext','iv','tag','dek','wiv','wtag','key',${ids.owner}),
+        (${ids.org}::uuid,'slack','api_key','ciphertext','iv','tag','dek','wiv','wtag','key',${ids.owner})
+      on conflict (org_id,provider_id) do nothing`;
+      await ownerSql`update public.companions set provider_ids='["github","slack"]'::jsonb
+        where org_id=${ids.org}::uuid and id=${companionId}::uuid`;
+      await seedPreparedV3("multi-provider-pi", companionId);
+      await ownerSql`update public.companion_v3_instances instance
+        set preparation_provider_refs=(select jsonb_agg(jsonb_build_object(
+          'provider_id',connection.provider_id,
+          'credential_generation',connection.credential_generation,
+          'credential_version',connection.credential_version) order by connection.provider_id)
+          from public.companion_provider_connections connection
+          where connection.org_id=${ids.org}::uuid
+            and connection.provider_id in ('github','slack'))
+        where instance.org_id=${ids.org}::uuid and instance.companion_id=${companionId}::uuid`;
+      await asApiActor(ids.org, ids.owner, async (sql) => {
+        await sql`select turn from public.companion_v3_api_enqueue_warm_turn(
+          ${ids.org}::uuid,${companionId}::uuid,${messageId}::uuid,'multi-provider retry')`;
+      });
+
+      const store = createRuntimeV3PostgresWarmConvergence(runtimeSql, {
+        enabledLanes: new Set(["main"]),
+        jitter: () => 0.5,
+      });
+      const durable = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
+      const claim = await store.claimLane({ executorId: "runtime-multi-unattributed", lane: "main" });
+      expect(claim?.externalDependencyKeys?.plugin_provider).toBeUndefined();
+      const material = {
+        boxId: "bx_23456789",
+        piInvocationId: "multi-provider-pi",
+        content: "multi-provider retry",
+        cursor: 0n,
+      };
+      const unattributedAdvance = createRuntimeV3WarmTurnAdvance({
+        persistence: { ...durable, authorize: vi.fn().mockResolvedValue(material) },
+        pi: {
+          prompt: vi.fn().mockResolvedValue({
+            outcome: "rejected", code: "provider_unavailable",
+          }),
+          read: vi.fn(), acknowledge: vi.fn(),
+        },
+      });
+      const unattributed = await unattributedAdvance(claim!);
+      expect(unattributed).toMatchObject({
+        kind: "external_retry",
+        failureClass: "plugin_provider",
+        dependencyKey: null,
+      });
+      if (unattributed.kind !== "external_retry") {
+        throw new Error("Expected an unattributed external retry");
+      }
+      await expect(store.completeProgression(claim!, {
+        kind: unattributed.kind,
+        failureClass: unattributed.failureClass,
+        source: unattributed.source,
+        dependencyKey: unattributed.dependencyKey,
+        error: {
+          code: "provider_unavailable",
+          message: "The provider is unavailable.",
+          action: "retry",
+        },
+      })).resolves.toBe(true);
+      const [unattributedState] = await ownerSql<Array<{
+        occurrences: number; incidents: number; delaySeconds: number;
+      }>>`select count(*)::int as occurrences,
+          (select count(*)::int from public.companion_v3_external_incidents
+            where companion_id=${companionId}::uuid) as incidents,
+          (select extract(epoch from (available_at-clock_timestamp()))::float
+            from public.companion_v3_turns where id=${claim!.turn.id}::uuid) as "delaySeconds"
+        from public.companion_v3_external_unattributed_occurrences
+        where companion_id=${companionId}::uuid`;
+      expect(unattributedState?.occurrences).toBe(1);
+      expect(unattributedState?.incidents).toBe(0);
+      expect(unattributedState?.delaySeconds).toBeGreaterThan(3);
+      await expect(store.claimLane({
+        executorId: "runtime-multi-backoff", lane: "main",
+      })).resolves.toBeNull();
+
+      await ownerSql`update public.companion_v3_turns set available_at=clock_timestamp()
+        where id=${claim!.turn.id}::uuid`;
+      const exactClaim = await store.claimLane({ executorId: "runtime-multi-exact", lane: "main" });
+      expect(exactClaim?.externalDependencyKeys?.plugin_provider).toBeUndefined();
+      const exactAdvance = createRuntimeV3WarmTurnAdvance({
+        persistence: { ...durable, authorize: vi.fn().mockResolvedValue(material) },
+        pi: {
+          prompt: vi.fn().mockResolvedValue({
+            outcome: "rejected",
+            code: "provider_unavailable",
+            dependency: { kind: "provider", id: "github" },
+          }),
+          read: vi.fn(), acknowledge: vi.fn(),
+        },
+      });
+      const exact = await exactAdvance(exactClaim!);
+      expect(exact).toMatchObject({
+        kind: "external_retry",
+        failureClass: "plugin_provider",
+        dependencyKey: "provider:github",
+      });
+      if (exact.kind !== "external_retry") throw new Error("Expected an exact external retry");
+      await expect(store.completeProgression(exactClaim!, {
+        kind: exact.kind,
+        failureClass: exact.failureClass,
+        source: exact.source,
+        dependencyKey: exact.dependencyKey,
+        error: {
+          code: "provider_unavailable",
+          message: "The provider is unavailable.",
+          action: "retry",
+        },
+      })).resolves.toBe(true);
+      const [exactState] = await ownerSql<Array<{ incidents: number; fingerprints: number }>>`
+        select count(*)::int as incidents,count(distinct dependency_fingerprint)::int as fingerprints
+        from public.companion_v3_external_incidents
+        where companion_id=${companionId}::uuid and stable_code='provider_unavailable'`;
+      expect(exactState).toEqual({ incidents: 1, fingerprints: 1 });
+    } finally {
+      await ownerSql`delete from public.companions
+        where org_id=${ids.org}::uuid and id=${companionId}::uuid`;
+      await ownerSql`delete from public.companion_provider_connections
+        where org_id=${ids.org}::uuid and provider_id in ('github','slack')`;
+    }
+  });
+
   it("resolves concurrent retries of one client message to one Turn", async () => {
     const command = randomUUID();
     const admissions: Array<Array<{ turnId: string; replayed: boolean }>> = [[], []];

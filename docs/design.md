@@ -187,7 +187,7 @@ accepted, timed-out, or ambiguous work is terminated exactly and never replayed.
 the routine. Ordinary main Turns and their
 lifecycle/preparation loop run on a separate scheduler clock and remain independent.
 
-Migration 0175 records Box, selected-model, plugin/provider, and external-authority outages as
+Migration 0177 records Box, selected-model, plugin/provider, and external-authority outages as
 durable incidents keyed by a one-way dependency fingerprint and stable classification. Main,
 routine, trigger, and delegation occurrences join one continuous incident instead of emitting an
 alert per retry. Each failed pre-admission occurrence stays enabled and queued, releases its runtime
