@@ -7,7 +7,7 @@
     "scripts/bootstrap_integrity.py": "sha256:697301a13d7fae907966209507e2636692b276c401e334ee97e4596e7b7b2ebe",
     "scripts/bootstrap_update.py": "sha256:6d2ff39c0e0ce5d51af9403cc408d1065a2c78c5e2f1a71ec8906b2719c70547",
     "scripts/check_updates.py": "sha256:c7da8735afd89e4c47764b64907ff3f295ae0f98f9c551cf77eb083c6bdf1116",
-    "scripts/companion-agent-client.mjs": "sha256:c878f05150878023cd766951a65dd2da63989dc644af38b21df954bf07d0c6a3",
+    "scripts/companion-agent-client.mjs": "sha256:1d27ceabc0f7ca9ec5ba46fe050dff035eb772ad15b9c76bca8e22901563d8a8",
     "scripts/companion_lib.py": "sha256:5ea999f3e4fbb026d3195a21e96b7062dadb5859695ef50fa9896a793ec22d22",
     "scripts/create_secret.py": "sha256:f64b5f344c8b273bcef84b3fe833f09fd152af1875815d01c73e91692c9320d2",
     "scripts/install_skill.py": "sha256:335024c9473cc5028132b7d0194900c4b5b168087a60b28cdb089ac5d1cb4765",
