@@ -4941,16 +4941,25 @@ describe("Runtime v3 progression facts", () => {
       const retryBases = [5, 15, 30, 60, 300];
       for (let attempt = 0; attempt <= retryBases.length; attempt += 1) {
         active = await startTrigger(invalidTurn, `runtime-trigger-invalid-${attempt}`);
+        const delegatedMalformed = attempt === 2 || attempt === 3;
         const wrongReturn = {
           sequence: 1n, type: "routine_return" as const,
-          call_id: `wrong-return-${attempt}`, mode: "notify" as const, message: "Wrong mode.",
+          call_id: `wrong-return-${attempt}`,
+          mode: (delegatedMalformed ? "relay" : "notify") as "relay" | "notify",
+          message: attempt === 2 ? "" : "Wrong mode.",
         };
         const invalidReturns = attempt === 0
           ? [wrongReturn, { ...wrongReturn, sequence: 2n, call_id: "extra-return" }]
           : [wrongReturn];
+        const invalidEntries = attempt === 3 ? [{
+          sequence: "not-a-sequence" as unknown as bigint,
+          type: "assistant" as const,
+          entry_key: "malformed-sequence",
+          content: "Malformed private sequence.",
+        }] : invalidReturns;
         const invalidProjection = {
           throughCursor: BigInt(invalidReturns.length), assistant: [],
-          privateEntries: invalidReturns, decisions: [], routineReturns: invalidReturns,
+          privateEntries: invalidEntries, decisions: [], routineReturns: invalidReturns,
           needsInput: false, settled: false,
           processExited: false, activity: true,
         };

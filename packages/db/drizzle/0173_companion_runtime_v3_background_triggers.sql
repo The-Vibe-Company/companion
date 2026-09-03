@@ -258,14 +258,28 @@ CREATE FUNCTION public.companion_v3_runtime_project_background_page_v8(
 ) RETURNS text LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public SET row_security=on AS $$
 DECLARE v_now timestamptz:=clock_timestamp();v_trigger boolean;v_mode text;v_result text;v_relay uuid;
+  v_invalid boolean:=false;
 BEGIN
   IF p_protocol<>8 THEN RAISE EXCEPTION 'Runtime v3 protocol 8 is required' USING ERRCODE='42501';END IF;
   SELECT run.trigger_snapshot_id IS NOT NULL,run.trigger_mode::text INTO v_trigger,v_mode
   FROM public.companion_v3_routine_runs run
   WHERE run.org_id=p_org_id AND run.companion_id=p_companion_id AND run.turn_id=p_turn_id;
   IF NOT FOUND THEN RETURN NULL;END IF;
-  IF v_trigger AND (jsonb_array_length(p_decisions)<>0 OR jsonb_array_length(p_returns)>1
-    OR (jsonb_array_length(p_returns)=1 AND p_returns->0->>'mode' IS DISTINCT FROM v_mode)) THEN
+  v_invalid:=v_trigger AND (jsonb_array_length(p_decisions)<>0
+    OR jsonb_array_length(p_returns)>1
+    OR (jsonb_array_length(p_returns)=1 AND p_returns->0->>'mode' IS DISTINCT FROM v_mode));
+  IF NOT v_invalid THEN
+    BEGIN
+      v_result:=public.companion_v3_runtime_project_background_page_v7(p_org_id,p_companion_id,
+        p_turn_id,p_claim_token,p_claim_epoch,p_gate_epoch,p_through_cursor,p_entries,p_decisions,
+        p_returns,p_needs_input,p_activity,p_terminal,7);
+    EXCEPTION
+      WHEN data_exception OR cardinality_violation OR check_violation THEN
+        IF NOT v_trigger THEN RAISE;END IF;
+        v_invalid:=true;
+    END;
+  END IF;
+  IF v_invalid THEN
     v_result:=public.companion_v3_runtime_project_background_page_v7(p_org_id,p_companion_id,
       p_turn_id,p_claim_token,p_claim_epoch,p_gate_epoch,p_through_cursor,'[]'::jsonb,
       '[]'::jsonb,'[]'::jsonb,false,p_activity,'settled',7);
@@ -282,9 +296,6 @@ BEGIN
       WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id;
     RETURN 'failed';
   END IF;
-  v_result:=public.companion_v3_runtime_project_background_page_v7(p_org_id,p_companion_id,
-    p_turn_id,p_claim_token,p_claim_epoch,p_gate_epoch,p_through_cursor,p_entries,p_decisions,
-    p_returns,p_needs_input,p_activity,p_terminal,7);
   IF v_result IS NOT NULL AND v_trigger THEN
     SELECT relay_turn_id INTO v_relay FROM public.companion_v3_routine_runs
       WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id;
