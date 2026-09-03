@@ -96,8 +96,6 @@ async function seedPreparedV3(
   piInvocationId: string,
   companionId: string = ids.companion,
 ): Promise<void> {
-  await ownerSql`insert into public.companion_runtime_instances(org_id, companion_id)
-    values (${ids.org}::uuid, ${companionId}::uuid) on conflict (companion_id) do nothing`;
   await ownerSql`insert into public.companion_v3_instances(
     org_id, companion_id, desired_lifecycle_actor_id, box_id, pi_invocation_id,
     preparation_checkpoint, box_ready_at, staging_completed_at, prepared_at,
@@ -2005,6 +2003,8 @@ describe("Runtime v3 progression facts", () => {
   });
 
   it("fences a stale replica after admission takeover without dispatching the occurrence twice", async () => {
+    await ownerSql`insert into public.companion_runtime_instances(org_id, companion_id)
+      values (${ids.org}::uuid, ${ids.companion}::uuid) on conflict (companion_id) do nothing`;
     await seedPreparedV3("invocation-two-replicas");
     const priorEventId = `durable-before-ambiguity:${randomUUID()}`;
     await ownerSql`insert into public.companion_threads(org_id, companion_id)
