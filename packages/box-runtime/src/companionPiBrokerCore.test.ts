@@ -801,6 +801,40 @@ describe("CompanionPiBroker", () => {
     ]);
   });
 
+  it("deduplicates a durable decision command after broker reconstruction", async () => {
+    const harness = brokerHarness({}, { dispatchLedger: true });
+    await harness.broker.command({
+      id: "control-prompt",
+      type: "prompt",
+      attemptId: "attempt-question",
+      message: "Ask",
+    });
+    const command = {
+      id: "control-answer",
+      type: "extension_ui_response",
+      attemptId: "attempt-question",
+      response: { type: "extension_ui_response", id: "ui-1", value: "Continue" },
+    };
+    await expect(harness.broker.command(command)).resolves.toMatchObject({ success: true });
+
+    const resumed = new CompanionPiBroker({
+      invocationId: "invocation-1",
+      journal: harness.journal,
+      transport: harness.transport,
+      dispatchLedger: new CompanionPiDispatchLedger({
+        path: join(harness.directory, "dispatch-ledger.json"),
+        invocationId: "invocation-1",
+      }),
+    });
+    await expect(resumed.command(command)).resolves.toMatchObject({
+      success: true,
+      data: { attemptId: "attempt-question", delivered: true },
+    });
+    expect(harness.transport.sent).toEqual([
+      { type: "extension_ui_response", id: "ui-1", value: "Continue" },
+    ]);
+  });
+
   it.each([
     ["negative read cursor", { type: "read_events", after: -1 }],
     ["fractional read cursor", { type: "read_events", after: 0.5 }],

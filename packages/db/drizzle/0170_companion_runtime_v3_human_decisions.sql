@@ -128,9 +128,7 @@ DECLARE
 BEGIN
   PERFORM public.companion_api_require_access(p_org_id,p_companion_id,'editor');
   IF p_request_key IS NULL OR char_length(p_request_key) NOT BETWEEN 1 AND 200
-    OR p_request_key ~ E'[\n\r]' OR p_action NOT IN ('deny','answer')
-    OR (p_action='answer' AND (p_answer IS NULL OR char_length(btrim(p_answer)) NOT BETWEEN 1 AND 8000))
-    OR (p_action<>'answer' AND p_answer IS NOT NULL) THEN
+    OR p_request_key ~ E'[\n\r]' THEN
     RAISE EXCEPTION 'invalid Runtime v3 decision response' USING ERRCODE='22023';
   END IF;
   SELECT decision.* INTO v_decision FROM public.companion_v3_decisions decision
@@ -138,6 +136,11 @@ BEGIN
     AND decision.request_key=p_request_key
   ORDER BY decision.created_at DESC,decision.id DESC LIMIT 1 FOR UPDATE;
   IF NOT FOUND THEN RETURN false; END IF;
+  IF p_action NOT IN ('deny','answer')
+    OR (p_action='answer' AND (p_answer IS NULL OR char_length(btrim(p_answer)) NOT BETWEEN 1 AND 8000))
+    OR (p_action<>'answer' AND p_answer IS NOT NULL) THEN
+    RAISE EXCEPTION 'invalid Runtime v3 decision response' USING ERRCODE='22023';
+  END IF;
   IF v_decision.decision_status <> 'pending' OR v_decision.expires_at <= v_now THEN
     RAISE EXCEPTION 'Runtime v3 decision is not pending' USING ERRCODE='55000';
   END IF;
@@ -289,7 +292,7 @@ BEGIN
   JOIN public.companion_v3_decisions decision ON decision.org_id=turn_row.org_id
     AND decision.companion_id=turn_row.companion_id AND decision.turn_id=turn_row.id
     AND decision.lane=turn_row.lane AND decision.decision_status<>'pending'
-    AND decision.delivery_state='pending'
+    AND decision.delivery_state IN ('pending','write_intent')
   WHERE lease.lane=p_lane AND (lease.claim_token IS NULL OR lease.expires_at<=v_now)
   ORDER BY turn_row.queue_sequence,turn_row.id LIMIT 1 FOR UPDATE OF lease,turn_row SKIP LOCKED;
   IF FOUND THEN
@@ -341,15 +344,20 @@ BEGIN
   JOIN public.companion_v3_turns turn_row ON turn_row.org_id=decision.org_id
     AND turn_row.companion_id=decision.companion_id AND turn_row.id=decision.turn_id
   WHERE decision.org_id=p_org_id AND decision.companion_id=p_companion_id
-    AND decision.turn_id=p_turn_id AND decision.lane=p_lane AND decision.delivery_state='pending'
-    AND ((p_lane='background' AND decision.decision_status='pending' AND turn_row.state='needs_input')
+    AND decision.turn_id=p_turn_id AND decision.lane=p_lane
+    AND decision.delivery_state IN ('pending','write_intent')
+    AND ((p_lane='background' AND turn_row.state='needs_input')
       OR (p_lane='main' AND decision.decision_status IN ('answered','denied','expired','cancelled')
         AND turn_row.state='running'))
   ORDER BY decision.created_at,decision.id LIMIT 1 FOR UPDATE OF decision;
   IF NOT FOUND THEN RETURN; END IF;
-  UPDATE public.companion_v3_decisions SET delivery_state='write_intent',command_id=gen_random_uuid(),
-    delivery_started_at=v_now,updated_at=v_now WHERE id=v_decision.id
-  RETURNING id,companion_v3_decisions.command_id INTO decision_id,command_id;
+  IF v_decision.delivery_state='pending' THEN
+    UPDATE public.companion_v3_decisions SET delivery_state='write_intent',command_id=gen_random_uuid(),
+      delivery_started_at=v_now,updated_at=v_now WHERE id=v_decision.id
+    RETURNING id,companion_v3_decisions.command_id INTO decision_id,command_id;
+  ELSE
+    decision_id:=v_decision.id; command_id:=v_decision.command_id;
+  END IF;
   action_kind:=CASE WHEN p_lane='background' THEN 'detach' ELSE 'respond' END;
   response:=CASE WHEN action_kind='detach' THEN NULL
     WHEN v_decision.decision_status='answered' THEN jsonb_build_object('type','extension_ui_response',
@@ -384,7 +392,7 @@ BEGIN
   WHERE decision.id=p_decision_id AND decision.org_id=p_org_id
     AND decision.companion_id=p_companion_id AND decision.turn_id=p_turn_id
     AND decision.lane=p_lane AND decision.delivery_state='write_intent'
-    AND ((p_action_kind='detach' AND p_lane='background' AND decision.decision_status='pending')
+    AND ((p_action_kind='detach' AND p_lane='background')
       OR (p_action_kind='respond' AND p_lane='main' AND decision.decision_status<>'pending'))
     AND turn_row.org_id=decision.org_id AND turn_row.companion_id=decision.companion_id
     AND turn_row.id=decision.turn_id AND turn_row.pi_invocation_id=p_pi_invocation_id
@@ -448,12 +456,15 @@ CREATE FUNCTION public.companion_v3_runtime_sweep_decisions(
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog,public SET row_security = on AS $$
 DECLARE v_now timestamptz:=clock_timestamp(); v_decision public.companion_v3_decisions%ROWTYPE;
-  v_count integer:=0; v_projection bigint;
+  v_count integer:=0; v_deadline_count integer:=0; v_projection bigint;
 BEGIN
   PERFORM pg_catalog.set_config('app.companion_runtime_protocol','2',true);
   IF p_protocol IS DISTINCT FROM 6 THEN RAISE EXCEPTION 'Runtime v3 protocol 6 is required' USING ERRCODE='42501'; END IF;
   PERFORM 1 FROM public.companion_runtime_control WHERE id='runtime-v2' AND enabled FOR SHARE;
   IF NOT FOUND THEN RETURN 0; END IF;
+  -- Keep the absolute deadline and decision expiry in one transaction. Other executors cannot
+  -- observe a needs_input Turn rearmed by expiry before its authoritative two-hour sweep wins.
+  v_deadline_count:=public.companion_v3_runtime_sweep_deadlines(p_lane,4);
   LOOP
     SELECT decision.* INTO v_decision FROM public.companion_v3_decisions decision
     WHERE decision.lane=p_lane AND decision.decision_status='pending' AND decision.expires_at<=v_now
@@ -475,7 +486,9 @@ BEGIN
         AND id=v_decision.turn_id AND state='needs_input'; END IF;
     v_count:=v_count+1;
   END LOOP;
-  RETURN v_count;
+  v_deadline_count:=v_deadline_count
+    + public.companion_v3_runtime_sweep_deadlines(p_lane,4);
+  RETURN v_count+v_deadline_count;
 END $$;
 REVOKE ALL ON FUNCTION public.companion_v3_runtime_sweep_decisions(
   public.companion_v3_lane,integer) FROM PUBLIC;

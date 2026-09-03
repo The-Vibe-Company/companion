@@ -454,6 +454,13 @@ export interface CompanionPiAmbiguousDispatch {
   fingerprint: string;
 }
 
+export interface CompanionPiDeliveredDecision {
+  attemptId: string;
+  commandId: string;
+  invocationId: string;
+  fingerprint: string;
+}
+
 /**
  * Small fsync-backed prompt ledger. Positive acknowledgements and ambiguous Pi writes are published
  * here before the broker answers its caller, so response loss or broker reconstruction never
@@ -465,6 +472,7 @@ export class CompanionPiDispatchLedger {
   readonly #invocationId: string;
   readonly #records = new Map<string, CompanionPiAcceptedDispatch>();
   readonly #ambiguousRecords = new Map<string, CompanionPiAmbiguousDispatch>();
+  readonly #decisionRecords = new Map<string, CompanionPiDeliveredDecision>();
 
   constructor(options: { path: string; invocationId: string }) {
     if (!validOpaqueId(options.invocationId)) throw new Error("invocationId is invalid");
@@ -482,6 +490,37 @@ export class CompanionPiDispatchLedger {
   lookupAmbiguous(attemptId: string): CompanionPiAmbiguousDispatch | null {
     const record = this.#ambiguousRecords.get(attemptId);
     return record ? { ...record } : null;
+  }
+
+  lookupDecision(commandId: string): CompanionPiDeliveredDecision | null {
+    const record = this.#decisionRecords.get(commandId);
+    return record ? { ...record } : null;
+  }
+
+  recordDecision(record: CompanionPiDeliveredDecision): CompanionPiDeliveredDecision {
+    if (record.invocationId !== this.#invocationId) throw new Error("decision invocation is invalid");
+    const existing = this.#decisionRecords.get(record.commandId);
+    if (existing) {
+      if (existing.attemptId !== record.attemptId || existing.fingerprint !== record.fingerprint) {
+        throw new Error("decision ledger identity conflict");
+      }
+      return { ...existing };
+    }
+    const previous = [...this.#decisionRecords.values()].map((value) => ({ ...value }));
+    this.#decisionRecords.set(record.commandId, { ...record });
+    while (this.#decisionRecords.size > DISPATCH_LEDGER_MAX_RECORDS) {
+      const oldest = this.#decisionRecords.keys().next().value;
+      if (oldest === undefined) break;
+      this.#decisionRecords.delete(oldest);
+    }
+    try {
+      this.#persist();
+    } catch (error) {
+      this.#decisionRecords.clear();
+      for (const value of previous) this.#decisionRecords.set(value.commandId, value);
+      throw error;
+    }
+    return { ...record };
   }
 
   recordAmbiguous(record: CompanionPiAmbiguousDispatch): CompanionPiAmbiguousDispatch {
@@ -570,21 +609,28 @@ export class CompanionPiDispatchLedger {
         if (!validAmbiguousDispatch(candidate, this.#invocationId)) continue;
         this.#ambiguousRecords.set(candidate.attemptId, { ...candidate });
       }
+      const decisionRecords = Array.isArray(value.decisionRecords) ? value.decisionRecords : [];
+      for (const candidate of decisionRecords.slice(-DISPATCH_LEDGER_MAX_RECORDS)) {
+        if (!validDeliveredDecision(candidate, this.#invocationId)) continue;
+        this.#decisionRecords.set(candidate.commandId, { ...candidate });
+      }
       this.#persist();
     } catch {
       // A corrupt or previous-version ledger proves nothing. Replace it before accepting work.
       this.#records.clear();
       this.#ambiguousRecords.clear();
+      this.#decisionRecords.clear();
       this.#persist();
     }
   }
 
   #persist(): void {
     atomicWrite(this.#path, `${JSON.stringify({
-      version: 2,
+      version: 3,
       invocationId: this.#invocationId,
       records: [...this.#records.values()],
       ambiguousRecords: [...this.#ambiguousRecords.values()],
+      decisionRecords: [...this.#decisionRecords.values()],
     })}\n`);
   }
 }
@@ -979,16 +1025,10 @@ export class CompanionPiBroker {
   }
 
   async #extensionUiResponse(command: PiJsonObject): Promise<PiJsonObject> {
-    const activeAttemptId = this.#activeAttemptId;
-    if (!activeAttemptId) {
-      throw new BrokerCommandError("no_active_attempt", "no active Pi attempt can receive a decision");
-    }
-    if (command.attemptId !== undefined) {
-      const requestedAttemptId = requireOpaqueId(command.attemptId, "attemptId");
-      if (requestedAttemptId !== activeAttemptId) {
-        throw new BrokerCommandError("attempt_mismatch", "decision does not match the active Pi attempt");
-      }
-    }
+    const commandId = requireOpaqueId(command.id, "commandId");
+    const requestedAttemptId = command.attemptId === undefined
+      ? null
+      : requireOpaqueId(command.attemptId, "attemptId");
     if (!isJsonObject(command.response) || command.response.type !== "extension_ui_response") {
       throw new BrokerCommandError("invalid_command", "extension UI response is invalid");
     }
@@ -996,6 +1036,33 @@ export class CompanionPiBroker {
     if (!validCommandId(responseId)) {
       throw new BrokerCommandError("invalid_command", "extension UI response id is required");
     }
+    const recorded = this.#dispatchLedger?.lookupDecision(commandId) ?? null;
+    if (recorded) {
+      const fingerprint = companionPiDecisionFingerprint({
+        attemptId: requestedAttemptId ?? recorded.attemptId,
+        response: command.response,
+      });
+      if (recorded.attemptId !== (requestedAttemptId ?? recorded.attemptId)
+        || recorded.fingerprint !== fingerprint) {
+        throw new BrokerCommandError("decision_conflict", "decision delivery identity does not match");
+      }
+      return {
+        attemptId: recorded.attemptId,
+        invocationId: recorded.invocationId,
+        delivered: true,
+      };
+    }
+    const activeAttemptId = this.#activeAttemptId;
+    if (!activeAttemptId) {
+      throw new BrokerCommandError("no_active_attempt", "no active Pi attempt can receive a decision");
+    }
+    if (requestedAttemptId !== null && requestedAttemptId !== activeAttemptId) {
+      throw new BrokerCommandError("attempt_mismatch", "decision does not match the active Pi attempt");
+    }
+    const fingerprint = companionPiDecisionFingerprint({
+      attemptId: activeAttemptId,
+      response: command.response,
+    });
     try {
       await this.#transport.send({ ...command.response });
     } catch {
@@ -1005,6 +1072,20 @@ export class CompanionPiBroker {
       throw new BrokerCommandError(
         "decision_delivery_ambiguous",
         "Pi decision delivery is unavailable",
+        true,
+      );
+    }
+    try {
+      this.#dispatchLedger?.recordDecision({
+        attemptId: activeAttemptId,
+        commandId,
+        invocationId: this.#invocationId,
+        fingerprint,
+      });
+    } catch {
+      throw new BrokerCommandError(
+        "decision_delivery_ambiguous",
+        "Pi decision delivery could not be checkpointed",
         true,
       );
     }
@@ -1379,6 +1460,28 @@ function validAmbiguousDispatch(
     && value.invocationId === invocationId
     && typeof value.fingerprint === "string"
     && /^[a-f0-9]{64}$/.test(value.fingerprint);
+}
+
+function validDeliveredDecision(
+  value: unknown,
+  invocationId: string,
+): value is CompanionPiDeliveredDecision {
+  return isJsonObject(value)
+    && validOpaqueId(value.attemptId)
+    && validOpaqueId(value.commandId)
+    && value.invocationId === invocationId
+    && typeof value.fingerprint === "string"
+    && /^[a-f0-9]{64}$/.test(value.fingerprint);
+}
+
+function companionPiDecisionFingerprint(input: {
+  attemptId: string;
+  response: PiJsonObject;
+}): string {
+  return createHash("sha256").update(JSON.stringify({
+    attemptId: input.attemptId,
+    response: input.response,
+  })).digest("hex");
 }
 
 export function companionPiDispatchFingerprint(input: {

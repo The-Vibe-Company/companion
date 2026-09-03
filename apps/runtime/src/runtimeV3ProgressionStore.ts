@@ -109,12 +109,7 @@ function createPostgresConvergence(
       const decisionRows = await abortable(sql<Array<{ swept: number }>>`
         select public.companion_v3_runtime_sweep_decisions(${lane}, 6) as swept
       `, signal);
-      const decisionCount = decisionRows[0]?.swept ?? 0;
-      if (decisionCount > 0) return decisionCount;
-      const deadlineRows = await abortable(sql<Array<{ swept: number }>>`
-        select public.companion_v3_runtime_sweep_deadlines(${lane}, 4) as swept
-      `, signal);
-      return deadlineRows[0]?.swept ?? 0;
+      return decisionRows[0]?.swept ?? 0;
     },
     async claimLane({ executorId, lane, signal }) {
       if (options.enabledLanes && !options.enabledLanes.has(lane)) return null;
