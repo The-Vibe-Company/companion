@@ -2056,6 +2056,8 @@ describe("isolated routine Pi sessions", () => {
     expect(commands[0]).not.toContain('cp -a "$HOME/.companion/pi/." "$routine_root/pi/"');
     expect(commands[0]).toContain('cp -p "$HOME/.companion/pi/auth.json" "$routine_root/pi/auth.json"');
     expect(commands[0]).not.toContain("mcp-accounts.json");
+    expect(commands[0]).not.toContain("parent_memory=");
+    expect(commands[0]).not.toContain("routine_memory=");
     expect(commands[0]).toContain("routine-pi-session run root is still owned by a process");
     expect(commands[0]).toContain("trap cleanup_failed_prepare ERR");
     expect(commands[0]).toContain("flock -w 20 9");

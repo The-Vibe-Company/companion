@@ -1352,7 +1352,7 @@ if [ -f "$HOME/.companion/pi/auth.json" ]; then cp -p "$HOME/.companion/pi/auth.
 cp -a "$HOME/.companion/pi/." "$routine_root/pi/"
 if [ -d "$HOME/.companion/runtime/skills" ]; then cp -a "$HOME/.companion/runtime/skills" "$routine_root/skills"; fi
 if [ -d "$HOME/.companion/tools" ]; then cp -a "$HOME/.companion/tools/." "$routine_root/tools/"; fi`;
-  const memoryPreparation = directWorkspace ? "" : `
+  const memoryPreparation = directWorkspace || validationOnly ? "" : `
 # Pin the parent Companion's plain-Markdown memory into this disposable run root. Copying regular
 # files instead of linking the live tree gives the legacy isolated executor a stable view.
 parent_memory="$HOME/.companion/runtime/memory"
