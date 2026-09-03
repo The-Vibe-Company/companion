@@ -8,8 +8,10 @@ import {
 } from "./companionControlMcp";
 
 const dependencies: CompanionControlMcpDependencies = {
+  cancelCompanionDelegationTurn: vi.fn(),
   companionControlActor: vi.fn(),
   finishCompanionControlInvocation: vi.fn(),
+  getCompanionDelegation: vi.fn(),
   registerCompanionControlInvocation: vi.fn(),
   updateCompanionV2: vi.fn(),
 };
@@ -138,5 +140,69 @@ describe("executeCompanionControlMcp idempotence", () => {
     expect(first?.requestKey).toMatch(new RegExp(`^${authorization.attemptId}:[0-9a-f]{64}$`));
     expect(second?.requestKey).toMatch(new RegExp(`^${authorization.attemptId}:[0-9a-f]{64}$`));
     expect(first?.requestKey).not.toBe(second?.requestKey);
+  });
+
+  it("cancels a delegation through its Runtime v3 target Turn seam", async () => {
+    const delegationId = "55555555-5555-4555-8555-555555555555";
+    const targetCompanionId = "66666666-6666-4666-8666-666666666666";
+    const targetTurnId = "77777777-7777-4777-8777-777777777777";
+    vi.mocked(dependencies.registerCompanionControlInvocation)
+      .mockResolvedValue({ replayed: false, result: null });
+    vi.mocked(dependencies.getCompanionDelegation).mockResolvedValue({
+      id: delegationId,
+      source_companion_id: authorization.companionId,
+      source_companion_name: "Source",
+      target_companion_id: targetCompanionId,
+      target_companion_name: "Target",
+      source_turn_id: authorization.turnId,
+      target_turn_id: targetTurnId,
+      root_turn_id: authorization.turnId,
+      parent_delegation_id: null,
+      depth: 1,
+      response_mode: "notify",
+      status: "queued",
+      delivery_status: "pending",
+      created_at: "2026-09-01T00:00:00.000Z",
+      settled_at: null,
+    });
+    vi.mocked(dependencies.cancelCompanionDelegationTurn).mockResolvedValue({
+      id: targetTurnId,
+      companion_id: targetCompanionId,
+      client_message_id: "88888888-8888-4888-8888-888888888888",
+      status: "cancelled",
+      queue_sequence: 1,
+      latest_attempt: null,
+      admission_state: "pending",
+      admitted_at: null,
+      replying: false,
+      error: null,
+      state_changed_at: "2026-09-01T00:00:00.000Z",
+      settled_at: "2026-09-01T00:00:00.000Z",
+      created_at: "2026-09-01T00:00:00.000Z",
+      updated_at: "2026-09-01T00:00:00.000Z",
+    });
+
+    const result = await executeCompanionControlMcp({
+      raw: {
+        jsonrpc: "2.0",
+        id: "cancel-1",
+        method: "tools/call",
+        params: { name: "companion_cancel_delegation", arguments: { delegation_id: delegationId } },
+      },
+      authorization,
+      database,
+      dependencies,
+    });
+
+    expect(result).toMatchObject({ result: { structuredContent: {
+      delegation_id: delegationId,
+      target_turn: { id: targetTurnId, status: "cancelled" },
+    } } });
+    expect(dependencies.cancelCompanionDelegationTurn).toHaveBeenCalledWith({
+      orgId: authorization.orgId,
+      sourceCompanionId: authorization.companionId,
+      delegationId,
+      database,
+    });
   });
 });

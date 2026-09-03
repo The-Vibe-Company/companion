@@ -1871,6 +1871,8 @@ const companionTranscriptEntryObjectSchema = z.object({
     companion_name: z.string().min(1).max(120),
     response_mode: companionDelegationResponseModeSchema,
     status: companionTurnStatusSchema,
+    delivery_status: companionDelegationDeliveryStatusSchema.optional(),
+    delivery_error_code: z.string().min(1).max(100).nullable().optional(),
   }).strict().nullable().optional(),
   /**
    * The durable turn this user message created, so a queued follow-up can be cancelled by id.

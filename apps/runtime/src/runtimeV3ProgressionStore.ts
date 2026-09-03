@@ -756,7 +756,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
     },
     async project(claim, projection, signal) {
       const rows = await abortable(sql<Array<{ projected: string | null }>>`
-        select public.companion_v3_runtime_project_native_page_v6(
+        select public.companion_v3_runtime_project_native_page_v7(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
           ${claim.turn.lane},
@@ -777,13 +777,39 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           ${projection.needsInput},
           ${projection.activity},
           ${projection.processExited ? "process_exit" : projection.settled ? "settled" : null},
-          6
+          7
         ) as projected
       `, signal);
       const projected = rows[0]?.projected;
       return projected === "succeeded" || projected === "failed" || projected === "detached"
+        || projected === "cancel_pending"
         ? projected
         : projected === "projected";
+    },
+    async pendingDelegationCancel(claim, signal) {
+      const rows = await abortable(sql<Array<{
+        turnId: string; responseTurnId: string; commandId: string;
+      }>>`
+        select turn_id as "turnId",response_turn_id as "responseTurnId",
+          command_id as "commandId"
+        from public.companion_v3_runtime_pending_delegation_cancel(
+          ${claim.orgId}::uuid,${claim.companionId}::uuid,${claim.turn.id}::uuid,
+          ${claim.fence.token}::uuid,${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,7
+        )
+      `, signal);
+      return rows[0] ?? null;
+    },
+    async finishDelegationCancel(claim, input, signal) {
+      const rows = await abortable(sql<Array<{ finished: boolean }>>`
+        select public.companion_v3_runtime_finish_delegation_cancel(
+          ${claim.orgId}::uuid,${claim.companionId}::uuid,${claim.turn.id}::uuid,
+          ${input.turnId}::uuid,${claim.fence.token}::uuid,
+          ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,7
+        ) as finished
+      `, signal);
+      return rows[0]?.finished === true;
     },
     async beginDecisionAction(claim, signal) {
       const rows = await abortable(sql<DecisionActionRow[]>`
