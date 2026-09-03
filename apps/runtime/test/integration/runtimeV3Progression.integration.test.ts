@@ -4153,6 +4153,8 @@ describe("Runtime v3 progression facts", () => {
       runtimeLegacyProjection: boolean;
       runtimeLegacyPreparation: boolean;
       runtimeRecyclePreparation: boolean;
+      apiSchedulePiRestart: boolean;
+      runtimeSchedulePiRestart: boolean;
     }>>`
       select
         has_function_privilege(${apiRole},
@@ -4176,7 +4178,11 @@ describe("Runtime v3 progression facts", () => {
         has_function_privilege(${runtimeRole},
           'public.companion_v3_runtime_checkpoint_preparation(uuid,uuid,uuid,bigint,bigint,text,text,text,text,integer,bigint,integer,text,timestamp with time zone,integer)', 'EXECUTE') as "runtimeLegacyPreparation",
         has_function_privilege(${runtimeRole},
-          'public.companion_v3_runtime_checkpoint_preparation_v6(uuid,uuid,uuid,bigint,bigint,text,text,text,text,integer,bigint,integer,text,timestamp with time zone,integer)', 'EXECUTE') as "runtimeRecyclePreparation"`;
+          'public.companion_v3_runtime_checkpoint_preparation_v6(uuid,uuid,uuid,bigint,bigint,text,text,text,text,integer,bigint,integer,text,timestamp with time zone,integer)', 'EXECUTE') as "runtimeRecyclePreparation",
+        has_function_privilege(${apiRole},
+          'public.companion_api_schedule_pi_restart(uuid,uuid,uuid,uuid,uuid)', 'EXECUTE') as "apiSchedulePiRestart",
+        has_function_privilege(${runtimeRole},
+          'public.companion_api_schedule_pi_restart(uuid,uuid,uuid,uuid,uuid)', 'EXECUTE') as "runtimeSchedulePiRestart"`;
     expect(grants).toEqual([{
       apiAdmit: true,
       apiClaim: false,
@@ -4189,6 +4195,8 @@ describe("Runtime v3 progression facts", () => {
       runtimeLegacyProjection: false,
       runtimeLegacyPreparation: false,
       runtimeRecyclePreparation: true,
+      apiSchedulePiRestart: true,
+      runtimeSchedulePiRestart: false,
     }]);
     await expect(apiSql`select * from public.companion_v3_turns`).rejects.toMatchObject({ code: "42501" });
     await expect(workerSql`select * from public.companion_v3_turns`).rejects.toMatchObject({ code: "42501" });
@@ -5079,6 +5087,158 @@ describe("Runtime v3 progression facts", () => {
         org_id, companion_id, owner_id, role, granted_by
       ) values (${ids.org}::uuid, ${ids.companion}::uuid, ${ids.owner}, 'editor', ${ids.owner})
       on conflict (companion_id) do update set role = excluded.role`;
+    }
+  });
+
+  it("defers one control-token Pi restart onto the Runtime v3 recycle path", async () => {
+    const invocationId = `pi-control-restart-${suffix}`;
+    const nextInvocationId = `pi-control-restarted-${suffix}`;
+    const controlTokenId = randomUUID();
+    const restartId = randomUUID();
+    const commandId = randomUUID();
+    const inactiveCommandId = randomUUID();
+    const rawControlToken = `cmp_ctl_${randomUUID().replaceAll("-", "")}${suffix}`;
+    const controlTokenHash = createHash("sha256").update(rawControlToken).digest("hex");
+    await ownerSql`insert into public.companion_runtime_instances(org_id,companion_id)
+      values(${ids.org}::uuid,${ids.companion}::uuid) on conflict(companion_id) do nothing`;
+    await seedPreparedV3(invocationId);
+    let turnId = "";
+    let inactiveTurnId = "";
+    await asApi(async (sql) => {
+      const active = await sql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_v3_api_enqueue_warm_turn(
+          ${ids.org}::uuid,${ids.companion}::uuid,${commandId}::uuid,'restart Pi after this turn')`;
+      turnId=active[0]!.turn.id;
+      const inactive = await sql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_v3_api_enqueue_warm_turn(
+          ${ids.org}::uuid,${ids.companion}::uuid,${inactiveCommandId}::uuid,'queued after restart')`;
+      inactiveTurnId=inactive[0]!.turn.id;
+    });
+    await ownerSql`update public.companion_v3_turns set state='running',
+      admission_state='accepted',admission_started_at=clock_timestamp(),
+      admitted_at=clock_timestamp(),admission_kind='prompt',pi_invocation_id=${invocationId},
+      response_turn_id=id,admission_cursor=0,last_activity_at=clock_timestamp(),
+      inactivity_deadline_at=clock_timestamp()+interval '10 minutes',
+      absolute_deadline_at=clock_timestamp()+interval '2 hours'
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+        and id=${turnId}::uuid`;
+    await ownerSql`insert into public.companion_control_tokens(
+      id,org_id,companion_id,staged_actor_id,token_prefix,token_hash,expires_at)
+      values(${controlTokenId}::uuid,${ids.org}::uuid,${ids.companion}::uuid,${ids.owner},
+        ${rawControlToken.slice(0,14)},${controlTokenHash},clock_timestamp()+interval '1 hour')`;
+    await ownerSql`update public.companion_v3_instances set control_token_id=${controlTokenId}::uuid
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
+    try {
+      const resolved = await apiSql<Array<{ turnId: string; attemptId: string }>>`
+        select turn_id as "turnId",attempt_id as "attemptId"
+        from public.companion_resolve_control_token(${controlTokenHash})`;
+      expect(resolved).toEqual([{ turnId,attemptId: turnId }]);
+      let releaseScheduleTransaction = () => {};
+      const holdScheduleTransaction = new Promise<void>((resolve) => {
+        releaseScheduleTransaction = resolve;
+      });
+      let markScheduleInserted = () => {};
+      const scheduleInserted = new Promise<void>((resolve) => {
+        markScheduleInserted = resolve;
+      });
+      const scheduling = asApi(async (sql) => {
+        const scheduled = await sql<Array<{ id: string; status: string; sourceTurnId: string }>>`
+          select id,status,source_turn_id as "sourceTurnId"
+          from public.companion_api_schedule_pi_restart(
+            ${ids.org}::uuid,${ids.companion}::uuid,${restartId}::uuid,
+            ${resolved[0]!.turnId}::uuid,${resolved[0]!.attemptId}::uuid)`;
+        expect(scheduled).toEqual([{ id: restartId,status: "pending",sourceTurnId: turnId }]);
+        expect(await sql`select id,status from public.companion_api_schedule_pi_restart(
+          ${ids.org}::uuid,${ids.companion}::uuid,${restartId}::uuid,
+          ${turnId}::uuid,${turnId}::uuid)`).toEqual([{ id: restartId,status: "pending" }]);
+        markScheduleInserted();
+        await holdScheduleTransaction;
+      });
+      await scheduleInserted;
+      let markSettlementStarted = (pid: number) => { void pid; };
+      const settlementStarted = new Promise<number>((resolve) => {
+        markSettlementStarted = resolve;
+      });
+      const settlement = ownerSql.begin(async (sql) => {
+        const [backend] = await sql<Array<{ pid: number }>>`select pg_backend_pid()::int as pid`;
+        markSettlementStarted(backend!.pid);
+        await sql`update public.companion_v3_turns set state='succeeded',outcome='succeeded',
+          inactivity_deadline_at=null,absolute_deadline_at=null,settled_at=clock_timestamp(),
+          updated_at=clock_timestamp()
+          where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+            and id=${turnId}::uuid`;
+      });
+      const settlementPid = await settlementStarted;
+      await expect.poll(async () => {
+        const [activity] = await ownerSql<Array<{ waiting: boolean }>>`
+          select wait_event_type='Lock' as waiting from pg_stat_activity where pid=${settlementPid}`;
+        return activity?.waiting ?? false;
+      }).toBe(true);
+      releaseScheduleTransaction();
+      await scheduling;
+      await settlement;
+      await expect(asApi(async (sql) => {
+        await sql`select * from public.companion_api_schedule_pi_restart(
+          ${ids.org}::uuid,${ids.companion}::uuid,${randomUUID()}::uuid,
+          ${inactiveTurnId}::uuid,${inactiveTurnId}::uuid)`;
+      })).rejects.toMatchObject({ code: "42501" });
+      await expect(asApiActor(randomUUID(),ids.owner,async (sql) => {
+        await sql`select * from public.companion_api_schedule_pi_restart(
+          ${ids.org}::uuid,${ids.companion}::uuid,${randomUUID()}::uuid,
+          ${turnId}::uuid,${turnId}::uuid)`;
+      })).rejects.toMatchObject({ code: "42501" });
+      expect(await ownerSql`select id,status,source_turn_id,source_attempt_id
+        from public.companion_deferred_pi_restarts where id=${restartId}::uuid`).toEqual([{
+        id: restartId,status: "enqueued",source_turn_id: turnId,source_attempt_id: turnId,
+      }]);
+      expect(await ownerSql`select pi_recycle_checkpoint,recycle_pi_invocation_id,recovery_turn_id,
+          lifecycle_state::text,desired_lifecycle::text
+        from public.companion_v3_instances
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`).toEqual([{
+        pi_recycle_checkpoint: "terminate",recycle_pi_invocation_id: invocationId,
+        recovery_turn_id: turnId,lifecycle_state: "active",desired_lifecycle: "prepare",
+      }]);
+      expect(await ownerSql`select count(*)::int as count from public.companion_operations
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+          and request_id=${restartId}::uuid`).toEqual([{ count: 0 }]);
+
+      const terminatePiInvocation = vi.fn().mockResolvedValue({ outcome: "terminated" as const });
+      const resetPiSession = vi.fn().mockResolvedValue(undefined);
+      const stagePreparation = vi.fn().mockResolvedValue({
+        diskLayoutVersion: 14,appliedSettingsRevision: 1n,appliedSkillsRevision: 1,
+        skillsDigest: "f".repeat(64),materialExpiresAt: new Date(Date.now()+6*60*60_000),
+      });
+      const startPiDaemon = vi.fn().mockResolvedValue({
+        state: "idle" as const,invocationId: nextInvocationId,
+      });
+      await expect(createRuntimeV3Preparation({
+        persistence: createRuntimeV3PostgresPreparationPersistence(runtimeSql),
+        box: {
+          createGenerationBox: vi.fn(),applyGenerationBoxSettings: vi.fn(),getStatus: vi.fn(),
+        },
+        preparationStager: { stagePreparation },
+        pi: { terminatePiInvocation,resetPiSession,startPiDaemon },
+      }).converge({ executorId: "runtime-control-restart" }))
+        .resolves.toEqual({ progressed: 4,exhausted: false });
+      expect(terminatePiInvocation).toHaveBeenCalledOnce();
+      expect(terminatePiInvocation).toHaveBeenCalledWith(expect.objectContaining({
+        boxId: "bx_23456789",expectedInvocationId: invocationId,
+      }));
+      expect(resetPiSession).toHaveBeenCalledOnce();
+      expect(stagePreparation).toHaveBeenCalledOnce();
+      expect(startPiDaemon).toHaveBeenCalledOnce();
+      expect(await ownerSql`select pi_invocation_id,pi_recycle_checkpoint
+        from public.companion_v3_instances
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`).toEqual([{
+        pi_invocation_id: nextInvocationId,pi_recycle_checkpoint: null,
+      }]);
+      expect(await ownerSql`select count(*)::int as count from public.companion_operations
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+          and request_id=${restartId}::uuid`).toEqual([{ count: 0 }]);
+    } finally {
+      await ownerSql`update public.companion_v3_instances set control_token_id=null
+        where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
+      await ownerSql`delete from public.companion_control_tokens where id=${controlTokenId}::uuid`;
     }
   });
 

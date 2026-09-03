@@ -1226,6 +1226,13 @@
       "when": 1793358400000,
       "tag": "0174_companion_runtime_v3_delegations",
       "breakpoints": true
+    },
+    {
+      "idx": 175,
+      "version": "7",
+      "when": 1793362000000,
+      "tag": "0175_companion_runtime_v3_deferred_pi_restart",
+      "breakpoints": true
     }
   ]
 }

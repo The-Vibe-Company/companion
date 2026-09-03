@@ -1875,7 +1875,7 @@ export const companionControlInvocations = pgTable(
   }),
 );
 
-/** A Pi recycle requested by the active attempt and enqueued only after that turn settles. */
+/** A Pi recycle requested by the active Runtime v3 main Turn and enqueued after it settles. */
 export const companionDeferredPiRestarts = pgTable(
   "companion_deferred_pi_restarts",
   {
@@ -1885,7 +1885,7 @@ export const companionDeferredPiRestarts = pgTable(
     sourceTurnId: uuid("source_turn_id").notNull(),
     sourceAttemptId: uuid("source_attempt_id").notNull(),
     actorId: text("actor_id").notNull(),
-    clientSurface: companionClientSurfaceEnum("client_surface").notNull(),
+    clientSurface: companionClientSurfaceEnum("client_surface"),
     status: text("status").notNull().default("pending"),
     operationId: uuid("operation_id"),
     createdAt: now(),
@@ -1897,21 +1897,15 @@ export const companionDeferredPiRestarts = pgTable(
       foreignColumns: [companions.orgId, companions.id],
       name: "companion_deferred_pi_restarts_companion_fk",
     }).onDelete("cascade"),
-    turnFk: foreignKey({
+    v3TurnFk: foreignKey({
       columns: [t.orgId, t.companionId, t.sourceTurnId],
-      foreignColumns: [companionTurns.orgId, companionTurns.companionId, companionTurns.id],
-      name: "companion_deferred_pi_restarts_turn_fk",
+      foreignColumns: [companionV3Turns.orgId, companionV3Turns.companionId, companionV3Turns.id],
+      name: "companion_deferred_pi_restarts_v3_turn_fk",
     }).onDelete("cascade"),
-    attemptFk: foreignKey({
-      columns: [t.orgId, t.companionId, t.sourceTurnId, t.sourceAttemptId],
-      foreignColumns: [
-        companionTurnAttempts.orgId,
-        companionTurnAttempts.companionId,
-        companionTurnAttempts.turnId,
-        companionTurnAttempts.id,
-      ],
-      name: "companion_deferred_pi_restarts_attempt_fk",
-    }).onDelete("cascade"),
+    v3IdentityCheck: check(
+      "companion_deferred_pi_restarts_v3_identity_check",
+      sql`${t.sourceAttemptId} = ${t.sourceTurnId}`,
+    ),
     statusCheck: check(
       "companion_deferred_pi_restarts_status_check",
       sql`${t.status} in ('pending', 'enqueued', 'cancelled')`,
