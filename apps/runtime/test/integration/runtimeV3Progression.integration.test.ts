@@ -5235,6 +5235,13 @@ describe("Runtime v3 progression facts", () => {
 
       const cancelled = await delegate({ source: ids.companion,target: targetC,
         sourceTurn: source.turnId,key: "cancel-v3",mode: "notify",content: "cancel target" });
+      await makeActive(cancelled.target_turn.id,targetC);
+      await ownerSql`update public.companion_v3_lane_leases set claim_token=gen_random_uuid(),
+        claim_epoch=claim_epoch+1,gate_epoch=(select gate_epoch from public.companion_runtime_control
+          where id='runtime-v2'),executor_id='cancel-test',turn_id=${cancelled.target_turn.id}::uuid,
+        claimed_at=clock_timestamp(),renewed_at=clock_timestamp(),
+        expires_at=clock_timestamp()+interval '30 seconds'
+        where org_id=${ids.org}::uuid and companion_id=${targetC}::uuid and lane='main'`;
       await asApi(async (sql) => {
         const first = await sql<Array<{ turn: { status: string } }>>`
           select turn from public.companion_v3_api_cancel_delegation_turn(

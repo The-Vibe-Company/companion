@@ -482,7 +482,8 @@ BEGIN
     WHERE lease.org_id=p_org_id AND lease.companion_id=v_delegation.target_companion_id
       AND lease.lane='main' AND lease.turn_id=v_turn.id;
     UPDATE public.companion_v3_turns turn_row SET state='cancelled',outcome='cancelled',
-      outcome_code=NULL,outcome_message=NULL,outcome_action=NULL,settled_at=v_now,updated_at=v_now
+      outcome_code=NULL,outcome_message=NULL,outcome_action=NULL,
+      inactivity_deadline_at=NULL,absolute_deadline_at=NULL,settled_at=v_now,updated_at=v_now
     WHERE turn_row.org_id=p_org_id AND turn_row.companion_id=v_delegation.target_companion_id
       AND turn_row.id=v_turn.id RETURNING * INTO v_turn;
   END IF;
