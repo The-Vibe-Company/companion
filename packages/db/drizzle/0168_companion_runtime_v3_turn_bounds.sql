@@ -300,11 +300,32 @@ BEGIN
   IF p_protocol IS DISTINCT FROM 4 OR p_correlated_activity IS NULL THEN
     RAISE EXCEPTION 'Runtime v3 projection protocol 4 is required' USING ERRCODE = '42501';
   END IF;
+  IF p_correlated_activity AND NOT p_needs_input AND p_terminal IS NULL THEN
+    UPDATE public.companion_v3_turns turn_row
+    SET state = 'running', correlated_activity_cursor = p_through_cursor,
+      last_activity_at = v_now, updated_at = v_now
+    FROM public.companion_v3_lane_leases lease, public.companion_runtime_control control
+    WHERE turn_row.org_id = p_org_id AND turn_row.companion_id = p_companion_id
+      AND turn_row.id = p_turn_id AND turn_row.lane = p_lane
+      AND turn_row.state IN ('admitted', 'running', 'needs_input')
+      AND p_through_cursor > turn_row.correlated_activity_cursor
+      AND lease.org_id = turn_row.org_id AND lease.companion_id = turn_row.companion_id
+      AND lease.lane = turn_row.lane AND lease.turn_id = turn_row.id
+      AND lease.claim_token = p_claim_token AND lease.claim_epoch = p_claim_epoch
+      AND lease.gate_epoch = p_gate_epoch AND lease.expires_at > v_now
+      AND control.id = 'runtime-v2' AND control.enabled AND control.gate_epoch = p_gate_epoch;
+    IF NOT FOUND THEN RETURN NULL; END IF;
+  END IF;
   v_projected := public.companion_v3_runtime_project_native_page(
     p_org_id, p_companion_id, p_lane, p_turn_id, p_claim_token, p_claim_epoch,
     p_gate_epoch, p_through_cursor, p_assistant, p_needs_input, p_terminal, 3
   );
-  IF v_projected IS NOT NULL AND p_correlated_activity AND p_terminal IS NULL THEN
+  IF v_projected IS NULL
+    AND p_correlated_activity AND NOT p_needs_input AND p_terminal IS NULL THEN
+    RAISE EXCEPTION 'Runtime v3 correlated projection lost its fence' USING ERRCODE = '40001';
+  END IF;
+  IF v_projected IS NOT NULL AND p_correlated_activity AND p_needs_input
+    AND p_terminal IS NULL THEN
     UPDATE public.companion_v3_turns turn_row
     SET correlated_activity_cursor = p_through_cursor,
       last_activity_at = v_now, updated_at = v_now
@@ -375,6 +396,7 @@ BEGIN
   JOIN public.companion_runtime_control control
     ON control.id = 'runtime-v2' AND control.enabled
   WHERE instance.prepared_at IS NULL AND instance.preparation_deadline_at <= v_now
+    AND instance.preparation_error_code IS DISTINCT FROM 'companion_prepare_deadline_exceeded'
   ORDER BY instance.preparation_deadline_at, instance.created_at
   LIMIT 1 FOR UPDATE OF instance SKIP LOCKED;
   IF NOT FOUND THEN RETURN 0; END IF;
@@ -406,6 +428,25 @@ END $$;
 REVOKE ALL ON FUNCTION public.companion_v3_expire_preparation() FROM PUBLIC;
 --> statement-breakpoint
 
+CREATE FUNCTION public.companion_v3_runtime_sweep_preparation_deadlines(p_protocol integer)
+RETURNS integer LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public SET row_security = on AS $$
+DECLARE
+  v_count integer := 0;
+BEGIN
+  IF p_protocol IS DISTINCT FROM 5 THEN
+    RAISE EXCEPTION 'Runtime v3 preparation protocol 5 is required' USING ERRCODE = '42501';
+  END IF;
+  WHILE v_count < 64 LOOP
+    EXIT WHEN public.companion_v3_expire_preparation() = 0;
+    v_count := v_count + 1;
+  END LOOP;
+  RETURN v_count;
+END $$;
+REVOKE ALL ON FUNCTION public.companion_v3_runtime_sweep_preparation_deadlines(integer)
+FROM PUBLIC;
+--> statement-breakpoint
+
 CREATE FUNCTION public.companion_v3_runtime_claim_preparation_v5(
   p_executor_id text, p_lease_seconds integer, p_protocol integer
 )
@@ -421,26 +462,40 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public SET row_security = on AS $$
+DECLARE
+  v_claim record;
+  v_instance public.companion_v3_instances%ROWTYPE;
+  v_expired integer;
 BEGIN
   IF p_protocol IS DISTINCT FROM 5 THEN
     RAISE EXCEPTION 'Runtime v3 preparation protocol 5 is required' USING ERRCODE = '42501';
   END IF;
-  PERFORM public.companion_v3_expire_preparation();
-  RETURN QUERY
-  SELECT claimed.org_id, claimed.companion_id, claimed.turn_id, claimed.command_id,
-    claimed.work_kind, claimed.checkpoint, claimed.box_idempotency_key, claimed.box_id,
-    claimed.claim_token, claimed.claim_epoch, claimed.gate_epoch, claimed.created_at,
-    instance.preparation_attempt_count, instance.preparation_deadline_at,
-    claimed.authorized, claimed.actor_id, claimed.model_id, claimed.persona,
-    claimed.settings_revision, claimed.skills_revision,
-    claimed.provider_refs, claimed.skill_refs, claimed.mcp_refs,
-    claimed.provider_material, claimed.skill_material, claimed.mcp_material,
-    claimed.config_catalog
+  v_expired := public.companion_v3_runtime_sweep_preparation_deadlines(5);
+  IF v_expired = 64 THEN RETURN; END IF;
+  SELECT claimed.* INTO v_claim
   FROM public.companion_v3_runtime_claim_preparation(
     p_executor_id, p_lease_seconds, 4
-  ) claimed
-  JOIN public.companion_v3_instances instance
-    ON instance.org_id = claimed.org_id AND instance.companion_id = claimed.companion_id;
+  ) claimed;
+  IF NOT FOUND THEN RETURN; END IF;
+  SELECT instance.* INTO v_instance
+  FROM public.companion_v3_instances instance
+  WHERE instance.org_id = v_claim.org_id
+    AND instance.companion_id = v_claim.companion_id
+  FOR UPDATE;
+  IF v_instance.preparation_deadline_at <= clock_timestamp() THEN
+    PERFORM public.companion_v3_expire_preparation();
+    RETURN;
+  END IF;
+  RETURN QUERY
+  SELECT v_claim.org_id, v_claim.companion_id, v_claim.turn_id, v_claim.command_id,
+    v_claim.work_kind, v_claim.checkpoint, v_claim.box_idempotency_key, v_claim.box_id,
+    v_claim.claim_token, v_claim.claim_epoch, v_claim.gate_epoch, v_claim.created_at,
+    v_instance.preparation_attempt_count, v_instance.preparation_deadline_at,
+    v_claim.authorized, v_claim.actor_id, v_claim.model_id, v_claim.persona,
+    v_claim.settings_revision, v_claim.skills_revision,
+    v_claim.provider_refs, v_claim.skill_refs, v_claim.mcp_refs,
+    v_claim.provider_material, v_claim.skill_material, v_claim.mcp_material,
+    v_claim.config_catalog;
 END $$;
 REVOKE ALL ON FUNCTION public.companion_v3_runtime_claim_preparation_v5(
   text,integer,integer
@@ -468,6 +523,7 @@ BEGIN
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_begin_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer) TO %I', v_role);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_project_native_page_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,text,integer) TO %I', v_role);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_sweep_deadlines(public.companion_v3_lane,integer) TO %I', v_role);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_sweep_preparation_deadlines(integer) TO %I', v_role);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_claim_preparation_v5(text,integer,integer) TO %I', v_role);
   END LOOP;
 END $$;
