@@ -33,8 +33,8 @@ describe("runtime desktop reauthorization", () => {
       authorized: true,
       denial_code: null,
       box_id: "bx_23456789",
-      box_state: "running",
-      runtime_generation: "12",
+      box_state: "ready",
+      runtime_generation: "1",
     }]);
     const desktop = vi.fn(async () => ({
       url: "https://desktop.example.test/session?token=sensitive",
@@ -57,6 +57,26 @@ describe("runtime desktop reauthorization", () => {
     expect(desktop).toHaveBeenCalledWith({
       boxId: "bx_23456789",
       signal: expect.any(AbortSignal),
+    });
+  });
+
+  it("retains the non-authoritative v3 compatibility mapping", async () => {
+    const authorizer = new PostgresRuntimeDesktopAuthorizer({
+      unsafe: async () => [{
+        authorized: true,
+        denial_code: null,
+        box_id: "bx_23456789",
+        box_state: "ready",
+        runtime_generation: "1",
+      }],
+    });
+
+    await expect(authorizer.authorize(request)).resolves.toEqual({
+      authorized: true,
+      denialCode: null,
+      boxId: "bx_23456789",
+      boxState: "ready",
+      runtimeGeneration: 1n,
     });
   });
 

@@ -1268,6 +1268,13 @@
       "when": 1793380000000,
       "tag": "0180_companion_runtime_v3_terminal_assistant_fallback",
       "breakpoints": true
+    },
+    {
+      "idx": 181,
+      "version": "7",
+      "when": 1793383600000,
+      "tag": "0181_companion_runtime_v3_desktop_authorization",
+      "breakpoints": true
     }
   ]
 }
