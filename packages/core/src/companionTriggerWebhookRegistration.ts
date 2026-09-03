@@ -826,7 +826,7 @@ export async function registerCompanionTriggerWebhookV2(input: {
 
   // Pass the already-extracted body to Zod for validation on success
   
-  const created = z.object({ id: z.number().int() }).safeParse(await response.json().catch(() => null));
+  const created = z.object({ id: z.number().int() }).safeParse(responseBody);
   if (!created.success) {
     return recoverGitHubRegistration(input, trigger, account.id, token, repoPath, doFetch,
       "github returned an unreadable webhook payload");
