@@ -11,7 +11,10 @@ import {
   type RuntimeStore,
   type RuntimeWorkMaterial,
 } from "@companion/companion-runtime";
-import type { RuntimeV3PreparationClaim } from "@companion/companion-runtime/v3/internal";
+import {
+  createRuntimeV3Preparation,
+  type RuntimeV3PreparationClaim,
+} from "@companion/companion-runtime/v3/internal";
 import {
   BoxRuntimeProviderError,
   type CompanionBoxRuntimeV2,
@@ -707,7 +710,14 @@ describe("runtime material provider and Box stager", () => {
         expiresAt: new Date("2027-01-01T00:00:00.000Z"),
       }),
       signal: new AbortController().signal,
-    })).rejects.toBe(conflict);
+    })).rejects.toMatchObject({
+      name: "RuntimeTerminalPreparationError",
+      error: {
+        code: "box_staging_conflict",
+        message: "The Companion Box rejected its runtime material.",
+        action: "none",
+      },
+    });
 
     await expect(pipeline.preparationStager.stagePreparation({
       claim: preparationClaim(),
@@ -718,7 +728,10 @@ describe("runtime material provider and Box stager", () => {
         expiresAt: new Date("2027-01-01T00:00:00.000Z"),
       }),
       signal: new AbortController().signal,
-    })).rejects.toBe(invalidSnapshot);
+    })).rejects.toMatchObject({
+      name: "RuntimeTerminalPreparationError",
+      error: { code: "box_staging_conflict", action: "none" },
+    });
 
     await expect(pipeline.preparationStager.stagePreparation({
       claim: preparationClaim(),
@@ -734,6 +747,81 @@ describe("runtime material provider and Box stager", () => {
       failureClass: "box",
       dependency: { kind: "box", id: "bx_23456789" },
     } satisfies Partial<RuntimeExternalDependencyError>);
+  });
+
+  it.each([
+    [409, "terminal"],
+    [422, "terminal"],
+    [408, "external"],
+    [429, "external"],
+    [500, "external"],
+    [503, "external"],
+  ] as const)("settles Box status %i through preparation as %s", async (status, outcome) => {
+    const stageExistingBox = vi.fn(async () => {
+      throw new BoxRuntimeProviderError("provider-controlled detail", status);
+    });
+    const pipeline = createRuntimeMaterialPipeline({
+      masterKey,
+      apiUrl: "https://api.example.test",
+      bundledSkill: {
+        slug: "companion",
+        version: "1.0.0",
+        checksum: `sha256:${"1".repeat(64)}`,
+        archive: Buffer.from("bundled"),
+      },
+      runtime: () => fakeRuntime(stageExistingBox),
+      loadSkillArchive: vi.fn(),
+      loadAttachment: vi.fn(),
+      storeAttachment: vi.fn(),
+    });
+    const claim = preparationClaim();
+    const defer = vi.fn().mockResolvedValue(true);
+    const fail = vi.fn().mockResolvedValue(true);
+    const persistence = {
+      claim: vi.fn().mockResolvedValueOnce(claim),
+      checkpoint: vi.fn().mockResolvedValue(true),
+      defer,
+      fail,
+      reauthorize: vi.fn().mockResolvedValue(true),
+      mintCredentials: vi.fn().mockResolvedValue({
+        hubToken: "hub-token",
+        mcpBrokerToken: null,
+        controlToken: "control-token",
+        expiresAt: new Date("2027-01-01T00:00:00.000Z"),
+      }),
+    };
+    const preparation = createRuntimeV3Preparation({
+      persistence,
+      box: {
+        createGenerationBox: vi.fn(),
+        applyGenerationBoxSettings: vi.fn(),
+        getStatus: vi.fn(),
+      },
+      preparationStager: pipeline.preparationStager,
+      pi: { startPiDaemon: vi.fn() },
+      jitter: () => 0.5,
+    });
+
+    await preparation.converge({ executorId: claim.executorId });
+
+    if (outcome === "terminal") {
+      expect(fail).toHaveBeenCalledWith(claim, {
+        error: {
+          code: "box_staging_conflict",
+          message: "The Companion Box rejected its runtime material.",
+          action: "none",
+        },
+      }, expect.any(AbortSignal));
+      expect(defer).not.toHaveBeenCalled();
+    } else {
+      expect(fail).not.toHaveBeenCalled();
+      expect(defer).toHaveBeenCalledWith(claim, expect.objectContaining({
+        delaySeconds: 5,
+        error: expect.objectContaining({ code: "box_unavailable", action: "retry" }),
+        externalFailureClass: "box",
+        dependencyKey: "box:companion",
+      }), expect.any(AbortSignal));
+    }
   });
 });
 

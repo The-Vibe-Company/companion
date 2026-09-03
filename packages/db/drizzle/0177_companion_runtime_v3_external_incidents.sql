@@ -716,6 +716,85 @@ REVOKE ALL ON FUNCTION public.companion_v3_runtime_defer_preparation_external_v9
   text,text,text,integer,integer) FROM PUBLIC;
 --> statement-breakpoint
 
+-- A deterministic staging rejection cannot heal through backoff. Settle the exact queued head
+-- under the live preparation fence and release preparation so a later FIFO head can be evaluated.
+CREATE FUNCTION public.companion_v3_runtime_fail_preparation_v9(
+  p_org_id uuid,p_companion_id uuid,p_turn_id uuid,p_claim_token uuid,
+  p_claim_epoch bigint,p_gate_epoch bigint,p_code text,p_message text,
+  p_action public.companion_runtime_error_action,p_protocol integer
+) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public SET row_security=on AS $$
+DECLARE v_now timestamptz:=clock_timestamp();v_turn public.companion_v3_turns%ROWTYPE;
+  v_previous record;
+BEGIN
+  IF p_protocol<>9 THEN RAISE EXCEPTION 'Runtime v3 protocol 9 is required' USING ERRCODE='42501';END IF;
+  IF p_code IS NULL OR p_code!~'^[a-z][a-z0-9_]{0,63}$'
+    OR p_message IS NULL OR char_length(p_message) NOT BETWEEN 1 AND 500
+    OR p_message~E'[\n\r]' OR p_action IS NULL THEN
+    RAISE EXCEPTION 'invalid Runtime v3 terminal preparation failure' USING ERRCODE='22023';END IF;
+  SELECT turn_row.* INTO v_turn FROM public.companion_v3_instances instance
+  JOIN public.companion_runtime_control control ON control.id='runtime-v2' AND control.enabled
+    AND control.gate_epoch=p_gate_epoch
+  JOIN public.companion_v3_turns turn_row ON turn_row.org_id=instance.org_id
+    AND turn_row.companion_id=instance.companion_id AND turn_row.id=p_turn_id
+    AND turn_row.state='queued' AND NOT EXISTS(
+      SELECT 1 FROM public.companion_v3_turns earlier
+      WHERE earlier.org_id=turn_row.org_id AND earlier.companion_id=turn_row.companion_id
+        AND earlier.lane=turn_row.lane AND earlier.state='queued'
+        AND earlier.queue_sequence<turn_row.queue_sequence)
+  WHERE instance.org_id=p_org_id AND instance.companion_id=p_companion_id
+    AND instance.preparation_claim_token=p_claim_token
+    AND instance.preparation_claim_epoch=p_claim_epoch
+    AND instance.preparation_gate_epoch=p_gate_epoch AND instance.preparation_expires_at>v_now
+  FOR UPDATE OF instance,turn_row;
+  IF NOT FOUND THEN RETURN false;END IF;
+  IF v_turn.external_incident_id IS NOT NULL THEN
+    UPDATE public.companion_v3_external_incidents incident SET recovered_at=v_now,updated_at=v_now
+    WHERE incident.id=v_turn.external_incident_id AND incident.org_id=p_org_id
+      AND incident.companion_id=p_companion_id AND incident.recovered_at IS NULL
+    RETURNING incident.id,incident.failure_class,incident.last_source,incident.stable_code
+      INTO v_previous;
+    IF FOUND THEN
+      INSERT INTO public.companion_v3_external_incident_signals(
+        org_id,companion_id,incident_id,kind,failure_class,source,stable_code,created_at
+      ) VALUES(p_org_id,p_companion_id,v_previous.id,'recovered',v_previous.failure_class,
+        v_previous.last_source,v_previous.stable_code,v_now) ON CONFLICT DO NOTHING;
+      UPDATE public.companion_v3_turns SET external_incident_id=NULL,
+        external_failure_class=NULL,external_failure_source=NULL,external_blocked_message=NULL,
+        available_at=LEAST(available_at,v_now),updated_at=v_now
+      WHERE org_id=p_org_id AND companion_id=p_companion_id
+        AND external_incident_id=v_previous.id AND state='queued';
+    END IF;
+  END IF;
+  UPDATE public.companion_v3_turns SET state='failed',outcome='failed',
+    outcome_code=p_code,outcome_message=p_message,outcome_action=p_action,settled_at=v_now,
+    admission_started_at=NULL,external_incident_id=NULL,external_failure_class=NULL,
+    external_failure_source=NULL,external_blocked_message=NULL,available_at=v_now,updated_at=v_now
+  WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id;
+  IF v_turn.lane='background' THEN
+    UPDATE public.companion_v3_routine_runs SET outcome='failed',settled_at=v_now
+    WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id
+      AND outcome IN ('pending','running');
+  END IF;
+  UPDATE public.companion_v3_instances instance SET preparation_available_at=v_now,
+    preparation_attempt_count=instance.preparation_attempt_count+1,
+    preparation_error_code=p_code,preparation_error_message=p_message,
+    preparation_claim_token=NULL,preparation_gate_epoch=NULL,preparation_executor_id=NULL,
+    preparation_claimed_at=NULL,preparation_expires_at=NULL,updated_at=v_now
+  WHERE instance.org_id=p_org_id AND instance.companion_id=p_companion_id
+    AND instance.preparation_claim_token=p_claim_token
+    AND instance.preparation_claim_epoch=p_claim_epoch
+    AND instance.preparation_gate_epoch=p_gate_epoch;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Runtime v3 preparation fence changed' USING ERRCODE='40001';END IF;
+  UPDATE public.companion_threads SET projection_sequence=projection_sequence+1,updated_at=v_now
+  WHERE org_id=p_org_id AND companion_id=p_companion_id;
+  RETURN true;
+END $$;
+REVOKE ALL ON FUNCTION public.companion_v3_runtime_fail_preparation_v9(
+  uuid,uuid,uuid,uuid,bigint,bigint,text,text,public.companion_runtime_error_action,integer
+) FROM PUBLIC;
+--> statement-breakpoint
+
 -- Successful dependency contact closes the exact open incident once. Returning recovery_signal
 -- only on the state transition gives the process one durable recovery notification checkpoint.
 CREATE FUNCTION public.companion_v3_runtime_recover_external_v9(

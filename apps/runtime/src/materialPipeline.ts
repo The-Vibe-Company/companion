@@ -11,6 +11,7 @@ import {
 import {
   RUNTIME_LEASE_SECONDS,
   RuntimeExternalDependencyError,
+  RuntimeTerminalPreparationError,
   RuntimeAttachmentExpiredError,
   createRuntimeVisibleTextRedactor,
   type RuntimeAttachmentStager,
@@ -400,6 +401,13 @@ export function createRuntimeMaterialPipeline(input: {
         const retryableProviderFailure = error instanceof BoxRuntimeProviderError
           && (error.status === 408 || error.status === 429 || error.status >= 500);
         if (!retryableProviderFailure) {
+          if (error instanceof BoxRuntimeProviderError) {
+            throw new RuntimeTerminalPreparationError({
+              code: "box_staging_conflict",
+              message: "The Companion Box rejected its runtime material.",
+              action: "none",
+            });
+          }
           throw error;
         }
         throw new RuntimeExternalDependencyError("box_unavailable", {

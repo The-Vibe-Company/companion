@@ -649,6 +649,19 @@ export function createRuntimeV3PostgresPreparationPersistence(
       `, signal);
       return rows[0]?.deferred === true;
     },
+    async fail(claim, input, signal) {
+      if (!claim.turnId) return false;
+      const rows = await abortable(sql<Array<{ failed: boolean }>>`
+        select public.companion_v3_runtime_fail_preparation_v9(
+          ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.turnId}::uuid,
+          ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,
+          ${input.error.code}, ${input.error.message},
+          ${input.error.action}::public.companion_runtime_error_action, 9
+        ) as failed
+      `, signal);
+      return rows[0]?.failed === true;
+    },
     async reauthorize(claim, signal) {
       const rows = await abortable(sql<Array<{ authorized: boolean }>>`
         select public.companion_v3_runtime_reauthorize_preparation(

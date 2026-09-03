@@ -13,6 +13,7 @@ import type {
   PiObservedState,
   RuntimeAuthorization,
   RuntimeOutputAttachment,
+  SafeRuntimeError,
   RuntimeSkillUpdateMaterial,
   RuntimeWorkMaterial,
 } from "./types";
@@ -118,6 +119,14 @@ export class RuntimeExternalDependencyError extends Error {
       : dependency.kind === "grant"
         ? "authority"
         : dependency.kind;
+  }
+}
+
+/** Typed deterministic preparation failure which must settle instead of entering retry backoff. */
+export class RuntimeTerminalPreparationError extends Error {
+  constructor(readonly error: SafeRuntimeError) {
+    super(error.message);
+    this.name = "RuntimeTerminalPreparationError";
   }
 }
 

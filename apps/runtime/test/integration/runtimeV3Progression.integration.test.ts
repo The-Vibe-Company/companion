@@ -508,6 +508,54 @@ describe("Runtime v3 progression facts", () => {
     expect(checkpointed?.checkpoint).toBe("box_created");
   });
 
+  it("settles a deterministic preparation failure immediately under the exact fence", async () => {
+    const command = randomUUID();
+    await admitMain(command);
+    const persistence = createRuntimeV3PostgresPreparationPersistence(runtimeSql);
+    const claim = await persistence.claim({ executorId: "runtime-terminal-preparation" });
+    expect(claim).toMatchObject({ companionId: ids.companion, turnId: expect.any(String) });
+    if (!claim) throw new Error("preparation claim was not created");
+
+    await expect(persistence.fail(claim, {
+      error: {
+        code: "box_staging_conflict",
+        message: "The Companion Box rejected its runtime material.",
+        action: "none",
+      },
+    })).resolves.toBe(true);
+    await expect(persistence.fail(claim, {
+      error: {
+        code: "box_staging_conflict",
+        message: "The Companion Box rejected its runtime material.",
+        action: "none",
+      },
+    })).resolves.toBe(false);
+
+    const [settled] = await ownerSql<Array<{
+      state: string;
+      outcome: string;
+      code: string;
+      message: string;
+      action: string;
+      settledAt: Date;
+      claimToken: string | null;
+    }>>`select turn_row.state::text,turn_row.outcome::text,turn_row.outcome_code as code,
+        turn_row.outcome_message as message,turn_row.outcome_action::text as action,
+        turn_row.settled_at as "settledAt",instance.preparation_claim_token as "claimToken"
+      from public.companion_v3_turns turn_row
+      join public.companion_v3_instances instance using(org_id,companion_id)
+      where turn_row.command_id=${command}::uuid`;
+    expect(settled).toEqual({
+      state: "failed",
+      outcome: "failed",
+      code: "box_staging_conflict",
+      message: "The Companion Box rejected its runtime material.",
+      action: "none",
+      settledAt: expect.any(Date),
+      claimToken: null,
+    });
+  });
+
   it("keeps a background-only preparation deadline immutable after expiry", async () => {
     const command = randomUUID();
     await workerSql`select * from public.companion_v3_worker_admit_turn(

@@ -1131,6 +1131,7 @@ BEGIN
         'public.companion_v3_runtime_claim_warm_v9(text,public.companion_v3_lane,integer,integer)'::regprocedure,
         'public.companion_v3_runtime_defer_external_v9(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,public.companion_v3_external_failure_class,public.companion_v3_work_source,text,text,text,double precision,integer)'::regprocedure,
         'public.companion_v3_runtime_defer_preparation_external_v9(uuid,uuid,uuid,uuid,bigint,bigint,public.companion_v3_external_failure_class,text,text,text,integer,integer)'::regprocedure,
+        'public.companion_v3_runtime_fail_preparation_v9(uuid,uuid,uuid,uuid,bigint,bigint,text,text,public.companion_runtime_error_action,integer)'::regprocedure,
         'public.companion_v3_runtime_recover_external_v9(uuid,uuid,public.companion_v3_external_failure_class,text,integer)'::regprocedure,
         'public.companion_v3_runtime_recover_external_turn_v9(uuid,uuid,uuid,integer)'::regprocedure,
         'public.companion_v3_runtime_claim_external_incident_signal_v9(text,integer,integer)'::regprocedure,

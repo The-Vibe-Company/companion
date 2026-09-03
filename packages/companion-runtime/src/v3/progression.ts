@@ -24,6 +24,7 @@ export type {
 } from "../types";
 import {
   RuntimeExternalDependencyError,
+  RuntimeTerminalPreparationError,
   type RuntimeBoxControl,
   type RuntimeExternalDependencyIdentity,
   type RuntimePiControl,
@@ -315,6 +316,11 @@ export interface RuntimeV3PreparationPersistence {
       externalFailureClass?: RuntimeV3ExternalFailureClass;
       dependencyKey?: string;
     },
+    signal?: AbortSignal,
+  ): Promise<boolean>;
+  fail(
+    claim: RuntimeV3PreparationClaim,
+    input: { error: SafeRuntimeError },
     signal?: AbortSignal,
   ): Promise<boolean>;
   reauthorize(claim: RuntimeV3PreparationClaim, signal?: AbortSignal): Promise<boolean>;
@@ -1707,6 +1713,16 @@ export function createRuntimeV3Preparation(
           progressed += 1;
         } catch (cause) {
           if (shutdownSignal?.aborted) return { progressed, exhausted: false };
+          if (cause instanceof RuntimeTerminalPreparationError) {
+            const releaseSignal = boundedSignal(
+              shutdownSignal,
+              COMPANION_RUNTIME_V3_BUDGETS.heartbeatSettlementMs,
+            );
+            if (!await options.persistence.fail(claim, { error: cause.error }, releaseSignal)) {
+              return { progressed, exhausted: false };
+            }
+            return { progressed: progressed + 1, exhausted: false };
+          }
           if (cause instanceof RuntimeExternalDependencyError) {
             externalFailureClass = cause.failureClass;
           } else {

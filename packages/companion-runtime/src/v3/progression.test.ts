@@ -1226,6 +1226,7 @@ describe("Runtime v3 progression interface", () => {
         claim: vi.fn(async () => claims.shift() ?? null),
         checkpoint,
         defer: vi.fn().mockResolvedValue(true),
+        fail: vi.fn().mockResolvedValue(true),
         reauthorize: vi.fn().mockResolvedValue(true),
         mintCredentials: vi.fn().mockResolvedValue({
           hubToken: "hub", mcpBrokerToken: null, controlToken: "control",
@@ -1303,6 +1304,7 @@ describe("Runtime v3 progression interface", () => {
       persistence: {
         claim: vi.fn(async () => claims.shift() ?? null), checkpoint: vi.fn().mockResolvedValue(true),
         checkpointPiRecycle, defer: vi.fn().mockResolvedValue(true),
+        fail: vi.fn().mockResolvedValue(true),
         reauthorize: vi.fn().mockResolvedValue(true), mintCredentials: vi.fn(),
       },
       box: { createGenerationBox: vi.fn(), applyGenerationBoxSettings: vi.fn(), getStatus: vi.fn() },
@@ -1343,6 +1345,7 @@ describe("Runtime v3 progression interface", () => {
       const preparation = createRuntimeV3Preparation({
         persistence: {
           claim: vi.fn().mockResolvedValueOnce(claim), checkpoint, defer,
+          fail: vi.fn().mockResolvedValue(true),
           reauthorize: vi.fn().mockResolvedValue(true), mintCredentials: vi.fn(),
         },
         box: {
@@ -1389,7 +1392,7 @@ describe("Runtime v3 progression interface", () => {
           providerRefs: [], skillRefs: [], mcpRefs: [], providerMaterial: [], skillMaterial: [],
           mcpMaterial: [], configCatalog: null, fence: mainClaim.fence,
         } satisfies RuntimeV3PreparationClaim),
-        checkpoint, defer, reauthorize: vi.fn(), mintCredentials: vi.fn(),
+        checkpoint, defer, fail: vi.fn(), reauthorize: vi.fn(), mintCredentials: vi.fn(),
       },
       box: { createGenerationBox, applyGenerationBoxSettings: vi.fn(), getStatus: vi.fn() },
       preparationStager: { stagePreparation: vi.fn() },
@@ -1457,6 +1460,7 @@ describe("Runtime v3 progression interface", () => {
         claim: vi.fn().mockResolvedValueOnce(claim),
         checkpoint: vi.fn().mockResolvedValue(true),
         defer,
+        fail: vi.fn().mockResolvedValue(true),
         reauthorize: vi.fn().mockResolvedValue(true),
         mintCredentials: vi.fn().mockResolvedValue(null),
       },
