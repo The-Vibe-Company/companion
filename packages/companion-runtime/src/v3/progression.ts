@@ -47,6 +47,8 @@ export interface RuntimeV3Turn {
   lane: RuntimeV3Lane;
   state: RuntimeV3TurnState;
   admissionStartedAt?: Date | null;
+  inactivityDeadlineAt?: Date | null;
+  absoluteDeadlineAt?: Date | null;
 }
 
 export interface RuntimeV3Admission {
@@ -330,6 +332,7 @@ export interface RuntimeV3WarmTurnProjection {
   needsInput: boolean;
   settled: boolean;
   processExited: boolean;
+  activity: boolean;
 }
 
 export interface RuntimeV3WarmTurnPersistence {
@@ -392,6 +395,36 @@ export interface RuntimeV3WarmTurnAdvanceOptions {
 
 const LANE_CONVERGENCE_LIMIT = 16;
 
+export interface RuntimeV3CommandWindow {
+  commandMs: number;
+  settlementMs: number;
+}
+
+export function runtimeV3CommandWindow(input: {
+  now: Date;
+  inactivityDeadlineAt: Date | null;
+  absoluteDeadlineAt: Date | null;
+}): RuntimeV3CommandWindow {
+  const silentDeadline = input.inactivityDeadlineAt
+    ? input.inactivityDeadlineAt.getTime() - COMPANION_RUNTIME_V3_BUDGETS.silentSettlementMs
+    : Number.POSITIVE_INFINITY;
+  const absoluteDeadline = input.absoluteDeadlineAt
+    ? input.absoluteDeadlineAt.getTime() - COMPANION_RUNTIME_V3_BUDGETS.heartbeatSettlementMs
+    : input.now.getTime() + COMPANION_RUNTIME_V3_BUDGETS.heartbeatCommandMs;
+  const silentWins = silentDeadline <= absoluteDeadline;
+  return {
+    commandMs: Math.max(1, (silentWins ? silentDeadline : absoluteDeadline) - input.now.getTime()),
+    settlementMs: silentWins
+      ? COMPANION_RUNTIME_V3_BUDGETS.silentSettlementMs
+      : COMPANION_RUNTIME_V3_BUDGETS.heartbeatSettlementMs,
+  };
+}
+
+function boundedSignal(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
+
 function durableOutcome(outcome: RuntimeV3ProgressionOutcome): RuntimeV3DurableOutcome {
   if (outcome.kind !== "failed" && outcome.kind !== "interrupted") return outcome;
   return {
@@ -415,6 +448,8 @@ export function createRuntimeV3WarmTurnAdvance(
   return async (claim, signal) => {
     let projectionPendingAck: "none" | "nonterminal" | "terminal" = "none";
     let admissionWriteIntent = false;
+    let inactivityDeadlineAt = claim.turn.inactivityDeadlineAt ?? null;
+    let absoluteDeadlineAt = claim.turn.absoluteDeadlineAt ?? null;
     try {
       signal?.throwIfAborted();
       const material = signal
@@ -433,7 +468,11 @@ export function createRuntimeV3WarmTurnAdvance(
       let cursor = material.cursor;
       if (claim.turn.state === "succeeded" || claim.turn.state === "failed") {
         projectionPendingAck = "terminal";
-        await options.pi.acknowledge({ boxId: material.boxId, through: cursor, signal });
+        await options.pi.acknowledge({
+          boxId: material.boxId,
+          through: cursor,
+          signal: boundedSignal(signal, COMPANION_RUNTIME_V3_BUDGETS.heartbeatSettlementMs),
+        });
         projectionPendingAck = "none";
         return { kind: "ack_completed" };
       }
@@ -502,6 +541,13 @@ export function createRuntimeV3WarmTurnAdvance(
             action: "none",
           };
         }
+        admissionWriteIntent = false;
+        const admittedAt = Date.now();
+        absoluteDeadlineAt ??= new Date(admittedAt + COMPANION_BUDGETS.turnAbsoluteDeadlineMs);
+        inactivityDeadlineAt ??= new Date(Math.min(
+          admittedAt + COMPANION_BUDGETS.inactivityStallMs,
+          absoluteDeadlineAt.getTime(),
+        ));
         invocationId = admission.invocationId;
         cursor = admission.initialCursor;
         if (admission.responseAttemptId && admission.responseAttemptId !== claim.turn.id) {
@@ -522,12 +568,18 @@ export function createRuntimeV3WarmTurnAdvance(
 
       let assistantResults = 0;
       for (let pageNumber = 0; pageNumber < 32; pageNumber += 1) {
+        const commandWindow = runtimeV3CommandWindow({
+          now: new Date(),
+          inactivityDeadlineAt,
+          absoluteDeadlineAt,
+        });
+        const commandSignal = boundedSignal(signal, commandWindow.commandMs);
         const page = await options.pi.read({
           boxId: material.boxId,
           after: cursor,
           turnId: claim.turn.id,
           invocationId,
-          signal,
+          signal: commandSignal,
         });
         signal?.throwIfAborted();
         if (claim.turn.state === "needs_input" && page.events.length === 0 && !page.hasMore) {
@@ -556,10 +608,9 @@ export function createRuntimeV3WarmTurnAdvance(
           needsInput: classified.needsInput,
           settled: classified.settled,
           processExited: classified.processExit !== null,
+          activity: classified.activity,
         };
-        const projected = signal
-          ? await options.persistence.project(claim, projection, signal)
-          : await options.persistence.project(claim, projection);
+        const projected = await options.persistence.project(claim, projection, commandSignal);
         if (projected) {
           projectionPendingAck = projected === "succeeded" || projected === "failed"
             ? "terminal"
@@ -577,11 +628,19 @@ export function createRuntimeV3WarmTurnAdvance(
         await options.pi.acknowledge({
           boxId: material.boxId,
           through: classified.throughCursor,
-          signal,
+          signal: boundedSignal(signal, commandWindow.settlementMs),
         });
         projectionPendingAck = "none";
         signal?.throwIfAborted();
         cursor = classified.throughCursor;
+        if (classified.needsInput) {
+          inactivityDeadlineAt = null;
+        } else if (classified.activity && absoluteDeadlineAt) {
+          inactivityDeadlineAt = new Date(Math.min(
+            Date.now() + COMPANION_BUDGETS.inactivityStallMs,
+            absoluteDeadlineAt.getTime(),
+          ));
+        }
         if (projected === "succeeded" || projected === "failed") {
           return { kind: "ack_completed" };
         }
@@ -1020,7 +1079,6 @@ export function createRuntimeV3Convergence(
     converge: async ({ executorId, signal }) => {
       const lanes = await Promise.all(RUNTIME_V3_LANES.map(async (lane) => {
         let progressed = 0;
-        progressed += await options.persistence.sweepLane({ lane, signal });
         while (progressed < LANE_CONVERGENCE_LIMIT) {
           if (signal?.aborted) return { progressed, exhausted: false };
           const claim = await options.persistence.claimLane({ executorId, lane, signal });
@@ -1045,6 +1103,22 @@ export function createRuntimeV3Convergence(
       return {
         progressed: lanes.reduce((count, lane) => count + lane.progressed, 0),
         exhausted: lanes.some((lane) => lane.exhausted),
+      };
+    },
+  };
+}
+
+/** Deadline enforcement runs on its own scheduler so blocked preparation cannot delay a Turn. */
+export function createRuntimeV3DeadlineSweep(
+  persistence: Pick<RuntimeV3ConvergencePersistence, "sweepLane">,
+): RuntimeV3Convergence {
+  return {
+    converge: async ({ signal }) => {
+      const swept = await Promise.all(RUNTIME_V3_LANES.map(async (lane) =>
+        await persistence.sweepLane({ lane, signal })));
+      return {
+        progressed: swept.reduce((count, value) => count + value, 0),
+        exhausted: false,
       };
     },
   };

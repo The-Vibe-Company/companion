@@ -405,20 +405,23 @@ describe("Runtime v3 progression facts", () => {
     expect(checkpointed?.checkpoint).toBe("box_created");
   });
 
-  it("expires preparation at two hours fifteen minutes and fences its prior executor", async () => {
+  it("keeps a background-only preparation deadline immutable after expiry", async () => {
     const command = randomUUID();
-    await admitMain(command);
+    await workerSql`select * from public.companion_v3_worker_admit_turn(
+      ${ids.org}::uuid, ${ids.companion}::uuid, ${command}::uuid,
+      ${`msg:${command}`}, ${ids.owner}
+    )`;
     const persistence = createRuntimeV3PostgresPreparationPersistence(runtimeSql);
     const stale = await persistence.claim({ executorId: "runtime-expired-preparation" });
     expect(stale).not.toBeNull();
     if (!stale) throw new Error("preparation claim was not created");
 
+    const forcedDeadline = new Date(Date.now() - 1_000);
     await ownerSql`update public.companion_v3_instances
-      set preparation_deadline_at = clock_timestamp() - interval '1 millisecond'
+      set preparation_deadline_at = ${forcedDeadline}
       where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
     const takeover = await persistence.claim({ executorId: "runtime-preparation-takeover" });
-    expect(takeover).not.toBeNull();
-    expect(takeover!.fence.epoch).toBeGreaterThan(stale.fence.epoch);
+    expect(takeover).toBeNull();
     await expect(persistence.checkpoint(stale, {
       next: "box_created",
       boxId: "bx_stale_executor",
@@ -428,8 +431,10 @@ describe("Runtime v3 progression facts", () => {
       state: string;
       code: string;
       deadlineAt: Date;
+      claimEpoch: string;
     }>>`select turn_row.state::text, turn_row.outcome_code as code,
-        instance.preparation_deadline_at as "deadlineAt"
+        instance.preparation_deadline_at as "deadlineAt",
+        instance.preparation_claim_epoch::text as "claimEpoch"
       from public.companion_v3_turns turn_row
       join public.companion_v3_instances instance using (org_id, companion_id)
       where turn_row.command_id = ${command}::uuid`;
@@ -438,7 +443,8 @@ describe("Runtime v3 progression facts", () => {
       code: "companion_prepare_deadline_exceeded",
       deadlineAt: expect.any(Date),
     });
-    expect(expired!.deadlineAt.getTime() - Date.now()).toBeGreaterThan(134 * 60_000);
+    expect(expired!.deadlineAt).toEqual(forcedDeadline);
+    expect(BigInt(expired!.claimEpoch)).toBeGreaterThan(stale.fence.epoch);
   });
 
   afterAll(async () => {
@@ -2035,18 +2041,26 @@ describe("Runtime v3 progression facts", () => {
       from public.companion_v3_turns where id = ${active.turnId}::uuid`;
     await expect(persistence.project(active.claim, {
       throughCursor: 1n, assistant: [], needsInput: false,
-      settled: false, processExited: false,
+      settled: false, processExited: false, activity: false,
     })).resolves.toBe(true);
-    const [heartbeat] = await ownerSql<Array<{ absolute: Date; inactivity: Date }>>`
+    const [uncorrelated] = await ownerSql<Array<{ inactivity: Date }>>`
+      select inactivity_deadline_at as inactivity from public.companion_v3_turns
+      where id = ${active.turnId}::uuid`;
+    expect(uncorrelated!.inactivity).toEqual(beforeHeartbeat!.inactivity);
+    await expect(persistence.project(active.claim, {
+      throughCursor: 2n, assistant: [], needsInput: false,
+      settled: false, processExited: false, activity: true,
+    })).resolves.toBe(true);
+    const [correlatedHeartbeat] = await ownerSql<Array<{ absolute: Date; inactivity: Date }>>`
       select absolute_deadline_at as absolute, inactivity_deadline_at as inactivity
       from public.companion_v3_turns where id = ${active.turnId}::uuid`;
-    expect(heartbeat!.absolute).toEqual(beforeHeartbeat!.absolute);
-    expect(heartbeat!.inactivity.getTime()).toBeGreaterThanOrEqual(
+    expect(correlatedHeartbeat!.absolute).toEqual(beforeHeartbeat!.absolute);
+    expect(correlatedHeartbeat!.inactivity.getTime()).toBeGreaterThanOrEqual(
       beforeHeartbeat!.inactivity.getTime(),
     );
     await expect(persistence.project(active.claim, {
-      throughCursor: 2n, assistant: [], needsInput: true,
-      settled: false, processExited: false,
+      throughCursor: 3n, assistant: [], needsInput: true,
+      settled: false, processExited: false, activity: true,
     })).resolves.toBe(true);
     const [waiting] = await ownerSql<Array<{ absolute: Date; inactivity: Date | null }>>`
       select absolute_deadline_at as absolute, inactivity_deadline_at as inactivity

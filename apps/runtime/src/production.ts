@@ -25,6 +25,7 @@ import {
 import {
   combineRuntimeV3Convergence,
   createRuntimeV3Convergence,
+  createRuntimeV3DeadlineSweep,
   createRuntimeV3Lifecycle,
   createRuntimeV3Preparation,
   createRuntimeV3WarmTurnAdvance,
@@ -360,10 +361,11 @@ export async function buildProductionRuntimeService(
         desktop: async (input) => await freshRuntime().desktop(input),
       },
     });
-    const runtimeV3Turns = createRuntimeV3Convergence({
-      persistence: createRuntimeV3PostgresWarmConvergence(database.sql, {
+    const runtimeV3TurnPersistence = createRuntimeV3PostgresWarmConvergence(database.sql, {
         enabledLanes: new Set(["main"]),
-      }),
+      });
+    const runtimeV3Turns = createRuntimeV3Convergence({
+      persistence: runtimeV3TurnPersistence,
       advance: createRuntimeV3WarmTurnAdvance({
         persistence: createRuntimeV3PostgresWarmTurnPersistence(database.sql),
         pi: createRuntimeV3WarmPi(pi),
@@ -392,6 +394,7 @@ export async function buildProductionRuntimeService(
       store,
       scheduler: createRuntimeSchedulerAdapter(kernel.scheduler, {
         convergence: runtimeV3,
+        deadlineSweep: createRuntimeV3DeadlineSweep(runtimeV3TurnPersistence),
         executorId: config.executorId,
         sweepIntervalMs: config.sweepIntervalMs,
       }),

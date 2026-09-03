@@ -68,6 +68,7 @@ describe("runtime scheduler composition adapter", () => {
     });
     const adapter = createRuntimeSchedulerAdapter(scheduler, {
       convergence: { converge },
+      deadlineSweep: { converge: vi.fn().mockResolvedValue({ progressed: 0, exhausted: false }) },
       executorId: "runtime-v3-health",
       sweepIntervalMs: 2_000,
     });
@@ -106,6 +107,7 @@ describe("runtime scheduler composition adapter", () => {
     });
     const adapter = createRuntimeSchedulerAdapter(scheduler, {
       convergence: { converge },
+      deadlineSweep: { converge: vi.fn().mockResolvedValue({ progressed: 0, exhausted: false }) },
       executorId: "runtime-v3-error-health",
       sweepIntervalMs: 2_000,
     });
@@ -148,6 +150,9 @@ describe("runtime scheduler composition adapter", () => {
       });
       const adapter = createRuntimeSchedulerAdapter(scheduler, {
         convergence: { converge },
+        deadlineSweep: {
+          converge: vi.fn().mockResolvedValue({ progressed: 0, exhausted: false }),
+        },
         executorId: "runtime-v3-shutdown",
         sweepIntervalMs: 2_000,
       });
@@ -164,6 +169,42 @@ describe("runtime scheduler composition adapter", () => {
       await shutdown;
       expect(stopped).toBe(true);
       expect(sweepSignal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("sweeps Turn deadlines while ordinary Runtime v3 convergence is blocked", async () => {
+    vi.useFakeTimers();
+    try {
+      const scheduler: RuntimeKernelScheduler = {
+        start: vi.fn(), stopClaims: vi.fn(), shutdown: vi.fn(async () => undefined),
+        snapshot: () => ({
+          claimLoopAlive: true, acceptingClaims: true, claimsEnabled: true, gateEnabled: true,
+          lastSweepStartedAt: null, lastSweepCompletedAt: null, claimLoopErrorAt: null,
+          activeCount: 0, concurrency: 8, sweepIntervalMs: 2_000,
+        }),
+      };
+      const convergence = vi.fn(async (input: { signal?: AbortSignal }) =>
+        await new Promise<{ progressed: number; exhausted: boolean }>((resolve) => {
+          input.signal?.addEventListener("abort", () => resolve({
+            progressed: 0, exhausted: false,
+          }), { once: true });
+        }));
+      const deadlineSweep = vi.fn().mockResolvedValue({ progressed: 0, exhausted: false });
+      const adapter = createRuntimeSchedulerAdapter(scheduler, {
+        convergence: { converge: convergence }, deadlineSweep: { converge: deadlineSweep },
+        executorId: "runtime-v3-independent-deadline", sweepIntervalMs: 2_000,
+      });
+
+      adapter.start();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(convergence).toHaveBeenCalledOnce();
+      expect(deadlineSweep).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(convergence).toHaveBeenCalledOnce();
+      expect(deadlineSweep).toHaveBeenCalledTimes(2);
+      await adapter.shutdown({ drainTimeoutMs: 25 });
     } finally {
       vi.useRealTimers();
     }

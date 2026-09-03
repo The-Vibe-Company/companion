@@ -8,9 +8,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createRuntimeV3Lifecycle,
+  createRuntimeV3DeadlineSweep,
   createRuntimeV3Preparation,
   createRuntimeV3Progression,
   createRuntimeV3WarmTurnAdvance,
+  runtimeV3CommandWindow,
   runtimeV3PreparationRetryDelaySeconds,
   type RuntimeV3Claim,
   type RuntimeV3ConvergencePersistence,
@@ -66,6 +68,30 @@ function persistence(
 }
 
 describe("Runtime v3 progression interface", () => {
+  it("reserves settlement inside silent and active command deadlines", () => {
+    const now = new Date("2026-09-03T00:00:00.000Z");
+    expect(runtimeV3CommandWindow({
+      now,
+      inactivityDeadlineAt: new Date(now.getTime() + 10 * 60_000),
+      absoluteDeadlineAt: new Date(now.getTime() + 2 * 60 * 60_000),
+    })).toEqual({ commandMs: 8 * 60_000 + 30_000, settlementMs: 90_000 });
+    expect(runtimeV3CommandWindow({
+      now,
+      inactivityDeadlineAt: null,
+      absoluteDeadlineAt: new Date(now.getTime() + 2 * 60 * 60_000),
+    })).toEqual({ commandMs: 118 * 60_000, settlementMs: 2 * 60_000 });
+  });
+
+  it("sweeps both lane deadlines without entering claim convergence", async () => {
+    const sweepLane = vi.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(2);
+    await expect(createRuntimeV3DeadlineSweep({ sweepLane }).converge({
+      executorId: "runtime-deadline-sweep",
+    })).resolves.toEqual({ progressed: 3, exhausted: false });
+    expect(sweepLane).toHaveBeenCalledTimes(2);
+    expect(sweepLane).toHaveBeenCalledWith({ lane: "main", signal: undefined });
+    expect(sweepLane).toHaveBeenCalledWith({ lane: "background", signal: undefined });
+  });
+
   it("uses the complete jittered preparation ladder and clips it to the durable deadline", () => {
     const now = new Date("2026-09-02T00:00:00.000Z");
     expect([0, 1, 2, 3, 4, 5].map((attemptCount) =>
@@ -617,11 +643,12 @@ describe("Runtime v3 progression interface", () => {
     expect(warm.project).toHaveBeenCalledWith(mainClaim, expect.objectContaining({
       throughCursor: 2n,
       settled: true,
+      activity: true,
       assistant: [{
         eventId: expect.stringMatching(/^v3:/),
         content: "The incident is resolved.",
       }],
-    }));
+    }), expect.any(AbortSignal));
     expect(pi.acknowledge).toHaveBeenCalledWith(expect.objectContaining({ through: 2n }));
     expect(store.convergence.completeProgression).toHaveBeenCalledWith(
       mainClaim,

@@ -5,12 +5,16 @@ ALTER TABLE public.companion_v3_instances
 --> statement-breakpoint
 ALTER TABLE public.companion_v3_turns
   ADD COLUMN admission_started_at timestamp with time zone,
+  ADD COLUMN correlated_activity_cursor bigint NOT NULL DEFAULT 0,
   ADD COLUMN inactivity_deadline_at timestamp with time zone,
   ADD COLUMN absolute_deadline_at timestamp with time zone;
 --> statement-breakpoint
 UPDATE public.companion_v3_turns
-SET admission_started_at = admitted_at,
-    absolute_deadline_at = admitted_at + interval '2 hours',
+SET admission_started_at = admitted_at
+WHERE admission_state IN ('accepted', 'ambiguous') AND admitted_at IS NOT NULL;
+--> statement-breakpoint
+UPDATE public.companion_v3_turns
+SET absolute_deadline_at = admitted_at + interval '2 hours',
     inactivity_deadline_at = CASE WHEN state = 'needs_input' THEN NULL
       ELSE LEAST(admitted_at + interval '2 hours',
         COALESCE(last_activity_at, admitted_at) + interval '10 minutes') END
@@ -66,7 +70,7 @@ BEGIN
   NEW.absolute_deadline_at := OLD.absolute_deadline_at;
   IF NEW.state = 'needs_input' THEN
     NEW.inactivity_deadline_at := NULL;
-  ELSIF NEW.activity_cursor > OLD.activity_cursor THEN
+  ELSIF NEW.correlated_activity_cursor > OLD.correlated_activity_cursor THEN
     NEW.last_activity_at := COALESCE(NEW.last_activity_at, v_now);
     NEW.inactivity_deadline_at := LEAST(
       NEW.absolute_deadline_at, NEW.last_activity_at + interval '10 minutes');
@@ -78,7 +82,7 @@ BEGIN
 END $$;
 --> statement-breakpoint
 CREATE TRIGGER companion_v3_bound_turn_clocks
-BEFORE UPDATE OF state, admission_state, activity_cursor, last_activity_at
+BEFORE UPDATE OF state, admission_state, correlated_activity_cursor, last_activity_at
 ON public.companion_v3_turns FOR EACH ROW
 EXECUTE FUNCTION public.companion_v3_bound_turn_clocks();
 --> statement-breakpoint
@@ -95,7 +99,9 @@ BEGIN
     AND NEW.preparation_deadline_at IS NULL THEN
     NEW.preparation_deadline_at := clock_timestamp() + interval '2 hours 15 minutes';
   END IF;
-  IF NEW.preparation_deadline_at IS NOT NULL
+  IF NEW.preparation_error_code = 'companion_prepare_deadline_exceeded' THEN
+    NEW.preparation_available_at := 'infinity'::timestamp with time zone;
+  ELSIF NEW.preparation_deadline_at IS NOT NULL
     AND NEW.preparation_available_at > NEW.preparation_deadline_at THEN
     NEW.preparation_available_at := NEW.preparation_deadline_at;
   END IF;
@@ -219,7 +225,9 @@ RETURNS TABLE (
   org_id uuid, companion_id uuid, turn_id uuid, command_id uuid,
   lane public.companion_v3_lane, state public.companion_v3_turn_state,
   claim_token uuid, claim_epoch bigint, gate_epoch bigint,
-  admission_started_at timestamp with time zone
+  admission_started_at timestamp with time zone,
+  inactivity_deadline_at timestamp with time zone,
+  absolute_deadline_at timestamp with time zone
 )
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public SET row_security = on AS $$
@@ -230,7 +238,8 @@ BEGIN
   RETURN QUERY
   SELECT claimed.org_id, claimed.companion_id, claimed.turn_id, claimed.command_id,
     claimed.lane, claimed.state, claimed.claim_token, claimed.claim_epoch, claimed.gate_epoch,
-    turn_row.admission_started_at
+    turn_row.admission_started_at, turn_row.inactivity_deadline_at,
+    turn_row.absolute_deadline_at
   FROM public.companion_v3_runtime_claim(p_executor_id, p_lane, p_lease_seconds, 3) claimed
   JOIN public.companion_v3_turns turn_row
     ON turn_row.org_id = claimed.org_id AND turn_row.companion_id = claimed.companion_id
@@ -249,7 +258,9 @@ RETURNS TABLE (
   org_id uuid, companion_id uuid, turn_id uuid, command_id uuid,
   lane public.companion_v3_lane, state public.companion_v3_turn_state,
   claim_token uuid, claim_epoch bigint, gate_epoch bigint,
-  admission_started_at timestamp with time zone
+  admission_started_at timestamp with time zone,
+  inactivity_deadline_at timestamp with time zone,
+  absolute_deadline_at timestamp with time zone
 )
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public SET row_security = on AS $$
@@ -260,7 +271,8 @@ BEGIN
   RETURN QUERY
   SELECT claimed.org_id, claimed.companion_id, claimed.turn_id, claimed.command_id,
     claimed.lane, claimed.state, claimed.claim_token, claimed.claim_epoch, claimed.gate_epoch,
-    turn_row.admission_started_at
+    turn_row.admission_started_at, turn_row.inactivity_deadline_at,
+    turn_row.absolute_deadline_at
   FROM public.companion_v3_runtime_claim_warm(
     p_executor_id, p_lane, p_lease_seconds, 3
   ) claimed
@@ -270,6 +282,49 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.companion_v3_runtime_claim_warm_v4(
   text,public.companion_v3_lane,integer,integer
+) FROM PUBLIC;
+--> statement-breakpoint
+
+CREATE FUNCTION public.companion_v3_runtime_project_native_page_v4(
+  p_org_id uuid, p_companion_id uuid, p_lane public.companion_v3_lane,
+  p_turn_id uuid, p_claim_token uuid, p_claim_epoch bigint, p_gate_epoch bigint,
+  p_through_cursor bigint, p_assistant jsonb, p_needs_input boolean,
+  p_correlated_activity boolean, p_terminal text, p_protocol integer
+)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public SET row_security = on AS $$
+DECLARE
+  v_now timestamp with time zone := clock_timestamp();
+  v_projected text;
+BEGIN
+  IF p_protocol IS DISTINCT FROM 4 OR p_correlated_activity IS NULL THEN
+    RAISE EXCEPTION 'Runtime v3 projection protocol 4 is required' USING ERRCODE = '42501';
+  END IF;
+  v_projected := public.companion_v3_runtime_project_native_page(
+    p_org_id, p_companion_id, p_lane, p_turn_id, p_claim_token, p_claim_epoch,
+    p_gate_epoch, p_through_cursor, p_assistant, p_needs_input, p_terminal, 3
+  );
+  IF v_projected IS NOT NULL AND p_correlated_activity AND p_terminal IS NULL THEN
+    UPDATE public.companion_v3_turns turn_row
+    SET correlated_activity_cursor = p_through_cursor,
+      last_activity_at = v_now, updated_at = v_now
+    FROM public.companion_v3_lane_leases lease, public.companion_runtime_control control
+    WHERE turn_row.org_id = p_org_id AND turn_row.companion_id = p_companion_id
+      AND turn_row.id = p_turn_id AND turn_row.lane = p_lane
+      AND turn_row.state IN ('running', 'needs_input')
+      AND p_through_cursor >= turn_row.correlated_activity_cursor
+      AND lease.org_id = turn_row.org_id AND lease.companion_id = turn_row.companion_id
+      AND lease.lane = turn_row.lane AND lease.turn_id = turn_row.id
+      AND lease.claim_token = p_claim_token AND lease.claim_epoch = p_claim_epoch
+      AND lease.gate_epoch = p_gate_epoch AND lease.expires_at > v_now
+      AND control.id = 'runtime-v2' AND control.enabled AND control.gate_epoch = p_gate_epoch;
+    IF NOT FOUND THEN RETURN NULL; END IF;
+  END IF;
+  RETURN v_projected;
+END $$;
+REVOKE ALL ON FUNCTION public.companion_v3_runtime_project_native_page_v4(
+  uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,
+  boolean,boolean,text,integer
 ) FROM PUBLIC;
 --> statement-breakpoint
 
@@ -315,7 +370,6 @@ SET search_path = pg_catalog, public SET row_security = on AS $$
 DECLARE
   v_now timestamp with time zone := clock_timestamp();
   v_instance public.companion_v3_instances%ROWTYPE;
-  v_turn_id uuid;
 BEGIN
   SELECT instance.* INTO v_instance FROM public.companion_v3_instances instance
   JOIN public.companion_runtime_control control
@@ -324,16 +378,14 @@ BEGIN
   ORDER BY instance.preparation_deadline_at, instance.created_at
   LIMIT 1 FOR UPDATE OF instance SKIP LOCKED;
   IF NOT FOUND THEN RETURN 0; END IF;
-  SELECT turn_row.id INTO v_turn_id FROM public.companion_v3_turns turn_row
-  WHERE turn_row.org_id = v_instance.org_id AND turn_row.companion_id = v_instance.companion_id
-    AND turn_row.lane = 'main' AND turn_row.state = 'queued'
-  ORDER BY turn_row.queue_sequence, turn_row.id LIMIT 1 FOR UPDATE;
+  UPDATE public.companion_v3_turns turn_row SET state = 'failed', outcome = 'failed',
+    outcome_code = 'companion_prepare_deadline_exceeded',
+    outcome_message = 'The Companion could not prepare before its deadline.',
+    outcome_action = 'retry', settled_at = v_now, updated_at = v_now
+  WHERE turn_row.org_id = v_instance.org_id
+    AND turn_row.companion_id = v_instance.companion_id
+    AND turn_row.state = 'queued';
   IF FOUND THEN
-    UPDATE public.companion_v3_turns turn_row SET state = 'failed', outcome = 'failed',
-      outcome_code = 'companion_prepare_deadline_exceeded',
-      outcome_message = 'The Companion could not prepare before its deadline.',
-      outcome_action = 'retry', settled_at = v_now, updated_at = v_now
-    WHERE turn_row.id = v_turn_id;
     UPDATE public.companion_threads thread
     SET projection_sequence = thread.projection_sequence + 1, updated_at = v_now
     WHERE thread.org_id = v_instance.org_id AND thread.companion_id = v_instance.companion_id;
@@ -343,8 +395,8 @@ BEGIN
     preparation_claim_epoch = instance.preparation_claim_epoch + 1,
     preparation_gate_epoch = NULL, preparation_executor_id = NULL,
     preparation_claimed_at = NULL, preparation_expires_at = NULL,
-    preparation_deadline_at = NULL, preparation_attempt_count = 0,
-    preparation_available_at = v_now,
+    preparation_attempt_count = instance.preparation_attempt_count,
+    preparation_available_at = 'infinity'::timestamp with time zone,
     preparation_error_code = 'companion_prepare_deadline_exceeded',
     preparation_error_message = 'The Companion could not prepare before its deadline.',
     updated_at = v_now
@@ -408,11 +460,13 @@ BEGIN
     EXECUTE format('REVOKE EXECUTE ON FUNCTION public.companion_v3_runtime_claim_warm(text,public.companion_v3_lane,integer,integer) FROM %I', v_role);
     EXECUTE format('REVOKE EXECUTE ON FUNCTION public.companion_v3_runtime_claim(text,public.companion_v3_lane,integer,integer) FROM %I', v_role);
     EXECUTE format('REVOKE EXECUTE ON FUNCTION public.companion_v3_runtime_complete(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer) FROM %I', v_role);
+    EXECUTE format('REVOKE EXECUTE ON FUNCTION public.companion_v3_runtime_project_native_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,text,integer) FROM %I', v_role);
     EXECUTE format('REVOKE EXECUTE ON FUNCTION public.companion_v3_runtime_claim_preparation(text,integer,integer) FROM %I', v_role);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_claim_warm_v4(text,public.companion_v3_lane,integer,integer) TO %I', v_role);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_claim_v4(text,public.companion_v3_lane,integer,integer) TO %I', v_role);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_complete_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer) TO %I', v_role);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_begin_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer) TO %I', v_role);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_project_native_page_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,text,integer) TO %I', v_role);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_sweep_deadlines(public.companion_v3_lane,integer) TO %I', v_role);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_claim_preparation_v5(text,integer,integer) TO %I', v_role);
   END LOOP;

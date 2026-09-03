@@ -1448,6 +1448,8 @@ export const companionV3Turns = pgTable(
     journalAckPending: boolean("journal_ack_pending").notNull().default(false),
     admissionCursor: bigint("admission_cursor", { mode: "number" }),
     activityCursor: bigint("activity_cursor", { mode: "number" }).notNull().default(0),
+    correlatedActivityCursor: bigint("correlated_activity_cursor", { mode: "number" })
+      .notNull().default(0),
     lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
     firstActivityAt: timestamp("first_activity_at", { withTimezone: true }),
     inactivityDeadlineAt: timestamp("inactivity_deadline_at", { withTimezone: true }),
@@ -1509,7 +1511,7 @@ export const companionV3Turns = pgTable(
     ),
     cursorCheck: check(
       "companion_v3_turns_cursor_check",
-      sql`${t.activityCursor} >= 0 and (${t.admissionCursor} is null or ${t.admissionCursor} >= 0)`,
+      sql`${t.activityCursor} >= 0 and ${t.correlatedActivityCursor} >= 0 and ${t.correlatedActivityCursor} <= ${t.activityCursor} and (${t.admissionCursor} is null or ${t.admissionCursor} >= 0)`,
     ),
     admissionCheck: check(
       "companion_v3_turns_admission_check",

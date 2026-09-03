@@ -40,6 +40,8 @@ interface ClaimRow {
   claimEpoch: string;
   gateEpoch: string;
   admissionStartedAt: Date | null;
+  inactivityDeadlineAt: Date | null;
+  absoluteDeadlineAt: Date | null;
 }
 
 interface TerminalCompletion {
@@ -55,6 +57,8 @@ function turnFromRow(row: {
   lane: "main" | "background";
   state: RuntimeV3Turn["state"];
   admissionStartedAt: Date | null;
+  inactivityDeadlineAt: Date | null;
+  absoluteDeadlineAt: Date | null;
 }): RuntimeV3Turn {
   return {
     id: row.turnId,
@@ -62,6 +66,8 @@ function turnFromRow(row: {
     lane: row.lane,
     state: row.state,
     admissionStartedAt: row.admissionStartedAt,
+    inactivityDeadlineAt: row.inactivityDeadlineAt,
+    absoluteDeadlineAt: row.absoluteDeadlineAt,
   };
 }
 
@@ -112,14 +118,18 @@ function createPostgresConvergence(
           select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
             command_id as "commandId", lane::text, state::text,
             claim_token as "claimToken", claim_epoch::text as "claimEpoch",
-            gate_epoch::text as "gateEpoch", admission_started_at as "admissionStartedAt"
+            gate_epoch::text as "gateEpoch", admission_started_at as "admissionStartedAt",
+            inactivity_deadline_at as "inactivityDeadlineAt",
+            absolute_deadline_at as "absoluteDeadlineAt"
           from public.companion_v3_runtime_claim_warm_v4(${executorId}, ${lane}, 30, 4)
         `, signal)
         : await abortable(sql<ClaimRow[]>`
           select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
             command_id as "commandId", lane::text, state::text,
             claim_token as "claimToken", claim_epoch::text as "claimEpoch",
-            gate_epoch::text as "gateEpoch", admission_started_at as "admissionStartedAt"
+            gate_epoch::text as "gateEpoch", admission_started_at as "admissionStartedAt",
+            inactivity_deadline_at as "inactivityDeadlineAt",
+            absolute_deadline_at as "absoluteDeadlineAt"
           from public.companion_v3_runtime_claim_v4(${executorId}, ${lane}, 30, 4)
         `, signal);
       const row = rows[0];
@@ -459,7 +469,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
     },
     async project(claim, projection, signal) {
       const rows = await abortable(sql<Array<{ projected: string | null }>>`
-        select public.companion_v3_runtime_project_native_page(
+        select public.companion_v3_runtime_project_native_page_v4(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
           ${claim.turn.lane},
@@ -470,8 +480,9 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           ${projection.throughCursor.toString()}::bigint,
           ${sql.json(projection.assistant)}::jsonb,
           ${projection.needsInput},
+          ${projection.activity},
           ${projection.processExited ? "process_exit" : projection.settled ? "settled" : null},
-          3
+          4
         ) as projected
       `, signal);
       const projected = rows[0]?.projected;

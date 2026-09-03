@@ -971,7 +971,8 @@ BEGIN
           'public.companion_v3_runtime_claim_warm_v4(text,public.companion_v3_lane,integer,integer)'::regprocedure,
           'public.companion_v3_runtime_complete_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure,
           'public.companion_v3_runtime_begin_admission(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure,
-          'public.companion_v3_runtime_sweep_deadlines(public.companion_v3_lane,integer)'::regprocedure
+          'public.companion_v3_runtime_sweep_deadlines(public.companion_v3_lane,integer)'::regprocedure,
+          'public.companion_v3_runtime_project_native_page_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,text,integer)'::regprocedure
         ];
       ELSE
         companion_runtime_functions := companion_runtime_functions || ARRAY[
@@ -993,6 +994,12 @@ BEGIN
         ];
       END IF;
       IF pg_catalog.to_regprocedure(
+        'public.companion_v3_runtime_project_native_page_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,text,integer)'
+      ) IS NOT NULL THEN
+        companion_runtime_functions := companion_runtime_functions || ARRAY[
+          'public.companion_v3_runtime_project_native_page_v4(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,boolean,text,integer)'::regprocedure
+        ];
+      ELSIF pg_catalog.to_regprocedure(
         'public.companion_v3_runtime_project_native_page(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,boolean,text,integer)'
       ) IS NOT NULL THEN
         companion_runtime_functions := companion_runtime_functions || ARRAY[
