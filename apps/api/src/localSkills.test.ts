@@ -48,7 +48,7 @@ describe("companion skill package + row", () => {
     const pkg = await getCompanionSkillPackage();
     expect(pkg.key).toBe("companion");
     expect(pkg.checksum).toMatch(/^sha256:[0-9a-f]{64}$/);
-    expect(pkg.version).toBe("1.109.0");
+    expect(pkg.version).toBe("1.110.0");
     expect(pkg.sizeBytes).toBeGreaterThan(0);
     expect(pkg.integrity.packageChecksum).toBe(pkg.checksum);
     expect(pkg.integrity.files["SKILL.md"]).toMatch(/^sha256:[0-9a-f]{64}$/);
@@ -127,13 +127,19 @@ describe("companion skill package + row", () => {
       desc: "Create or repair manifest v2 with identity, env/secrets, dependency ids, notes, commands, and changelog.",
     });
     const changelog = row.changes.join("\n");
-    expect(changelog).toContain("immutable Companion Owner before Box contact");
-    expect(changelog).toContain("live persistent Companion memory");
-    expect(changelog).toContain("never replays ambiguous or accepted routine work");
+    expect(changelog).toContain("external incident aggregation");
+    expect(changelog).toContain("bounded retries");
+    expect(changelog).toContain("automatic source resumption");
     // SAFETY: the bundled manifest is the repo's own companion.json, whose metadata.changelog shape the manifest schema fixes.
     const manifest = JSON.parse(await readFile(join(companionSkillDir(), "companion.json"), "utf8")) as {
       metadata?: { changelog?: Array<{ version?: string; changes?: string[] }> };
     };
+    const scheduledRoutineChanges = manifest.metadata?.changelog
+      ?.find((entry) => entry.version === "1.109.0")
+      ?.changes?.join("\n") ?? "";
+    expect(scheduledRoutineChanges).toContain("immutable Companion Owner before Box contact");
+    expect(scheduledRoutineChanges).toContain("live persistent Companion memory");
+    expect(scheduledRoutineChanges).toContain("never replays ambiguous or accepted routine work");
     const runtimeRecoveryChanges = manifest.metadata?.changelog
       ?.find((entry) => entry.version === "1.104.1")
       ?.changes?.join("\n") ?? "";
