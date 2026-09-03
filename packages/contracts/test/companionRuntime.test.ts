@@ -5,13 +5,12 @@ import {
   cancelCompanionTurnInputSchema,
   companionActiveTurnSchema,
   companionInterruptedTurnSchema,
+  companionLifecycleAcceptedSchema,
   companionOperationAcceptedResponseSchema,
   companionOperationSchema,
   companionQueuedTurnSchema,
   companionRuntimeSafeErrorSchema,
   companionTurnSchema,
-  retryCompanionTurnAcceptedResponseSchema,
-  retryCompanionTurnInputSchema,
 } from "../src/companionRuntime";
 
 const companionId = "11111111-1111-4111-8111-111111111111";
@@ -62,7 +61,7 @@ function turn(overrides: Partial<CompanionTurn> = {}): CompanionTurn {
   };
 }
 
-describe("Companion Runtime v2 public contracts", () => {
+describe("Companion Runtime v3 public contracts", () => {
   it("projects an honest bounded external block without dependency identifiers", () => {
     const parsed = companionTurnSchema.parse(turn({
       status: "queued",
@@ -213,12 +212,10 @@ describe("Companion Runtime v2 public contracts", () => {
     expect(() => cancelCompanionTurnInputSchema.parse({ rollback: true })).toThrow();
   });
 
-  it("keeps compatibility Retry strict without defining a new response shape", () => {
-    const retryId = "77777777-7777-4777-8777-777777777777";
-    expect(retryCompanionTurnInputSchema.parse({ retry_id: retryId })).toEqual({
-      retry_id: retryId,
-    });
-    expect(() => retryCompanionTurnInputSchema.parse({ retry_id: retryId, replay: true })).toThrow();
-    expect(retryCompanionTurnAcceptedResponseSchema).toBe(companionOperationAcceptedResponseSchema);
+  it("accepts only v3 lifecycle intent and monotonic revision", () => {
+    expect(companionLifecycleAcceptedSchema.parse({ intent: "recycle_pi", revision: "4" }))
+      .toEqual({ intent: "recycle_pi", revision: "4" });
+    expect(() => companionLifecycleAcceptedSchema.parse({ intent: "restart_box", revision: "4" }))
+      .toThrow();
   });
 });

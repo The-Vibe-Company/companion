@@ -46,7 +46,7 @@ const coreMocks = {
   cancelCompanionTurnV2: vi.fn<typeof coreModule.cancelCompanionTurnV2>(),
   createCompanionV2: vi.fn<typeof coreModule.createCompanionV2>(),
   duplicateCompanionV2: vi.fn<typeof coreModule.duplicateCompanionV2>(),
-  enqueueCompanionOperationV2: vi.fn<typeof coreModule.enqueueCompanionOperationV2>(),
+  desireCompanionLifecycleV3: vi.fn<typeof coreModule.desireCompanionLifecycleV3>(),
   enqueueCompanionTurn: vi.fn<typeof coreModule.enqueueCompanionTurn>(),
   getCompanionDecisionV2: vi.fn<typeof coreModule.getCompanionDecisionV2>(),
   getCompanionRoutineRunV2: vi.fn<typeof coreModule.getCompanionRoutineRunV2>(),
@@ -81,7 +81,6 @@ const coreMocks = {
   readCompanionThreadWindowV2: vi.fn<typeof coreModule.readCompanionThreadWindowV2>(),
   readCompanionThreadV2: vi.fn<typeof coreModule.readCompanionThreadV2>(),
   syncCompanionThreadV2: vi.fn<typeof coreModule.syncCompanionThreadV2>(),
-  retryCompanionTurnV2: vi.fn<typeof coreModule.retryCompanionTurnV2>(),
   setCompanionProviderV2: vi.fn<typeof coreModule.setCompanionProviderV2>(),
   setCompanionWorkspaceShareV2: vi.fn<typeof coreModule.setCompanionWorkspaceShareV2>(),
   updateCompanionMemberStateV2: vi.fn<typeof coreModule.updateCompanionMemberStateV2>(),
@@ -447,13 +446,9 @@ describe("Companions Runtime v2 API", () => {
       operation,
       replayed: false,
     });
-    coreMocks.enqueueCompanionOperationV2.mockResolvedValue({
-      operation,
-      replayed: false,
-    });
-    coreMocks.retryCompanionTurnV2.mockResolvedValue({
-      operation: { ...operation, kind: "restart_pi", source_turn_id: TURN_ID },
-      replayed: false,
+    coreMocks.desireCompanionLifecycleV3.mockResolvedValue({
+      intent: "delete",
+      revision: "1",
     });
     coreMocks.cancelCompanionTurnV2.mockResolvedValue(cancelledTurn);
     coreMocks.answerCompanionDecisionV2.mockResolvedValue(undefined);
@@ -1708,28 +1703,46 @@ describe("Companions Runtime v2 API", () => {
     expect(coreMocks.setCompanionWorkspaceShareV2).toHaveBeenCalledOnce();
   });
 
-  it.each([
-    ["delete", `/v1/companions/${COMPANION_ID}`, "DELETE", undefined, "delete"],
-    ["start", `/v1/companions/${COMPANION_ID}/runtime/start`, "POST", {}, "start"],
-    ["stop", `/v1/companions/${COMPANION_ID}/runtime/stop`, "POST", undefined, "stop"],
-    ["restart Pi", `/v1/companions/${COMPANION_ID}/runtime/restart`, "POST", { target: "pi" }, "restart_pi"],
-  ])("accepts %s as a durable operation", async (_label, path, method, body, kind) => {
+  it("accepts a temporary Pi restart as a Runtime v3 lifecycle desire", async () => {
+    coreMocks.desireCompanionLifecycleV3.mockResolvedValue({
+      intent: "recycle_pi",
+      revision: "1",
+    });
     const app = appWithRoutes();
     const headers = new Headers({ "Idempotency-Key": RETRY_ID });
-    const request: RequestInit = { method, headers };
-    if (body !== undefined) {
-      headers.set("content-type", "application/json");
-      request.body = JSON.stringify(body);
-    }
-    const response = await app.request(path, {
-      ...request,
+    headers.set("content-type", "application/json");
+    const response = await app.request(`/v1/companions/${COMPANION_ID}/runtime/restart`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ target: "pi" }),
     });
 
     expect(response.status).toBe(202);
-    await expect(response.json()).resolves.toEqual({ operation });
-    expect(coreMocks.enqueueCompanionOperationV2).toHaveBeenCalledWith(expect.objectContaining({
+    await expect(response.json()).resolves.toEqual({
+      lifecycle: { intent: "recycle_pi", revision: "1" },
+    });
+    expect(coreMocks.desireCompanionLifecycleV3).toHaveBeenCalledWith(expect.objectContaining({
       companionId: COMPANION_ID,
-      kind,
+      intent: "recycle_pi",
+      requestId: RETRY_ID,
+    }));
+  });
+
+  it.each([
+    ["delete", `/v1/companions/${COMPANION_ID}`, "DELETE", "delete"],
+    ["archive", `/v1/companions/${COMPANION_ID}/runtime/archive`, "POST", "archive"],
+  ] as const)("accepts %s as a Runtime v3 lifecycle desire", async (_label, path, method, intent) => {
+    coreMocks.desireCompanionLifecycleV3.mockResolvedValue({ intent, revision: "1" });
+    const response = await appWithRoutes().request(path, {
+      method,
+      headers: { "Idempotency-Key": RETRY_ID },
+    });
+
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toEqual({ lifecycle: { intent, revision: "1" } });
+    expect(coreMocks.desireCompanionLifecycleV3).toHaveBeenCalledWith(expect.objectContaining({
+      companionId: COMPANION_ID,
+      intent,
       requestId: RETRY_ID,
     }));
   });
@@ -1740,7 +1753,7 @@ describe("Companions Runtime v2 API", () => {
     );
 
     expect(response.status).toBe(400);
-    expect(coreMocks.enqueueCompanionOperationV2).not.toHaveBeenCalled();
+    expect(coreMocks.desireCompanionLifecycleV3).not.toHaveBeenCalled();
   });
 
   it("rejects the removed full-Box restart target", async () => {
@@ -1753,7 +1766,7 @@ describe("Companions Runtime v2 API", () => {
     );
 
     expect(response.status).toBe(400);
-    expect(coreMocks.enqueueCompanionOperationV2).not.toHaveBeenCalled();
+    expect(coreMocks.desireCompanionLifecycleV3).not.toHaveBeenCalled();
   });
 
   it("cancels a turn durably and returns the refreshed thread", async () => {
@@ -1771,23 +1784,21 @@ describe("Companions Runtime v2 API", () => {
     }));
   });
 
-  it("keeps the Retry wire endpoint as an observation of the existing automatic cleanup", async () => {
+  it.each([
+    ["Retry", `/v1/companions/${COMPANION_ID}/turns/${TURN_ID}/retry`, "POST"],
+    ["Start", `/v1/companions/${COMPANION_ID}/runtime/start`, "POST"],
+    ["Stop", `/v1/companions/${COMPANION_ID}/runtime/stop`, "POST"],
+  ])("does not register the removed %s compatibility endpoint", async (_label, path, method) => {
     const response = await appWithRoutes().request(
-      jsonPost(`/v1/companions/${COMPANION_ID}/turns/${TURN_ID}/retry`, {
-        retry_id: RETRY_ID,
+      new Request(`http://localhost${path}`, {
+        method,
+        headers: { "content-type": "application/json", "Idempotency-Key": RETRY_ID },
+        body: JSON.stringify({ retry_id: RETRY_ID }),
       }),
     );
 
-    expect(response.status).toBe(202);
-    await expect(response.json()).resolves.toEqual({
-      operation: { ...operation, kind: "restart_pi", source_turn_id: TURN_ID },
-    });
-    expect(coreMocks.retryCompanionTurnV2).toHaveBeenCalledWith(expect.objectContaining({
-      companionId: COMPANION_ID,
-      turnId: TURN_ID,
-      retryId: RETRY_ID,
-      clientSurface: "web",
-    }));
+    expect(response.status).toBe(404);
+    expect(coreMocks.desireCompanionLifecycleV3).not.toHaveBeenCalled();
   });
 
   it("persists decision answers and lets Runtime deliver them", async () => {

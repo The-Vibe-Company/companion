@@ -2471,11 +2471,6 @@ export const saveCompanionPluginInputSchema = z.object({
 });
 export type SaveCompanionPluginInput = z.infer<typeof saveCompanionPluginInputSchema>;
 
-export const startCompanionRuntimeInputSchema = z.object({
-  client_surface: companionClientSurfaceSchema.default("web"),
-}).strict();
-export type StartCompanionRuntimeInput = z.infer<typeof startCompanionRuntimeInputSchema>;
-
 export const companionProviderErrorSchema = z.object({
   code: z.enum([
     "provider_not_configured",

@@ -10,8 +10,8 @@ import {
 import {
   CompanionImageRegistry,
   IMAGE_BUILD_BACKOFF_MS,
-} from "@companion/companion-runtime";
-import type { RuntimeProcessLog } from "@companion/companion-runtime";
+} from "@companion/companion-runtime/runtime-support";
+import type { RuntimeProcessLog } from "@companion/companion-runtime/runtime-support";
 
 import type { RuntimeImageSource } from "./boxAdapters";
 

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   decodeRuntimeV3PreparationSnapshot,
-} from "@companion/companion-runtime";
+} from "@companion/companion-runtime/runtime-support";
 import type {
   RuntimeV3Claim,
   RuntimeV3ConvergencePersistence,

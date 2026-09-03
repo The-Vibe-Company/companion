@@ -14,7 +14,7 @@ import type {
   RuntimeBoxControl,
   RuntimePiControl,
   RuntimeProcessLog,
-} from "@companion/companion-runtime";
+} from "@companion/companion-runtime/runtime-support";
 
 export type RuntimeImageAvailability =
   | "ready"
@@ -92,9 +92,16 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
         }
         imageLookupMs = now() - lookupStartedAt;
       }
+      const coldIdempotencyKey = input.idempotencyKey
+        ? coldCreateIdempotencyKey({
+          baseKey: input.idempotencyKey,
+          companionId: input.companionId,
+          generation: input.generation,
+        })
+        : undefined;
       const create = (
         fromImage?: string,
-        idempotencyKey = input.idempotencyKey,
+        idempotencyKey = fromImage ? input.idempotencyKey : coldIdempotencyKey,
         deadlineLimit = input.workDeadlineAt ?? input.deadlineAt,
       ) =>
         options.lifecycle.createGenerationBoxAfterObservedAbsence({
@@ -113,9 +120,9 @@ export function createRuntimeBoxControl(options: RuntimeBoxAdapterOptions): Runt
         if (!from || !isUnknownSnapshot(error)) throw error;
         fallbackReason = "unknown_snapshot_fallback";
         from = undefined;
-        created = await create(undefined, input.idempotencyKey
-          ? coldFallbackIdempotencyKey(input.idempotencyKey)
-          : undefined);
+        // Keep the cold body on its own generation-stable identity. A later claim that no longer
+        // sees the snapshot must replay this exact key, never the snapshot key or the claim fence.
+        created = await create(undefined, coldIdempotencyKey);
       }
       const result = created;
       // A snapshot source that still ended without a clone name means this create cold-installed.
@@ -411,10 +418,14 @@ function isUnknownSnapshot(error: unknown): boolean {
   return error.providerCode === "unknown_snapshot" || error.stableCode === "box_not_found";
 }
 
-/** A known-negative snapshot response may retry cold with a distinct replay-stable provider key. */
-function coldFallbackIdempotencyKey(source: string): string {
+/** Stable external identity for the cold fingerprint, independent of every preparation claim. */
+function coldCreateIdempotencyKey(input: {
+  baseKey: string;
+  companionId: string;
+  generation: bigint;
+}): string {
   const bytes = createHash("sha256")
-    .update(`companion:cold-fallback:${source}`)
+    .update(`companion:cold-create:${input.companionId}:${input.generation}:${input.baseKey}`)
     .digest()
     .subarray(0, 16);
   bytes[6] = (bytes[6]! & 0x0f) | 0x50;

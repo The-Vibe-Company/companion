@@ -60,27 +60,27 @@ export const companionNotificationEnvironmentEnum = pgEnum("companion_notificati
 export const companionNotificationEventEnum = pgEnum("companion_notification_event", [
   "reply", "input_required", "failed", "interrupted",
 ]);
-export const companionAttemptStatusEnum = pgEnum("companion_attempt_status", [
+const companionAttemptStatusEnum = pgEnum("companion_attempt_status", [
   "starting", "dispatching", "running", "needs_input",
   "succeeded", "failed", "interrupted", "cancelled",
 ]);
-export const companionDispatchStateEnum = pgEnum("companion_dispatch_state", [
+const companionDispatchStateEnum = pgEnum("companion_dispatch_state", [
   "pending", "write_intent", "accepted", "rejected", "ambiguous",
 ]);
-export const companionOperationKindEnum = pgEnum("companion_operation_kind", [
+const companionOperationKindEnum = pgEnum("companion_operation_kind", [
   "delete", "stop", "restart_pi", "restart_box", "start", "apply_settings",
 ]);
-export const companionOperationStatusEnum = pgEnum("companion_operation_status", [
+const companionOperationStatusEnum = pgEnum("companion_operation_status", [
   "pending", "running", "succeeded", "failed", "interrupted", "cancelled",
 ]);
-export const companionOperationTriggerEnum = pgEnum("companion_operation_trigger", [
+const companionOperationTriggerEnum = pgEnum("companion_operation_trigger", [
   "turn", "user", "settings", "recovery", "kill_switch",
 ]);
 export const companionRuntimeErrorActionEnum = pgEnum("companion_runtime_error_action", [
   "retry", "cancel", "restart_pi", "restart_box", "switch_model",
   "reconnect_provider", "none",
 ]);
-export const companionRuntimeWorkKindEnum = pgEnum("companion_runtime_work_kind", [
+const companionRuntimeWorkKindEnum = pgEnum("companion_runtime_work_kind", [
   "operation", "decision", "attempt", "settings", "health",
 ]);
 export const companionV3LaneEnum = pgEnum("companion_v3_lane", ["main", "background"]);
@@ -2235,7 +2235,7 @@ export const companionNotificationDeliveries = pgTable(
   }),
 );
 
-export const companionTurnAttempts = pgTable(
+const companionTurnAttempts = pgTable(
   "companion_turn_attempts",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
@@ -2321,7 +2321,7 @@ export const companionTurnAttempts = pgTable(
   }),
 );
 
-export const companionOperations = pgTable(
+const companionOperations = pgTable(
   "companion_operations",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),

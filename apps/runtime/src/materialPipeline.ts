@@ -9,7 +9,6 @@ import {
   type CompanionRuntimeSkill,
 } from "@companion/box-runtime";
 import {
-  RUNTIME_LEASE_SECONDS,
   RuntimeExternalDependencyError,
   RuntimeTerminalPreparationError,
   RuntimeAttachmentExpiredError,
@@ -21,12 +20,13 @@ import {
   type RuntimeProjectionRedactorFactory,
   type RuntimeResourceStager,
   type RuntimeWorkMaterial,
-} from "@companion/companion-runtime";
+} from "@companion/companion-runtime/runtime-support";
 import type {
   RuntimeV3PreparationClaim,
   RuntimeV3PreparationStager,
 } from "@companion/companion-runtime/v3/internal";
 import {
+  COMPANION_BUDGETS_BASE,
   COMPANION_ATTACHMENT_MAX_BYTES,
   COMPANION_OUTPUT_ATTACHMENT_MAX_COUNT,
   COMPANION_OUTPUT_ATTACHMENT_TOTAL_MAX_BYTES,
@@ -115,7 +115,7 @@ export function createRuntimeMaterialPipeline(input: {
 
   const materialProvider: RuntimeMaterialProvider = {
     async getMaterial({ store, fence }) {
-      const material = await store.getMaterial(fence, RUNTIME_LEASE_SECONDS);
+      const material = await store.getMaterial(fence, COMPANION_BUDGETS_BASE.leaseSeconds);
       if (!material) return null;
       const hasOauth = decryptRuntimeMcpRows({
         orgId: fence.orgId,
@@ -124,15 +124,15 @@ export function createRuntimeMaterialPipeline(input: {
       }).some((row) => row.decrypted.kind === "oauth");
       oauthMaterialByMaterial.set(material, hasOauth);
       if (fence.workKind === "settings" || fence.workKind === "operation") {
-        material.configCatalog = await store.getConfigCatalog(fence, RUNTIME_LEASE_SECONDS);
-        const hubToken = await store.mintHubToken(fence, RUNTIME_LEASE_SECONDS);
+        material.configCatalog = await store.getConfigCatalog(fence, COMPANION_BUDGETS_BASE.leaseSeconds);
+        const hubToken = await store.mintHubToken(fence, COMPANION_BUDGETS_BASE.leaseSeconds);
         if (hubToken) hubTokensByMaterial.set(material, hubToken);
         // Mint on every staging claim: the SQL function rotates an old capability, or revokes it
         // when the current surface has no selected account. Environment-only accounts may produce
         // an unusable capability, but it is never staged or included in material expiry.
-        const mcpBrokerToken = await store.mintMcpBrokerToken(fence, RUNTIME_LEASE_SECONDS);
+        const mcpBrokerToken = await store.mintMcpBrokerToken(fence, COMPANION_BUDGETS_BASE.leaseSeconds);
         if (hasOauth && mcpBrokerToken) mcpBrokerTokensByMaterial.set(material, mcpBrokerToken);
-        const controlToken = await store.mintControlToken(fence, RUNTIME_LEASE_SECONDS);
+        const controlToken = await store.mintControlToken(fence, COMPANION_BUDGETS_BASE.leaseSeconds);
         if (controlToken) controlTokensByMaterial.set(material, controlToken);
       }
       if (input.registerAgentEndpoint && material.boxId && material.agentEndpoint) {

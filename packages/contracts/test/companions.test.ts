@@ -48,7 +48,6 @@ import {
   sendCompanionMessageAcceptedResponseSchema,
   sendCompanionMessageInputSchema,
   setCompanionWorkspaceShareInputSchema,
-  startCompanionRuntimeInputSchema,
   supplementCompanionProviderModels,
   updateCompanionInputSchema,
   updateCompanionMemberStateInputSchema,
@@ -248,9 +247,6 @@ describe("Companion provider contracts", () => {
       name: "Luna",
       system_prompt: "not part of creation",
     })).toThrow();
-    expect(() => startCompanionRuntimeInputSchema.parse({
-      credentials: [{ provider: "anthropic", env_key: "ANTHROPIC_API_KEY", value: "must-not-enter-start" }],
-    })).toThrow();
   });
 
   it("accepts only the temporary Pi-only runtime restart", () => {
@@ -377,7 +373,7 @@ describe("Companion runtime injection contract", () => {
     })).toThrow();
   });
 
-  it("keeps internal MCP material schemas but removes that material from public start", () => {
+  it("keeps internal MCP material schemas outside public lifecycle contracts", () => {
     expect(companionMcpCredentialSchema.parse({
       env_key: "GITHUB_WORK",
       value: "work-secret",
@@ -389,16 +385,6 @@ describe("Companion runtime injection contract", () => {
       command: "github-mcp-server",
       env: { GITHUB_TOKEN: "GITHUB_WORK" },
     })).toMatchObject({ transport: "stdio" });
-    expect(startCompanionRuntimeInputSchema.parse({ client_surface: "mobile_web" }))
-      .toEqual({ client_surface: "mobile_web" });
-    expect(() => startCompanionRuntimeInputSchema.parse({
-      client_surface: "web",
-      mcp_credentials: [{ env_key: "GITHUB_WORK", value: "must-not-enter-start" }],
-    })).toThrow();
-    expect(() => startCompanionRuntimeInputSchema.parse({
-      client_surface: "web",
-      mcp_accounts: [{ id: "github-work" }],
-    })).toThrow();
   });
 });
 
@@ -1194,7 +1180,7 @@ describe("Companion conversation-list contracts", () => {
     })).toThrow();
   });
 
-  it("carries the bounded latest lifecycle operation needed to restore UI after reload", () => {
+  it("accepts only the temporary Pi operation in the legacy read projection", () => {
     const parsed = companionSchema.parse({
       ...companion,
       runtime: {
@@ -1202,7 +1188,7 @@ describe("Companion conversation-list contracts", () => {
         latest_operation: {
           id: "22222222-2222-4222-8222-222222222222",
           source_turn_id: null,
-          kind: "restart_box",
+          kind: "restart_pi",
           status: "running",
           error: null,
         },
@@ -1210,10 +1196,17 @@ describe("Companion conversation-list contracts", () => {
     });
 
     expect(parsed.runtime.latest_operation).toEqual(expect.objectContaining({
-      kind: "restart_box",
+      kind: "restart_pi",
       status: "running",
     }));
     expect(parsed.runtime.latest_operation).not.toHaveProperty("checkpoint");
+    expect(() => companionSchema.parse({
+      ...companion,
+      runtime: {
+        ...companion.runtime,
+        latest_operation: { ...parsed.runtime.latest_operation, kind: "restart_box" },
+      },
+    })).toThrow();
   });
 
   it("carries only what a person or Pi said, in one bounded line", () => {

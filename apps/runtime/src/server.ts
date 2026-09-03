@@ -8,7 +8,7 @@ import {
   DESKTOP_SIGNATURE_HEADER,
   DESKTOP_TIMESTAMP_HEADER,
   verifyDesktopRequest,
-} from "@companion/companion-runtime";
+} from "@companion/companion-runtime/runtime-support";
 
 const DEFAULT_BODY_LIMIT_BYTES = 4 * 1024;
 // Widened from 1s so a single slow DB ping does not flap /healthz (and trip a restart) when the

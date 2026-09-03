@@ -26,7 +26,7 @@ import type {
   RuntimeLogRecord,
   RuntimePiControl,
   RuntimeProcessLog,
-} from "@companion/companion-runtime";
+} from "@companion/companion-runtime/runtime-support";
 
 /** One registered hosted agent endpoint, decrypted, with the freshness proof staging recorded. */
 export interface DirectAgentEndpoint extends CompanionBoxAgentEndpointCredentials {

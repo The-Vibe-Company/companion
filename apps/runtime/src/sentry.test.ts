@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { RuntimeLogRecord, RuntimeProcessLog } from "@companion/companion-runtime";
+import type { RuntimeLogRecord, RuntimeProcessLog } from "@companion/companion-runtime/runtime-support";
 import {
   captureRuntimeException,
   createSentryRuntimeProcessLog,

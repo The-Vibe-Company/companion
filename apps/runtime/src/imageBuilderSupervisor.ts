@@ -1,5 +1,5 @@
 /* oxlint-disable anti-slop/no-unknown-parameters -- describeError redacts an unknown thrown value at the builder-loop process boundary into a bounded message, mirroring boxAdapters/imageBuildWorker. */
-import type { CompanionImageRegistry, RuntimeProcessLog } from "@companion/companion-runtime";
+import type { CompanionImageRegistry, RuntimeProcessLog } from "@companion/companion-runtime/runtime-support";
 
 import { IMAGE_BUILD_POLL_INTERVAL_MS, type ImageBuildWorker } from "./imageBuildWorker";
 

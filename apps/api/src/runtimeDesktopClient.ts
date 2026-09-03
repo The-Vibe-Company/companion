@@ -6,7 +6,7 @@ import {
   DESKTOP_SIGNATURE_HEADER,
   DESKTOP_TIMESTAMP_HEADER,
   signDesktopRequest,
-} from "@companion/companion-runtime";
+} from "@companion/companion-runtime/runtime-support";
 import { companionDesktopSchema, type CompanionDesktop } from "@companion/contracts";
 
 export class RuntimeDesktopClientError extends Error {

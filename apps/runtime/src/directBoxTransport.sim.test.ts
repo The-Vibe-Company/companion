@@ -13,7 +13,7 @@ import {
 } from "@companion/box-runtime";
 import { createBoxSimServer, type BoxSimServerHandle } from "@companion/box-sim/server";
 
-import type { RuntimeLogRecord } from "@companion/companion-runtime";
+import type { RuntimeLogRecord } from "@companion/companion-runtime/runtime-support";
 
 import { createRuntimePiControl } from "./boxAdapters";
 import {

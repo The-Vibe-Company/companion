@@ -9,7 +9,6 @@ import type {
   CompanionAttachmentUpload,
   CompanionClientSurface,
   CompanionOperation,
-  CompanionOperationKind,
   CompanionShareRole,
   CompanionThread,
   CompanionThreadDeltaResponse,
@@ -1109,26 +1108,8 @@ export async function enqueueCompanionTurn(input: {
 }): Promise<{ turn: CompanionTurn; operation: CompanionOperation | null; replayed: boolean }> {
   const attachments = (input.attachments ?? []).map((attachment) =>
     companionAttachmentUploadSchema.parse(attachment));
-  if (attachments.length === 0) {
-    const v3Result = await input.database.execute(sql`
-      select * from public.companion_v3_api_enqueue_warm_turn(
-        ${input.orgId}::uuid,
-        ${input.companionId}::uuid,
-        ${input.clientMessageId}::uuid,
-        ${input.content}
-      )
-    `);
-    const [v3Row] = rows<{ turn: unknown; replayed: boolean }>(v3Result);
-    if (v3Row) {
-      return {
-        turn: companionTurnSchema.parse(v3Row.turn),
-        operation: null,
-        replayed: v3Row.replayed,
-      };
-    }
-  }
   const result = await input.database.execute(sql`
-    select * from public.companion_api_enqueue_turn(
+    select * from public.companion_v3_api_enqueue_turn(
       ${input.orgId}::uuid,
       ${input.companionId}::uuid,
       ${input.clientMessageId}::uuid,
@@ -1137,11 +1118,11 @@ export async function enqueueCompanionTurn(input: {
       ${JSON.stringify(attachments)}::jsonb
     )
   `);
-  const [row] = rows<{ turn: unknown; operation: unknown; replayed: boolean }>(result);
+  const [row] = rows<{ turn: unknown; replayed: boolean }>(result);
   if (!row) throw new Error("failed to enqueue Companion turn");
   return {
     turn: companionTurnSchema.parse(row.turn),
-    operation: parseOperation(row.operation),
+    operation: null,
     replayed: row.replayed,
   };
 }
@@ -1201,43 +1182,25 @@ export async function readCompanionAttachmentV2(input: {
   };
 }
 
-export async function enqueueCompanionOperationV2(input: {
+export async function desireCompanionLifecycleV3(input: {
   orgId: string;
   companionId: string;
   requestId: string;
-  kind: CompanionOperationKind;
-  clientSurface: CompanionClientSurface;
+  intent: "archive" | "delete" | "recycle_pi";
   database: Db;
-}): Promise<{ operation: CompanionOperation; replayed: boolean }> {
-  if (input.kind === "restart_pi") {
-    const v3Result = await input.database.execute(sql`
-      select * from public.companion_v3_api_restart_pi(
-        ${input.orgId}::uuid,
-        ${input.companionId}::uuid,
-        ${input.requestId}::uuid,
-        ${input.clientSurface}::companion_client_surface
-      )
-    `);
-    const [v3Row] = rows<{ operation: unknown; replayed: boolean }>(v3Result);
-    if (v3Row) {
-      return {
-        operation: companionOperationSchema.parse(v3Row.operation),
-        replayed: v3Row.replayed,
-      };
-    }
-  }
+}): Promise<{ intent: "archive" | "delete" | "recycle_pi"; revision: string }> {
   const result = await input.database.execute(sql`
-    select * from public.companion_api_enqueue_operation(
+    select intent::text, revision::text
+    from public.companion_v3_api_desire_lifecycle(
       ${input.orgId}::uuid,
       ${input.companionId}::uuid,
-      ${input.requestId}::uuid,
-      ${input.kind}::companion_operation_kind,
-      ${input.clientSurface}::companion_client_surface
+      ${input.intent}::companion_v3_lifecycle_intent,
+      ${input.requestId}::uuid
     )
   `);
-  const [row] = rows<{ operation: unknown; replayed: boolean }>(result);
-  if (!row) throw new Error("failed to enqueue Companion operation");
-  return { operation: companionOperationSchema.parse(row.operation), replayed: row.replayed };
+  const [row] = rows<{ intent: "archive" | "delete" | "recycle_pi"; revision: string }>(result);
+  if (!row) throw new Error("failed to record Companion lifecycle intent");
+  return row;
 }
 
 export async function answerCompanionDecisionV2(input: {
@@ -1259,16 +1222,7 @@ export async function answerCompanionDecisionV2(input: {
     ) as answered
   `);
   const [v3Row] = rows<{ answered: boolean }>(v3Result);
-  if (v3Row?.answered) return;
-  await input.database.execute(sql`
-    select * from public.companion_api_answer_decision(
-      ${input.orgId}::uuid,
-      ${input.companionId}::uuid,
-      ${input.requestId},
-      ${input.decision},
-      ${input.optionId ?? input.text ?? null}
-    )
-  `);
+  if (!v3Row?.answered) throw new CompanionDecisionNotFoundError();
 }
 
 export type CompanionDecisionRecord = {
@@ -1301,38 +1255,13 @@ export async function getCompanionDecisionV2(input: {
     proposal: unknown;
     expires_at: Date | string;
   }>(v3Result);
-  if (v3Row) {
-    return {
-      requestKey: v3Row.request_key,
-      requestKind: v3Row.request_kind,
-      decisionStatus: v3Row.decision_status,
-      proposal: null,
-      expiresAt: iso(v3Row.expires_at) ?? new Date(v3Row.expires_at).toISOString(),
-    };
-  }
-  const result = await input.database.execute(sql`
-    select request_key, request_kind::text as request_kind,
-      decision_status::text as decision_status, proposal, expires_at
-    from public.companion_api_get_decision(
-      ${input.orgId}::uuid,
-      ${input.companionId}::uuid,
-      ${input.requestId}
-    )
-  `);
-  const [row] = rows<{
-    request_key: string;
-    request_kind: string;
-    decision_status: string;
-    proposal: unknown;
-    expires_at: Date | string;
-  }>(result);
-  if (!row) throw new CompanionDecisionNotFoundError();
+  if (!v3Row) throw new CompanionDecisionNotFoundError();
   return {
-    requestKey: row.request_key,
-    requestKind: row.request_kind,
-    decisionStatus: row.decision_status,
-    proposal: row.proposal == null ? null : companionDecisionProposalSchema.parse(row.proposal),
-    expiresAt: iso(row.expires_at) ?? new Date(row.expires_at).toISOString(),
+    requestKey: v3Row.request_key,
+    requestKind: v3Row.request_kind,
+    decisionStatus: v3Row.decision_status,
+    proposal: null,
+    expiresAt: iso(v3Row.expires_at) ?? new Date(v3Row.expires_at).toISOString(),
   };
 }
 
@@ -1353,29 +1282,6 @@ export async function answerCompanionConfigDecisionV2(input: {
   `);
 }
 
-/** Compatibility Retry observes or re-enqueues the same cleanup; it never creates an attempt. */
-export async function retryCompanionTurnV2(input: {
-  orgId: string;
-  companionId: string;
-  turnId: string;
-  retryId: string;
-  clientSurface: CompanionClientSurface;
-  database: Db;
-}): Promise<{ operation: CompanionOperation; replayed: boolean }> {
-  const result = await input.database.execute(sql`
-    select * from public.companion_api_retry_turn(
-      ${input.orgId}::uuid,
-      ${input.companionId}::uuid,
-      ${input.turnId}::uuid,
-      ${input.retryId}::uuid,
-      ${input.clientSurface}::companion_client_surface
-    )
-  `);
-  const [row] = rows<{ operation: unknown; replayed: boolean }>(result);
-  if (!row) throw new Error("failed to enqueue Companion retry");
-  return { operation: companionOperationSchema.parse(row.operation), replayed: row.replayed };
-}
-
 export async function cancelCompanionTurnV2(input: {
   orgId: string;
   companionId: string;
@@ -1383,7 +1289,7 @@ export async function cancelCompanionTurnV2(input: {
   database: Db;
 }): Promise<CompanionTurn> {
   const result = await input.database.execute(sql`
-    select * from public.companion_api_cancel_turn(
+    select * from public.companion_v3_api_cancel_turn(
       ${input.orgId}::uuid,
       ${input.companionId}::uuid,
       ${input.turnId}::uuid

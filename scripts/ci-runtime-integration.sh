@@ -19,15 +19,11 @@ if (new Set(roles).size !== roles.length) {
 COMPANION_RUNTIME_DB_URLS
 
 # These suites replay the real migrations into disposable databases and prove
-# split grants, fencing, takeover, stale epochs, and projection idempotence.
-COMPANION_INTEGRATION_TESTS=1 DATABASE_URL="$DATABASE_MIGRATION_URL" \
-  pnpm --filter @companion/api exec vitest run \
-    --config vitest.integration.config.ts \
-    test/integration/companionRuntimeV2.integration.test.ts \
-    test/integration/companionRuntimeExecutor.integration.test.ts
-
-# The runtime-owned purge command also runs against a freshly migrated real
-# database; the Box provider itself remains deterministic and local.
+# v3-only split grants, fencing, takeover, stale epochs, offline purge, and full topology.
 DATABASE_URL="$DATABASE_MIGRATION_URL" \
-  pnpm --filter @companion/runtime test:integration
+  pnpm --filter @companion/runtime exec vitest run \
+    --config vitest.integration.config.ts \
+    test/integration/companionV2Purge.integration.test.ts \
+    test/integration/runtimeV3Progression.integration.test.ts \
+    test/integration/runtimeFullStack.integration.test.ts
 pnpm --filter @companion/box-sim test

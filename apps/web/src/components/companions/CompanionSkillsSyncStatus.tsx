@@ -34,7 +34,7 @@ export function CompanionSkillsSyncStatus({ companion }: { companion: Companion 
     label = `Box sync failed: ${runtime.skills_last_error} · retries on next Pi stop or restart`;
   } else if (
     runtime.latest_operation
-    && ["stop", "restart_pi", "restart_box", "apply_settings"].includes(
+    && ["stop", "restart_pi", "apply_settings"].includes(
       runtime.latest_operation.kind,
     )
     && ["pending", "running"].includes(runtime.latest_operation.status)

@@ -49,8 +49,6 @@ function operationNotice(
         };
       case "restart_pi":
         return { operationId, message: "Restart accepted. It joins any recovery already in progress." };
-      case "restart_box":
-        return { operationId, message: "A previous server operation is still pending." };
       default:
         return null;
     }
@@ -61,8 +59,6 @@ function operationNotice(
       return { operationId, message: "Deletion completed." };
     case "restart_pi":
       return { operationId, message: "Restart completed." };
-    case "restart_box":
-      return { operationId, message: "The previous server operation completed." };
     case "stop":
       return { operationId, message: "Stop completed." };
     case "start":
@@ -80,9 +76,7 @@ function operationFailureMessage(operation: CompanionLatestOperation | null): st
     ? "Deletion"
     : operation.kind === "restart_pi"
       ? "Restart"
-      : operation.kind === "restart_box"
-        ? "Server operation"
-        : operation.kind === "apply_settings"
+      : operation.kind === "apply_settings"
           ? "Settings apply"
           : operation.kind === "start"
             ? "Start"
@@ -191,11 +185,7 @@ export function CompanionSettings({
           ? operationPending
             ? "Restart is queued. It joins any recovery already in progress."
             : "Restart is in progress. Status refreshes automatically."
-          : latestOperation.kind === "restart_box"
-            ? operationPending
-              ? "A previous server operation is queued."
-              : "A previous server operation is in progress."
-            : latestOperation.kind === "start"
+          : latestOperation.kind === "start"
               ? operationPending
                 ? "Start is queued. Status refreshes every three seconds."
                 : "Start is in progress. Status refreshes every three seconds."
@@ -267,7 +257,7 @@ export function CompanionSettings({
     && !deletionActive
     && !latest.runtime.skills_last_error
     && skillApplyingOperation !== null
-    && ["stop", "restart_pi", "restart_box", "apply_settings"].includes(
+    && ["stop", "restart_pi", "apply_settings"].includes(
       skillApplyingOperation.kind,
     )
     && ["pending", "running"].includes(skillApplyingOperation.status);
@@ -401,11 +391,10 @@ export function CompanionSettings({
     const requestId = deleteRequestIdRef.current ?? crypto.randomUUID();
     deleteRequestIdRef.current = requestId;
     try {
-      const operation = await deleteCompanion(orgId, companion.id, requestId);
+      await deleteCompanion(orgId, companion.id, requestId);
       deleteRequestIdRef.current = null;
       setConfirmingDelete(false);
-      setLatestOperation(operation);
-      setRuntimeNotice(operationNotice(operation));
+      setRuntimeNotice({ operationId: null, message: "Permanent deletion requested." });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "This Companion could not be deleted.");
       setConfirmingDelete(false);
@@ -423,10 +412,9 @@ export function CompanionSettings({
     const requestId = restartRequestIdRef.current ?? crypto.randomUUID();
     restartRequestIdRef.current = requestId;
     try {
-      const operation = await restartCompanionRuntime(orgId, companion.id, { target: "pi" }, requestId);
+      await restartCompanionRuntime(orgId, companion.id, { target: "pi" }, requestId);
       restartRequestIdRef.current = null;
-      setLatestOperation(operation);
-      setRuntimeNotice(operationNotice(operation));
+      setRuntimeNotice({ operationId: null, message: "Pi restart requested." });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "This Companion could not be restarted.");
     } finally {

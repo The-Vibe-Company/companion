@@ -1,6 +1,6 @@
 /* oxlint-disable anti-slop/no-known-value-widening, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- Hand-written fakes match the used surface exactly. */
 import { describe, expect, it, vi } from "vitest";
-import type { RuntimeProcessLog } from "@companion/companion-runtime";
+import type { RuntimeProcessLog } from "@companion/companion-runtime/runtime-support";
 
 import { superviseImageBuilder } from "./imageBuilderSupervisor";
 

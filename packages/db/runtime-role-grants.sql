@@ -959,8 +959,7 @@ BEGIN
         'public.companion_v3_api_admit_turn(uuid,uuid,uuid,text)'::regprocedure,
         'public.companion_v3_api_desire_lifecycle(uuid,uuid,public.companion_v3_lifecycle_intent)'::regprocedure,
         'public.companion_v3_api_enqueue_warm_turn(uuid,uuid,uuid,text)'::regprocedure,
-        'public.companion_v3_api_read_projection(uuid,uuid,jsonb)'::regprocedure,
-        'public.companion_v3_api_restart_pi(uuid,uuid,uuid,public.companion_client_surface)'::regprocedure
+        'public.companion_v3_api_read_projection(uuid,uuid,jsonb)'::regprocedure
       ];
       worker_functions := worker_functions || ARRAY[
         'public.companion_v3_worker_admit_turn(uuid,uuid,uuid,text,text)'::regprocedure
@@ -1053,11 +1052,15 @@ BEGIN
         END IF;
       END IF;
       internal_runtime_functions := internal_runtime_functions || ARRAY[
-        'public.companion_v3_settle_manual_restart()'::regprocedure,
-        'public.companion_v3_cancel_deferred_manual_restart()'::regprocedure,
         'public.companion_v3_admit_turn(uuid,uuid,uuid,text,text,public.companion_v3_lane)'::regprocedure,
         'public.companion_v3_public_turn(public.companion_v3_turns)'::regprocedure
       ];
+      IF pg_catalog.to_regprocedure('public.companion_v3_settle_manual_restart()') IS NOT NULL THEN
+        internal_runtime_functions := internal_runtime_functions || ARRAY[
+          'public.companion_v3_settle_manual_restart()'::regprocedure,
+          'public.companion_v3_cancel_deferred_manual_restart()'::regprocedure
+        ];
+      END IF;
       IF pg_catalog.to_regprocedure(
         'public.companion_v3_runtime_claim_lifecycle(text,integer,integer)'
       ) IS NOT NULL THEN
@@ -1151,6 +1154,45 @@ BEGIN
         'public.companion_v3_runtime_pending_delegation_cancel(uuid,uuid,uuid,uuid,bigint,bigint,integer)'::regprocedure,
         'public.companion_v3_runtime_finish_delegation_cancel(uuid,uuid,uuid,uuid,uuid,bigint,bigint,integer)'::regprocedure
       ];
+    END IF;
+
+    -- 0179 is the contraction point: the API keeps only v3 write entry points and the runtime
+    -- keeps only v3 progression plus the read-only desktop handoff. Historical v2 functions stay
+    -- owner-only for the offline purge/rehearsal and can never be claimed by a process login.
+    IF pg_catalog.to_regprocedure(
+      'public.companion_v3_api_enqueue_turn(uuid,uuid,uuid,text,public.companion_client_surface,jsonb)'
+    ) IS NOT NULL THEN
+      SELECT COALESCE(array_agg(function_oid), ARRAY[]::regprocedure[])
+      INTO companion_api_functions
+      FROM unnest(companion_api_functions) function_oid
+      JOIN pg_catalog.pg_proc procedure ON procedure.oid=function_oid
+      WHERE procedure.proname NOT IN (
+        'companion_api_enqueue_turn',
+        'companion_api_enqueue_operation',
+        'companion_api_retry_turn',
+        'companion_api_cancel_turn',
+        'companion_api_answer_decision',
+        'companion_api_get_decision'
+      );
+      companion_api_functions := companion_api_functions || ARRAY[
+        'public.companion_v3_api_enqueue_turn(uuid,uuid,uuid,text,public.companion_client_surface,jsonb)'::regprocedure,
+        'public.companion_v3_api_cancel_turn(uuid,uuid,uuid)'::regprocedure,
+        'public.companion_v3_api_answer_decision(uuid,uuid,text,text,text)'::regprocedure,
+        'public.companion_v3_api_get_decision(uuid,uuid,text)'::regprocedure
+      ];
+
+      SELECT COALESCE(array_agg(function_oid), ARRAY[]::regprocedure[])
+      INTO companion_runtime_functions
+      FROM unnest(companion_runtime_functions) function_oid
+      JOIN pg_catalog.pg_proc procedure ON procedure.oid=function_oid
+      WHERE procedure.proname LIKE 'companion_v3_runtime_%'
+         OR procedure.proname LIKE 'companion_runtime_image_%'
+         OR procedure.proname IN (
+           'companion_runtime_gate_status',
+           'companion_runtime_disable',
+           'companion_runtime_authorize_desktop',
+           'companion_runtime_consume_desktop_request'
+         );
     END IF;
 
     -- A migration owner can carry arbitrary ALTER DEFAULT PRIVILEGES grants installed by an

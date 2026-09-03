@@ -186,6 +186,14 @@ WITH runtime_role AS (
 ), required_functions AS (
   SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
   FROM required
+  WHERE signature LIKE 'public.companion_v3_runtime_%'
+     OR signature LIKE 'public.companion_runtime_image_%'
+     OR signature IN (
+       'public.companion_runtime_gate_status()',
+       'public.companion_runtime_disable(bigint,text)',
+       'public.companion_runtime_authorize_desktop(uuid,uuid,text)',
+       'public.companion_runtime_consume_desktop_request(text,bigint,integer)'
+     )
   UNION ALL
   SELECT signature, pg_catalog.to_regprocedure(signature) AS oid
   FROM decision_required CROSS JOIN decision_schema

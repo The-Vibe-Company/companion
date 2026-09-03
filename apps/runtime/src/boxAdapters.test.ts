@@ -1,7 +1,7 @@
 /* oxlint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-chained-type-assertions, anti-slop/no-unsafe-dictionary-type, anti-slop/no-known-value-widening -- Lifecycle fixtures are hand-written fakes matching the used client surface exactly. */
 import { describe, expect, it, vi } from "vitest";
 import { BoxRuntimeAdapterError, type BoxRuntimeLifecycleClient, type CompanionBoxRuntimeV2 } from "@companion/box-runtime";
-import type { RuntimeProcessLog } from "@companion/companion-runtime";
+import type { RuntimeProcessLog } from "@companion/companion-runtime/runtime-support";
 
 import {
   createRuntimeBoxControl,
@@ -187,6 +187,62 @@ describe("runtime Box/Pi port adapters", () => {
       .toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(createOrRecoverGenerationBox.mock.calls[1]?.[0].idempotencyKey)
       .not.toBe("11111111-1111-4111-8111-111111111111");
+  });
+
+  it("keeps one external create identity across a lost cold fallback and a later claim", async () => {
+    const generationKey = "11111111-1111-4111-8111-111111111111";
+    const createOrRecoverGenerationBox = vi.fn()
+      .mockRejectedValueOnce(new BoxRuntimeAdapterError({
+        stableCode: "box_not_found",
+        message: "The Box provider resource was not found",
+        status: 404,
+        providerCode: "unknown_snapshot",
+        retryable: false,
+        outcomeUnknown: false,
+      }))
+      .mockRejectedValueOnce(new BoxRuntimeAdapterError({
+        stableCode: "box_network_error",
+        message: "The Box provider request failed",
+        status: 503,
+        retryable: true,
+        outcomeUnknown: true,
+      }))
+      .mockResolvedValueOnce({
+        outcome: "recovered" as const,
+        boxId: "bx_23456789",
+        name: "canonical",
+        duplicates: [],
+      });
+    const availability = vi.fn()
+      .mockResolvedValueOnce("ready")
+      .mockResolvedValueOnce("missing");
+    const control = createRuntimeBoxControl({
+      lifecycle: lifecycle({ createOrRecoverGenerationBox }),
+      runtime: () => boxRuntime(),
+      runtimeImage: runtimeImage({ availability }),
+    });
+    const input = {
+      companionId: generationKey,
+      generation: 1n,
+      ttlSeconds: 21_600,
+      idempotencyKey: generationKey,
+      deadlineAt: new Date(Date.now() + 30_000),
+      signal,
+    };
+
+    await expect(control.createGenerationBox(input)).rejects.toThrow("Box provider request failed");
+    await expect(control.createGenerationBox(input)).resolves.toMatchObject({
+      outcome: "recovered",
+      boxId: "bx_23456789",
+    });
+    const observedKeys = createOrRecoverGenerationBox.mock.calls.map(([call]) =>
+      call.idempotencyKey as string);
+    expect(observedKeys[0]).toBe(generationKey);
+    expect(observedKeys[1]).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(observedKeys[1]).not.toBe(generationKey);
+    expect(observedKeys[2]).toBe(observedKeys[1]);
   });
 
   it("starts cold creation with a fresh provider budget after the image lookup", async () => {

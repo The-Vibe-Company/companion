@@ -6,7 +6,7 @@ import {
   DESKTOP_SIGNATURE_HEADER,
   DESKTOP_TIMESTAMP_HEADER,
   verifyDesktopRequest,
-} from "@companion/companion-runtime";
+} from "@companion/companion-runtime/runtime-support";
 import { mintCompanionDesktop, RuntimeDesktopClientError } from "./runtimeDesktopClient";
 
 const SECRET = Buffer.alloc(32, 23);

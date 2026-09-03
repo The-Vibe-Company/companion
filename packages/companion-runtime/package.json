@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./runtime-support": "./src/runtimeSupport.ts",
     "./v3/internal": "./src/v3/progression.ts",
     "./v3/measurement": "./src/v3/measurement.ts"
   },

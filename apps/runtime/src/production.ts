@@ -10,18 +10,9 @@ import {
 } from "@companion/box-runtime";
 import {
   CompanionImageRegistry,
-  createRuntimeKernel,
   createJsonRuntimeProcessLog,
   describeThrownError,
-  PostgresRuntimeStore,
-  type CreateRuntimeKernelInput,
-  type RuntimeAttachmentStager,
-  type RuntimeBoxControl,
-  type RuntimeOutboxHarvester,
-  type RuntimePiControl,
-  type RuntimeResourceStager,
-  type RuntimeStore,
-} from "@companion/companion-runtime";
+} from "@companion/companion-runtime/runtime-support";
 import {
   combineRuntimeV3Convergence,
   createRuntimeV3Convergence,
@@ -38,6 +29,11 @@ import {
 } from "@companion/storage";
 
 import { createRuntimeBoxControl, createRuntimePiControl } from "./boxAdapters";
+import type {
+  RuntimeApplicationScheduler,
+  RuntimeApplicationStore,
+  RuntimeGateStatus,
+} from "./application";
 import { composeRuntimeService, type RuntimeService } from "./composition";
 import { loadRuntimeServiceConfig, type RuntimeServiceConfig } from "./config";
 import { createRuntimeDatabase, type RuntimeDatabase } from "./database";
@@ -59,8 +55,8 @@ import {
 } from "./materialPipeline";
 import { createPiBundleUrlProvider } from "./piBundlePresigner";
 import {
-  createRuntimeSchedulerAdapter,
-  type RuntimeKernelScheduler,
+  createRuntimeV3Scheduler,
+  type RuntimeV3SchedulerOptions,
 } from "./schedulerAdapter";
 import { createSentryRuntimeProcessLog } from "./sentry";
 import {
@@ -88,7 +84,6 @@ export interface RuntimeArchiveStorage {
 
 export interface RuntimeProductionFactories {
   createDatabase(config: RuntimeServiceConfig): RuntimeDatabase;
-  createStore(database: RuntimeDatabase): RuntimeStore;
   createLifecycle(
     env: NodeJS.ProcessEnv,
     options?: AsciiBoxMaintenanceClientOptions,
@@ -104,7 +99,7 @@ export interface RuntimeProductionFactories {
   ): CompanionBoxRuntimeV2;
   createArchiveStorage(): RuntimeArchiveStorage;
   loadBundledSkill(): Promise<CompanionRuntimeSkill>;
-  createKernel(input: CreateRuntimeKernelInput): { scheduler: RuntimeKernelScheduler };
+  createScheduler(input: RuntimeV3SchedulerOptions): RuntimeApplicationScheduler;
 }
 
 export interface BuildProductionRuntimeOptions {
@@ -114,7 +109,6 @@ export interface BuildProductionRuntimeOptions {
 
 const defaultFactories: RuntimeProductionFactories = {
   createDatabase: createRuntimeDatabase,
-  createStore: (database) => new PostgresRuntimeStore(database.sql),
   createLifecycle: (env, options) => new AsciiBoxMaintenanceClient(env, options),
   createBoxRuntime: (env, options) => new AsciiBoxCompanionRuntime(env, options),
   createArchiveStorage: () => {
@@ -134,10 +128,10 @@ const defaultFactories: RuntimeProductionFactories = {
     };
   },
   loadBundledSkill: loadBundledCompanionRuntimeSkill,
-  createKernel: (input) => createRuntimeKernel(input),
+  createScheduler: createRuntimeV3Scheduler,
 };
 
-/** Build the sole process that may claim Runtime v2 work or contact Box/Pi. */
+/** Build the sole process that may claim Runtime v3 work or contact Box/Pi. */
 export async function buildProductionRuntimeService(
   options: BuildProductionRuntimeOptions = {},
 ): Promise<RuntimeService> {
@@ -162,7 +156,7 @@ export async function buildProductionRuntimeService(
   try {
     // A valid URL is insufficient: a mistakenly privileged API/owner login must fail startup.
     await database.verifyRole();
-    const store = factories.createStore(database);
+    const store = createRuntimeApplicationStore(database);
     const log = createSentryRuntimeProcessLog(createJsonRuntimeProcessLog());
     const externalIncidentOptions = {
       onExternalIncident: (incident: {
@@ -187,23 +181,15 @@ export async function buildProductionRuntimeService(
       },
     };
     if (!config.companionsEnabled) {
-      const kernel = factories.createKernel({
-        store,
-        box: disabledBoxControl,
-        pi: disabledPiControl,
-        resourceStager: disabledResourceStager,
-        attachmentStager: disabledAttachmentStager,
-        outboxHarvester: disabledOutboxHarvester,
+      const scheduler = factories.createScheduler({
         executorId: config.executorId,
-        concurrency: config.concurrency,
         sweepIntervalMs: config.sweepIntervalMs,
         claimsEnabled: false,
-        log,
       });
       return composeRuntimeService({
         config,
         store,
-        scheduler: createRuntimeSchedulerAdapter(kernel.scheduler),
+        scheduler,
         closeResources,
       });
     }
@@ -362,24 +348,6 @@ export async function buildProductionRuntimeService(
       : null;
     const pi = direct?.pi ?? execPi;
     const box = createRuntimeBoxControl(adapters);
-    const kernel = factories.createKernel({
-      store,
-      box,
-      pi,
-      ...(direct && config.directTransport === "on"
-        ? { eventPollIntervalMs: direct.eventPollIntervalMs }
-        : {}),
-      materialProvider: material.materialProvider,
-      projectionRedactorFactory: material.projectionRedactorFactory,
-      resourceStager: material.resourceStager,
-      attachmentStager: material.attachmentStager,
-      outboxHarvester: material.outboxHarvester,
-      executorId: config.executorId,
-      concurrency: config.concurrency,
-      sweepIntervalMs: config.sweepIntervalMs,
-      claimsEnabled: true,
-      log,
-    });
     const desktop = createRuntimeDesktopPort({
       authorization: new PostgresRuntimeDesktopAuthorizer(database.sql),
       box: {
@@ -433,7 +401,8 @@ export async function buildProductionRuntimeService(
     return composeRuntimeService({
       config,
       store,
-      scheduler: createRuntimeSchedulerAdapter(kernel.scheduler, {
+      scheduler: factories.createScheduler({
+        claimsEnabled: true,
         convergence: runtimeV3,
         backgroundConvergence: runtimeV3Background,
         deadlineSweep: createRuntimeV3DeadlineSweep(runtimeV3TurnPersistence),
@@ -520,49 +489,46 @@ function resourceCloser(input: {
   };
 }
 
-function runtimeDisabled(): never {
-  throw new Error("runtime external ports are disabled");
+interface RuntimeGateRow {
+  enabled: boolean;
+  gate_epoch: string;
+  updated_at: Date;
 }
 
-const disabledBoxControl: RuntimeBoxControl = {
-  findGenerationBoxes: async () => runtimeDisabled(),
-  createGenerationBox: async () => runtimeDisabled(),
-  applyGenerationBoxSettings: async () => runtimeDisabled(),
-  getStatus: async () => runtimeDisabled(),
-  setTtl: async () => runtimeDisabled(),
-  stopExistingBox: async () => runtimeDisabled(),
-  resumeExistingBox: async () => runtimeDisabled(),
-  requestPermanentDeletion: async () => runtimeDisabled(),
-  pollPermanentDeletion: async () => runtimeDisabled(),
-};
+/** PostgreSQL health and kill-switch port; it deliberately exposes no Runtime v2 claim methods. */
+function createRuntimeApplicationStore(database: RuntimeDatabase): RuntimeApplicationStore {
+  const readGateStatus = async (
+    query: string,
+    parameters: string[] = [],
+  ): Promise<RuntimeGateStatus> => {
+    const rows = await database.sql.unsafe<RuntimeGateRow[]>(query, parameters);
+    const row = rows[0];
+    if (rows.length !== 1 || !row || (row.enabled !== true && row.enabled !== false)
+      || !/^-?\d+$/.test(row.gate_epoch) || !(row.updated_at instanceof Date)
+      || Number.isNaN(row.updated_at.getTime())) {
+      throw new Error("runtime gate returned an invalid result");
+    }
+    let gateEpoch: bigint;
+    try {
+      gateEpoch = BigInt(row.gate_epoch);
+    } catch {
+      throw new Error("runtime gate returned an invalid result");
+    }
+    return { enabled: row.enabled, gateEpoch, updatedAt: row.updated_at };
+  };
 
-const disabledPiControl: RuntimePiControl = {
-  stopPiDaemon: async () => runtimeDisabled(),
-  terminatePiInvocation: async () => runtimeDisabled(),
-  resetPiSession: async () => runtimeDisabled(),
-  startPiDaemon: async () => runtimeDisabled(),
-  restartPiDaemon: async () => runtimeDisabled(),
-  piDaemonStatus: async () => runtimeDisabled(),
-  brokerState: async () => runtimeDisabled(),
-  prompt: async () => runtimeDisabled(),
-  abort: async () => runtimeDisabled(),
-  readBrokerEvents: async () => runtimeDisabled(),
-  ackBrokerEvents: async () => runtimeDisabled(),
-  respondExtensionUi: async () => runtimeDisabled(),
-};
-
-const disabledResourceStager: RuntimeResourceStager = {
-  stageExistingBox: async () => runtimeDisabled(),
-  stageSkillTree: async () => runtimeDisabled(),
-  refreshLayout: async () => runtimeDisabled(),
-  invalidateLayout: async () => runtimeDisabled(),
-};
-
-const disabledAttachmentStager: RuntimeAttachmentStager = {
-  stageAttachments: async () => runtimeDisabled(),
-};
-
-const disabledOutboxHarvester: RuntimeOutboxHarvester = {
-  clearOutbox: async () => runtimeDisabled(),
-  harvestOutbox: async () => runtimeDisabled(),
-};
+  const gateStatus = async (): Promise<RuntimeGateStatus> => await readGateStatus(`
+    SELECT enabled, gate_epoch::text AS gate_epoch, updated_at
+    FROM public.companion_runtime_gate_status()
+  `);
+  return {
+    ping: async () => {
+      await gateStatus();
+    },
+    gateStatus,
+    disable: async (expectedGateEpoch, actorId) => await readGateStatus(`
+      SELECT enabled, gate_epoch::text AS gate_epoch, updated_at
+      FROM public.companion_runtime_disable($1::bigint, $2::text)
+    `, [expectedGateEpoch.toString(), actorId]),
+  };
+}

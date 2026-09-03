@@ -1,7 +1,7 @@
 import type {
   Companion,
   CompanionDesktop,
-  CompanionOperation,
+  CompanionLifecycleAccepted,
   CompanionPluginAccount,
   CompanionPluginOAuthStartInput,
   CompanionPluginOAuthStartResponse,
@@ -122,15 +122,15 @@ export async function deleteCompanion(
   orgId: string,
   companionId: string,
   requestId: string,
-): Promise<CompanionOperation> {
-  const result = await apiFetch<{ operation: CompanionOperation }>(
+): Promise<CompanionLifecycleAccepted> {
+  const result = await apiFetch<{ lifecycle: CompanionLifecycleAccepted }>(
     `/v1/companions/${encodeURIComponent(companionId)}`,
     {
       method: "DELETE",
       headers: operationHeaders(orgId, requestId),
     },
   );
-  return result.operation;
+  return result.lifecycle;
 }
 
 export async function updateCompanionMemberState(
@@ -685,14 +685,14 @@ export async function getCompanionRuntime(
   return result.companion;
 }
 
-/** Queue an explicit lifecycle operation; completion is observed through PostgreSQL projections. */
+/** Record an explicit v3 lifecycle desire; completion is observed through PostgreSQL projections. */
 export async function restartCompanionRuntime(
   orgId: string,
   companionId: string,
   input: RestartCompanionRuntimeInput,
   requestId: string,
-): Promise<CompanionOperation> {
-  const result = await apiFetch<{ operation: CompanionOperation }>(
+): Promise<CompanionLifecycleAccepted> {
+  const result = await apiFetch<{ lifecycle: CompanionLifecycleAccepted }>(
     `/v1/companions/${encodeURIComponent(companionId)}/runtime/restart`,
     {
       method: "POST",
@@ -700,7 +700,7 @@ export async function restartCompanionRuntime(
       body: JSON.stringify(input),
     },
   );
-  return result.operation;
+  return result.lifecycle;
 }
 
 /**

@@ -1254,6 +1254,13 @@
       "when": 1793372800000,
       "tag": "0178_companion_runtime_v3_client_recovery",
       "breakpoints": true
+    },
+    {
+      "idx": 179,
+      "version": "7",
+      "when": 1793376400000,
+      "tag": "0179_companion_runtime_v3_contraction",
+      "breakpoints": true
     }
   ]
 }

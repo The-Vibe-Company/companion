@@ -8,7 +8,7 @@ import {
   type CompanionRuntimeProviderCredential,
 } from "@companion/core";
 import type { CompanionRuntimeSkill, CompanionStagedMcpAccount } from "@companion/box-runtime";
-import type { RuntimeAuthorization, RuntimeWorkMaterial } from "@companion/companion-runtime";
+import type { RuntimeAuthorization, RuntimeWorkMaterial } from "@companion/companion-runtime/runtime-support";
 import { MAX_ARCHIVE_BYTES, skillChecksum, toTar } from "@companion/skills";
 
 export interface RuntimeMaterialRows {

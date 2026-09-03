@@ -4,14 +4,13 @@ export const companionRuntimeErrorActionSchema = z.enum([
   "retry",
   "cancel",
   "restart_pi",
-  "restart_box",
   "switch_model",
   "reconnect_provider",
   "none",
 ]);
 export type CompanionRuntimeErrorAction = z.infer<typeof companionRuntimeErrorActionSchema>;
 
-/** The complete error shape allowed to cross the Runtime v2 projection boundary. */
+/** The complete error shape allowed to cross the Runtime v3 projection boundary. */
 export const companionRuntimeSafeErrorSchema = z.object({
   code: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
   message: z.string().min(1)
@@ -261,7 +260,6 @@ export const companionOperationKindSchema = z.enum([
   "delete",
   "stop",
   "restart_pi",
-  "restart_box",
   "start",
   "apply_settings",
 ]);
@@ -341,17 +339,6 @@ export type CompanionOperationAcceptedResponse = z.infer<
 export const COMPANION_OPERATION_IDEMPOTENCY_HEADER = "Idempotency-Key";
 export const companionOperationRequestIdSchema = z.string().uuid();
 
-export const retryCompanionTurnInputSchema = z.object({
-  retry_id: z.string().uuid(),
-}).strict();
-export type RetryCompanionTurnInput = z.infer<typeof retryCompanionTurnInputSchema>;
-
-/** Compatibility Retry observes or re-enqueues the same cleanup; it never creates an attempt. */
-export const retryCompanionTurnAcceptedResponseSchema = companionOperationAcceptedResponseSchema;
-export type RetryCompanionTurnAcceptedResponse = z.infer<
-  typeof retryCompanionTurnAcceptedResponseSchema
->;
-
 export const cancelCompanionTurnInputSchema = z.object({}).strict();
 export type CancelCompanionTurnInput = z.infer<typeof cancelCompanionTurnInputSchema>;
 
@@ -360,3 +347,11 @@ export const restartCompanionRuntimeInputSchema = z.object({
   target: z.literal("pi"),
 }).strict();
 export type RestartCompanionRuntimeInput = z.infer<typeof restartCompanionRuntimeInputSchema>;
+
+export const companionLifecycleIntentSchema = z.enum(["archive", "recycle_pi", "delete"]);
+export type CompanionLifecycleIntent = z.infer<typeof companionLifecycleIntentSchema>;
+export const companionLifecycleAcceptedSchema = z.object({
+  intent: companionLifecycleIntentSchema,
+  revision: z.string().regex(/^\d+$/),
+}).strict();
+export type CompanionLifecycleAccepted = z.infer<typeof companionLifecycleAcceptedSchema>;

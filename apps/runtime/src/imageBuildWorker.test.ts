@@ -1,7 +1,7 @@
 /* oxlint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-chained-type-assertions, anti-slop/no-unsafe-dictionary-type, anti-slop/no-known-value-widening, anti-slop/no-unknown-parameters -- Registry stubs are hand-written fakes whose shapes match the used methods exactly. */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanionPiLayoutIdentity } from "@companion/box-runtime";
-import type { RuntimeProcessLog } from "@companion/companion-runtime";
+import type { RuntimeProcessLog } from "@companion/companion-runtime/runtime-support";
 
 import { createImageBuildWorker, type ImageBuildWorkerOptions } from "./imageBuildWorker";
 

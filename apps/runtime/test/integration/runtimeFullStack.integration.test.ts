@@ -79,6 +79,7 @@ interface OperationRow {
 interface BoxSimState {
   boxes: Array<{
     id: string;
+    name?: string;
     state: string;
     daemon: {
       status: string;
@@ -339,7 +340,7 @@ async function waitFor<T>(
 function processExitError(processHandle: ManagedProcess): TerminalWaitError {
   return new TerminalWaitError(
     `${processHandle.label} exited early (exit=${String(processHandle.child.exitCode)}, `
-    + `signal=${String(processHandle.child.signalCode)})`,
+    + `signal=${String(processHandle.child.signalCode)}): ${processHandle.output().slice(-2_000)}`,
   );
 }
 
@@ -607,17 +608,10 @@ function assertProcessAlive(processHandle: ManagedProcess | undefined): asserts 
 
 async function turnRow(turnId: string): Promise<TurnRow | undefined> {
   const rows = await databaseSql!<TurnRow[]>`
-    select t.id::text, t.status::text, t.queue_sequence::int as "queueSequence",
-      a.started_at as "startedAt", t.settled_at as "settledAt",
-      t.last_error_code as "errorCode"
-    from companion_turns t
-    left join lateral (
-      select attempt.started_at
-      from companion_turn_attempts attempt
-      where attempt.turn_id = t.id
-      order by attempt.attempt_number desc
-      limit 1
-    ) a on true
+    select t.id::text, t.state::text as status, t.queue_sequence::int as "queueSequence",
+      t.first_claimed_at as "startedAt", t.settled_at as "settledAt",
+      t.outcome_code as "errorCode"
+    from companion_v3_turns t
     where t.id = ${turnId}::uuid
   `;
   return rows[0];
@@ -677,16 +671,13 @@ async function waitForV3Turn(turnId: string, status: string, timeoutMs = 30_000)
 
 async function turnDiagnostic(turnId: string): Promise<string> {
   const row = await turnRow(turnId).catch(() => undefined);
-  const [attempt] = await databaseSql!<Array<{
-    status: string;
-    checkpoint: string;
-    cursor: number;
-    dispatchState: string;
+  const [lease] = await databaseSql!<Array<{
+    lane: string;
+    claimEpoch: string;
+    claimToken: string | null;
   }>>`
-    select status::text, checkpoint, event_cursor::int as cursor,
-      dispatch_state::text as "dispatchState"
-    from companion_turn_attempts where turn_id = ${turnId}::uuid
-    order by attempt_number desc limit 1
+    select lane::text, claim_epoch::text as "claimEpoch", claim_token::text as "claimToken"
+    from companion_v3_lane_leases where turn_id = ${turnId}::uuid
   `.catch(() => []);
   const simulator = await simulatorState().catch(() => null);
   const boxId = await durableCompanionBoxId().catch(() => null);
@@ -700,7 +691,7 @@ async function turnDiagnostic(turnId: string): Promise<string> {
     exitCode: processHandle?.child.exitCode ?? null,
     signal: processHandle?.child.signalCode ?? null,
   });
-  return `turn=${JSON.stringify(row)} attempt=${JSON.stringify(attempt)} `
+  return `turn=${JSON.stringify(row)} lease=${JSON.stringify(lease)} `
     + `box=${JSON.stringify(box ? {
       id: box.id,
       state: box.state,
@@ -769,7 +760,7 @@ async function simulatorState(): Promise<BoxSimState> {
 async function durableCompanionBoxId(): Promise<string | null> {
   const [instance] = await databaseSql!<Array<{ boxId: string | null }>>`
     select box_id as "boxId"
-    from companion_runtime_instances
+    from companion_v3_instances
     where org_id = ${orgId}::uuid and companion_id = ${companionId}::uuid
   `;
   return instance?.boxId ?? null;
@@ -844,21 +835,6 @@ beforeAll(async () => {
     body: JSON.stringify({ auth_method: "api_key", credential: "deterministic-e2e-key" }),
   }, 200);
 
-  companionId = randomUUID();
-  await databaseSql`
-    insert into companions (
-      id, org_id, owner_id, name, persona, model_id, provider_ids,
-      selected_skill_ids, selected_mcp_account_ids
-    ) values (
-      ${companionId}::uuid, ${orgId}::uuid, ${userId}, 'Runtime full stack',
-      'Reply concisely.', 'claude-sonnet-4-6', '["anthropic"]'::jsonb,
-      '[]'::jsonb, '[]'::jsonb
-    )
-  `;
-  await databaseSql`
-    insert into companion_runtime_instances (org_id, companion_id, health_due_at)
-    values (${orgId}::uuid, ${companionId}::uuid, now() - interval '1 second')
-  `;
   const [gate] = await databaseSql<Array<{ epoch: string; enabled: boolean }>>`
     select gate_epoch::text as epoch, enabled from companion_runtime_control where id = 'runtime-v2'
   `;
@@ -882,7 +858,7 @@ afterAll(async () => {
   await adminSql.end({ timeout: 1 });
 }, 30_000);
 
-describe("Runtime v2 real-process control plane", () => {
+describe("Runtime v3 real-process control plane", () => {
   it("accepts an immediate cold Turn and answers after an idempotent create fault", async () => {
     assertProcessAlive(apiProcess);
     assertProcessAlive(runtimeProcess);
@@ -932,13 +908,13 @@ describe("Runtime v2 real-process control plane", () => {
     ]));
 
     const [durable] = await databaseSql!<Array<{
-      preparationAttempts: number;
+      preparationClaimEpoch: number;
       firstClaimedAt: Date;
       boxReadyAt: Date;
       operations: number;
       attempts: number;
     }>>`
-      select instance.preparation_attempt_count as "preparationAttempts",
+      select instance.preparation_claim_epoch::integer as "preparationClaimEpoch",
         turn_row.first_claimed_at as "firstClaimedAt",
         instance.box_ready_at as "boxReadyAt",
         (select count(*)::integer from companion_operations operation
@@ -950,15 +926,194 @@ describe("Runtime v2 real-process control plane", () => {
       where instance.companion_id = ${created.companion.id}::uuid
         and turn_row.id = ${accepted.turn.id}::uuid
     `;
-    expect(durable).toMatchObject({ preparationAttempts: 1, operations: 0, attempts: 0 });
+    expect(durable).toMatchObject({ operations: 0, attempts: 0 });
+    expect(durable!.preparationClaimEpoch).toBeGreaterThanOrEqual(2);
     expect(durable!.firstClaimedAt.getTime()).toBeLessThanOrEqual(durable!.boxReadyAt.getTime());
+
+    const [recoveryProof] = await databaseSql!<Array<{
+      opened: number;
+      recovered: number;
+      recoveredBeforeSettlement: boolean;
+    }>>`
+      select
+        count(*) filter (where signal.kind = 'opened')::integer as opened,
+        count(*) filter (where signal.kind = 'recovered')::integer as recovered,
+        bool_or(signal.kind = 'recovered' and signal.created_at <= turn_row.settled_at)
+          as "recoveredBeforeSettlement"
+      from companion_v3_external_incident_signals signal
+      join companion_v3_turns turn_row
+        on turn_row.org_id = signal.org_id and turn_row.companion_id = signal.companion_id
+      where signal.companion_id = ${created.companion.id}::uuid
+        and signal.failure_class = 'box'
+        and turn_row.id = ${accepted.turn.id}::uuid
+    `;
+    expect(recoveryProof).toEqual({ opened: 1, recovered: 1, recoveredBeforeSettlement: true });
 
     const after = await simulatorState();
     const oldBoxIds = new Set(before.boxes.map((box) => box.id));
-    expect(after.boxes.filter((box) => !oldBoxIds.has(box.id))).toHaveLength(1);
+    const createRequestsBefore = before.requests.filter((request) =>
+      request.surface === "box" && request.method === "POST" && request.path === "/boxes").length;
+    const createRequestsAfter = after.requests.filter((request) =>
+      request.surface === "box" && request.method === "POST" && request.path === "/boxes").length;
+    expect(createRequestsAfter - createRequestsBefore).toBeGreaterThan(1);
+    expect(after.boxes.filter((box) =>
+      !oldBoxIds.has(box.id)
+      && box.name === `Companion ${created.companion.id} g1`)).toHaveLength(1);
   }, 90_000);
 
-  it("survives API death and runtime takeover while preserving order, decisions, wake, and delete", async () => {
+  it("survives API death and runtime takeover while preserving ordered chat, wake, and delete", async () => {
+    assertProcessAlive(apiProcess);
+    assertProcessAlive(workerProcess);
+    assertProcessAlive(runtimeProcess);
+    expect(apiProcess.environment.COMPANION_BOX_API_KEY).toBeUndefined();
+    expect(workerProcess.environment.COMPANION_BOX_API_KEY).toBeUndefined();
+
+    const seeded = await apiJson<{ companion: { id: string } }>("/v1/companions", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Runtime full stack",
+        persona: "Reply concisely.",
+        provider_id: "anthropic",
+        model_id: "claude-sonnet-4-6",
+      }),
+    }, 201);
+    companionId = seeded.companion.id;
+
+    const acceptedAt = Date.now();
+    const cold = await apiJson<{ turn: { id: string; status: string } }>(
+      `/v1/companions/${companionId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          client_message_id: randomUUID(),
+          client_surface: "web",
+          content: "Cold-start this v3 Companion and answer once.",
+        }),
+      },
+      202,
+    );
+    expect(cold.turn.status).toBe("queued");
+    expect(Date.now() - acceptedAt).toBeLessThan(1_000);
+
+    await stopProcess(apiProcess, "SIGKILL");
+    apiProcess = undefined;
+    const coldTerminal = await waitForTurn(cold.turn.id, "succeeded", 60_000);
+    expect(coldTerminal.startedAt).not.toBeNull();
+    expect(coldTerminal.errorCode).toBeNull();
+
+    const boxId = await durableCompanionBoxId();
+    if (!boxId) throw new Error("v3 cold chat did not durably checkpoint a Box");
+    expect(boxById(await simulatorState(), boxId)).toMatchObject({
+      id: boxId,
+      state: expect.stringMatching(/ready|idle|running/),
+      daemon: { status: "active" },
+    });
+
+    apiProcess = startApi();
+    await waitForHttp(`${apiBase}/health`, apiProcess);
+    const concurrent = await Promise.all([
+      apiJson<{ turn: { id: string; queue_sequence: number } }>(
+        `/v1/companions/${companionId}/messages`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            client_message_id: randomUUID(), client_surface: "web", content: "Ordered v3 message A.",
+          }),
+        }, 202),
+      apiJson<{ turn: { id: string; queue_sequence: number } }>(
+        `/v1/companions/${companionId}/messages`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            client_message_id: randomUUID(), client_surface: "web", content: "Ordered v3 message B.",
+          }),
+        }, 202),
+    ]);
+    const ordered = [...concurrent].sort((left, right) =>
+      left.turn.queue_sequence - right.turn.queue_sequence);
+
+    await stopProcess(runtimeProcess, "SIGKILL");
+    runtimeProcess = startRuntime(randomUUID());
+    await waitForHttp(`${runtimeBase}/healthz`, runtimeProcess);
+    const first = await waitForTurn(ordered[0]!.turn.id, "succeeded", 45_000);
+    const second = await waitForTurn(ordered[1]!.turn.id, "succeeded", 45_000);
+    expect(first.queueSequence).toBeLessThan(second.queueSequence);
+    expect(first.settledAt!.getTime()).toBeLessThanOrEqual(second.startedAt!.getTime());
+
+    await apiJson<{ lifecycle: { intent: string; revision: string } }>(
+      `/v1/companions/${companionId}/runtime/archive`,
+      { method: "POST", headers: { "idempotency-key": randomUUID() }, body: "{}" },
+      202,
+    );
+    await waitFor("v3 Box archive", async () => {
+      const [instance] = await databaseSql!<Array<{ state: string }>>`
+        select lifecycle_state::text as state from companion_v3_instances
+        where companion_id = ${companionId}::uuid
+      `;
+      return instance?.state === "archived"
+        && boxById(await simulatorState(), boxId)?.state === "archived";
+    }, 30_000);
+
+    const wake = await apiJson<{ turn: { id: string } }>(
+      `/v1/companions/${companionId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          client_message_id: randomUUID(), client_surface: "web", content: "Wake and answer on the same Box.",
+        }),
+      }, 202,
+    );
+    await waitForTurn(wake.turn.id, "succeeded", 45_000);
+    expect(await durableCompanionBoxId()).toBe(boxId);
+    expect(boxById(await simulatorState(), boxId)?.state).toMatch(/ready|idle|running/);
+
+    await boxControl("/defaults", {
+      method: "PUT",
+      body: JSON.stringify({ deletePolls: 100 }),
+    });
+    await apiJson<{ lifecycle: { intent: string; revision: string } }>(
+      `/v1/companions/${companionId}`,
+      { method: "DELETE", headers: { "idempotency-key": randomUUID() } },
+      202,
+    );
+    const providerDeletion = await waitFor("durable v3 deletion dispatch", async () => {
+      const state = await simulatorState();
+      const provider = state.deletions.find((candidate) => candidate.targetId === boxId);
+      const [instance] = await databaseSql!<Array<{
+        state: string;
+        providerOperationId: string | null;
+      }>>`
+        select lifecycle_state::text as state,
+          delete_provider_operation_id as "providerOperationId"
+        from companion_v3_instances where companion_id = ${companionId}::uuid
+      `;
+      return provider && instance?.state === "waiting_deleted"
+          && instance.providerOperationId === provider.id
+        ? provider
+        : false;
+    }, 30_000);
+
+    await stopProcess(runtimeProcess, "SIGKILL");
+    runtimeProcess = startRuntime(randomUUID());
+    await waitForHttp(`${runtimeBase}/healthz`, runtimeProcess);
+    await boxControl(`/deletion-operations/${providerDeletion.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ status: "completed" }),
+    });
+    await waitFor("v3 permanent deletion", async () => {
+      const [remaining] = await databaseSql!<Array<{ count: number }>>`
+        select count(*)::integer as count from companions where id = ${companionId}::uuid
+      `;
+      return remaining?.count === 0 && !boxById(await simulatorState(), boxId);
+    }, 30_000);
+    const finalState = await simulatorState();
+    expect(finalState.requests.filter((request) =>
+      request.surface === "box" && request.method === "DELETE"
+        && request.path === `/boxes/${boxId}`)).toHaveLength(1);
+    assertProcessAlive(workerProcess);
+  }, 180_000);
+
+  async function legacyRuntimeV2FullStackFixture(): Promise<void> {
     assertProcessAlive(apiProcess);
     assertProcessAlive(workerProcess);
     assertProcessAlive(runtimeProcess);
@@ -2140,5 +2295,5 @@ describe("Runtime v2 real-process control plane", () => {
       request.surface === "box" && request.method === "DELETE"
         && request.path === `/boxes/${box.id}`)).toHaveLength(1);
     assertProcessAlive(workerProcess);
-  }, 180_000);
+  }
 });

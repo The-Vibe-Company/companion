@@ -6,7 +6,7 @@ import {
   type CompanionPiBrokerState,
 } from "@companion/box-runtime";
 import { encryptOpaqueValue } from "@companion/core";
-import type { RuntimeLogRecord, RuntimePiControl } from "@companion/companion-runtime";
+import type { RuntimeLogRecord, RuntimePiControl } from "@companion/companion-runtime/runtime-support";
 
 import {
   createDirectBoxDataTransport,

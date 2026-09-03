@@ -6,11 +6,9 @@ import {
 } from "@companion/core";
 import {
   RuntimeExternalDependencyError,
-  type LeaseFence,
   type RuntimeAuthorization,
-  type RuntimeStore,
   type RuntimeWorkMaterial,
-} from "@companion/companion-runtime";
+} from "@companion/companion-runtime/runtime-support";
 import {
   createRuntimeV3Preparation,
   type RuntimeV3PreparationClaim,
@@ -20,7 +18,11 @@ import {
   type CompanionBoxRuntimeV2,
 } from "@companion/box-runtime";
 
-import { companionHubApiUrl, createRuntimeMaterialPipeline } from "./materialPipeline";
+import {
+  companionHubApiUrl,
+  createRuntimeMaterialPipeline,
+  type RuntimeMaterialPipeline,
+} from "./materialPipeline";
 import { RuntimeMaterialError } from "./resourceMaterial";
 
 const orgId = "11111111-1111-4111-8111-111111111111";
@@ -99,6 +101,10 @@ function workMaterial(accessExpiresAt?: string | null): RuntimeWorkMaterial {
   };
 }
 
+type MaterialProviderInput = Parameters<
+  RuntimeMaterialPipeline["materialProvider"]["getMaterial"]
+>[0];
+
 const fence = {
   orgId,
   companionId,
@@ -108,7 +114,7 @@ const fence = {
   executorId: "executor",
   workKind: "settings",
   workId: "77777777-7777-4777-8777-777777777777",
-} satisfies LeaseFence;
+} satisfies MaterialProviderInput["fence"];
 
 const authorization: RuntimeAuthorization = {
   authorized: true,
@@ -896,13 +902,13 @@ function fakeRuntime(
 }
 
 type MaterialTestStore = Pick<
-  RuntimeStore,
+  MaterialProviderInput["store"],
   "getMaterial" | "getConfigCatalog" | "mintHubToken" | "mintMcpBrokerToken"
 >;
 
-function fakeStore(value: MaterialTestStore): RuntimeStore {
+function fakeStore(value: MaterialTestStore): MaterialProviderInput["store"] {
   // SAFETY: The material pipeline tests exercise only these material/token store methods.
-  const store = Object.create(null) as RuntimeStore;
+  const store = Object.create(null) as MaterialProviderInput["store"];
   return Object.assign(store, {
     mintControlToken: vi.fn(async () => ({
       token: `cmp_ctl_${"c".repeat(48)}`,

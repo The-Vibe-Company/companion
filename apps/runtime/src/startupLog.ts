@@ -1,5 +1,5 @@
 /* oxlint-disable anti-slop/no-unknown-parameters -- This is the process-level rejected-promise boundary; describeThrownError performs the repository's bounded normalization before logging. */
-import { createJsonRuntimeProcessLog, describeThrownError } from "@companion/companion-runtime";
+import { createJsonRuntimeProcessLog, describeThrownError } from "@companion/companion-runtime/runtime-support";
 
 import { RuntimeDatabaseRoleError } from "./database";
 

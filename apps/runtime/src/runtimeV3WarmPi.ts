@@ -1,4 +1,4 @@
-import { validatePiJournalRead, type RuntimePiControl } from "@companion/companion-runtime";
+import { validatePiJournalRead, type RuntimePiControl } from "@companion/companion-runtime/runtime-support";
 import type { RuntimeV3WarmPi } from "@companion/companion-runtime/v3/internal";
 
 const WARM_PI_CALL_TIMEOUT_MS = 30_000;

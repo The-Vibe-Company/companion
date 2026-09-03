@@ -1,4 +1,4 @@
-import type { RuntimePiControl } from "@companion/companion-runtime";
+import type { RuntimePiControl } from "@companion/companion-runtime/runtime-support";
 import { describe, expect, it, vi } from "vitest";
 
 import { createRuntimeV3RoutinePi } from "./runtimeV3RoutinePi";

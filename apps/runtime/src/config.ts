@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 
 import { COMPANION_BUDGETS, COMPANION_BUDGETS_BASE } from "@companion/contracts";
-import { DESKTOP_REQUEST_MAX_SKEW_SECONDS } from "@companion/companion-runtime";
+import { DESKTOP_REQUEST_MAX_SKEW_SECONDS } from "@companion/companion-runtime/runtime-support";
 import { companionsEnabled, deploymentReleaseId } from "@companion/core";
 
 const DEFAULT_BOX_API_BASE = "https://ascii.dev/api/box/v1";

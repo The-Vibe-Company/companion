@@ -69,7 +69,7 @@ import {
   deleteCompanionRoutineV2,
   deleteCompanionTriggerV2,
   duplicateCompanionV2,
-  enqueueCompanionOperationV2,
+  desireCompanionLifecycleV3,
   enqueueCompanionTurn,
   extractTriggerDeliveryId,
   failCompanionTriggerFire,
@@ -93,7 +93,6 @@ import {
   readCompanionThreadWindowV2,
   readCompanionThreadV2,
   syncCompanionThreadV2,
-  retryCompanionTurnV2,
   rotateCompanionTriggerSecretV2,
   registerCompanionTriggerWebhookV2,
   unregisterCompanionTriggerWebhookV2,
@@ -194,13 +193,11 @@ import {
   companionThreadDeltaResponseSchema,
   companionThreadWindowQuerySchema,
   companionThreadWindowSchema,
-  startCompanionRuntimeInputSchema,
   saveCompanionPluginInputSchema,
   updateCompanionInputSchema,
   updateCompanionMemberStateInputSchema,
   updateCompanionRoutineInputSchema,
   updateCompanionTriggerInputSchema,
-  retryCompanionTurnInputSchema,
   createCompanionSectionInputSchema,
   updateCompanionSectionInputSchema,
   reorderCompanionSectionsInputSchema,
@@ -269,7 +266,7 @@ function defaultCompanionRouteDependencies() {
     cancelCompanionTurnV2,
     createCompanionV2,
     duplicateCompanionV2,
-    enqueueCompanionOperationV2,
+    desireCompanionLifecycleV3,
     enqueueCompanionTurn,
     getCompanionDecisionV2,
     getCompanion,
@@ -306,7 +303,6 @@ function defaultCompanionRouteDependencies() {
     readCompanionThreadProjectionSequenceV2,
     readCompanionThreadWindowV2,
     syncCompanionThreadV2,
-    retryCompanionTurnV2,
     setCompanionProviderV2,
     setCompanionWorkspaceShareV2,
     updateCompanionMemberStateV2,
@@ -807,7 +803,7 @@ export function registerCompanionRoutes(
     cancelCompanionTurnV2,
     createCompanionV2,
     duplicateCompanionV2,
-    enqueueCompanionOperationV2,
+    desireCompanionLifecycleV3,
     enqueueCompanionTurn,
     getCompanionDecisionV2,
     getCompanion,
@@ -841,7 +837,6 @@ export function registerCompanionRoutes(
     readCompanionThreadWindowV2,
     readCompanionThreadV2,
     syncCompanionThreadV2,
-    retryCompanionTurnV2,
     setCompanionProviderV2,
     setCompanionWorkspaceShareV2,
     updateCompanionMemberStateV2,
@@ -2388,15 +2383,14 @@ export function registerCompanionRoutes(
         c.req.header(COMPANION_OPERATION_IDEMPOTENCY_HEADER),
       );
       const accepted = await tenant(c, ({ orgId, database }) =>
-        enqueueCompanionOperationV2({
+        desireCompanionLifecycleV3({
           orgId,
           companionId,
           requestId,
-          kind: "delete",
-          clientSurface: "web",
+          intent: "delete",
           database,
         }));
-      return c.json({ operation: accepted.operation }, 202);
+      return c.json({ lifecycle: accepted }, 202);
     } catch (error) {
       return routeError(c, error);
     }
@@ -3004,25 +2998,6 @@ export function registerCompanionRoutes(
     }
   });
 
-  app.post("/v1/companions/:id/turns/:turnId/retry", async (c) => {
-    try {
-      const companionId = companionIdSchema.parse(c.req.param("id"));
-      const turnId = companionIdSchema.parse(c.req.param("turnId"));
-      const body = retryCompanionTurnInputSchema.parse(await c.req.json());
-      const accepted = await tenant(c, ({ orgId, database }) => retryCompanionTurnV2({
-        orgId,
-        companionId,
-        turnId,
-        retryId: body.retry_id,
-        clientSurface: "web",
-        database,
-      }));
-      return c.json({ operation: accepted.operation }, 202);
-    } catch (error) {
-      return routeError(c, error);
-    }
-  });
-
   app.post("/v1/companions/:id/turns/:turnId/cancel", async (c) => {
     try {
       const companionId = companionIdSchema.parse(c.req.param("id"));
@@ -3051,37 +3026,6 @@ export function registerCompanionRoutes(
     }
   });
 
-  async function enqueueLifecycle(
-    c: Context<{ Variables: ApiVariables }>,
-    companionId: string,
-    requestId: string,
-    kind: "start" | "stop" | "restart_pi" | "restart_box",
-    clientSurface: "web" | "mobile_web" | "native_mobile" = "web",
-  ) {
-    return tenant(c, ({ orgId, database }) => enqueueCompanionOperationV2({
-      orgId,
-      companionId,
-      requestId,
-      kind,
-      clientSurface,
-      database,
-    }));
-  }
-
-  app.post("/v1/companions/:id/runtime/start", async (c) => {
-    try {
-      const companionId = companionIdSchema.parse(c.req.param("id"));
-      const body = startCompanionRuntimeInputSchema.parse(await c.req.json().catch(() => ({})));
-      const requestId = companionOperationRequestIdSchema.parse(
-        c.req.header(COMPANION_OPERATION_IDEMPOTENCY_HEADER),
-      );
-      const accepted = await enqueueLifecycle(c, companionId, requestId, "start", body.client_surface);
-      return c.json({ operation: accepted.operation }, 202);
-    } catch (error) {
-      return routeError(c, error);
-    }
-  });
-
   app.post("/v1/companions/:id/runtime/restart", async (c) => {
     try {
       const companionId = companionIdSchema.parse(c.req.param("id"));
@@ -3089,26 +3033,33 @@ export function registerCompanionRoutes(
       const requestId = companionOperationRequestIdSchema.parse(
         c.req.header(COMPANION_OPERATION_IDEMPOTENCY_HEADER),
       );
-      const accepted = await enqueueLifecycle(
-        c,
+      const accepted = await tenant(c, ({ orgId, database }) => desireCompanionLifecycleV3({
+        orgId,
         companionId,
         requestId,
-        "restart_pi",
-      );
-      return c.json({ operation: accepted.operation }, 202);
+        intent: "recycle_pi",
+        database,
+      }));
+      return c.json({ lifecycle: accepted }, 202);
     } catch (error) {
       return routeError(c, error);
     }
   });
 
-  app.post("/v1/companions/:id/runtime/stop", async (c) => {
+  app.post("/v1/companions/:id/runtime/archive", async (c) => {
     try {
       const companionId = companionIdSchema.parse(c.req.param("id"));
       const requestId = companionOperationRequestIdSchema.parse(
         c.req.header(COMPANION_OPERATION_IDEMPOTENCY_HEADER),
       );
-      const accepted = await enqueueLifecycle(c, companionId, requestId, "stop");
-      return c.json({ operation: accepted.operation }, 202);
+      const accepted = await tenant(c, ({ orgId, database }) => desireCompanionLifecycleV3({
+        orgId,
+        companionId,
+        requestId,
+        intent: "archive",
+        database,
+      }));
+      return c.json({ lifecycle: accepted }, 202);
     } catch (error) {
       return routeError(c, error);
     }

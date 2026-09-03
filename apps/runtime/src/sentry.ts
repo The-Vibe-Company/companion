@@ -3,7 +3,7 @@ import {
   expurgateRuntimeMessage,
   type RuntimeLogRecord,
   type RuntimeProcessLog,
-} from "@companion/companion-runtime";
+} from "@companion/companion-runtime/runtime-support";
 import * as Sentry from "@sentry/node";
 import { sanitizeSentryEvent } from "./sentrySanitize";
 
