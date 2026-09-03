@@ -579,10 +579,40 @@ async function registerSentryTriggerWebhook(
     return recoverSentryRegistration(input, trigger, account.id, token, projectPath, doFetch,
       "Sentry webhook registration could not reach the provider");
   }
-  const created = z.object({ id: z.string().min(1).max(200) })
-    .safeParse(await response.json().catch(() => null));
-  if (!response.ok || !created.success) {
-    const error = sanitizeCompanionRuntimeError(`Sentry rejected the webhook (${response.status})`).slice(0, 500);
+  const responseBody = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    let detailedReason = "Unknown error";
+    
+    // Extract Sentry's specific error message
+    if (responseBody) {
+      if (typeof responseBody.detail === "string") {
+        detailedReason = responseBody.detail;
+      } else if (typeof responseBody.message === "string") {
+        detailedReason = responseBody.message;
+      }
+    }
+
+    // Map common Sentry API rejection scenarios
+    if (response.status === 401) {
+      detailedReason = "Unauthorized. The Sentry integration token is invalid or expired.";
+    } else if (response.status === 403) {
+      detailedReason = "Access forbidden. Ensure the token has 'project:write' or 'project:admin' permissions.";
+    } else if (response.status === 404) {
+      detailedReason = "Organization or project not found. Verify the target project path.";
+    }
+
+    const error = sanitizeCompanionRuntimeError(
+      `Sentry rejected the webhook (${response.status}): ${detailedReason}`
+    ).slice(0, 500);
+    
+    return recoverSentryRegistration(input, trigger, account.id, token, projectPath, doFetch, error);
+  }
+
+  const created = z.object({ id: z.string().min(1).max(200) }).safeParse(responseBody);
+  
+  if (!created.success) {
+    const error = sanitizeCompanionRuntimeError("Sentry returned an unreadable webhook payload").slice(0, 500);
     return recoverSentryRegistration(input, trigger, account.id, token, projectPath, doFetch, error);
   }
   await persistRegistration({
@@ -767,13 +797,35 @@ export async function registerCompanionTriggerWebhookV2(input: {
     return recoverGitHubRegistration(input, trigger, account.id, token, repoPath, doFetch,
       "github webhook registration could not reach the provider");
   }
+  const responseBody = await response.json().catch(() => null);
+
   if (!response.ok) {
-    // The provider has the final word on unknown event names and missing permissions.
+    let detailedReason = "Unknown error";
+    
+    if (responseBody?.message) {
+      detailedReason = responseBody.message;
+    }
+
+    // Map common GitHub webhook rejection scenarios
+    if (response.status === 404) {
+      detailedReason = "Repository not found or token lacks 'admin:repo_hook' permission.";
+    } else if (response.status === 403) {
+      detailedReason = "Access forbidden. Check if the organization restricts third-party OAuth apps.";
+    } else if (response.status === 422) {
+      detailedReason = responseBody?.errors 
+        ? `Validation failed: ${JSON.stringify(responseBody.errors)}` 
+        : "Validation failed (maximum of 20 webhooks per repository reached).";
+    }
+
     const message = sanitizeCompanionRuntimeError(
-      `github rejected the webhook (${response.status})`,
+      `github rejected the webhook (${response.status}): ${detailedReason}`
     ).slice(0, 500);
+
     return recoverGitHubRegistration(input, trigger, account.id, token, repoPath, doFetch, message);
   }
+
+  // Pass the already-extracted body to Zod for validation on success
+  
   const created = z.object({ id: z.number().int() }).safeParse(await response.json().catch(() => null));
   if (!created.success) {
     return recoverGitHubRegistration(input, trigger, account.id, token, repoPath, doFetch,
