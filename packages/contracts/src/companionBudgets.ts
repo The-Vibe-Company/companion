@@ -235,6 +235,8 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_v3_api_answer_decision: ["10 minutes"],
   companion_v3_runtime_project_native_page_v6: ["10 minutes"],
   companion_v3_runtime_claim_warm_v6: ["2 hours 5 minutes"],
+  companion_v3_runtime_claim_routine_v7: ["2 hours 5 minutes"],
+  companion_v3_runtime_project_routine_page: ["10 minutes"],
   companion_v3_runtime_sweep_decisions: ["10 minutes"],
   companion_v3_api_enqueue_warm_turn: ["10 minutes"],
   companion_v3_bound_preparation_clock: ["2 hours 15 minutes"],
@@ -250,7 +252,6 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   // Snapshot publication must begin with more headroom than the provider's 30-second deadline.
   companion_runtime_image_authorize_publish: ["45 seconds"],
   // COMPANION_ROUTINE_MISSED_GRACE_MS twin.
-  companion_fire_routine: ["10 minutes"],
   companion_runtime_expire_queued_routine_turns: ["10 minutes"],
   // COMPANION_TRIGGER_MIN_INTERVAL_MS twin.
   companion_api_fire_trigger: ["60 seconds"],

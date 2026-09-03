@@ -2,6 +2,7 @@ import {
   decodeRuntimeV3PreparationSnapshot,
 } from "@companion/companion-runtime";
 import type {
+  RuntimeV3Claim,
   RuntimeV3ConvergencePersistence,
   RuntimeV3DecisionResponse,
   RuntimeV3DurableOutcome,
@@ -43,10 +44,12 @@ interface ClaimRow {
   admissionStartedAt: Date | null;
   inactivityDeadlineAt: Date | null;
   absoluteDeadlineAt: Date | null;
+  cleanupBoxId?: string | null;
+  cleanupInvocationId?: string | null;
 }
 
 interface TerminalCompletion {
-  outcome: "release" | "detached" | "ack_completed" | "retry_ack" | "succeeded" | "failed" | "interrupted" | "decision_ambiguous";
+  outcome: "release" | "detached" | "ack_completed" | "retry_ack" | "cleanup_completed" | "admission_rejected" | "succeeded" | "failed" | "interrupted" | "decision_ambiguous";
   code: string | null;
   message: string | null;
   action: string | null;
@@ -76,6 +79,7 @@ function terminalInput(outcome: RuntimeV3DurableOutcome): TerminalCompletion {
   if (
     outcome.kind === "failed"
     || outcome.kind === "interrupted"
+    || outcome.kind === "admission_rejected"
     || outcome.kind === "decision_ambiguous"
   ) {
     return {
@@ -142,7 +146,8 @@ function createPostgresConvergence(
             claim_token as "claimToken", claim_epoch::text as "claimEpoch",
             gate_epoch::text as "gateEpoch", admission_started_at as "admissionStartedAt",
             inactivity_deadline_at as "inactivityDeadlineAt",
-            absolute_deadline_at as "absoluteDeadlineAt"
+            absolute_deadline_at as "absoluteDeadlineAt", cleanup_box_id as "cleanupBoxId",
+            cleanup_invocation_id as "cleanupInvocationId"
           from public.companion_v3_runtime_claim_routine_v7(${executorId}, ${lane}, 30, 7)
         `, signal)
         : warmOnly ? await abortable(sql<ClaimRow[]>`
@@ -164,8 +169,8 @@ function createPostgresConvergence(
           from public.companion_v3_runtime_claim_v4(${executorId}, ${lane}, 30, 4)
         `, signal);
       const row = rows[0];
-      return row
-        ? {
+      if (!row) return null;
+      const claim: RuntimeV3Claim = {
           turn: turnFromRow(row),
           fence: {
             token: row.claimToken,
@@ -174,8 +179,14 @@ function createPostgresConvergence(
           },
           orgId: row.orgId,
           companionId: row.companionId,
-        }
-        : null;
+      };
+      if (row.cleanupBoxId && row.cleanupInvocationId) {
+        claim.cleanup = {
+          boxId: row.cleanupBoxId,
+          invocationId: row.cleanupInvocationId,
+        };
+      }
+      return claim;
     },
     async completeProgression(claim, outcome, signal) {
       const terminal = terminalInput(outcome);

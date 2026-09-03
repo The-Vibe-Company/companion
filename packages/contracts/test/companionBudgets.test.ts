@@ -204,8 +204,7 @@ describe("SQL budget contract", () => {
     expect(contract.companion_runtime_assign_operation_intent).toBeUndefined();
     expect(contract.companion_runtime_recovery_metrics?.map(sqlIntervalToMs))
       .toEqual([15 * 60_000]);
-    expect(contract.companion_fire_routine?.map(sqlIntervalToMs))
-      .toEqual([COMPANION_ROUTINE_MISSED_GRACE_MS]);
+    expect(contract.companion_fire_routine).toBeUndefined();
     expect(contract.companion_runtime_expire_queued_routine_turns?.map(sqlIntervalToMs))
       .toEqual([COMPANION_ROUTINE_MISSED_GRACE_MS]);
     expect(contract.companion_api_fire_trigger?.map(sqlIntervalToMs))
