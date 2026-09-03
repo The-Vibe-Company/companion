@@ -678,6 +678,48 @@ describe("Runtime v3 progression interface", () => {
     expect(read).not.toHaveBeenCalled();
   });
 
+  it("rechecks cancellation after read before projecting a terminal root page", async () => {
+    const pendingDelegationCancel = vi.fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        turnId: acceptedTurn.id,
+        responseTurnId: acceptedTurn.id,
+        commandId: "bfdd76e0-a78e-4fc7-8230-f4dfd3caf391",
+      });
+    const project = vi.fn();
+    const abort = vi.fn().mockResolvedValue({
+      outcome: "accepted" as const,invocationId: "invocation-1",
+    });
+    const finishDelegationCancel = vi.fn().mockResolvedValue(true);
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789",piInvocationId: "invocation-1",content: "root",cursor: 0n,
+        }),
+        beginAdmission: vi.fn(),recordAdmission: vi.fn(),project,
+        pendingDelegationCancel,finishDelegationCancel,
+      },
+      pi: {
+        prompt: vi.fn(),
+        read: vi.fn().mockResolvedValue({
+          events: [{
+            sequence: 1n,invocationId: "invocation-1",attemptId: acceptedTurn.id,
+            kind: "pi_event",event: { type: "agent_settled" },
+          }],
+          nextCursor: 1n,acknowledgedCursor: 0n,hasMore: false,
+        }),
+        acknowledge: vi.fn(),abort,
+      },
+    });
+    const claim = { ...mainClaim,turn: { ...acceptedTurn,state: "running" as const } };
+
+    await expect(advance(claim)).resolves.toEqual({ kind: "release" });
+    expect(pendingDelegationCancel).toHaveBeenCalledTimes(2);
+    expect(abort).toHaveBeenCalledOnce();
+    expect(finishDelegationCancel).toHaveBeenCalledOnce();
+    expect(project).not.toHaveBeenCalled();
+  });
+
   it("releases a decision handoff whose durable begin reply was lost before Pi", async () => {
     const respondExtensionUi = vi.fn();
     const advance = createRuntimeV3WarmTurnAdvance({

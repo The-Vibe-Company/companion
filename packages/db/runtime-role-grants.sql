@@ -1127,6 +1127,7 @@ BEGIN
       'public.companion_v3_runtime_pending_delegation_cancel(uuid,uuid,uuid,uuid,bigint,bigint,integer)'
     ) IS NOT NULL THEN
       companion_runtime_functions := companion_runtime_functions || ARRAY[
+        'public.companion_v3_runtime_project_native_page_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'::regprocedure,
         'public.companion_v3_runtime_pending_delegation_cancel(uuid,uuid,uuid,uuid,bigint,bigint,integer)'::regprocedure,
         'public.companion_v3_runtime_finish_delegation_cancel(uuid,uuid,uuid,uuid,uuid,bigint,bigint,integer)'::regprocedure
       ];

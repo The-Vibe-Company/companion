@@ -5254,10 +5254,13 @@ describe("Runtime v3 progression facts", () => {
       await makeActive(cancelResponseRoot.turnId,targetC);
       const cancelled = await delegate({ source: ids.companion,target: targetC,
         sourceTurn: source.turnId,key: "cancel-v3",mode: "notify",content: "cancel target" });
+      await makeAdmitted(cancelled.target_turn.id,targetC,cancelResponseRoot.turnId);
+      await ownerSql`update public.companion_v3_turns set state='running'
+        where id=${cancelled.target_turn.id}::uuid`;
       const cancelClaimToken = randomUUID();
       await ownerSql`update public.companion_v3_lane_leases set claim_token=${cancelClaimToken}::uuid,
         claim_epoch=claim_epoch+1,gate_epoch=(select gate_epoch from public.companion_runtime_control
-          where id='runtime-v2'),executor_id='cancel-test',turn_id=${cancelled.target_turn.id}::uuid,
+          where id='runtime-v2'),executor_id='cancel-test',turn_id=${cancelResponseRoot.turnId}::uuid,
         claimed_at=clock_timestamp(),renewed_at=clock_timestamp(),
         expires_at=clock_timestamp()+interval '30 seconds'
         where org_id=${ids.org}::uuid and companion_id=${targetC}::uuid and lane='main'`;
@@ -5268,15 +5271,15 @@ describe("Runtime v3 progression facts", () => {
         from public.companion_v3_turns turn_row
         join public.companion_v3_lane_leases lease on lease.org_id=turn_row.org_id
           and lease.companion_id=turn_row.companion_id and lease.lane=turn_row.lane
-        where turn_row.id=${cancelled.target_turn.id}::uuid`;
+        where turn_row.id=${cancelResponseRoot.turnId}::uuid`;
       const cancelClaim = {
         orgId: ids.org,
         companionId: targetC,
         turn: {
-          id: cancelled.target_turn.id,
+          id: cancelResponseRoot.turnId,
           commandId: cancelFacts!.commandId,
           lane: "main" as const,
-          state: "queued" as const,
+          state: "running" as const,
         },
         fence: {
           token: cancelClaimToken,
@@ -5288,28 +5291,66 @@ describe("Runtime v3 progression facts", () => {
       const abort = vi.fn().mockResolvedValue({
         outcome: "accepted" as const,invocationId: "pi-target-c",
       });
-      const prompt = vi.fn(async () => {
+      const project = vi.fn(async (...args: Parameters<typeof cancellationPersistence.project>) => {
         await asApi(async (sql) => {
           const requested = await sql<Array<{ turn: { status: string } }>>`
             select turn from public.companion_v3_api_cancel_delegation_turn(
               ${ids.org}::uuid,${ids.companion}::uuid,${cancelled.delegation.id}::uuid)`;
-          expect(requested[0]?.turn.status).toBe("queued");
+          expect(requested[0]?.turn.status).toBe("running");
         });
-        return {
-          outcome: "accepted" as const,invocationId: "pi-target-c",
-          responseAttemptId: cancelResponseRoot.turnId,initialCursor: 0n,
-        };
+        return cancellationPersistence.project(...args);
       });
+      const read = vi.fn().mockResolvedValue({ events: [
+        { sequence: 1n,invocationId: "pi-target-c",attemptId: cancelResponseRoot.turnId,
+          kind: "pi_event" as const,event: { type: "message_end",message: {
+            role: "assistant" as const,content: [{ type: "text",text: "must not project" }],
+            stopReason: "stop",
+          } } },
+        { sequence: 2n,invocationId: "pi-target-c",attemptId: cancelResponseRoot.turnId,
+          kind: "pi_event" as const,event: { type: "agent_settled" as const } },
+      ],nextCursor: 2n,acknowledgedCursor: 0n,hasMore: false });
+      await expect(createRuntimeV3WarmTurnAdvance({
+        persistence: { ...cancellationPersistence,project },
+        pi: { prompt: vi.fn(),read,acknowledge: vi.fn(),abort },
+      })(cancelClaim)).resolves.toEqual({ kind: "release" });
+      expect(read).toHaveBeenCalledOnce();
+      expect(project).toHaveBeenCalledOnce();
+      expect(abort).not.toHaveBeenCalled();
+      expect(await ownerSql`select count(*)::integer as count
+        from public.companion_transcript_entries
+        where companion_id=${targetC}::uuid and event_id=${`v3:${cancelResponseRoot.turnId}:1`}`)
+        .toEqual([{ count: 0 }]);
+      expect(await ownerSql`select id,state::text as state from public.companion_v3_turns
+        where id in (${cancelResponseRoot.turnId}::uuid,${cancelled.target_turn.id}::uuid)
+        order by id`).toEqual([
+          { id: [cancelResponseRoot.turnId,cancelled.target_turn.id].sort()[0],state: "running" },
+          { id: [cancelResponseRoot.turnId,cancelled.target_turn.id].sort()[1],state: "running" },
+        ]);
+      await expect(createRuntimeV3PostgresWarmConvergence(runtimeSql).completeProgression(
+        cancelClaim,{ kind: "release" },
+      )).resolves.toBe(true);
+      const takeoverToken = randomUUID();
+      const [takeoverFence] = await ownerSql<Array<{ claimEpoch: string }>>`
+        update public.companion_v3_lane_leases set claim_token=${takeoverToken}::uuid,
+          claim_epoch=claim_epoch+1,gate_epoch=(select gate_epoch
+            from public.companion_runtime_control where id='runtime-v2'),
+          executor_id='cancel-takeover',
+          turn_id=${cancelResponseRoot.turnId}::uuid,claimed_at=clock_timestamp(),
+          renewed_at=clock_timestamp(),expires_at=clock_timestamp()+interval '30 seconds'
+        where org_id=${ids.org}::uuid and companion_id=${targetC}::uuid and lane='main'
+        returning claim_epoch::text as "claimEpoch"`;
+      const cancellationTakeover = { ...cancelClaim,
+        fence: { ...cancelClaim.fence,token: takeoverToken,
+          epoch: BigInt(takeoverFence!.claimEpoch) } };
       await expect(createRuntimeV3WarmTurnAdvance({
         persistence: cancellationPersistence,
-        pi: { prompt,read: vi.fn(),acknowledge: vi.fn(),abort },
-      })(cancelClaim)).resolves.toEqual({ kind: "release" });
-      expect(prompt).toHaveBeenCalledOnce();
+        pi: { prompt: vi.fn(),read: vi.fn(),acknowledge: vi.fn(),abort },
+      })(cancellationTakeover)).resolves.toEqual({ kind: "release" });
       expect(abort).toHaveBeenCalledWith(expect.objectContaining({
         boxId: "bx_23456789",turnId: cancelResponseRoot.turnId,
       }));
       await expect(createRuntimeV3PostgresWarmConvergence(runtimeSql).completeProgression(
-        cancelClaim,{ kind: "release" },
+        cancellationTakeover,{ kind: "release" },
       )).resolves.toBe(true);
       expect(await ownerSql`select id,state::text as state from public.companion_v3_turns
         where id in (${cancelResponseRoot.turnId}::uuid,${cancelled.target_turn.id}::uuid)
@@ -5323,6 +5364,53 @@ describe("Runtime v3 progression facts", () => {
             ${ids.org}::uuid,${ids.companion}::uuid,${cancelled.delegation.id}::uuid)`;
         expect(replay[0]?.turn.status).toBe("cancelled");
       });
+
+      const projectedRoot = await enqueue(targetC,"projection wins cancellation race");
+      await makeActive(projectedRoot.turnId,targetC);
+      const projectedFirst = await delegate({ source: ids.companion,target: targetC,
+        sourceTurn: source.turnId,key: "project-first",mode: "notify",content: "project first" });
+      await makeAdmitted(projectedFirst.target_turn.id,targetC,projectedRoot.turnId);
+      await ownerSql`update public.companion_v3_turns set state='running'
+        where id=${projectedFirst.target_turn.id}::uuid`;
+      const projectedToken = randomUUID();
+      await ownerSql`update public.companion_v3_lane_leases set claim_token=${projectedToken}::uuid,
+        claim_epoch=claim_epoch+1,gate_epoch=(select gate_epoch from public.companion_runtime_control
+          where id='runtime-v2'),executor_id='project-first',turn_id=${projectedRoot.turnId}::uuid,
+        claimed_at=clock_timestamp(),renewed_at=clock_timestamp(),
+        expires_at=clock_timestamp()+interval '30 seconds'
+        where org_id=${ids.org}::uuid and companion_id=${targetC}::uuid and lane='main'`;
+      const [projectedFacts] = await ownerSql<Array<{
+        commandId: string; claimEpoch: string; gateEpoch: string;
+      }>>`select turn_row.command_id as "commandId",lease.claim_epoch::text as "claimEpoch",
+          lease.gate_epoch::text as "gateEpoch"
+        from public.companion_v3_turns turn_row join public.companion_v3_lane_leases lease
+          on lease.org_id=turn_row.org_id and lease.companion_id=turn_row.companion_id
+            and lease.lane=turn_row.lane where turn_row.id=${projectedRoot.turnId}::uuid`;
+      const projectedClaim = {
+        orgId: ids.org,companionId: targetC,
+        turn: { id: projectedRoot.turnId,commandId: projectedFacts!.commandId,
+          lane: "main" as const,state: "running" as const },
+        fence: { token: projectedToken,epoch: BigInt(projectedFacts!.claimEpoch),
+          gateEpoch: BigInt(projectedFacts!.gateEpoch) },
+      };
+      await expect(cancellationPersistence.project(projectedClaim, {
+        throughCursor: 1n,
+        assistant: [{ eventId: `v3:${projectedRoot.turnId}:1`,content: "projected first" }],
+        needsInput: false,settled: true,processExited: false,activity: true,
+      })).resolves.toBe("succeeded");
+      await asApi(async (sql) => {
+        const noOp = await sql<Array<{ turn: { status: string } }>>`
+          select turn from public.companion_v3_api_cancel_delegation_turn(
+            ${ids.org}::uuid,${ids.companion}::uuid,${projectedFirst.delegation.id}::uuid)`;
+        expect(noOp[0]?.turn.status).toBe("succeeded");
+      });
+      expect(await ownerSql`select delegation_cancel_requested_at as requested
+        from public.companion_v3_turns where id=${projectedFirst.target_turn.id}::uuid`)
+        .toEqual([{ requested: null }]);
+      await expect(createRuntimeV3PostgresWarmConvergence(runtimeSql).completeProgression(
+        projectedClaim,{ kind: "release" },
+      )).resolves.toBe(true);
+
       const afterCancellation = await enqueue(targetC,"ordinary work after cancellation");
       expect(await ownerSql`select id,state::text as state from public.companion_v3_turns
         where org_id=${ids.org}::uuid and companion_id=${targetC}::uuid

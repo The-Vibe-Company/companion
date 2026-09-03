@@ -415,7 +415,7 @@ export interface RuntimeV3WarmTurnPersistence {
     claim: RuntimeV3Claim,
     projection: RuntimeV3WarmTurnProjection,
     signal?: AbortSignal,
-  ): Promise<boolean | "succeeded" | "failed" | "detached">;
+  ): Promise<boolean | "succeeded" | "failed" | "detached" | "cancel_pending">;
   pendingDelegationCancel?(
     claim: RuntimeV3Claim,
     signal?: AbortSignal,
@@ -878,6 +878,7 @@ export function createRuntimeV3WarmTurnAdvance(
           signal: commandSignal,
         });
         signal?.throwIfAborted();
+        if (await cancelDelegation()) return { kind: "release" };
         if (claim.turn.state === "needs_input" && page.events.length === 0 && !page.hasMore) {
           return { kind: "release" };
         }
@@ -934,6 +935,7 @@ export function createRuntimeV3WarmTurnAdvance(
         projectionWriteIntent = true;
         const projected = await options.persistence.project(claim, projection, commandSignal);
         projectionWriteIntent = false;
+        if (projected === "cancel_pending") return { kind: "release" };
         if (projected) {
           projectionPendingAck = projected === "succeeded" || projected === "failed"
             ? "terminal"

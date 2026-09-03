@@ -168,6 +168,7 @@ WITH runtime_role AS (
     ('public.companion_v3_runtime_complete_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)')
 ), delegation_required(signature) AS (
   VALUES
+    ('public.companion_v3_runtime_project_native_page_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'),
     ('public.companion_v3_runtime_pending_delegation_cancel(uuid,uuid,uuid,uuid,bigint,bigint,integer)'),
     ('public.companion_v3_runtime_finish_delegation_cancel(uuid,uuid,uuid,uuid,uuid,bigint,bigint,integer)')
 ), required_functions AS (

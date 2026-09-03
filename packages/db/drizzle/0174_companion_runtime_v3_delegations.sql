@@ -498,6 +498,56 @@ END $$;
 REVOKE ALL ON FUNCTION public.companion_v3_api_cancel_delegation_turn(uuid,uuid,uuid) FROM PUBLIC;
 --> statement-breakpoint
 
+-- Serialize native projection with directed cancellation on the lane row. If cancellation commits
+-- first, no assistant page or terminal result may be projected; the next fenced tick aborts Pi and
+-- consumes the durable intent. If projection commits first, API cancellation observes a terminal
+-- Turn after taking the same lock and remains a stable no-op.
+CREATE FUNCTION public.companion_v3_runtime_project_native_page_v7(
+  p_org_id uuid,p_companion_id uuid,p_lane public.companion_v3_lane,p_turn_id uuid,
+  p_claim_token uuid,p_claim_epoch bigint,p_gate_epoch bigint,p_through_cursor bigint,
+  p_assistant jsonb,p_compactions jsonb,p_decisions jsonb,p_needs_input boolean,
+  p_correlated_activity boolean,p_terminal text,p_protocol integer
+) RETURNS text LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public SET row_security=on AS $$
+DECLARE v_now timestamptz:=clock_timestamp();v_response_turn_id uuid;
+BEGIN
+  IF p_protocol<>7 THEN
+    RAISE EXCEPTION 'Runtime v3 protocol 7 is required' USING ERRCODE='42501';
+  END IF;
+  SELECT COALESCE(claimed_turn.response_turn_id,claimed_turn.id) INTO v_response_turn_id
+  FROM public.companion_v3_lane_leases lease
+  JOIN public.companion_runtime_control control ON control.id='runtime-v2'
+    AND control.enabled AND control.gate_epoch=p_gate_epoch
+  JOIN public.companion_v3_turns claimed_turn ON claimed_turn.org_id=lease.org_id
+    AND claimed_turn.companion_id=lease.companion_id AND claimed_turn.id=lease.turn_id
+    AND claimed_turn.lane=p_lane AND claimed_turn.admission_state='accepted'
+    AND claimed_turn.state IN ('admitted','running','needs_input')
+  WHERE lease.org_id=p_org_id AND lease.companion_id=p_companion_id AND lease.lane=p_lane
+    AND lease.turn_id=p_turn_id AND lease.claim_token=p_claim_token
+    AND lease.claim_epoch=p_claim_epoch AND lease.gate_epoch=p_gate_epoch
+    AND lease.expires_at>v_now
+  FOR UPDATE OF lease,claimed_turn;
+  IF NOT FOUND THEN RETURN NULL;END IF;
+  IF p_lane='main' AND EXISTS (
+    SELECT 1 FROM public.companion_v3_turns candidate
+    WHERE candidate.org_id=p_org_id AND candidate.companion_id=p_companion_id
+      AND candidate.lane='main' AND candidate.admission_state='accepted'
+      AND candidate.state IN ('admitted','running','needs_input')
+      AND (candidate.id=v_response_turn_id OR candidate.response_turn_id=v_response_turn_id)
+      AND candidate.delegation_id IS NOT NULL
+      AND candidate.delegation_cancel_requested_at IS NOT NULL
+      AND candidate.delegation_cancel_command_id IS NOT NULL
+  ) THEN RETURN 'cancel_pending';END IF;
+  RETURN public.companion_v3_runtime_project_native_page_v6(
+    p_org_id,p_companion_id,p_lane,p_turn_id,p_claim_token,p_claim_epoch,p_gate_epoch,
+    p_through_cursor,p_assistant,p_compactions,p_decisions,p_needs_input,
+    p_correlated_activity,p_terminal,6);
+END $$;
+REVOKE ALL ON FUNCTION public.companion_v3_runtime_project_native_page_v7(
+  uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,
+  boolean,boolean,text,integer) FROM PUBLIC;
+--> statement-breakpoint
+
 CREATE FUNCTION public.companion_v3_runtime_pending_delegation_cancel(
   p_org_id uuid,p_companion_id uuid,p_turn_id uuid,p_claim_token uuid,
   p_claim_epoch bigint,p_gate_epoch bigint,p_protocol integer
@@ -632,6 +682,7 @@ BEGIN
     IF v_role IS NOT NULL THEN
       EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_pending_delegation_cancel(uuid,uuid,uuid,uuid,bigint,bigint,integer) TO %I',v_role);
       EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_finish_delegation_cancel(uuid,uuid,uuid,uuid,uuid,bigint,bigint,integer) TO %I',v_role);
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_project_native_page_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer) TO %I',v_role);
     END IF;
   END LOOP;
 END $companion_v3_delegation_runtime_acl$;
