@@ -164,9 +164,18 @@ export interface PiAssistantFallbackProjection {
   content: string;
 }
 
+/** Product-owned, expurgated outcome for a terminal model error that produced no assistant text. */
+export interface PiTerminalErrorProjection {
+  sequence: bigint;
+  code: "model_unavailable";
+  message: "The selected model is unavailable. Choose a different model and try again.";
+  action: "switch_model";
+}
+
 export interface ClassifiedPiJournalPage {
   projections: RuntimePiProjection[];
   assistantFallbacks: PiAssistantFallbackProjection[];
+  terminalError: PiTerminalErrorProjection | null;
   throughCursor: bigint;
   unknownEvents: number;
   activity: boolean;
@@ -497,6 +506,36 @@ function assistantFallbackProjection(
     if (assistant) return { sequence, source: "agent_end", content: assistant.content };
   }
   return null;
+}
+
+function terminalAssistantError(messageValue: unknown): boolean {
+  const message = dictionary(messageValue);
+  return message?.role === "assistant"
+    && message.stopReason === "error"
+    && typeof message.errorMessage === "string"
+    && message.errorMessage.trim().length > 0;
+}
+
+function terminalErrorProjection(
+  sequence: bigint,
+  event: Record<string, unknown>,
+): PiTerminalErrorProjection | null {
+  const failedAssistant = event.type === "message_end" || event.type === "turn_end"
+    ? terminalAssistantError(event.message)
+    : event.type === "agent_end" && Array.isArray(event.messages)
+      ? event.messages.some(terminalAssistantError)
+      : false;
+  const exhaustedRetry = event.type === "auto_retry_end"
+    && event.success === false
+    && typeof event.finalError === "string"
+    && event.finalError.trim().length > 0;
+  if (!failedAssistant && !exhaustedRetry) return null;
+  return {
+    sequence,
+    code: "model_unavailable",
+    message: "The selected model is unavailable. Choose a different model and try again.",
+    action: "switch_model",
+  };
 }
 
 function dictionary(value: unknown): Record<string, unknown> | null {
@@ -1178,6 +1217,7 @@ export function classifyPiJournalPage(
   const projections: RuntimePiProjection[] = [];
   let turnEndFallback: PiAssistantFallbackProjection | null = null;
   let agentEndFallback: PiAssistantFallbackProjection | null = null;
+  let terminalError: PiTerminalErrorProjection | null = null;
   let unknownEvents = 0;
   let activity = false;
   let needsInput = false;
@@ -1231,6 +1271,8 @@ export function classifyPiJournalPage(
     const assistantFallback = assistantFallbackProjection(record.sequence, record.event, redact);
     if (assistantFallback?.source === "turn_end") turnEndFallback = assistantFallback;
     if (assistantFallback?.source === "agent_end") agentEndFallback = assistantFallback;
+    const classifiedError = terminalErrorProjection(record.sequence, record.event);
+    if (classifiedError) terminalError = classifiedError;
     const tool = toolProjection(record.sequence, record.event, redact);
     if (tool) projections.push(tool);
     if (ACTIVITY_EVENT_TYPES.has(eventType)) {
@@ -1246,6 +1288,7 @@ export function classifyPiJournalPage(
     assistantFallbacks: [turnEndFallback, agentEndFallback]
       .filter((item): item is PiAssistantFallbackProjection => item !== null)
       .sort((left, right) => left.sequence < right.sequence ? -1 : 1),
+    terminalError,
     throughCursor: page.nextCursor,
     unknownEvents,
     activity,

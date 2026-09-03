@@ -448,6 +448,12 @@ and `agent_end.messages` envelopes are retained only as redacted, bounded fallba
 promoted at `agent_settled` only when no primary assistant result exists. The candidate checkpoint
 lives on the Turn because acknowledged journal pages may be separated from `agent_settled` by an
 executor takeover. The same rule feeds main transcripts and private background routine entries.
+Terminal assistant errors and exhausted Pi automatic retries use a separate cursor-only checkpoint:
+raw provider text never enters PostgreSQL. At `agent_settled`, and only when neither primary nor
+fallback assistant text exists, the terminal projector writes the stable `model_unavailable` /
+`switch_model` outcome and an in-thread system note atomically. It never replays the prompt or
+changes the selected model. On an editable web thread the note links directly to the existing
+settings model picker; loading, save, and failure stay in that settings flow and never gate chat.
 
 The routine cutover extends this broker layout without adding a second harness or runtime owner. A
 routine-origin turn is serialized by the Companion's `background` PostgreSQL lease while the `main`

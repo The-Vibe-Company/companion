@@ -2992,6 +2992,12 @@ describe("Runtime v3 progression facts", () => {
           { sequence: 1n, source: "turn_end" as const, content: `turn fallback ${lane}` },
           { sequence: 2n, source: "agent_end" as const, content: `agent fallback ${lane}` },
         ],
+        terminalError: {
+          sequence: 2n,
+          code: "model_unavailable" as const,
+          message: "The selected model is unavailable. Choose a different model and try again." as const,
+          action: "switch_model" as const,
+        },
         privateEntries: lane === "background" ? [] : undefined,
         decisions: [],
         routineReturns: [],
@@ -3043,6 +3049,142 @@ describe("Runtime v3 progression facts", () => {
           where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
             and run_id=${turnId}::uuid and role='assistant'`;
       expect(result).toEqual([{ content: `turn fallback ${lane}` }]);
+    },
+  );
+
+  it.each(["main", "background"] as const)(
+    "durably surfaces a cross-page terminal model error for the %s lane",
+    async (lane) => {
+      const invocationId = `invocation-terminal-model-error-${lane}`;
+      const messageId = randomUUID();
+      await seedPreparedV3(invocationId);
+      let turnId = "";
+      let correlatedTurnId: string | null = null;
+      if (lane === "main") {
+        await asApi(async (sql) => {
+          const rows = await sql<Array<{ turn: { id: string } }>>`
+            select turn from public.companion_v3_api_enqueue_warm_turn(
+              ${ids.org}::uuid,${ids.companion}::uuid,${messageId}::uuid,
+              'surface the terminal model error')`;
+          turnId = rows[0]!.turn.id;
+          const correlated = await sql<Array<{ turn: { id: string } }>>`
+            select turn from public.companion_v3_api_enqueue_warm_turn(
+              ${ids.org}::uuid,${ids.companion}::uuid,${randomUUID()}::uuid,
+              'correlated steer sees the same terminal model error')`;
+          correlatedTurnId = correlated[0]!.turn.id;
+        });
+      } else {
+        const eventId = `msg:${messageId}`;
+        await ownerSql`insert into public.companion_threads(org_id,companion_id)
+          values(${ids.org}::uuid,${ids.companion}::uuid) on conflict do nothing`;
+        await ownerSql`with advanced as (
+          update public.companion_threads set next_ordinal=next_ordinal+1,
+            projection_sequence=projection_sequence+1,updated_at=clock_timestamp()
+          where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+          returning next_ordinal-1 as ordinal,projection_sequence
+        ) insert into public.companion_transcript_entries(
+          org_id,companion_id,event_id,ordinal,projection_sequence,role,content,author_id)
+        select ${ids.org}::uuid,${ids.companion}::uuid,${eventId},ordinal,projection_sequence,
+          'user','surface the routine terminal model error',${ids.owner} from advanced`;
+        const admitted = await ownerSql<Array<{ turnId: string }>>`
+          select turn_id as "turnId" from public.companion_v3_admit_turn(
+            ${ids.org}::uuid,${ids.companion}::uuid,${messageId}::uuid,${eventId},
+            ${ids.owner},'background')`;
+        turnId = admitted[0]!.turnId;
+        await seedBackgroundRun(turnId, "Terminal model error fixture");
+      }
+
+      const convergence = lane === "main"
+        ? createRuntimeV3PostgresWarmConvergence(runtimeSql, { enabledLanes: new Set(["main"]) })
+        : createRuntimeV3PostgresRoutineConvergence(runtimeSql);
+      const persistence = lane === "main"
+        ? createRuntimeV3PostgresWarmTurnPersistence(runtimeSql)
+        : createRuntimeV3PostgresRoutineTurnPersistence(runtimeSql);
+      const claim = await convergence.claimLane({
+        executorId: `runtime-terminal-model-error-${lane}`, lane,
+      });
+      const material = await persistence.authorize(claim!);
+      await persistence.beginAdmission(claim!, {
+        invocationId: material!.piInvocationId, cursor: 0n,
+      });
+      await persistence.recordAdmission(claim!, {
+        invocationId: material!.piInvocationId, responseTurnId: turnId, cursor: 0n,
+      });
+      if (correlatedTurnId) {
+        await ownerSql`update public.companion_v3_turns set
+          state='admitted',admission_state='accepted',admission_started_at=clock_timestamp(),
+          admitted_at=clock_timestamp(),admission_kind='steer',pi_invocation_id=${invocationId},
+          response_turn_id=${turnId}::uuid,admission_cursor=0,activity_cursor=0,
+          correlated_activity_cursor=0,last_activity_at=clock_timestamp(),
+          inactivity_deadline_at=clock_timestamp()+interval '10 minutes',
+          absolute_deadline_at=clock_timestamp()+interval '2 hours'
+          where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+            and id=${correlatedTurnId}::uuid`;
+      }
+
+      await expect(persistence.project(claim!, {
+        throughCursor: 17n,
+        assistant: [],
+        assistantFallbacks: [],
+        terminalError: {
+          sequence: 17n,
+          code: "model_unavailable",
+          message: "The selected model is unavailable. Choose a different model and try again.",
+          action: "switch_model",
+        },
+        privateEntries: lane === "background" ? [] : undefined,
+        decisions: [],
+        routineReturns: [],
+        needsInput: false,
+        settled: false,
+        processExited: false,
+        activity: true,
+      })).resolves.toBe(true);
+      await convergence.completeProgression(claim!, { kind: "release" });
+
+      const takeover = await convergence.claimLane({
+        executorId: `runtime-terminal-model-error-takeover-${lane}`, lane,
+      });
+      await expect(persistence.project(takeover!, {
+        throughCursor: 18n,
+        assistant: [],
+        assistantFallbacks: [],
+        terminalError: null,
+        privateEntries: lane === "background" ? [] : undefined,
+        decisions: [],
+        routineReturns: [],
+        needsInput: false,
+        settled: true,
+        processExited: false,
+        activity: false,
+      })).resolves.toBe("failed");
+      await convergence.completeProgression(takeover!, { kind: "ack_completed" });
+
+      const outcome = await ownerSql<Array<{ id: string; code: string; message: string; action: string }>>`
+        select id,outcome_code as code,outcome_message as message,outcome_action::text as action
+        from public.companion_v3_turns where org_id=${ids.org}::uuid
+          and companion_id=${ids.companion}::uuid
+          and id=any(${correlatedTurnId ? [turnId, correlatedTurnId] : [turnId]}::uuid[])
+        order by queue_sequence`;
+      expect(outcome).toEqual((correlatedTurnId ? [turnId, correlatedTurnId] : [turnId]).map((id) => ({
+        id,
+        code: "model_unavailable",
+        message: "The selected model is unavailable. Choose a different model and try again.",
+        action: "switch_model",
+      })));
+      const visible = lane === "main"
+        ? await ownerSql<Array<{ role: string; content: string }>>`
+          select role::text,content from public.companion_transcript_entries
+          where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+            and event_id=${`v3:${turnId}:error:17`}`
+        : await ownerSql<Array<{ role: string; content: string }>>`
+          select role::text,content from public.companion_v3_routine_run_entries
+          where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+            and run_id=${turnId}::uuid and event_id='error:17'`;
+      expect(visible).toEqual([{
+        role: "system",
+        content: "The selected model is unavailable. Choose a different model and try again.",
+      }]);
     },
   );
 

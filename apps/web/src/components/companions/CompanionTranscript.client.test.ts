@@ -187,6 +187,7 @@ function mount(
     onStop?: (turnId: string) => Promise<void>;
     onCancelQueued?: (turnId: string) => Promise<void>;
     onOpenRoutineRun?: (routine: NonNullable<CompanionTranscriptEntry["routine"]>) => void;
+    onChangeModel?: () => void;
   } = {},
 ) {
   const container = document.createElement("div");
@@ -206,6 +207,7 @@ function mount(
       onStop: extras.onStop,
       onCancelQueued: extras.onCancelQueued,
       onOpenRoutineRun: extras.onOpenRoutineRun,
+      onChangeModel: extras.onChangeModel,
       onThread: (next: Thread) => threads.push(next),
     }));
   });
@@ -280,6 +282,35 @@ beforeEach(() => {
 afterEach(() => {
   act(() => roots.splice(0).forEach((root) => root.unmount()));
   document.body.innerHTML = "";
+});
+
+describe("terminal model errors", () => {
+  it("offers the existing model-settings flow without sending or replaying the prompt", () => {
+    const onSend = vi.fn(async () => true);
+    const onChangeModel = vi.fn();
+    const container = mount(thread([
+      entry({
+        event_id: "v3:22222222-2222-4222-8222-222222222222:error:17",
+        role: "system",
+        content: "The selected model is unavailable. Choose a different model and try again.",
+      }),
+    ]), undefined, onSend, { onChangeModel });
+
+    const action = buttonNamed(container, "Change model");
+    expect(action).toBeDefined();
+    click(action!);
+
+    expect(onChangeModel).toHaveBeenCalledOnce();
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it("does not attach the model action to unrelated system notes", () => {
+    const container = mount(thread([
+      entry({ event_id: "v3:turn:error:18", role: "system", content: "Turn cancelled." }),
+    ]), undefined, undefined, { onChangeModel: vi.fn() });
+
+    expect(buttonNamed(container, "Change model")).toBeUndefined();
+  });
 });
 
 describe("a Companion turn's reasoning", () => {

@@ -887,6 +887,65 @@ describe("Runtime v3 progression interface", () => {
     expect(acknowledge).toHaveBeenCalledOnce();
   });
 
+  it("settles an exhausted terminal model error with a safe switch-model outcome", async () => {
+    const project = vi.fn().mockResolvedValue(true);
+    const acknowledge = vi.fn().mockResolvedValue(2n);
+    const prompt = vi.fn();
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1", content: "finish", cursor: 0n,
+        }),
+        beginAdmission: vi.fn(), recordAdmission: vi.fn(), project,
+      },
+      pi: {
+        prompt,
+        read: vi.fn().mockResolvedValue({
+          events: [
+            {
+              sequence: 1n, invocationId: "invocation-1", attemptId: acceptedTurn.id,
+              kind: "pi_event", event: {
+                type: "auto_retry_end", success: false,
+                finalError: "429 provider entitlement payload that must not escape",
+              },
+            },
+            {
+              sequence: 2n, invocationId: "invocation-1", attemptId: acceptedTurn.id,
+              kind: "pi_event", event: { type: "agent_settled" },
+            },
+          ],
+          nextCursor: 2n, acknowledgedCursor: 0n, hasMore: false,
+        }),
+        acknowledge,
+      },
+    });
+
+    await expect(advance({
+      ...mainClaim, turn: { ...acceptedTurn, state: "running" as const },
+    })).resolves.toEqual({
+      kind: "failed",
+      code: "model_unavailable",
+      message: "The selected model is unavailable. Choose a different model and try again.",
+      action: "switch_model",
+    });
+    expect(project).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        assistant: [],
+        settled: true,
+        terminalError: {
+          sequence: 1n,
+          code: "model_unavailable",
+          message: "The selected model is unavailable. Choose a different model and try again.",
+          action: "switch_model",
+        },
+      }),
+      expect.any(AbortSignal),
+    );
+    expect(acknowledge).toHaveBeenCalledOnce();
+    expect(prompt).not.toHaveBeenCalled();
+  });
+
   it("does not reread the outbox after a committed harvest is taken over", async () => {
     const harvest = vi.fn();
     const recordOutputs = vi.fn();

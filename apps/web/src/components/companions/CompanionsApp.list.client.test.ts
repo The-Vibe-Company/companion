@@ -885,6 +885,38 @@ describe("CompanionsApp conversation list", () => {
     expect(row(container).querySelector(".cmprow__unread")).toBeNull();
   });
 
+  it("opens the existing model picker from a terminal model error without replaying chat", async () => {
+    companionsApi.getCompanionThread.mockResolvedValue(thread({
+      entries: [{
+        event_id: "v3:22222222-2222-4222-8222-222222222222:error:17",
+        ordinal: 0,
+        role: "system",
+        content: "The selected model is unavailable. Choose a different model and try again.",
+        author_id: null,
+        author_name: null,
+        tool: null,
+        decision: null,
+        attachments: [],
+        reasoning: null,
+        routine: null,
+        trigger: null,
+        turn_id: null,
+        queued: false,
+        created_at: "2026-08-14T09:05:00.000Z",
+      }],
+    }));
+    const container = await render([companion()], companionId);
+
+    const changeModel = [...container.querySelectorAll("button")]
+      .find((button) => button.textContent?.trim() === "Change model") as HTMLButtonElement;
+    await act(async () => changeModel.click());
+
+    expect(routerPush).toHaveBeenCalledWith(
+      `/companions/${companionId}/settings#companion-model`,
+    );
+    expect(companionsApi.sendCompanionMessage).not.toHaveBeenCalled();
+  });
+
   it("keeps a preview a runtime read did not answer with", async () => {
     // Runtime reads that update lifecycle state may report `last_message: null`; replacing the row
     // wholesale would blank the line the sidebar is showing.

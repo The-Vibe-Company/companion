@@ -1421,6 +1421,9 @@ export function CompanionsApp({
               onSettings={opened.access === "viewer"
                 ? null
                 : () => router.push(`/companions/${opened.id}/settings`)}
+              onChangeModel={opened.access === "viewer"
+                ? null
+                : () => router.push(`/companions/${opened.id}/settings#companion-model`)}
               onThread={acceptThreadProjection}
               onDesktop={() => void onDesktop()}
               onCancelTurn={onCancelTurn}

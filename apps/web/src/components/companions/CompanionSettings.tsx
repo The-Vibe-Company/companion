@@ -76,6 +76,7 @@ export function CompanionSettings({
   // an apply is in flight on an awake Box a short poll keeps it moving without waking anything.
   const [latest, setLatest] = useState(companion);
   const syncReadRef = useRef(0);
+  const modelPickerRef = useRef<HTMLDivElement>(null);
   const deleteRequestIdRef = useRef<string | null>(null);
   const restartRequestIdRef = useRef<string | null>(null);
   const onSavedRef = useRef(onSaved);
@@ -98,6 +99,15 @@ export function CompanionSettings({
   useEffect(() => {
     setLatest(companion);
   }, [companion]);
+
+  // A terminal model-error CTA lands here after provider settings load. Put keyboard focus on the
+  // current model so the destination is immediate and the existing save flow remains unchanged.
+  useEffect(() => {
+    if (window.location.hash !== "#companion-model") return;
+    modelPickerRef.current
+      ?.querySelector<HTMLInputElement>('input[name="companion-settings-model"]:checked')
+      ?.focus();
+  }, []);
 
   const restartActive = runtimeSnapshot.lifecycle_intent === "recycle_pi";
   const deletionActive = runtimeSnapshot.lifecycle_intent === "delete";
@@ -349,7 +359,11 @@ export function CompanionSettings({
           </div>
         )}
 
-        <form className="companions-settings__form" onSubmit={submit}>
+        <form
+          className="companions-settings__form"
+          aria-busy={busy || undefined}
+          onSubmit={submit}
+        >
           {/* The face leads the form, exactly where the creation dialog put it. */}
           {canEdit && (
             <CompanionIconPicker
@@ -395,19 +409,21 @@ export function CompanionSettings({
             Applied after the active turn settles and before the next turn starts.
           </p>
 
-          <CompanionProviderModelPicker
-            providers={providers}
-            providerId={providerId}
-            modelId={modelId}
-            namePrefix="companion-settings"
-            descriptionId="companion-provider-hint"
-            disabled={!canEdit || busy || deletionActive}
-            onChange={(selection) => {
-              setProviderId(selection.providerId);
-              setModelId(selection.modelId);
-              setSaved(false);
-            }}
-          />
+          <div id="companion-model" ref={modelPickerRef}>
+            <CompanionProviderModelPicker
+              providers={providers}
+              providerId={providerId}
+              modelId={modelId}
+              namePrefix="companion-settings"
+              descriptionId="companion-provider-hint"
+              disabled={!canEdit || busy || deletionActive}
+              onChange={(selection) => {
+                setProviderId(selection.providerId);
+                setModelId(selection.modelId);
+                setSaved(false);
+              }}
+            />
+          </div>
           <p className="companions-settings__hint" id="companion-provider-hint">
             Provider, model, skills, and plugin changes are applied in order between turns.
           </p>

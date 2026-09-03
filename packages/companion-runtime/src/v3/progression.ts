@@ -2,6 +2,7 @@ import { safeRuntimeError } from "../errors";
 import {
   classifyPiJournalPage,
   type PiAssistantFallbackProjection,
+  type PiTerminalErrorProjection,
   type RuntimePiProjection,
   type ValidatedPiJournalRead,
 } from "../piEvents";
@@ -497,6 +498,8 @@ export interface RuntimeV3WarmTurnProjection {
   assistant: Array<{ eventId: string; content: string }>;
   /** Durable terminal-envelope candidates; persistence promotes one only at settlement. */
   assistantFallbacks?: PiAssistantFallbackProjection[];
+  /** Expurgated terminal model error candidate; persistence promotes it only without a reply. */
+  terminalError?: PiTerminalErrorProjection | null;
   compactions?: Array<{
     cursor: bigint;
     summary: string;
@@ -1286,6 +1289,7 @@ export function createRuntimeV3WarmTurnAdvance(
           throughCursor: classified.throughCursor,
           assistant,
           assistantFallbacks: classified.assistantFallbacks,
+          terminalError: classified.terminalError,
           compactions: classified.projections.flatMap((item) => item.type === "compaction"
             ? [{
               cursor: item.sequence,
@@ -1369,6 +1373,14 @@ export function createRuntimeV3WarmTurnAdvance(
         }
         if (projectedNeedsInput) return { kind: "release" };
         if (classified.settled) {
+          if (!material.backgroundRoutine && assistantResults === 0 && classified.terminalError) {
+            return {
+              kind: "failed",
+              code: classified.terminalError.code,
+              message: classified.terminalError.message,
+              action: classified.terminalError.action,
+            };
+          }
           return material.backgroundRoutine || assistantResults === 1
             ? { kind: "succeeded" }
             : {

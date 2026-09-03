@@ -1015,6 +1015,13 @@ acknowledged, because a later page may contain `agent_settled` after executor ta
 the page is idempotent. Main turns project the candidate into the shared transcript; background
 routine turns project it into their private run transcript. If no usable result exists, the main
 turn still settles visibly as `pi_result_missing`; `agent_settled` remains the sole quiescence proof.
+When the terminal assistant envelopes instead prove a model error with no usable text, or Pi reports
+an exhausted automatic retry, runtime stores only a cursor—not the provider error—and settles with
+`model_unavailable`, the `switch_model` action, and a product-owned system note. Main turns show the
+note in chat and background turns keep it in their private run transcript. Runtime does not replay
+the prompt or select a different model. An editable main thread offers a direct **Change model**
+action on that note; it opens and focuses the existing settings picker, whose ordinary save path
+applies the change between turns without holding the chat queue.
 
 **Outputs.** The layout-14 broker creates and empties `~/outbox` when it binds a new response root,
 immediately before prompt delivery; native steers never erase output already produced by that

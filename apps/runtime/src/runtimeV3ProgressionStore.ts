@@ -812,6 +812,25 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
         `, signal);
         if (recorded[0]?.recorded !== true) return false;
       }
+      if (projection.terminalError) {
+        const recorded = await abortable(sql<Array<{ recorded: boolean }>>`
+          select public.companion_v3_runtime_record_terminal_model_error_v9(
+            ${claim.orgId}::uuid,
+            ${claim.companionId}::uuid,
+            ${claim.turn.lane},
+            ${claim.turn.id}::uuid,
+            ${claim.fence.token}::uuid,
+            ${claim.fence.epoch.toString()}::bigint,
+            ${claim.fence.gateEpoch.toString()}::bigint,
+            ${sql.json({
+              ...projection.terminalError,
+              sequence: projection.terminalError.sequence.toString(),
+            })}::jsonb,
+            9
+          ) as recorded
+        `, signal);
+        if (recorded[0]?.recorded !== true) return false;
+      }
       let assistant = projection.assistant;
       if (projection.settled && assistant.length === 0) {
         const fallback = await abortable(sql<Array<{ sequence: string; content: string }>>`
@@ -833,7 +852,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
         }));
       }
       const rows = await abortable(sql<Array<{ projected: string | null }>>`
-        select public.companion_v3_runtime_project_native_page_v7(
+        select public.companion_v3_runtime_project_native_page_v8(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
           ${claim.turn.lane},
@@ -854,7 +873,7 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
           ${projection.needsInput},
           ${projection.activity},
           ${projection.processExited ? "process_exit" : projection.settled ? "settled" : null},
-          7
+          8
         ) as projected
       `, signal);
       const projected = rows[0]?.projected;
@@ -1016,6 +1035,21 @@ export function createRuntimeV3PostgresBackgroundTurnPersistence(
         `, signal);
         if (recorded[0]?.recorded !== true) return false;
       }
+      if (projection.terminalError) {
+        const recorded = await abortable(sql<Array<{ recorded: boolean }>>`
+          select public.companion_v3_runtime_record_terminal_model_error_v9(
+            ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.turn.lane},
+            ${claim.turn.id}::uuid, ${claim.fence.token}::uuid,
+            ${claim.fence.epoch.toString()}::bigint,
+            ${claim.fence.gateEpoch.toString()}::bigint,
+            ${sql.json({
+              ...projection.terminalError,
+              sequence: projection.terminalError.sequence.toString(),
+            })}::jsonb, 9
+          ) as recorded
+        `, signal);
+        if (recorded[0]?.recorded !== true) return false;
+      }
       let privateEntries = projection.privateEntries ?? [];
       if (projection.settled && !privateEntries.some((item) => item.type === "assistant")) {
         const fallback = await abortable(sql<Array<{ sequence: string; content: string }>>`
@@ -1038,7 +1072,7 @@ export function createRuntimeV3PostgresBackgroundTurnPersistence(
         })].sort((left, right) => left.sequence < right.sequence ? -1 : 1);
       }
       const rows = await abortable(sql<Array<{ projected: string | null }>>`
-        select public.companion_v3_runtime_project_background_page_v9(
+        select public.companion_v3_runtime_project_background_page_v10(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.turn.id}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint,
@@ -1054,7 +1088,7 @@ export function createRuntimeV3PostgresBackgroundTurnPersistence(
           })))}::jsonb,
           ${projection.needsInput}, ${projection.activity},
           ${projection.processExited ? "process_exit" : projection.settled ? "settled" : null},
-          9
+          10
         ) as projected
       `, signal);
       const projected = rows[0]?.projected;

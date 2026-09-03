@@ -111,6 +111,7 @@ export function CompanionThread({
   onBack,
   onSend,
   onSettings,
+  onChangeModel = null,
   onThread,
   onDesktop,
   onCancelTurn,
@@ -153,6 +154,8 @@ export function CompanionThread({
   onSend: (content: string, clientMessageId: string, files: readonly File[]) => Promise<boolean>;
   /** Null for a Viewer: read-only settings remain available from the workspace list, not the thread. */
   onSettings: (() => void) | null;
+  /** Opens settings at the existing model picker without sending or replaying a turn. */
+  onChangeModel?: (() => void) | null;
   onThread: (thread: Thread) => void;
   onDesktop: () => void;
   /** Stop an active turn or remove a queued follow-up. */
@@ -439,6 +442,7 @@ export function CompanionThread({
           onStop={onCancelTurn}
           onCancelQueued={onCancelTurn}
           onOpenRoutineRun={openRoutineRun}
+          onChangeModel={onChangeModel ?? undefined}
           onThread={onThread}
         />
         {showContext && overlay && (

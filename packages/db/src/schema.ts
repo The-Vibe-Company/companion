@@ -1487,6 +1487,11 @@ export const companionV3Turns = pgTable(
     terminalAssistantFallbackAdmittedAt: timestamp("terminal_assistant_fallback_admitted_at", {
       withTimezone: true,
     }),
+    /** Cursor-only proof of an expurgated terminal model failure for the current admission. */
+    terminalModelErrorCursor: bigint("terminal_model_error_cursor", { mode: "number" }),
+    terminalModelErrorAdmittedAt: timestamp("terminal_model_error_admitted_at", {
+      withTimezone: true,
+    }),
     lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
     firstActivityAt: timestamp("first_activity_at", { withTimezone: true }),
     inactivityDeadlineAt: timestamp("inactivity_deadline_at", { withTimezone: true }),
@@ -1581,6 +1586,10 @@ export const companionV3Turns = pgTable(
     terminalAssistantFallbackCheck: check(
       "companion_v3_turns_terminal_assistant_fallback_check",
       sql`(${t.terminalAssistantFallbackSource} is null and ${t.terminalAssistantFallbackCursor} is null and ${t.terminalAssistantFallbackContent} is null and ${t.terminalAssistantFallbackAdmittedAt} is null) or (${t.terminalAssistantFallbackSource} is not null and ${t.terminalAssistantFallbackCursor} is not null and ${t.terminalAssistantFallbackContent} is not null and ${t.terminalAssistantFallbackAdmittedAt} is not null and ${t.terminalAssistantFallbackSource} in ('turn_end', 'agent_end') and ${t.terminalAssistantFallbackCursor} >= 0 and char_length(${t.terminalAssistantFallbackContent}) between 1 and 100000)`,
+    ),
+    terminalModelErrorCheck: check(
+      "companion_v3_turns_terminal_model_error_check",
+      sql`(${t.terminalModelErrorCursor} is null and ${t.terminalModelErrorAdmittedAt} is null) or (${t.terminalModelErrorCursor} is not null and ${t.terminalModelErrorCursor} >= 0 and ${t.terminalModelErrorAdmittedAt} is not null)`,
     ),
     admissionCheck: check(
       "companion_v3_turns_admission_check",

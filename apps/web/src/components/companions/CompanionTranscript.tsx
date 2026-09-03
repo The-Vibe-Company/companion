@@ -59,6 +59,7 @@ import {
   COMPANION_TOOL_NAME,
   attachmentsOf,
   groupTranscriptEntries,
+  isModelUnavailableMessage,
   toThreadMessageLike,
   useStableEntries,
   useStableGroups,
@@ -125,6 +126,8 @@ interface TranscriptChrome {
   expandedRoutineNotifyGroups: ReadonlySet<string>;
   onToggleRoutineNotifyGroup: (eventId: string) => void;
   dequeueingTurnId: string | null;
+  /** Opens the existing settings model picker; it never sends or replays a turn. */
+  onChangeModel?: () => void;
 }
 
 const ChromeContext = createContext<TranscriptChrome | null>(null);
@@ -397,6 +400,25 @@ function UserFrame({ children }: { children: ReactNode }) {
   );
 }
 
+/** Keep the terminal note in the thread and put its one safe recovery action beside it. */
+function SystemFrame({ children }: { children: ReactNode }) {
+  const message = useTranscriptMessage();
+  const { onChangeModel } = useChrome();
+  if (!isModelUnavailableMessage(message) || !onChangeModel) return <>{children}</>;
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div>{children}</div>
+      <button
+        type="button"
+        className="cds-btn cds-btn--secondary cds-btn--sm"
+        onClick={onChangeModel}
+      >
+        Change model
+      </button>
+    </div>
+  );
+}
+
 /**
  * An upload can run for up to two minutes, and the only sighted cue is a dimmed bubble. `aria-busy`
  * marks the region as changing; it does not announce anything. A text send acknowledges in under a
@@ -472,6 +494,7 @@ const THREAD_COMPONENTS = {
   Footer,
   UserMessageFrame: UserFrame,
   AssistantMessageFrame: AssistantFrame,
+  SystemMessageFrame: SystemFrame,
   tools: TOOL_UIS,
 };
 
@@ -548,6 +571,7 @@ export function CompanionTranscript({
   onStop,
   onCancelQueued,
   onOpenRoutineRun,
+  onChangeModel,
   onThread,
 }: {
   companion: Companion;
@@ -574,6 +598,8 @@ export function CompanionTranscript({
   onCancelQueued?: (turnId: string) => Promise<void>;
   /** Open the private history associated with a routine-origin marker. */
   onOpenRoutineRun?: (routine: NonNullable<CompanionTranscriptEntry["routine"]>) => void;
+  /** Open the existing settings flow directly at its model picker. */
+  onChangeModel?: () => void;
   /** Replace the thread after a permission card is decided, without a full poll cycle. */
   onThread: (thread: Thread) => void;
 }) {
@@ -869,6 +895,7 @@ export function CompanionTranscript({
     expandedRoutineNotifyGroups,
     onToggleRoutineNotifyGroup: toggleRoutineNotifyGroup,
     dequeueingTurnId,
+    onChangeModel,
   }), [
     attachmentError,
     attachments,
@@ -887,6 +914,7 @@ export function CompanionTranscript({
     onAttach,
     onRemoveAttachment,
     onOpenRoutineRun,
+    onChangeModel,
     onLoadOlderMessages,
     onStop,
     replying,

@@ -25,6 +25,10 @@ import { transcriptAuthor, transcriptDisplayContent, utcDay } from "./transcript
 export const COMPANION_TOOL_NAME = "companion_tool";
 export const COMPANION_DECISION_TOOL_NAME = "companion_decision";
 
+/** Product-owned copy for an expurgated terminal model failure. No provider detail reaches here. */
+export const MODEL_UNAVAILABLE_MESSAGE =
+  "The selected model is unavailable. Choose a different model and try again.";
+
 /**
  * How long a writer keeps the floor. Consecutive messages from the same writer inside this window
  * read as one passage, so the transcript names the writer and the clock once per passage instead of
@@ -70,6 +74,11 @@ export interface TranscriptMessage {
   startsNew: boolean;
   /** The entries this message was built from, in transcript order. */
   entries: readonly CompanionTranscriptEntry[];
+}
+
+/** A system note that can offer the existing settings model picker as its recovery action. */
+export function isModelUnavailableMessage(message: TranscriptMessage | undefined): boolean {
+  return message?.role === "system" && message.displayContent === MODEL_UNAVAILABLE_MESSAGE;
 }
 
 export interface TranscriptGroupingContext {

@@ -532,6 +532,42 @@ describe("Pi journal validation and projection", () => {
     expect(classified.projections).toEqual([{ sequence: 2n, type: "settled" }]);
   });
 
+  it("expurgates a retried terminal model failure without inventing an assistant result", () => {
+    const providerError = "429 code 1311: current subscription plan does not include access to GLM-5.3-Highspeed";
+    const failedAssistant = {
+      role: "assistant",
+      content: [],
+      stopReason: "error",
+      errorMessage: providerError,
+    } satisfies Record<string, SnapshotValue>;
+    const events: Parameters<typeof classifyEvents>[0] = [];
+    for (let retry = 0; retry < 4; retry += 1) {
+      events.push(
+        { type: "message_start", message: failedAssistant },
+        { type: "message_end", message: failedAssistant },
+        { type: "turn_end", message: failedAssistant },
+        { type: "agent_end", messages: [failedAssistant], willRetry: true },
+      );
+    }
+    events.push(
+      { type: "auto_retry_end", success: false, finalError: providerError },
+      { type: "agent_settled" },
+    );
+
+    const classified = classifyEvents(events);
+
+    expect(classified.projections.filter((item) => item.type === "assistant")).toEqual([]);
+    expect(classified.assistantFallbacks).toEqual([]);
+    expect(classified.terminalError).toEqual({
+      sequence: 17n,
+      code: "model_unavailable",
+      message: "The selected model is unavailable. Choose a different model and try again.",
+      action: "switch_model",
+    });
+    expect(JSON.stringify(classified, bigintAwareReplacer)).not.toContain(providerError);
+    expect(classified.settled).toBe(true);
+  });
+
   it("redacts exact credentials from disclosed tool arguments and results", () => {
     const opaqueSecret = "mF9xOpaqueCredentialValue";
     const page = validatePiJournalRead({

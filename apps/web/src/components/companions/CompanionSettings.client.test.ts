@@ -197,11 +197,46 @@ describe("CompanionSettings", () => {
 
   afterEach(async () => {
     vi.useRealTimers();
+    window.location.hash = "";
     while (roots.length) {
       const root = roots.pop();
       await act(async () => root?.unmount());
     }
     document.body.replaceChildren();
+  });
+
+  it("focuses the existing model picker when opened from a terminal model error", async () => {
+    window.location.hash = "#companion-model";
+    const { container } = await mount(companion("editor"));
+    const selected = container.querySelector<HTMLInputElement>(
+      'input[name="companion-settings-model"]:checked',
+    );
+
+    expect(selected).not.toBeNull();
+    expect(document.activeElement).toBe(selected);
+    expect(container.querySelector("form")?.getAttribute("aria-busy")).toBeNull();
+  });
+
+  it("announces model-save loading and failure from the existing settings flow", async () => {
+    let rejectSave: (cause: Error) => void = () => undefined;
+    companionApi.updateCompanion.mockReturnValue(new Promise((_resolve, reject) => {
+      rejectSave = reject;
+    }));
+    const { container } = await mount(companion("editor"));
+    const form = container.querySelector("form")!;
+    const sonnet = form.querySelector<HTMLInputElement>('input[value="claude-sonnet-4-6"]')!;
+
+    await act(async () => sonnet.click());
+    act(() => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+
+    expect(form.getAttribute("aria-busy")).toBe("true");
+    expect(button(container, "Saving...").disabled).toBe(true);
+
+    await act(async () => rejectSave(new Error("Model settings could not be saved.")));
+    expect(container.querySelector("[role='alert']")?.textContent).toContain(
+      "Model settings could not be saved.",
+    );
+    expect(form.getAttribute("aria-busy")).toBeNull();
   });
 
   it("persists editable settings while preserving Owner-only deletion", async () => {

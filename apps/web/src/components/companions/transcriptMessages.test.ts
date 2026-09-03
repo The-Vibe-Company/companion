@@ -230,6 +230,22 @@ describe("grouping a transcript into messages", () => {
 });
 
 describe("converting a message for the thread", () => {
+  it("renders the stable terminal model error as an in-thread system note", () => {
+    const groups = groupTranscriptEntries([entry({
+      event_id: "v3:turn:error:17",
+      role: "system",
+      content: "The selected model is unavailable. Choose a different model and try again.",
+    })], context);
+    expect(groups[0]?.displayContent).toBe(
+      "The selected model is unavailable. Choose a different model and try again.",
+    );
+    expect(rendered(groups.flatMap((group) => group.entries))).toEqual([{
+      id: "v3:turn:error:17",
+      role: "system",
+      parts: ["text:The selected model is unavailable. Choose a different model and try again."],
+    }]);
+  });
+
   it("puts reasoning before the reply it produced", () => {
     const [message] = rendered([entry({ reasoning: "checked the logs", content: "Two timed out." })]);
 

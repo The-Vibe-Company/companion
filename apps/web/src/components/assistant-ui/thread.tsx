@@ -63,6 +63,8 @@ export type ThreadComponents = {
   UserMessageFrame?: ComponentType<{ children: ReactNode }> | undefined;
   /** Rendered around a Companion turn, for the same reason. */
   AssistantMessageFrame?: ComponentType<{ children: ReactNode }> | undefined;
+  /** Rendered around a control-plane note when the owning surface offers a recovery action. */
+  SystemMessageFrame?: ComponentType<{ children: ReactNode }> | undefined;
   /** Tool UIs by name. An unregistered tool name renders nothing — see `AssistantMessage`. */
   tools?: Record<string, ToolCallMessagePartComponent | undefined> | undefined;
 };
@@ -242,12 +244,17 @@ const UserMessage: FC = () => {
  * nothing to show. It stays a quiet line rather than an error banner, because the conversation
  * continues around it.
  */
-const SystemMessage: FC = () => (
-  <MessagePrimitive.Root
-    data-slot="aui_system-message-root"
-    data-role="system"
-    className="text-muted-foreground text-center text-xs"
-  >
-    <MessagePrimitive.Parts />
-  </MessagePrimitive.Root>
-);
+const SystemMessage: FC = () => {
+  const { SystemMessageFrame: Frame = Passthrough } = useContext(ThreadComponentsContext);
+  return (
+    <MessagePrimitive.Root
+      data-slot="aui_system-message-root"
+      data-role="system"
+      className="text-muted-foreground text-center text-xs"
+    >
+      <Frame>
+        <MessagePrimitive.Parts />
+      </Frame>
+    </MessagePrimitive.Root>
+  );
+};
