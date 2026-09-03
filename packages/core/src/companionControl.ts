@@ -559,6 +559,22 @@ export async function getCompanionDelegation(input: {
   return row ? projectDelegation(row) : null;
 }
 
+export async function cancelCompanionDelegationTurn(input: {
+  orgId: string;
+  sourceCompanionId: string;
+  delegationId: string;
+  database: Db;
+}): Promise<CompanionTurn> {
+  const result = await input.database.execute<{ turn: unknown }>(sql`
+    select * from public.companion_v3_api_cancel_delegation_turn(
+      ${input.orgId}::uuid,${input.sourceCompanionId}::uuid,${input.delegationId}::uuid
+    )
+  `);
+  const [row] = rows<{ turn: unknown }>(result);
+  if (!row) throw new Error("failed to cancel Companion delegation Turn");
+  return companionTurnSchema.parse(row.turn);
+}
+
 export function deterministicControlUuid(digest: string, namespace: string): string {
   const hex = createHash("sha256").update(`${namespace}:${digest}`, "utf8").digest("hex").slice(0, 32);
   const chars = hex.split("");

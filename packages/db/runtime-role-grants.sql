@@ -934,6 +934,13 @@ BEGIN
         'public.companion_api_get_delegation(uuid,uuid,uuid)'::regprocedure,
         'public.companion_api_schedule_pi_restart(uuid,uuid,uuid,uuid,uuid)'::regprocedure
       ];
+      IF pg_catalog.to_regprocedure(
+        'public.companion_v3_api_cancel_delegation_turn(uuid,uuid,uuid)'
+      ) IS NOT NULL THEN
+        companion_api_functions := companion_api_functions || ARRAY[
+          'public.companion_v3_api_cancel_delegation_turn(uuid,uuid,uuid)'::regprocedure
+        ];
+      END IF;
       internal_runtime_functions := internal_runtime_functions || ARRAY[
         'public.companion_revoke_inactive_control_token()'::regprocedure,
         'public.companion_enqueue_deferred_pi_restart()'::regprocedure,

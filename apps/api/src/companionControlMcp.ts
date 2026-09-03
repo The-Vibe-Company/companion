@@ -13,7 +13,7 @@ import {
   type CompanionControlRequestKind,
 } from "@companion/contracts";
 import {
-  cancelCompanionTurnV2,
+  cancelCompanionDelegationTurn,
   companionControlActor,
   createCompanionControlRequest,
   deterministicControlUuid,
@@ -79,15 +79,19 @@ type JsonRpcId = string | number | null;
 type McpResult = Record<string, CompanionControlJsonValue>;
 
 export interface CompanionControlMcpDependencies {
+  cancelCompanionDelegationTurn: typeof cancelCompanionDelegationTurn;
   companionControlActor: typeof companionControlActor;
   finishCompanionControlInvocation: typeof finishCompanionControlInvocation;
+  getCompanionDelegation: typeof getCompanionDelegation;
   registerCompanionControlInvocation: typeof registerCompanionControlInvocation;
   updateCompanionV2: typeof updateCompanionV2;
 }
 
 const defaultDependencies: CompanionControlMcpDependencies = {
+  cancelCompanionDelegationTurn,
   companionControlActor,
   finishCompanionControlInvocation,
+  getCompanionDelegation,
   registerCompanionControlInvocation,
   updateCompanionV2,
 };
@@ -358,17 +362,17 @@ export async function executeCompanionControlMcp(input: {
       }
       case "companion_get_delegation": {
         const body = delegationIdSchema.parse(args);
-        const delegation = await getCompanionDelegation({ orgId: a.orgId, companionId: a.companionId, delegationId: body.delegation_id, database: input.database });
+        const delegation = await dependencies.getCompanionDelegation({ orgId: a.orgId, companionId: a.companionId, delegationId: body.delegation_id, database: input.database });
         return delegation ? ok(call.id, { delegation }) : failure(call.id, "Delegation not found.");
       }
       case "companion_cancel_delegation": {
         const body = delegationIdSchema.parse(args);
-        const delegation = await getCompanionDelegation({ orgId: a.orgId, companionId: a.companionId, delegationId: body.delegation_id, database: input.database });
+        const delegation = await dependencies.getCompanionDelegation({ orgId: a.orgId, companionId: a.companionId, delegationId: body.delegation_id, database: input.database });
         if (!delegation?.target_companion_id) return failure(call.id, "Delegation not found.");
-        const turn = await cancelCompanionTurnV2({
+        const turn = await dependencies.cancelCompanionDelegationTurn({
           orgId: a.orgId,
-          companionId: delegation.target_companion_id,
-          turnId: delegation.target_turn_id,
+          sourceCompanionId: a.companionId,
+          delegationId: delegation.id,
           database: input.database,
         });
         return ok(call.id, { delegation_id: delegation.id, target_turn: turn });

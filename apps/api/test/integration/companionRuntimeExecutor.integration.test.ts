@@ -508,6 +508,60 @@ async function createCompanion(input: {
   return { companionId, turnId, attemptId, prompt };
 }
 
+async function seedPreparedV3(companionId: string, piInvocationId: string): Promise<void> {
+  if (!sql) throw new Error("runtime executor database is not initialized");
+  await sql`insert into companion_v3_instances(
+    org_id,companion_id,desired_lifecycle_actor_id,box_id,pi_invocation_id,
+    preparation_checkpoint,box_ready_at,staging_completed_at,prepared_at,
+    preparation_actor_id,preparation_settings_revision,preparation_skills_revision,
+    preparation_model_id,preparation_provider_refs,preparation_skill_refs,preparation_mcp_refs,
+    prepared_disk_layout_version,prepared_skills_digest,prepared_material_expires_at
+  ) values (
+    ${ids.orgA}::uuid,${companionId}::uuid,${ids.ownerA},'bx_23456789',${piInvocationId},
+    'prepared',now(),now(),now(),${ids.ownerA},1,1,'fixture-model','[]'::jsonb,'[]'::jsonb,
+    '[]'::jsonb,14,${"a".repeat(64)},now()+interval '6 hours'
+  ) on conflict (org_id,companion_id) do update set
+    desired_lifecycle_actor_id=excluded.desired_lifecycle_actor_id,
+    box_id=excluded.box_id,pi_invocation_id=excluded.pi_invocation_id,
+    preparation_checkpoint=excluded.preparation_checkpoint,box_ready_at=excluded.box_ready_at,
+    staging_completed_at=excluded.staging_completed_at,prepared_at=excluded.prepared_at,
+    preparation_actor_id=excluded.preparation_actor_id,
+    preparation_settings_revision=excluded.preparation_settings_revision,
+    preparation_skills_revision=excluded.preparation_skills_revision,
+    preparation_model_id=excluded.preparation_model_id,
+    preparation_provider_refs=excluded.preparation_provider_refs,
+    preparation_skill_refs=excluded.preparation_skill_refs,
+    preparation_mcp_refs=excluded.preparation_mcp_refs,
+    prepared_disk_layout_version=excluded.prepared_disk_layout_version,
+    prepared_skills_digest=excluded.prepared_skills_digest,
+    prepared_material_expires_at=excluded.prepared_material_expires_at`;
+}
+
+async function enqueueActiveV3(companionId: string, content: string): Promise<string> {
+  if (!sql) throw new Error("runtime executor database is not initialized");
+  const clientMessageId = randomUUID();
+  const [accepted] = await asApi({
+    orgId: ids.orgA,
+    actorId: ids.ownerA,
+    action: (tx) => tx<Array<{ turn: IntegrationJsonObject }>>`
+      select turn from public.companion_v3_api_enqueue_warm_turn(
+        ${ids.orgA}::uuid,${companionId}::uuid,${clientMessageId}::uuid,${content}
+      )
+    `,
+  });
+  const turnId = stringValue(accepted?.turn.id);
+  if (!turnId) throw new Error("Runtime v3 fixture Turn is unavailable");
+  await sql`update companion_v3_turns set state='running',admission_state='accepted',
+    admission_started_at=now(),admitted_at=now(),
+    pi_invocation_id=(select pi_invocation_id from companion_v3_instances
+      where org_id=${ids.orgA}::uuid and companion_id=${companionId}::uuid),
+    response_turn_id=id,admission_cursor=0,last_activity_at=now(),
+    inactivity_deadline_at=now()+interval '10 minutes',
+    absolute_deadline_at=now()+interval '2 hours'
+    where org_id=${ids.orgA}::uuid and companion_id=${companionId}::uuid and id=${turnId}::uuid`;
+  return turnId;
+}
+
 async function claimWorkRows(
   limit: number,
   claimant = executorId,
@@ -1172,8 +1226,10 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     if (!sql) throw new Error("runtime executor database is not initialized");
     const fixture = await createCompanion({ selectedSkillIds: [], selectedMcpAccountIds: [] });
     try {
+    await seedPreparedV3(fixture.companionId, `pi-v3-${fixture.companionId}`);
+    const sourceTurnId = await enqueueActiveV3(fixture.companionId, "v3 control source");
     const invocationId = randomUUID();
-    const requestKey = `${fixture.attemptId}:rpc-1`;
+    const requestKey = `${sourceTurnId}:rpc-1`;
     const requestDigest = "d".repeat(64);
     const expectedResult = { jsonrpc: "2.0", id: "rpc-1", result: { applied: true } };
     let mutationCount = 0;
@@ -1186,7 +1242,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
           const [registered] = await tx<Array<{ replayed: boolean; result: unknown }>>`
             select * from public.companion_api_register_control_invocation(
               ${ids.orgA}::uuid, ${fixture.companionId}::uuid, ${invocationId}::uuid,
-              ${fixture.turnId}::uuid, ${fixture.attemptId}::uuid,
+              ${sourceTurnId}::uuid, ${sourceTurnId}::uuid,
               ${requestKey}, ${requestDigest}
             )
           `;
@@ -1195,7 +1251,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
           mutationCount += 1;
           const [finished] = await tx<Array<{ result: unknown }>>`
             select public.companion_api_finish_control_invocation(
-              ${ids.orgA}::uuid, ${fixture.companionId}::uuid, ${fixture.attemptId}::uuid,
+              ${ids.orgA}::uuid, ${fixture.companionId}::uuid, ${sourceTurnId}::uuid,
               ${requestKey}, ${requestDigest}, ${tx.json(expectedResult)}::jsonb
             ) as result
           `;
@@ -1214,14 +1270,8 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     `;
     expect(after).toEqual({ invocationCount: 1 });
 
-    await sql`
-      update companion_turn_attempts set status = 'cancelled', settled_at = now()
-      where id = ${fixture.attemptId}::uuid
-    `;
-    await sql`
-      update companion_turns set status = 'cancelled', settled_at = now()
-      where id = ${fixture.turnId}::uuid
-    `;
+    await sql`update companion_v3_turns set state='cancelled',outcome='cancelled',
+      settled_at=now() where id=${sourceTurnId}::uuid`;
 
     await expect(asApi({
       orgId: ids.orgA,
@@ -1229,7 +1279,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
       action: (tx) => tx`
         select * from public.companion_api_register_control_invocation(
           ${ids.orgA}::uuid, ${fixture.companionId}::uuid, ${randomUUID()}::uuid,
-          ${fixture.turnId}::uuid, ${fixture.attemptId}::uuid,
+          ${sourceTurnId}::uuid, ${sourceTurnId}::uuid,
           ${requestKey}, ${"e".repeat(64)}
         )
       `,
@@ -1244,6 +1294,8 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     const source = await createCompanion({ selectedSkillIds: [], selectedMcpAccountIds: [] });
     let targetCompanionId = "";
     try {
+      await seedPreparedV3(source.companionId, `pi-v3-${source.companionId}`);
+      const sourceTurnId = await enqueueActiveV3(source.companionId, "v3 delegation source");
       const [created] = await asApi({
         orgId: ids.orgA,
         actorId: ids.ownerA,
@@ -1256,6 +1308,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
         `,
       });
       targetCompanionId = created?.companionId ?? "";
+      await seedPreparedV3(targetCompanionId, `pi-v3-${targetCompanionId}`);
       await asApi({
         orgId: ids.orgA,
         actorId: ids.ownerA,
@@ -1285,7 +1338,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
             select delegation, target_turn as "targetTurn"
             from public.companion_api_enqueue_delegation(
               ${ids.orgA}::uuid, ${source.companionId}::uuid, ${targetCompanionId}::uuid,
-              ${source.turnId}::uuid, ${source.attemptId}::uuid, ${randomUUID()}::uuid,
+              ${sourceTurnId}::uuid, ${sourceTurnId}::uuid, ${randomUUID()}::uuid,
               ${`Delegation ${index + 1}`}, ${delegationId}::uuid,
               ${mode}::public.companion_routine_surface_mode,
               ${`delegation-key-${index + 1}`}, ${String(index + 1).repeat(64)}
@@ -1328,30 +1381,27 @@ describe("Companion runtime executor PostgreSQL surface", () => {
       });
       expect(secondPage?.id).toBe(delegationIds[0]);
 
-      await asApi({
-        orgId: ids.orgA,
-        actorId: ids.ownerA,
-        action: (tx) => tx`
-          select public.companion_api_revoke_peer_access(
-            ${ids.orgA}::uuid,${source.companionId}::uuid,${targetCompanionId}::uuid
-          )
-        `,
-      });
       for (const [index, targetTurnId] of targetTurnIds.entries()) {
         await sql`
           insert into companion_transcript_entries(
-            org_id,companion_id,event_id,ordinal,role,content,turn_id
-          ) select ${ids.orgA}::uuid,${targetCompanionId}::uuid,${`delegation-output-${index}`},
-            coalesce(max(ordinal),-1)+1,'assistant',${`Response ${index + 1}`},${targetTurnId}::uuid
+            org_id,companion_id,event_id,ordinal,role,content
+          ) select ${ids.orgA}::uuid,${targetCompanionId}::uuid,${`v3:${targetTurnId}:output`},
+            coalesce(max(ordinal),-1)+1,'assistant',${`Response ${index + 1}`}
           from companion_transcript_entries
           where org_id=${ids.orgA}::uuid and companion_id=${targetCompanionId}::uuid
         `;
         await sql`
-          update companion_turns set status='succeeded',settled_at=now(),
-            absolute_deadline_at=now()+interval '2 hours',inactivity_deadline_at=null
+          update companion_v3_turns set state='running',admission_state='accepted',
+            admission_started_at=now(),admitted_at=now(),pi_invocation_id=${`pi-v3-${targetCompanionId}`},
+            response_turn_id=id,admission_cursor=0,last_activity_at=now(),
+            inactivity_deadline_at=now()+interval '10 minutes',
+            absolute_deadline_at=now()+interval '2 hours'
           where org_id=${ids.orgA}::uuid and companion_id=${targetCompanionId}::uuid
             and id=${targetTurnId}::uuid
         `;
+        await sql`update companion_v3_turns set state='succeeded',outcome='succeeded',
+          settled_at=now() where org_id=${ids.orgA}::uuid
+            and companion_id=${targetCompanionId}::uuid and id=${targetTurnId}::uuid`;
       }
       const delivered = await sql<Array<{
         id: string;
@@ -1389,29 +1439,51 @@ describe("Companion runtime executor PostgreSQL surface", () => {
       const relayTurnId = delivered[1]?.sourceRelayTurnId;
       if (!relayTurnId) throw new Error("relay return turn is unavailable");
       const [relayTurn] = await sql<Array<{ delegationReturnId: string | null }>>`
-        select delegation_return_id::text as "delegationReturnId" from companion_turns
+        select delegation_return_id::text as "delegationReturnId" from companion_v3_turns
         where org_id=${ids.orgA}::uuid and companion_id=${source.companionId}::uuid
           and id=${relayTurnId}::uuid
       `;
       expect(relayTurn?.delegationReturnId).toBe(delegationIds[1]);
+      for (const companionId of [source.companionId, targetCompanionId]) {
+        const [thread] = await asApi({
+          orgId: ids.orgA,
+          actorId: ids.ownerA,
+          action: (tx) => tx<Array<{ entries: unknown[] }>>`
+            select entries from public.companion_api_read_thread(
+              ${ids.orgA}::uuid,${companionId}::uuid
+            )
+          `,
+        });
+        expect(() => thread?.entries.forEach((entry) => companionTranscriptEntrySchema.parse(entry)))
+          .not.toThrow();
+      }
 
       const [beforeRejectedRow] = await sql<Array<{ count: number }>>`
-        select count(*)::int from companion_turns where companion_id=${targetCompanionId}::uuid
+        select count(*)::int from companion_v3_turns where companion_id=${targetCompanionId}::uuid
       `;
+      await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx`
+          select public.companion_api_revoke_peer_access(
+            ${ids.orgA}::uuid,${source.companionId}::uuid,${targetCompanionId}::uuid
+          )
+        `,
+      });
       await expect(asApi({
         orgId: ids.orgA,
         actorId: ids.ownerA,
         action: (tx) => tx`
           select * from public.companion_api_enqueue_delegation(
             ${ids.orgA}::uuid,${source.companionId}::uuid,${targetCompanionId}::uuid,
-            ${source.turnId}::uuid,${source.attemptId}::uuid,${randomUUID()}::uuid,
+            ${sourceTurnId}::uuid,${sourceTurnId}::uuid,${randomUUID()}::uuid,
             'Rejected after revoke',${randomUUID()}::uuid,'notify',
             'delegation-key-revoked',${"f".repeat(64)}
           )
         `,
       })).rejects.toMatchObject({ code: "42501" });
       const [afterRejectedRow] = await sql<Array<{ count: number }>>`
-        select count(*)::int from companion_turns where companion_id=${targetCompanionId}::uuid
+        select count(*)::int from companion_v3_turns where companion_id=${targetCompanionId}::uuid
       `;
       expect(afterRejectedRow?.count).toBe(beforeRejectedRow?.count);
     } finally {

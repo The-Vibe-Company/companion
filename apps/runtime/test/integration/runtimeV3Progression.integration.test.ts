@@ -5065,16 +5065,24 @@ describe("Runtime v3 progression facts", () => {
     const targetC = randomUUID();
     const controlTokenId = randomUUID();
     const createdDelegations: string[] = [];
-    const makeActive = async (turnId: string, companionId: string) => {
+    const makeAdmitted = async (turnId: string, companionId: string, responseTurnId = turnId) => {
       await ownerSql`update public.companion_v3_turns set
-        state='running',admission_state='accepted',admission_started_at=clock_timestamp(),
-        admitted_at=clock_timestamp(),pi_invocation_id=${`pi-${turnId}`},response_turn_id=id,
+        state='admitted',admission_state='accepted',admission_started_at=clock_timestamp(),
+        admitted_at=clock_timestamp(),pi_invocation_id=(select pi_invocation_id
+          from public.companion_v3_instances where org_id=${ids.org}::uuid
+            and companion_id=${companionId}::uuid),response_turn_id=${responseTurnId}::uuid,
         admission_cursor=0,activity_cursor=0,correlated_activity_cursor=0,
         last_activity_at=clock_timestamp(),
         inactivity_deadline_at=clock_timestamp()+interval '10 minutes',
         absolute_deadline_at=clock_timestamp()+interval '2 hours'
         where org_id=${ids.org}::uuid and companion_id=${companionId}::uuid
           and id=${turnId}::uuid`;
+    };
+    const makeActive = async (turnId: string, companionId: string) => {
+      await makeAdmitted(turnId, companionId);
+      await ownerSql`update public.companion_v3_turns set state='running'
+        where org_id=${ids.org}::uuid and companion_id=${companionId}::uuid
+          and id=${turnId}::uuid and state='admitted'`;
     };
     const enqueue = async (companionId: string, content: string) => {
       const clientId = randomUUID();
@@ -5154,6 +5162,8 @@ describe("Runtime v3 progression facts", () => {
           ${rawControlToken.slice(0,14)},${controlTokenHash},clock_timestamp()+interval '1 hour')`;
       await ownerSql`update public.companion_v3_instances set control_token_id=${controlTokenId}::uuid
         where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
+      const steer = await enqueue(ids.companion, "steered work on the shared response root");
+      await makeAdmitted(steer.turnId, ids.companion, source.turnId);
       expect(await apiSql`select turn_id,attempt_id from public.companion_resolve_control_token(
         ${controlTokenHash})`).toEqual([{ turn_id: source.turnId,attempt_id: source.turnId }]);
       await asApi(async (sql) => {
@@ -5178,6 +5188,9 @@ describe("Runtime v3 progression facts", () => {
       expect(fifo.slice(0,2).map((row) => row.id)).toEqual([ahead.turnId,notify.target_turn.id]);
       const sourceTurnCount = await ownerSql<Array<{ count: string }>>`select count(*)::text as count
         from public.companion_v3_turns where companion_id=${ids.companion}::uuid`;
+      await makeAdmitted(notify.target_turn.id,targetB);
+      expect(await ownerSql`select status::text as status from public.companion_delegations
+        where id=${notify.delegation.id}::uuid`).toEqual([{ status: "dispatching" }]);
       await settle(notify.target_turn.id,targetB,"durable target result");
       expect(await ownerSql`select content from public.companion_transcript_entries
         where companion_id=${ids.companion}::uuid and delegation->>'id'=${notify.delegation.id}
@@ -5188,10 +5201,37 @@ describe("Runtime v3 progression facts", () => {
 
       const relay = await delegate({ source: ids.companion, target: targetC,
         sourceTurn: source.turnId, key: "relay", mode: "relay", content: "relay task" });
-      await settle(relay.target_turn.id,targetC,"relay result");
+      await settle(relay.target_turn.id,targetC,"r".repeat(16384));
       expect(await ownerSql`select lane::text as lane,state::text as state from public.companion_v3_turns
         where companion_id=${ids.companion}::uuid and delegation_return_id=${relay.delegation.id}::uuid`)
         .toEqual([{ lane: "main", state: "queued" }]);
+      expect(await ownerSql`select char_length(entry.content)::integer as length
+        from public.companion_transcript_entries entry
+        join public.companion_v3_turns turn_row on turn_row.org_id=entry.org_id
+          and turn_row.companion_id=entry.companion_id and turn_row.message_event_id=entry.event_id
+        where turn_row.delegation_return_id=${relay.delegation.id}::uuid`)
+        .toEqual([{ length: 16384 }]);
+
+      const cancelled = await delegate({ source: ids.companion,target: targetC,
+        sourceTurn: source.turnId,key: "cancel-v3",mode: "notify",content: "cancel target" });
+      await asApi(async (sql) => {
+        const first = await sql<Array<{ turn: { status: string } }>>`
+          select turn from public.companion_v3_api_cancel_delegation_turn(
+            ${ids.org}::uuid,${ids.companion}::uuid,${cancelled.delegation.id}::uuid)`;
+        const replay = await sql<Array<{ turn: { status: string } }>>`
+          select turn from public.companion_v3_api_cancel_delegation_turn(
+            ${ids.org}::uuid,${ids.companion}::uuid,${cancelled.delegation.id}::uuid)`;
+        expect(first[0]?.turn.status).toBe("cancelled");
+        expect(replay[0]?.turn.status).toBe("cancelled");
+      });
+      const afterCancellation = await enqueue(targetC,"ordinary work after cancellation");
+      expect(await ownerSql`select id,state::text as state from public.companion_v3_turns
+        where org_id=${ids.org}::uuid and companion_id=${targetC}::uuid
+          and lane='main' and state='queued' order by queue_sequence,id limit 1`)
+        .toEqual([{ id: afterCancellation.turnId,state: "queued" }]);
+      expect(await ownerSql`select turn_id,claim_token from public.companion_v3_lane_leases
+        where org_id=${ids.org}::uuid and companion_id=${targetC}::uuid and lane='main'`)
+        .toEqual([{ turn_id: null,claim_token: null }]);
 
       for (const terminal of ["failed", "interrupted", "cancelled"] as const) {
         const terminalDelegation = await delegate({ source: ids.companion,target: targetC,
