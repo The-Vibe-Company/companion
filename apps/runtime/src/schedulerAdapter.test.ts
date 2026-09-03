@@ -209,4 +209,43 @@ describe("runtime scheduler composition adapter", () => {
       vi.useRealTimers();
     }
   });
+
+  it("keeps main convergence advancing while one background Pi sweep is blocked", async () => {
+    vi.useFakeTimers();
+    try {
+      const scheduler: RuntimeKernelScheduler = {
+        start: vi.fn(), stopClaims: vi.fn(), shutdown: vi.fn(async () => undefined),
+        snapshot: () => ({
+          claimLoopAlive: true, acceptingClaims: true, claimsEnabled: true, gateEnabled: true,
+          lastSweepStartedAt: null, lastSweepCompletedAt: null, claimLoopErrorAt: null,
+          activeCount: 0, concurrency: 8, sweepIntervalMs: 2_000,
+        }),
+      };
+      const main = vi.fn().mockResolvedValue({ progressed: 1, exhausted: false });
+      const background = vi.fn(async (input: { signal?: AbortSignal }) =>
+        await new Promise<{ progressed: number; exhausted: boolean }>((resolve) => {
+          input.signal?.addEventListener("abort", () => resolve({
+            progressed: 1, exhausted: false,
+          }), { once: true });
+        }));
+      const adapter = createRuntimeSchedulerAdapter(scheduler, {
+        convergence: { converge: main },
+        backgroundConvergence: { converge: background },
+        deadlineSweep: { converge: vi.fn().mockResolvedValue({ progressed: 0, exhausted: false }) },
+        executorId: "runtime-v3-independent-background",
+        sweepIntervalMs: 2_000,
+      });
+
+      adapter.start();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(main).toHaveBeenCalledOnce();
+      expect(background).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(main).toHaveBeenCalledTimes(2);
+      expect(background).toHaveBeenCalledOnce();
+      await adapter.shutdown({ drainTimeoutMs: 25 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

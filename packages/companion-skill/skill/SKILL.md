@@ -37,8 +37,12 @@ MCP, so automations cannot reconfigure themselves or create autonomous cascades.
 run first in an isolated read-only validator which either stays silent, notifies, or relays one main
 Pi turn. Their hosted operating brief uses terse delivery semantics: one short
 sentence for an update, one word for an acknowledgement, and no process narration or filler; the
-owner's persona still owns voice. Consecutive attachment-free notify returns from one routine may be
+owner’s persona still owns voice. Consecutive attachment-free notify returns from one routine may be
 collapsed by the thread projection while their durable entries and routine history remain complete.
+Scheduled routines use the single `background` lane, with at most one per Companion, while main chat
+continues independently. Runtime revalidates current capabilities and lets routine tools work
+directly in the persistent Box workspace; failures back off without automatically disabling the
+routine, and newer due instants supersede only obsolete pending work.
 Hosted runtime protocol 7 never replays a prompt whose dispatch outcome is ambiguous. It retries a
 resource-independent durable cleanup that terminates only the captured Pi invocation, preserves the
 original interruption, then marks that occurrence `auto_abandoned` and releases its execution lane.

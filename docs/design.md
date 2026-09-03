@@ -122,11 +122,11 @@ Runtime state is explicit and durable:
   and byte-deletion fact. Upload schedules object deletion exactly 30 days later. Normal expiry keeps
   the metadata row; deleting the row accelerates its durable object-deletion entry, so an object
   cannot outlive the entry, the Companion, or the tenant.
-- A scheduled routine fire continues to use its routine-origin `companion_turns.id` as the durable
-  run id. `companion_routine_run_entries` is the private, no-wake transcript projection for that
-  run; read APIs page it by ordinal under entry-count and byte ceilings. `companion_routine_returns`
-  is its at-most-one terminal bridge to the main thread. The return row stores only mode and durable
-  references; surfaced content exists once, on its ordinary main-thread entry.
+- A scheduled routine fire uses its ordinary `companion_v3_turns.id` as the durable run id in the
+  shared `background` lane. `companion_v3_routine_run_entries` is the private, no-wake transcript;
+  read APIs page it by ordinal under entry-count and byte ceilings. The run stores its immutable
+  routine snapshot plus the at-most-one terminal bridge references; surfaced content exists once,
+  on its ordinary main-thread entry.
 
 All rows are org-scoped and force-RLS-enabled. API, worker, and runtime use distinct
 `NOSUPERUSER NOBYPASSRLS NOINHERIT` roles. Runtime claims, renewals, checkpoints, and settlements use
@@ -162,8 +162,8 @@ queued → starting → dispatching → running ↔ needs_input
                                       └→ succeeded | failed | interrupted | cancelled
 ```
 
-Only one attempt is active per execution lane. One ordinary main attempt and one isolated routine
-attempt may run concurrently; later turns remain ordered within their lane. An interrupted turn
+Only one occurrence is active per execution lane. One ordinary main occurrence and one background
+routine occurrence may run concurrently; later turns remain ordered within their lane. An interrupted turn
 creates one idempotent lane-local `restart_pi + trigger=recovery` cleanup. Its narrow authorization
 does not load the old actor, provider/model, Skill, MCP, token, or message material. Runtime first
 re-observes the known Box; an absent or provider-archived Box proves the exact invocation no longer
@@ -173,22 +173,16 @@ stopped. Runtime checkpoints `cleanup_complete`, marks the occurrence `auto_aban
 the lane without staging or replaying its prompt. Cleanup retries with a maximum five-minute backoff
 and a fresh fixed ten-minute budget per claim cycle. Backoff still fences a new Start on that lane;
 if rolling deployment exposes already-active same-lane work, Runtime reclaims it before cleanup.
-Settings revisions accepted during a turn apply after
-the routine lane is quiescent and before the next main turn. On a warm Box, configuration is published as
+Settings revisions accepted during a turn apply before the next main turn without waiting for
+ordinary background work. On a warm Box, configuration is published as
 applied only after runtime stages the exact snapshot, restarts Pi, and observes a different idle Pi
 invocation; takeover repeats those idempotent steps if their final observation was lost.
 
-Queued routine-origin turns are settled as skipped when their exact routine generation is disabled
-or deleted, including the automatic disable after five genuine failures. The database trigger does
-this in the same transaction as the routine mutation, preserving the turn/message/history rows and
-recording only a bounded expurgated reason with action `none`; these cancellations are neither
-retryable failures nor notification events. A ten-minute `SKIP LOCKED` runtime sweep settles stale
-queued routine turns before claiming work, and migration 0145 backfills all already-stale routine
-rows—including turns whose definition no longer exists. It checks the live Runtime gate epoch so
-stale or disabled executors cannot perform cleanup. A claimed cold-start derivative loses live
-authorization as soon as its source is skipped; after that main lease is free or expired, bounded
-claim-time reconciliation terminalizes the orphan before choosing later work. Ordinary main turns
-remain independent of routine attempts.
+Each due instant persists exactly one Owner-authored ordinary v3 background Turn. A newer due
+instant supersedes only an older still-pending occurrence and records `superseded`; running work is
+not preempted. Scheduler or execution failures release their claim and requeue the same occurrence
+with jittered exponential backoff. They never disable the routine. Ordinary main Turns and their
+lifecycle/preparation loop run on a separate scheduler clock and remain independent.
 
 A blocking `ask_user` decision moves the turn to `needs_input` and clears the
 inactivity deadline. An answer resumes Pi; after ten minutes, absence returns a cancelled response
@@ -203,11 +197,9 @@ three-minute cold-start window only when it first claims that Start, and a takeo
 that cycle times out before any prompt can be dispatched, PostgreSQL re-enqueues the same Start with
 bounded backoff and a fresh cycle budget while the accepted message remains `queued`.
 
-That decision is gated by shared lifecycle availability. While an isolated routine owns its lane,
-material preparation may be revisited but must not stamp a main turn's cold-start deadline or create
-its Start derivative. The three-minute budget begins only after the routine lane is quiescent and
-main Start can enter scheduling; an acknowledged prompt is thereafter governed only by attempt
-deadlines.
+Background ownership never gates main lifecycle or preparation. The main cold-start budget and Pi
+repair progress on their own scheduler clock while one background occurrence uses its separate
+lane fence; an acknowledged prompt is thereafter governed only by turn deadlines.
 
 The stateless loopback `companion-control` MCP is staged on every ordinary main attempt. Direct
 configuration mutations persist desired state and report `apply_pending`; sensitive mutations
@@ -327,7 +319,7 @@ a production purge.
 
 `apps/runtime` sweeps every two seconds, claims with a 30-second lease, renews every ten seconds,
 and defaults to eight concurrent executions. PostgreSQL serializes each lane; the process scheduler
-tracks exact claims, so one Companion may occupy a main and a routine slot at the same time. Routine
+tracks exact claims, so one Companion may occupy a main and a background slot at the same time. Routine
 startup observes only its run-scoped broker and never idles or recycles the main Pi. A completed
 execution interrupts only the scheduler's backoff sleep so a start can hand its newly idle Pi
 directly to the queued turn. `/healthz` fails when PostgreSQL, the claim loop, or the
@@ -338,12 +330,9 @@ finish an already-held lease but receive no new work. Migration 0157 rearms stal
 rows without racing a live lease and removes cold deadlines created before an unclaimed Start.
 
 Main-lane precedence is permanent delete, explicit stop/restart, main decision response, active main
-attempt, configuration apply, next main turn, then health observation. The routine lane independently
-orders its decision response, active attempt, and next routine turn. Main lifecycle work waits for a
-quiescent routine lane without preempting its renewal; permanent delete is the exception: its claim
-fences and settles an active/interrupted routine lane, then runtime terminates that exact run-scoped
-Pi invocation before contacting the provider. Automatic routine cleanup addresses only that run;
-its backoff never delays an independently warm main message.
+attempt, configuration apply, next main turn, then health observation. The background lane orders
+its active routine and next occurrence without priority or preemption. Its separate scheduler cannot
+retain main chat, preparation, or Pi repair; permanent delete remains the destructive exception.
 Lifecycle and broker-observation calls that are known idempotent retry network, `429`, and `5xx`
 failures up to five times with jittered 1/2/5/10/30-second backoff. Observation-only broker state
 and journal reads also retry `409` while the provider is temporarily transitioning the Box. Every
@@ -429,27 +418,24 @@ Layout 14 installs a small Node broker under systemd between runtime commands an
 - malformed or oversized lines advance without persisting their raw content;
 - unknown event types are counted and ignored rather than treated as user-fatal errors.
 
-The routine-isolation cutover extends this broker layout without adding a second harness or runtime
-owner. A routine-origin turn is serialized by the Companion's `routine` PostgreSQL lease while the
-`main` lease may concurrently run an ordinary turn. Runtime launches the same Pi binary with the
+The routine cutover extends this broker layout without adding a second harness or runtime owner. A
+routine-origin turn is serialized by the Companion's `background` PostgreSQL lease while the `main`
+lease may concurrently run an ordinary turn. Runtime launches the same Pi binary with the
 same staged tools, skills, plugins, model, and provider material under a run-scoped session directory
-and broker socket. The Box runs at most the main daemon plus one routine Pi. PostgreSQL, rather than
-the ephemeral Box session directory, is the durable routine-history authority.
+and broker socket, with its working directory in the persistent Box workspace. The Box runs at most
+the main daemon plus one routine Pi. PostgreSQL, rather than the ephemeral Box session directory, is
+the durable routine-history authority.
 
-The routine table is also the cleanup boundary: disabling or deleting a definition atomically
-cancels its queued turns for that generation, and the claim wrapper expires queued routine turns
-after ten minutes. Cleanup is bounded and gate-fenced; it retains durable history for skipped runs
-and reconciles any already-claimed cold-start derivative only after its main lease is free or
-expired, so an orphan cannot retain lifecycle priority or the one-running-operation slot.
+The worker persists only the due occurrence and advances the schedule. A newer due instant replaces
+obsolete pending catch-up; execution failure keeps the routine enabled and requeues the same run
+after jittered backoff. Runtime revalidates the immutable Owner and current capabilities immediately
+before Box/Pi contact.
 
-Shared Box mutation remains single-owner: settings and lifecycle work other than permanent delete
-wait for the routine lane to be quiescent. An interrupted routine is immediately terminal in the
-user history, while its automatic cleanup retains only the routine lane until exact
-`cleanup_complete` proof. It never blocks independently warm main chat, but shared lifecycle waits
-for that cleanup. An explicit Full Box restart or permanent delete may preempt and settle an active
-routine occurrence. Runtime terminates its exact run-scoped Pi invocation before the provider
-lifecycle call. Routine context is
-pinned and read-only; run-local memory cannot write parent memory. A
+Main chat, preparation, and ordinary Pi repair never wait for the background FIFO. Background has no
+priority or preemption and releases its slot on every terminal return, silent settlement, detached
+decision, or retry. Permanent deletion remains the explicit destructive exception. Routine work
+uses the Box workspace directly; Companion does not create a product-owned workspace snapshot,
+merge step, or filesystem lock. A
 `relay` return enters the ordinary main queue and does not inherit routine-lane ordering.
 
 The runtime instance and the run-scoped broker intentionally have different Pi invocation
@@ -474,18 +460,10 @@ it is neither mislabeled `no_output` nor duplicated. Client-only filtering is no
 final architecture because it would make privacy, unread state, notifications, and future clients
 depend on duplicating the same hiding rule.
 
-The isolated routine Pi receives a pinned, content-addressed main-conversation background made from
-the latest accepted main-Pi compaction summary plus a deterministic recent transcript tail. This is
-runtime-only material, never a public API resource. Its source, 4,000-token budget, refresh rules,
-and takeover contract are specified in [Routine Pi context substrate](routine-pi-context-substrate.md).
-
-It also receives a private Box-side snapshot of the parent Companion's regular `MEMORY.md` and
-daily-log files through its run-scoped `PI_MEMORY_DIR`. The snapshot has no linked path back to
-`~/.companion/runtime/memory`; routine writes remain disposable, while the main Pi stays the only
-durable memory writer. qmd also receives a run-local collection config, SQLite index, and explicit
-named-index wrapper, keeping memory search on the snapshot rather than the main daemon's collection
-or a project-local qmd config. Takeover keeps the already-prepared run root, and later parent-memory
-changes appear only in a later routine run.
+The routine receives current staged instructions and capabilities, not a product-owned conversation
+or filesystem snapshot. Its run root isolates broker journals and private history while ordinary
+workspace reads and writes address the persistent Box directly. Takeover resumes from PostgreSQL
+fences plus the run broker journal; there is no merge-back phase.
 
 Staging writes a composed operating brief to `~/.companion/runtime/state/instructions.txt` and Pi
 receives it as `--append-system-prompt`. The brief describes the runtime contract Pi is held to —

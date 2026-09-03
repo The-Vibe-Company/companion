@@ -155,9 +155,9 @@ queued → starting → dispatching → running ↔ needs_input
                                       └→ succeeded | failed | interrupted | cancelled
 ```
 
-There are two serial execution lanes per Companion: `main` for ordinary turns and `routine` for
-isolated routine-origin turns. At most one attempt is active in each lane, so one main attempt and
-one routine attempt may run together. FIFO ordering applies within each lane. An unresolved
+There are two serial execution lanes per Companion: `main` for ordinary chat and `background` for
+routine-origin turns (and, later, triggers). At most one occurrence is active in each lane, so one
+main occurrence and one background occurrence may run together. FIFO ordering applies within each lane. An unresolved
 `interrupted` occurrence owns only its lane until protocol 7's internal Pi cleanup proves terminal;
 then `resolution = auto_abandoned` releases it without replay. A routine recovery, including one in
 backoff, never delays an independently warm main-lane message. On the affected lane, cleanup backoff
@@ -201,15 +201,13 @@ Main-lane work precedence is:
 6. next queued turn;
 7. health observation.
 
-The routine lane handles a routine decision or active attempt, then the next routine-origin turn.
-Explicit main lifecycle work waits for routine completion before it claims shared Box mutation;
-permanent delete is the exception and may claim first, fence/settle the routine lane, and terminate
-its exact run-scoped Pi invocation before provider deletion. Automatic routine cleanup never
-preempts or recycles the main Pi.
+The background lane handles a routine decision or active occurrence, then the next routine-origin
+turn. It has no priority or preemption, and its scheduler is independent from main chat,
+preparation, and Pi repair. Permanent delete remains the explicit destructive exception.
 
 ### Lease
 
-`companion_runtime_leases` stores independently fenced `main` and `routine` leases per Companion,
+`companion_v3_lane_leases` stores independently fenced `main` and `background` leases per Companion,
 each with claim token, epoch, executor id, and expiration. A shared instance write epoch allocates
 monotonically increasing epochs across both lanes. Runtime sweeps every two seconds, claims for 30
 seconds, and renews every ten seconds. Eight work items may execute concurrently by default; one
@@ -755,10 +753,10 @@ and isolated from other worker supervisors when configuration is partial or inva
 
 A routine is a named cron+timezone prompt that fires outside chat. The worker supervisor claims due
 rows every 15 seconds when Companions are enabled, computes the next strictly future fire in
-TypeScript (`cron-parser`, IANA timezone), and calls `companion_fire_routine`. That function
-impersonates the immutable Companion Owner through transaction-local GUCs and then calls
-`companion_api_enqueue_turn`, so membership, editor access, retirement, warm-send, and
-`(companion_id, client_message_id)` idempotence all apply. SQL never parses cron.
+TypeScript (`cron-parser`, IANA timezone), and calls `companion_fire_routine`. That narrow function
+persists the ordinary v3 background Turn as the immutable Companion Owner; the worker never receives
+Box credentials or calls Box/Pi. `(companion_id, client_message_id)` idempotence applies and SQL
+never parses cron.
 
 The routine row's cron and IANA timezone remain the authoritative wall-clock schedule; they are not
 rewritten to UTC. Web and native iOS default new routines to the member's stored profile timezone,
@@ -766,49 +764,31 @@ then persist that zone with the cron. Both clients format the absolute `next_fir
 member timezone while continuing to show the schedule's own timezone as server truth.
 
 `client_message_id` is `uuidv5(routineId + '|' + scheduledFor.toISOString(), ROUTINE_FIRE_NAMESPACE)`.
-A scheduled instant older than ten minutes is `skipped_missed`. An in-flight turn for the same
-routine is `skipped_pileup`. Skips still advance `next_fire_at` and drop the lease. A successful
-enqueue does not reset failure accounting: the run's terminal result does. A succeeded run resets
-the streak, while a failed run increments it and the fifth consecutive genuine failure disables the
-routine. `interrupted` and `cancelled` runs do not count because neither proves the routine task
-failed; the historical `routine_session_cancelled` scheduler artifact is excluded for the same
-reason. Worker-side fire failures remain genuine classified failures. Every run also snapshots the
-routine definition's creation instant, so a deleted routine's late outcome cannot mutate a new
-definition that reuses its UUID. After delete, `routine_id` on historical turns is set null and
-`routine_name` remains as the transcript header.
+The worker claims one due row and calls one narrow persistence function. That transaction admits an
+ordinary v3 `background` Turn as the immutable Companion Owner, snapshots the routine identity and
+prompt, advances the schedule, and releases the worker claim; it never reads Box credentials or
+contacts Box/Pi. Replaying the same instant returns the same Turn. A newer due instant marks only an
+older still-pending occurrence `superseded` instead of executing stale catch-up; running work is not
+preempted.
 
-Queued routine-origin turns are executable only while their exact routine definition remains live.
-Disabling a routine—including the fifth genuine-failure auto-disable—or deleting it atomically
-cancels every still-queued turn for that definition generation. The turn, message, and transcript
-history remain durable with a bounded expurgated skip reason and the explicit `none` action; the
-cancelled outcome is not a retryable failure, does not advance routine failure accounting, and does
-not emit a terminal notification. Migration 0145 also runs a one-time backfill for every pre-existing
-queued routine-origin turn older than the same ten-minute missed-fire grace, including rows whose
-routine definition was already deleted. Each Runtime v2 claim sweep repeats a bounded `SKIP LOCKED`
-cleanup before the lane-aware claim, using the live gate epoch so stale or disabled executors cannot
-mutate queue state. If a routine's cold-start `Start` was already claimed, renewal denies further
-Box contact after its source turn is skipped. The next claim sweep terminalizes that derivative
-after its lease is free or expired, preserving ambiguous-create evidence when necessary, before it
-can retain the one-running-operation slot. Main-lane claims remain independent of routine attempts.
+Scheduler persistence failures and Runtime execution failures release their claim and retry with a
+bounded 80–120% jittered exponential schedule (5s, 15s, 30s, 60s, then 5m). They never automatically
+disable the routine or advance a failed due instant, so recovery of membership, credentials, Box,
+or Pi resumes without a member action. Errors crossing the durable boundary remain stable,
+single-line, expurgated values.
 
-During the additive migration, the routine-origin turn id is also its stable run id, and a plain
-`routine_snapshot_id` preserves the routine UUID after definition deletion. Read-only history APIs
-list runs by that snapshot and read one run by id without Box contact. The private
-`companion_routine_run_entries` projection contains only events produced inside the run-scoped Pi
-session. Detail reads page forward by durable entry ordinal, cap each page at 100 entries and 8 MiB
-of stored entry material, and return a continuation cursor so the complete transcript remains
-viewable without materializing an unbounded response. `companion_routine_returns` contains no
-message payload: it references the one ordinary
-main-thread entry created by the terminal return and, for `relay`, the ordinary turn queued for the
-main Pi. While the pre-cutover main-session fire path remains active, the history reader uses the
-turn association as a compatibility projection: a succeeded final assistant entry is a virtual
-`notify` reference and is excluded from the run transcript. This preserves the existing surfaced
-reply without falsely calling it `no_output` or storing a second copy.
+The v3 Turn id is also the stable run id. `companion_v3_routine_runs` preserves the immutable
+routine id/name/prompt/scheduled instant even after definition deletion. Read-only history APIs list
+by that snapshot and read one run without Box contact. `companion_v3_routine_run_entries` contains
+only private Pi events and is paged by ordinal under the existing 100-entry/8 MiB bounds. A terminal
+surface is stored as references to one ordinary main-thread entry and, for `relay`, one ordinary
+main Turn; its payload is never copied into private history.
 
 The final execution path keeps the existing worker boundary: `apps/worker` only persists the
 exactly-once routine-origin turn and never contacts Box or Pi. `apps/runtime` claims that turn under
-the Companion's `routine` lease, revalidates the Owner and current capabilities, and launches the
-same Pi binary with the same tools and configuration in a run-scoped session directory. The `main`
+the Companion's `background` lease, revalidates the immutable Owner, membership, current Skills,
+plugins, provider tools, and model, and launches the same Pi binary and current operating brief in a
+run-scoped broker directory. Pi reads and writes the persistent Box workspace directly. The `main`
 lease may concurrently dispatch an ordinary turn to the persistent main Pi. This is two fenced
 scheduling lanes inside one runtime owner and one Box, not a second harness or provider. Box
 concurrency is bounded to two Pi processes: the main daemon and one isolated routine process.
@@ -820,19 +800,11 @@ claim. Routine startup never reads, idles, or recycles the persistent main broke
 state and attempt-bound invocation are the only Pi identity used by routine observation. Conversely,
 ordinary main turns never inspect or terminate the run-scoped routine broker.
 
-Shared Box lifecycle and staging stays on the main lane and waits for the routine lane to be
-quiescent. An active routine prevents Pi recycle, settings apply, health repair, or other shared
-lifecycle work from racing its run root. A queued main turn does not acquire its cold-start deadline
-or derived Start operation during that wait. Once routine quiescence makes shared lifecycle work
-schedulable, the Start may be created, but its full three-minute budget begins only when Runtime
-first claims it. An interrupted routine is terminal in the user history;
-its resource-free recovery retains only the routine lane until exact `cleanup_complete` proof and
-does not block independently warm main chat. Shared lifecycle waits for that proof. Explicit Full
-Box restart and permanent delete may preempt and settle an active routine occurrence, then terminate
-only its exact run-scoped invocation before contacting the provider. Routine takeover, active
-cancellation, and settlement never stop the main Pi. The routine context
-substrate is a pinned read-only view of the main conversation; routine-local memory remains private
-to the run, so concurrency introduces no second writer to parent memory.
+Main chat, lifecycle preparation, and Pi repair run on a scheduler clock independent from the
+background FIFO. A routine cannot retain their loop, acquire priority, or preempt them. Its own
+claim is released on `notify`, `relay`, `no_output`, detached decision, or retry; permanent deletion
+is the explicit destructive exception. The run broker root isolates transport/journal state, not
+the product workspace: Companion adds no snapshot, merge, or workspace filesystem lock.
 
 Terminal `auto_abandoned` interruptions remain durable occurrence evidence and notification input,
 but first-party thread and runtime projections return no `interrupted_turn` tail state for them.
@@ -846,23 +818,10 @@ and explicit cancellation. If preparation fails before a prompt can have reached
 terminates the run-scoped process; once dispatch may be ambiguous, it preserves the occurrence and
 original error, then runs exact automatic cleanup instead of guessing or replaying.
 
-Before Box contact, each run also pins the content-addressed main-conversation background specified
-in [Routine Pi context substrate](routine-pi-context-substrate.md). The latest valid main-Pi
-compaction summary plus a bounded recent main-thread tail is runtime material, not a member-facing
-endpoint; the pinned id and digest make takeover reconstruct identical bytes.
-
-Routine preparation also pins the parent Companion's Box-side memory into the disposable run root.
-The main daemon keeps authoritative memory at `~/.companion/runtime/memory`; the runtime copies only
-regular `MEMORY.md` and `daily/YYYY-MM-DD.md` files into the routine's private memory directory and
-launches Pi with that copy as `PI_MEMORY_DIR`. The routine therefore receives the same long-term
-facts and daily recall that `pi-memory` injects for the main Companion, but it has no linked or
-mounted path back to the authoritative files. Any memory-tool write is confined to the disposable
-copy and disappears with the run. Its qmd collection configuration and SQLite index are run-local,
-and a run-local wrapper supplies an explicit named index so project-local qmd discovery cannot
-override them. `memory_search` therefore indexes only the pin and can neither query nor reconfigure
-the main daemon's collection. The main Pi remains the sole durable memory writer, so a routine can
-never race or corrupt the parent's `MEMORY.md` or daily logs. A takeover adopts the same prepared run
-root rather than refreshing its memory view.
+Routine preparation copies only current runtime capabilities and the operating brief into its
+run-scoped broker root. Pi's working directory remains the persistent Box workspace, so tools use
+durable files directly. Companion adds no conversation/workspace snapshot, merge-back layer, or
+workspace filesystem lock. Takeover uses the same durable Turn identity and broker journal.
 
 The routine-only `surface_to_main` tool is a terminal return, never a conversational tool:
 

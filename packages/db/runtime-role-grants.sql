@@ -78,6 +78,8 @@ DECLARE
     'companion_v3_instances',
     'companion_v3_turns',
     'companion_v3_decisions',
+    'companion_v3_routine_runs',
+    'companion_v3_routine_run_entries',
     'companion_v3_lane_leases',
     'companion_v3_lifecycle_requests',
     'companion_decision_deliveries',
@@ -1083,6 +1085,21 @@ BEGIN
       ];
       internal_runtime_functions := internal_runtime_functions || ARRAY[
         'public.companion_v3_api_enqueue_warm_turn_v5(uuid,uuid,uuid,text)'::regprocedure
+      ];
+    END IF;
+
+    IF pg_catalog.to_regprocedure(
+      'public.companion_v3_runtime_complete_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'
+    ) IS NOT NULL THEN
+      companion_runtime_functions := companion_runtime_functions || ARRAY[
+        'public.companion_v3_runtime_claim_warm_v7(text,public.companion_v3_lane,integer,integer)'::regprocedure,
+        'public.companion_v3_runtime_claim_routine_v7(text,public.companion_v3_lane,integer,integer)'::regprocedure,
+        'public.companion_v3_runtime_authorize_warm_turn_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)'::regprocedure,
+        'public.companion_v3_runtime_authorize_routine(uuid,uuid,uuid,uuid,bigint,bigint,integer)'::regprocedure,
+        'public.companion_v3_runtime_begin_routine_admission(uuid,uuid,uuid,uuid,bigint,bigint,text,bigint,integer)'::regprocedure,
+        'public.companion_v3_runtime_project_routine_page(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'::regprocedure,
+        'public.companion_v3_runtime_sweep_routine_deadlines_v7(integer)'::regprocedure,
+        'public.companion_v3_runtime_complete_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure
       ];
     END IF;
 

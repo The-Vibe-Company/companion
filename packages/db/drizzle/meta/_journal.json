@@ -1205,6 +1205,13 @@
       "when": 1793347600000,
       "tag": "0171_companion_attachment_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 172,
+      "version": "7",
+      "when": 1793351200000,
+      "tag": "0172_companion_runtime_v3_background_routines",
+      "breakpoints": true
     }
   ]
 }

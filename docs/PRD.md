@@ -63,7 +63,7 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
   `(companion_id, client_message_id)`, then returns `202` without contacting Box.
 - Turn states are
   `queued → starting → dispatching → running ↔ needs_input → succeeded|failed|interrupted|cancelled`.
-  One attempt is active in each `main` or `routine` lane; later turns remain FIFO within their lane
+  One occurrence is active in each `main` or `background` lane; later turns remain FIFO within their lane
   in PostgreSQL.
 - An ambiguous occurrence is never replayed. Protocol 7 enqueues resource-independent cleanup of
   only the captured Pi invocation, preserves the original error, and marks the occurrence
@@ -116,11 +116,14 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 - The worker claims due rows and fires as the immutable Companion Owner. Fire is API-level turn
   enqueue; the worker never contacts Box or Pi. The message id is deterministic
   (`uuidv5(routineId|scheduledFor)`), so at-least-once ticks collapse to one turn.
-- Missed fires are not replayed: a scheduled instant older than ten minutes is skipped. An active
-  turn for the same routine skips the next fire. Five consecutive failures disable the routine.
+- A newer due instant supersedes an older still-pending occurrence with an explicit cancelled
+  outcome. Runtime failures requeue the same occurrence with bounded jittered exponential backoff;
+  they never disable the routine, so external recovery resumes without member action.
 - The durable routine-origin turn is the run identity, but runtime executes it in a run-scoped Pi
-  session with the same authorized model, Skills, plugins, tools, and operating brief. The main Pi
-  session never receives the routine prompt or private transcript.
+  session with the current authorized model, Skills, plugins, provider tools, and operating brief.
+  Pi works directly in the persistent Box workspace; Companion adds no product snapshot, merge, or
+  filesystem lock around workspace files. The main Pi session never receives the routine prompt or
+  private transcript.
 - The thread projects a compact clickable `Routine: <name>` marker. Owner, Editor, and Viewer can
   page through the run's private transcript from that marker or the routine's connected-resource
   row. Viewer receives the full user-visible history but only the generic runtime-error projection;
@@ -129,9 +132,8 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
   `notify` and `relay` write the payload exactly once as a visible Companion entry in main-thread
   history; only `relay` queues a turn for the main Pi to read and answer. The routine Pi terminates
   at the accepted return and cannot continue. Its private history never duplicates the payload.
-- Each isolated run pins a runtime-only, content-addressed background snapshot built from the latest
-  accepted main-Pi compaction summary and a deterministic bounded main-thread tail. There is no
-  member-facing context-substrate endpoint.
+- The run root isolates only Pi transport state and private history. Routine tools read and write
+  the persistent Box workspace directly; no member-facing snapshot or merge surface exists.
 - Web and native iOS create new cron schedules in the member's stored timezone and render future
   fire instants in that timezone. Existing routine cron/timezone values remain authoritative on the
   server; viewing them converts their absolute next-fire instant to the current member timezone.

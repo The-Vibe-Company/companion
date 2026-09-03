@@ -1140,6 +1140,8 @@ export interface CompanionBoxRuntimeV2 {
     persona: string | null;
     /** True for an untrusted webhook validator; omitted/false preserves full routine capabilities. */
     validationOnly?: boolean;
+    /** Skip the legacy memory copy; work directly in the persistent Box workspace. */
+    directWorkspace?: boolean;
     /** Durable invocation identity selected before runtime launches the run root. */
     expectedInvocationId: string;
     signal?: AbortSignal;
@@ -1314,6 +1316,7 @@ function routinePrepareCommand(
   paths: CompanionPiRoutineSessionPaths,
   invocationId: string,
   validationOnly: boolean,
+  directWorkspace = false,
 ): string {
   const invocation = shellQuote(invocationId);
   const stateFiles = validationOnly ? [
@@ -1338,6 +1341,20 @@ if [ -f "$HOME/.companion/pi/auth.json" ]; then cp -p "$HOME/.companion/pi/auth.
 cp -a "$HOME/.companion/pi/." "$routine_root/pi/"
 if [ -d "$HOME/.companion/runtime/skills" ]; then cp -a "$HOME/.companion/runtime/skills" "$routine_root/skills"; fi
 if [ -d "$HOME/.companion/tools" ]; then cp -a "$HOME/.companion/tools/." "$routine_root/tools/"; fi`;
+  const memoryPreparation = directWorkspace ? "" : `
+# Pin the parent Companion's plain-Markdown memory into this disposable run root. Copying regular
+# files instead of linking the live tree gives the legacy isolated executor a stable view.
+parent_memory="$HOME/.companion/runtime/memory"
+routine_memory="$routine_root/memory"
+if [ -f "$parent_memory/MEMORY.md" ] && [ ! -L "$parent_memory/MEMORY.md" ]; then
+  cp -- "$parent_memory/MEMORY.md" "$routine_memory/MEMORY.md"
+fi
+if [ -d "$parent_memory/daily" ] && [ ! -L "$parent_memory/daily" ]; then
+  for memory_source in "$parent_memory"/daily/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md; do
+    [ -f "$memory_source" ] && [ ! -L "$memory_source" ] || continue
+    cp -- "$memory_source" "$routine_memory/daily/\${memory_source##*/}"
+  done
+fi`;
   return `set -euo pipefail
 umask 077
 routine_root="$HOME/${paths.root}"
@@ -1432,21 +1449,7 @@ exec "$COMPANION_PI_ROOT/tools/bin/qmd" --index companion-routine "$@"
 COMPANION_ROUTINE_QMD
   chmod 700 "$routine_root/bin/qmd"
 fi
-# Pin the parent Companion's plain-Markdown memory into this disposable run root. Copying regular
-# files instead of linking the live tree gives the routine the same memory context without granting
-# any path that can mutate the main Pi's authoritative files. Run-local writes are discarded when
-# this root is removed, and takeover keeps using this exact prepared root.
-parent_memory="$HOME/.companion/runtime/memory"
-routine_memory="$routine_root/memory"
-if [ -f "$parent_memory/MEMORY.md" ] && [ ! -L "$parent_memory/MEMORY.md" ]; then
-  cp -- "$parent_memory/MEMORY.md" "$routine_memory/MEMORY.md"
-fi
-if [ -d "$parent_memory/daily" ] && [ ! -L "$parent_memory/daily" ]; then
-  for memory_source in "$parent_memory"/daily/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md; do
-    [ -f "$memory_source" ] && [ ! -L "$memory_source" ] || continue
-    cp -- "$memory_source" "$routine_memory/daily/\${memory_source##*/}"
-  done
-fi
+${memoryPreparation}
 ${copies}
 if [ -f "$routine_root/pi/mcp.json" ]; then
   COMPANION_ROUTINE_MCP="$routine_root/pi/mcp.json" \
@@ -5511,6 +5514,7 @@ done`,
     runId: string;
     persona: string | null;
     validationOnly?: boolean;
+    directWorkspace?: boolean;
     expectedInvocationId: string;
     signal?: AbortSignal;
   }): Promise<{ state: "idle"; invocationId: string }> {
@@ -5522,7 +5526,12 @@ done`,
     );
     const prepared = await this.#command(
       input.boxId,
-      routinePrepareCommand(paths, invocationId, input.validationOnly === true),
+      routinePrepareCommand(
+        paths,
+        invocationId,
+        input.validationOnly === true,
+        input.directWorkspace === true,
+      ),
       60,
       input.signal,
     );

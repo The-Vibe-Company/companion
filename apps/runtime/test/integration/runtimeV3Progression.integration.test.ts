@@ -26,6 +26,8 @@ import {
   createRuntimeV3PostgresConvergence,
   createRuntimeV3PostgresLifecyclePersistence,
   createRuntimeV3PostgresPreparationPersistence,
+  createRuntimeV3PostgresRoutineConvergence,
+  createRuntimeV3PostgresRoutineTurnPersistence,
   createRuntimeV3PostgresWarmConvergence,
   createRuntimeV3PostgresWarmTurnPersistence,
 } from "../../src/runtimeV3ProgressionStore";
@@ -4210,6 +4212,358 @@ describe("Runtime v3 progression facts", () => {
           disabled_at = ${rows[0]!.disabledAt}
         where id = 'runtime-v2'`;
     });
+  });
+
+  it("persists one Owner routine occurrence and supersedes only stale pending work", async () => {
+    const routineId = randomUUID();
+    const firstId = randomUUID();
+    const secondId = randomUUID();
+    const firstDue = new Date(Date.now() - 120_000);
+    const secondDue = new Date(Date.now() - 60_000);
+    const future = new Date(Date.now() + 3_600_000);
+    try {
+      await ownerSql`insert into public.companion_routines(
+        id,org_id,companion_id,name,prompt,cron,timezone,enabled,next_fire_at,created_by)
+      values(${routineId}::uuid,${ids.org}::uuid,${ids.companion}::uuid,
+        'Runtime v3 routine','Inspect the durable workspace','0 * * * *','UTC',true,
+        ${firstDue},${ids.owner})`;
+      const claim = await workerSql<Array<{ scheduledFor: Date }>>`
+        select scheduled_for as "scheduledFor" from public.companion_claim_due_routines(
+          'worker-routine-v3',1,60)`;
+      expect(claim[0]?.scheduledFor.getTime()).toBe(firstDue.getTime());
+      const fired = await workerSql<Array<{ outcome: string; replayed: boolean }>>`
+        select outcome,replayed from public.companion_fire_routine('worker-routine-v3',
+          ${ids.org}::uuid,${routineId}::uuid,${firstId}::uuid,${firstDue},${future})`;
+      expect(fired).toEqual([{ outcome: "fired", replayed: false }]);
+
+      await ownerSql`update public.companion_routines set next_fire_at=${firstDue},
+        fire_available_at=clock_timestamp() where id=${routineId}::uuid`;
+      await workerSql`select * from public.companion_claim_due_routines('worker-routine-replay',1,60)`;
+      const replay = await workerSql<Array<{ replayed: boolean }>>`
+        select replayed from public.companion_fire_routine('worker-routine-replay',
+          ${ids.org}::uuid,${routineId}::uuid,${firstId}::uuid,${firstDue},${future})`;
+      expect(replay).toEqual([{ replayed: true }]);
+
+      await ownerSql`update public.companion_routines set next_fire_at=${secondDue},
+        fire_available_at=clock_timestamp() where id=${routineId}::uuid`;
+      await workerSql`select * from public.companion_claim_due_routines('worker-routine-newer',1,60)`;
+      await workerSql`select * from public.companion_fire_routine('worker-routine-newer',
+        ${ids.org}::uuid,${routineId}::uuid,${secondId}::uuid,${secondDue},${future})`;
+      const occurrences = await ownerSql<Array<{
+        actorId: string; lane: string; state: string; outcome: string;
+      }>>`select turn_row.actor_id as "actorId",turn_row.lane::text,turn_row.state::text,
+          run.outcome from public.companion_v3_routine_runs run
+        join public.companion_v3_turns turn_row on turn_row.id=run.turn_id
+        where run.routine_id=${routineId}::uuid order by run.scheduled_for`;
+      expect(occurrences).toEqual([
+        { actorId: ids.owner, lane: "background", state: "cancelled", outcome: "superseded" },
+        { actorId: ids.owner, lane: "background", state: "queued", outcome: "pending" },
+      ]);
+
+      await ownerSql`update public.companion_routines set next_fire_at=${secondDue},
+        fire_available_at=clock_timestamp() where id=${routineId}::uuid`;
+      await workerSql`select * from public.companion_claim_due_routines('worker-routine-fail',1,60)`;
+      await workerSql`select public.companion_fail_routine_fire('worker-routine-fail',
+        ${ids.org}::uuid,${routineId}::uuid,'fire_failed','Expurgated scheduler failure.',${future})`;
+      const [retry] = await ownerSql<Array<{
+        enabled: boolean; attempt: number; delay: number; scheduled: Date;
+      }>>`select enabled,fire_attempt_count as attempt,
+          extract(epoch from (fire_available_at-clock_timestamp()))::integer as delay,
+          next_fire_at as scheduled from public.companion_routines where id=${routineId}::uuid`;
+      expect(retry).toMatchObject({ enabled: true, attempt: 1 });
+      expect(retry!.scheduled.getTime()).toBe(secondDue.getTime());
+      expect(retry!.delay).toBeGreaterThanOrEqual(3);
+      expect(retry!.delay).toBeLessThanOrEqual(6);
+    } finally {
+      await ownerSql`delete from public.companion_routines where id=${routineId}::uuid`;
+    }
+  });
+
+  it("claims main and the single routine slot independently and settles notify exactly once", async () => {
+    const routineId = randomUUID();
+    const occurrenceId = randomUUID();
+    let occurrenceTurnId = "";
+    const mainId = randomUUID();
+    let mainTurnId = "";
+    const due = new Date(Date.now() - 1_000);
+    const future = new Date(Date.now() + 3_600_000);
+    try {
+      await seedPreparedV3("main-routine-concurrency");
+      await ownerSql`insert into public.companion_routines(
+        id,org_id,companion_id,name,prompt,cron,timezone,enabled,next_fire_at,created_by)
+      values(${routineId}::uuid,${ids.org}::uuid,${ids.companion}::uuid,
+        'Concurrent routine','Use every current capability','0 * * * *','UTC',true,${due},${ids.owner})`;
+      await workerSql`select * from public.companion_claim_due_routines('worker-runtime-v3',1,60)`;
+      const fired = await workerSql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_fire_routine('worker-runtime-v3',
+          ${ids.org}::uuid,${routineId}::uuid,${occurrenceId}::uuid,${due},${future})`;
+      occurrenceTurnId = fired[0]!.turn.id;
+      await asApi(async (sql) => {
+        const result = await sql<Array<{ turn: { id: string } }>>`
+          select turn from public.companion_v3_api_enqueue_warm_turn(
+            ${ids.org}::uuid,${ids.companion}::uuid,${mainId}::uuid,'Human chat stays independent')`;
+        mainTurnId = result[0]!.turn.id;
+      });
+
+      const mainStore = createRuntimeV3PostgresWarmConvergence(runtimeSql, {
+        enabledLanes: new Set(["main"]),
+      });
+      const routineStore = createRuntimeV3PostgresRoutineConvergence(runtimeSql);
+      const [mainClaim, routineClaim] = await Promise.all([
+        mainStore.claimLane({ executorId: "runtime-main-independent", lane: "main" }),
+        routineStore.claimLane({ executorId: "runtime-routine-independent", lane: "background" }),
+      ]);
+      expect(mainClaim?.turn.id).toBe(mainTurnId);
+      expect(routineClaim?.turn.id).toBe(occurrenceTurnId);
+      const persistence = createRuntimeV3PostgresRoutineTurnPersistence(runtimeSql);
+      const material = await persistence.authorize(routineClaim!);
+      expect(material).toMatchObject({
+        boxId: "bx_23456789",
+        content: "Use every current capability",
+        backgroundRoutine: true,
+      });
+      expect(material?.piInvocationId).toBe(
+        `routine:${occurrenceTurnId}:dispatch-v2:${occurrenceId}`,
+      );
+      await ownerSql`delete from public.companion_provider_connections
+        where org_id=${ids.org}::uuid and provider_id='anthropic'`;
+      try {
+        await expect(persistence.authorize(routineClaim!)).resolves.toBeNull();
+      } finally {
+        await ownerSql`insert into public.companion_provider_connections(
+          org_id,provider_id,auth_method,ciphertext,iv,auth_tag,wrapped_dek,wrap_iv,
+          wrap_auth_tag,key_id,connected_by)
+        values(${ids.org}::uuid,'anthropic','api_key','ciphertext','iv','tag','dek','wiv',
+          'wtag','key',${ids.owner})`;
+      }
+      await seedPreparedV3("main-routine-concurrency");
+      await expect(persistence.authorize(routineClaim!)).resolves.toMatchObject({
+        boxId: "bx_23456789",
+        backgroundRoutine: true,
+      });
+      await expect(persistence.beginAdmission(routineClaim!, {
+        invocationId: material!.piInvocationId, cursor: 0n,
+      })).resolves.toBe(true);
+      await expect(persistence.recordAdmission(routineClaim!, {
+        invocationId: material!.piInvocationId, responseTurnId: occurrenceTurnId, cursor: 0n,
+      })).resolves.toBe(true);
+      const returned = {
+        sequence: 2n, type: "routine_return" as const, call_id: "surface-1",
+        mode: "notify" as const, message: "Routine completed safely.",
+      };
+      await expect(persistence.project(routineClaim!, {
+        throughCursor: 2n,
+        assistant: [],
+        privateEntries: [{ sequence: 1n, type: "assistant", entry_key: "assistant-1",
+          content: "Private reasoning result." }, returned],
+        decisions: [], routineReturns: [returned], needsInput: false, settled: false,
+        processExited: false, activity: true,
+      })).resolves.toBe("succeeded");
+      await expect(persistence.project(routineClaim!, {
+        throughCursor: 2n, assistant: [], privateEntries: [], decisions: [], routineReturns: [],
+        needsInput: false, settled: true, processExited: false, activity: false,
+      })).resolves.toBe(false);
+      await expect(routineStore.completeProgression(routineClaim!, { kind: "ack_completed" }))
+        .resolves.toBe(true);
+      const [settled] = await ownerSql<Array<{
+        backgroundClaim: string | null; mainClaim: string | null; entries: string;
+        surfaces: string; outcome: string; state: string;
+      }>>`select
+          (select claim_token::text from public.companion_v3_lane_leases where companion_id=${ids.companion}::uuid and lane='background') as "backgroundClaim",
+          (select claim_token::text from public.companion_v3_lane_leases where companion_id=${ids.companion}::uuid and lane='main') as "mainClaim",
+          (select count(*)::text from public.companion_v3_routine_run_entries where run_id=${occurrenceTurnId}::uuid) as entries,
+          (select count(*)::text from public.companion_transcript_entries where event_id=${`routine-return:${occurrenceTurnId}`}) as surfaces,
+          (select outcome from public.companion_v3_routine_runs where turn_id=${occurrenceTurnId}::uuid) as outcome,
+          (select state::text from public.companion_v3_turns where id=${occurrenceTurnId}::uuid) as state`;
+      expect(settled).toEqual({ backgroundClaim: null, mainClaim: expect.any(String), entries: "1",
+        surfaces: "1", outcome: "notify", state: "succeeded" });
+      await asApi(async (sql) => {
+        const history = await sql<Array<{ run: {
+          run_id: string; outcome: string; surface_mode: string; main_entry_event_id: string;
+          internal_entries: Array<{ content: string }>;
+          routine: { id: string; name: string };
+        } }>>`select run from public.companion_api_get_routine_run(
+          ${ids.org}::uuid,${ids.companion}::uuid,${occurrenceTurnId}::uuid,null,50)`;
+        expect(history).toEqual([{ run: expect.objectContaining({
+          run_id: occurrenceTurnId,
+          outcome: "surfaced",
+          surface_mode: "notify",
+          main_entry_event_id: `routine-return:${occurrenceTurnId}`,
+          internal_entries: [expect.objectContaining({ content: "Private reasoning result." })],
+          routine: { id: routineId, name: "Concurrent routine" },
+        }) }]);
+      });
+      await ownerSql`delete from public.companion_routines where id=${routineId}::uuid`;
+      await asApi(async (sql) => {
+        const history = await sql<Array<{ run: { routine: { id: string; name: string } } }>>`
+          select run from public.companion_api_get_routine_run(
+            ${ids.org}::uuid,${ids.companion}::uuid,${occurrenceTurnId}::uuid,null,50)`;
+        expect(history[0]!.run.routine).toEqual({ id: routineId, name: "Concurrent routine" });
+      });
+      await mainStore.completeProgression(mainClaim!, { kind: "release" });
+    } finally {
+      await ownerSql`delete from public.companion_routines where id=${routineId}::uuid`;
+    }
+  });
+
+  it("settles no_output, relay, and detached routine decisions once while releasing the slot", async () => {
+    const routineIds: string[] = [];
+    await seedPreparedV3("routine-settlement-modes");
+    const routineStore = createRuntimeV3PostgresRoutineConvergence(runtimeSql);
+    const persistence = createRuntimeV3PostgresRoutineTurnPersistence(runtimeSql);
+    const startRoutine = async (label: string) => {
+      const routineId = randomUUID();
+      const occurrenceId = randomUUID();
+      const due = new Date(Date.now() - 1_000);
+      const future = new Date(Date.now() + 3_600_000);
+      routineIds.push(routineId);
+      await ownerSql`insert into public.companion_routines(
+        id,org_id,companion_id,name,prompt,cron,timezone,enabled,next_fire_at,created_by)
+      values(${routineId}::uuid,${ids.org}::uuid,${ids.companion}::uuid,
+        ${label},${`Run ${label}`},'0 * * * *','UTC',true,${due},${ids.owner})`;
+      const workerId = `worker-${label}-${occurrenceId}`;
+      await workerSql`select * from public.companion_claim_due_routines(${workerId},1,60)`;
+      const fired = await workerSql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_fire_routine(${workerId},${ids.org}::uuid,
+          ${routineId}::uuid,${occurrenceId}::uuid,${due},${future})`;
+      const claim = await routineStore.claimLane({
+        executorId: `runtime-${label}-${occurrenceId}`, lane: "background",
+      });
+      expect(claim?.turn.id).toBe(fired[0]!.turn.id);
+      const material = await persistence.authorize(claim!);
+      expect(material).not.toBeNull();
+      await expect(persistence.beginAdmission(claim!, {
+        invocationId: material!.piInvocationId, cursor: 0n,
+      })).resolves.toBe(true);
+      await expect(persistence.recordAdmission(claim!, {
+        invocationId: material!.piInvocationId,
+        responseTurnId: fired[0]!.turn.id,
+        cursor: 0n,
+      })).resolves.toBe(true);
+      return { claim: claim!, material: material!, turnId: fired[0]!.turn.id };
+    };
+
+    try {
+      const noOutput = await startRoutine("no-output");
+      await expect(persistence.project(noOutput.claim, {
+        throughCursor: 2n,
+        assistant: [],
+        privateEntries: [{
+          sequence: 1n, type: "assistant" as const, entry_key: "assistant-1",
+          content: "Private work completed without surfacing.",
+        }],
+        decisions: [], routineReturns: [], needsInput: false, settled: true,
+        processExited: false, activity: true,
+      })).resolves.toBe("succeeded");
+      await expect(routineStore.completeProgression(noOutput.claim, { kind: "ack_completed" }))
+        .resolves.toBe(true);
+      const [noOutputFacts] = await ownerSql<Array<{
+        outcome: string; surfaces: string; claim: string | null;
+      }>>`select
+        (select outcome from public.companion_v3_routine_runs where turn_id=${noOutput.turnId}::uuid) as outcome,
+        (select count(*)::text from public.companion_transcript_entries where event_id=${`routine-return:${noOutput.turnId}`}) as surfaces,
+        (select claim_token::text from public.companion_v3_lane_leases
+          where companion_id=${ids.companion}::uuid and lane='background') as claim`;
+      expect(noOutputFacts).toEqual({ outcome: "no_output", surfaces: "0", claim: null });
+
+      const relay = await startRoutine("relay");
+      const returned = {
+        sequence: 1n, type: "routine_return" as const, call_id: "relay-1",
+        mode: "relay" as const, message: "Investigate this routine result in main.",
+      };
+      await expect(persistence.project(relay.claim, {
+        throughCursor: 1n, assistant: [], privateEntries: [returned], decisions: [],
+        routineReturns: [returned], needsInput: false, settled: false,
+        processExited: false, activity: true,
+      })).resolves.toBe("succeeded");
+      await expect(routineStore.completeProgression(relay.claim, { kind: "ack_completed" }))
+        .resolves.toBe(true);
+      const [relayFacts] = await ownerSql<Array<{
+        outcome: string; relayTurnId: string; surfaces: string;
+      }>>`select run.outcome,run.relay_turn_id as "relayTurnId",
+          (select count(*)::text from public.companion_transcript_entries
+            where event_id=${`routine-return:${relay.turnId}`}) as surfaces
+        from public.companion_v3_routine_runs run where run.turn_id=${relay.turnId}::uuid`;
+      expect(relayFacts).toMatchObject({ outcome: "relay", relayTurnId: expect.any(String), surfaces: "1" });
+      const mainStore = createRuntimeV3PostgresWarmConvergence(runtimeSql, {
+        enabledLanes: new Set(["main"]),
+      });
+      const mainClaim = await mainStore.claimLane({ executorId: "runtime-relay-main", lane: "main" });
+      expect(mainClaim?.turn.id).toBe(relayFacts!.relayTurnId);
+      const mainMaterial = await createRuntimeV3PostgresWarmTurnPersistence(runtimeSql)
+        .authorize(mainClaim!);
+      expect(mainMaterial?.content).toContain("Investigate this routine result in main.");
+      await mainStore.completeProgression(mainClaim!, { kind: "release" });
+
+      const detached = await startRoutine("detached");
+      const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
+      const decision = {
+        sequence: 1n,
+        type: "decision" as const,
+        entry_key: "decision:1",
+        eventId: `v3:${detached.turnId}:decision:1`,
+        request_key: "routine-question",
+        request_kind: "question" as const,
+        content: "Which safe option?",
+        decision: {
+          request_id: "routine-question", kind: "question" as const, name: "ask_user",
+          title: "Which safe option?", detail: null, status: "pending" as const,
+          answer: null, decided_by_id: null, decided_by_name: null, decided_at: null,
+          expires_at: expiresAt, proposal: null,
+        },
+        expires_at: expiresAt,
+      };
+      await expect(persistence.project(detached.claim, {
+        throughCursor: 1n, assistant: [], privateEntries: [decision], decisions: [decision],
+        routineReturns: [], needsInput: true, settled: false, processExited: false, activity: true,
+      })).resolves.toBe("detached");
+      const action = await persistence.beginDecisionAction!(detached.claim);
+      expect(action).toMatchObject({ kind: "detach", decisionId: expect.any(String) });
+      await expect(persistence.finishDecisionAction!(detached.claim, {
+        decisionId: action!.decisionId,
+        kind: "detach",
+        invocationId: detached.material.piInvocationId,
+      })).resolves.toBe(true);
+      await expect(routineStore.completeProgression(detached.claim, { kind: "detached" }))
+        .resolves.toBe(true);
+      await expect(routineStore.completeProgression(detached.claim, { kind: "detached" }))
+        .resolves.toBe(false);
+      const [detachedFacts] = await ownerSql<Array<{
+        outcome: string; state: string; decisions: string; claim: string | null;
+      }>>`select
+        (select outcome from public.companion_v3_routine_runs where turn_id=${detached.turnId}::uuid) as outcome,
+        (select state::text from public.companion_v3_turns where id=${detached.turnId}::uuid) as state,
+        (select count(*)::text from public.companion_v3_decisions where turn_id=${detached.turnId}::uuid) as decisions,
+        (select claim_token::text from public.companion_v3_lane_leases
+          where companion_id=${ids.companion}::uuid and lane='background') as claim`;
+      expect(detachedFacts).toEqual({
+        outcome: "cancelled", state: "cancelled", decisions: "1", claim: null,
+      });
+
+      const stalled = await startRoutine("backoff");
+      await ownerSql`update public.companion_v3_turns
+        set inactivity_deadline_at=clock_timestamp()-interval '1 second'
+        where id=${stalled.turnId}::uuid`;
+      await expect(routineStore.sweepLane({ lane: "background" })).resolves.toBe(1);
+      const [retryFacts] = await ownerSql<Array<{
+        state: string; retryCount: number; delay: number; enabled: boolean; claim: string | null;
+      }>>`select turn_row.state::text,turn_row.retry_count as "retryCount",
+          extract(epoch from (turn_row.available_at-clock_timestamp()))::integer as delay,
+          routine.enabled,
+          (select claim_token::text from public.companion_v3_lane_leases
+            where companion_id=${ids.companion}::uuid and lane='background') as claim
+        from public.companion_v3_turns turn_row
+        join public.companion_v3_routine_runs run on run.turn_id=turn_row.id
+        join public.companion_routines routine on routine.id=run.routine_id
+        where turn_row.id=${stalled.turnId}::uuid`;
+      expect(retryFacts).toMatchObject({
+        state: "queued", retryCount: 1, enabled: true, claim: null,
+      });
+      expect(retryFacts!.delay).toBeGreaterThanOrEqual(3);
+      expect(retryFacts!.delay).toBeLessThanOrEqual(6);
+    } finally {
+      await ownerSql`delete from public.companion_routines where id=any(${routineIds}::uuid[])`;
+    }
   });
 
   it("fails closed for cross-tenant, non-member, and revoked-owner admission", async () => {

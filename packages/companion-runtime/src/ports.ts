@@ -116,6 +116,8 @@ export interface RuntimePiRoutineSessionControl {
     persona: string | null;
     /** Remove every tool except surface_to_main when this run validates an untrusted webhook. */
     validationOnly: boolean;
+    /** Runtime v3 work reads and writes the persistent Box workspace without a memory snapshot. */
+    directWorkspace?: boolean;
     /** Invocation identity persisted in dispatch_write_intent before this run root is launched. */
     expectedInvocationId: string;
     signal: AbortSignal;

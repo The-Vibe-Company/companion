@@ -66,10 +66,13 @@ import { createSentryRuntimeProcessLog } from "./sentry";
 import {
   createRuntimeV3PostgresPreparationPersistence,
   createRuntimeV3PostgresLifecyclePersistence,
+  createRuntimeV3PostgresRoutineConvergence,
+  createRuntimeV3PostgresRoutineTurnPersistence,
   createRuntimeV3PostgresWarmConvergence,
   createRuntimeV3PostgresWarmTurnPersistence,
 } from "./runtimeV3ProgressionStore";
 import { createRuntimeV3WarmPi } from "./runtimeV3WarmPi";
+import { createRuntimeV3RoutinePi } from "./runtimeV3RoutinePi";
 
 export interface RuntimeArchiveStorage {
   load(storagePath: string, signal: AbortSignal): Promise<Buffer>;
@@ -371,6 +374,13 @@ export async function buildProductionRuntimeService(
         pi: createRuntimeV3WarmPi(pi),
       }),
     });
+    const runtimeV3Routines = createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresRoutineConvergence(database.sql),
+      advance: createRuntimeV3WarmTurnAdvance({
+        persistence: createRuntimeV3PostgresRoutineTurnPersistence(database.sql),
+        pi: createRuntimeV3RoutinePi(pi),
+      }),
+    });
     const runtimeV3 = combineRuntimeV3Convergence(
       createRuntimeV3Lifecycle({
         persistence: createRuntimeV3PostgresLifecyclePersistence(database.sql),
@@ -394,6 +404,7 @@ export async function buildProductionRuntimeService(
       store,
       scheduler: createRuntimeSchedulerAdapter(kernel.scheduler, {
         convergence: runtimeV3,
+        backgroundConvergence: runtimeV3Routines,
         deadlineSweep: createRuntimeV3DeadlineSweep(runtimeV3TurnPersistence),
         executorId: config.executorId,
         sweepIntervalMs: config.sweepIntervalMs,

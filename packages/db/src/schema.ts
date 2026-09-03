@@ -702,6 +702,8 @@ export const companionRoutines = pgTable(
     createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
     claimedBy: text("claimed_by"),
     leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    fireAvailableAt: timestamp("fire_available_at", { withTimezone: true }).notNull().defaultNow(),
+    fireAttemptCount: integer("fire_attempt_count").notNull().default(0),
     createdAt: now(),
     updatedAt: updatedAt(),
   },
@@ -714,6 +716,7 @@ export const companionRoutines = pgTable(
     }).onDelete("cascade"),
     nameUnique: uniqueIndex("companion_routines_name_uq").on(t.companionId, sql`lower(${t.name})`),
     due: index("companion_routines_due_idx").on(t.nextFireAt).where(sql`${t.enabled} and ${t.nextFireAt} is not null`),
+    fireRetryCheck: check("companion_routines_fire_retry_check", sql`${t.fireAttemptCount} >= 0`),
     nameCheck: check("companion_routines_name_check", sql`char_length(btrim(${t.name})) between 1 and 80 and ${t.name} !~ E'[\\n\\r]'`),
     promptCheck: check("companion_routines_prompt_check", sql`char_length(btrim(${t.prompt})) between 1 and 16384`),
     cronCheck: check("companion_routines_cron_check", sql`char_length(${t.cron}) between 1 and 120 and ${t.cron} !~ E'[\\n\\r]'`),
@@ -1474,6 +1477,9 @@ export const companionV3Turns = pgTable(
     outcomeMessage: text("outcome_message"),
     outcomeAction: companionRuntimeErrorActionEnum("outcome_action"),
     settledAt: timestamp("settled_at", { withTimezone: true }),
+    availableAt: timestamp("available_at", { withTimezone: true }).notNull().defaultNow(),
+    retryCount: integer("retry_count").notNull().default(0),
+    routineRelaySourceEventId: text("routine_relay_source_event_id"),
     createdAt: now(),
     updatedAt: updatedAt(),
   },
@@ -1493,12 +1499,16 @@ export const companionV3Turns = pgTable(
     fifo: index("companion_v3_turns_fifo_idx")
       .on(t.companionId, t.lane, t.queueSequence, t.id)
       .where(sql`${t.state} = 'queued'`),
+    availableFifo: index("companion_v3_turns_available_fifo_idx")
+      .on(t.lane, t.availableAt, t.companionId, t.queueSequence, t.id)
+      .where(sql`${t.state} = 'queued'`),
     deadlines: index("companion_v3_turns_deadlines_idx")
       .on(t.absoluteDeadlineAt, t.inactivityDeadlineAt)
       .where(sql`${t.state} in ('admitted', 'running', 'needs_input')`),
     measurementWindow: index("companion_v3_turns_measurement_window_idx")
       .on(t.acceptedAt, t.lane, t.wakePath),
     sequenceCheck: check("companion_v3_turns_sequence_check", sql`${t.queueSequence} >= 1`),
+    retryCheck: check("companion_v3_turns_retry_check", sql`${t.retryCount} >= 0`),
     messageEventCheck: check(
       "companion_v3_turns_message_event_check",
       sql`${t.messageEventId} = 'msg:' || ${t.clientMessageId}::text`,
@@ -1604,6 +1614,70 @@ export const companionV3Decisions = pgTable(
       "companion_v3_decisions_delivery_check",
       sql`((${t.deliveryState} in ('pending','cancelled') and ${t.commandId} is null and ${t.deliveryStartedAt} is null) or (${t.deliveryState} in ('write_intent','delivered','ambiguous') and ${t.commandId} is not null and ${t.deliveryStartedAt} is not null)) and ((${t.deliveryState} = 'delivered') = (${t.deliveredAt} is not null)) and (${t.detachedAt} is null or (${t.lane} = 'background' and ${t.deliveryState} = 'cancelled'))`,
     ),
+  }),
+);
+
+/** Private execution record for one scheduled occurrence admitted to the v3 background lane. */
+export const companionV3RoutineRuns = pgTable(
+  "companion_v3_routine_runs",
+  {
+    orgId: uuid("org_id").notNull(),
+    companionId: uuid("companion_id").notNull(),
+    turnId: uuid("turn_id").notNull(),
+    routineId: uuid("routine_id").references(() => companionRoutines.id, { onDelete: "set null" }),
+    routineSnapshotId: uuid("routine_snapshot_id").notNull(),
+    routineGeneration: timestamp("routine_generation", { withTimezone: true }).notNull(),
+    routineName: text("routine_name").notNull(),
+    prompt: text("prompt").notNull(),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+    outcome: text("outcome").notNull().default("pending"),
+    surfaceMode: companionRoutineSurfaceModeEnum("surface_mode"),
+    mainEntryEventId: text("main_entry_event_id"),
+    relayTurnId: uuid("relay_turn_id"),
+    nextOrdinal: integer("next_ordinal").notNull().default(0),
+    createdAt: now(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.orgId, t.companionId, t.turnId] }),
+    turnFk: foreignKey({
+      columns: [t.orgId, t.companionId, t.turnId],
+      foreignColumns: [companionV3Turns.orgId, companionV3Turns.companionId, companionV3Turns.id],
+      name: "companion_v3_routine_runs_turn_fk",
+    }).onDelete("cascade"),
+    history: index("companion_v3_routine_runs_history_idx")
+      .on(t.orgId, t.companionId, t.routineSnapshotId, t.scheduledFor, t.turnId),
+    ordinalCheck: check("companion_v3_routine_runs_ordinal_check", sql`${t.nextOrdinal} >= 0`),
+  }),
+);
+
+/** Routine Pi projections remain private unless the terminal return is surfaced by reference. */
+export const companionV3RoutineRunEntries = pgTable(
+  "companion_v3_routine_run_entries",
+  {
+    orgId: uuid("org_id").notNull(),
+    companionId: uuid("companion_id").notNull(),
+    runId: uuid("run_id").notNull(),
+    eventId: text("event_id").notNull(),
+    ordinal: integer("ordinal").notNull(),
+    role: companionTranscriptRoleEnum("role").notNull(),
+    content: text("content").notNull(),
+    reasoning: text("reasoning"),
+    tool: jsonb("tool").$type<CompanionStoredToolRun>(),
+    decision: jsonb("decision").$type<CompanionStoredDecision>(),
+    createdAt: now(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.orgId, t.companionId, t.runId, t.eventId] }),
+    runFk: foreignKey({
+      columns: [t.orgId, t.companionId, t.runId],
+      foreignColumns: [companionV3RoutineRuns.orgId, companionV3RoutineRuns.companionId,
+        companionV3RoutineRuns.turnId],
+      name: "companion_v3_routine_run_entries_run_fk",
+    }).onDelete("cascade"),
+    ordered: unique("companion_v3_routine_run_entries_ordinal_uq")
+      .on(t.companionId, t.runId, t.ordinal),
   }),
 );
 
