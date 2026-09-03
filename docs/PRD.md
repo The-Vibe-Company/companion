@@ -103,7 +103,8 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
 - A source Owner may approve a persistent directed grant only when they can also operate the target.
   Delegations are text-only, depth four, twenty per root turn, and return as `notify` or `relay` in
   both threads. Groups and Rooms remain out of scope.
-- Routine and trigger turns cannot call the control MCP.
+- Owner-authored scheduled routines receive the current control MCP and directed grants; untrusted
+  trigger validators cannot call control.
 
 ### Routines
 

@@ -658,8 +658,8 @@ or concurrent responses cannot enqueue or revive the obsolete occurrence.
 `companion-control` is the single product-owned MCP for identity, Skills, models, plugins, routines,
 triggers, Pi recycle, and directed delegation. The Box loopback gateway injects a short-lived
 `cmp_ctl_*` bearer only into the gateway request; Pi never receives it in its environment. Resolution
-requires the exact active, accepted ordinary main attempt and re-evaluates tenant membership and
-Companion access. Routine and trigger attempts are excluded.
+requires the exact active accepted main attempt or immutable-Owner scheduled routine and
+re-evaluates tenant membership and Companion access. Trigger validators are excluded.
 
 Every JSON-RPC call records its attempt id, request id, canonical argument digest, and bounded final
 JSON-RPC response in `companion_control_invocations`. An identical retry returns that exact response;
@@ -780,8 +780,9 @@ contacts Box/Pi. Replaying the same instant returns the same Turn. A newer due i
 older still-pending occurrence `superseded` instead of executing stale catch-up; running work is not
 preempted.
 
-Scheduler persistence failures and Runtime execution failures release their claim and retry with a
-bounded 80–120% jittered exponential schedule (5s, 15s, 30s, 60s, then 5m). They never automatically
+Scheduler persistence failures and prompt rejections proven before Pi acceptance release their claim
+and retry with a bounded 80–120% jittered exponential schedule (5s, 15s, 30s, 60s, then 5m).
+Accepted, timed-out, process-exited, or ambiguous work is terminal and never replayed. They never automatically
 disable the routine or advance a failed due instant, so recovery of membership, credentials, Box,
 or Pi resumes without a member action. Errors crossing the durable boundary remain stable,
 single-line, expurgated values.
@@ -796,8 +797,9 @@ main Turn; its payload is never copied into private history.
 The final execution path keeps the existing worker boundary: `apps/worker` only persists the
 exactly-once routine-origin turn and never contacts Box or Pi. `apps/runtime` claims that turn under
 the Companion's `background` lease, revalidates the immutable Owner, membership, current Skills,
-plugins, provider tools, and model, and launches the same Pi binary and current operating brief in a
-run-scoped broker directory. Pi reads and writes the persistent Box workspace directly. The `main`
+plugins, provider tools, model, control MCP, and directed grants against Owner-bound prepared refs,
+then launches the same Pi binary and current operating brief in a run-scoped broker directory. Pi
+reads and writes the persistent Box workspace and durable memory directly. The `main`
 lease may concurrently dispatch an ordinary turn to the persistent main Pi. This is two fenced
 scheduling lanes inside one runtime owner and one Box, not a second harness or provider. Box
 concurrency is bounded to two Pi processes: the main daemon and one isolated routine process.
@@ -811,7 +813,8 @@ ordinary main turns never inspect or terminate the run-scoped routine broker.
 
 Main chat, lifecycle preparation, and Pi repair run on a scheduler clock independent from the
 background FIFO. A routine cannot retain their loop, acquire priority, or preempt them. Its own
-claim is released on `notify`, `relay`, `no_output`, detached decision, or retry; permanent deletion
+claim is released on `notify`, `relay`, `no_output`, detached decision, or cooperative polling;
+permanent deletion
 is the explicit destructive exception. The run broker root isolates transport/journal state, not
 the product workspace: Companion adds no snapshot, merge, or workspace filesystem lock.
 
@@ -827,10 +830,11 @@ and explicit cancellation. If preparation fails before a prompt can have reached
 terminates the run-scoped process; once dispatch may be ambiguous, it preserves the occurrence and
 original error, then runs exact automatic cleanup instead of guessing or replaying.
 
-Routine preparation copies only current runtime capabilities and the operating brief into its
-run-scoped broker root. Pi's working directory remains the persistent Box workspace, so tools use
-durable files directly. Companion adds no conversation/workspace snapshot, merge-back layer, or
-workspace filesystem lock. Takeover uses the same durable Turn identity and broker journal.
+Routine preparation copies current Owner-authorized runtime capabilities and the operating brief into
+its run-scoped broker root. Pi's working directory, memory, and QMD index remain the persistent Box
+workspace paths, so routine writes are visible to later main turns. Only Pi session, broker journal,
+and runtime state are isolated. Companion adds no snapshot, merge-back layer, or workspace filesystem
+lock. Takeover uses the same durable Turn identity and broker journal.
 
 The routine-only `surface_to_main` tool is a terminal return, never a conversational tool:
 

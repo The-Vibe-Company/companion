@@ -109,7 +109,13 @@ async function seedPreparedV3(
   ) values (
     ${ids.org}::uuid, ${companionId}::uuid, ${ids.owner}, 'bx_23456789', ${piInvocationId},
     'prepared', current_timestamp, current_timestamp, current_timestamp,
-    ${ids.owner}, 1, 1, 'claude-test', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb,
+    ${ids.owner}, 1, 1, 'claude-test', (select jsonb_agg(jsonb_build_object(
+      'provider_id',connection.provider_id,
+      'credential_generation',connection.credential_generation,
+      'credential_version',connection.credential_version) order by connection.provider_id)
+      from public.companion_provider_connections connection
+      where connection.org_id=${ids.org}::uuid and connection.provider_id='anthropic'),
+    '[]'::jsonb, '[]'::jsonb,
     14, ${"a".repeat(64)}, current_timestamp + interval '6 hours'
   ) on conflict (org_id, companion_id) do update set
     desired_lifecycle_actor_id = excluded.desired_lifecycle_actor_id,
@@ -4279,6 +4285,103 @@ describe("Runtime v3 progression facts", () => {
     }
   });
 
+  it("rebuilds Editor-staged private material for the immutable routine Owner", async () => {
+    const routineId = randomUUID();
+    const occurrenceId = randomUUID();
+    const editorSkillId = randomUUID();
+    const editorVersionId = randomUUID();
+    const editorMcpId = randomUUID();
+    const editorMcpGeneration = randomUUID();
+    const due = new Date(Date.now() - 1_000);
+    const future = new Date(Date.now() + 3_600_000);
+    try {
+      await ownerSql`insert into public.skills(id,org_id,slug,description,creator_id,scope)
+        values(${editorSkillId}::uuid,${ids.org}::uuid,${`routine-editor-${editorSkillId}`},
+          'Editor-private routine regression',${ids.editor},'personal')`;
+      await ownerSql`insert into public.skill_versions(
+        id,org_id,skill_id,version,frontmatter,tools,size_bytes,checksum,storage_path,
+        validation,created_by)
+      values(${editorVersionId}::uuid,${ids.org}::uuid,${editorSkillId}::uuid,'1.0.0',
+        'name: routine-editor-private','[]'::jsonb,42,${`sha256:${"d".repeat(64)}`},
+        ${`skills/${editorVersionId}.tar.gz`},'valid',${ids.editor})`;
+      await ownerSql`update public.skills set current_version_id=${editorVersionId}::uuid
+        where id=${editorSkillId}::uuid`;
+      await ownerSql`insert into public.companion_mcp_accounts(
+        id,org_id,owner_id,provider,label,transport,account_config,credential_generation,
+        ciphertext,iv,auth_tag,wrapped_dek,wrap_iv,wrap_auth_tag,key_id)
+      values(${editorMcpId}::uuid,${ids.org}::uuid,${ids.editor},'fixture-mcp',
+        'Editor private routine MCP','http','{"endpoint":"editor-private"}'::jsonb,
+        ${editorMcpGeneration}::uuid,'ciphertext','iv','tag','dek','wiv','wtag','key')`;
+      await ownerSql`update public.companions set
+        selected_skill_ids=jsonb_build_array(${editorSkillId}::text),
+        selected_mcp_account_ids=jsonb_build_array(${editorMcpId}::text)
+        where id=${ids.companion}::uuid`;
+      await seedPreparedV3("editor-prepared-pi");
+      await ownerSql`update public.companion_v3_instances instance set
+        preparation_actor_id=${ids.editor},
+        preparation_skills_revision=companion.skills_available_revision,
+        preparation_skill_refs=jsonb_build_array(jsonb_build_object(
+          'skill_id',${editorSkillId}::uuid,'current_version_id',${editorVersionId}::uuid)),
+        preparation_mcp_refs=jsonb_build_array(jsonb_build_object(
+          'account_id',${editorMcpId}::uuid,'credential_generation',${editorMcpGeneration}::uuid,
+          'credential_version',1))
+        from public.companions companion where instance.org_id=${ids.org}::uuid
+          and instance.companion_id=${ids.companion}::uuid
+          and companion.org_id=instance.org_id and companion.id=instance.companion_id`;
+
+      await ownerSql`insert into public.companion_routines(
+        id,org_id,companion_id,name,prompt,cron,timezone,enabled,next_fire_at,created_by)
+      values(${routineId}::uuid,${ids.org}::uuid,${ids.companion}::uuid,
+        'Owner material fence','Use only Owner capabilities','0 * * * *','UTC',true,${due},${ids.owner})`;
+      await workerSql`select * from public.companion_claim_due_routines(
+        'worker-owner-material-fence',1,60)`;
+      const fired = await workerSql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_fire_routine('worker-owner-material-fence',
+          ${ids.org}::uuid,${routineId}::uuid,${occurrenceId}::uuid,${due},${future})`;
+      const turnId = fired[0]!.turn.id;
+      const [invalidated] = await ownerSql<Array<{
+        preparedAt: Date | null; preparationActorId: string | null;
+      }>>`select prepared_at as "preparedAt",preparation_actor_id as "preparationActorId"
+        from public.companion_v3_instances where companion_id=${ids.companion}::uuid`;
+      expect(invalidated).toEqual({ preparedAt: null, preparationActorId: null });
+
+      const preparationStore = createRuntimeV3PostgresPreparationPersistence(runtimeSql);
+      const ownerPreparation = await preparationStore.claim({ executorId: "runtime-owner-preparation" });
+      expect(ownerPreparation).toMatchObject({
+        companionId: ids.companion, actorId: ids.owner, authorized: false,
+        skillMaterial: [], mcpMaterial: [],
+      });
+      await preparationStore.defer(ownerPreparation!, { delaySeconds: 1, error: null });
+      await ownerSql`update public.companions set selected_skill_ids='[]'::jsonb,
+        selected_mcp_account_ids='[]'::jsonb where id=${ids.companion}::uuid`;
+      await seedPreparedV3("owner-prepared-pi");
+
+      const routineStore = createRuntimeV3PostgresRoutineConvergence(runtimeSql);
+      const claim = await routineStore.claimLane({
+        executorId: "runtime-owner-routine", lane: "background",
+      });
+      expect(claim?.turn.id).toBe(turnId);
+      const persistence = createRuntimeV3PostgresRoutineTurnPersistence(runtimeSql);
+      await expect(persistence.authorize(claim!)).resolves.toMatchObject({
+        boxId: "bx_23456789", content: "Use only Owner capabilities", backgroundRoutine: true,
+      });
+      await ownerSql`delete from public.memberships
+        where org_id=${ids.org}::uuid and user_id=${ids.owner}`;
+      await expect(persistence.authorize(claim!)).resolves.toBeNull();
+      await ownerSql`insert into public.memberships(org_id,user_id,org_role)
+        values(${ids.org}::uuid,${ids.owner},'owner')`;
+      await routineStore.completeProgression(claim!, { kind: "release" });
+    } finally {
+      await ownerSql`update public.companions set selected_skill_ids='[]'::jsonb,
+        selected_mcp_account_ids='[]'::jsonb where id=${ids.companion}::uuid`;
+      await ownerSql`delete from public.companion_routines where id=${routineId}::uuid`;
+      await ownerSql`delete from public.companion_mcp_accounts where id=${editorMcpId}::uuid`;
+      await ownerSql`delete from public.skills where id=${editorSkillId}::uuid`;
+      await ownerSql`insert into public.memberships(org_id,user_id,org_role)
+        values(${ids.org}::uuid,${ids.owner},'owner') on conflict do nothing`;
+    }
+  });
+
   it("claims main and the single routine slot independently and settles notify exactly once", async () => {
     const routineId = randomUUID();
     const occurrenceId = randomUUID();
@@ -4411,7 +4514,7 @@ describe("Runtime v3 progression facts", () => {
     await seedPreparedV3("routine-settlement-modes");
     const routineStore = createRuntimeV3PostgresRoutineConvergence(runtimeSql);
     const persistence = createRuntimeV3PostgresRoutineTurnPersistence(runtimeSql);
-    const startRoutine = async (label: string) => {
+    const startRoutine = async (label: string, recordAccepted = true) => {
       const routineId = randomUUID();
       const occurrenceId = randomUUID();
       const due = new Date(Date.now() - 1_000);
@@ -4435,16 +4538,68 @@ describe("Runtime v3 progression facts", () => {
       await expect(persistence.beginAdmission(claim!, {
         invocationId: material!.piInvocationId, cursor: 0n,
       })).resolves.toBe(true);
-      await expect(persistence.recordAdmission(claim!, {
-        invocationId: material!.piInvocationId,
-        responseTurnId: fired[0]!.turn.id,
-        cursor: 0n,
-      })).resolves.toBe(true);
+      if (recordAccepted) {
+        await expect(persistence.recordAdmission(claim!, {
+          invocationId: material!.piInvocationId,
+          responseTurnId: fired[0]!.turn.id,
+          cursor: 0n,
+        })).resolves.toBe(true);
+      }
       return { claim: claim!, material: material!, turnId: fired[0]!.turn.id };
     };
 
     try {
-      const noOutput = await startRoutine("no-output");
+      const rejected = await startRoutine("pre-accept-rejection", false);
+      await expect(routineStore.completeProgression(rejected.claim, {
+        kind: "admission_rejected",
+        error: { code: "pi_prompt_refused", message: "Pi rejected the prompt.", action: "none" },
+      })).resolves.toBe(true);
+      const rejectedCleanup = await routineStore.claimLane({
+        executorId: "runtime-routine-rejected-cleanup", lane: "background",
+      });
+      expect(rejectedCleanup).toMatchObject({
+        turn: { id: rejected.turnId, state: "failed" },
+        cleanup: { invocationId: rejected.material.piInvocationId },
+      });
+      await expect(routineStore.completeProgression(rejectedCleanup!, { kind: "cleanup_completed" }))
+        .resolves.toBe(true);
+      const [rejectedFacts] = await ownerSql<Array<{
+        state: string; outcome: string; retryCount: number; delay: number;
+      }>>`select turn_row.state::text,run.outcome,turn_row.retry_count as "retryCount",
+          extract(epoch from (turn_row.available_at-clock_timestamp()))::integer as delay
+        from public.companion_v3_turns turn_row
+        join public.companion_v3_routine_runs run on run.turn_id=turn_row.id
+        where turn_row.id=${rejected.turnId}::uuid`;
+      expect(rejectedFacts).toMatchObject({ state: "queued", outcome: "pending", retryCount: 1 });
+      expect(rejectedFacts!.delay).toBeGreaterThanOrEqual(3);
+      expect(rejectedFacts!.delay).toBeLessThanOrEqual(6);
+
+      const firstPoll = await startRoutine("no-output");
+      const [beforeRelease] = await ownerSql<Array<{
+        state: string; admission: string; invocation: string; activityCursor: string;
+        inactivityDeadline: Date; absoluteDeadline: Date; retryCount: number;
+      }>>`select state::text,admission_state::text as admission,
+          pi_invocation_id as invocation,activity_cursor::text as "activityCursor",
+          inactivity_deadline_at as "inactivityDeadline",absolute_deadline_at as "absoluteDeadline",
+          retry_count as "retryCount" from public.companion_v3_turns
+        where id=${firstPoll.turnId}::uuid`;
+      await expect(routineStore.completeProgression(firstPoll.claim, { kind: "release" }))
+        .resolves.toBe(true);
+      const reclaimed = await routineStore.claimLane({
+        executorId: "runtime-routine-poll-takeover", lane: "background",
+      });
+      expect(reclaimed?.turn.id).toBe(firstPoll.turnId);
+      const [afterRelease] = await ownerSql<Array<{
+        state: string; admission: string; invocation: string; activityCursor: string;
+        inactivityDeadline: Date; absoluteDeadline: Date; retryCount: number;
+      }>>`
+        select state::text,admission_state::text as admission,
+          pi_invocation_id as invocation,activity_cursor::text as "activityCursor",
+          inactivity_deadline_at as "inactivityDeadline",absolute_deadline_at as "absoluteDeadline",
+          retry_count as "retryCount" from public.companion_v3_turns
+        where id=${firstPoll.turnId}::uuid`;
+      expect(afterRelease).toEqual(beforeRelease);
+      const noOutput = { ...firstPoll, claim: reclaimed! };
       await expect(persistence.project(noOutput.claim, {
         throughCursor: 2n,
         assistant: [],
@@ -4540,27 +4695,74 @@ describe("Runtime v3 progression facts", () => {
         outcome: "cancelled", state: "cancelled", decisions: "1", claim: null,
       });
 
+      const failedAfterAdmission = await startRoutine("post-admission-failure");
+      await expect(routineStore.completeProgression(failedAfterAdmission.claim, {
+        kind: "failed",
+        error: { code: "warm_turn_failed", message: "The routine transport failed.", action: "none" },
+      })).resolves.toBe(true);
+      const failedCleanup = await routineStore.claimLane({
+        executorId: "runtime-routine-failed-cleanup", lane: "background",
+      });
+      expect(failedCleanup).toMatchObject({
+        turn: { id: failedAfterAdmission.turnId, state: "failed" },
+        cleanup: { invocationId: failedAfterAdmission.material.piInvocationId },
+      });
+      await expect(routineStore.completeProgression(failedCleanup!, { kind: "cleanup_completed" }))
+        .resolves.toBe(true);
+      const [failedFacts] = await ownerSql<Array<{
+        state: string; outcome: string; retryCount: number; cleanup: string | null;
+      }>>`select turn_row.state::text,run.outcome,turn_row.retry_count as "retryCount",
+          run.cleanup_checkpoint as cleanup from public.companion_v3_turns turn_row
+        join public.companion_v3_routine_runs run on run.turn_id=turn_row.id
+        where turn_row.id=${failedAfterAdmission.turnId}::uuid`;
+      expect(failedFacts).toEqual({
+        state: "failed", outcome: "failed", retryCount: 0, cleanup: null,
+      });
+
       const stalled = await startRoutine("backoff");
       await ownerSql`update public.companion_v3_turns
         set inactivity_deadline_at=clock_timestamp()-interval '1 second'
         where id=${stalled.turnId}::uuid`;
       await expect(routineStore.sweepLane({ lane: "background" })).resolves.toBe(1);
+      const cleanupClaim = await routineStore.claimLane({
+        executorId: "runtime-routine-cleanup", lane: "background",
+      });
+      expect(cleanupClaim).toMatchObject({
+        turn: { id: stalled.turnId, state: "interrupted" },
+        cleanup: { boxId: "bx_23456789", invocationId: stalled.material.piInvocationId },
+      });
+      const terminate = vi.fn().mockResolvedValue(undefined);
+      const cleanupAdvance = createRuntimeV3WarmTurnAdvance({
+        persistence: {
+          authorize: vi.fn(), beginAdmission: vi.fn(), recordAdmission: vi.fn(), project: vi.fn(),
+        },
+        pi: { prompt: vi.fn(), read: vi.fn(), acknowledge: vi.fn(), terminate },
+      });
+      await expect(cleanupAdvance(cleanupClaim!)).resolves.toEqual({ kind: "cleanup_completed" });
+      expect(terminate).toHaveBeenCalledWith(expect.objectContaining({
+        boxId: "bx_23456789", turnId: stalled.turnId,
+        invocationId: stalled.material.piInvocationId,
+      }));
+      await expect(routineStore.completeProgression(cleanupClaim!, { kind: "cleanup_completed" }))
+        .resolves.toBe(true);
       const [retryFacts] = await ownerSql<Array<{
-        state: string; retryCount: number; delay: number; enabled: boolean; claim: string | null;
+        state: string; retryCount: number; enabled: boolean; claim: string | null;
+        outcome: string; cleanup: string | null; mainRecycle: string | null;
       }>>`select turn_row.state::text,turn_row.retry_count as "retryCount",
-          extract(epoch from (turn_row.available_at-clock_timestamp()))::integer as delay,
-          routine.enabled,
+          routine.enabled,run.outcome,run.cleanup_checkpoint as cleanup,
+          instance.pi_recycle_checkpoint as "mainRecycle",
           (select claim_token::text from public.companion_v3_lane_leases
             where companion_id=${ids.companion}::uuid and lane='background') as claim
         from public.companion_v3_turns turn_row
         join public.companion_v3_routine_runs run on run.turn_id=turn_row.id
         join public.companion_routines routine on routine.id=run.routine_id
+        join public.companion_v3_instances instance on instance.org_id=turn_row.org_id
+          and instance.companion_id=turn_row.companion_id
         where turn_row.id=${stalled.turnId}::uuid`;
       expect(retryFacts).toMatchObject({
-        state: "queued", retryCount: 1, enabled: true, claim: null,
+        state: "interrupted", retryCount: 0, enabled: true, claim: null,
+        outcome: "interrupted", cleanup: null, mainRecycle: null,
       });
-      expect(retryFacts!.delay).toBeGreaterThanOrEqual(3);
-      expect(retryFacts!.delay).toBeLessThanOrEqual(6);
     } finally {
       await ownerSql`delete from public.companion_routines where id=any(${routineIds}::uuid[])`;
     }
@@ -4680,7 +4882,11 @@ describe("Runtime v3 progression facts", () => {
       await expect(persistence.authorize(routineClaim!)).resolves.toMatchObject({
         backgroundKind: "routine", validationOnly: false, directWorkspace: true,
       });
-      await expect(backgroundStore.completeProgression(routineClaim!, { kind: "release" }))
+      await expect(backgroundStore.completeProgression(routineClaim!, {
+        kind: "failed", error: {
+          code: "routine_test_complete", message: "Routine test completed.", action: "none",
+        },
+      }))
         .resolves.toBe(true);
 
       const notifyTurn = await fireTrigger("notify trigger", "notify", "external notify payload");
@@ -4703,16 +4909,9 @@ describe("Runtime v3 progression facts", () => {
 
       const relayTurn = await fireTrigger("relay trigger", "relay", "external relay payload");
       active = await startTrigger(relayTurn, "runtime-trigger-relay");
-      const wrongReturn = {
-        sequence: 1n, type: "routine_return" as const, call_id: "wrong-return",
-        mode: "notify" as const, message: "Wrong mode.",
-      };
-      await expect(persistence.project(active.claim, {
-        throughCursor: 1n, assistant: [], privateEntries: [wrongReturn], decisions: [],
-        routineReturns: [wrongReturn], needsInput: false, settled: false,
-        processExited: false, activity: true,
-      })).rejects.toMatchObject({ code: "22023" });
-      const relayReturn = { ...wrongReturn, call_id: "relay-return", mode: "relay" as const,
+      const relayReturn = {
+        sequence: 1n, type: "routine_return" as const, call_id: "relay-return",
+        mode: "relay" as const,
         message: "Trigger relay result." };
       await expect(persistence.project(active.claim, {
         throughCursor: 1n, assistant: [], privateEntries: [relayReturn], decisions: [],
@@ -4737,27 +4936,69 @@ describe("Runtime v3 progression facts", () => {
         relayInstruction: "A webhook trigger surfaced the previous Companion entry. Read it and respond to that entry.",
       });
 
-      const failedTurn = await fireTrigger("retry trigger", "notify", "external retry payload");
-      active = await startTrigger(failedTurn, "runtime-trigger-retry");
-      await expect(backgroundStore.completeProgression(active.claim, {
+      const invalidTurn = await fireTrigger("invalid trigger", "relay", "invalid validator payload");
+      const retryBases = [5, 15, 30, 60, 300];
+      for (let attempt = 0; attempt <= retryBases.length; attempt += 1) {
+        active = await startTrigger(invalidTurn, `runtime-trigger-invalid-${attempt}`);
+        const wrongReturn = {
+          sequence: 1n, type: "routine_return" as const,
+          call_id: `wrong-return-${attempt}`, mode: "notify" as const, message: "Wrong mode.",
+        };
+        const invalidProjection = {
+          throughCursor: 1n, assistant: [], privateEntries: [wrongReturn], decisions: [],
+          routineReturns: [wrongReturn], needsInput: false, settled: false,
+          processExited: false, activity: true,
+        };
+        await expect(persistence.project(active.claim, invalidProjection)).resolves.toBe("failed");
+        await expect(persistence.project(active.claim, invalidProjection)).resolves.toBe(false);
+        await expect(backgroundStore.completeProgression(active.claim, { kind: "ack_completed" }))
+          .resolves.toBe(true);
+        const cleanup = await backgroundStore.claimLane({
+          executorId: `runtime-trigger-invalid-cleanup-${attempt}`, lane: "background",
+        });
+        expect(cleanup).toMatchObject({ turn: { id: invalidTurn }, cleanup: {
+          invocationId: active.material.piInvocationId,
+        } });
+        await expect(backgroundStore.completeProgression(cleanup!, { kind: "cleanup_completed" }))
+          .resolves.toBe(true);
+
+        const [retry] = await ownerSql<Array<{
+          retryCount: number; state: string; delay: number; clipped: boolean;
+          enabled: boolean; claim: string | null;
+        }>>`select turn_row.retry_count as "retryCount",turn_row.state,
+            extract(epoch from (turn_row.available_at-clock_timestamp()))::integer as delay,
+            turn_row.available_at<=run.trigger_retry_deadline_at as clipped,trigger.enabled,
+            (select claim_token::text from public.companion_v3_lane_leases
+              where companion_id=${ids.companion}::uuid and lane='background') as claim
+          from public.companion_v3_turns turn_row
+          join public.companion_v3_routine_runs run on run.turn_id=turn_row.id
+          join public.companion_triggers trigger on trigger.id=run.trigger_snapshot_id
+          where turn_row.id=${invalidTurn}::uuid`;
+        if (attempt < retryBases.length) {
+          expect(retry).toMatchObject({
+            retryCount: attempt + 1, state: "queued", clipped: true, enabled: true, claim: null,
+          });
+          expect(retry!.delay).toBeGreaterThanOrEqual(Math.floor(retryBases[attempt]! * 0.8) - 1);
+          expect(retry!.delay).toBeLessThanOrEqual(Math.ceil(retryBases[attempt]! * 1.2));
+          await ownerSql`update public.companion_v3_turns set available_at=clock_timestamp()
+            where id=${invalidTurn}::uuid`;
+        } else {
+          expect(retry).toMatchObject({
+            retryCount: 6, state: "failed", clipped: true, enabled: true, claim: null,
+          });
+        }
+      }
+
+      const nextTurn = await fireTrigger("next trigger", "notify", "next background payload");
+      const nextClaim = await backgroundStore.claimLane({
+        executorId: "runtime-trigger-after-invalid", lane: "background",
+      });
+      expect(nextClaim?.turn.id).toBe(nextTurn);
+      await expect(backgroundStore.completeProgression(nextClaim!, {
         kind: "failed", error: {
-          code: "provider_unavailable", message: "Expurgated external failure.", action: "none",
+          code: "test_complete", message: "Test occurrence completed.", action: "none",
         },
       })).resolves.toBe(true);
-      const [retry] = await ownerSql<Array<{
-        retryCount: number; delay: number; enabled: boolean; claim: string | null;
-      }>>`select turn_row.retry_count as "retryCount",
-          extract(epoch from (turn_row.available_at-clock_timestamp()))::integer as delay,
-          trigger.enabled,
-          (select claim_token::text from public.companion_v3_lane_leases
-            where companion_id=${ids.companion}::uuid and lane='background') as claim
-        from public.companion_v3_turns turn_row
-        join public.companion_v3_routine_runs run on run.turn_id=turn_row.id
-        join public.companion_triggers trigger on trigger.id=run.trigger_snapshot_id
-        where turn_row.id=${failedTurn}::uuid`;
-      expect(retry).toMatchObject({ retryCount: 1, enabled: true, claim: null });
-      expect(retry!.delay).toBeGreaterThanOrEqual(3);
-      expect(retry!.delay).toBeLessThanOrEqual(6);
 
       const mainId = randomUUID();
       await asApi(async (sql) => {

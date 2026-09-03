@@ -32,17 +32,19 @@ Pi-local approval bridge; the legacy `propose_config`, `request_plugin_connectio
 
 The same MCP can send a bounded text delegation to an explicitly approved peer Companion. Directed
 grants are persistent and revocable; responses either notify both threads or return to the source Pi
-for synthesis. This is not a Group or Room model, and routines/triggers never receive the control
-MCP, so automations cannot reconfigure themselves or create autonomous cascades. Webhook payloads
+for synthesis. This is not a Group or Room model. Scheduled routines run as the immutable Companion
+Owner with the current control MCP and directed grants; webhook trigger validators never receive
+control, so untrusted events cannot reconfigure the Companion or create autonomous cascades. Webhook payloads
 run first in an isolated read-only validator which either stays silent, notifies, or relays one main
 Pi turn. Their hosted operating brief uses terse delivery semantics: one short
 sentence for an update, one word for an acknowledgement, and no process narration or filler; the
 owner’s persona still owns voice. Consecutive attachment-free notify returns from one routine may be
 collapsed by the thread projection while their durable entries and routine history remain complete.
 Scheduled routines use the single `background` lane, with at most one per Companion, while main chat
-continues independently. Runtime revalidates current capabilities and lets routine tools work
-directly in the persistent Box workspace; failures back off without automatically disabling the
-routine, and newer due instants supersede only obsolete pending work.
+continues independently. Runtime revalidates Owner-bound current capabilities and lets routine tools
+and durable memory work directly in the persistent Box workspace. Only a prompt rejection proven
+before acceptance retries; ambiguous or accepted work is never replayed, and newer due instants
+supersede only obsolete pending work.
 Hosted runtime protocol 7 never replays a prompt whose dispatch outcome is ambiguous. It retries a
 resource-independent durable cleanup that terminates only the captured Pi invocation, preserves the
 original interruption, then marks that occurrence `auto_abandoned` and releases its execution lane.
@@ -1409,7 +1411,7 @@ skills view shows the correct status and version. Report the version from this s
 `companion.json.version`:
 
 ```sh
-printf '%s' '{"action":"api","method":"POST","path":"/local-skills/companion/installed","body":{"version":"1.107.0","agent":"<your assistant name>"}}' \
+printf '%s' '{"action":"api","method":"POST","path":"/local-skills/companion/installed","body":{"version":"1.109.0","agent":"<your assistant name>"}}' \
   | node scripts/companion-agent-client.mjs
 ```
 

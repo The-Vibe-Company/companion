@@ -32,7 +32,6 @@ import {
   COMPANION_ROUTINE_MISSED_GRACE_MS,
   COMPANION_SQL_BUDGET_CONTRACT,
   COMPANION_SQL_UNTRACKED_INTERVAL_FUNCTIONS,
-  COMPANION_TRIGGER_MIN_INTERVAL_MS,
   sqlIntervalToMs,
 } from "@companion/contracts";
 
@@ -197,12 +196,10 @@ describe("companion runtime SQL budget contract", () => {
     expect(stale).toEqual([]);
   });
 
-  it("keeps the routine and trigger twin constants aligned with their SQL intervals", () => {
-    const routine = intervalsByFunction.get("companion_fire_routine") ?? [];
-    expect(routine.map(sqlIntervalToMs)).toEqual([COMPANION_ROUTINE_MISSED_GRACE_MS]);
+  it("keeps the current routine queue budget aligned and v3 trigger admission unthrottled", () => {
     const routineQueue = intervalsByFunction.get("companion_runtime_expire_queued_routine_turns") ?? [];
     expect(routineQueue.map(sqlIntervalToMs)).toEqual([COMPANION_ROUTINE_MISSED_GRACE_MS]);
     const trigger = intervalsByFunction.get("companion_api_fire_trigger") ?? [];
-    expect(trigger.map(sqlIntervalToMs)).toEqual([COMPANION_TRIGGER_MIN_INTERVAL_MS]);
+    expect(trigger).toEqual([]);
   });
 });

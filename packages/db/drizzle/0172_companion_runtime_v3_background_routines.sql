@@ -34,6 +34,9 @@ CREATE TABLE public.companion_v3_routine_runs (
   prompt text NOT NULL,
   scheduled_for timestamp with time zone NOT NULL,
   outcome text NOT NULL DEFAULT 'pending',
+  cleanup_checkpoint text,
+  cleanup_invocation_id text,
+  cleanup_retry boolean NOT NULL DEFAULT false,
   surface_mode public.companion_routine_surface_mode,
   main_entry_event_id text,
   relay_turn_id uuid,
@@ -54,6 +57,11 @@ CREATE TABLE public.companion_v3_routine_runs (
     AND ((surface_mode IS NULL) = (main_entry_event_id IS NULL))
     AND ((surface_mode = 'relay') = (relay_turn_id IS NOT NULL))),
   CONSTRAINT companion_v3_routine_runs_ordinal_check CHECK (next_ordinal >= 0),
+  CONSTRAINT companion_v3_routine_runs_cleanup_check CHECK (
+    (cleanup_checkpoint IS NULL AND cleanup_invocation_id IS NULL AND NOT cleanup_retry)
+    OR (cleanup_checkpoint = 'terminate'
+      AND char_length(cleanup_invocation_id) BETWEEN 1 AND 200
+      AND cleanup_invocation_id !~ E'[\n\r]')),
   CONSTRAINT companion_v3_routine_runs_surface_event_check CHECK (
     main_entry_event_id IS NULL OR (char_length(main_entry_event_id) BETWEEN 1 AND 200
       AND main_entry_event_id !~ E'[\n\r]'))
@@ -210,6 +218,123 @@ BEGIN
 END $$;
 --> statement-breakpoint
 
+-- Every admitted lane is actor-bound. A background Owner occurrence must fence an Editor's
+-- completed or in-flight preparation before runtime can receive either member's private material.
+CREATE OR REPLACE FUNCTION public.companion_v3_invalidate_from_turn()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public SET row_security=on AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.companion_v3_instances instance
+    WHERE instance.org_id=NEW.org_id AND instance.companion_id=NEW.companion_id
+      AND instance.preparation_actor_id IS NOT NULL
+      AND instance.preparation_actor_id IS DISTINCT FROM NEW.actor_id) THEN
+    PERFORM public.companion_v3_invalidate_preparation(NEW.org_id,NEW.companion_id);
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER companion_v3_invalidate_from_turn ON public.companion_v3_turns;
+CREATE TRIGGER companion_v3_invalidate_from_turn
+AFTER INSERT ON public.companion_v3_turns
+FOR EACH ROW EXECUTE FUNCTION public.companion_v3_invalidate_from_turn();
+--> statement-breakpoint
+
+-- Main FIFO remains authoritative. With no queued main Turn, bind preparation explicitly to the
+-- oldest queued background occurrence instead of a later lifecycle actor.
+CREATE OR REPLACE FUNCTION public.companion_v3_runtime_claim_preparation_v6(
+  p_executor_id text,p_lease_seconds integer,p_protocol integer
+) RETURNS TABLE(org_id uuid,companion_id uuid,turn_id uuid,command_id uuid,
+  work_kind text,checkpoint text,box_idempotency_key uuid,box_id text,
+  claim_token uuid,claim_epoch bigint,gate_epoch bigint,created_at timestamptz,
+  attempt_count integer,deadline_at timestamptz,authorized boolean,actor_id text,
+  model_id text,persona text,settings_revision bigint,skills_revision integer,
+  provider_refs jsonb,skill_refs jsonb,mcp_refs jsonb,provider_material jsonb,
+  skill_material jsonb,mcp_material jsonb,config_catalog jsonb,
+  pi_recycle_checkpoint text,recycle_pi_invocation_id text,recovery_id uuid,
+  recovery_context text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET row_security=on AS $$
+BEGIN
+  IF p_protocol<>6 THEN
+    RAISE EXCEPTION 'Runtime v3 preparation protocol 6 is required' USING ERRCODE='42501';
+  END IF;
+  UPDATE public.companion_v3_instances instance SET
+    desired_lifecycle_actor_id=(SELECT queued.actor_id FROM public.companion_v3_turns queued
+      WHERE queued.org_id=instance.org_id AND queued.companion_id=instance.companion_id
+        AND queued.lane='background' AND queued.state='queued'
+      ORDER BY queued.queue_sequence,queued.id LIMIT 1),
+    updated_at=clock_timestamp()
+  WHERE instance.desired_lifecycle='prepare' AND instance.prepared_at IS NULL
+    AND NOT EXISTS (SELECT 1 FROM public.companion_v3_turns queued
+      WHERE queued.org_id=instance.org_id AND queued.companion_id=instance.companion_id
+        AND queued.lane='main' AND queued.state='queued')
+    AND EXISTS (SELECT 1 FROM public.companion_v3_turns queued
+      WHERE queued.org_id=instance.org_id AND queued.companion_id=instance.companion_id
+        AND queued.lane='background' AND queued.state='queued')
+    AND instance.desired_lifecycle_actor_id IS DISTINCT FROM (
+      SELECT queued.actor_id FROM public.companion_v3_turns queued
+      WHERE queued.org_id=instance.org_id AND queued.companion_id=instance.companion_id
+        AND queued.lane='background' AND queued.state='queued'
+      ORDER BY queued.queue_sequence,queued.id LIMIT 1);
+  RETURN QUERY SELECT claimed.*,instance.pi_recycle_checkpoint,
+    instance.recycle_pi_invocation_id,instance.recovery_turn_id,instance.recovery_context
+  FROM public.companion_v3_runtime_claim_preparation_v5(p_executor_id,p_lease_seconds,5) claimed
+  JOIN public.companion_v3_instances instance
+    ON instance.org_id=claimed.org_id AND instance.companion_id=claimed.companion_id;
+END $$;
+--> statement-breakpoint
+
+CREATE FUNCTION public.companion_v3_routine_preparation_matches(
+  p_org_id uuid,p_companion_id uuid,p_actor_id text
+) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path=pg_catalog,public SET row_security=on AS $$
+  SELECT EXISTS(SELECT 1 FROM public.companion_v3_instances instance
+  JOIN public.companions companion ON companion.org_id=instance.org_id
+    AND companion.id=instance.companion_id
+  JOIN public.companion_runtime_instances runtime ON runtime.org_id=instance.org_id
+    AND runtime.companion_id=instance.companion_id
+  WHERE instance.org_id=p_org_id AND instance.companion_id=p_companion_id
+    AND instance.prepared_at IS NOT NULL AND instance.preparation_actor_id=p_actor_id
+    AND instance.preparation_settings_revision=runtime.desired_settings_revision
+    AND instance.preparation_skills_revision=companion.skills_available_revision
+    AND instance.preparation_model_id=companion.model_id
+    AND jsonb_typeof(companion.provider_ids)='array'
+    AND jsonb_typeof(companion.selected_skill_ids)='array'
+    AND jsonb_typeof(companion.selected_mcp_account_ids)='array'
+    AND jsonb_array_length(companion.provider_ids)=(SELECT count(*) FROM
+      public.companion_provider_connections connection
+      WHERE connection.org_id=p_org_id AND companion.provider_ids ? connection.provider_id)
+    AND jsonb_array_length(companion.selected_skill_ids)=(SELECT count(*) FROM public.skills skill
+      WHERE skill.org_id=p_org_id AND companion.selected_skill_ids ? skill.id::text
+        AND skill.archived_at IS NULL AND skill.validation='valid'
+        AND skill.current_version_id IS NOT NULL
+        AND (skill.scope='org' OR skill.creator_id=p_actor_id))
+    AND jsonb_array_length(companion.selected_mcp_account_ids)=(SELECT count(*)
+      FROM public.companion_mcp_accounts account
+      WHERE account.org_id=p_org_id AND companion.selected_mcp_account_ids ? account.id::text
+        AND account.owner_id=p_actor_id)
+    AND instance.preparation_provider_refs IS NOT DISTINCT FROM (SELECT COALESCE(jsonb_agg(
+      jsonb_build_object('provider_id',connection.provider_id,
+        'credential_generation',connection.credential_generation,
+        'credential_version',connection.credential_version) ORDER BY connection.provider_id),'[]'::jsonb)
+      FROM public.companion_provider_connections connection
+      WHERE connection.org_id=p_org_id AND companion.provider_ids ? connection.provider_id)
+    AND instance.preparation_skill_refs IS NOT DISTINCT FROM (SELECT COALESCE(jsonb_agg(
+      jsonb_build_object('skill_id',skill.id,'current_version_id',skill.current_version_id)
+        ORDER BY skill.id),'[]'::jsonb) FROM public.skills skill
+      WHERE skill.org_id=p_org_id AND companion.selected_skill_ids ? skill.id::text
+        AND skill.archived_at IS NULL AND skill.validation='valid'
+        AND skill.current_version_id IS NOT NULL
+        AND (skill.scope='org' OR skill.creator_id=p_actor_id))
+    AND instance.preparation_mcp_refs IS NOT DISTINCT FROM (SELECT COALESCE(jsonb_agg(
+      jsonb_build_object('account_id',account.id,
+        'credential_generation',account.credential_generation,
+        'credential_version',account.credential_version) ORDER BY account.id),'[]'::jsonb)
+      FROM public.companion_mcp_accounts account
+      WHERE account.org_id=p_org_id AND companion.selected_mcp_account_ids ? account.id::text
+        AND account.owner_id=p_actor_id));
+$$;
+REVOKE ALL ON FUNCTION public.companion_v3_routine_preparation_matches(uuid,uuid,text) FROM PUBLIC;
+--> statement-breakpoint
+
 -- Scheduler persistence retries the same due instant. It never disables or advances the source.
 CREATE OR REPLACE FUNCTION public.companion_fail_routine_fire(
   p_worker_id text,p_org_id uuid,p_routine_id uuid,p_error_code text,p_error_message text,
@@ -240,9 +365,11 @@ CREATE FUNCTION public.companion_v3_runtime_claim_routine_v7(
 ) RETURNS TABLE(org_id uuid,companion_id uuid,turn_id uuid,command_id uuid,
   lane public.companion_v3_lane,state public.companion_v3_turn_state,claim_token uuid,
   claim_epoch bigint,gate_epoch bigint,admission_started_at timestamptz,
-  inactivity_deadline_at timestamptz,absolute_deadline_at timestamptz)
+  inactivity_deadline_at timestamptz,absolute_deadline_at timestamptz,
+  cleanup_box_id text,cleanup_invocation_id text)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET row_security=on AS $$
 DECLARE v_now timestamptz:=clock_timestamp();v_gate bigint;v_candidate record;
+  v_invalid_org uuid;v_invalid_companion uuid;
 BEGIN
   IF p_protocol<>7 THEN RAISE EXCEPTION 'Runtime v3 protocol 7 is required' USING ERRCODE='42501'; END IF;
   IF p_lane<>'background' THEN RETURN;END IF;
@@ -252,26 +379,65 @@ BEGIN
   SELECT control.gate_epoch INTO v_gate FROM public.companion_runtime_control control
     WHERE control.id='runtime-v2' AND control.enabled FOR SHARE;
   IF NOT FOUND THEN RETURN;END IF;
-  SELECT turn_row.* INTO v_candidate FROM public.companion_v3_lane_leases lease
-  JOIN public.companion_v3_instances instance ON instance.org_id=lease.org_id
-    AND instance.companion_id=lease.companion_id AND instance.box_id IS NOT NULL
-    AND instance.prepared_at IS NOT NULL AND instance.pi_recycle_checkpoint IS NULL
-    AND (instance.prepared_material_expires_at IS NULL
-      OR instance.prepared_material_expires_at>v_now+interval '2 hours 5 minutes')
+
+  -- Cleanup claims need only the already-persisted Box and exact routine invocation. They never
+  -- load current member material or trigger main-Pi preparation.
+  SELECT turn_row.*,instance.box_id AS cleanup_box_id,
+    run.cleanup_invocation_id AS cleanup_invocation_id INTO v_candidate
+  FROM public.companion_v3_lane_leases lease
   JOIN public.companion_v3_turns turn_row ON turn_row.org_id=lease.org_id
     AND turn_row.companion_id=lease.companion_id AND turn_row.lane='background'
   JOIN public.companion_v3_routine_runs run ON run.org_id=turn_row.org_id
     AND run.companion_id=turn_row.companion_id AND run.turn_id=turn_row.id
+    AND run.cleanup_checkpoint='terminate'
+  JOIN public.companion_v3_instances instance ON instance.org_id=turn_row.org_id
+    AND instance.companion_id=turn_row.companion_id AND instance.box_id IS NOT NULL
   WHERE lease.lane='background' AND (lease.claim_token IS NULL OR lease.expires_at<=v_now)
-    AND ((turn_row.state IN ('succeeded','failed') AND turn_row.journal_ack_pending)
+  ORDER BY turn_row.queue_sequence,turn_row.id
+  LIMIT 1 FOR UPDATE OF lease,turn_row,run SKIP LOCKED;
+
+  IF NOT FOUND THEN
+    SELECT instance.org_id,instance.companion_id INTO v_invalid_org,v_invalid_companion
+    FROM public.companion_v3_instances instance
+    JOIN public.companion_v3_turns turn_row ON turn_row.org_id=instance.org_id
+      AND turn_row.companion_id=instance.companion_id AND turn_row.lane='background'
+    JOIN public.companion_v3_routine_runs run ON run.org_id=turn_row.org_id
+      AND run.companion_id=turn_row.companion_id AND run.turn_id=turn_row.id
+      AND run.outcome IN ('pending','running')
+    WHERE instance.prepared_at IS NOT NULL
+      AND NOT public.companion_v3_routine_preparation_matches(
+        turn_row.org_id,turn_row.companion_id,turn_row.actor_id)
+    ORDER BY turn_row.queue_sequence,turn_row.id
+    LIMIT 1 FOR UPDATE OF instance SKIP LOCKED;
+    IF FOUND THEN
+      PERFORM public.companion_v3_invalidate_preparation(v_invalid_org,v_invalid_companion);
+    END IF;
+
+    SELECT turn_row.*,NULL::text AS cleanup_box_id,NULL::text AS cleanup_invocation_id
+      INTO v_candidate FROM public.companion_v3_lane_leases lease
+    JOIN public.companion_v3_turns turn_row ON turn_row.org_id=lease.org_id
+      AND turn_row.companion_id=lease.companion_id AND turn_row.lane='background'
+    JOIN public.companion_v3_routine_runs run ON run.org_id=turn_row.org_id
+      AND run.companion_id=turn_row.companion_id AND run.turn_id=turn_row.id
+      AND run.cleanup_checkpoint IS NULL
+    JOIN public.companion_v3_instances instance ON instance.org_id=turn_row.org_id
+      AND instance.companion_id=turn_row.companion_id AND instance.box_id IS NOT NULL
+      AND instance.prepared_at IS NOT NULL AND instance.pi_recycle_checkpoint IS NULL
+      AND (instance.prepared_material_expires_at IS NULL
+        OR instance.prepared_material_expires_at>v_now+interval '2 hours 5 minutes')
+    WHERE lease.lane='background' AND (lease.claim_token IS NULL OR lease.expires_at<=v_now)
+      AND public.companion_v3_routine_preparation_matches(
+        turn_row.org_id,turn_row.companion_id,turn_row.actor_id)
+      AND ((turn_row.state IN ('succeeded','failed') AND turn_row.journal_ack_pending)
       OR (run.outcome IN ('pending','running') AND ((turn_row.state='queued' AND turn_row.available_at<=v_now AND NOT EXISTS(
       SELECT 1 FROM public.companion_v3_turns active WHERE active.org_id=turn_row.org_id
         AND active.companion_id=turn_row.companion_id AND active.lane='background'
         AND active.state IN ('admitted','running','needs_input')))
       OR turn_row.state IN ('admitted','running','needs_input'))))
-  ORDER BY turn_row.journal_ack_pending DESC,(turn_row.state<>'queued') DESC,
-    turn_row.queue_sequence,turn_row.id
-  LIMIT 1 FOR UPDATE OF lease,turn_row SKIP LOCKED;
+    ORDER BY turn_row.journal_ack_pending DESC,(turn_row.state<>'queued') DESC,
+      turn_row.queue_sequence,turn_row.id
+    LIMIT 1 FOR UPDATE OF lease,turn_row SKIP LOCKED;
+  END IF;
   IF NOT FOUND THEN RETURN;END IF;
   UPDATE public.companion_v3_lane_leases lease SET claim_token=gen_random_uuid(),
     claim_epoch=lease.claim_epoch+1,gate_epoch=v_gate,executor_id=p_executor_id,
@@ -287,7 +453,9 @@ BEGIN
   command_id:=v_candidate.command_id;lane:=v_candidate.lane;state:=v_candidate.state;
   admission_started_at:=v_candidate.admission_started_at;
   inactivity_deadline_at:=v_candidate.inactivity_deadline_at;
-  absolute_deadline_at:=v_candidate.absolute_deadline_at;RETURN NEXT;
+  absolute_deadline_at:=v_candidate.absolute_deadline_at;
+  cleanup_box_id:=v_candidate.cleanup_box_id;
+  cleanup_invocation_id:=v_candidate.cleanup_invocation_id;RETURN NEXT;
 END $$;
 REVOKE ALL ON FUNCTION public.companion_v3_runtime_claim_routine_v7(
   text,public.companion_v3_lane,integer,integer) FROM PUBLIC;
@@ -339,6 +507,8 @@ BEGIN
   WHERE lease.org_id=p_org_id AND lease.companion_id=p_companion_id AND lease.lane='background'
     AND lease.turn_id=p_turn_id AND lease.claim_token=p_claim_token
     AND lease.claim_epoch=p_claim_epoch AND lease.gate_epoch=p_gate_epoch AND lease.expires_at>v_now
+    AND public.companion_v3_routine_preparation_matches(
+      turn_row.org_id,turn_row.companion_id,turn_row.actor_id)
     AND (turn_row.state IN ('queued','admitted','running','needs_input')
       OR (turn_row.state IN ('succeeded','failed') AND turn_row.journal_ack_pending))
     AND jsonb_typeof(companion.provider_ids)='array' AND jsonb_array_length(companion.provider_ids)=1
@@ -576,80 +746,149 @@ CREATE FUNCTION public.companion_v3_runtime_complete_v7(
 ) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public SET row_security=on AS $$
 DECLARE v_now timestamptz:=clock_timestamp();v_retry integer;v_delay integer;
+  v_turn public.companion_v3_turns%ROWTYPE;v_run public.companion_v3_routine_runs%ROWTYPE;
+  v_terminal_state public.companion_v3_turn_state;v_run_outcome text;
 BEGIN
   IF p_protocol<>7 THEN RAISE EXCEPTION 'Runtime v3 protocol 7 is required' USING ERRCODE='42501';END IF;
-  IF p_lane='main' OR p_outcome IN ('ack_completed','retry_ack','interrupted','decision_ambiguous') THEN
+  IF p_lane='main' THEN
     RETURN public.companion_v3_runtime_complete_v6(p_org_id,p_companion_id,p_lane,p_turn_id,
       p_claim_token,p_claim_epoch,p_gate_epoch,p_outcome,p_code,p_message,p_action,6);
   END IF;
-  PERFORM 1 FROM public.companion_v3_lane_leases lease
+  SELECT turn_row.* INTO v_turn FROM public.companion_v3_lane_leases lease
   JOIN public.companion_runtime_control control ON control.id='runtime-v2' AND control.enabled
     AND control.gate_epoch=p_gate_epoch
+  JOIN public.companion_v3_turns turn_row ON turn_row.org_id=lease.org_id
+    AND turn_row.companion_id=lease.companion_id AND turn_row.id=lease.turn_id
   JOIN public.companion_v3_routine_runs run ON run.org_id=lease.org_id
     AND run.companion_id=lease.companion_id AND run.turn_id=lease.turn_id
   WHERE lease.org_id=p_org_id AND lease.companion_id=p_companion_id AND lease.lane='background'
     AND lease.turn_id=p_turn_id AND lease.claim_token=p_claim_token
     AND lease.claim_epoch=p_claim_epoch AND lease.gate_epoch=p_gate_epoch AND lease.expires_at>v_now
-  FOR UPDATE OF lease,run;
-  IF NOT FOUND THEN
-    RETURN public.companion_v3_runtime_complete_v6(p_org_id,p_companion_id,p_lane,p_turn_id,
-      p_claim_token,p_claim_epoch,p_gate_epoch,p_outcome,p_code,p_message,p_action,6);
+  FOR UPDATE OF lease,turn_row,run;
+  IF NOT FOUND THEN RETURN false;END IF;
+  SELECT run.* INTO STRICT v_run FROM public.companion_v3_routine_runs run
+    WHERE run.org_id=p_org_id AND run.companion_id=p_companion_id AND run.turn_id=p_turn_id;
+
+  -- Cooperative polling and terminal-ACK retry release only the lease. Durable admission,
+  -- invocation, cursors, deadlines, and retry count remain unchanged for takeover.
+  IF p_outcome IN ('release','retry_ack') THEN
+    UPDATE public.companion_v3_lane_leases SET claim_token=NULL,gate_epoch=NULL,executor_id=NULL,
+      turn_id=NULL,claimed_at=NULL,renewed_at=NULL,expires_at=NULL,updated_at=v_now
+    WHERE org_id=p_org_id AND companion_id=p_companion_id AND lane='background'
+      AND claim_token=p_claim_token AND claim_epoch=p_claim_epoch;
+    RETURN FOUND;
   END IF;
-  IF p_outcome='detached' THEN
-    UPDATE public.companion_v3_routine_runs SET outcome='cancelled',settled_at=v_now
-      WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id
-        AND outcome IN ('pending','running');
-    RETURN public.companion_v3_runtime_complete_v6(p_org_id,p_companion_id,p_lane,p_turn_id,
-      p_claim_token,p_claim_epoch,p_gate_epoch,p_outcome,p_code,p_message,p_action,6);
-  END IF;
-  IF p_outcome IN ('release','failed') THEN
-    SELECT retry_count+1 INTO v_retry FROM public.companion_v3_turns
-      WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id FOR UPDATE;
-    v_delay:=CASE WHEN v_retry=1 THEN 5 WHEN v_retry=2 THEN 15 WHEN v_retry=3 THEN 30
-      WHEN v_retry=4 THEN 60 ELSE 300 END;
-    UPDATE public.companion_v3_turns SET state='queued',admission_state='pending',
-      admission_kind=NULL,admission_started_at=NULL,admitted_at=NULL,pi_invocation_id=NULL,
-      response_turn_id=NULL,terminal_cursor=NULL,journal_ack_pending=false,admission_cursor=NULL,
-      activity_cursor=0,correlated_activity_cursor=0,last_activity_at=NULL,first_activity_at=NULL,
-      inactivity_deadline_at=NULL,absolute_deadline_at=NULL,outcome=NULL,outcome_code=NULL,
-      outcome_message=NULL,outcome_action=NULL,settled_at=NULL,retry_count=v_retry,
-      available_at=v_now+make_interval(secs=>greatest(1,round(v_delay*(0.8+random()*0.4))::integer)),
-      updated_at=v_now WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id;
-    UPDATE public.companion_v3_routine_runs SET outcome='pending',started_at=NULL,settled_at=NULL
-      WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id;
+
+  IF p_outcome='ack_completed' THEN
+    UPDATE public.companion_v3_turns SET journal_ack_pending=false,updated_at=v_now
+      WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id
+        AND state IN ('succeeded','failed');
     UPDATE public.companion_v3_lane_leases SET claim_token=NULL,gate_epoch=NULL,executor_id=NULL,
       turn_id=NULL,claimed_at=NULL,renewed_at=NULL,expires_at=NULL,updated_at=v_now
       WHERE org_id=p_org_id AND companion_id=p_companion_id AND lane='background'
         AND claim_token=p_claim_token AND claim_epoch=p_claim_epoch;
     RETURN FOUND;
   END IF;
-  RETURN public.companion_v3_runtime_complete_v6(p_org_id,p_companion_id,p_lane,p_turn_id,
-    p_claim_token,p_claim_epoch,p_gate_epoch,p_outcome,p_code,p_message,p_action,6);
+
+  IF p_outcome='detached' THEN
+    UPDATE public.companion_v3_turns SET state='cancelled',outcome='cancelled',
+      outcome_code=NULL,outcome_message=NULL,outcome_action=NULL,settled_at=v_now,updated_at=v_now
+      WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id;
+    UPDATE public.companion_v3_routine_runs SET outcome='cancelled',settled_at=v_now,
+      cleanup_checkpoint=NULL,cleanup_invocation_id=NULL
+      WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id
+        AND outcome IN ('pending','running');
+    UPDATE public.companion_v3_lane_leases SET claim_token=NULL,claim_epoch=claim_epoch+1,
+      gate_epoch=NULL,executor_id=NULL,turn_id=NULL,claimed_at=NULL,renewed_at=NULL,
+      expires_at=NULL,updated_at=v_now WHERE org_id=p_org_id AND companion_id=p_companion_id
+      AND lane='background' AND claim_token=p_claim_token AND claim_epoch=p_claim_epoch;
+    RETURN FOUND;
+  END IF;
+
+  IF p_outcome='cleanup_completed' THEN
+    IF v_run.cleanup_checkpoint IS DISTINCT FROM 'terminate'
+      OR v_run.cleanup_invocation_id IS NULL THEN RETURN false;END IF;
+    IF v_run.cleanup_retry THEN
+      v_retry:=v_turn.retry_count+1;
+      v_delay:=CASE WHEN v_retry=1 THEN 5 WHEN v_retry=2 THEN 15 WHEN v_retry=3 THEN 30
+        WHEN v_retry=4 THEN 60 ELSE 300 END;
+      UPDATE public.companion_v3_turns SET state='queued',admission_state='pending',
+        admission_kind=NULL,admission_started_at=NULL,admitted_at=NULL,pi_invocation_id=NULL,
+        response_turn_id=NULL,terminal_cursor=NULL,journal_ack_pending=false,admission_cursor=NULL,
+        activity_cursor=0,correlated_activity_cursor=0,last_activity_at=NULL,first_activity_at=NULL,
+        inactivity_deadline_at=NULL,absolute_deadline_at=NULL,outcome=NULL,outcome_code=NULL,
+        outcome_message=NULL,outcome_action=NULL,settled_at=NULL,retry_count=v_retry,
+        available_at=v_now+make_interval(
+          secs=>greatest(1,round(v_delay*(0.8+random()*0.4))::integer)),updated_at=v_now
+        WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id;
+      UPDATE public.companion_v3_routine_runs SET outcome='pending',started_at=NULL,settled_at=NULL,
+        cleanup_checkpoint=NULL,cleanup_invocation_id=NULL,cleanup_retry=false
+        WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id;
+    ELSE
+      UPDATE public.companion_v3_turns SET pi_invocation_id=NULL,updated_at=v_now
+        WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id;
+      UPDATE public.companion_v3_routine_runs SET cleanup_checkpoint=NULL,
+        cleanup_invocation_id=NULL,cleanup_retry=false
+        WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id;
+    END IF;
+    UPDATE public.companion_v3_lane_leases SET claim_token=NULL,claim_epoch=claim_epoch+1,
+      gate_epoch=NULL,executor_id=NULL,
+      turn_id=NULL,claimed_at=NULL,renewed_at=NULL,expires_at=NULL,updated_at=v_now
+      WHERE org_id=p_org_id AND companion_id=p_companion_id AND lane='background'
+        AND claim_token=p_claim_token AND claim_epoch=p_claim_epoch;
+    RETURN FOUND;
+  END IF;
+
+  IF p_outcome IN ('admission_rejected','failed','interrupted','decision_ambiguous') THEN
+    v_terminal_state:=CASE WHEN p_outcome IN ('admission_rejected','failed')
+      THEN 'failed'::public.companion_v3_turn_state
+      ELSE 'interrupted'::public.companion_v3_turn_state END;
+    v_run_outcome:=CASE WHEN p_outcome IN ('admission_rejected','failed')
+      THEN 'failed' ELSE 'interrupted' END;
+    UPDATE public.companion_v3_turns SET state=v_terminal_state,
+      outcome=v_terminal_state::text::public.companion_v3_turn_outcome,
+      outcome_code=p_code,outcome_message=p_message,outcome_action=p_action,
+      settled_at=v_now,updated_at=v_now
+      WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id;
+    UPDATE public.companion_v3_routine_runs SET outcome=v_run_outcome,settled_at=v_now,
+      cleanup_checkpoint=CASE WHEN v_turn.pi_invocation_id IS NULL THEN NULL ELSE 'terminate' END,
+      cleanup_invocation_id=v_turn.pi_invocation_id,
+      cleanup_retry=p_outcome='admission_rejected' AND v_turn.pi_invocation_id IS NOT NULL
+      WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id;
+    UPDATE public.companion_v3_lane_leases SET claim_token=NULL,claim_epoch=claim_epoch+1,
+      gate_epoch=NULL,executor_id=NULL,turn_id=NULL,claimed_at=NULL,renewed_at=NULL,
+      expires_at=NULL,updated_at=v_now WHERE org_id=p_org_id AND companion_id=p_companion_id
+      AND lane='background' AND claim_token=p_claim_token AND claim_epoch=p_claim_epoch;
+    RETURN true;
+  END IF;
+  RETURN false;
 END $$;
 REVOKE ALL ON FUNCTION public.companion_v3_runtime_complete_v7(
   uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,
   public.companion_runtime_error_action,integer) FROM PUBLIC;
 --> statement-breakpoint
 
--- A stalled routine retries its same durable occurrence. This background-only sweep cannot touch
--- main Turns, and releasing plus advancing the lease fence prevents stale Pi projection.
+-- A deadline only makes exact routine cleanup due. Runtime owns termination of the captured
+-- run-scoped Pi invocation; SQL never clears or reuses that identity before confirmation.
 CREATE FUNCTION public.companion_v3_runtime_sweep_routine_deadlines_v7(p_protocol integer)
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public SET row_security=on AS $$
-DECLARE v_now timestamptz:=clock_timestamp();v_candidate record;v_retry integer;v_delay integer;
-  v_count integer:=0;
+DECLARE v_now timestamptz:=clock_timestamp();v_candidate record;v_count integer:=0;
+  v_code text;v_message text;
 BEGIN
   IF p_protocol<>7 THEN RAISE EXCEPTION 'Runtime v3 protocol 7 is required' USING ERRCODE='42501';END IF;
   PERFORM 1 FROM public.companion_runtime_control WHERE id='runtime-v2' AND enabled FOR SHARE;
   IF NOT FOUND THEN RETURN 0;END IF;
   LOOP
-    SELECT turn_row.org_id,turn_row.companion_id,turn_row.id,turn_row.retry_count
+    SELECT turn_row.org_id,turn_row.companion_id,turn_row.id,turn_row.pi_invocation_id,
+      turn_row.absolute_deadline_at,turn_row.inactivity_deadline_at
       INTO v_candidate
     FROM public.companion_v3_turns turn_row
     JOIN public.companion_v3_routine_runs run ON run.org_id=turn_row.org_id
       AND run.companion_id=turn_row.companion_id AND run.turn_id=turn_row.id
       AND run.outcome IN ('pending','running')
     WHERE turn_row.lane='background' AND turn_row.state IN ('admitted','running','needs_input')
+      AND turn_row.pi_invocation_id IS NOT NULL AND run.cleanup_checkpoint IS NULL
       AND ((turn_row.inactivity_deadline_at IS NOT NULL AND turn_row.inactivity_deadline_at<=v_now)
         OR (turn_row.absolute_deadline_at IS NOT NULL AND turn_row.absolute_deadline_at<=v_now))
     ORDER BY COALESCE(turn_row.absolute_deadline_at,turn_row.inactivity_deadline_at),turn_row.id
@@ -657,22 +896,23 @@ BEGIN
     EXIT WHEN NOT FOUND OR v_count>=64;
     PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
       v_candidate.org_id::text||':'||v_candidate.companion_id::text,0));
-    v_retry:=v_candidate.retry_count+1;
-    v_delay:=CASE WHEN v_retry=1 THEN 5 WHEN v_retry=2 THEN 15 WHEN v_retry=3 THEN 30
-      WHEN v_retry=4 THEN 60 ELSE 300 END;
-    UPDATE public.companion_v3_turns SET state='queued',admission_state='pending',
-      admission_kind=NULL,admission_started_at=NULL,admitted_at=NULL,pi_invocation_id=NULL,
-      response_turn_id=NULL,terminal_cursor=NULL,journal_ack_pending=false,admission_cursor=NULL,
-      activity_cursor=0,correlated_activity_cursor=0,last_activity_at=NULL,first_activity_at=NULL,
-      inactivity_deadline_at=NULL,absolute_deadline_at=NULL,outcome=NULL,outcome_code=NULL,
-      outcome_message=NULL,outcome_action=NULL,settled_at=NULL,retry_count=v_retry,
-      available_at=v_now+make_interval(secs=>greatest(1,round(v_delay*(0.8+random()*0.4))::integer)),
+    IF v_candidate.absolute_deadline_at IS NOT NULL
+      AND v_candidate.absolute_deadline_at<=v_now THEN
+      v_code:='turn_deadline_exceeded';
+      v_message:='The Companion reached its maximum execution time.';
+    ELSE
+      v_code:='turn_stalled';v_message:='The Companion stopped making progress.';
+    END IF;
+    UPDATE public.companion_v3_turns SET state='interrupted',outcome='interrupted',
+      outcome_code=v_code,outcome_message=v_message,outcome_action='none',settled_at=v_now,
       updated_at=v_now WHERE org_id=v_candidate.org_id AND companion_id=v_candidate.companion_id
       AND id=v_candidate.id AND state IN ('admitted','running','needs_input');
     IF NOT FOUND THEN CONTINUE;END IF;
-    UPDATE public.companion_v3_routine_runs SET outcome='pending',started_at=NULL,settled_at=NULL
+    UPDATE public.companion_v3_routine_runs SET outcome='interrupted',settled_at=v_now,
+      cleanup_checkpoint='terminate',cleanup_invocation_id=v_candidate.pi_invocation_id,
+      cleanup_retry=false
       WHERE org_id=v_candidate.org_id AND companion_id=v_candidate.companion_id
-        AND turn_id=v_candidate.id;
+        AND turn_id=v_candidate.id AND outcome IN ('pending','running');
     UPDATE public.companion_v3_lane_leases SET claim_token=NULL,claim_epoch=claim_epoch+1,
       gate_epoch=NULL,executor_id=NULL,turn_id=NULL,claimed_at=NULL,renewed_at=NULL,
       expires_at=NULL,updated_at=v_now WHERE org_id=v_candidate.org_id

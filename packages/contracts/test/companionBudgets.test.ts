@@ -14,7 +14,6 @@ import {
   COMPANION_EXEC_TOOL_RUN_TIMEOUT_MS,
   COMPANION_ROUTINE_MISSED_GRACE_MS,
   COMPANION_TOOL_RUN_TIMEOUT_MS,
-  COMPANION_TRIGGER_MIN_INTERVAL_MS,
 } from "../src/companions";
 
 const base = COMPANION_BUDGETS_BASE;
@@ -204,11 +203,11 @@ describe("SQL budget contract", () => {
     expect(contract.companion_runtime_assign_operation_intent).toBeUndefined();
     expect(contract.companion_runtime_recovery_metrics?.map(sqlIntervalToMs))
       .toEqual([15 * 60_000]);
-    expect(contract.companion_fire_routine?.map(sqlIntervalToMs))
-      .toEqual([COMPANION_ROUTINE_MISSED_GRACE_MS]);
+    expect(contract.companion_fire_routine).toBeUndefined();
     expect(contract.companion_runtime_expire_queued_routine_turns?.map(sqlIntervalToMs))
       .toEqual([COMPANION_ROUTINE_MISSED_GRACE_MS]);
-    expect(contract.companion_api_fire_trigger?.map(sqlIntervalToMs))
-      .toEqual([COMPANION_TRIGGER_MIN_INTERVAL_MS]);
+    // Runtime v3 deduplicates provider deliveries by identity rather than dropping distinct
+    // occurrences inside the legacy time throttle.
+    expect(contract.companion_api_fire_trigger).toBeUndefined();
   });
 });

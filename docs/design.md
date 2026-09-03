@@ -126,7 +126,8 @@ Runtime state is explicit and durable:
   shared `background` lane. `companion_v3_routine_run_entries` is the private, no-wake transcript;
   read APIs page it by ordinal under entry-count and byte ceilings. The run stores its immutable
   routine snapshot plus the at-most-one terminal bridge references; surfaced content exists once,
-  on its ordinary main-thread entry.
+  on its ordinary main-thread entry. Cleanup retains the exact run-scoped Pi invocation until
+  Runtime confirms termination; only a prompt rejection proven before acceptance returns to pending.
 
 All rows are org-scoped and force-RLS-enabled. API, worker, and runtime use distinct
 `NOSUPERUSER NOBYPASSRLS NOINHERIT` roles. Runtime claims, renewals, checkpoints, and settlements use
@@ -178,10 +179,12 @@ ordinary background work. On a warm Box, configuration is published as
 applied only after runtime stages the exact snapshot, restarts Pi, and observes a different idle Pi
 invocation; takeover repeats those idempotent steps if their final observation was lost.
 
-Each due instant persists exactly one Owner-authored ordinary v3 background Turn. A newer due
+Each due instant persists exactly one Owner-authored ordinary v3 background Turn. Preparation is
+bound to that Owner and current resource revisions before Box contact. A newer due
 instant supersedes only an older still-pending occurrence and records `superseded`; running work is
-not preempted. Scheduler or execution failures release their claim and requeue the same occurrence
-with jittered exponential backoff. They never disable the routine. Ordinary main Turns and their
+not preempted. Scheduler failures and proven pre-acceptance prompt rejection use jittered backoff;
+accepted, timed-out, or ambiguous work is terminated exactly and never replayed. They never disable
+the routine. Ordinary main Turns and their
 lifecycle/preparation loop run on a separate scheduler clock and remain independent.
 
 A blocking `ask_user` decision moves the turn to `needs_input` and clears the
