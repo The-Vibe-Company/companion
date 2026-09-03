@@ -296,6 +296,69 @@ BEGIN
 END $$;
 --> statement-breakpoint
 
+-- Permanent deletion fences accepted background work before lifecycle may touch the Box. Runtime
+-- must first claim this cleanup checkpoint and terminate the exact run-scoped Pi invocation.
+CREATE FUNCTION public.companion_v3_preempt_routine_for_delete()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public SET row_security=on AS $$
+DECLARE v_now timestamptz:=clock_timestamp();
+BEGIN
+  IF NEW.intent<>'delete' THEN RETURN NEW;END IF;
+
+  UPDATE public.companion_v3_turns turn_row SET state='cancelled',outcome='cancelled',
+    outcome_code=NULL,outcome_message=NULL,outcome_action=NULL,settled_at=v_now,updated_at=v_now
+  WHERE turn_row.org_id=NEW.org_id AND turn_row.companion_id=NEW.companion_id
+    AND turn_row.lane='background' AND turn_row.state='queued'
+    AND turn_row.pi_invocation_id IS NULL
+    AND EXISTS (SELECT 1 FROM public.companion_v3_routine_runs run
+      WHERE run.org_id=turn_row.org_id AND run.companion_id=turn_row.companion_id
+        AND run.turn_id=turn_row.id AND run.outcome IN ('pending','running'));
+  UPDATE public.companion_v3_routine_runs run SET outcome='cancelled',settled_at=v_now
+  WHERE run.org_id=NEW.org_id AND run.companion_id=NEW.companion_id
+    AND run.outcome IN ('pending','running')
+    AND EXISTS (SELECT 1 FROM public.companion_v3_turns turn_row
+      WHERE turn_row.org_id=run.org_id AND turn_row.companion_id=run.companion_id
+        AND turn_row.id=run.turn_id AND turn_row.state='cancelled');
+
+  UPDATE public.companion_v3_turns turn_row SET state='interrupted',outcome='interrupted',
+    outcome_code='runtime_lifecycle_preempted',
+    outcome_message='Permanent deletion interrupted this scheduled routine.',
+    outcome_action='none',inactivity_deadline_at=NULL,absolute_deadline_at=NULL,
+    settled_at=v_now,updated_at=v_now
+  WHERE turn_row.org_id=NEW.org_id AND turn_row.companion_id=NEW.companion_id
+    AND turn_row.lane='background' AND turn_row.state IN ('queued','admitted','running','needs_input')
+    AND turn_row.pi_invocation_id IS NOT NULL
+    AND EXISTS (SELECT 1 FROM public.companion_v3_routine_runs run
+      WHERE run.org_id=turn_row.org_id AND run.companion_id=turn_row.companion_id
+        AND run.turn_id=turn_row.id AND run.outcome IN ('pending','running'));
+  UPDATE public.companion_v3_routine_runs run SET outcome='interrupted',settled_at=v_now,
+    cleanup_checkpoint='terminate',cleanup_invocation_id=turn_row.pi_invocation_id,
+    cleanup_retry=false
+  FROM public.companion_v3_turns turn_row
+  WHERE run.org_id=NEW.org_id AND run.companion_id=NEW.companion_id
+    AND run.outcome IN ('pending','running') AND turn_row.org_id=run.org_id
+    AND turn_row.companion_id=run.companion_id AND turn_row.id=run.turn_id
+    AND turn_row.state='interrupted' AND turn_row.pi_invocation_id IS NOT NULL;
+
+  UPDATE public.companion_v3_lane_leases lease SET claim_token=NULL,
+    claim_epoch=lease.claim_epoch+1,gate_epoch=NULL,executor_id=NULL,turn_id=NULL,
+    claimed_at=NULL,renewed_at=NULL,expires_at=NULL,updated_at=v_now
+  WHERE lease.org_id=NEW.org_id AND lease.companion_id=NEW.companion_id
+    AND lease.lane='background';
+  UPDATE public.companion_v3_instances instance SET lifecycle_available_at='infinity'::timestamptz,
+    updated_at=v_now WHERE instance.org_id=NEW.org_id AND instance.companion_id=NEW.companion_id
+    AND EXISTS (SELECT 1 FROM public.companion_v3_routine_runs run
+      WHERE run.org_id=NEW.org_id AND run.companion_id=NEW.companion_id
+        AND run.cleanup_checkpoint='terminate');
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION public.companion_v3_preempt_routine_for_delete() FROM PUBLIC;
+CREATE TRIGGER companion_v3_preempt_routine_for_delete
+AFTER INSERT ON public.companion_v3_lifecycle_requests
+FOR EACH ROW WHEN (NEW.intent='delete')
+EXECUTE FUNCTION public.companion_v3_preempt_routine_for_delete();
+--> statement-breakpoint
+
 -- Every admitted lane is actor-bound. A background Owner occurrence must fence an Editor's
 -- completed or in-flight preparation before runtime can receive either member's private material.
 CREATE OR REPLACE FUNCTION public.companion_v3_invalidate_from_turn()
@@ -903,8 +966,8 @@ BEGIN
         cleanup_checkpoint=NULL,cleanup_invocation_id=NULL,cleanup_retry=false
         WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id;
     ELSE
-      UPDATE public.companion_v3_turns SET pi_invocation_id=NULL,updated_at=v_now
-        WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id;
+      -- A terminal accepted Turn retains its immutable invocation as execution history. Clearing
+      -- the cleanup checkpoint is the durable proof that this identity was already terminated.
       UPDATE public.companion_v3_routine_runs SET cleanup_checkpoint=NULL,
         cleanup_invocation_id=NULL,cleanup_retry=false
         WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id;
@@ -914,7 +977,13 @@ BEGIN
       turn_id=NULL,claimed_at=NULL,renewed_at=NULL,expires_at=NULL,updated_at=v_now
       WHERE org_id=p_org_id AND companion_id=p_companion_id AND lane='background'
         AND claim_token=p_claim_token AND claim_epoch=p_claim_epoch;
-    RETURN FOUND;
+    UPDATE public.companion_v3_instances instance SET lifecycle_available_at=v_now,updated_at=v_now
+      WHERE instance.org_id=p_org_id AND instance.companion_id=p_companion_id
+        AND instance.desired_lifecycle='delete'
+        AND NOT EXISTS (SELECT 1 FROM public.companion_v3_routine_runs pending_cleanup
+          WHERE pending_cleanup.org_id=p_org_id AND pending_cleanup.companion_id=p_companion_id
+            AND pending_cleanup.cleanup_checkpoint='terminate');
+    RETURN true;
   END IF;
 
   IF p_outcome IN ('admission_rejected','failed','interrupted','decision_ambiguous') THEN

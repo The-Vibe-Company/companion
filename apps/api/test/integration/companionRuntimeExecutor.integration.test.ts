@@ -7699,6 +7699,55 @@ describe("Companion runtime executor PostgreSQL surface", () => {
           'delete-v3-worker',${ids.orgA}::uuid,${routineId}::uuid,${randomUUID()}::uuid,
           ${due.scheduledFor}::timestamptz,now()+interval '1 hour')
       `);
+      const routineInvocation = `routine:${routineId}:delete-active`;
+      await sql`update companions set provider_ids='[]'::jsonb,selected_skill_ids='[]'::jsonb,
+        selected_mcp_account_ids='[]'::jsonb where id=${fixture.companionId}::uuid`;
+      await sql`
+        update companion_v3_instances instance set box_id=runtime.box_id,
+          lifecycle_state='active',desired_lifecycle='prepare',preparation_checkpoint='prepared',
+          box_ready_at=now()-interval '2 seconds',staging_completed_at=now()-interval '1 second',
+          prepared_at=now(),prepared_disk_layout_version=14,prepared_skills_digest=${"0".repeat(64)},
+          pi_invocation_id=${routineInvocation},preparation_actor_id=${ids.ownerA},
+          preparation_settings_revision=runtime.desired_settings_revision,
+          preparation_skills_revision=companion.skills_available_revision,
+          preparation_model_id=companion.model_id,preparation_provider_refs='[]'::jsonb,
+          preparation_skill_refs='[]'::jsonb,preparation_mcp_refs='[]'::jsonb,
+          prepared_material_expires_at=now()+interval '3 hours',updated_at=now()
+        from companion_runtime_instances runtime,companions companion
+        where instance.companion_id=${fixture.companionId}::uuid
+          and runtime.companion_id=instance.companion_id and companion.id=instance.companion_id
+      `;
+      const [routineTurn] = await sql<Array<{ turnId: string }>>`
+        select turn_id::text as "turnId" from companion_v3_routine_runs
+        where routine_snapshot_id=${routineId}::uuid
+      `;
+      if (!routineTurn) throw new Error("expected the v3 routine turn");
+      const [activeClaim] = await asRuntime((tx) => tx<Array<{
+        claimToken: string;
+        claimEpoch: string;
+        gateEpoch: string;
+      }>>`
+        select claim_token::text as "claimToken",claim_epoch::text as "claimEpoch",
+          gate_epoch::text as "gateEpoch"
+        from companion_v3_runtime_claim_routine_v7(
+          ${`${executorId}-delete-active`},'background',30,7)
+        where turn_id=${routineTurn.turnId}::uuid
+      `);
+      if (!activeClaim) throw new Error("expected the active routine claim");
+      expect(await asRuntime((tx) => tx<Array<{ begun: boolean }>>`
+        select companion_v3_runtime_begin_admission_v5(
+          ${ids.orgA}::uuid,${fixture.companionId}::uuid,'background',
+          ${routineTurn.turnId}::uuid,${activeClaim.claimToken}::uuid,
+          ${activeClaim.claimEpoch}::bigint,${activeClaim.gateEpoch}::bigint,
+          ${routineInvocation},0,5) as begun
+      `)).toEqual([{ begun: true }]);
+      expect(await asRuntime((tx) => tx<Array<{ recorded: boolean }>>`
+        select companion_v3_runtime_record_native_admission_v5(
+          ${ids.orgA}::uuid,${fixture.companionId}::uuid,'background',
+          ${routineTurn.turnId}::uuid,${activeClaim.claimToken}::uuid,
+          ${activeClaim.claimEpoch}::bigint,${activeClaim.gateEpoch}::bigint,
+          ${routineInvocation},${routineTurn.turnId}::uuid,1,5) as recorded
+      `)).toEqual([{ recorded: true }]);
       await asApi({
         orgId: ids.orgA,
         actorId: ids.ownerA,
@@ -7711,24 +7760,41 @@ describe("Companion runtime executor PostgreSQL surface", () => {
       const [pending] = await sql<Array<{
         turnState: string;
         runOutcome: string;
+        cleanupCheckpoint: string | null;
+        cleanupInvocation: string | null;
         intent: string;
         lifecycleState: string;
+        claimToken: string | null;
       }>>`
         select turn_row.state::text as "turnState",run.outcome as "runOutcome",
-          request.intent::text as intent,
-          instance.lifecycle_state::text as "lifecycleState"
+          run.cleanup_checkpoint as "cleanupCheckpoint",
+          run.cleanup_invocation_id as "cleanupInvocation",request.intent::text as intent,
+          instance.lifecycle_state::text as "lifecycleState",lease.claim_token::text as "claimToken"
         from companion_v3_routine_runs run
         join companion_v3_turns turn_row on turn_row.id=run.turn_id
         join companion_v3_instances instance on instance.companion_id=run.companion_id
         join companion_v3_lifecycle_requests request on request.companion_id=run.companion_id
+        join companion_v3_lane_leases lease on lease.companion_id=run.companion_id
+          and lease.lane='background'
         where run.routine_snapshot_id=${routineId}::uuid and request.request_id=${deleteRequestId}::uuid
       `;
       expect(pending).toEqual({
-        turnState: "queued",
-        runOutcome: "pending",
+        turnState: "interrupted",
+        runOutcome: "interrupted",
+        cleanupCheckpoint: "terminate",
+        cleanupInvocation: routineInvocation,
         intent: "delete",
         lifecycleState: "delete_pending",
+        claimToken: null,
       });
+
+      expect(await asRuntime((tx) => tx<Array<{ completed: boolean }>>`
+        select companion_v3_runtime_complete_v7(
+          ${ids.orgA}::uuid,${fixture.companionId}::uuid,'background',
+          ${routineTurn.turnId}::uuid,${activeClaim.claimToken}::uuid,
+          ${activeClaim.claimEpoch}::bigint,${activeClaim.gateEpoch}::bigint,
+          'cleanup_completed',null,null,null,7) as completed
+      `)).toEqual([{ completed: false }]);
 
       const claimLifecycle = async (executor: string) => {
         const [claim] = await asRuntime((tx) => tx<Array<{
@@ -7745,6 +7811,63 @@ describe("Companion runtime executor PostgreSQL surface", () => {
         if (!claim) throw new Error("expected the v3 delete lifecycle claim");
         return claim;
       };
+      expect(await asRuntime((tx) => tx`
+        select * from companion_v3_runtime_claim_lifecycle(
+          ${`${executorId}-delete-before-cleanup`},30,5)
+        where companion_id=${fixture.companionId}::uuid
+      `)).toEqual([]);
+
+      const claimCleanup = async (executor: string) => {
+        const [claim] = await asRuntime((tx) => tx<Array<{
+          claimToken: string;
+          claimEpoch: string;
+          gateEpoch: string;
+          cleanupBoxId: string;
+          cleanupInvocationId: string;
+        }>>`
+          select claim_token::text as "claimToken",claim_epoch::text as "claimEpoch",
+            gate_epoch::text as "gateEpoch",cleanup_box_id as "cleanupBoxId",
+            cleanup_invocation_id as "cleanupInvocationId"
+          from companion_v3_runtime_claim_routine_v7(${executor},'background',30,7)
+          where turn_id=${routineTurn.turnId}::uuid
+        `);
+        if (!claim) throw new Error("expected exact routine cleanup");
+        return claim;
+      };
+      const firstCleanup = await claimCleanup(`${executorId}-delete-cleanup-first`);
+      expect(firstCleanup.cleanupInvocationId).toBe(routineInvocation);
+      await sql`update companion_v3_lane_leases set renewed_at=now()-interval '2 seconds',
+        expires_at=now()-interval '1 second'
+        where companion_id=${fixture.companionId}::uuid and lane='background'`;
+      const cleanupTakeover = await claimCleanup(`${executorId}-delete-cleanup-takeover`);
+      expect(BigInt(cleanupTakeover.claimEpoch)).toBeGreaterThan(BigInt(firstCleanup.claimEpoch));
+      expect(cleanupTakeover).toMatchObject({
+        cleanupBoxId: expect.any(String),
+        cleanupInvocationId: routineInvocation,
+      });
+      expect(await asRuntime((tx) => tx<Array<{ completed: boolean }>>`
+        select companion_v3_runtime_complete_v7(
+          ${ids.orgA}::uuid,${fixture.companionId}::uuid,'background',
+          ${routineTurn.turnId}::uuid,${firstCleanup.claimToken}::uuid,
+          ${firstCleanup.claimEpoch}::bigint,${firstCleanup.gateEpoch}::bigint,
+          'cleanup_completed',null,null,null,7) as completed
+      `)).toEqual([{ completed: false }]);
+      let terminateCalls = 0;
+      if (cleanupTakeover.cleanupInvocationId === routineInvocation) terminateCalls += 1;
+      expect(await asRuntime((tx) => tx<Array<{ completed: boolean }>>`
+        select companion_v3_runtime_complete_v7(
+          ${ids.orgA}::uuid,${fixture.companionId}::uuid,'background',
+          ${routineTurn.turnId}::uuid,${cleanupTakeover.claimToken}::uuid,
+          ${cleanupTakeover.claimEpoch}::bigint,${cleanupTakeover.gateEpoch}::bigint,
+          'cleanup_completed',null,null,null,7) as completed
+      `)).toEqual([{ completed: true }]);
+      expect(terminateCalls).toBe(1);
+      expect(await asRuntime((tx) => tx`
+        select * from companion_v3_runtime_claim_routine_v7(
+          ${`${executorId}-delete-cleanup-replay`},'background',30,7)
+        where turn_id=${routineTurn.turnId}::uuid
+      `)).toEqual([]);
+
       const firstClaim = await claimLifecycle(`${executorId}-delete-v3-first`);
       expect(await asRuntime((tx) => tx<Array<{ accepted: boolean }>>`
         select public.companion_v3_runtime_checkpoint_lifecycle(
