@@ -15,7 +15,9 @@ function bounded(signal?: AbortSignal): AbortSignal {
  * Runtime v3 background work uses one run-scoped Pi process in the Companion's existing Box.
  * The map is only an addressing aid for ACK; PostgreSQL remains the claim and fencing authority.
  */
-export function createRuntimeV3RoutinePi(pi: RuntimePiControl): RuntimeV3WarmPi {
+export function createRuntimeV3RoutinePi(
+  pi: Pick<RuntimePiControl, "routineSession">,
+): RuntimeV3WarmPi {
   const routine = pi.routineSession;
   if (!routine) throw new Error("Runtime v3 routine Pi transport is unavailable");
   const activeByBox = new Map<string, { runId: string; invocationId: string; terminal: boolean }>();

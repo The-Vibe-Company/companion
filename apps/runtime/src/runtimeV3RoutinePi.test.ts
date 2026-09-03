@@ -36,7 +36,7 @@ function control(overrides: Partial<NonNullable<RuntimePiControl["routineSession
     ...overrides,
   };
   return {
-    pi: { routineSession: routine } as unknown as RuntimePiControl,
+    pi: { routineSession: routine },
     routine,
   };
 }
