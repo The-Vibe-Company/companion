@@ -4554,7 +4554,23 @@ rm -f "/run/user/$(id -u)/companion/providers.env" \
       throw new BoxRuntimeProviderError("Runtime image Companion skill identity changed", 409);
     }
     const bakedSkillPath = `.companion/runtime/image/companion-${input.bundledSkill.checksum}.tar.gz.b64`;
-    await this.#writeFile(input.boxId, ".boxignore", RUNTIME_IMAGE_BOXIGNORE);
+    const encodedBoxIgnore = Buffer.from(RUNTIME_IMAGE_BOXIGNORE, "utf8").toString("base64");
+    const installedBoxIgnore = await this.#command(
+      input.boxId,
+      `set -euo pipefail
+runtime_image_boxignore="$(mktemp "$HOME/.boxignore.tmp.XXXXXX")"
+cleanup_runtime_image_boxignore() { rm -f "$runtime_image_boxignore"; }
+trap cleanup_runtime_image_boxignore EXIT
+printf '%s' ${shellQuote(encodedBoxIgnore)} | base64 --decode > "$runtime_image_boxignore"
+chmod 600 "$runtime_image_boxignore"
+mv -f -- "$runtime_image_boxignore" "$HOME/.boxignore"
+trap - EXIT`,
+      30,
+      input.signal,
+    );
+    if (!installedBoxIgnore.success) {
+      throw new BoxRuntimeProviderError("Runtime image Box ignore file failed to install", 502);
+    }
     await this.#writeFile(input.boxId, bakedSkillPath, input.bundledSkill.archive.toString("base64"));
 
     await this.#archiveBox({ boxId: input.boxId, signal: input.signal });

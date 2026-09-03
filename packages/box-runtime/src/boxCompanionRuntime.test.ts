@@ -884,6 +884,8 @@ describe("provider Box lifecycle states", () => {
         return response({ box: box("ready") }, 202);
       }
       if (url.endsWith("/commands") && method === "POST") {
+        const command = String((body as { command?: string }).command ?? "");
+        if (command.includes("runtime_image_boxignore")) return response(commandResult());
         warmupCommands += 1;
         if (warmupCommands === 1) {
           return response({ message: "Box command service is still starting" }, 409);
@@ -924,9 +926,136 @@ describe("provider Box lifecycle states", () => {
 
     expect(archivePolls).toBe(4);
     expect(warmupCommands).toBe(3);
-    const warmup = requests.find((request) => request.url.endsWith("/commands"))?.body;
+    const warmup = requests.find((request) => (
+      request.url.endsWith("/commands")
+      && String((request.body as { command?: string } | undefined)?.command).includes("seq 1 300")
+    ))?.body;
     expect(warmup).toMatchObject({ timeoutSeconds: 45 });
     expect(String((warmup as { command?: string } | undefined)?.command)).toContain("seq 1 300");
+  });
+
+  it("installs the exact image ignore file without using the reserved provider file path", async () => {
+    const expectedBoxIgnore = [
+      ".companion/runtime/logs/",
+      ".companion/runtime/routines/",
+      ".companion/runtime/state/skill-archives/",
+      ".companion/runtime/state/control-bundle-v1.json",
+      ".companion/runtime/control-transaction-v1/",
+      ".companion/runtime/state/providers.env",
+      "attachments/",
+      "outbox/",
+    ].join("\n") + "\n";
+    let installedBoxIgnore: string | null = null;
+    let archived = false;
+    let resumed = false;
+    const providerFileWrites: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (rawUrl: string | URL | Request, init?: RequestInit) => {
+      const url = String(rawUrl);
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(String(init.body)) as {
+        command?: string;
+        path?: string;
+      } : {};
+      if (url.endsWith("/files") && method === "PUT") {
+        if (body.path === ".boxignore") {
+          return response({ message: "reserved path" }, 400);
+        }
+        expect(body.path).toMatch(/^\.companion\/runtime\/image\/companion-.+\.tar\.gz\.b64$/);
+        providerFileWrites.push(body.path ?? "");
+        return response({ ok: true });
+      }
+      if (url.endsWith("/commands") && method === "POST") {
+        if (body.command?.includes("runtime_image_boxignore")) {
+          expect(body.command).toContain('mktemp "$HOME/.boxignore.tmp.XXXXXX"');
+          expect(body.command).toContain('chmod 600 "$runtime_image_boxignore"');
+          expect(body.command).toContain('mv -f -- "$runtime_image_boxignore" "$HOME/.boxignore"');
+          const encoded = /printf '%s' '([^']+)' \| base64 --decode/.exec(body.command)?.[1];
+          expect(encoded).toBeTruthy();
+          installedBoxIgnore = Buffer.from(encoded!, "base64").toString("utf8");
+          return response(commandResult());
+        }
+        return response(commandResult("companion-runtime-playbook-ready\n"));
+      }
+      if (url.endsWith("/stop") && method === "POST") {
+        expect(installedBoxIgnore).toBe(expectedBoxIgnore);
+        archived = true;
+        return response({ box: box("archived") });
+      }
+      if (url.endsWith("/boxes/bx_23456789") && method === "GET") {
+        return response({ box: box(archived && !resumed ? "archived" : "ready") });
+      }
+      if (url.endsWith("/resume") && method === "POST") {
+        resumed = true;
+        return response({ box: box("ready") }, 202);
+      }
+      throw new Error(`unexpected request ${method} ${url}`);
+    }));
+    const bundledSkill = {
+      slug: "companion-runtime",
+      version: "1.0.0",
+      checksum: "b".repeat(64),
+      archive: Buffer.from("skill"),
+    };
+    const runtime = new AsciiBoxCompanionRuntime({
+      COMPANION_BOX_API_KEY: "box_test",
+      COMPANION_BOX_POLL_INTERVAL_MS: "1",
+      COMPANION_BOX_READY_TIMEOUT_MS: "100",
+    }, { companionSkillChecksum: bundledSkill.checksum });
+
+    await expect(runtime.prepareRuntimeImage({
+      boxId: "bx_23456789",
+      bundledSkill,
+    })).resolves.toBeUndefined();
+
+    expect(installedBoxIgnore).toBe(expectedBoxIgnore);
+    expect(archived).toBe(true);
+    expect(providerFileWrites).toEqual([
+      `.companion/runtime/image/companion-${bundledSkill.checksum}.tar.gz.b64`,
+    ]);
+  });
+
+  it("refuses to archive a runtime image when the ignore file command fails", async () => {
+    const fileWrites: string[] = [];
+    let archiveRequests = 0;
+    vi.stubGlobal("fetch", vi.fn(async (rawUrl: string | URL | Request, init?: RequestInit) => {
+      const url = String(rawUrl);
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(String(init.body)) as {
+        command?: string;
+        path?: string;
+      } : {};
+      if (url.endsWith("/commands") && method === "POST") {
+        expect(body.command).toContain("runtime_image_boxignore");
+        return response({ success: false, exitCode: 1, stdout: "", stderr: "write refused" });
+      }
+      if (url.endsWith("/files") && method === "PUT") {
+        fileWrites.push(body.path ?? "");
+        return response({ ok: true });
+      }
+      if (url.endsWith("/stop") && method === "POST") {
+        archiveRequests += 1;
+        return response({ box: box("archived") });
+      }
+      throw new Error(`unexpected request ${method} ${url}`);
+    }));
+    const bundledSkill = {
+      slug: "companion-runtime",
+      version: "1.0.0",
+      checksum: "c".repeat(64),
+      archive: Buffer.from("skill"),
+    };
+    const runtime = new AsciiBoxCompanionRuntime(
+      { COMPANION_BOX_API_KEY: "box_test" },
+      { companionSkillChecksum: bundledSkill.checksum },
+    );
+
+    await expect(runtime.prepareRuntimeImage({
+      boxId: "bx_23456789",
+      bundledSkill,
+    })).rejects.toThrow("Runtime image Box ignore file failed to install");
+
+    expect(fileWrites).toEqual([]);
+    expect(archiveRequests).toBe(0);
   });
 
   it("reads live GET box.info and resume box.resuming envelopes", async () => {
