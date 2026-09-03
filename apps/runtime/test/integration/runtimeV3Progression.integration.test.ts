@@ -4944,9 +4944,13 @@ describe("Runtime v3 progression facts", () => {
           sequence: 1n, type: "routine_return" as const,
           call_id: `wrong-return-${attempt}`, mode: "notify" as const, message: "Wrong mode.",
         };
+        const invalidReturns = attempt === 0
+          ? [wrongReturn, { ...wrongReturn, sequence: 2n, call_id: "extra-return" }]
+          : [wrongReturn];
         const invalidProjection = {
-          throughCursor: 1n, assistant: [], privateEntries: [wrongReturn], decisions: [],
-          routineReturns: [wrongReturn], needsInput: false, settled: false,
+          throughCursor: BigInt(invalidReturns.length), assistant: [],
+          privateEntries: invalidReturns, decisions: [], routineReturns: invalidReturns,
+          needsInput: false, settled: false,
           processExited: false, activity: true,
         };
         await expect(persistence.project(active.claim, invalidProjection)).resolves.toBe("failed");

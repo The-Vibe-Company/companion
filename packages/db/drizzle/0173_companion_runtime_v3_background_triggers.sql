@@ -264,7 +264,7 @@ BEGIN
   FROM public.companion_v3_routine_runs run
   WHERE run.org_id=p_org_id AND run.companion_id=p_companion_id AND run.turn_id=p_turn_id;
   IF NOT FOUND THEN RETURN NULL;END IF;
-  IF v_trigger AND (jsonb_array_length(p_decisions)<>0
+  IF v_trigger AND (jsonb_array_length(p_decisions)<>0 OR jsonb_array_length(p_returns)>1
     OR (jsonb_array_length(p_returns)=1 AND p_returns->0->>'mode' IS DISTINCT FROM v_mode)) THEN
     v_result:=public.companion_v3_runtime_project_background_page_v7(p_org_id,p_companion_id,
       p_turn_id,p_claim_token,p_claim_epoch,p_gate_epoch,p_through_cursor,'[]'::jsonb,
