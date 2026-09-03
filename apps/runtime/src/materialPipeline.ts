@@ -405,10 +405,24 @@ export function createRuntimeMaterialPipeline(input: {
   };
   const attachmentStager: RuntimeAttachmentStager = {
     async stageAttachments(stage) {
+      const fileRuntime = input.fileRuntime?.() ?? input.runtime();
+      const messageId = messageIdFromEventId(stage.messageEventId);
+      const clearExpiredStaging = async (): Promise<never> => {
+        // The staging contract replaces the whole scratch root. Let provider failures propagate:
+        // the engine classifies them as retryable staging failures, and the next attempt starts by
+        // retrying this empty replacement without reading or writing attachment bytes.
+        await fileRuntime.stageAttachments({
+          boxId: stage.boxId,
+          messageId,
+          files: [],
+          signal: stage.signal,
+        });
+        throw new RuntimeAttachmentExpiredError();
+      };
       const files = [];
       for (const attachment of stage.material.attachments) {
         if (now() >= attachment.expiresAt.getTime()) {
-          throw new RuntimeAttachmentExpiredError();
+          await clearExpiredStaging();
         }
         const bytes = await input.loadAttachment(attachment.storageKey, stage.signal);
         // The digest is checked against what the control plane accepted, not against what object
@@ -419,7 +433,7 @@ export function createRuntimeMaterialPipeline(input: {
           throw new RuntimeMaterialError("runtime_material_invalid");
         }
         if (now() >= attachment.expiresAt.getTime()) {
-          throw new RuntimeAttachmentExpiredError();
+          await clearExpiredStaging();
         }
         files.push({
           position: attachment.position,
@@ -436,10 +450,8 @@ export function createRuntimeMaterialPipeline(input: {
         authorization: stage.authorization,
       });
       if (stage.material.attachments.some((attachment) => now() >= attachment.expiresAt.getTime())) {
-        throw new RuntimeAttachmentExpiredError();
+        await clearExpiredStaging();
       }
-      const fileRuntime = input.fileRuntime?.() ?? input.runtime();
-      const messageId = messageIdFromEventId(stage.messageEventId);
       const staged = await fileRuntime.stageAttachments({
         boxId: stage.boxId,
         messageId,
@@ -450,18 +462,7 @@ export function createRuntimeMaterialPipeline(input: {
       // crosses during the Box write, immediately replace it with an empty staging set before
       // withholding paths from the engine, so neither disk bytes nor a Pi-visible prompt survive.
       if (stage.material.attachments.some((attachment) => now() >= attachment.expiresAt.getTime())) {
-        try {
-          await fileRuntime.stageAttachments({
-            boxId: stage.boxId,
-            messageId,
-            files: [],
-            signal: stage.signal,
-          });
-        } catch {
-          // The expiry outcome remains stable and never dispatches Pi even if Box cleanup is
-          // temporarily unavailable; the next staging call replaces the scratch root again.
-        }
-        throw new RuntimeAttachmentExpiredError();
+        await clearExpiredStaging();
       }
       return staged;
     },

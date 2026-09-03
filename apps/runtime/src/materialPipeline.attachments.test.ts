@@ -203,7 +203,8 @@ describe("staging a member's attachments onto the Box", () => {
       now: () => clock,
     }).attachmentStager.stageAttachments(stageInput([attachment(PNG)])))
       .rejects.toMatchObject({ stableCode: "attachment_expired" });
-    expect(stageAttachments).not.toHaveBeenCalled();
+    expect(stageAttachments).toHaveBeenCalledTimes(1);
+    expect(stageAttachments).toHaveBeenCalledWith(expect.objectContaining({ files: [] }));
   });
 
   it("does not expose staged paths when expiry crosses during the Box write", async () => {
@@ -225,6 +226,25 @@ describe("staging a member's attachments onto the Box", () => {
       now: () => clock,
     }).attachmentStager.stageAttachments(stageInput([attachment(PNG)])))
       .rejects.toMatchObject({ stableCode: "attachment_expired" });
+    expect(stageAttachments).toHaveBeenCalledTimes(2);
+    expect(stageAttachments).toHaveBeenLastCalledWith(expect.objectContaining({ files: [] }));
+  });
+
+  it("keeps a failed expiry cleanup retryable without exposing paths", async () => {
+    let clock = Date.parse("2026-09-24T23:59:59.000Z");
+    const retryable = Object.assign(new Error("Box cleanup unavailable"), {
+      retryable: true,
+    });
+    const stageAttachments = vi.fn(async (input: { files: unknown[] }) => {
+      if (input.files.length === 0) throw retryable;
+      clock = Date.parse("2026-09-25T00:00:00.000Z");
+      return [];
+    });
+
+    await expect(pipeline({
+      runtime: { stageAttachments },
+      now: () => clock,
+    }).attachmentStager.stageAttachments(stageInput([attachment(PNG)]))).rejects.toBe(retryable);
     expect(stageAttachments).toHaveBeenCalledTimes(2);
     expect(stageAttachments).toHaveBeenLastCalledWith(expect.objectContaining({ files: [] }));
   });
