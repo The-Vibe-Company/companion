@@ -400,6 +400,18 @@ Pi alone chooses idle prompt or active steer, including native FIFO ordering and
 A positive acknowledgement is durable admission proof, not proof that Pi applied the message or
 completed it. A proven pre-admission refusal leaves the same Turn queued; ambiguity is never replayed.
 
+Runtime v3 writes an invocation-and-cursor admission intent before that one-way call. If neither a
+positive acknowledgement nor a proven refusal follows, PostgreSQL immediately interrupts the Turn,
+discloses that Pi may have acted, and releases its lane in the same terminal transaction. It also
+invalidates `Prepared` and fences a Pi-only recycle on the same persistent Box; there is no recovery
+operation, replacement attempt, compatibility Retry, Box restart, or member action. Preparation
+terminates only the captured invocation, quarantines its session and broker ledger, re-resolves
+current authority and credentials, restages, and proves a different idle invocation before another
+admission. The first new prompt carries the latest hash-validated compaction summary plus the
+largest byte-bounded suffix of complete durable entries, never the ambiguous command. A durable
+possible-context-loss bit prefixes exactly one sentence to the next projected Companion reply and
+is cleared atomically with that projection; proven complete continuity remains silent.
+
 Pi command responses carry the command id; general Pi events do not. The broker therefore owns the
 one-active-attempt association. An `agent_settled` for that association ends the attempt only when
 its shape is explicitly supported. Tool and `ask_user` activity renews the turn's correlated

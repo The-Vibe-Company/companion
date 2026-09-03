@@ -775,6 +775,7 @@ export function fakePorts(store: MemoryRuntimeStore): FakePorts {
   const pi: RuntimePiControl = {
     stopPiDaemon: async () => undefined,
     terminatePiInvocation: async () => ({ outcome: "terminated" }),
+    resetPiSession: async () => undefined,
     startPiDaemon: async () => ({ state: "idle", invocationId: PI_INVOCATION_ID }),
     restartPiDaemon: async () => ({ state: "idle", invocationId: PI_INVOCATION_ID }),
     piDaemonStatus: async () => ({ state: "idle", invocationId: PI_INVOCATION_ID }),

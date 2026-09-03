@@ -241,6 +241,16 @@ files, routines, and background work remain on their prior paths in this stack. 
 still fail closed under the shared runtime gate and carry its epoch, so stale executors cannot
 project or settle. There is still no v3 attempt table or derived Start operation.
 
+Migration 0169 makes an outcome-unknown v3 Pi admission self-healing without replay. The durable
+write intent pins the exact Pi invocation and starting cursor. Ambiguous completion interrupts the
+affected occurrence and releases its lane while invalidating `Prepared` in one PostgreSQL
+transaction; no attempt, recovery operation, or compatibility Retry is created. Ordinary
+preparation then terminates that invocation, quarantines only its main Pi session and broker facts,
+restages freshly authorized material on the same Box, and requires a different idle invocation.
+The first later admission receives a hash-validated compacted summary and the greatest bounded
+suffix of complete durable transcript entries, excluding the ambiguous message. A durable loss bit
+adds one fixed context-loss sentence to the beginning of the next Companion answer exactly once.
+
 Migration 0162 keeps release measurement on that same Turn instead of adding an observability
 attempt model. Acceptance, first/latest claim, Box ready, staging complete, Pi ready, prompt/steer
 admission, first correlated activity, and settlement are durable timestamps. Stable dimensions are

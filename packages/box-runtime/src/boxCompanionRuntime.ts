@@ -1052,6 +1052,11 @@ export interface CompanionBoxRuntimeV2 {
     expectedInvocationId: string;
     signal?: AbortSignal;
   }): Promise<{ outcome: "terminated" | "already_gone" | "superseded" }>;
+  resetPiSession(input: {
+    boxId: string;
+    recoveryId: string;
+    signal?: AbortSignal;
+  }): Promise<void>;
   piDaemonStatus(input: { boxId: string; signal?: AbortSignal }): Promise<{
     state: "idle" | "running" | "stopped" | "error";
     invocationId: string | null;
@@ -5116,6 +5121,57 @@ printf '%s\\n' companion-pi-termination-terminated`,
       502,
       "pi_invocation_terminate_ambiguous",
     );
+  }
+
+  async resetPiSession(input: {
+    boxId: string;
+    recoveryId: string;
+    signal?: AbortSignal;
+  }): Promise<void> {
+    if (!opaqueBrokerId(input.recoveryId)) {
+      throw new BoxRuntimeProviderError("Pi recovery id is invalid", 400, "pi_recovery_id_invalid");
+    }
+    const reset = await this.#command(
+      input.boxId,
+      `set -euo pipefail
+${PREPARE_USER_BUS}
+${PI_LIFECYCLE_LOCK}
+if systemctl --user is-active --quiet companion-pi-daemon.service; then
+  echo 'Pi must be stopped before its session can be reset' >&2
+  exit 1
+fi
+runtime_root="$HOME/.companion/runtime"
+recovery_id=${shellQuote(input.recoveryId)}
+recovery_root="$runtime_root/recovery/$recovery_id"
+mkdir -p "$recovery_root"
+chmod 700 "$runtime_root" "$runtime_root/recovery" "$recovery_root"
+if [ ! -f "$recovery_root/reset-complete" ]; then
+  if [ -d "$runtime_root/sessions" ] && [ ! -e "$recovery_root/sessions" ]; then
+    mv "$runtime_root/sessions" "$recovery_root/sessions"
+  fi
+  if [ -d "$runtime_root/events" ] && [ ! -e "$recovery_root/events" ]; then
+    mv "$runtime_root/events" "$recovery_root/events"
+  fi
+  if [ -f "$runtime_root/state/dispatch-ledger.json" ] \
+    && [ ! -e "$recovery_root/dispatch-ledger.json" ]; then
+    mv "$runtime_root/state/dispatch-ledger.json" "$recovery_root/dispatch-ledger.json"
+  fi
+  : > "$recovery_root/reset-complete"
+fi
+mkdir -p "$runtime_root/sessions" "$runtime_root/events" "$runtime_root/state"
+chmod 700 "$runtime_root/sessions" "$runtime_root/events" "$runtime_root/state"
+rm -f "$HOME/${COMPANION_PI_BROKER_SOCKET_PATH}"
+printf '%s\\n' companion-pi-session-reset`,
+      30,
+      input.signal,
+    );
+    if (!reset.success || !reset.stdout.split(/[\r\n]+/).includes("companion-pi-session-reset")) {
+      throw new BoxRuntimeProviderError(
+        `Pi session could not be reset${commandFailureDetail(reset)}`,
+        502,
+        "pi_session_reset_failed",
+      );
+    }
   }
 
   async clearPersistedProviderAuth(input: { boxId: string; signal?: AbortSignal }): Promise<void> {

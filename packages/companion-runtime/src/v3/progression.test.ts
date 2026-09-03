@@ -372,6 +372,63 @@ describe("Runtime v3 progression interface", () => {
     ]);
   });
 
+  it("recycles only the exactly fenced Pi on the same Box before restaging", async () => {
+    const base: RuntimeV3PreparationClaim = {
+      orgId: mainClaim.orgId,
+      companionId: mainClaim.companionId,
+      turnId: acceptedTurn.id,
+      commandId: acceptedTurn.commandId,
+      checkpoint: "box_ready",
+      piRecycleCheckpoint: "terminate",
+      recyclePiInvocationId: "pi-contaminated",
+      recoveryId: acceptedTurn.id,
+      recoveryContext: "durable context",
+      boxIdempotencyKey: "11111111-1111-4111-8111-111111111111",
+      boxId: "bx_23456789",
+      createdAt: new Date(), executorId: "runtime-heal", authorized: true,
+      actorId: "actor-1", modelId: "claude-test", persona: null,
+      settingsRevision: 1n, skillsRevision: 1,
+      providerRefs: [], skillRefs: [], mcpRefs: [], providerMaterial: [],
+      skillMaterial: [], mcpMaterial: [], configCatalog: null, fence: mainClaim.fence,
+    };
+    const claims: RuntimeV3PreparationClaim[] = [
+      base,
+      { ...base, piRecycleCheckpoint: "reset" },
+      { ...base, piRecycleCheckpoint: "ready" },
+      { ...base, checkpoint: "staged", piRecycleCheckpoint: "ready" },
+    ];
+    const terminatePiInvocation = vi.fn().mockResolvedValue({ outcome: "terminated" });
+    const resetPiSession = vi.fn().mockResolvedValue(undefined);
+    const checkpointPiRecycle = vi.fn().mockResolvedValue(true);
+    const stagePreparation = vi.fn().mockResolvedValue({
+      diskLayoutVersion: 14, appliedSettingsRevision: 1n, appliedSkillsRevision: 1,
+      skillsDigest: "b".repeat(64), materialExpiresAt: new Date(Date.now() + 8 * 60 * 60_000),
+    });
+    const startPiDaemon = vi.fn().mockResolvedValue({ state: "idle", invocationId: "pi-fresh" });
+    const preparation = createRuntimeV3Preparation({
+      persistence: {
+        claim: vi.fn(async () => claims.shift() ?? null), checkpoint: vi.fn().mockResolvedValue(true),
+        checkpointPiRecycle, defer: vi.fn().mockResolvedValue(true),
+        reauthorize: vi.fn().mockResolvedValue(true), mintCredentials: vi.fn(),
+      },
+      box: { createGenerationBox: vi.fn(), applyGenerationBoxSettings: vi.fn(), getStatus: vi.fn() },
+      preparationStager: { stagePreparation },
+      pi: { terminatePiInvocation, resetPiSession, startPiDaemon },
+    });
+
+    await expect(preparation.converge({ executorId: "runtime-heal" }))
+      .resolves.toEqual({ progressed: 4, exhausted: false });
+    expect(terminatePiInvocation).toHaveBeenCalledWith(expect.objectContaining({
+      boxId: "bx_23456789", expectedInvocationId: "pi-contaminated",
+    }));
+    expect(resetPiSession).toHaveBeenCalledWith(expect.objectContaining({
+      boxId: "bx_23456789", recoveryId: acceptedTurn.id,
+    }));
+    expect(checkpointPiRecycle.mock.calls.map(([, next]) => next)).toEqual(["reset", "complete"]);
+    expect(stagePreparation).toHaveBeenCalledTimes(1);
+    expect(startPiDaemon).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     ["Box create", "pending" as const, { createGenerationBox: new Error("token=provider-secret") }],
     ["Pi activation", "staged" as const, { startPiDaemon: new Error("token=provider-secret") }],

@@ -60,6 +60,7 @@ function execControl(): RuntimePiControl {
   return {
     stopPiDaemon: vi.fn(async () => undefined),
     terminatePiInvocation: vi.fn(async () => ({ outcome: "terminated" as const })),
+    resetPiSession: vi.fn(async () => undefined),
     startPiDaemon: vi.fn(async () => ({ state: "idle" as const, invocationId: "inv-exec" })),
     restartPiDaemon: vi.fn(async () => ({ state: "idle" as const, invocationId: "inv-exec" })),
     piDaemonStatus: vi.fn(async () => ({ state: "idle" as const, invocationId: "inv-exec" })),

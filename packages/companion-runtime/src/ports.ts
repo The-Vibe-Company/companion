@@ -181,6 +181,12 @@ export interface RuntimePiControl {
     expectedInvocationId: string;
     signal: AbortSignal;
   }): Promise<{ outcome: "terminated" | "already_gone" | "superseded" }>;
+  /** Quarantine stopped main-session state before a fenced Pi-only self-heal. */
+  resetPiSession(input: {
+    boxId: string;
+    recoveryId: string;
+    signal: AbortSignal;
+  }): Promise<void>;
   startPiDaemon(input: { boxId: string; signal: AbortSignal }): Promise<{
     state: PiObservedState;
     invocationId: string;

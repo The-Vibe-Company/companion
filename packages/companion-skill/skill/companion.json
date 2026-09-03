@@ -1,7 +1,7 @@
 {
   "$schema": "https://thecompanion.sh/schemas/companion-manifest.v2.schema.json",
   "name": "companion",
-  "version": "1.105.0",
+  "version": "1.106.0",
   "icon": "boxes",
   "title": "Companion",
   "description": "Manage and safely install SKILL.md packages through delegated Agent Auth, including pinned public releases, publishing, updates, dependencies, secrets, hosted Skill Databases, local install tracking, and Companion self-update.",
@@ -28,6 +28,15 @@
       "evals/evals.json"
     ],
     "changelog": [
+      {
+        "version": "1.106.0",
+        "date": "2026-09-03",
+        "changes": [
+          "Documents immediate terminal handling for outcome-unknown Runtime v3 Pi admission without replay or a recovery operation.",
+          "Clarifies exact Pi-only recycle on the same persistent Box with freshly resolved authority and bounded durable context reconstruction.",
+          "Explains the one-time context-loss sentence shown only when complete continuity cannot be proved."
+        ]
+      },
       {
         "version": "1.105.0",
         "date": "2026-09-02",

@@ -253,6 +253,31 @@ describe("narrow AsciiBoxCompanionRuntime", () => {
     });
   });
 
+  it("quarantines main Pi state under a stable recovery id without touching Box lifecycle", async () => {
+    let command = "";
+    vi.stubGlobal("fetch", vi.fn(async (_rawUrl: string | URL | Request, init?: RequestInit) => {
+      const body = parseBoxTestBody(init?.body);
+      command = requiredText(body, "command");
+      return response(commandResult("companion-pi-session-reset\n"));
+    }));
+    const runtime = new AsciiBoxCompanionRuntime({ COMPANION_BOX_API_KEY: "box_test" });
+
+    await expect(runtime.resetPiSession({
+      boxId: "bx_23456789",
+      recoveryId: "2f883a91-92dd-4fec-b674-b7d250f81f61",
+    })).resolves.toBeUndefined();
+
+    expect(command).toContain("flock -w 20");
+    expect(command).toContain("if systemctl --user is-active --quiet companion-pi-daemon.service");
+    expect(command).toContain("recovery_id='2f883a91-92dd-4fec-b674-b7d250f81f61'");
+    expect(command).toContain('mv "$runtime_root/sessions" "$recovery_root/sessions"');
+    expect(command).not.toContain("systemctl --user start");
+    expect(command).not.toContain("systemctl --user restart");
+    expect(spawnSync("bash", ["-n"], { input: command, encoding: "utf8" })).toMatchObject({
+      status: 0, stderr: "",
+    });
+  });
+
   it.each(["archived", "archiving"] as const)(
     "archives an already %s Box with one GET and no rejected cleanup command",
     async (state) => {

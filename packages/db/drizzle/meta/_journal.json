@@ -1184,6 +1184,13 @@
       "when": 1793336800000,
       "tag": "0168_companion_runtime_v3_turn_bounds",
       "breakpoints": true
+    },
+    {
+      "idx": 169,
+      "version": "7",
+      "when": 1793340400000,
+      "tag": "0169_companion_runtime_v3_ambiguous_self_heal",
+      "breakpoints": true
     }
   ]
 }

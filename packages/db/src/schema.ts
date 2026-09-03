@@ -1334,6 +1334,12 @@ export const companionV3Instances = pgTable(
     stagingCompletedAt: timestamp("staging_completed_at", { withTimezone: true }),
     piInvocationId: text("pi_invocation_id"),
     preparedAt: timestamp("prepared_at", { withTimezone: true }),
+    piRecycleCheckpoint: text("pi_recycle_checkpoint"),
+    recyclePiInvocationId: text("recycle_pi_invocation_id"),
+    recoveryTurnId: uuid("recovery_turn_id"),
+    recoveryContext: text("recovery_context"),
+    recoveryContextSha256: text("recovery_context_sha256"),
+    contextLossNoticePending: boolean("context_loss_notice_pending").notNull().default(false),
     preparationClaimToken: uuid("preparation_claim_token"),
     preparationClaimEpoch: bigint("preparation_claim_epoch", { mode: "number" }).notNull().default(0),
     preparationGateEpoch: bigint("preparation_gate_epoch", { mode: "number" }),
@@ -1379,6 +1385,14 @@ export const companionV3Instances = pgTable(
     preparationCheck: check(
       "companion_v3_instances_preparation_check",
       sql`${t.preparationCheckpoint} in ('pending','box_created','box_ready','staged','prepared') and ${t.preparationAttemptCount} >= 0 and ${t.preparationClaimEpoch} >= 0 and (${t.boxId} is null or ${t.boxId} ~ '^bx_[23456789abcdefghjkmnpqrstuvwxyz]{8}$') and (${t.preparationErrorCode} is null) = (${t.preparationErrorMessage} is null) and (${t.preparationCheckpoint} = 'pending' or ${t.boxId} is not null) and ((${t.preparationCheckpoint} = 'prepared') = (${t.preparedAt} is not null))`,
+    ),
+    piRecycleCheck: check(
+      "companion_v3_instances_pi_recycle_check",
+      sql`(${t.piRecycleCheckpoint} is null and ${t.recyclePiInvocationId} is null and ${t.recoveryTurnId} is null) or (${t.piRecycleCheckpoint} in ('terminate','reset','ready') and ${t.recyclePiInvocationId} is not null and ${t.recoveryTurnId} is not null and ${t.boxId} is not null and (${t.piRecycleCheckpoint} = 'ready' or ${t.preparedAt} is null))`,
+    ),
+    recoveryContextCheck: check(
+      "companion_v3_instances_recovery_context_check",
+      sql`(${t.recoveryContext} is null) = (${t.recoveryContextSha256} is null) and (${t.recoveryContext} is null or octet_length(${t.recoveryContext}) <= 65536) and (${t.recoveryContextSha256} is null or ${t.recoveryContextSha256} ~ '^[0-9a-f]{64}$')`,
     ),
     lifecycleIndex: index("companion_v3_instances_lifecycle_idx")
       .on(t.lifecycleAvailableAt, t.lastWorkAcceptedAt, t.createdAt)
@@ -1515,7 +1529,7 @@ export const companionV3Turns = pgTable(
     ),
     admissionCheck: check(
       "companion_v3_turns_admission_check",
-      sql`(${t.admissionState} = 'pending' and ${t.admittedAt} is null and ${t.piInvocationId} is null and ${t.admissionCursor} is null) or (${t.admissionState} in ('accepted', 'ambiguous') and ${t.admissionStartedAt} is not null and ${t.admittedAt} is not null and ${t.piInvocationId} is not null and ${t.admissionCursor} is not null)`,
+      sql`(${t.admissionState} = 'pending' and ${t.admittedAt} is null and ((${t.admissionStartedAt} is null and ${t.piInvocationId} is null and ${t.admissionCursor} is null) or (${t.admissionStartedAt} is not null and ${t.piInvocationId} is not null and ${t.admissionCursor} is not null))) or (${t.admissionState} in ('accepted', 'ambiguous') and ${t.admissionStartedAt} is not null and ${t.admittedAt} is not null and ${t.piInvocationId} is not null and ${t.admissionCursor} is not null)`,
     ),
     deadlineCheck: check(
       "companion_v3_turns_deadline_check",

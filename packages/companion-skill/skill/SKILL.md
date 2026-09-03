@@ -43,6 +43,12 @@ Hosted runtime protocol 7 never replays a prompt whose dispatch outcome is ambig
 resource-independent durable cleanup that terminates only the captured Pi invocation, preserves the
 original interruption, then marks that occurrence `auto_abandoned` and releases its execution lane.
 There is no human Retry/Cancel gate; later work continues automatically after exact cleanup proof.
+Runtime v3 closes the same safety case without a recovery operation: an outcome-unknown admission
+is immediately interrupted and never replayed, its lane is released, and `Prepared` is invalidated.
+The runtime recycles only the exactly captured Pi invocation on the same persistent Box, rebuilds
+from validated durable summary and complete bounded history under freshly resolved authority, and
+then admits later work. If continuity may be incomplete, the next hosted Companion answer begins
+with one precise context-loss sentence; otherwise it stays silent.
 First-party
 clients bootstrap only the newest bounded thread window, apply monotonic entry deltas, and page
 older durable history; they never truncate the thread or reset the persistent Box/Pi session.

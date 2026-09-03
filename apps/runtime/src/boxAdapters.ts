@@ -196,6 +196,9 @@ export function createRuntimePiControl(options: RuntimeBoxAdapterOptions): Runti
     async terminatePiInvocation(input) {
       return await options.runtime().terminatePiInvocation(input);
     },
+    async resetPiSession(input) {
+      await options.runtime().resetPiSession(input);
+    },
     async startPiDaemon(input) {
       return await options.runtime().startPiDaemon(input);
     },
