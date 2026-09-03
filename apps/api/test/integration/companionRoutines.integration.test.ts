@@ -468,12 +468,16 @@ describe("Companion routines over the real database", () => {
       companionId,
       database,
     }));
-    const entry = thread.entries.find((candidate) => candidate.routine !== null);
-    // The prompt stays durable; the projection is what lets the client show a routine header only.
-    expect(entry).toMatchObject({
-      role: "user",
-      content: "Write the Daily standup summary.",
-      routine: { id: created.id, name: "Daily standup", run_id: entry?.turn_id },
+    expect(thread.entries.some((candidate) => candidate.routine !== null)).toBe(false);
+    expect(JSON.stringify(thread.entries)).not.toContain("Write the Daily standup summary.");
+    const [run] = await integrationSql<Array<{ turnId: string; actorId: string; prompt: string }>>`
+      select turn_row.id::text as "turnId",turn_row.actor_id as "actorId",run.prompt
+      from companion_v3_routine_runs run join companion_v3_turns turn_row on turn_row.id=run.turn_id
+      where run.routine_id=${created.id}::uuid
+    `;
+    expect(run).toEqual({
+      turnId: expect.any(String), actorId: fixture.owner.id,
+      prompt: "Write the Daily standup summary.",
     });
 
     // The conversation list is read by everyone who can see the Companion, and the fire is recorded
@@ -483,11 +487,7 @@ describe("Companion routines over the real database", () => {
       orgId: fixture.orgA,
       database,
     }));
-    expect(listed!.last_message).toMatchObject({
-      role: "user",
-      preview: "",
-      routine_name: "Daily standup",
-    });
+    expect(JSON.stringify(listed!.last_message)).not.toContain("Write the Daily standup summary.");
 
     const [after] = await asActor(fixture.owner, (database) => listCompanionRoutinesV2({
       orgId: fixture.orgA,
@@ -562,13 +562,18 @@ describe("Companion routines over the real database", () => {
         database: integrationDb,
       });
       const [turn] = await integrationDb
-        .select({ id: schema.companionTurns.id })
-        .from(schema.companionTurns)
-        .where(and(
-          eq(schema.companionTurns.routineSnapshotId, created.id),
-          eq(schema.companionTurns.status, "queued"),
+        .select({ id: schema.companionV3Turns.id })
+        .from(schema.companionV3Turns)
+        .innerJoin(schema.companionV3RoutineRuns, and(
+          eq(schema.companionV3RoutineRuns.orgId, schema.companionV3Turns.orgId),
+          eq(schema.companionV3RoutineRuns.companionId, schema.companionV3Turns.companionId),
+          eq(schema.companionV3RoutineRuns.turnId, schema.companionV3Turns.id),
         ))
-        .orderBy(desc(schema.companionTurns.createdAt), desc(schema.companionTurns.id));
+        .where(and(
+          eq(schema.companionV3RoutineRuns.routineSnapshotId, created.id),
+          eq(schema.companionV3Turns.state, "queued"),
+        ))
+        .orderBy(desc(schema.companionV3Turns.createdAt), desc(schema.companionV3Turns.id));
       if (!turn) throw new Error("expected a queued routine turn");
       return turn.id;
     };
@@ -587,15 +592,17 @@ describe("Companion routines over the real database", () => {
       select enabled from companion_routines where id = ${created.id}::uuid
     `;
     expect(afterRollback).toEqual({ enabled: true });
-    const [queuedAfterRollback] = await integrationSql<Array<{ status: string }>>`
-      select status::text as status from companion_turns where id = ${disabledTurnId}::uuid
+    const [queuedAfterRollback] = await integrationSql<Array<{ state: string; outcome: string }>>`
+      select turn_row.state::text as state, run.outcome
+      from companion_v3_turns turn_row join companion_v3_routine_runs run on run.turn_id=turn_row.id
+      where turn_row.id = ${disabledTurnId}::uuid
     `;
-    expect(queuedAfterRollback).toEqual({ status: "queued" });
-    const [startAfterRollback] = await integrationSql<Array<{ status: string }>>`
+    expect(queuedAfterRollback).toEqual({ state: "queued", outcome: "pending" });
+    const startAfterRollback = await integrationSql<Array<{ status: string }>>`
       select status::text as status from companion_operations
       where source_turn_id = ${disabledTurnId}::uuid and kind = 'start'
     `;
-    expect(startAfterRollback).toEqual({ status: "pending" });
+    expect(startAfterRollback).toEqual([]);
 
     await asActor(fixture.owner, (database) => updateCompanionRoutineV2({
       orgId: fixture.orgA,
@@ -605,26 +612,25 @@ describe("Companion routines over the real database", () => {
       database,
     }));
     const [disabledTurn] = await integrationSql<Array<{
-      status: string;
-      errorCode: string | null;
-      errorMessage: string | null;
-      errorAction: string | null;
+      state: string;
+      turnOutcome: string | null;
+      runOutcome: string;
     }>>`
-      select status::text as status, last_error_code as "errorCode",
-        last_error_message as "errorMessage", last_error_action::text as "errorAction"
-      from companion_turns where id = ${disabledTurnId}::uuid
+      select turn_row.state::text as state,turn_row.outcome::text as "turnOutcome",
+        run.outcome as "runOutcome"
+      from companion_v3_turns turn_row join companion_v3_routine_runs run on run.turn_id=turn_row.id
+      where turn_row.id = ${disabledTurnId}::uuid
     `;
     expect(disabledTurn).toEqual({
-      status: "cancelled",
-      errorCode: "routine_disabled",
-      errorMessage: "This scheduled run was skipped because the routine was disabled.",
-      errorAction: "none",
+      state: "cancelled",
+      turnOutcome: "cancelled",
+      runOutcome: "cancelled",
     });
-    const [disabledStart] = await integrationSql<Array<{ status: string }>>`
+    const disabledStart = await integrationSql<Array<{ status: string }>>`
       select status::text as status from companion_operations
       where source_turn_id = ${disabledTurnId}::uuid and kind = 'start'
     `;
-    expect(disabledStart).toEqual({ status: "cancelled" });
+    expect(disabledStart).toEqual([]);
     const [disabledRoutine] = await integrationDb
       .select({ failures: schema.companionRoutines.consecutiveFailures })
       .from(schema.companionRoutines)
@@ -647,34 +653,33 @@ describe("Companion routines over the real database", () => {
     }));
 
     const [deletedTurn] = await integrationSql<Array<{
-      status: string;
+      state: string;
       routineId: string | null;
       routineName: string | null;
-      errorCode: string | null;
-      errorMessage: string | null;
-      errorAction: string | null;
+      turnOutcome: string | null;
+      runOutcome: string;
     }>>`
-      select status::text as status, routine_id::text as "routineId", routine_name as "routineName",
-        last_error_code as "errorCode", last_error_message as "errorMessage",
-        last_error_action::text as "errorAction"
-      from companion_turns where id = ${deletedTurnId}::uuid
+      select turn_row.state::text as state,run.routine_id::text as "routineId",
+        run.routine_name as "routineName",turn_row.outcome::text as "turnOutcome",
+        run.outcome as "runOutcome"
+      from companion_v3_turns turn_row join companion_v3_routine_runs run on run.turn_id=turn_row.id
+      where turn_row.id = ${deletedTurnId}::uuid
     `;
     expect(deletedTurn).toEqual({
-      status: "cancelled",
+      state: "cancelled",
       routineId: null,
       routineName: "Queue cleanup",
-      errorCode: "routine_deleted",
-      errorMessage: "This scheduled run was skipped because the routine was deleted.",
-      errorAction: "none",
+      turnOutcome: "cancelled",
+      runOutcome: "cancelled",
     });
-    const [deletedStart] = await integrationSql<Array<{ status: string }>>`
+    const deletedStart = await integrationSql<Array<{ status: string }>>`
       select status::text as status from companion_operations
       where source_turn_id = ${deletedTurnId}::uuid and kind = 'start'
     `;
-    expect(deletedStart).toEqual({ status: "cancelled" });
+    expect(deletedStart).toEqual([]);
   });
 
-  it("ignores scheduler cancellations and disables only after five genuine run failures", async () => {
+  it("keeps cancellations and execution failures in history without auto-disabling the routine", async () => {
     const created = await asActor(fixture.owner, (database) => createCompanionRoutineV2({
       orgId: fixture.orgA,
       companionId,
@@ -704,31 +709,42 @@ describe("Companion routines over the real database", () => {
         nextFireAt: new Date(Date.now() + 60 * 60 * 1000),
         database: integrationDb,
       });
-      const run = await integrationDb.query.companionTurns.findFirst({
-        where: eq(schema.companionTurns.clientMessageId, clientMessageId),
+      const run = await integrationDb.query.companionV3Turns.findFirst({
+        where: eq(schema.companionV3Turns.clientMessageId, clientMessageId),
       });
       if (!run) throw new Error("expected a fired routine run");
       return run.id;
     };
-    const settleRun = async (runId: string, errorCode: string, errorMessage: string) => {
-      await integrationDb
-        .update(schema.companionTurns)
-        .set({
-          status: "failed",
-          settledAt: new Date(),
-          absoluteDeadlineAt: new Date(Date.now() + 60 * 1000),
-          lastErrorCode: errorCode,
-          lastErrorMessage: errorMessage,
-          lastErrorAction: "retry",
-        })
-        .where(eq(schema.companionTurns.id, runId));
+    const settleRun = async (
+      runId: string,
+      outcome: "failed" | "interrupted",
+      errorCode: string,
+      errorMessage: string,
+    ) => {
+      await integrationSql.begin(async (tx) => {
+        await tx`
+          update companion_v3_turns set state=${outcome}::companion_v3_turn_state,
+            outcome=${outcome}::companion_v3_turn_outcome,outcome_code=${errorCode},
+            outcome_message=${errorMessage},outcome_action='none',settled_at=now(),updated_at=now()
+          where id=${runId}::uuid
+        `;
+        await tx`
+          update companion_v3_routine_runs set outcome=${outcome},settled_at=now()
+          where turn_id=${runId}::uuid
+        `;
+      });
     };
-    const settleNextRun = async (errorCode: string, errorMessage: string) => {
-      await settleRun(await fireNextRun(), errorCode, errorMessage);
+    const settleNextRun = async (
+      outcome: "failed" | "interrupted",
+      errorCode: string,
+      errorMessage: string,
+    ) => {
+      await settleRun(await fireNextRun(), outcome, errorCode, errorMessage);
     };
 
     for (let index = 0; index < 5; index += 1) {
       await settleNextRun(
+        "interrupted",
         "routine_session_cancelled",
         "Routine Pi session was cancelled before launch.",
       );
@@ -740,75 +756,26 @@ describe("Companion routines over the real database", () => {
     }));
     expect(after).toMatchObject({ consecutive_failures: 0, enabled: true });
 
-    for (let index = 0; index < 4; index += 1) {
-      await settleNextRun("provider_unavailable", "The routine provider is unavailable.");
+    for (let index = 0; index < 5; index += 1) {
+      await settleNextRun("failed", "provider_unavailable", "The routine provider is unavailable.");
     }
-    const fifthFailureRunId = await fireNextRun();
-    const queuedBeforeAutoDisable = randomUUID();
-    const queuedClientMessageId = randomUUID();
-    await integrationSql`
-      insert into companion_turns (
-        id, org_id, companion_id, client_message_id, message_event_id, queue_sequence,
-        actor_id, client_surface, status, routine_id, routine_name,
-        routine_snapshot_id, routine_snapshot_created_at
-      )
-      select
-        ${queuedBeforeAutoDisable}::uuid, routine.org_id, routine.companion_id,
-        ${queuedClientMessageId}::uuid, ${`msg:${queuedClientMessageId}`},
-        coalesce((
-          select max(existing.queue_sequence) + 1
-          from companion_turns existing
-          where existing.companion_id = routine.companion_id
-        ), 1),
-        ${fixture.owner.id}, 'web'::companion_client_surface, 'queued'::companion_turn_status,
-        routine.id, routine.name, routine.id, routine.created_at
-      from companion_routines routine
-      where routine.id = ${created.id}::uuid
-    `;
-    await integrationSql`
-      insert into companion_operations (
-        org_id, companion_id, request_id, kind, trigger, actor_id,
-        source_turn_id, runtime_generation
-      ) values (
-        ${fixture.orgA}::uuid, ${companionId}::uuid, ${randomUUID()}::uuid,
-        'start', 'turn', ${fixture.owner.id}, ${queuedBeforeAutoDisable}::uuid, 1
-      )
-    `;
-    await settleRun(
-      fifthFailureRunId,
-      "provider_unavailable",
-      "The routine provider is unavailable.",
-    );
     [after] = await asActor(fixture.owner, (database) => listCompanionRoutinesV2({
       orgId: fixture.orgA,
       companionId,
       database,
     }));
     expect(after).toMatchObject({
-      consecutive_failures: 5,
-      enabled: false,
-      next_fire_at: null,
-      last_error_code: "provider_unavailable",
+      enabled: true,
     });
-    const [purgedAfterAutoDisable] = await integrationSql<Array<{
-      status: string;
-      errorCode: string | null;
-      errorMessage: string | null;
+    const [history] = await integrationSql<Array<{
+      failed: number;
+      interrupted: number;
     }>>`
-      select status::text as status, last_error_code as "errorCode",
-        last_error_message as "errorMessage"
-      from companion_turns where id = ${queuedBeforeAutoDisable}::uuid
+      select count(*) filter(where outcome='failed')::integer as failed,
+        count(*) filter(where outcome='interrupted')::integer as interrupted
+      from companion_v3_routine_runs where routine_snapshot_id=${created.id}::uuid
     `;
-    expect(purgedAfterAutoDisable).toEqual({
-      status: "cancelled",
-      errorCode: "routine_disabled",
-      errorMessage: "This scheduled run was skipped because the routine was disabled.",
-    });
-    const [autoDisabledStart] = await integrationSql<Array<{ status: string }>>`
-      select status::text as status from companion_operations
-      where source_turn_id = ${queuedBeforeAutoDisable}::uuid and kind = 'start'
-    `;
-    expect(autoDisabledStart).toEqual({ status: "cancelled" });
+    expect(history).toEqual({ failed: 5, interrupted: 5 });
   });
 
   it("does not apply an old run outcome to a recreated routine generation", async () => {
@@ -838,9 +805,9 @@ describe("Companion routines over the real database", () => {
       nextFireAt: new Date(Date.now() + 60 * 60 * 1000),
       database: integrationDb,
     });
-    const oldRun = await integrationDb.query.companionTurns.findFirst({
-      where: eq(schema.companionTurns.routineSnapshotId, routineId),
-      orderBy: (turn, { desc }) => [desc(turn.createdAt), desc(turn.id)],
+    const oldRun = await integrationDb.query.companionV3RoutineRuns.findFirst({
+      where: eq(schema.companionV3RoutineRuns.routineSnapshotId, routineId),
+      orderBy: (run, { desc }) => [desc(run.createdAt), desc(run.turnId)],
     });
     if (!oldRun) throw new Error("expected the original routine run");
 
@@ -858,17 +825,18 @@ describe("Companion routines over the real database", () => {
       database,
     }));
 
-    await integrationDb
-      .update(schema.companionTurns)
-      .set({
-        status: "failed",
-        settledAt: new Date(),
-        absoluteDeadlineAt: new Date(Date.now() + 60 * 1000),
-        lastErrorCode: "provider_unavailable",
-        lastErrorMessage: "The old routine provider was unavailable.",
-        lastErrorAction: "retry",
-      })
-      .where(eq(schema.companionTurns.id, oldRun.id));
+    await integrationSql.begin(async (tx) => {
+      await tx`
+        update companion_v3_turns set state='failed',outcome='failed',
+          outcome_code='provider_unavailable',
+          outcome_message='The old routine provider was unavailable.',outcome_action='none',
+          settled_at=now(),updated_at=now() where id=${oldRun.turnId}::uuid
+      `;
+      await tx`
+        update companion_v3_routine_runs set outcome='failed',settled_at=now()
+        where turn_id=${oldRun.turnId}::uuid
+      `;
+    });
 
     const [replacement] = await asActor(fixture.owner, (database) => listCompanionRoutinesV2({
       orgId: fixture.orgA,
@@ -914,16 +882,12 @@ describe("Companion routines over the real database", () => {
     });
 
     const [run] = await integrationDb
-      .select({ id: schema.companionTurns.id })
-      .from(schema.companionTurns)
-      .where(eq(schema.companionTurns.routineSnapshotId, created.id));
+      .select({ id: schema.companionV3RoutineRuns.turnId })
+      .from(schema.companionV3RoutineRuns)
+      .where(eq(schema.companionV3RoutineRuns.routineSnapshotId, created.id));
     expect(run).toBeDefined();
-    const marker = await integrationDb.query.companionTranscriptEntries.findFirst({
-      where: eq(schema.companionTranscriptEntries.turnId, run!.id),
-    });
-    expect(marker).toMatchObject({ routineName: "Deployment check" });
 
-    await integrationDb.insert(schema.companionRoutineRunEntries).values([
+    await integrationDb.insert(schema.companionV3RoutineRunEntries).values([
       {
         orgId: fixture.orgA,
         companionId,
@@ -943,40 +907,34 @@ describe("Companion routines over the real database", () => {
         content: "Prepared the terminal notification.",
       },
     ]);
-    const [substrate] = await integrationDb
-      .insert(schema.companionRoutineContextSubstrates)
-      .values({
-        orgId: fixture.orgA,
-        companionId,
-        summarySha256: null,
-        builtThroughOrdinal: marker?.ordinal ?? 0,
-        content: "Pinned main conversation context.",
-        sha256: "f".repeat(64),
-      })
-      .returning({ id: schema.companionRoutineContextSubstrates.id });
-    await integrationDb
-      .update(schema.companionTurns)
-      .set({ routineIsolated: true, routineContextSubstrateId: substrate!.id })
-      .where(eq(schema.companionTurns.id, run!.id));
-    const [returned] = await integrationSql<{ accepted: boolean }[]>`
-      select companion_runtime_surface_routine_return(
-        ${fixture.orgA}::uuid, ${companionId}::uuid, ${run!.id}::uuid,
-        'notify', 'The deployment is healthy.'
-      ) as accepted
-    `;
     const mainEntryEventId = `routine-return:${run!.id}`;
-    expect(returned).toEqual({ accepted: true });
-    const storedReturn = await integrationDb.query.companionRoutineReturns.findFirst({
-      where: eq(schema.companionRoutineReturns.runId, run!.id),
+    await integrationSql.begin(async (tx) => {
+      await tx`
+        insert into companion_threads(org_id,companion_id,next_ordinal,last_message_at)
+        values(${fixture.orgA}::uuid,${companionId}::uuid,1,now())
+        on conflict(companion_id) do update set next_ordinal=companion_threads.next_ordinal+1,
+          last_message_at=now(),updated_at=now()
+      `;
+      const [thread] = await tx<Array<{ ordinal: number }>>`
+        select next_ordinal-1 as ordinal from companion_threads
+        where companion_id=${companionId}::uuid
+      `;
+      await tx`
+        insert into companion_transcript_entries(
+          org_id,companion_id,event_id,ordinal,role,content)
+        values(${fixture.orgA}::uuid,${companionId}::uuid,${mainEntryEventId},
+          ${thread!.ordinal},'assistant','The deployment is healthy.')
+      `;
+      await tx`
+        update companion_v3_turns set state='succeeded',outcome='succeeded',settled_at=now(),
+          updated_at=now() where id=${run!.id}::uuid
+      `;
+      await tx`
+        update companion_v3_routine_runs set outcome='notify',surface_mode='notify',
+          main_entry_event_id=${mainEntryEventId},next_ordinal=2,settled_at=now()
+        where turn_id=${run!.id}::uuid
+      `;
     });
-    expect(storedReturn).toMatchObject({ mainEntryEventId, relayTurnId: null, mode: "notify" });
-    const [replayed] = await integrationSql<{ accepted: boolean }[]>`
-      select companion_runtime_surface_routine_return(
-        ${fixture.orgA}::uuid, ${companionId}::uuid, ${run!.id}::uuid,
-        'relay', 'This later call must not win.'
-      ) as accepted
-    `;
-    expect(replayed).toEqual({ accepted: false });
 
     const projectedThread = await asActor(fixture.owner, (database) => readCompanionThreadV2({
       actor: fixture.owner,
@@ -985,20 +943,17 @@ describe("Companion routines over the real database", () => {
       database,
     }));
     expect(projectedThread.entries.map((entry) => entry.event_id)).toEqual([
-      marker!.eventId,
       mainEntryEventId,
     ]);
     expect(JSON.stringify(projectedThread.entries)).not.toContain("Inspected the deployment");
     expect(JSON.stringify(projectedThread.entries)).not.toContain("This later call must not win.");
 
-    await integrationDb
-      .update(schema.companionTurns)
-      .set({
-        lastErrorCode: "provider_unavailable",
-        lastErrorMessage: "Reconnect the routine provider credential.",
-        lastErrorAction: "reconnect_provider",
-      })
-      .where(eq(schema.companionTurns.id, run!.id));
+    await integrationSql`
+      update companion_v3_turns set state='failed',outcome='failed',
+        outcome_code='provider_unavailable',
+        outcome_message='Reconnect the routine provider credential.',
+        outcome_action='reconnect_provider',updated_at=now() where id=${run!.id}::uuid
+    `;
     const ownerDetail = await asActor(fixture.owner, (database) => getCompanionRoutineRunV2({
       orgId: fixture.orgA,
       companionId,
@@ -1118,10 +1073,16 @@ describe("Companion routines over the real database", () => {
       database: integrationDb,
     });
 
-    const [run] = await integrationDb
-      .select({ id: schema.companionTurns.id })
-      .from(schema.companionTurns)
-      .where(eq(schema.companionTurns.routineSnapshotId, created.id));
+    const legacyRows = await integrationSql.begin(async (tx) => {
+      await tx`select set_config('app.org_id',${fixture.orgA},true),
+        set_config('app.user_id',${fixture.owner.id},true)`;
+      return tx<Array<{ turn: { id: string } }>>`
+        select turn from companion_api_enqueue_turn(
+          ${fixture.orgA}::uuid,${companionId}::uuid,${randomUUID()}::uuid,
+          'Legacy routine prompt','web','[]'::jsonb,${created.id}::uuid,'Legacy compatibility')
+      `;
+    });
+    const run = { id: legacyRows[0]!.turn.id };
     const marker = await integrationDb.query.companionTranscriptEntries.findFirst({
       where: eq(schema.companionTranscriptEntries.turnId, run!.id),
     });
@@ -1151,14 +1112,14 @@ describe("Companion routines over the real database", () => {
       routineId: created.id,
       database,
     }));
-    expect(history.runs).toEqual([expect.objectContaining({
+    expect(history.runs).toEqual(expect.arrayContaining([expect.objectContaining({
       run_id: run!.id,
       status: "succeeded",
       outcome: "surfaced",
       surface_mode: "notify",
       main_entry_event_id: legacyReplyEventId,
       relay_turn_id: null,
-    })]);
+    })]));
     const detail = await asActor(fixture.owner, (database) => getCompanionRoutineRunV2({
       orgId: fixture.orgA,
       companionId,
@@ -1202,46 +1163,52 @@ describe("Companion routines over the real database", () => {
       database: integrationDb,
     });
     const [run] = await integrationDb
-      .select({ id: schema.companionTurns.id })
-      .from(schema.companionTurns)
-      .where(eq(schema.companionTurns.routineSnapshotId, created.id));
-    const marker = await integrationDb.query.companionTranscriptEntries.findFirst({
-      where: eq(schema.companionTranscriptEntries.turnId, run!.id),
+      .select({ id: schema.companionV3RoutineRuns.turnId })
+      .from(schema.companionV3RoutineRuns)
+      .where(eq(schema.companionV3RoutineRuns.routineSnapshotId, created.id));
+    const relayClientMessageId = randomUUID();
+    const mainEntryEventId = `routine-return:${run!.id}`;
+    const [relay] = await integrationSql.begin(async (tx) => {
+      const admitted = await tx<Array<{ turnId: string }>>`
+        select turn_id::text as "turnId" from companion_v3_admit_turn(
+          ${fixture.orgA}::uuid,${companionId}::uuid,${relayClientMessageId}::uuid,
+          ${`msg:${relayClientMessageId}`},${fixture.owner.id},'main')
+      `;
+      await tx`
+        update companion_v3_turns set routine_relay_source_event_id=${mainEntryEventId}
+        where id=${admitted[0]!.turnId}::uuid
+      `;
+      await tx`
+        insert into companion_threads(org_id,companion_id,next_ordinal,last_message_at)
+        values(${fixture.orgA}::uuid,${companionId}::uuid,1,now())
+        on conflict(companion_id) do update set next_ordinal=companion_threads.next_ordinal+1,
+          last_message_at=now(),updated_at=now()
+      `;
+      const [thread] = await tx<Array<{ ordinal: number }>>`
+        select next_ordinal-1 as ordinal from companion_threads where companion_id=${companionId}::uuid
+      `;
+      await tx`
+        insert into companion_transcript_entries(org_id,companion_id,event_id,ordinal,role,content)
+        values(${fixture.orgA}::uuid,${companionId}::uuid,${mainEntryEventId},${thread!.ordinal},
+          'assistant','Please explain the failed deployment.')
+      `;
+      await tx`
+        update companion_v3_turns set state='succeeded',outcome='succeeded',settled_at=now(),updated_at=now()
+        where id=${run!.id}::uuid
+      `;
+      await tx`
+        update companion_v3_routine_runs set outcome='relay',surface_mode='relay',
+          main_entry_event_id=${mainEntryEventId},relay_turn_id=${admitted[0]!.turnId}::uuid,settled_at=now()
+        where turn_id=${run!.id}::uuid
+      `;
+      return admitted;
     });
-    const [substrate] = await integrationDb
-      .insert(schema.companionRoutineContextSubstrates)
-      .values({
-        orgId: fixture.orgA,
-        companionId,
-        summarySha256: null,
-        builtThroughOrdinal: marker?.ordinal ?? 0,
-        content: "Pinned relay context.",
-        sha256: "e".repeat(64),
-      })
-      .returning({ id: schema.companionRoutineContextSubstrates.id });
-    await integrationDb
-      .update(schema.companionTurns)
-      .set({ routineIsolated: true, routineContextSubstrateId: substrate!.id })
-      .where(eq(schema.companionTurns.id, run!.id));
-
-    const [returned] = await integrationSql<{ accepted: boolean }[]>`
-      select companion_runtime_surface_routine_return(
-        ${fixture.orgA}::uuid, ${companionId}::uuid, ${run!.id}::uuid,
-        'relay', 'Please explain the failed deployment.'
-      ) as accepted
-    `;
-    expect(returned).toEqual({ accepted: true });
-    const storedReturn = await integrationDb.query.companionRoutineReturns.findFirst({
-      where: eq(schema.companionRoutineReturns.runId, run!.id),
-    });
-    expect(storedReturn?.relayTurnId).not.toBeNull();
-    const relayTurn = await integrationDb.query.companionTurns.findFirst({
-      where: eq(schema.companionTurns.id, storedReturn!.relayTurnId!),
+    const relayTurn = await integrationDb.query.companionV3Turns.findFirst({
+      where: eq(schema.companionV3Turns.id, relay!.turnId),
     });
     expect(relayTurn).toMatchObject({
-      routineSnapshotId: null,
       routineRelaySourceEventId: `routine-return:${run!.id}`,
-      status: "queued",
+      state: "queued",
     });
 
     const projectedThread = await asActor(fixture.owner, (database) => readCompanionThreadV2({

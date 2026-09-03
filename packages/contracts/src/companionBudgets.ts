@@ -237,6 +237,8 @@ export const COMPANION_SQL_BUDGET_CONTRACT: Readonly<Record<string, readonly str
   companion_v3_runtime_claim_warm_v6: ["2 hours 5 minutes"],
   companion_v3_runtime_claim_background_internal_v7: ["2 hours 5 minutes"],
   companion_v3_runtime_project_background_page_v7: ["10 minutes"],
+  // COMPANION_ROUTINE_MISSED_GRACE_MS twin used by the scheduler fire fence.
+  companion_fire_routine: ["10 minutes"],
   companion_v3_runtime_sweep_decisions: ["10 minutes"],
   companion_v3_api_enqueue_warm_turn: ["10 minutes"],
   companion_v3_bound_preparation_clock: ["2 hours 15 minutes"],

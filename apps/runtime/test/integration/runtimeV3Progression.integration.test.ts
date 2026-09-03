@@ -4220,7 +4220,7 @@ describe("Runtime v3 progression facts", () => {
     });
   });
 
-  it("persists one Owner routine occurrence and supersedes only stale pending work", async () => {
+  it("persists one Owner routine occurrence and skips a piled-up instant", async () => {
     const routineId = randomUUID();
     const firstId = randomUUID();
     const secondId = randomUUID();
@@ -4253,7 +4253,8 @@ describe("Runtime v3 progression facts", () => {
       await ownerSql`update public.companion_routines set next_fire_at=${secondDue},
         fire_available_at=clock_timestamp() where id=${routineId}::uuid`;
       await workerSql`select * from public.companion_claim_due_routines('worker-routine-newer',1,60)`;
-      await workerSql`select * from public.companion_fire_routine('worker-routine-newer',
+      const piled = await workerSql<Array<{ outcome: string }>>`
+        select outcome from public.companion_fire_routine('worker-routine-newer',
         ${ids.org}::uuid,${routineId}::uuid,${secondId}::uuid,${secondDue},${future})`;
       const occurrences = await ownerSql<Array<{
         actorId: string; lane: string; state: string; outcome: string;
@@ -4262,9 +4263,9 @@ describe("Runtime v3 progression facts", () => {
         join public.companion_v3_turns turn_row on turn_row.id=run.turn_id
         where run.routine_id=${routineId}::uuid order by run.scheduled_for`;
       expect(occurrences).toEqual([
-        { actorId: ids.owner, lane: "background", state: "cancelled", outcome: "superseded" },
         { actorId: ids.owner, lane: "background", state: "queued", outcome: "pending" },
       ]);
+      expect(piled).toEqual([{ outcome: "skipped_pileup" }]);
 
       await ownerSql`update public.companion_routines set next_fire_at=${secondDue},
         fire_available_at=clock_timestamp() where id=${routineId}::uuid`;
@@ -4940,13 +4941,26 @@ describe("Runtime v3 progression facts", () => {
       const retryBases = [5, 15, 30, 60, 300];
       for (let attempt = 0; attempt <= retryBases.length; attempt += 1) {
         active = await startTrigger(invalidTurn, `runtime-trigger-invalid-${attempt}`);
+        const delegatedMalformed = attempt === 2 || attempt === 3;
         const wrongReturn = {
           sequence: 1n, type: "routine_return" as const,
-          call_id: `wrong-return-${attempt}`, mode: "notify" as const, message: "Wrong mode.",
+          call_id: `wrong-return-${attempt}`,
+          mode: (delegatedMalformed ? "relay" : "notify") as "relay" | "notify",
+          message: attempt === 2 ? "" : "Wrong mode.",
         };
+        const invalidReturns = attempt === 0
+          ? [wrongReturn, { ...wrongReturn, sequence: 2n, call_id: "extra-return" }]
+          : [wrongReturn];
+        const invalidEntries = attempt === 3 ? [{
+          sequence: "not-a-sequence" as unknown as bigint,
+          type: "assistant" as const,
+          entry_key: "malformed-sequence",
+          content: "Malformed private sequence.",
+        }] : invalidReturns;
         const invalidProjection = {
-          throughCursor: 1n, assistant: [], privateEntries: [wrongReturn], decisions: [],
-          routineReturns: [wrongReturn], needsInput: false, settled: false,
+          throughCursor: BigInt(invalidReturns.length), assistant: [],
+          privateEntries: invalidEntries, decisions: [], routineReturns: invalidReturns,
+          needsInput: false, settled: false,
           processExited: false, activity: true,
         };
         await expect(persistence.project(active.claim, invalidProjection)).resolves.toBe("failed");
