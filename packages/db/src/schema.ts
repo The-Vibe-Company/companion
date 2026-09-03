@@ -1490,6 +1490,10 @@ export const companionV3Turns = pgTable(
       (): AnyPgColumn => companionDelegations.id,
       { onDelete: "set null" },
     ),
+    delegationCancelRequestedAt: timestamp("delegation_cancel_requested_at", {
+      withTimezone: true,
+    }),
+    delegationCancelCommandId: uuid("delegation_cancel_command_id"),
     createdAt: now(),
     updatedAt: updatedAt(),
   },

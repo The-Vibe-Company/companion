@@ -602,6 +602,28 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
         ? projected
         : projected === "projected";
     },
+    async pendingDelegationCancel(claim, signal) {
+      const rows = await abortable(sql<Array<{ turnId: string; commandId: string }>>`
+        select turn_id as "turnId",command_id as "commandId"
+        from public.companion_v3_runtime_pending_delegation_cancel(
+          ${claim.orgId}::uuid,${claim.companionId}::uuid,${claim.turn.id}::uuid,
+          ${claim.fence.token}::uuid,${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,7
+        )
+      `, signal);
+      return rows[0] ?? null;
+    },
+    async finishDelegationCancel(claim, input, signal) {
+      const rows = await abortable(sql<Array<{ finished: boolean }>>`
+        select public.companion_v3_runtime_finish_delegation_cancel(
+          ${claim.orgId}::uuid,${claim.companionId}::uuid,${claim.turn.id}::uuid,
+          ${input.turnId}::uuid,${claim.fence.token}::uuid,
+          ${claim.fence.epoch.toString()}::bigint,
+          ${claim.fence.gateEpoch.toString()}::bigint,7
+        ) as finished
+      `, signal);
+      return rows[0]?.finished === true;
+    },
     async beginDecisionAction(claim, signal) {
       const rows = await abortable(sql<DecisionActionRow[]>`
         select action_kind as kind, decision_id as "decisionId", command_id as "commandId",

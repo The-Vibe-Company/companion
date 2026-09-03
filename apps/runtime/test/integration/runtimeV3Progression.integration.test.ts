@@ -5137,8 +5137,16 @@ describe("Runtime v3 progression facts", () => {
       createdDelegations.push(value.delegation.id);
       return { ...value, clientId, delegationId, digest };
     };
-    const settle = async (turnId: string, companionId: string, content?: string) => {
-      await makeActive(turnId, companionId);
+    const settle = async (
+      turnId: string,
+      companionId: string,
+      content?: string,
+      responseTurnId = turnId,
+    ) => {
+      await makeAdmitted(turnId, companionId, responseTurnId);
+      await ownerSql`update public.companion_v3_turns set state='running'
+        where org_id=${ids.org}::uuid and companion_id=${companionId}::uuid
+          and id=${turnId}::uuid and state='admitted'`;
       if (content) {
         await ownerSql`with advanced as (
           update public.companion_threads set next_ordinal=next_ordinal+1,
@@ -5147,7 +5155,7 @@ describe("Runtime v3 progression facts", () => {
           returning next_ordinal-1 as ordinal,projection_sequence
         ) insert into public.companion_transcript_entries(
           org_id,companion_id,event_id,ordinal,projection_sequence,role,content)
-        select ${ids.org}::uuid,${companionId}::uuid,${`v3:${turnId}:1`},ordinal,
+        select ${ids.org}::uuid,${companionId}::uuid,${`v3:${responseTurnId}:1`},ordinal,
           projection_sequence,'assistant',${content} from advanced`;
       }
       await ownerSql`update public.companion_v3_turns set state='succeeded',outcome='succeeded',
@@ -5210,10 +5218,11 @@ describe("Runtime v3 progression facts", () => {
       expect(fifo.slice(0,2).map((row) => row.id)).toEqual([ahead.turnId,notify.target_turn.id]);
       const sourceTurnCount = await ownerSql<Array<{ count: string }>>`select count(*)::text as count
         from public.companion_v3_turns where companion_id=${ids.companion}::uuid`;
-      await makeAdmitted(notify.target_turn.id,targetB);
+      await makeActive(ahead.turnId,targetB);
+      await makeAdmitted(notify.target_turn.id,targetB,ahead.turnId);
       expect(await ownerSql`select status::text as status from public.companion_delegations
         where id=${notify.delegation.id}::uuid`).toEqual([{ status: "dispatching" }]);
-      await settle(notify.target_turn.id,targetB,"durable target result");
+      await settle(notify.target_turn.id,targetB,"durable target result",ahead.turnId);
       expect(await ownerSql`select content from public.companion_transcript_entries
         where companion_id=${ids.companion}::uuid and delegation->>'id'=${notify.delegation.id}
           and delegation->>'direction'='response'`).toEqual([{ content: "durable target result" }]);
@@ -5237,7 +5246,8 @@ describe("Runtime v3 progression facts", () => {
       const cancelled = await delegate({ source: ids.companion,target: targetC,
         sourceTurn: source.turnId,key: "cancel-v3",mode: "notify",content: "cancel target" });
       await makeActive(cancelled.target_turn.id,targetC);
-      await ownerSql`update public.companion_v3_lane_leases set claim_token=gen_random_uuid(),
+      const cancelClaimToken = randomUUID();
+      await ownerSql`update public.companion_v3_lane_leases set claim_token=${cancelClaimToken}::uuid,
         claim_epoch=claim_epoch+1,gate_epoch=(select gate_epoch from public.companion_runtime_control
           where id='runtime-v2'),executor_id='cancel-test',turn_id=${cancelled.target_turn.id}::uuid,
         claimed_at=clock_timestamp(),renewed_at=clock_timestamp(),
@@ -5250,9 +5260,48 @@ describe("Runtime v3 progression facts", () => {
         const replay = await sql<Array<{ turn: { status: string } }>>`
           select turn from public.companion_v3_api_cancel_delegation_turn(
             ${ids.org}::uuid,${ids.companion}::uuid,${cancelled.delegation.id}::uuid)`;
-        expect(first[0]?.turn.status).toBe("cancelled");
-        expect(replay[0]?.turn.status).toBe("cancelled");
+        expect(first[0]?.turn.status).toBe("running");
+        expect(replay[0]?.turn.status).toBe("running");
       });
+      const [cancelFacts] = await ownerSql<Array<{
+        commandId: string; claimEpoch: string; gateEpoch: string;
+      }>>`select turn_row.command_id as "commandId",lease.claim_epoch::text as "claimEpoch",
+          lease.gate_epoch::text as "gateEpoch"
+        from public.companion_v3_turns turn_row
+        join public.companion_v3_lane_leases lease on lease.org_id=turn_row.org_id
+          and lease.companion_id=turn_row.companion_id and lease.lane=turn_row.lane
+        where turn_row.id=${cancelled.target_turn.id}::uuid`;
+      const cancelClaim = {
+        orgId: ids.org,
+        companionId: targetC,
+        turn: {
+          id: cancelled.target_turn.id,
+          commandId: cancelFacts!.commandId,
+          lane: "main" as const,
+          state: "running" as const,
+        },
+        fence: {
+          token: cancelClaimToken,
+          epoch: BigInt(cancelFacts!.claimEpoch),
+          gateEpoch: BigInt(cancelFacts!.gateEpoch),
+        },
+      };
+      const cancellationPersistence = createRuntimeV3PostgresWarmTurnPersistence(runtimeSql);
+      const abort = vi.fn().mockResolvedValue({
+        outcome: "accepted" as const,invocationId: "pi-target-c",
+      });
+      await expect(createRuntimeV3WarmTurnAdvance({
+        persistence: cancellationPersistence,
+        pi: { prompt: vi.fn(),read: vi.fn(),acknowledge: vi.fn(),abort },
+      })(cancelClaim)).resolves.toEqual({ kind: "release" });
+      expect(abort).toHaveBeenCalledWith(expect.objectContaining({
+        boxId: "bx_23456789",turnId: cancelled.target_turn.id,
+      }));
+      await expect(createRuntimeV3PostgresWarmConvergence(runtimeSql).completeProgression(
+        cancelClaim,{ kind: "release" },
+      )).resolves.toBe(true);
+      expect(await ownerSql`select state::text as state from public.companion_v3_turns
+        where id=${cancelled.target_turn.id}::uuid`).toEqual([{ state: "cancelled" }]);
       const afterCancellation = await enqueue(targetC,"ordinary work after cancellation");
       expect(await ownerSql`select id,state::text as state from public.companion_v3_turns
         where org_id=${ids.org}::uuid and companion_id=${targetC}::uuid

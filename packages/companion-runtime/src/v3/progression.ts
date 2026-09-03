@@ -416,6 +416,15 @@ export interface RuntimeV3WarmTurnPersistence {
     projection: RuntimeV3WarmTurnProjection,
     signal?: AbortSignal,
   ): Promise<boolean | "succeeded" | "failed" | "detached">;
+  pendingDelegationCancel?(
+    claim: RuntimeV3Claim,
+    signal?: AbortSignal,
+  ): Promise<{ turnId: string; commandId: string } | null>;
+  finishDelegationCancel?(
+    claim: RuntimeV3Claim,
+    input: { turnId: string },
+    signal?: AbortSignal,
+  ): Promise<boolean>;
   beginDecisionAction?(
     claim: RuntimeV3Claim,
     signal?: AbortSignal,
@@ -603,6 +612,35 @@ export function createRuntimeV3WarmTurnAdvance(
       signal?.throwIfAborted();
       let invocationId = material.piInvocationId;
       let cursor = material.cursor;
+      if (options.persistence.pendingDelegationCancel
+        && options.persistence.finishDelegationCancel && options.pi.abort) {
+        const cancellation = signal
+          ? await options.persistence.pendingDelegationCancel(claim, signal)
+          : await options.persistence.pendingDelegationCancel(claim);
+        if (cancellation) {
+          const cancelled = await options.pi.abort({
+            boxId: material.boxId,
+            commandId: cancellation.commandId,
+            turnId: claim.turn.id,
+            signal: boundedSignal(signal, COMPANION_RUNTIME_V3_BUDGETS.heartbeatCommandMs),
+          });
+          if (cancelled.outcome === "ambiguous"
+            || (cancelled.outcome === "rejected"
+              && cancelled.code !== "no_active_attempt"
+              && cancelled.code !== "attempt_mismatch")) {
+            return { kind: "release" };
+          }
+          signal?.throwIfAborted();
+          if (signal
+            ? await options.persistence.finishDelegationCancel(
+              claim, { turnId: cancellation.turnId }, signal,
+            )
+            : await options.persistence.finishDelegationCancel(
+              claim, { turnId: cancellation.turnId },
+            )) return { kind: "release" };
+          return { kind: "release" };
+        }
+      }
       if (claim.turn.state === "succeeded" || claim.turn.state === "failed") {
         projectionPendingAck = "terminal";
         await options.pi.acknowledge({

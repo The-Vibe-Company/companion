@@ -604,6 +604,40 @@ describe("Runtime v3 progression interface", () => {
     expect(read).not.toHaveBeenCalled();
   });
 
+  it("aborts Pi before durably cancelling an accepted delegated main Turn", async () => {
+    const pendingDelegationCancel = vi.fn().mockResolvedValue({
+      turnId: "85312651-3171-4ac8-a99c-8af0875951aa",
+      commandId: "bfdd76e0-a78e-4fc7-8230-f4dfd3caf391",
+    });
+    const finishDelegationCancel = vi.fn().mockResolvedValue(true);
+    const abort = vi.fn().mockResolvedValue({
+      outcome: "accepted" as const, invocationId: "invocation-1",
+    });
+    const read = vi.fn();
+    const advance = createRuntimeV3WarmTurnAdvance({
+      persistence: {
+        authorize: vi.fn().mockResolvedValue({
+          boxId: "bx_23456789", piInvocationId: "invocation-1", content: "active", cursor: 0n,
+        }),
+        beginAdmission: vi.fn(), recordAdmission: vi.fn(), project: vi.fn(),
+        pendingDelegationCancel, finishDelegationCancel,
+      },
+      pi: { prompt: vi.fn(), read, acknowledge: vi.fn(), abort },
+    });
+    const claim = { ...mainClaim, turn: { ...acceptedTurn, state: "running" as const } };
+
+    await expect(advance(claim)).resolves.toEqual({ kind: "release" });
+    expect(abort).toHaveBeenCalledWith(expect.objectContaining({
+      boxId: "bx_23456789",
+      commandId: "bfdd76e0-a78e-4fc7-8230-f4dfd3caf391",
+      turnId: claim.turn.id,
+    }));
+    expect(finishDelegationCancel).toHaveBeenCalledWith(claim, {
+      turnId: "85312651-3171-4ac8-a99c-8af0875951aa",
+    });
+    expect(read).not.toHaveBeenCalled();
+  });
+
   it("releases a decision handoff whose durable begin reply was lost before Pi", async () => {
     const respondExtensionUi = vi.fn();
     const advance = createRuntimeV3WarmTurnAdvance({

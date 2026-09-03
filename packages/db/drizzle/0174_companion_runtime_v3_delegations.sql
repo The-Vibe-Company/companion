@@ -12,7 +12,9 @@ ALTER TABLE public.companion_control_invocations
 
 ALTER TABLE public.companion_v3_turns
   ADD COLUMN delegation_id uuid REFERENCES public.companion_delegations(id) ON DELETE SET NULL,
-  ADD COLUMN delegation_return_id uuid REFERENCES public.companion_delegations(id) ON DELETE SET NULL;
+  ADD COLUMN delegation_return_id uuid REFERENCES public.companion_delegations(id) ON DELETE SET NULL,
+  ADD COLUMN delegation_cancel_requested_at timestamptz,
+  ADD COLUMN delegation_cancel_command_id uuid;
 --> statement-breakpoint
 
 CREATE OR REPLACE FUNCTION public.companion_resolve_control_token(p_token_hash text)
@@ -371,7 +373,8 @@ BEGIN
   SELECT left(entry.content,16384) INTO v_content
   FROM public.companion_transcript_entries entry
   WHERE entry.org_id=v_delegation.org_id AND entry.companion_id=NEW.companion_id
-    AND entry.event_id LIKE 'v3:'||NEW.id::text||':%' AND entry.role='assistant'
+    AND entry.event_id LIKE 'v3:'||COALESCE(NEW.response_turn_id,NEW.id)::text||':%'
+    AND entry.role='assistant'
   ORDER BY entry.ordinal DESC LIMIT 1;
   v_content:=COALESCE(NULLIF(v_content,''),CASE NEW.state
     WHEN 'succeeded' THEN v_delegation.target_companion_name||
@@ -446,8 +449,8 @@ AFTER UPDATE OF state ON public.companion_v3_turns FOR EACH ROW
 EXECUTE FUNCTION public.companion_v3_surface_delegation_result();
 --> statement-breakpoint
 
--- Cancellation remains an ordinary v3 main-Turn transition. Clearing and advancing the exact
--- lease fences any late projection while making the next FIFO item claimable immediately.
+-- Queued cancellation is immediately terminal. Accepted cancellation is durable intent consumed
+-- by the ordinary fenced main-Turn progression, which aborts Pi before terminalizing the response.
 CREATE FUNCTION public.companion_v3_api_cancel_delegation_turn(
   p_org_id uuid,p_source_companion_id uuid,p_delegation_id uuid
 ) RETURNS TABLE(turn jsonb)
@@ -475,21 +478,112 @@ BEGIN
     AND turn_row.id=v_delegation.target_turn_id AND turn_row.lane='main'
     AND turn_row.delegation_id=v_delegation.id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Delegation target Turn not found' USING ERRCODE='22023'; END IF;
-  IF v_turn.state NOT IN ('succeeded','failed','interrupted','cancelled') THEN
-    UPDATE public.companion_v3_lane_leases lease SET claim_token=NULL,
-      claim_epoch=lease.claim_epoch+1,gate_epoch=NULL,executor_id=NULL,turn_id=NULL,
-      claimed_at=NULL,renewed_at=NULL,expires_at=NULL,updated_at=v_now
-    WHERE lease.org_id=p_org_id AND lease.companion_id=v_delegation.target_companion_id
-      AND lease.lane='main' AND lease.turn_id=v_turn.id;
+  IF v_turn.state='queued' AND v_turn.admission_state='pending'
+    AND v_turn.admission_started_at IS NULL THEN
     UPDATE public.companion_v3_turns turn_row SET state='cancelled',outcome='cancelled',
       outcome_code=NULL,outcome_message=NULL,outcome_action=NULL,
       inactivity_deadline_at=NULL,absolute_deadline_at=NULL,settled_at=v_now,updated_at=v_now
+    WHERE turn_row.org_id=p_org_id AND turn_row.companion_id=v_delegation.target_companion_id
+      AND turn_row.id=v_turn.id RETURNING * INTO v_turn;
+  ELSIF v_turn.state IN ('queued','admitted','running','needs_input') THEN
+    UPDATE public.companion_v3_turns turn_row SET
+      delegation_cancel_requested_at=COALESCE(turn_row.delegation_cancel_requested_at,v_now),
+      delegation_cancel_command_id=COALESCE(turn_row.delegation_cancel_command_id,gen_random_uuid()),
+      updated_at=v_now
     WHERE turn_row.org_id=p_org_id AND turn_row.companion_id=v_delegation.target_companion_id
       AND turn_row.id=v_turn.id RETURNING * INTO v_turn;
   END IF;
   turn:=public.companion_v3_public_turn(v_turn); RETURN NEXT;
 END $$;
 REVOKE ALL ON FUNCTION public.companion_v3_api_cancel_delegation_turn(uuid,uuid,uuid) FROM PUBLIC;
+--> statement-breakpoint
+
+CREATE FUNCTION public.companion_v3_runtime_pending_delegation_cancel(
+  p_org_id uuid,p_companion_id uuid,p_turn_id uuid,p_claim_token uuid,
+  p_claim_epoch bigint,p_gate_epoch bigint,p_protocol integer
+) RETURNS TABLE(turn_id uuid,command_id uuid)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public SET row_security=on AS $$
+DECLARE v_now timestamptz:=clock_timestamp();
+BEGIN
+  IF p_protocol<>7 THEN
+    RAISE EXCEPTION 'Runtime v3 protocol 7 is required' USING ERRCODE='42501';
+  END IF;
+  RETURN QUERY
+  SELECT candidate.id,candidate.delegation_cancel_command_id
+  FROM public.companion_v3_lane_leases lease
+  JOIN public.companion_runtime_control control ON control.id='runtime-v2'
+    AND control.enabled AND control.gate_epoch=p_gate_epoch
+  JOIN public.companion_v3_turns root_turn ON root_turn.org_id=lease.org_id
+    AND root_turn.companion_id=lease.companion_id AND root_turn.id=lease.turn_id
+    AND root_turn.lane='main' AND root_turn.admission_state='accepted'
+    AND root_turn.state IN ('admitted','running','needs_input')
+    AND root_turn.response_turn_id=root_turn.id
+  JOIN public.companion_v3_turns candidate ON candidate.org_id=root_turn.org_id
+    AND candidate.companion_id=root_turn.companion_id AND candidate.lane='main'
+    AND candidate.admission_state='accepted'
+    AND candidate.state IN ('admitted','running','needs_input')
+    AND (candidate.id=root_turn.id OR candidate.response_turn_id=root_turn.id)
+    AND candidate.delegation_id IS NOT NULL
+    AND candidate.delegation_cancel_requested_at IS NOT NULL
+    AND candidate.delegation_cancel_command_id IS NOT NULL
+  WHERE lease.org_id=p_org_id AND lease.companion_id=p_companion_id AND lease.lane='main'
+    AND lease.turn_id=p_turn_id AND lease.claim_token=p_claim_token
+    AND lease.claim_epoch=p_claim_epoch AND lease.gate_epoch=p_gate_epoch
+    AND lease.expires_at>v_now
+  ORDER BY candidate.delegation_cancel_requested_at,candidate.id
+  LIMIT 1;
+END $$;
+REVOKE ALL ON FUNCTION public.companion_v3_runtime_pending_delegation_cancel(
+  uuid,uuid,uuid,uuid,bigint,bigint,integer) FROM PUBLIC;
+--> statement-breakpoint
+
+CREATE FUNCTION public.companion_v3_runtime_finish_delegation_cancel(
+  p_org_id uuid,p_companion_id uuid,p_turn_id uuid,p_cancel_turn_id uuid,
+  p_claim_token uuid,p_claim_epoch bigint,p_gate_epoch bigint,p_protocol integer
+) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public SET row_security=on AS $$
+DECLARE v_now timestamptz:=clock_timestamp();
+BEGIN
+  IF p_protocol<>7 THEN
+    RAISE EXCEPTION 'Runtime v3 protocol 7 is required' USING ERRCODE='42501';
+  END IF;
+  PERFORM 1 FROM public.companion_v3_lane_leases lease
+  JOIN public.companion_runtime_control control ON control.id='runtime-v2'
+    AND control.enabled AND control.gate_epoch=p_gate_epoch
+  JOIN public.companion_v3_turns root_turn ON root_turn.org_id=lease.org_id
+    AND root_turn.companion_id=lease.companion_id AND root_turn.id=lease.turn_id
+    AND root_turn.lane='main' AND root_turn.admission_state='accepted'
+    AND root_turn.state IN ('admitted','running','needs_input')
+    AND root_turn.response_turn_id=root_turn.id
+  JOIN public.companion_v3_turns requested ON requested.org_id=root_turn.org_id
+    AND requested.companion_id=root_turn.companion_id AND requested.id=p_cancel_turn_id
+    AND requested.lane='main' AND requested.admission_state='accepted'
+    AND requested.state IN ('admitted','running','needs_input')
+    AND (requested.id=root_turn.id OR requested.response_turn_id=root_turn.id)
+    AND requested.delegation_id IS NOT NULL
+    AND requested.delegation_cancel_requested_at IS NOT NULL
+    AND requested.delegation_cancel_command_id IS NOT NULL
+  WHERE lease.org_id=p_org_id AND lease.companion_id=p_companion_id AND lease.lane='main'
+    AND lease.turn_id=p_turn_id AND lease.claim_token=p_claim_token
+    AND lease.claim_epoch=p_claim_epoch AND lease.gate_epoch=p_gate_epoch
+    AND lease.expires_at>v_now
+  FOR UPDATE OF lease,root_turn,requested;
+  IF NOT FOUND THEN RETURN false;END IF;
+  UPDATE public.companion_v3_turns turn_row SET state='cancelled',outcome='cancelled',
+    outcome_code=NULL,outcome_message=NULL,outcome_action=NULL,
+    inactivity_deadline_at=NULL,absolute_deadline_at=NULL,settled_at=v_now,updated_at=v_now
+  WHERE turn_row.org_id=p_org_id AND turn_row.companion_id=p_companion_id
+    AND turn_row.lane='main' AND turn_row.admission_state='accepted'
+    AND turn_row.state IN ('admitted','running','needs_input')
+    AND (turn_row.id=p_turn_id OR turn_row.response_turn_id=p_turn_id);
+  IF NOT FOUND THEN RETURN false;END IF;
+  UPDATE public.companion_threads SET projection_sequence=projection_sequence+1,updated_at=v_now
+  WHERE org_id=p_org_id AND companion_id=p_companion_id;
+  RETURN true;
+END $$;
+REVOKE ALL ON FUNCTION public.companion_v3_runtime_finish_delegation_cancel(
+  uuid,uuid,uuid,uuid,uuid,bigint,bigint,integer) FROM PUBLIC;
 --> statement-breakpoint
 
 DO $companion_v3_delegation_cancel_acl$
@@ -509,4 +603,24 @@ BEGIN
     END IF;
   END LOOP;
 END $companion_v3_delegation_cancel_acl$;
+--> statement-breakpoint
+
+DO $companion_v3_delegation_runtime_acl$
+DECLARE v_source oid:=pg_catalog.to_regprocedure(
+  'public.companion_v3_runtime_authorize_warm_turn_v7(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,integer)');
+  v_grantee oid;v_role name;
+BEGIN
+  FOR v_grantee IN SELECT DISTINCT acl.grantee FROM pg_catalog.pg_proc source_proc
+    CROSS JOIN LATERAL pg_catalog.aclexplode(
+      COALESCE(source_proc.proacl,pg_catalog.acldefault('f',source_proc.proowner))) acl
+    WHERE source_proc.oid=v_source AND acl.privilege_type='EXECUTE'
+      AND acl.grantee<>source_proc.proowner
+  LOOP
+    SELECT rolname INTO v_role FROM pg_catalog.pg_roles WHERE oid=v_grantee;
+    IF v_role IS NOT NULL THEN
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_pending_delegation_cancel(uuid,uuid,uuid,uuid,bigint,bigint,integer) TO %I',v_role);
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.companion_v3_runtime_finish_delegation_cancel(uuid,uuid,uuid,uuid,uuid,bigint,bigint,integer) TO %I',v_role);
+    END IF;
+  END LOOP;
+END $companion_v3_delegation_runtime_acl$;
 --> statement-breakpoint
