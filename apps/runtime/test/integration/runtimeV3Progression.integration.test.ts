@@ -5200,14 +5200,44 @@ describe("Runtime v3 progression facts", () => {
         where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid`;
       const steer = await enqueue(ids.companion, "steered work on the shared response root");
       await makeAdmitted(steer.turnId, ids.companion, source.turnId);
-      expect(await apiSql`select turn_id,attempt_id from public.companion_resolve_control_token(
-        ${controlTokenHash})`).toEqual([{ turn_id: source.turnId,attempt_id: source.turnId }]);
+      const resolvedControl = await apiSql<Array<{ turn_id: string; attempt_id: string }>>`
+        select turn_id,attempt_id from public.companion_resolve_control_token(${controlTokenHash})`;
+      expect(resolvedControl).toEqual([{ turn_id: source.turnId,attempt_id: source.turnId }]);
       await asApi(async (sql) => {
         expect(await sql`select * from public.companion_api_register_control_invocation(
           ${ids.org}::uuid,${ids.companion}::uuid,${randomUUID()}::uuid,
           ${source.turnId}::uuid,${source.turnId}::uuid,'delegation-control',${"c".repeat(64)})`)
           .toEqual([{ replayed: false,result: null }]);
+        const approvalId = randomUUID();
+        expect(await sql`select id,status::text as status,source_turn_id,source_attempt_id
+          from public.companion_api_create_control_request(
+            ${ids.org}::uuid,${ids.companion}::uuid,${approvalId}::uuid,
+            ${resolvedControl[0]!.turn_id}::uuid,${resolvedControl[0]!.attempt_id}::uuid,
+            'peer_access'::public.companion_control_request_kind,'grant_peer_access',
+            'Allow delegation to the target Companion',
+            ${sql.json({ target_companion_id: targetB })}::jsonb,'peer-approval',${"d".repeat(64)},
+            'owner')`).toEqual([{ id: approvalId,status: "pending",source_turn_id: source.turnId,
+              source_attempt_id: source.turnId }]);
       });
+      const inactive = await enqueue(ids.companion,"inactive approval source");
+      await expect(asApi(async (sql) => {
+        await sql`select * from public.companion_api_create_control_request(
+          ${ids.org}::uuid,${ids.companion}::uuid,${randomUUID()}::uuid,
+          ${inactive.turnId}::uuid,${inactive.turnId}::uuid,
+          'peer_access'::public.companion_control_request_kind,'grant_peer_access',
+          'Reject an inactive source Turn',
+          ${sql.json({ target_companion_id: targetB })}::jsonb,'inactive-peer-approval',
+          ${"e".repeat(64)},'owner')`;
+      })).rejects.toMatchObject({ code: "42501" });
+      await expect(asApiActor(randomUUID(),ids.owner,async (sql) => {
+        await sql`select * from public.companion_api_create_control_request(
+          ${ids.org}::uuid,${ids.companion}::uuid,${randomUUID()}::uuid,
+          ${source.turnId}::uuid,${source.turnId}::uuid,
+          'peer_access'::public.companion_control_request_kind,'grant_peer_access',
+          'Reject a cross-tenant API context',
+          ${sql.json({ target_companion_id: targetB })}::jsonb,'cross-tenant-peer-approval',
+          ${"f".repeat(64)},'owner')`;
+      })).rejects.toMatchObject({ code: "42501" });
       await expect(delegate({ source: ids.companion,target: ids.companion,
         sourceTurn: source.turnId,key: "self",mode: "notify",content: "self" }))
         .rejects.toMatchObject({ code: "22023" });

@@ -1790,21 +1790,15 @@ export const companionControlRequests = pgTable(
       foreignColumns: [companions.orgId, companions.id],
       name: "companion_control_requests_companion_fk",
     }).onDelete("cascade"),
-    turnFk: foreignKey({
+    v3TurnFk: foreignKey({
       columns: [t.orgId, t.companionId, t.sourceTurnId],
-      foreignColumns: [companionTurns.orgId, companionTurns.companionId, companionTurns.id],
-      name: "companion_control_requests_turn_fk",
+      foreignColumns: [companionV3Turns.orgId, companionV3Turns.companionId, companionV3Turns.id],
+      name: "companion_control_requests_v3_turn_fk",
     }).onDelete("cascade"),
-    attemptFk: foreignKey({
-      columns: [t.orgId, t.companionId, t.sourceTurnId, t.sourceAttemptId],
-      foreignColumns: [
-        companionTurnAttempts.orgId,
-        companionTurnAttempts.companionId,
-        companionTurnAttempts.turnId,
-        companionTurnAttempts.id,
-      ],
-      name: "companion_control_requests_attempt_fk",
-    }).onDelete("cascade"),
+    v3IdentityCheck: check(
+      "companion_control_requests_v3_identity_check",
+      sql`${t.sourceAttemptId} = ${t.sourceTurnId}`,
+    ),
     pending: index("companion_control_requests_pending_idx")
       .on(t.companionId, t.createdAt)
       .where(sql`${t.status} = 'pending'`),

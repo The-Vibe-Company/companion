@@ -10,6 +10,16 @@ ALTER TABLE public.companion_control_invocations
     CHECK (source_attempt_id = source_turn_id);
 --> statement-breakpoint
 
+ALTER TABLE public.companion_control_requests
+  DROP CONSTRAINT companion_control_requests_attempt_fk,
+  DROP CONSTRAINT companion_control_requests_turn_fk,
+  ADD CONSTRAINT companion_control_requests_v3_turn_fk
+    FOREIGN KEY (org_id, companion_id, source_turn_id)
+    REFERENCES public.companion_v3_turns(org_id, companion_id, id) ON DELETE CASCADE,
+  ADD CONSTRAINT companion_control_requests_v3_identity_check
+    CHECK (source_attempt_id = source_turn_id);
+--> statement-breakpoint
+
 ALTER TABLE public.companion_v3_turns
   ADD COLUMN delegation_id uuid REFERENCES public.companion_delegations(id) ON DELETE SET NULL,
   ADD COLUMN delegation_return_id uuid REFERENCES public.companion_delegations(id) ON DELETE SET NULL,
@@ -52,6 +62,72 @@ BEGIN
   WHERE token.id=resolved.token_id
   RETURNING resolved.org_id,resolved.companion_id,resolved.actor_id,
     resolved.turn_id,resolved.turn_id;
+END $$;
+--> statement-breakpoint
+
+CREATE OR REPLACE FUNCTION public.companion_api_create_control_request(
+  p_org_id uuid,p_companion_id uuid,p_id uuid,p_turn_id uuid,p_attempt_id uuid,
+  p_kind public.companion_control_request_kind,p_action text,p_summary text,p_payload jsonb,
+  p_request_key text,p_request_digest text,p_required_access text
+)
+RETURNS SETOF public.companion_control_requests
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public SET row_security=on AS $$
+DECLARE
+  v_actor text:=public.companion_api_actor(p_org_id);v_now timestamptz:=clock_timestamp();
+  v_expires timestamptz:=v_now+interval '24 hours';v_ordinal integer;v_existing record;
+BEGIN
+  PERFORM public.companion_api_require_access(p_org_id,p_companion_id,
+    CASE WHEN p_required_access='owner' THEN 'owner' ELSE 'editor' END);
+  IF p_attempt_id IS DISTINCT FROM p_turn_id THEN
+    RAISE EXCEPTION 'Runtime v3 control identity is invalid' USING ERRCODE='22023';
+  END IF;
+  IF p_request_key IS NULL OR char_length(p_request_key) NOT BETWEEN 1 AND 200
+    OR p_request_key~E'[\n\r]' OR p_required_access NOT IN ('owner','editor') THEN
+    RAISE EXCEPTION 'invalid control request' USING ERRCODE='22023';
+  END IF;
+  SELECT * INTO v_existing FROM public.companion_control_requests request
+  WHERE request.org_id=p_org_id AND request.companion_id=p_companion_id
+    AND request.source_attempt_id=p_attempt_id AND request.request_key=p_request_key FOR UPDATE;
+  IF FOUND THEN
+    IF v_existing.request_digest<>p_request_digest THEN
+      RAISE EXCEPTION 'control request idempotency conflict' USING ERRCODE='23505';
+    END IF;
+    RETURN QUERY SELECT * FROM public.companion_control_requests request
+    WHERE request.org_id=p_org_id AND request.companion_id=p_companion_id
+      AND request.id=v_existing.id;
+    RETURN;
+  END IF;
+  PERFORM 1 FROM public.companion_v3_turns turn_row
+  WHERE turn_row.org_id=p_org_id AND turn_row.companion_id=p_companion_id
+    AND turn_row.id=p_turn_id AND turn_row.actor_id=v_actor AND turn_row.lane='main'
+    AND turn_row.state IN ('admitted','running','needs_input')
+    AND turn_row.admission_state='accepted' FOR SHARE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'control Turn is not active' USING ERRCODE='42501';END IF;
+  INSERT INTO public.companion_control_requests(
+    id,org_id,companion_id,source_turn_id,source_attempt_id,requested_by_id,kind,action,summary,
+    payload,request_key,request_digest,required_access,expires_at
+  ) VALUES(p_id,p_org_id,p_companion_id,p_turn_id,p_attempt_id,v_actor,p_kind,p_action,p_summary,
+    p_payload,p_request_key,p_request_digest,p_required_access,v_expires);
+  UPDATE public.companion_threads thread
+  SET next_ordinal=thread.next_ordinal+1,last_message_at=v_now,updated_at=v_now
+  WHERE thread.org_id=p_org_id AND thread.companion_id=p_companion_id
+  RETURNING thread.next_ordinal-1 INTO v_ordinal;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Companion thread is unavailable' USING ERRCODE='55000';END IF;
+  INSERT INTO public.companion_transcript_entries(
+    org_id,companion_id,event_id,ordinal,role,content,decision,author_id,turn_id,created_at
+  ) VALUES(
+    p_org_id,p_companion_id,'control:'||p_id::text,v_ordinal,'decision','',
+    jsonb_build_object('request_id',p_id::text,'kind','control','name',p_action,'title',p_summary,
+      'detail',NULL,'status','pending','answer',NULL,'decided_by_id',NULL,'decided_by_name',NULL,
+      'decided_at',NULL,'expires_at',to_char(v_expires AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+      'required_access',p_required_access,'control_status','pending',
+      'proposal',jsonb_build_object('kind','control','request_kind',p_kind,'action',p_action,
+        'summary',p_summary,'payload',p_payload)),
+    NULL,NULL,v_now
+  );
+  RETURN QUERY SELECT * FROM public.companion_control_requests request
+  WHERE request.org_id=p_org_id AND request.companion_id=p_companion_id AND request.id=p_id;
 END $$;
 --> statement-breakpoint
 
