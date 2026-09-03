@@ -86,7 +86,8 @@ SET search_path = pg_catalog, public SET row_security = on AS $$
     SELECT entry.ordinal, entry.role::text AS role, entry.content, entry.event_id
     FROM public.companion_transcript_entries entry
     WHERE entry.org_id = p_org_id AND entry.companion_id = p_companion_id
-      AND entry.ordinal < p_before_ordinal AND entry.role IN ('user','assistant')
+      AND entry.ordinal < p_before_ordinal
+      AND entry.role IN ('user','assistant','decision','tool')
   ), candidates AS (
     SELECT entry.ordinal, entry.role::text AS role, entry.content,
       octet_length(entry.content) + octet_length(entry.role::text) + 4 AS bytes
@@ -344,6 +345,18 @@ BEGIN
   IF p_protocol IS DISTINCT FROM 5 THEN
     RAISE EXCEPTION 'Runtime v3 protocol 5 is required' USING ERRCODE = '42501';
   END IF;
+  IF p_outcome = 'interrupted' AND EXISTS (
+    SELECT 1 FROM public.companion_v3_turns turn_row
+    WHERE turn_row.org_id = p_org_id AND turn_row.companion_id = p_companion_id
+      AND turn_row.id = p_turn_id AND turn_row.lane = p_lane
+      AND turn_row.admission_state = 'accepted'
+      AND turn_row.state IN ('admitted','running','needs_input')
+  ) THEN
+    RETURN public.companion_v3_runtime_complete_v4(
+      p_org_id,p_companion_id,p_lane,p_turn_id,p_claim_token,p_claim_epoch,p_gate_epoch,
+      'release',NULL::text,NULL::text,NULL::public.companion_runtime_error_action,4
+    );
+  END IF;
   IF p_outcome <> 'interrupted' THEN
     IF p_outcome = 'release' THEN
       SELECT turn_row.journal_ack_pending INTO v_ack_pending
@@ -432,8 +445,15 @@ BEGIN
   WHERE lease.org_id = p_org_id AND lease.companion_id = p_companion_id
     AND EXISTS (SELECT 1 FROM public.companion_v3_turns interrupted
       WHERE interrupted.org_id = lease.org_id AND interrupted.companion_id = lease.companion_id
-        AND interrupted.lane = lease.lane AND interrupted.state = 'interrupted'
-        AND interrupted.pi_invocation_id = v_invocation);
+        AND interrupted.lane = lease.lane AND interrupted.pi_invocation_id = v_invocation
+        AND (interrupted.state = 'interrupted'
+          OR (interrupted.state IN ('succeeded','failed')
+            AND interrupted.journal_ack_pending)));
+  UPDATE public.companion_v3_turns terminal SET journal_ack_pending = false,
+    updated_at = v_now
+  WHERE terminal.org_id = p_org_id AND terminal.companion_id = p_companion_id
+    AND terminal.id <> p_turn_id AND terminal.pi_invocation_id = v_invocation
+    AND terminal.state IN ('succeeded','failed') AND terminal.journal_ack_pending;
 
   PERFORM public.companion_v3_invalidate_preparation(p_org_id, p_companion_id);
   UPDATE public.companion_v3_instances instance SET pi_recycle_checkpoint = 'terminate',
