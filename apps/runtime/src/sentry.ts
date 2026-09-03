@@ -104,9 +104,8 @@ function captureRecord<TLevel extends string>(
 }
 
 function errorGroupingKey(record: RuntimeLogRecord): string {
-  const incidentId = record.incident_id;
+  const incidentId = String(record.incident_id ?? "");
   return record.event.startsWith("runtime.external_incident.")
-    && typeof incidentId === "string"
     && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(incidentId)
     ? `${record.event}.${incidentId}`
     : record.event;

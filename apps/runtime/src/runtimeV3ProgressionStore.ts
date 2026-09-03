@@ -98,14 +98,15 @@ async function drainExternalIncidentSignal(
   `, signal);
   const row = rows[0];
   if (!row) return false;
-  options.onExternalIncident({
+  const event: RuntimeV3ExternalIncidentEvent = {
     signalId: row.signalId,
     incidentId: row.incidentId,
     state: row.state,
     classification: row.classification,
     source: row.source,
-    ...(row.state === "opened" ? { stableCode: row.stableCode } : {}),
-  });
+  };
+  if (row.state === "opened") event.stableCode = row.stableCode;
+  options.onExternalIncident(event);
   const acknowledged = await abortable(sql<Array<{ acknowledged: boolean }>>`
     select public.companion_v3_runtime_ack_external_incident_signal_v9(
       ${row.signalId}::uuid,${row.claimToken}::uuid,${row.claimEpoch}::bigint,9) as acknowledged
@@ -271,6 +272,13 @@ function createPostgresConvergence(
         `, signal);
       const row = rows[0];
       if (!row) return null;
+      const externalDependencyKeys: NonNullable<RuntimeV3Claim["externalDependencyKeys"]> = {};
+      if (row.boxDependency) externalDependencyKeys.box = row.boxDependency;
+      if (row.modelDependency) externalDependencyKeys.model = row.modelDependency;
+      if (row.pluginProviderDependency) {
+        externalDependencyKeys.plugin_provider = row.pluginProviderDependency;
+      }
+      if (row.authorityDependency) externalDependencyKeys.authority = row.authorityDependency;
       const claim: RuntimeV3Claim = {
           turn: turnFromRow(row),
           fence: {
@@ -281,14 +289,7 @@ function createPostgresConvergence(
           orgId: row.orgId,
           companionId: row.companionId,
           source: row.workSource,
-          externalDependencyKeys: {
-            ...(row.boxDependency ? { box: row.boxDependency } : {}),
-            ...(row.modelDependency ? { model: row.modelDependency } : {}),
-            ...(row.pluginProviderDependency
-              ? { plugin_provider: row.pluginProviderDependency }
-              : {}),
-            ...(row.authorityDependency ? { authority: row.authorityDependency } : {}),
-          },
+          externalDependencyKeys,
       };
       if (row.cleanupBoxId && row.cleanupInvocationId) {
         claim.cleanup = {

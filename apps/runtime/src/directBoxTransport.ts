@@ -746,13 +746,15 @@ function directPromptOutcome(input: {
     return accepted;
   }
   const code = input.code ?? "prompt_dispatch_unresolved";
-  return input.outcome === "refused"
-    ? {
+  if (input.outcome === "refused") {
+    const rejected: Awaited<ReturnType<RuntimePiControl["prompt"]>> = {
       outcome: "rejected",
       code,
-      ...(input.dependency ? { dependency: input.dependency } : {}),
-    }
-    : { outcome: "ambiguous", code };
+    };
+    if (input.dependency) rejected.dependency = input.dependency;
+    return rejected;
+  }
+  return { outcome: "ambiguous", code };
 }
 
 function directWriteOutcome(input: {

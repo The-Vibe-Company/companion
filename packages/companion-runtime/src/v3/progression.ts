@@ -688,22 +688,22 @@ async function externalDependencyCall<T>(
 }
 
 function rejectedFailureClass(code: string): RuntimeV3ExternalFailureClass {
-  const stableClasses: Readonly<Record<string, RuntimeV3ExternalFailureClass>> = {
-    model_unavailable: "model",
-    model_unusable: "model",
-    context_window_exceeded: "model",
-    input_too_long: "model",
-    plugin_provider_unavailable: "plugin_provider",
-    provider_unavailable: "plugin_provider",
-    credential_unavailable: "plugin_provider",
-    mcp_unavailable: "plugin_provider",
-    authorization_revoked: "authority",
-    external_authority_unavailable: "authority",
-    access_revoked: "authority",
-    permission_denied: "authority",
-    forbidden: "authority",
-  };
-  return stableClasses[code] ?? "box";
+  const stableClasses = new Map<string, RuntimeV3ExternalFailureClass>([
+    ["model_unavailable", "model"],
+    ["model_unusable", "model"],
+    ["context_window_exceeded", "model"],
+    ["input_too_long", "model"],
+    ["plugin_provider_unavailable", "plugin_provider"],
+    ["provider_unavailable", "plugin_provider"],
+    ["credential_unavailable", "plugin_provider"],
+    ["mcp_unavailable", "plugin_provider"],
+    ["authorization_revoked", "authority"],
+    ["external_authority_unavailable", "authority"],
+    ["access_revoked", "authority"],
+    ["permission_denied", "authority"],
+    ["forbidden", "authority"],
+  ]);
+  return stableClasses.get(code) ?? "box";
 }
 
 function externalBlockMessage(failureClass: RuntimeV3ExternalFailureClass): string {

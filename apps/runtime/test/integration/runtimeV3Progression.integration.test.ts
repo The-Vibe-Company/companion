@@ -702,12 +702,15 @@ describe("Runtime v3 progression facts", () => {
         classification: "box" | "model" | "plugin_provider" | "authority";
         source: "main" | "routine" | "trigger" | "delegation";
         stableCode?: string;
-      }) => observed.push({
-        state: event.state,
-        classification: event.classification,
-        source: event.source,
-        ...(event.stableCode ? { stableCode: event.stableCode } : {}),
-      }),
+      }) => {
+        const observation: (typeof observed)[number] = {
+          state: event.state,
+          classification: event.classification,
+          source: event.source,
+        };
+        if (event.stableCode) observation.stableCode = event.stableCode;
+        observed.push(observation);
+      },
     };
     const mainStore = createRuntimeV3PostgresWarmConvergence(runtimeSql, {
       enabledLanes: new Set(["main"]),
