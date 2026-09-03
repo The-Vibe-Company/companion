@@ -4220,7 +4220,7 @@ describe("Runtime v3 progression facts", () => {
     });
   });
 
-  it("persists one Owner routine occurrence and supersedes only stale pending work", async () => {
+  it("persists one Owner routine occurrence and skips a piled-up instant", async () => {
     const routineId = randomUUID();
     const firstId = randomUUID();
     const secondId = randomUUID();
@@ -4253,7 +4253,8 @@ describe("Runtime v3 progression facts", () => {
       await ownerSql`update public.companion_routines set next_fire_at=${secondDue},
         fire_available_at=clock_timestamp() where id=${routineId}::uuid`;
       await workerSql`select * from public.companion_claim_due_routines('worker-routine-newer',1,60)`;
-      await workerSql`select * from public.companion_fire_routine('worker-routine-newer',
+      const piled = await workerSql<Array<{ outcome: string }>>`
+        select outcome from public.companion_fire_routine('worker-routine-newer',
         ${ids.org}::uuid,${routineId}::uuid,${secondId}::uuid,${secondDue},${future})`;
       const occurrences = await ownerSql<Array<{
         actorId: string; lane: string; state: string; outcome: string;
@@ -4262,9 +4263,9 @@ describe("Runtime v3 progression facts", () => {
         join public.companion_v3_turns turn_row on turn_row.id=run.turn_id
         where run.routine_id=${routineId}::uuid order by run.scheduled_for`;
       expect(occurrences).toEqual([
-        { actorId: ids.owner, lane: "background", state: "cancelled", outcome: "superseded" },
         { actorId: ids.owner, lane: "background", state: "queued", outcome: "pending" },
       ]);
+      expect(piled).toEqual([{ outcome: "skipped_pileup" }]);
 
       await ownerSql`update public.companion_routines set next_fire_at=${secondDue},
         fire_available_at=clock_timestamp() where id=${routineId}::uuid`;
