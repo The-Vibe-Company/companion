@@ -812,9 +812,7 @@ export async function registerCompanionTriggerWebhookV2(input: {
     } else if (response.status === 403) {
       detailedReason = "Access forbidden. Check if the organization restricts third-party OAuth apps.";
     } else if (response.status === 422) {
-      detailedReason = responseBody?.errors 
-        ? `Validation failed: ${JSON.stringify(responseBody.errors)}` 
-        : "Validation failed (maximum of 20 webhooks per repository reached).";
+      detailedReason = "Validation failed. Check the webhook configuration and repository webhook limit.";
     }
 
     const message = sanitizeCompanionRuntimeError(
