@@ -1103,6 +1103,19 @@ BEGIN
       ];
     END IF;
 
+    IF pg_catalog.to_regprocedure(
+      'public.companion_v3_runtime_complete_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'
+    ) IS NOT NULL THEN
+      companion_runtime_functions := companion_runtime_functions || ARRAY[
+        'public.companion_v3_runtime_claim_background_v8(text,public.companion_v3_lane,integer,integer)'::regprocedure,
+        'public.companion_v3_runtime_claim_warm_v8(text,public.companion_v3_lane,integer,integer)'::regprocedure,
+        'public.companion_v3_runtime_authorize_background_v8(uuid,uuid,uuid,uuid,bigint,bigint,integer)'::regprocedure,
+        'public.companion_v3_runtime_project_background_page_v8(uuid,uuid,uuid,uuid,bigint,bigint,bigint,jsonb,jsonb,jsonb,boolean,boolean,text,integer)'::regprocedure,
+        'public.companion_v3_runtime_sweep_background_deadlines_v8(integer)'::regprocedure,
+        'public.companion_v3_runtime_complete_v8(uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,public.companion_runtime_error_action,integer)'::regprocedure
+      ];
+    END IF;
+
     -- A migration owner can carry arbitrary ALTER DEFAULT PRIVILEGES grants installed by an
     -- earlier operator. Runtime v2 never relies on default function EXECUTE: erase every named
     -- non-owner grantee and PUBLIC before granting the exact executor surface below.

@@ -1617,7 +1617,7 @@ export const companionV3Decisions = pgTable(
   }),
 );
 
-/** Private execution record for one scheduled occurrence admitted to the v3 background lane. */
+/** Private execution record for one routine or trigger occurrence in the shared background lane. */
 export const companionV3RoutineRuns = pgTable(
   "companion_v3_routine_runs",
   {
@@ -1630,6 +1630,9 @@ export const companionV3RoutineRuns = pgTable(
     routineName: text("routine_name").notNull(),
     prompt: text("prompt").notNull(),
     scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+    triggerSnapshotId: uuid("trigger_snapshot_id"),
+    triggerName: text("trigger_name"),
+    triggerMode: companionRoutineSurfaceModeEnum("trigger_mode"),
     outcome: text("outcome").notNull().default("pending"),
     surfaceMode: companionRoutineSurfaceModeEnum("surface_mode"),
     mainEntryEventId: text("main_entry_event_id"),
@@ -1648,6 +1651,9 @@ export const companionV3RoutineRuns = pgTable(
     }).onDelete("cascade"),
     history: index("companion_v3_routine_runs_history_idx")
       .on(t.orgId, t.companionId, t.routineSnapshotId, t.scheduledFor, t.turnId),
+    triggerHistory: index("companion_v3_background_trigger_runs_history_idx")
+      .on(t.orgId, t.companionId, t.triggerSnapshotId, t.createdAt, t.turnId)
+      .where(sql`${t.triggerSnapshotId} is not null`),
     ordinalCheck: check("companion_v3_routine_runs_ordinal_check", sql`${t.nextOrdinal} >= 0`),
   }),
 );

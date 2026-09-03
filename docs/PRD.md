@@ -157,17 +157,17 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
   1 MB, and compares the server-generated secret with `timingSafeEqual`. There is deliberately no
   per-provider HMAC: sources are services the user controls, and a wrong URL is a 404 or 401.
 - Fire is API-level isolated validation-run enqueue as the immutable Companion Owner; the webhook
-  route never contacts Box or Pi. Runtime evaluates the untrusted payload in a disposable Pi session
-  whose only enabled tool is `surface_to_main`; it receives no MCP gateway, provider-tool credentials,
-  skills, or project context. The pinned memory copy remains isolated from main Pi. Runtime then performs
+  route never contacts Box or Pi. The occurrence joins routines in the single durable background
+  FIFO. Runtime evaluates the untrusted payload in a disposable Pi session whose only enabled tool
+  is `surface_to_main`; it receives no MCP gateway, provider-tool credentials, skills, trusted
+  workspace context, or control MCP. Runtime then performs
   one configured `notify` (visible entry only), `relay` (visible entry plus main-Pi turn), or silent
   no-op. The message id is deterministic (`uuidv5(triggerId|deliveryId)`), so provider
   redeliveries collapse to one turn. The prompt carries a payload excerpt of at most 4,096
   characters labeled external and untrusted.
-- A disabled trigger, a fire within 60 seconds of the last, or an active turn for the same trigger
-  is skipped. Five consecutive failures disable the trigger.
-- The thread projects a trigger origin on the user entry. The UI hides that prompt and shows
-  `Trigger: <name>` above the ordinary reply.
+- A disabled or unregistered trigger is skipped. Every distinct accepted delivery remains durable;
+  external failures release the background claim and retry with jittered 5/15/30/60/300-second
+  backoff bounded by the attempt deadline. Failures never disable the trigger or block main chat.
 - Web and native iOS render trigger fire activity in the member's stored timezone. Triggers remain
   event-driven and do not acquire a cron schedule.
 

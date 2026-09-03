@@ -18,8 +18,6 @@ import {
   inspectCompanionTriggerWebhookV2,
   listCompanionTriggerRunsV2,
   listCompanionTriggersV2,
-  listCompanionsV2,
-  readCompanionThreadV2,
   registerCompanionTriggerWebhookV2,
   ensureOAuthCompanionTriggerProviderAccount,
   rotateCompanionTriggerSecretV2,
@@ -555,7 +553,7 @@ describe("Companion triggers over the real database", () => {
     expect(turns).toHaveLength(0);
   });
 
-  it("fires once as the Owner, masks the prompt behind the trigger name, and collapses replays", async () => {
+  it("persists one Owner-attributed v3 background occurrence and collapses redeliveries", async () => {
     const trigger = await createTrigger(fixture.owner, "CI failed on main", { provider: "webhook" });
     const payload = '{"action":"completed","conclusion":"failure"}';
     const content = composeTriggerPrompt(trigger.prompt, payload);
@@ -577,47 +575,25 @@ describe("Companion triggers over the real database", () => {
     expect(fired.replayed).toBe(false);
     expect(fired.turn).toMatchObject({ client_message_id: clientMessageId, status: "queued" });
 
-    // The durable turn is attributed to the immutable Companion Owner and stamped with its origin.
+    // The durable turn and private execution row retain the immutable Owner and trigger snapshot.
     const [turnRow] = await integrationDb
       .select()
-      .from(schema.companionTurns)
-      .where(eq(schema.companionTurns.id, fired.turn!.id));
+      .from(schema.companionV3Turns)
+      .where(eq(schema.companionV3Turns.id, fired.turn!.id));
     expect(turnRow).toMatchObject({
       actorId: fixture.owner.id,
-      triggerId: trigger.id,
+      lane: "background",
+      state: "queued",
+    });
+    const [runRow] = await integrationDb.select()
+      .from(schema.companionV3RoutineRuns)
+      .where(eq(schema.companionV3RoutineRuns.turnId, fired.turn!.id));
+    expect(runRow).toMatchObject({
+      routineId: null,
+      triggerSnapshotId: trigger.id,
       triggerName: trigger.name,
       triggerMode: "relay",
-      routineSnapshotId: trigger.id,
-      routineIsolated: false,
-      routineName: null,
-      routineId: null,
-    });
-
-    const thread = await asActor(fixture.owner, (database) => readCompanionThreadV2({
-      actor: fixture.owner,
-      orgId: fixture.orgA,
-      companionId,
-      database,
-    }));
-    const entry = thread.entries.find((candidate) => candidate.trigger !== null);
-    expect(entry).toMatchObject({
-      role: "user",
-      content,
-      trigger: { id: trigger.id, name: trigger.name },
-      routine: null,
-    });
-
-    // The conversation list is read by everyone who can see the Companion; the composed prompt —
-    // which embeds an external payload — must not read as something the Owner typed.
-    const [listedCompanion] = await asActor(fixture.owner, (database) => listCompanionsV2({
-      actor: fixture.owner,
-      orgId: fixture.orgA,
-      database,
-    }));
-    expect(listedCompanion!.last_message).toMatchObject({
-      role: "user",
-      preview: "",
-      trigger_name: trigger.name,
+      prompt: content,
     });
 
     const afterFire = await triggerRow(trigger.id);
@@ -637,9 +613,9 @@ describe("Companion triggers over the real database", () => {
     expect(replay.replayed).toBe(true);
     expect(replay.turn!.id).toBe(fired.turn!.id);
     const turns = await integrationDb
-      .select({ id: schema.companionTurns.id })
-      .from(schema.companionTurns)
-      .where(eq(schema.companionTurns.clientMessageId, clientMessageId));
+      .select({ id: schema.companionV3Turns.id })
+      .from(schema.companionV3Turns)
+      .where(eq(schema.companionV3Turns.clientMessageId, clientMessageId));
     expect(turns).toHaveLength(1);
 
     // The same delivery id with a different payload is a conflicting intent, never a silent replay.
@@ -652,7 +628,7 @@ describe("Companion triggers over the real database", () => {
     }), "23505");
   });
 
-  it("serves trigger-only history and enforces the configured terminal surface mode", async () => {
+  it("serves trigger-only history from the v3 private execution record", async () => {
     const trigger = await createTrigger(fixture.owner, "Notify on CI failure", {
       mode: "notify",
       provider: "webhook",
@@ -665,47 +641,21 @@ describe("Companion triggers over the real database", () => {
       database: integrationDb,
     });
     const runId = fired.turn!.id;
-    const [marker] = await integrationDb
-      .select({ ordinal: schema.companionTranscriptEntries.ordinal })
-      .from(schema.companionTranscriptEntries)
-      .where(eq(schema.companionTranscriptEntries.turnId, runId));
-    const [substrate] = await integrationDb
-      .insert(schema.companionRoutineContextSubstrates)
-      .values({
-        orgId: fixture.orgA,
-        companionId,
-        summarySha256: null,
-        builtThroughOrdinal: marker?.ordinal ?? 0,
-        content: "Pinned main conversation context.",
-        sha256: "e".repeat(64),
-      })
-      .returning({ id: schema.companionRoutineContextSubstrates.id });
-    await integrationDb.update(schema.companionTurns)
-      .set({ routineIsolated: true, routineContextSubstrateId: substrate!.id })
-      .where(eq(schema.companionTurns.id, runId));
-    await integrationDb.insert(schema.companionRoutineRunEntries).values({
+    await integrationDb.insert(schema.companionV3RoutineRunEntries).values({
       orgId: fixture.orgA,
       companionId,
       runId,
-      eventId: "trigger:validation:1",
+      eventId: `v3:${runId}:private:1`,
       ordinal: 0,
       role: "assistant",
       content: "Validated the external payload.",
     });
-
-    await expectSqlState(integrationSql`
-      select companion_runtime_surface_routine_return(
-        ${fixture.orgA}::uuid, ${companionId}::uuid, ${runId}::uuid,
-        'relay', 'This mode must be rejected.'
-      )
-    `, "22023");
-    const [surfaced] = await integrationSql<{ accepted: boolean }[]>`
-      select companion_runtime_surface_routine_return(
-        ${fixture.orgA}::uuid, ${companionId}::uuid, ${runId}::uuid,
-        'notify', 'The main workflow failed.'
-      ) as accepted
-    `;
-    expect(surfaced).toEqual({ accepted: true });
+    await integrationDb.update(schema.companionV3RoutineRuns).set({
+      outcome: "notify",
+      surfaceMode: "notify",
+      mainEntryEventId: `routine-return:${runId}`,
+      settledAt: new Date(),
+    }).where(eq(schema.companionV3RoutineRuns.turnId, runId));
 
     const history = await asActor(fixture.owner, (database) => listCompanionTriggerRunsV2({
       orgId: fixture.orgA,
@@ -734,14 +684,14 @@ describe("Companion triggers over the real database", () => {
     expect(detail).toMatchObject({
       run_id: runId,
       internal_entries: [{
-        event_id: "trigger:validation:1",
+        event_id: `v3:${runId}:private:1`,
         content: "Validated the external payload.",
       }],
       next_entry_cursor: null,
     });
   });
 
-  it("skips disabled, throttled, and piled-up fires without advancing last_fired_at", async () => {
+  it("accepts distinct deliveries in FIFO order and skips only disabled definitions", async () => {
     const trigger = await createTrigger(fixture.owner, "CI failed on main", { provider: "webhook" });
     const fire = (deliveryId: string) => fireCompanionTrigger({
       orgId: fixture.orgA,
@@ -752,22 +702,18 @@ describe("Companion triggers over the real database", () => {
     });
 
     await expect(fire("gh-1")).resolves.toMatchObject({ outcome: "fired" });
-    const firedAt = (await triggerRow(trigger.id)).lastFiredAt!;
-
-    // A new delivery within sixty seconds is dropped, and the drop does not restart the window.
-    const throttled = await fire("gh-2");
-    expect(throttled).toEqual({ outcome: "skipped_throttled", turn: null, replayed: false });
-    expect((await triggerRow(trigger.id)).lastFiredAt!.getTime()).toBe(firedAt.getTime());
-
-    // Clear the throttle: the first turn is still queued, so the next delivery is a pileup skip.
-    const backdated = new Date(Date.now() - 2 * 60 * 1000);
-    await integrationDb
-      .update(schema.companionTriggers)
-      .set({ lastFiredAt: backdated })
-      .where(eq(schema.companionTriggers.id, trigger.id));
-    const piledUp = await fire("gh-3");
-    expect(piledUp).toEqual({ outcome: "skipped_pileup", turn: null, replayed: false });
-    expect((await triggerRow(trigger.id)).lastFiredAt!.getTime()).toBe(backdated.getTime());
+    await expect(fire("gh-2")).resolves.toMatchObject({ outcome: "fired" });
+    await expect(fire("gh-3")).resolves.toMatchObject({ outcome: "fired" });
+    const queued = await integrationDb.select({ sequence: schema.companionV3Turns.queueSequence })
+      .from(schema.companionV3Turns)
+      .innerJoin(schema.companionV3RoutineRuns, and(
+        eq(schema.companionV3RoutineRuns.orgId, schema.companionV3Turns.orgId),
+        eq(schema.companionV3RoutineRuns.turnId, schema.companionV3Turns.id),
+      ))
+      .where(eq(schema.companionV3RoutineRuns.triggerSnapshotId, trigger.id));
+    expect(queued.map((row) => row.sequence)).toEqual([...queued.map((row) => row.sequence)]
+      .sort((left, right) => Number(left - right)));
+    expect(queued).toHaveLength(3);
 
     // A disabled trigger never wakes anything and records no fire.
     const disabled = await createTrigger(fixture.owner, "Disabled trigger", {
@@ -802,7 +748,7 @@ describe("Companion triggers over the real database", () => {
     `)), "22023");
   });
 
-  it("records fire failures, disables after five, and does not mistake enqueue for validation success", async () => {
+  it("records expurgated fire failures without ever auto-disabling the trigger", async () => {
     const trigger = await createTrigger(fixture.owner, "Flaky trigger", { provider: "webhook" });
     const fail = () => failCompanionTriggerFire({
       orgId: fixture.orgA,
@@ -841,7 +787,7 @@ describe("Companion triggers over the real database", () => {
       enabled: true,
     });
 
-    // Five consecutive failures fail the trigger closed rather than hammering the Companion.
+    // External failures remain diagnostic; provider redelivery is the recovery path.
     const flaky = await createTrigger(fixture.owner, "Always failing", { provider: "webhook" });
     for (let attempt = 0; attempt < 5; attempt += 1) {
       await failCompanionTriggerFire({
@@ -852,9 +798,9 @@ describe("Companion triggers over the real database", () => {
         database: integrationDb,
       });
     }
-    const disabledRow = await triggerRow(flaky.id);
-    expect(disabledRow).toMatchObject({
-      enabled: false,
+    const stillEnabled = await triggerRow(flaky.id);
+    expect(stillEnabled).toMatchObject({
+      enabled: true,
       consecutiveFailures: 5,
       lastErrorCode: "fire_failed",
     });
@@ -864,23 +810,7 @@ describe("Companion triggers over the real database", () => {
       clientMessageId: triggerFireMessageId({ triggerId: flaky.id, deliveryId: "post-disable" }),
       content: flaky.prompt,
       database: integrationDb,
-    })).resolves.toMatchObject({ outcome: "skipped_disabled" });
-
-    // Re-enabling through the ordinary update is the recovery path, and it resets the triple.
-    const reenabled = await asActor(fixture.owner, (database) => updateCompanionTriggerV2({
-      orgId: fixture.orgA,
-      companionId,
-      triggerId: flaky.id,
-      enabled: true,
-      database,
-      webhookBaseUrl: WEBHOOK_BASE_URL,
-    }));
-    expect(reenabled).toMatchObject({
-      enabled: true,
-      consecutive_failures: 0,
-      last_error_code: null,
-      last_error_message: null,
-    });
+    })).resolves.toMatchObject({ outcome: "fired" });
   });
 
   it("decouples definitions from delivery metadata and records shared-credential registrations", async () => {

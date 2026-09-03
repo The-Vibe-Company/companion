@@ -515,9 +515,7 @@ export function extractTriggerDeliveryId(
 export type CompanionTriggerFireOutcome =
   | "fired"
   | "replayed"
-  | "skipped_disabled"
-  | "skipped_throttled"
-  | "skipped_pileup";
+  | "skipped_disabled";
 
 export async function fireCompanionTrigger(input: {
   orgId: string;

@@ -713,10 +713,12 @@ for legacy pending proposals, and refuses to choose when several accounts are el
 The route persists an isolated validation run as the immutable Companion Owner through
 `companion_api_fire_trigger` and never contacts Box or Pi. Runtime evaluates the bounded untrusted
 payload against the trigger prompt in a disposable Pi session with only `surface_to_main` enabled;
-MCP, provider-tool credentials, skills, and project context are absent. It then either stays silent, surfaces a notify entry, or surfaces a
-relay entry plus an ordinary main-Pi turn. A delivery id derived from
-provider headers, or from the body hash, collapses redeliveries to one turn; disabled, throttled,
-and pileup fires are skipped without enqueuing.
+MCP, provider-tool credentials, skills, trusted workspace context, and the control MCP are absent.
+Trigger occurrences and routines use the same source-neutral background claim and queue-sequence
+FIFO, while main retains its independent lane. Validation then either stays silent, surfaces one
+notify entry, or surfaces that entry plus one ordinary main-Pi relay turn. A delivery id derived
+from provider headers, or from the body hash, collapses redeliveries to one turn; only disabled or
+unregistered definitions are skipped.
 
 The web retains polling: three seconds while activity is present, slower when settled. There is no
 SSE or Box push agent. “Companion is replying…” derives only from an acknowledged, non-terminal

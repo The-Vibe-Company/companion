@@ -30,8 +30,8 @@ export function createRuntimeV3RoutinePi(
           boxId: input.boxId,
           runId: input.turnId,
           persona: input.persona ?? null,
-          validationOnly: false,
-          directWorkspace: true,
+          validationOnly: input.validationOnly ?? false,
+          directWorkspace: input.directWorkspace ?? true,
           expectedInvocationId: input.expectedInvocationId,
           signal,
         });

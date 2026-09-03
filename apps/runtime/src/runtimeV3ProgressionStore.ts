@@ -104,27 +104,29 @@ export function createRuntimeV3PostgresWarmConvergence(
   return createPostgresConvergence(sql, true, options);
 }
 
-/** Strict background claim: routine projection must never consume a future trigger occurrence. */
-export function createRuntimeV3PostgresRoutineConvergence(
+/** The single background claimant consumes routine and trigger occurrences in queue order. */
+export function createRuntimeV3PostgresBackgroundConvergence(
   sql: Sql,
 ): RuntimeV3ConvergencePersistence {
   return createPostgresConvergence(sql, true, {
     enabledLanes: new Set(["background"]),
-    routineOnly: true,
+    backgroundOnly: true,
   });
 }
+
+export const createRuntimeV3PostgresRoutineConvergence = createRuntimeV3PostgresBackgroundConvergence;
 
 function createPostgresConvergence(
   sql: Sql,
   warmOnly: boolean,
-  options: { enabledLanes?: ReadonlySet<"main" | "background">; routineOnly?: boolean },
+  options: { enabledLanes?: ReadonlySet<"main" | "background">; backgroundOnly?: boolean },
 ): RuntimeV3ConvergencePersistence {
   return {
     async sweepLane({ lane, signal }) {
       if (options.enabledLanes && !options.enabledLanes.has(lane)) return 0;
-      if (options.routineOnly) {
+      if (options.backgroundOnly) {
         const routineRows = await abortable(sql<Array<{ swept: number }>>`
-          select public.companion_v3_runtime_sweep_routine_deadlines_v7(7) as swept
+          select public.companion_v3_runtime_sweep_background_deadlines_v8(8) as swept
         `, signal);
         return routineRows[0]?.swept ?? 0;
       }
@@ -135,7 +137,7 @@ function createPostgresConvergence(
     },
     async claimLane({ executorId, lane, signal }) {
       if (options.enabledLanes && !options.enabledLanes.has(lane)) return null;
-      const rows = warmOnly && options.routineOnly
+      const rows = warmOnly && options.backgroundOnly
         ? await abortable(sql<ClaimRow[]>`
           select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
             command_id as "commandId", lane::text, state::text,
@@ -143,7 +145,7 @@ function createPostgresConvergence(
             gate_epoch::text as "gateEpoch", admission_started_at as "admissionStartedAt",
             inactivity_deadline_at as "inactivityDeadlineAt",
             absolute_deadline_at as "absoluteDeadlineAt"
-          from public.companion_v3_runtime_claim_routine_v7(${executorId}, ${lane}, 30, 7)
+          from public.companion_v3_runtime_claim_background_v8(${executorId}, ${lane}, 30, 8)
         `, signal)
         : warmOnly ? await abortable(sql<ClaimRow[]>`
           select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
@@ -152,7 +154,7 @@ function createPostgresConvergence(
             gate_epoch::text as "gateEpoch", admission_started_at as "admissionStartedAt",
             inactivity_deadline_at as "inactivityDeadlineAt",
             absolute_deadline_at as "absoluteDeadlineAt"
-          from public.companion_v3_runtime_claim_warm_v7(${executorId}, ${lane}, 30, 7)
+          from public.companion_v3_runtime_claim_warm_v8(${executorId}, ${lane}, 30, 8)
         `, signal)
         : await abortable(sql<ClaimRow[]>`
           select org_id as "orgId", companion_id as "companionId", turn_id as "turnId",
@@ -180,7 +182,9 @@ function createPostgresConvergence(
     async completeProgression(claim, outcome, signal) {
       const terminal = terminalInput(outcome);
       const rows = await abortable(sql<Array<{ completed: boolean }>>`
-        select public.companion_v3_runtime_complete_v7(
+        select ${options.backgroundOnly
+          ? sql`public.companion_v3_runtime_complete_v8`
+          : sql`public.companion_v3_runtime_complete_v7`}(
           ${claim.orgId}::uuid,
           ${claim.companionId}::uuid,
           ${claim.turn.lane},
@@ -192,7 +196,7 @@ function createPostgresConvergence(
           ${terminal.code},
           ${terminal.message},
           ${terminal.action}::public.companion_runtime_error_action,
-          7
+          ${options.backgroundOnly ? 8 : 7}
         ) as completed
       `, signal);
       return rows[0]?.completed === true;
@@ -210,6 +214,9 @@ interface WarmMaterialRow {
 
 interface RoutineMaterialRow extends WarmMaterialRow {
   persona: string | null;
+  backgroundKind: "routine" | "trigger";
+  validationOnly: boolean;
+  directWorkspace: boolean;
 }
 
 interface DecisionActionRow {
@@ -622,8 +629,8 @@ export function createRuntimeV3PostgresWarmTurnPersistence(
   };
 }
 
-/** Background routine projection stays private while sharing the v3 lane/fence machinery. */
-export function createRuntimeV3PostgresRoutineTurnPersistence(
+/** Background projection stays private while routines and triggers share one lane/fence. */
+export function createRuntimeV3PostgresBackgroundTurnPersistence(
   sql: Sql,
 ): RuntimeV3WarmTurnPersistence {
   const ordinary = createRuntimeV3PostgresWarmTurnPersistence(sql);
@@ -632,11 +639,13 @@ export function createRuntimeV3PostgresRoutineTurnPersistence(
     async authorize(claim, signal) {
       const rows = await abortable(sql<RoutineMaterialRow[]>`
         select box_id as "boxId", pi_invocation_id as "piInvocationId", content,
-          activity_cursor::text as "activityCursor", false as "recoveryDeferred", persona
-        from public.companion_v3_runtime_authorize_routine(
+          activity_cursor::text as "activityCursor", false as "recoveryDeferred", persona,
+          background_kind as "backgroundKind", validation_only as "validationOnly",
+          direct_workspace as "directWorkspace"
+        from public.companion_v3_runtime_authorize_background_v8(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.turn.id}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
-          ${claim.fence.gateEpoch.toString()}::bigint, 7
+          ${claim.fence.gateEpoch.toString()}::bigint, 8
         )
       `, signal);
       const row = rows[0];
@@ -647,6 +656,9 @@ export function createRuntimeV3PostgresRoutineTurnPersistence(
         cursor: BigInt(row.activityCursor),
         recoveryDeferred: false,
         backgroundRoutine: true,
+        backgroundKind: row.backgroundKind,
+        validationOnly: row.validationOnly,
+        directWorkspace: row.directWorkspace,
         persona: row.persona,
       } : null;
     },
@@ -663,7 +675,7 @@ export function createRuntimeV3PostgresRoutineTurnPersistence(
     },
     async project(claim, projection, signal) {
       const rows = await abortable(sql<Array<{ projected: string | null }>>`
-        select public.companion_v3_runtime_project_routine_page(
+        select public.companion_v3_runtime_project_background_page_v8(
           ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.turn.id}::uuid,
           ${claim.fence.token}::uuid, ${claim.fence.epoch.toString()}::bigint,
           ${claim.fence.gateEpoch.toString()}::bigint,
@@ -679,7 +691,7 @@ export function createRuntimeV3PostgresRoutineTurnPersistence(
           })))}::jsonb,
           ${projection.needsInput}, ${projection.activity},
           ${projection.processExited ? "process_exit" : projection.settled ? "settled" : null},
-          7
+          8
         ) as projected
       `, signal);
       const projected = rows[0]?.projected;
@@ -689,3 +701,6 @@ export function createRuntimeV3PostgresRoutineTurnPersistence(
     },
   };
 }
+
+export const createRuntimeV3PostgresRoutineTurnPersistence =
+  createRuntimeV3PostgresBackgroundTurnPersistence;

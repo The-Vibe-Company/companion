@@ -66,8 +66,8 @@ import { createSentryRuntimeProcessLog } from "./sentry";
 import {
   createRuntimeV3PostgresPreparationPersistence,
   createRuntimeV3PostgresLifecyclePersistence,
-  createRuntimeV3PostgresRoutineConvergence,
-  createRuntimeV3PostgresRoutineTurnPersistence,
+  createRuntimeV3PostgresBackgroundConvergence,
+  createRuntimeV3PostgresBackgroundTurnPersistence,
   createRuntimeV3PostgresWarmConvergence,
   createRuntimeV3PostgresWarmTurnPersistence,
 } from "./runtimeV3ProgressionStore";
@@ -374,10 +374,10 @@ export async function buildProductionRuntimeService(
         pi: createRuntimeV3WarmPi(pi),
       }),
     });
-    const runtimeV3Routines = createRuntimeV3Convergence({
-      persistence: createRuntimeV3PostgresRoutineConvergence(database.sql),
+    const runtimeV3Background = createRuntimeV3Convergence({
+      persistence: createRuntimeV3PostgresBackgroundConvergence(database.sql),
       advance: createRuntimeV3WarmTurnAdvance({
-        persistence: createRuntimeV3PostgresRoutineTurnPersistence(database.sql),
+        persistence: createRuntimeV3PostgresBackgroundTurnPersistence(database.sql),
         pi: createRuntimeV3RoutinePi(pi),
       }),
     });
@@ -404,7 +404,7 @@ export async function buildProductionRuntimeService(
       store,
       scheduler: createRuntimeSchedulerAdapter(kernel.scheduler, {
         convergence: runtimeV3,
-        backgroundConvergence: runtimeV3Routines,
+        backgroundConvergence: runtimeV3Background,
         deadlineSweep: createRuntimeV3DeadlineSweep(runtimeV3TurnPersistence),
         executorId: config.executorId,
         sweepIntervalMs: config.sweepIntervalMs,

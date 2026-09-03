@@ -251,6 +251,9 @@ Run API + worker + runtime + web + migrated PostgreSQL + Box/Pi simulator and pr
   leave definitions and provider registration unchanged;
 - control tokens are attempt-fenced and absent from Pi's environment; routine/trigger turns cannot
   call the MCP; deferred Pi restart executes exactly once after source settlement;
+- provider registration plus trigger fire proves delivery-id deduplication, source-neutral FIFO with
+  routines, one background claim, capability-free validation, silent/notify/relay exactly once,
+  authority revocation, expurgated jittered retry, and main-lane independence;
 - directed delegation covers notify, relay, A→B→C, depth/budget bounds, FIFO, revocation, every
   terminal target state, and durable return-delivery failure;
 - provider failure, Pi silence, crash loop, unknown event, and oversized line end visibly;
