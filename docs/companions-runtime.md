@@ -1339,7 +1339,12 @@ mints the provider desktop URL only when current settings and the minimum requir
 are staged and every installed personal Skill and selected MCP account belongs to that actor. A
 publication-only update does not deny desktop; a required restage or
 foreign personal resource denies desktop access, so a warm shared Box cannot bypass creator-only
-privacy. Runtime atomically consumes the signed request id through a narrow `SECURITY DEFINER`
+privacy. The v3 database gate additionally requires the existing instance to be active with
+`desired_lifecycle=prepare`, a complete actor-bound `Prepared` checkpoint, a live Box and Pi
+invocation, unexpired prepared material, and no Pi recycle in progress. Its retained
+`box_state=ready` and `runtime_generation=1` result fields are decode-only compatibility values for
+the existing runtime adapter; authorization and Box selection never derive from them. Runtime
+atomically consumes the signed request id through a narrow `SECURITY DEFINER`
 function; PostgreSQL retains it through the signature window so replay is rejected across replicas
 and process restarts. Neither process stores or logs the URL, and Viewer requests fail before a Box
 client exists.
