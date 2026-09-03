@@ -407,16 +407,20 @@ export function createRuntimeMaterialPipeline(input: {
     async stageAttachments(stage) {
       const fileRuntime = input.fileRuntime?.() ?? input.runtime();
       const messageId = messageIdFromEventId(stage.messageEventId);
-      const clearExpiredStaging = async (): Promise<never> => {
+      const clearStaging = async (): Promise<void> => {
         // The staging contract replaces the whole scratch root. Let provider failures propagate:
         // the engine classifies them as retryable staging failures, and the next attempt starts by
-        // retrying this empty replacement without reading or writing attachment bytes.
+        // retrying this empty replacement without reading or writing attachment bytes. Retention
+        // cleanup must outlive cancellation of the attempt whose Box write crossed the deadline.
         await fileRuntime.stageAttachments({
           boxId: stage.boxId,
           messageId,
           files: [],
-          signal: stage.signal,
+          signal: AbortSignal.timeout(30_000),
         });
+      };
+      const clearExpiredStaging = async (): Promise<never> => {
+        await clearStaging();
         throw new RuntimeAttachmentExpiredError();
       };
       const files = [];
@@ -452,12 +456,21 @@ export function createRuntimeMaterialPipeline(input: {
       if (stage.material.attachments.some((attachment) => now() >= attachment.expiresAt.getTime())) {
         await clearExpiredStaging();
       }
-      const staged = await fileRuntime.stageAttachments({
-        boxId: stage.boxId,
-        messageId,
-        files,
-        signal: stage.signal,
-      });
+      let staged;
+      try {
+        staged = await fileRuntime.stageAttachments({
+          boxId: stage.boxId,
+          messageId,
+          files,
+          signal: stage.signal,
+        });
+      } catch (error) {
+        // A cancelled provider call may reject after writing part or all of the scratch root. Clear
+        // it with the independent retention signal before preserving the original staging error; a
+        // cleanup failure intentionally takes precedence so the engine can retry the cleanup.
+        await clearStaging();
+        throw error;
+      }
       // The existing idempotent staging seam replaces the whole scratch root. If the deadline
       // crosses during the Box write, immediately replace it with an empty staging set before
       // withholding paths from the engine, so neither disk bytes nor a Pi-visible prompt survive.
