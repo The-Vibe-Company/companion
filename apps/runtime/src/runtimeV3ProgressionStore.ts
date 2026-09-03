@@ -3,6 +3,7 @@ import {
 } from "@companion/companion-runtime";
 import type {
   RuntimeV3ConvergencePersistence,
+  RuntimeV3DecisionResponse,
   RuntimeV3DurableOutcome,
   RuntimeV3LifecyclePersistence,
   RuntimeV3PreparationPersistence,
@@ -181,7 +182,7 @@ interface DecisionActionRow {
   kind: "respond" | "detach";
   decisionId: string;
   commandId: string;
-  response: Record<string, unknown> | null;
+  response: RuntimeV3DecisionResponse | null;
 }
 
 interface PreparationClaimRow {

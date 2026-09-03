@@ -27,6 +27,11 @@ import type { RuntimeBoxControl, RuntimePiControl } from "../ports";
 export const RUNTIME_V3_LANES = ["main", "background"] as const;
 export type RuntimeV3Lane = (typeof RUNTIME_V3_LANES)[number];
 
+export type RuntimeV3DecisionResponse = {
+  type: "extension_ui_response";
+  id: string;
+} & ({ value: string } | { cancelled: true });
+
 export const RUNTIME_V3_LIFECYCLE_INTENTS = [
   "prepare",
   "archive",
@@ -403,7 +408,7 @@ export interface RuntimeV3WarmTurnPersistence {
     kind: "respond" | "detach";
     decisionId: string;
     commandId: string;
-    response: Record<string, unknown> | null;
+    response: RuntimeV3DecisionResponse | null;
   } | null>;
   finishDecisionAction?(
     claim: RuntimeV3Claim,
@@ -452,7 +457,7 @@ export interface RuntimeV3WarmPi {
     boxId: string;
     commandId: string;
     turnId: string;
-    response: Record<string, unknown>;
+    response: RuntimeV3DecisionResponse;
     signal?: AbortSignal;
   }): Promise<{ outcome: "accepted"; invocationId: string } | { outcome: "rejected" | "ambiguous"; code: string }>;
 }
