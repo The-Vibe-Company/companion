@@ -40,6 +40,22 @@ export function AttachmentList({ attachments }: {
     >
       {attachments.map((attachment) => {
         const image = isCompanionAttachmentImage(attachment.content_type);
+        if (attachment.availability === "expired") {
+          return (
+            <li
+              key={attachment.id}
+              data-slot="expired-attachment"
+              className="border-border text-muted-foreground flex min-w-0 items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs"
+              aria-label={`${attachment.filename}, attachment expired`}
+            >
+              <PaperclipIcon aria-hidden="true" className="size-3.5 shrink-0" />
+              <span className="max-w-40 truncate" title={attachment.filename}>
+                {attachment.filename}
+              </span>
+              <span className="shrink-0">Expired</span>
+            </li>
+          );
+        }
         // Fetchability is decided by the id, not by whether the composer still calls this message
         // "sending". A message the control plane has not stored yet carries a synthetic id, and the
         // read route rejects anything that is not a uuid -- so asking for it would render the

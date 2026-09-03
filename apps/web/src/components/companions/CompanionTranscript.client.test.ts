@@ -259,6 +259,8 @@ function attachment(overrides: Record<string, unknown> = {}) {
     byte_size: 2048,
     filename: "chart.png",
     position: 0,
+    availability: "available" as const,
+    expires_at: "2026-09-11T12:00:00.000Z",
     ...overrides,
   };
 }
@@ -1119,6 +1121,28 @@ describe("Companion thread attachments", () => {
     ]));
 
     expect(container.querySelector("img")?.getAttribute("alt")).toBe("plot.png");
+  });
+
+  it("keeps expired metadata in its message without a download or image request", () => {
+    const container = mount(thread([
+      entry({
+        role: "user",
+        event_id: "msg:expired",
+        content: "Old report",
+        author_id: "user-1",
+        attachments: [attachment({
+          availability: "expired",
+          expires_at: "2026-09-01T12:00:00.000Z",
+        })],
+      }),
+    ]));
+
+    expect(container.querySelector("[data-slot=expired-attachment]")?.textContent)
+      .toContain("chart.png");
+    expect(container.querySelector("[data-slot=expired-attachment]")?.textContent)
+      .toContain("Expired");
+    expect(container.querySelector("[data-slot=companion-attachments] a")).toBeNull();
+    expect(container.querySelector("[data-slot=companion-attachments] img")).toBeNull();
   });
 
   it("stages picked files as removable chips and refuses the ones it cannot send", () => {

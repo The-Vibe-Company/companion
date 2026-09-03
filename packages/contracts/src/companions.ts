@@ -1588,6 +1588,8 @@ export type CompanionAttachmentKind = z.infer<typeof companionAttachmentKindSche
 /** How many files one send may carry, and how large each may be. */
 export const COMPANION_MESSAGE_ATTACHMENT_MAX_COUNT = 5;
 export const COMPANION_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+/** Attachment bytes expire on this fixed, non-sliding schedule. */
+export const COMPANION_ATTACHMENT_RETENTION_DAYS = 30;
 
 /**
  * How much Pi may hand back from one turn. Harvesting is bounded before any transfer starts, so a Box
@@ -1793,6 +1795,10 @@ export const companionAttachmentSchema = z.object({
   filename: z.string().regex(COMPANION_ATTACHMENT_FILENAME_PATTERN),
   /** Stable order within its entry, so a re-read renders the same files in the same places. */
   position: z.number().int().nonnegative(),
+  /** Old projections default live during rolling deploy; current projections always send this. */
+  availability: z.enum(["available", "expired"]).default("available"),
+  /** Fixed byte deadline. Null only for an older cached projection. */
+  expires_at: z.string().datetime().nullable().default(null),
 }).strict();
 export type CompanionAttachment = z.infer<typeof companionAttachmentSchema>;
 
@@ -1811,6 +1817,8 @@ export const companionAttachmentUploadSchema = z.object({
   sha256: z.string().regex(/^[0-9a-f]{64}$/),
   filename: z.string().regex(COMPANION_ATTACHMENT_FILENAME_PATTERN),
   position: z.number().int().nonnegative().max(COMPANION_OUTPUT_ATTACHMENT_MAX_COUNT - 1),
+  /** Completion time of the create-only object upload; the fixed retention deadline starts here. */
+  uploaded_at: z.string().datetime(),
 }).strict();
 export type CompanionAttachmentUpload = z.infer<typeof companionAttachmentUploadSchema>;
 

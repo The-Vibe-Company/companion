@@ -1060,7 +1060,10 @@ A retried send therefore re-uploads identical bytes to identical keys, so the `P
 leaves no orphan. The durable replay compares `(position, content_type, byte_size, filename, sha256)`
 and ignores row ids and keys: identical bytes are the same intent, and a different file at the same
 position raises the existing `client_message_id was reused with different message intent` conflict. A
-send whose transaction does not commit deletes exactly the keys that request wrote.
+send whose transaction does not commit deletes exactly the keys that request wrote. The successful
+upload timestamp fixes `expires_at` at exactly 30 days later. Replay, reads, downloads, wake, retry,
+and restaging never update either timestamp; uploading the bytes again under a new message creates a
+new attachment and a new 30-day window.
 
 **Staging.** Before dispatch, runtime downloads each file, verifies
 its digest against what the control plane accepted, and writes it read-only to
@@ -1138,9 +1141,13 @@ ledger resolution cannot prove whether the broker cleared the directory and deli
 
 **Reads and purge.** `GET /v1/companions/:id/attachments/:attachmentId` re-authorizes on every
 request and answers `private, no-cache` with `nosniff`; a Viewer may read and download attachments,
-and no read path ever contacts Box. Removing an attachment row — by deleting the entry, the
-Companion, or the tenant — journals its storage key into the durable object-deletion outbox inside
-the same transaction, so the bytes are either scheduled for removal or the delete did not happen.
+and no read path ever contacts Box. At `expires_at`, the same durable object-deletion outbox removes
+the object and marks its bytes deleted while the thread row remains. Thread projections keep the
+filename, type, size, and digest but explicitly report `availability: expired`; download returns
+`410` and runtime fails before storage or Box contact, so an expired attachment cannot be restaged.
+Removing an attachment row — by deleting the entry, the Companion, or the tenant — accelerates its
+queued object deletion inside the same transaction, so the bytes are either scheduled for immediate
+removal or the delete did not happen.
 
 ## Model capability and errors
 

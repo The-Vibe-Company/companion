@@ -193,6 +193,9 @@ explicitly recoverable interruption even after the browser, API, or one runtime 
   and an allowed action. Provider payloads, tokens, signed URLs, and raw Pi lines are forbidden.
 - Model catalog normalization preserves Pi's `input` capability so a text-only model rejects image
   work explicitly before an unbounded turn.
+- Chat files remain scoped to their message. Their bytes expire exactly 30 days after upload without
+  extending on reads, retries, wake, or restaging; the thread retains explicit expired metadata and a
+  later upload is a new attachment.
 - Every attempted user turn carries a fixed-format runtime metadata suffix with the durable attempt
   start rendered in the member's IANA timezone. The changing value stays outside the cacheable
   system/history prefix; an unset profile uses UTC.

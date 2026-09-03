@@ -155,6 +155,8 @@ function acceptedAttachments(
       byte_size: file.size,
       filename: sanitizeCompanionAttachmentFilename({ filename: file.name, position, contentType }),
       position,
+      availability: "available" as const,
+      expires_at: null,
     }];
   });
 }

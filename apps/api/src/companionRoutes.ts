@@ -2659,6 +2659,7 @@ export function registerCompanionRoutes(
               // destroy the live bytes of an accepted message.
               if (!isStoragePreconditionFailure(error)) throw error;
             }
+            const uploadedAt = new Date().toISOString();
             attachments.push({
               storage_key: key,
               content_type: resolved,
@@ -2670,6 +2671,7 @@ export function registerCompanionRoutes(
                 contentType: resolved,
               }),
               position,
+              uploaded_at: uploadedAt,
             });
           }
         } else {
@@ -2729,6 +2731,10 @@ export function registerCompanionRoutes(
       const attachmentId = companionIdSchema.parse(c.req.param("attachmentId"));
       const asset = await tenant(c, ({ actor, orgId, database }) =>
         readCompanionAttachmentV2({ actor, orgId, companionId, attachmentId, database }));
+      if (asset.availability === "expired" || asset.storageKey === null) {
+        c.header("Cache-Control", "private, no-store");
+        return c.json({ ok: false, error: "attachment expired" }, 410);
+      }
       const bytes = await getSkillArchive({ key: asset.storageKey });
       return new Response(bytes, {
         headers: {

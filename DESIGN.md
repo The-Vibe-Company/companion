@@ -536,4 +536,5 @@ Don't:
 - Do not show a Wake action, keystroke prewarm, multi-Bot handoff, routine, schedule, voice,
   harness picker, or deployment control.
 - Do not build a file library, a file manager, or any attachment surface outside the message it was
-  sent with. Files belong to the message; there is no place to browse them.
+  sent with. Files belong to the message; there is no place to browse them. After their bytes expire,
+  keep a quiet metadata-only card in that message and remove every download affordance.

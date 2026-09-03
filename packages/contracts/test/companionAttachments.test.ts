@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { z } from "zod";
 
 import {
   COMPANION_ATTACHMENT_FILENAME_MAX_CHARACTERS,
@@ -17,7 +18,10 @@ function utf8(value: string): Uint8Array {
   return new Uint8Array(Buffer.from(value, "utf8"));
 }
 
-function entry(overrides: Record<string, unknown>) {
+type TranscriptFixture = z.input<typeof companionTranscriptEntrySchema>;
+type AttachmentFixture = z.input<typeof companionAttachmentSchema>;
+
+function entry(overrides: Partial<TranscriptFixture>) {
   return {
     event_id: "msg:0f6f9b0a-1b3f-4f5f-8a2e-6c3d2f1a9b7c",
     ordinal: 0,
@@ -30,7 +34,7 @@ function entry(overrides: Record<string, unknown>) {
   };
 }
 
-function attachment(overrides: Record<string, unknown> = {}) {
+function attachment(overrides: Partial<AttachmentFixture> = {}) {
   return {
     id: "1f7c1c3a-9a2b-4d3e-8f11-0b1c2d3e4f50",
     kind: "user_upload",
@@ -137,6 +141,17 @@ describe("transcript entry attachments", () => {
       author_name: null,
       attachments: [attachment({ kind: "pi_output" })],
     })).attachments).toHaveLength(1);
+  });
+
+  it("keeps expired attachment metadata explicit while accepting an older cached projection", () => {
+    expect(companionAttachmentSchema.parse(attachment({
+      availability: "expired",
+      expires_at: "2026-09-23T12:00:00.000Z",
+    }))).toMatchObject({ availability: "expired", expires_at: "2026-09-23T12:00:00.000Z" });
+    expect(companionAttachmentSchema.parse(attachment())).toMatchObject({
+      availability: "available",
+      expires_at: null,
+    });
   });
 
   it("refuses an upload on a reply, a Pi output on a message, and any other role", () => {

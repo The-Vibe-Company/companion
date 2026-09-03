@@ -5,6 +5,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import {
   COMPANION_ATTACHMENT_FILENAME_PATTERN,
   COMPANION_ATTACHMENT_MAX_BYTES,
+  COMPANION_ATTACHMENT_RETENTION_DAYS,
   COMPANION_BUDGETS_BASE,
   COMPANION_EXEC_TOOL_RUN_TIMEOUT_MS,
   COMPANION_OUTPUT_ATTACHMENT_MAX_COUNT,
@@ -681,6 +682,8 @@ export const COMPANION_FILES_INSTRUCTIONS = [
   "",
   "Files the person attaches are staged read-only under ~/attachments/<message-id>/, and the message",
   "you receive names each one. Copy a file elsewhere before modifying it.",
+  `Attachment bytes expire ${COMPANION_ATTACHMENT_RETENTION_DAYS} days after upload. Reading or staging them never moves that deadline;`,
+  "after expiry, ask the person to upload the file again if you still need it.",
   "",
   COMPANION_OUTBOX_INSTRUCTIONS,
 ].join("\n");

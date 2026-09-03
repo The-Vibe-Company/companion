@@ -133,7 +133,15 @@ struct TranscriptAttachmentList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(attachments.sorted { $0.position < $1.position }) { attachment in
-                if attachment.contentType.isImage {
+                if attachment.availability == .expired {
+                    AttachmentDocumentCard(
+                        filename: attachment.filename,
+                        byteSize: attachment.byteSize,
+                        subtitle: "Expired",
+                        actionIcon: "clock.badge.exclamationmark"
+                    )
+                    .accessibilityIdentifier("attachment.expired.\(attachment.id)")
+                } else if attachment.contentType.isImage {
                     RemoteAttachmentImage(companionID: companionID, attachment: attachment)
                 } else {
                     Button {
@@ -244,6 +252,7 @@ private struct AttachmentDocumentCard: View {
     let byteSize: Int
     let subtitle: String
     var loading = false
+    var actionIcon = "arrow.up.right"
 
     var body: some View {
         HStack(spacing: 10) {
@@ -269,7 +278,7 @@ private struct AttachmentDocumentCard: View {
             if loading {
                 ProgressView().controlSize(.small)
             } else {
-                Image(systemName: "arrow.up.right")
+                Image(systemName: actionIcon)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(CompanionIOSTheme.textSecondary)
             }

@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PostgresRuntimeStore,
+  RuntimeAttachmentExpiredError,
   RuntimeCredentialSnapshotChangedError,
   type RuntimeSqlClient,
   type RuntimeSqlRow,
@@ -69,6 +70,19 @@ const fence: LeaseFence = {
 };
 
 describe("PostgresRuntimeStore", () => {
+  it("maps the database expiry guard to a stable non-retryable runtime failure", async () => {
+    const sql: RuntimeSqlClient = {
+      unsafe: async () => { throw { code: "P5220" }; },
+    };
+    const store = new PostgresRuntimeStore(sql);
+
+    await expect(store.getMaterial({
+      ...fence,
+      workKind: "attempt",
+      workId: ATTEMPT_ID,
+    }, 30)).rejects.toBeInstanceOf(RuntimeAttachmentExpiredError);
+  });
+
   it("reads only aggregate self-heal telemetry through the narrow runtime function", async () => {
     const sql = new RecordingSql();
     sql.rows = [{

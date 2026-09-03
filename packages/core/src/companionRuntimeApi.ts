@@ -1129,11 +1129,13 @@ export async function enqueueCompanionTurn(input: {
 export const enqueueCompanionTurnV2 = enqueueCompanionTurn;
 
 export interface CompanionAttachmentAsset {
-  storageKey: string;
+  storageKey: string | null;
   contentType: string;
   byteSize: number;
   filename: string;
   kind: "user_upload" | "pi_output";
+  availability: "available" | "expired";
+  expiresAt: string;
 }
 
 /**
@@ -1158,11 +1160,13 @@ export async function readCompanionAttachmentV2(input: {
     )
   `);
   const [row] = rows<{
-    storage_key: string;
+    storage_key: string | null;
     content_type: string;
     byte_size: number | string;
     filename: string;
     kind: "user_upload" | "pi_output";
+    availability: "available" | "expired";
+    expires_at: Date | string;
   }>(result);
   if (!row) throw new Error("companion attachment is unavailable");
   return {
@@ -1171,6 +1175,8 @@ export async function readCompanionAttachmentV2(input: {
     byteSize: integer(row.byte_size),
     filename: row.filename,
     kind: row.kind,
+    availability: row.availability,
+    expiresAt: iso(row.expires_at) ?? new Date(row.expires_at).toISOString(),
   };
 }
 

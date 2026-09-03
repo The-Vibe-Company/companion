@@ -2415,6 +2415,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     const companionId = created[0]!.companionId;
     try {
     const clientMessageId = randomUUID();
+    const uploadedAt = new Date(Date.now() - 1_000).toISOString();
     const attachments = [
       {
         storage_key: `companion-attachments/${ids.orgA}/${companionId}/${clientMessageId}/0-${"a".repeat(64)}`,
@@ -2423,6 +2424,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
         sha256: "a".repeat(64),
         filename: "chart.png",
         position: 0,
+        uploaded_at: uploadedAt,
       },
       {
         storage_key: `companion-attachments/${ids.orgA}/${companionId}/${clientMessageId}/1-${"b".repeat(64)}`,
@@ -2431,6 +2433,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
         sha256: "b".repeat(64),
         filename: "report.pdf",
         position: 1,
+        uploaded_at: uploadedAt,
       },
     ];
     type AttachmentInput = (typeof attachments)[number];
@@ -2446,6 +2449,24 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     });
 
     expect((await enqueue(attachments))[0]?.replayed).toBe(false);
+    const initialRetention = await sql<Array<{
+      storage_key: string;
+      uploaded_at: Date;
+      expires_at: Date;
+      available_at: Date;
+    }>>`
+      select attachment.storage_key, attachment.uploaded_at, attachment.expires_at,
+        deletion.available_at
+      from companion_message_attachments attachment
+      join skill_database_object_deletions deletion
+        on deletion.companion_attachment_id = attachment.id
+      where attachment.companion_id = ${companionId}::uuid
+      order by attachment.position
+    `;
+    expect(initialRetention).toHaveLength(2);
+    expect(initialRetention.every((row) =>
+      row.expires_at.getTime() - row.uploaded_at.getTime() === 30 * 24 * 60 * 60 * 1_000
+      && row.available_at.getTime() === row.expires_at.getTime())).toBe(true);
     // Identical bytes are the same intent however many times the request arrives, and no second row
     // is written for them.
     expect((await enqueue(attachments))[0]?.replayed).toBe(true);
@@ -2454,6 +2475,14 @@ describe("Companion runtime executor PostgreSQL surface", () => {
       where companion_id = ${companionId}::uuid
     `;
     expect(rowCount?.count).toBe(2);
+    const retentionAfterReplay = await sql<Array<{ uploaded_at: Date; expires_at: Date }>>`
+      select uploaded_at, expires_at from companion_message_attachments
+      where companion_id = ${companionId}::uuid order by position
+    `;
+    expect(retentionAfterReplay).toEqual(initialRetention.map(({ uploaded_at, expires_at }) => ({
+      uploaded_at,
+      expires_at,
+    })));
 
     // A different file at the same position is a different message, and says so.
     await expect(enqueue([{ ...attachments[0]!, sha256: "c".repeat(64) }, attachments[1]!]))
@@ -2479,6 +2508,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
         filename: "chart.png",
         byte_size: 2048,
         position: 0,
+        availability: "available",
       }),
       expect.objectContaining({ content_type: "application/pdf", filename: "report.pdf", position: 1 }),
     ]);
@@ -2595,6 +2625,88 @@ describe("Companion runtime executor PostgreSQL surface", () => {
     }
   });
 
+  it("expires attachment bytes without deleting metadata or allowing runtime restaging", async () => {
+    if (!sql) throw new Error("runtime executor database is not initialized");
+    const fixture = await createCompanion({ boxReady: true });
+    try {
+      const [turn] = await sql<Array<{ message_event_id: string }>>`
+        select message_event_id from companion_turns where id = ${fixture.turnId}::uuid
+      `;
+      const storageKey = `companion-attachments/${ids.orgA}/${fixture.companionId}/expired/0-${"e".repeat(64)}`;
+      const [inserted] = await asOwnerV2((tx) => tx<Array<{ id: string }>>`
+        insert into companion_message_attachments(
+          org_id, companion_id, entry_event_id, kind, storage_key, content_type,
+          byte_size, sha256, filename, position, uploaded_at
+        ) values (
+          ${ids.orgA}::uuid, ${fixture.companionId}::uuid, ${turn!.message_event_id},
+          'user_upload', ${storageKey}, 'application/pdf', 32, ${"e".repeat(64)},
+          'old-report.pdf', 0, now() - interval '30 days 1 second'
+        ) returning id::text as id
+      `);
+
+      const claim = await claimWork();
+      expect(claim.workId).toBe(fixture.attemptId);
+      await expect(asRuntime((tx) => tx`
+        select * from public.companion_runtime_get_material(
+          ${claim.orgId}::uuid, ${claim.companionId}::uuid, ${claim.claimToken}::uuid,
+          ${claim.claimEpoch}::bigint, ${claim.gateEpoch}::bigint, ${executorId},
+          'attempt', ${claim.workId}::uuid, 30
+        )
+      `)).rejects.toMatchObject({ code: "P5220" });
+
+      const expiredThread = await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx<Array<{ entries: Array<IntegrationJsonObject> }>>`
+          select entries from public.companion_api_read_thread(
+            ${ids.orgA}::uuid, ${fixture.companionId}::uuid
+          )
+        `,
+      });
+      const projected = expiredThread[0]!.entries[0]!.attachments as Array<IntegrationJsonObject>;
+      expect(projected[0]).toMatchObject({
+        id: inserted!.id,
+        filename: "old-report.pdf",
+        availability: "expired",
+      });
+      expect(JSON.stringify(projected)).not.toContain(storageKey);
+
+      const expiredRead = await asApi({
+        orgId: ids.orgA,
+        actorId: ids.ownerA,
+        action: (tx) => tx<Array<{ storage_key: string | null; availability: string }>>`
+          select storage_key, availability from public.companion_api_read_attachment(
+            ${ids.orgA}::uuid, ${fixture.companionId}::uuid, ${inserted!.id}::uuid
+          )
+        `,
+      });
+      expect(expiredRead).toEqual([{ storage_key: null, availability: "expired" }]);
+
+      const deletions = await asWorker((tx) => tx<Array<{
+        storageKey: string;
+        claimToken: string;
+      }>>`
+        select "storageKey", "claimToken" from public.companion_claim_skill_database_object_deletions(1000, 60)
+      `);
+      const deletion = deletions.find((candidate) => candidate.storageKey === storageKey);
+      expect(deletion?.storageKey).toBe(storageKey);
+      const [completed] = await asWorker((tx) => tx<Array<{ completed: boolean }>>`
+        select public.companion_complete_skill_database_object_deletion(
+          ${storageKey}, ${deletion!.claimToken}::uuid
+        ) as completed
+      `);
+      expect(completed?.completed).toBe(true);
+      const [metadata] = await sql<Array<{ bytes_deleted: boolean; count: number }>>`
+        select bytes_deleted_at is not null as bytes_deleted, count(*)::int as count
+        from companion_message_attachments where id = ${inserted!.id}::uuid
+        group by bytes_deleted_at
+      `;
+      expect(metadata).toEqual({ bytes_deleted: true, count: 1 });
+    } finally {
+      await removeCompanion(fixture.companionId);
+    }
+  });
+
   it("records Pi's outputs once and makes an image-only turn a visible output", async () => {
     if (!sql) throw new Error("runtime executor database is not initialized");
     const fixture = await createCompanion({ boxReady: true });
@@ -2637,6 +2749,20 @@ describe("Companion runtime executor PostgreSQL surface", () => {
       where companion_id = ${fixture.companionId}::uuid and kind = 'pi_output'
     `;
     expect(rows?.count).toBe(1);
+    const [retention] = await sql<Array<{
+      fixed: boolean;
+      scheduled: boolean;
+    }>>`
+      select
+        attachment.expires_at = attachment.uploaded_at + interval '720 hours' as fixed,
+        deletion.available_at = attachment.expires_at as scheduled
+      from companion_message_attachments attachment
+      join skill_database_object_deletions deletion
+        on deletion.companion_attachment_id = attachment.id
+      where attachment.companion_id = ${fixture.companionId}::uuid
+        and attachment.kind = 'pi_output'
+    `;
+    expect(retention).toEqual({ fixed: true, scheduled: true });
     const entries = await sql<Array<{ event_id: string; ordinal: number; content: string }>>`
       select event_id, ordinal, content from companion_transcript_entries
       where companion_id = ${fixture.companionId}::uuid and role = 'assistant'
@@ -2666,6 +2792,7 @@ describe("Companion runtime executor PostgreSQL surface", () => {
       content_type: "image/png",
       filename: "plot.png",
       position: 0,
+      availability: "available",
     })]);
     expect(JSON.stringify(outputsEntry)).not.toContain("companion-attachments/");
 

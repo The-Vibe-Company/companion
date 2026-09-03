@@ -1431,6 +1431,36 @@ func decodesAttachmentMetadataWithoutAStorageURL() throws {
     #expect(attachment.contentType == .png)
     #expect(attachment.byteSize == 2_048)
     #expect(attachment.filename == "Q3_chart.PNG")
+    #expect(attachment.availability == .available)
+    #expect(attachment.expiresAt == nil)
+}
+
+@Test
+func decodesExpiredAttachmentMetadataWithoutAStorageURL() throws {
+    let entry = try JSONDecoder().decode(TranscriptEntry.self, from: Data(#"""
+    {
+      "event_id":"msg:17f8b827-8a06-4ef8-9352-58cc03c849a4",
+      "ordinal":1,
+      "role":"user",
+      "content":"Old report",
+      "author_id":"editor-2",
+      "author_name":"Morgan",
+      "queued":false,
+      "attachments":[{
+        "id":"7c1f0b52-8a2e-4c3d-9f10-0b1c2d3e4f50",
+        "kind":"user_upload",
+        "content_type":"application/pdf",
+        "byte_size":2048,
+        "filename":"report.pdf",
+        "position":0,
+        "availability":"expired"
+      }],
+      "created_at":"2026-08-24T11:00:00.000Z"
+    }
+    """#.utf8))
+    let attachment = try #require(entry.attachments.first)
+    #expect(attachment.availability == .expired)
+    #expect(attachment.filename == "report.pdf")
 }
 
 @Test

@@ -303,6 +303,12 @@ stale broker is recycled after the disk-marker crash gap, and a bundled-skill ch
 defeats tree reuse. Runtime-image warmup succeeds only when resume has produced a non-empty
 provider `.ascii/playbook.json`; broker and bundled-Skill files alone are insufficient.
 
+Attachment retention tests fix expiry at upload plus 30 days and prove replay does not move it.
+PostgreSQL coverage verifies expired metadata remains projected while storage keys and runtime
+material fail closed; worker/object-storage coverage proves due deletion is idempotent and thread
+deletion accelerates cleanup. Web and CompanionKit tests render expired metadata without a download
+request, while route tests re-authorize every read and return `410` before object storage access.
+
 ## Frontend gate
 
 Run the application, then:
@@ -313,7 +319,8 @@ APP_URL=http://127.0.0.1:<port> pnpm browser:smoke
 
 Changed Companion paths need focused manual `agent-browser` checks. Verify truthful status,
 PostgreSQL-only Viewer reads, queue count, input-needed cards, automatic exact-cleanup status and
-no-replay copy, an always-mounted composer, explicit Full Box confirmation, attachment chips and inline images inside the message they belong to, a
+no-replay copy, an always-mounted composer, explicit Full Box confirmation, attachment chips and
+inline images inside the message they belong to, a metadata-only expired attachment with no download target, a
 routine fire that shows `Routine: <name>` with the prompt hidden in the thread and on the list row,
 a context-panel routine create,
 an interrupted routine run whose history is passive and does not block the main chat,

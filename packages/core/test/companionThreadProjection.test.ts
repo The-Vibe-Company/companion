@@ -209,6 +209,8 @@ describe("routine notify thread projection", () => {
       byte_size: 128,
       filename: "report.png",
       position: 0,
+      availability: "available",
+      expires_at: "2026-09-02T12:00:00.000Z",
     }];
     const projected = collapseRoutineNotifyEntries([
       marker(FIRST_RUN_ID, 0),

@@ -2837,6 +2837,16 @@ export const companionMessageAttachments = pgTable(
     filename: text("filename").notNull(),
     position: integer("position").notNull(),
     createdAt: now(),
+    /** Canonical first durable upload acceptance; reads and restaging never update it. */
+    uploadedAt: timestamp("uploaded_at", { withTimezone: true })
+      .notNull()
+      .default(sql`clock_timestamp()`),
+    /** Fixed byte-retention boundary, always exactly thirty days after uploadedAt. */
+    expiresAt: timestamp("expires_at", { withTimezone: true })
+      .notNull()
+      .default(sql`clock_timestamp() + interval '720 hours'`),
+    /** Actual object cleanup acknowledgement; metadata remains after this is set. */
+    bytesDeletedAt: timestamp("bytes_deleted_at", { withTimezone: true }),
   },
   (t) => ({
     companionOrgFk: foreignKey({
@@ -2900,6 +2910,14 @@ export const companionMessageAttachments = pgTable(
     entryEventCheck: check(
       "companion_message_attachments_entry_event_check",
       sql`char_length(${t.entryEventId}) between 1 and 200 and ${t.entryEventId} !~ E'[\\n\\r]'`,
+    ),
+    fixedExpiry: check(
+      "companion_message_attachments_fixed_expiry_check",
+      sql`${t.expiresAt} = ${t.uploadedAt} + interval '720 hours'`,
+    ),
+    deletedAfterExpiry: check(
+      "companion_message_attachments_bytes_deleted_check",
+      sql`${t.bytesDeletedAt} is null or ${t.bytesDeletedAt} >= ${t.expiresAt}`,
     ),
   }),
 );
@@ -4447,6 +4465,8 @@ export const skillDatabaseObjectDeletions = pgTable(
     availableAt: timestamp("available_at", { withTimezone: true }).notNull().defaultNow(),
     claimToken: uuid("claim_token"),
     claimExpiresAt: timestamp("claim_expires_at", { withTimezone: true }),
+    /** Present only for a scheduled Companion attachment expiry. No FK so cascades retain cleanup. */
+    companionAttachmentId: uuid("companion_attachment_id"),
     createdAt: now(),
   },
   (t) => ({
@@ -4463,5 +4483,8 @@ export const skillDatabaseObjectDeletions = pgTable(
       sql`(${t.claimToken} is null and ${t.claimExpiresAt} is null)
         or (${t.claimToken} is not null and ${t.claimExpiresAt} is not null)`,
     ),
+    oneAttachmentExpiry: uniqueIndex("skill_database_object_deletions_attachment_uq")
+      .on(t.companionAttachmentId)
+      .where(sql`${t.companionAttachmentId} is not null`),
   }),
 );

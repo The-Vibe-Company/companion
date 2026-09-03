@@ -463,6 +463,8 @@ describe("Companions Runtime v2 API", () => {
       byteSize: 4,
       filename: "chart.png",
       kind: "user_upload",
+      availability: "available",
+      expiresAt: "2026-09-23T12:00:00.000Z",
     });
     storageMocks.putSkillArchive.mockResolvedValue(null);
     storageMocks.deleteStorageObject.mockResolvedValue(undefined);
@@ -1303,6 +1305,7 @@ describe("Companions Runtime v2 API", () => {
     // the same object instead of orphaning one.
     const firstAttachment = attachments?.[0];
     if (!firstAttachment) throw new Error("expected the first stored attachment");
+    expect(new Date(firstAttachment.uploaded_at).toISOString()).toBe(firstAttachment.uploaded_at);
     expect(firstAttachment.storage_key).toBe(
       `companion-attachments/${ORG_ID}/${COMPANION_ID}/${MESSAGE_ID}/0-${firstAttachment.sha256}`,
     );
@@ -1546,6 +1549,8 @@ describe("Companions Runtime v2 API", () => {
       byteSize: 5,
       filename: "report.pdf",
       kind: "user_upload",
+      availability: "available",
+      expiresAt: "2026-09-23T12:00:00.000Z",
     });
 
     const response = await app.request(
@@ -1553,6 +1558,27 @@ describe("Companions Runtime v2 API", () => {
     );
 
     expect(response.headers.get("content-disposition")).toBe('attachment; filename="report.pdf"');
+  });
+
+  it("returns explicit expiry without reading object storage", async () => {
+    const app = appWithRoutes();
+    coreMocks.readCompanionAttachmentV2.mockResolvedValue({
+      storageKey: null,
+      contentType: "application/pdf",
+      byteSize: 5,
+      filename: "old-report.pdf",
+      kind: "user_upload",
+      availability: "expired",
+      expiresAt: "2026-09-01T12:00:00.000Z",
+    });
+
+    const response = await app.request(
+      `http://localhost/v1/companions/${COMPANION_ID}/attachments/88888888-8888-4888-8888-888888888888`,
+    );
+
+    expect(response.status).toBe(410);
+    await expect(response.json()).resolves.toEqual({ ok: false, error: "attachment expired" });
+    expect(storageMocks.getSkillArchive).not.toHaveBeenCalled();
   });
 
   it("makes an unreadable thread and an unknown attachment indistinguishable", async () => {

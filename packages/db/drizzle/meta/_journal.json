@@ -1198,6 +1198,13 @@
       "when": 1793344000000,
       "tag": "0170_companion_runtime_v3_human_decisions",
       "breakpoints": true
+    },
+    {
+      "idx": 171,
+      "version": "7",
+      "when": 1793347600000,
+      "tag": "0171_companion_attachment_retention",
+      "breakpoints": true
     }
   ]
 }

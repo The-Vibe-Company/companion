@@ -52,6 +52,9 @@ with one precise context-loss sentence; otherwise it stays silent.
 First-party
 clients bootstrap only the newest bounded thread window, apply monotonic entry deltas, and page
 older durable history; they never truncate the thread or reset the persistent Box/Pi session.
+Hosted chat files remain scoped to their message. Their bytes expire exactly 30 days after upload;
+reads, retries, wake, and restaging never extend that deadline, while the thread keeps explicit
+expired metadata and a later upload creates a new attachment.
 Agent Auth clients cannot call this runtime-only MCP.
 
 Treat runtime provider/model settings, provider credentials, MCP accounts, and Companion

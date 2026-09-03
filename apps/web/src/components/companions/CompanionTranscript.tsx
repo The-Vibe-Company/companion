@@ -720,6 +720,8 @@ export function CompanionTranscript({
             contentType,
           }),
           position,
+          availability: "available" as const,
+          expires_at: null,
         }];
       }),
       created_at: new Date().toISOString(),

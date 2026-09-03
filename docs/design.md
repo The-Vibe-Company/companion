@@ -118,9 +118,10 @@ Runtime state is explicit and durable:
   cold immediately, independently of Turn and lane ownership.
 - `companion_message_attachments` owns the files one transcript entry carries: `user_upload` for what
   a member sent, `pi_output` for an image Pi handed back, plus the content-addressed storage key,
-  resolved content type, size, digest, sanitized filename, and position. Deleting a row journals its
-  storage key into the durable object-deletion outbox in the same transaction, so an object cannot
-  outlive the entry, the Companion, or the tenant.
+  resolved content type, size, digest, sanitized filename, position, immutable upload/expiry times,
+  and byte-deletion fact. Upload schedules object deletion exactly 30 days later. Normal expiry keeps
+  the metadata row; deleting the row accelerates its durable object-deletion entry, so an object
+  cannot outlive the entry, the Companion, or the tenant.
 - A scheduled routine fire continues to use its routine-origin `companion_turns.id` as the durable
   run id. `companion_routine_run_entries` is the private, no-wake transcript projection for that
   run; read APIs page it by ordinal under entry-count and byte ceilings. `companion_routine_returns`
@@ -678,8 +679,11 @@ email-domain allowlist. Without both, routes and navigation are absent and runti
 It also accepts multipart: up to five files of at most 10 MB each are stored under their content
 address before the same transaction persists their rows, so an accepted turn always names files that
 already exist. `GET /v1/companions/:id/attachments/:attachmentId` serves those bytes, re-authorizing
-on every request and contacting only PostgreSQL and object storage. Thread reads add the active turn,
-queued count, interruption state, and each entry's attachment metadata — never a storage key or URL. Existing lifecycle paths
+on every request and contacting only PostgreSQL and object storage. Exactly 30 days after upload the
+route returns `410`, the bytes are durably queued for deletion, and reads never extend the deadline.
+Thread reads keep an explicit expired attachment card with its metadata but no download target.
+They add the active turn, queued count, interruption state, and each entry's attachment metadata —
+never a storage key or URL. Existing lifecycle paths
 persist operations and return `202`; decision answers are durable and runtime-delivered. Config
 proposals (`kind: config` plus a bounded `proposal` object) dispatch to
 `companion_api_answer_config_decision` after the route validates `model_id` against the provider

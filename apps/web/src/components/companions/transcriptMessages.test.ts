@@ -515,6 +515,8 @@ describe("holding message identity across polls", () => {
         byte_size: 12,
         filename: "chart.png",
         position: 0,
+        availability: "available" as const,
+        expires_at: null,
       }],
     });
     const { seen, update } = renderHook(useStableEntries, [pending]);
@@ -540,6 +542,8 @@ describe("holding message identity across polls", () => {
         byte_size: 12,
         filename: "chart.png",
         position: 0,
+        availability: "available" as const,
+        expires_at: "2026-09-11T12:00:00.000Z",
       }],
     });
     const { seen, update } = renderHook(useStableEntries, [sent]);

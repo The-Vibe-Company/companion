@@ -48,6 +48,13 @@ public struct CompanionAttachment: Codable, Identifiable, Equatable, Sendable {
     public let byteSize: Int
     public let filename: String
     public let position: Int
+    public let availability: Availability
+    public let expiresAt: Date?
+
+    public enum Availability: String, Codable, Equatable, Sendable {
+        case available
+        case expired
+    }
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -56,6 +63,21 @@ public struct CompanionAttachment: Codable, Identifiable, Equatable, Sendable {
         case byteSize = "byte_size"
         case filename
         case position
+        case availability
+        case expiresAt = "expires_at"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        kind = try container.decode(Kind.self, forKey: .kind)
+        contentType = try container.decode(CompanionAttachmentContentType.self, forKey: .contentType)
+        byteSize = try container.decode(Int.self, forKey: .byteSize)
+        filename = try container.decode(String.self, forKey: .filename)
+        position = try container.decode(Int.self, forKey: .position)
+        availability = try container.decodeIfPresent(Availability.self, forKey: .availability)
+            ?? .available
+        expiresAt = try container.decodeIfPresent(Date.self, forKey: .expiresAt)
     }
 }
 
