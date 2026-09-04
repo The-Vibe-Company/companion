@@ -8,28 +8,6 @@ ALTER TABLE public.companion_v3_routine_runs
     CHECK (pi_invocation_generation >= 0);
 --> statement-breakpoint
 
--- Rows deferred by the old executor already have the full proof: routine_start_failed was emitted
--- only after the run-scoped session cleanup succeeded, and defer_external cleared the write intent.
--- One fresh identity is sufficient even if the old executor retried the tombstoned identity often.
-UPDATE public.companion_v3_routine_runs run
-SET pi_invocation_generation = 1
-FROM public.companion_v3_turns turn_row
-JOIN public.companion_v3_external_incidents incident
-  ON incident.id = turn_row.external_incident_id
-  AND incident.org_id = turn_row.org_id
-  AND incident.companion_id = turn_row.companion_id
-WHERE run.org_id = turn_row.org_id
-  AND run.companion_id = turn_row.companion_id
-  AND run.turn_id = turn_row.id
-  AND run.outcome = 'pending'
-  AND turn_row.state = 'queued'
-  AND turn_row.admission_state = 'pending'
-  AND turn_row.admission_started_at IS NULL
-  AND turn_row.pi_invocation_id IS NULL
-  AND turn_row.retry_count > 0
-  AND incident.stable_code = 'routine_start_failed';
---> statement-breakpoint
-
 CREATE OR REPLACE FUNCTION public.companion_v3_runtime_authorize_background_v9(
   p_org_id uuid,p_companion_id uuid,p_turn_id uuid,p_claim_token uuid,p_claim_epoch bigint,
   p_gate_epoch bigint,p_protocol integer
