@@ -249,7 +249,7 @@ const BOX_LAB_PI_LAYOUT_COMMAND_TIMEOUT_MAX_SECONDS = 900;
  * daemon that is merely slow and one that is crash-looping both answer `activating` for the first
  * seconds. Reading a single probe as the verdict is what turned healthy starts into wake failures.
  */
-const PI_DAEMON_ACTIVE_TIMEOUT_MS = 180_000;
+export const PI_DAEMON_ACTIVE_TIMEOUT_MS = 180_000;
 /**
  * Pi acknowledges an RPC command as soon as it accepts it. The layout-14 broker forwards that
  * correlated response over its owner-only socket, so a completed Box command proves an application

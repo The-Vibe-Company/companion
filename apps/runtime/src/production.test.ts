@@ -215,11 +215,13 @@ describe("production runtime composition", () => {
       convergence: expect.objectContaining({ converge: expect.any(Function) }),
       backgroundConvergence: expect.objectContaining({ converge: expect.any(Function) }),
       deadlineSweep: expect.objectContaining({ converge: expect.any(Function) }),
+      concurrency: 8,
       sweepIntervalMs: 2_000,
     }));
     expect(Object.keys(schedulerInput ?? {}).sort()).toEqual([
       "backgroundConvergence",
       "claimsEnabled",
+      "concurrency",
       "convergence",
       "deadlineSweep",
       "executorId",
@@ -279,6 +281,7 @@ describe("production runtime composition", () => {
       expect(Object.keys(schedulerInput ?? {}).sort()).toEqual([
         "backgroundConvergence",
         "claimsEnabled",
+        "concurrency",
         "convergence",
         "deadlineSweep",
         "executorId",

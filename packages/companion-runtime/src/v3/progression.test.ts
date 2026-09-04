@@ -1642,6 +1642,74 @@ describe("Runtime v3 progression interface", () => {
     ]);
   });
 
+  it("renews the preparation lease while Pi activation exceeds the initial lease window", async () => {
+    vi.useFakeTimers();
+    try {
+      const claim: RuntimeV3PreparationClaim = {
+        orgId: mainClaim.orgId,
+        companionId: mainClaim.companionId,
+        turnId: acceptedTurn.id,
+        commandId: acceptedTurn.commandId,
+        checkpoint: "staged",
+        boxIdempotencyKey: "11111111-1111-4111-8111-111111111111",
+        boxId: "bx_23456789",
+        createdAt: new Date(),
+        executorId: "runtime-slow-wake",
+        authorized: true,
+        actorId: "actor-1",
+        modelId: "claude-test",
+        persona: null,
+        settingsRevision: 1n,
+        skillsRevision: 1,
+        providerRefs: [],
+        skillRefs: [],
+        mcpRefs: [],
+        providerMaterial: [],
+        skillMaterial: [],
+        mcpMaterial: [],
+        configCatalog: null,
+        fence: mainClaim.fence,
+      };
+      const reauthorize = vi.fn().mockResolvedValue(true);
+      const checkpoint = vi.fn().mockResolvedValue(true);
+      const preparation = createRuntimeV3Preparation({
+        persistence: {
+          claim: vi.fn().mockResolvedValueOnce(claim).mockResolvedValue(null),
+          checkpoint,
+          defer: vi.fn().mockResolvedValue(true),
+          fail: vi.fn().mockResolvedValue(true),
+          reauthorize,
+          mintCredentials: vi.fn(),
+        },
+        box: {
+          createGenerationBox: vi.fn(),
+          applyGenerationBoxSettings: vi.fn(),
+          getStatus: vi.fn(),
+        },
+        preparationStager: { stagePreparation: vi.fn() },
+        pi: {
+          startPiDaemon: vi.fn(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 31_000));
+            return { state: "idle" as const, invocationId: "pi-slow-ready" };
+          }),
+        },
+      });
+
+      const convergence = preparation.converge({ executorId: claim.executorId });
+      await vi.advanceTimersByTimeAsync(31_000);
+      await expect(convergence).resolves.toEqual({ progressed: 1, exhausted: false });
+
+      expect(reauthorize).toHaveBeenCalledTimes(4);
+      expect(checkpoint).toHaveBeenCalledWith(
+        claim,
+        { next: "prepared", piInvocationId: "pi-slow-ready" },
+        expect.any(AbortSignal),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("recycles only the exactly fenced Pi on the same Box before restaging", async () => {
     const base: RuntimeV3PreparationClaim = {
       orgId: mainClaim.orgId,

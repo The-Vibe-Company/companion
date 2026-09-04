@@ -51,7 +51,7 @@ describe("companion budget invariants", () => {
     const v3 = COMPANION_RUNTIME_V3_BUDGETS;
     expect(v3.providerRequestMs).toBe(30_000);
     expect(v3.stagingMs).toBe(300_000);
-    expect(v3.piActivationMs).toBe(120_000);
+    expect(v3.piActivationMs).toBe(240_000);
     expect(v3.admissionAckMs).toBe(15_000);
     expect(v3.silentCommandMs).toBe(510_000);
     expect(v3.silentSettlementMs).toBe(90_000);

@@ -5,6 +5,8 @@ import type { RuntimeApplicationScheduler } from "./application";
 interface RuntimeV3SchedulerBaseOptions {
   executorId: string;
   sweepIntervalMs: number;
+  /** Independent main/preparation workers; PostgreSQL still serializes each Companion lane. */
+  concurrency?: number;
 }
 
 export type RuntimeV3SchedulerOptions = RuntimeV3SchedulerBaseOptions & (
@@ -36,9 +38,13 @@ interface RuntimeV3Loop {
 export function createRuntimeV3Scheduler(
   options: RuntimeV3SchedulerOptions,
 ): RuntimeApplicationScheduler {
+  const concurrency = options.concurrency ?? 1;
+  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100) {
+    throw new TypeError("Runtime v3 concurrency must be between 1 and 100");
+  }
   const loops: RuntimeV3Loop[] = options.claimsEnabled
     ? [
-      loop(options.convergence, true),
+      ...Array.from({ length: concurrency }, () => loop(options.convergence, true)),
       loop(options.backgroundConvergence, true),
       loop(options.deadlineSweep, false),
     ]

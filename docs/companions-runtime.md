@@ -185,6 +185,10 @@ acknowledgement admits the Turn and refreshes the accepted-work clock. Runtime r
 actor-bound `Prepared` proof, invocation binding, resource revisions, and capability expiry under
 the lane fence immediately before admission.
 
+Preparation renews its fenced lease every ten seconds throughout staging, Pi repair, and Pi
+activation. The runtime scheduler keeps the configured main-work concurrency available, so one
+Box paging back in or one slow Pi activation cannot retain unrelated Companions' chat queues.
+
 The golden runtime image precompiles Jiti's source-hashed Pi extension cache under the Companion's
 persistent `~/.companion/runtime/tmp`; `/tmp` is not used because Box discards it on archive. Pi
 activation and broker-socket readiness run inside one bounded Box command. Starting separate status

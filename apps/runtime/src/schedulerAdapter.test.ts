@@ -109,6 +109,37 @@ describe("Runtime v3 scheduler", () => {
     await scheduler.shutdown({ drainTimeoutMs: 1_000 });
   });
 
+  it("keeps claiming other main Companions while one preparation is blocked", async () => {
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => { release = resolve; });
+    const main: RuntimeV3Convergence = {
+      converge: vi.fn()
+        .mockImplementationOnce(async () => {
+          await blocked;
+          return { progressed: 0, exhausted: false };
+        })
+        .mockResolvedValue({ progressed: 0, exhausted: false }),
+    };
+    const scheduler = createRuntimeV3Scheduler({
+      claimsEnabled: true,
+      concurrency: 2,
+      convergence: main,
+      backgroundConvergence: idleConvergence(),
+      deadlineSweep: idleConvergence(),
+      executorId: "runtime-v3-concurrent-main",
+      sweepIntervalMs: 2_000,
+    });
+
+    scheduler.start();
+    await vi.waitFor(() => expect(main.converge).toHaveBeenCalledTimes(2));
+    expect(scheduler.snapshot().activeCount).toBe(1);
+
+    release();
+    await vi.waitFor(() => expect(scheduler.snapshot().activeCount).toBe(0));
+    scheduler.stopClaims();
+    await scheduler.shutdown({ drainTimeoutMs: 1_000 });
+  });
+
   it("keeps a rejected loop unhealthy until that same loop recovers", async () => {
     vi.useFakeTimers();
     try {

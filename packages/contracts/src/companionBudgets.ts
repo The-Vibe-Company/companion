@@ -123,7 +123,7 @@ export const COMPANION_BUDGETS: CompanionBudgets = deriveCompanionBudgets(COMPAN
 export const COMPANION_RUNTIME_V3_BUDGETS = {
   providerRequestMs: 30_000,
   stagingMs: 5 * 60_000,
-  piActivationMs: 2 * 60_000,
+  piActivationMs: 4 * 60_000,
   admissionAckMs: 15_000,
   silentCommandMs: 8 * 60_000 + 30_000,
   silentSettlementMs: 90_000,

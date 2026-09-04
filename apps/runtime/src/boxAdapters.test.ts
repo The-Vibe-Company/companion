@@ -1,7 +1,13 @@
 /* oxlint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-chained-type-assertions, anti-slop/no-unsafe-dictionary-type, anti-slop/no-known-value-widening -- Lifecycle fixtures are hand-written fakes matching the used client surface exactly. */
 import { describe, expect, it, vi } from "vitest";
-import { BoxRuntimeAdapterError, type BoxRuntimeLifecycleClient, type CompanionBoxRuntime } from "@companion/box-runtime";
+import {
+  BoxRuntimeAdapterError,
+  PI_DAEMON_ACTIVE_TIMEOUT_MS,
+  type BoxRuntimeLifecycleClient,
+  type CompanionBoxRuntime,
+} from "@companion/box-runtime";
 import type { RuntimeProcessLog } from "@companion/companion-runtime/runtime-support";
+import { RUNTIME_V3_PI_ACTIVATION_BUDGET_MS } from "@companion/companion-runtime/v3/internal";
 
 import {
   createRuntimeBoxControl,
@@ -57,6 +63,11 @@ function boxRuntime(overrides: Partial<CompanionBoxRuntime> = {}): CompanionBoxR
 }
 
 describe("runtime Box/Pi port adapters", () => {
+  it("lets the Pi activation command finish its own readiness budget", () => {
+    expect(RUNTIME_V3_PI_ACTIVATION_BUDGET_MS)
+      .toBeGreaterThan(PI_DAEMON_ACTIVE_TIMEOUT_MS + 5_000);
+  });
+
   it("uses only generation-qualified lifecycle create and exact provider status", async () => {
     const findGenerationBoxes = vi.fn(async () => ({
       name: "Companion 11111111-1111-4111-8111-111111111111 g4",

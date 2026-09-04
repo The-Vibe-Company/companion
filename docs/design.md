@@ -375,6 +375,10 @@ The production composition owns only Runtime v3 convergence: main lifecycle/prep
 background Turn work, and deadline enforcement run on independent clocks. There is no reachable
 legacy kernel or store. The background scheduler cannot retain main chat, preparation, or Pi
 repair; permanent delete remains the destructive exception.
+The configured execution concurrency is applied to independent main convergence workers, and each
+long preparation phase renews its fenced aggregate lease every ten seconds. A slow Box wake or Pi
+activation therefore neither loses a successful checkpoint to lease expiry nor head-of-line blocks
+unrelated Companions.
 
 Lifecycle and broker-observation calls that are known idempotent retry network, `429`, and `5xx`
 failures up to five times with jittered 1/2/5/10/30-second backoff. Observation-only broker state

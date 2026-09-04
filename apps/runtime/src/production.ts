@@ -418,6 +418,7 @@ export async function buildProductionRuntimeService(
       store,
       scheduler: factories.createScheduler({
         claimsEnabled: true,
+        concurrency: config.concurrency,
         convergence: runtimeV3,
         backgroundConvergence: runtimeV3Background,
         deadlineSweep: createRuntimeV3DeadlineSweep(runtimeV3TurnPersistence),

@@ -1465,6 +1465,7 @@ export function createRuntimeV3WarmTurnAdvance(
 
 const PREPARATION_POLL_SECONDS = 1;
 const PREPARATION_BOX_TTL_SECONDS = 6 * 60 * 60;
+const PREPARATION_LEASE_RENEW_INTERVAL_MS = 10_000;
 export const RUNTIME_V3_PREPARATION_BUDGET_MS =
   COMPANION_RUNTIME_V3_BUDGETS.preparationDeadlineMs;
 export const RUNTIME_V3_STAGING_BUDGET_MS = COMPANION_RUNTIME_V3_BUDGETS.stagingMs;
@@ -1475,6 +1476,64 @@ if (
   RUNTIME_V3_STAGING_BUDGET_MS >= RUNTIME_V3_PREPARATION_BUDGET_MS
   || RUNTIME_V3_PI_ACTIVATION_BUDGET_MS >= RUNTIME_V3_STAGING_BUDGET_MS
 ) throw new Error("Runtime v3 nested preparation budgets require a strict margin");
+
+function waitForPreparationLeaseRenewal(signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const onAbort = (): void => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, PREPARATION_LEASE_RENEW_INTERVAL_MS);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+async function withPreparationLeaseRenewal<T>(input: {
+  claim: RuntimeV3PreparationClaim;
+  persistence: RuntimeV3PreparationPersistence;
+  signal: AbortSignal;
+  work(signal: AbortSignal): Promise<T>;
+}): Promise<T> {
+  const renewalController = new AbortController();
+  const workSignal = AbortSignal.any([input.signal, renewalController.signal]);
+  let renewalFailure: Error | null = null;
+  const renewal = (async () => {
+    try {
+      for (;;) {
+        await waitForPreparationLeaseRenewal(workSignal);
+        const authorized = await input.persistence.reauthorize(input.claim, input.signal);
+        if (!authorized) {
+          throw new RuntimeExternalDependencyError("external_authority_unavailable", {
+            kind: "grant",
+            id: `actor:${input.claim.actorId ?? "unavailable"}`,
+          });
+        }
+      }
+    } catch (cause) {
+      if (!renewalController.signal.aborted && !input.signal.aborted) {
+        renewalFailure = cause instanceof Error
+          ? cause
+          : new Error("Preparation lease renewal failed");
+        renewalController.abort(renewalFailure);
+      }
+    }
+  })();
+  try {
+    const result = await input.work(workSignal);
+    if (renewalFailure) throw renewalFailure;
+    return result;
+  } finally {
+    renewalController.abort();
+    await renewal;
+  }
+}
 
 export function runtimeV3PreparationRetryDelaySeconds(input: {
   attemptCount: number;
@@ -1726,15 +1785,20 @@ export function createRuntimeV3Preparation(
             }
             await reauthorize();
             const terminationSignal = phaseSignal(RUNTIME_V3_PI_ACTIVATION_BUDGET_MS);
-            let stopped = await externalDependencyCall(
-              "box_unavailable",
-              { kind: "box", id: claim.boxId },
-              async () => await options.pi.terminatePiInvocation!({
-                boxId: claim.boxId!,
-                expectedInvocationId: claim.recyclePiInvocationId!,
-                signal: terminationSignal,
-              }),
-            );
+            let stopped = await withPreparationLeaseRenewal({
+              claim,
+              persistence: options.persistence,
+              signal: terminationSignal,
+              work: async (signal) => await externalDependencyCall(
+                "box_unavailable",
+                { kind: "box", id: claim.boxId! },
+                async () => await options.pi.terminatePiInvocation!({
+                  boxId: claim.boxId!,
+                  expectedInvocationId: claim.recyclePiInvocationId!,
+                  signal,
+                }),
+              ),
+            });
             terminationSignal.throwIfAborted();
             shutdownSignal?.throwIfAborted();
             if (stopped.outcome === "superseded") {
@@ -1743,14 +1807,19 @@ export function createRuntimeV3Preparation(
                 throw new Error("Superseded Pi recycle reconciliation is unavailable");
               }
               const observationSignal = phaseSignal(RUNTIME_V3_PI_ACTIVATION_BUDGET_MS);
-              const observed = await externalDependencyCall(
-                "box_unavailable",
-                { kind: "box", id: claim.boxId },
-                async () => await options.pi.piDaemonStatus!({
-                  boxId: claim.boxId!,
-                  signal: observationSignal,
-                }),
-              );
+              const observed = await withPreparationLeaseRenewal({
+                claim,
+                persistence: options.persistence,
+                signal: observationSignal,
+                work: async (signal) => await externalDependencyCall(
+                  "box_unavailable",
+                  { kind: "box", id: claim.boxId! },
+                  async () => await options.pi.piDaemonStatus!({
+                    boxId: claim.boxId!,
+                    signal,
+                  }),
+                ),
+              });
               observationSignal.throwIfAborted();
               shutdownSignal?.throwIfAborted();
               if (observed.state !== "idle" || !observed.invocationId
@@ -1764,15 +1833,20 @@ export function createRuntimeV3Preparation(
                 return { progressed, exhausted: false };
               }
               const reconciledTerminationSignal = phaseSignal(RUNTIME_V3_PI_ACTIVATION_BUDGET_MS);
-              stopped = await externalDependencyCall(
-                "box_unavailable",
-                { kind: "box", id: claim.boxId },
-                async () => await options.pi.terminatePiInvocation!({
-                  boxId: claim.boxId!,
-                  expectedInvocationId: observed.invocationId!,
-                  signal: reconciledTerminationSignal,
-                }),
-              );
+              stopped = await withPreparationLeaseRenewal({
+                claim,
+                persistence: options.persistence,
+                signal: reconciledTerminationSignal,
+                work: async (signal) => await externalDependencyCall(
+                  "box_unavailable",
+                  { kind: "box", id: claim.boxId! },
+                  async () => await options.pi.terminatePiInvocation!({
+                    boxId: claim.boxId!,
+                    expectedInvocationId: observed.invocationId!,
+                    signal,
+                  }),
+                ),
+              });
               reconciledTerminationSignal.throwIfAborted();
               shutdownSignal?.throwIfAborted();
               if (stopped.outcome === "superseded") {
@@ -1791,15 +1865,20 @@ export function createRuntimeV3Preparation(
               throw new Error("Fenced Pi recycle boundary is unavailable");
             }
             const resetSignal = phaseSignal(RUNTIME_V3_STAGING_BUDGET_MS);
-            await externalDependencyCall(
-              "box_unavailable",
-              { kind: "box", id: claim.boxId },
-              async () => await options.pi.resetPiSession!({
-                boxId: claim.boxId!,
-                recoveryId: claim.recoveryId!,
-                signal: resetSignal,
-              }),
-            );
+            await withPreparationLeaseRenewal({
+              claim,
+              persistence: options.persistence,
+              signal: resetSignal,
+              work: async (signal) => await externalDependencyCall(
+                "box_unavailable",
+                { kind: "box", id: claim.boxId! },
+                async () => await options.pi.resetPiSession!({
+                  boxId: claim.boxId!,
+                  recoveryId: claim.recoveryId!,
+                  signal,
+                }),
+              ),
+            });
             resetSignal.throwIfAborted();
             shutdownSignal?.throwIfAborted();
             if (!await options.persistence.checkpointPiRecycle(claim, "complete", deadlineSignal)) {
@@ -1885,12 +1964,17 @@ export function createRuntimeV3Preparation(
             externalFailureClass = "plugin_provider";
             if (!claim.boxId) throw new Error("Box identity is missing before staging");
             const stagingSignal = phaseSignal(RUNTIME_V3_STAGING_BUDGET_MS);
-            const staged = await options.preparationStager.stagePreparation({
+            const staged = await withPreparationLeaseRenewal({
               claim,
-              authorize: async () => await options.persistence.mintCredentials(
-                claim, stagingSignal,
-              ),
+              persistence: options.persistence,
               signal: stagingSignal,
+              work: async (signal) => await options.preparationStager.stagePreparation({
+                claim,
+                authorize: async () => await options.persistence.mintCredentials(
+                  claim, signal,
+                ),
+                signal,
+              }),
             });
             stagingSignal.throwIfAborted();
             shutdownSignal?.throwIfAborted();
@@ -1909,18 +1993,25 @@ export function createRuntimeV3Preparation(
             if (!claim.boxId) throw new Error("Box identity is missing before Pi activation");
             await reauthorize();
             const activationSignal = phaseSignal(RUNTIME_V3_PI_ACTIVATION_BUDGET_MS);
-            let pi;
-            try {
-              pi = await options.pi.startPiDaemon({
-                boxId: claim.boxId,
-                signal: activationSignal,
-              });
-            } catch {
-              throw new RuntimeExternalDependencyError("box_unavailable", {
-                kind: "box",
-                id: claim.boxId,
-              });
-            }
+            const pi = await withPreparationLeaseRenewal({
+              claim,
+              persistence: options.persistence,
+              signal: activationSignal,
+              work: async (signal) => {
+                try {
+                  return await options.pi.startPiDaemon({
+                    boxId: claim.boxId!,
+                    signal,
+                  });
+                } catch {
+                  if (signal.aborted) throw signal.reason;
+                  throw new RuntimeExternalDependencyError("box_unavailable", {
+                    kind: "box",
+                    id: claim.boxId!,
+                  });
+                }
+              },
+            });
             activationSignal.throwIfAborted();
             shutdownSignal?.throwIfAborted();
             if (pi.state !== "idle") {
