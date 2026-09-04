@@ -1875,7 +1875,8 @@ describe("staged Companion instructions", () => {
 
     expect(text).toContain("`not connected` or `cached`");
     expect(text).toContain("available on demand");
-    expect(text).toContain("connects it automatically on first use");
+    expect(text).toContain("cache-only search or list does not connect it");
+    expect(text).toContain("connects it automatically on the first live tool or resource call");
     expect(text).toContain("Only `failed` or `needs-auth`");
     expect(text).toContain("without asking the person to connect it");
     expect(text).not.toContain("What is connected is what you have");
