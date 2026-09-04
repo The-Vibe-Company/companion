@@ -5792,7 +5792,7 @@ describe("Runtime v3 progression facts", () => {
     await seedPreparedV3("routine-settlement-modes");
     const routineStore = createRuntimeV3PostgresRoutineConvergence(runtimeSql);
     const persistence = createRuntimeV3PostgresRoutineTurnPersistence(runtimeSql);
-    const startRoutine = async (label: string, recordAccepted = true) => {
+    const startRoutine = async (label: string, recordAccepted = true, priorRetryCount = 0) => {
       const routineId = randomUUID();
       const occurrenceId = randomUUID();
       const due = new Date(Date.now() - 1_000);
@@ -5811,6 +5811,10 @@ describe("Runtime v3 progression facts", () => {
         executorId: `runtime-${label}-${occurrenceId}`, lane: "background",
       });
       expect(claim?.turn.id).toBe(fired[0]!.turn.id);
+      if (priorRetryCount > 0) {
+        await ownerSql`update public.companion_v3_turns set retry_count=${priorRetryCount}
+          where org_id=${ids.org}::uuid and id=${fired[0]!.turn.id}::uuid`;
+      }
       const material = await persistence.authorize(claim!);
       expect(material).not.toBeNull();
       await expect(persistence.beginAdmission(claim!, {
@@ -5827,7 +5831,8 @@ describe("Runtime v3 progression facts", () => {
     };
 
     try {
-      const rejected = await startRoutine("pre-accept-rejection", false);
+      const rejected = await startRoutine("pre-accept-rejection", false, 3);
+      expect(rejected.material.piInvocationId).not.toContain(":retry-");
       await expect(routineStore.completeProgression(rejected.claim, {
         kind: "admission_rejected",
         error: { code: "pi_prompt_refused", message: "Pi rejected the prompt.", action: "none" },
@@ -5848,9 +5853,9 @@ describe("Runtime v3 progression facts", () => {
         from public.companion_v3_turns turn_row
         join public.companion_v3_routine_runs run on run.turn_id=turn_row.id
         where turn_row.id=${rejected.turnId}::uuid`;
-      expect(rejectedFacts).toMatchObject({ state: "queued", outcome: "pending", retryCount: 1 });
-      expect(rejectedFacts!.delay).toBeGreaterThanOrEqual(3);
-      expect(rejectedFacts!.delay).toBeLessThanOrEqual(6);
+      expect(rejectedFacts).toMatchObject({ state: "queued", outcome: "pending", retryCount: 4 });
+      expect(rejectedFacts!.delay).toBeGreaterThanOrEqual(47);
+      expect(rejectedFacts!.delay).toBeLessThanOrEqual(73);
       await ownerSql`update public.companion_v3_turns set available_at=clock_timestamp()
         where org_id=${ids.org}::uuid and id=${rejected.turnId}::uuid`;
       const retriedClaim = await routineStore.claimLane({

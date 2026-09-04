@@ -1843,6 +1843,8 @@ export const companionV3RoutineRuns = pgTable(
     triggerMode: companionRoutineSurfaceModeEnum("trigger_mode"),
     triggerRetryDeadlineAt: timestamp("trigger_retry_deadline_at", { withTimezone: true }),
     outcome: text("outcome").notNull().default("pending"),
+    /** Advances only after exact cleanup proves a rejected routine session cannot resume. */
+    piInvocationGeneration: integer("pi_invocation_generation").notNull().default(0),
     surfaceMode: companionRoutineSurfaceModeEnum("surface_mode"),
     mainEntryEventId: text("main_entry_event_id"),
     relayTurnId: uuid("relay_turn_id"),
@@ -1864,6 +1866,10 @@ export const companionV3RoutineRuns = pgTable(
       .on(t.orgId, t.companionId, t.triggerSnapshotId, t.createdAt, t.turnId)
       .where(sql`${t.triggerSnapshotId} is not null`),
     ordinalCheck: check("companion_v3_routine_runs_ordinal_check", sql`${t.nextOrdinal} >= 0`),
+    invocationGenerationCheck: check(
+      "companion_v3_routine_runs_invocation_generation_check",
+      sql`${t.piInvocationGeneration} >= 0`,
+    ),
   }),
 );
 

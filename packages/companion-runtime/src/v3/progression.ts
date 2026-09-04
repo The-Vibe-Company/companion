@@ -1026,6 +1026,17 @@ export function createRuntimeV3WarmTurnAdvance(
         if (signal?.aborted) return { kind: "release" };
         if (admission.outcome === "rejected") {
           admissionWriteIntent = false;
+          // The isolated routine adapter emits this code only after terminating the exact
+          // run-scoped session. Persist it through the cleanup/requeue path so PostgreSQL advances
+          // the invocation generation only after that negative proof is durable.
+          if (admission.code === "routine_start_failed") {
+            return {
+              kind: "admission_rejected",
+              code: admission.code,
+              message: "The routine session could not start and will retry automatically.",
+              action: "retry",
+            };
+          }
           const failureClass = rejectedFailureClass(admission.code);
           const dependencyKey = causalIdentityKey(
             admission.dependency,

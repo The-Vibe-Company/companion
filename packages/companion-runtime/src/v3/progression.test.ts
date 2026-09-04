@@ -2138,6 +2138,53 @@ describe("Runtime v3 progression interface", () => {
     });
   });
 
+  it("routes a safely terminated routine start through durable cleanup before retry", async () => {
+    const routineClaim = {
+      ...mainClaim,
+      source: "routine" as const,
+      turn: { ...mainClaim.turn, lane: "background" as const },
+    };
+    const claims: ClaimQueues = { main: [null], background: [routineClaim, null] };
+    const store = persistence({ claimLane: vi.fn(claimFrom(claims)) });
+    const warm = {
+      authorize: vi.fn().mockResolvedValue({
+        boxId: "bx_23456789",
+        piInvocationId: "routine-invocation-1",
+        content: "Run scheduled work",
+        cursor: 0n,
+      }),
+      beginAdmission: vi.fn().mockResolvedValue(true),
+      recordAdmission: vi.fn(),
+      project: vi.fn(),
+    };
+    const progression = createRuntimeV3Progression({
+      persistence: store,
+      advance: createRuntimeV3WarmTurnAdvance({
+        persistence: warm,
+        pi: {
+          prompt: vi.fn().mockResolvedValue({
+            outcome: "rejected",
+            code: "routine_start_failed",
+          }),
+          read: vi.fn(),
+          acknowledge: vi.fn(),
+        },
+      }),
+    });
+
+    await expect(progression.converge({ executorId: "runtime-routine-retry" }))
+      .resolves.toEqual({ progressed: 1, exhausted: false });
+    expect(warm.recordAdmission).not.toHaveBeenCalled();
+    expect(store.convergence.completeProgression).toHaveBeenCalledWith(routineClaim, {
+      kind: "admission_rejected",
+      error: {
+        code: "routine_start_failed",
+        message: "The routine session could not start and will retry automatically.",
+        action: "retry",
+      },
+    });
+  });
+
   it.each(["main", "routine", "trigger", "delegation"] as const)(
     "fails closed without contacting Pi when %s authority is unavailable",
     async (source) => {

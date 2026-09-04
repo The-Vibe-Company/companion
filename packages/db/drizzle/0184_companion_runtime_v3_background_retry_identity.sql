@@ -1,8 +1,35 @@
--- A safely rejected background Pi start is terminated before the Turn is requeued. Termination
--- leaves an exact-invocation cancellation tombstone on the Box so an ambiguous or cancelled
--- command can never be resurrected. Reusing the original invocation across a proven-safe retry
--- therefore makes every later start reject itself. Keep the first identity transcript-compatible,
--- and derive a fresh identity only after PostgreSQL increments the durable retry counter.
+-- A routine start that is proven rejected is terminated before its Turn is requeued. Termination
+-- leaves an exact-invocation cancellation tombstone on the Box so a cancelled command can never
+-- be resurrected. Persist a separate generation only after that cleanup completes; ordinary
+-- provider retries and claim takeovers must not change the Pi identity.
+ALTER TABLE public.companion_v3_routine_runs
+  ADD COLUMN pi_invocation_generation integer NOT NULL DEFAULT 0,
+  ADD CONSTRAINT companion_v3_routine_runs_invocation_generation_check
+    CHECK (pi_invocation_generation >= 0);
+--> statement-breakpoint
+
+-- Rows deferred by the old executor already have the full proof: routine_start_failed was emitted
+-- only after the run-scoped session cleanup succeeded, and defer_external cleared the write intent.
+-- One fresh identity is sufficient even if the old executor retried the tombstoned identity often.
+UPDATE public.companion_v3_routine_runs run
+SET pi_invocation_generation = 1
+FROM public.companion_v3_turns turn_row
+JOIN public.companion_v3_external_incidents incident
+  ON incident.id = turn_row.external_incident_id
+  AND incident.org_id = turn_row.org_id
+  AND incident.companion_id = turn_row.companion_id
+WHERE run.org_id = turn_row.org_id
+  AND run.companion_id = turn_row.companion_id
+  AND run.turn_id = turn_row.id
+  AND run.outcome = 'pending'
+  AND turn_row.state = 'queued'
+  AND turn_row.admission_state = 'pending'
+  AND turn_row.admission_started_at IS NULL
+  AND turn_row.pi_invocation_id IS NULL
+  AND turn_row.retry_count > 0
+  AND incident.stable_code = 'routine_start_failed';
+--> statement-breakpoint
+
 CREATE OR REPLACE FUNCTION public.companion_v3_runtime_authorize_background_v9(
   p_org_id uuid,p_companion_id uuid,p_turn_id uuid,p_claim_token uuid,p_claim_epoch bigint,
   p_gate_epoch bigint,p_protocol integer
@@ -45,8 +72,10 @@ BEGIN
   END IF;
 
   RETURN QUERY SELECT v_material.background_kind,v_material.box_id,
-    'background:'||p_turn_id::text||':dispatch-v3:'||turn_row.command_id::text
-      ||CASE WHEN turn_row.retry_count>0 THEN ':retry-'||turn_row.retry_count::text ELSE '' END,
+    COALESCE(turn_row.pi_invocation_id,
+      'background:'||p_turn_id::text||':dispatch-v3:'||turn_row.command_id::text
+        ||CASE WHEN run.pi_invocation_generation>0
+          THEN ':retry-'||run.pi_invocation_generation::text ELSE '' END),
     CASE WHEN v_context IS NULL OR v_reserved_turn_id IS DISTINCT FROM p_turn_id
       THEN v_material.content
       ELSE v_context||E'\n\n[Scheduled work]\n'||v_material.content END,
@@ -54,6 +83,8 @@ BEGIN
     v_material.direct_workspace,
     v_context IS NOT NULL AND v_reserved_turn_id IS DISTINCT FROM p_turn_id,v_harvested
   FROM public.companion_v3_turns turn_row
+  JOIN public.companion_v3_routine_runs run ON run.org_id=turn_row.org_id
+    AND run.companion_id=turn_row.companion_id AND run.turn_id=turn_row.id
   WHERE turn_row.org_id=p_org_id AND turn_row.companion_id=p_companion_id
     AND turn_row.id=p_turn_id;
 END $$;
@@ -71,12 +102,15 @@ CREATE OR REPLACE FUNCTION public.companion_v3_runtime_begin_background_admissio
 SET search_path=pg_catalog,public SET row_security=on AS $$
 DECLARE v_now timestamptz:=clock_timestamp();
 BEGIN
-  IF p_protocol<>9 OR p_cursor<0 OR p_invocation_id IS DISTINCT FROM
-    'background:'||p_turn_id::text||':dispatch-v3:'||(
-      SELECT command_id::text
-        ||CASE WHEN retry_count>0 THEN ':retry-'||retry_count::text ELSE '' END
-      FROM public.companion_v3_turns
-      WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id)
+  IF p_protocol<>9 OR p_cursor<0 OR p_invocation_id IS DISTINCT FROM (
+    SELECT 'background:'||turn_row.id::text||':dispatch-v3:'||turn_row.command_id::text
+      ||CASE WHEN run.pi_invocation_generation>0
+        THEN ':retry-'||run.pi_invocation_generation::text ELSE '' END
+    FROM public.companion_v3_turns turn_row
+    JOIN public.companion_v3_routine_runs run ON run.org_id=turn_row.org_id
+      AND run.companion_id=turn_row.companion_id AND run.turn_id=turn_row.id
+    WHERE turn_row.org_id=p_org_id AND turn_row.companion_id=p_companion_id
+      AND turn_row.id=p_turn_id)
   THEN RETURN false;END IF;
   UPDATE public.companion_v3_turns turn_row SET admission_started_at=v_now,
     pi_invocation_id=p_invocation_id,admission_cursor=p_cursor,updated_at=v_now
@@ -100,4 +134,58 @@ END $$;
 
 REVOKE ALL ON FUNCTION public.companion_v3_runtime_begin_background_admission_v9(
   uuid,uuid,uuid,uuid,bigint,bigint,text,bigint,integer
+) FROM PUBLIC;
+--> statement-breakpoint
+
+-- v7 performs the exact-invocation termination checkpoint and requeue. Advance the identity only
+-- after that state transition is durably complete; terminal cleanup and ordinary lease release do
+-- not change it.
+CREATE OR REPLACE FUNCTION public.companion_v3_runtime_complete_v8(
+  p_org_id uuid,p_companion_id uuid,p_lane public.companion_v3_lane,p_turn_id uuid,
+  p_claim_token uuid,p_claim_epoch bigint,p_gate_epoch bigint,p_outcome text,p_code text,
+  p_message text,p_action public.companion_runtime_error_action,p_protocol integer
+) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public SET row_security=on AS $$
+DECLARE v_now timestamptz:=clock_timestamp();v_completed boolean;v_deadline timestamptz;
+  v_trigger boolean;v_requeued boolean;v_retry_count integer;
+BEGIN
+  IF p_protocol<>8 THEN RAISE EXCEPTION 'Runtime v3 protocol 8 is required' USING ERRCODE='42501';END IF;
+  v_completed:=public.companion_v3_runtime_complete_v7(p_org_id,p_companion_id,p_lane,p_turn_id,
+    p_claim_token,p_claim_epoch,p_gate_epoch,p_outcome,p_code,p_message,p_action,7);
+  IF NOT v_completed OR p_lane<>'background' OR p_outcome<>'cleanup_completed' THEN
+    RETURN v_completed;END IF;
+  SELECT run.trigger_snapshot_id IS NOT NULL,run.trigger_retry_deadline_at,
+    turn_row.state='queued' AND run.outcome='pending',turn_row.retry_count
+    INTO v_trigger,v_deadline,v_requeued,v_retry_count
+  FROM public.companion_v3_routine_runs run
+  JOIN public.companion_v3_turns turn_row ON turn_row.org_id=run.org_id
+    AND turn_row.companion_id=run.companion_id AND turn_row.id=run.turn_id
+  WHERE run.org_id=p_org_id AND run.companion_id=p_companion_id AND run.turn_id=p_turn_id
+  FOR UPDATE OF run,turn_row;
+  IF v_requeued THEN
+    UPDATE public.companion_v3_routine_runs
+    SET pi_invocation_generation=pi_invocation_generation+1
+    WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id;
+  END IF;
+  IF v_trigger AND v_requeued THEN
+    IF v_deadline<=v_now OR v_retry_count>5 THEN
+      UPDATE public.companion_v3_turns SET state='failed',outcome='failed',
+        outcome_code='trigger_retry_deadline_exceeded',
+        outcome_message='Trigger validation could not complete before its retry deadline.',
+        outcome_action='none',settled_at=v_now,available_at=v_now,updated_at=v_now
+        WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id;
+      UPDATE public.companion_v3_routine_runs SET outcome='failed',settled_at=v_now
+        WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id;
+    ELSE
+      UPDATE public.companion_v3_turns SET available_at=LEAST(available_at,v_deadline),updated_at=v_now
+        WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id;
+    END IF;
+  END IF;
+  RETURN true;
+END $$;
+--> statement-breakpoint
+
+REVOKE ALL ON FUNCTION public.companion_v3_runtime_complete_v8(
+  uuid,uuid,public.companion_v3_lane,uuid,uuid,bigint,bigint,text,text,text,
+  public.companion_runtime_error_action,integer
 ) FROM PUBLIC;
