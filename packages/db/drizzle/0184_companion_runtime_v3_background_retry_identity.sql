@@ -125,9 +125,23 @@ CREATE OR REPLACE FUNCTION public.companion_v3_runtime_complete_v8(
 ) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public SET row_security=on AS $$
 DECLARE v_now timestamptz:=clock_timestamp();v_completed boolean;v_deadline timestamptz;
-  v_trigger boolean;v_requeued boolean;v_retry_count integer;
+  v_trigger boolean;v_requeued boolean;v_retry_count integer;v_rotate_identity boolean:=false;
 BEGIN
   IF p_protocol<>8 THEN RAISE EXCEPTION 'Runtime v3 protocol 8 is required' USING ERRCODE='42501';END IF;
+  IF p_lane='background' AND p_outcome='cleanup_completed' THEN
+    SELECT turn_row.outcome_code='routine_start_failed' AND run.cleanup_retry
+      INTO v_rotate_identity
+    FROM public.companion_v3_lane_leases lease
+    JOIN public.companion_v3_turns turn_row ON turn_row.org_id=lease.org_id
+      AND turn_row.companion_id=lease.companion_id AND turn_row.id=lease.turn_id
+    JOIN public.companion_v3_routine_runs run ON run.org_id=lease.org_id
+      AND run.companion_id=lease.companion_id AND run.turn_id=lease.turn_id
+    WHERE lease.org_id=p_org_id AND lease.companion_id=p_companion_id
+      AND lease.lane='background' AND lease.turn_id=p_turn_id
+      AND lease.claim_token=p_claim_token AND lease.claim_epoch=p_claim_epoch
+      AND lease.gate_epoch=p_gate_epoch AND lease.expires_at>v_now
+    FOR UPDATE OF lease,turn_row,run;
+  END IF;
   v_completed:=public.companion_v3_runtime_complete_v7(p_org_id,p_companion_id,p_lane,p_turn_id,
     p_claim_token,p_claim_epoch,p_gate_epoch,p_outcome,p_code,p_message,p_action,7);
   IF NOT v_completed OR p_lane<>'background' OR p_outcome<>'cleanup_completed' THEN
@@ -140,7 +154,7 @@ BEGIN
     AND turn_row.companion_id=run.companion_id AND turn_row.id=run.turn_id
   WHERE run.org_id=p_org_id AND run.companion_id=p_companion_id AND run.turn_id=p_turn_id
   FOR UPDATE OF run,turn_row;
-  IF v_requeued THEN
+  IF v_requeued AND v_rotate_identity THEN
     UPDATE public.companion_v3_routine_runs
     SET pi_invocation_generation=pi_invocation_generation+1
     WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id;

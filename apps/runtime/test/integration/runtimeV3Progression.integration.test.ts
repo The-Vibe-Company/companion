@@ -5835,7 +5835,11 @@ describe("Runtime v3 progression facts", () => {
       expect(rejected.material.piInvocationId).not.toContain(":retry-");
       await expect(routineStore.completeProgression(rejected.claim, {
         kind: "admission_rejected",
-        error: { code: "pi_prompt_refused", message: "Pi rejected the prompt.", action: "none" },
+        error: {
+          code: "routine_start_failed",
+          message: "The routine session could not start.",
+          action: "retry",
+        },
       })).resolves.toBe(true);
       const rejectedCleanup = await routineStore.claimLane({
         executorId: "runtime-routine-rejected-cleanup", lane: "background",
@@ -5874,7 +5878,11 @@ describe("Runtime v3 progression facts", () => {
       })).resolves.toBe(true);
       await expect(routineStore.completeProgression(retriedClaim!, {
         kind: "admission_rejected",
-        error: { code: "pi_prompt_refused", message: "Pi rejected the prompt.", action: "none" },
+        error: {
+          code: "routine_start_failed",
+          message: "The routine session could not start.",
+          action: "retry",
+        },
       })).resolves.toBe(true);
       const retriedCleanup = await routineStore.claimLane({
         executorId: "runtime-routine-rejected-retry-cleanup", lane: "background",
@@ -6252,8 +6260,11 @@ describe("Runtime v3 progression facts", () => {
 
       const invalidTurn = await fireTrigger("invalid trigger", "relay", "invalid validator payload");
       const retryBases = [5, 15, 30, 60, 300];
+      let invalidInvocationId: string | null = null;
       for (let attempt = 0; attempt <= retryBases.length; attempt += 1) {
         active = await startTrigger(invalidTurn, `runtime-trigger-invalid-${attempt}`);
+        invalidInvocationId ??= active.material.piInvocationId;
+        expect(active.material.piInvocationId).toBe(invalidInvocationId);
         const delegatedMalformed = attempt === 2 || attempt === 3;
         const wrongReturn = delegatedMalformed
           ? {
