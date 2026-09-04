@@ -18,7 +18,7 @@
     "@companion/github": "workspace:*",
     "@companion/skills": "workspace:*",
     "@companion/storage": "workspace:*",
-    "@sentry/node": "^10.70.0",
+    "@sentry/node": "^10.71.0",
     "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.5",
     "stripe": "^18.5.0"

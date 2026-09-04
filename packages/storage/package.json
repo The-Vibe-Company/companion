@@ -12,8 +12,8 @@
     "coverage": "vitest run --coverage --coverage.reporter=text-summary --coverage.reporter=json-summary"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.744.0",
-    "@aws-sdk/s3-request-presigner": "^3.744.0"
+    "@aws-sdk/client-s3": "^3.1120.0",
+    "@aws-sdk/s3-request-presigner": "^3.1120.0"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

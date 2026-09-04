@@ -12,7 +12,7 @@
     "coverage": "vitest run --coverage --coverage.reporter=text-summary --coverage.reporter=json-summary"
   },
   "dependencies": {
-    "resend": "^6.5.1"
+    "resend": "^6.24.0"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
