@@ -64,7 +64,7 @@ describe("Companion provider catalog supplements", () => {
       ]));
   });
 
-  it("lets Pi replace provisional metadata for the same model id", async () => {
+  it("lets Pi replace provisional metadata without changing the pinned executable set", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async (input) => {
       if (providerIdFromRequest(input) !== "zai") return ordinaryProviderResponse(input);
       return jsonResponse({
@@ -81,13 +81,15 @@ describe("Companion provider catalog supplements", () => {
       cache: new CompanionProviderCatalogCache(),
     });
 
-    expect(catalog.find((provider) => provider.id === "zai")?.models).toEqual([
-      {
-        id: "glm-5.3-flash",
-        name: "Pi GLM-5.3-Flash",
-        input: ["text", "image"],
-        default: true,
-      },
-    ]);
+    expect(catalog.find((provider) => provider.id === "zai")?.models).toEqual(
+      expect.arrayContaining([
+        {
+          id: "glm-5.3-flash",
+          name: "Pi GLM-5.3-Flash",
+          input: ["text", "image"],
+        },
+        expect.objectContaining({ id: "glm-4.7", default: true }),
+      ]),
+    );
   });
 });
