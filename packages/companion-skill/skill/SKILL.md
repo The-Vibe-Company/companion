@@ -52,6 +52,9 @@ claim, retries with bounded jittered 5/15/30/60/300-second backoff, and resumes 
 one recovery signal. FIFO remains local to each independently progressing main/background lane.
 Runtime redelivers the same durable incident signal after a delivery crash until it is acknowledged;
 an acknowledged open or recovery signal is not delivered again.
+Slow Box preparation renews its runtime authority lease while it is in progress, and independent
+main convergence workers let other Companions wake without waiting behind that preparation. FIFO
+and single-active-turn guarantees still apply within each Companion lane.
 Hosted Runtime v3 is the only execution path. A Turn carries command, admission, activity, and
 outcome facts on the Turn itself. An
 outcome-unknown admission is immediately interrupted and never replayed, its lane is released, and

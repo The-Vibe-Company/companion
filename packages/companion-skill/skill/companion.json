@@ -32,7 +32,8 @@
         "version": "1.111.1",
         "date": "2026-09-04",
         "changes": [
-          "Refreshes the bundled Agent Auth client so the published integrity manifest matches the current build output."
+          "Refreshes the bundled Agent Auth client so the published integrity manifest matches the current build output.",
+          "Documents preparation lease renewal and parallel Companion wake without weakening per-lane FIFO guarantees."
         ]
       },
       {
