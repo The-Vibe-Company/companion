@@ -9,6 +9,7 @@ import {
   DESKTOP_TIMESTAMP_HEADER,
   verifyDesktopRequest,
 } from "@companion/companion-runtime/runtime-support";
+import { COMPANION_RUNTIME_V3_BUDGETS } from "@companion/contracts";
 
 const DEFAULT_BODY_LIMIT_BYTES = 4 * 1024;
 // Widened from 1s so a single slow DB ping does not flap /healthz (and trip a restart) when the
@@ -20,6 +21,14 @@ const DEFAULT_HEALTH_PING_TIMEOUT_MS = 2_500;
 // it stable even when the sweep interval is very short.
 const MIN_SWEEP_FRESH_WINDOW_MS = 15_000;
 const SWEEP_FRESH_WINDOW_MULTIPLE = 5;
+// A convergence may legitimately own one bounded preparation or Turn command longer than the
+// ordinary sweep cadence. Health must cover the longest durable runtime deadline; an earlier
+// platform restart would turn healthy long work into an ambiguous dispatch.
+const ACTIVE_SWEEP_FRESH_WINDOW_MS = Math.max(
+  COMPANION_RUNTIME_V3_BUDGETS.preparationDeadlineMs,
+  COMPANION_RUNTIME_V3_BUDGETS.heartbeatCommandMs
+    + COMPANION_RUNTIME_V3_BUDGETS.heartbeatSettlementMs,
+);
 
 export interface RuntimeSchedulerHealthSnapshot {
   claimLoopAlive: boolean;
@@ -143,19 +152,27 @@ export function createRuntimeHttpServer(options: RuntimeHttpServerOptions): Runt
       snapshot = emptyUnhealthySnapshot();
     }
     const database = await settlesBefore(options.health.ping(), healthPingTimeoutMs);
+    const startedAt = validDate(snapshot.lastSweepStartedAt);
     const completedAt = validDate(snapshot.lastSweepCompletedAt);
     const errorAt = validDate(snapshot.claimLoopErrorAt);
-    const elapsed = completedAt ? now() - completedAt.getTime() : Number.POSITIVE_INFINITY;
+    const completedElapsed = completedAt
+      ? now() - completedAt.getTime()
+      : Number.POSITIVE_INFINITY;
+    const activeCount = Number.isSafeInteger(snapshot.activeCount) && snapshot.activeCount >= 0
+      ? snapshot.activeCount
+      : 0;
     const sweepFreshWindow = Math.max(
       options.sweepIntervalMs * SWEEP_FRESH_WINDOW_MULTIPLE,
       MIN_SWEEP_FRESH_WINDOW_MS,
     );
-    const sweepFresh = elapsed >= 0 && elapsed <= sweepFreshWindow;
+    const completedSweepFresh = completedElapsed >= 0 && completedElapsed <= sweepFreshWindow;
+    const activeElapsed = startedAt ? now() - startedAt.getTime() : Number.POSITIVE_INFINITY;
+    const activeSweepFresh = activeCount > 0
+      && activeElapsed >= 0
+      && activeElapsed <= ACTIVE_SWEEP_FRESH_WINDOW_MS;
+    const sweepFresh = completedSweepFresh || activeSweepFresh;
     const unrecoveredClaimError = errorAt !== null
       && (completedAt === null || errorAt.getTime() >= completedAt.getTime());
-    const activeCount = Number.isSafeInteger(snapshot.activeCount) && snapshot.activeCount >= 0
-      ? snapshot.activeCount
-      : 0;
     const claimLoop = snapshot.claimLoopAlive && !snapshot.fatal && !unrecoveredClaimError;
     // Image builder liveness (when present) is a hard health gate: a dead loop means every create
     // silently cold-installs. A `failed` digest is only informational — creates still succeed via the

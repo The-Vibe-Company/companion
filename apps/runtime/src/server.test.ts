@@ -13,6 +13,7 @@ import {
   type RuntimeHttpServer,
   type RuntimeSchedulerHealthSnapshot,
 } from "./server";
+import { COMPANION_RUNTIME_V3_BUDGETS } from "@companion/contracts";
 
 const hmacSecret = Buffer.alloc(32, 23);
 const nowMs = 1_800_000_000_000;
@@ -121,14 +122,39 @@ describe("private runtime HTTP server", () => {
     expect(stillFresh.status).toBe(200);
     expect(await stillFresh.json()).toMatchObject({ checks: { sweep_fresh: true } });
 
-    // Only a sweep older than the full widened window is stale.
+    // A recently started active sweep is live work, even before its first completion. This keeps a
+    // bounded cold preparation from failing the platform's deployment health gate.
     handle.setSnapshot({
       ...healthySnapshot(),
+      lastSweepCompletedAt: new Date(nowMs - 16_000),
+    });
+    const activeSweep = await fetch(`${handle.server.baseUrl}/healthz`);
+    expect(activeSweep.status).toBe(200);
+    expect(await activeSweep.json()).toMatchObject({ checks: { sweep_fresh: true } });
+
+    // An idle scheduler still requires a completion inside the short freshness window.
+    handle.setSnapshot({
+      ...healthySnapshot(),
+      activeCount: 0,
       lastSweepCompletedAt: new Date(nowMs - 16_000),
     });
     const staleSweep = await fetch(`${handle.server.baseUrl}/healthz`);
     expect(staleSweep.status).toBe(503);
     expect(await staleSweep.json()).toMatchObject({ checks: { sweep_fresh: false } });
+
+    // Active work does not mask a convergence that exceeded the longest durable runtime budget.
+    handle.setSnapshot({
+      ...healthySnapshot(),
+      lastSweepStartedAt: new Date(
+        nowMs - COMPANION_RUNTIME_V3_BUDGETS.preparationDeadlineMs - 1,
+      ),
+      lastSweepCompletedAt: new Date(
+        nowMs - COMPANION_RUNTIME_V3_BUDGETS.preparationDeadlineMs - 1,
+      ),
+    });
+    const wedgedSweep = await fetch(`${handle.server.baseUrl}/healthz`);
+    expect(wedgedSweep.status).toBe(503);
+    expect(await wedgedSweep.json()).toMatchObject({ checks: { sweep_fresh: false } });
 
     handle.setSnapshot({
       ...healthySnapshot(),

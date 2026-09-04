@@ -82,12 +82,16 @@ Semantics:
   `ready` would publish a false clone source. Registry-aware retention/garbage collection belongs
   to phase 3; until then, a provider snapshot-limit error fails visibly and creation takes the
   explicit cold-install path.
-- `build_box_id` is cleared only after provider deletion succeeds behind the active epoch fence.
+- `build_box_id` is cleared only after provider deletion completes or fresh authenticated ordinary
+  inventory proves the Box absent behind the active epoch fence.
   Runtime stores `build_delete_intent_at` before issuing the irreversible call, then stores an
   accepted operation in `build_delete_operation_id` before polling. Takeover resumes a known
-  operation. If the accepted response or its checkpoint is lost, takeover performs only read-only
-  absence reconciliation and never replays `DELETE`; the baker Box's bounded TTL supplies eventual
-  cleanup. A failed or blocked cleanup leaves the intent and both pointers durable. An expired
+  operation only while the Box remains visible. The provider removes an accepted deletion from
+  ordinary inventory before physical erasure and its retained operation may remain nonterminal;
+  proven absence therefore settles cleanup without replaying `DELETE` or waiting on that operation.
+  If the accepted response or its checkpoint is lost, takeover performs only read-only absence
+  reconciliation and never replays `DELETE`; the baker Box's bounded TTL supplies eventual cleanup.
+  A failed or blocked cleanup while the Box remains visible leaves the intent and both pointers durable. An expired
   fourth attempt is reclaimable for cleanup and terminal settlement, but can never start a fifth
   bake.
 - `claim_epoch` is monotonic for the lifetime of a digest row and is never reset on settlement;

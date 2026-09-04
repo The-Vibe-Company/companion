@@ -209,11 +209,7 @@ export async function deleteCompanionRuntimeBakerBox(input: {
   let operationId = input.operationId ?? null;
   if (!operationId) {
     if (input.deletionIntentRecorded) {
-      const boxes = await input.lifecycle.listAllBoxes({
-        deadlineAt: input.deadlineAt,
-        signal: input.signal,
-      });
-      if (!boxes.some((box) => box.id === input.boxId)) return;
+      if (!await bakerBoxPresent(input)) return;
       throw new BoxRuntimeAdapterError({
         stableCode: "box_deletion_deadline_exceeded",
         message: "The runtime image baker Box deletion has an ambiguous accepted outcome",
@@ -233,6 +229,11 @@ export async function deleteCompanionRuntimeBakerBox(input: {
     operationId = requested.operation.id;
     await input.onDeletionRequested?.({ boxId: input.boxId, operationId });
   }
+  // ascii.dev removes a Box from ordinary inventory as soon as permanent deletion is
+  // accepted, while its retained operation can remain nonterminal during physical erasure.
+  // Authenticated absence is therefore authoritative cleanup evidence and avoids pinning every
+  // later image-build claim to an operation that can outlive the baker cleanup budget.
+  if (!await bakerBoxPresent(input)) return;
   const terminal = await input.lifecycle.deletePermanentlyAndWait({
     boxId: input.boxId,
     operationId,
@@ -249,6 +250,19 @@ export async function deleteCompanionRuntimeBakerBox(input: {
       outcomeUnknown: false,
     });
   }
+}
+
+async function bakerBoxPresent(input: {
+  lifecycle: BoxRuntimeLifecycleClient;
+  boxId: string;
+  deadlineAt: number;
+  signal: AbortSignal;
+}): Promise<boolean> {
+  const boxes = await input.lifecycle.listAllBoxes({
+    deadlineAt: input.deadlineAt,
+    signal: input.signal,
+  });
+  return boxes.some((box) => box.id === input.boxId);
 }
 
 async function selectParentSnapshot(input: {

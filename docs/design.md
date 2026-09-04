@@ -107,7 +107,9 @@ Runtime state is explicit and durable:
   expurgated lifecycle errors.
 - `companion_v3_turns` owns `client_message_id`, command identity, `main` or `background` lane,
   FIFO sequence, admission/activity/outcome facts, durable deadlines, and one stable expurgated
-  error.
+  error. A state-change trigger advances the originating transcript entry's projection sequence,
+  making queue-state replacement part of the same incremental thread contract on web, iOS, and
+  macOS.
 - `companion_v3_lifecycle_requests` idempotently records Owner/Editor prepare, archive, Pi recycle,
   and Owner-only delete intent while provider progress remains on the aggregate.
 - `companion_v3_lane_leases` owns independently fenced `main` and `background` claim tokens,
@@ -353,6 +355,10 @@ startup observes only its run-scoped broker and never idles or recycles the main
 execution interrupts only the scheduler's backoff sleep so a start can hand its newly idle Pi
 directly to the queued turn. `/healthz` fails when PostgreSQL, the claim loop, or the
 latest sweep is unhealthy.
+One recently started active convergence remains fresh through the longest durable preparation or
+Turn deadline. This lets a new replica finish queued cold preparation or a healthy long Turn
+without failing its deployment healthcheck, while work beyond that bound still flips health
+unhealthy.
 
 The production composition owns only Runtime v3 convergence: main lifecycle/preparation/Turn work,
 background Turn work, and deadline enforcement run on independent clocks. There is no reachable
@@ -366,6 +372,10 @@ claim revalidates the lease before Box contact. Prompt and decision writes never
 The throwaway image baker has one additional, local readiness exception: after it checkpoints a
 new baker Box id, the first layout command retries provider HTTP `409` with bounded exponential
 backoff inside the existing build-attempt deadline. Tenant Companion commands remain unchanged.
+Its cleanup checkpoints irreversible-delete intent and the accepted provider operation before
+polling. Fresh authenticated ordinary-inventory absence after that checkpoint is authoritative:
+runtime clears the fenced baker pointer without replaying `DELETE` or waiting for physical erasure;
+a still-visible Box keeps the cleanup durable and retryable.
 When the direct hosted-agent endpoint fails, runtime stays on the safe exec fallback and re-probes
 only through broker state with bounded exponential backoff. Reading the same durable endpoint on a
 later claim preserves that suspect state; only a newer staging observation or a successful probe

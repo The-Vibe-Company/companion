@@ -23,6 +23,7 @@ slow, local-only final validation and is intentionally not part of CI.
 | Agent Auth grants only exact-workspace Skills Hub capabilities | Mixed workspace approval or hosted-runtime access | HTTP + compatibility + PostgreSQL | Broaden the capability registry |
 | Agent Auth child PATs inherit only the active exact-workspace grant snapshot | PAT-to-PAT minting, caller-chosen scope/org, expired inheritance, target mismatch, or plaintext persistence | Contracts + Core + HTTP + PostgreSQL + bundled client | Remove provenance, target binding, pipe-only handoff, or redaction |
 | One accepted message creates exactly one durable turn | Duplicate message/turn after client or proxy retry | Contracts + HTTP + PostgreSQL | Remove `(companion_id, client_message_id)` uniqueness |
+| A completed v3 Turn leaves every client queue projection | An answered message remains visibly queued in a long-lived mobile cache | Core + PostgreSQL + iOS | Stop advancing the user entry when the v3 Turn state changes |
 | A due Companion routine fires exactly once per scheduled instant, and queued routine work is skipped on disable/delete or after ten minutes | Duplicate turn after worker retry, catch-up after flag-off, stuck work after a routine mutation, or a routine row blocking a user message | Core + worker + runtime + PostgreSQL | Drop uuidv5 stamping, the ten-minute cleanup, generation match, or the lane fence |
 | A Companion response notifies only its still-authorized durable author | Cross-user preview disclosure, duplicate push, stale-device delivery, or cancelled-turn alert | Contracts + HTTP + worker + PostgreSQL + iOS | Skip claim-time ACL revalidation or event uniqueness |
 | The API persists runtime intent but never contacts Box/Pi | Lost work after `202`, request-held lifecycle, or duplicate executor | HTTP + provider spy + PostgreSQL | Construct the Box adapter in an API route |
@@ -61,7 +62,8 @@ record desired lifecycle, and converge; main and background claims are obtained 
 independently so a blocked main claim cannot serialize or starve background work. PostgreSQL tests
 prove idempotent command admission, per-lane FIFO, monotonic takeover epochs, stale-fence rejection,
 shared kill-switch epoch invalidation, invalid-boundary rejection before lease mutation, forced RLS,
-distinct API/worker/runtime function grants, and isolation from every retired executor. Async preparation tests create through the public
+distinct API/worker/runtime function grants, isolation from every retired executor, and incremental
+user-entry invalidation whenever a v3 Turn leaves `queued`. Async preparation tests create through the public
 v3 acceptance seam, send before readiness, and fault Box create and Pi activation while proving the
 Turn remains queued with a bounded retry. The simulator replays a lost `POST /boxes` response from
 the same provider `Idempotency-Key` without creating a second Box. The warm-text tracer bullet additionally runs the
@@ -302,7 +304,9 @@ newest eligible failed delete with a retained provider operation id.
   approval.
 - Inactivity stall: ten minutes plus one sweep while running; absolute deadline: two hours plus one
   sweep.
-- `/healthz` fails when PostgreSQL, the claim loop, or the most recent sweep is unhealthy.
+- `/healthz` fails when PostgreSQL, the claim loop, or the most recent sweep is unhealthy. A newly
+  started active convergence remains healthy through the longest durable preparation or Turn
+  deadline, then becomes unhealthy if it still has not completed.
 
 Deterministic fault tests cover every boundary around list, create, resume, bundle upload/apply,
 pre-execution cleanup, activation, durable checkpoint, direct prompt write, ledger fsync, HTTP

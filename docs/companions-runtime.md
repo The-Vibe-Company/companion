@@ -105,6 +105,12 @@ restarts anything, and they never appear in an operation snapshot or reach Pi.
 The user transcript message and turn are inserted in one transaction. Repeating the same POST returns
 the existing Turn and never produces a second Pi admission merely because a proxy or client retried.
 
+Every visible v3 Turn state transition also advances the projection sequence of its originating
+user transcript entry. Incremental clients therefore replace a cached `queued` entry when the Turn
+is admitted, completed, interrupted, or cancelled; receiving the assistant entry alone is not an
+implicit queue acknowledgement. Migration `0182` touches already-terminal v3 entries once so
+clients open during the initial cutover self-repair on their next ordinary delta sync.
+
 The state machine is:
 
 ```text
@@ -459,10 +465,13 @@ table privileges. Each registry worker claims only its configured digest and ima
 epoch-fenced 45-minute lease, runs one bake attempt inside a strict 40-minute outer budget, records
 the baker Box before layout work, and publishes readiness or a stable bounded failure. Immediately
 before the bounded snapshot write it revalidates the exact epoch and Box with lease headroom. The
-Box pointer is cleared only after provider deletion succeeds under that fence. Irreversible-delete intent is persisted before the
+Box pointer is cleared only after provider deletion completes or fresh authenticated ordinary
+inventory proves the Box absent under that fence. Irreversible-delete intent is persisted before the
 provider call; once `DELETE` is accepted, its provider operation id is persisted before polling.
-A blocked cleanup stays durable and takeover resumes the same operation without issuing another
-`DELETE`. If the accepted response or operation checkpoint is lost, takeover uses read-only Box
+Because accepted deletion removes the Box from ordinary inventory before physical erasure, proven
+absence settles cleanup without waiting for a retained nonterminal operation. A blocked cleanup
+stays durable only while the Box remains visible, and takeover resumes the same operation without
+issuing another `DELETE`. If the accepted response or operation checkpoint is lost, takeover uses read-only Box
 absence reconciliation and the bounded baker TTL instead of replaying the write. Takeover reconciles
 those retained pointers before any new bake, including cleanup-only settlement of an expired fourth
 attempt. Retry backoff uses jittered 1, 5, 15, then 60-minute bases with four attempts; availability
@@ -1436,7 +1445,11 @@ provider credentials, and plugin trigger keys are unchanged.
 ## Health, observability, and acceptance
 
 `apps/runtime /healthz` is unhealthy when PostgreSQL is unavailable, the claim loop is stalled, or
-the latest sweep is stale. Operators must be able to observe queue age, claim latency, lifecycle and
+the latest sweep is stale. A recently started active convergence remains fresh through the longest
+durable preparation or Turn deadline, so Railway does not reject a deployment merely because it
+began by finishing queued cold preparation or a healthy long Turn; an active convergence beyond
+that bound is stale.
+Operators must be able to observe queue age, claim latency, lifecycle and
 Turn duration, lease takeover, deadline settlement, unknown/malformed event counts, canonical and
 duplicate Box discovery, permanent-delete progress, and expurgated failure codes without accessing
 secret payloads.

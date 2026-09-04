@@ -52,6 +52,7 @@ function harness(input: {
   deleteError?: Error;
   authorizePublication?: boolean;
   attemptBudgetMs?: number;
+  visibleBoxId?: string;
 } = {}): {
   options: ImageBuildWorkerOptions;
   calls: RegistryCalls;
@@ -132,7 +133,9 @@ function harness(input: {
     identity: IDENTITY,
     lifecycle: {
       async listAllBoxes() {
-        return [];
+        return input.visibleBoxId
+          ? [{ id: input.visibleBoxId, state: "ready" as const }]
+          : [];
       },
       async requestPermanentDeletion(deleteInput: Record<string, unknown>) {
         calls.deletionRequests.push(deleteInput);
@@ -386,6 +389,7 @@ describe("image build worker", () => {
       parentImageName: null,
     });
     const { calls, controller, done } = harness({
+      visibleBoxId: "bx_orphaned01",
       claim: {
         digest: IDENTITY.imageMarker,
         imageName: IDENTITY.imageName,
@@ -416,6 +420,7 @@ describe("image build worker", () => {
 
   it("settles an expired terminal claim after cleanup without starting a fifth bake", async () => {
     const { calls, controller, done } = harness({
+      visibleBoxId: "bx_terminal01",
       claim: {
         digest: IDENTITY.imageMarker,
         imageName: IDENTITY.imageName,
@@ -447,6 +452,7 @@ describe("image build worker", () => {
 
   it("records cleanup failure without clearing the durable Box pointer", async () => {
     const { calls, controller, done } = harness({
+      visibleBoxId: "bx_orphaned01",
       claim: {
         digest: IDENTITY.imageMarker,
         imageName: IDENTITY.imageName,

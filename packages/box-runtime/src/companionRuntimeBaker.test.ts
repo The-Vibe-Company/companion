@@ -36,6 +36,7 @@ function lifecycle(overrides: Partial<BoxRuntimeLifecycleClient> = {}): BoxRunti
     completedAt: null,
   };
   return {
+    listAllBoxes: vi.fn(async () => [{ id: "bx_23456789", state: "ready" as const }]),
     getNamedSnapshot: vi.fn(async () => null),
     listNamedSnapshots: vi.fn(async () => []),
     createEphemeralBox: vi.fn(async () => ({ boxId: "bx_23456789" })),
@@ -321,6 +322,7 @@ describe("bakeCompanionRuntimeImageOnce", () => {
 
   it("falls back to an empty baker Box when the parent snapshot disappeared", async () => {
     const client = lifecycle({
+      listAllBoxes: vi.fn(async () => [{ id: "bx_abcdefgh", state: "ready" as const }]),
       listNamedSnapshots: vi.fn(async () => [snapshot("companion-l14-bbbbbbbbbbbb")]),
       createEphemeralBox: vi.fn()
         .mockRejectedValueOnce(new BoxRuntimeAdapterError({
@@ -510,6 +512,54 @@ describe("bakeCompanionRuntimeImageOnce", () => {
     });
     expect(requestPermanentDeletion).not.toHaveBeenCalled();
     expect(client.deletePermanentlyAndWait).not.toHaveBeenCalled();
+  });
+
+  it("settles retained baker cleanup when authenticated inventory proves the Box is absent", async () => {
+    const deletePermanentlyAndWait = vi.fn<BoxRuntimeLifecycleClient["deletePermanentlyAndWait"]>(
+      async () => {
+        throw new Error("operation polling must not run after authoritative absence");
+      },
+    );
+    const client = lifecycle({
+      listAllBoxes: vi.fn(async () => []),
+      deletePermanentlyAndWait,
+    });
+
+    await expect(deleteCompanionRuntimeBakerBox({
+      lifecycle: client,
+      boxId: "bx_23456789",
+      deletionIntentRecorded: true,
+      operationId: "bdop_00000000000000000000000000000001",
+      deadlineAt: Date.now() + 30_000,
+      signal: new AbortController().signal,
+    })).resolves.toBeUndefined();
+    expect(deletePermanentlyAndWait).not.toHaveBeenCalled();
+  });
+
+  it("settles newly accepted baker cleanup when inventory proves immediate absence", async () => {
+    const onDeletionRequested = vi.fn();
+    const deletePermanentlyAndWait = vi.fn<BoxRuntimeLifecycleClient["deletePermanentlyAndWait"]>(
+      async () => {
+        throw new Error("operation polling must not run after authoritative absence");
+      },
+    );
+    const client = lifecycle({
+      listAllBoxes: vi.fn(async () => []),
+      deletePermanentlyAndWait,
+    });
+
+    await expect(deleteCompanionRuntimeBakerBox({
+      lifecycle: client,
+      boxId: "bx_23456789",
+      deadlineAt: Date.now() + 30_000,
+      signal: new AbortController().signal,
+      onDeletionRequested,
+    })).resolves.toBeUndefined();
+    expect(onDeletionRequested).toHaveBeenCalledWith({
+      boxId: "bx_23456789",
+      operationId: "bdop_00000000000000000000000000000001",
+    });
+    expect(deletePermanentlyAndWait).not.toHaveBeenCalled();
   });
 
   it("uses an independent cleanup signal after the bake signal is aborted", async () => {

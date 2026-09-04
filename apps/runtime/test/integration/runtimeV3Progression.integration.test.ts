@@ -301,6 +301,47 @@ describe("Runtime v3 progression facts", () => {
       where org_id = ${ids.org}::uuid and companion_id = ${ids.companion}::uuid`;
   });
 
+  it("invalidates a cached queued message when its v3 Turn becomes terminal", async () => {
+    await seedPreparedV3("thread-projection-pi");
+    const messageId = randomUUID();
+    const eventId = `msg:${messageId}`;
+    let turnId = "";
+    let initialSequence = "";
+
+    await asApi(async (sql) => {
+      const accepted = await sql<Array<{ turn: { id: string } }>>`
+        select turn from public.companion_v3_api_enqueue_warm_turn(
+          ${ids.org}::uuid,${ids.companion}::uuid,${messageId}::uuid,
+          'replace my cached queue state')`;
+      turnId = accepted[0]!.turn.id;
+      const window = await sql<Array<{ syncSequence: string }>>`
+        select sync_sequence::text as "syncSequence"
+        from public.companion_api_read_thread_window(
+          ${ids.org}::uuid,${ids.companion}::uuid,null,50,false)`;
+      initialSequence = window[0]!.syncSequence;
+    });
+
+    await ownerSql`update public.companion_v3_turns
+      set state='succeeded',outcome='succeeded',settled_at=clock_timestamp(),
+        updated_at=clock_timestamp()
+      where org_id=${ids.org}::uuid and companion_id=${ids.companion}::uuid
+        and id=${turnId}::uuid`;
+
+    await asApi(async (sql) => {
+      const changes = await sql<Array<{ changedEntries: Array<{
+        event_id: string;
+        queued: boolean;
+      }> }>>`
+        select changed_entries as "changedEntries"
+        from public.companion_api_read_thread_changes(
+          ${ids.org}::uuid,${ids.companion}::uuid,${initialSequence}::bigint,200)`;
+      expect(changes[0]!.changedEntries).toContainEqual(expect.objectContaining({
+        event_id: eventId,
+        queued: false,
+      }));
+    });
+  });
+
   it("creates a cold Companion, durably queues its first Turn, and claims preparation", async () => {
     let coldCompanion: string | null = null;
     const message = randomUUID();
