@@ -35,6 +35,7 @@ slow, local-only final validation and is intentionally not part of CI.
 | Every active turn reaches a bounded visible state | Forever-replying turn after Pi/provider failure | Runtime + simulator + browser | Suppress `agent_settled` or correlated activity |
 | Viewer and ordinary reads never contact or wake Box | Read causes spend, secret access, or lifecycle mutation | HTTP + browser + provider spy | Instantiate Box before the runner guard |
 | Provider/MCP secrets stay write-only and runtime errors stay expurgated | Token, signed URL, provider payload, or Pi line persisted | Core + runtime + HTTP + logs | Return raw adapter error text |
+| A current v3 MCP broker capability remains usable after the legacy runtime purge | Every selected MCP appears attached but the Box loopback gateway returns 502 | Fully migrated PostgreSQL with split roles | Resolve the token through the retired v2 instance projection |
 | Permanent legacy purge deletes external ownership before rows | Orphan Box or irrecoverable ownership loss | Command + PostgreSQL + provider contract | Delete the row before provider confirmation |
 | Offline Runtime v2 purge is resumable, expurgated, and preserves the Skills Hub | Duplicate provider effects, orphan object/webhook/Box, leaked content, or collateral data loss | Command + disposable fully migrated PostgreSQL + object/provider adapters | Remove the pre-effect checkpoint, terminal-target skip, ownership guard, or preservation fingerprint |
 | Production activation uses complete approved evidence | Loss, replay, stale-fence settlement, privacy breach, a lane blocked over 15 minutes, or activation before seven dedicated canary days | Aggregate acceptance report + disposable PostgreSQL + simulator + reviewed canary evidence | Omit one SLO series, accept an unavailable source, or shorten the canary window |
@@ -237,6 +238,10 @@ live canary does not replace local installation acceptance.
 - Replay migrations from an historical snapshot and test legacy purge report, dry-run, confirmation,
   advisory lock, Box `404`, provider error, resume after partial progress, and preservation of
   provider/MCP encrypted rows.
+- On a fully migrated database with no legacy runtime instance, resolve a current v3 MCP broker
+  capability through the restricted API role. Prove rotated, expired, revoked, and inactive-instance
+  capabilities remain denied and that the `SECURITY DEFINER`, forced-RLS configuration, search path,
+  and API-only execute grant survive the replacement migration.
 
 ### End-to-end topology
 

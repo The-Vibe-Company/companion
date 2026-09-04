@@ -24,6 +24,7 @@ DATABASE_URL="$DATABASE_MIGRATION_URL" \
   pnpm --filter @companion/runtime exec vitest run \
     --config vitest.integration.config.ts \
     test/integration/companionV2Purge.integration.test.ts \
+    test/integration/runtimeV3McpBrokerResolverMigration.integration.test.ts \
     test/integration/runtimeV3DesktopAuthorization.integration.test.ts \
     test/integration/runtimeV3Progression.integration.test.ts \
     test/integration/runtimeFullStack.integration.test.ts

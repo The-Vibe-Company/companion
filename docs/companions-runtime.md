@@ -1127,6 +1127,11 @@ account-generation refs. The Pi broker starts a loopback HTTP gateway before Pi 
 `pi-mcp-adapter` with its dynamic local URLs. That gateway calls
 `POST /v1/runtime/mcp-access-token` just before remote access; the API revalidates the active
 Companion instance, membership, owner, current plugin selection, and generation on every request.
+The token resolver binds the capability to the current
+`companion_v3_instances.mcp_broker_token_id`; it never consults the retired Runtime v2 instance
+projection. A completed legacy purge therefore cannot invalidate a current staged capability, while
+rotation, expiry, revocation, an inactive lifecycle, Companion removal, or membership loss still
+denies access.
 The API role keeps `companions` read-only: a narrow `SECURITY DEFINER` capability pins the acting
 member, Companion selection, and any Editor grant while the existing account-row lock vends or
 refreshes the token. Concurrent membership, ACL, or plugin detachment waits for that transaction;

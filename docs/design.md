@@ -632,6 +632,12 @@ unselected accounts cannot use it. An explicit upstream `401` before any MCP res
 one refresh and one retry. Timeouts, disconnects, redirects, and other ambiguous outcomes are never
 replayed.
 
+The broker capability resolver derives current-instance authority exclusively from
+`companion_v3_instances.mcp_broker_token_id`. It has no dependency on the retired Runtime v2
+projection: the offline purge may remove every legacy runtime row without making a currently staged
+v3 MCP account unreachable. Token rotation, expiry, revocation, inactive lifecycle state, Companion
+removal, and membership loss continue to fail closed.
+
 Slack follows the same selected-account boundary without pretending Slack's user-token MCP endpoint
 is a Bot User integration. API owns the fixed Slack OAuth v2 authorize and token endpoints. For a
 selected Slack account, the loopback gateway terminates a small stateless MCP surface and maps only
