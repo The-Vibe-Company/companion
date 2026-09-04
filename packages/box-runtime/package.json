@@ -19,7 +19,7 @@
   "dependencies": {
     "@companion/contracts": "workspace:*",
     "@companion/core": "workspace:*",
-    "zod": "^3.24.1"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
