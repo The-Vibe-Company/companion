@@ -16,7 +16,7 @@
     "@sqlite.org/sqlite-wasm": "3.50.4-build1"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
+    "@types/node": "^26.4.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "3.2.7"

@@ -50,7 +50,7 @@
     "@auth/agent": "0.6.2",
     "@auth/agent-cli": "0.5.1",
     "@companion/companion-runtime": "workspace:*",
-    "@types/node": "^22.10.2",
+    "@types/node": "^26.4.0",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
