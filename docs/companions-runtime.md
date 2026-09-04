@@ -698,6 +698,8 @@ After exact cleanup proves a rejected routine session cannot resume, PostgreSQL 
 run-scoped Pi invocation generation. This lets the Box retain the previous invocation's cancellation
 tombstone while the same routine Turn continues; ordinary dependency retries and claim takeovers
 keep their identity, and ambiguous or accepted prompts are never retried.
+Trigger output validation happens after acceptance. Unsupported output therefore fails only that
+occurrence after exact cleanup; the trigger remains enabled for later independent webhook events.
 Accepted, timed-out, process-exited, or ambiguous work is terminal and never replayed. They never automatically
 disable the routine or advance a failed due instant, so recovery of membership, credentials, Box,
 or Pi resumes without a member action. Errors crossing the durable boundary remain stable,

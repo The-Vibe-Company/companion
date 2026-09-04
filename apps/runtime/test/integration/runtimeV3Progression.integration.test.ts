@@ -6259,80 +6259,44 @@ describe("Runtime v3 progression facts", () => {
       });
 
       const invalidTurn = await fireTrigger("invalid trigger", "relay", "invalid validator payload");
-      const retryBases = [5, 15, 30, 60, 300];
-      let invalidInvocationId: string | null = null;
-      for (let attempt = 0; attempt <= retryBases.length; attempt += 1) {
-        active = await startTrigger(invalidTurn, `runtime-trigger-invalid-${attempt}`);
-        invalidInvocationId ??= active.material.piInvocationId;
-        expect(active.material.piInvocationId).toBe(invalidInvocationId);
-        const delegatedMalformed = attempt === 2 || attempt === 3;
-        const wrongReturn = delegatedMalformed
-          ? {
-              sequence: 1n, type: "routine_return" as const,
-              call_id: `wrong-return-${attempt}`, mode: "relay" as const,
-              message: attempt === 2 ? "" : "Wrong mode.",
-            }
-          : {
-              sequence: 1n, type: "routine_return" as const,
-              call_id: `wrong-return-${attempt}`, mode: "notify" as const,
-              message: "Wrong mode.",
-            };
-        const invalidReturns = attempt === 0
-          ? [wrongReturn, { ...wrongReturn, sequence: 2n, call_id: "extra-return" }]
-          : [wrongReturn];
-        const malformedEntry = {
-          sequence: 1n,
-          type: "assistant" as const,
-          entry_key: "malformed-sequence",
-          content: "Malformed private sequence.",
-        };
-        if (attempt === 3) Reflect.set(malformedEntry, "sequence", "not-a-sequence");
-        const invalidEntries = attempt === 3 ? [malformedEntry] : invalidReturns;
-        const invalidProjection = {
-          throughCursor: BigInt(invalidReturns.length), assistant: [],
-          privateEntries: invalidEntries, decisions: [], routineReturns: invalidReturns,
-          needsInput: false, settled: false,
-          processExited: false, activity: true,
-        };
-        await expect(persistence.project(active.claim, invalidProjection)).resolves.toBe("failed");
-        await expect(persistence.project(active.claim, invalidProjection)).resolves.toBe(false);
-        await expect(backgroundStore.completeProgression(active.claim, { kind: "ack_completed" }))
-          .resolves.toBe(true);
-        const cleanup = await backgroundStore.claimLane({
-          executorId: `runtime-trigger-invalid-cleanup-${attempt}`, lane: "background",
-        });
-        expect(cleanup).toMatchObject({ turn: { id: invalidTurn }, cleanup: {
-          invocationId: active.material.piInvocationId,
-        } });
-        await expect(backgroundStore.completeProgression(cleanup!, { kind: "cleanup_completed" }))
-          .resolves.toBe(true);
+      active = await startTrigger(invalidTurn, "runtime-trigger-invalid");
+      const wrongReturn = {
+        sequence: 1n, type: "routine_return" as const,
+        call_id: "wrong-return", mode: "notify" as const, message: "Wrong mode.",
+      };
+      const invalidProjection = {
+        throughCursor: 1n, assistant: [], privateEntries: [wrongReturn], decisions: [],
+        routineReturns: [wrongReturn], needsInput: false, settled: false,
+        processExited: false, activity: true,
+      };
+      await expect(persistence.project(active.claim, invalidProjection)).resolves.toBe("failed");
+      await expect(backgroundStore.completeProgression(active.claim, { kind: "ack_completed" }))
+        .resolves.toBe(true);
+      const cleanup = await backgroundStore.claimLane({
+        executorId: "runtime-trigger-invalid-cleanup", lane: "background",
+      });
+      expect(cleanup).toMatchObject({ turn: { id: invalidTurn }, cleanup: {
+        invocationId: active.material.piInvocationId,
+      } });
+      await expect(backgroundStore.completeProgression(cleanup!, { kind: "cleanup_completed" }))
+        .resolves.toBe(true);
 
-        const [retry] = await ownerSql<Array<{
-          retryCount: number; state: string; delay: number; clipped: boolean;
-          enabled: boolean; claim: string | null;
-        }>>`select turn_row.retry_count as "retryCount",turn_row.state,
-            extract(epoch from (turn_row.available_at-clock_timestamp()))::integer as delay,
-            turn_row.available_at<=run.trigger_retry_deadline_at as clipped,trigger.enabled,
-            (select claim_token::text from public.companion_v3_lane_leases
-              where companion_id=${ids.companion}::uuid and lane='background') as claim
-          from public.companion_v3_turns turn_row
-          join public.companion_v3_routine_runs run on run.turn_id=turn_row.id
-          join public.companion_triggers trigger on trigger.id=run.trigger_snapshot_id
-          where turn_row.id=${invalidTurn}::uuid`;
-        if (attempt < retryBases.length) {
-          expect(retry).toMatchObject({
-            retryCount: attempt + 1, state: "queued", clipped: true, enabled: true, claim: null,
-          });
-          expect(retry!.delay).toBeGreaterThanOrEqual(Math.floor(retryBases[attempt]! * 0.8) - 1);
-          expect(retry!.delay).toBeLessThanOrEqual(Math.ceil(retryBases[attempt]! * 1.2));
-          await ownerSql`update public.companion_v3_turns set available_at=clock_timestamp()
-            where id=${invalidTurn}::uuid`;
-        } else {
-          expect(retry).toMatchObject({
-            retryCount: 6, state: "failed", clipped: true, enabled: true, claim: null,
-          });
-        }
-      }
+      const [invalidFacts] = await ownerSql<Array<{
+        retryCount: number; state: string; outcomeCode: string; generation: number;
+        enabled: boolean; claim: string | null;
+      }>>`select turn_row.retry_count as "retryCount",turn_row.state,
+          turn_row.outcome_code as "outcomeCode",run.pi_invocation_generation as generation,
+          trigger.enabled,
+          (select claim_token::text from public.companion_v3_lane_leases
+            where companion_id=${ids.companion}::uuid and lane='background') as claim
+        from public.companion_v3_turns turn_row
+        join public.companion_v3_routine_runs run on run.turn_id=turn_row.id
+        join public.companion_triggers trigger on trigger.id=run.trigger_snapshot_id
+        where turn_row.id=${invalidTurn}::uuid`;
+      expect(invalidFacts).toEqual({
+        retryCount: 1, state: "failed", outcomeCode: "trigger_validation_invalid",
+        generation: 0, enabled: true, claim: null,
+      });
 
       const nextTurn = await fireTrigger("next trigger", "notify", "next background payload");
       const nextClaim = await backgroundStore.claimLane({

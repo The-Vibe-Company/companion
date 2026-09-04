@@ -126,11 +126,13 @@ CREATE OR REPLACE FUNCTION public.companion_v3_runtime_complete_v8(
 SET search_path=pg_catalog,public SET row_security=on AS $$
 DECLARE v_now timestamptz:=clock_timestamp();v_completed boolean;v_deadline timestamptz;
   v_trigger boolean;v_requeued boolean;v_retry_count integer;v_rotate_identity boolean:=false;
+  v_forbid_trigger_replay boolean:=false;
 BEGIN
   IF p_protocol<>8 THEN RAISE EXCEPTION 'Runtime v3 protocol 8 is required' USING ERRCODE='42501';END IF;
   IF p_lane='background' AND p_outcome='cleanup_completed' THEN
-    SELECT turn_row.outcome_code='routine_start_failed' AND run.cleanup_retry
-      INTO v_rotate_identity
+    SELECT turn_row.outcome_code='routine_start_failed' AND run.cleanup_retry,
+      run.trigger_snapshot_id IS NOT NULL AND turn_row.outcome_code='trigger_validation_invalid'
+      INTO v_rotate_identity,v_forbid_trigger_replay
     FROM public.companion_v3_lane_leases lease
     JOIN public.companion_v3_turns turn_row ON turn_row.org_id=lease.org_id
       AND turn_row.companion_id=lease.companion_id AND turn_row.id=lease.turn_id
@@ -154,6 +156,20 @@ BEGIN
     AND turn_row.companion_id=run.companion_id AND turn_row.id=run.turn_id
   WHERE run.org_id=p_org_id AND run.companion_id=p_companion_id AND run.turn_id=p_turn_id
   FOR UPDATE OF run,turn_row;
+  IF v_requeued AND v_forbid_trigger_replay THEN
+    -- Validation happens only after Pi accepted this occurrence. The v7 compatibility path used
+    -- to requeue malformed validation output, but the exact invocation is now tombstoned by
+    -- cleanup and a fresh identity would replay an accepted prompt. Fail this occurrence visibly;
+    -- the trigger remains enabled and later webhook occurrences remain independent.
+    UPDATE public.companion_v3_turns SET state='failed',outcome='failed',
+      outcome_code='trigger_validation_invalid',
+      outcome_message='Trigger validation returned an unsupported action.',
+      outcome_action='none',settled_at=v_now,available_at=v_now,updated_at=v_now
+      WHERE org_id=p_org_id AND companion_id=p_companion_id AND id=p_turn_id;
+    UPDATE public.companion_v3_routine_runs SET outcome='failed',settled_at=v_now
+      WHERE org_id=p_org_id AND companion_id=p_companion_id AND turn_id=p_turn_id;
+    v_requeued:=false;
+  END IF;
   IF v_requeued AND v_rotate_identity THEN
     UPDATE public.companion_v3_routine_runs
     SET pi_invocation_generation=pi_invocation_generation+1
