@@ -1080,7 +1080,9 @@ removal or the delete did not happen.
 
 ## Model capability and errors
 
-The Pi model catalog's `input` field is preserved through normalization. A model without image input
+The server-owned model allowlist is the exact executable set for the pinned Pi bundle. pi.dev may
+refresh names and `input` metadata for those ids, but newly advertised ids are not exposed until the
+Box pin or a curated staged supplement can launch them. A model without image input
 support rejects image work before prompt dispatch with a stable `model_capability` error and an
 action to switch model. A bounded bundled catalog covers Pi catalog outage, and bounded curated
 supplements cover released models Pi has not published yet. Pi's same-id metadata replaces a

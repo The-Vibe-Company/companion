@@ -93,24 +93,29 @@ function normalizePiModels(
   providerId: string,
   parsed: z.output<typeof piModelsSchema>,
 ): CatalogModels {
-  const models = Object.entries(parsed).map(([key, model]) => {
+  for (const [key, model] of Object.entries(parsed)) {
     if (key !== model.id) {
       throw new Error(`pi.dev model key ${key} does not match id ${model.id}`);
     }
+  }
+
+  // pi.dev describes the newest Pi release, while every Companion Box runs the repository's exact
+  // pinned Pi bundle. A newly advertised id can therefore be valid upstream but still make the
+  // pinned daemon exit before readiness. Keep the server-owned allowlist as the executable set and
+  // use the live response only to refresh metadata for ids this release can actually stage.
+  const supported = bundledModels(providerId);
+  if (supported.length === 0) throw new Error(`Companion has no pinned models for ${providerId}`);
+  return supported.map((pinned) => {
+    const live = parsed[pinned.id];
     const normalized: CatalogModels[number] = {
-      id: model.id,
-      name: model.name,
+      id: pinned.id,
+      name: live?.name ?? pinned.name,
     };
-    if (model.input !== undefined) normalized.input = [...model.input];
+    if (pinned.default !== undefined) normalized.default = pinned.default;
+    const input = live?.input ?? pinned.input;
+    if (input !== undefined) normalized.input = [...input];
     return normalized;
   });
-  if (models.length === 0) throw new Error(`pi.dev returned no models for ${providerId}`);
-
-  const bundledDefault = bundledModels(providerId).find((model) => model.default)?.id;
-  const defaultId = bundledDefault && models.some((model) => model.id === bundledDefault)
-    ? bundledDefault
-    : models[0]!.id;
-  return models.map((model) => model.id === defaultId ? { ...model, default: true } : model);
 }
 
 async function fetchProviderModels(
@@ -132,8 +137,9 @@ async function fetchProviderModels(
 }
 
 /**
- * Resolves every supported provider concurrently. Fresh pi.dev data wins; a failed refresh serves
- * the last-known value, or the bundled pin on a cold start, so every provider always has models.
+ * Resolves every supported provider concurrently. Fresh pi.dev metadata wins for model ids in the
+ * pinned executable set; a failed refresh serves the last-known value, or the bundled pin on a cold
+ * start, so every provider always has models and never advertises a model its Box cannot launch.
  */
 export async function getCompanionProviderCatalog(
   options: CompanionProviderCatalogOptions = {},

@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion -- These established typed fetch fixtures parse only repository-owned mock responses; this regression changes their catalog expectations, not their I/O boundary. */
 import { describe, expect, it, vi } from "vitest";
 import { COMPANION_PROVIDER_CATALOG } from "@companion/contracts";
 import {
@@ -21,7 +22,7 @@ function jsonResponse(value: unknown, status = 200): Response {
 }
 
 describe("Companion pi.dev provider catalog", () => {
-  it("maps only supported providers and returns live z.ai model ids", async () => {
+  it("maps only supported providers and refreshes metadata for pinned model ids", async () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request) => {
       const providerId = providerIdFromUrl(input);
       if (providerId === "zai") {
@@ -46,12 +47,12 @@ describe("Companion pi.dev provider catalog", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(COMPANION_PROVIDER_CATALOG.length);
     expect(catalog.find((provider) => provider.id === "zai")?.models)
       .toEqual(expect.arrayContaining([
-        expect.objectContaining({ id: "glm-5.2", input: ["text"] }),
-        expect.objectContaining({ id: "glm-5.3" }),
+        expect.objectContaining({ id: "glm-4.7", input: ["text", "image"] }),
       ]));
     expect(catalog.find((provider) => provider.id === "zai")?.models)
-      .toEqual(expect.arrayContaining([
-        expect.objectContaining({ id: "glm-4.7", input: ["text", "image"] }),
+      .not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: "glm-5.2" }),
+        expect.objectContaining({ id: "glm-5.3" }),
       ]));
   });
 
@@ -151,7 +152,7 @@ describe("Companion pi.dev provider catalog", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(COMPANION_PROVIDER_CATALOG.length);
   });
 
-  it("keeps the bundled default when live and otherwise defaults to the first live model", async () => {
+  it("keeps the bundled executable set even when pi.dev advertises newer models", async () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request) => {
       const providerId = providerIdFromUrl(input);
       if (providerId === "zai") {
@@ -160,7 +161,7 @@ describe("Companion pi.dev provider catalog", () => {
           "glm-4.7": { id: "glm-4.7", name: "GLM-4.7" },
         });
       }
-      const id = `${providerId}-first`;
+      const id = providerId === "google" ? "gemini-3.8-flash" : `${providerId}-first`;
       return jsonResponse({ [id]: { id, name: `${providerId} first` } });
     }) as typeof fetch;
 
@@ -170,8 +171,9 @@ describe("Companion pi.dev provider catalog", () => {
     });
 
     expect(companionCatalogModel(catalog, "zai")).toBe("glm-4.7");
-    expect(companionCatalogModel(catalog, "anthropic")).toBe("anthropic-first");
-    expect(companionCatalogModel(catalog, "zai", "glm-5.3")).toBe("glm-5.3");
+    expect(companionCatalogModel(catalog, "anthropic")).toBe("claude-opus-4-8");
+    expect(companionCatalogModel(catalog, "zai", "glm-5.3")).toBeUndefined();
+    expect(companionCatalogModel(catalog, "google", "gemini-3.8-flash")).toBeUndefined();
     expect(companionCatalogModel(catalog, "zai", "unknown-model")).toBeUndefined();
   });
 });

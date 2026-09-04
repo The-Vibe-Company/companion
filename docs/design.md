@@ -250,6 +250,9 @@ undisturbed. A
 failed Pi activation resets the consumed staged
 checkpoint to `box_ready`, so retries reconstruct fresh transient credentials instead of becoming a
 permanent credential-free restart loop.
+The model picker intersects pi.dev metadata with the server-owned executable allowlist for the
+pinned Pi bundle. A newer upstream id is never offered until that exact Box runtime can launch it or
+the runtime stages a complete curated model supplement.
 The API atomically persists the user entry and Turn and returns without Box credentials; the runtime
 composition claims only v3 work, reauthorizes the actor, dispatches through the existing
 Pi transport, records positive admission before `replying`, and projects one assistant result into
