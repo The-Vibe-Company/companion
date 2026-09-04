@@ -1870,6 +1870,17 @@ describe("staged Companion instructions", () => {
     }
   });
 
+  it("treats attached lazy MCP plugins as available before their first connection", () => {
+    const text = composedInstructions();
+
+    expect(text).toContain("`not connected` or `cached`");
+    expect(text).toContain("available on demand");
+    expect(text).toContain("connects it automatically on first use");
+    expect(text).toContain("Only `failed` or `needs-auth`");
+    expect(text).toContain("without asking the person to connect it");
+    expect(text).not.toContain("What is connected is what you have");
+  });
+
   it("interpolates tool-run timeout constants rather than literals", () => {
     const text = composedInstructions();
     expect(text).toContain(

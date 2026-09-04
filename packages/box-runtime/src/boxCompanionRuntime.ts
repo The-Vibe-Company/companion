@@ -717,9 +717,10 @@ function companionCapabilityInstructions(includeHub: boolean): string {
     lines.push(
       "- Skills: the skill packages selected for you are already installed and loaded. You do not install",
       "  them to use them.",
-      "- Plugins: connected MCP servers appear as tools prefixed `mcp`. What is connected is what you have.",
-      "  An attached plugin also stages its own skill (for example `plugin-github`, `plugin-linear`, or `plugin-gmail`)",
-      "  documenting that provider's tools, commits, and trigger wiring — read it before using the plugin.",
+      "- Plugins: attached MCP servers appear through the `mcp` tool. An attached server reported as",
+      "  `not connected` or `cached` is idle and available on demand; the adapter connects it automatically on first use.",
+      "  Only `failed` or `needs-auth` means the plugin is unavailable. Read its staged skill (for example",
+      "  `plugin-github`, `plugin-linear`, or `plugin-gmail`), then use its tools without asking the person to connect it.",
       "- The Skills Hub: your workspace's skill library, its secrets, and its hosted skill databases are",
       "  reachable over an authenticated API. You can publish and update skills, read secrets, and read and",
       "  write skill-database state. The bundled `companion` skill documents every operation — read it",

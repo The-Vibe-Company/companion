@@ -1146,6 +1146,11 @@ account-generation refs. The Pi broker starts a loopback HTTP gateway before Pi 
 `pi-mcp-adapter` with its dynamic local URLs. That gateway calls
 `POST /v1/runtime/mcp-access-token` just before remote access; the API revalidates the active
 Companion instance, membership, owner, current plugin selection, and generation on every request.
+Selected member MCP accounts remain lazy: `not connected` or `cached` means an attached account is
+idle and available on demand. Cached search and list results do not open a live connection; the
+first live tool or resource call connects it. Only `failed` or `needs-auth` means unavailable. The
+staged operating brief tells Pi to use idle attachments directly instead of asking the member to
+reconnect them.
 The token resolver binds the capability to the current
 `companion_v3_instances.mcp_broker_token_id`; it never consults the retired Runtime v2 instance
 projection. A completed legacy purge therefore cannot invalidate a current staged capability, while

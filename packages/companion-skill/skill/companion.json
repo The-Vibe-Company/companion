@@ -1,7 +1,7 @@
 {
   "$schema": "https://thecompanion.sh/schemas/companion-manifest.v2.schema.json",
   "name": "companion",
-  "version": "1.111.1",
+  "version": "1.112.0",
   "icon": "boxes",
   "title": "Companion",
   "description": "Manage and safely install SKILL.md packages through delegated Agent Auth, including pinned public releases, publishing, updates, dependencies, secrets, hosted Skill Databases, local install tracking, and Companion self-update.",
@@ -28,6 +28,14 @@
       "evals/evals.json"
     ],
     "changelog": [
+      {
+        "version": "1.112.0",
+        "date": "2026-09-04",
+        "changes": [
+          "Clarifies that attached lazy MCP plugins remain available while idle and connect automatically on first use.",
+          "Treats only failed or authentication-required MCP states as unavailable, without asking members to reconnect idle attachments."
+        ]
+      },
       {
         "version": "1.111.1",
         "date": "2026-09-04",

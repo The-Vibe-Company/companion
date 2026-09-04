@@ -644,6 +644,12 @@ generation, and pinned HTTPS MCP URL. It mints a six-hour `cmp_mcp_*` capability
 Companion, actor, and exact account refs. The Pi broker starts an ephemeral loopback-only HTTP
 gateway before Pi and points `pi-mcp-adapter` at that gateway.
 
+Selected member MCP accounts use the adapter's lazy lifecycle. A `not connected` or `cached`
+adapter status means the attached account is idle and available on demand. Cached search and list
+results do not open a live connection; the first live tool or resource call connects it. Only
+`failed` or `needs-auth` is surfaced as an unavailable plugin, and the staged operating brief tells
+Pi to use idle attachments without asking the member to reconnect.
+
 Before forwarding a request, the gateway asks `POST /v1/runtime/mcp-access-token` for a usable
 access token, caches it in memory only until an adaptive margin proportional to its lifetime, and
 coalesces concurrent renewals. The endpoint accepts only `cmp_mcp_*`, revalidates the active

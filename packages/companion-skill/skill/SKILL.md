@@ -21,7 +21,7 @@ from this delegated skill. Agent Auth authorizes external clients to use Skills 
 does not authorize Companion chat, turns, decisions, desktop, provider settings, or Box/Pi lifecycle.
 
 Every hosted Pi receives the product-owned `companion-control` MCP. It reads and directly updates
-its name, short persona, selected Skills, and already-connected plugin attachments; material changes
+its name, short persona, selected Skills, and selected plugin attachments; material changes
 apply after the current turn. Model changes, new OAuth connections, every routine/trigger mutation,
 and directed peer access create durable asynchronous approval cards. OAuth completion attaches the
 new account to the requesting Companion automatically. Trigger changes register, reconcile, rotate,
@@ -29,6 +29,11 @@ or remove the provider webhook end to end with existing encrypted member credent
 receives those credentials or invents a provider-account UUID. `ask_user` is the only remaining
 Pi-local approval bridge; the legacy `propose_config`, `request_plugin_connection`,
 `propose_routine`, and `propose_trigger` tools are not part of new staging.
+Attached member MCP plugins use a lazy lifecycle: `not connected` or `cached` means idle and
+available on demand. Cached search and list results do not open a live connection; the adapter
+connects the plugin automatically on its first live tool or resource call.
+Only `failed` or `needs-auth` means unavailable. Hosted Pi uses idle attachments directly without
+asking the member to reconnect them.
 
 The same MCP can send a bounded text delegation to an explicitly approved peer Companion. Directed
 grants are persistent and revocable; responses either notify both threads or return to the source Pi
@@ -1423,7 +1428,7 @@ skills view shows the correct status and version. Report the version from this s
 `companion.json.version`:
 
 ```sh
-printf '%s' '{"action":"api","method":"POST","path":"/local-skills/companion/installed","body":{"version":"1.111.1","agent":"<your assistant name>"}}' \
+printf '%s' '{"action":"api","method":"POST","path":"/local-skills/companion/installed","body":{"version":"1.112.0","agent":"<your assistant name>"}}' \
   | node scripts/companion-agent-client.mjs
 ```
 
