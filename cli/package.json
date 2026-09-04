@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@clack/prompts": "^0.8.2",
+    "@clack/prompts": "^1.7.0",
     "@companion/contracts": "workspace:*",
     "@companion/skills": "workspace:*",
     "commander": "^12.1.0",
