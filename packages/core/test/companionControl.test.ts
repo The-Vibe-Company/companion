@@ -5,6 +5,7 @@ import {
   createCompanionControlRequest,
   grantCompanionPeerAccess,
   listCompanionDelegations,
+  scheduleCompanionPiRestart,
   type CompanionControlAuthorization,
 } from "../src/companionControl";
 
@@ -26,6 +27,22 @@ function databaseReturning(rows: unknown[]): Db {
 }
 
 describe("Companion control public projections", () => {
+  it("schedules Pi recycle through the Runtime v3 lifecycle seam", async () => {
+    const restartId = "55555555-5555-4555-8555-555555555555";
+    const restart = await scheduleCompanionPiRestart({
+      authorization,
+      id: restartId,
+      database: databaseReturning([{ intent: "recycle_pi", revision: "2" }]),
+    });
+
+    expect(restart).toEqual({
+      id: restartId,
+      status: "pending",
+      source_turn_id: authorization.turnId,
+      operation_id: null,
+    });
+  });
+
   it("strips private control-request columns returned by SQL", async () => {
     const now = new Date("2026-09-01T00:00:00.000Z");
     const request = await createCompanionControlRequest({

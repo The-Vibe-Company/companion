@@ -282,24 +282,19 @@ export async function scheduleCompanionPiRestart(input: {
   database: Db;
 }): Promise<{ id: string; status: "pending" | "enqueued" | "cancelled"; source_turn_id: string; operation_id: string | null }> {
   const a = input.authorization;
-  const result = await input.database.execute<{
-    id: string;
-    status: "pending" | "enqueued" | "cancelled";
-    source_turn_id: string;
-    operation_id: string | null;
-  }>(sql`
-    select * from public.companion_api_schedule_pi_restart(
-      ${a.orgId}::uuid,${a.companionId}::uuid,${input.id}::uuid,${a.turnId}::uuid,${a.attemptId}::uuid
+  const result = await input.database.execute<{ intent: string; revision: string }>(sql`
+    select intent::text,revision::text from public.companion_v3_api_request_pi_recycle(
+      ${a.orgId}::uuid,${a.companionId}::uuid,${input.id}::uuid
     )
   `);
-  const [row] = rows<{
-    id: string;
-    status: "pending" | "enqueued" | "cancelled";
-    source_turn_id: string;
-    operation_id: string | null;
-  }>(result);
-  if (!row) throw new Error("failed to schedule Companion Pi restart");
-  return row;
+  const [row] = rows<{ intent: string; revision: string }>(result);
+  if (row?.intent !== "recycle_pi") throw new Error("failed to schedule Companion Pi restart");
+  return {
+    id: input.id,
+    status: "pending",
+    source_turn_id: a.turnId,
+    operation_id: null,
+  };
 }
 
 export async function listCompanionControlSkills(input: {

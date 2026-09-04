@@ -13,6 +13,7 @@ const dependencies: CompanionControlMcpDependencies = {
   finishCompanionControlInvocation: vi.fn(),
   getCompanionDelegation: vi.fn(),
   registerCompanionControlInvocation: vi.fn(),
+  scheduleCompanionPiRestart: vi.fn(),
   updateCompanionWithRuntime: vi.fn(),
 };
 
@@ -80,6 +81,12 @@ describe("executeCompanionControlMcp idempotence", () => {
     vi.mocked(dependencies.companionControlActor)
       .mockResolvedValue({ id: "actor-1", email: "owner@example.com", name: "Owner" });
     vi.mocked(dependencies.updateCompanionWithRuntime).mockResolvedValue(companion);
+    vi.mocked(dependencies.scheduleCompanionPiRestart).mockImplementation(async ({ authorization, id }) => ({
+      id,
+      status: "pending",
+      source_turn_id: authorization.turnId,
+      operation_id: null,
+    }));
     vi.mocked(dependencies.finishCompanionControlInvocation).mockImplementation(async ({ result }) => result);
   });
 
@@ -140,6 +147,35 @@ describe("executeCompanionControlMcp idempotence", () => {
     expect(first?.requestKey).toMatch(new RegExp(`^${authorization.attemptId}:[0-9a-f]{64}$`));
     expect(second?.requestKey).toMatch(new RegExp(`^${authorization.attemptId}:[0-9a-f]{64}$`));
     expect(first?.requestKey).not.toBe(second?.requestKey);
+  });
+
+  it("uses a fresh Pi recycle lifecycle request for each control Turn", async () => {
+    vi.mocked(dependencies.registerCompanionControlInvocation)
+      .mockResolvedValue({ replayed: false, result: null });
+    const restartCall = {
+      jsonrpc: "2.0" as const,
+      id: "restart-1",
+      method: "tools/call" as const,
+      params: { name: "companion_restart_pi", arguments: {} },
+    };
+    const nextAuthorization = {
+      ...authorization,
+      turnId: "55555555-5555-4555-8555-555555555555",
+      attemptId: "55555555-5555-4555-8555-555555555555",
+    };
+
+    await executeCompanionControlMcp({
+      raw: restartCall, authorization, database, dependencies,
+    });
+    await executeCompanionControlMcp({
+      raw: restartCall, authorization: nextAuthorization, database, dependencies,
+    });
+
+    const firstId = vi.mocked(dependencies.scheduleCompanionPiRestart).mock.calls[0]?.[0].id;
+    const secondId = vi.mocked(dependencies.scheduleCompanionPiRestart).mock.calls[1]?.[0].id;
+    expect(firstId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(secondId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(firstId).not.toBe(secondId);
   });
 
   it("cancels a delegation through its Runtime v3 target Turn seam", async () => {

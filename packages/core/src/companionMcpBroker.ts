@@ -32,7 +32,7 @@ export type CompanionMcpAccessToken = z.infer<typeof companionMcpAccessTokenSche
 const accountRefsSchema = z.array(z.object({
   account_id: z.string().uuid(),
   credential_generation: z.string().uuid(),
-}).strict()).min(1).max(50);
+}).strip()).min(1).max(50);
 const selectedAccountLockSchema = z.object({ authorized: z.boolean() }).strict();
 
 export class CompanionMcpBrokerAuthorizationError extends Error {

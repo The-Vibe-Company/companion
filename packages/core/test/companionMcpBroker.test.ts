@@ -4,6 +4,7 @@ import type { Db } from "@companion/db";
 import {
   CompanionMcpBrokerAuthorizationError,
   issueCompanionMcpAccessToken,
+  resolveCompanionMcpBrokerAuthorization,
 } from "../src/companionMcpBroker";
 import {
   decryptCompanionMcpRuntimeCredential,
@@ -37,6 +38,24 @@ const authorization = {
 };
 
 describe("Companion MCP access-token broker", () => {
+  it("projects Runtime v3 preparation references without rejecting their version fence", async () => {
+    const database = databaseReturning([{
+      org_id: orgId,
+      companion_id: companionId,
+      actor_id: actorId,
+      account_refs: [{
+        account_id: accountId,
+        credential_generation: credentialGeneration,
+        credential_version: 7,
+      }],
+    }]);
+
+    await expect(resolveCompanionMcpBrokerAuthorization(
+      `cmp_mcp_${"a".repeat(48)}`,
+      database,
+    )).resolves.toEqual(authorization);
+  });
+
   it("rejects an account removed from the Companion's current selection", async () => {
     const refreshOauth = vi.fn();
     const database = fakeDatabase({ rows: [accountRow(oauth("access", nowMs + 1_000))], selected: [] });
@@ -236,6 +255,15 @@ describe("Companion MCP access-token broker", () => {
     expect(rows).toHaveLength(1);
   });
 });
+
+function databaseReturning(rows: unknown[]): Db {
+  // SAFETY: this authorization projection exercises only `database.execute`.
+  const database: Db = Object.create(null);
+  Object.defineProperty(database, "execute", {
+    value: vi.fn(async () => rows),
+  });
+  return database;
+}
 
 function oauth(
   accessToken: string,

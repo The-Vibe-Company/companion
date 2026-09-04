@@ -84,6 +84,7 @@ export interface CompanionControlMcpDependencies {
   finishCompanionControlInvocation: typeof finishCompanionControlInvocation;
   getCompanionDelegation: typeof getCompanionDelegation;
   registerCompanionControlInvocation: typeof registerCompanionControlInvocation;
+  scheduleCompanionPiRestart: typeof scheduleCompanionPiRestart;
   updateCompanionWithRuntime: typeof updateCompanionWithRuntime;
 }
 
@@ -93,6 +94,7 @@ const defaultDependencies: CompanionControlMcpDependencies = {
   finishCompanionControlInvocation,
   getCompanionDelegation,
   registerCompanionControlInvocation,
+  scheduleCompanionPiRestart,
   updateCompanionWithRuntime,
 };
 
@@ -380,9 +382,9 @@ export async function executeCompanionControlMcp(input: {
       case "companion_restart_pi": {
         emptySchema.parse(args);
         const identity = callIdentity(a, call.id, call.params.name, args);
-        const restart = await scheduleCompanionPiRestart({
+        const restart = await dependencies.scheduleCompanionPiRestart({
           authorization: a,
-          id: deterministicControlUuid(identity.digest, "pi-restart"),
+          id: deterministicControlUuid(identity.digest, `pi-restart:${identity.key}`),
           database: input.database,
         });
         return ok(call.id, {
