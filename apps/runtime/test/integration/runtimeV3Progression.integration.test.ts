@@ -5851,6 +5851,35 @@ describe("Runtime v3 progression facts", () => {
       expect(rejectedFacts).toMatchObject({ state: "queued", outcome: "pending", retryCount: 1 });
       expect(rejectedFacts!.delay).toBeGreaterThanOrEqual(3);
       expect(rejectedFacts!.delay).toBeLessThanOrEqual(6);
+      await ownerSql`update public.companion_v3_turns set available_at=clock_timestamp()
+        where org_id=${ids.org}::uuid and id=${rejected.turnId}::uuid`;
+      const retriedClaim = await routineStore.claimLane({
+        executorId: "runtime-routine-rejected-retry", lane: "background",
+      });
+      expect(retriedClaim?.turn.id).toBe(rejected.turnId);
+      const retriedMaterial = await persistence.authorize(retriedClaim!);
+      expect(retriedMaterial?.piInvocationId).toBe(
+        `${rejected.material.piInvocationId}:retry-1`,
+      );
+      await expect(persistence.beginAdmission(retriedClaim!, {
+        invocationId: rejected.material.piInvocationId, cursor: 0n,
+      })).resolves.toBe(false);
+      await expect(persistence.beginAdmission(retriedClaim!, {
+        invocationId: retriedMaterial!.piInvocationId, cursor: 0n,
+      })).resolves.toBe(true);
+      await expect(routineStore.completeProgression(retriedClaim!, {
+        kind: "admission_rejected",
+        error: { code: "pi_prompt_refused", message: "Pi rejected the prompt.", action: "none" },
+      })).resolves.toBe(true);
+      const retriedCleanup = await routineStore.claimLane({
+        executorId: "runtime-routine-rejected-retry-cleanup", lane: "background",
+      });
+      expect(retriedCleanup).toMatchObject({
+        turn: { id: rejected.turnId, state: "failed" },
+        cleanup: { invocationId: retriedMaterial!.piInvocationId },
+      });
+      await expect(routineStore.completeProgression(retriedCleanup!, { kind: "cleanup_completed" }))
+        .resolves.toBe(true);
       await ownerSql`delete from public.companion_v3_turns
         where org_id=${ids.org}::uuid and id=${rejected.turnId}::uuid`;
 

@@ -1289,6 +1289,13 @@
       "when": 1793390800000,
       "tag": "0183_companion_runtime_v3_mcp_broker_resolver",
       "breakpoints": true
+    },
+    {
+      "idx": 184,
+      "version": "7",
+      "when": 1793394400000,
+      "tag": "0184_companion_runtime_v3_background_retry_identity",
+      "breakpoints": true
     }
   ]
 }

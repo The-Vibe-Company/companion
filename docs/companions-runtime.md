@@ -694,6 +694,9 @@ preempted.
 
 Scheduler persistence failures and prompt rejections proven before Pi acceptance release their claim
 and retry with a bounded 80–120% jittered exponential schedule (5s, 15s, 30s, 60s, then 5m).
+Each proven-safe retry derives a new run-scoped Pi invocation from the durable retry counter. This
+lets the Box retain the previous invocation's cancellation tombstone while the same routine Turn
+continues; the initial identity remains stable and ambiguous or accepted prompts are never retried.
 Accepted, timed-out, process-exited, or ambiguous work is terminal and never replayed. They never automatically
 disable the routine or advance a failed due instant, so recovery of membership, credentials, Box,
 or Pi resumes without a member action. Errors crossing the durable boundary remain stable,
