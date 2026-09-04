@@ -242,6 +242,14 @@ member MCP accounts, and freshly minted Hub/MCP/control capabilities were staged
 runtime revalidates membership, Companion Editor access, personal-resource ownership, revisions,
 and credential generations immediately before Box and Pi effects. Changed, revoked, or expiring
 material clears warm readiness and converges through a complete restage before the next admission.
+Migration 0185 closes the credential handoff: if staging wrote fresh tmpfs credentials while Pi was
+already active, activation recycles Pi before readiness so its process cannot retain a superseded
+broker environment. The upgrade expires only idle MCP-enabled preparations for repair on their next
+Turn and leaves claimed or admitted work, ambiguous admission, terminal ACK, and Pi recovery
+undisturbed. A
+failed Pi activation resets the consumed staged
+checkpoint to `box_ready`, so retries reconstruct fresh transient credentials instead of becoming a
+permanent credential-free restart loop.
 The API atomically persists the user entry and Turn and returns without Box credentials; the runtime
 composition claims only v3 work, reauthorizes the actor, dispatches through the existing
 Pi transport, records positive admission before `replying`, and projects one assistant result into

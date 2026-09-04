@@ -190,7 +190,14 @@ persistent `~/.companion/runtime/tmp`; `/tmp` is not used because Box discards i
 activation and broker-socket readiness run inside one bounded Box command. Starting separate status
 commands while a restored image is paging in materially delays Pi, so the control plane performs no
 concurrent readiness polling. The same command returns the systemd/broker invocation id, so start
-does not issue a second broker-state command.
+does not issue a second broker-state command. When complete preparation staged fresh tmpfs
+credentials and Pi is already active, that activation recycles Pi in the same command before proving
+readiness; `systemctl start` alone cannot reload the broker, MCP, or control capabilities. Migration
+0185 expires idle MCP-enabled preparations once so affected Boxes take this repaired path on their
+next ordinary Turn, while claimed or admitted work, ambiguous handoff, terminal ACK, and Pi recovery
+keep their exact invocation horizon. Because Pi
+activation consumes the transient staged credentials, an activation error returns preparation to
+`box_ready`; the next retry mints and stages fresh material instead of retrying an empty checkpoint.
 
 Before every Box interaction, runtime re-evaluates:
 

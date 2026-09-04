@@ -225,6 +225,38 @@ describe("narrow AsciiBoxCompanionRuntime", () => {
     expect(commands[0]?.timeoutSeconds).toBe(120);
   });
 
+  it("reloads fresh staged credentials when preparation finds Pi already active", async () => {
+    const commands: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_rawUrl: string | URL | Request, init?: RequestInit) => {
+      const command = requiredText(parseBoxTestBody(init?.body), "command");
+      commands.push(command);
+      return response(commandResult(
+        "active\ncompanion-pi-broker-ready\ncompanion-pi-invocation invocation-2\n",
+      ));
+    }));
+    const runtime = new AsciiBoxCompanionRuntime({ COMPANION_BOX_API_KEY: "box_test" });
+
+    await expect(runtime.startPiDaemon({ boxId: "bx_23456789" })).resolves.toEqual({
+      state: "idle",
+      invocationId: "invocation-2",
+    });
+
+    expect(commands).toHaveLength(1);
+    expect(commands[0]).toContain("companion_pi_action=start");
+    expect(commands[0]).toContain('[ -f "$staged_credential_file" ]');
+    expect(commands[0]).toContain(
+      "systemctl --user is-active --quiet companion-pi-daemon.service",
+    );
+    expect(commands[0]).toContain("companion_pi_action=restart");
+    expect(commands[0]).toContain(
+      'systemctl --user "$companion_pi_action" companion-pi-daemon.service',
+    );
+    expect(spawnSync("bash", ["-n"], { input: commands[0], encoding: "utf8" })).toMatchObject({
+      status: 0,
+      stderr: "",
+    });
+  });
+
   it.each([
     ["companion-pi-termination-terminated", "terminated"],
     ["companion-pi-termination-already-gone", "already_gone"],

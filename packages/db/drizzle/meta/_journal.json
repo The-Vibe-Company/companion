@@ -1296,6 +1296,13 @@
       "when": 1793394400000,
       "tag": "0184_companion_runtime_v3_background_retry_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 185,
+      "version": "7",
+      "when": 1793398000000,
+      "tag": "0185_companion_runtime_v3_reload_staged_credentials",
+      "breakpoints": true
     }
   ]
 }

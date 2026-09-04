@@ -4427,6 +4427,14 @@ runtime_credential_dir="$XDG_RUNTIME_DIR/companion"
 runtime_credential_file="$runtime_credential_dir/providers.env"
 mkdir -p "$runtime_credential_dir"
 chmod 700 "$runtime_credential_dir"
+companion_pi_action=${input.restart ? "restart" : "start"}
+# systemctl start is a no-op for an active daemon. Fresh staged credentials must be loaded by the
+# already-running broker before their superseded database capabilities are revoked and discarded.
+if [ "$companion_pi_action" = start ] \
+  && [ -f "$staged_credential_file" ] \
+  && systemctl --user is-active --quiet companion-pi-daemon.service; then
+  companion_pi_action=restart
+fi
 if [ -f "$staged_credential_file" ]; then
   mv -f "$staged_credential_file" "$runtime_credential_file"
 fi
@@ -4437,7 +4445,7 @@ fi
 chmod 600 "$runtime_credential_file"
 systemctl --user daemon-reload
 systemctl --user reset-failed companion-pi-daemon.service >/dev/null 2>&1 || true
-systemctl --user ${input.restart ? "restart" : "start"} companion-pi-daemon.service
+systemctl --user "$companion_pi_action" companion-pi-daemon.service
 trap - EXIT
 # Starting another Box command while Pi faults its image pages back in can stretch a one-second boot
 # past thirty seconds. Keep readiness in this same command so the daemon starts without competing
