@@ -31,7 +31,7 @@
     "@companion/skilldb": "workspace:*",
     "@companion/skills": "workspace:*",
     "@companion/storage": "workspace:*",
-    "@hono/node-server": "^1.18.2",
+    "@hono/node-server": "^2.1.1",
     "@sentry/node": "^10.70.0",
     "@sqlite.org/sqlite-wasm": "3.50.4-build1",
     "@trpc/server": "^10.45.2",
