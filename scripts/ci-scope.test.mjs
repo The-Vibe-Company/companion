@@ -13,13 +13,10 @@ test("documentation-only changes avoid application jobs", () => {
     quality: false,
     build: false,
     database: false,
-    runtime: false,
     browser: false,
     containers: false,
     dependencies: false,
     skill: false,
-    ios: false,
-    macos: false,
     full: false,
   });
 });
@@ -47,16 +44,6 @@ test("unit-test-only changes stay in the quality lane", () => {
   assert.equal(result.database, false);
   assert.equal(result.browser, false);
   assert.equal(result.containers, false);
-  assert.equal(result.runtime, false);
-});
-
-test("API and runtime integration fixtures retain the runtime lane", () => {
-  for (const file of [
-    "apps/api/test/integration/runtimeRoleGrants.integration.test.ts",
-    "apps/runtime/test/integration/runtimeFullStack.integration.test.ts",
-  ]) {
-    assert.equal(classifyFiles([file]).runtime, true, file);
-  }
 });
 
 test("API changes run database, browser, and container checks", () => {
@@ -65,43 +52,8 @@ test("API changes run database, browser, and container checks", () => {
   assert.equal(result.build, true);
   assert.equal(result.browser, true);
   assert.equal(result.containers, true);
-  assert.equal(result.runtime, true);
-  assert.equal(result.ios, true);
 });
 
-test("iOS app changes request only the iOS native lane", () => {
-  const result = classifyFiles(["apps/ios/Companion/Screens/LoginView.swift"]);
-  assert.equal(result.ios, true);
-  assert.equal(result.macos, false);
-  assert.equal(result.quality, true);
-});
-
-test("CompanionKit changes exercise both native clients", () => {
-  const result = classifyFiles(["apps/ios/CompanionKit/Sources/CompanionKit/Models.swift"]);
-  assert.equal(result.ios, true);
-  assert.equal(result.macos, true);
-});
-
-test("macOS app changes request the native Mac lane without an iOS build", () => {
-  const result = classifyFiles(["apps/macos/CompanionMac/MacChatView.swift"]);
-  assert.equal(result.macos, true);
-  assert.equal(result.ios, false);
-  assert.equal(result.quality, true);
-});
-
-test("runtime and simulator changes run PostgreSQL, runtime, and container checks", () => {
-  for (const file of [
-    "apps/runtime/src/index.ts",
-    "packages/companion-runtime/src/engine.ts",
-    "packages/box-runtime/src/boxCompanionRuntime.ts",
-    "packages/box-sim/src/server.ts",
-  ]) {
-    const result = classifyFiles([file]);
-    assert.equal(result.database, true, `${file} must exercise PostgreSQL`);
-    assert.equal(result.runtime, true, `${file} must exercise Runtime v2`);
-    assert.equal(result.containers, true, `${file} must exercise the runtime image`);
-  }
-});
 
 test("skill database worker changes run database and container checks", () => {
   const result = classifyFiles(["apps/worker/src/skillDatabaseCleanup.ts"]);
@@ -154,15 +106,15 @@ test("bundled skill files always request the skill checks, documentation include
 });
 
 test("sources inlined into the committed agent-client bundle request the skill checks", () => {
-  assert.equal(classifyFiles(["packages/contracts/src/companions.ts"]).skill, true);
+  assert.equal(classifyFiles(["packages/contracts/src/skills.ts"]).skill, true);
   assert.equal(classifyFiles(["packages/companion-skill/client/operations.ts"]).skill, true);
   assert.equal(classifyFiles(["packages/companion-skill/tsup.config.ts"]).skill, true);
 });
 
 test("changes that cannot alter the bundled skill stay out of the skill lane", () => {
-  assert.equal(classifyFiles(["packages/contracts/test/companions.test.ts"]).skill, false);
+  assert.equal(classifyFiles(["packages/contracts/test/skills.test.ts"]).skill, false);
   assert.equal(classifyFiles(["packages/contracts/README.md"]).skill, false);
-  assert.equal(classifyFiles(["packages/core/src/companions.ts"]).skill, false);
+  assert.equal(classifyFiles(["packages/core/src/skills.ts"]).skill, false);
 });
 
 test("agent-browser smoke runtime changes trigger the browser lane", () => {
@@ -213,7 +165,6 @@ test("lockfile, workflow, and CI gate changes force the full pipeline", () => {
     assert.equal(result.database, true);
     assert.equal(result.browser, true);
     assert.equal(result.containers, true);
-    assert.equal(result.runtime, true);
     assert.equal(result.dependencies, true);
   }
 });

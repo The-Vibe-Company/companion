@@ -1,14 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type Ref } from "react";
-import Link from "next/link";
-import type { Companion, CompanionAccess, LabelColor, LabelIcon } from "@companion/contracts";
+import type { LabelColor, LabelIcon } from "@companion/contracts";
 import { LABEL_COLORS, LABEL_ICONS, labelDisplayNameToPath } from "@companion/contracts";
 import { Icon } from "../Icon";
-import { UserAvatar } from "../UserAvatar";
-import { CompanionActionsMenu } from "../companions/CompanionActionsMenu";
-import { CompanionIcon } from "../companions/CompanionIcon";
-import { RelativeTime } from "../companions/RelativeTime";
 import { OrgSwitcher } from "../org/OrgSwitcher";
 import type { OrgVM } from "@/lib/types";
 import type { SkillsLibrary } from "./route";
@@ -18,40 +13,6 @@ import type { TreeRow } from "./sidebarTree";
 
 type SidebarSelection = { lib: SkillsLibrary; kind: "all" | "installed" | "label"; label?: string } | null;
 type MoveTarget = { path: string; label: string };
-
-/** Workspace mode: the Skills libraries, or the Companions agent list (Companions flag only). */
-export type SidebarMode = "skills" | "companions";
-
-export type SidebarCompanion = {
-  id: string;
-  name: string;
-  /** The blob avatar indexes, rendered by `CompanionIcon` on every surface. */
-  icon: Companion["icon"];
-  /** Short status word already paired with the dot colour, never colour alone. */
-  status: string;
-  tone: "ok" | "warn" | "danger" | "unknown";
-  /** Pi-ACKed replying only — the avatar thinks exactly when the thread would say "is replying…". */
-  replying: boolean;
-  /** One line of the newest thing said on this thread; null when nobody has written in it. */
-  preview: string | null;
-  /** When that line was written, so the row can say how long ago. */
-  previewAt: string | null;
-  /** Someone else has written since this reader last opened the thread. */
-  unread: boolean;
-  /** What the actions menu may offer this reader for this Companion. */
-  access: CompanionAccess;
-  pinned: boolean;
-  /** Hidden rows live in the collapsed Hidden disclosure, not the main roster. */
-  hidden: boolean;
-};
-
-/** The signed-in reader, for the footer row that names whose workspace this is. */
-export type SidebarViewer = {
-  name: string;
-  email: string;
-  initials: string;
-  avatarUrl: string | null;
-};
 
 function labelParent(path: string): string | null {
   const i = path.lastIndexOf("/");
@@ -522,19 +483,6 @@ export function Sidebar({
   onSelectArchived,
   onSelectSecrets,
   secretsActive = false,
-  companionsEnabled = false,
-  mode = "skills",
-  companions = [],
-  activeCompanionId = null,
-  onSelectCompanion = () => {},
-  onCreateCompanion,
-  createCompanionDisabled = false,
-  companionMenu,
-  companionRowRef,
-  onOpenPlugins,
-  pluginsActive = false,
-  onOpenProviders,
-  viewer = null,
   navigationOnly = false,
   localActive,
   localUpdateCount,
@@ -584,44 +532,6 @@ export function Sidebar({
   onSelectArchived: () => void;
   onSelectSecrets: () => void;
   secretsActive?: boolean;
-  companionsEnabled?: boolean;
-  /** Companions mode replaces the Skills libraries with the workspace Companion list. */
-  mode?: SidebarMode;
-  companions?: SidebarCompanion[];
-  activeCompanionId?: string | null;
-  onSelectCompanion?: (companionId: string) => void;
-  /** Companions mode only: opens the New companion dialog from the roster's `+` button. */
-  onCreateCompanion?: () => void;
-  /** True while provider settings are still loading and creation cannot start yet. */
-  createCompanionDisabled?: boolean;
-  /**
-   * Companions mode only: presence renders the per-row "…" actions menu. Gated on its own prop —
-   * not `navigationOnly`, which only mutes Skills label mutation.
-   */
-  companionMenu?: {
-    personalWorkspace: boolean;
-    busy: boolean;
-    onSettings: (companionId: string) => void;
-    onShare: (companionId: string) => void;
-    onMemberState: (
-      companionId: string,
-      patch: { pinned?: boolean; hidden?: boolean; unread?: boolean },
-    ) => Promise<void>;
-    onDuplicate: (companionId: string) => Promise<void>;
-    onDelete: (companionId: string) => void;
-  };
-  /** Registers each row's main button so the host can restore focus after hide/unhide. */
-  companionRowRef?: (companionId: string, node: HTMLButtonElement | null) => void;
-  /** Companions mode only: the Plugins surface, reachable without leaving an open thread. */
-  onOpenPlugins?: () => void;
-  pluginsActive?: boolean;
-  /**
-   * Companions mode only: workspace provider connections. Absent for a member who cannot manage
-   * them, which is the same rule the surface itself applies.
-   */
-  onOpenProviders?: () => void;
-  /** Companions mode only: the signed-in reader, shown in the footer beside the settings action. */
-  viewer?: SidebarViewer | null;
   /** Render the complete shared navigation without exposing label mutation affordances. */
   navigationOnly?: boolean;
   localActive: boolean;
@@ -647,9 +557,6 @@ export function Sidebar({
   const newFolderInputRef = useRef<HTMLInputElement>(null);
   const [mineOpen, setMineOpen] = useState(true);
   const [orgOpen, setOrgOpen] = useState(true);
-  // Hidden Companions stay out of the roster until asked for, mirroring the retired main-list
-  // section. Collapsed on every mount: a hidden row is a put-away thing, not a resting place.
-  const [hiddenCompanionsOpen, setHiddenCompanionsOpen] = useState(false);
 
   const warmSettings = () => onWarmSettings();
   const runAndClose = (action: () => void) => {
@@ -657,7 +564,6 @@ export function Sidebar({
     onCloseMobile();
   };
 
-  const companionsMode = companionsEnabled && mode === "companions";
 
   const rootDropOk = (lib: SkillsLibrary) => hovered?.kind === "root" && hovered.lib === lib;
   const rootDropDone = (lib: SkillsLibrary) => dropDone?.kind === "root" && dropDone.lib === lib;
@@ -736,84 +642,6 @@ export function Sidebar({
     queueMicrotask(() => trigger?.focus());
   };
 
-  const hiddenSidebarCompanions = companions.filter((companion) => companion.hidden);
-
-  /**
-   * One conversation row. A `<div>` wrapper with a separate main button and kebab, the `.lblrow`
-   * precedent — the row cannot stay one `<button>` once it hosts the actions trigger.
-   */
-  const companionRow = (companion: SidebarCompanion, hidden: boolean) => {
-    const active = companion.id === activeCompanionId;
-    return (
-      <div
-        key={companion.id}
-        className={"cmprow" + (active ? " cmprow--active" : "") + (hidden ? " cmprow--hidden" : "")}
-      >
-        <button
-          type="button"
-          className="cmprow__main"
-          aria-current={active ? "page" : undefined}
-          // No `aria-label`: it would override the row's own content, and the content is
-          // the announcement — the name, when the thread last spoke, what it said, and the
-          // status and unread words below. A label here silently hid all four.
-          onClick={() => runAndClose(() => onSelectCompanion(companion.id))}
-          title={`${companion.name} — ${companion.status}`}
-          ref={companionRowRef ? (node) => companionRowRef(companion.id, node) : undefined}
-        >
-          <span className="cmprow__avatar" aria-hidden="true">
-            {/* The blob is the avatar — a plain face, no ring or plate — and it thinks exactly
-                while a Pi-ACKed attempt is replying, never for queued or starting work. */}
-            <CompanionIcon
-              icon={companion.icon}
-              size={30}
-              state={companion.replying ? "thinking" : "idle"}
-            />
-            {/* Presence sits on the face it belongs to, the way a conversation list reads.
-                It is never the only carrier: the word rides in the row's accessible name
-                and, below, as text a screen reader reaches. */}
-            <i className={`cmprow__dot cmprow__dot--${companion.tone}`} />
-          </span>
-          <span className="cmprow__body">
-            <span className="cmprow__line">
-              <span className="cmprow__name">{companion.name}</span>
-              {companion.previewAt && (
-                <RelativeTime className="cmprow__time" iso={companion.previewAt} />
-              )}
-            </span>
-            <span className="cmprow__preview">
-              {companion.preview ?? "No messages yet"}
-            </span>
-          </span>
-          {/* Outside the body so the collapsed rail, which drops the text, still shows
-              that something is waiting. */}
-          {companion.unread && <i className="cmprow__unread" aria-hidden="true" />}
-          <span className="cmprow__statusword sr-only">
-            {companion.unread ? `${companion.status}, Unread` : companion.status}
-          </span>
-        </button>
-        {companionMenu && (
-          <CompanionActionsMenu
-            companion={{
-              id: companion.id,
-              name: companion.name,
-              access: companion.access,
-              pinned: companion.pinned,
-              unread: companion.unread,
-            }}
-            busy={companionMenu.busy}
-            personalWorkspace={companionMenu.personalWorkspace}
-            hidden={hidden}
-            onSettings={() => runAndClose(() => companionMenu.onSettings(companion.id))}
-            onShare={() => runAndClose(() => companionMenu.onShare(companion.id))}
-            onMemberState={(patch) => companionMenu.onMemberState(companion.id, patch)}
-            onDuplicate={() => companionMenu.onDuplicate(companion.id)}
-            onDelete={() => runAndClose(() => companionMenu.onDelete(companion.id))}
-          />
-        )}
-      </div>
-    );
-  };
-
   return (
     <aside ref={asideRef} className={"side" + (mobileOpen ? " side--mobile-open" : "") + (skillDropMode ? " side--skill-drop" : "")}>
       <div className="side__brand">
@@ -842,80 +670,7 @@ export function Sidebar({
           <Icon name="search" size={14} />
         </button>
       </div>
-      {companionsEnabled && (
-        <nav className="modeseg" aria-label="Workspace mode">
-          {(["skills", "companions"] as const).map((value) => (
-            <Link
-              key={value}
-              href={value === "skills" ? "/skills" : "/companions"}
-              prefetch
-              className={"modeseg__btn" + (mode === value ? " is-active" : "")}
-              aria-current={mode === value ? "page" : undefined}
-              onClick={(event) => {
-                onCloseMobile();
-                // The selected half is state, not a refresh control. Keep the current route and
-                // its local UI intact when it is clicked again.
-                if (mode === value) event.preventDefault();
-              }}
-              title={value === "skills" ? "Skills" : "Companions"}
-            >
-              <span className="modeseg__ico">
-                <Icon name={value === "skills" ? "layers" : "bot"} size={15} />
-              </span>
-              <span className="modeseg__label">{value === "skills" ? "Skills" : "Companions"}</span>
-            </Link>
-          ))}
-        </nav>
-      )}
       <nav className="side__nav" aria-label="Primary">
-        {companionsMode ? (
-          <div className="cmpnav">
-            {onCreateCompanion && (
-              <div className="cmpnav__head">
-                <span className="cmpnav__title">Companions</span>
-                <button
-                  type="button"
-                  className="cmpnav__add"
-                  onClick={() => runAndClose(onCreateCompanion)}
-                  disabled={createCompanionDisabled}
-                  aria-label="New companion"
-                  title={createCompanionDisabled
-                    ? "Provider settings are still loading"
-                    : "New companion"}
-                >
-                  <Icon name="plus" size={15} />
-                </button>
-              </div>
-            )}
-            {companions.length === 0 ? (
-              <p className="cmpnav__empty">No Companions yet</p>
-            ) : (
-              <>
-                {companions.filter((companion) => !companion.hidden).map((companion) =>
-                  companionRow(companion, false))}
-                {hiddenSidebarCompanions.length > 0 && (
-                  <div className="cmpnav__hidden">
-                    <button
-                      type="button"
-                      className="cmpnav__hiddenhead"
-                      aria-expanded={hiddenCompanionsOpen}
-                      onClick={() => setHiddenCompanionsOpen((current) => !current)}
-                    >
-                      <Icon name={hiddenCompanionsOpen ? "chevron-down" : "chevron-right"} size={13} />
-                      <span>Hidden</span>
-                      <span className="cmpnav__hiddencount tnum">
-                        {hiddenSidebarCompanions.length}
-                      </span>
-                    </button>
-                    {hiddenCompanionsOpen && hiddenSidebarCompanions.map((companion) =>
-                      companionRow(companion, true))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        ) : (
-          <>
             {/* ===== MY SKILLS ===== */}
             <div
               className={
@@ -1066,14 +821,7 @@ export function Sidebar({
                 />
               </div>
             )}
-          </>
-        )}
 
-        {/* ===== BOTTOM =====
-            Secrets and Archived belong to Skills; Providers and Plugins belong to Companions. The
-            foot of the sidebar holds whichever pair the current mode can actually reach, so a
-            Companion reader is not offered two archives of skills they are not looking at. */}
-        {!companionsMode && (
           <button
             className={"navitem navitem--bottom" + (secretsActive ? " navitem--active" : "")}
             aria-current={secretsActive ? "page" : undefined}
@@ -1085,9 +833,7 @@ export function Sidebar({
             </span>
             <span className="navitem__label">Secrets</span>
           </button>
-        )}
 
-        {!companionsMode && (
           <button
             className={"navitem" + (localActive ? " navitem--active" : "")}
             aria-current={localActive ? "page" : undefined}
@@ -1104,8 +850,6 @@ export function Sidebar({
               </span>
             )}
           </button>
-        )}
-        {!companionsMode && (
           <button
             className={"navitem" + (archivedActive ? " navitem--active" : "")}
             aria-current={archivedActive ? "page" : undefined}
@@ -1118,56 +862,8 @@ export function Sidebar({
             <span className="navitem__label">Archived</span>
             <span className="navitem__count tnum">{archivedCount}</span>
           </button>
-        )}
 
-        {companionsMode && onOpenProviders && (
-          <button
-            className="navitem navitem--bottom"
-            onClick={() => runAndClose(() => onOpenProviders())}
-            title="Providers"
-          >
-            <span className="navitem__ico">
-              <Icon name="plug" />
-            </span>
-            <span className="navitem__label">Providers</span>
-          </button>
-        )}
-        {companionsMode && onOpenPlugins && (
-          <button
-            className={"navitem" + (pluginsActive ? " navitem--active" : "")}
-            aria-current={pluginsActive ? "page" : undefined}
-            onClick={() => runAndClose(() => onOpenPlugins())}
-            title="Plugins"
-          >
-            <span className="navitem__ico">
-              <Icon name="plug-zap" />
-            </span>
-            <span className="navitem__label">Plugins</span>
-          </button>
-        )}
       </nav>
-      {companionsMode && viewer ? (
-        // The reader's own row is the settings entry in Companions mode: one control, named for the
-        // person it belongs to, rather than a face that does nothing beside a word that does.
-        <button
-          className="side__foot side__foot--btn side__me"
-          onFocus={warmSettings}
-          onMouseDown={warmSettings}
-          onClick={() => runAndClose(() => onOpenSettings())}
-          onPointerEnter={warmSettings}
-          aria-label="Settings"
-          title="Settings"
-        >
-          <UserAvatar
-            className="avatar side__me__av"
-            avatarUrl={viewer.avatarUrl}
-            initials={viewer.initials}
-            size={24}
-          />
-          <span className="side__foot__label side__me__name">{viewer.name}</span>
-          <Icon name="settings" size={14} />
-        </button>
-      ) : (
         <button
           className="side__foot side__foot--btn"
           onFocus={warmSettings}
@@ -1178,7 +874,6 @@ export function Sidebar({
         >
           <Icon name="settings" size={14} /> <span className="side__foot__label">Settings</span>
         </button>
-      )}
       {!navigationOnly && menu && (
         <LabelMenu
           row={menu.row}

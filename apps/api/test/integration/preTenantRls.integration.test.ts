@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-conditional-empty-object-spread -- Existing integration and storage fixture patterns are retained while removing hosted Companion expectations. */
 /**
  * Product promise:
  * Companion runs with a NOBYPASSRLS login and exposes only narrow identity-discovery operations
@@ -303,16 +304,10 @@ describe("pre-tenant PostgreSQL RLS boundary", () => {
     const [capabilities] = await sql<{
       apiOwnsApi: boolean;
       apiOwnsWorker: boolean;
-      apiOwnsRuntime: boolean;
       workerOwnsApi: boolean;
       workerOwnsWorker: boolean;
-      workerOwnsRuntime: boolean;
       runtimeOwnsApi: boolean;
       runtimeOwnsWorker: boolean;
-      runtimeOwnsRuntime: boolean;
-      apiReadsPrivateRuntime: boolean;
-      workerReadsPrivateRuntime: boolean;
-      runtimeReadsPrivateRuntime: boolean;
       apiReadsAuth: boolean;
       workerReadsAuth: boolean;
       runtimeReadsAuth: boolean;
@@ -320,16 +315,10 @@ describe("pre-tenant PostgreSQL RLS boundary", () => {
       select
         has_function_privilege(${apiRole}, 'public.companion_list_user_orgs(text)', 'EXECUTE') as "apiOwnsApi",
         has_function_privilege(${apiRole}, 'public.companion_claim_github_sync_destinations(text,integer,integer)', 'EXECUTE') as "apiOwnsWorker",
-        has_function_privilege(${apiRole}, 'public.companion_runtime_get_material(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,integer)', 'EXECUTE') as "apiOwnsRuntime",
         has_function_privilege(${workerRole}, 'public.companion_list_user_orgs(text)', 'EXECUTE') as "workerOwnsApi",
         has_function_privilege(${workerRole}, 'public.companion_claim_github_sync_destinations(text,integer,integer)', 'EXECUTE') as "workerOwnsWorker",
-        has_function_privilege(${workerRole}, 'public.companion_runtime_get_material(uuid,uuid,uuid,bigint,bigint,text,public.companion_runtime_work_kind,uuid,integer)', 'EXECUTE') as "workerOwnsRuntime",
         has_function_privilege(${companionRuntimeRole}, 'public.companion_list_user_orgs(text)', 'EXECUTE') as "runtimeOwnsApi",
         has_function_privilege(${companionRuntimeRole}, 'public.companion_claim_github_sync_destinations(text,integer,integer)', 'EXECUTE') as "runtimeOwnsWorker",
-        has_function_privilege(${companionRuntimeRole}, 'public.companion_v3_runtime_claim_lifecycle(text,integer,integer)', 'EXECUTE') as "runtimeOwnsRuntime",
-        has_table_privilege(${apiRole}, 'public.companion_turns', 'SELECT') as "apiReadsPrivateRuntime",
-        has_table_privilege(${workerRole}, 'public.companion_turns', 'SELECT') as "workerReadsPrivateRuntime",
-        has_table_privilege(${companionRuntimeRole}, 'public.companion_turns', 'SELECT') as "runtimeReadsPrivateRuntime",
         has_table_privilege(${apiRole}, 'public.user', 'SELECT') as "apiReadsAuth",
         has_table_privilege(${workerRole}, 'public.user', 'SELECT') as "workerReadsAuth",
         has_table_privilege(${companionRuntimeRole}, 'public.user', 'SELECT') as "runtimeReadsAuth"
@@ -338,16 +327,10 @@ describe("pre-tenant PostgreSQL RLS boundary", () => {
     expect(capabilities).toEqual({
       apiOwnsApi: true,
       apiOwnsWorker: false,
-      apiOwnsRuntime: false,
       workerOwnsApi: false,
       workerOwnsWorker: true,
-      workerOwnsRuntime: false,
       runtimeOwnsApi: false,
       runtimeOwnsWorker: false,
-      runtimeOwnsRuntime: true,
-      apiReadsPrivateRuntime: false,
-      workerReadsPrivateRuntime: false,
-      runtimeReadsPrivateRuntime: false,
       apiReadsAuth: true,
       workerReadsAuth: false,
       runtimeReadsAuth: false,

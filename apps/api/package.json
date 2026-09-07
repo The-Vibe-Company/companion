@@ -21,7 +21,6 @@
     "@better-auth/drizzle-adapter": "^1.6.23",
     "@companion/auth": "workspace:*",
     "@companion/billing": "workspace:*",
-    "@companion/companion-runtime": "workspace:*",
     "@companion/companion-skill": "workspace:*",
     "@companion/contracts": "workspace:*",
     "@companion/core": "workspace:*",
@@ -49,7 +48,6 @@
   "devDependencies": {
     "@auth/agent": "0.6.2",
     "@auth/agent-cli": "0.5.1",
-    "@companion/companion-runtime": "workspace:*",
     "@types/node": "^22.10.2",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",

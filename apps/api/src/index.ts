@@ -142,7 +142,6 @@ import {
   SkillPublicReleaseValidationError,
 } from "@companion/core/services";
 import {
-  bumpCompanionSkillRevision,
   deploymentReleaseId,
   describeSkillDatabase,
   executeSkillDatabaseStatement,
@@ -265,8 +264,6 @@ import { buildInlineCompanionManifest, uploadDependencyValues, withResolvedManif
 import { buildCompanionSkillRow, getCompanionSkillPackage } from "@companion/companion-skill/package";
 import { parseSkillListQuery } from "./skillListQuery";
 import { registerAgentAuthRoutes } from "./agentAuthRoutes";
-import { registerCompanionRoutes, registerCompanionTriggerWebhookRoutes } from "./companionRoutes";
-import { syncPublishedSkillToOnlineCompanions } from "./companionSkillSync";
 import { COMPANION_SKILL_KEY } from "@companion/companion-skill";
 import { StripeBillingGateway } from "@companion/billing";
 import {
@@ -279,7 +276,6 @@ import {
   getBillingPreviewSource,
   getBillingOverview,
   processStripeWebhook,
-  warnIfCompanionsMisconfigured,
 } from "@companion/core";
 
 const app = new Hono<{ Variables: ApiVariables }>();
@@ -574,7 +570,6 @@ app.post(
 
 // Like the Stripe webhook above: an external caller with no session and no CORS origin of ours, so
 // the route must exist before the CORS and attachSession middleware are installed.
-registerCompanionTriggerWebhookRoutes(app);
 
 /** Set the `companion_org` selection cookie (readable client-side, so not httpOnly). */
 function setOrgCookie(c: Context<{ Variables: ApiVariables }>, orgId: string): void {
@@ -826,7 +821,6 @@ app.use(
 app.use("*", attachSession);
 
 registerAgentAuthRoutes(app);
-registerCompanionRoutes(app);
 
 app.get("/health", (c) => c.json({
   ok: true,
@@ -2221,10 +2215,6 @@ app.post("/v1/skills/:slug/rename", async (c) => {
           title: body.title,
           database,
         });
-        // Boxes stage the skill under its slug, so a rename changes their effective tree too. This
-        // desired-state invalidation is durable even while execution is disabled: otherwise a Box
-        // that was current before the kill switch would remain falsely current after re-enable.
-        await bumpCompanionSkillRevision({ orgId, skillId: renamed.id, database });
         return renamed;
       },
       true,
@@ -2669,12 +2659,9 @@ app.post("/v1/skills/:slug/archive", async (c) => {
     await withTenant(
       c,
       async ({ actor, orgId, database }) => {
-        const archived = await archiveSkill({
+        await archiveSkill({
           actor, orgId, slug: c.req.param("slug"), reason: body.reason, database,
         });
-        // Archiving removes the skill from every selector's staged set on its next start. Persist
-        // that invalidation while runtime claims are disabled so re-enable cannot miss the restage.
-        await bumpCompanionSkillRevision({ orgId, skillId: archived.id, database });
       },
       true,
     );
@@ -2692,8 +2679,7 @@ app.post("/v1/skills/:slug/restore", async (c) => {
     await withTenant(
       c,
       async ({ actor, orgId, database }) => {
-        const restored = await restoreSkill({ actor, orgId, slug: c.req.param("slug"), database });
-        await bumpCompanionSkillRevision({ orgId, skillId: restored.id, database });
+        await restoreSkill({ actor, orgId, slug: c.req.param("slug"), database });
       },
       true,
     );
@@ -2973,11 +2959,6 @@ app.post("/v1/skills", bodyLimit({ maxSize: 32 * 1024 * 1024, onError: (c) => js
       }
       throw error;
     }
-    await syncPublishedSkillToOnlineCompanions({
-      orgId,
-      skillId: published.id,
-      actor,
-    }).catch(() => undefined);
     return c.json({ ok: true, ...published, dependency_plan: dependencyPlan, warnings: result.warnings ?? [] });
   } catch (error) {
     return jsonError(c, error);
@@ -3073,11 +3054,6 @@ app.post("/v1/skills/create", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (c)
         body: result.body ?? "",
         dependencies: preparedCarriedDependencies,
       });
-      await syncPublishedSkillToOnlineCompanions({
-        orgId,
-        skillId: published.id,
-        actor,
-      }).catch(() => undefined);
       return c.json({ ok: true, ...published, warnings: result.warnings ?? [] });
     } finally {
       await rm(dir, { recursive: true, force: true });
@@ -3978,7 +3954,6 @@ const hostname = process.env.COMPANION_API_HOST;
 
 async function startApi(): Promise<void> {
   assertBillingEnvironmentConfigured();
-  warnIfCompanionsMisconfigured();
   serve({ fetch: app.fetch, port, ...(hostname ? { hostname } : {}) }, (info) => {
     console.log(`Companion API listening on ${hostname ? `http://${hostname}:${info.port}` : `port ${info.port}`}`);
   });

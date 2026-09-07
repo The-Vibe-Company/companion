@@ -68,7 +68,7 @@ export default function PrivacyPage() {
             <h2>Our approach</h2>
             <p>
               We design Companion to keep your workspace under your control. We collect and use
-              information needed to provide the Skills Hub, authenticate members, operate Companions,
+              information needed to provide the Skills Hub, authenticate members,
               and keep the service secure. This policy focuses on the Gmail integration and its data
               practices; your organization may also host its own Companion deployment and set additional
               rules for its workspace.

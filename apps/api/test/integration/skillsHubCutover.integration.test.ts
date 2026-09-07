@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-conditional-empty-object-spread -- Existing integration and storage fixture patterns are retained while removing hosted Companion expectations. */
 /**
  * Product promise:
  * The Skills Hub-only cutover can be completed on a live database without orphaning the objects it
@@ -222,8 +223,8 @@ describe("Skills Hub-only cutover", () => {
     `;
     expect(schema).toEqual({
       projects: null,
-      companions: "companions",
-      providers: "companion_provider_connections",
+      companions: null,
+      providers: null,
       skills: "skills",
     });
   }, 120_000);

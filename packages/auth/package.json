@@ -14,7 +14,6 @@
     "@auth/agent": "0.6.2",
     "@better-auth/agent-auth": "0.6.2",
     "@better-auth/drizzle-adapter": "^1.6.23",
-    "@better-auth/expo": "1.6.23",
     "@companion/contracts": "workspace:*",
     "@companion/db": "workspace:*",
     "@companion/email": "workspace:*",

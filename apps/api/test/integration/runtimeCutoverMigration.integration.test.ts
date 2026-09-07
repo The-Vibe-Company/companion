@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-conditional-empty-object-spread -- Existing integration and storage fixture patterns are retained while removing hosted Companion expectations. */
 /**
  * Product promise:
  * The irreversible Runtime v2 migration cannot start until the exact split-role grant contract has
@@ -226,6 +227,50 @@ afterAll(async () => {
 }, 30_000);
 
 describe("Runtime v2 final migration protocol", () => {
+  it("refuses retirement with external image ownership and preserves skill data after cleanup", async () => {
+    const fixture = await createFixture();
+    const folder = await mkdtemp(join(tmpdir(), "companion-before-retirement-"));
+    tempDirs.push(folder);
+    await mkdir(join(folder, "meta"));
+    const journal = JSON.parse(await readFile(join(migrationsDir, "meta", "_journal.json"), "utf8"));
+    journal.entries = journal.entries.filter((entry: { idx: number }) => entry.idx < 186);
+    await writeFile(join(folder, "meta", "_journal.json"), JSON.stringify(journal));
+    for (const entry of journal.entries) {
+      await copyFile(join(migrationsDir, `${entry.tag}.sql`), join(folder, `${entry.tag}.sql`));
+    }
+    await runMigrations({ env: { ...migrationEnv(fixture), COMPANION_MIGRATIONS_DIR: folder } });
+    const client = postgres(fixture.databaseUrl, { max: 1 });
+    try {
+      await client`insert into companion_images (digest, image_name) values (${'a'.repeat(64)}, 'retirement-test')`;
+      const orgId = randomUUID();
+      await client`insert into public."user" (id, name, email) values ('retirement-member', 'Member', 'retirement@example.test')`;
+      await client`insert into public.organizations (id, name, slug) values (${orgId}, 'Retained workspace', 'retained-workspace')`;
+      await client`insert into public.skills (org_id, creator_id, slug, description, scope)
+        values (${orgId}, 'retirement-member', 'retained-skill', 'Keep this package', 'personal')`;
+      await client`insert into public.api_tokens (org_id, user_id, name, token_prefix, token_hash, source_type, source_agent_id, expires_at)
+        values (${orgId}, 'retirement-member', 'retired', 'cmp_pat_retired', ${'b'.repeat(64)}, 'companion', ${randomUUID()}, now() + interval '1 day'),
+          (${orgId}, 'retirement-member', 'retained', 'cmp_pat_human', ${'c'.repeat(64)}, 'human', null, now() + interval '1 day')`;
+      const before = await client`select count(*)::integer as count from public.skills`;
+      await expect(runMigrations({ env: migrationEnv(fixture) })).rejects.toThrow(/external resource cleanup/);
+      expect(await lastMigration(fixture.databaseUrl)).not.toBe(await expectedLastMigrationWhen());
+      expect(await client`select image_name from companion_images`).toEqual([{ image_name: 'retirement-test' }]);
+      // This fixture has no provider resource: removing its fake ownership completes its cleanup.
+      await client`delete from companion_images`;
+      await runMigrations({ env: migrationEnv(fixture) });
+      expect(await client`select count(*)::integer as count from public.skills`).toEqual(before);
+      expect(await client`select slug, scope, description from public.skills`).toEqual([
+        { slug: 'retained-skill', scope: 'personal', description: 'Keep this package' },
+      ]);
+      expect(await client`select name from public.api_tokens`).toEqual([{ name: 'retained' }]);
+      const [retired] = await client`select to_regclass('public.companions') as companions,
+        to_regprocedure('public.companion_v3_worker_admit_turn(uuid,uuid,text,jsonb)') as admission`;
+      expect(retired).toEqual({ companions: null, admission: null });
+      await runMigrations({ env: migrationEnv(fixture) });
+    } finally {
+      await client.end({ timeout: 1 });
+    }
+  }, 120_000);
+
   it("applies a fresh database through recovery 0095 and repairs post-cutover grants every run", async () => {
     const fixture = await createFixture();
     await runMigrations({ env: migrationEnv(fixture) });
@@ -289,20 +334,8 @@ describe("Runtime v2 final migration protocol", () => {
         finalCutoverWhen,
         desktopReplayRecoveryWhen,
       ]);
-      const requestId = `upgrade-${randomUUID()}`;
-      await client.unsafe(`set role ${fixture.runtimeRole}`);
-      const [first] = await client<Array<{ consumed: boolean }>>`
-        select public.companion_runtime_consume_desktop_request(
-          ${requestId}, floor(extract(epoch from clock_timestamp()))::bigint, 60
-        ) as consumed
-      `;
-      const [replay] = await client<Array<{ consumed: boolean }>>`
-        select public.companion_runtime_consume_desktop_request(
-          ${requestId}, floor(extract(epoch from clock_timestamp()))::bigint, 60
-        ) as consumed
-      `;
-      expect(first?.consumed).toBe(true);
-      expect(replay?.consumed).toBe(false);
+      const [retired] = await client`select to_regclass('public.companions') as companions`;
+      expect(retired?.companions).toBeNull();
       await client.unsafe("reset role");
     } finally {
       await client.unsafe("reset role").catch(() => undefined);
@@ -358,104 +391,9 @@ describe("Runtime v2 final migration protocol", () => {
       await expect(runMigrations({ env: migrationEnv(fixture) })).resolves.toBeUndefined();
       expect(await lastMigration(fixture.databaseUrl)).toBe(await expectedLastMigrationWhen());
 
-      const [acl] = await client<Array<{
-        apiExecute: boolean;
-        workerExecute: boolean;
-        runtimeExecute: boolean;
-        nonOwnerExecutors: string[];
-        nonOwnerTableAclCount: number;
-        nonOwnerColumnAclCount: number;
-        runtimeTableSelect: boolean;
-        rowSecurity: boolean;
-        forcedRowSecurity: boolean;
-      }>>`
-        select
-          has_function_privilege(
-            ${fixture.apiRole},
-            'public.companion_runtime_consume_desktop_request(text,bigint,integer)',
-            'EXECUTE'
-          ) as "apiExecute",
-          has_function_privilege(
-            ${fixture.workerRole},
-            'public.companion_runtime_consume_desktop_request(text,bigint,integer)',
-            'EXECUTE'
-          ) as "workerExecute",
-          has_function_privilege(
-            ${fixture.runtimeRole},
-            'public.companion_runtime_consume_desktop_request(text,bigint,integer)',
-            'EXECUTE'
-          ) as "runtimeExecute",
-          (
-            select coalesce(
-              array_agg(coalesce(grantee.rolname, 'PUBLIC'::name) order by acl.grantee),
-              array[]::name[]
-            )
-            from pg_catalog.pg_proc target_proc
-            cross join lateral pg_catalog.aclexplode(
-              coalesce(target_proc.proacl, pg_catalog.acldefault('f', target_proc.proowner))
-            ) acl
-            left join pg_catalog.pg_roles grantee on grantee.oid = acl.grantee
-            where target_proc.oid =
-              'public.companion_runtime_consume_desktop_request(text,bigint,integer)'::regprocedure
-              and acl.privilege_type = 'EXECUTE'
-              and acl.grantee <> target_proc.proowner
-          )::text[] as "nonOwnerExecutors",
-          (
-            select count(*)::int
-            from pg_catalog.pg_class replay_table
-            cross join lateral pg_catalog.aclexplode(
-              coalesce(replay_table.relacl, pg_catalog.acldefault('r', replay_table.relowner))
-            ) acl
-            where replay_table.oid = 'public.companion_runtime_desktop_requests'::regclass
-              and acl.grantee <> replay_table.relowner
-          ) as "nonOwnerTableAclCount",
-          (
-            select count(*)::int
-            from pg_catalog.pg_attribute attribute
-            join pg_catalog.pg_class replay_table on replay_table.oid = attribute.attrelid
-            cross join lateral pg_catalog.aclexplode(attribute.attacl) acl
-            where replay_table.oid = 'public.companion_runtime_desktop_requests'::regclass
-              and attribute.attnum > 0
-              and not attribute.attisdropped
-              and acl.grantee <> replay_table.relowner
-          ) as "nonOwnerColumnAclCount",
-          has_table_privilege(
-            ${fixture.runtimeRole},
-            'public.companion_runtime_desktop_requests',
-            'SELECT'
-          ) as "runtimeTableSelect",
-          table_class.relrowsecurity as "rowSecurity",
-          table_class.relforcerowsecurity as "forcedRowSecurity"
-        from pg_catalog.pg_class table_class
-        where table_class.oid = 'public.companion_runtime_desktop_requests'::regclass
-      `;
-      expect(acl).toEqual({
-        apiExecute: false,
-        workerExecute: false,
-        runtimeExecute: true,
-        nonOwnerExecutors: [fixture.runtimeRole],
-        nonOwnerTableAclCount: 0,
-        nonOwnerColumnAclCount: 0,
-        runtimeTableSelect: false,
-        rowSecurity: true,
-        forcedRowSecurity: true,
-      });
+      const [retired] = await client`select to_regclass('public.companion_runtime_desktop_requests') as requests`;
+      expect(retired?.requests).toBeNull();
 
-      const requestId = `recorded-cutover-${randomUUID()}`;
-      await client.unsafe(`set role ${fixture.runtimeRole}`);
-      const [first] = await client<Array<{ consumed: boolean }>>`
-        select public.companion_runtime_consume_desktop_request(
-          ${requestId}, floor(extract(epoch from clock_timestamp()))::bigint, 60
-        ) as consumed
-      `;
-      const [replay] = await client<Array<{ consumed: boolean }>>`
-        select public.companion_runtime_consume_desktop_request(
-          ${requestId}, floor(extract(epoch from clock_timestamp()))::bigint, 60
-        ) as consumed
-      `;
-      expect(first?.consumed).toBe(true);
-      expect(replay?.consumed).toBe(false);
-      await client.unsafe("reset role");
     } finally {
       await client.unsafe("reset role").catch(() => undefined);
       await client.end({ timeout: 1 });

@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Companion, LabelVM } from "@companion/contracts";
+import type { LabelVM } from "@companion/contracts";
 import { Icon } from "../Icon";
 import { UserAvatar } from "../UserAvatar";
-import { apiFetch } from "@/lib/apiClient";
 import { fetchSkillVersionFiles } from "@/lib/queries";
 import type { SkillVM } from "@/lib/types";
 import { resolveSkillListIcon } from "./listGrouping";
@@ -16,7 +15,7 @@ const EXCERPT_LINES = 20;
 /**
  * One selected skill, beside the list it was selected from. It answers the questions a reader has
  * while scanning — what is this, who wrote it, is it installed, what does its `SKILL.md` open with,
- * and which Companions stage it — and carries the one action that skill is currently for.
+ * and carries the primary action for that skill.
  *
  * It is deliberately not the skill's page: the full detail, every tab, and every secondary action
  * stay behind Open, which is also what a double click on the row does. A panel that tried to be the
@@ -26,8 +25,6 @@ export function SkillPanel({
   skill,
   labels,
   actorId,
-  orgId,
-  companionsEnabled,
   onOpen,
   onAction,
   onClose,
@@ -35,9 +32,6 @@ export function SkillPanel({
   skill: SkillVM;
   labels: LabelVM[];
   actorId: string;
-  orgId: string;
-  /** Used-by is only asked for where Companions exist; elsewhere the section is simply absent. */
-  companionsEnabled: boolean;
   onOpen: (slug: string) => void;
   onAction: (skill: SkillVM, action: SkillAction) => void;
   onClose: () => void;
@@ -45,10 +39,6 @@ export function SkillPanel({
   const primary = resolveSkillActions(skill, skillActionPermissions(skill, actorId)).primary;
   const icon = resolveSkillListIcon(skill, labels);
   const [excerpt, setExcerpt] = useState<string | null>(null);
-  const [stagedBy, setStagedBy] = useState<
-    Pick<Companion, "name" | "selected_skill_ids">[] | null
-  >(null);
-
   /**
    * The opening of `SKILL.md`, read from the package the list already knows the version of. It is
    * fetched when a skill is selected rather than with the list, because most rows are scrolled past.
@@ -70,34 +60,6 @@ export function SkillPanel({
       .catch(() => {});
     return () => abort.abort();
   }, [skill.id, skill.version]);
-
-  /**
-   * Which Companions stage which skills. It is one read of the same list the Companions surface uses,
-   * inverted here rather than asked for per skill, and a workspace without Companions never makes it.
-   *
-   * It is keyed on the workspace rather than on the selected skill, and it asks for the roster
-   * without previews: this page shows nobody's conversation, so no conversation text belongs in it.
-   */
-  useEffect(() => {
-    if (!companionsEnabled) return;
-    let active = true;
-    apiFetch<{ companions: Pick<Companion, "name" | "selected_skill_ids">[] }>(
-      "/v1/companions?preview=false",
-      { headers: { "x-companion-org": orgId } },
-    )
-      .then((response) => {
-        if (active) setStagedBy(response.companions);
-      })
-      // Companions are a side note on a skill; a failed read hides the section rather than the panel.
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [companionsEnabled, orgId]);
-
-  const usedBy = stagedBy
-    ?.filter((companion) => companion.selected_skill_ids.includes(skill.uuid))
-    .map((companion) => companion.name) ?? null;
 
   const filedIn = [...skill.labels].sort((left, right) => left.localeCompare(right));
 
@@ -198,16 +160,7 @@ export function SkillPanel({
           </section>
         )}
 
-        {usedBy !== null && usedBy.length > 0 && (
-          <section className="skpanel__block">
-            <h3 className="skpanel__title">Used by</h3>
-            <ul className="skpanel__chips">
-              {usedBy.map((name) => (
-                <li className="skpanel__chip" key={name}>{name}</li>
-              ))}
-            </ul>
-          </section>
-        )}
+
       </div>
     </aside>
   );

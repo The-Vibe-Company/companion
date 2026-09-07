@@ -4,11 +4,11 @@ import { closeDb } from "@companion/db";
 import { keepWorkerProcessAliveWhenIdle, startWorkerSupervisors } from "./supervisors";
 
 async function main(): Promise<void> {
-  const { billing, github, skillDatabases, routines, apns } = await startWorkerSupervisors();
-  if (!billing && !github && !skillDatabases && !routines && !apns) {
+  const { billing, github, skillDatabases } = await startWorkerSupervisors();
+  if (!billing && !github && !skillDatabases) {
     console.info("worker idle: no supervisor is configured");
   }
-  const idleKeepAlive = keepWorkerProcessAliveWhenIdle({ billing, github, skillDatabases, routines, apns });
+  const idleKeepAlive = keepWorkerProcessAliveWhenIdle({ billing, github, skillDatabases });
 
   await new Promise<void>((resolve) => {
     let stopping = false;
@@ -20,8 +20,6 @@ async function main(): Promise<void> {
         billing?.stop(),
         github?.stop(),
         skillDatabases?.stop(),
-        routines?.stop(),
-        apns?.stop(),
       ]);
       await closeDb();
       resolve();

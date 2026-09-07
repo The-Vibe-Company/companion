@@ -2,7 +2,7 @@
 # =============================================================================
 # scripts/dev-conductor.sh — Conductor dev launcher for Companion, WITHOUT
 # Docker. Runs Postgres + MinIO + Mailpit as native per-workspace services and
-# launches API, worker, runtime, and web via concurrently. Local workspaces derive every
+# launches API, worker, and web via concurrently. Local workspaces derive every
 # port from the Conductor port range (CONDUCTOR_PORT + offset); isolated cloud
 # workspaces use the fixed fallback range starting at 3000. All state lives in
 # .conductor-pg/ and is torn down by `archive`.
@@ -23,8 +23,6 @@
 #   +4  MinIO console
 #   +5  Mailpit SMTP
 #   +6  Mailpit web UI
-#   +7  Companion runtime (private)
-#   +8  Box/Pi simulator or opt-in Linux Box Lab
 #   +9  reserved
 # =============================================================================
 
@@ -49,14 +47,8 @@ source "$REPO_ROOT/scripts/dev-environment.sh"
 # values must not nuke exported shell vars).
 companion_load_repo_env "$REPO_ROOT"
 
-# ascii.dev calls this credential BOX_API_KEY in its own tooling. Accept that
-# spelling only at the local launcher boundary, normalize it to Companion's
-# runtime-only name, then remove the broad alias before any child is spawned.
-# The canonical name wins when both are present.
-companion_normalize_box_api_key
 cd "$REPO_ROOT"
 # shellcheck disable=SC1091
-source "$REPO_ROOT/scripts/dev-runtime-mode.sh"
 
 # ---------------------------------------------------------------------------
 # Colours & logging
@@ -88,7 +80,7 @@ ${BOLD}dev-conductor.sh${RESET} — Companion Conductor dev stack, native (no Do
 Usage: bash scripts/dev-conductor.sh [command] [options]
 
 Commands:
-  run               Start Postgres/MinIO/Mailpit + API + worker + runtime + web (default)
+  run               Start Postgres/MinIO/Mailpit + API + worker + web (default)
   archive           Stop native services and remove .conductor-pg/
 
 Options:
@@ -173,11 +165,9 @@ MINIO_API_PORT=$((BASE + 3))
 MINIO_CONSOLE_PORT=$((BASE + 4))
 MAILPIT_SMTP_PORT=$((BASE + 5))
 MAILPIT_UI_PORT=$((BASE + 6))
-RUNTIME_PORT=$((BASE + 7))
-BOX_SIM_PORT=$((BASE + 8))
 
 # Only the web process is reachable through Conductor's cloud port forward.
-# API, runtime, Postgres, MinIO, Mailpit, and the simulator stay bound to loopback.
+# API, PostgreSQL, MinIO, and Mailpit stay bound to loopback.
 WEB_BIND_HOST="127.0.0.1"
 if [ "$CONDUCTOR_IS_CLOUD" = true ]; then
   WEB_BIND_HOST="0.0.0.0"
@@ -203,7 +193,6 @@ PROJECT="$(workspace_slug)"
 STATE_DIR="$REPO_ROOT/.conductor-pg"
 RUN_LOCK="$STATE_DIR/run.lock"
 SECRETS_KEY_FILE="$STATE_DIR/secrets-master-key"
-RUNTIME_HMAC_KEY_FILE="$STATE_DIR/runtime-desktop-hmac-key"
 PG_DATA="$STATE_DIR/postgres/data"
 # Socket lives in a short /tmp path, NOT under the (long) workspace dir: the
 # Unix-domain socket path has a hard 103-byte limit and Conductor workspace
@@ -232,12 +221,10 @@ PG_RETIRED_RUNTIME_ROLE=""
 PG_DB="companion"
 DATABASE_API_URL="postgres://${PG_API_USER}:${PG_API_PASS}@127.0.0.1:${PG_PORT}/${PG_DB}"
 DATABASE_WORKER_URL="postgres://${PG_WORKER_USER}:${PG_WORKER_PASS}@127.0.0.1:${PG_PORT}/${PG_DB}"
-DATABASE_COMPANION_RUNTIME_URL="postgres://${PG_RUNTIME_USER}:${PG_RUNTIME_PASS}@127.0.0.1:${PG_PORT}/${PG_DB}"
 DATABASE_MIGRATION_URL="postgres://${PG_OWNER_USER}:${PG_OWNER_PASS}@127.0.0.1:${PG_PORT}/${PG_DB}"
 
 WEB_URL="http://127.0.0.1:${WEB_PORT}"
 API_URL="http://127.0.0.1:${API_PORT}"
-RUNTIME_URL="http://127.0.0.1:${RUNTIME_PORT}"
 
 S3_ACCESS_KEY_ID="companion"
 S3_SECRET_ACCESS_KEY="companion-secret"
@@ -432,34 +419,9 @@ ensure_secrets_master_key() {
   export COMPANION_SECRETS_MASTER_KEY
 }
 
-ensure_runtime_hmac_key() {
-  if [ -n "${COMPANION_RUNTIME_DESKTOP_HMAC_SECRET:-}" ]; then
-    export COMPANION_RUNTIME_DESKTOP_HMAC_SECRET
-    return
-  fi
-  mkdir -p "$STATE_DIR"
-  chmod 700 "$STATE_DIR"
-  if [ ! -s "$RUNTIME_HMAC_KEY_FILE" ]; then
-    umask 077
-    node -e "process.stdout.write(require('crypto').randomBytes(32).toString('base64'))" >"$RUNTIME_HMAC_KEY_FILE"
-  fi
-  chmod 600 "$RUNTIME_HMAC_KEY_FILE"
-  COMPANION_RUNTIME_DESKTOP_HMAC_SECRET="$(cat "$RUNTIME_HMAC_KEY_FILE")"
-  export COMPANION_RUNTIME_DESKTOP_HMAC_SECRET
-}
 
 check_prerequisites() {
   step "Checking prerequisites"
-  local dev_box_mode
-  if ! dev_box_mode="$(companion_dev_box_mode)"; then
-    die "Invalid COMPANION_DEV_BOX_MODE='${COMPANION_DEV_BOX_MODE:-}'. Expected auto, sim, live, or lab."
-  fi
-  if [ "$dev_box_mode" = "live" ] && [ -z "${COMPANION_BOX_API_KEY:-}" ]; then
-    die "COMPANION_DEV_BOX_MODE=live requires COMPANION_BOX_API_KEY."
-  fi
-  if [ "$dev_box_mode" = "lab" ] && [ "$CONDUCTOR_IS_CLOUD" = true ]; then
-    die "COMPANION_DEV_BOX_MODE=lab is local-only. Run pnpm box:lab:smoke from a local workspace."
-  fi
   require_command node "install Node.js >= 20"
   require_command pnpm "corepack enable && corepack prepare pnpm@9 --activate"
   require_command lsof "$LSOF_INSTALL_HINT"
@@ -476,12 +438,6 @@ check_prerequisites() {
     || die "Workspace dependency sync failed. Check that pnpm-lock.yaml matches the workspace manifests."
   ok "Workspace dependencies ready"
 
-  if [ "$dev_box_mode" = "lab" ]; then
-    BOX_LAB_WORKSPACE_ID="${BOX_LAB_WORKSPACE_ID:-${CONDUCTOR_WORKSPACE_ID:-$PROJECT}}" \
-      bash scripts/dev-process.sh box-lab pnpm box:lab:doctor \
-      || die "Box Lab prerequisites are unavailable. See the doctor output above; host virtualization dependencies are never installed automatically."
-    ok "Box/Pi Linux Lab prerequisites"
-  fi
 
   PG_BIN="$(detect_pg_bin || true)"
   [ -n "$PG_BIN" ] || die "Postgres binaries not found. Install: $POSTGRES_INSTALL_HINT"
@@ -734,27 +690,7 @@ migrate_and_seed() {
   fi
   env "${migration_env[@]}" bash scripts/dev-process.sh migration pnpm db:migrate \
     || die "Migrations failed"
-  local OWNER_PSQL=("$PG_BIN/psql" "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1)
   ok "Migrations applied"
-
-  # Runtime deliberately cannot re-enable its own shared gate. Development is
-  # an explicit local cutover controlled by the migration owner.
-  if [ "${COMPANION_COMPANIONS_ENABLED:-}" = "true" ] \
-    && [ -n "${COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS//[[:space:],]/}" ] \
-    && "${OWNER_PSQL[@]}" -tAc \
-      "select 1 where to_regprocedure('public.companion_runtime_enable(bigint,text)') is not null" \
-      | grep -qx 1; then
-    local gate_epoch
-    gate_epoch="$("${OWNER_PSQL[@]}" -tAc \
-      "select gate_epoch from public.companion_runtime_control where id = 'runtime-v3'")"
-    case "$gate_epoch" in
-      ''|*[!0-9]*) die "Runtime v3 gate returned an invalid epoch: '$gate_epoch'" ;;
-    esac
-    "${OWNER_PSQL[@]}" -c \
-      "select * from public.companion_runtime_enable(${gate_epoch}::bigint, 'dev-conductor');" \
-      >/dev/null || die "Could not enable the local Runtime v3 gate"
-    ok "Runtime v3 gate enabled for local development"
-  fi
 
   local seed_env=(
     DATABASE_URL="$DATABASE_API_URL"
@@ -795,16 +731,6 @@ print_header() {
     printf '  %sWeb%s        %s\n' "$DIM" "$RESET" "$WEB_URL"
   fi
   printf '  %sAPI%s        %s\n' "$DIM" "$RESET" "$API_URL"
-  printf '  %sRuntime%s    %s/healthz (private)\n' "$DIM" "$RESET" "$RUNTIME_URL"
-  local dev_box_mode
-  dev_box_mode="$(companion_dev_box_mode 2>/dev/null || printf 'invalid')"
-  case "$dev_box_mode" in
-    live) printf '  %sBox/Pi%s     configured provider\n' "$DIM" "$RESET" ;;
-    sim) printf '  %sBox/Pi%s     deterministic simulator (no provider credential)\n' "$DIM" "$RESET" ;;
-    lab) printf '  %sBox/Pi%s     real Pi in a local x86_64 Linux VM\n' "$DIM" "$RESET" ;;
-    disabled) printf '  %sBox/Pi%s     not configured (simulator disabled)\n' "$DIM" "$RESET" ;;
-    *) printf '  %sBox/Pi%s     invalid development mode\n' "$DIM" "$RESET" ;;
-  esac
   printf '  %sPostgres%s   127.0.0.1:%s\n' "$DIM" "$RESET" "$PG_PORT"
   if [ "$HAS_MINIO" = true ]; then
     printf '  %sMinIO%s      %s (console http://127.0.0.1:%s)\n' "$DIM" "$RESET" "$S3_ENDPOINT" "$MINIO_CONSOLE_PORT"
@@ -823,11 +749,10 @@ print_header() {
 # Launch apps via concurrently (inline env, no .env mutation)
 # ---------------------------------------------------------------------------
 launch_apps() {
-  step "Launching API + worker + runtime + web via concurrently"
+  step "Launching API + worker + web via concurrently"
 
-  # Storage is shared by API uploads, worker cleanup, and runtime skill staging; email remains API-only.
-  local shared_storage_env="" api_email_env box_lab_workspace_id
-  box_lab_workspace_id="${BOX_LAB_WORKSPACE_ID:-${CONDUCTOR_WORKSPACE_ID:-$PROJECT}}"
+  # Storage is shared by API uploads and worker cleanup; email remains API-only.
+  local shared_storage_env="" api_email_env
   if [ "$HAS_MINIO" = true ]; then
     shared_storage_env="S3_ENDPOINT=\"$S3_ENDPOINT\" S3_REGION=us-east-1 S3_ACCESS_KEY_ID=\"$S3_ACCESS_KEY_ID\" S3_SECRET_ACCESS_KEY=\"$S3_SECRET_ACCESS_KEY\" S3_BUCKET_SKILL_ARCHIVES=\"$S3_BUCKET\" S3_FORCE_PATH_STYLE=true"
   fi
@@ -839,32 +764,25 @@ launch_apps() {
 
   # Master/HMAC/Box secrets remain inherited rather than interpolated into the
   # command line. dev-process.sh strips them from every process that does not own them.
-  local api_cmd="COMPANION_API_HOST=127.0.0.1 COMPANION_API_PORT=$API_PORT DATABASE_URL=\"$DATABASE_API_URL\" COMPANION_RUNTIME_PRIVATE_URL=\"$RUNTIME_URL\" BETTER_AUTH_URL=\"$API_URL\" BETTER_AUTH_COOKIE_PREFIX=\"$PROJECT\" COMPANION_WEB_URL=\"$WEB_URL\" COMPANION_API_URL=\"$API_URL\" NEXT_PUBLIC_COMPANION_API_URL=\"$API_URL\" COMPANION_SKILL_DATABASES_ENABLED=\"$SKILL_DATABASES_ENABLED\" $shared_storage_env $api_email_env bash scripts/dev-process.sh api pnpm --filter @companion/api dev"
+  local api_cmd="COMPANION_API_HOST=127.0.0.1 COMPANION_API_PORT=$API_PORT DATABASE_URL=\"$DATABASE_API_URL\" BETTER_AUTH_URL=\"$API_URL\" BETTER_AUTH_COOKIE_PREFIX=\"$PROJECT\" COMPANION_WEB_URL=\"$WEB_URL\" COMPANION_API_URL=\"$API_URL\" NEXT_PUBLIC_COMPANION_API_URL=\"$API_URL\" COMPANION_SKILL_DATABASES_ENABLED=\"$SKILL_DATABASES_ENABLED\" $shared_storage_env $api_email_env bash scripts/dev-process.sh api pnpm --filter @companion/api dev"
   local worker_cmd="DATABASE_WORKER_URL=\"$DATABASE_WORKER_URL\" COMPANION_WEB_URL=\"$WEB_URL\" $shared_storage_env bash scripts/dev-worker.sh pnpm --filter @companion/worker dev"
-  local runtime_cmd="DATABASE_COMPANION_RUNTIME_URL=\"$DATABASE_COMPANION_RUNTIME_URL\" COMPANION_RUNTIME_HOST=127.0.0.1 COMPANION_RUNTIME_PORT=$RUNTIME_PORT COMPANION_BOX_SIM_PORT=$BOX_SIM_PORT BOX_LAB_PORT=$BOX_SIM_PORT COMPANION_API_URL=\"$API_URL\" $shared_storage_env bash scripts/dev-runtime.sh pnpm --filter @companion/runtime dev"
   local web_cmd="COMPANION_API_URL=\"$API_URL\" NEXT_PUBLIC_COMPANION_API_URL=\"$API_URL\" bash scripts/dev-process.sh web pnpm --filter @companion/web dev --hostname $WEB_BIND_HOST --port $WEB_PORT"
 
   free_port "$API_PORT" "api"
-  free_port "$RUNTIME_PORT" "runtime"
   free_port "$WEB_PORT" "web"
-  if companion_dev_uses_box_simulator; then
-    free_port "$BOX_SIM_PORT" "box-sim"
-  elif companion_dev_uses_box_lab; then
-    free_port "$BOX_SIM_PORT" "box-lab"
-  fi
 
   # No `exec`: keep this bash alive so the EXIT trap stops native services
   # after concurrently returns (Ctrl+C → SIGINT → concurrently kills the apps
   # → bash exits → trap → pg_ctl stop / kill minio,mailpit).
   # Keep the caller-controlled workspace identity out of concurrently's shell command strings.
   # Child role wrappers retain it only for the Lab and remove it before Runtime starts.
-  BOX_LAB_WORKSPACE_ID="$box_lab_workspace_id" pnpm exec concurrently \
-    --names api,worker,runtime,web \
+  pnpm exec concurrently \
+    --names api,worker,web \
     --prefix-colors blue,magenta,cyan,green \
     --prefix "[{name}]" \
     --kill-others-on-fail \
     --restart-tries 0 \
-    "$api_cmd" "$worker_cmd" "$runtime_cmd" "$web_cmd"
+    "$api_cmd" "$worker_cmd" "$web_cmd"
 }
 
 # ---------------------------------------------------------------------------
@@ -883,7 +801,6 @@ cmd_run() {
   trap 'exit 143' TERM
   check_prerequisites
   ensure_secrets_master_key
-  ensure_runtime_hmac_key
   start_postgres
   start_minio
   start_mailpit
@@ -896,11 +813,6 @@ cmd_archive() {
   step "Archiving workspace — stopping native services + removing workspace state"
   PG_BIN="$(detect_pg_bin || true)"
   stop_services
-  if [ "$CONDUCTOR_IS_CLOUD" = false ]; then
-    BOX_LAB_WORKSPACE_ID="${BOX_LAB_WORKSPACE_ID:-${CONDUCTOR_WORKSPACE_ID:-$PROJECT}}" \
-      bash scripts/dev-process.sh box-lab pnpm box:lab:reset \
-      || die "Could not remove the Box Lab resources owned by this workspace."
-  fi
   rm -rf "$STATE_DIR"
   ok "Removed $STATE_DIR"
 }

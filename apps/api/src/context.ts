@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-conditional-empty-object-spread, anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion -- Hosted Companion removal preserves the existing Skills Hub implementation; these patterns predate this change. */
 import { getCookie } from "hono/cookie";
 import type { Context } from "hono";
 import { companionCapabilityAllows, type TokenScope } from "@companion/contracts";
@@ -9,11 +10,8 @@ import {
   type ActorContext,
 } from "@companion/core/services";
 import {
-  assertCompanionTokenAuthorized,
-  CompanionWriteSkillsForbiddenError,
   EntitlementDeniedError,
 } from "@companion/core";
-import { withTenantContext } from "@companion/db";
 import { captureServerError } from "./sentry";
 
 export interface ApiVariables {
@@ -23,9 +21,7 @@ export interface ApiVariables {
   tokenActor: ActorContext | null;
   tokenOrgId: string | null;
   tokenScopes: TokenScope[] | null;
-  /** PAT provenance; `companion` means a Skills Hub token for `tokenCompanionId`. */
   tokenSourceType: string | null;
-  tokenCompanionId: string | null;
   programmaticAuthKind: "pat" | "agent" | null;
   agentId: string | null;
   agentCapability: AgentCapabilityName | null;
@@ -76,7 +72,6 @@ export async function attachSession(c: Context<{ Variables: ApiVariables }>, nex
   c.set("tokenOrgId", null);
   c.set("tokenScopes", null);
   c.set("tokenSourceType", null);
-  c.set("tokenCompanionId", null);
   c.set("programmaticAuthKind", null);
   c.set("agentId", null);
   c.set("agentCapability", null);
@@ -101,7 +96,6 @@ export async function attachSession(c: Context<{ Variables: ApiVariables }>, nex
         c.set("tokenOrgId", resolved.orgId);
         c.set("tokenScopes", resolved.scopes);
         c.set("tokenSourceType", resolved.sourceType);
-        c.set("tokenCompanionId", resolved.sourceCompanionId);
         c.set("programmaticAuthKind", "pat");
       } else {
         const workspaceId =
@@ -176,9 +170,7 @@ export function isAgentRequest(c: Context<{ Variables: ApiVariables }>): boolean
 
 /**
  * Gate a capability for token-authed requests. Cookie sessions (a signed-in human) implicitly
- * hold every scope; a `cmp_pat_…` token must carry the requested scope. A Companion-minted token
- * additionally re-checks that its Companion still exists for the acting member, so deleting the
- * Companion or removing the member refuses it immediately.
+ * hold every scope; a `cmp_pat_…` token must carry the requested scope.
  */
 export async function requireScope(c: Context<{ Variables: ApiVariables }>, scope: TokenScope): Promise<void> {
   const scopes = c.get("tokenScopes");
@@ -194,25 +186,6 @@ export async function requireScope(c: Context<{ Variables: ApiVariables }>, scop
   )) {
     throw new Error(`token is missing the ${scope} scope`);
   }
-  await requireCompanionTokenStillAuthorized(c);
-}
-
-/**
- * A Companion-minted token stays usable only while its Companion is still there for the member it
- * acts as. Cookie sessions and ordinary PATs are unaffected. The companions row is FORCE RLS, so
- * the re-check runs in the token owner's tenant context and a lost membership fails closed.
- */
-export async function requireCompanionTokenStillAuthorized(
-  c: Context<{ Variables: ApiVariables }>,
-): Promise<void> {
-  if (c.get("tokenSourceType") !== "companion") return;
-  const companionId = c.get("tokenCompanionId");
-  const orgId = c.get("tokenOrgId");
-  const actor = c.get("tokenActor");
-  if (!companionId || !orgId || !actor) throw new CompanionWriteSkillsForbiddenError();
-  await withTenantContext({ orgId, userId: actor.id }, (database) =>
-    assertCompanionTokenAuthorized({ orgId, companionId, database }),
-  );
 }
 
 export async function orgIdFromContext(c: Context<{ Variables: ApiVariables }>): Promise<string> {
@@ -235,9 +208,6 @@ export async function orgIdFromContext(c: Context<{ Variables: ApiVariables }>):
 export function jsonError(c: Context, error: unknown, status = 400): Response {
   if (error instanceof EntitlementDeniedError) {
     return c.json(error.body, 403);
-  }
-  if (error instanceof CompanionWriteSkillsForbiddenError) {
-    return c.json({ ok: false, error: error.message }, 403);
   }
   const message = error instanceof Error ? error.message : String(error);
   const code = error && typeof error === "object" && "code" in error && typeof error.code === "string"

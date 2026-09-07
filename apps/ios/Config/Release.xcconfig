@@ -1,7 +1,0 @@
-#include "Shared.xcconfig"
-
-PRODUCT_BUNDLE_IDENTIFIER = dev.companion.mobile
-COMPANION_URL_SCHEME = dev.companion.mobile
-COMPANION_API_URL = https:/$()/api.thecompanion.sh
-APS_ENVIRONMENT = production
-PROVISIONING_PROFILE_SPECIFIER = $(IOS_PROVISIONING_PROFILE_SPECIFIER)

@@ -100,22 +100,11 @@ DECLARE
     'companion_main_pi_compactions',
     'companion_routine_context_substrates'
   ];
-  api_capability_managed_tables regclass[] := ARRAY[
-    'public.companions'::regclass,
-    'public.companion_workspace_access'::regclass,
-    'public.companion_member_state'::regclass,
-    'public.companion_threads'::regclass,
-    'public.companion_transcript_entries'::regclass
-  ];
-  worker_forbidden_companion_tables regclass[] := ARRAY[
-    'public.companions'::regclass,
-    'public.companion_workspace_access'::regclass,
-    'public.companion_member_state'::regclass,
-    'public.companion_threads'::regclass,
-    'public.companion_transcript_entries'::regclass,
-    'public.companion_provider_connections'::regclass,
-    'public.companion_mcp_accounts'::regclass
-  ];
+  hosted_retired boolean := EXISTS (
+    SELECT 1 FROM drizzle.__drizzle_migrations WHERE created_at = 1793401600000
+  );
+  api_capability_managed_tables regclass[] := ARRAY[]::regclass[];
+  worker_forbidden_companion_tables regclass[] := ARRAY[]::regclass[];
   api_unprotected_tables regclass[] := ARRAY[
     'public.account'::regclass,
     'public.agent'::regclass,
@@ -168,6 +157,24 @@ DECLARE
   owner_only_runtime_functions regprocedure[] := ARRAY[]::regprocedure[];
   internal_runtime_functions regprocedure[] := ARRAY[]::regprocedure[];
 BEGIN
+  IF NOT hosted_retired THEN
+    api_capability_managed_tables := ARRAY[
+    'public.companions'::regclass,
+    'public.companion_workspace_access'::regclass,
+    'public.companion_member_state'::regclass,
+    'public.companion_threads'::regclass,
+    'public.companion_transcript_entries'::regclass
+  ];
+    worker_forbidden_companion_tables := ARRAY[
+    'public.companions'::regclass,
+    'public.companion_workspace_access'::regclass,
+    'public.companion_member_state'::regclass,
+    'public.companion_threads'::regclass,
+    'public.companion_transcript_entries'::regclass,
+    'public.companion_provider_connections'::regclass,
+    'public.companion_mcp_accounts'::regclass
+  ];
+  END IF;
   -- The migration hook also runs at the Runtime v2 checkpoint before later migrations. Append the
   -- Wave A table only once it exists; the post-migration pass then applies the final split grants.
   IF pg_catalog.to_regclass('public.companion_sections') IS NOT NULL THEN

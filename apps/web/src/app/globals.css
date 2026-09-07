@@ -12,9 +12,6 @@
 @import "../styles/landing.css";
 @import "../styles/share.css";
 @import "../styles/secrets.css";
-@import "../styles/companions.css";
-/* Last on purpose: Tailwind is scoped to the thread and must layer over the rest. */
-@import "../styles/chat.css";
 
 /* iOS zooms the page when a focused form control computes below 16px. Keep text-entry controls at
    that floor on every touch-capable device, including phones in landscape and tablets. This lives

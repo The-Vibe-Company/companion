@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion -- Hosted Companion removal preserves existing Skills Hub patterns that predate this change. */
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -156,39 +157,7 @@ export function commentImageKey(input: { orgId: string; imageId: string }): stri
   return `${input.orgId}/comments/${input.imageId}`;
 }
 
-/**
- * Content-addressed key for one Companion chat attachment.
- *
- * The digest is the whole point: a client that retries a send re-uploads identical bytes to the
- * identical key, so a `PUT` is idempotent and a retry leaves no orphan behind. The owning org and
- * Companion stay the leading segments so a Companion delete can purge by prefix and so object-storage
- * lifecycle tooling keeps the tenant boundary it has everywhere else.
- */
-export function companionAttachmentKey(input: {
-  orgId: string;
-  companionId: string;
-  sha256: string;
-  position: number;
-} & (
-  | { kind: "message"; clientMessageId: string }
-  | { kind: "output"; attemptId: string }
-)): string {
-  assertStorageKeySegment(input.orgId, "companion attachment org id");
-  assertStorageKeySegment(input.companionId, "companion attachment companion id");
-  if (!/^[0-9a-f]{64}$/.test(input.sha256)) {
-    throw new Error("companion attachment key requires a sha256 digest");
-  }
-  if (!Number.isSafeInteger(input.position) || input.position < 0 || input.position > 99) {
-    throw new Error("companion attachment position is invalid");
-  }
-  const prefix = `companion-attachments/${input.orgId}/${input.companionId}`;
-  if (input.kind === "message") {
-    assertStorageKeySegment(input.clientMessageId, "companion attachment client message id");
-    return `${prefix}/${input.clientMessageId}/${input.position}-${input.sha256}`;
-  }
-  assertStorageKeySegment(input.attemptId, "companion attachment attempt id");
-  return `${prefix}/outputs/${input.attemptId}/${input.position}-${input.sha256}`;
-}
+
 
 export async function putOrgLogo(input: {
   orgId: string;

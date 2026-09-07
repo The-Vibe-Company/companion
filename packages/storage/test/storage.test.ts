@@ -1,7 +1,7 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-conditional-empty-object-spread -- Existing integration and storage fixture patterns are retained while removing hosted Companion expectations. */
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
-  companionAttachmentKey,
   deleteSkillArchive,
   headSkillArchive,
   getSkillArchiveWithEtag,
@@ -328,41 +328,5 @@ describe("streamSkillArchive", () => {
       contentType: "video/mp4",
       etag: '"stable-etag"',
     });
-  });
-});
-
-describe("companionAttachmentKey", () => {
-  it("addresses a message upload and a harvested output by content under the owning tenant", () => {
-    const sha256 = "a".repeat(64);
-    expect(companionAttachmentKey({
-      kind: "message",
-      orgId: "org-1",
-      companionId: "cmp-1",
-      clientMessageId: "msg-1",
-      position: 0,
-      sha256,
-    })).toBe(`companion-attachments/org-1/cmp-1/msg-1/0-${sha256}`);
-    expect(companionAttachmentKey({
-      kind: "output",
-      orgId: "org-1",
-      companionId: "cmp-1",
-      attemptId: "att-1",
-      position: 2,
-      sha256,
-    })).toBe(`companion-attachments/org-1/cmp-1/outputs/att-1/2-${sha256}`);
-  });
-
-  it("refuses a segment or digest that could escape the Companion's prefix", () => {
-    const valid = {
-      kind: "message",
-      orgId: "org-1",
-      companionId: "cmp-1",
-      clientMessageId: "msg-1",
-      position: 0,
-      sha256: "b".repeat(64),
-    } as const;
-    expect(() => companionAttachmentKey({ ...valid, clientMessageId: "../escape" })).toThrow();
-    expect(() => companionAttachmentKey({ ...valid, sha256: "not-a-digest" })).toThrow();
-    expect(() => companionAttachmentKey({ ...valid, position: -1 })).toThrow();
   });
 });

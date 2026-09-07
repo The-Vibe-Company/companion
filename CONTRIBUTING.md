@@ -27,18 +27,13 @@ Frontend changes require `pnpm browser:smoke` and a manual browser check as desc
 
 - `CI` validates pull requests, `main` pushes, and merge-queue commits. Its risk classifier skips
   expensive jobs when a change cannot affect them.
-- `Diagnostic: iOS Live E2E` is a manual real-provider diagnostic against an isolated local stack.
-- `Release: iOS TestFlight` uploads an iOS build only after the exact `main` commit passes `CI`.
-- `Publish: Pi Bundle` publishes the content-addressed runtime bundle manually or after its build
-  inputs change on `main`.
-
 ## Pull requests
 
 - Keep a pull request focused on one outcome.
 - Use a Commitizen title such as `feat(skills): add dependency status` or
   `perf(ci): parallelize risk-based quality gates`.
 - Add a behavior-level regression test for bug fixes.
-- Update `docs/design.md` when architecture, RBAC, the data model, provider seam, or runtime integration changes.
+- Update `docs/design.md` when architecture, RBAC, the data model, or integrations changes.
 - Never commit credentials, `.env` files, production data, or plaintext secret values.
 
 All required checks must pass before a pull request enters the merge queue.

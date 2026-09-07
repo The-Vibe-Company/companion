@@ -14,87 +14,8 @@ whether everything is current. Agent Auth is the default programmatic identity.
 Run the mandatory Companion self-update check once at the first Companion invocation in a
 conversation, and always confirm a change with the user before anything is published.
 
-Companion the product is a Skills Hub with an optional hosted Companions surface. A hosted Companion
-is one named teammate with one durable thread, one persistent box.ascii.dev Box, and one Pi daemon;
-its dedicated runtime service may stage selected Skills for Pi. Keep that hosted runtime separate
-from this delegated skill. Agent Auth authorizes external clients to use Skills Hub APIs only; it
-does not authorize Companion chat, turns, decisions, desktop, provider settings, or Box/Pi lifecycle.
-
-Every hosted Pi receives the product-owned `companion-control` MCP. It reads and directly updates
-its name, short persona, selected Skills, and selected plugin attachments; material changes
-apply after the current turn. Model changes, new OAuth connections, every routine/trigger mutation,
-and directed peer access create durable asynchronous approval cards. OAuth completion attaches the
-new account to the requesting Companion automatically. Trigger changes register, reconcile, rotate,
-or remove the provider webhook end to end with existing encrypted member credentials. Pi never
-receives those credentials or invents a provider-account UUID. `ask_user` is the only remaining
-Pi-local approval bridge; the legacy `propose_config`, `request_plugin_connection`,
-`propose_routine`, and `propose_trigger` tools are not part of new staging.
-Attached member MCP plugins use a lazy lifecycle: `not connected` or `cached` means idle and
-available on demand. Cached search and list results do not open a live connection; the adapter
-connects the plugin automatically on its first live tool or resource call.
-Only `failed` or `needs-auth` means unavailable. Hosted Pi uses idle attachments directly without
-asking the member to reconnect them.
-
-The same MCP can send a bounded text delegation to an explicitly approved peer Companion. Directed
-grants are persistent and revocable; responses either notify both threads or return to the source Pi
-for synthesis. This is not a Group or Room model. Scheduled routines run as the immutable Companion
-Owner with the current control MCP and directed grants; webhook trigger validators never receive
-control, so untrusted events cannot reconfigure the Companion or create autonomous cascades. Webhook payloads
-run first in an isolated read-only validator which either stays silent, notifies, or relays one main
-Pi turn. Their hosted operating brief uses terse delivery semantics: one short
-sentence for an update, one word for an acknowledgement, and no process narration or filler; the
-owner’s persona still owns voice. Consecutive attachment-free notify returns from one routine may be
-collapsed by the thread projection while their durable entries and routine history remain complete.
-Scheduled routines use the single `background` lane, with at most one per Companion, while main chat
-continues independently. Runtime revalidates Owner-bound current capabilities and lets routine tools
-and durable memory work directly in the persistent Box workspace. Only a prompt rejection proven
-before acceptance retries; ambiguous or accepted work is never replayed, and newer due instants
-supersede only obsolete pending work.
-Box, selected-model, plugin/provider, and external-authority outages are shown as one honest
-external block rather than repeated failures or a claimed automatic repair. Main, routine, trigger,
-and delegation work remains enabled; each failed pre-admission occurrence releases its runtime
-claim, retries with bounded jittered 5/15/30/60/300-second backoff, and resumes automatically after
-one recovery signal. FIFO remains local to each independently progressing main/background lane.
-Runtime redelivers the same durable incident signal after a delivery crash until it is acknowledged;
-an acknowledged open or recovery signal is not delivered again.
-Slow Box preparation renews its runtime authority lease while it is in progress, and independent
-main convergence workers let other Companions wake without waiting behind that preparation. FIFO
-and single-active-turn guarantees still apply within each Companion lane.
-Hosted Runtime v3 is the only execution path. A Turn carries command, admission, activity, and
-outcome facts on the Turn itself. An
-outcome-unknown admission is immediately interrupted and never replayed, its lane is released, and
-`Prepared` is invalidated.
-The runtime recycles only the exactly captured Pi invocation on the same persistent Box, rebuilds
-from validated durable summary and complete bounded history under freshly resolved authority, and
-then admits later work. If continuity may be incomplete, the next hosted Companion answer begins
-with one precise context-loss sentence; otherwise it stays silent.
-First-party
-clients bootstrap only the newest bounded thread window, apply monotonic entry deltas, and page
-older durable history; they never truncate the thread or reset the persistent Box/Pi session.
-Hosted chat files remain scoped to their message. Their bytes expire exactly 30 days after upload;
-reads, retries, wake, and restaging never extend that deadline, while the thread keeps explicit
-expired metadata and a later upload creates a new attachment.
-Agent Auth clients cannot call this runtime-only MCP.
-
-Treat runtime provider/model settings, provider credentials, MCP accounts, and Companion
-Owner/Editor/Viewer sharing as browser-session workspace administration. Never request, read, store,
-forward, or manage them through this skill or its Agent Auth client. Owner-scoped roster sections,
-section membership, and each member's notification mute preference are first-party control-plane
-settings too; they never change Box/Pi state and are not Skills Hub labels or Agent Auth APIs.
-Never use a skill command to
-wake, retry, cancel, restart, stop, or delete a hosted Companion. The temporary Pi-only Restart
-control exists only in `companion-control`, never restarts the Box, and may be removed after the
-post-launch evidence review. Scheduled routines are the
-sanctioned wake-on-a-schedule path and webhook triggers are the sanctioned wake-on-an-event path;
-their mutations are gated by Owner/Editor approval through `companion-control`, never Agent Auth.
-After Runtime v3 cutover, the persistent Box archives after one hour without newly accepted member
-or background work. Reads, Viewer access, status polling, and composer activity do not wake it or
-extend that window; the next accepted occurrence resumes the same Box and completes current staging
-before Pi receives it. Stop uses this archive path, while permanent deletion remains Owner-only.
-The six-hour provider and credential expiry guards are independent safety ceilings, not the idle
-archive window.
-The control plane never executes package scripts; Pi may consume the selected skill
-instructions inside its isolated Box runtime.
+Companion is a Skills Hub. External agents use delegated Agent Auth to manage portable skill
+packages, secrets, and declared Skill Databases. The control plane never executes package scripts.
 
 ## Configuration
 
@@ -142,21 +63,6 @@ declared runtime id, but anyone who steals both bearer token and target id can r
 short expiry or explicit revocation. Use the shortest TTL practical and revoke the child PAT when the
 workspace is archived. Never place either credential in argv, prompts, repositories, logs, fixtures,
 or ordinary output.
-
-### On a hosted Companion Box
-
-A hosted Companion never runs `delegate` and never starts device approval. The runtime mints the
-token itself at every start and stages it as `COMPANION_DELEGATION_TOKEN`, so env mode is already in
-force and the ordinary skill commands work unchanged. It carries skills read and write, secret reads,
-and Skill Database read and write, and it acts as the member whose settings staged the Box, so
-anything published or read lands under that member's account. Treat that as their authority, not
-yours: do the work they asked for, and nothing else.
-
-There is no way to widen it from inside the Box, and no scope to request. A refusal means the
-workspace itself refuses — the Companion was deleted, or that member no longer belongs to the
-organization. Report the refusal instead of retrying it. Never copy the value anywhere, never write
-it to `credentials.json` or any other file, and never repeat it in chat. It rotates on every start
-and is gone when the Box stops.
 
 Resolve the active workspace before any network call:
 
@@ -1428,7 +1334,7 @@ skills view shows the correct status and version. Report the version from this s
 `companion.json.version`:
 
 ```sh
-printf '%s' '{"action":"api","method":"POST","path":"/local-skills/companion/installed","body":{"version":"1.112.0","agent":"<your assistant name>"}}' \
+printf '%s' '{"action":"api","method":"POST","path":"/local-skills/companion/installed","body":{"version":"1.113.0","agent":"<your assistant name>"}}' \
   | node scripts/companion-agent-client.mjs
 ```
 

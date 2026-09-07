@@ -325,8 +325,8 @@ describe("Skills Hub runtime-role grants", () => {
     ];
 
     const declarations = sql.slice(
-      sql.indexOf("api_capability_managed_tables regclass[]"),
-      sql.indexOf("api_unprotected_tables regclass[]"),
+      sql.indexOf("IF NOT hosted_retired THEN"),
+      sql.indexOf("-- The migration hook"),
     );
     for (const table of capabilityTables) {
       expect(declarations).toContain(`'public.${table}'::regclass`);

@@ -4,7 +4,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/dev-runtime-mode.sh"
 
 cd "$REPO_ROOT"
 
@@ -97,8 +96,6 @@ configure_conductor_env() {
 
   WEB_PORT="$(port_at "$base_port" 0)"
   API_PORT="$(port_at "$base_port" 1)"
-  RUNTIME_PORT="$(port_at "$base_port" 7)"
-  BOX_SIM_PORT="$(port_at "$base_port" 8)"
 
   COMPOSE_PROJECT_NAME="$(sanitize_project_name)"
   export COMPOSE_PROJECT_NAME
@@ -107,9 +104,6 @@ configure_conductor_env() {
   export COMPANION_WEB_HOST="127.0.0.1"
   export COMPANION_API_PORT="$API_PORT"
   export COMPANION_API_HOST="127.0.0.1"
-  export COMPANION_RUNTIME_PORT="$RUNTIME_PORT"
-  export COMPANION_RUNTIME_HOST="127.0.0.1"
-  export COMPANION_BOX_SIM_PORT="$BOX_SIM_PORT"
   POSTGRES_PORT="$(port_at "$base_port" 2)"
   MINIO_PORT="$(port_at "$base_port" 3)"
   MINIO_CONSOLE_PORT="$(port_at "$base_port" 4)"
@@ -127,7 +121,6 @@ configure_conductor_env() {
   USE_LOCAL_RUNTIME_DB_ROLES=1
   export COMPANION_API_URL="http://${COMPANION_API_HOST}:${API_PORT}"
   export COMPANION_WEB_URL="http://${COMPANION_WEB_HOST}:${WEB_PORT}"
-  export COMPANION_RUNTIME_PRIVATE_URL="http://${COMPANION_RUNTIME_HOST}:${RUNTIME_PORT}"
   export NEXT_PUBLIC_COMPANION_API_URL="$COMPANION_API_URL"
   export BETTER_AUTH_URL="$COMPANION_API_URL"
   export BETTER_AUTH_COOKIE_PREFIX="$COMPOSE_PROJECT_NAME"
@@ -154,7 +147,6 @@ configure_local_env() {
   local database_migration_url_explicit="${DATABASE_MIGRATION_URL+x}"
   local companion_api_url_explicit="${COMPANION_API_URL+x}"
   local companion_web_url_explicit="${COMPANION_WEB_URL+x}"
-  local companion_runtime_url_explicit="${COMPANION_RUNTIME_PRIVATE_URL+x}"
   local next_public_api_url_explicit="${NEXT_PUBLIC_COMPANION_API_URL+x}"
   local better_auth_url_explicit="${BETTER_AUTH_URL+x}"
   local s3_endpoint_explicit="${S3_ENDPOINT+x}"
@@ -173,14 +165,9 @@ configure_local_env() {
 
   WEB_PORT="${COMPANION_WEB_PORT:-$(port_from_url "${COMPANION_WEB_URL:-}" 3000)}"
   API_PORT="${COMPANION_API_PORT:-$(port_from_url "${COMPANION_API_URL:-}" 3001)}"
-  RUNTIME_PORT="${COMPANION_RUNTIME_PORT:-$(port_from_url "${COMPANION_RUNTIME_PRIVATE_URL:-}" 3007)}"
-  BOX_SIM_PORT="${COMPANION_BOX_SIM_PORT:-3008}"
   export COMPANION_WEB_PORT="$WEB_PORT"
   export COMPANION_WEB_HOST="${COMPANION_WEB_HOST:-127.0.0.1}"
   export COMPANION_API_HOST="${COMPANION_API_HOST:-127.0.0.1}"
-  export COMPANION_RUNTIME_PORT="$RUNTIME_PORT"
-  export COMPANION_RUNTIME_HOST="${COMPANION_RUNTIME_HOST:-127.0.0.1}"
-  export COMPANION_BOX_SIM_PORT="$BOX_SIM_PORT"
   export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
   export MINIO_PORT="${MINIO_PORT:-9000}"
   export MINIO_CONSOLE_PORT="${MINIO_CONSOLE_PORT:-9001}"
@@ -216,9 +203,6 @@ configure_local_env() {
   fi
   if should_use_derived_value "$companion_web_url_explicit" "${COMPANION_WEB_URL+x}" "${COMPANION_WEB_URL:-}" "http://127.0.0.1:3000"; then
     export COMPANION_WEB_URL="http://${COMPANION_WEB_HOST}:${WEB_PORT}"
-  fi
-  if should_use_derived_value "$companion_runtime_url_explicit" "${COMPANION_RUNTIME_PRIVATE_URL+x}" "${COMPANION_RUNTIME_PRIVATE_URL:-}" "http://127.0.0.1:3007"; then
-    export COMPANION_RUNTIME_PRIVATE_URL="http://${COMPANION_RUNTIME_HOST}:${RUNTIME_PORT}"
   fi
   if should_use_derived_value "$next_public_api_url_explicit" "${NEXT_PUBLIC_COMPANION_API_URL+x}" "${NEXT_PUBLIC_COMPANION_API_URL:-}" "http://127.0.0.1:3001"; then
     export NEXT_PUBLIC_COMPANION_API_URL="$COMPANION_API_URL"
@@ -262,22 +246,6 @@ ensure_local_secrets_master_key() {
   export COMPANION_SECRETS_MASTER_KEY
 }
 
-ensure_local_runtime_hmac_key() {
-  local state_dir="$REPO_ROOT/.companion-local"
-  local key_file="$state_dir/runtime-desktop-hmac-key"
-  if [ -n "${COMPANION_RUNTIME_DESKTOP_HMAC_SECRET:-}" ]; then
-    return
-  fi
-  mkdir -p "$state_dir"
-  chmod 700 "$state_dir"
-  if [ ! -s "$key_file" ]; then
-    umask 077
-    node -e "process.stdout.write(require('crypto').randomBytes(32).toString('base64'))" >"$key_file"
-  fi
-  chmod 600 "$key_file"
-  COMPANION_RUNTIME_DESKTOP_HMAC_SECRET="$(cat "$key_file")"
-  export COMPANION_RUNTIME_DESKTOP_HMAC_SECRET
-}
 
 should_use_derived_value() {
   local was_explicit="$1"
@@ -496,7 +464,6 @@ print_urls() {
   log "Compose project: ${COMPOSE_PROJECT_NAME}"
   log "Web: ${COMPANION_WEB_URL}"
   log "API: ${COMPANION_API_URL}"
-  log "Runtime health (private): ${COMPANION_RUNTIME_PRIVATE_URL}/healthz"
   log "Postgres: 127.0.0.1:${POSTGRES_PORT}"
   log "MinIO console: http://127.0.0.1:${MINIO_CONSOLE_PORT}"
   log "Mailpit: http://127.0.0.1:${MAILPIT_WEB_PORT}"
@@ -546,51 +513,20 @@ configure_local_runtime_db_roles() {
   fi
 }
 
-enable_local_runtime_gate() {
-  [ "${COMPANION_COMPANIONS_ENABLED:-}" = "true" ] || return 0
-  [ -n "${COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS//[[:space:],]/}" ] || return 0
-  local gate_epoch
-  if ! docker compose -p "$COMPOSE_PROJECT_NAME" exec -T postgres \
-    psql -At -U companion -d companion -c \
-      "select 1 where to_regprocedure('public.companion_runtime_enable(bigint,text)') is not null" \
-      | grep -qx 1; then
-    return 0
-  fi
-  gate_epoch="$(docker compose -p "$COMPOSE_PROJECT_NAME" exec -T postgres \
-    psql -At -U companion -d companion -c \
-      "select gate_epoch from public.companion_runtime_control where id = 'runtime-v3'")"
-  case "$gate_epoch" in
-    ''|*[!0-9]*)
-      log "Runtime v3 gate returned an invalid epoch: '$gate_epoch'"
-      exit 1
-      ;;
-  esac
-  docker compose -p "$COMPOSE_PROJECT_NAME" exec -T postgres \
-    psql -v ON_ERROR_STOP=1 -U companion -d companion -c \
-      "select * from public.companion_runtime_enable(${gate_epoch}::bigint, 'dev-stack');" \
-    >/dev/null
-  log "Runtime v3 gate enabled for local development"
-}
 
 run_dev() {
   configure_local_env
   ensure_tooling
   ensure_local_secrets_master_key
-  ensure_local_runtime_hmac_key
   print_urls
 
   stop_port_listeners "$WEB_PORT" "$COMPANION_WEB_HOST"
   stop_port_listeners "$API_PORT" "$COMPANION_API_HOST"
-  stop_port_listeners "$RUNTIME_PORT" "$COMPANION_RUNTIME_HOST"
-  if companion_dev_uses_box_simulator || companion_dev_uses_box_lab; then
-    stop_port_listeners "$BOX_SIM_PORT" "127.0.0.1"
-  fi
   start_infra
   configure_local_runtime_db_roles
 
   log "Applying Drizzle migrations"
   bash scripts/dev-process.sh migration pnpm db:migrate
-  enable_local_runtime_gate
 
   log "Seeding local test user"
   bash scripts/dev-process.sh api-seed pnpm --filter @companion/api seed:test-user
@@ -601,7 +537,7 @@ run_dev() {
   fi
   log "Existing local users keep their current password."
 
-  log "Starting API, worker, runtime, and web"
+  log "Starting API, worker, and web"
   pnpm run dev:app
 }
 
@@ -613,7 +549,6 @@ print_env() {
   printf 'DATABASE_COMPANION_RUNTIME_URL=%s\n' "${DATABASE_COMPANION_RUNTIME_URL:-}"
   printf 'COMPANION_API_URL=%s\n' "$COMPANION_API_URL"
   printf 'COMPANION_WEB_URL=%s\n' "$COMPANION_WEB_URL"
-  printf 'COMPANION_RUNTIME_PRIVATE_URL=%s\n' "$COMPANION_RUNTIME_PRIVATE_URL"
   printf 'NEXT_PUBLIC_COMPANION_API_URL=%s\n' "$NEXT_PUBLIC_COMPANION_API_URL"
   printf 'BETTER_AUTH_URL=%s\n' "$BETTER_AUTH_URL"
   printf 'S3_ENDPOINT=%s\n' "$S3_ENDPOINT"
@@ -623,8 +558,6 @@ print_env() {
   printf 'MINIO_CONSOLE_PORT=%s\n' "$MINIO_CONSOLE_PORT"
   printf 'MAILPIT_SMTP_PORT=%s\n' "$MAILPIT_SMTP_PORT"
   printf 'MAILPIT_WEB_PORT=%s\n' "$MAILPIT_WEB_PORT"
-  printf 'COMPANION_RUNTIME_PORT=%s\n' "$RUNTIME_PORT"
-  printf 'COMPANION_BOX_SIM_PORT=%s\n' "$BOX_SIM_PORT"
 }
 
 case "${1:-run}" in

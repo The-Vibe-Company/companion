@@ -1,10 +1,9 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion -- Hosted Companion removal preserves the existing Skills Hub implementation; these patterns predate this change. */
 import { describe, expect, it } from "vitest";
 import type { OrgRole } from "@companion/contracts";
 import {
   canAccessSkill,
   canAccessSkillDatabaseRealm,
-  canWakeCompanion,
-  companionAccessForActor,
   canManageOrg,
   canAccessSecret,
   canManageSecret,
@@ -53,22 +52,6 @@ describe("canPerform — flat skill capability gate (every member ⇒ every acti
   });
 });
 
-describe("Companion wake boundary", () => {
-  it("resolves owner, the workspace-wide grant, and no access (no per-member overrides)", () => {
-    expect(companionAccessForActor({ ownerId: "u-owner" }, "u-owner")).toBe("owner");
-    expect(companionAccessForActor({ ownerId: "u-owner" }, "u-member", "editor"))
-      .toBe("editor");
-    expect(companionAccessForActor({ ownerId: "u-owner" }, "u-member", "viewer"))
-      .toBe("viewer");
-    expect(companionAccessForActor({ ownerId: "u-owner" }, "u-member")).toBeNull();
-  });
-
-  it("never lets a viewer wake Box", () => {
-    expect(canWakeCompanion("owner")).toBe(true);
-    expect(canWakeCompanion("editor")).toBe(true);
-    expect(canWakeCompanion("viewer")).toBe(false);
-  });
-});
 describe("canAccessSkill — personal-skill privacy (owner-only, NO admin override)", () => {
   const orgSkill: SkillScopeRef = { scope: "org", creatorId: "u-creator" };
   const personalSkill: SkillScopeRef = { scope: "personal", creatorId: "u-owner" };

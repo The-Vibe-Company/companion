@@ -10,8 +10,6 @@ const scopeOutputs = {
   containers: "false",
   dependencies: "false",
   skill: "false",
-  ios: "false",
-  macos: "false",
 };
 
 function jobs(overrides = {}, outputs = scopeOutputs) {
@@ -43,19 +41,6 @@ test("rejects missing scope outputs instead of treating them as false", () => {
   assert.deepEqual(rejectedJobs(jobs({}, outputs)), [
     "scope.browser=missing (required boolean output)",
   ]);
-});
-
-test("requires Apple quality for bundled Skill, iOS, or macOS changes", () => {
-  for (const changed of [
-    { skill: "true" },
-    { ios: "true" },
-    { macos: "true" },
-    { skill: "true", ios: "true", macos: "true" },
-  ]) {
-    const outputs = { ...scopeOutputs, ...changed };
-    assert.deepEqual(rejectedJobs(jobs({}, outputs)), ["apple-quality=skipped (required success)"]);
-    assert.deepEqual(rejectedJobs(jobs({ "apple-quality": { result: "success" } }, outputs)), []);
-  }
 });
 
 test("rejects failed, cancelled, and missing jobs even when scope disables them", () => {
