@@ -14,7 +14,7 @@
   "dependencies": {
     "@companion/contracts": "workspace:*",
     "fflate": "^0.8.2",
-    "tar-stream": "^3.1.7",
+    "tar-stream": "^3.2.1",
     "yaml": "^2.6.1"
   },
   "devDependencies": {
