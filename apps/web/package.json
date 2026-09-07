@@ -19,7 +19,7 @@
     "@posthog/react": "^1.10.3",
     "@sentry/nextjs": "^10.70.0",
     "@trpc/client": "^10.45.2",
-    "lucide-react": "^0.469.0",
+    "lucide-react": "^1.41.0",
     "next": "15.5.21",
     "posthog-js": "^1.396.4",
     "react": "19.0.0",
