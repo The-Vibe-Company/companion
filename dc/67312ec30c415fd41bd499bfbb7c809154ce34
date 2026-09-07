@@ -1,0 +1,23 @@
+.gitleaksignore
+  s_0d335c51e3b9b2::t_4f01528139462f 39-42
+scripts/dev-conductor.sh
+  s_0d335c51e3b9b2::t_9e1e504c16679d 170,754,767
+scripts/dev-stack-check.sh
+  s_0d335c51e3b9b2::t_49d735260438a1 247,456,462,468,497,503,509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "dc67312ec30c415fd41bd499bfbb7c809154ce34",
+  "prompts": {},
+  "sessions": {
+    "s_0d335c51e3b9b2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07c1a-bb60-7030-8527-5149a8d74a6d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
