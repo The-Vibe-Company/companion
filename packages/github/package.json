@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "skills": "1.5.9",
+    "skills": "1.5.23",
     "typescript": "^5.7.2",
     "vitest": "3.2.7"
   }
