@@ -199,19 +199,6 @@ jobs:
         # this isolated read while keeping the project's package manager pinned at 9.12.0.
         run: pnpm dlx pnpm@11.13.0 --pm-on-fail=ignore audit --prod --audit-level=high
 
-      # A Pi bundle pin may not merge before its artifact is published. The guard HEADs the object
-      # with the S3 SDK (the bucket is never public) and skips gracefully while the pin is still the
-      # placeholder sha or the credentials are absent, so this lands before the first real publish.
-      - name: Check the pinned Pi bundle artifact exists
-        env:
-          S3_ENDPOINT: ${{ secrets.PI_BUNDLE_S3_ENDPOINT }}
-          S3_REGION: ${{ secrets.PI_BUNDLE_S3_REGION }}
-          S3_ACCESS_KEY_ID: ${{ secrets.PI_BUNDLE_S3_ACCESS_KEY_ID }}
-          S3_SECRET_ACCESS_KEY: ${{ secrets.PI_BUNDLE_S3_SECRET_ACCESS_KEY }}
-          S3_BUCKET_PI_BUNDLES: ${{ vars.PI_BUNDLE_S3_BUCKET }}
-          S3_FORCE_PATH_STYLE: ${{ vars.PI_BUNDLE_S3_FORCE_PATH_STYLE }}
-        run: pnpm pi-bundle:check
-
       - name: Test anti-slop integration
         run: pnpm test:anti-slop
 

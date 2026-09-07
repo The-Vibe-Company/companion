@@ -36,3 +36,7 @@ a30e3cf92fcfbe99e33402deee30505dc2b3d3b7:packages/contracts/test/companions.test
 5bbc924152ca00f9f83eaa15f7c3321065a1e0e3:apps/runtime/src/companionV2Purge.test.ts:generic-api-key:66
 edf96916b33d636529965f763a00233499eabd94:apps/runtime/src/companionV2Purge.test.ts:generic-api-key:75
 edf96916b33d636529965f763a00233499eabd94:apps/runtime/src/companionV2Purge.test.ts:generic-api-key:89
+
+# Audited documentation-only false positive: "Better Auth, S3-compatible storage." in the
+# Skills Hub architecture sentence. This exact historical fingerprint contains no credential.
+3dd87ccad796803efb79e1a2e80cf2583a28dfb4:CLAUDE.md:generic-api-key:17

@@ -127,7 +127,6 @@ require_env "DATABASE_WORKER_URL=postgres://companion_worker:companion-worker@12
 require_env "DATABASE_COMPANION_RUNTIME_URL=postgres://companion_runtime_v2:companion-runtime-v2@127.0.0.1:15432/companion"
 require_env "COMPANION_API_URL=http://127.0.0.1:13001"
 require_env "COMPANION_WEB_URL=http://127.0.0.1:13000"
-require_env "COMPANION_RUNTIME_PRIVATE_URL=http://127.0.0.1:3007"
 require_env "NEXT_PUBLIC_COMPANION_API_URL=http://127.0.0.1:13001"
 require_env "BETTER_AUTH_URL=http://127.0.0.1:13001"
 require_env "S3_ENDPOINT=http://127.0.0.1:19000"
@@ -197,7 +196,6 @@ require_conductor_env "DATABASE_WORKER_URL=postgres://companion_worker:companion
 require_conductor_env "DATABASE_COMPANION_RUNTIME_URL=postgres://companion_runtime_v2:companion-runtime-v2@127.0.0.1:55102/companion"
 require_conductor_env "COMPANION_API_URL=http://127.0.0.1:55101"
 require_conductor_env "COMPANION_WEB_URL=http://127.0.0.1:55100"
-require_conductor_env "COMPANION_RUNTIME_PRIVATE_URL=http://127.0.0.1:55107"
 require_conductor_env "NEXT_PUBLIC_COMPANION_API_URL=http://127.0.0.1:55101"
 require_conductor_env "BETTER_AUTH_URL=http://127.0.0.1:55101"
 require_conductor_env "S3_ENDPOINT=http://127.0.0.1:55103"
@@ -207,8 +205,6 @@ require_conductor_env "MINIO_PORT=55103"
 require_conductor_env "MINIO_CONSOLE_PORT=55104"
 require_conductor_env "MAILPIT_SMTP_PORT=55105"
 require_conductor_env "MAILPIT_WEB_PORT=55106"
-require_conductor_env "COMPANION_RUNTIME_PORT=55107"
-require_conductor_env "COMPANION_BOX_SIM_PORT=55108"
 
 # The standalone `pnpm dev:app` path must not turn an absent database URL into DATABASE_URL="",
 # because postgres.js interprets that as OS-user defaults instead of @companion/db's local fallback.
@@ -248,7 +244,7 @@ if [ "$worker_url_overridden" != "postgres://worker" ]; then
 fi
 
 # The repo-root .env is intentionally shared only with the launcher. Child
-# wrappers enforce the API/worker/runtime/web trust boundaries.
+# wrappers enforce the API/worker/web trust boundaries.
 # shellcheck disable=SC2016
 process_env_probe='for name in COMPANION_BOX_API_KEY COMPANION_IOS_LOCAL_ZAI_API_KEY COMPANION_PI_INSTALL_COMMAND DATABASE_URL DATABASE_WORKER_URL DATABASE_COMPANION_RUNTIME_URL DATABASE_MIGRATION_URL COMPANION_RUNTIME_PRIVATE_URL COMPANION_RUNTIME_DESKTOP_HMAC_SECRET COMPANION_SECRETS_MASTER_KEY COMPANION_GEMINI_TRANSCRIPTION_API_KEY COMPANION_MCP_GITHUB_CLIENT_ID COMPANION_MCP_GITHUB_CLIENT_SECRET COMPANION_MCP_SLACK_CLIENT_ID COMPANION_MCP_SLACK_CLIENT_SECRET COMPANION_MCP_GMAIL_CLIENT_ID COMPANION_MCP_GMAIL_CLIENT_SECRET BETTER_AUTH_SECRET STRIPE_SECRET_KEY GITHUB_APP_PRIVATE_KEY RESEND_API_KEY S3_SECRET_ACCESS_KEY UNKNOWN_PROVIDER_API_KEY COMPANION_SEED_PASSWORD BOX_SIM_CONTROL_TOKEN BOX_LAB_API_KEY BOX_LAB_DRIVER BOX_LAB_WORKSPACE_ID BOX_LAB_REAL_PROVIDER_AUTH_JSON BOX_LAB_REAL_PROVIDER_MODEL_ID; do if [ -n "${!name+x}" ]; then printf "%s=%s\n" "$name" "${!name}"; else printf "%s=unset\n" "$name"; fi; done'
 common_probe_env=(
@@ -457,19 +453,19 @@ inspect_conductor_network() {
     # The inner shell must expand variables defined by the sourced launcher, not this process.
     # shellcheck disable=SC2016
     env -u CONDUCTOR_PORT CONDUCTOR_IS_LOCAL="$is_local" COMPANION_DEV_SKIP_ENV_FILE=1 \
-      bash -c 'script="$1"; shift; source "$script" "$@"; printf "%s|%s|%s|%s|%s" "$BASE" "$WEB_BIND_HOST" "$WEB_URL" "$API_URL" "$RUNTIME_URL"' \
+      bash -c 'script="$1"; shift; source "$script" "$@"; printf "%s|%s|%s|%s" "$BASE" "$WEB_BIND_HOST" "$WEB_URL" "$API_URL"' \
       _ "$ROOT/scripts/dev-conductor.sh" "$@"
   else
     # The inner shell must expand variables defined by the sourced launcher, not this process.
     # shellcheck disable=SC2016
     env CONDUCTOR_PORT="$conductor_port" CONDUCTOR_IS_LOCAL="$is_local" COMPANION_DEV_SKIP_ENV_FILE=1 \
-      bash -c 'script="$1"; shift; source "$script" "$@"; printf "%s|%s|%s|%s|%s" "$BASE" "$WEB_BIND_HOST" "$WEB_URL" "$API_URL" "$RUNTIME_URL"' \
+      bash -c 'script="$1"; shift; source "$script" "$@"; printf "%s|%s|%s|%s" "$BASE" "$WEB_BIND_HOST" "$WEB_URL" "$API_URL"' \
       _ "$ROOT/scripts/dev-conductor.sh" "$@"
   fi
 }
 
 cloud_network="$(inspect_conductor_network 0 unset)"
-if [ "$cloud_network" != "3000|0.0.0.0|http://127.0.0.1:3000|http://127.0.0.1:3001|http://127.0.0.1:3007" ]; then
+if [ "$cloud_network" != "3000|0.0.0.0|http://127.0.0.1:3000|http://127.0.0.1:3001" ]; then
   printf '[dev-stack-check] unexpected cloud Conductor network config: %s\n' "$cloud_network" >&2
   exit 1
 fi
@@ -498,19 +494,19 @@ if [ "$local_install_hints" != "brew install lsof|brew install postgresql@17" ];
 fi
 
 local_network="$(inspect_conductor_network 1 4310)"
-if [ "$local_network" != "4310|127.0.0.1|http://127.0.0.1:4310|http://127.0.0.1:4311|http://127.0.0.1:4317" ]; then
+if [ "$local_network" != "4310|127.0.0.1|http://127.0.0.1:4310|http://127.0.0.1:4311" ]; then
   printf '[dev-stack-check] unexpected local Conductor network config: %s\n' "$local_network" >&2
   exit 1
 fi
 
 cloud_override_network="$(inspect_conductor_network 0 4310 --base 4520)"
-if [ "$cloud_override_network" != "4520|0.0.0.0|http://127.0.0.1:4520|http://127.0.0.1:4521|http://127.0.0.1:4527" ]; then
+if [ "$cloud_override_network" != "4520|0.0.0.0|http://127.0.0.1:4520|http://127.0.0.1:4521" ]; then
   printf '[dev-stack-check] cloud --base must override CONDUCTOR_PORT: %s\n' "$cloud_override_network" >&2
   exit 1
 fi
 
 local_override_network="$(inspect_conductor_network 1 4310 --base 4530)"
-if [ "$local_override_network" != "4530|127.0.0.1|http://127.0.0.1:4530|http://127.0.0.1:4531|http://127.0.0.1:4537" ]; then
+if [ "$local_override_network" != "4530|127.0.0.1|http://127.0.0.1:4530|http://127.0.0.1:4531" ]; then
   printf '[dev-stack-check] local --base must override CONDUCTOR_PORT: %s\n' "$local_override_network" >&2
   exit 1
 fi

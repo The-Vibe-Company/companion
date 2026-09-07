@@ -23,8 +23,6 @@
 #   +4  MinIO console
 #   +5  Mailpit SMTP
 #   +6  Mailpit web UI
-#   +7  Companion runtime (private)
-#   +8  Box/Pi simulator or opt-in Linux Box Lab
 #   +9  reserved
 # =============================================================================
 
@@ -49,10 +47,6 @@ source "$REPO_ROOT/scripts/dev-environment.sh"
 # values must not nuke exported shell vars).
 companion_load_repo_env "$REPO_ROOT"
 
-# ascii.dev calls this credential BOX_API_KEY in its own tooling. Accept that
-# spelling only at the local launcher boundary, normalize it to Companion's
-# runtime-only name, then remove the broad alias before any child is spawned.
-# The canonical name wins when both are present.
 cd "$REPO_ROOT"
 # shellcheck disable=SC1091
 
@@ -171,11 +165,9 @@ MINIO_API_PORT=$((BASE + 3))
 MINIO_CONSOLE_PORT=$((BASE + 4))
 MAILPIT_SMTP_PORT=$((BASE + 5))
 MAILPIT_UI_PORT=$((BASE + 6))
-RUNTIME_PORT=$((BASE + 7))
-BOX_SIM_PORT=$((BASE + 8))
 
 # Only the web process is reachable through Conductor's cloud port forward.
-# API, runtime, Postgres, MinIO, Mailpit, and the simulator stay bound to loopback.
+# API, PostgreSQL, MinIO, and Mailpit stay bound to loopback.
 WEB_BIND_HOST="127.0.0.1"
 if [ "$CONDUCTOR_IS_CLOUD" = true ]; then
   WEB_BIND_HOST="0.0.0.0"
@@ -201,7 +193,6 @@ PROJECT="$(workspace_slug)"
 STATE_DIR="$REPO_ROOT/.conductor-pg"
 RUN_LOCK="$STATE_DIR/run.lock"
 SECRETS_KEY_FILE="$STATE_DIR/secrets-master-key"
-RUNTIME_HMAC_KEY_FILE="$STATE_DIR/runtime-desktop-hmac-key"
 PG_DATA="$STATE_DIR/postgres/data"
 # Socket lives in a short /tmp path, NOT under the (long) workspace dir: the
 # Unix-domain socket path has a hard 103-byte limit and Conductor workspace
@@ -230,12 +221,10 @@ PG_RETIRED_RUNTIME_ROLE=""
 PG_DB="companion"
 DATABASE_API_URL="postgres://${PG_API_USER}:${PG_API_PASS}@127.0.0.1:${PG_PORT}/${PG_DB}"
 DATABASE_WORKER_URL="postgres://${PG_WORKER_USER}:${PG_WORKER_PASS}@127.0.0.1:${PG_PORT}/${PG_DB}"
-DATABASE_COMPANION_RUNTIME_URL="postgres://${PG_RUNTIME_USER}:${PG_RUNTIME_PASS}@127.0.0.1:${PG_PORT}/${PG_DB}"
 DATABASE_MIGRATION_URL="postgres://${PG_OWNER_USER}:${PG_OWNER_PASS}@127.0.0.1:${PG_PORT}/${PG_DB}"
 
 WEB_URL="http://127.0.0.1:${WEB_PORT}"
 API_URL="http://127.0.0.1:${API_PORT}"
-RUNTIME_URL="http://127.0.0.1:${RUNTIME_PORT}"
 
 S3_ACCESS_KEY_ID="companion"
 S3_SECRET_ACCESS_KEY="companion-secret"
@@ -701,7 +690,6 @@ migrate_and_seed() {
   fi
   env "${migration_env[@]}" bash scripts/dev-process.sh migration pnpm db:migrate \
     || die "Migrations failed"
-  local OWNER_PSQL=("$PG_BIN/psql" "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1)
   ok "Migrations applied"
 
   local seed_env=(
@@ -763,7 +751,7 @@ print_header() {
 launch_apps() {
   step "Launching API + worker + web via concurrently"
 
-  # Storage is shared by API uploads, worker cleanup, and runtime skill staging; email remains API-only.
+  # Storage is shared by API uploads and worker cleanup; email remains API-only.
   local shared_storage_env="" api_email_env
   if [ "$HAS_MINIO" = true ]; then
     shared_storage_env="S3_ENDPOINT=\"$S3_ENDPOINT\" S3_REGION=us-east-1 S3_ACCESS_KEY_ID=\"$S3_ACCESS_KEY_ID\" S3_SECRET_ACCESS_KEY=\"$S3_SECRET_ACCESS_KEY\" S3_BUCKET_SKILL_ARCHIVES=\"$S3_BUCKET\" S3_FORCE_PATH_STYLE=true"
@@ -776,7 +764,7 @@ launch_apps() {
 
   # Master/HMAC/Box secrets remain inherited rather than interpolated into the
   # command line. dev-process.sh strips them from every process that does not own them.
-  local api_cmd="COMPANION_API_HOST=127.0.0.1 COMPANION_API_PORT=$API_PORT DATABASE_URL=\"$DATABASE_API_URL\" COMPANION_RUNTIME_PRIVATE_URL=\"$RUNTIME_URL\" BETTER_AUTH_URL=\"$API_URL\" BETTER_AUTH_COOKIE_PREFIX=\"$PROJECT\" COMPANION_WEB_URL=\"$WEB_URL\" COMPANION_API_URL=\"$API_URL\" NEXT_PUBLIC_COMPANION_API_URL=\"$API_URL\" COMPANION_SKILL_DATABASES_ENABLED=\"$SKILL_DATABASES_ENABLED\" $shared_storage_env $api_email_env bash scripts/dev-process.sh api pnpm --filter @companion/api dev"
+  local api_cmd="COMPANION_API_HOST=127.0.0.1 COMPANION_API_PORT=$API_PORT DATABASE_URL=\"$DATABASE_API_URL\" BETTER_AUTH_URL=\"$API_URL\" BETTER_AUTH_COOKIE_PREFIX=\"$PROJECT\" COMPANION_WEB_URL=\"$WEB_URL\" COMPANION_API_URL=\"$API_URL\" NEXT_PUBLIC_COMPANION_API_URL=\"$API_URL\" COMPANION_SKILL_DATABASES_ENABLED=\"$SKILL_DATABASES_ENABLED\" $shared_storage_env $api_email_env bash scripts/dev-process.sh api pnpm --filter @companion/api dev"
   local worker_cmd="DATABASE_WORKER_URL=\"$DATABASE_WORKER_URL\" COMPANION_WEB_URL=\"$WEB_URL\" $shared_storage_env bash scripts/dev-worker.sh pnpm --filter @companion/worker dev"
   local web_cmd="COMPANION_API_URL=\"$API_URL\" NEXT_PUBLIC_COMPANION_API_URL=\"$API_URL\" bash scripts/dev-process.sh web pnpm --filter @companion/web dev --hostname $WEB_BIND_HOST --port $WEB_PORT"
 
