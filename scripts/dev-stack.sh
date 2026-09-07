@@ -4,7 +4,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/dev-runtime-mode.sh"
 
 cd "$REPO_ROOT"
 
@@ -262,22 +261,6 @@ ensure_local_secrets_master_key() {
   export COMPANION_SECRETS_MASTER_KEY
 }
 
-ensure_local_runtime_hmac_key() {
-  local state_dir="$REPO_ROOT/.companion-local"
-  local key_file="$state_dir/runtime-desktop-hmac-key"
-  if [ -n "${COMPANION_RUNTIME_DESKTOP_HMAC_SECRET:-}" ]; then
-    return
-  fi
-  mkdir -p "$state_dir"
-  chmod 700 "$state_dir"
-  if [ ! -s "$key_file" ]; then
-    umask 077
-    node -e "process.stdout.write(require('crypto').randomBytes(32).toString('base64'))" >"$key_file"
-  fi
-  chmod 600 "$key_file"
-  COMPANION_RUNTIME_DESKTOP_HMAC_SECRET="$(cat "$key_file")"
-  export COMPANION_RUNTIME_DESKTOP_HMAC_SECRET
-}
 
 should_use_derived_value() {
   local was_explicit="$1"
@@ -546,51 +529,20 @@ configure_local_runtime_db_roles() {
   fi
 }
 
-enable_local_runtime_gate() {
-  [ "${COMPANION_COMPANIONS_ENABLED:-}" = "true" ] || return 0
-  [ -n "${COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS//[[:space:],]/}" ] || return 0
-  local gate_epoch
-  if ! docker compose -p "$COMPOSE_PROJECT_NAME" exec -T postgres \
-    psql -At -U companion -d companion -c \
-      "select 1 where to_regprocedure('public.companion_runtime_enable(bigint,text)') is not null" \
-      | grep -qx 1; then
-    return 0
-  fi
-  gate_epoch="$(docker compose -p "$COMPOSE_PROJECT_NAME" exec -T postgres \
-    psql -At -U companion -d companion -c \
-      "select gate_epoch from public.companion_runtime_control where id = 'runtime-v3'")"
-  case "$gate_epoch" in
-    ''|*[!0-9]*)
-      log "Runtime v3 gate returned an invalid epoch: '$gate_epoch'"
-      exit 1
-      ;;
-  esac
-  docker compose -p "$COMPOSE_PROJECT_NAME" exec -T postgres \
-    psql -v ON_ERROR_STOP=1 -U companion -d companion -c \
-      "select * from public.companion_runtime_enable(${gate_epoch}::bigint, 'dev-stack');" \
-    >/dev/null
-  log "Runtime v3 gate enabled for local development"
-}
 
 run_dev() {
   configure_local_env
   ensure_tooling
   ensure_local_secrets_master_key
-  ensure_local_runtime_hmac_key
   print_urls
 
   stop_port_listeners "$WEB_PORT" "$COMPANION_WEB_HOST"
   stop_port_listeners "$API_PORT" "$COMPANION_API_HOST"
-  stop_port_listeners "$RUNTIME_PORT" "$COMPANION_RUNTIME_HOST"
-  if companion_dev_uses_box_simulator || companion_dev_uses_box_lab; then
-    stop_port_listeners "$BOX_SIM_PORT" "127.0.0.1"
-  fi
   start_infra
   configure_local_runtime_db_roles
 
   log "Applying Drizzle migrations"
   bash scripts/dev-process.sh migration pnpm db:migrate
-  enable_local_runtime_gate
 
   log "Seeding local test user"
   bash scripts/dev-process.sh api-seed pnpm --filter @companion/api seed:test-user
@@ -601,7 +553,7 @@ run_dev() {
   fi
   log "Existing local users keep their current password."
 
-  log "Starting API, worker, runtime, and web"
+  log "Starting API, worker, and web"
   pnpm run dev:app
 }
 

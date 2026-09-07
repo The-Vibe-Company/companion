@@ -1,6 +1,0 @@
-#include "Shared.xcconfig"
-
-PRODUCT_BUNDLE_IDENTIFIER = dev.companion.mobile.dev
-COMPANION_URL_SCHEME = dev.companion.mobile.dev
-COMPANION_API_URL = http:/$()/127.0.0.1:3001
-APS_ENVIRONMENT = development

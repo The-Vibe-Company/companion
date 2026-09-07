@@ -1,4 +1,0 @@
-{"type":"tool_execution_start","toolCallId":"call_glm_fixture","toolName":"bash","args":{"command":"printf 'glm fixture\\n'"}}
-{"type":"tool_execution_update","toolCallId":"call_glm_fixture","toolName":"bash","args":{"command":"printf 'glm fixture\\n'"},"partialResult":{"content":[]}}
-{"type":"tool_execution_update","toolCallId":"call_glm_fixture","toolName":"bash","args":{"command":"printf 'glm fixture\\n'"},"partialResult":{"content":[{"type":"text","text":"glm fixture\n"}],"details":{}}}
-{"type":"tool_execution_end","toolCallId":"call_glm_fixture","toolName":"bash","result":{"content":[{"type":"text","text":"glm fixture\n"}]},"isError":false}

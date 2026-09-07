@@ -1,11 +1,11 @@
 {
   "$schema": "https://thecompanion.sh/schemas/companion-manifest.v2.schema.json",
   "name": "companion",
-  "version": "1.112.0",
+  "version": "1.113.0",
   "icon": "boxes",
   "title": "Companion",
   "description": "Manage and safely install SKILL.md packages through delegated Agent Auth, including pinned public releases, publishing, updates, dependencies, secrets, hosted Skill Databases, local install tracking, and Companion self-update.",
-  "notes": "## What it does\n\nThe Companion skill gives your assistant one reliable workflow for local SKILL.md packages: connect through delegated Agent Auth, validate, publish, update, organize, install, audit, use declared hosted SQLite state, and self-update. It can also publish one explicitly selected version of an organization skill as a stable public release.\n\n## Safety model\n\n- Reads only skill folders you point it at and Companion's own local state under ~/.companion.\n- Stores only the non-secret Agent Auth reference in ~/.companion/credentials.json; private keys live in 0600 files under ~/.companion/agent-auth.\n- Requests workspace-scoped capabilities progressively and never silently falls back to a preserved PAT. Legacy PAT use requires COMPANION_AUTH_MODE=legacy-pat.\n- Can issue a short-lived, revocable child PAT from an existing Agent Auth grant snapshot and pass it only through an owner-only FIFO; env mode never reads credentials.json or starts device approval.\n- Confirms publishing or archival changes before mutating workspace skills, and defaults public-release promotion to no after every publication.\n- Verifies the exact public ZIP checksum, rejects unsafe archive entries, and never executes packaged scripts during a public install.\n- Uses companion.json as the source of truth for package identity, version, env/secrets, hosted database declarations, dependencies, notes, commands, and changelog.\n\n## Local tracking\n\nCompanion records installed workspace skills in ~/.companion/skills.lock.json under workspace-id keys so audits can compare local versions, checksums, and dependency snapshots against the workspace registry without storing credentials. Installs fan out into every tool the user works with (Claude Code, Codex, OpenCode, Grok Bot, OpenClaw, Hermes, \u2026); each record's targets[] array tracks the per-tool and per-project install locations, with project-scope installs kept in a per-project <repo>/.companion/skills.lock.json. Grok Bot is Cursor's desktop assistant, so Grok Bot installs use Cursor's supported ~/.cursor/skills global root or .cursor/skills project root. Hermes installs use its global ~/.hermes/skills source of truth. Companion self-update also repairs every existing user-global Companion copy as one verified multi-tool transaction, with rollback on partial failure. Public-link installs only install the selected root ZIP and do not create a Companion skill_installs row.",
+  "notes": "## What it does\n\nThe Companion skill gives your assistant one reliable workflow for local SKILL.md packages: connect through delegated Agent Auth, validate, publish, update, organize, install, audit, use declared hosted SQLite state, and self-update. It can also publish one explicitly selected version of an organization skill as a stable public release.\n\n## Safety model\n\n- Reads only skill folders you point it at and Companion's own local state under ~/.companion.\n- Stores only the non-secret Agent Auth reference in ~/.companion/credentials.json; private keys live in 0600 files under ~/.companion/agent-auth.\n- Requests workspace-scoped capabilities progressively and never silently falls back to a preserved PAT. Legacy PAT use requires COMPANION_AUTH_MODE=legacy-pat.\n- Can issue a short-lived, revocable child PAT from an existing Agent Auth grant snapshot and pass it only through an owner-only FIFO; env mode never reads credentials.json or starts device approval.\n- Confirms publishing or archival changes before mutating workspace skills, and defaults public-release promotion to no after every publication.\n- Verifies the exact public ZIP checksum, rejects unsafe archive entries, and never executes packaged scripts during a public install.\n- Uses companion.json as the source of truth for package identity, version, env/secrets, hosted database declarations, dependencies, notes, commands, and changelog.\n\n## Local tracking\n\nCompanion records installed workspace skills in ~/.companion/skills.lock.json under workspace-id keys so audits can compare local versions, checksums, and dependency snapshots against the workspace registry without storing credentials. Installs fan out into every tool the user works with (Claude Code, Codex, OpenCode, Grok Bot, OpenClaw, Hermes, …); each record's targets[] array tracks the per-tool and per-project install locations, with project-scope installs kept in a per-project <repo>/.companion/skills.lock.json. Grok Bot is Cursor's desktop assistant, so Grok Bot installs use Cursor's supported ~/.cursor/skills global root or .cursor/skills project root. Hermes installs use its global ~/.hermes/skills source of truth. Companion self-update also repairs every existing user-global Companion copy as one verified multi-tool transaction, with rollback on partial failure. Public-link installs only install the selected root ZIP and do not create a Companion skill_installs row.",
   "metadata": {
     "companionSkillId": "b0780a97-6972-4a2b-8e88-f41a528900c7",
     "integrityFiles": [
@@ -28,6 +28,13 @@
       "evals/evals.json"
     ],
     "changelog": [
+      {
+        "version": "1.113.0",
+        "date": "2026-09-07",
+        "changes": [
+          "Retires hosted Companions instructions and keeps Skills Hub workflows, Agent Auth, and external agent delegation."
+        ]
+      },
       {
         "version": "1.112.0",
         "date": "2026-09-04",
@@ -1030,7 +1037,7 @@
         "version": "1.14.0",
         "date": "2026-06-26",
         "changes": [
-          "Installs a skill into every tool the user works with (Claude Code, Codex, \u2026) in one fan-out, not just the tool in use at the moment.",
+          "Installs a skill into every tool the user works with (Claude Code, Codex, …) in one fan-out, not just the tool in use at the moment.",
           "Adds an extensible tool registry (scripts/tools.json) and records the machine's tool set in ~/.companion/config.json after auto-detecting present tools and confirming with the user.",
           "Tracks each install location per tool and scope through a lockfile targets[] array: user-scope in ~/.companion/skills.lock.json and project-scope in a per-project <repo>/.companion/skills.lock.json.",
           "Keeps the workspace install report aggregate (a single POST /skills/{slug}/install across all tools and projects) and leaves locally customized targets untouched unless forced."

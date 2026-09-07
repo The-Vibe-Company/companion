@@ -1,9 +1,7 @@
 import { captureWorkerError } from "./sentry";
 import { startBillingSupervisor, type Supervisor } from "./billingSupervisor";
 import { startGitHubSupervisor } from "./githubSupervisor";
-import { startRoutineSupervisor } from "./routineSupervisor";
 import { startSkillDatabaseCleanupSupervisor } from "./skillDatabaseCleanup";
-import { startApnsSupervisor } from "./apnsSupervisor";
 
 type SupervisorStart = () => Promise<Supervisor | null>;
 
@@ -17,11 +15,7 @@ async function startSafely(name: string, start: SupervisorStart): Promise<Superv
         ? "billing"
         : name === "GitHub sync"
           ? "github"
-          : name === "Skill Database cleanup"
-            ? "skill-database"
-            : name === "Companion routines"
-              ? "routines"
-              : "apns",
+          : "skill-database",
       operation: "supervisor.start",
       level: "error",
       retryable: false,
@@ -35,23 +29,17 @@ export async function startWorkerSupervisors(input: {
   billing?: SupervisorStart;
   github?: SupervisorStart;
   skillDatabases?: SupervisorStart;
-  routines?: SupervisorStart;
-  apns?: SupervisorStart;
 } = {}): Promise<{
   billing: Supervisor | null;
   github: Supervisor | null;
   skillDatabases: Supervisor | null;
-  routines: Supervisor | null;
-  apns: Supervisor | null;
 }> {
-  const [billing, github, skillDatabases, routines, apns] = await Promise.all([
+  const [billing, github, skillDatabases] = await Promise.all([
     startSafely("billing", input.billing ?? startBillingSupervisor),
     startSafely("GitHub sync", input.github ?? startGitHubSupervisor),
     startSafely("Skill Database cleanup", input.skillDatabases ?? startSkillDatabaseCleanupSupervisor),
-    startSafely("Companion routines", input.routines ?? startRoutineSupervisor),
-    startSafely("Companion APNs", input.apns ?? startApnsSupervisor),
   ]);
-  return { billing, github, skillDatabases, routines, apns };
+  return { billing, github, skillDatabases };
 }
 
 /**
@@ -62,9 +50,7 @@ export function keepWorkerProcessAliveWhenIdle(input: {
   billing: Supervisor | null;
   github?: Supervisor | null;
   skillDatabases?: Supervisor | null;
-  routines?: Supervisor | null;
-  apns?: Supervisor | null;
 }): ReturnType<typeof setInterval> | null {
-  if (input.billing || input.github || input.skillDatabases || input.routines || input.apns) return null;
+  if (input.billing || input.github || input.skillDatabases) return null;
   return setInterval(() => undefined, 60_000);
 }

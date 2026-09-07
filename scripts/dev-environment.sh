@@ -28,14 +28,3 @@ companion_load_repo_env() {
     fi
   done < "$repo_root/.env"
 }
-
-companion_normalize_box_api_key() {
-  # ascii.dev uses BOX_API_KEY. Inside Companion the credential has one
-  # runtime-owned name, and the broad alias must not reach child processes.
-  if [ -n "${BOX_API_KEY:-}" ]; then
-    if [ -z "${COMPANION_BOX_API_KEY:-}" ]; then
-      export COMPANION_BOX_API_KEY="$BOX_API_KEY"
-    fi
-    unset BOX_API_KEY
-  fi
-}

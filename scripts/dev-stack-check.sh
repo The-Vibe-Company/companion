@@ -5,9 +5,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 bash -n scripts/dev-stack.sh scripts/setup-conductor.sh scripts/dev-conductor.sh \
-  scripts/dev-environment.sh scripts/dev-ios-live.sh \
-  scripts/dev-stack-check.sh scripts/dev-process.sh scripts/dev-runtime.sh scripts/dev-worker.sh \
-  scripts/dev-runtime-mode.sh scripts/box-lab.sh scripts/ci-create-db-roles.sh scripts/ci-rsc-smoke.sh
+  scripts/dev-environment.sh \
+  scripts/dev-stack-check.sh scripts/dev-process.sh scripts/dev-worker.sh \
+  scripts/ci-create-db-roles.sh scripts/ci-rsc-smoke.sh
 
 # Conductor setup must select the native package manager before installing JS
 # dependencies. Exercise both branches with command shims so this remains safe
@@ -290,14 +290,14 @@ printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_IOS_LOCAL_ZAI_API_KEY=un
 printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_PI_INSTALL_COMMAND=unset'
 printf '%s\n' "$api_process_env" | grep -Fxq 'DATABASE_URL=postgres://api'
 printf '%s\n' "$api_process_env" | grep -Fxq 'DATABASE_COMPANION_RUNTIME_URL=unset'
-printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_RUNTIME_DESKTOP_HMAC_SECRET=hmac-secret'
-printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_GEMINI_TRANSCRIPTION_API_KEY=transcription-secret'
-printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_MCP_GITHUB_CLIENT_ID=mcp-github-client'
-printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_MCP_GITHUB_CLIENT_SECRET=mcp-github-secret'
-printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_MCP_SLACK_CLIENT_ID=mcp-slack-client'
-printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_MCP_SLACK_CLIENT_SECRET=mcp-slack-secret'
-printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_MCP_GMAIL_CLIENT_ID=mcp-gmail-client'
-printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_MCP_GMAIL_CLIENT_SECRET=mcp-gmail-secret'
+printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_RUNTIME_DESKTOP_HMAC_SECRET=unset'
+printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_GEMINI_TRANSCRIPTION_API_KEY=unset'
+printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_MCP_GITHUB_CLIENT_ID=unset'
+printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_MCP_GITHUB_CLIENT_SECRET=unset'
+printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_MCP_SLACK_CLIENT_ID=unset'
+printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_MCP_SLACK_CLIENT_SECRET=unset'
+printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_MCP_GMAIL_CLIENT_ID=unset'
+printf '%s\n' "$api_process_env" | grep -Fxq 'COMPANION_MCP_GMAIL_CLIENT_SECRET=unset'
 printf '%s\n' "$api_process_env" | grep -Fxq 'BETTER_AUTH_SECRET=auth-secret'
 printf '%s\n' "$api_process_env" | grep -Fxq 'STRIPE_SECRET_KEY=stripe-secret'
 printf '%s\n' "$api_process_env" | grep -Fxq 'UNKNOWN_PROVIDER_API_KEY=unset'
@@ -326,29 +326,7 @@ printf '%s\n' "$worker_process_env" | grep -Fxq 'RESEND_API_KEY=unset'
 printf '%s\n' "$worker_process_env" | grep -Fxq 'UNKNOWN_PROVIDER_API_KEY=unset'
 printf '%s\n' "$worker_process_env" | grep -Fxq 'BOX_LAB_API_KEY=unset'
 
-runtime_process_env="$(env "${common_probe_env[@]}" bash scripts/dev-process.sh runtime bash -c "$process_env_probe")"
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'COMPANION_BOX_API_KEY=box-secret'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'COMPANION_IOS_LOCAL_ZAI_API_KEY=unset'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'DATABASE_URL=unset'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'DATABASE_COMPANION_RUNTIME_URL=postgres://runtime'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'COMPANION_RUNTIME_DESKTOP_HMAC_SECRET=hmac-secret'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'COMPANION_SECRETS_MASTER_KEY=master-secret'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'COMPANION_GEMINI_TRANSCRIPTION_API_KEY=unset'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'COMPANION_MCP_GITHUB_CLIENT_ID=mcp-github-client'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'COMPANION_MCP_GITHUB_CLIENT_SECRET=mcp-github-secret'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'COMPANION_MCP_SLACK_CLIENT_ID=unset'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'COMPANION_MCP_SLACK_CLIENT_SECRET=unset'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'COMPANION_MCP_GMAIL_CLIENT_ID=mcp-gmail-client'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'COMPANION_MCP_GMAIL_CLIENT_SECRET=mcp-gmail-secret'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'S3_SECRET_ACCESS_KEY=storage-secret'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'BETTER_AUTH_SECRET=unset'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'STRIPE_SECRET_KEY=unset'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'GITHUB_APP_PRIVATE_KEY=unset'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'RESEND_API_KEY=unset'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'UNKNOWN_PROVIDER_API_KEY=unset'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'BOX_LAB_API_KEY=unset'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'BOX_LAB_DRIVER=unset'
-printf '%s\n' "$runtime_process_env" | grep -Fxq 'BOX_LAB_WORKSPACE_ID=unset'
+
 
 web_process_env="$(env "${common_probe_env[@]}" bash scripts/dev-process.sh web bash -c "$process_env_probe")"
 printf '%s\n' "$web_process_env" | grep -Fxq 'COMPANION_BOX_API_KEY=unset'
@@ -391,15 +369,6 @@ printf '%s\n' "$seed_process_env" | grep -Fxq 'S3_SECRET_ACCESS_KEY=storage-secr
 printf '%s\n' "$seed_process_env" | grep -Fxq 'UNKNOWN_PROVIDER_API_KEY=unset'
 printf '%s\n' "$seed_process_env" | grep -Fxq 'BOX_LAB_API_KEY=unset'
 
-ios_local_process_env="$(env "${common_probe_env[@]}" bash scripts/dev-process.sh ios-local bash -c "$process_env_probe")"
-printf '%s\n' "$ios_local_process_env" | grep -Fxq 'COMPANION_IOS_LOCAL_ZAI_API_KEY=ios-zai-secret'
-printf '%s\n' "$ios_local_process_env" | grep -Fxq 'COMPANION_SEED_PASSWORD=seed-secret'
-printf '%s\n' "$ios_local_process_env" | grep -Fxq 'COMPANION_BOX_API_KEY=unset'
-printf '%s\n' "$ios_local_process_env" | grep -Fxq 'COMPANION_PI_INSTALL_COMMAND=unset'
-printf '%s\n' "$ios_local_process_env" | grep -Fxq 'DATABASE_URL=unset'
-printf '%s\n' "$ios_local_process_env" | grep -Fxq 'COMPANION_RUNTIME_DESKTOP_HMAC_SECRET=unset'
-printf '%s\n' "$ios_local_process_env" | grep -Fxq 'COMPANION_SECRETS_MASTER_KEY=unset'
-printf '%s\n' "$ios_local_process_env" | grep -Fxq 'UNKNOWN_PROVIDER_API_KEY=unset'
 
 if DATABASE_MIGRATION_URL=postgres://owner@127.0.0.1/test \
   bash scripts/ci-create-db-roles.sh >/dev/null 2>&1; then
@@ -419,22 +388,7 @@ for role_caller in scripts/ci-create-db-roles.sh scripts/ci-rsc-smoke.sh scripts
   fi
 done
 
-box_sim_process_env="$(env "${common_probe_env[@]}" bash scripts/dev-process.sh box-sim bash -c "$process_env_probe")"
-printf '%s\n' "$box_sim_process_env" | grep -Fxq 'BOX_SIM_CONTROL_TOKEN=sim-secret'
-printf '%s\n' "$box_sim_process_env" | grep -Fxq 'COMPANION_BOX_API_KEY=unset'
-printf '%s\n' "$box_sim_process_env" | grep -Fxq 'UNKNOWN_PROVIDER_API_KEY=unset'
-printf '%s\n' "$box_sim_process_env" | grep -Fxq 'BOX_LAB_API_KEY=unset'
-printf '%s\n' "$box_sim_process_env" | grep -Fxq 'BOX_LAB_DRIVER=unset'
 
-box_lab_process_env="$(env "${common_probe_env[@]}" bash scripts/dev-process.sh box-lab bash -c "$process_env_probe")"
-printf '%s\n' "$box_lab_process_env" | grep -Fxq 'BOX_LAB_API_KEY=lab-secret'
-printf '%s\n' "$box_lab_process_env" | grep -Fxq 'BOX_LAB_DRIVER=lima'
-printf '%s\n' "$box_lab_process_env" | grep -Fxq 'BOX_LAB_WORKSPACE_ID=lab-workspace'
-printf '%s\n' "$box_lab_process_env" | grep -Fxq 'BOX_LAB_REAL_PROVIDER_AUTH_JSON=unset'
-printf '%s\n' "$box_lab_process_env" | grep -Fxq 'BOX_LAB_REAL_PROVIDER_MODEL_ID=unset'
-printf '%s\n' "$box_lab_process_env" | grep -Fxq 'BOX_SIM_CONTROL_TOKEN=unset'
-printf '%s\n' "$box_lab_process_env" | grep -Fxq 'COMPANION_BOX_API_KEY=unset'
-printf '%s\n' "$box_lab_process_env" | grep -Fxq 'UNKNOWN_PROVIDER_API_KEY=unset'
 
 # The migration runner must see the retired union-role variable so it can reject that dangerous
 # compatibility credential explicitly; silently scrubbing it would turn a misconfigured upgrade
@@ -450,10 +404,10 @@ if [ "$migration_legacy_role" != "legacy_union" ]; then
 fi
 
 # shellcheck disable=SC2016
-if ! grep -Fq -- '--names api,worker,runtime,web' scripts/dev-conductor.sh \
+if ! grep -Fq -- '--names api,worker,web' scripts/dev-conductor.sh \
   || ! grep -Fq -- 'DATABASE_COMPANION_RUNTIME_ROLE="$PG_RUNTIME_USER"' scripts/dev-conductor.sh \
   || ! grep -Fq -- 'bash scripts/dev-process.sh migration pnpm db:migrate' scripts/dev-conductor.sh; then
-  printf '[dev-stack-check] native Conductor must launch runtime and use the two-phase role-aware migration runner\n' >&2
+  printf '[dev-stack-check] native Conductor must launch the Skills Hub and use the role-aware migration runner\n' >&2
   exit 1
 fi
 # This pattern inspects launcher source, so its REPO_ROOT reference must remain literal.
@@ -467,13 +421,6 @@ if grep -Fq -- "$late_runtime_grant_file_source" scripts/dev-conductor.sh \
   printf '[dev-stack-check] development launchers must not apply grants after migration 0094\n' >&2
   exit 1
 fi
-if grep -Fq -- ":'gate_epoch'" scripts/dev-conductor.sh scripts/dev-stack.sh \
-  || ! grep -Fq -- "*[!0-9]*)" scripts/dev-conductor.sh \
-  || ! grep -Fq -- "*[!0-9]*)" scripts/dev-stack.sh; then
-  printf '[dev-stack-check] runtime gate activation must validate and embed the numeric epoch; psql -c does not expand variables\n' >&2
-  exit 1
-fi
-
 # --- Native Conductor launcher (scripts/dev-conductor.sh) ------------------
 # The Conductor run/archive path is native (no Docker). Port-range guards run
 # before any service starts, so these reject-cases exit early with no side
@@ -497,271 +444,6 @@ if ! bash scripts/dev-conductor.sh --help >/dev/null 2>&1; then
   printf '[dev-stack-check] dev-conductor.sh --help should exit 0\n' >&2
   exit 1
 fi
-
-# The provider's own CLI uses BOX_API_KEY. Conductor may receive that spelling
-# from a workspace .env, but children must only inherit the runtime-owned name.
-# shellcheck disable=SC2016
-conductor_box_alias="$(
-  env -u COMPANION_BOX_API_KEY -u CONDUCTOR_PORT BOX_API_KEY=box-alias COMPANION_DEV_SKIP_ENV_FILE=1 \
-    COMPANION_COMPANIONS_ENABLED=true COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS=example.test \
-    bash -c 'script="$1"; shift; source "$script"; mode=provider; companion_dev_uses_box_simulator && mode=simulator; printf "%s|%s|%s" "${COMPANION_BOX_API_KEY:-unset}" "${BOX_API_KEY:-unset}" "$mode"' \
-    _ "$ROOT/scripts/dev-conductor.sh"
-)"
-if [ "$conductor_box_alias" != "box-alias|unset|provider" ]; then
-  printf '[dev-stack-check] Conductor must normalize BOX_API_KEY at the launcher boundary\n' >&2
-  exit 1
-fi
-
-# shellcheck disable=SC2016
-conductor_box_canonical="$(
-  env -u CONDUCTOR_PORT BOX_API_KEY=box-alias COMPANION_BOX_API_KEY=box-canonical COMPANION_DEV_SKIP_ENV_FILE=1 \
-    COMPANION_COMPANIONS_ENABLED=true COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS=example.test \
-    bash -c 'script="$1"; shift; source "$script"; mode=provider; companion_dev_uses_box_simulator && mode=simulator; printf "%s|%s|%s" "${COMPANION_BOX_API_KEY:-unset}" "${BOX_API_KEY:-unset}" "$mode"' \
-    _ "$ROOT/scripts/dev-conductor.sh"
-)"
-if [ "$conductor_box_canonical" != "box-canonical|unset|provider" ]; then
-  printf '[dev-stack-check] canonical Conductor Box credential must win over the local alias\n' >&2
-  exit 1
-fi
-
-resolve_dev_box_mode() {
-  # The nested shell must expand $1 after the test environment is applied.
-  # shellcheck disable=SC2016
-  env -u COMPANION_BOX_API_KEY -u COMPANION_DEV_BOX_MODE -u COMPANION_DEV_BOX_SIM_ENABLED \
-    COMPANION_COMPANIONS_ENABLED=true \
-    COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS=example.test \
-    "$@" bash -c 'source "$1"; companion_dev_box_mode' _ "$ROOT/scripts/dev-runtime-mode.sh"
-}
-
-[ "$(resolve_dev_box_mode)" = "sim" ] \
-  || { printf '[dev-stack-check] auto mode without a Box key must preserve the simulator default\n' >&2; exit 1; }
-[ "$(resolve_dev_box_mode COMPANION_BOX_API_KEY=provider-secret)" = "live" ] \
-  || { printf '[dev-stack-check] auto mode with a Box key must select the live provider\n' >&2; exit 1; }
-[ "$(resolve_dev_box_mode COMPANION_DEV_BOX_SIM_ENABLED=false)" = "disabled" ] \
-  || { printf '[dev-stack-check] the legacy simulator opt-out must remain effective in auto mode\n' >&2; exit 1; }
-[ "$(resolve_dev_box_mode COMPANION_DEV_BOX_MODE=sim COMPANION_BOX_API_KEY=provider-secret)" = "sim" ] \
-  || { printf '[dev-stack-check] explicit sim mode must override provider auto-detection\n' >&2; exit 1; }
-[ "$(resolve_dev_box_mode COMPANION_DEV_BOX_MODE=lab COMPANION_BOX_API_KEY=provider-secret)" = "lab" ] \
-  || { printf '[dev-stack-check] explicit lab mode must override provider auto-detection\n' >&2; exit 1; }
-[ "$(resolve_dev_box_mode COMPANION_DEV_BOX_MODE=live)" = "live" ] \
-  || { printf '[dev-stack-check] explicit live mode must resolve before credential validation\n' >&2; exit 1; }
-if resolve_dev_box_mode COMPANION_DEV_BOX_MODE=invalid >/dev/null 2>&1; then
-  printf '[dev-stack-check] an invalid Box development mode must fail closed\n' >&2
-  exit 1
-fi
-
-resolve_dev_box_lab_api_key() {
-  # The nested shell expands the sourced helper's positional argument.
-  # shellcheck disable=SC2016
-  env -u BOX_LAB_API_KEY "$@" bash -c \
-    'source "$1"; companion_dev_box_lab_api_key' _ "$ROOT/scripts/dev-runtime-mode.sh"
-}
-
-generated_lab_key_one="$(resolve_dev_box_lab_api_key)"
-generated_lab_key_two="$(resolve_dev_box_lab_api_key)"
-if [ "$generated_lab_key_one" = "$generated_lab_key_two" ] \
-  || ! printf '%s\n' "$generated_lab_key_one" | grep -Eq '^[A-Za-z0-9_-]{43}$' \
-  || ! printf '%s\n' "$generated_lab_key_two" | grep -Eq '^[A-Za-z0-9_-]{43}$'; then
-  printf '[dev-stack-check] each Lab launcher must receive a fresh 256-bit bearer key\n' >&2
-  exit 1
-fi
-explicit_lab_key="$(resolve_dev_box_lab_api_key BOX_LAB_API_KEY='  explicit-lab-key  ')"
-if [ "$explicit_lab_key" != "explicit-lab-key" ]; then
-  printf '[dev-stack-check] an explicit Lab bearer key must remain deterministic\n' >&2
-  exit 1
-fi
-
-# The launcher passes the generated value under a role-specific name: the Lab sees only BOX_LAB_*,
-# Runtime sees only COMPANION_BOX_*, and the existing probes above prove sibling roles see neither.
-lab_shared_key="$(resolve_dev_box_lab_api_key)"
-# These variables must expand inside each role-specific child process.
-# shellcheck disable=SC2016
-lab_key_boundary="$(env BOX_LAB_API_KEY="$lab_shared_key" COMPANION_BOX_API_KEY="$lab_shared_key" \
-  bash scripts/dev-process.sh box-lab bash -c \
-  'printf "%s|%s" "${BOX_LAB_API_KEY:-unset}" "${COMPANION_BOX_API_KEY:-unset}"')"
-# shellcheck disable=SC2016
-runtime_key_boundary="$(env BOX_LAB_API_KEY="$lab_shared_key" COMPANION_BOX_API_KEY="$lab_shared_key" \
-  bash scripts/dev-process.sh runtime bash -c \
-  'printf "%s|%s" "${BOX_LAB_API_KEY:-unset}" "${COMPANION_BOX_API_KEY:-unset}"')"
-if [ "$lab_key_boundary" != "$lab_shared_key|unset" ] \
-  || [ "$runtime_key_boundary" != "unset|$lab_shared_key" ]; then
-  printf '[dev-stack-check] the Lab bearer key crossed its Box Lab/runtime process boundary\n' >&2
-  exit 1
-fi
-unset generated_lab_key_one generated_lab_key_two explicit_lab_key lab_shared_key \
-  lab_key_boundary runtime_key_boundary
-
-assert_runtime_mode_rejected() {
-  local label="$1"
-  local expected="$2"
-  shift 2
-  local output
-  if output="$(env -u COMPANION_BOX_API_KEY \
-    COMPANION_COMPANIONS_ENABLED=true \
-    COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS=example.test \
-    "$@" bash scripts/dev-runtime.sh true 2>&1)"; then
-    printf '[dev-stack-check] dev-runtime should reject %s\n' "$label" >&2
-    exit 1
-  fi
-  case "$output" in
-    *"$expected"*) ;;
-    *) printf '[dev-stack-check] wrong %s rejection: %s\n' "$label" "$output" >&2; exit 1 ;;
-  esac
-}
-
-assert_runtime_mode_rejected "live mode without a credential" \
-  "COMPANION_DEV_BOX_MODE=live requires COMPANION_BOX_API_KEY" \
-  COMPANION_DEV_BOX_MODE=live
-assert_runtime_mode_rejected "the VM Lab in a cloud workspace" \
-  "COMPANION_DEV_BOX_MODE=lab requires a local Conductor workspace" \
-  COMPANION_DEV_BOX_MODE=lab CONDUCTOR_IS_LOCAL=0
-assert_runtime_mode_rejected "an unknown Box mode" \
-  "Invalid COMPANION_DEV_BOX_MODE=unknown" \
-  COMPANION_DEV_BOX_MODE=unknown
-
-# Exercise the Lab branch with contained launcher shims. An absent driver must stay absent until
-# the TypeScript config selects its host-platform default; an explicit override must pass through.
-(
-  runtime_lab_test_dir="$(mktemp -d "$ROOT/.context/dev-runtime-lab-test.XXXXXX")"
-  trap 'rm -rf "$runtime_lab_test_dir"' EXIT
-  mkdir -p "$runtime_lab_test_dir/scripts"
-  cp "$ROOT/scripts/dev-runtime.sh" "$runtime_lab_test_dir/scripts/dev-runtime.sh"
-  cp "$ROOT/scripts/dev-runtime-mode.sh" "$runtime_lab_test_dir/scripts/dev-runtime-mode.sh"
-  # These variables expand only inside the generated role-boundary shim.
-  # shellcheck disable=SC2016
-  printf '%s\n' \
-    '#!/usr/bin/env bash' \
-    'set -euo pipefail' \
-    'role="$1"' \
-    'if [ "$role" = "box-lab" ]; then' \
-    '  printf "%s\n" "${BOX_LAB_DRIVER-unset}" >"$RUNTIME_LAB_DRIVER_PROBE"' \
-    '  trap "exit 0" HUP INT TERM' \
-    '  while :; do sleep 1; done' \
-    'fi' \
-    'exit 0' \
-    >"$runtime_lab_test_dir/scripts/dev-process.sh"
-  printf '%s\n' '#!/usr/bin/env bash' 'exit 0' \
-    >"$runtime_lab_test_dir/scripts/box-lab.sh"
-  printf '%s\n' \
-    'import { existsSync } from "node:fs";' \
-    'const probe = process.env.RUNTIME_LAB_DRIVER_PROBE;' \
-    'const started = Date.now();' \
-    'const wait = () => {' \
-    '  if (probe && existsSync(probe)) process.exit(0);' \
-    '  if (Date.now() - started > 2_000) process.exit(1);' \
-    '  setTimeout(wait, 10);' \
-    '};' \
-    'wait();' \
-    >"$runtime_lab_test_dir/scripts/wait-http-ready.mjs"
-  chmod +x "$runtime_lab_test_dir/scripts/dev-process.sh" \
-    "$runtime_lab_test_dir/scripts/box-lab.sh"
-
-  runtime_lab_driver_probe="$runtime_lab_test_dir/driver"
-  env -u BOX_LAB_DRIVER \
-    RUNTIME_LAB_DRIVER_PROBE="$runtime_lab_driver_probe" \
-    BOX_LAB_API_KEY=box-lab-test-key \
-    COMPANION_DEV_BOX_MODE=lab \
-    COMPANION_COMPANIONS_ENABLED=true \
-    COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS=example.test \
-    CONDUCTOR_IS_LOCAL=1 \
-    bash "$runtime_lab_test_dir/scripts/dev-runtime.sh" true >/dev/null
-  if [ "$(cat "$runtime_lab_driver_probe")" != "unset" ]; then
-    printf '[dev-stack-check] dev-runtime must leave the Box Lab driver unset for platform selection\n' >&2
-    exit 1
-  fi
-
-  BOX_LAB_DRIVER=oci-systemd \
-    RUNTIME_LAB_DRIVER_PROBE="$runtime_lab_driver_probe" \
-    BOX_LAB_API_KEY=box-lab-test-key \
-    COMPANION_DEV_BOX_MODE=lab \
-    COMPANION_COMPANIONS_ENABLED=true \
-    COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS=example.test \
-    CONDUCTOR_IS_LOCAL=1 \
-    bash "$runtime_lab_test_dir/scripts/dev-runtime.sh" true >/dev/null
-  if [ "$(cat "$runtime_lab_driver_probe")" != "oci-systemd" ]; then
-    printf '[dev-stack-check] dev-runtime must preserve an explicit Box Lab driver override\n' >&2
-    exit 1
-  fi
-)
-
-if ! grep -Fq '[scripts.run."Dev (real Pi VM, slow)"]' .conductor/settings.toml \
-  || ! grep -Fq 'available_in = ["local"]' .conductor/settings.toml \
-  || ! grep -Fq 'COMPANION_DEV_BOX_MODE=lab bash scripts/dev-conductor.sh' .conductor/settings.toml; then
-  printf '[dev-stack-check] Conductor must expose the real Pi VM run locally and explicitly\n' >&2
-  exit 1
-fi
-# These source-code probes intentionally match unexpanded launcher variables.
-# shellcheck disable=SC2016
-if ! grep -Fq 'box_lab_workspace_id="${BOX_LAB_WORKSPACE_ID:-${CONDUCTOR_WORKSPACE_ID:-$PROJECT}}"' \
-  scripts/dev-conductor.sh \
-  || [ "$(grep -Fc 'BOX_LAB_WORKSPACE_ID="${BOX_LAB_WORKSPACE_ID:-${CONDUCTOR_WORKSPACE_ID:-$PROJECT}}"' \
-    scripts/dev-conductor.sh)" -lt 2 ]; then
-  printf '[dev-stack-check] Conductor must give doctor, Lab runtime, and archive the same workspace identity\n' >&2
-  exit 1
-fi
-if grep -Eq 'local runtime_cmd=.*BOX_LAB_WORKSPACE_ID' scripts/dev-conductor.sh \
-  || ! grep -Fq "BOX_LAB_WORKSPACE_ID=\"\$box_lab_workspace_id\" pnpm exec concurrently" \
-    scripts/dev-conductor.sh; then
-  printf '[dev-stack-check] Conductor must pass the workspace identity as data, never shell source\n' >&2
-  exit 1
-fi
-if ! grep -Fq "BOX_LAB_WORKSPACE_ID=\"\$box_lab_workspace_id\" \\" scripts/dev-runtime.sh; then
-  printf '[dev-stack-check] the runtime launcher must pass the resolved workspace identity only to Box Lab\n' >&2
-  exit 1
-fi
-
-# Direct invocation is documented outside Conductor too. With CONDUCTOR_IS_LOCAL absent, the
-# resolved environment is local and archive must still reset the exact workspace-owned Lab scope.
-(
-  archive_probe_dir="$(mktemp -d "$ROOT/.context/archive-probe.XXXXXX")"
-  trap 'rm -rf "$archive_probe_dir"' EXIT
-  # The nested shell expands values loaded from the launcher under test.
-  # shellcheck disable=SC2016
-  archive_box_lab_probe="$({
-    env -u CONDUCTOR_IS_LOCAL -u BOX_LAB_DRIVER \
-      CONDUCTOR_PORT=4310 COMPANION_DEV_SKIP_ENV_FILE=1 \
-      bash -c '
-        source "$1" archive
-        STATE_DIR="$2/state"
-        mkdir -p "$STATE_DIR"
-        step() { :; }
-        ok() { :; }
-        die() { printf "die:%s\n" "$1"; exit 1; }
-        detect_pg_bin() { :; }
-        stop_services() { :; }
-        bash() {
-          if [ "$1 $2 $3 $4" = "scripts/dev-process.sh box-lab pnpm box:lab:reset" ]; then
-            printf "reset:%s\n" "${BOX_LAB_DRIVER-unset}"
-            return 0
-          fi
-          command bash "$@"
-        }
-        cmd_archive
-      ' _ "$ROOT/scripts/dev-conductor.sh" "$archive_probe_dir"
-  } 2>/dev/null)"
-  if [ "$archive_box_lab_probe" != "reset:unset" ]; then
-    printf '[dev-stack-check] direct local archive must reset Box Lab with platform driver selection: %s\n' \
-      "$archive_box_lab_probe" >&2
-    exit 1
-  fi
-)
-
-for disabled_mode in \
-  'COMPANION_COMPANIONS_ENABLED=false COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS=example.test' \
-  'COMPANION_COMPANIONS_ENABLED=true COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS='; do
-  # shellcheck disable=SC2086,SC2016
-  if env $disabled_mode bash -c 'source "$1"; companion_dev_uses_box_simulator' \
-    _ "$ROOT/scripts/dev-runtime-mode.sh"; then
-    printf '[dev-stack-check] disabled Companions must not reserve or launch the Box simulator\n' >&2
-    exit 1
-  fi
-  # shellcheck disable=SC2086,SC2016
-  if env $disabled_mode COMPANION_DEV_BOX_MODE=lab bash -c 'source "$1"; companion_dev_uses_box_lab' \
-    _ "$ROOT/scripts/dev-runtime-mode.sh"; then
-    printf '[dev-stack-check] disabled Companions must not reserve or launch the Box Lab\n' >&2
-    exit 1
-  fi
-done
 
 # Cloud workspaces intentionally have no CONDUCTOR_PORT. The web listener must
 # still be reachable by Conductor's port forward, while local workspaces remain
@@ -853,7 +535,6 @@ fi
   mkdir -p "$lock_test_dir/scripts" "$lock_test_dir/.conductor-pg"
   cp "$ROOT/scripts/dev-conductor.sh" "$lock_test_dir/scripts/dev-conductor.sh"
   cp "$ROOT/scripts/dev-environment.sh" "$lock_test_dir/scripts/dev-environment.sh"
-  cp "$ROOT/scripts/dev-runtime-mode.sh" "$lock_test_dir/scripts/dev-runtime-mode.sh"
   cd "$lock_test_dir"
   # Keep bash as the long-lived process so `ps` retains the launcher marker.
   # Amazon Linux implements sleep through a coreutils multicall binary, which

@@ -50,7 +50,7 @@ import {
   type PublishSkillInput,
 } from "@companion/contracts";
 import { gravatarUrl, resolveUserAvatarUrl } from "./avatar";
-import { isIanaTimeZone } from "./companionRoutines";
+import { isIanaTimeZone } from "./timezone";
 
 import { compareSemver, isValidSemver } from "@companion/skills";
 import { db, schema, type Db } from "@companion/db";
@@ -4309,9 +4309,6 @@ export async function issueApiToken(input: {
     type: "agent_auth";
     agentId: string;
     targetWorkspaceId?: string;
-  } | {
-    type: "companion";
-    companionId: string;
   };
   database?: Db;
 }): Promise<{
@@ -4346,7 +4343,7 @@ export async function issueApiToken(input: {
     throw new Error("token expiration is outside the allowed range");
   }
   const sourceAgentId = input.source
-    ? (input.source.type === "agent_auth" ? input.source.agentId : input.source.companionId)
+    ? input.source.agentId
     : undefined;
   const targetWorkspaceId = input.source?.type === "agent_auth"
     ? input.source.targetWorkspaceId ?? null
@@ -4373,9 +4370,7 @@ export async function issueApiToken(input: {
     await database.insert(schema.auditLog).values({
       orgId: input.orgId,
       actorId: input.actor.id,
-      action: input.source.type === "companion"
-        ? "api_token.issue_companion_write"
-        : "api_token.issue_agent_delegation",
+      action: "api_token.issue_agent_delegation",
       targetType: "api_token",
       targetId: row.id,
       metadata: {
@@ -4537,11 +4532,10 @@ export async function resolveApiToken(
   orgId: string;
   scopes: TokenScope[];
   sourceType: string;
-  sourceCompanionId: string | null;
 } | null> {
   if (!rawToken.startsWith(API_TOKEN_PREFIX)) return null;
   const row = await resolvePreTenantApiToken(database, hashApiToken(rawToken), targetWorkspaceId);
-  if (!row) return null;
+  if (!row || row.source_type === "companion") return null;
   return {
     actor: {
       id: row.user_id,
@@ -4551,7 +4545,6 @@ export async function resolveApiToken(
     orgId: row.org_id,
     scopes: expandTokenScopes((row.scopes ?? []) as TokenScope[]),
     sourceType: row.source_type ?? "human",
-    sourceCompanionId: row.source_type === "companion" ? row.source_agent_id : null,
   };
 }
 

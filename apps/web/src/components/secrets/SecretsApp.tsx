@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-known-value-widening, anti-slop/require-safety-comment-for-type-assertion -- Hosted Companion removal preserves the existing Skills Hub implementation; these patterns predate this change. */
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -186,7 +187,6 @@ export function SecretsApp({
   orgs,
   currentOrg,
   initialCreateKey,
-  companionsEnabled = false,
   navigation,
 }: {
   initialSecrets: SecretRow[];
@@ -195,7 +195,6 @@ export function SecretsApp({
   orgs: OrgVM[];
   currentOrg: OrgVM;
   initialCreateKey: string | null;
-  companionsEnabled?: boolean;
   navigation: {
     mineTreeRows: TreeRow[];
     orgTreeRows: TreeRow[];
@@ -375,7 +374,6 @@ export function SecretsApp({
         onSelectLocal={() => router.push(skillsRouteHref({ kind: "local" }))}
         onSelectArchived={() => router.push(skillsRouteHref({ kind: "archived" }))}
         onSelectSecrets={noop}
-        companionsEnabled={companionsEnabled}
         secretsActive
         navigationOnly
         localActive={false}

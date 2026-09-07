@@ -7,7 +7,6 @@ import type {
   BillingOverview,
   GettingStartedState,
 } from "@companion/contracts";
-import { companionsAvailableToUser } from "@companion/core";
 import { loadOrgContext } from "@/lib/currentOrg";
 import { serverApiFetch } from "@/lib/apiServer";
 import { SkillsApp } from "@/components/skills/SkillsApp";
@@ -99,7 +98,6 @@ export default async function SkillsPage({
       currentOrg={current}
       initialRoute={initialRoute}
       initialRouteSource={initialRouteSource}
-      companionsEnabled={companionsAvailableToUser(whoami.email)}
     />
   );
 }

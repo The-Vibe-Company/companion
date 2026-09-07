@@ -39,8 +39,6 @@ jobs:
       containers: ${{ steps.scope.outputs.containers }}
       dependencies: ${{ steps.scope.outputs.dependencies }}
       skill: ${{ steps.scope.outputs.skill }}
-      ios: ${{ steps.scope.outputs.ios }}
-      macos: ${{ steps.scope.outputs.macos }}
       full: ${{ steps.scope.outputs.full }}
     steps:
       - name: Checkout
@@ -61,36 +59,6 @@ jobs:
           --head "${HEAD_SHA:-$GITHUB_SHA}"
           --github-output "$GITHUB_OUTPUT"
 
-      - name: Record the approved main push range
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-          RELEASE_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          scope_dir="$RUNNER_TEMP/ios-testflight-scope"
-          mkdir -p "$scope_dir"
-          printf '%s\n' "$BEFORE_SHA" > "$scope_dir/before-sha"
-          printf '%s\n' "$RELEASE_SHA" > "$scope_dir/release-sha"
-
-      - name: Upload the approved main push range
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: ios-testflight-scope
-          path: ${{ runner.temp }}/ios-testflight-scope
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Upload the approved main push range for macOS
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: macos-testflight-scope
-          path: ${{ runner.temp }}/ios-testflight-scope
-          if-no-files-found: error
-          retention-days: 1
-
   hygiene:
     name: Hygiene
     runs-on: ubuntu-latest
@@ -103,7 +71,7 @@ jobs:
           fetch-depth: 0
 
       - name: Test CI scope classifier and local verifier
-        run: node --test scripts/agent-browser-box-center.test.mjs scripts/companions-env-defaults.test.mjs scripts/railway-config.test.mjs scripts/ci-scope.test.mjs scripts/ci-playwright-policy.test.mjs scripts/ci-gate.test.mjs scripts/ios-devx.test.mjs scripts/macos-devx.test.mjs scripts/ios-release.test.mjs scripts/macos-release.test.mjs scripts/ios-e2e-fixture.test.mjs scripts/ios-local-live.test.mjs scripts/lint-anti-slop.test.mjs scripts/verify-change.test.mjs
+        run: node --test scripts/agent-browser-box-center.test.mjs scripts/railway-config.test.mjs scripts/ci-scope.test.mjs scripts/ci-playwright-policy.test.mjs scripts/ci-gate.test.mjs scripts/lint-anti-slop.test.mjs scripts/verify-change.test.mjs
 
       - name: Validate GitHub Actions workflows
         run: >-
@@ -174,7 +142,7 @@ jobs:
     name: Apple Quality
     runs-on: macos-26
     needs: scope
-    if: needs.scope.outputs.skill == 'true' || needs.scope.outputs.ios == 'true' || needs.scope.outputs.macos == 'true'
+    if: needs.scope.outputs.skill == 'true'
     timeout-minutes: 5
     steps:
       - name: Checkout
@@ -191,67 +159,6 @@ jobs:
       - name: Test bundled Companion skill guards
         if: needs.scope.outputs.skill == 'true'
         run: bash scripts/run-skill-guards.sh
-
-      - name: Test CompanionKit
-        if: needs.scope.outputs.ios != needs.scope.outputs.macos
-        run: swift test --package-path apps/ios/CompanionKit
-
-      - name: Build native app
-        if: needs.scope.outputs.ios == 'true' && needs.scope.outputs.macos != 'true'
-        run: >-
-          xcodebuild build
-          -workspace apps/ios/Companion.xcworkspace
-          -scheme Companion
-          -configuration Debug
-          -destination "generic/platform=iOS Simulator"
-          -derivedDataPath "$RUNNER_TEMP/companion-derived-data"
-          CODE_SIGNING_ALLOWED=NO
-
-      - name: Test native Mac app
-        if: needs.scope.outputs.macos == 'true' && needs.scope.outputs.ios != 'true'
-        run: >-
-          xcodebuild test
-          -workspace apps/ios/Companion.xcworkspace
-          -scheme CompanionMac
-          -configuration Debug
-          -destination "platform=macOS"
-          -derivedDataPath "$RUNNER_TEMP/companion-mac-derived-data"
-          CODE_SIGNING_ALLOWED=NO
-
-      # Shared changes exercise CompanionKit and both native clients. Keep all three signals inside
-      # the same capped Apple job, with at most two compilers contending for the runner at once.
-      - name: Validate native apps
-        if: needs.scope.outputs.ios == 'true' && needs.scope.outputs.macos == 'true'
-        shell: bash
-        run: |
-          swift test --package-path apps/ios/CompanionKit &
-          companion_kit_pid=$!
-
-          xcodebuild build \
-            -quiet \
-            -workspace apps/ios/Companion.xcworkspace \
-            -scheme Companion \
-            -configuration Debug \
-            -destination "generic/platform=iOS Simulator" \
-            -derivedDataPath "$RUNNER_TEMP/companion-derived-data" \
-            CODE_SIGNING_ALLOWED=NO &
-          ios_pid=$!
-
-          if wait "$companion_kit_pid"; then companion_kit_status=0; else companion_kit_status=$?; fi
-
-          xcodebuild test \
-            -quiet \
-            -workspace apps/ios/Companion.xcworkspace \
-            -scheme CompanionMac \
-            -configuration Debug \
-            -destination "platform=macOS" \
-            -derivedDataPath "$RUNNER_TEMP/companion-mac-derived-data" \
-            CODE_SIGNING_ALLOWED=NO &
-          macos_pid=$!
-
-          if wait "$ios_pid"; then ios_status=0; else ios_status=$?; fi
-          if wait "$macos_pid"; then macos_status=0; else macos_status=$?; fi
-          if (( companion_kit_status != 0 || ios_status != 0 || macos_status != 0 )); then exit 1; fi
 
   quality:
     name: Quality Node 22
@@ -501,17 +408,6 @@ jobs:
           load: true
           cache-from: type=gha,scope=railway-worker
           cache-to: type=gha,mode=max,scope=railway-worker
-
-      - name: Build runtime image
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
-        with:
-          context: .
-          file: deploy/railway/Dockerfile.backend
-          build-args: RAILWAY_SERVICE_NAME=runtime
-          tags: companion-runtime:ci
-          load: true
-          cache-from: type=gha,scope=railway-runtime
-          cache-to: type=gha,mode=max,scope=railway-runtime
 
       - name: Build web image
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6

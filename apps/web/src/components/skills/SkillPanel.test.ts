@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-module-mocking, anti-slop/require-safety-comment-for-type-assertion -- Hosted Companion removal preserves the existing Skills Hub implementation; these patterns predate this change. */
 // @vitest-environment happy-dom
 
 import React, { act } from "react";
@@ -10,9 +11,6 @@ import { SkillPanel } from "./SkillPanel";
 
 const queryMocks = vi.hoisted(() => ({ fetchSkillVersionFiles: vi.fn() }));
 vi.mock("@/lib/queries", () => queryMocks);
-
-const apiMocks = vi.hoisted(() => ({ apiFetch: vi.fn() }));
-vi.mock("@/lib/apiClient", () => apiMocks);
 
 const roots: Root[] = [];
 
@@ -60,7 +58,6 @@ function skill(overrides: Partial<SkillVM> = {}): SkillVM {
 }
 
 async function mount(overrides: Partial<SkillVM> = {}, props: {
-  companionsEnabled?: boolean;
   onOpen?: (slug: string) => void;
   onAction?: ReturnType<typeof vi.fn>;
   onClose?: () => void;
@@ -74,8 +71,6 @@ async function mount(overrides: Partial<SkillVM> = {}, props: {
       skill: skill(overrides),
       labels: [],
       actorId: "user-1",
-      orgId: "org-1",
-      companionsEnabled: props.companionsEnabled ?? false,
       onOpen: props.onOpen ?? (() => {}),
       onAction: props.onAction ?? vi.fn(),
       onClose: props.onClose ?? (() => {}),
@@ -94,7 +89,6 @@ describe("SkillPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     queryMocks.fetchSkillVersionFiles.mockResolvedValue({ version: "1.0.0", files: [] });
-    apiMocks.apiFetch.mockResolvedValue({ companions: [] });
   });
 
   afterEach(() => {
@@ -163,34 +157,10 @@ describe("SkillPanel", () => {
     expect(excerpt).not.toContain("line 21");
   });
 
-  it("asks about Companions only where Companions exist", async () => {
-    await mount();
-    expect(apiMocks.apiFetch).not.toHaveBeenCalled();
-
-    apiMocks.apiFetch.mockResolvedValue({
-      companions: [
-        { name: "Luna", selected_skill_ids: ["skill-1"] },
-        { name: "Milo", selected_skill_ids: ["other"] },
-      ],
-    });
-    const container = await mount({}, { companionsEnabled: true });
-
-    // The roster without previews: this page shows no conversation, so it is handed none.
-    expect(apiMocks.apiFetch).toHaveBeenCalledWith("/v1/companions?preview=false", {
-      headers: { "x-companion-org": "org-1" },
-    });
-    const usedBy = container.querySelector(".skpanel__block:last-child")?.textContent ?? "";
-    expect(usedBy).toContain("Used by");
-    expect(usedBy).toContain("Luna");
-    expect(usedBy).not.toContain("Milo");
-  });
-
   it("keeps the panel when its side reads fail", async () => {
     queryMocks.fetchSkillVersionFiles.mockRejectedValue(new Error("archive unavailable"));
-    apiMocks.apiFetch.mockRejectedValue(new Error("companions unavailable"));
 
-    const container = await mount({}, { companionsEnabled: true });
-
+    const container = await mount();
     expect(container.querySelector(".skpanel__name")?.textContent).toBe("seo-helper");
     expect(container.querySelector(".skpanel__excerpt")).toBeNull();
     expect(container.textContent).not.toContain("Used by");

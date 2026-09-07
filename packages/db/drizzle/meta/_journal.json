@@ -1303,6 +1303,13 @@
       "when": 1793398000000,
       "tag": "0185_companion_runtime_v3_reload_staged_credentials",
       "breakpoints": true
+    },
+    {
+      "idx": 186,
+      "version": "7",
+      "when": 1793401600000,
+      "tag": "0186_retire_hosted_companions",
+      "breakpoints": true
     }
   ]
 }

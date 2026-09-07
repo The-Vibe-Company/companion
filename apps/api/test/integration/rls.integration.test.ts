@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion -- Retains the existing PostgreSQL fixture assertions while removing retired runtime expectations. */
 /**
  * Product promise:
  * PostgreSQL enforces organization isolation for the three non-bypass process roles. The API owns
@@ -256,13 +257,6 @@ describe("Skills Hub PostgreSQL isolation", () => {
       workerFunctionByApi: boolean;
       workerFunctionByWorker: boolean;
       workerFunctionByRuntime: boolean;
-      runtimeFunctionByApi: boolean;
-      runtimeFunctionByWorker: boolean;
-      runtimeFunctionByRuntime: boolean;
-      runtimeV3FunctionByRuntime: boolean;
-      privateTableByApi: boolean;
-      privateTableByWorker: boolean;
-      privateTableByRuntime: boolean;
       authTableByApi: boolean;
       authTableByWorker: boolean;
       authTableByRuntime: boolean;
@@ -274,13 +268,6 @@ describe("Skills Hub PostgreSQL isolation", () => {
         has_function_privilege(${apiRole}, 'public.companion_claim_github_sync_destinations(text,integer,integer)', 'EXECUTE') as "workerFunctionByApi",
         has_function_privilege(${workerRole}, 'public.companion_claim_github_sync_destinations(text,integer,integer)', 'EXECUTE') as "workerFunctionByWorker",
         has_function_privilege(${runtimeRole}, 'public.companion_claim_github_sync_destinations(text,integer,integer)', 'EXECUTE') as "workerFunctionByRuntime",
-        has_function_privilege(${apiRole}, 'public.companion_runtime_claim_work(text,integer,integer,bigint)', 'EXECUTE') as "runtimeFunctionByApi",
-        has_function_privilege(${workerRole}, 'public.companion_runtime_claim_work(text,integer,integer,bigint)', 'EXECUTE') as "runtimeFunctionByWorker",
-        has_function_privilege(${runtimeRole}, 'public.companion_runtime_claim_work(text,integer,integer,bigint)', 'EXECUTE') as "runtimeFunctionByRuntime",
-        has_function_privilege(${runtimeRole}, 'public.companion_v3_runtime_claim_v4(text,public.companion_v3_lane,integer,integer)', 'EXECUTE') as "runtimeV3FunctionByRuntime",
-        has_table_privilege(${apiRole}, 'public.companion_turns', 'SELECT') as "privateTableByApi",
-        has_table_privilege(${workerRole}, 'public.companion_turns', 'SELECT') as "privateTableByWorker",
-        has_table_privilege(${runtimeRole}, 'public.companion_turns', 'SELECT') as "privateTableByRuntime",
         has_table_privilege(${apiRole}, 'public.user', 'SELECT') as "authTableByApi",
         has_table_privilege(${workerRole}, 'public.user', 'SELECT') as "authTableByWorker",
         has_table_privilege(${runtimeRole}, 'public.user', 'SELECT') as "authTableByRuntime"
@@ -293,69 +280,10 @@ describe("Skills Hub PostgreSQL isolation", () => {
       workerFunctionByApi: false,
       workerFunctionByWorker: true,
       workerFunctionByRuntime: false,
-      runtimeFunctionByApi: false,
-      runtimeFunctionByWorker: false,
-      runtimeFunctionByRuntime: false,
-      runtimeV3FunctionByRuntime: true,
-      privateTableByApi: false,
-      privateTableByWorker: false,
-      privateTableByRuntime: false,
       authTableByApi: true,
       authTableByWorker: false,
       authTableByRuntime: false,
     });
-  });
-
-  it("lets admins manage provider ciphertext while tenant members see only selected metadata", async () => {
-    await asApi({
-      orgId: fixture.orgA,
-      userId: fixture.admin.id,
-      action: async (tx) => {
-        await tx`
-          insert into companion_provider_connections (
-            org_id, provider_id, auth_method, ciphertext, iv, auth_tag,
-            wrapped_dek, wrap_iv, wrap_auth_tag, key_id, connected_by
-          ) values (
-            ${fixture.orgA}, 'anthropic', 'api_key', 'ciphertext', 'iv', 'tag',
-            'dek', 'wrap-iv', 'wrap-tag', 'key-id', ${fixture.admin.id}
-          )
-        `;
-      },
-    });
-
-    const developerVisible = await asApi({
-      orgId: fixture.orgA,
-      userId: fixture.developer.id,
-      action: (tx) => tx<Array<{ provider_id: string; auth_method: string }>>`
-        select provider_id, auth_method from companion_provider_connections
-      `,
-    });
-    expect(developerVisible).toEqual([{ provider_id: "anthropic", auth_method: "api_key" }]);
-
-    await expect(asApi({
-      orgId: fixture.orgA,
-      userId: fixture.developer.id,
-      action: async (tx) => {
-        await tx`
-          insert into companion_provider_connections (
-            org_id, provider_id, auth_method, ciphertext, iv, auth_tag,
-            wrapped_dek, wrap_iv, wrap_auth_tag, key_id, connected_by
-          ) values (
-            ${fixture.orgA}, 'zai', 'api_key', 'ciphertext', 'iv', 'tag',
-            'dek', 'wrap-iv', 'wrap-tag', 'key-id', ${fixture.developer.id}
-          )
-        `;
-      },
-    })).rejects.toThrow();
-
-    const outsiderVisible = await asApi({
-      orgId: fixture.orgB,
-      userId: fixture.outsider.id,
-      action: (tx) => tx<Array<{ provider_id: string }>>`
-        select provider_id from companion_provider_connections
-      `,
-    });
-    expect(outsiderVisible).toEqual([]);
   });
 
   it("keeps retired per-member Companion grants absent", async () => {

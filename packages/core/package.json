@@ -5,8 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./services": "./src/services.ts",
-    "./companionRoutines": "./src/companionRoutines.ts"
+    "./services": "./src/services.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -18,7 +17,6 @@
     "@companion/contracts": "workspace:*",
     "@companion/db": "workspace:*",
     "@companion/skills": "workspace:*",
-    "cron-parser": "^5.4.0",
     "drizzle-orm": "^0.45.2",
     "free-email-domains": "^1.2.0",
     "zod": "^3.24.1"

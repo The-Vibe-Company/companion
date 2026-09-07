@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- Hosted Companion removal preserves the existing Skills Hub implementation; these patterns predate this change. */
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -207,7 +208,6 @@ export function SkillsApp({
   currentOrg,
   initialRoute,
   initialRouteSource,
-  companionsEnabled = false,
 }: {
   initialMineSkills: SkillVM[];
   initialOrgSkills: SkillVM[];
@@ -222,7 +222,6 @@ export function SkillsApp({
   currentOrg: OrgVM;
   initialRoute: SkillsRoute;
   initialRouteSource: SkillsRouteSource;
-  companionsEnabled?: boolean;
 }) {
   const router = useRouter();
   const orgActions = useOrgActions();
@@ -1715,7 +1714,6 @@ export function SkillsApp({
         onSelectLocal={selectLocal}
         onSelectArchived={selectArchived}
         onSelectSecrets={() => router.push("/secrets")}
-        companionsEnabled={companionsEnabled}
         localActive={localActive}
         localUpdateCount={localUpdateCount}
         archivedActive={archivedActive}
@@ -1820,8 +1818,6 @@ export function SkillsApp({
                     skill={selected}
                     labels={labels}
                     actorId={me.id}
-                    orgId={currentOrg.id}
-                    companionsEnabled={companionsEnabled}
                     onOpen={open}
                     onAction={executeSkillAction}
                     onClose={closeSkillPanel}

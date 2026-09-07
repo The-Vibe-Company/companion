@@ -126,7 +126,6 @@ const dbMocks = vi.hoisted(() => ({
 }));
 
 const coreMocks = vi.hoisted(() => ({
-  bumpCompanionSkillRevision: vi.fn(async () => 1),
 }));
 
 type MockSession = {
@@ -670,8 +669,6 @@ describe("POST /v1/skills/:slug/rename", () => {
   });
 
   it("renames a skill through the explicit service mutation", async () => {
-    vi.stubEnv("COMPANION_COMPANIONS_ENABLED", "true");
-    vi.stubEnv("COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS", "example.test");
     serviceMocks.renameSkill.mockResolvedValue({
       ok: true,
       id: "skill-1",
@@ -703,34 +700,6 @@ describe("POST /v1/skills/:slug/rename", () => {
         title: "Skill Creator and Eval",
       }),
     );
-    // Boxes stage skills by slug, so a rename marks every selecting Companion as needing a restage.
-    expect(coreMocks.bumpCompanionSkillRevision).toHaveBeenCalledWith(
-      expect.objectContaining({ orgId: "org-1", skillId: "skill-1" }),
-    );
-  });
-
-  it("keeps the durable restage invalidation when Companions are disabled", async () => {
-    vi.stubEnv("COMPANION_COMPANIONS_ENABLED", "false");
-    vi.stubEnv("COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS", "example.test");
-    serviceMocks.renameSkill.mockResolvedValue({
-      ok: true,
-      id: "skill-1",
-      old_slug: "skill-creator",
-      slug: "skill-creator-and-eval",
-      title: "Skill Creator and Eval",
-    });
-
-    const res = await app.request("/v1/skills/skill-creator/rename", {
-      method: "POST",
-      headers: { Authorization: "Bearer write-only", "content-type": "application/json" },
-      body: JSON.stringify({ newSlug: "skill-creator-and-eval" }),
-    });
-
-    expect(res.status).toBe(200);
-    expect(serviceMocks.renameSkill).toHaveBeenCalledOnce();
-    expect(coreMocks.bumpCompanionSkillRevision).toHaveBeenCalledWith(
-      expect.objectContaining({ orgId: "org-1", skillId: "skill-1" }),
-    );
   });
 
   it("validates the new slug before calling the service", async () => {
@@ -756,11 +725,9 @@ describe("POST /v1/skills/:slug/rename", () => {
   });
 });
 
-describe("durable Companion Skill invalidations", () => {
+describe("skill archival", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv("COMPANION_COMPANIONS_ENABLED", "false");
-    vi.stubEnv("COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS", "example.test");
     serviceMocks.resolveApiToken.mockImplementation(async (token: string) => tokenFor(token));
   });
 
@@ -771,7 +738,7 @@ describe("durable Companion Skill invalidations", () => {
   it.each([
     { action: "archive", service: serviceMocks.archiveSkill },
     { action: "restore", service: serviceMocks.restoreSkill },
-  ])("marks selected Companions stale after $action while execution is disabled", async ({
+  ])("persists $action through the skill service", async ({
     action,
     service,
   }) => {
@@ -785,9 +752,6 @@ describe("durable Companion Skill invalidations", () => {
 
     expect(res.status).toBe(200);
     expect(service).toHaveBeenCalledOnce();
-    expect(coreMocks.bumpCompanionSkillRevision).toHaveBeenCalledWith(
-      expect.objectContaining({ orgId: "org-1", skillId: "skill-1" }),
-    );
   });
 });
 

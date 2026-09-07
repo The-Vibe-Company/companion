@@ -1,2 +1,0 @@
-{"type":"extension_ui_request","id":"ui-sim-001","method":"input","title":"companion:question:ask_user","placeholder":"Continue the simulated task?","timeout":300000}
-{"type":"extension_ui_response","id":"ui-sim-001","value":"Continue"}

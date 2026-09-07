@@ -5,7 +5,7 @@ const SERVICE = "worker";
 type CapturedException = Parameters<typeof Sentry.captureException>[0];
 
 export interface WorkerErrorContext {
-  supervisor: "apns" | "billing" | "github" | "routines" | "skill-database" | "worker";
+  supervisor: "billing" | "github" | "skill-database" | "worker";
   operation: string;
   level?: "warning" | "error" | "fatal";
   retryable?: boolean;

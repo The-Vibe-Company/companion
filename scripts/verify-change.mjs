@@ -10,17 +10,11 @@ export const DEFERRED_GATES_EXIT_CODE = 2;
 
 const HYGIENE_TESTS = [
   "scripts/agent-browser-box-center.test.mjs",
-  "scripts/companions-env-defaults.test.mjs",
   "scripts/railway-config.test.mjs",
   "scripts/ci-scope.test.mjs",
   "scripts/ci-playwright-policy.test.mjs",
   "scripts/ci-gate.test.mjs",
   "scripts/lint-anti-slop.test.mjs",
-  "scripts/ios-devx.test.mjs",
-  "scripts/macos-devx.test.mjs",
-  "scripts/ios-release.test.mjs",
-  "scripts/ios-e2e-fixture.test.mjs",
-  "scripts/ios-local-live.test.mjs",
   "scripts/verify-change.test.mjs",
 ];
 
@@ -137,13 +131,9 @@ function requiresDevStackCheck(file) {
   return [
     ".conductor/settings.toml",
     "docker-compose.yml",
-    "scripts/box-lab.sh",
     "scripts/dev-conductor.sh",
     "scripts/dev-environment.sh",
-    "scripts/dev-ios-live.sh",
     "scripts/dev-process.sh",
-    "scripts/dev-runtime.sh",
-    "scripts/dev-runtime-mode.sh",
     "scripts/dev-worker.sh",
     "scripts/dev-stack-check.sh",
     "scripts/dev-stack.sh",
@@ -237,15 +227,6 @@ export function createVerificationPlan(files, { workspaces = [], env = process.e
       ),
     );
   }
-  if (scope.runtime) {
-    deferredGates.push(
-      deferredGate(
-        "runtime",
-        "bash scripts/ci-runtime-integration.sh",
-        "Requires an explicitly disposable PostgreSQL database; the script uses the deterministic Box/Pi simulator and distinct API/worker/runtime roles.",
-      ),
-    );
-  }
   if (scope.browser) {
     const port = /^\d+$/.test(env.CONDUCTOR_PORT ?? "") ? env.CONDUCTOR_PORT : "3000";
     const appUrl = env.APP_URL?.trim() || `http://127.0.0.1:${port}`;
@@ -262,7 +243,7 @@ export function createVerificationPlan(files, { workspaces = [], env = process.e
       deferredGate(
         "containers",
         "bash scripts/ci-container-smoke.sh",
-        "Requires Docker, the four separated database URLs, and companion-release:ci, companion-api:ci, companion-worker:ci, companion-runtime:ci, and companion-web:ci images.",
+        "Requires Docker, the three separated database URLs, and companion-release:ci, companion-api:ci, companion-worker:ci, and companion-web:ci images.",
       ),
     );
   }

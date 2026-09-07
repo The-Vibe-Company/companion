@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-for image in companion-release:ci companion-api:ci companion-worker:ci companion-runtime:ci companion-web:ci; do
+for image in companion-release:ci companion-api:ci companion-worker:ci companion-web:ci; do
   test "$(docker image inspect --format '{{.Config.User}}' "$image")" = "node"
 done
 docker run --rm companion-release:ci test -f dist/runtime-role-grants.sql
-for runtime_asset in SKILL.md companion.json companion.integrity.json; do
-  docker run --rm companion-runtime:ci test -f "dist/companion-skill/$runtime_asset"
-done
 
 assert_container_env_unset() {
   local container_id="$1"
@@ -22,27 +19,20 @@ assert_container_env_unset() {
 : "${DATABASE_MIGRATION_URL:?DATABASE_MIGRATION_URL is required}"
 : "${DATABASE_API_URL:?DATABASE_API_URL is required}"
 : "${DATABASE_WORKER_URL:?DATABASE_WORKER_URL is required}"
-: "${DATABASE_COMPANION_RUNTIME_URL:?DATABASE_COMPANION_RUNTIME_URL is required}"
 
 network_args=(--network host)
 api_publish_args=()
 web_publish_args=()
-runtime_publish_args=()
 container_migration_url="$DATABASE_MIGRATION_URL"
 container_api_url="$DATABASE_API_URL"
 container_worker_url="$DATABASE_WORKER_URL"
-container_runtime_url="$DATABASE_COMPANION_RUNTIME_URL"
-container_peer_host="127.0.0.1"
 if [ "$(uname -s)" = "Darwin" ]; then
   network_args=(--add-host host.docker.internal:host-gateway)
   api_publish_args=(-p 18082:18082)
   web_publish_args=(-p 18080:18080)
-  runtime_publish_args=(-p 18083:18083)
   container_migration_url="${container_migration_url/127.0.0.1/host.docker.internal}"
   container_api_url="${container_api_url/127.0.0.1/host.docker.internal}"
   container_worker_url="${container_worker_url/127.0.0.1/host.docker.internal}"
-  container_runtime_url="${container_runtime_url/127.0.0.1/host.docker.internal}"
-  container_peer_host="host.docker.internal"
 fi
 
 runtime_role_args=(
@@ -62,10 +52,6 @@ if docker run --rm companion-release:ci node dist/cutover.js; then
   echo "dist/cutover.js exited 0 without a command; the entrypoint did not run" >&2
   exit 1
 fi
-if docker run --rm companion-runtime:ci node dist/companionPurge.js; then
-  echo "dist/companionPurge.js exited 0 without a command; the entrypoint did not run" >&2
-  exit 1
-fi
 
 docker run --rm "${network_args[@]}" \
   -e DATABASE_MIGRATION_URL="$container_migration_url" \
@@ -80,13 +66,10 @@ worker_id="$(docker run -d "${network_args[@]}" \
   -e COMPANION_BILLING_MODE=off \
   -e DATABASE_URL="$container_worker_url" \
   companion-worker:ci)"
-runtime_hmac_secret="BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc="
-runtime_box_key="ci-runtime-only-box-key"
-runtime_id=""
 api_id=""
 web_id=""
 cleanup() {
-  docker rm -f "$web_id" "$api_id" "$runtime_id" "$worker_id" >/dev/null 2>&1 || true
+  docker rm -f "$web_id" "$api_id" "$worker_id" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -98,41 +81,6 @@ for _ in $(seq 1 20); do
 done
 test "$(docker inspect --format '{{.State.Running}}' "$worker_id")" = "true"
 
-# Start the enabled runtime bundle so the deployed image must load Box/S3 adapters and the copied
-# Companion skill. The freshly migrated shared database gate remains disabled, so this is not an
-# enabled-product E2E: it makes no Box/object-storage call and cannot claim work.
-runtime_id="$(docker run -d "${network_args[@]}" "${runtime_publish_args[@]}" \
-  -e PORT=18083 \
-  -e COMPANION_RUNTIME_HOST=0.0.0.0 \
-  -e DATABASE_COMPANION_RUNTIME_URL="$container_runtime_url" \
-  -e COMPANION_COMPANIONS_ENABLED=true \
-  -e COMPANION_COMPANIONS_ALLOWED_EMAIL_DOMAINS=example.test \
-  -e COMPANION_BOX_API_KEY="$runtime_box_key" \
-  -e COMPANION_RUNTIME_DESKTOP_HMAC_SECRET="$runtime_hmac_secret" \
-  -e COMPANION_SECRETS_MASTER_KEY=CQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQk= \
-  -e RAILWAY_GIT_COMMIT_SHA=container-smoke \
-  -e COMPANION_API_URL="http://${container_peer_host}:18082" \
-  -e S3_ENDPOINT=http://127.0.0.1:19000 \
-  -e S3_REGION=us-east-1 \
-  -e S3_ACCESS_KEY_ID=container-smoke \
-  -e S3_SECRET_ACCESS_KEY=container-smoke-secret \
-  -e S3_BUCKET_SKILL_ARCHIVES=skill-archives \
-  -e S3_FORCE_PATH_STYLE=true \
-  companion-runtime:ci)"
-
-for _ in $(seq 1 60); do
-  if curl -fsS http://127.0.0.1:18083/healthz >/dev/null; then
-    break
-  fi
-  sleep 0.5
-done
-curl -fsS http://127.0.0.1:18083/healthz | grep -q '"release_id":"container-smoke"'
-test "$(docker exec "$runtime_id" printenv COMPANION_BOX_API_KEY)" = "$runtime_box_key"
-test "$(docker exec "$runtime_id" printenv DATABASE_COMPANION_RUNTIME_URL)" = "$container_runtime_url"
-test "$(docker exec "$runtime_id" printenv COMPANION_RUNTIME_DESKTOP_HMAC_SECRET)" = "$runtime_hmac_secret"
-assert_container_env_unset "$runtime_id" DATABASE_URL runtime
-assert_container_env_unset "$runtime_id" DATABASE_MIGRATION_URL runtime
-
 sleep 2
 test "$(docker inspect --format '{{.State.Running}}' "$worker_id")" = "true"
 
@@ -142,8 +90,6 @@ api_id="$(docker run -d "${network_args[@]}" "${api_publish_args[@]}" \
   -e PORT=18082 \
   -e COMPANION_API_HOST=0.0.0.0 \
   -e DATABASE_URL="$container_api_url" \
-  -e COMPANION_RUNTIME_PRIVATE_URL="http://${container_peer_host}:18083" \
-  -e COMPANION_RUNTIME_DESKTOP_HMAC_SECRET="$runtime_hmac_secret" \
   -e COMPANION_WEB_URL=http://127.0.0.1:18080 \
   -e COMPANION_API_URL=http://127.0.0.1:18080 \
   -e BETTER_AUTH_URL=http://127.0.0.1:18080 \
@@ -158,8 +104,7 @@ for _ in $(seq 1 60); do
   sleep 0.5
 done
 curl -fsS http://127.0.0.1:18082/health
-test "$(docker exec "$api_id" printenv COMPANION_RUNTIME_PRIVATE_URL)" = "http://${container_peer_host}:18083"
-test "$(docker exec "$api_id" printenv COMPANION_RUNTIME_DESKTOP_HMAC_SECRET)" = "$runtime_hmac_secret"
+assert_container_env_unset "$api_id" COMPANION_RUNTIME_PRIVATE_URL API
 assert_container_env_unset "$api_id" COMPANION_BOX_API_KEY API
 assert_container_env_unset "$api_id" DATABASE_COMPANION_RUNTIME_URL API
 assert_container_env_unset "$api_id" DATABASE_MIGRATION_URL API

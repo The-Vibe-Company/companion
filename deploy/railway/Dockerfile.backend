@@ -18,9 +18,9 @@ ARG RAILWAY_SERVICE_NAME
 COPY . .
 
 RUN case "${RAILWAY_SERVICE_NAME}" in \
-      api|worker|runtime) package="${RAILWAY_SERVICE_NAME}" ;; \
+      api|worker) package="${RAILWAY_SERVICE_NAME}" ;; \
       release) package="api" ;; \
-      *) echo "RAILWAY_SERVICE_NAME must be api, worker, runtime, or release" >&2; exit 1 ;; \
+      *) echo "RAILWAY_SERVICE_NAME must be api, worker, or release" >&2; exit 1 ;; \
     esac \
   && turbo prune "@companion/${package}" --docker
 
@@ -39,9 +39,9 @@ COPY --from=pruner /app/out/full/ .
 COPY --from=pruner /app/tsconfig.base.json ./tsconfig.base.json
 
 RUN case "${RAILWAY_SERVICE_NAME}" in \
-      api|worker|runtime) package="${RAILWAY_SERVICE_NAME}" ;; \
+      api|worker) package="${RAILWAY_SERVICE_NAME}" ;; \
       release) package="api" ;; \
-      *) echo "RAILWAY_SERVICE_NAME must be api, worker, runtime, or release" >&2; exit 1 ;; \
+      *) echo "RAILWAY_SERVICE_NAME must be api, worker, or release" >&2; exit 1 ;; \
     esac \
   && pnpm --filter "@companion/${package}" build \
   && pnpm --filter "@companion/${package}" deploy --prod --no-optional /release

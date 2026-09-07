@@ -1,7 +1,7 @@
 ---
 version: beta
 name: Companion
-description: Operator-grade design system for Companion, a self-hostable Skills Hub with optional hosted Companions.
+description: Operator-grade design system for Companion, a self-hostable Skills Hub.
 colors:
   primary: "oklch(0.27 0.021 265)"
   canvas: "oklch(0.975 0.004 265)"
@@ -178,7 +178,7 @@ components:
 
 ## Overview
 
-Companion is an operator-grade, self-hostable Skills Hub with optional hosted Companions. The visual job is to make skill scope, ownership, validation, versions, dependencies, labels, secrets, databases, publication state, and durable Companion work legible at a glance. Skills remain the core workspace; a Companion is one named teammate with one thread, one Box, and one Pi daemon.
+Companion is a self-hostable Skills Hub. Make skill scope, ownership, validation, versions, dependencies, labels, secrets, databases, and publication state legible at a glance.
 
 The interface is product software, not marketing. It should feel calm, dense, precise, trustworthy, and engineering-grade. Reference quality is Linear, Stripe, and Raycast: familiar controls, compact hierarchy, real data shown plainly, and no decorative drama. Healthy state should be quiet. Broken state should be unmistakable without alarm theater.
 
@@ -187,10 +187,6 @@ theme and user-selectable accent presets are available (see Colors). CSS custom 
 `apps/web/src/styles/tokens.css`; the `cds-*` component layer is in `cds.css`; feature-specific layout and
 styling extend those tokens in `auth.css`, `skills.css`, `onboarding.css`, `org.css`, `settings.css`, and
 `upload.css`.
-
-Native iOS has its own approved source of truth in `docs/ios-design.md`. Its Grok Bot-derived
-character marks, neutral surfaces, navigation, and user journeys intentionally do not inherit this
-web theme.
 
 ## Colors
 
@@ -215,9 +211,7 @@ family) and `data-accent="coral"` a warm red-orange (`oklch(0.66 0.165 30)` fami
 `accent*` set so primary actions, focus rings, and selected-row tints stay coherent.
 
 Account › Preferences also carries the member's personal IANA timezone. Unlike theme and accent it
-is server-backed and shared by web and the native Apple clients across every workspace. With no stored value, the
-picker proposes the browser or device timezone and asks the member to save it; `UTC` is the runtime
-fallback until then.
+is server-backed across workspaces. When unset, the picker proposes the browser timezone.
 
 A dark theme is available app-wide via `data-theme="dark"` on `<html>` (also chosen in Preferences — light,
 dark, or follow-system — and applied before first paint to avoid a flash). It sets `color-scheme: dark` and
@@ -268,42 +262,8 @@ Use a dense product layout. The primary shell is a fixed sidebar (244px) plus co
 main content constrained enough to scan but not padded into a landing page. Layout tokens:
 `sidebar-width` 244px, `topbar-height` 56px, `content-max` 1120px, `drawer-width` 460px.
 
-The product-owned Plugins catalog includes Linear, GitHub, Notion, Conductor, Slack, Gmail, and
-Sentry. Slack uses
-the same compact labeled-account, connect, attach, and disconnect patterns as every other catalog
-entry; it is not presented as a separate messaging surface.
-
-The sidebar presents the Skills libraries directly: My Skills, Organization, Installed, Companion skills, Archived, and Secrets. When `COMPANION_COMPANIONS_ENABLED=true` and the required email-domain allowlist is non-empty, a two-option Skills | Companions mode segment sits directly under the workspace switcher for authenticated users allowed by that list; the segment is absent by default, when the allowlist is empty, and for users outside the allowlist, and there is no separate top-level or bottom Companions entry. Skills mode keeps the libraries unchanged. Companions mode replaces them with the workspace Companion roster as a conversation list: each row carries the Companion's animated blob avatar plain — no tinted circle behind it — the name, when the thread last spoke, one truncated line of the last thing a member or the Companion said, and an accent dot while the reader's own unread watermark is behind the thread. The avatar breathes at rest and thinks only while a positively acknowledged Turn is replying — never for queued work — and all of it stops under `prefers-reduced-motion`. Presence is a dot on the corner of that avatar, and it is never colour alone: the status word stays in the row's accessible name and as text a screen reader reaches. Each row also hosts a hover-revealed "…" actions menu — Settings, Share, Pin, Mark as unread, Duplicate, Hide, and an Owner-only Delete behind the same irreversible confirmation settings uses — and the roster head carries the one New companion action. Hidden Companions live under a collapsed Hidden disclosure at the roster's tail. Tool runs and permission cards are never previewed, so no command, path, or unanswered question appears on a row outside the thread it belongs to; a routine fire previews as its `Routine: <name>` header rather than the prompt nobody typed. Read state is member-private, so a shared thread one member opens stays unread for everyone else. Companions mode keeps Secrets, Archived, Plugins, and Settings reachable, with Plugins and a footer row naming the signed-in reader — the settings entry — below the list. The sidebar is the only roster; there is no separate main-area Companion list and no dedicated Companion search. With no thread open the main pane is a short welcome — the workspace count, the New companion action, and on a phone the way into the roster drawer. Plugins is a first-party Companion surface that groups each MCP provider's member-private accounts into short labels such as `work` and `personal`; it offers the product-owned Linear, GitHub, Notion, Conductor, Slack, Gmail, and Sentry catalog plus manual custom MCP connection, and credentials are entered there and never in chat. Creating a Companion leads with its animated icon generator in place of a static dialog glyph, then asks for a name, one connected provider, and one model from that provider's live pi.dev list; persona lives in settings as instructions, and provider credentials and sharing stay in focused dialogs. Opening a Companion fills the main pane with its single chat thread: a back control, the Companion identity, its Box status chip, a settings action, a context-panel toggle for a runner, the conversation, and one composer. Nothing else belongs there — no Pi tools, no Skills, no plugins, no run chrome. The status chip is a dot plus one state word — `Online`, `Starting`, `Asleep`, or `Error` — and what it reports on, `Box · online` and its siblings, is its accessible name and tooltip rather than visible text, so the word itself never has to give way on a narrow header. It refreshes immediately on thread open and send, every three seconds while a send or lifecycle transition is active, then at the slower settled cadence; stale responses cannot move a newer state backward, and Viewer polling never contacts Box. For a runner whose Box is already running the same chip opens the Box desktop Lux drives in a new tab. Computer use has exactly two places and no third: that tab, and the screen preview in the context panel beside the conversation. The preview is the live Box desktop framed as a 16:10 card with pointer events stopped at it, so it is the screen to watch and the tab is the screen to drive; its caption carries the handoff, a Reconnect for a join that produced nothing, and guidance to send a message when the Box is asleep. Both are the same Lux desktop over the same route, each join mints its own stream and keeps none, and neither can start a Box; there is no settings page for computer use and no third surface for it. The rest of the context panel shows the library Skills this Companion stages on its Box as monospace chips with a Manage link into settings. The panel then lists this Companion's scheduled routines: name, cron, timezone, next fire, and a + for Owner/Editor to create one. A fired routine hides its prompt behind a compact Routine header; the reply is an ordinary assistant message. Owner/Editor approve asynchronous Companion control cards for models, OAuth, routines, triggers, and peer access directly in the thread. The panel is a runner surface, never a Viewer's; it is a sibling of the conversation on a wide screen and comes over it, dismissible by Esc and its scrim, below 1024px. A runner whose Box is asleep gets no lifecycle control in the header; sending a message is the normal way to start it, and typing alone never prewarms it. A Viewer gets the same transcript with the composer replaced by a read-only note and the same chip as text only, because reading a Companion must never start a Box. It must not render the Box/Pi harness, a full provider catalog, multi-Bot controls, or raw runtime chrome. External coding-agent access lives in Settings and is described explicitly as delegated Skills Hub access.
-
-Asynchronous `companion-control` cards cover model, OAuth, routine, trigger, and peer-grant changes
-inside the thread. Applied OAuth cards link into the matching provider flow and attach the account to
-the requesting Companion. Delegation request/response markers name the peer and mode without adding
-Group, Room, or orchestration chrome.
-
-Routine history extends the compatibility marker without adding chat chrome. The routine row exposes
-a History action, while a marker carrying `run_id` is a compact clickable control. Both open the same
-right-side drawer: newest runs first, explicit terminal outcome, then the private transcript paged by
-durable ordinal. An interrupted run explains that automatic cleanup terminates only its exact Pi
-invocation, never replays the occurrence, and releases the lane without member action. Owner,
-Editor, and Viewer see the same cleanup status; nobody gets Retry or Cancel controls for a terminal
-interruption. The drawer polls while that exact cleanup is queued or running without discarding
-transcript pages already loaded. It takes the full chat stage on a phone, traps focus, closes with
-Esc or its scrim, and never contacts Box on reads. During the compatibility phase the ordinary
-assistant reply stays in the thread and is referenced as the run's virtual notify result rather
-than duplicated in history.
-
-Routine creation uses the member's saved timezone as the default schedule zone on both responsive
-web and the native Apple clients. Routine next-fire and trigger last-fire instants are displayed in that member
-timezone, with the zone label visible; an existing routine's own cron timezone remains visible as
-the authoritative schedule definition.
-
-The focused model-provider dialog keeps API-key connection to one write-only field. Claude
-subscription connection uses a browser authorization code and Codex uses a device code; neither
-surface asks for `auth.json` or renders access and refresh tokens. Connected entries feed the first
-step of the shared picker used by both creation and Companion settings; its second step shows only
-the selected provider's server-owned model catalog. The server bounds the live pi.dev fetch, caches
-the last-known catalog, supplements released models Pi has not published yet, and falls back to
-bundled models so the picker never becomes empty.
+The sidebar presents My Skills, Organization, Installed, Companion skills, Archived, and Secrets.
+External coding-agent access lives in Settings and is described as delegated Skills Hub access.
 
 Prefer tables and structured rows for resources. Companion lists skills, labels, versions, dependencies, members, scopes, comments, releases, databases, and audit events. These surfaces should be compact and sortable/filterable over time, not inflated into repeated marketing cards.
 
@@ -313,7 +273,7 @@ Rows should expose the operational facts in stable order: status, name or id, li
 
 Detail belongs in a right slide-over drawer. Do not make modal dialogs the default detail surface. The drawer should keep the list visible behind a flat scrim, support Esc and scrim close, and return focus to the originating row.
 
-A selected row's summary is a lighter thing than a drawer: a persistent panel beside the list, not over it, with no scrim and nothing modal about it. It answers what one row is, who wrote it, whether it is installed, how its `SKILL.md` opens, and which Companions stage it, plus the one action that skill is for and an Open into the full page. Everything else — every tab, every secondary action — stays on the page. It sits inline where there is room and comes over the list below 1100px.
+A selected row's summary is a lighter thing than a drawer: a persistent panel beside the list, not over it, with no scrim and nothing modal about it. It answers what one row is, who wrote it, whether it is installed, how its `SKILL.md` opens, plus the one action that skill is for and an Open into the full page. Everything else — every tab, every secondary action — stays on the page. It sits inline where there is room and comes over the list below 1100px.
 
 Forms are direct and compact. Use labels, concise helper text, and explicit consequences. For destructive or delayed lifecycle actions, explain the declared-state effect rather than hiding it behind vague confirmation copy.
 
@@ -323,29 +283,10 @@ Companion is flat and hairline-driven. Use 1px borders and subtle surface change
 
 Use shadows only for floating layers such as drawers, dropdowns, and dialogs. Shadow tokens are `xs`, `sm`, `md`, and `lg`; they should be soft and restrained; never use glow. Scrims are flat tinted overlays with no blur.
 
-Web product surfaces do not use glassmorphism, backdrop blur, translucent panels pretending to be
-glass, gradient depth, bokeh, grain, decorative textures, or atmospheric image backgrounds. The
-native iOS 26 client is the deliberate exception: use Apple's system Liquid Glass for navigation
-and interactive controls, system materials for content surfaces, and a restrained brand-colour
-backdrop so those materials remain visible. Do not imitate Liquid Glass with custom shaders,
-overlays, or third-party components. Reduce Transparency must fall back to the opaque canvas, and
-message text must keep normal content contrast.
-
-The native macOS client uses platform-standard sidebar, toolbar, popover, and window materials so
-it belongs on the desktop. Vibrancy is structural rather than decorative: chat content stays on a
-quiet readable surface, controls keep visible hover and keyboard focus states, and Reduce
-Transparency replaces material-backed regions with opaque system backgrounds.
-
 Motion is sparse and functional. Use `duration-fast` (120ms), `duration-base` (180ms), or `duration-slow` (240ms) with
 `ease-out-quint` transitions. Allowed motion: drawer slide-in/out, scrim fade, hover color changes, selection color
 changes, and short copy confirmation. Do not animate layout properties such as width, height, margin, or top. Respect
 `prefers-reduced-motion` by removing drawer slide and scrim fade.
-
-The Companion thread is the one surface where motion also reports state, because a conversation is the one place where
-waiting is the message. It may animate a typing indicator only after Pi acknowledged the active attempt, a spinner on a tool run that is still
-open, a short rise as a message arrives, and the height of a disclosure it opens. Nothing else in the thread moves: a
-status dot stays static there as everywhere else, the small Companion face beside each assistant message is motionless — the thinking face
-belongs to the replying trailer and the chrome around the thread — and every one of these stops under `prefers-reduced-motion`.
 
 ## Shapes
 
@@ -369,7 +310,7 @@ Selection uses a tinted row background plus an inset accent edge via box-shadow.
 
 **Sidebar** contains the Companion brand mark, wordmark, workspace context, primary navigation, counts where useful, and a quiet environment/footer indicator. Active nav uses `surface-raised` with foreground text; unread counts may use the accent fill. The brand mark tile uses the official transparent Companion mark on a tokenized `surface` tile with a `line` border, so it works across light, dark, and accent presets.
 
-**Skills workspace** is the product core. The shell opens directly on the skill library. Skill detail uses Overview, Dependencies, Files, Database, History, and Activity only when those sections apply. Upload, browser creation, publishing, installation, public release management, comments, labels, secrets, and hosted database workflows stay close to the selected skill. The Skills surface never executes package scripts or launches generic agents; only the gated Companions surface may stage selected Skills for its one Pi runtime.
+**Skills workspace** is the product core. The shell opens directly on the skill library. Skill detail uses Overview, Dependencies, Files, Database, History, and Activity only when those sections apply. Upload, browser creation, publishing, installation, public release management, comments, labels, secrets, and hosted database workflows stay close to the selected skill. The Skills surface never executes package scripts or launches generic agents..
 
 **External agent access** is an account setting for delegated clients that consume the Skills Hub. Describe capabilities such as skill read/write, database read/write, and secret read/write. Never present a connected external client as a Companion-hosted or Companion-launched agent.
 
@@ -413,61 +354,6 @@ and organization realms retain data editing but never expose sharing controls. L
 rows; empty, revoked, conflicted, failed, and archived-read-only states explain the consequence and
 offer Retry where useful. On narrow screens preserve every capability through progressive
 table → rows → full-screen panel navigation rather than shrinking the grid or removing actions.
-
-**Companion settings** is a separate page reached from each roster row's "…" menu in the
-sidebar and from the open thread's header. It has one direct form leading with the icon generator, then name, instructions, and the same provider-then-model picker
-used during creation, on the same flat hairline surface without stacking cards or adding
-navigation. Owner and Editor also see a hairline-separated Runtime section. The temporary Restart
-control asynchronously recycles Pi on the existing Box. Durable lifecycle intent survives navigation
-or reload; the client does not retry provider calls itself. Controls are disabled during incompatible
-lifecycle work or while settings have unsaved changes, but an existing Box in Error keeps Pi recycle
-available so the error state cannot hide its own repair. Viewer sees none of them. The Owner alone sees a separate
-permanent-delete action and an explicit irreversible confirmation; Editor can save but cannot delete,
-and Viewer sees disabled read-only fields. Sending a message remains the only normal wake path: there
-is no Wake button and saving settings never wakes an asleep Box. The thread, Box chip, Plugins, Lux,
-and top-level navigation remain unchanged.
-
-**Companion thread** is a two-sided conversation in one reading column narrower than the page. A
-member's message is a right-aligned tinted bubble with `2xl` radius and no border; a Companion reply
-is left-aligned, unboxed rich text with copyable markdown and code. One logical turn remains one
-message however many reasoning, reply, tool, and question parts it produced. Reasoning is collapsed
-and never substitutes for the answer. Ordinary assistant text is the user-facing answer, not a place
-for tool selection, internal planning, progress narration, or self-talk. An assistant message that
-contains a Pi tool call is not projected as chat text; the later no-tool message is the visible final
-answer. Updates use one short sentence and acknowledgements may be one word, while the owner's persona
-continues to own voice. A tool run is a hairline
-card with arguments and result folded
-until asked; a visual run may carry exactly one bounded stored Box frame. Pi runs shell and file
-tools without approval. `ask_user` is the one interactive card: Owner/Editor may answer or deny it,
-Viewer may only read its durable result.
-
-The durable Turn state, not browser inference, owns waiting UI. `queued` and `admitted` may show
-quiet operational copy, while only a positively acknowledged active Turn says “Companion is
-replying…”; `needs_input` and every terminal state stop it. A
-small queue count explains why later accepted messages have not started. A blocking human decision
-pauses the inactivity clock and returns control to Pi after ten minutes without treating silence as
-approval. A newer member message ends the wait sooner so Pi can finish safely before that ordinary
-queued turn runs. Outside `needs_input`, ten minutes without correlated activity always becomes a
-visible terminal outcome; the two-hour absolute ceiling remains authoritative everywhere.
-
-An unresolved `interrupted` card explains that delivery became ambiguous and that previous external
-effects may have succeeded. It states that the prompt will not be replayed and keeps the composer
-and its draft available for the next FIFO message. Runtime invalidates `Prepared`, recycles only the
-captured Pi invocation, and rebuilds current staging before later work. Stable, expurgated errors
-may offer only actions that remain safe for their state, such as Restart Pi or Switch model.
-
-The transcript keeps day boundaries and one member-private `New` divider, neither inside a turn.
-Loading uses static skeleton lines. A reply keeps Copy as its one ordinary action, always reachable
-without hover. The composer is one field with its send control, one attach control, and one hint line, with no
-toolbar: dictation/voice, slash commands, mentions, model picker, tool controls, routines,
-schedules, and multi-Bot handoffs do not belong here. Attaching is part of saying something, so the
-attach control sits inside the field at its leading edge, opposite Send; staged files read as chips
-above the field, and a refused file says why in one line directly beneath those chips rather than in
-a dialog. The hint line below the field keeps its own job: it says why Send is unavailable,
-including when a message carries files but no words. Sending is the only normal wake action; typing
-does not prewarm. A Viewer gets the same PostgreSQL-backed transcript with a read-only note in place
-of the composer. Empty threads state what happens next instead of greeting the reader, and the
-workspace sidebar remains the conversation list.
 
 **Status dot plus label** is mandatory for health and lifecycle state. Dots are static 6px to 8px circles. No pulse, no glow, no animation.
 
@@ -514,21 +400,3 @@ Do:
   interruptions have no actions.
 
 Don't:
-
-- Do not create marketing hero dashboards.
-- Do not use big-number vanity metric cards.
-- Do not use gradients, gradient text, glassmorphism, backdrop blur, glow, bokeh, or decorative texture outside the native iOS 26 Liquid Glass exception above.
-- Do not use emoji in product UI.
-- Do not use em dashes in UI copy.
-- Do not use web fonts.
-- Do not use pulsing, glowing, or animated status dots.
-- Do not make color the only carrier of meaning.
-- Do not use modal-first detail flows when a drawer preserves context.
-- Do not build generic AI SaaS visuals: purple gradient cards, sparkle icons, oversized rounded panels, or identical icon-heading-text card grids.
-- Do not prettify ids, states, roles, scopes, env vars, hostnames, resource addresses, or model names.
-- Do not let healthy state shout. Do not let broken state hide.
-- Do not show a Wake action, keystroke prewarm, multi-Bot handoff, routine, schedule, voice,
-  harness picker, or deployment control.
-- Do not build a file library, a file manager, or any attachment surface outside the message it was
-  sent with. Files belong to the message; there is no place to browse them. After their bytes expire,
-  keep a quiet metadata-only card in that message and remove every download affordance.

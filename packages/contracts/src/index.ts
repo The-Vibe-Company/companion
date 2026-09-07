@@ -1,6 +1,5 @@
 export * from "./scope";
 export * from "./frontmatter";
-export * from "./companionBudgets";
 export * from "./companionManifest";
 export * from "./companionManifestJsonSchema";
 export * from "./validation";
@@ -20,8 +19,3 @@ export * from "./billing";
 export * from "./github";
 export * from "./agentOperations";
 export * from "./skillDatabase";
-export * from "./companions";
-export * from "./companionRuntime";
-export * from "./companionPluginCatalog";
-export * from "./companionToolKinds";
-export * from "./companionControlMcp";

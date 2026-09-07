@@ -1,57 +1,14 @@
 # Companion vision
 
-Companion is a self-hostable Skills Hub with an optional, tightly bounded Companions runtime.
-The Skills Hub remains the product core: organizations create, validate, version, organize, share,
-install, and publish portable `SKILL.md` packages. A hosted Companion is an additional way to use
-that governed library: one named teammate, one durable thread, one persistent box.ascii.dev Box,
-and one Pi daemon that can work asynchronously after the browser closes.
+Companion is a self-hostable, multi-tenant Skills Hub. Organizations create, validate, version,
+organize, share, install, and publish portable SKILL.md packages. Members use the web or CLI;
+external coding agents use delegated Agent Auth against the same authorized APIs.
 
-The control plane owns identity, authorization, durable intent, selected Skills and plugins,
-provider connections, transcript projections, and observable outcomes. A dedicated runtime service
-alone contacts Box and Pi. Pi sessions and working files remain on Box disk; ordinary reads and all
-Viewer access remain control-plane-only.
+Skills are portable files. Personal libraries are creator-only, organization libraries are shared,
+and labels organize without changing access. Immutable versions, dependency validation, comments,
+public releases, and install records make reuse trustworthy. Secrets stay encrypted and write-only;
+short-lived grants authorize retrieval. Declared Skill Databases provide tenant-scoped SQLite state.
 
-External coding agents continue to use delegated Agent Auth as Skills Hub clients. They are not
-hosted Companions, and their grants do not authorize Companion lifecycle or chat operations.
-
-## Principles
-
-- Skills are portable files, not opaque hosted behavior.
-- Organization and personal libraries have explicit, predictable ownership.
-- Validation, immutable versions, dependencies, comments, public releases, and install records make
-  reuse trustworthy.
-- Labels organize skills without changing access.
-- Secrets remain write-only and are disclosed only through scoped, short-lived grants or the
-  authorized runtime injection boundary.
-- Skill Databases provide declared, tenant-scoped state without executing package scripts.
-- GitHub sync, the CLI, Agent Auth, and hosted Companions use the same service-layer authorization.
-- A message is durable before wake or delivery; every accepted turn ends in a reply, decision,
-  explicit failure, interruption, or cancellation.
-- Runtime work survives API, browser, and runtime replica failure through durable attempts,
-  operations, leases, checkpoints, and fenced settlement.
-- Ambiguity is visible. Companion never guesses that a prompt was not executed and never silently
-  replays a possibly accepted attempt.
-
-## Product boundary
-
-Companions deliberately stop short of the broader Grok Bot vision. This version has no generic
-Projects, Group/Room model, autonomous multi-Bot orchestration, proactive jobs, voice, file library, artifact surface, or
-arbitrary computer-provider marketplace. Scheduled Companion routines are in scope: they create
-exactly-once durable runs on a cron+timezone schedule and execute in isolated Pi sessions inside the
-same Companion runtime. A message may carry files and a turn
-may hand images back, because showing a teammate something is part of talking to them; nothing
-about that becomes a store of files with a life of its own. It does not add a generic model platform,
-agent builder, container catalog, deployment manager, or harness selection UI.
-
-Every ordinary admitted main Turn does receive one product-owned control MCP for its own identity,
-Skills, plugins, routines, triggers, Pi recycle, and explicitly granted directed text delegations.
-Sensitive changes remain durable human-approved intent. This bounded source→target primitive is the
-foundation for future groups without introducing a group aggregate in this release.
-
-Pi is the only harness, box.ascii.dev is the only Box provider, and one Companion is always one Box,
-one main Pi session, and one thread. A routine may launch a run-scoped Pi process using that same
-harness and Box; it does not create another Companion or runtime owner. Sending a message is the
-only normal wake action. Archive and permanent deletion remain explicit lifecycle actions. An
-ambiguous delivery invalidates `Prepared`; runtime recycles only the captured Pi invocation and
-gates only its affected lane until durable proof;
-independent warm-lane work remains available.
+Companion completes authorized workflows end to end with credentials it already holds.
+Hosted teammates, chat, Box/Pi execution, routines, triggers, plugins, and native chat clients are
+retired. Companion does not launch external coding agents or execute skill package scripts.
