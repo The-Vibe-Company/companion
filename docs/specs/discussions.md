@@ -20,6 +20,21 @@ history through a scoped control tool. Work and artifacts are scoped to the disc
 reuse elsewhere requires explicit references. Workbench tabs follow actual companion
 capabilities; profiles from separate Design PRs are not silently invented or merged here.
 
+## Conversation and activity interface
+
+The message recipient is explicit in the composer. Choosing an autocomplete mention replaces
+that typed token with the selected recipient; later choices replace the recipient. Inspecting
+an agent's activity or sending a message does not change the open view. User messages retain
+the recipient in their header. Shared discussions and direct chats have separate sidebar
+sections, ordered by last update within each section.
+
+Desktop keeps discussion activity beside the conversation. Mobile switches between Thread
+and Activity without losing the draft or recipient. Activity uses snapshot task states,
+questions, previews and results; an idle machine alone never implies active work. Delegated
+replies have compact receipts in the timeline and full results in the companion workbench.
+Stop controls remain scoped to the central chat or one companion in this discussion. A stop
+request is acknowledged separately from the persisted stopped state.
+
 ## HTTP contract
 
 All routes require the authenticated account and enforce ownership. JSON errors have

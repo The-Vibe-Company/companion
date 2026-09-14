@@ -205,7 +205,7 @@ class Verifier:
         self.run("storage", ["docker", "run", "--detach", "--name", self.storage_name,
             "--label", self.verification_label, "--publish", "127.0.0.1::9000",
             "--env", f"MINIO_ROOT_USER={storage_access_key}", "--env", f"MINIO_ROOT_PASSWORD={storage_secret_key}",
-            "minio/minio:RELEASE.2025-04-22T22-12-26Z@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e", "server", "/data"])
+            "quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e", "server", "/data"])
         storage_mapping = subprocess.check_output(["docker", "port", self.storage_name, "9000/tcp"], text=True).strip()
         storage_endpoint = f"http://127.0.0.1:{storage_mapping.rsplit(':', 1)[-1]}"
         for _ in range(60):
@@ -221,7 +221,7 @@ class Verifier:
         self.run("storage-bucket", ["docker", "run", "--rm", "--label", self.verification_label,
             "--network", f"container:{self.storage_name}",
             "--env", f"MC_HOST_verify=http://{storage_access_key}:{storage_secret_key}@127.0.0.1:9000",
-            "minio/mc:RELEASE.2025-04-16T18-13-26Z@sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3",
+            "quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z@sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3",
             "mb", "--ignore-existing", "verify/companions-files"])
         self.env.update({"S3_ENDPOINT": storage_endpoint, "S3_ACCESS_KEY_ID": storage_access_key,
             "S3_SECRET_ACCESS_KEY": storage_secret_key, "S3_BUCKET_FILES": "companions-files", "S3_REGION": "us-east-1"})

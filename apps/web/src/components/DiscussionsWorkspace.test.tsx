@@ -63,7 +63,7 @@ describe("discussions workspace", () => {
     expect(composer).toHaveAttribute("aria-controls", suggestions.id);
     expect(document.getElementById(composer.getAttribute("aria-activedescendant")!)).toHaveAttribute("aria-selected", "true");
     await actor.keyboard("{Enter}");
-    expect(composer).toHaveValue("Ask @Ada ");
+    expect(composer).toHaveValue("Ask ");
     expect(screen.getByRole("textbox", { name: "Message Ada" })).toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([, options]) => options?.method === "POST")).toBe(false);
     await actor.click(screen.getByRole("button", { name: "Ada" }));
@@ -333,17 +333,17 @@ it('returns from a companion to the discussion agent using only keyboard mention
  expect(bodies).toHaveLength(0);
  await actor.type(composer,'reprends la suite');await actor.keyboard('{Enter}');
  await waitFor(()=>expect(bodies).toHaveLength(1));
- expect(bodies[0]).toMatchObject({content:'@Ada merci. @Companion reprends la suite',targetCompanionId:null});
+ expect(bodies[0]).toMatchObject({content:'merci. reprends la suite',targetCompanionId:null});
  expect(localStorage.getItem('companions.build:discussion-target:user-1:discussion-1')).toBeNull();
  cleanup();vi.unstubAllGlobals();
 });
 
-it('uses the last complete mention and restores the main view when addressing Companion',async()=>{
+it('uses the last complete mention without changing the work being inspected',async()=>{
  setupFetch();const actor=userEvent.setup();renderWorkspace();
  await actor.click(await screen.findByRole('button',{name:'Ada'}));
  const composer=screen.getByRole('textbox',{name:'Message Companion'});
  fireEvent.change(composer,{target:{value:'@Ada continue puis @Companion, résume'}});
- expect(screen.queryByRole('complementary',{name:'Ada workbench'})).not.toBeInTheDocument();
+ expect(screen.getByRole('complementary',{name:'Ada workbench'})).toBeInTheDocument();
  expect(screen.getByRole('combobox',{name:'Message recipient'})).toHaveValue('');
  fireEvent.change(composer,{target:{value:'@Companion merci. @Ada continue'}});
  expect(screen.getByRole('combobox',{name:'Message recipient'})).toHaveValue('ada');
@@ -367,4 +367,76 @@ it('retries a failed message ending in @Companion with Enter and unchanged routi
  expect(bodies[1]).toEqual(bodies[0]);
  expect(bodies[1].targetCompanionId).toBeNull();
  cleanup();vi.unstubAllGlobals();
+});
+
+describe("clear addressing and persisted activity", () => {
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+  it("keeps an explicit recipient selection when editing text containing an older mention", async () => {
+    setupFetch(); const actor = userEvent.setup(); renderWorkspace();
+    const composer = await screen.findByRole("textbox", { name: "Message Companion" });
+    fireEvent.change(composer, { target: { value: "@Ada research this" } });
+    expect(screen.getByRole("combobox", { name: "Message recipient" })).toHaveValue("ada");
+    await actor.selectOptions(screen.getByRole("combobox", { name: "Message recipient" }), "june");
+    await actor.type(composer, " carefully");
+    expect(screen.getByRole("combobox", { name: "Message recipient" })).toHaveValue("june");
+    expect(screen.getByRole("textbox", { name: "Message June" })).toHaveValue("@Ada research this carefully");
+  });
+
+  it("restores an uncertain central send without applying an unrelated saved recipient", async () => {
+    sessionStorage.setItem("companions.build:discussion-draft:user-1:discussion-1", JSON.stringify({ attempted: true, content: "Continue planning", targetCompanionId: null, clientMessageId: "11111111-1111-4111-8111-111111111111", files: [] }));
+    localStorage.setItem("companions.build:discussion-target:user-1:discussion-1", "ada");
+    const bodies: Array<Record<string, unknown>> = [];
+    setupFetch((path, options) => path.endsWith("/messages") && options?.method === "POST" ? (bodies.push(JSON.parse(String(options.body))), response({ runId: "retry", discussionId: discussion.id, companionId: null })) : undefined);
+    const actor = userEvent.setup(); renderWorkspace();
+    expect(await screen.findByRole("textbox", { name: "Message Companion" })).toHaveValue("Continue planning");
+    await actor.click(screen.getByRole("button", { name: "Send message" }));
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toMatchObject({ clientMessageId: "11111111-1111-4111-8111-111111111111", targetCompanionId: null });
+  });
+
+  it("shows task reception, progress and completion from successive snapshots without navigating away", async () => {
+    let poll: (() => void) | undefined;
+    vi.spyOn(window, "setInterval").mockImplementation(((callback: TimerHandler, delay?: number) => { if (delay === 2500) poll = callback as () => void; return 42; }) as typeof window.setInterval);
+    let status = "queued";
+    setupFetch(path => path === "/api/discussions/discussion-1" ? response({ ...snapshot, tasks: [{ id: "delegation", companionId: "ada", status, content: "Compare the three suppliers", previewText: status === "running" ? "Reading supplier documentation" : null, resultText: status === "succeeded" ? "Supplier B meets the requirements." : null, error: null, createdAt: discussion.createdAt, finishedAt: status === "succeeded" ? discussion.createdAt : null, files: [], questions: [] }] }) : undefined);
+    renderWorkspace();
+    const activity = await screen.findByRole("complementary", { name: "Discussion activity" });
+    expect(within(activity).getByText("Task received")).toBeInTheDocument();
+    expect(within(activity).queryByText("Completed")).not.toBeInTheDocument();
+    status = "running"; poll?.();
+    expect(await within(activity).findByText("Reading supplier documentation")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Message Companion" })).toBeInTheDocument();
+    status = "succeeded"; poll?.();
+    expect(await within(activity).findByText("Completed")).toBeInTheDocument();
+    expect(within(activity).getByText("Supplier B meets the requirements.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Stop Ada" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Ada workbench" })).not.toBeInTheDocument();
+  });
+
+  it("puts a question ahead of an agent's completed work and keeps it answerable", async () => {
+    const task = { companionId: "ada", content: "Research suppliers", previewText: null, resultText: null, error: null, createdAt: discussion.createdAt, finishedAt: null, files: [] };
+    setupFetch(path => path === "/api/discussions/discussion-1" ? response({ ...snapshot, tasks: [
+      { ...task, id: "newer", status: "succeeded", createdAt: "2026-09-11T10:00:00Z", questions: [], resultText: "A different task is done" },
+      { ...task, id: "waiting", status: "needs_input", questions: [{ id: "q", question: "Which market should I cover?", options: ["France", "Europe"], answer: null }] },
+    ] }) : undefined);
+    renderWorkspace();
+    const activity = await screen.findByRole("complementary", { name: "Discussion activity" });
+    expect(within(activity).getByText("Needs your answer")).toBeInTheDocument();
+    expect(within(activity).getByText("Which market should I cover?")).toBeInTheDocument();
+    expect(within(screen.getByRole("log")).getByRole("button", { name: "France" })).toBeInTheDocument();
+  });
+
+  it("acknowledges a stop request without claiming the task has already stopped", async () => {
+    setupFetch((path, options) => {
+      if (path.endsWith("/cancel") && options?.method === "POST") return response({ ok: true });
+      if (path === "/api/discussions/discussion-1") return response({ ...snapshot, centralRuns: [{ id: "central", status: "running", previewText: null, error: null, createdAt: discussion.createdAt, finishedAt: null }] });
+    });
+    const actor = userEvent.setup(); renderWorkspace();
+    await actor.click(await screen.findByRole("button", { name: "Stop chat" }));
+    expect(await screen.findByText("Stop requested")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop chat" })).toBeDisabled();
+    expect(screen.getByText("Companion · Working")).toBeInTheDocument();
+    expect(screen.queryByText("Stopped")).not.toBeInTheDocument();
+  });
 });
