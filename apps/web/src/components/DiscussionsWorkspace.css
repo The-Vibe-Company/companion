@@ -1249,7 +1249,7 @@
 .discussion-row:hover .discussion-archive,.discussion-row:focus-within .discussion-archive { opacity:1; }
 .discussion-files img { outline:1px solid oklch(0 0 0 / .1); outline-offset:-1px; }
 .discussion-shell :is(.activity-agent,.quiet-stop,.task-open,.composer-send) { transition:background-color 120ms ease, color 120ms ease; }
-.discussion-shell .composer-send:active { transform:scale(.96); }
+
 @media (hover:none) { .discussion-archive { opacity:1; } }
 @media (min-width:1025px) and (max-width:1200px) {
   .discussion-sidebar { width:220px; flex-basis:220px; }
@@ -1286,7 +1286,7 @@
   .discussion-empty h2 { font-size:28px; }
 }
 @media (prefers-reduced-motion:reduce) {
-  .discussion-shell .composer-send:active { transform:none; }
+
   .discussion-shell .spin { animation:none; }
 }
 .discussion-stage { position:relative; }

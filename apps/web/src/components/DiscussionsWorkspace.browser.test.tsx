@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { execFileSync } from "node:child_process";
+import { renderInBrowser } from "../test/browser";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -32,7 +32,7 @@ it("keeps the conversation usable beside activity on desktop and across mobile v
           {...task,id:'draft',companionId:'june',status:'needs_input',content:'Draft the launch announcement',questions:[{id:'q',question:'Who is the announcement for?',options:['Existing customers','New customers'],answer:null}]}],
         centralRuns:[],proposals:[],beforeCursor:null };
       window.fetch = async input => new Response(JSON.stringify(String(input)==='/api/discussions' ? {discussions:[discussion],folders:[]} : snapshot), {headers:{'content-type':'application/json'}});
-      createRoot(document.getElementById('root')).render(<DiscussionsWorkspace user={{id:'user',name:'Sam',email:'sam@example.invalid'}} companions={[ada,june]} initialDiscussionId='chat' legacyCompanionId={null} onUnauthorized={()=>{}} onCreateCompanion={()=>{}} onApplications={()=>{}} onAccount={()=>{}}/>);
+      createRoot(document.getElementById('root')).render(<DiscussionsWorkspace user={{id:'user',name:'Sam',email:'sam@example.invalid'}} companions={[ada,june]} initialDiscussionId='chat' legacyCompanionId={null} onUnauthorized={()=>{}} onCreateCompanion={()=>{}} onApplications={()=>{}} onAccount={()=>{}} onCompanionSettings={()=>{}}/>);
       const wait = () => new Promise(resolve=>setTimeout(resolve,40));
       async function check() {
         for (let i=0;i<40&&!document.querySelector('.discussion-composer');i++) await wait();
@@ -43,7 +43,7 @@ it("keeps the conversation usable beside activity on desktop and across mobile v
         const rail = document.querySelector('.discussion-workbench');
         const field = composer.querySelector('textarea');
         const mobile = innerWidth <= 1024;
-        const result = { mobile, initialThread:visible(timeline), initialComposer:visible(composer), initialActivity:visible(rail), overflow:document.documentElement.scrollWidth>innerWidth, stopWidth:document.querySelector('.quiet-stop').getBoundingClientRect().width };
+        const result = { viewport:innerWidth, mobile, initialThread:visible(timeline), initialComposer:visible(composer), initialActivity:visible(rail), overflow:document.documentElement.scrollWidth>innerWidth, stopWidth:document.querySelector('.quiet-stop').getBoundingClientRect().width };
         const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set;
         setter.call(field,'Keep my draft'); field.dispatchEvent(new Event('input',{bubbles:true})); await wait();
         if (mobile) { document.querySelector('[aria-label="Show activity"]').click(); await wait(); }
@@ -60,6 +60,25 @@ it("keeps the conversation usable beside activity on desktop and across mobile v
         const box = composer.getBoundingClientRect();
         result.composerOnScreen = box.bottom <= innerHeight && box.left >= 0 && box.right <= innerWidth;
         result.noHorizontalOverflow = [timeline,composer,rail].filter(visible).every(node=>node.scrollWidth<=node.clientWidth+1);
+        const press = document.querySelector('.composer-send');
+        press.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0}));
+        await new Promise(resolve=>setTimeout(resolve,180));
+        result.pressScale = getComputedStyle(press).scale;
+        press.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}));
+        const answerInput = document.querySelector('.discussion-question input').getBoundingClientRect();
+        const answerButton = document.querySelector('.discussion-question button[type="submit"]').getBoundingClientRect();
+        result.answerFits = answerInput.left >= 0 && answerButton.right <= innerWidth;
+        const detailsButton = document.querySelector('[aria-label="Discussion details"]');
+        detailsButton.focus(); detailsButton.click(); await wait();
+        const modal = document.querySelector('[role="dialog"]');
+        result.modalFocus = modal.contains(document.activeElement);
+        result.modalIsolation = document.querySelector('.discussion-main').inert;
+        const close = modal.querySelector('[aria-label="Close details"]');
+        close.focus();
+        document.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',shiftKey:true,bubbles:true,cancelable:true}));
+        result.focusWrap = modal.contains(document.activeElement) && document.activeElement !== close;
+        document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})); await wait();
+        result.focusReturned = document.activeElement === detailsButton && !document.querySelector('.discussion-main').inert;
         const report = document.createElement('pre'); report.id='browser-result'; report.hidden=true; report.textContent=JSON.stringify(result); document.body.append(report);
       }
       check().catch(error=>{const report=document.createElement('pre');report.id='browser-result';report.textContent=JSON.stringify({error:String(error)});document.body.append(report);});
@@ -70,23 +89,20 @@ it("keeps the conversation usable beside activity on desktop and across mobile v
     const js = output.filter(asset => asset.type === "chunk").map(asset => asset.type === "chunk" ? asset.code : "").join("\n");
     const file = path.join(directory, "index.html");
     writeFileSync(file, `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style><div id="root"></div><script>${js.replace(/<\/script/gi, "<\\/script")}</script>`);
-    for (const width of [1440, 1100, 768, 390]) {
+    for (const [width, reducedMotion] of [[1440, false], [1100, false], [768, false], [390, false], [320, false], [390, true]] as const) {
       const screenshot = process.env.DISCUSSION_SCREENSHOTS;
       if (screenshot) mkdirSync(screenshot, { recursive: true });
-      const dom = execFileSync(process.env.CHROME_BIN || "google-chrome", [
-        "--headless", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--no-first-run",
-        "--no-default-browser-check", "--disable-background-networking", "--disable-extensions", "--disable-sync",
-        `--user-data-dir=${path.join(directory, `profile-${width}`)}`, `--window-size=${width},1000`,
-        "--virtual-time-budget=6000", ...(screenshot ? [`--screenshot=${path.resolve(screenshot, `discussion-${width}.png`)}`] : []),
-        "--dump-dom", pathToFileURL(file).href,
-      ], { encoding: "utf8", timeout: 45_000, maxBuffer: 8 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+      const dom = await renderInBrowser({
+        url:pathToFileURL(file).href, profile:path.join(directory, `profile-${width}-${reducedMotion}`), width, reducedMotion, height:width < 500 ? 844 : 900,
+        screenshot:screenshot ? path.resolve(screenshot, `discussion-${width}${reducedMotion ? "-reduced" : ""}.png`) : undefined,
+      });
       const match = dom.match(/<pre id="browser-result"[^>]*>(.*?)<\/pre>/);
       expect(match, `browser report at ${width}px`).not.toBeNull();
       const result = JSON.parse(match![1]);
       expect(result, `${width}px`).toMatchObject({
-        mobile: width <= 1024, initialThread: true, initialComposer: true, initialActivity: width > 1024,
+        pressScale: reducedMotion ? "1" : "0.96", answerFits: true, viewport: width, mobile: width <= 1024, initialThread: true, initialComposer: true, initialActivity: width > 1024,
         overflow: false, activityVisible: true, agentTask: true, workbenchVisible: true, taskDetails: true,
-        returnedToThread: true, draftPreserved: true, recipientUnchanged: true, composerOnScreen: true, noHorizontalOverflow: true,
+        modalFocus: true, modalIsolation: true, focusWrap: true, focusReturned: true, returnedToThread: true, draftPreserved: true, recipientUnchanged: true, composerOnScreen: true, noHorizontalOverflow: true,
       });
       expect(result.stopWidth).toBeLessThanOrEqual(44);
     }

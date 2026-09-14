@@ -1,9 +1,9 @@
 .landing {
-  --landing-ink: oklch(.255 .008 120);
-  --landing-muted: oklch(.49 .009 100);
-  --landing-line: oklch(.925 .004 95);
+  --landing-ink: oklch(.25 .02 60);
+  --landing-muted: oklch(.5 .02 70);
+  --landing-line: oklch(.9 .015 80);
   width: 100%; height: 100%; min-height: 100%; overflow-x: hidden; overflow-y: auto;
-  background: oklch(.988 .003 95); color: var(--landing-ink); font-size: 16px;
+  background: oklch(.975 .01 85); color: var(--landing-ink); font-size: 16px;
   scroll-behavior: smooth;
 }
 .landing button, .landing a { color: inherit; }
@@ -19,9 +19,8 @@
 .landing-header nav button:not(.landing-cta) { border: 0; padding: 0; background: transparent; cursor: pointer; }
 .landing-header nav button:not(.landing-cta) { color: var(--landing-ink); font-weight: 550; }
 .landing-mobile-login { display: none; }
-.landing-cta { display: inline-flex; min-height: 58px; align-items: center; justify-content: center; gap: 12px; border: 0; border-radius: 999px; padding: 0 30px; background: var(--landing-ink); color: white !important; font-size: 17px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: transform 160ms ease-out, background 160ms ease-out; }
-.landing-cta:hover { background: oklch(.2 .008 120); transform: translateY(-1px); }
-.landing-cta:active { transform: translateY(0); }
+.landing-cta { display: inline-flex; min-height: 58px; align-items: center; justify-content: center; gap: 12px; border: 0; border-radius: 999px; padding: 0 30px; background: var(--landing-ink); color: white !important; font-size: 17px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+@media(hover:hover) and (pointer:fine) { .landing-cta:hover { background:oklch(.2 .02 60); } }
 .landing-cta--compact { min-height: 44px; padding: 0 18px; font-size: 14px; }
 .landing-hero { display: grid; width: 100%; max-width: 1240px; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); align-items: center; gap: 40px; margin: 0 auto; padding: 84px 64px 0; }
 .landing-badge { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 12px; background: oklch(.94 .05 145); color: oklch(.38 .1 145); font-size: 13px; font-weight: 600; }

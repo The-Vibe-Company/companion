@@ -25,7 +25,7 @@ The design export runtime is for preview only and is not a production dependency
 ## Navigation and conversation
 
 A compact 264px desktop sidebar groups independent discussions by optional folders, shows
-folder-authorized companions, and anchors the companion avatar dock above applications/account
+folder-authorized companions, and anchors named Companion rows with separate chat/settings actions above applications/account
 access. Creation, archived discussions, folder editing and direct chats remain reachable.
 
 The header pairs a serif discussion title and folder context with participant pills and discussion
@@ -69,3 +69,28 @@ narrow 320px layout. Exercise @ selection, split-view open/close, mobile navigat
 folder controls, scrolling, file recovery and error states. Use focused web checks while iterating
 and full verification before publishing. Reference preview fixtures remain in ignored artifacts;
 production displays only real API state. No Box is required for this visual work.
+
+## Consistent settings and interaction rules
+
+Companion settings are available directly at `/companions/:id/settings`, without creating a
+conversation. The dedicated page and contextual discussion settings share one configuration
+form. Name and role come first; appearance, model selection and client sharing are disclosures.
+Application accounts are connected globally and granted separately to each Companion.
+Standalone navigation returns to the discussion that opened it, including its saved text draft.
+The product mark navigates to an existing discussion; the plus action creates one.
+
+The coordinator keeps the name Companion, with “Coordinates this discussion” in recipient
+selection. Opening activity never changes the recipient. An accepted answer or stop request
+is acknowledged separately from the next persisted task state. Background update failures keep
+the last received messages visible. Loading archives and account data is distinct from emptiness.
+
+Buttons use 120ms pointer press feedback at scale 0.96, with a `static` opt-out. Keyboard input
+and reduced motion suppress movement. Modal sheets isolate background content, wrap focus,
+close with Escape and restore focus, including nested desktop controls. Mobile navigation
+applies the same focus behavior only at its drawer breakpoint.
+
+Browser coverage includes standalone pages at 1440×900, 390×844 and 320×844, plus discussion
+activity, draft preservation and modal keyboard behavior. CDP sets and asserts actual viewport
+widths; Chrome's command-line window size alone can clamp the layout to 500px. Screenshots use
+controlled test data and system font fallbacks, not live provider evidence. Set
+`DISCUSSION_SCREENSHOTS` to an ignored artifact directory to retain captures.

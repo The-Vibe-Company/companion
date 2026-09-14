@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 import { CompanionAvatar, type CompanionAvatarValue } from "@/components/CompanionAvatar";
 import { ProviderMark } from "@/components/ProviderMark";
@@ -29,7 +30,7 @@ function BrandMark({ size = 30 }: { size?: number }) {
 }
 
 function Cta({ onClick, compact = false }: { onClick: () => void; compact?: boolean }) {
-  return <button type="button" className={compact ? "landing-cta landing-cta--compact" : "landing-cta"} onClick={onClick}>{compact ? "Private beta" : "Log in to private beta"} <span aria-hidden="true">→</span></button>;
+  return <Button type="button" className={compact ? "landing-cta landing-cta--compact" : "landing-cta"} onClick={onClick}>{compact ? "Private beta" : "Log in to private beta"} <span aria-hidden="true">→</span></Button>;
 }
 
 export function LandingPage({ onLogin }: { onLogin: () => void }) {
@@ -81,13 +82,13 @@ export function LandingPage({ onLogin }: { onLogin: () => void }) {
       <div className="landing-steps">
         <article><div className="landing-step-art landing-step-faces">{people.map(person => <CompanionAvatar key={person.name} {...person} size={84} />)}</div><span>1</span><h3>Name it</h3><p>Pick a face and a name. Tell your companion what you’d like help with.</p></article>
         <article><div className="landing-step-art landing-app-grid">{[["gmail", "Gmail"], ["notion", "Notion"], ["slack", "Slack"], ["github", "GitHub"]].map(([provider, name]) => <span key={provider}><ProviderMark provider={provider} name={name} /></span>)}</div><span>2</span><h3>Connect your apps</h3><p>Choose the accounts your companion can use. With Gmail, it can read messages and create drafts for you to review.</p></article>
-        <article><div className="landing-step-art"><div className="landing-working"><CompanionAvatar name="Pip" avatar={{ shape: 2, color: 7, face: 1 }} size={30} />Pip is on it <i /><i /><i /></div></div><span>3</span><h3>Let it work</h3><p>Send a message, follow the persisted task state, and find the result in the same discussion.</p></article>
+        <article><div className="landing-step-art"><div className="landing-working"><CompanionAvatar name="Pip" avatar={{ shape: 2, color: 7, face: 1 }} size={30} />Pip is on it <i /><i /><i /></div></div><span>3</span><h3>Let it work</h3><p>Send a message, follow the work, and find the result in the same discussion.</p></article>
       </div>
     </section>
 
     <section className="landing-stories" id="stories"><div>
       <h2>Start with something on your list.</h2>
-      <p>A little admin. A new idea. Something you’ve been meaning to get to.</p>
+      <p>A few examples of what you could ask. Start with something you’ve been meaning to get to.</p>
       <div className="landing-story-grid">{stories.map(story => <article key={story.name}><CompanionAvatar name={story.name} avatar={story.avatar} size={72} /><div><h3>{story.name} <span>· {story.job}</span></h3><p>{story.did}</p></div><small>{story.who}</small></article>)}</div>
     </div></section>
 

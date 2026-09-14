@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DiscussionsWorkspace } from "./DiscussionsWorkspace";
@@ -325,7 +325,7 @@ it('returns from a companion to the discussion agent using only keyboard mention
  await actor.type(composer,'@Ad');await actor.keyboard('{Enter}');
  expect(screen.getByRole('combobox',{name:'Message recipient'})).toHaveValue('ada');
  await actor.type(composer,'merci. @Comp');
- const option=screen.getByRole('option',{name:/Companion Your discussion agent/});
+ const option=screen.getByRole('option',{name:/Companion Coordinates this discussion/});
  expect(composer).toHaveAttribute('aria-activedescendant',option.id);
  await actor.keyboard('{Enter}');
  expect(screen.getByRole('combobox',{name:'Message recipient'})).toHaveValue('');
@@ -439,4 +439,49 @@ describe("clear addressing and persisted activity", () => {
     expect(screen.getByText("Companion · Working")).toBeInTheDocument();
     expect(screen.queryByText("Stopped")).not.toBeInTheDocument();
   });
+});
+
+it("keeps an accepted answer disabled until the persisted question disappears", async () => {
+  let resolveAnswer!: (value: Response) => void;
+  const fetchMock = setupFetch((path) => {
+    if (path.endsWith('/questions/question-1/answer')) return new Promise(resolve => { resolveAnswer = resolve; });
+    if (path === '/api/discussions/discussion-1') return response({ ...snapshot, tasks: [{
+      id:'task-1',companionId:'ada',status:'needs_input',content:'Choose a direction',previewText:null,resultText:null,error:null,
+      createdAt:discussion.createdAt,finishedAt:null,files:[],questions:[{id:'question-1',question:'Which audience?',options:['Customers'],answer:null}],
+    }] });
+  });
+  renderWorkspace();
+  const choice = await screen.findByRole('button',{name:'Customers'});
+  fireEvent.click(choice);
+  expect(choice).toBeDisabled();
+  fireEvent.click(choice);
+  expect(fetchMock.mock.calls.filter(([path]) => String(path).endsWith('/questions/question-1/answer'))).toHaveLength(1);
+  resolveAnswer(new Response(JSON.stringify({ok:true}),{headers:{'content-type':'application/json'}}));
+  expect(await screen.findByText('Answer received.')).toBeInTheDocument();
+  expect(choice).toBeDisabled();
+});
+
+
+it("keeps the archive modal isolated when navigation crosses its responsive breakpoint", async () => {
+  let change = () => {};
+  const query = { matches: true, addEventListener: (_: string, listener: () => void) => { change = listener; }, removeEventListener: () => {} };
+  vi.stubGlobal("matchMedia", () => query);
+  setupFetch(path => path === "/api/discussions?archived=true" ? response({ discussions: [], folders: [] }) : undefined);
+  const view = renderWorkspace();
+  await screen.findByRole("heading", { name: "Launch" });
+  const main = view.container.querySelector<HTMLElement>(".discussion-main")!;
+  fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+  fireEvent.click(screen.getByRole("button", { name: "Archived discussions" }));
+  const archives = await screen.findByRole("dialog", { name: "Archived discussions" });
+  expect(main.inert).toBe(true);
+  act(() => { query.matches = false; change(); });
+  expect(main.inert).toBe(true);
+  act(() => { query.matches = true; change(); });
+  expect(archives.inert).not.toBe(true);
+  expect(archives.contains(document.activeElement)).toBe(true);
+  expect(main.inert).toBe(true);
+  act(() => { query.matches = false; change(); });
+  fireEvent.click(within(archives).getByRole("button", { name: "Close archived discussions" }));
+  expect(main.inert).not.toBe(true);
+  cleanup(); vi.unstubAllGlobals();
 });
