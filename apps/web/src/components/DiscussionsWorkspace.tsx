@@ -17,6 +17,8 @@ import {
   FolderPlus,
   LoaderCircle,
   Menu,
+  Maximize2,
+  Minimize2,
   MessageCircle,
   MoreHorizontal,
   Paperclip,
@@ -331,6 +333,19 @@ function DiscussionView({ user, snapshot, olderMessages, companions, folders, on
   const [editingTitle, setEditingTitle] = useState(false);
   const [title, setTitle] = useState(discussion.title);
   const [tab, setTab] = useState<string>("conversation");
+  const [expanded, setExpanded] = useState(false);
+  const [workspaceView, setWorkspaceView] = useState<"results" | "files" | "machine" | "settings">("files");
+  const workspaceTrigger = useRef<HTMLElement | null>(null);
+  function openWorkspace(id: string, view: typeof workspaceView = "files") {
+    if (tab === "conversation") workspaceTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setWorkspaceView(view);
+    setExpanded(view === "machine");
+    setTab(id);
+  }
+  function closeWorkspace() {
+    setTab("conversation");
+    requestAnimationFrame(() => { if (workspaceTrigger.current?.isConnected) workspaceTrigger.current.focus(); });
+  }
   const [starter, setStarter] = useState<string | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const followLatest = useRef(true);
@@ -356,15 +371,13 @@ function DiscussionView({ user, snapshot, olderMessages, companions, folders, on
   const earlierTasks = visibleTasks.filter(isEarlierActivity);
   const earlierCount = earlierCentral.length + earlierTasks.length;
   const centralCard = (run: DiscussionSnapshot["centralRuns"][number]) => <section className="discussion-task" key={run.id}><strong>Companion · {statusLabel(run.status)}</strong>{run.previewText && <MessageResponse>{run.previewText}</MessageResponse>}{run.error && <p className="task-error" role="status">{run.error}</p>}</section>;
-  const taskCard = (task: DiscussionSnapshot["tasks"][number]) => <TaskCard key={task.id} discussionId={discussion.id} task={task} companion={companionMap.get(task.companionId)} compact onOpen={() => setTab(task.companionId)} onRefresh={onRefresh} onError={onError} />;
+  const taskCard = (task: DiscussionSnapshot["tasks"][number]) => <TaskCard key={task.id} discussionId={discussion.id} task={task} companion={companionMap.get(task.companionId)} compact onOpen={() => openWorkspace(task.companionId, "results")} onRefresh={onRefresh} onError={onError} />;
 
-  const participantIds=new Set(snapshot.participants.filter(item=>!item.removedAt).map(item=>item.companionId));
-  const authorized=(folders.find(folder=>folder.id===discussion.folderId)?.companionIds??[]).map(id=>companionMap.get(id)).filter((companion):companion is Companion=>Boolean(companion&&!companion.retiredAt&&!participantIds.has(companion.id)));
   return <section className="discussion-view">
     <header className="discussion-header"><Button className="discussion-mobile-menu" variant="ghost" size="icon" onClick={onMenu} aria-label="Open navigation"><Menu /></Button><div className="discussion-title">
       {direct && <CompanionAvatar name={direct.name} avatar={direct.avatar} sleeping={direct.status === "archived"} size={34}/>}<div>{editingTitle ? <form onSubmit={event => { event.preventDefault(); void saveTitle(); }}><input aria-label="Discussion title" value={title} onChange={event => setTitle(event.target.value)} autoFocus /><Button size="sm" type="submit">Save</Button></form> : <button onClick={() => setEditingTitle(true)} aria-label="Rename discussion"><h1>{discussion.title || "Untitled discussion"}</h1><Pencil /></button>}<span>{direct ? `Direct with ${direct.name}` : participants.length ? `${participants.length} companion${participants.length === 1 ? "" : "s"} invited` : "Companion discussion"}</span></div>
-    </div><nav aria-label="Discussion views"><button className="activity-toggle" aria-current={tab !== "conversation" ? "page" : undefined} onClick={() => setTab(tab === "conversation" ? "work" : "conversation")}><Activity /><span>Activity</span>{activeTasks.length > 0 && <i>{activeTasks.length}</i>}</button></nav><Button variant="ghost" size="icon" onClick={onDetails} aria-label="Discussion details"><MoreHorizontal /></Button></header>
-    <div className={cn("discussion-stage", "discussion-stage--workspace", tab!=="conversation"&&"discussion-stage--activity-open")}><div className="discussion-timeline" ref={timelineRef} onScroll={event => {
+    </div><nav aria-label="Discussion views"><button aria-label="Open files" aria-expanded={tab === "work"} onClick={() => tab === "work" ? closeWorkspace() : openWorkspace("work")}><FileText /><span>Files</span></button><button aria-label="Open computers" aria-expanded={tab === "machines"} onClick={() => tab === "machines" ? closeWorkspace() : openWorkspace("machines")}><Computer /><span>Computer</span></button></nav><Button variant="ghost" size="icon" onClick={onDetails} aria-label="Discussion details"><MoreHorizontal /></Button></header>
+    <div className={cn("discussion-stage", tab!=="conversation"&&"discussion-stage--workspace", tab!=="conversation"&&"discussion-stage--activity-open", expanded&&"discussion-stage--expanded")}><div className="discussion-timeline" ref={timelineRef} onScroll={event => {
       const node = event.currentTarget;
       followLatest.current = node.scrollHeight - node.scrollTop - node.clientHeight < 64;
       setAwayFromLatest(!followLatest.current);
@@ -383,17 +396,18 @@ function DiscussionView({ user, snapshot, olderMessages, companions, folders, on
       {earlierCount > 0 && <details className="discussion-earlier-activity"><summary>Earlier activity ({earlierCount})</summary>{earlierCentral.map(centralCard)}{earlierTasks.map(taskCard)}</details>}
       {centralFailures.filter(run => !isEarlierActivity(run)).map(centralCard)}
       {visibleTasks.filter(task => !isEarlierActivity(task)).map(taskCard)}
-    </div><aside className="discussion-workbench" aria-label={tab==="conversation"||tab==="work"?"Discussion activity":`${companionMap.get(tab)?.name??"Companion"} workbench`}>
-      {tab!=="conversation"&&tab!=="work" ? <><button className="workbench-close" onClick={()=>setTab("conversation")} aria-label="Close workbench"><X /></button><CompanionWorkbench key={tab} snapshot={snapshot} companionId={tab} onRefresh={onRefresh} onError={onError}/></> : <ActivityPanel snapshot={snapshot} onOpen={setTab} onDetails={onDetails} authorized={authorized} onRefresh={onRefresh} onError={onError}/>}
-    </aside>
+    </div>{tab !== "conversation" && <aside className="discussion-workbench" aria-label={tab === "work" ? "Discussion files" : tab === "machines" ? "Discussion computers" : `${companionMap.get(tab)?.name ?? "Companion"} workbench`} onKeyDown={event => { if (event.key === "Escape" && !event.defaultPrevented) { event.stopPropagation(); closeWorkspace(); } }}>
+      <div className="workbench-controls"><Button className="workbench-expand" variant="ghost" size="icon" static aria-label={expanded ? "Reduce workspace" : "Expand workspace"} aria-pressed={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? <Minimize2 /> : <Maximize2 />}</Button><Button variant="ghost" size="icon" aria-label="Close workbench" onClick={closeWorkspace}><X /></Button></div>
+      {tab === "work" || tab === "machines" ? <WorkspaceOverview snapshot={{...snapshot, messages: allMessages}} machines={tab === "machines"} onOpen={openWorkspace} /> : <CompanionWorkbench key={tab} snapshot={{...snapshot, messages: allMessages}} companionId={tab} view={workspaceView} onView={view => { setWorkspaceView(view); if (view === "machine") setExpanded(true); }} onRefresh={onRefresh} onError={onError}/>}
+    </aside>}
     {awayFromLatest && <button className="discussion-jump-latest" onClick={() => { const node = timelineRef.current; if (node) node.scrollTop = node.scrollHeight; followLatest.current = true; setAwayFromLatest(false); }}><ArrowDown />Latest messages</button>}
     {!discussion.archivedAt ? <DiscussionComposer userId={user.id} snapshot={snapshot} companions={companions} initialDraft={starter} onInitialDraftApplied={()=>setStarter(null)} onRefresh={onRefresh} onError={onError}/> : <p className="discussion-archived-note">This discussion is archived. Restore it to send a message.</p>}</div>
-    <nav className="discussion-mobile-nav" aria-label="Mobile workspace"><button aria-label="Show discussion" aria-current={tab==="conversation"?"page":undefined} onClick={()=>setTab("conversation")}><MessageCircle/>Thread</button><button aria-label="Show activity" aria-current={tab!=="conversation"?"page":undefined} onClick={()=>setTab("work")}><Activity/>Activity{activeTasks.length > 0 && <span className="mobile-activity-count">{activeTasks.length}</span>}</button><details className="mobile-participant-picker" onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}>
+    <nav className="discussion-mobile-nav" aria-label="Mobile workspace"><button aria-label="Show discussion" aria-current={tab==="conversation"?"page":undefined} onClick={()=>setTab("conversation")}><MessageCircle/>Thread</button><button aria-label="Show files" aria-current={tab==="work"?"page":undefined} onClick={()=>openWorkspace("work")}><FileText/>Files</button><details className="mobile-participant-picker" onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}>
       <summary aria-label="Choose discussion companion"><Users/>Companions</summary>
       <div className="mobile-participant-options" role="group" aria-label="Discussion workspaces">
         <strong>In this discussion</strong>
-        {snapshot.participants.map(participant => <button key={participant.companionId} aria-label={`View ${participant.companion.name} workspace`} aria-current={tab === participant.companionId ? "page" : undefined} onClick={event => { setTab(participant.companionId); event.currentTarget.closest("details")?.removeAttribute("open"); }}><CompanionAvatar name={participant.companion.name} avatar={participant.companion.avatar} size={28}/><span>{participant.companion.name}{participant.removedAt && <small>Previous participant</small>}</span></button>)}
-        {snapshot.tasks.length > 0 && <button onClick={event => { setTab("work"); event.currentTarget.closest("details")?.removeAttribute("open"); }}><FileText/>All work in this discussion</button>}
+        {snapshot.participants.map(participant => <button key={participant.companionId} aria-label={`View ${participant.companion.name} workspace`} aria-current={tab === participant.companionId ? "page" : undefined} onClick={event => { openWorkspace(participant.companionId); event.currentTarget.closest("details")?.removeAttribute("open"); }}><CompanionAvatar name={participant.companion.name} avatar={participant.companion.avatar} size={28}/><span>{participant.companion.name}{participant.removedAt && <small>Previous participant</small>}</span></button>)}
+        {snapshot.tasks.length > 0 && <button onClick={event => { setTab("work"); event.currentTarget.closest("details")?.removeAttribute("open"); }}><FileText/>All files in this discussion</button>}
         <button onClick={event => { event.currentTarget.closest("details")?.removeAttribute("open"); onDetails(); }}><UserPlus/>Manage participants</button>
       </div>
     </details></nav>
@@ -417,40 +431,17 @@ function StopControl({ label, onStop, onRefresh, onError }: {
   </div>;
 }
 
-function ActivityPanel({ snapshot, onOpen, onDetails, authorized, onRefresh, onError }: {
-  snapshot: DiscussionSnapshot; onOpen: (id: string) => void; onDetails: () => void; authorized: Companion[];
-  onRefresh: () => Promise<void>; onError: (cause: unknown) => void;
+function WorkspaceOverview({ snapshot, machines, onOpen }: {
+  snapshot: DiscussionSnapshot; machines: boolean;
+  onOpen: (id: string, view?: "files" | "machine") => void;
 }) {
-  const tasks = orderedTasks(snapshot.tasks);
-  const working = tasks.filter(task => activeStatus(task.status));
-  const participants = [...snapshot.participants].sort((a, b) => {
-    const aTask = tasks.find(task => task.companionId === a.companionId);
-    const bTask = tasks.find(task => task.companionId === b.companionId);
-    return Number(Boolean(bTask && activeStatus(bTask.status))) - Number(Boolean(aTask && activeStatus(aTask.status)));
-  });
-  return <div className="discussion-activity">
-    <header><div><h2>Activity</h2><p role="status">{working.length ? `${working.length} task${working.length === 1 ? "" : "s"} in progress` : "Work in this discussion"}</p></div><button className="activity-manage" onClick={onDetails} aria-label="Manage participants" title="Manage participants"><UserPlus /></button></header>
-    <div className="activity-agents">
-      {participants.map(participant => {
-        const { companion } = participant;
-        const ownTasks = tasks.filter(task => task.companionId === companion.id);
-        const task = ownTasks[0];
-        const count = ownTasks.filter(item => activeStatus(item.status)).length;
-        const question = ownTasks.flatMap(item => activeStatus(item.status) ? item.questions.filter(question => question.answer === null) : [])[0];
-        return <button className="activity-agent" key={companion.id} aria-label={companion.name} onClick={() => onOpen(companion.id)}>
-          <CompanionAvatar name={companion.name} avatar={companion.avatar} size={32}/>
-          <span className="activity-agent-content"><span className="activity-agent-heading"><strong>{companion.name}</strong><ChevronRight /></span>
-            <span className="work-status" data-status={question ? "needs_input" : task?.status ?? "idle"}>{question ? "Needs your answer" : task ? workStatus(task.status) : participant.removedAt ? "Previous participant" : "No task assigned"}{count > 1 ? ` · ${count} tasks` : ""}</span>
-            {task && <span className="activity-task-title">{task.content}</span>}
-            {(question || task?.previewText || task?.resultText || task?.error) && <span className="activity-task-preview">{question?.question ?? task?.error ?? (task && activeStatus(task.status) ? task.previewText : task?.resultText)}</span>}
-            {task?.status === "succeeded" && <span className="activity-result-link">View result{task.files.length ? ` · ${task.files.length} file${task.files.length === 1 ? "" : "s"}` : ""}</span>}
-          </span>
-        </button>;
-      })}
-    </div>
-    {!participants.length && <div className="activity-empty"><Users /><h3>Bring in a companion</h3><p>Type @ in your message to choose who helps. Their tasks and results will appear here.</p></div>}
-    {authorized.length > 0 && <section className="activity-available"><h3>Available in this folder</h3>{authorized.map(companion => <button key={companion.id} aria-label={`Invite ${companion.name}`} onClick={async () => { try { await discussionApi.addParticipant(snapshot.discussion.id, companion.id); await onRefresh(); } catch (cause) { onError(cause); } }}><CompanionAvatar name={companion.name} avatar={companion.avatar} size={26}/><span>{companion.name}</span><Plus /></button>)}</section>}
-    {participants.length > 0 && <p className="activity-footnote">Open a companion to see tasks, replies and files.</p>}
+  const files = [...new Map([...snapshot.messages.flatMap(message => message.files), ...snapshot.tasks.flatMap(task => task.files)].map(file => [file.id, file])).values()];
+  const participants = snapshot.participants.filter(item => !machines || item.companion.provider === "box");
+  return <div className="discussion-resources">
+    <header><h2>{machines ? "Computers" : "Files"}</h2><p>{machines ? "Open a companion’s computer." : "Shared in this discussion."}</p></header>
+    {!machines && (files.length ? fileList(files) : <div className="workbench-empty"><FileText /><h3>No files yet</h3><p>Attachments and files from your companions will appear here.</p></div>)}
+    {participants.length > 0 && <section className="workspace-companions"><h3>{machines ? "Available computers" : "Companion workspaces"}</h3>{participants.map(({ companion, removedAt }) => <button key={companion.id} aria-label={companion.name} onClick={() => onOpen(companion.id, machines ? "machine" : "files")}><CompanionAvatar name={companion.name} avatar={companion.avatar} size={32}/><span><strong>{companion.name}</strong><small>{removedAt ? "Previous participant" : machines ? "Computer" : "Files and results"}</small></span><ChevronRight /></button>)}</section>}
+    {machines && !participants.length && <div className="workbench-empty"><Computer /><h3>No computer available</h3><p>Companions with computer access in this discussion will appear here.</p></div>}
   </div>;
 }
 
@@ -466,7 +457,7 @@ function TaskCard({ discussionId, task, companion, compact = false, onOpen, onRe
       {compact && <button className="task-open" aria-label={`View ${companion?.name ?? "companion"} task`} title="View task" onClick={onOpen}><ChevronRight /></button>}
     </header>
     <p className="task-prompt">{task.content}</p>
-    {!compact && task.previewText && active && <details className="task-detail" open><summary>Latest update</summary><MessageResponse>{task.previewText}</MessageResponse></details>}
+    {task.previewText && active && <details className="task-detail" open><summary>Latest update</summary><MessageResponse>{task.previewText}</MessageResponse></details>}
     {!compact && task.resultText && <details className="task-detail" open><summary>Result</summary><MessageResponse>{task.resultText}</MessageResponse>{fileList(task.files)}</details>}
     {task.error && <p className="task-error">{task.error}</p>}
     {!compact && !task.resultText && fileList(task.files)}
@@ -576,16 +567,16 @@ function DiscussionComposer({ userId, snapshot, companions, initialDraft, onInit
   </form>;
 }
 
-function CompanionWorkbench({ snapshot, companionId, onRefresh, onError }: {
+function CompanionWorkbench({ snapshot, companionId, view, onView: setView, onRefresh, onError }: {
   snapshot: DiscussionSnapshot; companionId: string;
+  view: "results" | "files" | "machine" | "settings"; onView: (view: "results" | "files" | "machine" | "settings") => void;
   onRefresh: () => Promise<void>; onError: (cause: unknown) => void;
 }) {
-  const [view, setView] = useState<"results" | "files" | "machine" | "settings">("results");
   const participant = snapshot.participants.find(item => item.companionId === companionId);
   if (!participant) return <div className="work-empty"><p>This companion's invitation is being recorded.</p></div>;
   const companion = participant.companion;
   const tasks = orderedTasks(snapshot.tasks.filter(task => task.companionId === companionId));
-  const files = [...new Map(tasks.flatMap(task => task.files).map(file => [file.id, file])).values()];
+  const files = [...new Map([...tasks.flatMap(task => task.files), ...snapshot.messages.filter(message => message.companionId === companionId).flatMap(message => message.files)].map(file => [file.id, file])).values()];
   const direct = snapshot.discussion.directCompanionId === companionId;
   return <div className="work-panel companion-workbench">
     <header className="companion-workbench-header">
@@ -593,7 +584,7 @@ function CompanionWorkbench({ snapshot, companionId, onRefresh, onError }: {
       <div><h2>{companion.name}</h2><p>{participant.removedAt ? "Removed from this discussion · previous work remains available" : companion.instructions}</p></div>
     </header>
     <nav className="workbench-tabs" aria-label="Companion workspace views">
-      <button aria-current={view === "results" ? "page" : undefined} onClick={() => setView("results")}>Activity</button>
+      <button aria-current={view === "results" ? "page" : undefined} onClick={() => setView("results")}>Results</button>
       <button aria-current={view === "files" ? "page" : undefined} onClick={() => setView("files")}>Files{files.length > 0 && <span>{files.length}</span>}</button>
       {companion.provider === "box" && <button aria-current={view === "machine" ? "page" : undefined} onClick={() => setView("machine")}>Machine</button>}
       {direct && <button aria-current={view === "settings" ? "page" : undefined} onClick={() => setView("settings")}>Configuration</button>}

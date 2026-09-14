@@ -28,9 +28,11 @@ an agent's activity or sending a message does not change the open view. User mes
 the recipient in their header. Shared discussions and direct chats have separate sidebar
 sections, ordered by last update within each section.
 
-Desktop keeps discussion activity beside the conversation. Mobile switches between Thread
-and Activity without losing the draft or recipient. Activity uses snapshot task states,
-questions, previews and results; an idle machine alone never implies active work. Delegated
+The conversation uses the available width until the user opens Files, Computer, or a companion
+workspace. Desktop shows resources beside the conversation with an optional wider view; a
+computer view uses more space automatically. Mobile switches between Thread and Files or a
+companion workspace without losing the draft or recipient. Task progress, questions and stop
+controls stay in the conversation and use snapshot states; an idle machine alone never implies active work. Delegated
 replies have compact receipts in the timeline and full results in the companion workbench.
 Stop controls remain scoped to the central chat or one companion in this discussion. A stop
 request is acknowledged separately from the persisted stopped state.

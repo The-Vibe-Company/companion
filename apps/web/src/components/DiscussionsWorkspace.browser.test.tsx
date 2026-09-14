@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import { build } from "vite";
 import { expect, it } from "vitest";
 
-it("keeps the conversation usable beside activity on desktop and across mobile views", async () => {
+it("keeps the conversation usable beside resources on desktop and across mobile views", async () => {
   // Render the actual component with API fixtures. This checks layout and interactions,
   // not backend persistence or live agent execution.
   const directory = mkdtempSync(path.join(process.cwd(), "node_modules/.discussion-browser-"));
@@ -40,18 +40,24 @@ it("keeps the conversation usable beside activity on desktop and across mobile v
         document.querySelector('.discussion-wordmark img').src = ${JSON.stringify(pathToFileURL(path.join(process.cwd(), 'public/favicon.svg')).href)};
         const timeline = document.querySelector('.discussion-timeline');
         const composer = document.querySelector('.discussion-composer');
-        const rail = document.querySelector('.discussion-workbench');
+        let rail = document.querySelector('.discussion-workbench');
         const field = composer.querySelector('textarea');
         const mobile = innerWidth <= 1024;
         const result = { viewport:innerWidth, mobile, initialThread:visible(timeline), initialComposer:visible(composer), initialActivity:visible(rail), overflow:document.documentElement.scrollWidth>innerWidth, stopWidth:document.querySelector('.quiet-stop').getBoundingClientRect().width };
         const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set;
         setter.call(field,'Keep my draft'); field.dispatchEvent(new Event('input',{bubbles:true})); await wait();
-        if (mobile) { document.querySelector('[aria-label="Show activity"]').click(); await wait(); }
-        result.activityVisible = visible(rail) && visible(rail.querySelector('.discussion-activity'));
-        result.agentTask = rail.textContent.includes('Reviewing the pricing and onboarding flows.');
+        document.querySelector(mobile ? '[aria-label="Show files"]' : '[aria-label="Open files"]').click(); await wait();
+        rail = document.querySelector('.discussion-workbench');
+        result.activityVisible = visible(rail) && visible(rail.querySelector('.discussion-resources'));
+        result.agentTask = rail.textContent.includes('Companion workspaces');
         rail.querySelector('[aria-label="Ada"]').click(); await wait();
         result.workbenchVisible = visible(document.querySelector('[aria-label="Ada workbench"]'));
-        result.taskDetails = rail.textContent.includes('Compare positioning across three competing products');
+        result.taskDetails = rail.textContent.includes('No files yet');
+        if (!mobile) {
+          const before = rail.getBoundingClientRect().width;
+          document.querySelector('[aria-label="Expand workspace"]').click(); await wait();
+          result.expands = rail.getBoundingClientRect().width > before && visible(composer) && document.documentElement.scrollWidth <= innerWidth;
+        } else result.expands = true;
         document.querySelector('[aria-label="Close workbench"]').click(); await wait();
         result.returnedToThread = visible(timeline) && visible(composer);
         result.draftPreserved = field.value === 'Keep my draft';
@@ -100,7 +106,7 @@ it("keeps the conversation usable beside activity on desktop and across mobile v
       expect(match, `browser report at ${width}px`).not.toBeNull();
       const result = JSON.parse(match![1]);
       expect(result, `${width}px`).toMatchObject({
-        pressScale: reducedMotion ? "1" : "0.96", answerFits: true, viewport: width, mobile: width <= 1024, initialThread: true, initialComposer: true, initialActivity: width > 1024,
+        pressScale: reducedMotion ? "1" : "0.96", answerFits: true, viewport: width, mobile: width <= 1024, initialThread: true, initialComposer: true, initialActivity: false, expands: true,
         overflow: false, activityVisible: true, agentTask: true, workbenchVisible: true, taskDetails: true,
         modalFocus: true, modalIsolation: true, focusWrap: true, focusReturned: true, returnedToThread: true, draftPreserved: true, recipientUnchanged: true, composerOnScreen: true, noHorizontalOverflow: true,
       });
