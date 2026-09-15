@@ -1,0 +1,48 @@
+apps/web/src/components/discussions/ActivityLine.tsx
+  s_edd938fd7c4829::t_0df5929b467029 1-19
+apps/web/src/components/discussions/Workbench.tsx
+  s_edd938fd7c4829::t_9c7f214486036d 1-75
+apps/web/src/components/discussions/useThreadScroll.ts
+  s_edd938fd7c4829::t_aae56d0623cd70 1-28
+apps/web/src/components/discussions/ThreadHeader.tsx
+  s_edd938fd7c4829::t_0698ad4755353b 1-27
+apps/web/src/components/DiscussionsWorkspace.tsx
+  s_edd938fd7c4829::t_ffb8b2027303bb 1-3,6-9,177-197,201
+apps/web/src/components/discussions/Composer.tsx
+  s_edd938fd7c4829::t_8e1dea451d868a 1-94
+apps/web/src/components/discussions/DetailsPanel.tsx
+  s_edd938fd7c4829::t_dba6b3637549d9 1-45
+apps/web/src/components/discussions/Thread.tsx
+  s_edd938fd7c4829::t_9d3ffb466516f7 48,50
+  s_edd938fd7c4829::t_f20b7a0c380e1a 1-15,17-47,49,51-71,73-89
+  s_edd938fd7c4829::t_92f47bb45e1535 16
+  s_edd938fd7c4829::t_88705e1a6fc51c 72
+apps/web/src/components/discussions/Sidebar.tsx
+  s_edd938fd7c4829::t_2c921447d3fafb 1-89
+apps/web/src/components/discussions/MessageItem.tsx
+  s_edd938fd7c4829::t_882084be2e9f6d 1-25
+apps/web/src/components/discussions/EmptyState.tsx
+  s_edd938fd7c4829::t_1653917584f9bf 1-12
+apps/web/src/components/discussions/QuestionCard.tsx
+  s_edd938fd7c4829::t_2a9d73d189b2da 1-18
+apps/web/src/components/discussions/InvitationCard.tsx
+  s_edd938fd7c4829::t_dd3a6cdc165aad 1-19
+apps/web/src/components/discussions/shared.ts
+  s_edd938fd7c4829::t_8760e3a456367e 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5b080dd8f232c67651f927b6504f8f9959c6b9d4",
+  "prompts": {},
+  "sessions": {
+    "s_edd938fd7c4829": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c52b168-f139-46e2-8bfb-136bf8e88e1e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
