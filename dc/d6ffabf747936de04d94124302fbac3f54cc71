@@ -1,0 +1,35 @@
+apps/web/src/components/discussions/styles/workbench.css
+  s_edd938fd7c4829::t_d084561a76bd77 1-112
+apps/web/src/components/discussions/styles/panels.css
+  s_edd938fd7c4829::t_e129c5cf8740c5 1-115
+apps/web/src/components/discussions/styles/composer.css
+  s_edd938fd7c4829::t_2fec16fd7a0307 1-146
+apps/web/src/components/discussions/styles/tokens.css
+  s_edd938fd7c4829::t_63886554da56a4 1-39
+apps/web/src/components/discussions/styles/thread.css
+  s_edd938fd7c4829::t_dc5729081c2c12 1-359
+apps/web/src/components/discussions/styles/index.css
+  s_edd938fd7c4829::t_f2ad9db25bc2b0 1-7
+apps/web/src/components/discussions/styles/shell.css
+  s_edd938fd7c4829::t_684aef5ff4d279 1-132
+apps/web/src/components/DiscussionsWorkspace.tsx
+  s_edd938fd7c4829::t_bc6d7027489be5 10
+apps/web/src/components/discussions/styles/sidebar.css
+  s_edd938fd7c4829::t_294f49f390269f 1-254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dcd6ffabf747936de04d94124302fbac3f54cc71",
+  "prompts": {},
+  "sessions": {
+    "s_edd938fd7c4829": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c52b168-f139-46e2-8bfb-136bf8e88e1e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
