@@ -271,6 +271,8 @@ function RenameRow({ value, label, onSave, onCancel, inline = false }: { value: 
     className={cn("rename-row", inline && "rename-row--inline")}
     onSubmit={event => { event.preventDefault(); if (name.trim()) void onSave(name.trim()); }}
     onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onCancel(); } }}
+    // Renaming a folder happens inside its summary; typing must not fold it.
+    onClick={event => event.stopPropagation()}
   >
     <input aria-label={label} autoFocus value={name} onChange={event => setName(event.target.value)} onBlur={onCancel} />
   </form>;

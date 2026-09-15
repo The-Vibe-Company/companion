@@ -35,24 +35,28 @@ export function RowMenu({ request, onClose }: { request: RowMenuRequest; onClose
       if (returnFocus && anchor.isConnected) anchor.focus();
       onClose();
     }
+    // Capture, so Escape closes this menu without also closing the drawer behind it.
     const keydown = (event: KeyboardEvent) => {
       const nodes = entries();
       if (!nodes.length) return;
       const index = nodes.indexOf(document.activeElement as HTMLElement);
-      if (event.key === "Escape") { event.preventDefault(); dismiss(true); }
-      else if (event.key === "ArrowDown") { event.preventDefault(); nodes[(index + 1) % nodes.length].focus(); }
-      else if (event.key === "ArrowUp") { event.preventDefault(); nodes[(index - 1 + nodes.length) % nodes.length].focus(); }
-      else if (event.key === "Home") { event.preventDefault(); nodes[0].focus(); }
-      else if (event.key === "End") { event.preventDefault(); nodes[nodes.length - 1].focus(); }
-      else if (event.key === "Tab") { event.preventDefault(); dismiss(true); }
+      const handled = ["Escape", "ArrowDown", "ArrowUp", "Home", "End", "Tab"].includes(event.key);
+      if (!handled) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.key === "Escape" || event.key === "Tab") dismiss(true);
+      else if (event.key === "ArrowDown") nodes[(index + 1) % nodes.length].focus();
+      else if (event.key === "ArrowUp") nodes[(index - 1 + nodes.length) % nodes.length].focus();
+      else if (event.key === "Home") nodes[0].focus();
+      else nodes[nodes.length - 1].focus();
     };
     const pointerdown = (event: Event) => {
       const target = event.target as Node;
       if (!menuRef.current?.contains(target) && !anchor.contains(target)) dismiss(false);
     };
-    document.addEventListener("keydown", keydown);
+    document.addEventListener("keydown", keydown, true);
     document.addEventListener("pointerdown", pointerdown);
-    return () => { document.removeEventListener("keydown", keydown); document.removeEventListener("pointerdown", pointerdown); };
+    return () => { document.removeEventListener("keydown", keydown, true); document.removeEventListener("pointerdown", pointerdown); };
   }, [anchor, onClose]);
 
   return <div
