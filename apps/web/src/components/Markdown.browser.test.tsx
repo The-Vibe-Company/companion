@@ -16,7 +16,7 @@ it("shows Markdown list markers after Tailwind preflight without changing UI lis
     logLevel: "silent",
     build: {
       write: false,
-      rollupOptions: { input: ["src/index.css", "src/components/DiscussionsWorkspace.css"] },
+      rollupOptions: { input: ["src/index.css", "src/components/discussions/styles/index.css"] },
     },
   });
   const css = (Array.isArray(bundle) ? bundle : [bundle])
