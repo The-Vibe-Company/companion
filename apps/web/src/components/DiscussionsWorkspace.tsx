@@ -186,7 +186,6 @@ export function DiscussionsWorkspace({ user, companions, initialDiscussionId, le
       onOpen={openDiscussion}
       onArchive={archiveDiscussion}
       onCreate={createDiscussion}
-      onFolderCreated={folder => setFolders(current => [...current, folder])}
       onListRefresh={loadList}
       onShowArchived={() => void showArchived()}
       onCreateCompanion={onCreateCompanion}

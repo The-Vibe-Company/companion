@@ -57,7 +57,8 @@ describe("settings and return navigation", () => {
     const fetchMock = installApi(); render(<App/>);
     const composer = await screen.findByRole("textbox", { name: "Message Companion" });
     fireEvent.change(composer, { target: { value: "Keep this idea" } });
-    fireEvent.click(screen.getByRole("button", { name: "Settings for Ada" }));
+    fireEvent.click(screen.getByRole("button", { name: "Options for Ada" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings for Ada" }));
     expect(await screen.findByRole("heading", { name: "Ada settings" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/companions/ada/settings");
     fireEvent.change(screen.getByRole("textbox", { name: "Name" }), { target: { value: "Ada Research" } });

@@ -1,0 +1,89 @@
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { MoreHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export type RowMenuItem = { label: string; onSelect: () => void; accessibleName?: string; danger?: boolean };
+export type RowMenuRequest = { id: string; label: string; items: RowMenuItem[]; anchor: HTMLElement };
+
+/**
+ * One accessible menu per rail, opened by a row's trigger or by a right click.
+ * It is not a modal: focus moves into the menu, Escape gives it back to the trigger.
+ */
+export function RowMenu({ request, onClose }: { request: RowMenuRequest; onClose: () => void }) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [placement, setPlacement] = useState<{ top: number; right: number; origin: string } | null>(null);
+  const { anchor, items, label } = request;
+
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    const host = menu?.offsetParent as HTMLElement | null;
+    if (!menu || !host) return;
+    const trigger = anchor.getBoundingClientRect();
+    const frame = host.getBoundingClientRect();
+    const below = trigger.bottom + menu.offsetHeight + 8 <= window.innerHeight;
+    setPlacement({
+      top: (below ? trigger.bottom + 4 : trigger.top - menu.offsetHeight - 4) - frame.top,
+      right: frame.right - trigger.right,
+      origin: below ? "top right" : "bottom right",
+    });
+  }, [anchor]);
+
+  useEffect(() => {
+    const entries = () => [...(menuRef.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
+    entries()[0]?.focus();
+    function dismiss(returnFocus: boolean) {
+      if (returnFocus && anchor.isConnected) anchor.focus();
+      onClose();
+    }
+    const keydown = (event: KeyboardEvent) => {
+      const nodes = entries();
+      if (!nodes.length) return;
+      const index = nodes.indexOf(document.activeElement as HTMLElement);
+      if (event.key === "Escape") { event.preventDefault(); dismiss(true); }
+      else if (event.key === "ArrowDown") { event.preventDefault(); nodes[(index + 1) % nodes.length].focus(); }
+      else if (event.key === "ArrowUp") { event.preventDefault(); nodes[(index - 1 + nodes.length) % nodes.length].focus(); }
+      else if (event.key === "Home") { event.preventDefault(); nodes[0].focus(); }
+      else if (event.key === "End") { event.preventDefault(); nodes[nodes.length - 1].focus(); }
+      else if (event.key === "Tab") { event.preventDefault(); dismiss(true); }
+    };
+    const pointerdown = (event: Event) => {
+      const target = event.target as Node;
+      if (!menuRef.current?.contains(target) && !anchor.contains(target)) dismiss(false);
+    };
+    document.addEventListener("keydown", keydown);
+    document.addEventListener("pointerdown", pointerdown);
+    return () => { document.removeEventListener("keydown", keydown); document.removeEventListener("pointerdown", pointerdown); };
+  }, [anchor, onClose]);
+
+  return <div
+    ref={menuRef}
+    className="row-menu"
+    role="menu"
+    aria-label={label}
+    style={placement ? { top: placement.top, right: placement.right, transformOrigin: placement.origin } : { opacity: 0 }}
+  >
+    {items.map(item => <button
+      key={item.label}
+      type="button"
+      role="menuitem"
+      className={cn("row-menu-item", item.danger && "row-menu-item--danger")}
+      aria-label={item.accessibleName}
+      onClick={() => { if (anchor.isConnected) anchor.focus(); onClose(); item.onSelect(); }}
+    >{item.label}</button>)}
+  </div>;
+}
+
+/** The trigger a row shows for its menu; right clicking the row opens the same menu. */
+export function RowMenuTrigger({ label, expanded, onOpen, className }: {
+  label: string; expanded: boolean; onOpen: (anchor: HTMLElement) => void; className?: string;
+}) {
+  return <button
+    type="button"
+    className={cn("row-menu-trigger", className)}
+    aria-label={label}
+    aria-haspopup="menu"
+    aria-expanded={expanded}
+    onPointerDown={event => event.stopPropagation()}
+    onClick={event => { event.preventDefault(); event.stopPropagation(); onOpen(event.currentTarget); }}
+  ><MoreHorizontal /></button>;
+}

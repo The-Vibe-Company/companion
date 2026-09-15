@@ -23,6 +23,37 @@ export function dateLabel(value: string) {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
 
+/** Roster and thread stamp: a time today, a weekday this week, a date before that. */
+export function timeLabel(value: string, now = new Date()) {
+  const date = new Date(value);
+  const midnight = new Date(now); midnight.setHours(0, 0, 0, 0);
+  if (date >= midnight) return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(date);
+  const week = new Date(midnight); week.setDate(week.getDate() - 6);
+  if (date >= week) return new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(date);
+  return new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" }).format(date);
+}
+
+export function dayLabel(value: string) {
+  return new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short" }).format(new Date(value));
+}
+
+export function fullDateLabel(value: string) {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short" }).format(new Date(value));
+}
+
+/** One calm line from Markdown, for roster previews. */
+export function stripPreview(text: string) {
+  return text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+|\d+[.)]\s+)/gm, "")
+    .replace(/[*_~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function statusLabel(value: string) { return value.replaceAll("_", " ").replace(/^./, letter => letter.toUpperCase()); }
 
 export function workStatus(value: string) {
