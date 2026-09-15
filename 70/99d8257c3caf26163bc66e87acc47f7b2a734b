@@ -1,0 +1,19 @@
+apps/web/src/components/Markdown.browser.test.tsx
+  s_edd938fd7c4829::t_83e50b05516aee 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7099d8257c3caf26163bc66e87acc47f7b2a734b",
+  "prompts": {},
+  "sessions": {
+    "s_edd938fd7c4829": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c52b168-f139-46e2-8bfb-136bf8e88e1e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
