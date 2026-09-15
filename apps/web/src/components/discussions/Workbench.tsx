@@ -7,9 +7,9 @@ import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { FileList } from "./MessageItem";
 import { QuestionCard } from "./QuestionCard";
-import { StopControl } from "./ActivityLine";
+import { StopControl, WorkStatus } from "./ActivityLine";
 import { CompanionDetailRow } from "./DetailsPanel";
-import { activeStatus, orderedTasks, workStatus } from "./shared";
+import { activeStatus, orderedTasks } from "./shared";
 
 export function WorkspaceOverview({ snapshot, machines, onOpen }: {
   snapshot: DiscussionSnapshot; machines: boolean;
@@ -25,23 +25,23 @@ export function WorkspaceOverview({ snapshot, machines, onOpen }: {
   </div>;
 }
 
-export function TaskCard({ discussionId, task, companion, compact = false, onOpen, onRefresh, onError }: {
-  discussionId: string; task: DiscussionSnapshot["tasks"][number]; companion?: Companion; compact?: boolean;
-  onOpen?: () => void; onRefresh: () => Promise<void>; onError: (cause: unknown) => void;
+export function TaskCard({ discussionId, task, companion, onRefresh, onError }: {
+  discussionId: string; task: DiscussionSnapshot["tasks"][number]; companion?: Companion;
+  onRefresh: () => Promise<void>; onError: (cause: unknown) => void;
 }) {
   const active = activeStatus(task.status);
-  return <section className={cn("discussion-task", compact && "discussion-task--receipt")} aria-label={`${companion?.name ?? "Companion"} task`}>
+  const name = companion?.name ?? "Companion";
+  return <section className="discussion-task" aria-label={`${name} task`}>
     <header>{companion ? <CompanionAvatar name={companion.name} avatar={companion.avatar} size={28}/> : <span className="central-mark central-mark--small">c.</span>}
-      <div><strong>{companion?.name ?? "Companion"}</strong><span className="work-status" data-status={task.status}>{workStatus(task.status)}</span></div>
-      {active && <StopControl label={`Stop ${companion?.name ?? "companion"}`} onStop={() => discussionApi.cancelCompanion(discussionId, task.companionId)} onRefresh={onRefresh} onError={onError}/>}
-      {compact && <button className="task-open" aria-label={`View ${companion?.name ?? "companion"} task`} title="View task" onClick={onOpen}><ChevronRight /></button>}
+      <div><strong>{name}</strong><WorkStatus status={task.status} /></div>
+      {active && <StopControl label={`Stop ${name}`} onStop={() => discussionApi.cancelCompanion(discussionId, task.companionId)} onRefresh={onRefresh} onError={onError}/>}
     </header>
     <p className="task-prompt">{task.content}</p>
     {task.previewText && active && <details className="task-detail" open><summary>Latest update</summary><MessageResponse>{task.previewText}</MessageResponse></details>}
-    {!compact && task.resultText && <details className="task-detail" open><summary>Result</summary><MessageResponse>{task.resultText}</MessageResponse><FileList files={task.files} /></details>}
+    {task.resultText && <details className="task-detail" open><summary>Result</summary><MessageResponse>{task.resultText}</MessageResponse><FileList files={task.files} /></details>}
     {task.error && <p className="task-error">{task.error}</p>}
-    {!compact && !task.resultText && <FileList files={task.files} />}
-    {task.questions.filter(question => active && question.answer === null).map(question => <QuestionCard key={question.id} discussionId={discussionId} question={question} onRefresh={onRefresh} onError={onError} />)}
+    {!task.resultText && <FileList files={task.files} />}
+    {task.questions.filter(question => active && question.answer === null).map(question => <QuestionCard key={question.id} discussionId={discussionId} question={question} companionName={name} onRefresh={onRefresh} onError={onError} />)}
   </section>;
 }
 
@@ -54,6 +54,8 @@ export function CompanionWorkbench({ snapshot, companionId, view, onView: setVie
   if (!participant) return <div className="work-empty"><p>This companion's invitation is being recorded.</p></div>;
   const companion = participant.companion;
   const tasks = orderedTasks(snapshot.tasks.filter(task => task.companionId === companionId));
+  // Delegated replies whose run is outside the task page still belong to this companion's record.
+  const delegated = snapshot.messages.filter(message => message.role === "assistant" && message.delegated && message.companionId === companionId && !snapshot.tasks.some(task => task.id === message.runId));
   const files = [...new Map([...tasks.flatMap(task => task.files), ...snapshot.messages.filter(message => message.companionId === companionId).flatMap(message => message.files)].map(file => [file.id, file])).values()];
   const direct = snapshot.discussion.directCompanionId === companionId;
   return <div className="work-panel companion-workbench">
@@ -67,7 +69,16 @@ export function CompanionWorkbench({ snapshot, companionId, view, onView: setVie
       {companion.provider === "box" && <button aria-current={view === "machine" ? "page" : undefined} onClick={() => setView("machine")}>Machine</button>}
       {direct && <button aria-current={view === "settings" ? "page" : undefined} onClick={() => setView("settings")}>Configuration</button>}
     </nav>
-    {view === "results" && (tasks.length ? tasks.map(task => <TaskCard key={task.id} discussionId={snapshot.discussion.id} task={task} companion={companion} onRefresh={onRefresh} onError={onError}/>) : <div className="workbench-empty"><MessageCircle/><h3>Ready for your next idea</h3><p>Work from {companion.name} in this discussion will appear here.</p></div>)}
+    {view === "results" && (tasks.length || delegated.length
+      ? <>
+        {tasks.map(task => <TaskCard key={task.id} discussionId={snapshot.discussion.id} task={task} companion={companion} onRefresh={onRefresh} onError={onError}/>)}
+        {delegated.map(message => <section className="discussion-task" key={message.id} aria-label={`${companion.name} delegated response`}>
+          <header><CompanionAvatar name={companion.name} avatar={companion.avatar} size={28}/><div><strong>{companion.name}</strong><span className="work-status" data-status="succeeded"><i className="status-dot" aria-hidden="true" />Earlier delegated response</span></div></header>
+          <MessageResponse>{message.content}</MessageResponse>
+          <FileList files={message.files} />
+        </section>)}
+      </>
+      : <div className="workbench-empty"><MessageCircle/><h3>Ready for your next idea</h3><p>Work from {companion.name} in this discussion will appear here.</p></div>)}
     {view === "files" && (files.length ? <FileList files={files} /> : <div className="workbench-empty"><FileText/><h3>No files yet</h3><p>Files shared by {companion.name} in this discussion will appear here.</p></div>)}
     {view === "machine" && companion.provider === "box" && <DesktopSheet companion={companion} embedded onClose={() => setView("results")} onRefresh={onRefresh}/>}
     {view === "settings" && direct && <section className="workbench-settings"><h3>Identity and configuration</h3><CompanionDetailRow participant={participant} tasks={tasks} discussionId={snapshot.discussion.id} removable={false} onRemove={async () => {}} onRefresh={onRefresh} onError={onError}/></section>}

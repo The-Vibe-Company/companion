@@ -1,19 +1,19 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { Activity, ArrowDown, ArrowUp, FileText, LoaderCircle, Maximize2, MessageCircle, Minimize2, UserPlus, Users, X } from "lucide-react";
+import { ArrowDown, ArrowUp, FileText, LoaderCircle, Maximize2, MessageCircle, Minimize2, UserPlus, Users, X } from "lucide-react";
 import { discussionApi, type AccountUser, type Companion, type DiscussionFolder, type DiscussionSnapshot } from "@/api";
 import { CompanionAvatar } from "../CompanionAvatar";
-import { MessageResponse } from "../ai-elements/message";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
-import { StopControl } from "./ActivityLine";
+import { ActivityLine, StopControl } from "./ActivityLine";
 import { Composer } from "./Composer";
 import { EmptyState } from "./EmptyState";
 import { InvitationCard } from "./InvitationCard";
 import { DaySeparator, MessageItem } from "./MessageItem";
 import { ThreadHeader } from "./ThreadHeader";
-import { CompanionWorkbench, TaskCard, WorkspaceOverview } from "./Workbench";
+import { QuestionCard } from "./QuestionCard";
+import { CompanionWorkbench, WorkspaceOverview } from "./Workbench";
 import { useThreadScroll } from "./useThreadScroll";
-import { activeStatus, groupMessages, mergeMessages, orderedTasks, statusLabel, workStatus } from "./shared";
+import { activeStatus, groupMessages, mergeMessages, orderedTasks } from "./shared";
 
 type WorkspaceView = "results" | "files" | "machine" | "settings";
 
@@ -51,39 +51,44 @@ export function Thread({ user, snapshot, olderMessages, companions, folders, onM
   }, [latestId, awayFromLatest]);
   useEffect(() => { if (!awayFromLatest) setArrived(false); }, [awayFromLatest]);
 
-  const activeCentral = snapshot.centralRuns.find(run => activeStatus(run.status));
-  const activeTasks = snapshot.tasks.filter(task => activeStatus(task.status));
+  // Terminal work is the workbench's business unless it is the answer to what you just asked.
   const latestUserTime = allMessages.reduce((latest, message) => message.role === "user" ? Math.max(latest, Date.parse(message.createdAt)) : latest, 0);
   const isEarlierActivity = (run: { status: string; finishedAt: string | null }) => !activeStatus(run.status) && run.finishedAt !== null && Date.parse(run.finishedAt) < latestUserTime;
-  const centralFailures = snapshot.centralRuns.filter(run => ['failed', 'interrupted', 'cancelled'].includes(run.status));
-  const visibleTasks = orderedTasks(snapshot.tasks).filter(task => !allMessages.some(message => message.runId === task.id && message.role === 'assistant' && message.delegated) && (activeStatus(task.status) || task.status !== 'succeeded' || !allMessages.some(message => message.runId === task.id && message.role === 'assistant')));
-  const earlierCentral = centralFailures.filter(isEarlierActivity);
-  const earlierTasks = visibleTasks.filter(isEarlierActivity);
-  const earlierCount = earlierCentral.length + earlierTasks.length;
-  const centralCard = (run: DiscussionSnapshot["centralRuns"][number]) => <section className="discussion-task" key={run.id}><strong>Companion · {statusLabel(run.status)}</strong>{run.previewText && <MessageResponse>{run.previewText}</MessageResponse>}{run.error && <p className="task-error" role="status">{run.error}</p>}</section>;
-  const taskCard = (task: DiscussionSnapshot["tasks"][number]) => <TaskCard key={task.id} discussionId={discussion.id} task={task} companion={companionMap.get(task.companionId)} compact onOpen={() => openWorkspace(task.companionId, "results")} onRefresh={onRefresh} onError={onError} />;
+  const activeCentral = snapshot.centralRuns.find(run => activeStatus(run.status));
+  const activeTasks = orderedTasks(snapshot.tasks).filter(task => activeStatus(task.status));
+  const centralFailures = snapshot.centralRuns.filter(run => ['failed', 'interrupted', 'cancelled'].includes(run.status) && !isEarlierActivity(run));
+  const taskFailures = orderedTasks(snapshot.tasks).filter(task => ['failed', 'interrupted'].includes(task.status) && !isEarlierActivity(task));
 
   return <section className="discussion-view">
     <ThreadHeader discussion={discussion} direct={direct} participants={participants.map(item => item.companion)} tab={tab} onMenu={onMenu} onDetails={onDetails} onOpenView={id => openWorkspace(id)} onCloseView={closeWorkspace} onRefresh={onRefresh} onListRefresh={onListRefresh} onError={onError} />
     <div className={cn("discussion-stage", tab!=="conversation"&&"discussion-stage--workspace", tab!=="conversation"&&"discussion-stage--activity-open", expanded&&"discussion-stage--expanded")}><div className="discussion-timeline" ref={timelineRef} onScroll={event => onScroll(event.currentTarget)} role="log" aria-label="Discussion messages" aria-live="polite">
       {snapshot.beforeCursor && <Button className="load-older" variant="outline" size="sm" disabled={loadingOlder} onClick={() => void onLoadOlder()}>{loadingOlder ? <LoaderCircle className="spin" /> : <ArrowUp />}Load earlier messages</Button>}
       {!allMessages.length && !snapshot.proposals.length && !activeCentral && !activeTasks.length && <EmptyState direct={direct} onStarter={setStarter} />}
-      {groupMessages(allMessages).map(({ message, day, header }) => {
-        const delegatedTask = message.role === "assistant" && message.delegated ? snapshot.tasks.find(task => task.id === message.runId) : undefined;
-        if (delegatedTask) {
-          const lastReply = allMessages.filter(item => item.runId === message.runId && item.role === "assistant" && item.delegated).at(-1);
-          return lastReply?.id === message.id ? taskCard(delegatedTask) : null;
-        }
-        return <Fragment key={message.id}>
-          {day && <DaySeparator value={day} />}
-          <MessageItem message={message} user={user} companions={companionMap} header={header} />
-        </Fragment>;
-      })}
+      {groupMessages(allMessages.filter(message => !(message.role === "assistant" && message.delegated))).map(({ message, day, header }) => <Fragment key={message.id}>
+        {day && <DaySeparator value={day} />}
+        <MessageItem message={message} user={user} companions={companionMap} header={header} />
+      </Fragment>)}
       {snapshot.proposals.filter(proposal => proposal.status === "pending").map(proposal => <InvitationCard key={proposal.id} discussionId={discussion.id} proposal={proposal} companion={companionMap.get(proposal.companionId)} onRefresh={onRefresh} onError={onError} />)}
-      {activeCentral && <div className="discussion-working"><div className="central-working-label" role="status"><span className="work-status" data-status={activeCentral.status}><Activity />Companion · {workStatus(activeCentral.status)}</span></div><StopControl key={activeCentral.id} label="Stop chat" onStop={() => discussionApi.cancel(discussion.id)} onRefresh={onRefresh} onError={onError}/>{activeCentral.previewText && <details><summary>View current activity</summary><MessageResponse>{activeCentral.previewText}</MessageResponse></details>}</div>}
-      {earlierCount > 0 && <details className="discussion-earlier-activity"><summary>Earlier activity ({earlierCount})</summary>{earlierCentral.map(centralCard)}{earlierTasks.map(taskCard)}</details>}
-      {centralFailures.filter(run => !isEarlierActivity(run)).map(centralCard)}
-      {visibleTasks.filter(task => !isEarlierActivity(task)).map(taskCard)}
+      {activeCentral && <ActivityLine key={activeCentral.id} name="Companion" status={activeCentral.status} mark={<span className="central-mark central-mark--small">c.</span>} stop={<StopControl label="Stop chat" onStop={() => discussionApi.cancel(discussion.id)} onRefresh={onRefresh} onError={onError}/>} />}
+      {centralFailures.map(run => <ActivityLine key={run.id} name="Companion" status={run.status} error={run.error} mark={<span className="central-mark central-mark--small">c.</span>} />)}
+      {activeTasks.map(task => { const companion = companionMap.get(task.companionId); const name = companion?.name ?? "Companion"; return <Fragment key={task.id}>
+        <ActivityLine
+          name={name}
+          status={task.status}
+          mark={companion ? <CompanionAvatar name={name} avatar={companion.avatar} size={30}/> : <span className="central-mark central-mark--small">c.</span>}
+          onOpen={() => openWorkspace(task.companionId, "results")}
+          stop={<StopControl label={`Stop ${name}`} onStop={() => discussionApi.cancelCompanion(discussion.id, task.companionId)} onRefresh={onRefresh} onError={onError}/>}
+        />
+        {task.questions.filter(question => question.answer === null).map(question => <QuestionCard key={question.id} discussionId={discussion.id} question={question} companionName={name} onRefresh={onRefresh} onError={onError} />)}
+      </Fragment>; })}
+      {taskFailures.map(task => { const companion = companionMap.get(task.companionId); const name = companion?.name ?? "Companion"; return <ActivityLine
+        key={task.id}
+        name={name}
+        status={task.status}
+        error={task.error}
+        mark={companion ? <CompanionAvatar name={name} avatar={companion.avatar} size={30}/> : <span className="central-mark central-mark--small">c.</span>}
+        onOpen={() => openWorkspace(task.companionId, "results")}
+      />; })}
     </div>{tab !== "conversation" && <aside className="discussion-workbench" aria-label={tab === "work" ? "Discussion files" : tab === "machines" ? "Discussion computers" : `${companionMap.get(tab)?.name ?? "Companion"} workbench`} onKeyDown={event => { if (event.key === "Escape" && !event.defaultPrevented) { event.stopPropagation(); closeWorkspace(); } }}>
       <div className="workbench-controls"><Button className="workbench-expand" variant="ghost" size="icon" static aria-label={expanded ? "Reduce workspace" : "Expand workspace"} aria-pressed={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? <Minimize2 /> : <Maximize2 />}</Button><Button variant="ghost" size="icon" aria-label="Close workbench" onClick={closeWorkspace}><X /></Button></div>
       {tab === "work" || tab === "machines" ? <WorkspaceOverview snapshot={{...snapshot, messages: allMessages}} machines={tab === "machines"} onOpen={openWorkspace} /> : <CompanionWorkbench key={tab} snapshot={{...snapshot, messages: allMessages}} companionId={tab} view={workspaceView} onView={view => { setWorkspaceView(view); if (view === "machine") setExpanded(true); }} onRefresh={onRefresh} onError={onError}/>}
