@@ -1,4 +1,4 @@
-/* The composer pill: attachments, recipient, text, and the send action. */
+/* The composer pill: outer 22 = inner 12 (send, chips) + 10 of padding. */
 .discussion-composer {
   position: relative;
   grid-column: 1;
@@ -8,18 +8,35 @@
   margin: 0 auto max(14px, env(safe-area-inset-bottom));
   border: 0;
   border-radius: var(--radius-composer);
-  padding: 10px 12px;
+  padding: 10px;
   background: var(--atelier-surface);
   box-shadow: var(--shadow-border);
   transition: box-shadow var(--duration-enter) ease-out;
 }
 .discussion-composer:focus-within { box-shadow: 0 0 0 2px var(--ring), var(--shadow-border); }
+.discussion-composer[data-dragging] { box-shadow: 0 0 0 2px var(--ring), var(--shadow-border); }
+.composer-drop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  margin: 0;
+  place-items: center;
+  border-radius: var(--radius-composer);
+  background: color-mix(in oklch, var(--atelier-surface) 88%, transparent);
+  color: var(--atelier-ink);
+  font-size: 13px;
+  font-weight: 500;
+  pointer-events: none;
+}
+
 .discussion-composer textarea {
   width: 100%;
-  min-height: 66px;
+  min-height: calc(1lh + 12px);
+  max-height: calc(8lh + 12px);
+  field-sizing: content;
   resize: none;
   border: 0;
-  padding: 10px 3px;
+  padding: 6px 4px;
   background: transparent;
   box-shadow: none;
   color: var(--atelier-ink);
@@ -29,8 +46,7 @@
 .discussion-composer textarea:focus-visible { outline: 0; }
 .discussion-composer input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
 
-.discussion-composer > footer { display: flex; min-height: 38px; align-items: center; justify-content: flex-end; gap: 8px; }
-.discussion-composer > footer > span { margin-right: auto; color: var(--atelier-muted); font-size: 11px; }
+.discussion-composer > footer { display: flex; min-height: 36px; align-items: center; justify-content: flex-end; gap: 6px; }
 .discussion-composer > footer > label {
   display: grid;
   width: 36px;
@@ -42,32 +58,29 @@
   transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
 }
 .discussion-composer label:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
-.discussion-composer > footer > .composer-send {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-3);
-  background: var(--atelier-ink);
-  color: var(--atelier-surface);
-}
 
-.composer-recipient { display: flex; min-height: 34px; align-items: center; gap: 7px; padding: 0 0 5px; color: var(--atelier-muted); font-size: 12px; }
-.recipient-control {
+/* The recipient stays a native select, dressed as a pill. */
+.recipient-pill {
+  position: relative;
   display: flex;
   min-width: 0;
-  max-width: 65%;
+  max-width: 60%;
+  height: 28px;
+  margin-right: auto;
   align-items: center;
   gap: 5px;
-  border-radius: var(--radius-2);
-  padding: 3px 5px;
+  border-radius: var(--radius-pill);
+  padding: 0 8px 0 5px;
   background: var(--atelier-rail);
+  transition: background-color var(--duration-fast) ease;
 }
-.recipient-control select {
+.recipient-pill select {
   min-width: 0;
   max-width: 100%;
   height: 28px;
+  appearance: none;
   border: 0;
-  border-radius: var(--radius-1);
-  padding: 0 3px;
+  padding: 0;
   background: transparent;
   color: var(--atelier-ink);
   font-size: 12px;
@@ -75,25 +88,58 @@
   text-overflow: ellipsis;
   cursor: pointer;
 }
-.recipient-control strong { overflow: hidden; font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.composer-recipient .recipient-hint { margin-left: auto; color: var(--atelier-muted); font-size: 11px; }
+.recipient-pill > svg { width: 12px; height: 12px; flex: 0 0 12px; color: var(--atelier-muted); }
+.recipient-pill:has(select:disabled) { opacity: .6; }
 
-.composer-files { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0 8px; }
+.composer-send {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-3);
+  background: var(--atelier-ink);
+  color: var(--atelier-surface);
+}
+.composer-send:disabled { opacity: .4; }
+.composer-send .send-icon {
+  position: absolute;
+  transition: opacity 300ms cubic-bezier(.2, 0, 0, 1), scale 300ms cubic-bezier(.2, 0, 0, 1), filter 300ms cubic-bezier(.2, 0, 0, 1);
+}
+.composer-send .send-icon--busy { opacity: 0; scale: .25; filter: blur(4px); }
+.composer-send[data-sending] .send-icon { opacity: 0; scale: .25; filter: blur(4px); }
+.composer-send[data-sending] .send-icon--busy { opacity: 1; scale: 1; filter: blur(0); }
+
+/* File chips: outer 12 = image 7 + 5. */
+.composer-files { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 8px; }
 .composer-files > span {
   display: flex;
   max-width: 230px;
-  min-height: 30px;
+  min-height: 44px;
   align-items: center;
-  gap: 6px;
-  border-radius: var(--radius-1);
-  padding: 4px 5px 4px 8px;
+  gap: 8px;
+  border-radius: var(--radius-3);
+  padding: 5px 5px 5px 10px;
   background: var(--atelier-rail);
   font-size: 12px;
 }
-.composer-files > span > svg { width: 13px; }
-.composer-files button { display: grid; width: 22px; height: 22px; place-items: center; border: 0; border-radius: 5px; background: transparent; transition: background-color var(--duration-fast) ease; }
-.composer-file-error { margin: 2px 0 7px; color: var(--status-failed); font-size: 11px; }
+.composer-files > span > svg { width: 15px; flex: 0 0 15px; color: var(--atelier-muted); }
+.composer-file-thumb { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 7px; object-fit: cover; outline: 1px solid oklch(0 0 0/.1); outline-offset: -1px; }
+.composer-file-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.composer-files button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--atelier-muted);
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+.composer-file-error { margin: 2px 0 7px; padding: 0 4px; color: var(--status-failed); font-size: 12px; }
+.composer-file-error button { color: var(--atelier-ink); text-decoration: underline; text-underline-offset: 3px; }
 
+/* The mention list opens from the keyboard, so it never animates in. */
 .mention-autocomplete {
   position: absolute;
   z-index: 20;
@@ -133,14 +179,13 @@
 
 @media (hover: hover) and (pointer: fine) {
   .discussion-composer > footer > label:hover { background: var(--atelier-rail); color: var(--atelier-ink); }
-  .composer-files button:hover { background: var(--atelier-soft); }
+  .recipient-pill:hover { background: var(--atelier-soft); }
+  .composer-files button:hover { background: var(--atelier-soft); color: var(--atelier-ink); }
   .mention-autocomplete button:hover { background: var(--atelier-rail); }
 }
 @media (max-width: 1024px) {
   .discussion-composer { width: calc(100% - 24px); margin-bottom: 12px; }
 }
 @media (max-width: 430px) {
-  .composer-recipient { flex-wrap: wrap; }
-  .composer-recipient .recipient-hint { flex-basis: 100%; margin-left: 0; padding-left: 3px; }
-  .recipient-control { max-width: 85%; }
+  .recipient-pill { max-width: 52%; }
 }

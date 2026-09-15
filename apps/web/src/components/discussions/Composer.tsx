@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
-import { ArrowUp, FileText, LoaderCircle, Paperclip, X } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from "react";
+import { ArrowUp, ChevronDown, FileText, LoaderCircle, Paperclip, X } from "lucide-react";
 import { discussionApi, type Companion, type DiscussionSnapshot } from "@/api";
 import { CompanionAvatar } from "../CompanionAvatar";
 import { Button } from "../ui/button";
@@ -31,6 +31,23 @@ export function Composer({ userId, snapshot, companions, initialDraft, onInitial
   }, [draft, target, files, userId, id, attempted]);
   useEffect(() => { persist(); }, [draft, target, files, persist]);
   useEffect(()=>{if(initialDraft&&!attempted){setDraft(initialDraft);onInitialDraftApplied();requestAnimationFrame(()=>textarea.current?.focus());}},[initialDraft,attempted,onInitialDraftApplied]);
+
+  const [dragging, setDragging] = useState(false);
+  const dragDepth = useRef(0);
+
+  // Image chips show the picture itself; the object URLs die with the selection.
+  const previews = useMemo(() => new Map(typeof URL.createObjectURL === "function"
+    ? files.filter(item => item.file.type.startsWith("image/")).map(item => [item.id, URL.createObjectURL(item.file)] as const)
+    : []), [files]);
+  useEffect(() => () => { for (const url of previews.values()) URL.revokeObjectURL(url); }, [previews]);
+
+  // field-sizing keeps the pill honest where it exists; elsewhere we measure.
+  useLayoutEffect(() => {
+    const node = textarea.current;
+    if (!node || (typeof CSS !== "undefined" && CSS.supports?.("field-sizing", "content"))) return;
+    node.style.height = "auto";
+    node.style.height = `${node.scrollHeight}px`;
+  }, [draft]);
 
   function chooseTarget(next: string | null) { if(attempted)return;setTarget(next); try { if (next) localStorage.setItem(targetKey(userId, id), next); else localStorage.removeItem(targetKey(userId, id)); } catch { /* optional preference */ } }
   function addFiles(next: File[]) {
@@ -82,13 +99,40 @@ export function Composer({ userId, snapshot, companions, initialDraft, onInitial
   const targetCompanion = companions.find(companion => companion.id === target);
   const mentionMatch=!attempted&&!directId&&!mentionDismissed?draft.match(/(?:^|\s)@([^\s@]*)$/):null;
   const mentionOptions=mentionMatch?mentionTargets.filter(companion=>companion.name.toLocaleLowerCase().startsWith(mentionMatch[1].toLocaleLowerCase())):[];
-  return <form className="discussion-composer" onSubmit={submit} onDrop={(event: DragEvent) => { event.preventDefault(); addFiles(Array.from(event.dataTransfer.files)); }} onDragOver={event => event.preventDefault()}>
-    {files.length > 0 && <div className="composer-files">{files.map(item => <span key={item.id}><FileText />{item.file.name}<button type="button" disabled={attempted} aria-label={`Remove ${item.file.name}`} onClick={() => setFiles(current => current.filter(file => file.id !== item.id))}><X /></button></span>)}</div>}
+  const addressee = directId ? targetCompanion?.name ?? "companion" : targetCompanion?.name ?? "Companion";
+  return <form
+    className="discussion-composer"
+    data-dragging={dragging || undefined}
+    onSubmit={submit}
+    onDragEnter={(event: DragEvent) => { event.preventDefault(); dragDepth.current += 1; setDragging(true); }}
+    onDragLeave={() => { dragDepth.current -= 1; if (dragDepth.current <= 0) { dragDepth.current = 0; setDragging(false); } }}
+    onDrop={(event: DragEvent) => { event.preventDefault(); dragDepth.current = 0; setDragging(false); addFiles(Array.from(event.dataTransfer.files)); }}
+    onDragOver={event => event.preventDefault()}
+  >
+    {files.length > 0 && <div className="composer-files">{files.map(item => <span key={item.id}>
+      {previews.get(item.id) ? <img className="composer-file-thumb" src={previews.get(item.id)} alt="" /> : <FileText />}
+      <span className="composer-file-name">{item.file.name}</span>
+      <button type="button" disabled={attempted} aria-label={`Remove ${item.file.name}`} onClick={() => setFiles(current => current.filter(file => file.id !== item.id))}><X /></button>
+    </span>)}</div>}
+    {mentionOptions.length>0&&<div id={`${id}-mention-list`} className="mention-autocomplete" role="listbox" aria-label="Companion suggestions">{mentionOptions.map((companion,index)=><button id={`${id}-mention-${companion.id??"coordinator"}`} type="button" role="option" aria-selected={index===mentionIndex} key={companion.id??"coordinator"} onMouseDown={event=>event.preventDefault()} onClick={()=>mention(companion)}><>{companion.id ? <CompanionAvatar name={companion.name} avatar={companion.avatar} size={30}/> : <span className="central-mark central-mark--small">c.</span>}</><span><strong>{companion.name}</strong><small>{companion.id === null ? "Coordinates this discussion" : snapshot.participants.some(participant => participant.companionId === companion.id && !participant.removedAt) ? "In this discussion" : "Invite and message"}</small></span>{index===mentionIndex&&<kbd>Enter</kbd>}</button>)}</div>}
+    <Textarea aria-autocomplete={directId ? undefined : "list"} aria-controls={mentionOptions.length ? `${id}-mention-list` : undefined} aria-activedescendant={mentionOptions.length ? `${id}-mention-${(mentionOptions[mentionIndex] ?? mentionOptions[0]).id??"coordinator"}` : undefined} readOnly={attempted} ref={textarea} value={draft} onChange={event => {updateDraft(event.target.value);setMentionIndex(0);setMentionDismissed(false);}} onPaste={event => addFiles(Array.from(event.clipboardData.items).filter(item => item.kind === "file").map(item => item.getAsFile()).filter((file): file is File => Boolean(file)))} onKeyDown={event => { if(event.nativeEvent.isComposing)return; if(mentionOptions.length&&(event.key==="ArrowDown"||event.key==="ArrowUp")){event.preventDefault();setMentionIndex(current=>(current+(event.key==="ArrowDown"?1:-1)+mentionOptions.length)%mentionOptions.length);return;} if(mentionOptions.length&&(event.key==="Enter"||event.key==="Tab")&&!event.shiftKey){event.preventDefault();mention(mentionOptions[mentionIndex]??mentionOptions[0]);return;} if(event.key==="Escape"&&mentionOptions.length){event.preventDefault();setMentionDismissed(true);return;} if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} aria-label={directId ? `Message ${targetCompanion?.name ?? "companion"}` : targetCompanion ? `Message ${targetCompanion.name}` : "Message Companion"} placeholder={`Message ${addressee}…`} rows={1}/>
     {attempted&&!sending&&<p className="composer-file-error">Retry sends the same message. <button type="button" onClick={()=>{setAttempted(false);setDraft('');setFiles([]);setFileError('');restored.current=null;clientMessageId.current=crypto.randomUUID();}}>Start another message</button></p>}
     {fileError && <p className="composer-file-error" role="alert">{fileError}</p>}
-    <div className="composer-recipient"><span>To</span><div className="recipient-control">{targetCompanion ? <CompanionAvatar name={targetCompanion.name} avatar={targetCompanion.avatar} size={22}/> : <span className="central-mark central-mark--pill" aria-hidden="true">c</span>}{directId ? <strong>@{targetCompanion?.name ?? "companion"}</strong> : <select disabled={attempted} aria-label="Message recipient" value={target ?? ""} onChange={event => chooseTarget(event.target.value || null)}><option value="">@Companion</option>{available.map(companion => <option value={companion.id} key={companion.id}>@{companion.name}</option>)}</select>}</div><span className="recipient-hint">{directId ? "Direct conversation" : targetCompanion && !snapshot.participants.some(participant => participant.companionId === target && !participant.removedAt) ? "Joins when you send" : targetCompanion ? "Replies in this thread" : "Coordinates this discussion"}</span></div>
-    {mentionOptions.length>0&&<div id={`${id}-mention-list`} className="mention-autocomplete" role="listbox" aria-label="Companion suggestions">{mentionOptions.map((companion,index)=><button id={`${id}-mention-${companion.id??"coordinator"}`} type="button" role="option" aria-selected={index===mentionIndex} key={companion.id??"coordinator"} onMouseDown={event=>event.preventDefault()} onClick={()=>mention(companion)}><>{companion.id ? <CompanionAvatar name={companion.name} avatar={companion.avatar} size={30}/> : <span className="central-mark central-mark--small">c.</span>}</><span><strong>{companion.name}</strong><small>{companion.id === null ? "Coordinates this discussion" : snapshot.participants.some(participant => participant.companionId === companion.id && !participant.removedAt) ? "In this discussion" : "Invite and message"}</small></span>{index===mentionIndex&&<kbd>Enter</kbd>}</button>)}</div>}
-    <Textarea aria-autocomplete={directId ? undefined : "list"} aria-controls={mentionOptions.length ? `${id}-mention-list` : undefined} aria-activedescendant={mentionOptions.length ? `${id}-mention-${(mentionOptions[mentionIndex] ?? mentionOptions[0]).id??"coordinator"}` : undefined} readOnly={attempted} ref={textarea} value={draft} onChange={event => {updateDraft(event.target.value);setMentionIndex(0);setMentionDismissed(false);}} onPaste={event => addFiles(Array.from(event.clipboardData.items).filter(item => item.kind === "file").map(item => item.getAsFile()).filter((file): file is File => Boolean(file)))} onKeyDown={event => { if(event.nativeEvent.isComposing)return; if(mentionOptions.length&&(event.key==="ArrowDown"||event.key==="ArrowUp")){event.preventDefault();setMentionIndex(current=>(current+(event.key==="ArrowDown"?1:-1)+mentionOptions.length)%mentionOptions.length);return;} if(mentionOptions.length&&(event.key==="Enter"||event.key==="Tab")&&!event.shiftKey){event.preventDefault();mention(mentionOptions[mentionIndex]??mentionOptions[0]);return;} if(event.key==="Escape"&&mentionOptions.length){event.preventDefault();setMentionDismissed(true);return;} if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} aria-label={directId ? `Message ${targetCompanion?.name ?? "companion"}` : targetCompanion ? `Message ${targetCompanion.name}` : "Message Companion"} placeholder={targetCompanion ? `Message ${targetCompanion.name}…` : "Ask Companion… Type @ to choose an agent"} rows={2}/>
-    <footer><span>Enter to send · @ to choose an agent</span><label aria-label="Attach files"><Paperclip /><input type="file" multiple accept={ACCEPTED_FILES} onChange={event => { addFiles(Array.from(event.target.files ?? [])); event.currentTarget.value = ""; }}/></label><Button className="composer-send" type="submit" size="icon" disabled={(!draft.trim() && !files.length) || sending} aria-label="Send message">{sending ? <LoaderCircle className="spin" /> : <ArrowUp />}</Button></footer>
+    <footer>
+      {!directId && <div className="recipient-pill">
+        {targetCompanion ? <CompanionAvatar name={targetCompanion.name} avatar={targetCompanion.avatar} size={18}/> : <span className="central-mark central-mark--pill" aria-hidden="true">c</span>}
+        <select disabled={attempted} aria-label="Message recipient" value={target ?? ""} onChange={event => chooseTarget(event.target.value || null)}>
+          <option value="">@Companion</option>
+          {available.map(companion => <option value={companion.id} key={companion.id}>@{companion.name}</option>)}
+        </select>
+        <ChevronDown aria-hidden="true" />
+      </div>}
+      <label aria-label="Attach files"><Paperclip /><input type="file" multiple accept={ACCEPTED_FILES} onChange={event => { addFiles(Array.from(event.target.files ?? [])); event.currentTarget.value = ""; }}/></label>
+      <Button className="composer-send" type="submit" size="icon" data-sending={sending || undefined} disabled={(!draft.trim() && !files.length) || sending} aria-label="Send message">
+        <ArrowUp className="send-icon" aria-hidden="true" />
+        <LoaderCircle className="send-icon send-icon--busy spin" aria-hidden="true" />
+      </Button>
+    </footer>
+    {dragging && <p className="composer-drop" aria-hidden="true">Drop files to attach</p>}
   </form>;
 }
