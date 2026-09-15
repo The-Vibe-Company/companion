@@ -21,7 +21,8 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
       const now = '2026-09-14T10:00:00Z';
       const ada = { id:'ada', name:'Ada', instructions:'Research and strategy', provider:'local', status:'ready', error:null, createdAt:now, avatar:{shape:1,color:2,face:0} };
       const june = { ...ada, id:'june', name:'June', instructions:'Writing and editing', avatar:{shape:3,color:5,face:2} };
-      const discussion = { id:'chat', title:'Preparing the autumn launch', folderId:null, directCompanionId:null, archivedAt:null, createdAt:now, updatedAt:now, participantIds:['ada','june'] };
+      const lastMessage = { role:'assistant', companionId:'ada', createdAt:now, preview:'Reviewing the pricing and onboarding flows.' };
+      const discussion = { id:'chat', title:'Preparing the autumn launch', folderId:null, directCompanionId:null, archivedAt:null, createdAt:now, updatedAt:now, participantIds:['ada','june'], lastMessage };
       const messages = [
         { id:'1',sequence:'1',role:'user',content:'Help me prepare the launch. We need a clear positioning and a first announcement.',companionId:null,runId:'central',createdAt:now,complete:true,files:[] },
         { id:'2',sequence:'2',role:'assistant',content:'I’ve asked Ada to compare the alternatives and June to draft the announcement.\\n\\nWe’ll bring their findings together here.',companionId:null,runId:'central',createdAt:now,complete:true,files:[] }
@@ -44,7 +45,18 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
         const field = composer.querySelector('textarea');
         const mobile = innerWidth <= 1024;
         const result = { viewport:innerWidth, mobile, initialThread:visible(timeline), initialComposer:visible(composer), initialActivity:visible(rail), overflow:document.documentElement.scrollWidth>innerWidth, stopWidth:document.querySelector('.quiet-stop').getBoundingClientRect().width };
+        const row = [...document.querySelectorAll('.discussion-row')].find(node => node.textContent.includes('Preparing'));
+        result.rosterTime = mobile || visible(row.querySelector('time'));
+        row.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true})); await wait();
+        result.rowMenu = !!document.querySelector('[role="menu"] [role="menuitem"]');
+        document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})); await wait();
+        result.rowMenuClosed = !document.querySelector('[role="menu"]');
         const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set;
+        setter.call(field,'one'); field.dispatchEvent(new Event('input',{bubbles:true})); await wait();
+        const oneLine = field.getBoundingClientRect().height;
+        setter.call(field,['one','two','three','four','five','six'].join(String.fromCharCode(10))); field.dispatchEvent(new Event('input',{bubbles:true})); await wait();
+        const sixLines = field.getBoundingClientRect().height;
+        result.textareaGrows = sixLines > oneLine * 2 && visible(composer) && composer.getBoundingClientRect().bottom <= innerHeight;
         setter.call(field,'Keep my draft'); field.dispatchEvent(new Event('input',{bubbles:true})); await wait();
         document.querySelector(mobile ? '[aria-label="Show files"]' : '[aria-label="Open files"]').click(); await wait();
         rail = document.querySelector('.discussion-workbench');
@@ -107,6 +119,7 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
       const result = JSON.parse(match![1]);
       expect(result, `${width}px`).toMatchObject({
         pressScale: reducedMotion ? "1" : "0.96", answerFits: true, viewport: width, mobile: width <= 1024, initialThread: true, initialComposer: true, initialActivity: false, expands: true,
+        rosterTime: true, rowMenu: true, rowMenuClosed: true, textareaGrows: true,
         overflow: false, activityVisible: true, agentTask: true, workbenchVisible: true, taskDetails: true,
         modalFocus: true, modalIsolation: true, focusWrap: true, focusReturned: true, returnedToThread: true, draftPreserved: true, recipientUnchanged: true, composerOnScreen: true, noHorizontalOverflow: true,
       });

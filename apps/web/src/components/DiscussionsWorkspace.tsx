@@ -113,7 +113,8 @@ export function DiscussionsWorkspace({ user, companions, initialDiscussionId, le
       if (currentId.current !== id) return;
       if (olderCursor.current !== undefined && snapshotRef.current?.discussion.id === id) setOlderMessages(current => mergeMessages(current, snapshotRef.current!.messages.filter(message => !result.messages.some(next => next.id === message.id))));
       setSnapshot({...result,beforeCursor:olderCursor.current===undefined?result.beforeCursor:olderCursor.current});
-      setDiscussions(current => current.map(item => item.id === result.discussion.id ? { ...result.discussion, participantIds: result.participants.filter(participant => !participant.removedAt).map(participant => participant.companionId) } : item));
+      // The snapshot has no preview; keep the one the list poll provides.
+      setDiscussions(current => current.map(item => item.id === result.discussion.id ? { ...item, ...result.discussion, participantIds: result.participants.filter(participant => !participant.removedAt).map(participant => participant.companionId) } : item));
       setRefreshError("");
     } catch (cause) {
       if (currentId.current !== id) return;

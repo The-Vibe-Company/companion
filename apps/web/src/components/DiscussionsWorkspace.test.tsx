@@ -526,6 +526,60 @@ it("opens only supported computers, expands their controls, and preserves addres
   cleanup(); vi.unstubAllGlobals();
 });
 
+it("shows the last message and its time on every roster row", async () => {
+  const lastMessage = { role: "assistant" as const, companionId: "ada", createdAt: "2026-09-11T09:30:00.000Z", preview: "## Heading\n\n- **Reviewing** pricing" };
+  const direct = { ...discussion, id: "direct-ada", title: "Ada", directCompanionId: "ada", lastMessage: { role: "user" as const, companionId: null, createdAt: "2026-09-11T09:31:00.000Z", preview: "Take a look" } };
+  setupFetch(path => path === "/api/discussions" ? response({ discussions: [{ ...discussion, participantIds: ["ada"], lastMessage }, direct], folders: [] }) : undefined);
+  renderWorkspace();
+  const sidebar = await screen.findByRole("complementary", { name: "Discussions" });
+  const row = (await within(sidebar).findByText("Launch")).closest(".discussion-row")!;
+  expect(within(row as HTMLElement).getByText("Ada: Heading Reviewing pricing")).toBeInTheDocument();
+  expect(row.querySelector("time")).toHaveAttribute("datetime", lastMessage.createdAt);
+  const companionRow = within(sidebar).getByText("June").closest(".discussion-row")!;
+  expect(within(companionRow as HTMLElement).getByText("Write")).toBeInTheDocument();
+  expect(companionRow.querySelector("time")).toBeNull();
+  const adaRow = within(sidebar).getAllByText("Ada").map(node => node.closest(".discussion-row")).find(Boolean)!;
+  expect(within(adaRow as HTMLElement).getByText("Take a look")).toBeInTheDocument();
+  cleanup(); vi.unstubAllGlobals();
+});
+
+it("opens a row menu from its button and from a right click, and moves a discussion to a folder", async () => {
+  const bodies: Array<Record<string, unknown>> = [];
+  setupFetch((path, options) => {
+    if (path === "/api/discussions") return response({ discussions: [discussion], folders: [{ id: "folder-1", name: "Project", companionIds: [], createdAt: discussion.createdAt }] });
+    if (path === "/api/discussions/discussion-1" && options?.method === "PATCH") { bodies.push(JSON.parse(String(options.body))); return response({ discussion }); }
+    return undefined;
+  });
+  const actor = userEvent.setup(); renderWorkspace();
+  const trigger = await screen.findByRole("button", { name: "Options for Launch" });
+  await actor.click(trigger);
+  const menu = screen.getByRole("menu", { name: "Options for Launch" });
+  expect(within(menu).getByRole("menuitem", { name: "Rename" })).toHaveFocus();
+  await actor.keyboard("{ArrowDown}");
+  expect(within(menu).getByRole("menuitem", { name: "Move to Project" })).toHaveFocus();
+  await actor.keyboard("{Escape}");
+  expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  expect(trigger).toHaveFocus();
+
+  fireEvent.contextMenu(trigger.closest(".discussion-row")!);
+  await actor.click(await screen.findByRole("menuitem", { name: "Move to Project" }));
+  await waitFor(() => expect(bodies).toEqual([{ folderId: "folder-1" }]));
+  cleanup(); vi.unstubAllGlobals();
+});
+
+it("leaves the recipient pill out of a direct discussion", async () => {
+  const direct = { ...discussion, directCompanionId: "ada" };
+  setupFetch(path => {
+    if (path === "/api/discussions") return response({ discussions: [direct], folders: [] });
+    if (path === "/api/discussions/discussion-1") return response({ ...snapshot, discussion: direct });
+    return undefined;
+  });
+  renderWorkspace();
+  expect(await screen.findByRole("textbox", { name: "Message Ada" })).toBeInTheDocument();
+  expect(screen.queryByRole("combobox", { name: "Message recipient" })).not.toBeInTheDocument();
+  cleanup(); vi.unstubAllGlobals();
+});
+
 it("collects message attachments and task files once in the discussion files view", async () => {
   const file = { id: "shared", name: "notes.txt", mimeType: "text/plain", size: 12, url: "/files/notes.txt" };
   setupFetch(path => path === "/api/discussions/discussion-1" ? response({

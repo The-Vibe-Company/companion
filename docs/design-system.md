@@ -24,19 +24,33 @@ The design export runtime is for preview only and is not a production dependency
 
 ## Navigation and conversation
 
-A compact 264px desktop sidebar groups independent discussions by optional folders, shows
-folder-authorized companions, and anchors named Companion rows with separate chat/settings actions above applications/account
-access. Creation, archived discussions, folder editing and direct chats remain reachable.
+A compact 264px desktop sidebar is a single messaging roster, read like a contact list. A
+**Companions** section gives each companion one row that is its direct chat; a **Discussions**
+section lists independent discussions, with optional folders as collapsible headers whose open
+state persists. Every row shares one grammar: mark, title over the last message preview, and the
+time of that message. Row actions — rename, move to a folder, archive, a companion's settings —
+live in an accessible menu opened from the row or by right click, never as permanent chrome.
+Creation, archived discussions and folder defaults remain reachable; folder defaults open a small
+focus-trapped dialog rather than an editor inside the navigation.
 
-The header pairs a serif discussion title and folder context with participant pills and discussion
-controls. Invited and folder-authorized companions have different affordances. Mentions provide
-an accessible picker; selecting a recipient persists the destination with an explicit return to
+The header is one 64px row: the participant stack, the discussion title with its rename
+affordance, a segmented Files/Computer switch, and discussion details. Mentions provide an
+accessible picker; selecting a recipient persists the destination with an explicit return to
 Central. Viewing a workbench alone must not silently address or send a message.
 
-The common timeline uses aligned avatar/content rows, readable author/time labels and an
-approximately 760px reading column. Invitation proposals, questions and task states are attached
-to persisted work. An empty conversation offers editable starter prompts and direct-companion
-shortcuts. The rounded white composer stays available while delegated work runs.
+The timeline carries the conversation and nothing else. Each day opens with a separator, the same
+author keeps one header for five minutes, and a grouped message shows its time on hover or focus
+in an approximately 720px reading column. User messages sit in a right-hand bubble, companion
+replies as plain text beside their avatar. Alongside the messages the thread shows only one line
+per active run — avatar, "Ada · Working", stop — the open questions under their companion's line,
+pending invitations, and a failure while it still answers the message you just sent. Results,
+previews, finished work and earlier delegated replies belong to the companion workbench, which
+opens from the line's avatar without changing the recipient. Status colour and pulse come from
+real `tasks`/`centralRuns` state, never from a timer.
+
+The composer is a pill: attachments, a textarea that grows with the text, then a footer holding
+the recipient pill (groups only), attach and send. It stays available while delegated work runs.
+An empty conversation offers editable starter prompts and direct-companion shortcuts.
 
 ## Companion workspace
 
