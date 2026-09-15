@@ -1,0 +1,30 @@
+apps/web/src/components/discussions/styles/thread.css
+  s_edd938fd7c4829::t_4e62311a04aeca 126-141
+  s_edd938fd7c4829::t_708efff14cb3de 270,272-273
+  s_edd938fd7c4829::t_bca3fd31a54762 287-290
+apps/web/src/components/discussions/Thread.tsx
+  s_edd938fd7c4829::t_2919afb79b8afa 43-53
+  s_edd938fd7c4829::t_0f6af15e65a9ca 1,12,16,91
+  s_edd938fd7c4829::t_6587dea1da3f48 71,77-80
+apps/web/src/components/discussions/MessageItem.tsx
+  s_edd938fd7c4829::t_084b91e1663334 34-35
+  s_edd938fd7c4829::t_83bd10a626d251 6,12-14,16,18-25,27-32
+apps/web/src/components/discussions/shared.ts
+  s_edd938fd7c4829::t_b2aa5305378a1d 72-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "63082c4d7d450601d991f11c0da948510a7e7b4d",
+  "prompts": {},
+  "sessions": {
+    "s_edd938fd7c4829": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c52b168-f139-46e2-8bfb-136bf8e88e1e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
