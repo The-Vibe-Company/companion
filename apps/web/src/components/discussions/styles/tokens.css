@@ -1,0 +1,39 @@
+/* One place for every discussion value: colours, depth, radii, rhythm, timing. */
+.discussion-shell {
+  --atelier-canvas: oklch(.975 .01 85);
+  --atelier-rail: oklch(.955 .012 80);
+  --atelier-surface: oklch(1 0 0);
+  --atelier-ink: oklch(.25 .02 60);
+  --atelier-muted: oklch(.5 .02 70);
+  --atelier-border: oklch(.9 .015 80);
+  --atelier-soft: oklch(.93 .02 80);
+  --atelier-accent: oklch(.68 .17 35);
+
+  --status-active: oklch(.44 .09 245);
+  --status-done: oklch(.42 .09 150);
+  --status-wait: oklch(.46 .1 65);
+  --status-failed: var(--destructive);
+  --status-idle: var(--atelier-muted);
+
+  --shadow-border: 0 0 0 1px oklch(0 0 0/.06), 0 1px 2px -1px oklch(0 0 0/.06), 0 2px 4px 0 oklch(0 0 0/.04);
+  --shadow-border-hover: 0 0 0 1px oklch(0 0 0/.08), 0 1px 2px -1px oklch(0 0 0/.08), 0 2px 4px 0 oklch(0 0 0/.06);
+  --shadow-raised: 0 0 0 1px oklch(0 0 0/.06), 0 4px 8px -2px oklch(0 0 0/.06), 0 12px 24px -6px oklch(0 0 0/.1);
+
+  --radius-1: 6px;
+  --radius-2: 8px;
+  --radius-3: 12px;
+  --radius-4: 14px;
+  --radius-composer: 22px;
+  --radius-pill: 999px;
+
+  --sidebar-width: 264px;
+  --thread-column: 720px;
+  --thread-avatar: 34px;
+  --thread-gap: 10px;
+  --thread-gutter: 44px;
+
+  --duration-fast: 120ms;
+  --duration-enter: 150ms;
+  --duration-panel: 200ms;
+  /* --ease-ui comes from maison.css */
+}

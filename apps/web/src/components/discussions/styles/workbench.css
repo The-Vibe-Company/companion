@@ -1,0 +1,112 @@
+/* Resources and companion workbench, opened beside the conversation. */
+.discussion-workbench {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1/3;
+  min-width: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--atelier-border);
+  background: var(--atelier-surface);
+}
+.workbench-controls { position: absolute; z-index: 3; top: 12px; right: 12px; display: flex; gap: 2px; }
+
+.work-panel, .discussion-resources {
+  display: grid;
+  height: 100%;
+  align-content: start;
+  gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+}
+.discussion-resources { gap: 0; padding: 24px; }
+.discussion-resources > header { margin-bottom: 24px; padding-right: 76px; }
+.discussion-resources h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.discussion-resources header p { margin: 6px 0 0; color: var(--atelier-muted); font-size: 13px; }
+
+.work-panel .discussion-task { margin: 0; }
+.work-panel .discussion-task:first-of-type { border-top: 0; }
+
+.companion-workbench-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid var(--atelier-border);
+  padding: 0 80px 16px 0;
+}
+.companion-workbench-header > div { min-width: 0; flex: 1; }
+.companion-workbench-header h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
+.companion-workbench-header p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 2px 0 0;
+  color: var(--atelier-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.workbench-tabs { display: flex; min-height: 46px; gap: 14px; overflow-x: auto; border-bottom: 1px solid var(--atelier-border); font-size: 12px; }
+.workbench-tabs button {
+  display: flex;
+  min-height: 44px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 6px 0 10px;
+  background: transparent;
+  color: var(--atelier-muted);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+.workbench-tabs button[aria-current="page"] { border-bottom-color: var(--atelier-ink); color: var(--atelier-ink); font-weight: 600; }
+.workbench-tabs button span { border-radius: var(--radius-pill); padding: 1px 6px; background: var(--atelier-rail); font-size: 11px; }
+
+.workbench-empty { display: grid; justify-items: center; gap: 12px; padding: 64px 20px; color: var(--atelier-muted); text-align: center; }
+.workbench-empty h3 { margin: 0; color: var(--atelier-ink); font-family: "Instrument Serif", Georgia, serif; font-size: 28px; font-weight: 400; }
+.workbench-empty p { max-width: 34ch; margin: 0; }
+
+.work-empty { display: flex; min-height: 100%; align-items: center; justify-content: center; flex-direction: column; padding: 40px; text-align: center; }
+.work-empty > svg { width: 30px; height: 30px; color: var(--atelier-muted); }
+.work-empty h2 { margin: 16px 0 0; font-family: "Instrument Serif", Georgia, serif; font-size: 25px; font-weight: 400; }
+.work-empty p { max-width: 44ch; color: var(--atelier-muted); line-height: 1.55; }
+
+.workspace-companions { margin-top: 28px; }
+.workspace-companions h3 { font-size: 12px; font-weight: 500; color: var(--atelier-muted); }
+.workspace-companions button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: var(--radius-3);
+  padding: 12px 8px;
+  background: transparent;
+  color: var(--atelier-ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease;
+}
+.workspace-companions button span { min-width: 0; flex: 1; }
+.workspace-companions strong, .workspace-companions small { display: block; overflow-wrap: anywhere; }
+.workspace-companions strong { font-size: 13px; font-weight: 600; }
+.workspace-companions small { margin-top: 3px; color: var(--atelier-muted); font-size: 12px; }
+.workspace-companions button > svg { width: 16px; }
+
+.workbench-settings > h3 { margin: 0 0 8px; color: var(--atelier-muted); font-size: 12px; font-weight: 650; }
+.workbench-settings .participant-row { border: 1px solid var(--atelier-border); border-radius: var(--radius-3); }
+.workbench-settings .participant-capabilities { padding-right: 12px; }
+
+@media (hover: hover) and (pointer: fine) {
+  .workspace-companions button:hover { background: var(--atelier-rail); }
+}
+@media (max-width: 1024px) {
+  .discussion-workbench { grid-column: 1; grid-row: 1; border-left: 0; }
+  .workbench-expand { display: none; }
+  .work-panel { padding: 16px 16px 24px; }
+  .discussion-resources { padding: 22px 16px; }
+}

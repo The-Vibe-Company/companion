@@ -1,0 +1,132 @@
+/* The shell: rail, conversation column, and the notices that float above them. */
+.discussion-shell {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--atelier-canvas);
+  color: var(--atelier-ink);
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 14.5px;
+}
+.discussion-shell svg { stroke-width: 1.5; }
+.discussion-shell :is(.ui-button, .discussion-mobile-nav button, .resource-switch button, .discussion-link--active) svg { stroke-width: 2; }
+.discussion-shell :is(button, input, textarea, select, a, summary):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.discussion-main { display: flex; min-width: 0; flex: 1; }
+.discussion-view { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+
+.discussion-stage {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.discussion-stage--workspace { grid-template-columns: minmax(0, 1fr) minmax(320px, 40%); }
+.discussion-stage--workspace.discussion-stage--expanded { grid-template-columns: minmax(300px, 35%) minmax(0, 1fr); }
+
+.discussion-error {
+  position: fixed;
+  z-index: 60;
+  top: 12px;
+  left: 50%;
+  display: flex;
+  max-width: min(520px, calc(100% - 24px));
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-50%);
+  border-radius: var(--radius-2);
+  padding: 9px 10px;
+  background: oklch(.98 .015 29);
+  color: oklch(.42 .15 29);
+  box-shadow: var(--shadow-raised);
+  font-size: 12px;
+}
+.discussion-error button { display: grid; width: 26px; height: 26px; place-items: center; border: 0; background: transparent; color: inherit; }
+
+.refresh-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--atelier-border);
+  padding: 8px 16px;
+  background: var(--atelier-rail);
+  color: var(--atelier-ink);
+  font-size: 13px;
+}
+
+.discussion-opening {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--atelier-muted);
+}
+
+.discussion-loading {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-columns: 264px 1fr;
+  background: oklch(.975 .01 85);
+}
+.discussion-loading > div { grid-row: 1/3; border-right: 1px solid oklch(.9 .015 80); background: oklch(.955 .012 80); }
+.discussion-loading > div:nth-child(2) { display: none; }
+.discussion-loading main { display: grid; gap: 20px; padding: 24px; }
+.discussion-loading main span { border-radius: 9px; background: oklch(.93 .02 80); animation: shimmer 1.6s ease-in-out infinite; }
+.discussion-loading main span:first-child { width: 220px; height: 28px; }
+.discussion-loading main span:last-child { width: min(720px, 90%); height: 120px; align-self: end; justify-self: center; }
+
+.central-mark {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--atelier-ink);
+  color: var(--atelier-surface);
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: 26px;
+  font-weight: 400;
+}
+.central-mark--small {
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid var(--atelier-ink);
+  background: var(--atelier-surface);
+  color: var(--atelier-ink);
+  font-size: 18px;
+}
+.central-mark--pill {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border: 0;
+  background: var(--atelier-ink);
+  color: var(--atelier-surface);
+  font-size: 13px;
+}
+
+@media (max-width: 1024px) {
+  .discussion-shell { font-size: 15px; }
+  .discussion-stage, .discussion-stage--workspace, .discussion-stage--workspace.discussion-stage--expanded { grid-template-columns: minmax(0, 1fr); }
+  .discussion-stage--workspace .discussion-workbench { display: none; }
+  .discussion-stage--activity-open .discussion-timeline { display: none; }
+  .discussion-stage--activity-open .discussion-workbench { display: block; }
+  .discussion-stage--activity-open .discussion-composer { display: none; }
+  .discussion-stage--activity-open { grid-template-rows: minmax(0, 1fr); }
+}
+@media (min-width: 1025px) and (max-width: 1200px) {
+  .discussion-shell { --sidebar-width: 220px; --thread-column: 640px; }
+}

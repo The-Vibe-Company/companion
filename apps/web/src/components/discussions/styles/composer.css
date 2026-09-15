@@ -1,0 +1,146 @@
+/* The composer pill: attachments, recipient, text, and the send action. */
+.discussion-composer {
+  position: relative;
+  grid-column: 1;
+  grid-row: 2;
+  width: min(var(--thread-column), calc(100% - 40px));
+  flex: 0 0 auto;
+  margin: 0 auto max(14px, env(safe-area-inset-bottom));
+  border: 0;
+  border-radius: var(--radius-composer);
+  padding: 10px 12px;
+  background: var(--atelier-surface);
+  box-shadow: var(--shadow-border);
+  transition: box-shadow var(--duration-enter) ease-out;
+}
+.discussion-composer:focus-within { box-shadow: 0 0 0 2px var(--ring), var(--shadow-border); }
+.discussion-composer textarea {
+  width: 100%;
+  min-height: 66px;
+  resize: none;
+  border: 0;
+  padding: 10px 3px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--atelier-ink);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.discussion-composer textarea:focus-visible { outline: 0; }
+.discussion-composer input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+.discussion-composer > footer { display: flex; min-height: 38px; align-items: center; justify-content: flex-end; gap: 8px; }
+.discussion-composer > footer > span { margin-right: auto; color: var(--atelier-muted); font-size: 11px; }
+.discussion-composer > footer > label {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--atelier-muted);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+.discussion-composer label:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
+.discussion-composer > footer > .composer-send {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-3);
+  background: var(--atelier-ink);
+  color: var(--atelier-surface);
+}
+
+.composer-recipient { display: flex; min-height: 34px; align-items: center; gap: 7px; padding: 0 0 5px; color: var(--atelier-muted); font-size: 12px; }
+.recipient-control {
+  display: flex;
+  min-width: 0;
+  max-width: 65%;
+  align-items: center;
+  gap: 5px;
+  border-radius: var(--radius-2);
+  padding: 3px 5px;
+  background: var(--atelier-rail);
+}
+.recipient-control select {
+  min-width: 0;
+  max-width: 100%;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-1);
+  padding: 0 3px;
+  background: transparent;
+  color: var(--atelier-ink);
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.recipient-control strong { overflow: hidden; font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.composer-recipient .recipient-hint { margin-left: auto; color: var(--atelier-muted); font-size: 11px; }
+
+.composer-files { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0 8px; }
+.composer-files > span {
+  display: flex;
+  max-width: 230px;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-1);
+  padding: 4px 5px 4px 8px;
+  background: var(--atelier-rail);
+  font-size: 12px;
+}
+.composer-files > span > svg { width: 13px; }
+.composer-files button { display: grid; width: 22px; height: 22px; place-items: center; border: 0; border-radius: 5px; background: transparent; transition: background-color var(--duration-fast) ease; }
+.composer-file-error { margin: 2px 0 7px; color: var(--status-failed); font-size: 11px; }
+
+.mention-autocomplete {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  max-height: 260px;
+  overflow: auto;
+  border: 0;
+  border-radius: var(--radius-4);
+  padding: 6px;
+  background: var(--atelier-surface);
+  box-shadow: var(--shadow-raised);
+}
+.mention-autocomplete button {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: var(--radius-2);
+  padding: 7px 9px;
+  background: transparent;
+  color: var(--atelier-ink);
+  text-align: left;
+  transition: background-color var(--duration-fast) ease;
+}
+.mention-autocomplete button[aria-selected=true] { background: var(--atelier-rail); }
+.mention-autocomplete button span { min-width: 0; flex: 1; }
+.mention-autocomplete .character-mark, .mention-autocomplete .central-mark { flex: 0 0 30px; width: 30px; height: 30px; }
+.mention-autocomplete strong, .mention-autocomplete small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mention-autocomplete strong { font-size: 13.5px; }
+.mention-autocomplete small { color: var(--atelier-muted); font-size: 12px; }
+.mention-autocomplete kbd { color: var(--atelier-muted); font: 11px "DM Sans", sans-serif; }
+
+@media (hover: hover) and (pointer: fine) {
+  .discussion-composer > footer > label:hover { background: var(--atelier-rail); color: var(--atelier-ink); }
+  .composer-files button:hover { background: var(--atelier-soft); }
+  .mention-autocomplete button:hover { background: var(--atelier-rail); }
+}
+@media (max-width: 1024px) {
+  .discussion-composer { width: calc(100% - 24px); margin-bottom: 12px; }
+}
+@media (max-width: 430px) {
+  .composer-recipient { flex-wrap: wrap; }
+  .composer-recipient .recipient-hint { flex-basis: 100%; margin-left: 0; padding-left: 3px; }
+  .recipient-control { max-width: 85%; }
+}

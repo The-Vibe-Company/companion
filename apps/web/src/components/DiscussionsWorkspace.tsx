@@ -7,7 +7,7 @@ import { Sidebar } from "./discussions/Sidebar";
 import { Thread } from "./discussions/Thread";
 import { ArchivedPanel, DiscussionDetails } from "./discussions/DetailsPanel";
 import { POLL_INTERVAL, mergeMessages } from "./discussions/shared";
-import "./DiscussionsWorkspace.css";
+import "./discussions/styles/index.css";
 
 type Props = {
   user: AccountUser;
