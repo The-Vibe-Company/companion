@@ -1,8 +1,9 @@
 /* Header, timeline grammar, activity and the mobile bar under the conversation. */
 .discussion-header {
-  display: flex;
+  display: grid;
   min-height: 64px;
   flex: 0 0 auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   border-bottom: 1px solid var(--atelier-border);
@@ -10,8 +11,13 @@
   background: var(--atelier-canvas);
 }
 .discussion-mobile-menu { display: none; }
-.discussion-title { display: flex; min-width: 0; flex: 1; align-items: center; gap: 10px; }
-.discussion-title > div { min-width: 0; }
+
+.header-participants { display: flex; align-items: center; }
+.header-participants > * { margin-left: -6px; border-radius: 50%; outline: 2px solid var(--atelier-canvas); }
+.header-participants > :first-child { margin-left: 0; }
+.central-mark--stack { width: 24px; height: 24px; border: 0; font-size: 12px; }
+
+.discussion-title { min-width: 0; }
 .discussion-title button:not(.ui-button) {
   display: flex;
   min-width: 0;
@@ -26,28 +32,29 @@
 .discussion-title h1 { overflow: hidden; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
 .discussion-title button > svg { width: 13px; flex: 0 0 auto; color: var(--atelier-muted); opacity: 0; transition: opacity var(--duration-fast) ease; }
 .discussion-title button:focus-visible > svg { opacity: 1; }
-.discussion-title > div > span { display: block; overflow: hidden; margin-top: 3px; color: var(--atelier-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.discussion-title > span { display: block; overflow: hidden; margin-top: 2px; color: var(--atelier-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .discussion-title form { display: flex; align-items: center; gap: 5px; }
-.discussion-title input { min-width: 130px; width: min(36vw, 420px); height: 34px; border: 1px solid var(--atelier-border); border-radius: var(--radius-1); padding: 0 9px; background: var(--atelier-surface); color: var(--atelier-ink); }
+.discussion-title input { min-width: 130px; width: min(36vw, 420px); height: 34px; border: 0; border-radius: var(--radius-2); padding: 0 9px; background: var(--atelier-surface); color: var(--atelier-ink); box-shadow: var(--shadow-border); }
 
-.discussion-header > nav { display: flex; min-width: 0; flex-shrink: 1; gap: 6px; overflow-x: auto; }
-.discussion-header > nav button {
+/* Files and Computer share one segmented control: outer 11 = inner 8 + 3. */
+.resource-switch { display: flex; min-width: 0; flex-shrink: 1; gap: 3px; overflow-x: auto; border-radius: 11px; padding: 3px; background: var(--atelier-rail); }
+.resource-switch button {
   display: flex;
-  min-height: 36px;
+  min-height: 34px;
   flex-shrink: 0;
   align-items: center;
   gap: 7px;
   border: 0;
   border-radius: var(--radius-2);
-  padding: 7px 10px;
+  padding: 6px 10px;
   background: transparent;
-  color: var(--atelier-ink);
+  color: var(--atelier-muted);
   font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease, box-shadow var(--duration-enter) ease-out;
 }
-.discussion-header > nav button[aria-expanded="true"] { background: var(--atelier-rail); color: var(--atelier-ink); }
+.resource-switch button[aria-expanded="true"] { background: var(--atelier-surface); color: var(--atelier-ink); box-shadow: var(--shadow-border); }
 
 .discussion-timeline {
   grid-column: 1;
@@ -251,7 +258,7 @@
 .discussion-mobile-nav { display: none; }
 
 @media (hover: hover) and (pointer: fine) {
-  .discussion-header > nav button:hover { background: var(--atelier-rail); }
+  .resource-switch button:not([aria-expanded=true]):hover { background: var(--atelier-soft); color: var(--atelier-ink); }
   .discussion-title button:hover > svg { opacity: 1; }
   .discussion-starters button:hover { background: var(--atelier-soft); }
   .discussion-file:hover { box-shadow: var(--shadow-border-hover); }
@@ -262,7 +269,8 @@
 
 @media (max-width: 1024px) {
   .discussion-header { padding: 10px 12px; }
-  .discussion-header > nav { display: none; }
+  .discussion-header { grid-template-columns: auto auto minmax(0, 1fr) auto; }
+  .resource-switch { display: none; }
   .discussion-mobile-menu { display: inline-flex; }
   .discussion-header > .ui-button { min-width: 44px; min-height: 44px; }
   .discussion-timeline { padding: 22px 16px; }
@@ -349,7 +357,7 @@
 }
 @media (max-width: 430px) {
   .discussion-title h1 { max-width: 50vw; }
-  .discussion-title > div > span { max-width: 54vw; }
+  .discussion-title > span { max-width: 54vw; }
   .discussion-message--user { margin-left: 24px; }
   .discussion-working, .discussion-task--receipt, .invitation-proposal { margin-left: 0; }
   .discussion-empty h2 { font-size: 28px; }

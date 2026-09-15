@@ -53,7 +53,7 @@ export function Thread({ user, snapshot, olderMessages, companions, folders, onM
   const taskCard = (task: DiscussionSnapshot["tasks"][number]) => <TaskCard key={task.id} discussionId={discussion.id} task={task} companion={companionMap.get(task.companionId)} compact onOpen={() => openWorkspace(task.companionId, "results")} onRefresh={onRefresh} onError={onError} />;
 
   return <section className="discussion-view">
-    <ThreadHeader discussion={discussion} direct={direct} participantCount={participants.length} tab={tab} onMenu={onMenu} onDetails={onDetails} onOpenView={id => openWorkspace(id)} onCloseView={closeWorkspace} onRefresh={onRefresh} onListRefresh={onListRefresh} onError={onError} />
+    <ThreadHeader discussion={discussion} direct={direct} participants={participants.map(item => item.companion)} tab={tab} onMenu={onMenu} onDetails={onDetails} onOpenView={id => openWorkspace(id)} onCloseView={closeWorkspace} onRefresh={onRefresh} onListRefresh={onListRefresh} onError={onError} />
     <div className={cn("discussion-stage", tab!=="conversation"&&"discussion-stage--workspace", tab!=="conversation"&&"discussion-stage--activity-open", expanded&&"discussion-stage--expanded")}><div className="discussion-timeline" ref={timelineRef} onScroll={event => onScroll(event.currentTarget)} role="log" aria-label="Discussion messages" aria-live="polite">
       {snapshot.beforeCursor && <Button className="load-older" variant="outline" size="sm" disabled={loadingOlder} onClick={() => void onLoadOlder()}>{loadingOlder ? <LoaderCircle className="spin" /> : <ArrowUp />}Load earlier messages</Button>}
       {!allMessages.length && !snapshot.proposals.length && !activeCentral && !activeTasks.length && <EmptyState direct={direct} onStarter={setStarter} />}
