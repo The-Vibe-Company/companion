@@ -1,0 +1,21 @@
+apps/web/src/components/discussions/RowMenu.tsx
+  s_edd938fd7c4829::t_543ec9243c9fef 38,43-51,57,59
+apps/web/src/components/discussions/Sidebar.tsx
+  s_edd938fd7c4829::t_3d91eb4ce7159b 274-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9c658d5ffa8c1c25feab15d223c4748fad99de29",
+  "prompts": {},
+  "sessions": {
+    "s_edd938fd7c4829": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c52b168-f139-46e2-8bfb-136bf8e88e1e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
