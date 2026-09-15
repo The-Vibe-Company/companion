@@ -1,0 +1,25 @@
+apps/web/src/components/discussions/Thread.tsx
+  s_edd938fd7c4829::t_e61029905c959f 56
+apps/web/src/components/discussions/ThreadHeader.tsx
+  s_edd938fd7c4829::t_1672350ab0cce1 7-8,15-16,19-23,25-28,30
+apps/web/src/components/discussions/styles/thread.css
+  s_edd938fd7c4829::t_fe28c2f4a6ba81 35,37,39-41,43,49,51,55,57
+  s_edd938fd7c4829::t_c2086e99f3ff17 261,272-273,360
+  s_edd938fd7c4829::t_079125f4f8aa66 3,6,14-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4b496090c5ce967e0c864cfc9cdee3c41c480b0f",
+  "prompts": {},
+  "sessions": {
+    "s_edd938fd7c4829": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c52b168-f139-46e2-8bfb-136bf8e88e1e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
