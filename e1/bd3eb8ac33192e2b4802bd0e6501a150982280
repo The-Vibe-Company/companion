@@ -1,0 +1,35 @@
+apps/web/src/components/discussions/Thread.tsx
+  s_edd938fd7c4829::t_361b94d5cbf3f1 2,7,13-14,16,54,57-60,67-70,72-91
+apps/web/src/components/discussions/Workbench.tsx
+  s_edd938fd7c4829::t_ee2b5ffb96b012 57-58
+  s_edd938fd7c4829::t_2643f820cae2c5 10,12
+  s_edd938fd7c4829::t_a885d1ccf5326a 28-30,33-34,36-37,41,43-44
+  s_edd938fd7c4829::t_256c8bf300a531 72-81
+apps/web/src/components/discussions/ActivityLine.tsx
+  s_edd938fd7c4829::t_c3b3813aa17338 1,3-28
+apps/web/src/components/discussions/QuestionCard.tsx
+  s_edd938fd7c4829::t_0d87721b18cec7 5-10,22-37
+apps/web/src/components/DiscussionsWorkspace.test.tsx
+  s_edd938fd7c4829::t_af6a45506481a1 314-321
+  s_edd938fd7c4829::t_b9eb7f76512d6e 241,245-250,252-254
+  s_edd938fd7c4829::t_d6b31a11a4f2c5 442,444-445
+  s_edd938fd7c4829::t_2f5b2b58fbaee8 410,415-416,418,420-424,426-428
+apps/web/src/components/discussions/styles/thread.css
+  s_edd938fd7c4829::t_32c7dacc0ef56e 166-191,193-197,199-205,212,221,237-239,241,245,252-285,287-289,325-326,340,425
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e1bd3eb8ac33192e2b4802bd0e6501a150982280",
+  "prompts": {},
+  "sessions": {
+    "s_edd938fd7c4829": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c52b168-f139-46e2-8bfb-136bf8e88e1e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
