@@ -196,7 +196,8 @@ function DiscussionRow({ discussion, companions, folders, active, renaming, menu
 }) {
   const title = discussion.title || "Untitled discussion";
   const last = discussion.lastMessage ?? null;
-  const author = last?.companionId ? companions.find(item => item.id === last.companionId)?.name : last?.role === "user" ? "You" : "Companion";
+  // A retired companion is gone from `companions` but still authored the last message.
+  const author = last?.companionId ? companions.find(item => item.id === last.companionId)?.name ?? "Companion" : last?.role === "user" ? "You" : "Companion";
   const preview = last ? `${author}: ${stripPreview(last.preview)}` : "No messages yet";
   const requestMenu = onMenu(`discussion:${discussion.id}`, `Options for ${title}`, [
     { label: "Rename", onSelect: onRename },

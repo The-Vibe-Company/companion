@@ -543,6 +543,17 @@ it("shows the last message and its time on every roster row", async () => {
   cleanup(); vi.unstubAllGlobals();
 });
 
+it("still names the author of a preview when that companion has been retired", async () => {
+  const lastMessage = { role: "assistant" as const, companionId: "gone", createdAt: "2026-09-11T09:30:00.000Z", preview: "Handed over" };
+  setupFetch(path => path === "/api/discussions" ? response({ discussions: [{ ...discussion, lastMessage }], folders: [] }) : undefined);
+  renderWorkspace();
+  const sidebar = await screen.findByRole("complementary", { name: "Discussions" });
+  const row = (await within(sidebar).findByText("Launch")).closest(".discussion-row")!;
+  expect(within(row as HTMLElement).getByText("Companion: Handed over")).toBeInTheDocument();
+  expect(sidebar).not.toHaveTextContent("undefined");
+  cleanup(); vi.unstubAllGlobals();
+});
+
 it("opens a row menu from its button and from a right click, and moves a discussion to a folder", async () => {
   const bodies: Array<Record<string, unknown>> = [];
   setupFetch((path, options) => {
