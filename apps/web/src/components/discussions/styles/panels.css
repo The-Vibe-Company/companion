@@ -11,29 +11,18 @@
   border-left: 1px solid var(--atelier-border);
   background: var(--atelier-surface);
   box-shadow: var(--shadow-raised);
+  transition: translate var(--duration-panel) var(--ease-ui), opacity var(--duration-panel) var(--ease-ui);
 }
+@starting-style { .discussion-details { translate: 16px 0; opacity: 0; } }
 .discussion-details > header { display: flex; min-height: 82px; align-items: center; gap: 12px; border-bottom: 1px solid var(--atelier-border); padding: 17px 20px; }
 .discussion-details > header > div { min-width: 0; flex: 1; }
 .discussion-details h2 { margin: 0; font-family: "Instrument Serif", Georgia, serif; font-size: 24px; font-weight: 400; letter-spacing: -.01em; }
 .discussion-details > header p { overflow: hidden; margin: 4px 0 0; color: var(--atelier-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.discussion-details > nav { display: flex; gap: 4px; border-bottom: 1px solid var(--atelier-border); padding: 8px 14px; }
-.discussion-details > nav button {
-  display: flex;
-  min-height: 38px;
-  align-items: center;
-  gap: 7px;
-  border: 0;
-  border-radius: var(--radius-1);
-  padding: 0 10px;
-  background: transparent;
-  color: var(--atelier-muted);
-  font-size: 12.5px;
-  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
-}
-.discussion-details > nav button[aria-current=page] { background: var(--atelier-rail); color: var(--atelier-ink); }
 
 .details-content { min-height: 0; flex: 1; overflow-y: auto; padding: 18px; }
-.details-content > h3 { margin: 6px 4px 10px; color: var(--atelier-muted); font-size: 12px; font-weight: 600; }
+.details-content > h3 { margin: 22px 4px 10px; color: var(--atelier-muted); font-size: 12px; font-weight: 600; }
+.details-content > h3:first-child { margin-top: 6px; }
+.details-content > .details-field { margin-top: 26px; }
 
 .participant-row { border-bottom: 1px solid var(--atelier-border); }
 .participant-row--removed { opacity: .66; }
@@ -103,7 +92,6 @@
 .archive-discussion small { margin-top: 4px; color: var(--atelier-muted); font-size: 12px; }
 
 @media (hover: hover) and (pointer: fine) {
-  .discussion-details > nav button:hover { background: var(--atelier-rail); }
   .participant-row > button:hover, .add-participant:hover, .archived-discussion:hover { background: var(--atelier-rail); }
   .archive-discussion:hover { background: color-mix(in oklch, var(--destructive) 7%, var(--atelier-surface)); }
 }

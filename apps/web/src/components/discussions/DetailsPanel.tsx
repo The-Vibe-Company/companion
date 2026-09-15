@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Archive, ChevronDown, Computer, Settings, Square, UserMinus, UserPlus, Users, X } from "lucide-react";
+import { Archive, ChevronDown, Computer, Square, UserMinus, UserPlus, X } from "lucide-react";
 import { discussionApi, type Companion, type Discussion, type DiscussionFolder, type DiscussionSnapshot } from "@/api";
 import { CompanionAvatar } from "../CompanionAvatar";
 import { CompanionConfiguration } from "../CompanionConfiguration";
@@ -12,13 +12,24 @@ import { activeStatus, dateLabel, statusLabel } from "./shared";
 
 export function DiscussionDetails({ snapshot, companions, folders, onClose, onRefresh, onListRefresh, onArchive, onError }: { snapshot: DiscussionSnapshot; companions: Companion[]; folders: DiscussionFolder[]; onClose: () => void; onRefresh: () => Promise<void>; onListRefresh: () => Promise<unknown>; onArchive: () => Promise<void>; onError: (cause: unknown) => void }) {
   const modalRef = useModalFocus(true, onClose);
-  const [section, setSection] = useState<"people" | "settings">("people");
   const participants = snapshot.participants;
   const activeIds = new Set(participants.filter(item => !item.removedAt).map(item => item.companionId));
+  const direct = snapshot.discussion.directCompanionId;
   async function mutate(action: () => Promise<unknown>) { try { await action(); await onRefresh(); } catch (cause) { onError(cause); } }
-  return <><button className="details-scrim" onClick={onClose} aria-label="Close discussion details"/><aside ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" className="discussion-details" aria-label="Discussion details"><header><div><h2>Discussion details</h2><p>{snapshot.discussion.title}</p></div><Button variant="ghost" size="icon" onClick={onClose} aria-label="Close details"><X /></Button></header><nav><button aria-current={section === "people" ? "page" : undefined} onClick={() => setSection("people")}><Users />People</button><button aria-current={section === "settings" ? "page" : undefined} onClick={() => setSection("settings")}><Settings />Settings</button></nav>
-    {section === "people" ? <div className="details-content"><h3>In this discussion</h3>{participants.map(participant => <CompanionDetailRow key={participant.companionId} participant={participant} tasks={snapshot.tasks.filter(task => task.companionId === participant.companionId)} discussionId={snapshot.discussion.id} removable={!snapshot.discussion.directCompanionId} onRemove={() => mutate(() => discussionApi.removeParticipant(snapshot.discussion.id, participant.companionId))} onRefresh={onRefresh} onError={onError}/>)}{!snapshot.discussion.directCompanionId&&<><h3>Add a companion</h3>{companions.filter(item => !activeIds.has(item.id)).map(companion => <button className="add-participant" key={companion.id} onClick={() => void mutate(() => discussionApi.addParticipant(snapshot.discussion.id, companion.id))}><CompanionAvatar name={companion.name} avatar={companion.avatar} size={34}/><span><strong>{companion.name}</strong><small>{companion.instructions}</small></span><UserPlus /></button>)}</>}</div> : <div className="details-content"><label className="details-field">Folder<select value={snapshot.discussion.folderId ?? ""} onChange={async event => { try { await discussionApi.update(snapshot.discussion.id, { folderId: event.target.value || null }); await onListRefresh(); await onRefresh(); } catch (cause) { onError(cause); } }}><option value="">No folder</option>{folders.map(folder => <option value={folder.id} key={folder.id}>{folder.name}</option>)}</select></label><button className="archive-discussion" onClick={() => void onArchive()}><Archive /><span><strong>Archive discussion</strong><small>Work keeps running. You can restore the discussion later.</small></span></button></div>}
-  </aside></>;
+  return <><button className="details-scrim" onClick={onClose} aria-label="Close discussion details"/>
+    <aside ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" className="discussion-details" aria-label="Discussion details">
+      <header><div><h2>Discussion details</h2><p>{snapshot.discussion.title}</p></div><Button variant="ghost" size="icon" onClick={onClose} aria-label="Close details"><X /></Button></header>
+      <div className="details-content">
+        <h3>In this discussion</h3>
+        {participants.map(participant => <CompanionDetailRow key={participant.companionId} participant={participant} tasks={snapshot.tasks.filter(task => task.companionId === participant.companionId)} discussionId={snapshot.discussion.id} removable={!direct} onRemove={() => mutate(() => discussionApi.removeParticipant(snapshot.discussion.id, participant.companionId))} onRefresh={onRefresh} onError={onError}/>)}
+        {!direct && <>
+          <h3>Add a companion</h3>
+          {companions.filter(item => !activeIds.has(item.id)).map(companion => <button className="add-participant" key={companion.id} onClick={() => void mutate(() => discussionApi.addParticipant(snapshot.discussion.id, companion.id))}><CompanionAvatar name={companion.name} avatar={companion.avatar} size={34}/><span><strong>{companion.name}</strong><small>{companion.instructions}</small></span><UserPlus /></button>)}
+        </>}
+        <label className="details-field">Folder<select value={snapshot.discussion.folderId ?? ""} onChange={async event => { try { await discussionApi.update(snapshot.discussion.id, { folderId: event.target.value || null }); await onListRefresh(); await onRefresh(); } catch (cause) { onError(cause); } }}><option value="">No folder</option>{folders.map(folder => <option value={folder.id} key={folder.id}>{folder.name}</option>)}</select></label>
+        <button className="archive-discussion" onClick={() => void onArchive()}><Archive /><span><strong>Archive discussion</strong><small>Work keeps running. You can restore the discussion later.</small></span></button>
+      </div>
+    </aside></>;
 }
 
 export function CompanionDetailRow({ participant, tasks, discussionId, onRemove, onRefresh, onError, removable = true }: { removable?: boolean; participant: DiscussionSnapshot["participants"][number]; tasks: DiscussionSnapshot["tasks"]; discussionId: string; onRemove: () => Promise<void>; onRefresh: () => Promise<void>; onError: (cause: unknown) => void }) {

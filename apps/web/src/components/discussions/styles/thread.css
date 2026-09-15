@@ -385,19 +385,21 @@ span.activity-agent { cursor: default; }
     cursor: pointer;
   }
   .mobile-participant-picker > summary::-webkit-details-marker { display: none; }
+  /* A plain sheet at the foot of the screen, under the thumb. */
   .mobile-participant-options {
-    position: absolute;
+    position: fixed;
+    z-index: 26;
     right: 0;
-    bottom: calc(100% + 14px);
-    width: min(320px, calc(100vw - 20px));
+    bottom: calc(58px + env(safe-area-inset-bottom));
+    left: 0;
     max-height: min(420px, 60dvh);
     overflow-y: auto;
-    border-radius: var(--radius-4);
-    padding: 6px;
+    border-radius: var(--radius-4) var(--radius-4) 0 0;
+    padding: 8px 8px 12px;
     background: var(--atelier-surface);
     box-shadow: var(--shadow-raised);
   }
-  .mobile-participant-options > strong { display: block; padding: 8px; color: var(--atelier-muted); font-size: 12px; font-weight: 500; }
+  .mobile-participant-options > strong { display: block; padding: 10px 8px; color: var(--atelier-muted); font-size: 12px; font-weight: 500; }
   .discussion-mobile-nav .mobile-participant-options > button {
     width: 100%;
     max-width: none;
