@@ -123,6 +123,22 @@
 .discussion-message--user header { margin-bottom: 4px; }
 .discussion-message--user header time { display: none; }
 
+.discussion-message--continued { margin-top: -20px; }
+.discussion-message-stamp {
+  display: block;
+  padding-top: 3px;
+  color: var(--atelier-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease;
+}
+.discussion-message--continued:focus-within .discussion-message-stamp { opacity: 1; }
+
+.discussion-day { display: flex; align-items: center; gap: 12px; margin: 0 0 24px; color: var(--atelier-muted); font-size: 11px; }
+.discussion-day::before, .discussion-day::after { content: ""; flex: 1; height: 1px; background: var(--atelier-border); }
+
 .discussion-delegated-history > summary { min-height: 44px; padding: 12px 0; color: var(--atelier-muted); cursor: pointer; }
 
 .discussion-files { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
@@ -251,7 +267,10 @@
   box-shadow: var(--shadow-raised);
   font-size: 12px;
   cursor: pointer;
+  transition: opacity var(--duration-enter) ease-out, translate var(--duration-enter) ease-out;
 }
+@starting-style { .discussion-jump-latest { opacity: 0; translate: 0 6px; } }
+.jump-badge { border-radius: var(--radius-pill); padding: 1px 7px; background: var(--atelier-ink); color: var(--atelier-surface); font-size: 10px; font-weight: 600; }
 
 .discussion-archived-note { grid-column: 1; padding: 16px; color: var(--atelier-muted); }
 
@@ -265,6 +284,10 @@
   .quiet-stop:hover { background: var(--atelier-rail); color: var(--status-failed); }
   .task-open:hover { background: var(--atelier-rail); color: var(--atelier-ink); }
   .discussion-earlier-activity > summary:hover { color: var(--atelier-ink); }
+  .discussion-message--continued:hover .discussion-message-stamp { opacity: 1; }
+}
+@media (pointer: coarse) {
+  .discussion-message-stamp { opacity: 1; }
 }
 
 @media (max-width: 1024px) {

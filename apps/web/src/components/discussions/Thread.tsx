@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Activity, ArrowDown, ArrowUp, FileText, LoaderCircle, Maximize2, MessageCircle, Minimize2, UserPlus, Users, X } from "lucide-react";
 import { discussionApi, type AccountUser, type Companion, type DiscussionFolder, type DiscussionSnapshot } from "@/api";
 import { CompanionAvatar } from "../CompanionAvatar";
@@ -9,11 +9,11 @@ import { StopControl } from "./ActivityLine";
 import { Composer } from "./Composer";
 import { EmptyState } from "./EmptyState";
 import { InvitationCard } from "./InvitationCard";
-import { MessageItem } from "./MessageItem";
+import { DaySeparator, MessageItem } from "./MessageItem";
 import { ThreadHeader } from "./ThreadHeader";
 import { CompanionWorkbench, TaskCard, WorkspaceOverview } from "./Workbench";
 import { useThreadScroll } from "./useThreadScroll";
-import { activeStatus, mergeMessages, orderedTasks, statusLabel, workStatus } from "./shared";
+import { activeStatus, groupMessages, mergeMessages, orderedTasks, statusLabel, workStatus } from "./shared";
 
 type WorkspaceView = "results" | "files" | "machine" | "settings";
 
@@ -40,6 +40,17 @@ export function Thread({ user, snapshot, olderMessages, companions, folders, onM
   const { timelineRef, awayFromLatest, onScroll, jumpToLatest } = useThreadScroll([snapshot, olderMessages, tab], olderMessages.length);
 
   const allMessages = mergeMessages(olderMessages, snapshot.messages);
+  const latestId = allMessages.at(-1)?.id ?? null;
+  const knownLatest = useRef(latestId);
+  const [arrived, setArrived] = useState(false);
+  useEffect(() => {
+    if (latestId === knownLatest.current) return;
+    const known = knownLatest.current;
+    knownLatest.current = latestId;
+    if (awayFromLatest && known !== null) setArrived(true);
+  }, [latestId, awayFromLatest]);
+  useEffect(() => { if (!awayFromLatest) setArrived(false); }, [awayFromLatest]);
+
   const activeCentral = snapshot.centralRuns.find(run => activeStatus(run.status));
   const activeTasks = snapshot.tasks.filter(task => activeStatus(task.status));
   const latestUserTime = allMessages.reduce((latest, message) => message.role === "user" ? Math.max(latest, Date.parse(message.createdAt)) : latest, 0);
@@ -57,13 +68,16 @@ export function Thread({ user, snapshot, olderMessages, companions, folders, onM
     <div className={cn("discussion-stage", tab!=="conversation"&&"discussion-stage--workspace", tab!=="conversation"&&"discussion-stage--activity-open", expanded&&"discussion-stage--expanded")}><div className="discussion-timeline" ref={timelineRef} onScroll={event => onScroll(event.currentTarget)} role="log" aria-label="Discussion messages" aria-live="polite">
       {snapshot.beforeCursor && <Button className="load-older" variant="outline" size="sm" disabled={loadingOlder} onClick={() => void onLoadOlder()}>{loadingOlder ? <LoaderCircle className="spin" /> : <ArrowUp />}Load earlier messages</Button>}
       {!allMessages.length && !snapshot.proposals.length && !activeCentral && !activeTasks.length && <EmptyState direct={direct} onStarter={setStarter} />}
-      {allMessages.map(message => {
+      {groupMessages(allMessages).map(({ message, day, header }) => {
         const delegatedTask = message.role === "assistant" && message.delegated ? snapshot.tasks.find(task => task.id === message.runId) : undefined;
         if (delegatedTask) {
           const lastReply = allMessages.filter(item => item.runId === message.runId && item.role === "assistant" && item.delegated).at(-1);
           return lastReply?.id === message.id ? taskCard(delegatedTask) : null;
         }
-        return <MessageItem key={message.id} message={message} user={user} companions={companionMap} />;
+        return <Fragment key={message.id}>
+          {day && <DaySeparator value={day} />}
+          <MessageItem message={message} user={user} companions={companionMap} header={header} />
+        </Fragment>;
       })}
       {snapshot.proposals.filter(proposal => proposal.status === "pending").map(proposal => <InvitationCard key={proposal.id} discussionId={discussion.id} proposal={proposal} companion={companionMap.get(proposal.companionId)} onRefresh={onRefresh} onError={onError} />)}
       {activeCentral && <div className="discussion-working"><div className="central-working-label" role="status"><span className="work-status" data-status={activeCentral.status}><Activity />Companion · {workStatus(activeCentral.status)}</span></div><StopControl key={activeCentral.id} label="Stop chat" onStop={() => discussionApi.cancel(discussion.id)} onRefresh={onRefresh} onError={onError}/>{activeCentral.previewText && <details><summary>View current activity</summary><MessageResponse>{activeCentral.previewText}</MessageResponse></details>}</div>}
@@ -74,7 +88,7 @@ export function Thread({ user, snapshot, olderMessages, companions, folders, onM
       <div className="workbench-controls"><Button className="workbench-expand" variant="ghost" size="icon" static aria-label={expanded ? "Reduce workspace" : "Expand workspace"} aria-pressed={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? <Minimize2 /> : <Maximize2 />}</Button><Button variant="ghost" size="icon" aria-label="Close workbench" onClick={closeWorkspace}><X /></Button></div>
       {tab === "work" || tab === "machines" ? <WorkspaceOverview snapshot={{...snapshot, messages: allMessages}} machines={tab === "machines"} onOpen={openWorkspace} /> : <CompanionWorkbench key={tab} snapshot={{...snapshot, messages: allMessages}} companionId={tab} view={workspaceView} onView={view => { setWorkspaceView(view); if (view === "machine") setExpanded(true); }} onRefresh={onRefresh} onError={onError}/>}
     </aside>}
-    {awayFromLatest && <button className="discussion-jump-latest" onClick={jumpToLatest}><ArrowDown />Latest messages</button>}
+    {awayFromLatest && <button className="discussion-jump-latest" aria-label="Latest messages" onClick={() => { setArrived(false); jumpToLatest(); }}><ArrowDown />Latest messages{arrived && <span className="jump-badge">New</span>}</button>}
     {!discussion.archivedAt ? <Composer userId={user.id} snapshot={snapshot} companions={companions} initialDraft={starter} onInitialDraftApplied={()=>setStarter(null)} onRefresh={onRefresh} onError={onError}/> : <p className="discussion-archived-note">This discussion is archived. Restore it to send a message.</p>}</div>
     <nav className="discussion-mobile-nav" aria-label="Mobile workspace"><button aria-label="Show discussion" aria-current={tab==="conversation"?"page":undefined} onClick={()=>setTab("conversation")}><MessageCircle/>Thread</button><button aria-label="Show files" aria-current={tab==="work"?"page":undefined} onClick={()=>openWorkspace("work")}><FileText/>Files</button><details className="mobile-participant-picker" onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}>
       <summary aria-label="Choose discussion companion"><Users/>Companions</summary>

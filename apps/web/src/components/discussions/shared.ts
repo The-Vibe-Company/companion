@@ -69,3 +69,21 @@ export function activeStatus(value: string) { return ["queued", "preparing", "ru
 export function compareSequence(left: string, right: string) { const a = String(left).replace(/^0+(?=\d)/, ""), b = String(right).replace(/^0+(?=\d)/, ""); return a.length - b.length || a.localeCompare(b); }
 
 export function mergeMessages(...groups: DiscussionSnapshot["messages"][]) { const byId = new Map(groups.flat().map(message => [message.id, message])); return [...byId.values()].sort((a, b) => compareSequence(a.sequence, b.sequence) || a.id.localeCompare(b.id)); }
+
+const GROUPING_WINDOW = 5 * 60_000;
+export type GroupedMessage = { message: DiscussionSnapshot["messages"][number]; day: string | null; header: boolean };
+
+/** A day opens with its own separator; the same author keeps one header for five minutes. */
+export function groupMessages(messages: DiscussionSnapshot["messages"]): GroupedMessage[] {
+  let previous: DiscussionSnapshot["messages"][number] | null = null;
+  return messages.map(message => {
+    const day = !previous || new Date(previous.createdAt).toDateString() !== new Date(message.createdAt).toDateString() ? message.createdAt : null;
+    const continued = previous !== null
+      && day === null
+      && previous.role === message.role
+      && (previous.companionId ?? null) === (message.companionId ?? null)
+      && Date.parse(message.createdAt) - Date.parse(previous.createdAt) < GROUPING_WINDOW;
+    previous = message;
+    return { message, day, header: !continued };
+  });
+}
