@@ -275,6 +275,21 @@ test('discussion list exposes only current owned participant ids as JSON arrays'
 });
 
 
+test('discussion list previews the newest visible message and stays null while empty',async()=>{
+ const c=await companion(),d=await discussion();
+ const listed=async()=> (await listDiscussions(owner)).discussions.find((item:any)=>item.id===d.id);
+ expect((await listed()).lastMessage).toBeNull();
+ await send(d.id,'First question');
+ expect((await listed()).lastMessage).toMatchObject({role:'user',companionId:null,preview:'First question'});
+ await db`INSERT INTO discussion_messages(id,discussion_id,role,content,companion_id,run_id) VALUES(${crypto.randomUUID()},${d.id},'assistant',${'x'.repeat(400)},${c.id},${crypto.randomUUID()})`;
+ const preview=(await listed()).lastMessage;
+ expect(preview.companionId).toBe(c.id);
+ expect(preview.preview).toHaveLength(160);
+ await db`INSERT INTO discussion_messages(id,discussion_id,role,content,run_id) VALUES(${crypto.randomUUID()},${d.id},'system','Housekeeping',${crypto.randomUUID()})`;
+ expect((await listed()).lastMessage.companionId).toBe(c.id);
+});
+
+
 test('direct companion replies remain distinct from coordinator delegation in paged snapshots',async()=>{
  const c=await companion(),d=await discussion();
  const direct=await send(d.id,'Direct question',{targetCompanionId:c.id});

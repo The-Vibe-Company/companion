@@ -6,7 +6,8 @@ export interface Companion { id: string; name: string; instructions: string; pro
 export interface AccountUser { id: string; email: string; name: string }
 export interface AppConfig { localAvailable: boolean; defaultProvider?: "local" | "box"; boxAvailable: boolean; model: string; models?: Array<{ id: string; name: string; isDefault?: boolean }> }
 export interface ThreadFile { id: string; runId: string; kind: "user_upload" | "agent_output"; name: string; mimeType: string; size: number; url: string }
-export interface Discussion { participantIds?: string[]; id: string; title: string; folderId: string | null; directCompanionId: string | null; archivedAt: string | null; createdAt: string; updatedAt: string }
+export interface DiscussionPreview { role: "user" | "assistant"; companionId: string | null; createdAt: string; preview: string }
+export interface Discussion { participantIds?: string[]; lastMessage?: DiscussionPreview | null; id: string; title: string; folderId: string | null; directCompanionId: string | null; archivedAt: string | null; createdAt: string; updatedAt: string }
 export interface DiscussionFolder { id: string; name: string; companionIds: string[]; createdAt: string }
 export interface DiscussionParticipant { companionId: string; removedAt: string | null; companion: Companion }
 export interface DiscussionMessage { delegated?: boolean; id: string; sequence: string; role: "user" | "assistant"; content: string; companionId: string | null; runId: string; createdAt: string; complete: boolean; files: ThreadFile[] }

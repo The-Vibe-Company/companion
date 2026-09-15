@@ -30,8 +30,13 @@ export async function listDiscussions(ownerId:string,archived=false,companionId?
  if(companionId) await availableCompanion(ownerId,companionId);
  const discussions = await db.unsafe(`SELECT ${columns},COALESCE((SELECT jsonb_agg(p.companion_id ORDER BY p.joined_at,p.companion_id)
   FROM discussion_participants p JOIN companions c ON c.id=p.companion_id
-  WHERE p.discussion_id=d.id AND p.removed_at IS NULL AND c.owner_id=d.owner_id AND c.retired_at IS NULL),'[]'::jsonb) AS "participantIds"
-  FROM discussions d WHERE owner_id=$1 AND (archived_at IS NOT NULL)=$2 AND ($3::uuid IS NULL OR direct_companion_id=$3) ORDER BY updated_at DESC,id LIMIT 500`,[ownerId,archived,companionId??null]);
+  WHERE p.discussion_id=d.id AND p.removed_at IS NULL AND c.owner_id=d.owner_id AND c.retired_at IS NULL),'[]'::jsonb) AS "participantIds",
+  last."lastMessage"
+  FROM discussions d LEFT JOIN LATERAL (
+   SELECT jsonb_build_object('role',m.role,'companionId',m.companion_id,'createdAt',m.created_at,'preview',left(m.content,160)) AS "lastMessage"
+   FROM discussion_messages m WHERE m.discussion_id=d.id AND m.role<>'system' ORDER BY m.sequence DESC LIMIT 1
+  ) last ON true
+  WHERE owner_id=$1 AND (archived_at IS NOT NULL)=$2 AND ($3::uuid IS NULL OR direct_companion_id=$3) ORDER BY updated_at DESC,id LIMIT 500`,[ownerId,archived,companionId??null]);
  const folders = await db`SELECT id,name,to_jsonb(companion_ids) AS "companionIds",created_at AS "createdAt" FROM discussion_folders WHERE owner_id=${ownerId} ORDER BY created_at,id`;
  return {discussions,folders};
 }
