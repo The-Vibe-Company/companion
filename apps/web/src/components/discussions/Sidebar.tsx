@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type RefObject } from "react";
+import { useRef, useState, type FormEvent, type MouseEvent, type RefObject } from "react";
 import { Archive, ChevronRight, Plus, Settings, X } from "lucide-react";
 import { discussionApi, type AccountUser, type Companion, type Discussion, type DiscussionFolder } from "@/api";
 import { CompanionAvatar } from "../CompanionAvatar";
@@ -155,6 +155,14 @@ export function Sidebar({ panelRef, open, user, companions, discussions, folders
 
 function byRecency(a: Discussion, b: Discussion) { return Date.parse(b.updatedAt) - Date.parse(a.updatedAt) || a.id.localeCompare(b.id); }
 
+/** A right click opens the same menu as the row's own trigger, when it has one. */
+function openFromRow(event: MouseEvent<HTMLElement>, open: (anchor: HTMLElement) => void) {
+  const trigger = event.currentTarget.querySelector<HTMLElement>(".row-menu-trigger");
+  if (!trigger) return;
+  event.preventDefault();
+  open(trigger);
+}
+
 function CompanionRow({ companion, direct, active, menuOpen, onOpen, onMenu }: {
   companion: Companion; direct?: Discussion; active: boolean; menuOpen: boolean;
   onOpen: () => void; onMenu: (anchor: HTMLElement) => void;
@@ -162,7 +170,7 @@ function CompanionRow({ companion, direct, active, menuOpen, onOpen, onMenu }: {
   const last = direct?.lastMessage ?? null;
   const preview = last ? stripPreview(last.preview) : companion.instructions;
   const menuLabel = `Options for ${companion.name}`;
-  return <div className="discussion-row" data-menu-open={menuOpen || undefined} onContextMenu={event => { event.preventDefault(); onMenu(event.currentTarget.querySelector(".row-menu-trigger") as HTMLElement); }}>
+  return <div className="discussion-row" data-menu-open={menuOpen || undefined} onContextMenu={event => openFromRow(event, onMenu)}>
     <button className={cn("discussion-link", active && "discussion-link--active")} aria-current={active ? "page" : undefined} onClick={onOpen}>
       <span className="discussion-row-mark">
         <CompanionAvatar name={companion.name} avatar={companion.avatar} sleeping={companion.status === "archived"} size={28}/>
@@ -197,7 +205,7 @@ function DiscussionRow({ discussion, companions, folders, active, renaming, menu
     { label: "Archive", danger: true, onSelect: () => void onArchive(discussion.id) },
   ]);
   if (renaming) return <RenameRow value={title} label="Discussion name" onCancel={onRenamed} onSave={async name => { await onMutate(() => discussionApi.update(discussion.id, { title: name })); onRenamed(); }} />;
-  return <div className="discussion-row" data-menu-open={menuOpen || undefined} onContextMenu={event => { event.preventDefault(); requestMenu(event.currentTarget.querySelector(".row-menu-trigger") as HTMLElement); }}>
+  return <div className="discussion-row" data-menu-open={menuOpen || undefined} onContextMenu={event => openFromRow(event, requestMenu)}>
     <button className={cn("discussion-link", active && "discussion-link--active")} aria-current={active ? "page" : undefined} onClick={() => onOpen(discussion.id)}>
       <span className="discussion-row-mark"><DiscussionCompanions discussion={discussion} companions={companions}/></span>
       <span className="discussion-row-copy">
@@ -238,7 +246,7 @@ function FolderGroup({ folder, items, companions, folders, selectedId, open, onT
     { label: "Delete", danger: true, onSelect: () => void onMutate(() => discussionApi.deleteFolder(folder.id)) },
   ]);
   return <details className="discussion-folder" open={open} onToggle={event => onToggle(event.currentTarget.open)}>
-    <summary onContextMenu={event => { event.preventDefault(); requestMenu(event.currentTarget.querySelector(".row-menu-trigger") as HTMLElement); }}>
+    <summary onContextMenu={event => openFromRow(event, requestMenu)}>
       <ChevronRight />
       {renaming === `folder:${folder.id}`
         ? <RenameRow inline value={folder.name} label="Folder name" onCancel={onRenamed} onSave={async name => { await onMutate(() => discussionApi.updateFolder(folder.id, { name })); onRenamed(); }} />
