@@ -1,0 +1,25 @@
+.agents/skills/emil-design-eng/SKILL.md
+  s_24a85996ea5fdf::t_0f2a71905239cd 12
+skills-lock.json
+  s_24a85996ea5fdf::t_0f2a71905239cd 14
+.claude/skills/better-ui
+  s_24a85996ea5fdf::t_5b752d76b73e4d 1
+.claude/skills/emil-design-eng
+  s_24a85996ea5fdf::t_23d86a11ec9bb9 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a9eeb0b5af46ed0b8d03b385771fcbe0c9759aad",
+  "prompts": {},
+  "sessions": {
+    "s_24a85996ea5fdf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f54ba94c6ffeeyzIvljyC49z7j",
+        "model": "union-alpha"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
