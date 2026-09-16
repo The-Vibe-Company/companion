@@ -1,0 +1,29 @@
+apps/web/src/components/discussions/styles/sidebar.css
+  s_edd938fd7c4829::t_480e2a7c60ecc3 192,198-235,301-302,305-313,324
+apps/web/src/App.test.tsx
+  s_edd938fd7c4829::t_36a00ba155c69b 1
+  s_edd938fd7c4829::t_cc829cdeff5c9e 79-80,82-86
+apps/web/src/components/DiscussionsWorkspace.test.tsx
+  s_edd938fd7c4829::t_827e4f866402f2 581-606
+apps/web/src/components/discussions/Sidebar.tsx
+  s_edd938fd7c4829::t_293d46fe7b8e35 252,257-260
+  s_edd938fd7c4829::t_edff5321ebf450 142-144
+  s_edd938fd7c4829::t_aea3e4620861dc 2,282,291,301
+  s_edd938fd7c4829::t_6847f6397ab1a4 76-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "27de48442e1ecf6ba65da71a7d1aae0c3eedf942",
+  "prompts": {},
+  "sessions": {
+    "s_edd938fd7c4829": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c52b168-f139-46e2-8bfb-136bf8e88e1e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
