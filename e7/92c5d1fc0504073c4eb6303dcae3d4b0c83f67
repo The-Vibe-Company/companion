@@ -1,0 +1,27 @@
+apps/web/src/components/ConnectionCards.tsx
+  s_05c437513a4a4a::t_852211e217050b 18
+packages/plugins/definitions.test.ts
+  s_05c437513a4a4a::t_01a1239dac5cae 39-40
+  s_05c437513a4a4a::t_5585564f4c9b3e 29,33-38
+docs/plugins-production.md
+  s_05c437513a4a4a::t_5222f2a5261c87 18
+  s_05c437513a4a4a::t_07a2ad1e84585d 17,58
+packages/plugins/definitions.ts
+  s_05c437513a4a4a::t_5af48921cbd32c 197-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e792c5d1fc0504073c4eb6303dcae3d4b0c83f67",
+  "prompts": {},
+  "sessions": {
+    "s_05c437513a4a4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fa1261d-7250-4081-a171-e0ef985a0d61",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
