@@ -7,10 +7,13 @@ does not replace the machine's Node or the product's pinned Bun.
 
 ## Shared agent skills
 
-The repository includes `ship-pr-dev` for PR delivery, `review-code-dev` for independent
-review, `capture-learning-tools` for the final report-only learning pass, and
-`design-frontend-dev` for frontend review. Ship PR depends on Review Code and Capture
-Learning; Review Code depends on Design Frontend.
+The repository includes `ship-pr-dev` 1.4.0 for PR delivery, `review-code-dev` 2.0.0
+for independent Alibaba OCR delegation review, `capture-learning-tools` for the final
+report-only learning pass, and `design-frontend-dev` for optional frontend guidance.
+Ship PR depends on Review Code v2 and Capture Learning; Review Code v2 has no skill
+dependencies. Frontend coverage belongs inside the same review, not a second gate.
+The two updated packages come from the matching directories under
+`/Users/stan/Vibe/skills/`; these are import sources, not runtime dependencies.
 
 The versioned packages in `.agents/skills/` are the shared source for this project.
 Codex uses that directory; Claude Code uses the relative links in `.claude/skills/`.
@@ -22,6 +25,35 @@ a read-only review. Git, Python 3.11+ (`python3`), and authenticated GitHub CLI 
 are needed for the full delivery workflow, along with the normal verification prerequisites
 below. Agents with no native skill discovery can read the matching `SKILL.md` directly.
 Use repository instructions for model preferences and verification commands.
+
+Review Code v2 uses checksum-pinned OCR 1.12.1 for file selection and rule resolution;
+the host agent performs the review. The coordinator runs
+`python3 .agents/skills/review-code-dev/scripts/ocr.py version` before review.
+The first invocation needs network access, Git 2.41+, and macOS Intel/Apple Silicon
+or Linux x86_64/ARM64. The wrapper needs Python 3.9+; this repository uses 3.11+.
+It caches the verified binary under `~/.local/share/review-code-dev/ocr`, overridable
+with `REVIEW_CODE_OCR_HOME`, and sets `OCR_NO_UPDATE=1`. No Node, sudo, PATH edits,
+additional LLM endpoint or API key are required. No global npm/Brew installation is
+needed. Do not bootstrap during package-only validation or when global writes are
+forbidden; use an explicitly authorized cache location for a later live smoke test.
+Setup failure blocks review, with no v1 fallback. A passing review requires complete
+branch plus intended pending-workspace coverage, including OCR exclusions, and
+source freshness after hooks. Critical/high block delivery; remaining medium
+findings require explicit human acceptance.
+
+The repository retains `prepare_review_run.py`, `collect_review_context.py` and
+`test_collect_review_context.py` as documented compatibility helpers for ignored
+worktree artifacts, redacted diagnostics and merge-base behavior. The collector is
+not an OCR replacement or authoritative coverage inventory. Obsolete v1 routing,
+specialist references, parser and PR-watch files were removed. OCR rule/background
+output still needs secret-safe handling before persistence; the wrapper does not
+redact it. The complete Apache-2.0 license and attribution ship with Review Code.
+The supplied Ship PR source contains no separate license file.
+
+Validate package updates offline with `python3 -B scripts/shared_skills_test.py`.
+This runs bundled OCR trust-boundary tests, retained redaction/merge-base tests,
+package/dependency checks and artifact preparation tests in disposable Git checkouts
+and linked worktrees; it does not install OCR or perform an independent review.
 
 Ship PR verifies, reviews, commits, pushes and waits for CI; merging stays with a human.
 Reports under `plans/ship-pr-dev/` and `plans/review-code-dev/` are ignored by Git.
