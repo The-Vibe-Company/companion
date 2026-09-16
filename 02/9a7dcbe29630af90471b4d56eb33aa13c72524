@@ -1,0 +1,210 @@
+.env.example
+  s_704c9424182f7e::t_4ee465336e142a 5,8
+  s_704c9424182f7e::t_801ec0bf033029 13,17-18,30
+  s_704c9424182f7e::t_963dda5e28a69c 1,3-4,6-7,9,11-12,15-16,19-29,31
+apps/api/src/trpc.ts
+  s_704c9424182f7e::t_a84187ebb96519 1-2,4-21,23,26-28,34-36
+  s_704c9424182f7e::t_a31eae7a5413dc 22,24-25,29-33
+  s_704c9424182f7e::t_5c712024cbcdfd 3
+cli/src/commands/auth.ts
+  s_704c9424182f7e::t_efc6f7f0d6c6ef 23,27-29,34-35,37,39-41,43-49,51-52,56-58,63,70-73,75,77-80
+  s_704c9424182f7e::t_2e98e914879596 36,59-62
+README.md
+  s_704c9424182f7e::t_fcb75a38f48f44 87-105
+  s_704c9424182f7e::t_a0bcdfe9ce5ee4 55-57,66-70,72-73,77,84-85
+packages/email/tsconfig.json
+  s_704c9424182f7e::t_3adbdaecede959 5
+  s_704c9424182f7e::t_1ca42ceb47e86c 1-4,6-8
+apps/web/src/lib/org.ts
+  s_704c9424182f7e::t_7e7d44a335637a 4,7,14-17,20-25,27-29,31,33-36,38-40,42-44,46-48,51-55,57-64,66-68,70-72
+apps/web/src/lib/apiClient.ts
+  s_704c9424182f7e::t_718aaad49ec687 1-7,9-11
+packages/auth/src/index.ts
+  s_704c9424182f7e::t_ede529b616510d 41
+  s_704c9424182f7e::t_116f62741edf25 1-3,5-6,10-12,39-40,42-50,52-59,61,63-64
+  s_704c9424182f7e::t_801ec0bf033029 15-17,22-27,29,31
+  s_704c9424182f7e::t_6637f3a6251cc9 7-9
+  s_704c9424182f7e::t_966003ad69c81a 14,19-21,28,30,32-37,51,60
+packages/storage/tsconfig.json
+  s_704c9424182f7e::t_3adbdaecede959 5
+  s_704c9424182f7e::t_1ca42ceb47e86c 1-4,6-8
+apps/web/src/lib/currentOrg.ts
+  s_704c9424182f7e::t_f5205ded7a21e6 5,13-14,17
+apps/web/src/components/skills/DetailView.tsx
+  s_704c9424182f7e::t_72efcc9fafe1dc 6,39,50,52-54
+packages/db/package.json
+  s_704c9424182f7e::t_1ca42ceb47e86c 1-7,9-26
+  s_704c9424182f7e::t_9bd7c389d5bf16 8
+apps/api/tsup.config.ts
+  s_704c9424182f7e::t_1ca42ceb47e86c 1-10
+packages/db/src/schema.ts
+  s_704c9424182f7e::t_a443be6afc2413 267-286
+  s_704c9424182f7e::t_a3fd1f6ffa2cfc 219-221,242,250-252,263
+  s_704c9424182f7e::t_d8b332dc3bd776 1-218,222-241,243-249,253-262,264-266,287-299
+cli/package.json
+  s_704c9424182f7e::t_7fe4a0e08ed362 12,29-30
+apps/web/src/app/(auth)/login/page.tsx
+  s_704c9424182f7e::t_c8dd1e25fc533c 5-14,16-17,19
+  s_704c9424182f7e::t_f5205ded7a21e6 3,15
+apps/web/src/app/(auth)/login/LoginForm.tsx
+  s_704c9424182f7e::t_f5205ded7a21e6 3,85
+  s_704c9424182f7e::t_c8dd1e25fc533c 6,17-36,89
+package.json
+  s_704c9424182f7e::t_1ca42ceb47e86c 13-17
+  s_704c9424182f7e::t_47afa9f0091b03 27
+cli/src/lib/config.ts
+  s_704c9424182f7e::t_efc6f7f0d6c6ef 20-22,27
+cli/src/lib/registry.ts
+  s_704c9424182f7e::t_cbf0431ab6b018 4-5,12,15-18,21-24,40
+packages/db/src/seed.ts
+  s_704c9424182f7e::t_d8b332dc3bd776 1-15,17-19,21-29
+apps/web/src/components/skills/SkillsApp.tsx
+  s_704c9424182f7e::t_6d60b13fb9b78e 61-70,291,316,321-322,324
+packages/email/package.json
+  s_704c9424182f7e::t_1ca42ceb47e86c 1-20
+packages/db/drizzle/0001_sparkling_squadron_sinister.sql
+  s_704c9424182f7e::t_3570f79480a655 10-13
+  s_704c9424182f7e::t_a443be6afc2413 1-9,14
+apps/api/package.json
+  s_704c9424182f7e::t_1ca42ceb47e86c 1-35
+packages/db/src/index.ts
+  s_704c9424182f7e::t_d8b332dc3bd776 1-8,10-19
+  s_704c9424182f7e::t_52cb6ead2fecc9 9
+packages/email/test/email.test.ts
+  s_704c9424182f7e::t_116f62741edf25 1-10
+apps/web/src/components/org/model.ts
+  s_704c9424182f7e::t_b45161af4d57ad 56
+.conductor/settings.toml
+  s_704c9424182f7e::t_4ee465336e142a 3,6-9
+packages/auth/tsconfig.json
+  s_704c9424182f7e::t_1ca42ceb47e86c 1-4,7-9
+  s_704c9424182f7e::t_6136a95eb2fe85 5-6
+packages/email/src/index.ts
+  s_704c9424182f7e::t_116f62741edf25 1-56
+apps/api/src/trpc.test.ts
+  s_704c9424182f7e::t_8f1b369e9d2ca7 4-6
+  s_704c9424182f7e::t_8ba4bd2f77f3c4 3,7-12
+cli/src/lib/session.ts
+  s_704c9424182f7e::t_efc6f7f0d6c6ef 5-6,23
+apps/web/package.json
+  s_704c9424182f7e::t_1ca42ceb47e86c 18
+scripts/conductor-workspace.sh
+  s_704c9424182f7e::t_4ee465336e142a 5,7,20-22,24-26,28-29,32-44,47-80,92-93,96-103,106-108,111-112,114-115,117-118,120-123,127-128,130-131,134,136,142-143
+CLAUDE.md
+  s_704c9424182f7e::t_fcb75a38f48f44 98,101,104-109
+  s_704c9424182f7e::t_a0bcdfe9ce5ee4 69-72
+  s_704c9424182f7e::t_b45161af4d57ad 42,53,137
+packages/db/src/ids.ts
+  s_704c9424182f7e::t_d8b332dc3bd776 1-15
+apps/web/src/app/(app)/skills/page.tsx
+  s_704c9424182f7e::t_7e7d44a335637a 4,12-13,15,18,21-23,26-30
+scripts/agent-browser-smoke.sh
+  s_704c9424182f7e::t_3a3d4e569ef7b7 129
+  s_704c9424182f7e::t_49b9ae449d231e 10,90-128,130-133,145-146,162,173,175,191
+packages/core/src/services.ts
+  s_704c9424182f7e::t_90e91cb63cb224 557-560,568-578,594,597-601,604,610-643,646,658,673,692,696
+  s_704c9424182f7e::t_e91234da37c22b 40-64,181-278
+  s_704c9424182f7e::t_b2d4db2b538190 86-87,125,128-140
+  s_704c9424182f7e::t_a3fd1f6ffa2cfc 359-365,409,450,465-469,474-480,483,499,606-609,676
+  s_704c9424182f7e::t_15246b30de97de 561-567
+  s_704c9424182f7e::t_9bd7c389d5bf16 13
+  s_704c9424182f7e::t_8e022d13f4c743 1-12,14-39,65-85,88-124,126-127,141-180,279-358,366-408,410-449,451-464,470-473,481-482,484-498,500-556,579-593,595-596,602-603,605,644-645,647-657,659-672,674-675,677-691,693-695,697-767
+apps/api/src/index.ts
+  s_704c9424182f7e::t_50e48525c84d29 2-4,29,37-46,308-309,323,330
+  s_704c9424182f7e::t_248c5473e94b54 87
+  s_704c9424182f7e::t_a84187ebb96519 1,5-14,16-22,24-25,27-28,30-36,47-68,70-74,76,79-86,88-98,101-105,107-113,115,117-120,131-134,136-153,155-159,161-169,171-180,182-267,269-289,291-295,297-307,310-322,324-328,331-335,338-353
+  s_704c9424182f7e::t_90e91cb63cb224 23,329
+  s_704c9424182f7e::t_e91234da37c22b 15,121-124,126-130
+  s_704c9424182f7e::t_5d24fd8a345e5f 26
+packages/db/drizzle.config.ts
+  s_704c9424182f7e::t_d8b332dc3bd776 1-10
+cli/README.md
+  s_704c9424182f7e::t_b45161af4d57ad 3,17,24,30
+cli/src/commands/skills.ts
+  s_704c9424182f7e::t_7fe4a0e08ed362 40-61,226,234
+  s_704c9424182f7e::t_29091622145a8b 5,67-71,79-82,84,90-91,93,96-97,99-102,108-111,119-122,153-154,179-185,187-188,191,198,208-209,212-215,218-225,227-229,236,240-241,244-249,251,257-258,261,263-274,276-277,279-282,284,287-288,291-292,296-312,314,317-318
+  s_704c9424182f7e::t_6136a95eb2fe85 2,238
+  s_704c9424182f7e::t_cf8e387ef8e2d9 230-232,237
+apps/web/src/app/(app)/layout.tsx
+  s_704c9424182f7e::t_f5205ded7a21e6 2,5
+docker-compose.yml
+  s_704c9424182f7e::t_4ee465336e142a 10,27-28,53-54
+  s_704c9424182f7e::t_963dda5e28a69c 1-9,11-26,29-52,55-58
+packages/db/tsconfig.json
+  s_704c9424182f7e::t_1ca42ceb47e86c 1-4,6-9
+  s_704c9424182f7e::t_16ef0dd19aa0ef 5
+apps/web/src/app/join/[token]/page.tsx
+  s_704c9424182f7e::t_c8dd1e25fc533c 7-8
+  s_704c9424182f7e::t_0ea8f3c848397d 1,3
+docs/design.md
+  s_704c9424182f7e::t_801ec0bf033029 20-31
+  s_704c9424182f7e::t_a0bcdfe9ce5ee4 1,3-5,7,9-15,17-18,32,35-46,49-80
+apps/web/src/components/org/AcceptInvite.tsx
+  s_704c9424182f7e::t_c8dd1e25fc533c 50
+packages/core/package.json
+  s_704c9424182f7e::t_5c712024cbcdfd 7-8
+  s_704c9424182f7e::t_8e022d13f4c743 15-18
+packages/storage/package.json
+  s_704c9424182f7e::t_1ca42ceb47e86c 1-21
+apps/web/src/lib/queries.ts
+  s_704c9424182f7e::t_7e7d44a335637a 4,13,16-18,25-26,30-33,46,48-50
+  s_704c9424182f7e::t_72efcc9fafe1dc 36-39
+packages/db/drizzle/0002_colorful_trauma.sql
+  s_704c9424182f7e::t_7b80d4174cc57b 1
+apps/web/src/components/skills/UploadDrawer.tsx
+  s_704c9424182f7e::t_6d60b13fb9b78e 5,11-20,34-55,61-64,93-96,124,186,256,270,288
+  s_704c9424182f7e::t_8231bf63a8fed0 243-255,257-263
+  s_704c9424182f7e::t_fbb7e40fb5f3d5 139-140,163,216,222,238-240,273-282
+  s_704c9424182f7e::t_7e7d44a335637a 74,105
+apps/api/tsconfig.json
+  s_704c9424182f7e::t_1ca42ceb47e86c 1-9
+docs/PRD.md
+  s_704c9424182f7e::t_b45161af4d57ad 55
+cli/src/index.ts
+  s_704c9424182f7e::t_a4aeb721465b8d 34,43,46,50
+  s_704c9424182f7e::t_12b9bf82e98a47 45
+packages/storage/src/index.ts
+  s_704c9424182f7e::t_90e91cb63cb224 51,63
+  s_704c9424182f7e::t_6637f3a6251cc9 14-17
+  s_704c9424182f7e::t_116f62741edf25 1-13,18-50,52-62,64-84
+apps/web/next.config.ts
+  s_704c9424182f7e::t_718aaad49ec687 6-13
+cli/src/commands/skills.test.ts
+  s_704c9424182f7e::t_7fe4a0e08ed362 1-46
+packages/auth/package.json
+  s_704c9424182f7e::t_1ca42ceb47e86c 1-17,19-21
+  s_704c9424182f7e::t_6136a95eb2fe85 18
+apps/api/src/context.ts
+  s_704c9424182f7e::t_a84187ebb96519 1-3,5-43,45
+  s_704c9424182f7e::t_5c712024cbcdfd 4
+  s_704c9424182f7e::t_248c5473e94b54 44
+packages/storage/test/storage.test.ts
+  s_704c9424182f7e::t_7fe4a0e08ed362 2,9-10,12-17,19-32,34-37
+  s_704c9424182f7e::t_116f62741edf25 1,4-8,39
+cli/src/lib/client.ts
+  s_704c9424182f7e::t_6136a95eb2fe85 17,24,34
+  s_704c9424182f7e::t_efc6f7f0d6c6ef 2,6-7,10,14,16,19-23,25-30,32-33,37-39
+apps/web/src/lib/apiServer.ts
+  s_704c9424182f7e::t_718aaad49ec687 1-2,4-6,8-22,24-25,27-28
+apps/web/src/app/(app)/settings/page.tsx
+  s_704c9424182f7e::t_f5b7385160e03b 16-41,63-70,72-80,90-98,102
+  s_704c9424182f7e::t_0ea8f3c848397d 3,6,47-48,50,54-56,59-60,99-101,103,106-108,110-111,120-128
+packages/db/drizzle/0000_rapid_mephisto.sql
+  s_704c9424182f7e::t_b10bdb9c3bd304 1-208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "029a7dcbe29630af90471b4d56eb33aa13c72524",
+  "prompts": {},
+  "sessions": {
+    "s_704c9424182f7e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea27b-cf24-7281-8de1-0c41e1b4b9d7",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

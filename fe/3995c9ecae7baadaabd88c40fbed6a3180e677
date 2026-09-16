@@ -1,0 +1,21 @@
+packages/core/src/services.ts
+  s_62c4add0f08387::t_b1b5ba5f02576d 1691-1695,1700,1708-1718
+apps/web/src/components/skills/VisibilityWarningDialog.tsx
+  s_62c4add0f08387::t_1888838be09185 143-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "fe3995c9ecae7baadaabd88c40fbed6a3180e677",
+  "prompts": {},
+  "sessions": {
+    "s_62c4add0f08387": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75263354-39d6-4796-9592-02bbaedc7800",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

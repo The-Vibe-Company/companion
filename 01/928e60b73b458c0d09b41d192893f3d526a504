@@ -1,0 +1,32 @@
+examples/skills/incident-summary/companion.json
+  s_cad96e02924bfd::t_7d2ff41a61b672 2
+apps/web/src/components/org/Onboarding.tsx
+  s_cad96e02924bfd::t_7d2ff41a61b672 162
+packages/companion-skill/skill/companion.json
+  s_cad96e02924bfd::t_7d2ff41a61b672 2
+  s_cad96e02924bfd::t_34604edc2897af 4,11-17
+packages/contracts/schemas/companion-manifest.v2.schema.json
+  s_cad96e02924bfd::t_7d2ff41a61b672 3,9
+packages/companion-skill/skill/SKILL.md
+  s_cad96e02924bfd::t_7d2ff41a61b672 127
+packages/contracts/src/companionManifest.ts
+  s_cad96e02924bfd::t_7d2ff41a61b672 4
+apps/api/src/localSkills.test.ts
+  s_cad96e02924bfd::t_6ee2afc87cf262 46,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "01928e60b73b458c0d09b41d192893f3d526a504",
+  "prompts": {},
+  "sessions": {
+    "s_cad96e02924bfd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efb87-8cb8-7b80-b3de-a55937b91f38",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

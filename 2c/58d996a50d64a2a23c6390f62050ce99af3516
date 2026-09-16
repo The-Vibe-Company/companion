@@ -1,0 +1,152 @@
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 377-381,863-864,872,893,2982-2988,3830,3890,3906,3908-3909,3913,3915-3923,3925,3948-3966,3970,3974,3978-3986,3988,3990,3993-3996,4000,4009-4013,4020,4023,4043-4085,4087-4118,4120-4134,4136,4481-4578,6254,6258-6259,6390-6396,6860-7313,7642-7667,7680-7681,7687-7700
+apps/web/src/components/companions/transcript.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 74-76
+apps/ios/CompanionKit/Sources/CompanionKit/SessionStore.swift
+  s_0a79ab0a447eaf::t_f8088e51c4e390 1080-1091,1114-1123,1135,1140-1157,1164,1167-1170,1177,1192,1197-1253,1264-1321
+packages/companion-skill/skill/SKILL.md
+  s_0a79ab0a447eaf::t_990abb732329a2 1394
+  s_0a79ab0a447eaf::t_f8088e51c4e390 42-47
+apps/web/src/components/companions/CompanionsApp.reconnect.client.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 221,229
+apps/web/src/lib/companions.threadSync.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 1-220
+apps/api/src/companionThreadSyncMetrics.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 1-52
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_0a79ab0a447eaf::t_618bafc00f15ae 3-5,7-8,10-14,17-19,22,27,29,31-37,39,46,49-50,53-54,56-57,59,64-71,73,86,90,92,94,96,100-101,104-105,107-108,111-112,114-116,118-120,125,132,134-135,137,139,141-144
+apps/api/src/companionRoutes.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 60,89-93,155-156,193-195,229,304-306,348-379,384-386,388,390-393,395-396,816-818,2426-2467,2469,2475,2481-2523,2535-2539
+apps/web/src/components/assistant-ui/thread.tsx
+  s_0a79ab0a447eaf::t_f8088e51c4e390 54-55,89,96-97,116
+packages/db/src/runtimeRole.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 71
+apps/api/src/localSkills.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 143,146-148
+  s_0a79ab0a447eaf::t_990abb732329a2 51,137-142
+packages/companion-skill/skill/companion.integrity.json
+  s_0a79ab0a447eaf::t_d6a8eba2df0e27 3-4,10,22
+apps/api/src/companionRoutes.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 78-81,274-275,409-435,985-1078
+  s_0a79ab0a447eaf::t_bffeaa363bbb90 1079
+docs/testing.md
+  s_0a79ab0a447eaf::t_f8088e51c4e390 223-225,268-269,272
+packages/contracts/src/companions.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 565-571,653-654,1973-1974,2080-2109,2117-2120
+apps/web/src/lib/companions.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 17-19,37,56-61,363-597
+CLAUDE.md
+  s_0a79ab0a447eaf::t_f8088e51c4e390 83-86,143-147
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionLocalCache.swift
+  s_0a79ab0a447eaf::t_f8088e51c4e390 29,36-39,47-49,56-57,70,83-85,93-95,105-107,249-251
+docs/companions-runtime.md
+  s_0a79ab0a447eaf::t_f8088e51c4e390 124-126,132,138-140,295-296,300-301,429-431,524,534-544,547,731-736,743-744,988-989,1216-1234,1361-1365
+  s_0a79ab0a447eaf::t_1478549a28eec6 1366
+packages/core/src/companionRuntimeApi.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 15-17,20,23,27-28,31-32,52-55,116,259,280-284,289-290,321-323,332-334,339-343,588,626,716-718,760-932
+  s_0a79ab0a447eaf::t_e879ca914d913f 933
+packages/db/drizzle/0152_companion_thread_incremental_projection.sql
+  s_0a79ab0a447eaf::t_f8088e51c4e390 1-771
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionThreadCoordination.swift
+  s_0a79ab0a447eaf::t_f8088e51c4e390 544,546-548,606
+packages/companion-runtime/src/operations.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 742-755,870-871,876,895,914,1050,1087
+packages/core/test/companionSync.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 13-14,16-17,412-450
+  s_0a79ab0a447eaf::t_e7df58f6185936 451
+apps/macos/CompanionMac/MacChatView.swift
+  s_0a79ab0a447eaf::t_f8088e51c4e390 15-16,63,67-70,74,96-118,332-347
+packages/box-runtime/src/companionBoxAgentSource.ts
+  s_0a79ab0a447eaf::t_618bafc00f15ae 6
+docs/runbooks/routine-isolation-cutover.md
+  s_0a79ab0a447eaf::t_f8088e51c4e390 121-124,215,218-219,223-224,236-238
+docs/product.md
+  s_0a79ab0a447eaf::t_f8088e51c4e390 65-68,89-92
+apps/web/src/components/companions/CompanionThread.client.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 136-138,155-157,254,257-258,261,267-271,273-278,280,282-283,286-287,291-294,298-302,304,306-307,310-312,314-315,317-320,322-328,330,332-333
+apps/web/src/components/companions/CompanionThread.tsx
+  s_0a79ab0a447eaf::t_f8088e51c4e390 3,47,50,52,55,58-59,65-69,109-113,151-155,206,257,399-411,415,439-441
+apps/web/src/components/companions/CompanionTranscript.tsx
+  s_0a79ab0a447eaf::t_f8088e51c4e390 106-108,263,278-285,289-292,296,416-462,469,541-543,561-563,851-853,881,884,888
+docs/PRD.md
+  s_0a79ab0a447eaf::t_f8088e51c4e390 67-70,175-177,246
+packages/companion-runtime/src/store.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 35-40,44-45,275-278,785-803
+  s_0a79ab0a447eaf::t_2ad814338a7778 804-806
+packages/companion-runtime/src/scheduler.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 4,13-20,80,189,212-213,233-259,306-310,313-316
+apps/api/test/integration/skillsHubOnlyMigration.integration.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 54-56
+packages/companion-runtime/src/operations.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 698-729,806-856
+  s_0a79ab0a447eaf::t_2cfdda32c20c65 857
+apps/ios/CompanionKit/Sources/CompanionKit/Models.swift
+  s_0a79ab0a447eaf::t_f8088e51c4e390 390-401,408,417,431,2432-2485,2493,2499,2504,2511,2719,2734
+packages/companion-runtime/src/scheduler.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 7,72-80,147-187,331-362
+  s_0a79ab0a447eaf::t_a8a6335b597a54 363
+packages/companion-runtime/src/store.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 72-90
+  s_0a79ab0a447eaf::t_990abb732329a2 593
+packages/companion-skill/skill/companion.json
+  s_0a79ab0a447eaf::t_f8088e51c4e390 42-46
+  s_0a79ab0a447eaf::t_990abb732329a2 4,32,40-41
+  s_0a79ab0a447eaf::t_769d13a7021533 47-48
+packages/db/runtime-role-grants.sql
+  s_0a79ab0a447eaf::t_f8088e51c4e390 494-527
+apps/ios/Companion/Screens/ChatView.swift
+  s_0a79ab0a447eaf::t_f8088e51c4e390 1525-1526,1528-1529,1531-1544,1550-1552,1554
+docs/runbooks/companions-runtime.md
+  s_0a79ab0a447eaf::t_f8088e51c4e390 24-26,273-274,294-299
+docs/design.md
+  s_0a79ab0a447eaf::t_f8088e51c4e390 109,151-153,164-167,251-253,309-312,400-407,547-550,615-617
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionSync.swift
+  s_0a79ab0a447eaf::t_f8088e51c4e390 97-199,206-225,233-234,240,249-253,256-305
+apps/web/src/components/companions/CompanionThread.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 409,415-418,421,433-434
+packages/box-runtime/src/companionPiBrokerSource.ts
+  s_0a79ab0a447eaf::t_4e6cc5e555a4ca 6
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionLocalCacheTests.swift
+  s_0a79ab0a447eaf::t_f8088e51c4e390 228-240,267-353,592-593,626-693,968,1052,1058-1124,1327-1369
+  s_0a79ab0a447eaf::t_3aa0001b3d41fc 1370
+apps/api/test/integration/companionSelfHealMigration.integration.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 1-251
+packages/contracts/src/companionBudgets.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 169-170
+apps/web/src/components/companions/CompanionsApp.tsx
+  s_0a79ab0a447eaf::t_f8088e51c4e390 39,44,56,327-328,376-377,421-429,574-575,595-596,642-643,671,684-693,695,839-922,926,1074,1393,1428-1433,1439
+packages/db/src/schema.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 1099-1100,1160-1162,1169,1644-1646,1648-1650,1938-1939,1951-1954,2064-2065,2124-2127,2132-2135
+apps/ios/CompanionKit/Sources/CompanionKit/APIClient.swift
+  s_0a79ab0a447eaf::t_f8088e51c4e390 1131-1183
+apps/api/src/companionThreadSyncMetrics.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 1-47
+apps/web/src/components/companions/transcript.test.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 208-211
+packages/core/src/companionSync.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 64,80-105,107-110,227,244,258-271,388-462,577
+packages/contracts/src/companionRuntime.ts
+  s_0a79ab0a447eaf::t_f8088e51c4e390 81,121,137-138,149,151-157,256
+packages/db/drizzle/0151_companion_runtime_self_heal_protocol_5.sql
+  s_0a79ab0a447eaf::t_f8088e51c4e390 1-918
+packages/db/drizzle/0150_companion_needs_input_claim_damper.sql
+  s_0a79ab0a447eaf::t_f8088e51c4e390 1-1550
+packages/db/drizzle/meta/_journal.json
+  s_0a79ab0a447eaf::t_6379c430149cae 1059-1080
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2c58d996a50d64a2a23c6390f62050ce99af3516",
+  "prompts": {},
+  "sessions": {
+    "s_0a79ab0a447eaf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05948-5e4a-7091-856a-4ca47dda3e4e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

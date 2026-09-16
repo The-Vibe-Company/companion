@@ -1,0 +1,27 @@
+apps/api/test/integration/projectRetry.integration.test.ts
+  s_c3b16095d2b0c2::t_28f01d1f9dd671 283-286,288-289,315-321,323-324,326,331-343
+packages/core/src/projectJobs.ts
+  s_c3b16095d2b0c2::t_4eed2af05b70e9 1033
+apps/worker/src/projectSupervisor.ts
+  s_c3b16095d2b0c2::t_41f454c3eea336 3664-3671,3674
+apps/worker/src/projectSupervisor.test.ts
+  s_c3b16095d2b0c2::t_3b5c394912243c 4633-4634
+docs/design.md
+  s_c3b16095d2b0c2::t_e0f692491f49ab 985-996,1160-1164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "4077ad816f8345353546313fd81029282348fcb2",
+  "prompts": {},
+  "sessions": {
+    "s_c3b16095d2b0c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8222fbd9-2a17-428f-916b-b45c036b2a23",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

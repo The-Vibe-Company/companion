@@ -1,0 +1,20 @@
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_9425bc3bd10908::t_09f11f4687079b 730-746
+  s_9425bc3bd10908::t_a30d0a22cbb30d 716-719
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.11",
+  "base_commit_sha": "742ac66505746ce86a613bf9aa89deef3ef5e0d0",
+  "prompts": {},
+  "sessions": {
+    "s_9425bc3bd10908": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5435458f-9ce9-4412-b3c0-25cee5755ec6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

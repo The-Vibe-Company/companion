@@ -1,0 +1,83 @@
+packages/core/src/index.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 2
+apps/web/src/app/(app)/onboarding/page.tsx
+  s_9304c1509d8f5d::t_fe595b855d2dec 1-39
+apps/api/src/seed-test-user.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 1,91-99
+apps/web/src/app/v1/auth/logout/route.test.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 1-50
+README.md
+  s_9304c1509d8f5d::t_fe595b855d2dec 85-89,101
+scripts/dev-stack-check.sh
+  s_9304c1509d8f5d::t_fe595b855d2dec 7,10,41-48,72-143
+apps/api/src/index.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 14,18-19,24,43,84-93,327-358,364-396,432
+apps/web/src/components/Icon.tsx
+  s_9304c1509d8f5d::t_fe595b855d2dec 33,37,39,65,69,105,109,111,137,141
+apps/web/src/app/v1/auth/login-redirect/route.test.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 79-103
+packages/core/test/email-domains.test.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 1-43
+packages/db/src/seed.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 16-19
+packages/core/src/email-domains.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 1-38
+apps/web/src/styles/onboarding.css
+  s_9304c1509d8f5d::t_fe595b855d2dec 1-323
+packages/core/src/onboarding.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 1-245
+scripts/conductor-workspace.sh
+  s_9304c1509d8f5d::t_fe595b855d2dec 37,44-45,50,61
+apps/web/src/components/onboarding/screens.tsx
+  s_9304c1509d8f5d::t_fe595b855d2dec 1-804
+apps/web/src/components/onboarding/OnboardingFlow.tsx
+  s_9304c1509d8f5d::t_fe595b855d2dec 1-241
+packages/db/drizzle/0007_onboarding.sql
+  s_9304c1509d8f5d::t_fe595b855d2dec 1-11
+packages/db/src/schema.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 92-93,98-123,153-156
+apps/web/src/lib/onboarding.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 3,5-42
+CLAUDE.md
+  s_9304c1509d8f5d::t_fe595b855d2dec 106-107
+packages/core/package.json
+  s_9304c1509d8f5d::t_fe595b855d2dec 18-19
+apps/web/src/app/v1/auth/logout/route.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 1-49
+scripts/dev-stack.sh
+  s_9304c1509d8f5d::t_fe595b855d2dec 62-125,134-138,409-416,448,455-459
+packages/db/drizzle/meta/_journal.json
+  s_9304c1509d8f5d::t_69e4d90e114367 53-59
+apps/web/src/app/globals.css
+  s_9304c1509d8f5d::t_fe595b855d2dec 6
+packages/core/src/services.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 32-36,78,82-86,981-985
+docs/design.md
+  s_9304c1509d8f5d::t_fe595b855d2dec 28-34,72-97,112-115
+packages/contracts/src/onboarding.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 1-40
+packages/contracts/src/index.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 7
+pnpm-lock.yaml
+  s_9304c1509d8f5d::t_69e4d90e114367 235-237,2123-2126,4042
+apps/web/src/app/v1/auth/login-redirect/route.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 74-76
+packages/core/src/free-email-domains.d.ts
+  s_9304c1509d8f5d::t_fe595b855d2dec 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "daaf911759ea866a50f37c87ccba1639967d082d",
+  "prompts": {},
+  "sessions": {
+    "s_9304c1509d8f5d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea87a-efbb-7100-9bba-e8200b763df7",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

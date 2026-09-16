@@ -1,0 +1,22 @@
+apps/web/src/components/runs/chatStream.ts
+  s_bb5c19af822945::t_17e0184c76e88f 121-123
+apps/web/src/components/runs/chatStream.test.ts
+  s_bb5c19af822945::t_c7115ff2ab4482 1,3
+  s_bb5c19af822945::t_c777dc6cf9485b 48-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2c788e4650d55354a658253aa123080fdb2d6fac",
+  "prompts": {},
+  "sessions": {
+    "s_bb5c19af822945": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a604424-475e-4d44-b65e-99634eb3a9ce",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

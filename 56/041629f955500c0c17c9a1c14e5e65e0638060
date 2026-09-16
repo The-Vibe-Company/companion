@@ -1,0 +1,25 @@
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_883baa7855feb5::t_5d8c1c9125cc36 606-645
+packages/companion-skill/skill/scripts/install_skill.py
+  s_883baa7855feb5::t_5d8c1c9125cc36 550-552,554
+apps/api/src/localSkills.test.ts
+  s_883baa7855feb5::t_64b7a6c0a23ae6 47,122-124
+packages/companion-skill/skill/companion.integrity.json
+  s_883baa7855feb5::t_b2c637a4d57ae1 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "56041629f955500c0c17c9a1c14e5e65e0638060",
+  "prompts": {},
+  "sessions": {
+    "s_883baa7855feb5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f84b8-9ba5-7ce0-9a06-75d413e40d21",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

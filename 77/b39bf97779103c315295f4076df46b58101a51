@@ -1,0 +1,19 @@
+.gitignore
+  s_fe800d85eccae3::t_c5f150bfbb9e31 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "77b39bf97779103c315295f4076df46b58101a51",
+  "prompts": {},
+  "sessions": {
+    "s_fe800d85eccae3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73e8534f-14ef-4cc0-9d2d-5027167967d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

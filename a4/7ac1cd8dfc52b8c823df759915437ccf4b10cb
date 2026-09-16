@@ -1,0 +1,30 @@
+apps/web/src/components/org/SettingsOnlySidebar.tsx
+  s_4db1e28adf5fd0::t_3977380a8a8fc1 1-16
+apps/web/src/app/(app)/settings/page.tsx
+  s_4db1e28adf5fd0::t_8d7a900e08f74b 50
+apps/web/src/components/org/SettingsApp.tsx
+  s_4db1e28adf5fd0::t_88d93e2fb43368 6
+  s_4db1e28adf5fd0::t_64399d5deb8af3 21,40,168
+  s_4db1e28adf5fd0::t_bc36c728930044 18
+apps/web/src/styles/skills.css
+  s_4db1e28adf5fd0::t_cd30ec64dc83a1 48
+apps/web/src/app/(app)/settings/loading.tsx
+  s_4db1e28adf5fd0::t_546417d286e5b1 2
+  s_4db1e28adf5fd0::t_f7373c5a051c72 1,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "a47ac1cd8dfc52b8c823df759915437ccf4b10cb",
+  "prompts": {},
+  "sessions": {
+    "s_4db1e28adf5fd0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea379-530d-7702-a643-ee59e83966c9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

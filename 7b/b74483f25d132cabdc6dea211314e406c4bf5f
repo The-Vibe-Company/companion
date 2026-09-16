@@ -1,0 +1,67 @@
+apps/web/src/components/org/WorkspaceGeneralPane.tsx
+  s_d33930c6570519::t_c8ebf860321a47 5,7,148-165
+  s_d33930c6570519::t_5aa768716b00cb 166
+apps/api/src/skillFileContentRoute.test.ts
+  s_d33930c6570519::t_84a73ca542b17b 34
+packages/companion-skill/skill/SKILL.md
+  s_d33930c6570519::t_e552cfbed20409 504-514
+  s_d33930c6570519::t_1cd8faf476a064 773-774,781-782
+packages/companion-skill/skill/companion.integrity.json
+  s_d33930c6570519::t_883db678eb8f09 4,15
+  s_d33930c6570519::t_63810d5701f25f 3
+packages/contracts/test/orgSettings.test.ts
+  s_d33930c6570519::t_7e9171623bcf1d 7,124-134
+  s_d33930c6570519::t_0c3a6dcbb14c79 135-136
+packages/core/src/services.ts
+  s_d33930c6570519::t_7f183ed80aa74a 396-402
+apps/web/src/components/org/SettingsApp.tsx
+  s_d33930c6570519::t_b94c49693da33d 52
+docs/design.md
+  s_d33930c6570519::t_579ffad04f3eba 239-241,391-393,403-405
+apps/web/src/components/org/model.ts
+  s_d33930c6570519::t_cc572f40b142cf 44-45
+packages/companion-skill/skill/reference/api.md
+  s_d33930c6570519::t_6aed9c0ea4402e 35-36
+  s_d33930c6570519::t_15c3ef963378c9 43,97,100-103
+  s_d33930c6570519::t_7c731ee5045ced 94-96,98-99,104,151-153
+apps/api/src/localSkills.test.ts
+  s_d33930c6570519::t_11ff8ee8e2e61c 47,114-115
+  s_d33930c6570519::t_b881375a73bdb5 188
+  s_d33930c6570519::t_9e32c1933b5c9d 185,189,210,212-214
+  s_d33930c6570519::t_3a501a49dc9df2 186-187
+  s_d33930c6570519::t_c890619005ec47 211
+apps/api/src/skillPublishRoute.test.ts
+  s_d33930c6570519::t_572c3224876930 34
+packages/companion-skill/skill/companion.json
+  s_d33930c6570519::t_eb068adfcb4a66 4,23-31
+apps/api/src/skillListRoute.test.ts
+  s_d33930c6570519::t_ac2ee784341762 29,342-380
+  s_d33930c6570519::t_c9f0b8607c0064 381-382
+apps/api/src/index.ts
+  s_d33930c6570519::t_9746dcadbb1748 100,729,731
+apps/web/src/components/org/paneKit.tsx
+  s_d33930c6570519::t_ed298f5824279d 94-188
+packages/core/test/settings.test.ts
+  s_d33930c6570519::t_8a5a15f0c5b934 64-65,82-83,140,149-150,155,159,166-169
+  s_d33930c6570519::t_8c11573e4948db 345,350-351
+  s_d33930c6570519::t_873d49f6f6edcd 170-171
+apps/web/src/styles/settings.css
+  s_d33930c6570519::t_f9a51f7e93a431 104-106,114-120,485,493-495
+  s_d33930c6570519::t_02a9cf84fa603b 496
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "7bb74483f25d132cabdc6dea211314e406c4bf5f",
+  "prompts": {},
+  "sessions": {
+    "s_d33930c6570519": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f21fe-572e-75c2-b76b-41b9cedc9a4d",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,56 @@
+packages/contracts/test/skillDependencies.test.ts
+  s_053161b23c04ef::t_77322b67ec1a90 31-40,45-105
+  s_053161b23c04ef::t_ba15eb14ff2b29 106
+packages/companion-skill/skill/reference/api.md
+  s_053161b23c04ef::t_de2b3c323dfa49 329-335
+packages/contracts/src/skill.ts
+  s_053161b23c04ef::t_8932c6a055bacf 37-46,65,68,70
+packages/core/test/skillDependencyRename.test.ts
+  s_053161b23c04ef::t_fa1de16d36a3ce 27,64-71,74-82,110,139,142,144-147,150,248-308
+  s_053161b23c04ef::t_9acce2269121a9 309-310
+packages/companion-skill/skill/companion.json
+  s_053161b23c04ef::t_988db9c1165599 4,23-31
+packages/core/src/services.ts
+  s_053161b23c04ef::t_94a45dfc4d9beb 2462,2477-2485,2487-2491,2516,2530,2536-2538,2542-2624,2647,2650,2652
+packages/companion-skill/skill/SKILL.md
+  s_053161b23c04ef::t_b618940d3de02a 746-748,771-772
+apps/web/src/styles/deps.css
+  s_053161b23c04ef::t_0819b351700423 33-38,73,81-87,95-100
+docs/design.md
+  s_053161b23c04ef::t_45850ede69f335 356-357
+apps/web/src/components/skills/DependenciesTab.tsx
+  s_053161b23c04ef::t_da2338ff2665de 196-198
+  s_053161b23c04ef::t_6aff6a54bd30a0 35-71,74-80,108-109,112-145,172-176,194,199,227-232,248,255-260,280-303,305,307
+  s_bb717887248412::t_f2a52a492b1d6b 304,306,308
+packages/companion-skill/skill/companion.integrity.json
+  s_053161b23c04ef::t_07e879fa89b71b 3-4,15
+apps/web/src/components/skills/DependenciesTab.test.ts
+  s_053161b23c04ef::t_49295ac9398b00 22-78,84,86,102-108,111-118,127-137,139
+  s_053161b23c04ef::t_c92f096122221d 109-110
+apps/api/src/localSkills.test.ts
+  s_053161b23c04ef::t_19f4fc5b7fc6a6 47,114-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "0a3c22a14767b5041011ed53b0041ed6c9b1a465",
+  "prompts": {},
+  "sessions": {
+    "s_053161b23c04ef": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f07f6-004b-7cf0-918c-05056a09de09",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_bb717887248412": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f07f9-a9f4-7972-93d2-253087b807e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

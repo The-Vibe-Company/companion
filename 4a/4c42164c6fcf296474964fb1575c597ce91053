@@ -1,0 +1,93 @@
+apps/web/src/lib/runQueries.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 13,101-105
+  s_8106f2d8df9838::t_604fc0932c2ff6 106-107
+packages/sandbox/src/vercel.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 26,34-48,161-179,185
+packages/core/src/runJobs.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 31-36,828-849
+apps/worker/src/runCleanup.test.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 36,45,59,79-96,108
+packages/sandbox/test/vercel.test.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 1-27
+apps/web/src/components/runs/RunLauncherDialog.tsx
+  s_8106f2d8df9838::t_e5df2e209be596 665-666
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 29,47-49,110-112,126,132,164-165,179-180,189,192,197-205,208,271-280,283,285,469-493,531-534,566-589
+packages/core/test/billing.test.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 2-9,34-58
+  s_8106f2d8df9838::t_584e2bdadf74b5 59
+apps/worker/src/runCleanup.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 2,4,77,93-109
+packages/core/src/runPrewarms.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 15-19,62-67,106-117,126
+.env.example
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 33-34,88-89
+packages/core/src/billing.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 9-10,14,21-25,36,48-52,69-73,177,183,189-686,786-793,818
+packages/db/drizzle/0040_sandbox_usage.sql
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 1-52
+apps/web/src/components/org/BillingPane.test.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 38-48,97-119
+  s_8106f2d8df9838::t_ce99312c1e9f6b 120
+packages/contracts/src/skillRuns.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 5,78-80,373-374
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 267-277
+apps/worker/src/prewarmSupervisor.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 17-23,72-95,102-107,222-240
+apps/web/src/components/runs/RunLauncherDialog.test.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 27,71-76,148,172-235
+  s_8106f2d8df9838::t_b83c50071311dd 236
+apps/web/src/styles/runs.css
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 164-173,309-310
+packages/core/src/runConfigurations.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 26,743-746,754-755
+packages/contracts/src/billing.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 40-53,73,83-84,96,105
+apps/web/src/components/runs/launcherState.test.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 70-75
+packages/contracts/test/skillRuns.test.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 173-184,226-237
+packages/db/src/schema.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 1023-1084
+apps/web/src/components/org/BillingPane.tsx
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 11,13,101-112
+  s_8106f2d8df9838::t_6085785ce59201 113-114
+apps/worker/src/runSupervisor.test.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 193-217
+docs/testing.md
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 25
+packages/core/src/skillRuns.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 58-62,1517-1539,1570
+apps/worker/src/runSupervisor.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 6,8-9,11,13-15,179-182,190,194-206,215-218,338-388,930-947,1078-1088,1104,1121,1144,1164-1165,1220,1498,1558-1560,1626-1628,1642
+docs/PRD.md
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 148-156,158-159
+docs/design.md
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 432-458,461,483-484,631-634,668-669,854-855,886-887
+apps/api/src/index.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 190,259,261,2978-3006
+  s_8106f2d8df9838::t_889acd4d7ced68 3007
+apps/worker/src/prewarmSupervisor.test.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 17-22,25-28,79-86,120,123-147
+  s_8106f2d8df9838::t_39923c1a2c0c93 148
+apps/api/test/integration/runsDb.integration.test.ts
+  s_8106f2d8df9838::t_e8e3565ce3fc7c 38-46,1492-1626
+packages/db/drizzle/meta/_journal.json
+  s_8106f2d8df9838::t_61eba8c048d067 284-290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4a4c42164c6fcf296474964fb1575c597ce91053",
+  "prompts": {},
+  "sessions": {
+    "s_8106f2d8df9838": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6703-007f-7681-9665-999155fdb819",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+supabase/migrations/20260607090006_management_rpcs.sql
+  s_120c4dbab8c00a::t_213a984b5d4ad1 292,294-298
+apps/web/src/components/org/useOrgActions.ts
+  s_120c4dbab8c00a::t_651a2f68f47766 45-47
+apps/web/src/app/api/org/route.ts
+  s_120c4dbab8c00a::t_a134ffc3737cd5 33
+apps/web/src/components/org/SettingsApp.tsx
+  s_120c4dbab8c00a::t_8945fd7adcf299 44,50-55
+apps/web/test/org.rls.test.ts
+  s_120c4dbab8c00a::t_3470b918eb354b 100-121
+apps/web/src/app/(app)/settings/page.tsx
+  s_120c4dbab8c00a::t_a93262ce4b81bb 8
+  s_120c4dbab8c00a::t_938f19b469e89a 129
+  s_120c4dbab8c00a::t_450924e7fd39b2 111-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "6f816e3b54e586a37e09b56251778e7685395589",
+  "prompts": {},
+  "sessions": {
+    "s_120c4dbab8c00a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "441587e1-4104-43c6-bff4-a80dcf49c57e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+apps/web/src/app/(auth)/login/LoginForm.tsx
+  s_a454f725c9ca90::t_dde3ef4479b702 367-369,494-495,502,519-529,556-560
+apps/web/src/styles/auth.css
+  s_a454f725c9ca90::t_9835d9db720b0d 120-121,125-126
+  s_a454f725c9ca90::t_5b21bc172162bc 119,122-124,127-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "ad3aa8594b95db9301cabb53a08f1651cf31a64c",
+  "prompts": {},
+  "sessions": {
+    "s_a454f725c9ca90": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ecb26-9549-77a1-add0-d621c7f49571",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

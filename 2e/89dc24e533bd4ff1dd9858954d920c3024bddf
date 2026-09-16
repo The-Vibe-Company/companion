@@ -1,0 +1,17 @@
+apps/web/src/lib/authProxy.ts
+  s_58e94834a7c4a1::t_473f4ccdf9c15c 17-20,64
+docs/design.md
+  s_58e94834a7c4a1::t_980d4a8b0413b8 172-177
+apps/web/src/app/v1/auth/signin/route.test.ts
+  s_58e94834a7c4a1::t_14a98dab7ac24f 41-61
+apps/web/src/app/v1/auth/logout/route.test.ts
+  s_58e94834a7c4a1::t_7a806767694918 2-4
+apps/web/src/app/v1/auth/logout/route.ts
+  s_58e94834a7c4a1::t_6bb9ae1d027f0a 2,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "2e89dc24e533bd4ff1dd9858954d920c3024bddf",
+  "prompts": {}
+}

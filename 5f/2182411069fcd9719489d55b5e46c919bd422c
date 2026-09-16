@@ -1,0 +1,38 @@
+apps/web/src/styles/tokens.css
+  s_120c4dbab8c00a::t_3277324fbc5447 108
+supabase/migrations/20260607090005_invitations.sql
+  s_120c4dbab8c00a::t_576ad76acfb869 27,30
+apps/web/src/lib/currentOrg.ts
+  s_120c4dbab8c00a::t_4eed5facf1bf88 24-30
+supabase/migrations/20260607090006_management_rpcs.sql
+  s_120c4dbab8c00a::t_b3182f6fa0a7b8 117
+  s_120c4dbab8c00a::t_c7e32fcd3ea55d 139-140
+apps/web/src/components/org/useOrgActions.ts
+  s_120c4dbab8c00a::t_edacae615ca945 16
+  s_120c4dbab8c00a::t_66837493110064 29
+  s_120c4dbab8c00a::t_99c3d6d7b1cb12 48
+apps/web/src/components/org/Onboarding.tsx
+  s_120c4dbab8c00a::t_8ff5f8d1cfd217 139
+  s_120c4dbab8c00a::t_a603e3910b2f28 79
+apps/web/src/components/org/SettingsApp.tsx
+  s_120c4dbab8c00a::t_de51b6ec0db0ea 56-58,66
+supabase/migrations/20260607090004_roles_remodel.sql
+  s_120c4dbab8c00a::t_89d959c0003e03 220
+  s_120c4dbab8c00a::t_22db949b39798d 129-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "5f2182411069fcd9719489d55b5e46c919bd422c",
+  "prompts": {},
+  "sessions": {
+    "s_120c4dbab8c00a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "441587e1-4104-43c6-bff4-a80dcf49c57e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

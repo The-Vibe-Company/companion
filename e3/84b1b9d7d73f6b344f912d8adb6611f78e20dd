@@ -1,0 +1,774 @@
+apps/web/src/styles/share.css
+  s_feabcd8001e6ff::t_c3e7002d2587e1 175-176,228-229,285-286,289-290
+  s_feabcd8001e6ff::t_046179c0221e80 5-8,13-14,17-34,56-66,71-77,79,82-104,108,110,115-116,118,123-129,133-162,165-174,177-178,183-184,188,192-227,230-247,249-251,254-257,260-262,265-271,274-275,278-284,287-288,291-292,296-317
+apps/web/src/app/v1/auth/verify-email/route.ts
+  s_feabcd8001e6ff::t_05b158968993df 2,18,30
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_feabcd8001e6ff::t_453b6a6e20ea29 350-354
+  s_feabcd8001e6ff::t_42bb9a5a2b049c 18,35,94-180,221-224,247-255
+  s_feabcd8001e6ff::t_9cc3ef7048bc26 91
+  s_feabcd8001e6ff::t_4842764b941d57 14-15,34,36-37,51-90,182-183,198-205,220,225-228,260-264,285-286,321-324,330-334,342-349,355-364,374-378,386-390,392,482-502
+  s_feabcd8001e6ff::t_6e00d823fdca41 92-93
+  s_feabcd8001e6ff::t_f4a469f2ea283d 256-257
+packages/companion-skill/client/auth-mode.test.ts
+  s_feabcd8001e6ff::t_2bd76dd7035c00 1-31
+apps/web/src/app/s/[token]/preview.test.ts
+  s_feabcd8001e6ff::t_7680a3484663c7 1-35
+apps/web/src/styles/settings.css
+  s_feabcd8001e6ff::t_b240351d005354 241-280
+docs/testing.md
+  s_feabcd8001e6ff::t_f50177634b1e7f 18
+  s_feabcd8001e6ff::t_707a6777154acd 16,19
+  s_feabcd8001e6ff::t_8f4b2f307f401a 39
+  s_feabcd8001e6ff::t_82812633b010d8 40
+  s_feabcd8001e6ff::t_fc10da677ff12d 17
+apps/web/src/components/skills/UploadDialog.tsx
+  s_feabcd8001e6ff::t_b4b667df2bcbbb 371
+  s_feabcd8001e6ff::t_c9e1935f6ff367 1669,1674,1742,1746-1748,1750,1752-1760
+  s_feabcd8001e6ff::t_ff2039b29773e6 408,454-458
+  s_feabcd8001e6ff::t_19ad8449e25d6a 3
+  s_feabcd8001e6ff::t_7e2c02a7bc0a9e 427,450,485,489-490
+  s_feabcd8001e6ff::t_a59ac8f7d52222 1126-1130,1193,1408,1424,1521
+  s_feabcd8001e6ff::t_edfaaf84b2fa6d 18,795-809,849-881,1100,1121-1123,1186-1192,1194-1196,1198-1208,1405-1407,1409-1412,1422-1423,1425-1426
+  s_feabcd8001e6ff::t_7ac12e1274f707 393,401,426,431-432,465
+  s_feabcd8001e6ff::t_b02a708943a2f7 1197
+  s_feabcd8001e6ff::t_90905083dc44cb 33-34,37-40,412-414,417-418,420,422,477-484
+  s_feabcd8001e6ff::t_b8af098521d345 1079,1090-1091,1512
+  s_feabcd8001e6ff::t_da4bdf2f7fe1db 1942-1947
+  s_feabcd8001e6ff::t_4dfdc429cb2e0b 466
+apps/web/src/lib/types.test.ts
+  s_feabcd8001e6ff::t_8fc6c78a6d9f6a 31-32
+  s_feabcd8001e6ff::t_0ed623f65a4446 55-60
+apps/web/src/app/v1/auth/google/route.ts
+  s_feabcd8001e6ff::t_fabb0a5a4228c3 21-28,38-42
+apps/web/src/components/skills/skillActions.test.ts
+  s_feabcd8001e6ff::t_8fc6c78a6d9f6a 58,142
+  s_feabcd8001e6ff::t_0ed623f65a4446 114-127
+  s_feabcd8001e6ff::t_4a123659562544 198
+packages/companion-skill/skill/scripts/bootstrap_update.py
+  s_feabcd8001e6ff::t_e29de8818de9ed 20,24
+packages/companion-skill/skill/scripts/test_secrets_runtime.py
+  s_feabcd8001e6ff::t_c3e7002d2587e1 259
+  s_feabcd8001e6ff::t_42bb9a5a2b049c 6-7,18,203-258
+apps/api/src/billingPreviewRoute.test.ts
+  s_feabcd8001e6ff::t_5765d4b71670a6 37
+apps/web/src/app/s/[token]/go/route.test.ts
+  s_feabcd8001e6ff::t_cb5402fe3f635c 56,62
+packages/core/src/preTenant.ts
+  s_feabcd8001e6ff::t_073359685e01f7 206
+  s_feabcd8001e6ff::t_27231dcc46c816 232-233,235-236
+  s_feabcd8001e6ff::t_47147efb92eab5 237-250,252-257,259-270,272-276,278-282
+  s_feabcd8001e6ff::t_ea35c3a71fa423 283-300
+  s_feabcd8001e6ff::t_e8dc7b4fe7db3a 314-324
+  s_feabcd8001e6ff::t_fb1c533d55b33c 258
+  s_feabcd8001e6ff::t_d2a419322546f0 137-140,153-205,207-231,301-311
+  s_feabcd8001e6ff::t_1d4552aaed7c01 234,251,271,277
+  s_feabcd8001e6ff::t_c3e7002d2587e1 312-313
+packages/companion-skill/client/storage.ts
+  s_feabcd8001e6ff::t_2d696153cbebb3 292-294
+  s_feabcd8001e6ff::t_45b730c1e8ca8b 2-8,10-60,66-107,149-204,206-208,213-232,251-258,271,280,285-291,295-370
+  s_feabcd8001e6ff::t_6fe1108a4c5b74 9,61-65,108-148,205,209-212,233-250,259-270,272-279,281-284
+  s_feabcd8001e6ff::t_3ec8dabb44827c 1
+apps/web/src/components/skills/skillActions.ts
+  s_feabcd8001e6ff::t_d8cbe17221e325 9,30,44,70,80,113-118
+  s_feabcd8001e6ff::t_cdffbe85a7ed6b 59
+packages/companion-skill/skill/scripts/bootstrap.py
+  s_feabcd8001e6ff::t_e29de8818de9ed 202-203
+packages/auth/src/postgres-secondary-storage.test.ts
+  s_feabcd8001e6ff::t_ea4876e085cdd5 1-32
+apps/web/next.config.ts
+  s_feabcd8001e6ff::t_be852f412838ea 15-17
+packages/core/test/skillPublicPreview.test.ts
+  s_feabcd8001e6ff::t_cad0de8cb05a8c 30-33,48,55-85
+  s_feabcd8001e6ff::t_6b23975e7b073d 86-87
+packages/companion-skill/client/approval.test.ts
+  s_feabcd8001e6ff::t_4ff72e43c29643 1-17,19-21,23-37
+  s_feabcd8001e6ff::t_492f4e16e30f96 18,22
+apps/api/test/integration/agentAuthApproval.integration.test.ts
+  s_feabcd8001e6ff::t_24bc45e31518a6 75-79
+  s_feabcd8001e6ff::t_73569764982c4b 2-3,5,7-74,80-94,250-251
+  s_feabcd8001e6ff::t_9b7fdf601601a8 6,95-122,124-129,131-132
+  s_feabcd8001e6ff::t_fbe3daccc25f9f 123,130
+  s_feabcd8001e6ff::t_8446b8cc2bbd50 160-161
+  s_feabcd8001e6ff::t_57e4e8fb30853b 1,4,133-159,162-249
+apps/web/src/app/s/[token]/go/route.ts
+  s_feabcd8001e6ff::t_cb5402fe3f635c 38
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_feabcd8001e6ff::t_0551251fbbb520 447-448,454-457,459,461-462,464-466,546,567
+  s_feabcd8001e6ff::t_78fb8c07cdf99b 543,604,627-628,631,634,735-742,745-748,757,781
+  s_feabcd8001e6ff::t_134c6a4eaa3928 5-6,72-73,75
+apps/api/src/skillListRoute.test.ts
+  s_feabcd8001e6ff::t_55d9a8e6560ecf 125-128,152,179-184,454-478
+  s_feabcd8001e6ff::t_7f620fe9f9d4e2 452
+  s_feabcd8001e6ff::t_296d90b3362b40 15,18,23,63,109-112,363-368,383-388
+  s_feabcd8001e6ff::t_fe8e610aad4a17 36
+  s_feabcd8001e6ff::t_3bc9a07515c819 440-446
+  s_feabcd8001e6ff::t_4472efd76a34a7 129-130,149-151,153-157,453
+  s_feabcd8001e6ff::t_8552c328b885fd 374
+  s_feabcd8001e6ff::t_aaa06ee851a54a 411-415,422-439,447-451,479-481,515-564
+  s_feabcd8001e6ff::t_4dd08f3c20e711 416-421
+  s_feabcd8001e6ff::t_fabb0a5a4228c3 498-506,511-514
+  s_feabcd8001e6ff::t_ebc46e6e75118e 143
+  s_feabcd8001e6ff::t_fd280c1d575246 482-497
+  s_feabcd8001e6ff::t_d32a2d332e1c84 507-510
+packages/companion-skill/client/approval.ts
+  s_feabcd8001e6ff::t_4ff72e43c29643 1-38
+apps/api/src/skillPublishRoute.test.ts
+  s_feabcd8001e6ff::t_77b60f93076887 106-110,123-127,381
+  s_feabcd8001e6ff::t_ebc46e6e75118e 118
+  s_feabcd8001e6ff::t_ee726c0c5f3376 376
+  s_feabcd8001e6ff::t_6ca35afdfe8b8f 266
+  s_feabcd8001e6ff::t_480ca0fe17fc49 29-30,247-248,251-252,268,274,314,341-361,363-371,373-375,377-378,380
+  s_feabcd8001e6ff::t_516d9c4e411272 313,333-340,379
+  s_feabcd8001e6ff::t_24f43f8509967e 117
+  s_feabcd8001e6ff::t_17173be847bb8e 2-4,133,159-170,362,372
+  s_feabcd8001e6ff::t_e4784ac9721663 26-28,244-246,249-250,253-265,267,269-273,275-312,315-332
+  s_feabcd8001e6ff::t_f6b5a5009d665e 55
+  s_feabcd8001e6ff::t_c3e7002d2587e1 382-384
+  s_feabcd8001e6ff::t_732b60c5c52882 171-172
+apps/api/test/integration/agentAuthCompatibility.integration.test.ts
+  s_feabcd8001e6ff::t_2e0ffe91d9e859 330-331,333-337,339-347,349-356,358-362
+  s_feabcd8001e6ff::t_c3e7002d2587e1 383
+  s_feabcd8001e6ff::t_6799122b47fd6b 1,21,413-419
+  s_feabcd8001e6ff::t_da890918e1190e 2-20,22-279,294-329,363-382,384-412,420-468
+  s_feabcd8001e6ff::t_1330387c392ac9 280-287,292-293,332,338,348,357
+  s_feabcd8001e6ff::t_d84c701f6a6e9c 288-291
+apps/web/src/app/s/[token]/page.tsx
+  s_feabcd8001e6ff::t_05c1211fa62504 66-67,113-115,140-142
+  s_feabcd8001e6ff::t_6cad256bd642a9 3,7-8,26-27,33,55-56,59,64-65,68-73,75-85,87-89,91-112,116-132,134-139,143
+packages/db/drizzle/0049_authenticated_public_releases.sql
+  s_feabcd8001e6ff::t_4764e27dfa032a 61
+  s_feabcd8001e6ff::t_9a61d6c2247a85 1-2,6-10,24-32,39-47,72-113,116-157,160-225,229-243,245,248-250,253,255-270,272-313,316-324,326-329,333-339,344-380,509-536
+  s_feabcd8001e6ff::t_46150fea3e1113 38,48,53,57,59-60,62,65,69,391-392,407,440,444,450-453,503,507
+  s_feabcd8001e6ff::t_b3f832773d2fef 244,254
+  s_feabcd8001e6ff::t_073359685e01f7 247,252,271
+  s_feabcd8001e6ff::t_65e2e9d8cdcb71 66-68
+  s_feabcd8001e6ff::t_fb1c533d55b33c 381
+  s_feabcd8001e6ff::t_9d67458ce6c7b2 33-37,49-52,54-56,58,63-64,70-71,246,251
+  s_feabcd8001e6ff::t_a7155a7b989c44 382-390,393-406,408-439,441-443,445-449,454-460,466,468-502,504-506,508
+  s_feabcd8001e6ff::t_324b94a984069a 467
+  s_feabcd8001e6ff::t_477985b30f48a8 3-5,11-23,114-115,158-159,227-228,314-315,331-332
+  s_feabcd8001e6ff::t_301fbeb64cefd0 226,325,330
+  s_feabcd8001e6ff::t_becd69dcacaa03 340-343,461-465
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_feabcd8001e6ff::t_e29de8818de9ed 53
+  s_feabcd8001e6ff::t_453b6a6e20ea29 113-169
+  s_feabcd8001e6ff::t_7135e51959c992 609
+packages/storage/test/storage.test.ts
+  s_feabcd8001e6ff::t_a3d11302c27f29 1,8,10,16-24,33-106
+  s_feabcd8001e6ff::t_35e748df67e243 107-108
+packages/companion-skill/skill/scripts/install_skill.py
+  s_feabcd8001e6ff::t_b2aea4f85764ac 36
+  s_feabcd8001e6ff::t_e29de8818de9ed 604-608
+apps/web/src/components/org/ConnectedAgentsPane.test.ts
+  s_feabcd8001e6ff::t_ec5a0da73d0487 58-60,75-76
+  s_feabcd8001e6ff::t_5fd8c986e39c35 17-20
+  s_feabcd8001e6ff::t_e3fd983cf75393 88-127
+  s_feabcd8001e6ff::t_998714d6f7ca68 32
+  s_feabcd8001e6ff::t_91fa5706eeff76 27,77-86
+  s_feabcd8001e6ff::t_13bded450b6ea0 1-16,21-26,28-31,33-57,61-74,87,128
+apps/api/src/context.test.ts
+  s_feabcd8001e6ff::t_c3e7002d2587e1 160
+  s_feabcd8001e6ff::t_18380a0dfc3bdd 6,20,30-31,119-159
+apps/web/src/components/org/SettingsSidebar.tsx
+  s_feabcd8001e6ff::t_a47411b84fefe8 142-147
+packages/companion-skill/skill/SKILL.md
+  s_feabcd8001e6ff::t_7e1711944a8ed0 446-453,464-465
+  s_feabcd8001e6ff::t_516d9c4e411272 776
+  s_feabcd8001e6ff::t_74616804b9ffc3 12-13,19,24-26,28-31,33-37,41,45,50-53,60-65,72-75,118-119,127,133-135
+  s_feabcd8001e6ff::t_6143fb63fc82e3 117,541
+  s_feabcd8001e6ff::t_82812633b010d8 66-71,511-514
+  s_feabcd8001e6ff::t_b63e60e85a9a64 649-650,653,846,855,861,872-873,879-883,890-892,898-899
+  s_feabcd8001e6ff::t_aa99cec5df48d5 76-78
+  s_feabcd8001e6ff::t_069a0508e7195a 441-444
+  s_feabcd8001e6ff::t_5765467e8629c2 685
+  s_feabcd8001e6ff::t_a2440c97ef2139 303
+  s_feabcd8001e6ff::t_cce446dbbc95d5 540,736,745,752,823
+  s_feabcd8001e6ff::t_7d79a318a02586 737,746,753,761-766,805-810,824
+  s_feabcd8001e6ff::t_fee60567937c31 693-694
+  s_feabcd8001e6ff::t_0aebc4feed9cc2 944,946-947,950,953-957
+  s_feabcd8001e6ff::t_3556dcb80d79d0 455-463,466
+  s_feabcd8001e6ff::t_e5fd2e468239e6 981,990-991,998,1021,1085-1086
+  s_feabcd8001e6ff::t_979bac5f54ff8a 322-323,335-336,339-341,347-348,355,381,385,389,396,398-401,406-440,445
+  s_feabcd8001e6ff::t_4fe92b0bb35bcb 136
+  s_feabcd8001e6ff::t_e2ae57f8ad64da 454
+  s_feabcd8001e6ff::t_6f82a61009cd42 811
+apps/web/src/app/s/[token]/preview.ts
+  s_feabcd8001e6ff::t_7680a3484663c7 21-23,37
+  s_feabcd8001e6ff::t_6cad256bd642a9 5-20,24-25,48
+  s_feabcd8001e6ff::t_a11d055b88681a 29
+apps/api/src/githubRoutes.test.ts
+  s_feabcd8001e6ff::t_ebc46e6e75118e 69-72
+apps/api/test/integration/skillTransferTicket.integration.test.ts
+  s_feabcd8001e6ff::t_ba7407bf5ba8e8 120
+  s_feabcd8001e6ff::t_05a80325ac9658 422-448
+  s_feabcd8001e6ff::t_03afb7ae3b4721 18,72-73,75-89,314,513,552
+  s_feabcd8001e6ff::t_2096cd213d1511 1-2,4-6,8,10,13-17,19-28,31-32,35-71,90-119,121,132-208,303-304,307-313,315-316,318-328,349-353,356-357,451-471,486-512,514-551,553-563,593-594
+  s_feabcd8001e6ff::t_60f2dd721fcb12 3,122-131
+  s_feabcd8001e6ff::t_409a73990cce2e 29-30,33-34
+  s_feabcd8001e6ff::t_9ae1cb6e0edbe3 9,74,209-302
+  s_feabcd8001e6ff::t_86800b9d8d215d 11-12,305-306,317,329-348,354-355,472-485
+  s_feabcd8001e6ff::t_4157deecaac4c5 7,358-421,449-450,564-592
+packages/db/src/schema.ts
+  s_feabcd8001e6ff::t_073359685e01f7 527
+  s_feabcd8001e6ff::t_cacf4873ac2049 543-544,561
+  s_feabcd8001e6ff::t_eafe4d797ca7ab 526,528-529,546-554,572-579,581-585,587,595,602-603,605
+  s_feabcd8001e6ff::t_7729e8d9fe766c 596-597,599-601
+  s_feabcd8001e6ff::t_1c05213787e0da 108-130,132-160,162-190,194-240,619-620
+  s_feabcd8001e6ff::t_6d6bc1281bd531 191-193
+  s_feabcd8001e6ff::t_201b09ff46f1d9 440-445,462-483
+  s_feabcd8001e6ff::t_b058a8c180ea5a 555-556,571,586,588-592,594,598,604
+  s_feabcd8001e6ff::t_69b9efb8886789 434-439,525,530-542,545,557-560,562-570,606-618
+  s_feabcd8001e6ff::t_b815507d12772b 580
+  s_feabcd8001e6ff::t_4764e27dfa032a 593
+  s_feabcd8001e6ff::t_7c17bf0b917a94 131,161
+  s_feabcd8001e6ff::t_6d8fa7b905d3b1 621
+scripts/agent-browser-smoke.sh
+  s_feabcd8001e6ff::t_103577146dc7fe 203-209,218-227,525,597
+  s_feabcd8001e6ff::t_2b91268fd8a1da 521-524
+  s_feabcd8001e6ff::t_fc9438f2b5075b 210-212,216-217
+  s_feabcd8001e6ff::t_e7071acf7bf76d 213-215
+apps/api/test/integration/testDatabase.ts
+  s_feabcd8001e6ff::t_6a36df85cdd235 159-195
+apps/web/src/lib/agentAuth.ts
+  s_feabcd8001e6ff::t_998714d6f7ca68 25-62
+  s_feabcd8001e6ff::t_3840066481893b 8
+  s_feabcd8001e6ff::t_a47411b84fefe8 1-7,9-10,12-24,63-78
+  s_feabcd8001e6ff::t_91fa5706eeff76 11
+packages/core/test/authz.test.ts
+  s_feabcd8001e6ff::t_c0116c37379891 10,86-108
+  s_feabcd8001e6ff::t_0ec09221812c6c 109-110
+packages/companion-skill/tsup.config.ts
+  s_feabcd8001e6ff::t_73b4ce44457415 1-9,14-18
+  s_feabcd8001e6ff::t_d575e24d9bb474 11-13
+  s_feabcd8001e6ff::t_896397bc77d353 10
+packages/auth/src/agent-auth-origin.ts
+  s_feabcd8001e6ff::t_241bcb56a81b51 1,4,7-12,14-42,132-179
+  s_feabcd8001e6ff::t_7c17bf0b917a94 2-3,5-6,43-102,105-106,108-131
+  s_feabcd8001e6ff::t_86d98f39a611ed 13
+  s_feabcd8001e6ff::t_27f8958fe69a5a 103-104,107
+packages/skills/src/zip.ts
+  s_feabcd8001e6ff::t_e65c3f7f861c56 212-216
+  s_feabcd8001e6ff::t_fabb0a5a4228c3 9-35,143-144,146,148,152-161,163-164,170-183,191,196,203
+packages/companion-skill/client/auth-mode.ts
+  s_feabcd8001e6ff::t_2bd76dd7035c00 1-26
+packages/companion-skill/skill/companion.json
+  s_feabcd8001e6ff::t_42f395f6d84d2a 37-38
+  s_feabcd8001e6ff::t_7e1711944a8ed0 36
+  s_feabcd8001e6ff::t_bc556814e6d3d4 4,8,18,29-35,39-40,322-323,329-330,335-336
+  s_feabcd8001e6ff::t_516d9c4e411272 7
+apps/api/src/modelPreferencesRoute.test.ts
+  s_feabcd8001e6ff::t_ebc46e6e75118e 46
+docs/product.md
+  s_feabcd8001e6ff::t_6017a7dac11317 83-84
+  s_feabcd8001e6ff::t_f50177634b1e7f 90-94,125-132
+  s_feabcd8001e6ff::t_707a6777154acd 133-135
+  s_feabcd8001e6ff::t_1177ef569cf06b 136
+packages/companion-skill/client/index.ts
+  s_feabcd8001e6ff::t_b99c1384436314 22-26,72-76,267-290,365-366,368-369,372-374,388-390,392-401,403-408,418-419,474-475,477-479,481-485,489-492,494,496,503-520,524-526,530,539-547,550-553
+  s_feabcd8001e6ff::t_6a42d8f957f1e2 430-433,435-438,447,480
+  s_feabcd8001e6ff::t_a68bc3427da997 223,528
+  s_feabcd8001e6ff::t_2bd76dd7035c00 3,20,79-85,93,159-165,167,185,225,227,233-255,343-346,348,375-387,420-429,434,439-445,501,557-606,612-623,648-650
+  s_feabcd8001e6ff::t_05b4c7b1bddb24 219
+  s_feabcd8001e6ff::t_ef8560a4022a2e 367,370-371
+  s_feabcd8001e6ff::t_6f6b71553e7c88 448,453,458-473
+  s_feabcd8001e6ff::t_45b730c1e8ca8b 1-2,4-12,14-19,21,27,29-71,77-78,86-92,94-130,138-158,166,168-184,186-218,220-222,224,226,228-232,256-266,291-342,347,349-364,391,402,409-417,476,486-488,493,495,497-500,502,521-523,527,529,531-538,548-549,554-556,607-611,624-647,652-658
+  s_feabcd8001e6ff::t_3d59a619e001e1 28,446,449-452,454-457
+  s_feabcd8001e6ff::t_4ff72e43c29643 13,131-137
+  s_feabcd8001e6ff::t_9cc3ef7048bc26 651
+apps/api/src/index.ts
+  s_feabcd8001e6ff::t_e1eab18ac84bdb 2530-2542,2545,2554-2574,2607
+  s_feabcd8001e6ff::t_319e843d9578cd 2415-2422
+  s_feabcd8001e6ff::t_2b877f741d71be 2,2411-2412,2424-2425,2438,2448-2454,2456-2457
+  s_feabcd8001e6ff::t_301f00b7336806 26,367,370,372,409-431
+  s_feabcd8001e6ff::t_c07cbe10f6aa23 24
+  s_feabcd8001e6ff::t_77eb9bbfcdf6c2 3229-3232
+  s_feabcd8001e6ff::t_69259bd98e5395 2657
+  s_feabcd8001e6ff::t_dc13d59ab9a404 3154
+  s_feabcd8001e6ff::t_77b60f93076887 693-694,711-712,740-744,2774-2776,2779-2781
+  s_feabcd8001e6ff::t_4e5a05eb04378c 2973-3025,3027-3029,3033,3039-3041
+  s_feabcd8001e6ff::t_60222d9087feeb 20-21,31,78,162-165,205
+  s_feabcd8001e6ff::t_ab827a29f818fa 321-338,354-365,373-378,400-408,432-486
+  s_feabcd8001e6ff::t_ef8560a4022a2e 2544
+  s_feabcd8001e6ff::t_28dc4e7c1ea4f2 3155-3159,3171
+  s_feabcd8001e6ff::t_c0d62cfd79db95 33,2546-2553
+  s_feabcd8001e6ff::t_87acfcfd22eafc 3150,3228,3234,3236-3247,3252,3258-3260
+  s_feabcd8001e6ff::t_c860bf0efc94af 2397-2410,2444-2447,2458-2483
+  s_feabcd8001e6ff::t_df7d71e84c5f2f 366,368-369,371,379-399
+  s_feabcd8001e6ff::t_e8dc7b4fe7db3a 34,2910,2919,2931-2933,3030-3032,3160-3162,3168,3235,3248-3251
+  s_feabcd8001e6ff::t_38466648e4ae0b 23,271,277,296,339-353,487-489,761,769
+  s_feabcd8001e6ff::t_5bbb8350b17895 2635-2637,2653-2656,2658-2664,2719-2721,2723-2724,2740-2748
+  s_feabcd8001e6ff::t_0c5a026286da5a 2927-2930,2940
+  s_feabcd8001e6ff::t_be3cccbc7d1be2 242-243,2413-2414,2423,2426-2428,2439-2443,2455,2924-2926
+  s_feabcd8001e6ff::t_8cc7e7191af2ab 2543
+  s_feabcd8001e6ff::t_c2a1da51d25e6e 2055
+  s_feabcd8001e6ff::t_8f4b2f307f401a 3273-3274
+  s_feabcd8001e6ff::t_3f860592f79a41 3077-3130,3141-3149
+  s_feabcd8001e6ff::t_8552c328b885fd 507-509
+  s_feabcd8001e6ff::t_c97962289d16a3 2899-2909,2911-2918,2920-2923,2934-2939,2941-2950
+  s_feabcd8001e6ff::t_d32a2d332e1c84 2429-2437
+  s_feabcd8001e6ff::t_5aea747d8b7a49 25
+  s_feabcd8001e6ff::t_f293fa028563a9 27
+  s_feabcd8001e6ff::t_530b03de891d1b 32
+  s_feabcd8001e6ff::t_bb6198d7bfafaf 770
+  s_feabcd8001e6ff::t_3a04fe84123c6c 2887-2891
+packages/companion-skill/client/safe-install.ts
+  s_feabcd8001e6ff::t_22c9b22693e04b 1-10,12-16,25,27-33,35-41,43,45-57,98-116,118-129,135-158,160-182,184-225,255-256,268-271,279,292,295-330,341-349,408-443,446,448-451,456,458-467,474,485-486,491-510
+  s_feabcd8001e6ff::t_5c862626832e59 78,81,117,134
+  s_feabcd8001e6ff::t_bca1bf53932a41 11,17-24,26,42,44,226-254,257-267,272-278,280-291,293-294,331-340,350-407,444-445,447,452-455,457,468-473,475-478,481-484,487-490
+  s_feabcd8001e6ff::t_069a0508e7195a 34,58-77,79-80,82-97,130-133,159,183
+  s_feabcd8001e6ff::t_016db4ffa5afeb 479-480
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_feabcd8001e6ff::t_6bec4678ebc4c8 1063,1632,1646,1656-1658,1662,1673,1704,1766,1780,1860-1862,1879-1882
+  s_feabcd8001e6ff::t_552b8646bbb8fc 1961-1963,1991,2001-2002,2006,2016-2017,2021,2034,2047
+apps/web/src/lib/queries.ts
+  s_feabcd8001e6ff::t_d906b131ad8016 21,126-127,134-135
+  s_feabcd8001e6ff::t_d8cbe17221e325 125,128-133,136-139
+apps/api/src/whoamiRoute.test.ts
+  s_feabcd8001e6ff::t_9378cc258f2e77 86,92-94,96-105,119-120,127-133,135,137,139-147
+  s_feabcd8001e6ff::t_1a9eb1d12d1767 18-20
+  s_feabcd8001e6ff::t_6f023e6026cede 30,41,106-118
+  s_feabcd8001e6ff::t_11c9f786f11851 67
+  s_feabcd8001e6ff::t_47e5d9b9e54416 87-91,95,121-126,134,136,138
+  s_feabcd8001e6ff::t_c6407a91d35b97 62-66,68-71,73,75-85,148
+  s_feabcd8001e6ff::t_fd54c5eb2fd901 72,74
+  s_feabcd8001e6ff::t_ebc46e6e75118e 31
+packages/contracts/package.json
+  s_feabcd8001e6ff::t_a1c342f0473b8d 7-8
+packages/core/test/publicSkillRelease.test.ts
+  s_feabcd8001e6ff::t_613d20ff9016be 13,49,94,106,113,134,148
+  s_feabcd8001e6ff::t_7e64c77589fffa 25,57,115-128
+  s_feabcd8001e6ff::t_9df60ffd175d93 3-4,21-22,37-48,63-64,73-83,87,176-177,181-203,227-228,234-237,241-257
+  s_feabcd8001e6ff::t_75e994c1e15506 139-145,150-173,178-180,238-240
+  s_feabcd8001e6ff::t_30aee8b0132015 1-2,5-12,14-20,23-24,26-36,50-56,58-62,65-72,84-86,88-93,95-105,107-112,114,129-133,135-138,146-147,149,174-175,223-226,229-233,258-259
+  s_feabcd8001e6ff::t_01a07c43417773 204-222
+packages/companion-skill/tsconfig.json
+  s_feabcd8001e6ff::t_73b4ce44457415 7
+apps/api/test/integration/labelLifecycle.integration.test.ts
+  s_feabcd8001e6ff::t_ebc46e6e75118e 31
+packages/auth/src/agent-auth-origin.test.ts
+  s_feabcd8001e6ff::t_86d98f39a611ed 1-2,4-5,7-64,94-95
+  s_feabcd8001e6ff::t_7c17bf0b917a94 3,6,65-80,82-93
+  s_feabcd8001e6ff::t_27f8958fe69a5a 81
+apps/web/src/styles/skills.css
+  s_feabcd8001e6ff::t_5d45aa4466d2a3 802-807
+apps/web/src/app/s/[token]/PublicSkillActions.test.ts
+  s_feabcd8001e6ff::t_40f2e687b5f759 52
+  s_feabcd8001e6ff::t_0639531b047623 9-10
+  s_feabcd8001e6ff::t_be852f412838ea 27
+  s_feabcd8001e6ff::t_c3e27148c36659 1-8,11-26,45-51,54-119
+  s_feabcd8001e6ff::t_25e431de93f75d 29,31-36,39-43
+  s_feabcd8001e6ff::t_f5d53fbb14548a 28,44,53
+  s_feabcd8001e6ff::t_a83103a2093886 30,37-38
+apps/web/src/components/org/ConnectedAgentsPane.tsx
+  s_feabcd8001e6ff::t_b240351d005354 15,105-106,108
+  s_feabcd8001e6ff::t_998714d6f7ca68 9-10,24-26
+  s_feabcd8001e6ff::t_47af9aa2fb5eee 37-38,62,85
+  s_feabcd8001e6ff::t_80b3ef1ce339b9 3,35-36,56-61,63-84,86,194-200
+  s_feabcd8001e6ff::t_3840066481893b 22-23
+  s_feabcd8001e6ff::t_e3fd983cf75393 99
+  s_feabcd8001e6ff::t_a47411b84fefe8 1-2,4-8,11-14,16-21,27-34,39-55,87-98,100-104,107,109-152,154,156,166-193,201-218
+  s_feabcd8001e6ff::t_91fa5706eeff76 155
+  s_feabcd8001e6ff::t_ec5a0da73d0487 153,157-165
+packages/skills/test/zip.test.ts
+  s_feabcd8001e6ff::t_52c8b658964cb5 5,91-100
+  s_feabcd8001e6ff::t_9b980e2b692bdc 127-135
+  s_feabcd8001e6ff::t_6c614c4935499e 86-90,101-103,142-143
+  s_feabcd8001e6ff::t_fabb0a5a4228c3 7,104-126,136-141
+apps/web/src/app/(auth)/login/LoginForm.tsx
+  s_feabcd8001e6ff::t_05b158968993df 430,440,578,587,608,651,662,674
+apps/web/src/app/s/[token]/opengraph-image.tsx
+  s_feabcd8001e6ff::t_6cad256bd642a9 29-33
+packages/core/test/skillRename.test.ts
+  s_feabcd8001e6ff::t_7e64c77589fffa 5,19,31,159-170,196
+  s_feabcd8001e6ff::t_75e994c1e15506 176-179
+  s_feabcd8001e6ff::t_9df60ffd175d93 3-4,41,55,57-61,75-76,171-175,180-195,197-200
+  s_feabcd8001e6ff::t_2d53aafd17deb1 201
+packages/companion-skill/skill/companion.integrity.json
+  s_feabcd8001e6ff::t_6d6c5cf709712f 6,8,13-14,20
+  s_feabcd8001e6ff::t_0ad69f47d6b116 3,10
+  s_feabcd8001e6ff::t_9051ddccc5379b 11
+  s_feabcd8001e6ff::t_c46a7a63eb6d13 4-5
+packages/auth/src/agent-auth.test.ts
+  s_feabcd8001e6ff::t_1359cc9ad1b380 182
+  s_feabcd8001e6ff::t_e4b5ccb77bdd71 10,28
+  s_feabcd8001e6ff::t_281f76d02c392d 19,219-230
+  s_feabcd8001e6ff::t_699b7b5392cf24 1-7,9,12-15,18,20-27,29-66,80-107,148-177,183-218,277-278
+  s_feabcd8001e6ff::t_e28c7d3cfac77f 69
+  s_feabcd8001e6ff::t_c7138a02e3abdb 16-17,116-121,125-147
+  s_feabcd8001e6ff::t_c14ea120c5d01c 108-115
+  s_feabcd8001e6ff::t_4e525b4cff8c06 122-124
+  s_feabcd8001e6ff::t_a2203affd5b5da 67-68
+  s_feabcd8001e6ff::t_4f8bc9222e4033 11,70-79
+  s_feabcd8001e6ff::t_57a3426e68691e 178
+  s_feabcd8001e6ff::t_85a613c7cf3c26 179-181
+  s_feabcd8001e6ff::t_7c17bf0b917a94 8,231-276
+packages/core/src/authz.ts
+  s_feabcd8001e6ff::t_9f63c24c63c542 90-101
+packages/companion-skill/skill/scripts/secrets_runtime.py
+  s_feabcd8001e6ff::t_42bb9a5a2b049c 21,337
+packages/auth/src/postgres-secondary-storage.ts
+  s_feabcd8001e6ff::t_ea4876e085cdd5 27,33-39
+  s_feabcd8001e6ff::t_34bf15c208aa06 1-26,28-29,31,40-43,70-112
+  s_feabcd8001e6ff::t_8dc6affcd2a803 30,32,44-46
+  s_feabcd8001e6ff::t_5563156055f3be 47-69
+packages/skills/test/validateSkill.test.ts
+  s_feabcd8001e6ff::t_e5549381158c98 293-297
+  s_feabcd8001e6ff::t_069a0508e7195a 473-499
+packages/companion-skill/client/operations.ts
+  s_feabcd8001e6ff::t_45b730c1e8ca8b 7,10,13-14,16-19,26-27,40,46,52-53,56,88
+  s_feabcd8001e6ff::t_3d59a619e001e1 20-24,57-87
+  s_feabcd8001e6ff::t_aecaa4c94f5b71 1-6,8-9,11-12,15,25,28-39,41-45,47-51,54
+  s_feabcd8001e6ff::t_a5f00f7edb02bf 55
+packages/companion-skill/client/bundle.test.ts
+  s_feabcd8001e6ff::t_8f497bc1a37112 1-90
+docs/design.md
+  s_feabcd8001e6ff::t_fc10da677ff12d 129-133,871-872
+  s_feabcd8001e6ff::t_9a9b2acea66732 397-398
+  s_feabcd8001e6ff::t_afb21850da59aa 250-255
+  s_feabcd8001e6ff::t_f50177634b1e7f 77-79,100-101,116-128,134-144,273-274,279,291-293,396,429,432,434-436,439-446,450-451,497-498,514-516,746-749,770-772,787-793,836-840,849-850,865-866
+  s_feabcd8001e6ff::t_069a0508e7195a 794-796
+  s_feabcd8001e6ff::t_707a6777154acd 109-110,145-151,447-449
+  s_feabcd8001e6ff::t_7c17bf0b917a94 430-431
+  s_feabcd8001e6ff::t_6017a7dac11317 80,433,437-438
+  s_feabcd8001e6ff::t_82812633b010d8 815-818
+packages/companion-skill/skill/scripts/test_bootstrap.py
+  s_feabcd8001e6ff::t_e29de8818de9ed 85
+packages/core/test/publicSkillTransferTicket.test.ts
+  s_feabcd8001e6ff::t_44eb2518b8c623 4,87-137
+  s_feabcd8001e6ff::t_01c6136c4c9770 8,138-162
+  s_feabcd8001e6ff::t_78dd0ea009933a 9,163-176
+  s_feabcd8001e6ff::t_11e8aceb8f50dd 13
+  s_feabcd8001e6ff::t_ba7407bf5ba8e8 44,46
+  s_feabcd8001e6ff::t_497c886ef79c55 1-3,5-7,10-12,14-43,45,47-80,82-86,177-178
+  s_feabcd8001e6ff::t_fb388a41f3a682 81
+packages/auth/src/agent-auth.ts
+  s_feabcd8001e6ff::t_8a57a26499f0ff 2,187,207
+  s_feabcd8001e6ff::t_1fdd63e997055d 46,49
+  s_feabcd8001e6ff::t_3435fbc2ab6863 8-12,23,123-124,128-136
+  s_feabcd8001e6ff::t_ae33d0285291dc 38-43,45,47-48,50-76,81,87,215-217
+  s_feabcd8001e6ff::t_c7138a02e3abdb 236-248,251-272
+  s_feabcd8001e6ff::t_d99fe2625645ff 166-172
+  s_feabcd8001e6ff::t_4e525b4cff8c06 273
+  s_feabcd8001e6ff::t_624eb1963c2d1d 44
+  s_feabcd8001e6ff::t_34bf15c208aa06 1,3-7,13-22,24-37,77-80,82-86,88-122,125-127,137-145,148-165,173-186,188-206,208-214,218-235,249-250,274
+  s_feabcd8001e6ff::t_c14ea120c5d01c 146-147
+apps/web/src/components/skills/route.test.ts
+  s_feabcd8001e6ff::t_31d7658e18070a 188,190
+apps/web/src/app/device/capabilities/DeviceCapabilitiesApproval.test.ts
+  s_feabcd8001e6ff::t_017a8449fe71c3 6,12-22,34,65,97-116
+  s_feabcd8001e6ff::t_c3e27148c36659 1-5,7-8,11,23-29,31-33,35-64,66-67,70-96,117-118
+  s_feabcd8001e6ff::t_0639531b047623 9-10
+  s_feabcd8001e6ff::t_998714d6f7ca68 30,68-69
+packages/contracts/test/agentOperations.test.ts
+  s_feabcd8001e6ff::t_1fdd63e997055d 29
+  s_feabcd8001e6ff::t_63865d0196ee5d 1-28,30-46
+packages/db/runtime-role-grants.sql
+  s_feabcd8001e6ff::t_073359685e01f7 93
+  s_feabcd8001e6ff::t_2acf466f522ffe 92,94,98
+  s_feabcd8001e6ff::t_ca427da197173c 96
+  s_feabcd8001e6ff::t_e8dc7b4fe7db3a 97
+  s_feabcd8001e6ff::t_7e8ad797910be4 95
+apps/web/src/app/device/capabilities/DeviceCapabilitiesApproval.tsx
+  s_feabcd8001e6ff::t_8849c7b4e3ff42 56,59-60,62-65
+  s_feabcd8001e6ff::t_05c1211fa62504 168
+  s_feabcd8001e6ff::t_998714d6f7ca68 5,190-191
+  s_feabcd8001e6ff::t_6e9d3cc0dcaa8e 1-4,6-9,11-19,21-23,26-30,32-39,41-45,47-55,58,66-91,93-95,97-117,126-157,167,169-189,192-215
+  s_feabcd8001e6ff::t_017a8449fe71c3 20,24-25,31,40,46,57,61,92,96,118-125,158-166
+  s_feabcd8001e6ff::t_3840066481893b 10
+apps/web/src/components/skills/DetailView.tsx
+  s_feabcd8001e6ff::t_85926ec308bf69 608
+  s_feabcd8001e6ff::t_5d45aa4466d2a3 39,601-607,609-622
+  s_feabcd8001e6ff::t_95ee2584bb1022 533
+apps/web/src/app/device/capabilities/page.tsx
+  s_feabcd8001e6ff::t_6e9d3cc0dcaa8e 1-35
+apps/api/src/skillFileContentRoute.test.ts
+  s_feabcd8001e6ff::t_e4121401c36d95 18,21,30,73,104-107,461-463,466-467,470-475,484-514,518-536,556-568
+  s_feabcd8001e6ff::t_553c7fd8442a87 416-445
+  s_feabcd8001e6ff::t_caa1e42dc85b40 570-584,685
+  s_feabcd8001e6ff::t_d695d52e1dbf1c 116-118
+  s_feabcd8001e6ff::t_769807c16bba0c 39,58
+  s_feabcd8001e6ff::t_9e1ac5094157c2 585
+  s_feabcd8001e6ff::t_7f012c48e7871d 28,233,290-324,328-342,346-347,382-415,446-460,710-717,768-798
+  s_feabcd8001e6ff::t_cf579fcadc9c7c 32
+  s_feabcd8001e6ff::t_565e1cc04ef3bb 26,129-133,166
+  s_feabcd8001e6ff::t_c3e7002d2587e1 214,569,686
+  s_feabcd8001e6ff::t_b4f27d979da5f0 465,483,515-517
+  s_feabcd8001e6ff::t_219d81b171d0e0 537-555
+  s_feabcd8001e6ff::t_007be72432a402 727-742,840-861
+  s_feabcd8001e6ff::t_14d4499abd2eda 864-911,929-938
+  s_feabcd8001e6ff::t_93405a6010c5e1 912-928
+  s_feabcd8001e6ff::t_dbb46d47e8437c 135,159,178-213
+  s_feabcd8001e6ff::t_808020252d749b 687-709,718-726,743-767,799-839,862-863
+  s_feabcd8001e6ff::t_701782e3c8694f 325-326
+  s_feabcd8001e6ff::t_73ec7a3c2464f1 348-381
+  s_feabcd8001e6ff::t_76339dd1939d3a 638-655
+  s_feabcd8001e6ff::t_455187700abc41 31,586-637,656-684
+  s_feabcd8001e6ff::t_995fbb2ae3ea5d 273-274,327,343-345
+  s_feabcd8001e6ff::t_83c789baf97539 27,29,138-144,160
+  s_feabcd8001e6ff::t_a3ce1431fa1e33 262-266,268-272,275-276
+  s_feabcd8001e6ff::t_bb9d796a925b3a 55,267
+  s_feabcd8001e6ff::t_e8fd92629bb40d 2,6,464,468-469,476-482
+packages/companion-skill/client/operations.test.ts
+  s_feabcd8001e6ff::t_a5f00f7edb02bf 38-40
+  s_feabcd8001e6ff::t_4f8bc9222e4033 2,18-37,41,73-74
+  s_feabcd8001e6ff::t_3d59a619e001e1 4,47-65
+  s_feabcd8001e6ff::t_73b4ce44457415 1,3,5-17,42-46,66-72,75-76
+apps/web/src/lib/types.ts
+  s_feabcd8001e6ff::t_d8cbe17221e325 28-31,91-94,100-101
+apps/web/src/styles/auth.css
+  s_feabcd8001e6ff::t_f1127fcc1b5c1f 201-202
+  s_feabcd8001e6ff::t_979182728adf8d 192-200,203-204,208-228,230-237
+  s_feabcd8001e6ff::t_017a8449fe71c3 205-207,229
+apps/api/src/agentAuthRoutes.ts
+  s_feabcd8001e6ff::t_122215558aa70d 9,343-361,363-364
+  s_feabcd8001e6ff::t_91fa5706eeff76 21,37-56,117-150,632
+  s_feabcd8001e6ff::t_2fd0cceece5a3f 2,470
+  s_feabcd8001e6ff::t_73569764982c4b 207-226,302
+  s_feabcd8001e6ff::t_c6407a91d35b97 464-469,477
+  s_feabcd8001e6ff::t_39145b243589d8 445-447,568-569
+  s_feabcd8001e6ff::t_93cc9ed693a6d9 156-163
+  s_feabcd8001e6ff::t_5efb0b26c7ddc9 651-662,672-673,679-681
+  s_feabcd8001e6ff::t_9b7fdf601601a8 76-80,82-87,184-187,189-190,305-307,309-313,546-547
+  s_feabcd8001e6ff::t_c6772fc9e7a1aa 6,89,92-100,167-183,325-342,362,365-374,393-434,492-493,501,506,531,565,595,641
+  s_feabcd8001e6ff::t_47e5d9b9e54416 375-392,494-500,502-505
+  s_feabcd8001e6ff::t_e7c33a8547af6e 25-26,34,61,112-116,151-152,548
+  s_feabcd8001e6ff::t_fd54c5eb2fd901 478-491
+  s_feabcd8001e6ff::t_fbe3daccc25f9f 13,188,191-195,250,287-288,308,525,562,592
+  s_feabcd8001e6ff::t_2919f20ff1deb7 19-20,205-206,227-246,521-522,559-560,589-590
+  s_feabcd8001e6ff::t_38466648e4ae0b 153-155,164-166,196-197,663,674-678,682-686
+  s_feabcd8001e6ff::t_c3cf4f23a7ffa1 1,3-5,7-8,10-12,14-18,22-24,27-33,35-36,57-58,62-75,101-111,198-204,247-249,251-252,254-257,260-274,276,281,283-286,289-298,435-444,448-463,508-520,523-524,526-529,532-545,549-558,561,563,573-575,577-588,591,593,596-598,600-631,633-640,642-650,664-671,687-692
+  s_feabcd8001e6ff::t_4e525b4cff8c06 59-60,81,88,90-91,253,258-259,275,277-280,282,299-301,303-304,314-324,471-476,507,530,564,566-567,570-572,576,594,599
+packages/auth/package.json
+  s_feabcd8001e6ff::t_d81da3d0d76bfa 14-15,24
+  s_feabcd8001e6ff::t_699b7b5392cf24 10,26-27
+  s_feabcd8001e6ff::t_aecaa4c94f5b71 17
+apps/api/src/localSkills.test.ts
+  s_feabcd8001e6ff::t_99e58c454e05d0 153
+  s_feabcd8001e6ff::t_056abb3d7574cc 242-247
+  s_feabcd8001e6ff::t_517505f1baf75e 51,75,107-108,127-129
+  s_feabcd8001e6ff::t_1b04fa1f55a8ab 257,275
+  s_feabcd8001e6ff::t_25e431de93f75d 146-148,156-164,171-176
+  s_feabcd8001e6ff::t_138bb8b204cba1 8-12,154-155,177-181
+  s_feabcd8001e6ff::t_a83103a2093886 165-170
+  s_feabcd8001e6ff::t_e37a91d4095022 236
+docs/PRD.md
+  s_feabcd8001e6ff::t_fc10da677ff12d 113-114
+  s_feabcd8001e6ff::t_f50177634b1e7f 104-107,110-112,115-116
+  s_feabcd8001e6ff::t_707a6777154acd 108-109
+packages/auth/src/index.ts
+  s_feabcd8001e6ff::t_18c6b4982c409e 357-358,360-365
+  s_feabcd8001e6ff::t_8a57a26499f0ff 166-167
+  s_feabcd8001e6ff::t_7c17bf0b917a94 16-21,145-149,230-244
+  s_feabcd8001e6ff::t_53a70cb0216bcf 267-278,280-285,287-296,298-302,304-328
+  s_feabcd8001e6ff::t_4e525b4cff8c06 279,286,297,303
+  s_feabcd8001e6ff::t_1bb45452356327 10,351-354
+  s_feabcd8001e6ff::t_241bcb56a81b51 24,162-165,227-229,245-262,355-356,359
+  s_feabcd8001e6ff::t_a42161ea356f25 189,225-226
+  s_feabcd8001e6ff::t_d4454fc1ba3721 3,7-9,11-15,23,25,79-82,92-98,134-144,150-161,169,266,329-350,366-384
+  s_feabcd8001e6ff::t_72e5070c3d951e 190-196,201-224
+  s_feabcd8001e6ff::t_660b1cf60494fd 84,185-188,263
+  s_feabcd8001e6ff::t_c3e7002d2587e1 168,170
+  s_feabcd8001e6ff::t_8e200174744076 197-200
+  s_feabcd8001e6ff::t_c8562ea2123d3f 22
+  s_feabcd8001e6ff::t_e28462004db7fd 83
+apps/web/src/components/skills/PublicReleaseDialog.tsx
+  s_feabcd8001e6ff::t_0dd61a32136e46 162
+  s_feabcd8001e6ff::t_cdffbe85a7ed6b 1-2,4-25,28-161,163-169
+  s_feabcd8001e6ff::t_4614d7498e10a3 3,26-27
+apps/api/test/integration/secretLifecycle.integration.test.ts
+  s_feabcd8001e6ff::t_ebc46e6e75118e 33
+apps/web/src/app/s/[token]/PublicSkillActions.tsx
+  s_feabcd8001e6ff::t_6cad256bd642a9 1-3,5-22,53-78,80-89,92-162
+  s_feabcd8001e6ff::t_be852f412838ea 24
+  s_feabcd8001e6ff::t_f5d53fbb14548a 49,52
+  s_feabcd8001e6ff::t_44e1454813ab83 25,29-37,40-47,50
+  s_feabcd8001e6ff::t_a83103a2093886 26-28,38-39,48
+  s_feabcd8001e6ff::t_9f0126507876b9 23,51
+  s_feabcd8001e6ff::t_912e21ac0bda81 4,79,90-91
+apps/api/src/context.ts
+  s_feabcd8001e6ff::t_6b37e450181aa2 86-87
+  s_feabcd8001e6ff::t_18c6b4982c409e 4,20-22,66-68,84-85,88-101,140-145
+apps/web/src/components/skills/SkillsApp.tsx
+  s_feabcd8001e6ff::t_9764ecfe4c3f08 1826,1843,1860
+  s_feabcd8001e6ff::t_cdffbe85a7ed6b 62,378,1224-1226,1566,1610,1892-1907
+  s_feabcd8001e6ff::t_31d4c41ff819d9 1384-1386,1404
+  s_feabcd8001e6ff::t_5e1975d9f6b87f 193,419-420,1471
+  s_feabcd8001e6ff::t_69443a1c47a009 1908-1909
+apps/web/src/app/v1/auth/verify-email/route.test.ts
+  s_feabcd8001e6ff::t_05b158968993df 23,29-33,35,39-51
+  s_feabcd8001e6ff::t_764fc3255c8bac 52-53
+apps/web/src/app/v1/auth/google/route.test.ts
+  s_feabcd8001e6ff::t_fabb0a5a4228c3 47-78
+packages/contracts/src/index.ts
+  s_feabcd8001e6ff::t_a1c342f0473b8d 21
+packages/core/src/services.ts
+  s_feabcd8001e6ff::t_420ac89a8f2cf2 51,67,80
+  s_feabcd8001e6ff::t_e8dc7b4fe7db3a 77,1974-1990
+  s_feabcd8001e6ff::t_2aa3b6ea27a8b6 1326-1327,1349-1351,1513,1532-1538,1596-1602,3026-3027,3127
+  s_feabcd8001e6ff::t_aa57282503acd0 1264,1266-1321,1328-1330,1337-1348,1352-1354,1361,1408-1429,1432-1460,1499-1512,1514-1531,1539-1578,1582-1595,1603-1605,1993-2002
+  s_feabcd8001e6ff::t_6bfb35f38a4cd6 1366-1379,1393-1407,1461-1474,1487-1498,3915-3920,3930-3940
+  s_feabcd8001e6ff::t_319e843d9578cd 3022-3023,3035-3045,3128
+  s_feabcd8001e6ff::t_374613c147c901 75,1917-1933
+  s_feabcd8001e6ff::t_358eb0e74fe978 1380-1392,1475-1486
+  s_feabcd8001e6ff::t_3e22848d10fdb8 3046-3069,3102
+  s_feabcd8001e6ff::t_1cede7e7af44fb 1263,1606-1636,1638-1655,1657-1665,1667-1743,1745-1750,1818-1860,1896,1898-1913,1915-1916,1934-1943,1945-1954,1956-1968,1970-1973,1991-1992
+  s_feabcd8001e6ff::t_b75875e8b30b9b 1637,1656,1744,1751-1817,1862,1897,1914,1944,1955,1969
+  s_feabcd8001e6ff::t_c3e7002d2587e1 3941
+  s_feabcd8001e6ff::t_0531cd40757cb8 24,56,66,68,71,79
+  s_feabcd8001e6ff::t_ef4676b7b8e364 916,954-966,991-998,1125-1126
+  s_feabcd8001e6ff::t_c54790874ae1db 1243-1244,1249,1254-1262
+  s_feabcd8001e6ff::t_0ba8d76703b523 1322-1325,1331-1336,1362-1365,1430-1431
+  s_feabcd8001e6ff::t_2d155210e48102 1666,1861,1863-1895
+  s_feabcd8001e6ff::t_7e64c77589fffa 1355-1360,3886-3890
+  s_feabcd8001e6ff::t_4878a505f57001 1265
+apps/api/test/integration/skillLifecycle.integration.test.ts
+  s_feabcd8001e6ff::t_ebc46e6e75118e 33
+apps/web/src/app/v1/auth/logout/route.test.ts
+  s_feabcd8001e6ff::t_017a8449fe71c3 7,9-10,54-64
+  s_feabcd8001e6ff::t_233a789f65f1fa 65
+cli/src/commands/skills.test.ts
+  s_feabcd8001e6ff::t_5c858908359d31 44-45
+apps/web/src/components/skills/LocalSkillsView.test.ts
+  s_feabcd8001e6ff::t_2da9e677895205 42-44,132-133
+packages/companion-skill/skill/reference/api.md
+  s_feabcd8001e6ff::t_82812633b010d8 45-46,56-60,76,122-123,198-200,213-214
+  s_feabcd8001e6ff::t_4abbb2ff22738d 4-9,17-18,22,27-30,37-44,47-52,61-64,66-67,86-89,133-134,163-164,170
+  s_feabcd8001e6ff::t_cce446dbbc95d5 53-55,77-79,509,514
+  s_feabcd8001e6ff::t_069a0508e7195a 282-283
+  s_feabcd8001e6ff::t_a2440c97ef2139 374-375,378-379,417-418,563
+  s_feabcd8001e6ff::t_7e1711944a8ed0 284-293
+  s_feabcd8001e6ff::t_3556dcb80d79d0 295-303
+  s_feabcd8001e6ff::t_e45fde305e16a5 177-179,237,244-281,294,309,328-329
+apps/web/src/app/v1/auth/logout/route.ts
+  s_feabcd8001e6ff::t_017a8449fe71c3 29-48,52,70
+apps/api/test/integration/preTenantRls.integration.test.ts
+  s_feabcd8001e6ff::t_ba7407bf5ba8e8 459,490,495
+  s_feabcd8001e6ff::t_82720dff2ad504 20,482-483,541-548
+  s_feabcd8001e6ff::t_d6d7437a921f87 189-193,445-458,460-481
+  s_feabcd8001e6ff::t_036df189ef1b11 484-489,491-494,496-540
+  s_feabcd8001e6ff::t_c3e7002d2587e1 549-550
+  s_feabcd8001e6ff::t_75128903867d27 196-216
+apps/api/src/companionSkillPackage.ts
+  s_feabcd8001e6ff::t_138bb8b204cba1 82,180
+  s_feabcd8001e6ff::t_0ab13fc7b5187a 81,84-86,92,114-115,117-119,121-122,124-125,129-130,135-137,141-145,150-151
+  s_feabcd8001e6ff::t_2155154a013e3d 88-91,95-96,101,107
+  s_feabcd8001e6ff::t_a83103a2093886 104-106,108-112
+  s_feabcd8001e6ff::t_44e1454813ab83 93-94,97-100,102-103,113,116,120,123,126,128
+apps/web/src/components/skills/updateFlow.test.ts
+  s_feabcd8001e6ff::t_e46f842c77152c 219-220
+  s_feabcd8001e6ff::t_90905083dc44cb 151-152,154,236-240
+  s_feabcd8001e6ff::t_7b0400d8c21bcb 136,170,185,200,210-218,221,227
+  s_feabcd8001e6ff::t_a59ac8f7d52222 179,181-184,186-195
+  s_feabcd8001e6ff::t_f9dd8c07c82e03 159-161,166-169,171-178
+  s_feabcd8001e6ff::t_c578e515242064 180
+apps/web/src/components/org/model.ts
+  s_feabcd8001e6ff::t_a47411b84fefe8 93,109
+apps/api/src/runRoutes.test.ts
+  s_feabcd8001e6ff::t_2c2fd83752056f 136-138
+  s_feabcd8001e6ff::t_ebc46e6e75118e 116
+apps/web/src/components/org/SettingsView.tsx
+  s_feabcd8001e6ff::t_a47411b84fefe8 25,44-45,126
+apps/api/package.json
+  s_feabcd8001e6ff::t_4a5999b132137b 46-47
+apps/api/test/integration/publicSkillRelease.integration.test.ts
+  s_feabcd8001e6ff::t_424add806850d2 137-189
+  s_feabcd8001e6ff::t_9a56bb77a72d3a 90,192
+  s_feabcd8001e6ff::t_da7e57331d5485 289-306
+  s_feabcd8001e6ff::t_d16f57cb65296c 233
+  s_feabcd8001e6ff::t_43240538d9cff4 333-374
+  s_feabcd8001e6ff::t_e3ebdae3ccb0ac 30-31,94,127,196,250,381,403
+  s_feabcd8001e6ff::t_78dd0ea009933a 13,251,271-288
+  s_feabcd8001e6ff::t_0ac39f70741d25 17
+  s_feabcd8001e6ff::t_86800b9d8d215d 308-332
+  s_feabcd8001e6ff::t_9c8d45fe10c25a 1-11,14-16,18-22,24-29,32-68,75-89,91-93,95-126,128-136,190-191,193-195,197-199,201-232,234-249,252-270,307,375-380,382-402,404-405,487-488
+  s_feabcd8001e6ff::t_29277af5fc8fb2 200
+  s_feabcd8001e6ff::t_0b6c28bf8cdb8a 12,406-486
+  s_feabcd8001e6ff::t_add9dd37018cec 23,69-74
+packages/storage/src/index.ts
+  s_feabcd8001e6ff::t_f955024d2bd103 9,54-112
+  s_feabcd8001e6ff::t_faf5e4006d0cea 113
+packages/companion-skill/client/safe-install.test.ts
+  s_feabcd8001e6ff::t_9b980e2b692bdc 153-160
+  s_feabcd8001e6ff::t_04ccb689da85a4 10,16,18-27,50-53,58-59,63-126,199-252
+  s_feabcd8001e6ff::t_22c9b22693e04b 2-9,11-15,17,28-49,54-57,127-131,161-198,253-254
+  s_feabcd8001e6ff::t_016db4ffa5afeb 1
+  s_feabcd8001e6ff::t_7c03f6a1abdaca 60-62
+  s_feabcd8001e6ff::t_069a0508e7195a 132-152
+packages/db/drizzle/0050_agent_auth_identity.sql
+  s_feabcd8001e6ff::t_ca427da197173c 155-190,192-193,204,212-242
+  s_feabcd8001e6ff::t_75f2603552d2bf 137
+  s_feabcd8001e6ff::t_4e525b4cff8c06 67-72
+  s_feabcd8001e6ff::t_1c05213787e0da 1-18,21-41,44-66,73-98,248-257
+  s_feabcd8001e6ff::t_7e8ad797910be4 135,143
+  s_feabcd8001e6ff::t_7c17bf0b917a94 19-20,42-43
+  s_feabcd8001e6ff::t_0f15cdcbfe4c75 99-128,132-134,136,138-142,144-154
+  s_feabcd8001e6ff::t_e8dc7b4fe7db3a 191,194-203,205-211,243-247
+  s_feabcd8001e6ff::t_f44602b53e4bb1 129-131
+packages/skills/src/archive.ts
+  s_feabcd8001e6ff::t_5c862626832e59 54,57
+  s_feabcd8001e6ff::t_069a0508e7195a 32-53,55-56,58-74,85-88,203,209-222,750,762-777
+apps/web/src/styles/upload.css
+  s_feabcd8001e6ff::t_5d45aa4466d2a3 25-39,52-60
+  s_feabcd8001e6ff::t_edfaaf84b2fa6d 40-51
+apps/api/src/agentAuthRoutes.test.ts
+  s_feabcd8001e6ff::t_73569764982c4b 78-87
+  s_feabcd8001e6ff::t_2919f20ff1deb7 1,65-77,115-116
+  s_feabcd8001e6ff::t_38064f2e163328 3,9-18,63-64
+  s_feabcd8001e6ff::t_91fa5706eeff76 6,19-62
+  s_feabcd8001e6ff::t_0205d0e8253611 110-112
+  s_feabcd8001e6ff::t_4d476502bb1e0f 2,4-5,7-8,88-109,113-114
+package.json
+  s_feabcd8001e6ff::t_e215c678bbc31c 13-15
+  s_feabcd8001e6ff::t_123072829e42b3 16
+packages/companion-skill/client/storage.test.ts
+  s_feabcd8001e6ff::t_6fe1108a4c5b74 1-2,6,16,72-137
+  s_feabcd8001e6ff::t_73b4ce44457415 3-5,7-15,17-71,138-174
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_feabcd8001e6ff::t_f72b55a7db57db 1
+  s_feabcd8001e6ff::t_17ad5d5c208f8f 3-4,7-8,10-13,22,31,35-37,44,46,49,53-54,56,59,64-71,86,90,92,94,96,100-101,104-105,107-108,111-112,114-116,118-120,135,137,139,143
+  s_feabcd8001e6ff::t_e7878a63de7a73 9,24-25,28-30,43,45
+  s_feabcd8001e6ff::t_354f9205e5fd14 6,15-16,20-21,23,26,32-34,38,40-42,47-48,50-52,55,58,60-63,72,74-85,87-89,91,93,95,97-99,102-103,106,109-110,113,117,121-124,126-131,133-134,136,138,140
+  s_feabcd8001e6ff::t_0ad69f47d6b116 141-142,144
+  s_feabcd8001e6ff::t_037c70edde5003 5,14,17-19,27,39,57,73,125,132
+  s_feabcd8001e6ff::t_99d1497afcc877 2
+packages/contracts/src/skill.ts
+  s_feabcd8001e6ff::t_a89c4ec451039e 213-216,246-259,269-274
+packages/companion-skill/skill/evals/evals.json
+  s_feabcd8001e6ff::t_821eef68aab486 110-119
+  s_feabcd8001e6ff::t_7e1711944a8ed0 81,84
+  s_feabcd8001e6ff::t_c3e7002d2587e1 108-109
+  s_feabcd8001e6ff::t_bc556814e6d3d4 18-19,21-23,40-41,43,53-54,56,59-80,82-83,85-107
+packages/contracts/src/agentOperations.ts
+  s_feabcd8001e6ff::t_a1c342f0473b8d 1-29,31-66,68-186
+  s_feabcd8001e6ff::t_1fdd63e997055d 67
+  s_feabcd8001e6ff::t_624eb1963c2d1d 30
+apps/web/src/components/skills/route.ts
+  s_feabcd8001e6ff::t_5e1975d9f6b87f 128-129
+packages/companion-skill/package.json
+  s_feabcd8001e6ff::t_73b4ce44457415 14-15,18,22,27,30
+  s_feabcd8001e6ff::t_6246394d0ed0fc 31-32
+  s_feabcd8001e6ff::t_22c9b22693e04b 23
+  s_feabcd8001e6ff::t_896397bc77d353 25-26
+  s_feabcd8001e6ff::t_aecaa4c94f5b71 24
+packages/db/drizzle/meta/_journal.json
+  s_feabcd8001e6ff::t_bfa9e75fe15b35 347-360
+pnpm-lock.yaml
+  s_feabcd8001e6ff::t_501c2570fd86c6 8-11,87,116-121,163,302-307,311-313,322,327-329,336-338,357-369,374-376,380-382,566-585,714-719,793-795,817-819,1469-1471,1502-1504,1508-1510,1514-1520,1524-1525,1529-1530,1534-1535,1539-1540,1544-1545,1549-1550,1554-1555,1559-1560,1564-1565,1569-1571,1575-1577,1581-1583,1587-1589,1593-1595,1599-1601,1605-1607,1611-1613,1617-1623,1626-1628,1632-1634,1638-1640,1665-1677,1772-1811,1982-1985,2351-2354,2365-2372,2376-2378,2437-2440,2591-2598,2607-2610,2614-2615,2620-2621,2641-2644,2720-2723,2743-2762,2766-2769,2830-2833,2955-2957,2964-2967,3035-3037,3172-3175,3179-3186,3191-3200,3223-3225,3259-3262,3285-3288,3293-3296,3417-3424,3441-3443,3451-3458,3546-3548,3634-3635,3644-3649,3780-3787,3880-3887,3932-3935,3993-3999,4030-4033,4053-4055,4078-4081,4148-4151,4156-4162,4173-4180,4203-4205,4230-4233,4275-4278,4297-4299,4312-4324,4340-4350,4422-4425,4586-4589,4612-4614,4642-4645,4654-4657,4711-4714,4721-4724,4854-4856,4902-4906,4923-4941,5196-5204,5211,5252-5253,5284-5288,5635,5650-5651,5675,5677,5680,5682-5687,5690,5693,5696,5699,5702,5705,5708,5711,5714,5717,5720,5722,5725,5727,5730,5732,5735,5737,5740,5742,5745,5747,5750,5752,5755,5757,5760,5762-5767,5770,5773,5776,5804-5827,5891-5990,6098-6108,6499-6503,6510-6513,6521-6527,6611-6616,6681,6694,6703,6711,6713,6720-6742,6745,6754,6773-6774,6845-6846,6864-6873,6876-6880,6939-6940,6979-6980,6985-6986,7209-7210,7417-7418,7425-7430,7433-7473,7494-7495,7528-7538,7566-7567,7570-7571,7596,7726-7737,7749-7750,7759-7762,7851-7852,7945,7953-7956,8186-8189,8388-8393,8396,8400,8433-8435,8454,8457,8509-8516,8558-8559,8573-8574,8587-8588,8652-8656,8659-8664,8674-8682,8712-8713,8770-8771,8829-8838,8866-8867,8874-8901,8926-8928,8932,8934-8959,9030-9031,9239-9240,9260-9261,9298-9301,9315-9320,9402-9403,9435-9436,9598-9599,9630-9633
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "e384b1b9d7d73f6b344f912d8adb6611f78e20dd",
+  "prompts": {},
+  "sessions": {
+    "s_feabcd8001e6ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8612-2a8d-7713-b06e-c9712402e6cf",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

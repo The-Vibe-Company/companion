@@ -1,0 +1,51 @@
+apps/api/src/seed-demo-catalog.test.ts
+  s_5f9e619e567273::t_fa109a654cafa6 75-79
+  s_5f9e619e567273::t_e9364c2fc00d97 22-23,26
+  s_5f9e619e567273::t_d42998ddb25dd6 97
+  s_5f9e619e567273::t_e99578169fd2f4 1,3-14,28-31,33-34,54-74,80-96,98-129
+  s_5f9e619e567273::t_57509ded9a0b8c 2,32,35-53
+  s_5f9e619e567273::t_88277879ddf635 15-21,24-25,27
+apps/api/test/integration/seedDemoCatalog.integration.test.ts
+  s_5f9e619e567273::t_2428267de6b61f 1-75,77-93,96-160,165-193,199-200
+  s_5f9e619e567273::t_c3258aa9750024 161-164,194-198
+  s_5f9e619e567273::t_61bf651306ce94 76,94-95
+apps/api/src/seed-demo-catalog.ts
+  s_5f9e619e567273::t_6aea88cfdbbed5 1-71,73-296,298-302
+  s_5f9e619e567273::t_57509ded9a0b8c 72
+  s_5f9e619e567273::t_fa109a654cafa6 297
+apps/api/src/seed-test-user.ts
+  s_5f9e619e567273::t_c3258aa9750024 278,315-318,325,329
+  s_5f9e619e567273::t_a1d50dd6441795 178,333,514-524
+  s_5f9e619e567273::t_e62c778de6f531 5,12-16,19-20,28,30,32-42,100,103,114-120,123,128-131,137-141,149-150
+  s_5f9e619e567273::t_7104aa75abf2bd 31,267-273,279-281,302-304,306-314,319-323,326-328,332
+  s_5f9e619e567273::t_57509ded9a0b8c 17-18,21-26,47,160,166-169,219-232,239,244-247,266,274,276-277,335-339,342,344-353,355-361,363-389
+  s_5f9e619e567273::t_5a8a99a20070c3 27,282-290,433
+  s_5f9e619e567273::t_9b0b87f162de47 404-406,428,435-448,450
+  s_5f9e619e567273::t_fa1738f62f6802 133,183-191,210-218,233-238,240-243,248-263,265,275,291-301
+  s_5f9e619e567273::t_fc922598aa0034 305,324
+  s_3b0ca4b2dbad5e::t_20f8ec5d8d0583 434
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "661b3965c2a5c3f36b384c1aa1be9b14a1645728",
+  "prompts": {},
+  "sessions": {
+    "s_3b0ca4b2dbad5e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f85a8-9788-72c0-9f91-09643559718b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_5f9e619e567273": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f857e-207b-7cc2-8bd8-71ad65cb5d60",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

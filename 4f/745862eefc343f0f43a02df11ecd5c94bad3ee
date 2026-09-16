@@ -1,0 +1,56 @@
+apps/web/src/components/agents/CreateView.test.ts
+  s_1e74ce65ff5b16::t_8a60736d914b63 93-100
+  s_1e74ce65ff5b16::t_5bac1ed8b4300b 69
+  s_1e74ce65ff5b16::t_bdc7feee5f1dc2 145-146
+  s_1e74ce65ff5b16::t_eb10cd2ddbc9d3 125-126
+apps/web/src/components/agents/CreateView.tsx
+  s_7ef182d9418861::t_3b9e4a6aec8e33 73,78-106,118-121,143-146,148-153,155-191,194-222,225,227-229,232,234-259
+  s_7ef182d9418861::t_18028ea6b98ad6 42
+  s_1e74ce65ff5b16::t_e1bd3a72cdc465 270,279,426
+apps/web/src/app/(app)/agents/[slug]/chat/page.tsx
+  s_1e74ce65ff5b16::t_91fe5f1dd9d4c1 2,4,9-10,20,27-28,30-31
+apps/web/src/app/(app)/w/[workspaceSlug]/agents/[slug]/chat/page.tsx
+  s_1e74ce65ff5b16::t_a652e55e9b5d6a 1-27
+apps/web/src/components/agents/AgentsApp.test.ts
+  s_1e74ce65ff5b16::t_1dfd3ae3a5d122 290,384
+apps/web/src/components/agents/AgentsApp.tsx
+  s_1e74ce65ff5b16::t_e89ee142deebf7 479,521,523,525
+apps/web/src/components/agents/AgentsListView.tsx
+  s_1e74ce65ff5b16::t_b63858c07ddf5f 45-47,52-55,57,59
+apps/web/src/components/agents/ChatApp.test.ts
+  s_1e74ce65ff5b16::t_a0ef632ca0f08c 80
+apps/web/src/components/agents/ChatApp.tsx
+  s_1e74ce65ff5b16::t_8fb064d8b82148 17,336,341-342,385
+apps/web/src/components/agents/DetailView.tsx
+  s_1e74ce65ff5b16::t_485a826347905b 358
+apps/web/src/components/agents/route.test.ts
+  s_1e74ce65ff5b16::t_38900be4bf25c9 89-90
+apps/web/src/components/agents/route.ts
+  s_1e74ce65ff5b16::t_fe19a6c48b9134 7,96-97
+apps/web/src/lib/agentChatPage.ts
+  s_1e74ce65ff5b16::t_c9971028fd3caf 1-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4f745862eefc343f0f43a02df11ecd5c94bad3ee",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_7ef182d9418861": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0d63f56eaffek5eC2wxHZtrG3S",
+        "model": "glm-5.2"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

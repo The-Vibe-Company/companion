@@ -1,0 +1,19 @@
+apps/api/src/localSkills.test.ts
+  s_7a19fed05c606b::t_af1f56e733152e 46,76-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "78f09408a394c424b0801b50daaf8b9b20e4dc88",
+  "prompts": {},
+  "sessions": {
+    "s_7a19fed05c606b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efe29-3e42-7ba0-ae1c-2ee82f310b96",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

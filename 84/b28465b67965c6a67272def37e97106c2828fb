@@ -1,0 +1,19 @@
+cli/src/commands/skills.test.ts
+  s_276688b92fc5da::t_48704179f9624e 125-129,171-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "84b28465b67965c6a67272def37e97106c2828fb",
+  "prompts": {},
+  "sessions": {
+    "s_276688b92fc5da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "535a6854-5758-4d93-b15b-5d9de2a8a01b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

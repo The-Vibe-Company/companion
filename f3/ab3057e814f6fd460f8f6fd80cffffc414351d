@@ -1,0 +1,57 @@
+apps/web/src/components/runs/RunSessionsTab.tsx
+  s_5097b6d34853d4::t_a86b2c283e0623 23-24
+packages/contracts/test/skillRuns.test.ts
+  s_5097b6d34853d4::t_dccb3ff1d745d9 30-38
+packages/core/src/skillRuns.ts
+  s_5097b6d34853d4::t_62d9aee615b6f0 1171,1349-1350
+  s_5097b6d34853d4::t_9072b1a9bcf535 2128-2130,2180
+packages/contracts/src/skillRuns.ts
+  s_5097b6d34853d4::t_dccb3ff1d745d9 63-71,73-74
+  s_5097b6d34853d4::t_474af4ac9839e2 680-682
+packages/db/src/schema.ts
+  s_5097b6d34853d4::t_dccb3ff1d745d9 1345,1349,1400-1409,1441-1445,1593-1594
+  s_5097b6d34853d4::t_be547007074c2b 1598
+  s_5097b6d34853d4::t_59badc17fa3604 1595
+  s_5097b6d34853d4::t_d290e801f4bf9a 1596-1597
+apps/web/src/components/runs/reactivation.ts
+  s_5097b6d34853d4::t_a86b2c283e0623 5,15-16,21,29-30
+packages/db/runtime-role-grants.sql
+  s_5097b6d34853d4::t_3640a75e4ab9aa 81
+  s_5097b6d34853d4::t_be547007074c2b 82
+packages/db/drizzle/0053_sandbox_lifecycle_v2.sql
+  s_5097b6d34853d4::t_dccb3ff1d745d9 1-6,11-20
+  s_5097b6d34853d4::t_f404a6389ab118 137,165,194-211
+  s_5097b6d34853d4::t_59badc17fa3604 7,166-169
+  s_5097b6d34853d4::t_c35528c51bdd9f 135-136,177-180,235,237-238
+  s_5097b6d34853d4::t_42f5fa0cbee132 259-318
+  s_5097b6d34853d4::t_d290e801f4bf9a 8-9,21-25,28-36,38-65,67-69,80-93,95-100,103-115,117-122,124-134,138-145,147,158-164,170-176,181-193,212-234,236,239-257
+  s_5097b6d34853d4::t_be547007074c2b 10,37,70-79,94,101-102,123,146,148-157,258
+  s_5097b6d34853d4::t_e69f119b197f72 26-27,66,116
+packages/db/drizzle/meta/_journal.json
+  s_5097b6d34853d4::t_1320e5b7403430 375-381
+packages/core/src/runSweeper.ts
+  s_5097b6d34853d4::t_9072b1a9bcf535 35,39,52
+packages/core/test/runSweeper.test.ts
+  s_5097b6d34853d4::t_59badc17fa3604 29
+  s_5097b6d34853d4::t_54cbf384f3dc1b 30-31
+  s_5097b6d34853d4::t_df108f5e6545f8 27-28
+  s_5097b6d34853d4::t_3aaaadca5a1a4b 32
+apps/web/src/components/runs/reactivation.test.ts
+  s_5097b6d34853d4::t_da512e67c674f6 36,40,59,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f3ab3057e814f6fd460f8f6fd80cffffc414351d",
+  "prompts": {},
+  "sessions": {
+    "s_5097b6d34853d4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8e48-f114-7053-bd9c-66c16dd3ac93",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}

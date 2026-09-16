@@ -1,0 +1,45 @@
+apps/web/src/styles/skills.css
+  s_330d92318d9591::t_72d4710b814952 368-371,373-376
+  s_330d92318d9591::t_c4572fd1a824e9 372
+apps/web/src/components/skills/filters.test.ts
+  s_330d92318d9591::t_5ff39163f1b743 90-93,95-100,103
+apps/web/src/components/skills/ViewTab.test.ts
+  s_330d92318d9591::t_26337ac6580777 1-54
+apps/web/src/components/Icon.tsx
+  s_330d92318d9591::t_b4ea816b8a4803 69
+  s_330d92318d9591::t_ed357aec08fc41 121
+apps/web/src/components/skills/ViewTab.tsx
+  s_330d92318d9591::t_394b3e42d8f9c6 3
+  s_330d92318d9591::t_2b912ad4495bab 27-28,30,45,47-66,89,91-100,141,145,152-165,175-189,200
+  s_330d92318d9591::t_51e5537badd16c 70-73,76-79
+  s_330d92318d9591::t_fe0b171180b72a 46
+  s_330d92318d9591::t_239416ea29c9e2 23
+  s_330d92318d9591::t_8fc46963288f76 115
+  s_330d92318d9591::t_48e52f19b3cb7f 1-2,4-22,24-26,44,67-69,74-75,80-88,90,101-114,116-140,142-144,146-151,166-174,190-199,201-213
+  s_330d92318d9591::t_8c51de3ade75b1 29,31-43
+apps/web/src/components/skills/SkillsApp.tsx
+  s_330d92318d9591::t_cec98117cdbed3 270-273,278,280-282,293,295
+  s_330d92318d9591::t_f464e0ef8d0cd6 417-418
+  s_330d92318d9591::t_00c29a77cefa74 274-277,279,283-292,294
+apps/web/src/components/skills/ListView.tsx
+  s_330d92318d9591::t_970ec8740b9af3 8
+  s_330d92318d9591::t_0c9fc6ad32cd95 18-19
+  s_330d92318d9591::t_5c7b4a7be9b135 39-40
+  s_330d92318d9591::t_3d24b9a0938e59 67,69-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "41d0920a7682ccbf5d2f3c2c56650b613493aa9f",
+  "prompts": {},
+  "sessions": {
+    "s_330d92318d9591": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c63e68f-449a-4a3f-8579-6c951c288123",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

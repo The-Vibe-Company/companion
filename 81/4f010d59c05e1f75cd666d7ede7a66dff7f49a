@@ -1,0 +1,21 @@
+apps/web/src/styles/skills.css
+  s_9425bc3bd10908::t_515f160e190934 757,759
+  s_9425bc3bd10908::t_ff2a9257c449ec 867
+  s_9425bc3bd10908::t_2bdfc294151c37 750,754
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.11",
+  "base_commit_sha": "814f010d59c05e1f75cd666d7ede7a66dff7f49a",
+  "prompts": {},
+  "sessions": {
+    "s_9425bc3bd10908": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5435458f-9ce9-4412-b3c0-25cee5755ec6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

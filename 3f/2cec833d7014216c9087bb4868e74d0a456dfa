@@ -1,0 +1,21 @@
+apps/web/src/components/org/SettingsApp.tsx
+  s_fb639aa363e66d::t_f44c2765baf33f 32-38,172-173,175-176
+apps/web/src/components/org/SettingsApp.test.ts
+  s_fb639aa363e66d::t_534299775daacc 16-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "3f2cec833d7014216c9087bb4868e74d0a456dfa",
+  "prompts": {},
+  "sessions": {
+    "s_fb639aa363e66d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea8f1-3127-74b3-ac59-c5d807685dcf",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

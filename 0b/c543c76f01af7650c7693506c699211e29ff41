@@ -1,0 +1,43 @@
+internal/console/console.go
+  s_aca63502688e80::t_56db41592a5751 13
+  s_aca63502688e80::t_1df30de2203ec8 90-93
+  s_aca63502688e80::t_8fc7556d5f2b95 206-208
+internal/console/runner_test.go
+  s_aca63502688e80::t_03fc5bf14d57fb 267-292
+internal/console/runner.go
+  s_aca63502688e80::t_6d24f44ef633a2 97-98
+  s_aca63502688e80::t_6a2b2cf49a92ee 152-162
+  s_aca63502688e80::t_b6e4420d3b6e65 20-24
+  s_aca63502688e80::t_3c333d9c1ede3f 42-44
+internal/console/api.go
+  s_aca63502688e80::t_ce5d9b392c7bfd 97-102,120-122,124-125,129,132,139-144
+  s_aca63502688e80::t_4dc1ba55362cd3 8
+  s_aca63502688e80::t_4bf65b50ed1c9a 171-173,184-187,193,201,205,212-213,215
+  s_aca63502688e80::t_02f020e70e66dc 465-467,472-490
+  s_aca63502688e80::t_1fd762b9537f6d 234-236
+internal/console/tomlwriter_test.go
+  s_aca63502688e80::t_26c60606adc249 415-548
+internal/console/tomlwriter.go
+  s_aca63502688e80::t_ac32edf93d9560 441-449
+  s_aca63502688e80::t_e793ebf1f93019 123-125,127-140,144-157,159-176,179,182-189,223
+  s_aca63502688e80::t_1f2273257b0b79 320-337
+  s_aca63502688e80::t_afb8680deeed7a 22-27,36-38,41-45,47-70
+internal/console/api_test.go
+  s_aca63502688e80::t_d84d090e84f571 643-671
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "0bc543c76f01af7650c7693506c699211e29ff41",
+  "prompts": {},
+  "sessions": {
+    "s_aca63502688e80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9d6e67c-702e-499f-ae73-ff0b1bce8016",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Claude <noreply@anthropic.com>"
+    }
+  }
+}

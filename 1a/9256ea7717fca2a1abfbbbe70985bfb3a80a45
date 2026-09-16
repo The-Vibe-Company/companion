@@ -1,0 +1,42 @@
+apps/web/src/components/skills/detailParts.tsx
+  s_c6fc24bafcf08e::t_2832d1e3f0db47 475-494,497-503,506-507
+  s_c6fc24bafcf08e::t_b20ca4f59da14a 495-496
+packages/contracts/src/skill.ts
+  s_c6fc24bafcf08e::t_e821efec4a0ec8 4,336
+apps/web/src/styles/skills.css
+  s_c6fc24bafcf08e::t_1f2d218a81ba32 419-420
+apps/web/src/components/skills/detailParts.test.ts
+  s_c6fc24bafcf08e::t_203711d47f3579 4,6,124-182
+  s_b5eb590d3edfe8::t_99a666f6e28256 183
+packages/core/test/skillVersions.test.ts
+  s_c6fc24bafcf08e::t_bd296b6fa9b1f0 1-73
+packages/core/src/services.ts
+  s_c6fc24bafcf08e::t_5badcbc723481b 1122
+  s_c6fc24bafcf08e::t_b77861840e7a05 150-154,158-159,1117-1121,1123-1146
+packages/companion-skill/skill/reference/api.md
+  s_c6fc24bafcf08e::t_2eefda1f9cc311 111-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "1a9256ea7717fca2a1abfbbbe70985bfb3a80a45",
+  "prompts": {},
+  "sessions": {
+    "s_b5eb590d3edfe8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efe49-efde-7b93-8c37-4f7b1364093b",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_c6fc24bafcf08e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efeb7-f55d-7cf0-9596-78bf94e4b8c8",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

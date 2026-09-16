@@ -1,0 +1,19 @@
+scripts/box-runtime-change-e2e.ts
+  s_7891504e0dabc0::t_029220febf6bd7 19-22,246-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "3e7aa804d28040edeb843b5e6dde2bc3f7a3c3a2",
+  "prompts": {},
+  "sessions": {
+    "s_7891504e0dabc0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a020d1-eea8-75c2-b63d-cc75f1a22de8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

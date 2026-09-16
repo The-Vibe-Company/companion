@@ -1,0 +1,123 @@
+apps/api/src/modelPreferencesRoute.test.ts
+  s_60d4f3f6dc0744::t_bf312ead3090fb 12,16
+apps/api/src/runRoutes.test.ts
+  s_60d4f3f6dc0744::t_bf312ead3090fb 8,28
+apps/api/src/localSkills.test.ts
+  s_60d4f3f6dc0744::t_eab7695116d522 47,101-104,122-124,198-199,232
+  s_60d4f3f6dc0744::t_c68c2e110752b7 150,156-157
+  s_60d4f3f6dc0744::t_e693a130b05edc 160
+  s_60d4f3f6dc0744::t_d6c768694e7a59 158-159
+apps/api/src/skillListRoute.test.ts
+  s_60d4f3f6dc0744::t_bf312ead3090fb 8,93
+packages/companion-skill/skill/scripts/test_bootstrap.py
+  s_60d4f3f6dc0744::t_8aa06f65ba1765 10,216-231
+  s_60d4f3f6dc0744::t_f3258a1edea642 267-292
+  s_60d4f3f6dc0744::t_df7359347f1959 121-138,158-215,232-265
+  s_aefaf00edcd138::t_bc223d743302ea 266
+packages/companion-skill/skill/companion.json
+  s_60d4f3f6dc0744::t_6ecd478eb2bcd8 4,6-7,27-35,297
+packages/companion-skill/skill/scripts/bootstrap.py
+  s_60d4f3f6dc0744::t_5afad79bd3c6d4 32,174-182,184-201
+  s_60d4f3f6dc0744::t_0a390fbb1bfed1 262,267
+  s_60d4f3f6dc0744::t_1daf6143afd399 28,30,35-37,150,166,168,170-173,183,202-204,249-252
+apps/api/src/index.ts
+  s_60d4f3f6dc0744::t_c4f610f110f13c 2875-2876
+  s_60d4f3f6dc0744::t_39163433dcb4dc 42,54,158,2855-2869
+  s_60d4f3f6dc0744::t_057db0d7cfc1a8 253
+  s_aefaf00edcd138::t_f50ec79a8d5073 2870-2872
+packages/companion-skill/skill/reference/api.md
+  s_60d4f3f6dc0744::t_ec87a8300d1875 36-44,47,52,283
+  s_60d4f3f6dc0744::t_8aa06f65ba1765 45-46
+  s_60d4f3f6dc0744::t_4df65f0e681ce8 284-285
+docs/design.md
+  s_60d4f3f6dc0744::t_708402d2c7c4ad 674-676
+  s_60d4f3f6dc0744::t_ec87a8300d1875 244-246,250-251,254
+  s_60d4f3f6dc0744::t_f980790ca73e8e 247-249,252-253
+packages/companion-skill/skill/companion.integrity.json
+  s_60d4f3f6dc0744::t_85a0b10ecef3c1 4-5,19
+  s_60d4f3f6dc0744::t_3fb1b2ab136b28 3,6,10
+packages/core/test/tokenRefresh.test.ts
+  s_60d4f3f6dc0744::t_b77f83a6a6488f 1-118,133
+  s_60d4f3f6dc0744::t_7cd371411757e4 119-132
+docs/testing.md
+  s_60d4f3f6dc0744::t_ec87a8300d1875 34
+packages/db/runtime-role-grants.sql
+  s_60d4f3f6dc0744::t_e8647d5f70cbc1 90
+apps/api/src/skillPublishRoute.test.ts
+  s_60d4f3f6dc0744::t_bf312ead3090fb 10,90
+  s_60d4f3f6dc0744::t_41161865824ac5 239-293
+apps/api/test/integration/tokenRefresh.integration.test.ts
+  s_60d4f3f6dc0744::t_959f06412cb7b5 1-91
+packages/core/src/preTenant.ts
+  s_60d4f3f6dc0744::t_23d96486b96f49 101-127
+apps/api/src/githubRoutes.test.ts
+  s_60d4f3f6dc0744::t_bf312ead3090fb 19,23
+apps/api/src/companionSkillPackage.ts
+  s_60d4f3f6dc0744::t_c68c2e110752b7 104-106,109-122,124-135,145,148,150-152,154-159
+  s_60d4f3f6dc0744::t_d6c768694e7a59 123,149
+  s_60d4f3f6dc0744::t_e693a130b05edc 153
+packages/core/src/services.ts
+  s_60d4f3f6dc0744::t_23d96486b96f49 27,66,3219-3226,3273-3288,3292-3343
+  s_60d4f3f6dc0744::t_7cd371411757e4 41,3289-3291
+  s_aefaf00edcd138::t_510ec841c466c9 3344
+packages/db/drizzle/0046_api_token_refresh.sql
+  s_60d4f3f6dc0744::t_e8647d5f70cbc1 1-30,32-33
+  s_60d4f3f6dc0744::t_7cd371411757e4 31
+packages/contracts/src/token.ts
+  s_60d4f3f6dc0744::t_23d96486b96f49 32-40,42-47
+  s_60d4f3f6dc0744::t_7cd371411757e4 12-14,17,27,41,55
+apps/api/src/context.ts
+  s_60d4f3f6dc0744::t_39163433dcb4dc 23,44
+apps/api/test/integration/preTenantRls.integration.test.ts
+  s_60d4f3f6dc0744::t_97346ae4030efc 50-52,118-154,156,345-374
+  s_87a43a19429e0e::t_ce867e97f0d2f7 375-376
+apps/api/src/skillFileContentRoute.test.ts
+  s_60d4f3f6dc0744::t_bf312ead3090fb 10,81
+packages/contracts/test/tokenRefresh.test.ts
+  s_60d4f3f6dc0744::t_4af2b952e70560 1-36
+packages/companion-skill/skill/evals/evals.json
+  s_60d4f3f6dc0744::t_6ecd478eb2bcd8 37-59
+packages/companion-skill/skill/SKILL.md
+  s_60d4f3f6dc0744::t_8aa06f65ba1765 68-69
+  s_60d4f3f6dc0744::t_ec87a8300d1875 12-13,60-67,70,122-123
+  s_60d4f3f6dc0744::t_dcfc5bad15f148 1009
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_60d4f3f6dc0744::t_b5c0e7d4d3f9ea 190-191,247-248
+  s_60d4f3f6dc0744::t_5afad79bd3c6d4 16,20,24,206-238
+  s_60d4f3f6dc0744::t_2bfd8b0a60c91f 15,27-28,111-138,147,152,170,175,179-189,192-205,239-246,249-290
+  s_aefaf00edcd138::t_9549fc2d7b0998 25-26,291-292
+packages/db/drizzle/meta/_journal.json
+  s_aefaf00edcd138::t_416326d0156eee 326-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "76b017ccff828984fd6fd103f752b7bfcb5d773e",
+  "prompts": {},
+  "sessions": {
+    "s_60d4f3f6dc0744": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83b5-baaf-73d3-a13a-5d55ad3eaf0b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_87a43a19429e0e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83ad-49d1-7201-ad9e-4a766b635ed0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_aefaf00edcd138": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83af-4d88-70c0-aa1e-07e466616887",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

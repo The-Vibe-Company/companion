@@ -1,0 +1,23 @@
+packages/companion-runtime/src/operations.ts
+  s_ddcdf633c08ffa::t_1d592f35cb2c81 879,882-883
+docs/companions-runtime.md
+  s_ddcdf633c08ffa::t_1d592f35cb2c81 219
+packages/companion-runtime/src/operations.test.ts
+  s_ddcdf633c08ffa::t_1d592f35cb2c81 1063
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8f5c14288bcf39f44e4b33288765f340d8781e6b",
+  "prompts": {},
+  "sessions": {
+    "s_ddcdf633c08ffa": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fe4cca102ffe0BI7s5uh64DAQe",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

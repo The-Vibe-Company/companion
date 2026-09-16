@@ -1,0 +1,57 @@
+packages/companion-skill/skill/SKILL.md
+  s_13bb7e101050ef::t_1218137ec0fdec 3,6,58,60-61,68-95,109-111,122-125,129-130,135-137,145-193,198-203,229-230,278-285,296-297,426
+packages/core/src/services.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 1169
+packages/skills/test/requirements.test.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 1-106
+apps/web/src/components/skills/detailParts.test.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 5,31-39,84-102
+packages/companion-skill/src/index.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 55-56,65-80
+apps/api/src/seed-test-user.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 1,89-90,93-95,107-115,218-231
+apps/api/src/skillPublishGuards.test.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 14
+packages/companion-skill/skill/reference/api.md
+  s_13bb7e101050ef::t_1218137ec0fdec 98-103,146-152,219,223
+apps/api/src/localSkills.test.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 63-66,68,71
+apps/web/src/lib/types.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 1-9,35,78
+apps/web/src/components/skills/filters.test.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 28
+docs/design.md
+  s_13bb7e101050ef::t_1218137ec0fdec 71-78
+packages/contracts/src/frontmatter.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 18,23-40,122,132-142,154,168,185-194
+packages/skills/src/validateSkill.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 80
+apps/api/src/index.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 85,162-168,176,1306-1309,1313,1315-1318,1324-1328
+apps/web/src/styles/skills.css
+  s_13bb7e101050ef::t_1218137ec0fdec 259-272
+apps/web/src/components/skills/updateFlow.test.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 42
+cli/src/commands/skills.test.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 123,173
+apps/web/src/components/skills/detailParts.tsx
+  s_13bb7e101050ef::t_1218137ec0fdec 366-400
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_13bb7e101050ef::t_1218137ec0fdec 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "f889a3575a68b6c3c6281cf9bc1c9951aaa758e8",
+  "prompts": {},
+  "sessions": {
+    "s_13bb7e101050ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61aedeaa-dc3f-4b95-8abe-8d63539fa598",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

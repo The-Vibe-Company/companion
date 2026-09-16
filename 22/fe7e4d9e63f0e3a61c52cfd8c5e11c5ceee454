@@ -1,0 +1,51 @@
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 92-95,128-131
+apps/web/src/styles/skills.css
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 257-259
+apps/web/src/components/skills/DetailView.test.ts
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 25-28,116-138
+  s_7c8fe704a04fc2::t_733f7a1ebe5ece 139
+apps/web/src/components/skills/updateFlow.test.ts
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 33-36
+apps/web/src/components/skills/detailParts.tsx
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 276-290
+  s_7c8fe704a04fc2::t_f93b68f7d56546 275
+apps/web/src/components/skills/DetailView.tsx
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 636,638-646
+apps/web/src/components/skills/detailParts.test.ts
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 6,24-27,111-121
+  s_7c8fe704a04fc2::t_79e86bd37899b8 122-124
+cli/src/commands/skills.test.ts
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 37-40
+apps/web/src/lib/types.ts
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 39-44,84-90
+apps/web/src/components/skills/filters.test.ts
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 21-24
+docs/design.md
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 74-78
+packages/contracts/src/skill.ts
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 172-181
+apps/web/src/lib/types.test.ts
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 1-83
+apps/web/src/components/skills/ListView.tsx
+  s_7c8fe704a04fc2::t_28a0cab5149559 269-278
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 5
+packages/core/src/services.ts
+  s_7c8fe704a04fc2::t_ba6a81efd89cee 3,845-848,866-872,922,925,1024-1041
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "22fe7e4d9e63f0e3a61c52cfd8c5e11c5ceee454",
+  "prompts": {},
+  "sessions": {
+    "s_7c8fe704a04fc2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f07e7-eff2-7450-a3d1-418485e3ed73",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

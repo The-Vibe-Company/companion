@@ -1,0 +1,35 @@
+scripts/dev-stack.sh
+  s_37451ae3b9e1b8::t_eaedf0e4884fa7 95-96,98,100-105,112
+  s_37451ae3b9e1b8::t_cf323d74a2ab67 62-94,97,99,106-111,113-125,134-138,409-416,448,455-459
+scripts/conductor-workspace.sh
+  s_37451ae3b9e1b8::t_528f6388640119 44-45,50,61
+  s_37451ae3b9e1b8::t_1fdffd8bd510eb 37
+README.md
+  s_37451ae3b9e1b8::t_a0ace0f3e9322c 85-89,101
+scripts/dev-stack-check.sh
+  s_37451ae3b9e1b8::t_cbb0f6d9aea9a6 10,41-48,73-79
+  s_37451ae3b9e1b8::t_34dc886ad6863f 106-136,138-144
+  s_37451ae3b9e1b8::t_ced0b3ebcd0ae8 72,80-105
+  s_37451ae3b9e1b8::t_51735528c3d9fa 7
+  s_37451ae3b9e1b8::t_3da4c17d6c583a 137
+docs/design.md
+  s_37451ae3b9e1b8::t_3a4756600b654d 28-34
+CLAUDE.md
+  s_37451ae3b9e1b8::t_b807482ea232b6 106-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "6a50f67e37cbc2bc752aad945f8c6e026a7b62b2",
+  "prompts": {},
+  "sessions": {
+    "s_37451ae3b9e1b8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea85a-60c2-7c51-92fe-d19246447f9b",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

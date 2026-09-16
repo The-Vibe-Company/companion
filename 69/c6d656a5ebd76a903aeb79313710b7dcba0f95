@@ -1,0 +1,45 @@
+apps/api/package.json
+  s_aef5d8456d7696::t_0460afbe1bec00 8
+apps/api/src/index.ts
+  s_aef5d8456d7696::t_74a998814bd1de 122-130,159-190,195-196,198-203
+  s_aef5d8456d7696::t_ca0bd39821e14d 121
+  s_aef5d8456d7696::t_2b9583c253dee6 131-158,191-194,197
+packages/auth/src/index.ts
+  s_aef5d8456d7696::t_5dfff88f56a9fe 18-19,36
+apps/api/src/seed-test-user.ts
+  s_aef5d8456d7696::t_0460afbe1bec00 1,3-6,8-20,50,52-70,73-77,79-84,86-96,98-104,107
+  s_aef5d8456d7696::t_f93c0b9cf22306 2
+  s_aef5d8456d7696::t_21daa154c38106 105-106
+  s_aef5d8456d7696::t_54ec39f527de99 78,85
+  s_aef5d8456d7696::t_06dd4b96cd5048 7,21-49,71-72,97
+  s_aef5d8456d7696::t_04195f79de825b 51
+apps/web/src/app/(auth)/login/page.tsx
+  s_aef5d8456d7696::t_9099247a1f7746 30
+  s_aef5d8456d7696::t_8c7ef853466886 10-17,24-25,28-29,31-35
+apps/web/src/app/(auth)/login/LoginForm.tsx
+  s_aef5d8456d7696::t_948e5baed1ca70 19,56,59-60,74-75,81
+  s_aef5d8456d7696::t_4405356831ec8b 3-5,7-18,23-25,34,36,41-48,71,73,80,82-86,89-92
+scripts/conductor-workspace.sh
+  s_aef5d8456d7696::t_75240491590630 175-179,185-186,188-197,211
+  s_aef5d8456d7696::t_3796723402c886 103
+  s_aef5d8456d7696::t_4870b46cb1bff1 227-232
+  s_aef5d8456d7696::t_8e5706addaa5ec 96-98,101,104-113,130-139,141-145,161-162,209-210,219
+  s_aef5d8456d7696::t_871134a43fa884 99-100,102,114-129,140,146-160,163-174,180-184,187
+  s_aef5d8456d7696::t_0460afbe1bec00 225-226,233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "69c6d656a5ebd76a903aeb79313710b7dcba0f95",
+  "prompts": {},
+  "sessions": {
+    "s_aef5d8456d7696": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea30b-e4ca-7e50-82ab-1a65b48cc079",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

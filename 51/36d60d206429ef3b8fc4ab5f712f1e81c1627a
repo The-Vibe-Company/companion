@@ -1,0 +1,23 @@
+packages/core/src/services.ts
+  s_b5299047ed2aca::t_47b96b079a294c 1217
+packages/core/src/preTenant.ts
+  s_b5299047ed2aca::t_47b96b079a294c 110
+packages/core/test/skillPublicPreview.test.ts
+  s_b5299047ed2aca::t_47b96b079a294c 13,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5136d60d206429ef3b8fc4ab5f712f1e81c1627a",
+  "prompts": {},
+  "sessions": {
+    "s_b5299047ed2aca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6a51-437e-7dc0-a21a-c2c660fa1c03",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

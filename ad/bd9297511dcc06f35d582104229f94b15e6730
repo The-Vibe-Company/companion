@@ -1,0 +1,55 @@
+.github/workflows/ci.yml
+  s_314c208a76193b::t_0a6d09477cc64d 57-66
+packages/companion-skill/skill/scripts/skill_guard.py
+  s_314c208a76193b::t_0a6d09477cc64d 1-671
+packages/companion-skill/skill/scripts/test_skill_guard.py
+  s_314c208a76193b::t_0a6d09477cc64d 1-285
+apps/api/src/skillPublishGuards.test.ts
+  s_314c208a76193b::t_0a6d09477cc64d 3-8,73-149
+packages/companion-skill/skill/companion.json
+  s_314c208a76193b::t_4c682bc4696b8d 4,12,17
+  s_314c208a76193b::t_0a6d09477cc64d 18-20,106
+apps/api/src/index.ts
+  s_314c208a76193b::t_0a6d09477cc64d 30,152,1623-1637,1639-1649,1652,1658-1659
+.gitignore
+  s_314c208a76193b::t_0a6d09477cc64d 11-14
+apps/api/src/localSkills.test.ts
+  s_314c208a76193b::t_4c682bc4696b8d 46
+  s_314c208a76193b::t_0a6d09477cc64d 78-79,113-114,171,173-177
+packages/companion-skill/skill/reference/api.md
+  s_314c208a76193b::t_0a6d09477cc64d 218-229,379-395
+  s_314c208a76193b::t_4c682bc4696b8d 430,434
+packages/core/src/services.ts
+  s_314c208a76193b::t_0a6d09477cc64d 1074-1095
+apps/api/src/skillPublishGuards.ts
+  s_314c208a76193b::t_0a6d09477cc64d 46-98
+apps/api/src/skillPublishRoute.test.ts
+  s_314c208a76193b::t_0a6d09477cc64d 1-173
+cli/src/commands/skills.test.ts
+  s_314c208a76193b::t_0a6d09477cc64d 150-166
+cli/src/commands/skills.ts
+  s_314c208a76193b::t_0a6d09477cc64d 66-68,76-79,264-266
+packages/companion-skill/skill/scripts/check_updates.py
+  s_314c208a76193b::t_0a6d09477cc64d 9,11-18
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_314c208a76193b::t_0a6d09477cc64d 1-260
+packages/companion-skill/skill/SKILL.md
+  s_314c208a76193b::t_4c682bc4696b8d 800
+  s_314c208a76193b::t_0a6d09477cc64d 124-155,259-265,415-419,506-512
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "adbd9297511dcc06f35d582104229f94b15e6730",
+  "prompts": {},
+  "sessions": {
+    "s_314c208a76193b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efdb9-0169-70f1-8b55-22d69ad31f8e",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

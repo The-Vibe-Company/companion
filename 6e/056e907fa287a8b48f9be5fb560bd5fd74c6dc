@@ -1,0 +1,44 @@
+apps/web/src/components/skills/ListView.test.ts
+  s_5f4928783aa160::t_40dad2b643db96 220
+  s_5f4928783aa160::t_d12520a0fcbcf7 249,251
+  s_5f4928783aa160::t_1e681c569ccfe1 236-240,252
+  s_5f4928783aa160::t_762ce00aa0698b 248,256-258,262
+  s_5f4928783aa160::t_93a2f84d298e86 261
+  s_5f4928783aa160::t_94de2f352658a8 254-255,259-260
+  s_5f4928783aa160::t_b4c6b550e17d07 219
+  s_5f4928783aa160::t_b01191c66548c3 208-218,221-235,241-247,250,263-265
+  s_5f4928783aa160::t_a08611ba249ac3 253
+apps/web/src/components/skills/ListView.tsx
+  s_5f4928783aa160::t_a08611ba249ac3 454
+  s_5f4928783aa160::t_47ff38d719a0d5 3-4,106-148,150-153,155,157-159,162-206,208,227
+  s_5f4928783aa160::t_b01191c66548c3 209-214,216,224-226,228-231,445-453
+  s_5f4928783aa160::t_6bbf6da2f3fed5 149,154,156,160-161,207
+  s_5f4928783aa160::t_b4c6b550e17d07 215
+  s_5f4928783aa160::t_98af498a8bf6a1 217-223
+apps/web/src/styles/skills.css
+  s_5f4928783aa160::t_ad9c2b51312151 331
+  s_5f4928783aa160::t_b01191c66548c3 315,337,340,961
+  s_5f4928783aa160::t_a25ec16de90fa0 341-342,346,1011-1012
+  s_5f4928783aa160::t_a08611ba249ac3 339
+  s_5f4928783aa160::t_d12520a0fcbcf7 344,347
+  s_5f4928783aa160::t_7903bca11353ea 343
+  s_5f4928783aa160::t_98af498a8bf6a1 328,335-336,338
+  s_5f4928783aa160::t_93a2f84d298e86 345
+  s_5f4928783aa160::t_802a811e4aa9f8 1013
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6e056e907fa287a8b48f9be5fb560bd5fd74c6dc",
+  "prompts": {},
+  "sessions": {
+    "s_5f4928783aa160": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8081-2575-7df2-9172-9e6da5a41077",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+packages/box-runtime/src/boxMaintenanceClient.ts
+  s_19291756971291::t_342bb27f3e1c13 1
+packages/companion-runtime/src/attempt.ts
+  s_19291756971291::t_342bb27f3e1c13 1
+apps/runtime/src/database.test.ts
+  s_19291756971291::t_342bb27f3e1c13 1
+packages/companion-runtime/src/scheduler.test.ts
+  s_19291756971291::t_342bb27f3e1c13 1
+packages/companion-runtime/src/scheduler.ts
+  s_19291756971291::t_f30eda604289ec 110
+packages/companion-runtime/src/settings.ts
+  s_19291756971291::t_342bb27f3e1c13 1
+packages/contracts/src/companionBudgets.ts
+  s_19291756971291::t_f30eda604289ec 120,155
+apps/runtime/src/config.ts
+  s_19291756971291::t_342bb27f3e1c13 1
+apps/runtime/src/server.ts
+  s_19291756971291::t_342bb27f3e1c13 1
+apps/runtime/src/production.ts
+  s_19291756971291::t_342bb27f3e1c13 1
+packages/companion-runtime/src/health.ts
+  s_19291756971291::t_342bb27f3e1c13 1
+packages/companion-runtime/src/piEvents.ts
+  s_19291756971291::t_342bb27f3e1c13 1
+packages/companion-runtime/src/engine.test.ts
+  s_19291756971291::t_342bb27f3e1c13 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "3ea339f839ff628916a1a10ea9f08ad96880fe9e",
+  "prompts": {},
+  "sessions": {
+    "s_19291756971291": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b5a09f-280f-4836-8c4a-95f531ff8703",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

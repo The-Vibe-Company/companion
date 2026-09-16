@@ -1,0 +1,66 @@
+apps/web/src/styles/skills.css
+  s_7a19fed05c606b::t_5c1f15df0f5d15 1050-1081
+apps/api/src/skillListRoute.test.ts
+  s_7a19fed05c606b::t_5160dff21a1cda 113,163-191,196-211,213-214
+  s_7a19fed05c606b::t_5f591d87984ad8 192-195,212
+  s_7a19fed05c606b::t_d2c1fb807f559b 13,57
+apps/web/src/components/skills/SkillsApp.tsx
+  s_7a19fed05c606b::t_5114c549e984fa 12,815-822,1376
+  s_7a19fed05c606b::t_d48471623b5575 798,808-814
+  s_7a19fed05c606b::t_29946e8b7229ff 796
+  s_7a19fed05c606b::t_7296148a3dec2c 20,801-802,804-807
+packages/core/src/services.ts
+  s_7a19fed05c606b::t_781ea4f06e693b 2348-2351,2372-2375,2386-2387,2391-2408,2411-2412,2415,2419-2420,2424,2436
+  s_7a19fed05c606b::t_858b4bfc555a66 1834-1835,1867-1868,1885-1886
+  s_7a19fed05c606b::t_3ab7cddf88270f 2252-2253
+  s_7a19fed05c606b::t_660e7f19242353 2011-2013,2016-2040,2043-2048,2050-2054
+  s_7a19fed05c606b::t_de112d2efd1448 1998-2010,2014-2015,2041,2049
+  s_7a19fed05c606b::t_4a0b4b080f5093 2353,2358,2376-2385,2388-2390,2410,2413-2414,2431-2432,2434
+  s_7a19fed05c606b::t_a282fe43b2e3ed 2365-2368
+  s_7a19fed05c606b::t_ca3c5a8a392f0c 20
+  s_7a19fed05c606b::t_04d2c22a1bb8dc 2042
+  s_7a19fed05c606b::t_487830e2dab7b2 1985-1997
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_7a19fed05c606b::t_050b7a425ca53d 384-394,398-402,404-429,432-434
+  s_7a19fed05c606b::t_39e3d43f33fe5d 18,302,379-383,395-397,403,430-431,435-438,450-452,458
+  s_7a19fed05c606b::t_44570f5209e26b 439-449,453-457,459-481
+  s_7a19fed05c606b::t_3969aeefc9fccf 19,303,333
+apps/api/src/skillPublishRoute.test.ts
+  s_7a19fed05c606b::t_19ce1ac3791a76 17
+packages/contracts/src/skill.ts
+  s_7a19fed05c606b::t_d5f6f1f0581763 400-423,429-430
+packages/companion-skill/skill/SKILL.md
+  s_7a19fed05c606b::t_764cdedfb8a25d 290-293,438-440
+apps/web/src/components/skills/ShareDialog.tsx
+  s_7a19fed05c606b::t_f5b745d3dd28a3 3-4,6,22,27-28,46-65,102-104,106-125,127-136,138-141,147
+  s_7a19fed05c606b::t_190d989683799f 105,126,137
+packages/companion-skill/skill/reference/api.md
+  s_7a19fed05c606b::t_ae57e60c7a148a 51,156-161
+packages/core/test/skillScope.test.ts
+  s_7a19fed05c606b::t_cb1bff742c75db 210-225
+  s_7a19fed05c606b::t_7fcea979163eec 233,235-242,244
+  s_7a19fed05c606b::t_ba739f3fd69aed 179-194
+  s_7a19fed05c606b::t_7ec6ad40c2c8ff 3-4,15-36,39-55,57-60,62,67-97,100-105,109,114,121-122,128,132,134-135,137-161,164-178,195-209,226-232,234,246,251,258,263
+apps/web/src/lib/queries.ts
+  s_7a19fed05c606b::t_b405999737d80f 19-20,338-344
+  s_7a19fed05c606b::t_21e96e4f6a64f6 346-347
+apps/api/src/index.ts
+  s_7a19fed05c606b::t_20edbef5a42f63 19
+  s_7a19fed05c606b::t_7f912a9bfb6bbe 1157-1192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "7704f2f15e8dfdb3d691109e32443a3d75092547",
+  "prompts": {},
+  "sessions": {
+    "s_7a19fed05c606b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efe29-3e42-7ba0-ae1c-2ee82f310b96",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

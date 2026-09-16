@@ -1,0 +1,33 @@
+packages/contracts/src/skillRuns.ts
+  s_48f42bfbc57a73::t_de1f30adc0360e 40,44-45,317,319-320,324-338
+  s_48f42bfbc57a73::t_edd514a6e2a73f 2-4,7,9-10,13-39,41-43,46-53,56-58,70-316,318,321-323,339-360,381,414-426,431-441,452,454-458,492,496,499,501-506,510-511,513-522
+  s_48f42bfbc57a73::t_e7c8b03e7c0935 59-69
+packages/contracts/test/skillRuns.test.ts
+  s_48f42bfbc57a73::t_edd514a6e2a73f 1-136,138-162,165-166,192-193
+  s_48f42bfbc57a73::t_b5185d0afc5860 137,163-164,167-172
+  s_48f42bfbc57a73::t_de1f30adc0360e 173-191
+packages/contracts/src/modelProviders.ts
+  s_48f42bfbc57a73::t_7d3ad0893af2cf 12-13,19
+  s_48f42bfbc57a73::t_7c839cfcec70ef 74,78-81,92,95,97
+  s_48f42bfbc57a73::t_fc5393989af554 98
+packages/contracts/test/modelProviders.test.ts
+  s_48f42bfbc57a73::t_7d3ad0893af2cf 13-15
+  s_48f42bfbc57a73::t_619a85122fc174 1-11,16-32
+  s_48f42bfbc57a73::t_fc5393989af554 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "834b27a52e30b35457a6b41b8c22779e63d58239",
+  "prompts": {},
+  "sessions": {
+    "s_48f42bfbc57a73": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c42-3570-7980-a9c7-aec5efbb6fdc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

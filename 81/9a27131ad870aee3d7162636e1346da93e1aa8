@@ -1,0 +1,19 @@
+.gitleaksignore
+  s_0d335c51e3b9b2::t_f3202d47e52590 40-41,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "819a27131ad870aee3d7162636e1346da93e1aa8",
+  "prompts": {},
+  "sessions": {
+    "s_0d335c51e3b9b2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07c1a-bb60-7030-8527-5149a8d74a6d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

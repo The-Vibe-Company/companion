@@ -1,0 +1,33 @@
+apps/web/src/styles/runs.css
+  s_477c50ec4dcd8d::t_8664db2a8a9eb0 149
+  s_477c50ec4dcd8d::t_0b1fc99484bde9 152
+scripts/agent-browser-smoke.sh
+  s_477c50ec4dcd8d::t_0df115bff2ea36 480-484,493-494,499-500,532,534-544,547,552-555,559,571
+  s_477c50ec4dcd8d::t_6657d1219f47e5 533,545-546,548-551,556-558,560-570,572
+  s_477c50ec4dcd8d::t_8664db2a8a9eb0 463-479,485-492,495-498,501-504
+  s_efbbccae033104::t_1b958d19955ec1 573
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f30bf8d172a25c02e6a53a31eaf15ee282caa29b",
+  "prompts": {},
+  "sessions": {
+    "s_477c50ec4dcd8d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65a6-7cd7-7320-811e-1837fc6b87eb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_efbbccae033104": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6593-c0b5-77e0-98f5-8a13ddcc1c04",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

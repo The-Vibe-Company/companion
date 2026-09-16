@@ -1,0 +1,40 @@
+packages/companion-skill/skill/reference/api.md
+  s_7d54490529433a::t_956add9f2ffb5f 157-161
+  s_7d54490529433a::t_c846ce50e593eb 89-93,102,114-129,137,142,153,281-282
+  s_7d54490529433a::t_06d7b0c4bd0d3b 312,316
+  s_7d54490529433a::t_28d5f51d19bfb4 130,154-156,187-189,200,202-203,206-208,267-269
+packages/companion-skill/skill/companion.json
+  s_7d54490529433a::t_9538718401f4d1 4-5
+packages/companion-skill/src/index.ts
+  s_7d54490529433a::t_946544b0e06479 41,43,48-50,54,56,67-75,79,81
+packages/companion-skill/skill/SKILL.md
+  s_7d54490529433a::t_df9261f1390248 365-369,373,375,381-386,444-448,458-459,469-472
+  s_7d54490529433a::t_bf74f0578b67a0 6,14-15,59-63,67-91,256-260,265-290,293-298,301,307-309,312,318-325,337
+  s_7d54490529433a::t_ddd34c3edb2bd1 146-148,338-339,460-461
+  s_7d54490529433a::t_7a6862839444a1 64-66,340-345
+  s_7d54490529433a::t_a0b88d92c59484 513-516,529-530,532-533,575-578,601
+apps/api/src/localSkills.test.ts
+  s_7d54490529433a::t_a8b78750a097fa 128
+  s_7d54490529433a::t_b6cdcacbbd2fa5 70-74
+  s_7d54490529433a::t_f7788a164e93d2 102,121-125,130-131
+  s_7d54490529433a::t_3a509fbd0cc0b6 1-2,4,44,60,100-101,103-114,119-120
+  s_7d54490529433a::t_574b8e8d0908bf 115,118,126-127,129
+  s_7d54490529433a::t_dca8867cbab66b 116
+  s_7d54490529433a::t_92471c5cc70bba 117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "ffc0300da77040bfb231b58e842eb7436c05f7bd",
+  "prompts": {},
+  "sessions": {
+    "s_7d54490529433a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efaa4-556e-7db1-a886-697dd6a92735",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

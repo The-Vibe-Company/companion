@@ -1,0 +1,300 @@
+packages/skills/test/secretSlots.test.ts
+  s_a31e722d8f5f55::t_49a793bb23517f 11
+  s_a31e722d8f5f55::t_e68f5a2e677e70 1-10,12-27
+apps/web/src/app/globals.css
+  s_a31e722d8f5f55::t_ee6286bbdf1840 13
+packages/contracts/test/companionManifest.test.ts
+  s_a31e722d8f5f55::t_b7a535a6d60ca4 26-32,47-49
+packages/core/src/secretsCrypto.ts
+  s_a31e722d8f5f55::t_8d2ff35883efc8 1-107
+packages/companion-skill/skill/companion.json
+  s_a31e722d8f5f55::t_b0b4e7405bb939 18,34,245,260
+  s_a31e722d8f5f55::t_7df3314041278b 31-32
+  s_a31e722d8f5f55::t_62b988c6b68077 33
+  s_a31e722d8f5f55::t_32da9688945eb2 4,20-21,26-30,35-37,243
+examples/skills/incident-summary/companion.json
+  s_a31e722d8f5f55::t_20af0bd1e29de5 9
+packages/core/src/authz.ts
+  s_a31e722d8f5f55::t_7d58f778617328 1,89-108
+apps/web/src/app/(app)/secrets/page.tsx
+  s_a31e722d8f5f55::t_ee6286bbdf1840 1,3-6,9-11,17-31,34-35,43,47-57,59-63,76-78
+  s_a31e722d8f5f55::t_1411fc63140da4 2,7-8,32,36-40,44-46,65-71,73,75
+  s_a31e722d8f5f55::t_b8b9c5992eb7b6 12-16,64
+  s_a31e722d8f5f55::t_81b93a83ce6d7d 58
+  s_a31e722d8f5f55::t_4b9dc419860a9f 72
+  s_a31e722d8f5f55::t_9421187989b1f7 33,41-42,74
+apps/web/src/lib/settingsViewModel.ts
+  s_a31e722d8f5f55::t_8efb141dec4710 54
+packages/contracts/src/token.ts
+  s_a31e722d8f5f55::t_b0b4e7405bb939 7,10
+.gitignore
+  s_a31e722d8f5f55::t_7e314c5e840f30 40
+apps/web/src/components/secrets/SkillSecretConfiguration.tsx
+  s_a31e722d8f5f55::t_d3341d3bb183b3 90
+  s_a31e722d8f5f55::t_f2e41fc2edf826 9,45,73,80,97,99-100
+  s_a31e722d8f5f55::t_e85adff84a83da 1,3-8,10-44,46-53,56-69,71-72,74-79,81-89,92-96,98,101-107,109-111
+apps/web/src/components/secrets/SecretsApp.tsx
+  s_a31e722d8f5f55::t_81b93a83ce6d7d 3,22,205-206,208-213,216-217,219-227,411-419,421-422,437,447
+  s_a31e722d8f5f55::t_d73aba02c7347a 1-2,4-21,26-166,169-174,187-192,195-198,200-201,204,228,233-245,248-250,252-289,291-292,306,318,371,373-374,376-393,395-409,420,423-436,438-446,448-455,474-485
+  s_a31e722d8f5f55::t_8efb141dec4710 199,214-215,251,290,456-473
+  s_a31e722d8f5f55::t_b8b9c5992eb7b6 167,175,193-194
+  s_a31e722d8f5f55::t_70b0c3682583eb 410
+  s_a31e722d8f5f55::t_26dd2d7cbc4297 23-25,168,176-182,184,186,202-203,293-305,319-336,338-362,364-370,372
+  s_a31e722d8f5f55::t_9421187989b1f7 185,229-232,363
+  s_a31e722d8f5f55::t_4b9dc419860a9f 183,207,218,246-247,307-317,337,375,394
+packages/contracts/schemas/companion-manifest.v2.schema.json
+  s_a31e722d8f5f55::t_f8ff7284eefc3a 54,112-121
+  s_6ba841cc48db09::t_9ae3776c6fdca1 122-126
+packages/companion-skill/skill/SKILL.md
+  s_a31e722d8f5f55::t_e2a7707a4ae8b5 500-507
+  s_a31e722d8f5f55::t_de061f75d985f8 837
+  s_a31e722d8f5f55::t_88af834c2d48b6 370,386-387
+  s_a31e722d8f5f55::t_556590b4d91931 25-26,832-836,838-839
+  s_a31e722d8f5f55::t_d6e43c7174cff9 482,496-499,508-521,883-884,887,890-892,941
+  s_a31e722d8f5f55::t_9df1170fe226e5 371-373
+  s_a31e722d8f5f55::t_9f325308d29bed 24,204,365-369,379,382-385,388-389
+apps/web/src/components/secrets/SkillSecretConfiguration.test.ts
+  s_a31e722d8f5f55::t_120095ede08b5c 15,73,100-130
+  s_a31e722d8f5f55::t_0d215d53abf634 1-14,16-72,74-99,131-132
+packages/core/src/secrets.ts
+  s_a31e722d8f5f55::t_b0b4e7405bb939 193-198,741,775,779
+  s_a31e722d8f5f55::t_19f81a3a4190a9 640,667-687,696-698
+  s_a31e722d8f5f55::t_55bd58ce90ea13 372-381
+  s_a31e722d8f5f55::t_9da0f03984ec69 737-740,742-743,774,776-778,780-781
+  s_a31e722d8f5f55::t_4b9dc419860a9f 15,556-560,577,599,608
+  s_a31e722d8f5f55::t_f76d2c4b9247a0 550-551,770,813
+  s_a31e722d8f5f55::t_18767c63b72c99 815-821,836-838,857
+  s_a31e722d8f5f55::t_204a73ae9939f8 210,213,278,314
+  s_a31e722d8f5f55::t_516123d5bf5fc8 552,554-555,561-576,578-598,602,604-605,607,609-619
+  s_a31e722d8f5f55::t_9ce9b389f481f3 162,338,341
+  s_a31e722d8f5f55::t_c68ab9fcf4d9cb 300
+  s_a31e722d8f5f55::t_2e0e8985daceb4 339-340,342-352
+  s_a31e722d8f5f55::t_9314bda7edf52e 1-14,16-161,163-192,199-209,211-212,214-277,279-299,301-313,315-337,353-371,382-549,620-639,641-666,688-695,699-736,744-769,771-773,782-785,798-812,814,839-856,858-862
+  s_a31e722d8f5f55::t_1287720f386142 786-797,822-835
+  s_a31e722d8f5f55::t_6bf09ab438e4dd 553,600-601,603,606
+.github/workflows/ci.yml
+  s_a31e722d8f5f55::t_2dbb9ed3d7117a 220-228
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_a31e722d8f5f55::t_77a2856bce879b 1445,1498
+docs/design.md
+  s_a31e722d8f5f55::t_88af834c2d48b6 249-251,487-488
+  s_a31e722d8f5f55::t_dd5ab061ac5252 357-367,424,428-432,458,461
+  s_a31e722d8f5f55::t_e1d2a08118081f 478,483-486,489-492
+  s_a31e722d8f5f55::t_a66628bb789533 35-39,67,108-111,226-248
+  s_a31e722d8f5f55::t_29d5f6b1b19bd6 223-225,425-427,433-434,459,462,479-482
+packages/core/test/secretsCrypto.test.ts
+  s_a31e722d8f5f55::t_8d2ff35883efc8 1-33,37-45
+  s_a31e722d8f5f55::t_9b7c9a8316abc5 34-36
+packages/companion-skill/skill/scripts/test_secrets_runtime.py
+  s_a31e722d8f5f55::t_a98fadb8b3510b 149-199
+  s_a31e722d8f5f55::t_8f342d91b494bc 65-76
+  s_a31e722d8f5f55::t_72710379df9b2a 102-123
+  s_a31e722d8f5f55::t_038b8d158f1a6f 1-64,77-101,124-148,200-202
+packages/db/drizzle/0032_personal_shared_secrets.sql
+  s_a31e722d8f5f55::t_204a73ae9939f8 19,41,141-142
+  s_a31e722d8f5f55::t_c68ab9fcf4d9cb 239,243-248
+  s_a31e722d8f5f55::t_28c9dbcb520757 1-12,14-18,20-34,36-40,42-43,45-98,100-140,143-154,158,160-178,182-223,234-235,250-251,256,258,261-268
+  s_a31e722d8f5f55::t_42483dea4178bb 35,44,99,155-157,159
+  s_a31e722d8f5f55::t_d409078b00da78 224-233
+  s_a31e722d8f5f55::t_55bd58ce90ea13 240-242,249,254
+  s_a31e722d8f5f55::t_49a793bb23517f 179-181
+  s_a31e722d8f5f55::t_a6db2f2ae12a85 236-238,252-253,255,259-260
+  s_a31e722d8f5f55::t_45a447ebcf090e 257
+  s_a31e722d8f5f55::t_9ce9b389f481f3 13
+packages/core/src/index.ts
+  s_a31e722d8f5f55::t_8d2ff35883efc8 2
+  s_a31e722d8f5f55::t_9314bda7edf52e 3
+.env.example
+  s_a31e722d8f5f55::t_7e314c5e840f30 15-18
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_a31e722d8f5f55::t_6b088b9bcf623d 64-83
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_a31e722d8f5f55::t_a8ff42f6c4493f 471-479
+  s_a31e722d8f5f55::t_82240698cded85 719,726-733,742,750,759,767,779,798,805,818,836,843,864
+  s_a31e722d8f5f55::t_d941c0a22e6c83 18,113-150
+  s_a31e722d8f5f55::t_4b9dc419860a9f 480-503
+  s_a31e722d8f5f55::t_3bf70f4ab1daa1 151-152
+packages/contracts/src/index.ts
+  s_a31e722d8f5f55::t_b97c4babaa3925 16
+packages/companion-skill/skill/scripts/create_secret.py
+  s_a31e722d8f5f55::t_b0b4e7405bb939 1-61
+packages/core/test/authz.test.ts
+  s_a31e722d8f5f55::t_7d58f778617328 6-7,102-115
+  s_a31e722d8f5f55::t_9b7c9a8316abc5 116-135
+  s_a31e722d8f5f55::t_56d522f53b30a0 136-137
+packages/skills/src/manifest.ts
+  s_a31e722d8f5f55::t_f8ff7284eefc3a 2,33-57,159,173-184
+  s_6ba841cc48db09::t_6df3a0410a45ae 185
+packages/contracts/src/secrets.ts
+  s_a31e722d8f5f55::t_50cb8eed5d36ae 9-17,49
+  s_a31e722d8f5f55::t_b97c4babaa3925 1-8,18-48,50-206
+packages/companion-skill/skill/companion.integrity.json
+  s_a31e722d8f5f55::t_f7aeca9c63c419 12
+  s_a31e722d8f5f55::t_5b3328e6e84971 9,18
+  s_a31e722d8f5f55::t_c0d62e4309b23c 14
+  s_a31e722d8f5f55::t_2196c746ab273c 11
+  s_a31e722d8f5f55::t_025e0572402d86 3-4,10
+apps/api/src/skillCompanionManifest.test.ts
+  s_a31e722d8f5f55::t_2b2ac4432aead6 97,108
+apps/web/src/components/skills/Sidebar.tsx
+  s_a31e722d8f5f55::t_95b6b9b595c7a6 11-12
+  s_a31e722d8f5f55::t_26dd2d7cbc4297 3,444,493,576
+  s_a31e722d8f5f55::t_ee6286bbdf1840 434,482,762,765-772
+  s_a31e722d8f5f55::t_7e03f3e830adcb 287,301,338,341-344,376-390,435-436,483-485,514,640-644,694,735-739,757,763-764,814
+  s_a31e722d8f5f55::t_1ebbe21826112a 773
+apps/api/src/localSkills.test.ts
+  s_a31e722d8f5f55::t_ca48beacfe181d 71
+  s_a31e722d8f5f55::t_d3341d3bb183b3 47,73,75,117-119
+packages/companion-skill/skill/scripts/secrets_runtime.py
+  s_a31e722d8f5f55::t_e7a33bd6dde9c8 13,158-176,182-187,197-199,219-224,226-276,282-298
+  s_a31e722d8f5f55::t_72710379df9b2a 352-373
+  s_a31e722d8f5f55::t_84d27e512aca32 21
+  s_a31e722d8f5f55::t_482e79af348e6d 315,324
+  s_a31e722d8f5f55::t_864da761607c7f 66-70,177-181,188-196
+  s_a31e722d8f5f55::t_8f342d91b494bc 56-59
+  s_a31e722d8f5f55::t_a98fadb8b3510b 153-155,200-218,305-307,378
+  s_a31e722d8f5f55::t_ba058ad4d174eb 225,277-281
+  s_a31e722d8f5f55::t_fb09b4182f441f 1-12,14-20,22-55,60-65,71-152,156-157,299-304,308-314,316-323,325-351,374-377,379-406
+apps/web/src/components/skills/DetailView.tsx
+  s_a31e722d8f5f55::t_d6f2a77ba9fceb 35,646
+packages/contracts/test/secrets.test.ts
+  s_a31e722d8f5f55::t_b7a535a6d60ca4 1-7,9-10,16-67
+  s_a31e722d8f5f55::t_70bdb02792a2d0 8,11-15
+packages/companion-skill/skill/scripts/install_skill.py
+  s_a31e722d8f5f55::t_2f48f8a94714b3 474-500,505-508,515-523,525-540,572-600
+  s_a31e722d8f5f55::t_482e79af348e6d 55
+  s_a31e722d8f5f55::t_ba058ad4d174eb 501-504,509-514
+  s_a31e722d8f5f55::t_a8ff42f6c4493f 654,658,665-666
+  s_a31e722d8f5f55::t_62b988c6b68077 732-737
+  s_a31e722d8f5f55::t_4b9dc419860a9f 669-672
+  s_a31e722d8f5f55::t_82ed977eae821c 52-54,56-59,469,524,567,651-653,707-712,715-716,731,738-747,759,784-785
+  s_a31e722d8f5f55::t_0a8b7484a018eb 650,667
+apps/web/src/components/skills/sidebarTree.ts
+  s_a31e722d8f5f55::t_95b6b9b595c7a6 1-69
+packages/core/src/services.ts
+  s_a31e722d8f5f55::t_9314bda7edf52e 52-54,715,2144-2150
+  s_4f30b831b214f5::t_e4ae3ac33301cb 2151
+apps/web/src/styles/secrets.css
+  s_a31e722d8f5f55::t_8d222632b80bcc 4,92,98-101,103
+  s_a31e722d8f5f55::t_58c5474b99d78e 150-155
+  s_a31e722d8f5f55::t_e65ede836be98e 11,111
+  s_a31e722d8f5f55::t_d6f2a77ba9fceb 120-140,143-149,156-157,159
+  s_a31e722d8f5f55::t_d79f5a6415924c 1-3,5-10,12-88,90-91,93-97,102,104-110,114-119
+  s_a31e722d8f5f55::t_8efb141dec4710 89
+  s_a31e722d8f5f55::t_4715397de69a75 141-142,158
+  s_a31e722d8f5f55::t_1064fb8ca1b11e 112-113
+packages/companion-skill/skill/reference/api.md
+  s_a31e722d8f5f55::t_7ee1f6aa3b9354 6,76
+  s_a31e722d8f5f55::t_6c3935dff2d610 92-93,95-123,128
+  s_a31e722d8f5f55::t_9df1170fe226e5 547-549
+  s_a31e722d8f5f55::t_de061f75d985f8 542-546,550-551
+  s_a31e722d8f5f55::t_ad5519b557f7ee 85-91,94,124-127,129-180
+  s_a31e722d8f5f55::t_5ed8e50b505687 5,36,77-82
+apps/web/src/lib/settingsData.test.ts
+  s_a31e722d8f5f55::t_8efb141dec4710 143-159
+apps/web/src/components/skills/UploadDialog.tsx
+  s_a31e722d8f5f55::t_2ee37cc4bbae2d 619,632,637-638,719,722-723,1122,1135-1136,1547
+  s_a31e722d8f5f55::t_70b0c3682583eb 327-331,357
+  s_a31e722d8f5f55::t_58c5474b99d78e 618,631,708-718,720-721,724,1546
+  s_a31e722d8f5f55::t_4b9dc419860a9f 317-322,325,365
+  s_a31e722d8f5f55::t_4edb4c781a460f 359-363
+  s_a31e722d8f5f55::t_3e83f7d9b2f9df 22,1705,1708,1713,1729,1886-1890,1897,1903,1918-1920
+  s_a31e722d8f5f55::t_81b93a83ce6d7d 324
+apps/web/src/components/skills/SkillsApp.tsx
+  s_a31e722d8f5f55::t_95b6b9b595c7a6 72-73
+  s_a31e722d8f5f55::t_9421187989b1f7 367-370
+  s_a31e722d8f5f55::t_2ee37cc4bbae2d 1510,1521
+  s_a31e722d8f5f55::t_ee6286bbdf1840 1421
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_a31e722d8f5f55::t_29d5f6b1b19bd6 617,836
+apps/api/src/secretsDb.integration.test.ts
+  s_a31e722d8f5f55::t_2dbb9ed3d7117a 1-26,28,30-62,64-72,75-126,137-148,193
+  s_a31e722d8f5f55::t_b7567292a94060 27,29,63,127-136,149-192
+  s_a31e722d8f5f55::t_9f3dc49a63afea 73-74
+scripts/dev-stack.sh
+  s_a31e722d8f5f55::t_7e314c5e840f30 189-204,440
+apps/web/src/lib/secrets.ts
+  s_a31e722d8f5f55::t_ee6286bbdf1840 1-2,4-35,66
+  s_a31e722d8f5f55::t_e85adff84a83da 3,36-59,64-65
+  s_a31e722d8f5f55::t_f2e41fc2edf826 60-63
+packages/contracts/src/frontmatter.ts
+  s_a31e722d8f5f55::t_b97c4babaa3925 33-34,206
+apps/api/src/skillListRoute.test.ts
+  s_a31e722d8f5f55::t_edb12def824231 3-4,229-244
+  s_a31e722d8f5f55::t_93e5e95c90f61d 164,175
+  s_a31e722d8f5f55::t_8efb141dec4710 195-206
+  s_a31e722d8f5f55::t_77a2856bce879b 145,167-170,173,176-192
+  s_a31e722d8f5f55::t_1dda4e88f7a402 76-90,144,149-163,165-166,171-172,174,193-194,207-228,245-246
+  s_a31e722d8f5f55::t_bbe807dd76cb56 247
+packages/contracts/src/companionManifest.ts
+  s_a31e722d8f5f55::t_f8ff7284eefc3a 193
+  s_a31e722d8f5f55::t_b97c4babaa3925 39-63,70-76,79-80,212
+packages/companion-skill/skill/scripts/sync_secrets.py
+  s_a31e722d8f5f55::t_482e79af348e6d 25,58,93,101
+  s_a31e722d8f5f55::t_72710379df9b2a 81,87
+  s_a31e722d8f5f55::t_ac9376a0075332 1-24,26-57,59-80,82-86,88-92,94-100,102-126
+apps/web/src/components/secrets/SecretsApp.test.ts
+  s_a31e722d8f5f55::t_4edb4c781a460f 152-155
+  s_a31e722d8f5f55::t_49f705bbc7f82f 167
+  s_a31e722d8f5f55::t_120095ede08b5c 204-232
+  s_a31e722d8f5f55::t_8efb141dec4710 159-166,168-171,189-201
+  s_a31e722d8f5f55::t_2a5b3a93c4d811 20
+  s_a31e722d8f5f55::t_a137f9c3fabc38 91-97,99,101
+  s_a31e722d8f5f55::t_4b9dc419860a9f 98
+  s_a31e722d8f5f55::t_fe51d604c8c1aa 18
+  s_a31e722d8f5f55::t_0d215d53abf634 1-17,19,21-90,102-120,172-188,202-203,233-245
+  s_a31e722d8f5f55::t_9421187989b1f7 100
+  s_a31e722d8f5f55::t_189e14b2dcb29c 132-151,156
+  s_a31e722d8f5f55::t_99cce748a698e9 121-131,157-158
+apps/api/src/index.ts
+  s_a31e722d8f5f55::t_ef7814c684f38f 86-100,141-147,224-225
+  s_a31e722d8f5f55::t_b0b4e7405bb939 2209-2210
+  s_a31e722d8f5f55::t_bb3408d9a9344a 2206-2207,2211-2212,2214-2221,2239-2241,2243-2252,2254-2263,2265-2274,2276-2285,2287-2296,2298-2307,2309-2317,2319-2328,2330-2338,2340-2348,2350-2360,2362-2371,2373-2379
+  s_a31e722d8f5f55::t_8efb141dec4710 2222-2238
+  s_a31e722d8f5f55::t_d6101d5f29c360 102,226,228-232,2213,2242,2253,2264,2275,2286,2297,2308,2318,2329,2339,2349,2361,2372
+  s_a31e722d8f5f55::t_ce18961c923974 227,2208
+scripts/dev-conductor.sh
+  s_a31e722d8f5f55::t_7e314c5e840f30 144,255,262-272,565
+  s_a31e722d8f5f55::t_4b9dc419860a9f 256-261
+  s_a31e722d8f5f55::t_1104ee90660ea1 539-540
+packages/db/src/schema.ts
+  s_a31e722d8f5f55::t_29d5f6b1b19bd6 551
+  s_a31e722d8f5f55::t_c9cfef08982032 706,728,870,906-920,940-944
+  s_a31e722d8f5f55::t_9ce9b389f481f3 673
+  s_a31e722d8f5f55::t_204a73ae9939f8 681,723,731-732
+  s_a31e722d8f5f55::t_bb5d93cf029d65 34-41,661-672,674-680,682-705,707-722,724-727,729-730,733-869,871-905,921-939,945-951
+packages/db/drizzle/meta/_journal.json
+  s_6ba841cc48db09::t_c656fe281edaf7 228-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "ebd296828af862be3ccdd774193ab5ccaab4bcff",
+  "prompts": {},
+  "sessions": {
+    "s_4f30b831b214f5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5add-5a42-74f3-8b1d-a5f0f166c051",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_6ba841cc48db09": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4199-0156-7e20-9cb4-9a1e9d7054fb",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_a31e722d8f5f55": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5ad5-e905-7e51-a4df-1d9673b00655",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

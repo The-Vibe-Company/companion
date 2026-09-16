@@ -1,0 +1,24 @@
+apps/web/src/components/agents/chatStream.test.ts
+  s_1e74ce65ff5b16::t_bbd681be014a50 58-82
+packages/contracts/src/agents.ts
+  s_1e74ce65ff5b16::t_ab574dc0265f65 419-421
+apps/web/src/components/agents/chatStream.ts
+  s_1e74ce65ff5b16::t_610d107bca6676 69-73
+  s_1e74ce65ff5b16::t_d4c8e73fa3246e 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d8c5117b72da1b03dee3e173d4ced6b32a5c9a53",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

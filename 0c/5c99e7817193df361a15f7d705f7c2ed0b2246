@@ -1,0 +1,130 @@
+apps/ios/README.md
+  s_4bb21447327294::t_1bc0ecb048d9dd 3,16-29,49-51
+  s_4bb21447327294::t_352cb0155db479 52
+.agents/skills/ios-product-dev/SKILL.md
+  s_4bb21447327294::t_7b9d5097eb5a4f 1-97
+.agents/skills/ios-product-dev/SOURCE.md
+  s_4bb21447327294::t_28de283733bf0f 1-15
+.agents/skills/ios-product-dev/companion.json
+  s_4bb21447327294::t_7ef02c2cb75646 1-41
+.agents/skills/ios-product-dev/evals/evals.json
+  s_4bb21447327294::t_333d3a4dd0694c 1-25
+.agents/skills/swiftui-expert-dev/SKILL.md
+  s_4bb21447327294::t_9605e2b9e8f137 1-109
+.agents/skills/swiftui-expert-dev/SOURCE.md
+  s_4bb21447327294::t_00a6a5f10b3a45 1-12
+.agents/skills/swiftui-expert-dev/companion.json
+  s_4bb21447327294::t_d8d222d78b87df 1-39
+.agents/skills/swiftui-expert-dev/evals/evals.json
+  s_4bb21447327294::t_086f72d6650a38 1-25
+.agents/skills/xcodebuildmcp-cli/LICENSE
+  s_4bb21447327294::t_6a371c3acd8706 1-21
+.agents/skills/xcodebuildmcp-cli/SKILL.md
+  s_4bb21447327294::t_684084987d1e53 1-81
+.agents/skills/xcodebuildmcp-cli/SOURCE.md
+  s_4bb21447327294::t_3383fd009a8183 1-12
+.agents/skills/xcodebuildmcp-cli/companion.json
+  s_4bb21447327294::t_06ec6d6630d9c3 1-39
+.agents/skills/xcodebuildmcp-cli/evals/evals.json
+  s_4bb21447327294::t_f79ea0546a2a85 1-25
+.claude/skills/ios-product-dev/SKILL.md
+  s_4bb21447327294::t_0ed14b509968d6 1-97
+.claude/skills/ios-product-dev/SOURCE.md
+  s_4bb21447327294::t_fa802858a09ddc 1-15
+.claude/skills/ios-product-dev/companion.json
+  s_4bb21447327294::t_7636255ed82893 1-41
+.claude/skills/ios-product-dev/evals/evals.json
+  s_4bb21447327294::t_a8ef34c0da604e 1-25
+.claude/skills/swiftui-expert-dev/SKILL.md
+  s_4bb21447327294::t_5e3a792225cb83 1-109
+.claude/skills/swiftui-expert-dev/SOURCE.md
+  s_4bb21447327294::t_02cddd804c14d9 1-12
+.claude/skills/swiftui-expert-dev/companion.json
+  s_4bb21447327294::t_eb0ff895250ed3 1-39
+.claude/skills/swiftui-expert-dev/evals/evals.json
+  s_4bb21447327294::t_ae8022195e7c01 1-25
+.claude/skills/xcodebuildmcp-cli/LICENSE
+  s_4bb21447327294::t_79e63a18424863 1-21
+.claude/skills/xcodebuildmcp-cli/SKILL.md
+  s_4bb21447327294::t_4d441ff38f41eb 1-81
+.claude/skills/xcodebuildmcp-cli/SOURCE.md
+  s_4bb21447327294::t_4109f3be327453 1-12
+.claude/skills/xcodebuildmcp-cli/companion.json
+  s_4bb21447327294::t_5ab908b0c67646 1-39
+.claude/skills/xcodebuildmcp-cli/evals/evals.json
+  s_4bb21447327294::t_feac37dd63f8eb 1-25
+.github/workflows/ci.yml
+  s_4bb21447327294::t_fa2ab426495f4d 171,191
+DESIGN.md
+  s_4bb21447327294::t_c013712572837b 289-295,471
+apps/ios/AGENTS.md
+  s_4bb21447327294::t_68a8facddc34c1 3,9-12
+apps/ios/Companion/DesignSystem/Colors.swift
+  s_4bb21447327294::t_43cf3f8ed7ca56 4-17
+apps/ios/Companion/DesignSystem/GlassComponents.swift
+  s_4bb21447327294::t_cc3a16f362af80 1-371
+apps/ios/Companion/DesignSystem/ManagementComponents.swift
+  s_4bb21447327294::t_913a0498bb30fd 1-159
+apps/ios/Companion/Navigation/RootView.swift
+  s_4bb21447327294::t_c6393e32b55f2c 12-43,66-75
+apps/ios/Companion/Screens/BootstrapView.swift
+  s_4bb21447327294::t_769b99dfa3f130 8-16,18-25,27-34,36-38
+apps/ios/Companion/Screens/ChatView.swift
+  s_4bb21447327294::t_c146113dac99de 6,8,17-21,23-28,30-62,64-79,86,96-179,181,186,189-223,229,231-245,265-269,273-302,351-364,367-372,374-377,380,383-420,424-456,469-477,481,483-486,488,490
+apps/ios/Companion/Screens/CompanionListView.swift
+  s_4bb21447327294::t_44a3f8ec9acad6 8,12-14,18-27,32-33,35-39,42-58,61-72,84-158,160-166,193-215,218-232,235-240,244,246-250,253-270
+apps/ios/Companion/Screens/CompanionPluginOAuthBrowser.swift
+  s_4bb21447327294::t_7ba365b40f2d03 1-206
+apps/ios/Companion/Screens/CreateCompanionView.swift
+  s_4bb21447327294::t_6725605e7fc100 1-408
+apps/ios/Companion/Screens/GlassChatDemoView.swift
+  s_4bb21447327294::t_59aa9d6db2c0b6 1-317
+apps/ios/Companion/Screens/GlassManagementDemoView.swift
+  s_4bb21447327294::t_1e38f759cb5065 1-380
+apps/ios/Companion/Screens/LoginView.swift
+  s_4bb21447327294::t_65cd41c4757131 18-32,34,43-45,73,76,137-138,144,197
+apps/ios/Companion/Screens/PluginManagementView.swift
+  s_4bb21447327294::t_eab576638a8ead 1-642
+apps/ios/Companion/Screens/ProviderManagementView.swift
+  s_4bb21447327294::t_ce15da0cbd9ef2 1-633
+apps/ios/Companion/Support/GoogleSignInCoordinator.swift
+  s_4bb21447327294::t_1683370851c3ac 39-46
+apps/ios/CompanionKit/Sources/CompanionKit/APIClient.swift
+  s_4bb21447327294::t_cbb8176f1ce53b 40-55,66,191-342,368-370,372-378,386-397,408-414,445-479
+apps/ios/CompanionKit/Sources/CompanionKit/Models.swift
+  s_4bb21447327294::t_ff44a9c6254cf5 86,104-117,135,143-372
+apps/ios/CompanionKit/Sources/CompanionKit/SessionStore.swift
+  s_4bb21447327294::t_75ed15d7722949 157-307
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionKitTests.swift
+  s_4bb21447327294::t_0fe33cff03855a 26-62,87-105,180-325
+apps/ios/CompanionUITests/CompanionUITests.swift
+  s_4bb21447327294::t_fd51e8d831a63a 18,20,23-33,35-89
+apps/ios/Config/Shared.xcconfig
+  s_4bb21447327294::t_187cc03ef4d73e 7
+docs/companions-runtime.md
+  s_4bb21447327294::t_daeacbbbd42d40 766-767,773-779
+scripts/ci-scope.mjs
+  s_4bb21447327294::t_d0ceec02d1f0ba 193
+scripts/ci-scope.test.mjs
+  s_4bb21447327294::t_4d00e4b510102e 72-79
+scripts/ios-devx.test.mjs
+  s_4bb21447327294::t_e342517ac89d92 6,53,116-138,155,158,167-185
+scripts/select-ios-simulator.mjs
+  s_4bb21447327294::t_7bea0f664709db 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "0c5c99e7817193df361a15f7d705f7c2ed0b2246",
+  "prompts": {},
+  "sessions": {
+    "s_4bb21447327294": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03534-eea2-7ec0-9cb3-c22ff4a69e55",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

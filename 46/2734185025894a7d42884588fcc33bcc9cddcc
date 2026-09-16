@@ -1,0 +1,56 @@
+docs/design.md
+  s_1e74ce65ff5b16::t_a8c5a0cdf41af8 421-499
+apps/api/src/index.ts
+  s_1e74ce65ff5b16::t_947e85cbf9125d 14-18,20-31,34-35,2261-2324,2329-2520,2657-2658
+  s_1e74ce65ff5b16::t_c9d71d18021919 19,32-33,114,167-174,2521-2656,2659-2660
+  s_1e74ce65ff5b16::t_c8fdbd710e6e11 115-118
+  s_1e74ce65ff5b16::t_805686e4d2a66e 2325-2328
+  s_1e74ce65ff5b16::t_da0ef6f900654f 166,2661
+packages/core/src/agents.ts
+  s_1e74ce65ff5b16::t_20af1820d12525 1391-1426
+scripts/dev-conductor.sh
+  s_1e74ce65ff5b16::t_e8c977a6a43a9e 520-537
+packages/sandbox/package.json
+  s_1e74ce65ff5b16::t_fc851132a6e826 11-13,23
+apps/api/src/seed-test-user.ts
+  s_1e74ce65ff5b16::t_fdb997ff3eb2a2 16
+  s_1e74ce65ff5b16::t_2b7f378ce936e9 346-489,547
+apps/api/src/agentsRoute.test.ts
+  s_1e74ce65ff5b16::t_d04ad5df417922 1-230,232-339,343-361
+  s_1e74ce65ff5b16::t_b4592d28aa436e 231,340-342
+packages/sandbox/tsconfig.json
+  s_1e74ce65ff5b16::t_7a4e01f4f09cda 6-10
+.env.example
+  s_1e74ce65ff5b16::t_4343d3d071478c 46-51,53-65
+  s_1e74ce65ff5b16::t_fc851132a6e826 52
+packages/sandbox/src/opencodeChat.ts
+  s_1e74ce65ff5b16::t_13f6db9866bbea 1-146
+packages/sandbox/src/index.ts
+  s_1e74ce65ff5b16::t_155a2df11100ec 3-9
+packages/sandbox/scripts/smoke-vercel.ts
+  s_1e74ce65ff5b16::t_09c3fde6690948 1-144
+CLAUDE.md
+  s_1e74ce65ff5b16::t_92ccb10e937ef7 62-63
+apps/api/package.json
+  s_1e74ce65ff5b16::t_c8fdbd710e6e11 25
+packages/sandbox/scripts/create-golden-sandbox.ts
+  s_1e74ce65ff5b16::t_914b0e244c0adc 1-83
+pnpm-lock.yaml
+  s_1e74ce65ff5b16::t_f90fa49895fe89 50-52,350-352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "462734185025894a7d42884588fcc33bcc9cddcc",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

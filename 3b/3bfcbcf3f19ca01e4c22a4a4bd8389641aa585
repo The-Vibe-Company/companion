@@ -1,0 +1,125 @@
+apps/web/src/components/skills/dragGeometry.test.ts
+  s_d6bde94d02cb3e::t_fb8f7c9f41ffa6 10,51-59,110-135,162-165
+packages/core/test/filterPreferences.test.ts
+  s_d6bde94d02cb3e::t_49a6b87d4fc3b6 3,59-62
+  s_d6bde94d02cb3e::t_d6e1ef9773305e 142-156
+  s_d6bde94d02cb3e::t_1019946c1b8efb 11,50,53-57,72,80,91,115,125-129,136,163-168
+packages/db/src/schema.ts
+  s_d6bde94d02cb3e::t_1019946c1b8efb 540-543
+packages/core/src/services.ts
+  s_d6bde94d02cb3e::t_0c8dde728c0f0d 1322-1325
+  s_d6bde94d02cb3e::t_1019946c1b8efb 1243,1265-1269,1271-1275
+  s_d6bde94d02cb3e::t_828aa70fa42159 41,1303,1311,1318
+  s_d6bde94d02cb3e::t_a250b793e7e52f 20,1298
+packages/companion-skill/skill/reference/api.md
+  s_d6bde94d02cb3e::t_4653ad3b2f9b4c 87-88,604-620
+  s_5f9e619e567273::t_90189873402f89 621
+packages/db/drizzle/0048_skill_sidebar_order_preference.sql
+  s_d6bde94d02cb3e::t_1019946c1b8efb 1-2
+packages/companion-skill/skill/SKILL.md
+  s_d6bde94d02cb3e::t_4653ad3b2f9b4c 764-767
+  s_d6bde94d02cb3e::t_828aa70fa42159 1022
+cli/src/commands/skills.test.ts
+  s_d6bde94d02cb3e::t_7264c671cb560a 27
+docs/design.md
+  s_d6bde94d02cb3e::t_4653ad3b2f9b4c 288,290-300
+docs/testing.md
+  s_d6bde94d02cb3e::t_4653ad3b2f9b4c 17
+apps/web/src/components/skills/sidebarTree.test.ts
+  s_d6bde94d02cb3e::t_fb8f7c9f41ffa6 1-71
+packages/companion-skill/skill/companion.integrity.json
+  s_d6bde94d02cb3e::t_2c657ea0fa1054 4,19
+  s_d6bde94d02cb3e::t_8da6a749fd8a8a 3
+packages/contracts/src/preferences.ts
+  s_d6bde94d02cb3e::t_1019946c1b8efb 30-35,39
+  s_d6bde94d02cb3e::t_828aa70fa42159 42-47
+apps/web/src/components/skills/dragGeometry.ts
+  s_d6bde94d02cb3e::t_83d2ee6597b7f1 17,41-49,71-72,74,84-93,101,124-126
+apps/web/src/components/skills/sidebarTree.ts
+  s_d6bde94d02cb3e::t_b40c51fe9e0c88 16-53,58,91,105-120,134,138-156
+  s_d6bde94d02cb3e::t_013f49d6db918b 121-133,135-137
+scripts/agent-browser-smoke.sh
+  s_d6bde94d02cb3e::t_b373ca05a0f15f 205-212
+  s_d6bde94d02cb3e::t_eb41cb4b4b4563 422
+  s_4fe8845f7f950a::t_46efcb7750912f 497,517,569,593
+.gitattributes
+  s_d6bde94d02cb3e::t_d1fbf6d42ca413 1-2
+apps/web/src/components/skills/Sidebar.tsx
+  s_d6bde94d02cb3e::t_b40c51fe9e0c88 3,33-36,48-51,275-282,364,366,376-377,389-390,392,893,898-899,902,904
+  s_d6bde94d02cb3e::t_2c8f4c7f606f01 634-638,750,813,886,897,903
+  s_d6bde94d02cb3e::t_b19c32ec1599e9 91,102-113,345-356,365,391
+  s_d6bde94d02cb3e::t_22daebb2f819dc 629-633,639,891-892,894-896,900-901
+  s_d6bde94d02cb3e::t_29c3d657bdd0e7 327,432,544-549
+  s_d6bde94d02cb3e::t_c029776215f083 476,525
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_d6bde94d02cb3e::t_c029776215f083 231,522,538
+  s_d6bde94d02cb3e::t_9f30cce36a9384 1473,1487
+  s_d6bde94d02cb3e::t_3b935cd945a8dc 1433-1467,1471-1472,1474-1486,1491-1492,1495,1504,1511-1512,1514-1517,1519-1521,1525,1528-1529,1531-1532,1540,1542-1545,1549-1550
+  s_d6bde94d02cb3e::t_bf9f2712af4ed5 1468-1470
+  s_d6bde94d02cb3e::t_d9373f3a6986a3 1488-1490
+  s_d6bde94d02cb3e::t_6d4463b31deb43 1493-1494
+  s_d6bde94d02cb3e::t_2957e26755933d 1496-1498,1501-1503
+  s_d6bde94d02cb3e::t_5049aa67e69739 1505-1510
+  s_d6bde94d02cb3e::t_eb6f8e72567811 1513
+  s_d6bde94d02cb3e::t_86506a23af7e41 1518
+  s_d6bde94d02cb3e::t_13476bc287ea49 1522-1524
+  s_d6bde94d02cb3e::t_4d2827ad9639d4 1526-1527
+  s_d6bde94d02cb3e::t_ee0802c2bb0fee 1530
+  s_d6bde94d02cb3e::t_4ee58fe40e72a8 1533-1535,1537-1539
+  s_d6bde94d02cb3e::t_094e67ae9a16d3 1541
+  s_d6bde94d02cb3e::t_3fe35da8d51bdd 1546-1548
+  s_d6bde94d02cb3e::t_047f06ff7df430 1499-1500,1536
+apps/api/test/integration/skillSidebarOrderPreferenceMigration.integration.test.ts
+  s_d6bde94d02cb3e::t_5427d3fa007c88 30-31,65-67,72-74,87,89,95,99,106,108-114,124,126-127,129,132-134
+  s_d6bde94d02cb3e::t_82fffc88e0733a 1-29,32-64,68-71,75-86,88,90-94,96-98,100-105,107,115-123,125,128,130-131,135-137
+packages/companion-skill/skill/companion.json
+  s_d6bde94d02cb3e::t_4653ad3b2f9b4c 4,28-36
+apps/web/src/components/skills/useSkillDrag.ts
+  s_d6bde94d02cb3e::t_b40c51fe9e0c88 44-49,193,212-213
+apps/api/src/localSkills.test.ts
+  s_d6bde94d02cb3e::t_480b1502af81cb 47,122-124
+apps/web/src/components/skills/SkillsApp.tsx
+  s_d6bde94d02cb3e::t_013f49d6db918b 13,80,241,263,270,475-476,514-518,522,537,541,800,806-815,826-827,841-842,855-859,863-864,874-875,1010,1014,1267-1272,1320,1322
+  s_d6bde94d02cb3e::t_b2009c145bf9c2 501-503,1659-1661,1663,1816-1824
+  s_d6bde94d02cb3e::t_b19d8e51e68fea 1650-1656,1658,1662,1664,1671,1717
+  s_d6bde94d02cb3e::t_62e5f82f06a895 1657
+apps/web/src/styles/skills.css
+  s_d6bde94d02cb3e::t_290ee3f7d32a02 819-820,968-970
+  s_d6bde94d02cb3e::t_b19d8e51e68fea 130-146
+apps/api/src/index.ts
+  s_d6bde94d02cb3e::t_828aa70fa42159 176,1748,1750
+packages/db/drizzle/meta/_journal.json
+  s_d6bde94d02cb3e::t_6beaa899fcf1c2 340-346
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3b3bfcbcf3f19ca01e4c22a4a4bd8389641aa585",
+  "prompts": {},
+  "sessions": {
+    "s_4fe8845f7f950a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f85b1-8790-72c2-bfa5-1348511ff2b3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_5f9e619e567273": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f857e-207b-7cc2-8bd8-71ad65cb5d60",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_d6bde94d02cb3e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f85b2-7732-7a22-9753-4b55f83df6a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+scripts/agent-browser-smoke.sh
+  s_8e2db0b47920d9::t_10048b603323f8 107-158,163-174
+  s_8e2db0b47920d9::t_e8bdf0c3d8695b 159-162
+  s_8e2db0b47920d9::t_9984907236919b 436-437
+  s_8e2db0b47920d9::t_7ffcab9cbb7bba 446
+  s_8e2db0b47920d9::t_3c724e66d9ad68 382-384,421-426,434-435,438-445,447
+  s_8e2db0b47920d9::t_8acc2eed2ee554 448
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "97fb87b13c633d9e1bde428441a6d9ce818ecf65",
+  "prompts": {},
+  "sessions": {
+    "s_8e2db0b47920d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f126a-aa64-7cb2-989a-bd7a0ca8186c",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

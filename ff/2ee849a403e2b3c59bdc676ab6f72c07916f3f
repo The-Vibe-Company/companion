@@ -1,0 +1,107 @@
+packages/storage/src/index.ts
+  s_b72b2316fa286f::t_362e57905e7e69 1,218-225,227-228,230-233,235-243,245-247,249
+  s_b72b2316fa286f::t_48d25ea776bcd7 226,229,234,244,248
+  s_b72b2316fa286f::t_04bc1d0909e848 250
+packages/db/runtime-role-grants.sql
+  s_b72b2316fa286f::t_d66d315bd2a292 58,61
+  s_b72b2316fa286f::t_42569d35dd326c 62-63
+apps/worker/src/runSupervisor.ts
+  s_b72b2316fa286f::t_fdb96fb84e6c44 69-81,1141-1156,1177-1184,1195-1196
+  s_b72b2316fa286f::t_a69c1432352a9c 54,1505
+packages/core/test/skillRuns.test.ts
+  s_b72b2316fa286f::t_d394afbb1a5536 22,487-497
+  s_b72b2316fa286f::t_3a4b1ff772e846 500-518
+  s_b72b2316fa286f::t_5465d042411a5b 498,519-528
+  s_b72b2316fa286f::t_aadc3940b4a4e4 499
+docs/testing.md
+  s_b72b2316fa286f::t_864865949a2d5a 21
+  s_b72b2316fa286f::t_129e4e834029f3 22
+  s_b72b2316fa286f::t_f0216d222f16d7 20
+packages/core/src/runJobs.ts
+  s_b72b2316fa286f::t_99142f405584cb 95,115-132,705-715,792
+  s_b72b2316fa286f::t_e71526763ab026 24,1407
+  s_b72b2316fa286f::t_b8fd5f93ffc75a 21,772-777,790-791
+  s_b72b2316fa286f::t_cb69a4f27a89fc 25,666-671
+  s_b72b2316fa286f::t_48d25ea776bcd7 231-252
+  s_b72b2316fa286f::t_aef8d51d38625e 829-882
+apps/worker/src/runAttachmentCleanup.ts
+  s_b72b2316fa286f::t_48d25ea776bcd7 1,5,22,29,31-33,36,39-45
+  s_b72b2316fa286f::t_362e57905e7e69 2-4,6-21,23-28,30,34-35,37-38,46-51
+apps/api/test/integration/runsDb.integration.test.ts
+  s_b72b2316fa286f::t_fa7510cea35e37 54-55,624-649,651-663
+  s_b72b2316fa286f::t_41eb2c60bfbae2 437
+  s_b72b2316fa286f::t_062aab1bffae33 721-726
+  s_b72b2316fa286f::t_bd377fa134463e 53,664-694
+  s_b72b2316fa286f::t_23a9cb1dc53076 286,564-568
+  s_b72b2316fa286f::t_eb5571a5868282 328,331
+  s_b72b2316fa286f::t_c7473c319bfc18 287-289
+  s_b72b2316fa286f::t_a69c1432352a9c 650,696-704,706-720,727-735,741
+  s_b72b2316fa286f::t_c5372482ce45bf 705
+  s_b72b2316fa286f::t_13a0bfba388616 316,695,736-740
+  s_b72b2316fa286f::t_f5b7b5d73cbeb6 79,313-315
+  s_b72b2316fa286f::t_a51c6310684ef6 283-285,290
+  s_b72b2316fa286f::t_90da4d3d69f20e 28,584-591
+  s_b72b2316fa286f::t_3ab478783f96fe 742
+apps/worker/src/runAttachmentCleanup.test.ts
+  s_b72b2316fa286f::t_48d25ea776bcd7 7-11,15,20-21
+  s_b72b2316fa286f::t_362e57905e7e69 1-6,12-14,16-19,22-28
+apps/web/src/components/runs/RunChatView.tsx
+  s_b72b2316fa286f::t_2ce1207b02a600 342,571,578,619-622
+apps/api/src/index.ts
+  s_b72b2316fa286f::t_90da4d3d69f20e 105,3086-3088,3233-3240
+  s_b72b2316fa286f::t_d3da2e0154a973 104,3200,3215,3224-3232,3241-3245
+  s_b72b2316fa286f::t_4d7fe95b8a6001 3089,3121-3123,3264-3265
+apps/web/src/components/runs/chatStream.ts
+  s_b72b2316fa286f::t_2ce1207b02a600 277,288,330-334
+docs/design.md
+  s_b72b2316fa286f::t_f0216d222f16d7 587-588,650-653
+  s_b72b2316fa286f::t_129e4e834029f3 589-594
+  s_b72b2316fa286f::t_864865949a2d5a 604-608,672-673
+apps/web/src/styles/runs.css
+  s_b72b2316fa286f::t_2ce1207b02a600 319
+packages/db/drizzle/0037_skill_run_prompt_attachments.sql
+  s_b72b2316fa286f::t_fbd82ea349ba1d 16-22,136-170,172-200
+  s_b72b2316fa286f::t_42569d35dd326c 201-246
+  s_b72b2316fa286f::t_c5372482ce45bf 171
+  s_b72b2316fa286f::t_a51e9d1a7cbb8e 9-15,23-29,41-135
+apps/worker/src/runSupervisor.test.ts
+  s_b72b2316fa286f::t_6fde1dea6dd04f 7,56-87
+  s_b72b2316fa286f::t_9dc724ad7b0180 88-89
+apps/web/src/components/runs/chatStream.test.ts
+  s_b72b2316fa286f::t_8b244ebfeddb4a 350-385
+packages/db/src/schema.ts
+  s_b72b2316fa286f::t_15506dfabaa139 1374-1375,1384-1387,1488-1489
+  s_b72b2316fa286f::t_42569d35dd326c 1515-1526
+packages/core/src/skillRuns.ts
+  s_b72b2316fa286f::t_b8fd5f93ffc75a 289
+  s_b72b2316fa286f::t_8d70c014d7f1aa 135-139,1056-1057
+  s_b72b2316fa286f::t_98353994a8886d 265-288,290-310,1595-1600,1613-1614
+  s_b72b2316fa286f::t_3a4b1ff772e846 338,341-349,352-353,356,361-362,364-365,1263-1267
+  s_b72b2316fa286f::t_0e4f606e59287f 2
+  s_b72b2316fa286f::t_5465d042411a5b 354-355,357-360,363
+  s_b72b2316fa286f::t_e71526763ab026 335-337,339-340,350-351,366-371,1260-1262,1268-1271,1275,1279
+  s_b72b2316fa286f::t_d8ec390d08e416 1690,1704
+  s_b72b2316fa286f::t_cb69a4f27a89fc 311-327,1387-1390,1689,1691-1692,1703,1705-1706
+  s_b72b2316fa286f::t_71b5748a836654 1615
+apps/api/src/runRoutes.test.ts
+  s_b72b2316fa286f::t_85c8cc4ce97797 186,210,221,230
+  s_b72b2316fa286f::t_da0cf158d8f20b 293-298
+  s_b72b2316fa286f::t_d3da2e0154a973 36
+  s_b72b2316fa286f::t_90da4d3d69f20e 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ff2ee849a403e2b3c59bdc676ab6f72c07916f3f",
+  "prompts": {},
+  "sessions": {
+    "s_b72b2316fa286f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65c7-fc0c-7252-8a51-9510f76dfcc3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/sandbox/test/opencodeChat.test.ts
+  s_bb5c19af822945::t_1fa74a47187f8d 1-102
+packages/sandbox/src/opencodeChat.ts
+  s_bb5c19af822945::t_1af27f8b84b454 56-57
+  s_bb5c19af822945::t_b6e906157aaaee 54,58-63,71-72
+apps/web/src/components/runs/RunChatView.tsx
+  s_bb5c19af822945::t_bb90f282d6269f 339
+  s_bb5c19af822945::t_0452515c5316ad 381
+  s_bb5c19af822945::t_7ba89f30a6f369 287-291
+  s_bb5c19af822945::t_3a3871e5743323 627-630,632-644
+  s_bb5c19af822945::t_9559b8e3ff5d80 346,361-366,372
+scripts/dev-conductor.sh
+  s_bb5c19af822945::t_b0badea17a6f83 545,547
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "fb50aa60fa5dfc2fc7cf29da61622e7f097cc29c",
+  "prompts": {},
+  "sessions": {
+    "s_bb5c19af822945": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a604424-475e-4d44-b65e-99634eb3a9ce",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

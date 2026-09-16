@@ -1,0 +1,166 @@
+docs/design.md
+  s_0d335c51e3b9b2::t_1262c2063fb259 1-20
+docs/companions-runtime.md
+  s_0d335c51e3b9b2::t_126b50f33259a3 1-20
+.github/workflows/ci.yml
+  s_0d335c51e3b9b2::t_3abd224ed9a362 74
+  s_0d335c51e3b9b2::t_5a88fe72c05822 145
+packages/db/src/schema.ts
+  s_0d335c51e3b9b2::t_126b50f33259a3 913
+apps/web/src/app/privacy/page.tsx
+  s_0d335c51e3b9b2::t_126b50f33259a3 71
+docs/product.md
+  s_0d335c51e3b9b2::t_1262c2063fb259 3-5
+CLAUDE.md
+  s_0d335c51e3b9b2::t_1262c2063fb259 3-5,7,9-11,13-47
+packages/db/runtime-role-grants.sql
+  s_0d335c51e3b9b2::t_04e5a54473bf08 106-107,160-177
+  s_0d335c51e3b9b2::t_6338c0abc9284b 103-105
+packages/core/src/timezone.ts
+  s_0d335c51e3b9b2::t_152d30fa8db9c3 1-10
+apps/api/test/integration/skillsHubCutover.integration.test.ts
+  s_0d335c51e3b9b2::t_6338c0abc9284b 226-227
+  s_0d335c51e3b9b2::t_c5239f74d43c91 1
+README.md
+  s_0d335c51e3b9b2::t_126b50f33259a3 3-4,6-9,13-17,20,24,29,32-34,36,38-41,43-44,48-49
+docs/PRD.md
+  s_0d335c51e3b9b2::t_1262c2063fb259 1,3,35,37-39
+packages/companion-skill/skill/companion.json
+  s_0d335c51e3b9b2::t_1262c2063fb259 4,8,31-37,1040
+scripts/ci-scope.mjs
+  s_0d335c51e3b9b2::t_5a88fe72c05822 156
+packages/companion-skill/skill/SKILL.md
+  s_0d335c51e3b9b2::t_1262c2063fb259 17-18
+  s_0d335c51e3b9b2::t_652a510b5997ab 1337
+scripts/ci-container-smoke.sh
+  s_0d335c51e3b9b2::t_5a88fe72c05822 4,72
+  s_0d335c51e3b9b2::t_e974438b39a28b 107
+scripts/ci-gate.mjs
+  s_0d335c51e3b9b2::t_5a88fe72c05822 32
+apps/api/src/localSkills.test.ts
+  s_0d335c51e3b9b2::t_6338c0abc9284b 131
+  s_0d335c51e3b9b2::t_b7d8b574c4676b 51,130
+apps/api/test/integration/runtimeCutoverMigration.integration.test.ts
+  s_0d335c51e3b9b2::t_6338c0abc9284b 337-338
+  s_0d335c51e3b9b2::t_8d503ccf9526f4 1,230-273,394-395
+packages/core/src/services.ts
+  s_0d335c51e3b9b2::t_152d30fa8db9c3 53
+  s_0d335c51e3b9b2::t_221afc7f26490f 4346,4373,4538
+scripts/verify-change.mjs
+  s_0d335c51e3b9b2::t_5a88fe72c05822 246
+packages/core/package.json
+  s_0d335c51e3b9b2::t_152d30fa8db9c3 8
+packages/db/drizzle/0186_retire_hosted_companions.sql
+  s_0d335c51e3b9b2::t_126b50f33259a3 444-446
+  s_0d335c51e3b9b2::t_5f0bab7a4e27d7 1-443
+deploy/railway/README.md
+  s_0d335c51e3b9b2::t_126b50f33259a3 3-18
+docs/vision.md
+  s_0d335c51e3b9b2::t_1262c2063fb259 3-14
+scripts/dev-process.sh
+  s_0d335c51e3b9b2::t_36d2d89d639148 6,10
+  s_0d335c51e3b9b2::t_b14fcef275a702 42,44-45
+packages/storage/src/index.ts
+  s_0d335c51e3b9b2::t_6338c0abc9284b 1
+  s_0d335c51e3b9b2::t_126b50f33259a3 160
+.conductor/settings.toml
+  s_0d335c51e3b9b2::t_ee6ea4f868a49a 11
+.env.example
+  s_0d335c51e3b9b2::t_3bd0c9cb1e6266 14-15,19,30,61-63,70,73
+CONTRIBUTING.md
+  s_0d335c51e3b9b2::t_31be2d4550f1e9 36
+DESIGN.md
+  s_0d335c51e3b9b2::t_d9f77158817b38 4,181,214,265-266,276,313
+apps/api/src/context.ts
+  s_0d335c51e3b9b2::t_10472590c27ff8 1,173
+apps/api/src/index.ts
+  s_0d335c51e3b9b2::t_b9cd050836ebe1 2662,2682
+apps/api/src/runtimeRoleGrants.test.ts
+  s_0d335c51e3b9b2::t_e30e520f87341f 328-329
+apps/api/src/skillListRoute.test.ts
+  s_0d335c51e3b9b2::t_a8d1ebef759d1c 728,741
+apps/api/test/integration/preTenantRls.integration.test.ts
+  s_0d335c51e3b9b2::t_96823bb46c0f3a 1
+apps/api/test/integration/rls.integration.test.ts
+  s_0d335c51e3b9b2::t_e7d9a4a813cbc3 1
+apps/web/postcss.config.mjs
+  s_0d335c51e3b9b2::t_fede33ff02e86f 1-3
+apps/web/src/app/(app)/secrets/page.tsx
+  s_0d335c51e3b9b2::t_dedbcf71963650 1
+apps/web/src/components/secrets/SecretsApp.tsx
+  s_0d335c51e3b9b2::t_4bf584b626d5cd 1
+apps/web/src/components/skills/Sidebar.test.ts
+  s_0d335c51e3b9b2::t_952eaa0fa13675 67-73
+apps/web/src/components/skills/Sidebar.tsx
+  s_0d335c51e3b9b2::t_b24203bbabce04 4
+apps/web/src/components/skills/SkillPanel.test.ts
+  s_0d335c51e3b9b2::t_e1acce1beec59b 1,163
+apps/web/src/components/skills/SkillPanel.tsx
+  s_0d335c51e3b9b2::t_63d4174625b71c 4,18,163
+apps/web/src/components/skills/SkillsApp.tsx
+  s_0d335c51e3b9b2::t_a3ef1ebb807ead 1
+apps/web/src/styles/skills.css
+  s_0d335c51e3b9b2::t_8ad798cb1e0eac 1013
+apps/worker/src/index.ts
+  s_0d335c51e3b9b2::t_7267814c93b6ea 7-8,11
+apps/worker/src/sentry.ts
+  s_0d335c51e3b9b2::t_900f97158ad74e 8
+apps/worker/src/supervisors.test.ts
+  s_0d335c51e3b9b2::t_a10fd5610309ee 15,26
+apps/worker/src/supervisors.ts
+  s_0d335c51e3b9b2::t_f2c5ccd39ae444 18,37,42,54
+deploy/railway/Dockerfile.backend
+  s_0d335c51e3b9b2::t_c75b45cf2da4eb 21,23,42,44
+docs/runbooks/companions-runtime.md
+  s_0d335c51e3b9b2::t_73afbd95b4d3c2 1,3-4
+docs/testing.md
+  s_0d335c51e3b9b2::t_5f0ce91a19ce69 3-4,6,8-17,19-20,41-44
+package.json
+  s_0d335c51e3b9b2::t_77ea5a68f242cc 39,45
+packages/companion-skill/skill/companion.integrity.json
+  s_0d335c51e3b9b2::t_1105a6fce99fc8 3-4,10,22
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_f946242dcf6ba9::t_61798296615d95 3-5,7-14,17-19,22,24-40,43-44,46-51,53-57,59-60,64-76,78-86,88-94,96,100-101,104-108,110-116,118-120,122-135,137,139,141-144
+packages/contracts/package.json
+  s_0d335c51e3b9b2::t_bee59d2a2c373e 8
+packages/core/test/authz.test.ts
+  s_0d335c51e3b9b2::t_a23ef2898333d7 1
+packages/db/drizzle/meta/_journal.json
+  s_0d335c51e3b9b2::t_0601ffd015f70a 1306-1312
+packages/storage/test/storage.test.ts
+  s_0d335c51e3b9b2::t_437e26121bd4d7 1
+scripts/ci-scope.test.mjs
+  s_0d335c51e3b9b2::t_381319b67be2b9 109,115,117
+scripts/dev-conductor.sh
+  s_0d335c51e3b9b2::t_8edd7f86fd7ea6 5,89,764,767,791-792,797
+scripts/dev-stack-check.sh
+  s_0d335c51e3b9b2::t_945be9992cff13 8-10,293-300,329,391,407,410
+scripts/dev-stack.sh
+  s_0d335c51e3b9b2::t_d6505f9740c806 556
+pnpm-lock.yaml
+  s_0d335c51e3b9b2::t_3fb2357f22cffd 2106-2108,2110,2112,2115-2117,2119,2121,2124-2127,2129-2132,2134-2137,2139-2142,2144-2147,2149-2152,6582,6584-6585,6825,6827-6828,6830,6832,6834-6836,6838,6840-6841,6843,6845-6850,6852,6854-6856,6858,6860-6864,6866,6868-6871,6873,6875-6876,6878-6879,6881-6882,6884-6885,6887-6888,6890-6891,6893-6894,6896-6897,6899-6900,6902-6903,6905-6906,6908-6909,6911-6932,6934,6936-6938,6940,6942-6946,6948,6950-6953,6955,6957-6960,6962,6964-6969,6971,6973-6976,6978,6980-6987,6989,6991-7000,7002,7004-7007,7009,7011-7014,7016,7018,7020,7022-7035,7037-7040,7042,7044,7046,7048,7050,7055,8299-8300,9368-9369,9475
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3dd87ccad796803efb79e1a2e80cf2583a28dfb4",
+  "prompts": {},
+  "sessions": {
+    "s_0d335c51e3b9b2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07c1a-bb60-7030-8527-5149a8d74a6d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_f946242dcf6ba9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06de4-a8a5-7cd3-b713-2a8d451f7200",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

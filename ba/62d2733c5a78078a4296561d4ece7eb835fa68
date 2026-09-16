@@ -1,0 +1,80 @@
+docs/testing.md
+  s_32bd4ddec280ee::t_6dc880d13c09ac 32
+deploy/railway/README.md
+  s_32bd4ddec280ee::t_327389ee58705f 138
+packages/github/src/index.ts
+  s_32bd4ddec280ee::t_20600e863ccaca 410-475,477,479-482,490,493-524,542-545,557-572,578-580,582-583,593-606,608-612,624,631,679-680,682-683,694-710,715,727-728,730-732,741,743-745,750-762,765-774,829-835,841-845,847,885-909
+  s_32bd4ddec280ee::t_33fe19b1273a39 763,880-884
+  s_32bd4ddec280ee::t_35e9c8a8baa65d 106,115-117,125,134-146,643,688,716-726,729,764,776-790
+  s_32bd4ddec280ee::t_b2588e0aa7df80 573-577
+  s_32bd4ddec280ee::t_be0e14217b8cc6 742,746-749
+  s_32bd4ddec280ee::t_30ca90d4bb94b6 10,61,64-65,70,72-86,88-101,104,107-109,111-114,118-120,122,126,128,130,644-648,684-687,689-693,712,799
+  s_32bd4ddec280ee::t_e66c42e428de60 1,62-63,66-69,71,87,102-103,105,110,121,123-124,127,129,131-133,476,478,483-489,491-492,581,584-592,607,649,656,681,711,713-714,798,800-802
+packages/core/src/githubSync.ts
+  s_32bd4ddec280ee::t_b5cc3fb3146b53 3-9,501-513,568,598
+  s_32bd4ddec280ee::t_93c6bfa67f3ca2 486-493,564-566,599-600
+  s_ce38119f457277::t_8903d81c317ae1 514-515
+apps/worker/src/githubSupervisor.ts
+  s_32bd4ddec280ee::t_7a1fc0f76fae43 148,151,162-163
+packages/core/test/githubSync.test.ts
+  s_32bd4ddec280ee::t_93c6bfa67f3ca2 12-14
+  s_32bd4ddec280ee::t_b5cc3fb3146b53 3-9,19-32
+docs/design.md
+  s_32bd4ddec280ee::t_327389ee58705f 467-471,476,487-490,497-500,515-516
+  s_32bd4ddec280ee::t_e44b42df0e5a22 485-486,494-496
+  s_32bd4ddec280ee::t_4dccce427b9c6a 416-418
+  s_32bd4ddec280ee::t_6dc880d13c09ac 492-493,511-514
+  s_32bd4ddec280ee::t_75ae2e15ddf223 472-475,491
+apps/worker/src/githubSupervisor.test.ts
+  s_32bd4ddec280ee::t_2d98dea56de951 78-83,86,137,208,227-231,257-260
+  s_32bd4ddec280ee::t_9dcc976752522d 101
+  s_32bd4ddec280ee::t_1b343e864d2c4b 284-286
+  s_32bd4ddec280ee::t_7a1fc0f76fae43 60-62,74
+packages/github/src/index.test.ts
+  s_32bd4ddec280ee::t_2e87895c3c253e 442
+  s_32bd4ddec280ee::t_076e7002440435 740,755-756,759,761,775-778,797-798,802,805-808,810,821,829
+  s_32bd4ddec280ee::t_b5cc3fb3146b53 744,760,772-774,782-788,793-794,820,825
+  s_32bd4ddec280ee::t_9042516a10f62d 487-493,644-649
+  s_32bd4ddec280ee::t_9820e01e3a4929 392,537,577,830-888
+  s_32bd4ddec280ee::t_0cdf56902f37d8 584,598-599,605-612,630-632,743,745,753,757,762-766,779-781,789-792,809,815-816,823-824,826-828
+  s_32bd4ddec280ee::t_93532a3787a3b0 10-11,18,274-282,286-287,289-291,293-297,300,311-316,318-322,357-361,366-391
+  s_32bd4ddec280ee::t_e90c578c42de52 254-263
+  s_32bd4ddec280ee::t_6698564fd70cf6 393-397,439,509,551-576,597,643,739,741-742,746-752,754,758,767-771,795-796,799-801,803-804,811-814,817-819,822
+  s_32bd4ddec280ee::t_d1fd215be1d4a2 414,418-438,440-441,443-486,494-508,510-536
+  s_31bf4d166d4bb0::t_fc297151f761f3 398-399,538,578
+README.md
+  s_32bd4ddec280ee::t_327389ee58705f 99-101,106
+  s_32bd4ddec280ee::t_75ae2e15ddf223 102-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ba62d2733c5a78078a4296561d4ece7eb835fa68",
+  "prompts": {},
+  "sessions": {
+    "s_31bf4d166d4bb0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83c8-4ceb-7e11-87d0-104c7e9fc3af",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_32bd4ddec280ee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f84a9-3fc5-71a0-9de5-bb27f7b3f246",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_ce38119f457277": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd9-e1e6-7e03-a1c3-4141fc3eadb4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

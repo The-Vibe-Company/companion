@@ -1,0 +1,193 @@
+docs/testing.md
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 197-198,203-209
+apps/api/src/companionRoutes.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 90-98,497-499,2235-2299
+  s_62d0918e3295f4::t_fab62f4a3ecb10 2300-2301
+packages/contracts/src/companions.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 769,786-791,1075-1079,1130-1313,1484,1509-1512,1540-1547,1552,1855-1863,1923-1929
+packages/companion-runtime/src/types.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 204,704,735,842,863
+packages/db/src/schema.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 95-104,578-644,1010-1011,1022-1026,1049,1051,1133-1142,1182-1422,1661,2044-2045,2106-2107
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 5-13,18,1614-1615,1618,1624-1627,2041,2047-2048,2057-2062,2075,2100,2104,2117-2145,2172,2177-2178,2190
+docs/runbooks/companions-runtime.md
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 305-306
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionKitTests.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 1676-1733
+  s_62d0918e3295f4::t_db10a7665e30ab 1675
+packages/box-runtime/src/companionPluginSkills.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 19-20
+apps/ios/Companion/Screens/CompanionDecisionCard.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 20,73-84,146-147,285,374-402,439,454,460-473,485-487,497-499
+apps/ios/Companion/Screens/CompanionTranscriptWindowDemoView.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 22
+packages/contracts/src/companionControlMcp.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 1-209
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 11,158,344,349,720-722,724-732,738-748,831-832,836,846-847,864,1395-1398,1431-1443,1576,4039,4102
+apps/ios/CompanionKit/Sources/CompanionKit/SessionStore.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 1036-1038,1044-1046
+packages/companion-runtime/src/settings.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 24,30,36
+apps/macos/CompanionMac/MacChatView.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 207,220-221,227,360,568,582-590,608-609,612-613,839,868-877,910-918,932,938-950,963-971,994-995,1001-1005
+  s_62d0918e3295f4::t_530a2cc25f5c48 1006-1007
+packages/companion-runtime/src/operations.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 391,401,1051
+packages/box-runtime/src/companionPermissionBroker.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 12,42-47
+packages/companion-skill/skill/companion.json
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 4,31-39
+docs/companions-runtime.md
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 574-612,819-820,831,1006-1009
+packages/db/runtime-role-grants.sql
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 895-928
+apps/ios/Companion/Screens/PluginManagementView.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 11,309,321,325,506-508
+packages/contracts/test/companionPluginCatalog.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 51-65
+apps/api/src/companionControlMcp.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 1-142
+packages/box-runtime/src/companionPiInjection.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 79-88
+packages/box-runtime/src/companionBoxAgentSource.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 6
+DESIGN.md
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 276-281
+apps/ios/README.md
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 87-88
+apps/ios/Companion/Screens/ChatView.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 163,211,988-989,2269,2280-2293,2302-2303,2305-2311,2313-2342,2379-2393
+  s_62d0918e3295f4::t_4cfde830fb2d26 2394
+apps/ios/Companion/Screens/CompanionDecisionDemoView.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 46
+apps/runtime/src/materialPipeline.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 163-165,218,222,236,248,253-254,685-693
+apps/web/src/components/companions/DecisionToolCard.tsx
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 12,17,55,65,203,210-216,223-227,266-267,270,301-317,332-345,394,407-410
+apps/runtime/src/materialPipeline.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 100-103,125-126,188-189,194,197-206,223-224,227,230,236,238,254-256,496,505
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionChatPresentationTests.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 87-119
+apps/macos/CompanionMac/MacWorkspaceView.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 413-420,470-483
+  s_62d0918e3295f4::t_327dda1b1a7f71 484
+packages/box-runtime/src/companionMcpGateway.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 11-15,89,94-96,99-101,139-140,237-238,242-251,316-386
+  s_62d0918e3295f4::t_9ac4c3889b4399 387-388
+packages/companion-skill/skill/SKILL.md
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 23-36,48,58-59,1394
+apps/ios/Companion/Screens/PluginCatalogSheet.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 4-9,21,23-26,28,118-121,147-152
+docs/product.md
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 72-74,115-116,121-123
+apps/api/src/localSkills.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 51,130-132,137-142
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 3-5,7-14,17-19,22,24-25,27-29,31-37,39-40,43,46-47,49-51,53-54,56-57,59,64-76,78-79,81-83,86,90,92,94,96,100-101,104-105,107-108,111-112,114-116,118-120,124-125,127,132,134-135,137,139,141-144
+apps/web/src/components/companions/decisionActions.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 21-22,32-33
+packages/box-runtime/src/companionPiInjection.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 2-5,94,100-107
+  s_62d0918e3295f4::t_8eeca3c0778225 108
+apps/ios/Companion/Screens/CompanionListView.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 36,185-186,603-613
+apps/ios/CompanionKit/Sources/CompanionKit/CompanionChatPresentation.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 50,60,86,88,102-106,112-131
+  s_62d0918e3295f4::t_448e1e65ad8f2e 132-133
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 367-371,385,563-814,3394
+packages/companion-runtime/src/settings.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 155,169,173-174,192,196
+apps/web/src/components/companions/CompanionTranscript.tsx
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 261,268-272,336,350-355,900-901,907
+packages/companion-runtime/src/store.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 91-94,611,1105-1118
+  s_62d0918e3295f4::t_64d541097e8e43 1119-1121
+packages/companion-runtime/src/store.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 593,608-614
+packages/contracts/src/index.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 27
+apps/macos/CompanionMac/AppConfig.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 5,19-39
+  s_62d0918e3295f4::t_c807869a4ee15f 40-41
+apps/web/src/components/companions/CompanionPlugins.tsx
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 7,265,271,292,295-300,433,443-452,479-481,484-493,512-526,552,654-655
+packages/box-runtime/src/companionMcpGateway.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 14,23-25,42-96,611
+apps/api/src/companionControlMcp.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 1-403
+apps/ios/CompanionKit/Sources/CompanionKit/Models.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 1920,1929-2018,2177,2189,2204,2221-2222,2237-2238,2255-2256,2263-2285,2383,2403,2426,2446,2466,2483
+apps/runtime/src/database.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 23
+docs/design.md
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 185,192-196
+  s_62d0918e3295f4::t_52dc753d45a0ab 197
+packages/box-runtime/src/companionPermissionBroker.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 2,4-6,19,22-25,35-46,48-49,53,55,57-58,66
+packages/box-runtime/src/companionPiBrokerSource.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 6
+packages/companion-runtime/src/test/fixtures.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 475,548-551,881
+packages/companion-skill/skill/companion.integrity.json
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 3-4,10,22
+packages/contracts/src/companionBudgets.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 161-162,187,190
+packages/contracts/src/companionPluginCatalog.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 80-85
+packages/core/src/index.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 30
+CLAUDE.md
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 135-137
+packages/contracts/test/companions.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 5,15,24-25,64-126
+apps/api/src/companionRoutes.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 126-135,151,168-173,228,314-322,405-406,489,827-835,928-1096,1153-1175,1678-1701,1709,1714-1717,1792-1808,2750-2777,2785-2851
+apps/web/src/components/companions/CompanionPlugins.client.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 217-239
+docs/vision.md
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 38,46-49
+  s_62d0918e3295f4::t_90ce6b2f1409db 50
+packages/core/src/preTenant.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 126-144
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionLocalCacheTests.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 271,273,277,280,1060-1061,1065,1075,1083-1084,1090,1095,1114
+docs/PRD.md
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 89-101,107-109,138-140
+packages/box-runtime/src/companionPluginSkills.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 24,42-43,46,49
+packages/core/src/companionControl.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 1-569
+packages/db/drizzle/0153_companion_control_mcp.sql
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 1-1261
+packages/db/src/runtimeRole.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 96,143,246
+packages/box-runtime/src/companionPiBrokerExecutable.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 226,233,237
+apps/ios/CompanionKit/Sources/CompanionKit/APIClient.swift
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 1009-1011,1016,1019-1024
+packages/companion-runtime/src/operations.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 1191,1212,1216-1217,1230,1235,1239
+packages/core/test/companionControl.test.ts
+  s_62d0918e3295f4::t_0c4a2d1bbbcb0e 1-141
+packages/db/drizzle/meta/_journal.json
+  s_62d0918e3295f4::t_cca16239aecb98 1080-1087
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6fed8bc9e8d879a4fd052a4ad5a04c410cc40a31",
+  "prompts": {},
+  "sessions": {
+    "s_62d0918e3295f4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05bfc-5e51-7cd0-bac1-15f23c94ef72",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

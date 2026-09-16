@@ -1,0 +1,43 @@
+scripts/ci-rsc-smoke.sh
+  s_012e450683d2c8::t_47098c7f217a73 1-102
+apps/api/package.json
+  s_012e450683d2c8::t_47098c7f217a73 15-16,28-29,31-34
+apps/web/src/lib/settingsData.ts
+  s_012e450683d2c8::t_e1b68ca1709391 81-83
+  s_012e450683d2c8::t_ffa778a8074ddf 58,65-67,84
+.github/workflows/ci.yml
+  s_012e450683d2c8::t_47098c7f217a73 42-44,48-51,55-56
+apps/web/src/components/org/WorkspaceLoadError.tsx
+  s_012e450683d2c8::t_47098c7f217a73 1-34
+apps/web/src/app/(app)/@settings/(.)settings/page.tsx
+  s_012e450683d2c8::t_ffa778a8074ddf 12-17,21-29,32-40
+  s_012e450683d2c8::t_e1b68ca1709391 18-20,30-31
+apps/api/tsup.config.ts
+  s_012e450683d2c8::t_47098c7f217a73 6-22
+package.json
+  s_012e450683d2c8::t_47098c7f217a73 25
+apps/web/src/lib/apiServer.ts
+  s_012e450683d2c8::t_47098c7f217a73 4-15,20-26,29-62
+scripts/rsc-smoke.mjs
+  s_012e450683d2c8::t_47098c7f217a73 1-110
+apps/web/src/app/(app)/error.tsx
+  s_012e450683d2c8::t_47098c7f217a73 1-32
+apps/web/src/app/(app)/skills/page.tsx
+  s_012e450683d2c8::t_47098c7f217a73 6,18-20,25-31,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "0483381da2d58075390d6a893eb11ecb810438bb",
+  "prompts": {},
+  "sessions": {
+    "s_012e450683d2c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea892-f9f0-73d0-94e6-37db21cb7931",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

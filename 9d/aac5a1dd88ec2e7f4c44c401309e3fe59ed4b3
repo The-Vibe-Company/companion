@@ -1,0 +1,38 @@
+docs/design.md
+  s_d69435c562b683::t_c6cea497c7ee32 304
+  s_d69435c562b683::t_6ea90d01faaa26 305-306
+apps/web/src/components/skills/ListView.tsx
+  s_d69435c562b683::t_c6cea497c7ee32 538-542
+apps/web/src/components/skills/listGrouping.ts
+  s_d69435c562b683::t_dcfe554c14d654 168
+  s_d69435c562b683::t_c6cea497c7ee32 22,24-31,39-40,124,132,138,147
+DESIGN.md
+  s_d69435c562b683::t_c6cea497c7ee32 317
+  s_d69435c562b683::t_6ea90d01faaa26 318-319
+apps/web/src/components/skills/ListView.test.ts
+  s_d69435c562b683::t_c6cea497c7ee32 320,330-332
+  s_d69435c562b683::t_dcfe554c14d654 337-352
+apps/web/src/components/skills/listGrouping.test.ts
+  s_d69435c562b683::t_c6cea497c7ee32 114,126,132
+  s_d69435c562b683::t_dcfe554c14d654 137-151
+  s_d69435c562b683::t_6ea90d01faaa26 68-71,108,160
+  s_d69435c562b683::t_ae80a762d2a603 176-177
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_d69435c562b683::t_c6cea497c7ee32 702-703
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "9daac5a1dd88ec2e7f4c44c401309e3fe59ed4b3",
+  "prompts": {},
+  "sessions": {
+    "s_d69435c562b683": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f85b2-b515-74a2-97cf-157163f382bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

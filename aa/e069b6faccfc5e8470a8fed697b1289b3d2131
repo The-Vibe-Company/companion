@@ -1,0 +1,23 @@
+packages/companion-skill/skill/companion.json
+  s_1285d72dd9fb9c::t_ef5ec9e07afe68 4,11-17
+packages/companion-skill/skill/reference/api.md
+  s_1285d72dd9fb9c::t_03d9d447cae0c1 429-431,442,446
+packages/companion-skill/skill/SKILL.md
+  s_1285d72dd9fb9c::t_3e4a82b07d7ce1 116-118,123-125,806-816,827
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "aae069b6faccfc5e8470a8fed697b1289b3d2131",
+  "prompts": {},
+  "sessions": {
+    "s_1285d72dd9fb9c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efe3a-6d91-70d1-a0b2-0d4c8140dcc0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

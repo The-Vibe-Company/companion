@@ -1,0 +1,46 @@
+packages/companion-skill/skill/scripts/sync_companion.py
+  s_a9c32ead59c243::t_32b328a52f3af4 1-67
+packages/companion-skill/skill/SKILL.md
+  s_a9c32ead59c243::t_c0d31819f1a0cf 150-157,1079-1088,1092-1093,1097-1098
+packages/companion-skill/skill/companion.json
+  s_a9c32ead59c243::t_a89ba2c0eb01c7 369
+  s_a9c32ead59c243::t_a977d4303976c0 4,8,30-38
+  s_a9c32ead59c243::t_32b328a52f3af4 23
+packages/companion-skill/skill/scripts/bootstrap_update.py
+  s_a9c32ead59c243::t_bc21a4689dd67f 270
+  s_a9c32ead59c243::t_a507a0dd06d755 191-200,256
+  s_a9c32ead59c243::t_957bff3a66bfaa 210-214
+  s_a9c32ead59c243::t_767b27228dd1a5 14,21-28,92-105,116-188,208,215-223,225-227,238-250,252,254-255,257,259,263-269,271-274,278-286,299-310,315-327,330,337,339-340
+  s_a9c32ead59c243::t_c35d80210a3fe0 189-190
+packages/companion-skill/skill/evals/evals.json
+  s_a9c32ead59c243::t_0861037b78e4a3 122-146
+apps/api/src/localSkills.test.ts
+  s_a9c32ead59c243::t_a89ba2c0eb01c7 51,81,128-130
+packages/companion-skill/skill/scripts/bootstrap.py
+  s_a9c32ead59c243::t_b91d0711c5611f 6-9,27,159,227-232,235,238-239,254
+  s_a9c32ead59c243::t_bc21a4689dd67f 242-250
+packages/companion-skill/skill/scripts/test_bootstrap.py
+  s_a9c32ead59c243::t_2773b7464fabea 90-96,99,121-167,465-515,618-619,622-649,677-744
+  s_a9c32ead59c243::t_44fe8b485220f9 650-676
+  s_a9c32ead59c243::t_7f4332c520c478 745
+packages/companion-skill/skill/scripts/test_sync_companion.py
+  s_a9c32ead59c243::t_6fa855f1dc0031 1-45
+packages/companion-skill/skill/companion.integrity.json
+  s_a9c32ead59c243::t_087279f21ed77b 3-6,8,16,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "95abd58fbc9ae30e45b6584a22b075086d803a36",
+  "prompts": {},
+  "sessions": {
+    "s_a9c32ead59c243": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8e08-1d8b-7312-84e1-b34091483461",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

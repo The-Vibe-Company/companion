@@ -1,0 +1,19 @@
+apps/web/src/components/skills/ListView.tsx
+  s_4d664a5d68e055::t_60931f9c60d6fb 120-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "9021ffaa8ae449e02026c9bb7b521917cd207c22",
+  "prompts": {},
+  "sessions": {
+    "s_4d664a5d68e055": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e422828b-c9a6-43c1-b825-ff755cf84cd8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,59 @@
+packages/db/src/schema.ts
+  s_1e74ce65ff5b16::t_65ea6c3b8c74ee 857-886
+apps/web/src/components/org/SettingsSidebar.tsx
+  s_1e74ce65ff5b16::t_85eb7301838fd1 161-165
+  s_1e74ce65ff5b16::t_ff206ba0f66274 160
+apps/api/src/index.ts
+  s_1e74ce65ff5b16::t_4dda11102b331a 2366-2373
+  s_1e74ce65ff5b16::t_8a11b2b4fed320 18,20
+  s_1e74ce65ff5b16::t_bae503481d7531 25,27
+  s_1e74ce65ff5b16::t_cf448c731c146a 2430-2473
+apps/web/src/lib/agentQueries.ts
+  s_1e74ce65ff5b16::t_16e49497b2bec7 161-183
+apps/web/src/components/org/ProvidersPane.tsx
+  s_1e74ce65ff5b16::t_bad64dac3128b9 6,9-26,28,36-41,46-47,50-51,56,65,69,85,98-102,110-111,113-150,152,163,169,181
+apps/web/src/components/org/SettingsView.tsx
+  s_1e74ce65ff5b16::t_55c2a879defce9 73-91,95-96
+  s_1e74ce65ff5b16::t_151cce222e5ef8 9,11-18
+  s_1e74ce65ff5b16::t_f8d559faa9309c 36-37
+apps/web/src/components/org/model.ts
+  s_1e74ce65ff5b16::t_f5eb5016123f03 92
+apps/api/src/agentsRoute.test.ts
+  s_1e74ce65ff5b16::t_827f0d66ad4d7a 105,109-111
+apps/web/src/lib/settingsData.ts
+  s_1e74ce65ff5b16::t_22a50b9c905191 23
+packages/core/test/agentsFakeDb.ts
+  s_1e74ce65ff5b16::t_6c238db6344bad 394-402
+  s_1e74ce65ff5b16::t_cb6d2df043b12c 106
+  s_1e74ce65ff5b16::t_ba4cc138226c5c 181-191
+  s_1e74ce65ff5b16::t_6e00fc050cbb3f 38,48,61
+  s_1e74ce65ff5b16::t_e292921869da6b 316-332
+packages/db/drizzle/0034_org_provider_connections.sql
+  s_1e74ce65ff5b16::t_772fd42af4c53a 1-20
+packages/core/src/secretbox.ts
+  s_1e74ce65ff5b16::t_b5e0bc6033cf93 110-114
+packages/core/src/providerConnections.ts
+  s_1e74ce65ff5b16::t_52d941954114fb 133-135,144,154-219,221-250,252-303
+  s_1e74ce65ff5b16::t_4ac98e5daae882 4-5
+packages/core/test/providerConnections.test.ts
+  s_1e74ce65ff5b16::t_1d8385a8da4c58 3,5,9,12
+  s_1e74ce65ff5b16::t_7e1b03609c0a5d 93-147
+packages/db/drizzle/meta/_journal.json
+  s_1e74ce65ff5b16::t_d0c6c5215b185e 242-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a78f0029986e438c7a4b20d3a89d9ceb27cc6f1b",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

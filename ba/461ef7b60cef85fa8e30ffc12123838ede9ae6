@@ -1,0 +1,19 @@
+apps/api/src/modelPreferencesRoute.test.ts
+  s_597e0620a42fa8::t_c67c8344d742c8 1,5-6,34-63,83-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ba461ef7b60cef85fa8e30ffc12123838ede9ae6",
+  "prompts": {},
+  "sessions": {
+    "s_597e0620a42fa8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8a47-f1df-7071-8af7-e27d803960fb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

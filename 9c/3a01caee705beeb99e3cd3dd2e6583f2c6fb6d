@@ -1,0 +1,55 @@
+packages/companion-skill/skill/SKILL.md
+  s_2e6eeed93e5d45::t_294706628896f4 68
+  s_2e6eeed93e5d45::t_45f5193587c09a 17-18,21-22,28-29,34,38-46,50-52,54-55,209-219,401-403,565-567
+  s_2e6eeed93e5d45::t_fe9c0577befbb6 53
+apps/api/src/index.ts
+  s_2e6eeed93e5d45::t_dd35d0748a4084 1840,1842-1845,1848,1860,1862-1865,1868
+packages/companion-skill/skill/companion.json
+  s_2e6eeed93e5d45::t_a2278582103368 4,7,11-19,47-50
+apps/web/src/components/skills/SkillsApp.tsx
+  s_2e6eeed93e5d45::t_751b7484495fd7 1266
+apps/web/src/components/skills/updateFlow.test.ts
+  s_2e6eeed93e5d45::t_9a61cdffe5c158 60-62,173,180,187
+  s_2e6eeed93e5d45::t_fe9c0577befbb6 47
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_2e6eeed93e5d45::t_fe9c0577befbb6 148,746
+  s_2e6eeed93e5d45::t_652f963ed6fafc 758-762,800
+packages/contracts/src/localSkills.ts
+  s_2e6eeed93e5d45::t_dd35d0748a4084 36-37
+  s_2e6eeed93e5d45::t_0c2bfac5360143 23-25
+apps/api/src/companionSkillPackage.ts
+  s_2e6eeed93e5d45::t_dd35d0748a4084 155-158,162
+  s_2e6eeed93e5d45::t_84c26d2000f272 55-58,73-87,95-103
+  s_2e6eeed93e5d45::t_9a7ebd6f4534fa 146-148
+packages/companion-skill/skill/reference/api.md
+  s_2e6eeed93e5d45::t_06a29955f228df 3-4,13-29,93-97
+  s_2e6eeed93e5d45::t_fe9c0577befbb6 30-32,64,101-102
+docs/design.md
+  s_2e6eeed93e5d45::t_5ce317d78efc98 321-322
+  s_2e6eeed93e5d45::t_9aa9558a2145bb 164-168
+apps/api/src/localSkills.test.ts
+  s_2e6eeed93e5d45::t_7842291d3e343f 46,82,92-93,95,113-115,143-144
+  s_2e6eeed93e5d45::t_46b1deff1b7e16 76-77
+  s_2e6eeed93e5d45::t_fe9c0577befbb6 9-10,52,54,88,164,168
+  s_2e6eeed93e5d45::t_871d5ca107cbfb 145
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_2e6eeed93e5d45::t_7150201a3c674c 277,350-358
+  s_2e6eeed93e5d45::t_37a27244541a6e 48-55,146,150,392-393
+  s_2e6eeed93e5d45::t_9c1e68f736d40b 276,499-507,530,554-555,559,562
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "9c3a01caee705beeb99e3cd3dd2e6583f2c6fb6d",
+  "prompts": {},
+  "sessions": {
+    "s_2e6eeed93e5d45": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efb66-5494-7383-a1b8-54c49baab341",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

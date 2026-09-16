@@ -1,0 +1,207 @@
+packages/box-sim/test/agentListener.test.ts
+  s_6e862c14bab050::t_56db40d1e1f6ab 185,194
+packages/box-runtime/src/companionPiBrokerSource.ts
+  s_6e862c14bab050::t_53295b9135a46e 6
+apps/runtime/src/directBoxTransport.test.ts
+  s_6e862c14bab050::t_424f7d30179145 506-539
+  s_6e862c14bab050::t_7b27a6948c4dcf 460
+  s_6e862c14bab050::t_71c13fc5577d5a 1
+  s_6e862c14bab050::t_ceab6433198069 444-447,449-459,461-473,475-478,580-610
+  s_6e862c14bab050::t_8e45d3ba823856 500
+  s_6e862c14bab050::t_a620b7a08373ac 362-394
+  s_6e862c14bab050::t_0672fd6c5a9ed4 12,117-118,140-143,325-336,343,353-355,357-361,395-413,415-437,439-443,479-499,501-505,540-579
+  s_6e862c14bab050::t_70649d9050e494 340,414,438,448,474
+packages/box-sim/src/server.ts
+  s_6e862c14bab050::t_e429663c2d1385 956,960,970
+  s_6e862c14bab050::t_f3a9826e1bdb5e 963-969,971-976
+  s_6e862c14bab050::t_2f4a71127cc38a 74-83,137-149,804-805
+  s_6e862c14bab050::t_ebdf8e7634f91f 924,951-955,957-959,961-962,977-1132,1137,1139-1142
+  s_6e862c14bab050::t_aba525e71f5a79 8,790,798-801,807
+  s_6e862c14bab050::t_9815afc68e036a 150
+packages/box-runtime/src/companionBoxAgentCore.test.ts
+  s_6e862c14bab050::t_70649d9050e494 297,306
+  s_6e862c14bab050::t_4b606e1b23a6bc 27,289-296,298-305,307-423,427
+  s_6e862c14bab050::t_35ec701b02e0a7 63-67
+packages/box-runtime/src/companionBoxAgentClient.test.ts
+  s_6e862c14bab050::t_ceab6433198069 305,359-369
+  s_6e862c14bab050::t_70649d9050e494 170,182,194-199,226,244
+  s_6e862c14bab050::t_71c13fc5577d5a 1
+  s_6e862c14bab050::t_f73431e5c11cf0 14,180-181,183-186,208-221,223-225,227-228
+  s_6e862c14bab050::t_b2de7db0e2771c 18,164-169,171-179,187-193,200-207,222,229-243,245-304
+  s_6e862c14bab050::t_98aeac0db9eedd 3
+  s_6e862c14bab050::t_9fcd081f11bc32 306
+packages/box-runtime/src/companionBoxAgentExecutable.ts
+  s_6e862c14bab050::t_05df17cb3774fe 13,25-32
+packages/companion-runtime/src/engine.test.ts
+  s_6e862c14bab050::t_fe53078d10781d 848-876
+  s_6e862c14bab050::t_5e1ffd20c67953 785-797,799,805-815,817-847
+  s_6e862c14bab050::t_7ca4b56f9ecb5d 877-902
+  s_6e862c14bab050::t_3d3188b2f3780c 711-714
+  s_6e862c14bab050::t_424f7d30179145 798,800-804,816
+packages/box-runtime/src/companionPiBrokerExecutable.ts
+  s_6e862c14bab050::t_47b023298d9c45 9,28-29,212-215,230
+  s_6e862c14bab050::t_70b197d83e870e 54
+packages/box-sim/src/commandShims.ts
+  s_6e862c14bab050::t_b4b59ad56cc90d 701
+  s_6e862c14bab050::t_f73431e5c11cf0 868
+  s_6e862c14bab050::t_efd58ca4136d60 842-867,869-874
+  s_6e862c14bab050::t_e429663c2d1385 961-963,969-979
+  s_6e862c14bab050::t_c685d5d9a17f84 1008-1022,1095-1111
+  s_6e862c14bab050::t_3b4fac5f3542a9 1125-1131,1179-1192
+  s_6e862c14bab050::t_48658413103d88 942-948,951-960,964-968,980-1000,1073-1087
+  s_6e862c14bab050::t_4ba9d95b7a96b7 121-126,186,381
+  s_6e862c14bab050::t_60b3ecd0332334 1193
+apps/runtime/src/boxAdapters.test.ts
+  s_6e862c14bab050::t_8e45d3ba823856 587,600,652
+packages/companion-runtime/src/store.ts
+  s_6e862c14bab050::t_44c991678b237b 680,736
+  s_6e862c14bab050::t_c7ad12db8b3b22 681-682
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_6e862c14bab050::t_e429663c2d1385 956,4177,4191-4193
+packages/db/src/runtimeRole.ts
+  s_6e862c14bab050::t_01bcc32e6d149c 42
+packages/companion-runtime/src/ports.ts
+  s_6e862c14bab050::t_e015d3088ef052 139-147
+  s_6e862c14bab050::t_e429663c2d1385 134-135,148
+  s_6e862c14bab050::t_d24f7ae1af1697 136-138
+packages/box-runtime/src/companionRuntimeImage.ts
+  s_6e862c14bab050::t_fc8b99261ea0a7 11
+packages/db/drizzle/0126_companion_dispatch_resolution.sql
+  s_6e862c14bab050::t_ad995f1e03fc85 73,81
+  s_6e862c14bab050::t_c7ad12db8b3b22 63-64,90-101
+  s_6e862c14bab050::t_3d76f7fbff2292 1,6-62,65-72,74-80,82-89,102-150
+  s_6e862c14bab050::t_8e61eee77f16d4 2-5
+apps/runtime/src/materialPipeline.ts
+  s_6e862c14bab050::t_3b9f9238b95ccc 65-67,348,358,361,390
+packages/companion-runtime/src/attempt.ts
+  s_6e862c14bab050::t_4e753d9eb27618 521
+  s_6e862c14bab050::t_c7ad12db8b3b22 604,688-694,711,734
+  s_6e862c14bab050::t_c1153bc5b98bd3 793-794
+  s_6e862c14bab050::t_5140446e033d8e 686-687,695-710,712-733,735-757,759,791-792,795-808
+  s_6e862c14bab050::t_e429663c2d1385 615
+  s_6e862c14bab050::t_2ddad25940da18 809-810
+docs/design.md
+  s_6e862c14bab050::t_aaf505abe80c3c 166-168
+  s_6e862c14bab050::t_8167a0add5b056 169
+  s_6e862c14bab050::t_65e42c967a4038 162-165,170-172
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_6e862c14bab050::t_1a530614b33f7b 3425,3427-3429,3432-3448,3491,3493-3494,3502-3506
+  s_6e862c14bab050::t_6a03519a9a9148 5016-5025
+  s_6e862c14bab050::t_fc29c3d33633d3 3423
+  s_6e862c14bab050::t_ec3cb77a3fd033 3424,3426,3430-3431,3488-3490,3492,3495-3501
+apps/runtime/src/boxAdapters.ts
+  s_6e862c14bab050::t_e429663c2d1385 251
+docs/testing.md
+  s_6e862c14bab050::t_e6ecb4b7e887da 123-125,127,150-151
+  s_6e862c14bab050::t_cde3b81bd5e810 126
+apps/runtime/src/directBoxTransport.sim.test.ts
+  s_6e862c14bab050::t_bce3389b5f6b4c 3-5,20,108-113,123,167,190,205-215,217-224,226-260
+  s_6e862c14bab050::t_70649d9050e494 185,216,225,269
+  s_6e862c14bab050::t_ed8330af65c0c8 261
+packages/companion-runtime/src/types.ts
+  s_6e862c14bab050::t_44c991678b237b 283-284,779
+  s_6e862c14bab050::t_c7ad12db8b3b22 285-286,780
+apps/runtime/src/production.ts
+  s_6e862c14bab050::t_51ccbd701676a3 37,264-270,276
+docs/companions-runtime.md
+  s_6e862c14bab050::t_e6ecb4b7e887da 664-665,683-684,828-832,900-902
+  s_6e862c14bab050::t_8167a0add5b056 358,363,666
+  s_6e862c14bab050::t_aaf505abe80c3c 359-362
+  s_6e862c14bab050::t_8fa7a89745242e 161-162,331-337,346-357,364-368
+packages/box-runtime/src/companionPiBrokerCore.ts
+  s_6e862c14bab050::t_71c13fc5577d5a 1
+  s_6e862c14bab050::t_f73431e5c11cf0 709-710,712-715,810-813,1244
+  s_6e862c14bab050::t_d37f0c4c8fc81d 482,489-497
+  s_6e862c14bab050::t_52fec4d25032f8 23,35,436,441-481,483-488,498-532,538,550,651-652,690,716-727,781,783,786-809
+  s_6e862c14bab050::t_6fafd606ae47d8 1230-1243,1245,1247-1252,1256-1276
+  s_6e862c14bab050::t_e429663c2d1385 691-693,696-697,711,1246,1253-1255
+packages/companion-runtime/src/test/fixtures.ts
+  s_6e862c14bab050::t_40db5867241435 185
+  s_6e862c14bab050::t_99db4a84ee1814 186-188
+  s_6e862c14bab050::t_c7ad12db8b3b22 351-356
+  s_6e862c14bab050::t_01bcc32e6d149c 350
+packages/db/runtime-role-grants.sql
+  s_6e862c14bab050::t_01bcc32e6d149c 619-626
+  s_6e862c14bab050::t_8e61eee77f16d4 616-618
+packages/box-runtime/src/companionPiBrokerCore.test.ts
+  s_6e862c14bab050::t_424f7d30179145 511-529
+  s_6e862c14bab050::t_7b27a6948c4dcf 16
+  s_6e862c14bab050::t_71c13fc5577d5a 1
+  s_6e862c14bab050::t_7b46dd5388754a 20,366-433,484-510,899-902
+  s_6e862c14bab050::t_0e97d0aa4c2f6f 10
+  s_6e862c14bab050::t_a2154d5a1a0aae 434,462-481
+  s_6e862c14bab050::t_942363a9efc846 435-461,482-483,907,918-923,928,930
+packages/box-runtime/src/companionBoxAgentCore.ts
+  s_6e862c14bab050::t_e429663c2d1385 446,448-449,454
+  s_6e862c14bab050::t_4445db3a6a71a6 3-16,29-34,46-47,88-104,120-132,141-143,193-267,341-349,376-385,495-566
+  s_6e862c14bab050::t_fc8b99261ea0a7 38-40,44,305-308
+  s_6e862c14bab050::t_bd4b25f5dacce0 336-339,648-654,657-678,793
+  s_6e862c14bab050::t_288bbe91150670 709-713,781-792
+  s_6e862c14bab050::t_e5a17472e58764 1
+  s_6e862c14bab050::t_48c2cdf688a178 364-375,441-445,447,450-453,455-494,567-573,575-578,643-647,655-656
+  s_6e862c14bab050::t_16b3443ce50d57 340,679,794
+apps/runtime/src/materialPipeline.test.ts
+  s_6e862c14bab050::t_e55c19d9f39d1a 144
+  s_6e862c14bab050::t_dc88ab8065e122 143
+packages/box-runtime/src/companionBoxAgentSource.ts
+  s_6e862c14bab050::t_53295b9135a46e 6
+packages/box-runtime/src/companionBoxAgentClient.ts
+  s_6e862c14bab050::t_f73431e5c11cf0 215,227-228,230-236
+  s_6e862c14bab050::t_fc8b99261ea0a7 90-93
+  s_6e862c14bab050::t_ff47b2bb179420 324-327,331-332,339,346,582-586
+  s_6e862c14bab050::t_a4e6d3ed0f34ac 6,99,105-108,204
+  s_6e862c14bab050::t_16721f57009567 24
+  s_6e862c14bab050::t_41da9f30c31de6 19-22,79,275-323,328-330,333-338,340-345,347-362,364,368,373-406,420,449,453,456,472-474
+  s_6e862c14bab050::t_9811abf0dbc032 3,587,598-662
+  s_6e862c14bab050::t_e429663c2d1385 191,198-203,214,229
+  s_6e862c14bab050::t_c124b0a11223ac 222,251,268
+  s_6e862c14bab050::t_25e6cb8697cc67 16-18,188-190,192-197,205-213,216-221,223-226,237-250,252-267,269-274,367,371,436,455,527-552,554,559-581
+  s_6e862c14bab050::t_83033eab3b620a 553,555-558
+  s_6e862c14bab050::t_71c13fc5577d5a 1
+  s_6e862c14bab050::t_bc650765b2103c 2,588
+apps/runtime/src/directBoxTransport.ts
+  s_6e862c14bab050::t_9b930ebe5f66aa 604,610,613,615,659,662
+  s_6e862c14bab050::t_a620b7a08373ac 631-633,648-650
+  s_6e862c14bab050::t_e429663c2d1385 244,256,721-726
+  s_6e862c14bab050::t_053dd470e0f529 17-21,279-284,289-290,292-299,301-367,372-379,385-388
+  s_6e862c14bab050::t_5d55360d85f68a 192-193,268-278,621-630,634-647,651-653,730-743
+  s_6e862c14bab050::t_2fdcd8f670c1b7 218-219,242-243,245-252,254-255,258-267,409-410,599-603,605,609,611-612,614,616-620,656-658,660-661,663-664,667-668,673-675,680-690,692-694,702-720,727-729,744-766
+  s_6e862c14bab050::t_460ea05439fc3b 222,691
+  s_6e862c14bab050::t_ff0fd69c455106 3-4,6-9
+  s_6e862c14bab050::t_f73431e5c11cf0 257
+  s_6e862c14bab050::t_ff47b2bb179420 285-288,291,368-371,380-384,665-666,672,676-679
+  s_6e862c14bab050::t_e7ea79442d0544 241,253,606-608,669-671
+  s_6e862c14bab050::t_71c13fc5577d5a 1
+  s_6e862c14bab050::t_0672fd6c5a9ed4 300
+  s_6e862c14bab050::t_b2d0f89c61af96 767
+packages/box-runtime/src/companionPiBroker.ts
+  s_6e862c14bab050::t_1345b9f4aa78cc 9,20
+apps/api/src/runtimeRoleGrants.test.ts
+  s_6e862c14bab050::t_86d61f876caaa0 54-56
+packages/db/drizzle/meta/_journal.json
+  s_4bb21447327294::t_43b4bab19a9700 886-892
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "9d61bc00123365830ef137a4bf851d5040aba451",
+  "prompts": {},
+  "sessions": {
+    "s_4bb21447327294": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03534-eea2-7ec0-9cb3-c22ff4a69e55",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_6e862c14bab050": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03a1b-9b7d-7dd1-aa7f-31201c80d000",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

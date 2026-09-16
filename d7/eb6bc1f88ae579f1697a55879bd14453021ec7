@@ -1,0 +1,21 @@
+packages/core/src/providerConnections.ts
+  s_48f42bfbc57a73::t_32da95f3a58d22 19-22,44,277-289,302-313
+packages/core/test/providerConnections.test.ts
+  s_48f42bfbc57a73::t_32da95f3a58d22 313-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "d7eb6bc1f88ae579f1697a55879bd14453021ec7",
+  "prompts": {},
+  "sessions": {
+    "s_48f42bfbc57a73": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c42-3570-7980-a9c7-aec5efbb6fdc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

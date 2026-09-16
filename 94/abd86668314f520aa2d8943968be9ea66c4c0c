@@ -1,0 +1,32 @@
+README.md
+  s_9c4ddbfbaea04f::t_38348ab6223e0e 5,7-8,20-50,54-60,65-69,90-92,94-95,127,130-133,135-136,141-142
+docs/design.md
+  s_9c4ddbfbaea04f::t_a1b45d9508df9e 3-6
+  s_9c4ddbfbaea04f::t_79fa1f4ec6a983 18-20
+docs/PRD.md
+  s_9c4ddbfbaea04f::t_62aebb5927aeea 5,14-19,23-28,33-37,41-43,50-53,59-67,72-74,85,89-90,93-99,105-141,148-149,151-154,163-165,168-169,176-178,182-184,193-198,206-208,211-220
+package.json
+  s_9c4ddbfbaea04f::t_2614c949632a89 5
+docs/vision.md
+  s_9c4ddbfbaea04f::t_b84bf764aee171 3,7-13,20-26,30-31,35-37,39-42,46,48-50,52-54,64-65,69-77,82-86,91-94
+docs/product.md
+  s_9c4ddbfbaea04f::t_236f29a98d32eb 16,20-23,29-31,33-34,36-38,46-49,53-56,66,70-93,99,102-121,127-129,134-137,145-150
+CLAUDE.md
+  s_9c4ddbfbaea04f::t_8d1062bfc61f94 7-10,14-17,20-23,25,27-28,32-42,46-47,49-58,62-70,75-78,81-89,96,102-103,120-121,129-131,135-137,141,143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "94abd86668314f520aa2d8943968be9ea66c4c0c",
+  "prompts": {},
+  "sessions": {
+    "s_9c4ddbfbaea04f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_114a02a57ffe7bOedvSZDtvKsb",
+        "model": "glm-5.2"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

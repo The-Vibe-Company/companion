@@ -1,0 +1,31 @@
+packages/box-runtime/src/companionPiBrokerSource.test.ts
+  s_84f55dabccbdf6::t_7d8b5cba01a1a5 119,188-189,293,443-444,455-456,516
+  s_84f55dabccbdf6::t_c1959bc98b34d8 330-371,479-482,487,490-495
+  s_84f55dabccbdf6::t_5eea3285edba95 239,280
+  s_84f55dabccbdf6::t_c0c2f6f90af1b8 27,45-53,92,106,218,249,292,313-316,318,321-329,459,462-465,468-470,473-477,485
+  s_84f55dabccbdf6::t_ad49efb56ed872 312
+  s_84f55dabccbdf6::t_00b4bf237aec46 18,30-41,140,146-147,206,317,319-320,448,524
+  s_84f55dabccbdf6::t_480b1200b59529 372
+  s_84f55dabccbdf6::t_1482cf89fb9eed 478
+scripts/ci-scope.test.mjs
+  s_84f55dabccbdf6::t_c0c2f6f90af1b8 3,215-219
+  s_84f55dabccbdf6::t_7da17e610971dd 220
+docs/testing.md
+  s_84f55dabccbdf6::t_c0c2f6f90af1b8 206-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "59fc2d83b7d5572225ed6697f973bd4298e0782e",
+  "prompts": {},
+  "sessions": {
+    "s_84f55dabccbdf6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03d3f-9c27-7c53-a8dd-20fcaf323a35",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

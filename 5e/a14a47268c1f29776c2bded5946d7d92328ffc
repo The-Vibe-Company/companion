@@ -1,0 +1,39 @@
+packages/core/test/agents.test.ts
+  s_1e74ce65ff5b16::t_23ac0e4ccdff0e 16
+  s_1e74ce65ff5b16::t_636bbdb1f707ab 324-355
+apps/api/src/index.ts
+  s_1e74ce65ff5b16::t_589b50a8855397 2543-2560
+  s_1e74ce65ff5b16::t_32ff0884168744 124
+  s_1e74ce65ff5b16::t_399b5b62b5e9f8 36
+apps/web/src/lib/agentQueries.ts
+  s_1e74ce65ff5b16::t_e4a6312ab59132 49-56
+apps/web/src/components/agents/AgentsApp.tsx
+  s_1e74ce65ff5b16::t_5825169e1d062e 409-416
+  s_1e74ce65ff5b16::t_d5e9417de2db15 531,541
+  s_1e74ce65ff5b16::t_c3a9c0f016baaf 21
+packages/core/src/agents.ts
+  s_1e74ce65ff5b16::t_a59d0d7b4b2702 1033-1128
+apps/web/src/components/agents/DetailView.tsx
+  s_1e74ce65ff5b16::t_db62c552f6287e 3-4,7,10-109
+  s_1e74ce65ff5b16::t_1214d708fe39c2 405,413,418,427-428
+  s_1e74ce65ff5b16::t_aace538aef1c90 570-571
+  s_1e74ce65ff5b16::t_8208ab14411984 110
+packages/contracts/src/agents.ts
+  s_1e74ce65ff5b16::t_019abe5bb94b21 235-246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5ea14a47268c1f29776c2bded5946d7d92328ffc",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

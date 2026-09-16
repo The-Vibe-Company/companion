@@ -1,0 +1,25 @@
+apps/api/src/index.ts
+  s_fa0bfbdfd6d814::t_17f0845d7ec59f 150,188
+apps/api/src/skillCompanionManifest.test.ts
+  s_fa0bfbdfd6d814::t_f71dd6dd7262c0 2-3,31-82
+apps/api/src/skillCompanionManifest.ts
+  s_fa0bfbdfd6d814::t_363df30e0df94f 3-4,22-29
+packages/skills/test/validateSkill.test.ts
+  s_fa0bfbdfd6d814::t_872c17603c2e44 5,323-383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "aca5261388afa440f23055a81243cad18ba77ac5",
+  "prompts": {},
+  "sessions": {
+    "s_fa0bfbdfd6d814": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efb4b-1da5-7c80-98ac-c21f2a52368a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

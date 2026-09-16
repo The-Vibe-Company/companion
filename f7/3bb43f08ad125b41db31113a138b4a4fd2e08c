@@ -1,0 +1,40 @@
+apps/web/src/components/skills/ListView.test.ts
+  s_a1e74cc9da559c::t_cac21460c09fc7 148
+  s_a1e74cc9da559c::t_bb5c19d0b13bc8 120
+  s_a1e74cc9da559c::t_f47044bd9f1a64 117
+  s_a1e74cc9da559c::t_c152ff89442498 154-167
+  s_a1e74cc9da559c::t_8b5ff106250fd1 1-4,6,10-13,56-77,79,82-116,118-119,121-128,133-135,152-153,168-206
+  s_a1e74cc9da559c::t_67fcaa2f51cc5b 129-132,136-145,150-151
+  s_a1e74cc9da559c::t_8712770ce9eef8 146-147,149
+  s_a1e74cc9da559c::t_b1e80b7c65dc8a 207
+apps/web/src/components/skills/ListView.tsx
+  s_a1e74cc9da559c::t_5894f97d49359a 96,160-163,168-172,283,294,318-319
+  s_a1e74cc9da559c::t_f47044bd9f1a64 300
+  s_a1e74cc9da559c::t_c152ff89442498 100-102,320-322
+  s_a1e74cc9da559c::t_67fcaa2f51cc5b 97,176-184,295-296,315,342
+  s_a1e74cc9da559c::t_bffc57c85d1ac7 98-99
+apps/web/src/styles/skills.css
+  s_a1e74cc9da559c::t_1427011903de5b 331
+  s_a1e74cc9da559c::t_5894f97d49359a 310-311,329-330
+scripts/agent-browser-smoke.sh
+  s_a1e74cc9da559c::t_58f4d125e63c2b 432,442-443,481
+  s_a1e74cc9da559c::t_67fcaa2f51cc5b 11,287,318-331
+  s_a1e74cc9da559c::t_e3b842c3fd413b 550
+  s_a1e74cc9da559c::t_f47044bd9f1a64 231,460,474-479
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f73bb43f08ad125b41db31113a138b4a4fd2e08c",
+  "prompts": {},
+  "sessions": {
+    "s_a1e74cc9da559c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7feb-8278-7bb0-ad64-68f5cbb183d7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

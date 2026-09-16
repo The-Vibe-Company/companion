@@ -1,0 +1,61 @@
+packages/contracts/src/skill.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 154-162,204-209
+apps/web/src/components/skills/updateFlow.test.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 37
+packages/core/src/services.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 21,933-937,1048,1084-1151
+  s_053161b23c04ef::t_70378a8c8e496c 1152-1153
+apps/web/src/components/skills/ListView.test.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 1-109
+apps/web/src/components/skills/ListView.tsx
+  s_053161b23c04ef::t_e3c924213b9c0d 6-7,20-97,247,254,263,267,271-274,287,310-316
+  s_053161b23c04ef::t_ef18913aae59f4 317
+apps/web/src/lib/types.test.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 28
+packages/contracts/test/skillListModifiers.test.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 1-70
+apps/web/src/components/skills/DetailView.test.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 29
+packages/companion-skill/skill/companion.json
+  s_053161b23c04ef::t_4164729d1d34da 32
+  s_053161b23c04ef::t_e3c924213b9c0d 33-36
+  s_053161b23c04ef::t_bc096b5e2b0f31 37-38
+apps/web/src/lib/types.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 6,14-20,53-54,75-83,110
+packages/companion-skill/skill/SKILL.md
+  s_053161b23c04ef::t_e3c924213b9c0d 76-78
+apps/web/src/styles/skills.css
+  s_053161b23c04ef::t_e3c924213b9c0d 217-218,236-243,257-258,740-752,763-765,767-777,779-789,796-831
+apps/web/src/styles/deps.css
+  s_053161b23c04ef::t_e3c924213b9c0d 134,136,139-140,143,145-147,152-154,156-162
+packages/companion-skill/skill/companion.integrity.json
+  s_053161b23c04ef::t_778448da3cc3cb 3-4
+apps/web/src/components/skills/filters.test.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 25
+packages/companion-skill/skill/reference/api.md
+  s_053161b23c04ef::t_e3c924213b9c0d 132-136
+packages/core/test/skillListModifiers.test.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 1-186
+cli/src/commands/skills.test.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 41
+apps/web/src/components/skills/detailParts.test.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 28
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_053161b23c04ef::t_e3c924213b9c0d 96,133-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "7676a7bf788ce8e4c6ed7797894a635188917872",
+  "prompts": {},
+  "sessions": {
+    "s_053161b23c04ef": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f07f6-004b-7cf0-918c-05056a09de09",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

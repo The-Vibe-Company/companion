@@ -1,0 +1,26 @@
+scripts/dev-conductor.sh
+  s_1e74ce65ff5b16::t_d18f9176f5ded4 33-35,37-47
+  s_1e74ce65ff5b16::t_bd2d8a332d5d12 31-32,36,48
+apps/web/src/components/agents/CreateView.tsx
+  s_1e74ce65ff5b16::t_e0da4c8c5fa48d 3
+  s_1e74ce65ff5b16::t_1f56f93eb7654a 43
+  s_1e74ce65ff5b16::t_f8057a78aa856d 429
+  s_1e74ce65ff5b16::t_3ad4b8fb9fd650 99-103
+  s_1e74ce65ff5b16::t_5fecf004e67202 104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "b063738f38337b45dc626bf376fa20bb8eeff101",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

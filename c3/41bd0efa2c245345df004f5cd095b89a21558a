@@ -1,0 +1,159 @@
+apps/web/src/components/skills/detailParts.test.ts
+  s_456d76c750cd85::t_3fa43f5b2c2f9f 146-148
+  s_456d76c750cd85::t_b65e71ff727618 158
+  s_456d76c750cd85::t_df7c499286ed36 23
+  s_456d76c750cd85::t_b9943ef14e61a4 179
+apps/web/src/components/skills/detailParts.tsx
+  s_456d76c750cd85::t_e2ceb1912ee8bb 6
+  s_456d76c750cd85::t_d6d787454db367 550-554
+  s_456d76c750cd85::t_13ec54bdc529a0 567
+  s_456d76c750cd85::t_a7a33cdd9b1054 469,472-473,479-482,493-500
+apps/api/src/localSkills.test.ts
+  s_456d76c750cd85::t_f11909763dac07 112
+  s_456d76c750cd85::t_f7d1f5df37c23f 47
+cli/src/commands/skills.test.ts
+  s_456d76c750cd85::t_4004a65b2ea60e 36
+apps/web/src/components/skills/blocks.tsx
+  s_456d76c750cd85::t_64d2213722e439 15-23,25,27-28,30
+  s_456d76c750cd85::t_3c468a4ed44672 3
+apps/web/src/components/skills/updateFlow.test.ts
+  s_456d76c750cd85::t_badea1bf8ac32a 86
+  s_456d76c750cd85::t_7a4b16857d3ea1 32
+apps/web/src/components/org/SettingsSidebar.tsx
+  s_456d76c750cd85::t_a7470b8be04fa9 6
+  s_456d76c750cd85::t_21300d983f8ce5 119
+apps/web/src/components/org/primitives.tsx
+  s_456d76c750cd85::t_7fda34b5845e04 5,9
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_456d76c750cd85::t_e024e56cad57a1 91
+  s_456d76c750cd85::t_a7549f14d59d31 123
+  s_456d76c750cd85::t_f0b864fd3944c3 64
+apps/web/src/lib/settingsData.test.ts
+  s_456d76c750cd85::t_bfabc5d59570c5 59
+  s_456d76c750cd85::t_c816741e9302fb 88
+  s_456d76c750cd85::t_9f9563d9fd70fb 138
+packages/db/drizzle/0030_user_avatar.sql
+  s_456d76c750cd85::t_f0e7ffe1bdaee9 1
+apps/web/src/components/skills/DetailView.tsx
+  s_456d76c750cd85::t_8c6c42ef769a9e 461
+  s_456d76c750cd85::t_8c941e088704dd 723
+  s_456d76c750cd85::t_c2c2e842aab5d6 632
+  s_456d76c750cd85::t_9b35c7cb725e9e 497
+  s_456d76c750cd85::t_30c258a212dfe4 475-476
+  s_456d76c750cd85::t_54c3436bcbcdf2 707-714
+apps/web/src/lib/settingsData.ts
+  s_456d76c750cd85::t_263f0cccbbdf2a 68
+  s_456d76c750cd85::t_ccbda2ebd00dc5 47-53
+apps/web/src/app/(app)/skills/page.tsx
+  s_456d76c750cd85::t_7a88c36137673a 69
+  s_456d76c750cd85::t_316c48207b5a10 27-33
+packages/storage/src/index.ts
+  s_456d76c750cd85::t_9c38bc39a316ca 52-56
+  s_456d76c750cd85::t_f91bea5817d31f 112-172
+apps/web/src/components/org/SettingsApp.tsx
+  s_456d76c750cd85::t_4bd870be7220dd 193
+  s_456d76c750cd85::t_94231f8e57e000 208
+  s_456d76c750cd85::t_88031d6b150750 262-295
+  s_456d76c750cd85::t_775d86e2793cf5 19-20
+packages/db/src/schema.ts
+  s_456d76c750cd85::t_69cb4e31031d31 96-101
+apps/web/src/components/skills/filters.test.ts
+  s_456d76c750cd85::t_4387591e2f1605 20
+apps/web/src/lib/types.ts
+  s_456d76c750cd85::t_a724e34faa57fa 128
+  s_456d76c750cd85::t_8800aa5eec002c 37-38
+  s_456d76c750cd85::t_0549a4f7e39e9d 77
+  s_456d76c750cd85::t_f324f1edf99836 104-105
+packages/contracts/src/skill.ts
+  s_456d76c750cd85::t_22dc4351395627 243-244
+  s_456d76c750cd85::t_407e0485ad7bd7 170-171
+  s_456d76c750cd85::t_f2bac8f26e129f 371-374
+packages/core/src/services.ts
+  s_456d76c750cd85::t_b3a82ec77fb705 555-560
+  s_456d76c750cd85::t_7a2748f8397660 406-441,448,454-455,477-495
+  s_456d76c750cd85::t_fe8406c9325df6 1005-1010
+  s_456d76c750cd85::t_b1cb53c9dcf2a7 442-447,449-453,456-476
+  s_456d76c750cd85::t_1e117f31089047 1356-1397,1403
+  s_456d76c750cd85::t_d912fbe249f9d0 38,42
+  s_456d76c750cd85::t_199841bb519644 121-122
+  s_456d76c750cd85::t_7d8d951332fb83 539-540
+  s_456d76c750cd85::t_0e623d7b64c88e 1426-1428
+  s_456d76c750cd85::t_89c70ab3b9a713 1503-1505
+  s_456d76c750cd85::t_46cb8b0dc2957b 1522-1538
+  s_456d76c750cd85::t_0f5092a176a8b8 858-860
+  s_456d76c750cd85::t_c57d5f15d75a18 592-593
+packages/contracts/test/orgSettings.test.ts
+  s_456d76c750cd85::t_12e571c11b0ea2 43
+apps/web/src/components/org/model.ts
+  s_456d76c750cd85::t_ef42c7c817a93f 10-11
+  s_456d76c750cd85::t_2fd0f7a2e661ee 135-136
+docs/design.md
+  s_456d76c750cd85::t_d1fbad1d83629b 88-89
+  s_456d76c750cd85::t_3fb85e73e69211 233
+  s_456d76c750cd85::t_424a9c4ee8b1d8 234-239
+apps/web/src/styles/settings.css
+  s_456d76c750cd85::t_f63ae4f62c7301 180,182
+packages/core/src/avatar.ts
+  s_456d76c750cd85::t_b18c4c257ea61d 1-36
+apps/api/src/index.ts
+  s_456d76c750cd85::t_adcb16da265894 113
+  s_456d76c750cd85::t_88152a632163ce 66-69
+  s_456d76c750cd85::t_5bb8594e0cc5ab 542-544,549
+  s_456d76c750cd85::t_64ea85a1285444 777-834
+  s_456d76c750cd85::t_7a2eee5773f2f7 129-131
+apps/web/src/components/org/ProfilePane.tsx
+  s_456d76c750cd85::t_aada935503f20b 138
+  s_456d76c750cd85::t_b1869b5f0ca8e0 3-4,6,10-115
+  s_1077f08846a31c::t_42f27009c1e6be 116
+apps/web/src/components/skills/DetailView.test.ts
+  s_456d76c750cd85::t_8b85c115c5898a 24
+  s_456d76c750cd85::t_284995c742eff7 7
+apps/web/src/components/skills/discussion.tsx
+  s_456d76c750cd85::t_8b7f41eacbcd54 361-365
+  s_456d76c750cd85::t_090fa745089584 550
+  s_456d76c750cd85::t_dbf198cad10191 334-338
+  s_456d76c750cd85::t_603fc13398cba9 13
+  s_456d76c750cd85::t_e2ddb8830caa29 33
+apps/web/src/styles/org.css
+  s_456d76c750cd85::t_8b17dd6a3593aa 78-79
+packages/contracts/src/index.ts
+  s_456d76c750cd85::t_e3f2fdb5bcb31c 15
+apps/web/src/components/UserAvatar.tsx
+  s_456d76c750cd85::t_8d1de241634325 1-40
+packages/contracts/src/orgSettings.ts
+  s_456d76c750cd85::t_2e9ea60b558856 14-15
+packages/contracts/src/avatar.ts
+  s_456d76c750cd85::t_2c383bb573b853 1-57
+apps/web/src/styles/skills.css
+  s_456d76c750cd85::t_2ea33095d573b2 24,26
+apps/web/src/lib/settingsViewModel.ts
+  s_456d76c750cd85::t_876bfd7d9b26bd 72,81
+apps/web/src/lib/org.ts
+  s_456d76c750cd85::t_37b0dc7500f859 67-78
+packages/db/drizzle/meta/_journal.json
+  s_456d76c750cd85::t_0207478f754f3d 214-220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "c341bd0efa2c245345df004f5cd095b89a21558a",
+  "prompts": {},
+  "sessions": {
+    "s_1077f08846a31c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0426-779f-76e1-95c7-75f4d82fcede",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_456d76c750cd85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cdeeb4e-8534-49fb-a61f-8b8033e73ecd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

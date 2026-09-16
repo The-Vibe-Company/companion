@@ -1,0 +1,21 @@
+.agents/skills/design-frontend-dev/reference/brand.md
+  s_597e0620a42fa8::t_7de2d13c31130a 79
+.agents/skills/design-frontend-dev/companion.json
+  s_597e0620a42fa8::t_7de2d13c31130a 16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "36925a2594f4e17cffedbe640ea94932d4accf46",
+  "prompts": {},
+  "sessions": {
+    "s_597e0620a42fa8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8a47-f1df-7071-8af7-e27d803960fb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

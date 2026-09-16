@@ -1,0 +1,58 @@
+apps/api/src/context.ts
+  s_4d1ef4f9411193::t_0f8585df6c9db7 135-142
+apps/web/src/app/device/capabilities/DeviceCapabilitiesApproval.tsx
+  s_4d1ef4f9411193::t_8b4105d39f73db 56-57,60,91-92,95
+  s_4d1ef4f9411193::t_dbe4ea11573bc7 24,61,96
+scripts/ci-scope.test.mjs
+  s_4d1ef4f9411193::t_4113269422c3f9 97-104
+docs/design.md
+  s_4d1ef4f9411193::t_dbe4ea11573bc7 433
+apps/web/src/app/device/capabilities/DeviceCapabilitiesApproval.test.ts
+  s_4d1ef4f9411193::t_dbe4ea11573bc7 99-100,109
+docs/testing.md
+  s_4d1ef4f9411193::t_5442bebb23ff74 37
+packages/auth/src/agent-auth.test.ts
+  s_4d1ef4f9411193::t_ff1916e10dd30b 19,56-98
+  s_4d1ef4f9411193::t_ffb23806e07dec 99-100
+scripts/verify-change.mjs
+  s_4d1ef4f9411193::t_65cc54ee7c0c89 11
+packages/auth/src/index.ts
+  s_4d1ef4f9411193::t_81856d6f4fe91d 87-125,176
+  s_4d1ef4f9411193::t_dbe4ea11573bc7 29
+  s_4d1ef4f9411193::t_85638a9a793f4c 30
+  s_4d1ef4f9411193::t_3449477ce20959 86
+scripts/verify-change.test.mjs
+  s_4d1ef4f9411193::t_4203941e665b54 6,29-43,46-48
+scripts/agent-browser-smoke.sh
+  s_4d1ef4f9411193::t_14d12a2c0185c3 230-232
+apps/api/src/agentAuthRoutes.test.ts
+  s_4d1ef4f9411193::t_ffb23806e07dec 1,7,10,68-97,99-100
+  s_4d1ef4f9411193::t_0f8585df6c9db7 103-117
+apps/api/src/agentAuthRoutes.ts
+  s_4d1ef4f9411193::t_0f8585df6c9db7 15-20,318-324,538,566,586
+  s_4d1ef4f9411193::t_dbe4ea11573bc7 448,455
+scripts/agent-browser-box-center.mjs
+  s_4d1ef4f9411193::t_65cc54ee7c0c89 1-29
+scripts/ci-scope.mjs
+  s_4d1ef4f9411193::t_4113269422c3f9 123-124
+scripts/agent-browser-box-center.test.mjs
+  s_4d1ef4f9411193::t_65cc54ee7c0c89 1-23
+.github/workflows/ci.yml
+  s_4d1ef4f9411193::t_65cc54ee7c0c89 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "632c67478db4b860603560ef8772089daf35cff2",
+  "prompts": {},
+  "sessions": {
+    "s_4d1ef4f9411193": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8835-45ff-73f3-84d3-a9050c3d38cd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,72 @@
+apps/api/src/localSkills.test.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 47,114-115
+apps/web/src/styles/deps.css
+  s_7c8fe704a04fc2::t_184990696d6a38 114,116,119-120,123,125-127,132-134,136-142
+packages/companion-skill/skill/SKILL.md
+  s_7c8fe704a04fc2::t_184990696d6a38 76-78
+apps/web/src/lib/types.test.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 28
+apps/web/src/components/skills/detailParts.test.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 28
+packages/companion-skill/skill/companion.json
+  s_7c8fe704a04fc2::t_184990696d6a38 4,23-29
+apps/web/src/lib/types.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 6,14-20,53-54,75-83,110
+cli/src/commands/skills.test.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 41
+packages/core/test/skillListModifiers.test.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 1-186
+apps/web/src/components/skills/DetailView.test.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 29
+apps/web/src/components/skills/filters.test.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 25
+apps/web/src/components/skills/ListView.test.ts
+  s_7c8fe704a04fc2::t_6370ac15be2806 69-71
+  s_7c8fe704a04fc2::t_184990696d6a38 1-68,72-112
+apps/web/src/styles/skills.css
+  s_7c8fe704a04fc2::t_184990696d6a38 232-233,253-260,274-275,785-797,808-810,812-822,824-834,841-876
+apps/web/src/components/skills/ListView.tsx
+  s_7c8fe704a04fc2::t_eb2af0547ffc9b 296,309,313,317-320,333,356-362
+  s_7c8fe704a04fc2::t_184990696d6a38 6,43-120,276
+  s_7c8fe704a04fc2::t_a7ebcbac9d94ff 7
+  s_bb717887248412::t_5ae15c0b7a40da 363
+packages/companion-skill/skill/companion.integrity.json
+  s_7c8fe704a04fc2::t_184990696d6a38 3-4,15
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 96,133-138
+packages/contracts/test/skillListModifiers.test.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 1-70
+apps/web/src/components/skills/updateFlow.test.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 37
+packages/contracts/src/skill.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 141-149,191-196
+packages/companion-skill/skill/reference/api.md
+  s_7c8fe704a04fc2::t_184990696d6a38 132-136
+packages/core/src/services.ts
+  s_7c8fe704a04fc2::t_184990696d6a38 21,933-937,1048,1084-1151
+  s_7c8fe704a04fc2::t_89fd40d36a7b65 1152-1153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "2290d768e2a1011fbab68600bd0c8b7622de4eb4",
+  "prompts": {},
+  "sessions": {
+    "s_7c8fe704a04fc2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f07e7-eff2-7450-a3d1-418485e3ed73",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_bb717887248412": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f07f9-a9f4-7972-93d2-253087b807e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

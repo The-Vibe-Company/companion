@@ -1,0 +1,39 @@
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_facee5d1c172e8::t_5409d238c9d095 1-116,118-149
+  s_facee5d1c172e8::t_6ad4551b13cb3b 117
+apps/web/src/components/skills/route.test.ts
+  s_facee5d1c172e8::t_6ad4551b13cb3b 2,31-37
+  s_facee5d1c172e8::t_b4e99503e0fb1c 1,3-19,22-25,27-30,38-46,51-52
+  s_facee5d1c172e8::t_5409d238c9d095 20-21,26,47-50
+apps/web/src/components/skills/SkillsApp.tsx
+  s_facee5d1c172e8::t_5409d238c9d095 107-110,112-116,568
+  s_facee5d1c172e8::t_816ad68ec320af 629,634
+  s_facee5d1c172e8::t_84b2fbc0e45bd0 708
+  s_facee5d1c172e8::t_025e14d34774f8 289
+  s_facee5d1c172e8::t_b4e99503e0fb1c 87-106,135,145,151-152,157-160,167,269,306-307,309,458-459,564-567,569-578,580-581,583-584,586-587,589-590,596-607,617-620
+  s_facee5d1c172e8::t_6ad4551b13cb3b 3,19,111,117-126,136,146,161-166,270-275,290-301,308,310,478,481,484,487-489,498,500-506,508-513,552,558,608-616,621,701-704
+apps/web/src/components/skills/route.ts
+  s_facee5d1c172e8::t_6ad4551b13cb3b 14-15,26,28,32-41
+  s_facee5d1c172e8::t_dff1522abc9b97 27,29-31
+  s_facee5d1c172e8::t_b4e99503e0fb1c 1-13,16-25,42-65
+apps/web/src/app/(app)/skills/page.tsx
+  s_facee5d1c172e8::t_b4e99503e0fb1c 12-14,16,81
+  s_facee5d1c172e8::t_7cabb6adf6d362 15
+  s_facee5d1c172e8::t_6ad4551b13cb3b 6,17-19,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "b3a4846663fd07ee374017a7d034bbdc24a26052",
+  "prompts": {},
+  "sessions": {
+    "s_facee5d1c172e8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ecc6f-5d42-7891-82f9-448f6704bcec",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

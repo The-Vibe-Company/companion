@@ -1,0 +1,26 @@
+apps/web/src/components/skills/ListView.tsx
+  s_31bf4d166d4bb0::t_898fce325780b4 21-26,104,112-114,174,197,206,213,221,281-284
+apps/web/src/components/skills/ListView.test.ts
+  s_31bf4d166d4bb0::t_898fce325780b4 364-381
+  s_31bf4d166d4bb0::t_c0a367308d6e58 299-302
+apps/web/src/components/skills/listGrouping.test.ts
+  s_31bf4d166d4bb0::t_898fce325780b4 70-73,88-105
+apps/web/src/components/skills/listGrouping.ts
+  s_31bf4d166d4bb0::t_898fce325780b4 13,17-21,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4a9fbc0e28d6dc92a5ac1619b071220eea4cd9e2",
+  "prompts": {},
+  "sessions": {
+    "s_31bf4d166d4bb0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83c8-4ceb-7e11-87d0-104c7e9fc3af",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

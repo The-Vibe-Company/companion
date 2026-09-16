@@ -1,0 +1,44 @@
+apps/web/src/lib/settingsData.ts
+  s_012e450683d2c8::t_740061fe398022 1-131
+apps/web/src/components/org/SettingsApp.tsx
+  s_012e450683d2c8::t_6c3f209461a655 19,21,25,30,48-49,164-165,175-198
+apps/web/src/app/(app)/@settings/(.)settings/page.tsx
+  s_012e450683d2c8::t_b3a0c5c87a0c83 1-13
+apps/web/src/components/skills/SkillsApp.tsx
+  s_012e450683d2c8::t_7779ae26c07f77 43-45
+apps/web/src/app/(app)/@settings/(.)settings/loading.tsx
+  s_012e450683d2c8::t_b3a0c5c87a0c83 1-3,5-47
+  s_012e450683d2c8::t_c6b3f670174608 4
+apps/web/src/app/(app)/@settings/default.tsx
+  s_012e450683d2c8::t_b3a0c5c87a0c83 1-3
+apps/web/src/components/org/primitives.tsx
+  s_012e450683d2c8::t_c6b3f670174608 3,20-22,40,42-45,47-71,77
+apps/web/src/app/(app)/settings/page.tsx
+  s_012e450683d2c8::t_b3a0c5c87a0c83 1-2,9,11-12
+apps/web/src/styles/org.css
+  s_012e450683d2c8::t_7779ae26c07f77 201-228,235
+  s_012e450683d2c8::t_c6b3f670174608 229-234
+apps/web/src/components/org/model.ts
+  s_012e450683d2c8::t_740061fe398022 2,46-49
+apps/web/src/components/org/SettingsDrawer.tsx
+  s_012e450683d2c8::t_b3a0c5c87a0c83 1-29,31,33-38,41-81
+  s_012e450683d2c8::t_c6b3f670174608 30,32,39-40
+apps/web/src/app/(app)/layout.tsx
+  s_012e450683d2c8::t_b3a0c5c87a0c83 4-10,13-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "cb069fd3ba0db1200609006b1b715e593412b18c",
+  "prompts": {},
+  "sessions": {
+    "s_012e450683d2c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea892-f9f0-73d0-94e6-37db21cb7931",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

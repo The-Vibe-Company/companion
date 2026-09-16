@@ -1,0 +1,34 @@
+apps/ios/Companion/Screens/ChatView.swift
+  s_af4e7a5164cc07::t_4dbc44f7b10c82 16,50-51,281,283,302-304,312,407,409,411-419,429,443-450,468-470,472-475,478-480,491,502-503
+  s_af4e7a5164cc07::t_2394c0c2e5cf46 305-311
+  s_af4e7a5164cc07::t_773502dc677b7d 313
+apps/ios/Companion/Screens/GlassChatDemoView.swift
+  s_af4e7a5164cc07::t_0081d7e73e24b3 48,51,349,351-364,389-418
+  s_af4e7a5164cc07::t_2394c0c2e5cf46 12,19-21,49,123-128,145-159,163-171,338,343-347,350
+  s_af4e7a5164cc07::t_31d0873aa07e62 348
+apps/ios/Companion/Screens/MarkdownMessageView.swift
+  s_af4e7a5164cc07::t_2394c0c2e5cf46 23-77
+  s_af4e7a5164cc07::t_99f99897125642 1-22,78-505
+apps/ios/CompanionUITests/CompanionUITests.swift
+  s_af4e7a5164cc07::t_d1b07d3823c544 82-88
+  s_af4e7a5164cc07::t_e8268c7ff0d5f7 43-73,77-81,89-91
+  s_af4e7a5164cc07::t_d6ece8b2b3a0eb 42,92-121
+  s_af4e7a5164cc07::t_c3cba472f4f826 74-76
+  s_af4e7a5164cc07::t_2394c0c2e5cf46 122-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "317c897ade32e94a225b3f33184ff2970ac84752",
+  "prompts": {},
+  "sessions": {
+    "s_af4e7a5164cc07": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0386f-42d8-77f2-a4ad-7b03ed59b813",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+packages/companion-skill/skill/reference/api.md
+  s_bcfd19205f2470::t_ea0fff47630846 45,118-121
+  s_bcfd19205f2470::t_3eaa84577836b4 122
+apps/web/src/lib/queries.ts
+  s_bcfd19205f2470::t_ea0fff47630846 183-187
+packages/skills/test/extractArchiveFiles.test.ts
+  s_bcfd19205f2470::t_ea0fff47630846 2,101-124,204-264
+  s_bcfd19205f2470::t_be62029a484173 265
+apps/web/src/components/skills/fileview.tsx
+  s_bcfd19205f2470::t_ea0fff47630846 64-112,121-124,139,231,243,253,300-303,389,394,455
+packages/skills/src/archive.ts
+  s_bcfd19205f2470::t_ea0fff47630846 2-3,67-169,190-193,195-196,198-199,202,205,214-215,226-233,266-278,293-382,391-392,421-424,444,446-447,451,460-492,495-579
+packages/companion-skill/skill/SKILL.md
+  s_bcfd19205f2470::t_ea0fff47630846 767-769
+apps/web/src/components/skills/fileview.test.ts
+  s_bcfd19205f2470::t_ea0fff47630846 1-87
+apps/web/src/styles/app.css
+  s_bcfd19205f2470::t_ea0fff47630846 165-168
+packages/contracts/src/skill.ts
+  s_bcfd19205f2470::t_ea0fff47630846 337-338
+apps/api/src/skillFileContentRoute.test.ts
+  s_bcfd19205f2470::t_ea0fff47630846 1-201
+apps/api/src/index.ts
+  s_bcfd19205f2470::t_ea0fff47630846 131,1859-1873,1883,1907,1916-1949
+  s_bcfd19205f2470::t_2fc7582c96683f 1950-1954
+packages/companion-skill/skill/companion.json
+  s_bcfd19205f2470::t_ea0fff47630846 34-37
+  s_bcfd19205f2470::t_a366e59ccd82e2 33
+  s_bcfd19205f2470::t_65476cd37ec01b 38-39
+packages/companion-skill/skill/companion.integrity.json
+  s_bcfd19205f2470::t_2462245796edf6 3-4
+apps/web/src/components/skills/DetailView.tsx
+  s_bcfd19205f2470::t_ea0fff47630846 18,534,693-699
+apps/web/src/components/skills/fileFormat.ts
+  s_bcfd19205f2470::t_ea0fff47630846 8,12,16-18,28-29,38-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "d37743d0c0b8fbea772c003502b01523bd6597fa",
+  "prompts": {},
+  "sessions": {
+    "s_bcfd19205f2470": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26e53870-ec42-48ad-a0c2-7786b72488dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

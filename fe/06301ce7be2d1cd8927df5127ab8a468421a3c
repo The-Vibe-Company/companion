@@ -1,0 +1,29 @@
+apps/api/test/integration/deferredSkillUpdateMigration.integration.test.ts
+  s_92d0176968fd0a::t_1e16805c5cd5ab 1-27,29-38,40-43,51-58,60-81,97-98,100,102-108,112-178,184-191,193-242,251
+  s_92d0176968fd0a::t_34398f2fddbf30 179-183
+  s_92d0176968fd0a::t_8aba6139247053 39,59,82-96,99,101,109-111,192
+  s_92d0176968fd0a::t_511e1434c54e28 243-250
+  s_92d0176968fd0a::t_6c96ee5d6c7bda 28,44-50
+packages/db/drizzle/0113_defer_skill_updates_to_pi_stop.sql
+  s_92d0176968fd0a::t_c13ed6a84cccab 112-118
+  s_92d0176968fd0a::t_537476606da5ce 57-81,85
+  s_92d0176968fd0a::t_8c5dfce34c5242 53-55
+  s_92d0176968fd0a::t_c970cf135580a8 52,56,86-111
+  s_92d0176968fd0a::t_585abc1ebfcc74 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "fe06301ce7be2d1cd8927df5127ab8a468421a3c",
+  "prompts": {},
+  "sessions": {
+    "s_92d0176968fd0a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a020eb-b19e-7231-b77b-7b938419bf3a",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

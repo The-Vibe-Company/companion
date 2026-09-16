@@ -1,0 +1,36 @@
+.agents/skills/review-code-dev/scripts/test_prepare_review_run.py
+  s_597e0620a42fa8::t_4446b77666cffc 1-29
+.agents/skills/review-code-dev/scripts/prepare_review_run.py
+  s_597e0620a42fa8::t_4446b77666cffc 66-79,133,156
+.agents/skills/review-code-dev/scripts/collect_review_context.py
+  s_597e0620a42fa8::t_4446b77666cffc 43-44,210,331,340-342,419,426,433-437,439
+  s_597e0620a42fa8::t_624d0e17c0c7e9 11,52-55,235,242-261,263,332,343-349,438
+  s_597e0620a42fa8::t_b316442e1f5faa 42
+  s_597e0620a42fa8::t_6f7d889bc1e9ca 440
+.agents/skills/ship-pr-dev/scripts/collect_ship_context.py
+  s_597e0620a42fa8::t_4446b77666cffc 21,95-113,130,156,159
+.agents/skills/review-code-dev/scripts/test_collect_review_context.py
+  s_597e0620a42fa8::t_624d0e17c0c7e9 133-155,173,178
+  s_597e0620a42fa8::t_4446b77666cffc 79-95,115-120,122-130,132,156-172,174-177
+  s_597e0620a42fa8::t_b316442e1f5faa 121,131
+  s_597e0620a42fa8::t_afd054c334ea89 179
+.agents/skills/ship-pr-dev/scripts/test_collect_ship_context.py
+  s_597e0620a42fa8::t_4446b77666cffc 35-37,42,51,106-114
+  s_597e0620a42fa8::t_7b9a026ebf8bd1 115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "dfae59e733906b13197c6563b3fb2d9813ab6f7d",
+  "prompts": {},
+  "sessions": {
+    "s_597e0620a42fa8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8a47-f1df-7071-8af7-e27d803960fb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

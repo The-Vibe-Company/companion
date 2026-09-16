@@ -1,0 +1,19 @@
+scripts/dev-conductor.sh
+  s_9496dedd7fded2::t_a1c62f2304e032 313-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "728ad7a3c2a74d2c8379462df3906c6215d463dd",
+  "prompts": {},
+  "sessions": {
+    "s_9496dedd7fded2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c93-7d08-7f32-b11d-ed68c96ed20d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

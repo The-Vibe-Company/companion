@@ -1,0 +1,165 @@
+packages/core/package.json
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 15
+apps/web/src/styles/skills.css
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 686-690
+apps/web/src/lib/org.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 20,24,107,110,114-120
+  s_a31e722d8f5f55::t_0b6b592602d81e 121
+packages/core/src/billingService.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-323
+apps/web/src/components/skills/ListView.tsx
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 116-117,141-142,185-191
+  s_a31e722d8f5f55::t_c84633a92e571e 192
+.env.example
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 50-61
+apps/web/src/styles/settings.css
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 141-147
+packages/companion-skill/skill/SKILL.md
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 318-348
+  s_a31e722d8f5f55::t_f4eae592a189bc 972
+packages/core/src/domainAccess.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 6,135,141-144
+apps/web/src/components/org/SettingsSidebar.tsx
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 168-180
+apps/web/src/lib/settingsData.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 11,26,81-84,86,91
+docs/PRD.md
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 64,68,135-149,174,177-178
+packages/billing/package.json
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-19
+apps/web/src/components/org/BillingPane.test.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-86
+apps/web/src/app/(app)/skills/page.tsx
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 7,50-51,60-62,85
+apps/api/package.json
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 20,36
+apps/web/src/components/org/SettingsApp.tsx
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 21-22,87,97-98,101,176,206,303,306,386,389,412-433
+apps/worker/tsconfig.json
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-5
+packages/core/src/services.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 53-59,289,723,745,751,757-774,1375-1387,1395,1536-1537,1539-1540,2045-2058,2094-2105,2254,2260-2263,2305,2351-2353,3076-3083,3120-3127,3203,3252,3296-3298
+packages/db/src/schema.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 27,201-263
+  s_a31e722d8f5f55::t_e06669c7495a5a 264
+apps/api/tsup.config.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 22
+apps/web/src/components/org/SettingsApp.test.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 22
+apps/web/src/components/org/SettingsView.tsx
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 12,32-33,71
+packages/billing/test/stripeGateway.test.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-104
+packages/contracts/src/billing.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-91
+apps/web/src/lib/apiClient.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 9-10
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 231-262
+apps/web/src/components/skills/DetailView.tsx
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 303-304,331-332,684-690
+deploy/railway/worker.railway.json
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-23
+apps/web/src/components/org/BillingPane.tsx
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-123
+apps/web/src/components/skills/Sidebar.tsx
+  s_a31e722d8f5f55::t_f4eae592a189bc 445-446,496-497,645-651
+package.json
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 20
+packages/billing/src/index.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-203
+packages/billing/tsconfig.json
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-5
+packages/companion-skill/skill/reference/api.md
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 294-323
+packages/companion-skill/skill/companion.integrity.json
+  s_a31e722d8f5f55::t_fbb6e1a3db92c2 3-4
+  s_a31e722d8f5f55::t_f4eae592a189bc 18
+packages/core/src/personalLabels.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 14,58,106,152,188,236,320
+packages/core/src/onboarding.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 14,82
+packages/core/test/billing.test.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-55
+apps/web/src/components/org/model.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1,83,93-94,126,137,146-148
+docs/design.md
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 16-17,26,33,46-53,59,62,81-83,367-368,394-435,445-448
+  s_a31e722d8f5f55::t_f4eae592a189bc 79-80,382-384
+packages/contracts/src/orgSettings.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 120
+scripts/dev-conductor.sh
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 526,542,552-553,557
+packages/core/src/billing.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-296
+apps/api/src/context.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 11,110-112
+README.md
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 26,40-42,58-59,69,85-87,93,120
+packages/db/drizzle/0032_billing.sql
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-56
+packages/core/src/index.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 5-6
+apps/web/src/lib/settingsViewModel.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 3,7,51-55,76,78,144
+apps/web/src/components/skills/SkillsApp.tsx
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 13,95,201,214,240-242,498-501,504,1440-1441,1476-1477,1505-1514
+packages/contracts/src/index.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 17
+apps/worker/src/index.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-73
+apps/worker/tsup.config.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-11
+deploy/railway/README.md
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-132
+apps/web/src/components/org/dialogs.tsx
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 17-18,20,23,70-75
+deploy/railway/web.railway.json
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-25
+apps/web/src/lib/settingsClient.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 6,16,19,24-25
+apps/web/src/components/org/WorkspaceGeneralPane.tsx
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 19-20,29,31,105,108-113
+cli/src/lib/client.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 31-32
+packages/companion-skill/skill/companion.json
+  s_a31e722d8f5f55::t_f4eae592a189bc 4,27,38-41
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 42-44
+  s_8c6d3f1b098da5::t_3c3a9c0be3ba3d 45-46
+apps/api/src/localSkills.test.ts
+  s_a31e722d8f5f55::t_f4eae592a189bc 47,120-125
+apps/worker/package.json
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-28
+apps/api/src/index.ts
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 196-204,210-220,234-272,535-579,875,1017,1021,2537
+deploy/railway/api.railway.json
+  s_a31e722d8f5f55::t_3cf1b6e4392daf 1-24
+packages/db/drizzle/meta/_journal.json
+  s_8c6d3f1b098da5::t_8b6e023519e1b6 232-238,240
+pnpm-lock.yaml
+  s_a31e722d8f5f55::t_1e16cce285888b 35-37,83-85,179-215,263,272,284-299,324-326,3673-3676,3939-3947,4558,5793,5810,7555-7559,7945-7950
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "2a1015c2a3d4aa6ab9548116a113a265a6f079a0",
+  "prompts": {},
+  "sessions": {
+    "s_8c6d3f1b098da5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5adc-58f1-7bb1-8bec-e29963a78ead",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_a31e722d8f5f55": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5ad5-e905-7e51-a4df-1d9673b00655",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+CLAUDE.md
+  s_b6153f79cc2b0c::t_5e8aa41b950f64 133-137,151-153,157
+packages/companion-skill/scripts/check-version-bump.mjs
+  s_b6153f79cc2b0c::t_821f4c9fb02601 62,72-75,106-109,118-124
+  s_b6153f79cc2b0c::t_36fe97ae769804 125-127
+apps/web/src/lib/companionSkillGate.test.ts
+  s_b6153f79cc2b0c::t_4ee5a47d11e6a9 19
+apps/web/src/components/skills/LocalSkillsView.test.ts
+  s_b6153f79cc2b0c::t_5dce150a46178a 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "3b1fe570ac9a8fa4608c93ca2f69c0427e65507f",
+  "prompts": {},
+  "sessions": {
+    "s_b6153f79cc2b0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eff52-2647-7830-9bac-7eb440ccf0e2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

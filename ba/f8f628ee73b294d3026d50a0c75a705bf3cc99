@@ -1,0 +1,48 @@
+scripts/agent-browser-smoke.sh
+  s_9e1512cd9273c9::t_b9791cfe7bd818 139-140
+  s_9e1512cd9273c9::t_ef8ad51d3e99a9 129-138,141-155,462,493-494
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_c3fc12569c395a::t_44dda78298307e 327-332,1087,1099,1117,1149,1448,1472,1487,1593
+apps/web/src/components/skills/ArchivedListView.test.ts
+  s_9e1512cd9273c9::t_eda3ac7c9973aa 1-64
+apps/web/src/components/skills/ArchivedListView.tsx
+  s_9e1512cd9273c9::t_1f765ddb6f06c9 95-100,102
+apps/web/src/components/skills/DetailView.test.ts
+  s_9e1512cd9273c9::t_3ae3b8c284bf21 150,152-155,159-166
+apps/web/src/components/skills/DetailView.tsx
+  s_9e1512cd9273c9::t_011608b2a91118 51-58,62,471,475
+apps/web/src/components/skills/ListView.test.ts
+  s_9e1512cd9273c9::t_0080ee644530dc 128-130
+apps/web/src/components/skills/ListView.tsx
+  s_9e1512cd9273c9::t_2da04f62a58962 362
+apps/web/src/components/skills/skillActions.test.ts
+  s_9e1512cd9273c9::t_e8424406ae6877 4,62-75
+apps/web/src/components/skills/skillActions.ts
+  s_9e1512cd9273c9::t_640fd91de3066c 16,18-19,38-39,42-43
+apps/web/src/components/skills/updateFlow.test.ts
+  s_9e1512cd9273c9::t_b9fe1b1569780c 125-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "baf8f628ee73b294d3026d50a0c75a705bf3cc99",
+  "prompts": {},
+  "sessions": {
+    "s_9e1512cd9273c9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5bfa-29ab-7590-9b15-cfc4159080b9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_c3fc12569c395a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5be8-7792-79b2-b751-7abfe79e04c3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

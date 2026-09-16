@@ -1,0 +1,26 @@
+packages/core/src/runJobs.ts
+  s_b72b2316fa286f::t_48d28d95ed4a10 241-244
+packages/storage/src/index.ts
+  s_b72b2316fa286f::t_5243cee880256e 239-241
+apps/worker/src/runAttachmentCleanup.ts
+  s_b72b2316fa286f::t_5243cee880256e 31,33
+apps/api/test/integration/runsDb.integration.test.ts
+  s_b72b2316fa286f::t_a11f95ef05c61c 21,31,55,626-693
+  s_b72b2316fa286f::t_8b4bce296483f6 694-695
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bd95ae0754147a297d6d1d66f1bc4059ec990bd8",
+  "prompts": {},
+  "sessions": {
+    "s_b72b2316fa286f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65c7-fc0c-7252-8a51-9510f76dfcc3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

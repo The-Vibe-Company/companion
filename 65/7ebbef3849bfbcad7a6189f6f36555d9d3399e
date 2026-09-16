@@ -1,0 +1,22 @@
+cli/src/commands/skills.ts
+  s_4d664a5d68e055::t_38c6fa54e8c20c 388-403,405,408-413
+  s_4d664a5d68e055::t_5855ed931cc651 233-239
+  s_4d664a5d68e055::t_aa2c01a6af972c 298
+  s_4d664a5d68e055::t_03062bc4e36156 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "657ebbef3849bfbcad7a6189f6f36555d9d3399e",
+  "prompts": {},
+  "sessions": {
+    "s_4d664a5d68e055": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e422828b-c9a6-43c1-b825-ff755cf84cd8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

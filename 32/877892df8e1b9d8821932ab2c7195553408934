@@ -1,0 +1,113 @@
+packages/contracts/src/localSkills.ts
+  s_115fc6c4e9ae0b::t_ed0b21b8fc2a81 1-70
+apps/web/src/components/skills/Sidebar.tsx
+  s_115fc6c4e9ae0b::t_94555284c291c9 213-230
+  s_115fc6c4e9ae0b::t_5fff8aeffbf9e4 28-30,53-55
+apps/web/src/lib/queries.ts
+  s_115fc6c4e9ae0b::t_dc37f4043c3e90 190-213
+  s_115fc6c4e9ae0b::t_2198426f52bd90 5-6
+apps/web/src/app/(app)/skills/page.tsx
+  s_115fc6c4e9ae0b::t_aacf19fd0be149 67
+  s_115fc6c4e9ae0b::t_838735247af30f 2
+  s_115fc6c4e9ae0b::t_f41c19c21404d5 25,41-42
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_115fc6c4e9ae0b::t_39473d80af8f12 417,421-426,433-438,442
+  s_115fc6c4e9ae0b::t_2a362fb23a021d 1-2,4-6,8-134,144-179,181-182,185-196,202-209,234,237,240,246-248,250-252,255-257,259-373,382-383,411-416,418-420,427-432,439-441,443-452
+  s_115fc6c4e9ae0b::t_c9c7e97622cd80 200-201,212-216,218-219,221-222,224-228,231-233,235-236,238-239,241-245,249,253-254,258
+  s_115fc6c4e9ae0b::t_876ddbef5012d6 180,183-184
+  s_115fc6c4e9ae0b::t_9241af4eefd20d 197-199,210-211,217,220,223,229-230
+  s_115fc6c4e9ae0b::t_a6010173660a0a 378-381,384-410
+  s_115fc6c4e9ae0b::t_6286aba03a1b6a 374-377
+  s_115fc6c4e9ae0b::t_9bebb087c3a329 135-143
+  s_115fc6c4e9ae0b::t_9f87f28cb4df9d 3,7
+apps/api/scripts/copy-migrations.cjs
+  s_115fc6c4e9ae0b::t_6a25c6c1253716 5,7-18
+packages/companion-skill/package.json
+  s_115fc6c4e9ae0b::t_c8fc15e7344083 1-20
+packages/companion-skill/skill/SKILL.md
+  s_115fc6c4e9ae0b::t_f10b7861b3578a 113-116
+  s_115fc6c4e9ae0b::t_b84b43ace46399 39-43
+  s_115fc6c4e9ae0b::t_1e812b19f93eee 1-38,44-91,94-95,97-98,102-104,107-112,117-135
+  s_115fc6c4e9ae0b::t_95d749a74a4e0f 92-93,96,99-101
+  s_115fc6c4e9ae0b::t_5a72407313ef6f 105-106
+apps/web/src/components/skills/UploadDialog.tsx
+  s_115fc6c4e9ae0b::t_725697ea52f547 413
+  s_115fc6c4e9ae0b::t_d7bc0c8c70d08c 110
+  s_115fc6c4e9ae0b::t_a70d6a49f48d2e 450
+  s_115fc6c4e9ae0b::t_e561884362f1dc 396
+packages/contracts/src/index.ts
+  s_115fc6c4e9ae0b::t_310a6fa80fff4b 7
+packages/companion-skill/src/index.ts
+  s_115fc6c4e9ae0b::t_dab04699869b72 1-92
+packages/db/src/schema.ts
+  s_115fc6c4e9ae0b::t_624493c14d9342 420-452
+apps/api/package.json
+  s_115fc6c4e9ae0b::t_63daa9f069f817 20
+apps/web/src/components/skills/SkillsApp.tsx
+  s_115fc6c4e9ae0b::t_4ea01ea65f3106 5-11,17
+  s_115fc6c4e9ae0b::t_e06716c2638592 702-704
+  s_115fc6c4e9ae0b::t_0637b6d784bc2c 248
+  s_115fc6c4e9ae0b::t_1c48ab3ee7a3e2 522
+  s_115fc6c4e9ae0b::t_66ee2284470cda 678-680,685-687
+  s_115fc6c4e9ae0b::t_56a2b0432dfcb8 110-111,114
+  s_115fc6c4e9ae0b::t_3e29e509ee1954 89,97
+  s_115fc6c4e9ae0b::t_260508fbececd2 488,493,498,502-514
+packages/companion-skill/skill/reference/api.md
+  s_115fc6c4e9ae0b::t_8586be90d9394d 1-5,21-42,47-58
+  s_115fc6c4e9ae0b::t_054ce2e9a16e1e 43-46
+  s_115fc6c4e9ae0b::t_aa5cbb0780f27f 6-20
+apps/api/src/localSkills.test.ts
+  s_115fc6c4e9ae0b::t_5dfdce3d97bb7d 1-75
+docs/design.md
+  s_115fc6c4e9ae0b::t_074067d4dcc540 62
+  s_115fc6c4e9ae0b::t_9baab66e07c619 81-94
+  s_115fc6c4e9ae0b::t_4a922cb1cbc449 213-216
+  s_115fc6c4e9ae0b::t_a94b9e629c7403 198-201
+  s_115fc6c4e9ae0b::t_027304261f7c51 211
+apps/api/src/companionSkillPackage.ts
+  s_115fc6c4e9ae0b::t_89575b7ad3ef7f 1-91,101-125
+  s_115fc6c4e9ae0b::t_fc423607f1ecd4 92-100
+apps/api/src/index.ts
+  s_115fc6c4e9ae0b::t_0f5dc44ae52558 39
+  s_115fc6c4e9ae0b::t_7af0f260df6a6f 63
+  s_115fc6c4e9ae0b::t_661a7416198ba1 113-114
+  s_115fc6c4e9ae0b::t_332f612533def8 1176-1238,1242-1245,1247-1254,1264-1286
+  s_115fc6c4e9ae0b::t_17db59dc1f402b 1239-1241,1246
+  s_115fc6c4e9ae0b::t_3b882f7cd35e53 20-21
+  s_115fc6c4e9ae0b::t_66f44d6a30e8d1 1255-1263
+packages/db/drizzle/0013_local_skill_installs.sql
+  s_115fc6c4e9ae0b::t_ea295512355a48 1-18
+packages/companion-skill/tsconfig.json
+  s_115fc6c4e9ae0b::t_0f366e0ec503bc 1-8
+apps/web/src/components/Icon.tsx
+  s_115fc6c4e9ae0b::t_93eeefd899373b 107
+  s_115fc6c4e9ae0b::t_23da6592ff4092 125,133
+  s_115fc6c4e9ae0b::t_d697e55f0038a1 8
+  s_115fc6c4e9ae0b::t_4b6f5d1dee0a08 34,42
+  s_115fc6c4e9ae0b::t_c9a45bae6f7d66 16
+  s_115fc6c4e9ae0b::t_2f8fb8c95ac96a 99
+apps/web/src/styles/skills.css
+  s_115fc6c4e9ae0b::t_64a4b3bee59549 599-633,636,640-647,649-715,721
+  s_115fc6c4e9ae0b::t_c729b3f8195883 648
+  s_115fc6c4e9ae0b::t_e81f192f466d10 716-720
+  s_115fc6c4e9ae0b::t_6acee79b540a10 634-635,637-639
+packages/core/src/services.ts
+  s_115fc6c4e9ae0b::t_b65bed63465652 2054-2151
+  s_115fc6c4e9ae0b::t_474a178268d316 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "32877892df8e1b9d8821932ab2c7195553408934",
+  "prompts": {},
+  "sessions": {
+    "s_115fc6c4e9ae0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc833be5-c739-4eae-8233-18863e95c0c3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

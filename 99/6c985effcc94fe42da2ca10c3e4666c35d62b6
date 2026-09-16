@@ -1,0 +1,36 @@
+packages/companion-skill/src/index.ts
+  s_276688b92fc5da::t_e23edd00fe631e 65-72
+  s_276688b92fc5da::t_704520d3452116 41
+  s_276688b92fc5da::t_90fba9b9afa39c 55
+packages/companion-skill/skill/reference/api.md
+  s_276688b92fc5da::t_8a0e5b6c26b9b0 94,98-100
+  s_276688b92fc5da::t_23fdeda8e88cd4 212,216
+  s_276688b92fc5da::t_72e7fbd54bcb6c 23,26-28
+  s_276688b92fc5da::t_345cf45aec7f6e 141-171
+packages/companion-skill/skill/SKILL.md
+  s_276688b92fc5da::t_2cc9e610265e4a 217-223
+  s_276688b92fc5da::t_0e0f8f1426e13c 3
+  s_276688b92fc5da::t_7812660350cf77 6
+  s_276688b92fc5da::t_a69b110005189e 123-126
+  s_276688b92fc5da::t_c56a9d3c0fc3b5 58-73
+  s_276688b92fc5da::t_a33070b7c3bb97 200-206
+  s_276688b92fc5da::t_02a11461c502f3 86-88,92,98-119
+  s_276688b92fc5da::t_9d45e52341dce1 152-153,155
+  s_276688b92fc5da::t_a374356e43139f 347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "996c985effcc94fe42da2ca10c3e4666c35d62b6",
+  "prompts": {},
+  "sessions": {
+    "s_276688b92fc5da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "535a6854-5758-4d93-b15b-5d9de2a8a01b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

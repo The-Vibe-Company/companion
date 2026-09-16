@@ -1,0 +1,104 @@
+packages/core/src/companions.ts
+  s_b4ac515bc4c5b3::t_f62bb33a540a45 23,46,604-605,611-612,615,625-627,629-631,656,682,692-693,703,709,716,794,837
+  s_b4ac515bc4c5b3::t_6b34f2c548828a 586-603,606-610,613-614,616-624,721-793,795-834,836
+  s_b4ac515bc4c5b3::t_8731fe7f01b114 17,25-26,30,44-45,49-50,56-70
+  s_b4ac515bc4c5b3::t_9df19b4acbc888 71
+  s_b4ac515bc4c5b3::t_15e130277f97e0 720
+  s_b4ac515bc4c5b3::t_0a910f2c9b9605 835
+  s_b4ac515bc4c5b3::t_b4249dac3c7091 838
+scripts/ios-devx.test.mjs
+  s_b4ac515bc4c5b3::t_7609c6ca79f152 485,489,500,502-504,506,510,513-514
+docs/product.md
+  s_b4ac515bc4c5b3::t_21fed57a0b001c 110-115
+docs/runbooks/companions-runtime.md
+  s_b4ac515bc4c5b3::t_7609c6ca79f152 282,284-286,294,298-300,303,306-307
+packages/box-runtime/src/companionBoxAgentSource.ts
+  s_b4ac515bc4c5b3::t_1a928a28f77a95 6
+apps/ios/Companion/Support/Info.plist
+  s_b4ac515bc4c5b3::t_21fed57a0b001c 48
+apps/ios/Companion/Screens/ChatComposer.swift
+  s_b4ac515bc4c5b3::t_e43c7619ba97f4 87,146,164,252,263,267-268,277,280-281,297-300
+packages/companion-skill/skill/companion.integrity.json
+  s_b4ac515bc4c5b3::t_1a928a28f77a95 10
+  s_b4ac515bc4c5b3::t_a5da40ebb30d84 3-4,22
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_b4ac515bc4c5b3::t_1a928a28f77a95 142
+apps/ios/Companion/Screens/VoiceTranscriptionStatusView.swift
+  s_b4ac515bc4c5b3::t_e43c7619ba97f4 26-27,38,61,95-97,103-112
+  s_b4ac515bc4c5b3::t_127180132f4772 113-115
+apps/api/src/companionRoutes.ts
+  s_b4ac515bc4c5b3::t_d67a1a250e044a 60,111-112,118,121,220,595
+  s_b4ac515bc4c5b3::t_edc399f43b9cba 784-788
+  s_b4ac515bc4c5b3::t_6ebd9f47b4896f 780,795-839
+  s_b4ac515bc4c5b3::t_11e2c306474e4a 779
+  s_b4ac515bc4c5b3::t_f7a3fa15476293 781-783
+  s_b4ac515bc4c5b3::t_cdb422ed987ac3 789-794
+  s_b4ac515bc4c5b3::t_a3520efdd8f5bf 840-842
+  s_b4ac515bc4c5b3::t_5e133d7f05940c 843-846
+apps/api/src/companionTranscriptionRoute.test.ts
+  s_b4ac515bc4c5b3::t_df0e3e3dd1765d 93,96
+  s_b4ac515bc4c5b3::t_f5d104efb071cc 200
+  s_b4ac515bc4c5b3::t_27fd0652b75d49 13,19,29,57,62-70,90-92,117,119-120,124-134,137,139-142,144,146-160,163,166-167,170,173-178,180,182-188,190-192,194,196-199,201,204-205,207,211-212,216
+packages/contracts/test/companionTranscription.test.ts
+  s_b4ac515bc4c5b3::t_a4115c37510fac 4-5,11,15-29
+  s_b4ac515bc4c5b3::t_df0e3e3dd1765d 6,30-32,39,43
+  s_b4ac515bc4c5b3::t_1beffa7af27da4 10
+apps/ios/CompanionKit/Sources/CompanionKit/SessionStore.swift
+  s_b4ac515bc4c5b3::t_bce00c1ff9d0f2 509-512,514-516,519
+apps/ios/README.md
+  s_b4ac515bc4c5b3::t_21fed57a0b001c 59-66,70,75
+  s_b4ac515bc4c5b3::t_3ae1984e83f7b5 76-81
+packages/contracts/src/companions.ts
+  s_b4ac515bc4c5b3::t_f62bb33a540a45 1375-1381,1387,1391,1395
+  s_b4ac515bc4c5b3::t_a4115c37510fac 1370-1371,1373,1396-1406
+  s_b4ac515bc4c5b3::t_6f1782da614e2f 1407
+packages/companion-skill/skill/companion.json
+  s_b4ac515bc4c5b3::t_7ad8ce2e664824 4,31-39
+apps/ios/CompanionKit/Tests/CompanionKitTests/VoiceTranscriptionTests.swift
+  s_b4ac515bc4c5b3::t_bd20c9e79a3323 26-31,33,35-37,39,49,55
+  s_b4ac515bc4c5b3::t_bce00c1ff9d0f2 8,15,43,45,47-48,53-54,56-59,62,66,68,70,77-95
+  s_b4ac515bc4c5b3::t_b3c3c04d53bb1a 32,34
+packages/core/test/companionTranscription.test.ts
+  s_b4ac515bc4c5b3::t_df0e3e3dd1765d 31-43,45-47,75-113,116-118,129
+  s_b4ac515bc4c5b3::t_18d5a239e9d68e 170,185
+  s_b4ac515bc4c5b3::t_e2dfd56bbdce5e 3-4,8,10,16-17,19-20,27-30,44,48-72,139-153,155,160-161,163,169,171-172,177-178,180-183,186-200
+  s_b4ac515bc4c5b3::t_54160cfcdd77d8 73-74
+packages/companion-skill/skill/SKILL.md
+  s_b4ac515bc4c5b3::t_7ad8ce2e664824 1377
+apps/ios/Companion/Support/VoiceTranscriptionController.swift
+  s_b4ac515bc4c5b3::t_a428f2f0d3c712 7-10,12-13,18-26,28-34,36-37,42-44,46-54,56-65,67,74-78,103,117,119,121-122,125,131,138,141,146,148-150,160-168,172,179-180,183-184,187-204,206-207,209,215,217-219,223,230-236,241-242,254,256-258,263-266,269,271-273,288-297
+  s_b4ac515bc4c5b3::t_6d15a28071ef6e 298
+apps/ios/CompanionKit/Sources/CompanionKit/VoiceTranscription.swift
+  s_b4ac515bc4c5b3::t_bce00c1ff9d0f2 1-25
+docs/companions-runtime.md
+  s_b4ac515bc4c5b3::t_21fed57a0b001c 972-975,979,983-986,994,998-999
+  s_b4ac515bc4c5b3::t_3ae1984e83f7b5 976-978,987-992
+  s_b4ac515bc4c5b3::t_a50ed2401f0e0b 993
+apps/ios/CompanionKit/Sources/CompanionKit/APIClient.swift
+  s_b4ac515bc4c5b3::t_bce00c1ff9d0f2 536-543,545-546,548-549,551-553,996-1005
+  s_b4ac515bc4c5b3::t_f3c5b068399f95 1006-1007
+apps/api/src/companionTranscriptionDiagnostics.ts
+  s_b4ac515bc4c5b3::t_2fb8327dc57fa1 28-30
+docs/design.md
+  s_b4ac515bc4c5b3::t_21fed57a0b001c 388-390,395-403,406-407
+  s_b4ac515bc4c5b3::t_3ae1984e83f7b5 391-394,410-413
+  s_b4ac515bc4c5b3::t_0dadfeea233084 414
+apps/api/src/localSkills.test.ts
+  s_b4ac515bc4c5b3::t_533eb5ce5be03b 51,130-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "d0503577d25af6970ed37e674a6472d15feb2f92",
+  "prompts": {},
+  "sessions": {
+    "s_b4ac515bc4c5b3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04394-fda6-7b71-9c91-1a81aec70c39",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,58 @@
+apps/api/src/localSkills.test.ts
+  s_05fff411e3dd45::t_09424bff811240 47,114-115
+packages/companion-skill/skill/scripts/test_skill_guard.py
+  s_05fff411e3dd45::t_5367cec689d3e3 85-98,110-118
+  s_05fff411e3dd45::t_a6420d5c5cb4d7 99-109
+  s_05fff411e3dd45::t_9fcb396257e767 203-212,214-220,245-278
+  s_6f9c9ed873028b::t_405d7996294360 279
+packages/companion-skill/skill/reference/api.md
+  s_05fff411e3dd45::t_a9bd06cbaba049 488-494
+packages/companion-skill/skill/companion.integrity.json
+  s_05fff411e3dd45::t_d636742e89e006 3
+  s_05fff411e3dd45::t_6a2da943859e41 4,11,15
+packages/companion-skill/skill/scripts/skill_guard.py
+  s_05fff411e3dd45::t_3baf81deeef156 231,269,272-276
+  s_05fff411e3dd45::t_bc4b7e6a61e787 637,751
+  s_05fff411e3dd45::t_3d98bc58f31e75 180-181
+  s_05fff411e3dd45::t_6cb33cd1bb2864 339-357,381,388-389,396-399,405,425,428
+  s_05fff411e3dd45::t_6db99014feaa08 47
+  s_05fff411e3dd45::t_42d24637284d07 128-129,131,135,138-139,144-179,182-214,218-220
+  s_a70fe285412cbd::t_609577645e2e87 221-222
+packages/companion-skill/skill/SKILL.md
+  s_05fff411e3dd45::t_de12daef299487 155-158
+  s_05fff411e3dd45::t_bf3aa443f86653 153-154
+packages/companion-skill/skill/companion.json
+  s_05fff411e3dd45::t_f33a1478a8130b 4,23-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "68283c1dd0b84e4f752241703a7f216d03cc7123",
+  "prompts": {},
+  "sessions": {
+    "s_05fff411e3dd45": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1810-16f3-7fe0-afd6-31be2d72a4e6",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_6f9c9ed873028b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1802-71c8-7e30-abe6-faf50a344bc0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_a70fe285412cbd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f17f4-d522-7493-b956-a16d8187683c",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,69 @@
+packages/db/src/schema.ts
+  s_5c2a1a0a0d942b::t_7b9a069b7b3a03 716-852
+packages/core/src/vanish.ts
+  s_5c2a1a0a0d942b::t_ef813c7549f2ba 1-63,65-116
+  s_5c2a1a0a0d942b::t_961d1a11e4ccb6 64
+packages/core/src/authz.ts
+  s_5c2a1a0a0d942b::t_4c1a1efedcdedd 89-103
+packages/storage/src/index.ts
+  s_5c2a1a0a0d942b::t_ceb7a8298ca295 66-74
+packages/core/src/services.ts
+  s_5c2a1a0a0d942b::t_b22f6717202110 3669-3673
+apps/api/src/index.ts
+  s_5c2a1a0a0d942b::t_4307260802e670 2389-2674
+  s_5c2a1a0a0d942b::t_361c238a3bd388 165
+  s_5c2a1a0a0d942b::t_87bd37acfb2a28 145-148,153-162
+  s_5c2a1a0a0d942b::t_ca8ac5254d90e8 95-107
+packages/db/drizzle/0032_skill_runs.sql
+  s_5c2a1a0a0d942b::t_f7923a45057f1f 1-74
+packages/core/test/runsFakeDb.ts
+  s_5c2a1a0a0d942b::t_34b4fadd2cb751 212
+  s_5c2a1a0a0d942b::t_63c901562cb721 228-264
+  s_5c2a1a0a0d942b::t_7bceddc4ca5dde 44-46,57-59
+  s_5c2a1a0a0d942b::t_a064767a599bb8 102-104,137,148,152-159
+  s_5c2a1a0a0d942b::t_1a4ba69376b3e5 308-316
+  s_5c2a1a0a0d942b::t_fa2b59ceb268df 106-128
+  s_5c2a1a0a0d942b::t_18220f05136cf8 348-352
+  s_5c2a1a0a0d942b::t_ea758297b0d110 138-147,160
+  s_5c2a1a0a0d942b::t_89e1ef800f4a58 14-16
+  s_5c2a1a0a0d942b::t_77cc86c0322c86 105
+packages/core/test/authz.test.ts
+  s_5c2a1a0a0d942b::t_a9cd71f326fec7 4
+  s_5c2a1a0a0d942b::t_12927625cd8660 116-134
+packages/core/test/skillRuns.test.ts
+  s_5c2a1a0a0d942b::t_0757f362f982f4 1-21,24-549
+  s_5c2a1a0a0d942b::t_d78dd22f92a9f1 22-23
+packages/core/src/providerConnections.ts
+  s_5c2a1a0a0d942b::t_763702ae85041b 297-298
+  s_5c2a1a0a0d942b::t_0fa5fe06733613 154-157
+packages/core/src/skillRuns.ts
+  s_5c2a1a0a0d942b::t_86246d94680251 433-435,438
+  s_5c2a1a0a0d942b::t_df5f5cd79b860b 165-167,175
+  s_5c2a1a0a0d942b::t_c0bb13777ebc0f 1-23,25-164,168-174,176-281,313-415,417-432,436-437,439-457,459-492,494-514,530-874,879-1030
+  s_5c2a1a0a0d942b::t_5eb204a75e004a 515-529
+  s_5c2a1a0a0d942b::t_0f560faac87fa9 24
+  s_5c2a1a0a0d942b::t_7e4d79dacdc205 282-312
+  s_5c2a1a0a0d942b::t_9022bb4cd41665 416,458,493,875-878
+packages/core/test/vanish.test.ts
+  s_5c2a1a0a0d942b::t_dcc3d45035d865 1-94
+packages/core/package.json
+  s_5c2a1a0a0d942b::t_9bc3adbbafae20 22-23
+packages/db/drizzle/meta/_journal.json
+  s_5c2a1a0a0d942b::t_0265d5b4f95b78 229-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3056a88ba0d64e3ce4ad7837dd6f30aceb6f9b06",
+  "prompts": {},
+  "sessions": {
+    "s_5c2a1a0a0d942b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c9149cb-d9d2-47a8-933b-e769ca7e94e3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

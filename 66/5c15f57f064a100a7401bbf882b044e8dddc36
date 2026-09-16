@@ -1,0 +1,68 @@
+apps/web/src/lib/queries.ts
+  s_f8252e72aa2403::t_45b5886aa6b486 7-8,15
+  s_f8252e72aa2403::t_c87a6ce1957496 99-113,116-132
+apps/web/src/app/globals.css
+  s_f8252e72aa2403::t_24c8fc20db5257 5
+apps/web/src/components/skills/fileview.tsx
+  s_f8252e72aa2403::t_0e1a02ebd15ff6 1-136,150-315
+  s_f8252e72aa2403::t_95db72c4dddbcb 137-149
+apps/web/src/lib/types.ts
+  s_f8252e72aa2403::t_48821ce6d35d80 15
+  s_f8252e72aa2403::t_b3841f3316bb30 39
+apps/web/src/components/Icon.tsx
+  s_f8252e72aa2403::t_3578f6f5c99eb3 86,92
+  s_f8252e72aa2403::t_13d2d9fa67a0e5 123
+  s_f8252e72aa2403::t_d794ca3517af48 65
+  s_f8252e72aa2403::t_33679b0ade4b2d 104,106-107
+  s_f8252e72aa2403::t_5e364c71387ae0 148
+  s_f8252e72aa2403::t_53b29fb9587cbe 69,71
+  s_f8252e72aa2403::t_8030cacd6ab69d 5,11,23,25-26
+  s_f8252e72aa2403::t_3cd1c8ca03e6ea 153
+apps/web/src/components/skills/discussion.tsx
+  s_f8252e72aa2403::t_646aa3d7f7b8e9 1-373
+apps/web/src/components/skills/markdown.tsx
+  s_f8252e72aa2403::t_69cf13227d450b 125-126
+  s_f8252e72aa2403::t_81b56d7433e5a7 104
+  s_f8252e72aa2403::t_dabd2a347f1f63 110
+  s_f8252e72aa2403::t_5b1391d9d4e3d9 155-156
+  s_f8252e72aa2403::t_fdf8909ca83a23 139-140
+  s_f8252e72aa2403::t_ceb0b7d8d3399a 70,74-76,81,87-88
+  s_f8252e72aa2403::t_63bdd7d5b054c8 1-69,71-73,77-80,82-86,89-103,105-109,111-124,127-138,141-154,157-176,184,186-223
+  s_f8252e72aa2403::t_f9fe66b482ad0a 177-183,185
+apps/web/src/components/skills/detailParts.tsx
+  s_f8252e72aa2403::t_e2b442cc99946c 181-211
+apps/web/src/components/skills/filters.test.ts
+  s_f8252e72aa2403::t_ae88f352c4f1e2 8
+apps/web/src/components/skills/DetailView.tsx
+  s_f8252e72aa2403::t_768b18c032f09e 24
+  s_f8252e72aa2403::t_bf8b4ec7242ee8 67-69
+  s_f8252e72aa2403::t_528c9cd626de69 247-252,258-263
+  s_f8252e72aa2403::t_6472eef70f5a19 228,232-235
+  s_f8252e72aa2403::t_85ee2ea1918fa7 111-116
+  s_f8252e72aa2403::t_abdb36e54c62f9 4-10,12-18,20-23,26,33,46,56-57,60,64-66,75-92,105-110,117-124,126,129,133-136,139,143,149-162,167-169,172-176,229-231,236-246,253-257,264-276,278-305,307-320,324-341,343
+  s_f8252e72aa2403::t_34cce2dbea6549 306
+  s_f8252e72aa2403::t_c63e3b9687919d 145-148
+apps/web/src/styles/app.css
+  s_f8252e72aa2403::t_d70c2c36ff2a28 204-207
+  s_f8252e72aa2403::t_16a7bb99be11b3 1-203,208-219
+apps/web/src/components/skills/SkillsApp.tsx
+  s_f8252e72aa2403::t_1381c551c52bbc 513
+apps/web/src/components/skills/fileFormat.ts
+  s_f8252e72aa2403::t_3015c41c72ca8b 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "665c15f57f064a100a7401bbf882b044e8dddc36",
+  "prompts": {},
+  "sessions": {
+    "s_f8252e72aa2403": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f39b3c02-14fb-46fc-9a93-d14497365121",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

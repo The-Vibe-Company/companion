@@ -1,0 +1,200 @@
+apps/web/src/styles/skills.css
+  s_96c3bc2346aa7f::t_9fb863e49f1ba5 686-689
+  s_96c3bc2346aa7f::t_70c7cb90e1b730 690
+apps/api/src/localSkills.test.ts
+  s_96c3bc2346aa7f::t_63956659be1b80 47,114-115
+packages/core/src/domainAccess.ts
+  s_96c3bc2346aa7f::t_136f398e308b69 6,135,141-144
+apps/web/src/components/skills/SkillsApp.tsx
+  s_96c3bc2346aa7f::t_f280748f57e68c 13,93,262,275,301-303,555-558,561,1496-1497,1561-1570
+  s_96c3bc2346aa7f::t_70c7cb90e1b730 1532-1533
+packages/core/src/index.ts
+  s_96c3bc2346aa7f::t_4fea4dba367497 3
+  s_96c3bc2346aa7f::t_3021dab67eaacf 4
+apps/web/src/components/org/dialogs.tsx
+  s_96c3bc2346aa7f::t_f999c98d753368 17-18,20,23,70-75
+cli/src/lib/client.ts
+  s_96c3bc2346aa7f::t_79ebb0f2879212 31-32
+packages/billing/test/stripeGateway.test.ts
+  s_96c3bc2346aa7f::t_ad449ec11801b1 1-8,16-19,21-25,40-41,52,54-91
+  s_96c3bc2346aa7f::t_524854e5dda2ac 9-15,20,26-39,42-51,53
+packages/billing/package.json
+  s_96c3bc2346aa7f::t_c4d5e26eaa29c0 1-19
+packages/db/src/schema.ts
+  s_96c3bc2346aa7f::t_1824539d939551 212
+  s_96c3bc2346aa7f::t_a15e87a3dfbad5 27,193-211,213-230,234-250,255
+  s_96c3bc2346aa7f::t_6920c5339a57f5 231-233,251-254
+  s_96c3bc2346aa7f::t_c445c7ab86c150 256
+packages/billing/src/index.ts
+  s_96c3bc2346aa7f::t_5ba31a23deeef4 98-107,109
+  s_96c3bc2346aa7f::t_c4d5e26eaa29c0 1-76,78,80-97,108,110-198
+  s_96c3bc2346aa7f::t_ad449ec11801b1 77,79
+apps/api/tsup.config.ts
+  s_96c3bc2346aa7f::t_362945e6246329 22
+apps/web/src/components/org/SettingsApp.tsx
+  s_96c3bc2346aa7f::t_48156b4552ecb1 98,101
+  s_96c3bc2346aa7f::t_4491c2259617f3 21-22,87,97,176,206,303,306,386,389,412-433
+packages/core/test/billing.test.ts
+  s_96c3bc2346aa7f::t_a8a9601d8e3a01 1-55
+apps/web/src/lib/settingsClient.ts
+  s_96c3bc2346aa7f::t_2dc4a1e4dfbc72 6,16,19,24-25
+packages/core/src/billing.ts
+  s_96c3bc2346aa7f::t_04cf0276db1a39 108-120
+  s_96c3bc2346aa7f::t_390ab16f1b2953 59-66
+  s_96c3bc2346aa7f::t_4fea4dba367497 1-58,67-107,121-124,126-272,274-292,294-296
+  s_96c3bc2346aa7f::t_6de59aacf9061d 273,293
+  s_96c3bc2346aa7f::t_7a7a39f132c5cb 125
+apps/web/src/components/org/model.ts
+  s_96c3bc2346aa7f::t_4491c2259617f3 93
+  s_96c3bc2346aa7f::t_2dc4a1e4dfbc72 1,83,94,126,137,146-148
+apps/web/src/components/skills/DetailView.tsx
+  s_96c3bc2346aa7f::t_5b776f4740f697 302-303,330-331
+  s_96c3bc2346aa7f::t_70c7cb90e1b730 682-688
+apps/api/src/context.ts
+  s_96c3bc2346aa7f::t_f16b3a13a1cf35 11,110-112
+apps/worker/src/index.ts
+  s_96c3bc2346aa7f::t_a0ea4344f4d371 35-41
+  s_96c3bc2346aa7f::t_db20524b3b0249 32-34
+  s_96c3bc2346aa7f::t_8df772a5fa7025 42-44
+  s_96c3bc2346aa7f::t_7ea6b0431c021c 1-31,45-73
+apps/web/src/components/skills/Sidebar.tsx
+  s_96c3bc2346aa7f::t_f8c39aa0204b51 436-437,482-483,630-631
+packages/companion-skill/skill/SKILL.md
+  s_96c3bc2346aa7f::t_257242c087aff8 316-346
+apps/web/src/app/(app)/skills/page.tsx
+  s_96c3bc2346aa7f::t_f8c39aa0204b51 7,50-51,60-62,85
+apps/web/src/lib/settingsViewModel.ts
+  s_96c3bc2346aa7f::t_2dc4a1e4dfbc72 3,7,51-55,76,78,144
+packages/contracts/src/index.ts
+  s_96c3bc2346aa7f::t_ff271caa997918 16
+apps/web/src/components/org/SettingsSidebar.tsx
+  s_96c3bc2346aa7f::t_02c0a6fe13156a 168-176
+packages/core/package.json
+  s_96c3bc2346aa7f::t_3021dab67eaacf 15
+packages/core/src/services.ts
+  s_96c3bc2346aa7f::t_a6579c31857ee3 1371-1383,1391,3191
+  s_96c3bc2346aa7f::t_777ea999da5108 286
+  s_96c3bc2346aa7f::t_7a7a39f132c5cb 719
+  s_96c3bc2346aa7f::t_b385570b0bdde7 2041-2043
+  s_96c3bc2346aa7f::t_136f398e308b69 2242,2248-2251
+  s_96c3bc2346aa7f::t_b8dbe5b5019853 52-58,741,747,753-770,1532-1533,1535-1536,2044-2054,2090-2101,2293,2339-2341,3064-3071,3108-3115,3240,3284-3286
+apps/web/src/lib/org.ts
+  s_96c3bc2346aa7f::t_2dc4a1e4dfbc72 20,24,107,110,114-120
+  s_3665787a30c91f::t_8b006f6d4c372c 121
+apps/web/src/components/org/BillingPane.tsx
+  s_96c3bc2346aa7f::t_02c0a6fe13156a 1-93
+apps/web/src/styles/settings.css
+  s_96c3bc2346aa7f::t_02c0a6fe13156a 141-143,147
+  s_96c3bc2346aa7f::t_f999c98d753368 144-146
+packages/companion-skill/skill/companion.integrity.json
+  s_96c3bc2346aa7f::t_90ab64bf8502db 3-4,15
+packages/core/src/personalLabels.ts
+  s_96c3bc2346aa7f::t_10b62d17884967 14
+  s_96c3bc2346aa7f::t_7a7a39f132c5cb 58,106,152,188,236,320
+apps/web/src/lib/apiClient.ts
+  s_96c3bc2346aa7f::t_2dc4a1e4dfbc72 9-10
+README.md
+  s_96c3bc2346aa7f::t_fbfe6c398441b1 26,40-42,69,119
+  s_96c3bc2346aa7f::t_b6edbd4950ec38 58-59,92
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_96c3bc2346aa7f::t_96baf5479c1b62 231-262
+apps/api/src/index.ts
+  s_96c3bc2346aa7f::t_136f398e308b69 843,985,989
+  s_96c3bc2346aa7f::t_f16b3a13a1cf35 173-175,177-181,187-197,503-546
+  s_96c3bc2346aa7f::t_390ab16f1b2953 176,2331
+  s_96c3bc2346aa7f::t_5ba31a23deeef4 215-246
+  s_96c3bc2346aa7f::t_92890c7241293c 211-214,247-248
+  s_96c3bc2346aa7f::t_0b8ac7e558881b 249
+  s_96c3bc2346aa7f::t_17439ad55884ff 547
+packages/core/src/onboarding.ts
+  s_96c3bc2346aa7f::t_10b62d17884967 14
+  s_96c3bc2346aa7f::t_7a7a39f132c5cb 82
+apps/api/package.json
+  s_96c3bc2346aa7f::t_f16b3a13a1cf35 20,36
+apps/web/src/lib/settingsData.ts
+  s_96c3bc2346aa7f::t_2dc4a1e4dfbc72 11,26,81-84,86,91
+docs/design.md
+  s_96c3bc2346aa7f::t_b68757ef19f670 340-381,391-394
+  s_96c3bc2346aa7f::t_8c0cb87c3202a2 16-17,26,33,47,50,67-70,322-323,329
+docs/PRD.md
+  s_96c3bc2346aa7f::t_c8f7af2290f509 64,68,135-149,174,177-178
+apps/web/src/components/org/SettingsView.tsx
+  s_96c3bc2346aa7f::t_82598256ba49fa 63,65-70,72,75,81
+  s_96c3bc2346aa7f::t_02c0a6fe13156a 12,32-33
+packages/billing/tsconfig.json
+  s_96c3bc2346aa7f::t_c4d5e26eaa29c0 1-5
+apps/web/src/components/skills/ListView.tsx
+  s_96c3bc2346aa7f::t_96baf5479c1b62 116-117,141-142
+  s_96c3bc2346aa7f::t_f8c39aa0204b51 185-191
+  s_96c3bc2346aa7f::t_b8b0068cd64139 192
+packages/db/drizzle/0032_billing.sql
+  s_96c3bc2346aa7f::t_a15e87a3dfbad5 1-12,14-29,34-41,44-55
+  s_96c3bc2346aa7f::t_1824539d939551 13
+  s_96c3bc2346aa7f::t_6920c5339a57f5 30-33,42-43
+packages/companion-skill/skill/reference/api.md
+  s_96c3bc2346aa7f::t_257242c087aff8 191-220
+packages/companion-skill/skill/companion.json
+  s_96c3bc2346aa7f::t_257242c087aff8 4,23-31
+packages/contracts/src/orgSettings.ts
+  s_96c3bc2346aa7f::t_136f398e308b69 120
+packages/core/src/billingService.ts
+  s_96c3bc2346aa7f::t_1824539d939551 56,77
+  s_96c3bc2346aa7f::t_3021dab67eaacf 1-3,5-34,36-55,57-76,78-139,142-171,173-193,195-196,207-214,223-254,257-264,275-287,296-317
+  s_96c3bc2346aa7f::t_ec2debd5fdfea8 4,35
+  s_96c3bc2346aa7f::t_d90c7ecb0f09c2 140-141,172
+  s_96c3bc2346aa7f::t_ec5c3e3ac0b2c6 194,197-206
+  s_96c3bc2346aa7f::t_0c21f0612af59f 215-222,255-256,265-274,288-295
+packages/contracts/src/billing.ts
+  s_96c3bc2346aa7f::t_ff271caa997918 1-91
+apps/web/src/components/org/WorkspaceGeneralPane.tsx
+  s_96c3bc2346aa7f::t_1740ef6a08c0a0 105
+  s_96c3bc2346aa7f::t_f999c98d753368 19-20,29,31,108-113
+packages/db/drizzle/meta/_journal.json
+  s_a31e722d8f5f55::t_899d4fa010b73c 228-234
+.env.example
+  s_96c3bc2346aa7f::t_074011d405757c 46-57
+apps/worker/package.json
+  s_96c3bc2346aa7f::t_1e9975b0f712c1 1-25
+apps/worker/tsconfig.json
+  s_96c3bc2346aa7f::t_05dc08beaf9473 1-5
+apps/worker/tsup.config.ts
+  s_96c3bc2346aa7f::t_26b18d53df2977 1-11
+package.json
+  s_96c3bc2346aa7f::t_4f3340d534e6e1 20
+pnpm-lock.yaml
+  s_96c3bc2346aa7f::t_0b3eee19dd311c 35-37,83-85,179-206,254,263,275-290,315-317,3664-3667,3930-3938,4549,5784,5801,7546-7550,7936-7941
+scripts/dev-conductor.sh
+  s_96c3bc2346aa7f::t_5f8a70467886a4 507,521,531-532,536
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "38ee52ec3d8108ccd473667698c8b63f0de2eaf1",
+  "prompts": {},
+  "sessions": {
+    "s_3665787a30c91f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38535ffb-0ee2-4bc3-97df-496864e0e3a5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_96c3bc2346aa7f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5af6-bdea-7621-9bab-fc9122b22a95",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_a31e722d8f5f55": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5ad5-e905-7e51-a4df-1d9673b00655",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

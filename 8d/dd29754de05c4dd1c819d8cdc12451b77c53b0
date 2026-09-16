@@ -1,0 +1,25 @@
+apps/web/src/components/skills/discussion.tsx
+  s_0ace220d528fbf::t_f53542b7e91f67 48-49,52
+  s_0ace220d528fbf::t_18b770dccfa768 4
+  s_0ace220d528fbf::t_aba4c051af6dbc 50-51,53-54,58,62-64
+  s_0ace220d528fbf::t_7536f43a831e55 98
+  s_0ace220d528fbf::t_98fdd2870dd76f 38-41,44-47,55-57,59-61,65-66,68-97,99-102
+apps/web/src/styles/skills.css
+  s_0ace220d528fbf::t_2b38c8a36d76b6 359-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "8ddd29754de05c4dd1c819d8cdc12451b77c53b0",
+  "prompts": {},
+  "sessions": {
+    "s_0ace220d528fbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f59bd7a8-4216-4b98-af92-d2236d3613ed",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

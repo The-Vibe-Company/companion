@@ -1,0 +1,28 @@
+apps/web/src/components/notifications/NotificationPanel.tsx
+  s_03528284c9e57b::t_f56d5d06d8209a 35
+  s_03528284c9e57b::t_8d3af6c2533198 3
+  s_03528284c9e57b::t_5ded967446fa9e 19,24-25
+apps/web/src/components/notifications/NotificationBell.tsx
+  s_03528284c9e57b::t_0ac5a799e401da 3,12-15,23,25,56-62,71,74,78,80,83,102,120,122,125,128-132,134-136
+apps/web/src/components/skills/Sidebar.tsx
+  s_03528284c9e57b::t_aee78b35f9b6fc 125
+apps/web/src/styles/skills.css
+  s_03528284c9e57b::t_76f7fe4b4bc371 560-572
+  s_03528284c9e57b::t_65799a7d2f95db 405-409,411-414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "b130e5de0c6fe9e6de389bd4bc65b668e4fa404c",
+  "prompts": {},
+  "sessions": {
+    "s_03528284c9e57b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5747401-8a29-4c27-a7d7-7d3facbde8f7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

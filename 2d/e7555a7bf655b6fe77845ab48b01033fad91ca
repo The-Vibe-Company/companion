@@ -1,0 +1,303 @@
+apps/web/src/lib/secrets.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-66
+packages/core/src/billingService.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-323
+apps/api/src/localSkills.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 47,66,72,74,76,118-126,154-155
+apps/web/src/components/org/SettingsApp.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 21-22,87,97-98,101,176,206,303,306,386,389,412-433
+apps/web/src/components/skills/skillActions.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-120
+packages/core/test/authz.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 7-8,103-136
+  s_48f42bfbc57a73::t_29e3123be52815 137-138
+deploy/railway/worker.railway.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-28
+apps/api/src/skillListRoute.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 3-4,76-90,144-145,149-315
+  s_48f42bfbc57a73::t_f0508ab753b344 316
+packages/core/src/index.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 2-3,6-7
+.gitignore
+  s_48f42bfbc57a73::t_4589e3b91175b4 40
+apps/web/src/components/org/BillingPane.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-86
+deploy/railway/api.railway.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-28
+apps/web/src/lib/settingsClient.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 6,16,19,24-25
+packages/companion-skill/skill/scripts/install_skill.py
+  s_48f42bfbc57a73::t_4589e3b91175b4 52-59,93-102,104-108,110-113,115-131,469,474-540,567,572-600,650-654,658,665-667,669-672,707-712,715-716,731-747,759,784-785
+packages/contracts/src/frontmatter.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 33-34,206
+packages/core/src/billing.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-296
+packages/companion-skill/skill/scripts/sync_secrets.py
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-126
+packages/contracts/test/secrets.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-67
+packages/core/test/billing.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-55
+apps/web/src/components/secrets/SecretsApp.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-506
+packages/contracts/src/billing.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-91
+apps/web/src/styles/deps.css
+  s_48f42bfbc57a73::t_4589e3b91175b4 134,136,141,143,151-160,195,197-198
+apps/web/src/components/skills/skillActions.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-185
+apps/web/src/components/org/dialogs.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 17-18,20,23,70-75
+apps/web/src/components/skills/DetailView.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 64,85,144-166
+  s_48f42bfbc57a73::t_f204fa6b1c9b0c 304
+  s_48f42bfbc57a73::t_c5e737cb0511a9 167
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 617,836
+packages/contracts/schemas/companion-manifest.v2.schema.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 54,112-121
+  s_48f42bfbc57a73::t_677045460229c0 122-126
+apps/web/src/components/org/SettingsView.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 24,53-54,127
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_48f42bfbc57a73::t_4589e3b91175b4 18,113-248,324-330,342-381,444,567-599,815,822-829,838,846,855,863,875,894,901,914,932,939,960
+packages/skills/test/secretSlots.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-27
+packages/contracts/src/index.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 18-19
+packages/billing/tsconfig.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-5
+packages/companion-skill/skill/companion.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 4,18,20-21,23-24,27-65,262,264,279
+packages/core/src/onboarding.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 14,82
+packages/companion-skill/skill/SKILL.md
+  s_48f42bfbc57a73::t_4589e3b91175b4 24-26,128-132,204,318-348,396-404,410,413-420,513,527-570,881-890,934-935,938,941-943,969-970,974,977-980,992
+apps/web/src/components/skills/sidebarTree.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-69
+apps/web/src/styles/skills.css
+  s_48f42bfbc57a73::t_4589e3b91175b4 311-312,328-329,747-751,933,962,1001-1004,1026-1039
+docs/PRD.md
+  s_48f42bfbc57a73::t_4589e3b91175b4 64,68,135-150,175,178-179
+packages/contracts/src/companionManifest.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 39-63,70-76,79-80,193,212
+apps/web/src/app/(app)/secrets/page.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-78
+apps/web/next.config.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 2-5,8-9
+apps/web/src/components/skills/Sidebar.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 3,11-12,287,301,338,341-344,376-390,434-436,444-446,484-487,495-497,518,580,644-653,703,744-748,766,771-782,785,823
+packages/billing/test/stripeGateway.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-104
+README.md
+  s_48f42bfbc57a73::t_4589e3b91175b4 26,40-42,58-59,69,85-87,93,120
+packages/companion-skill/skill/scripts/test_skill_guard.py
+  s_48f42bfbc57a73::t_4589e3b91175b4 110-130,301-320
+  s_48f42bfbc57a73::t_6620f85f3ef1b9 321
+scripts/dev-conductor.sh
+  s_48f42bfbc57a73::t_4589e3b91175b4 162,273-290,544,557-558,560,570-571,575,584
+apps/web/src/components/secrets/SkillSecretConfiguration.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-114
+packages/companion-skill/skill/scripts/test_secrets_runtime.py
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-202
+apps/web/src/components/skills/detailParts.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 9,268-273
+apps/web/src/lib/settingsData.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 11,68-71,73,78
+packages/contracts/src/orgSettings.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 120
+packages/skills/src/manifest.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 2,33-57,159,173-184
+  s_48f42bfbc57a73::t_4f96c1cdf31fb2 185
+apps/web/src/components/skills/ListView.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 61-62,111-131
+packages/contracts/test/companionManifest.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 26-32,47-49
+deploy/railway/web.railway.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-31
+apps/worker/tsup.config.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-14
+packages/core/src/domainAccess.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 6,135,141-144
+apps/worker/src/index.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-73
+scripts/agent-browser-smoke.sh
+  s_48f42bfbc57a73::t_4589e3b91175b4 58,129-155,418,422-449,462,468-469,471-474,487,493-494
+apps/api/src/skillCompanionManifest.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 97,108
+packages/core/src/secrets.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-862
+apps/api/tsup.config.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 22
+.dockerignore
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-25
+apps/web/src/lib/settingsData.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 141-155
+  s_48f42bfbc57a73::t_9c498945bea901 156-157
+examples/skills/incident-summary/companion.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 9
+apps/web/src/lib/settingsViewModel.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 3,7,51-55,61,76,78,144
+packages/db/drizzle/0032_billing.sql
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-56
+packages/core/src/services.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 52-61,289,719,723,745,751,757-774,1375-1387,1395,1536-1537,1539-1540,2045-2058,2094-2105,2207-2214,2254,2260-2263,2305,2351-2353,3076-3083,3120-3127,3203,3252,3296-3298
+apps/web/src/components/org/model.test.ts
+  s_48f42bfbc57a73::t_2be17d609d14f0 6
+apps/web/src/components/org/WorkspaceGeneralPane.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 19-20,29,31,105,108-113
+apps/web/src/components/secrets/SkillSecretConfiguration.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-132
+.env.example
+  s_48f42bfbc57a73::t_4589e3b91175b4 15-18,50-61
+apps/web/src/components/skills/UploadDialog.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 10,15,23,318-323,325-326,328-332,358,360-364,366,471,478,484,619-620,632-633,638-639,709-725,1123,1136-1137,1348,1357,1377-1383,1393,1395,1397,1434,1506,1551-1552,1610,1679-1687,1690-1692,1703,1722-1750,1753,1758,1768,1774,1811,1823,1827,1831,1836-1838,1842,1853-1875,1955-1959,1966,1972,1987-1989
+apps/web/src/components/skills/updateFlow.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 8-9,101,114-115,120-121,126-129,144-148,161-173
+  s_48f42bfbc57a73::t_f1e5864d7ffc87 174-175
+packages/billing/package.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-19
+packages/companion-skill/skill/scripts/bootstrap_update.py
+  s_48f42bfbc57a73::t_4589e3b91175b4 115-124,170-176
+packages/core/package.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 15
+apps/web/src/components/skills/CommandPalette.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 7,14-16,22-24,60-77,84,93,95-96,102,128-133,140-141,145-147,156,159,166-168
+packages/core/src/authz.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1,105-123
+  s_48f42bfbc57a73::t_3ed55a4869202b 104
+scripts/dev-stack.sh
+  s_48f42bfbc57a73::t_4589e3b91175b4 189-204,440
+.github/workflows/ci.yml
+  s_48f42bfbc57a73::t_4589e3b91175b4 139-209,291-298
+  s_48f42bfbc57a73::t_41363965089503 299
+packages/db/src/schema.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 27,34-41,201-264,614,991-1262
+  s_48f42bfbc57a73::t_d4c321cc0f8910 972-990
+packages/companion-skill/skill/scripts/test_bootstrap.py
+  s_48f42bfbc57a73::t_4589e3b91175b4 294,323-359
+apps/web/src/components/org/SettingsSidebar.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 186-198
+scripts/rsc-smoke.mjs
+  s_48f42bfbc57a73::t_4589e3b91175b4 155
+apps/web/src/components/org/SettingsApp.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 22
+apps/web/src/components/org/model.ts
+  s_48f42bfbc57a73::t_2be17d609d14f0 114
+  s_48f42bfbc57a73::t_4589e3b91175b4 1,83,98-99,163,174,183-185
+apps/web/src/components/secrets/SecretsApp.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-271
+apps/web/src/lib/apiClient.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 9-10
+packages/companion-skill/skill/reference/api.md
+  s_48f42bfbc57a73::t_4589e3b91175b4 5-6,36,76-88,91-197,311-340,589-598,688-692
+apps/worker/tsconfig.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-5
+packages/core/test/secretsCrypto.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-45
+apps/web/src/app/globals.css
+  s_48f42bfbc57a73::t_4589e3b91175b4 14
+apps/worker/package.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-28
+packages/contracts/src/secrets.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-206
+apps/web/src/components/org/BillingPane.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-123
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 15,232-263,327-332,441,752-1078,1087,1099,1117,1149,1448,1458,1472,1478,1487,1593,1602,1811,1864
+docs/design.md
+  s_48f42bfbc57a73::t_4589e3b91175b4 16-17,26,33,37-41,46-53,59,62,79-83,124-127,239-270,370-371,376-387,397-440,450-453,492-502,526-527,529-530,753-767
+  s_48f42bfbc57a73::t_8750f6f0f967c3 752
+apps/api/src/index.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 112-126,128,173-179,239-247,253-263,277-315,326-334,578-622,918,1060,1064,2356-2537,3075
+apps/api/package.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 20,37
+apps/web/src/styles/secrets.css
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-162
+packages/companion-skill/skill/companion.integrity.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 3-5,8,10-15,19
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_48f42bfbc57a73::t_4589e3b91175b4 64-103
+packages/db/drizzle/0033_personal_shared_secrets.sql
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-268
+packages/companion-skill/skill/scripts/secrets_runtime.py
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-406
+apps/api/src/secretsDb.integration.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-193
+packages/billing/src/index.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-203
+deploy/railway/Dockerfile.backend
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-56
+packages/contracts/src/token.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 7,10
+apps/web/src/lib/queries.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 113,152-154
+  s_48f42bfbc57a73::t_ebd76c8371489d 155-156
+apps/api/src/companionSkillPackage.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 165-169
+apps/web/src/components/skills/DetailView.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 37-42,45-46,48-49,54-62,64,66,68,74-75,77-78,133-134,254,261-262,279,291-292,486,531,534-536,538-539,542-544,627,661-667
+apps/web/src/components/skills/ListView.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 10-14,111-112,122-123,134-135,147-148,186-187,191-198,276,281,351-365,389
+packages/companion-skill/skill/scripts/skill_guard.py
+  s_48f42bfbc57a73::t_4589e3b91175b4 48,56-66,151-154,156,239-243,321-336,378-382,678-680
+deploy/railway/README.md
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-150
+packages/core/src/secretsCrypto.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-107
+apps/web/src/lib/org.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 20,24,107,110,114-120
+  s_48f42bfbc57a73::t_507a4a541778fb 121
+package.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 20
+apps/web/src/app/(app)/skills/page.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 7,50-51,60-62,85
+apps/web/src/components/skills/SkillsApp.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 13,21,77-79,181-191,203,216,242-244,254-256,263,274-291,406-409,530-533,536,564-567,569-574,576-577,579-595,599-600,604-615,620-634,1001,1021,1041,1052,1060-1071,1073-1076,1082-1109,1111,1116-1123,1129-1152,1154-1233,1396,1672,1680-1681,1710,1717-1718,1725-1726,1737-1738,1748-1757,1770-1772,1781,1783-1788,1797,1799-1804,1808-1812
+apps/web/src/styles/settings.css
+  s_48f42bfbc57a73::t_4589e3b91175b4 141-147
+packages/companion-skill/skill/evals/evals.json
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-39
+apps/api/src/context.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 11,110-112
+apps/web/src/components/skills/ArchivedListView.test.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-64
+cli/src/lib/client.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 31-32
+deploy/railway/Dockerfile.web
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-61
+apps/web/src/components/skills/ArchivedListView.tsx
+  s_48f42bfbc57a73::t_4589e3b91175b4 6-10,12,22-23,28-29,47-48,55,69,94-104,108,118,129
+packages/core/src/personalLabels.ts
+  s_48f42bfbc57a73::t_4589e3b91175b4 14,58,106,152,188,236,320
+packages/companion-skill/skill/scripts/create_secret.py
+  s_48f42bfbc57a73::t_4589e3b91175b4 1-94
+packages/db/drizzle/meta/_journal.json
+  s_4d92256ec1ecab::t_f5ec2029c7d095 232-245,251,258,265,272
+pnpm-lock.yaml
+  s_48f42bfbc57a73::t_4286bc9afbb875 35-37,86-88,182-218,287-302,327-329,3733-3736,4003-4011,7667-7671,8059-8064
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "2de7555a7bf655b6fe77845ab48b01033fad91ca",
+  "prompts": {},
+  "sessions": {
+    "s_48f42bfbc57a73": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c42-3570-7980-a9c7-aec5efbb6fdc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_4d92256ec1ecab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a2c5fbf-4cc2-40e1-88dc-21a4576e02a7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

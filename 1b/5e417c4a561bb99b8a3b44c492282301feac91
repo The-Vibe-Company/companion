@@ -1,0 +1,125 @@
+packages/core/src/services.ts
+  s_ddfab06e5d5b01::t_406cb8d38d7dde 3700
+packages/core/src/skillRuns.ts
+  s_ddfab06e5d5b01::t_c889f35b48a67b 1931-1978,2184-2192,2194-2196,2201-2204,2206-2208,2211,2213
+  s_ddfab06e5d5b01::t_a315c63115f8c8 1459
+  s_ddfab06e5d5b01::t_6af76e9001e340 431-432,440-442,1378-1380,1446-1458,1460-1465,1474,1502-1508,1511,1531,1542-1544,1716-1718
+  s_ddfab06e5d5b01::t_6c8e2740c26092 1509-1510
+  s_ddfab06e5d5b01::t_4fe898b9d7ec5b 2179,2193,2205
+packages/db/runtime-role-grants.sql
+  s_ddfab06e5d5b01::t_5091d36f81fe0a 72-75
+packages/core/test/skillRuns.test.ts
+  s_ddfab06e5d5b01::t_5d775b3138aa19 302-311
+  s_ddfab06e5d5b01::t_b0ff1b0885c961 716,721-730
+apps/worker/src/runCleanup.test.ts
+  s_ddfab06e5d5b01::t_90127125c378d2 21
+apps/web/src/components/runs/RunLauncherDialog.tsx
+  s_ddfab06e5d5b01::t_6cebf9d5c066a8 20,24,26,115-117,120-126,175-178,180-191,193-201,285,294,301,467,477
+  s_ddfab06e5d5b01::t_cda063f97a90a3 179,192,474-476
+apps/worker/src/config.ts
+  s_ddfab06e5d5b01::t_0f5ce17c09bfe3 13,28
+packages/core/test/providerConnections.test.ts
+  s_ddfab06e5d5b01::t_33033c82773363 49
+apps/api/src/index.ts
+  s_ddfab06e5d5b01::t_55c0e1f17f527e 2815-2819,2978,3171-3173
+  s_ddfab06e5d5b01::t_53073f69b29483 103-105,2975-2977,2979-3015,3103-3105,3107,3109-3113
+packages/db/src/schema.ts
+  s_ddfab06e5d5b01::t_55c0e1f17f527e 1186-1188
+  s_ddfab06e5d5b01::t_974ed13201a70c 1008-1073,1077-1082,1127,1236-1263
+  s_ddfab06e5d5b01::t_42ce26e3162430 1074-1076
+  s_ddfab06e5d5b01::t_b598912f827ee7 1264
+packages/core/src/runRuntime.ts
+  s_ddfab06e5d5b01::t_90127125c378d2 94-95
+  s_ddfab06e5d5b01::t_308d112fae5224 58-62,75-78
+apps/worker/src/prewarmSupervisor.test.ts
+  s_ddfab06e5d5b01::t_775b26f3cfcf0f 2-3
+  s_ddfab06e5d5b01::t_d5970bcccbd985 13,78-102
+  s_ddfab06e5d5b01::t_e0780ad7a91898 1,4-12,14-77,103-104
+apps/web/src/components/runs/RunLauncherDialog.test.ts
+  s_ddfab06e5d5b01::t_2d18b79e58391c 101-108,145-160,162-183,207-208
+  s_ddfab06e5d5b01::t_b0ff1b0885c961 19,23,25,136
+  s_ddfab06e5d5b01::t_cda063f97a90a3 161,184-206
+apps/web/src/lib/runQueries.ts
+  s_ddfab06e5d5b01::t_cda063f97a90a3 107,109,113-114
+  s_ddfab06e5d5b01::t_34fa413c16954e 14-15,100-106,108,110-112,115-126,169-171,183-185
+packages/contracts/src/skillRuns.ts
+  s_ddfab06e5d5b01::t_a6a1f9f857972e 59-76,633-635,645-647
+deploy/railway/README.md
+  s_ddfab06e5d5b01::t_e375a7aca54a53 101,151,157
+packages/core/src/providerConnections.ts
+  s_ddfab06e5d5b01::t_a315c63115f8c8 133,243-253
+.env.example
+  s_ddfab06e5d5b01::t_e375a7aca54a53 24-25,34
+packages/sandbox/src/vercel.ts
+  s_ddfab06e5d5b01::t_90127125c378d2 228,232
+  s_ddfab06e5d5b01::t_308d112fae5224 44-54,176-192
+packages/contracts/test/skillRuns.test.ts
+  s_ddfab06e5d5b01::t_33033c82773363 26,102-113
+  s_ddfab06e5d5b01::t_b804756c221ebd 114-115
+docs/testing.md
+  s_ddfab06e5d5b01::t_c5a51a376cc3d5 24
+packages/core/test/runSweeper.test.ts
+  s_ddfab06e5d5b01::t_4fe898b9d7ec5b 17
+  s_ddfab06e5d5b01::t_90127125c378d2 82
+apps/api/src/runRoutes.test.ts
+  s_ddfab06e5d5b01::t_775b26f3cfcf0f 121-122
+  s_ddfab06e5d5b01::t_55c0e1f17f527e 104,221-242
+  s_ddfab06e5d5b01::t_ed134db7d86af1 192,215
+  s_ddfab06e5d5b01::t_76c5dec9850eb4 33-35,108-120,123-136,243
+  s_ddfab06e5d5b01::t_ee985c07802fc7 244
+apps/worker/src/runSupervisor.ts
+  s_ddfab06e5d5b01::t_5bbc49cd8e003d 30-34,1053-1054,1056-1061,1063-1085,1087-1118,1121-1124,1131-1132,1142-1146,1162,1166
+  s_ddfab06e5d5b01::t_4c7ad389dfa46b 60,1658-1673,1707,1714
+  s_ddfab06e5d5b01::t_90127125c378d2 110-115,1445-1446,1510-1511
+apps/worker/src/runSupervisor.test.ts
+  s_ddfab06e5d5b01::t_90127125c378d2 6,108-111
+  s_ddfab06e5d5b01::t_c5f5c298849f6f 112-114
+docs/design.md
+  s_ddfab06e5d5b01::t_e375a7aca54a53 849-851
+  s_ddfab06e5d5b01::t_c8a62d6a8b02f5 650-651,858-859
+  s_ddfab06e5d5b01::t_08df86eab7970e 652-654
+  s_ddfab06e5d5b01::t_ce76e54eb7f79f 602,679-682
+  s_ddfab06e5d5b01::t_c5a51a376cc3d5 599-601,635-649,655-657
+  s_ddfab06e5d5b01::t_d940b80d9b93a3 603-604
+apps/worker/src/prewarmSupervisor.ts
+  s_ddfab06e5d5b01::t_0f5ce17c09bfe3 1-8,10-45,47-54,56-57,59-69,71-112,122-205
+  s_ddfab06e5d5b01::t_6c8e2740c26092 9,46,55,58,70,113-121
+packages/core/src/runPrewarms.ts
+  s_ddfab06e5d5b01::t_e99fe5b95f5e6f 252-265
+  s_ddfab06e5d5b01::t_ae60f939ef52ea 340-341,366
+  s_ddfab06e5d5b01::t_6c8e2740c26092 179-180,195-196,365,369-399
+  s_ddfab06e5d5b01::t_94defc408f5229 90
+  s_ddfab06e5d5b01::t_9e7327afac518d 267-278
+  s_ddfab06e5d5b01::t_650c764b41a03a 9,57-58,104-105
+  s_ddfab06e5d5b01::t_406cb8d38d7dde 1-8,10-56,59-89,91-103,106-178,181-194,197-251,266,279-339,342-364,367-368,400-445
+apps/api/test/integration/runsDb.integration.test.ts
+  s_ddfab06e5d5b01::t_0c78545d3d81de 22,500-501,563-591
+  s_ddfab06e5d5b01::t_33033c82773363 53,89-90,186-198,432-435,454-471
+  s_ddfab06e5d5b01::t_af73923dac2db1 54,502-511,513-514,523-562,673-680,682
+  s_ddfab06e5d5b01::t_e514cb1576f95b 55,512,515-522
+  s_ddfab06e5d5b01::t_da2930420c481f 21,35,472-478,486-499
+  s_ddfab06e5d5b01::t_d5970bcccbd985 615-635,645-654
+  s_ddfab06e5d5b01::t_e71ed049fed750 479-485
+  s_ddfab06e5d5b01::t_b68c41c66b9a59 20,34,592-614,636-644,655-661
+  s_ddfab06e5d5b01::t_81b995e7807151 662
+packages/db/drizzle/0039_run_prewarms.sql
+  s_ddfab06e5d5b01::t_47eba8582e94df 1-236
+packages/db/drizzle/meta/_journal.json
+  s_ddfab06e5d5b01::t_7c258d3829e6d0 277-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1b5e417c4a561bb99b8a3b44c492282301feac91",
+  "prompts": {},
+  "sessions": {
+    "s_ddfab06e5d5b01": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65f7-0f09-7c72-ab91-030b0b111f90",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

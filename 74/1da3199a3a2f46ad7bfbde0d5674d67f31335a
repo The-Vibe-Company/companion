@@ -1,0 +1,24 @@
+CLAUDE.md
+  s_99581221f2c25a::t_2844d90b6afcaf 105-107
+.github/workflows/design-md.yml
+  s_99581221f2c25a::t_2844d90b6afcaf 1-31
+DESIGN.md
+  s_99581221f2c25a::t_17bb011ccc76aa 1-15,18-19,21-288
+  s_99581221f2c25a::t_5100996bcb8f42 16-17,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "741da3199a3a2f46ad7bfbde0d5674d67f31335a",
+  "prompts": {},
+  "sessions": {
+    "s_99581221f2c25a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9be7-5872-7343-92fa-7e3a1d509f47",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

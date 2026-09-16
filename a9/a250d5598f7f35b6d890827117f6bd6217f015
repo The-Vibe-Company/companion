@@ -1,0 +1,112 @@
+apps/web/src/components/org/SettingsView.tsx
+  s_5dd6a894c9a7b4::t_ac8d06aa41efca 3,5-13,15,17-48,51,53-56,58,62,64-69,72-98,100-121,123,133,136-137
+apps/web/src/lib/org.ts
+  s_5dd6a894c9a7b4::t_f0bf51df7ab7b1 3
+  s_5dd6a894c9a7b4::t_cc0c1ab4be6bc1 88-150
+apps/web/src/components/org/MembersPane.tsx
+  s_5dd6a894c9a7b4::t_af70cc8eea1d55 9,11-17,21,27,32-33,35-40,42,44-52,55,59-68,70,76,91,93,104-108,110
+  s_5dd6a894c9a7b4::t_a77c8c1dd2f0aa 5,77-88
+apps/web/src/components/org/WorkspaceGeneralPane.tsx
+  s_5dd6a894c9a7b4::t_a594bddccaa3be 74
+  s_5dd6a894c9a7b4::t_144bb1b0fb2bb3 25-28,30-31,36,47
+  s_5dd6a894c9a7b4::t_167fd5b53bb4d4 90
+  s_5dd6a894c9a7b4::t_b416b6152644ec 3-4,7,9-11,14-21,23-24,32-35,37-46,48-73,75,77-89,91-94
+apps/web/src/app/globals.css
+  s_5dd6a894c9a7b4::t_8cbe32f28ec05c 6
+apps/web/src/components/org/InvitationsPane.tsx
+  s_5dd6a894c9a7b4::t_4382175086e0ea 18-19,35
+  s_5dd6a894c9a7b4::t_11fa011a62c7f0 1-6,8-17,20-34,36-87,89-111
+  s_5dd6a894c9a7b4::t_3adf51ddc88959 7
+  s_5dd6a894c9a7b4::t_520a1163149122 88
+apps/web/src/lib/theme.ts
+  s_5dd6a894c9a7b4::t_23ae1ef3213cb5 25-26
+  s_5dd6a894c9a7b4::t_87f638dba94649 1-24,27-101
+apps/web/src/components/org/SettingsApp.test.ts
+  s_5dd6a894c9a7b4::t_d234bd45575431 16,19-24,34-35,44,52
+apps/web/src/components/org/ProfilePane.tsx
+  s_5dd6a894c9a7b4::t_713f5dce5ab00f 3,14-18,22
+  s_5dd6a894c9a7b4::t_99db1d0182ef74 35
+  s_5dd6a894c9a7b4::t_6ed6bc0d739843 1-2,4-13,19-21,23-34,36-49,51-74
+  s_5dd6a894c9a7b4::t_fd92ff45d2dc96 50
+apps/web/src/lib/settingsData.test.ts
+  s_5dd6a894c9a7b4::t_45733be9b2f341 60-67,84,96-106,108-121,124,132,136-140
+apps/web/src/components/org/primitives.tsx
+  s_5dd6a894c9a7b4::t_cdaa5731927685 81
+  s_5dd6a894c9a7b4::t_56d1f47a1d7fff 25,34
+apps/web/src/components/org/SettingsDrawer.tsx
+  s_5dd6a894c9a7b4::t_6383c920c03653 7
+  s_5dd6a894c9a7b4::t_34335c4194553f 56,61
+  s_5dd6a894c9a7b4::t_c8ffedc1e34001 125
+apps/web/src/components/org/TeamGeneralPane.tsx
+  s_5dd6a894c9a7b4::t_13bd9957e62340 1-147,150-205
+  s_5dd6a894c9a7b4::t_66456d56db9ad5 148-149
+apps/web/src/components/org/dialogs.tsx
+  s_5dd6a894c9a7b4::t_a914ddbf6d0b04 8,10-18,21,25,31-32,37-39,50,55-57,63,76-80,85,92,97-99,110,115-117,119-123
+apps/web/src/lib/settingsData.ts
+  s_5dd6a894c9a7b4::t_524372a50ade96 6-12,18-32,34,37-40,43,48,77-82,86
+apps/web/src/app/layout.tsx
+  s_5dd6a894c9a7b4::t_f49e5c9d50cbbb 9-13,20-22
+  s_5dd6a894c9a7b4::t_96280cc691b0c9 16-19
+apps/web/src/components/Icon.tsx
+  s_5dd6a894c9a7b4::t_db5c2cdafd20f0 111-112,116,119
+  s_5dd6a894c9a7b4::t_d26d40fe0534f0 34-35,39,42
+apps/web/src/components/org/model.ts
+  s_5dd6a894c9a7b4::t_a859972207480f 31,43,48-68,73-91,94,98-99,116-126
+apps/web/src/components/org/SettingsSidebar.tsx
+  s_5dd6a894c9a7b4::t_e84eaa325c9912 1-22,28-183
+  s_5dd6a894c9a7b4::t_4a98caf87db03e 23-27
+apps/web/src/components/org/ApiKeysPane.tsx
+  s_5dd6a894c9a7b4::t_fb590e068acf1c 1-217
+apps/web/src/components/org/SettingsApp.tsx
+  s_5dd6a894c9a7b4::t_04586043877468 121-124
+  s_5dd6a894c9a7b4::t_4ff77cab33bca6 150,157
+  s_5dd6a894c9a7b4::t_0a9d33fd9c39bd 9,11-12,16,19-22,40-49,62-63,65-68,75,81,92-93,100-102,108,110-117,120,125-133,137,139,141-145,158-165,180-181,210-279,293-298,305,314-325,359,361-362,374-384,389-400,416,420,429
+  s_5dd6a894c9a7b4::t_20caa667a5ef8f 33
+  s_5dd6a894c9a7b4::t_0c3b03fb26106a 134-136,138,140
+  s_5dd6a894c9a7b4::t_0f3a8374a72866 36
+  s_5dd6a894c9a7b4::t_e4a84934b31cf5 24-26,28-32,34-35
+  s_5dd6a894c9a7b4::t_43cb0ccdd92aa9 146-149,151-156
+  s_5dd6a894c9a7b4::t_5e46b5e39c4a0e 27
+apps/web/src/components/org/TeamMembersPane.tsx
+  s_5dd6a894c9a7b4::t_8db89376de8659 6,9-10,12-25,28-42,44,46-61,63,65-67,69-95,101,113-114,119,124,126
+  s_5dd6a894c9a7b4::t_9d473ca4301693 68
+apps/web/src/components/skills/SkillsApp.tsx
+  s_5dd6a894c9a7b4::t_fb2242f92b1daf 161,166
+  s_5dd6a894c9a7b4::t_6691c8367f5143 33,41-55,57-58,60,67-69,72
+  s_5dd6a894c9a7b4::t_27c7baefe93931 18
+  s_5dd6a894c9a7b4::t_5a6cba7f80cf6b 136,143
+  s_5dd6a894c9a7b4::t_6ce38345d50216 613
+apps/web/src/components/skills/Sidebar.tsx
+  s_5dd6a894c9a7b4::t_69e3c0bb92236d 108
+  s_5dd6a894c9a7b4::t_cca43fbcfce94a 135
+apps/web/src/components/org/PreferencesPane.tsx
+  s_5dd6a894c9a7b4::t_cba0a38121fcb5 1-90
+apps/web/src/styles/tokens.css
+  s_5dd6a894c9a7b4::t_a3e5e7bbbab21f 111-167
+apps/web/src/styles/settings.css
+  s_5dd6a894c9a7b4::t_52c02a77292652 1-288
+apps/web/src/components/org/RoleSelect.tsx
+  s_5dd6a894c9a7b4::t_e86a753c8bd7d1 65
+  s_5dd6a894c9a7b4::t_cd9a6f7096e690 53-54
+apps/web/src/lib/settingsViewModel.ts
+  s_5dd6a894c9a7b4::t_334613ea3dcb25 1-8,29-53,58,60,91,104,109-119,124-125
+apps/web/src/components/org/paneKit.tsx
+  s_5dd6a894c9a7b4::t_040210baff9af7 29-33,41,50,55,68,71
+  s_5dd6a894c9a7b4::t_efdcd0e72823ae 1-28,34-40,42-49,51-54,56-67,69-70,72-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "a9a250d5598f7f35b6d890827117f6bd6217f015",
+  "prompts": {},
+  "sessions": {
+    "s_5dd6a894c9a7b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "347b69c9-bdea-4c1a-b4ff-8660482c1283",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

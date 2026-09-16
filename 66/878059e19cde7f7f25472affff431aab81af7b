@@ -1,0 +1,21 @@
+scripts/conductor.sh
+  s_c76045839f4d1c::t_d14b72943fd226 63
+  s_c76045839f4d1c::t_ccccba43954fbb 329,331,333-337
+  s_c76045839f4d1c::t_ce8bfd4ee7817d 328,330,332,338-346,349-354
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "66878059e19cde7f7f25472affff431aab81af7b",
+  "prompts": {},
+  "sessions": {
+    "s_c76045839f4d1c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea1b5-0c8b-7ec1-a34d-c853915232c9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

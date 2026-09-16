@@ -1,0 +1,70 @@
+packages/companion-skill/skill/SKILL.md
+  s_21946cf6cd2bc1::t_1bbd3c5052e778 257-261,296-299,305,313-314,316,322,346
+packages/companion-skill/skill/reference/api.md
+  s_21946cf6cd2bc1::t_1bbd3c5052e778 163-167,177,183,188-189,196-198,203-204
+packages/contracts/src/labels.ts
+  s_21946cf6cd2bc1::t_5d2cd0d73d99fa 16-17,54-85,137,151,185,198
+  s_21946cf6cd2bc1::t_46da1150f8def0 163
+apps/web/src/lib/queries.ts
+  s_21946cf6cd2bc1::t_912904990ed953 227,231,236,239
+packages/contracts/test/labels.test.ts
+  s_21946cf6cd2bc1::t_b8db7e30c57952 96-101,104,116,122-131,133-142,151-160,168-180,195-198,203-207
+  s_21946cf6cd2bc1::t_191b4c1282db38 7,12-13
+  s_21946cf6cd2bc1::t_5ff25b64c130fe 55-67
+apps/web/src/components/skills/SkillsApp.tsx
+  s_21946cf6cd2bc1::t_6bcfbb269874d5 113,132,148,173,580,586,597,612,627,636-637,642-648,662
+  s_21946cf6cd2bc1::t_216cc6a512527b 559
+packages/db/drizzle/0025_label_display_names.sql
+  s_21946cf6cd2bc1::t_3a3439fdfaebef 1
+scripts/agent-browser-smoke.sh
+  s_21946cf6cd2bc1::t_cfc84257886db3 130
+  s_21946cf6cd2bc1::t_3825ebcc0cc3cd 166-167
+  s_21946cf6cd2bc1::t_870dee79b393b5 131
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_21946cf6cd2bc1::t_216cc6a512527b 167
+  s_21946cf6cd2bc1::t_ee71b9a1876416 612,643,647-676
+docs/design.md
+  s_21946cf6cd2bc1::t_1bbd3c5052e778 92-99,110-113,288-289
+packages/core/test/skillLabels.test.ts
+  s_21946cf6cd2bc1::t_0b99da5f113b2e 35
+  s_21946cf6cd2bc1::t_1c6158907179e2 263,545-554
+  s_21946cf6cd2bc1::t_cd68d0301abece 295,297
+  s_21946cf6cd2bc1::t_51045731bf1eff 49-50,146,190,214-216,221,267,269,271,294,296,298,300
+  s_21946cf6cd2bc1::t_771a5cb5662e84 149-150
+  s_21946cf6cd2bc1::t_cb876746a95248 410,525-544,555-564
+  s_21946cf6cd2bc1::t_a5dc238dff8427 152
+  s_21946cf6cd2bc1::t_3a213d5d681a4c 375,406-409
+  s_21946cf6cd2bc1::t_56a671e3fb5773 287-289
+  s_21946cf6cd2bc1::t_46a0c884cb8216 276-280
+apps/web/src/components/skills/Sidebar.tsx
+  s_21946cf6cd2bc1::t_501a2993500c2f 5,30,35-36,39,41,43-51,53,152,246,249,293,295-302,450
+packages/db/src/schema.ts
+  s_21946cf6cd2bc1::t_3a3439fdfaebef 324-325
+CLAUDE.md
+  s_21946cf6cd2bc1::t_1bbd3c5052e778 36
+apps/api/src/index.ts
+  s_21946cf6cd2bc1::t_912904990ed953 854-862,878-886
+packages/core/src/labels.ts
+  s_21946cf6cd2bc1::t_00e7e0fc0246a8 380
+  s_21946cf6cd2bc1::t_70f9045094af29 4,71-76,96,99,157,173,181,197,208,337,344-350
+  s_21946cf6cd2bc1::t_7c2387b3080749 132
+  s_21946cf6cd2bc1::t_9f6941a5bb5eb2 382-389,393,395-397,401-405,410
+  s_21946cf6cd2bc1::t_d14815c9da5eee 394,406-408
+  s_21946cf6cd2bc1::t_fddf42ef875db6 412-421
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.11",
+  "base_commit_sha": "98d6f7dae97dd1a9bca8142ba293c14c68f430ea",
+  "prompts": {},
+  "sessions": {
+    "s_21946cf6cd2bc1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ef5be-7a26-73b2-bc16-888f5a7fa769",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

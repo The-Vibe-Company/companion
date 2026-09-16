@@ -1,0 +1,68 @@
+apps/ios/README.md
+  s_33d1e59913c65f::t_9acc0c54395f55 56-59,61-66
+  s_33d1e59913c65f::t_fc4692a2a0d66b 52-55,60
+scripts/ci-gate.test.mjs
+  s_33d1e59913c65f::t_de2f1463341312 15,87-95
+  s_33d1e59913c65f::t_9acc0c54395f55 96,98-110
+  s_33d1e59913c65f::t_38e459549e0697 97
+package.json
+  s_33d1e59913c65f::t_fc4692a2a0d66b 63
+scripts/app-store-connect-build.test.mjs
+  s_33d1e59913c65f::t_9acc0c54395f55 8,11-15,18-55
+  s_33d1e59913c65f::t_fc4692a2a0d66b 1-7,9-10,16-17,56-126
+scripts/lint-anti-slop.integration.test.mjs
+  s_33d1e59913c65f::t_fc4692a2a0d66b 28-39
+scripts/ios-devx.test.mjs
+  s_33d1e59913c65f::t_1adf0ddc33cdeb 153,167-169,172-179,184-186
+  s_33d1e59913c65f::t_9acc0c54395f55 170-171,180-183
+scripts/lint-anti-slop.test.mjs
+  s_33d1e59913c65f::t_fc4692a2a0d66b 89-98
+scripts/ci-scope.test.mjs
+  s_33d1e59913c65f::t_1adf0ddc33cdeb 74
+scripts/lint-anti-slop.mjs
+  s_33d1e59913c65f::t_fc4692a2a0d66b 45-46
+scripts/app-store-connect-build.mjs
+  s_33d1e59913c65f::t_1adf0ddc33cdeb 4
+  s_33d1e59913c65f::t_9acc0c54395f55 10-12,23-34,77-101,125,131-133,138
+  s_33d1e59913c65f::t_fc4692a2a0d66b 1-3,5-9,13-22,35-76,102-124,126-130,134-137,139-155
+apps/ios/AGENTS.md
+  s_33d1e59913c65f::t_fc4692a2a0d66b 9-12,24-25
+  s_33d1e59913c65f::t_9acc0c54395f55 23
+.github/workflows/ci.yml
+  s_33d1e59913c65f::t_de2f1463341312 639-641
+  s_33d1e59913c65f::t_fc4692a2a0d66b 79
+  s_33d1e59913c65f::t_9acc0c54395f55 642
+.github/workflows/ios-testflight.yml
+  s_33d1e59913c65f::t_a85cdacdfa7001 66-68,87-88,102-104,174-175,208,210,216-220
+  s_33d1e59913c65f::t_9acc0c54395f55 31-32,38,80,93-94,119
+  s_33d1e59913c65f::t_1adf0ddc33cdeb 112,133-134,138-139
+  s_33d1e59913c65f::t_fc4692a2a0d66b 1-30,33-37,39-65,69-79,81-86,89-92,95-101,105-111,113-118,120-132,135-137,140-146,148-173,176-207,209,211-215
+  s_33d1e59913c65f::t_8d22d285422374 147
+scripts/ci-scope.mjs
+  s_33d1e59913c65f::t_1adf0ddc33cdeb 193
+scripts/ci-gate.mjs
+  s_33d1e59913c65f::t_de2f1463341312 13,44
+pnpm-lock.yaml
+  s_33d1e59913c65f::t_9c5d3425eaccf2 38-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "2f00582ae7aa1f82951460291dbee3eb29a60c0d",
+  "prompts": {},
+  "humans": {
+    "h_ecee222750141d": {
+      "author": "StanGirard <stan@quivr.app>"
+    }
+  },
+  "sessions": {
+    "s_33d1e59913c65f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03435-f03d-7790-81e8-e853f0268ae4",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

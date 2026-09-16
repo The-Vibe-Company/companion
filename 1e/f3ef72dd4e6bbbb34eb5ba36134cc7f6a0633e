@@ -1,0 +1,20 @@
+apps/web/src/components/org/WorkspaceGeneralPane.tsx
+  s_5dd6a894c9a7b4::t_980a643b3be50a 3,13-18,28
+  s_5dd6a894c9a7b4::t_589dfbe69c9a46 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "1ef3ef72dd4e6bbbb34eb5ba36134cc7f6a0633e",
+  "prompts": {},
+  "sessions": {
+    "s_5dd6a894c9a7b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "347b69c9-bdea-4c1a-b4ff-8660482c1283",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

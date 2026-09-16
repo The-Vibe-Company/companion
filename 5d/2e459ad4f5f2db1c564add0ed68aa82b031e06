@@ -1,0 +1,59 @@
+packages/companion-runtime/src/ports.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+packages/db/src/schema.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+packages/companion-runtime/src/types.ts
+  s_92d0176968fd0a::t_82889ef80f8cee 399
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+apps/runtime/src/materialPipeline.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+packages/box-sim/test/commandShims.test.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+packages/companion-runtime/src/operations.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+packages/companion-runtime/src/operations.test.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+packages/companion-runtime/src/types.test.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+apps/api/src/companionSkillSync.test.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+packages/core/src/companionRuntimeApi.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_92d0176968fd0a::t_82889ef80f8cee 825,831
+  s_92d0176968fd0a::t_72842213f49d07 884,890
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+packages/companion-runtime/src/store.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+  s_92d0176968fd0a::t_82889ef80f8cee 360,377
+packages/companion-runtime/src/test/fixtures.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+apps/web/src/components/companions/CompanionSkillsSyncStatus.client.test.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+packages/core/test/companionRuntimeApi.test.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+packages/box-sim/src/commandShims.ts
+  s_92d0176968fd0a::t_7e683b3afd8d81 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "5d2e459ad4f5f2db1c564add0ed68aa82b031e06",
+  "prompts": {},
+  "sessions": {
+    "s_92d0176968fd0a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a020eb-b19e-7231-b77b-7b938419bf3a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

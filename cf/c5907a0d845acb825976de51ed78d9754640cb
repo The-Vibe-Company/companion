@@ -1,0 +1,32 @@
+docs/design.md
+  s_120c4dbab8c00a::t_5f1b3ebddd9d11 80
+apps/web/src/components/org/MembersSection.tsx
+  s_120c4dbab8c00a::t_da58104bffad26 32-34,41
+  s_120c4dbab8c00a::t_30c0ada26f729d 127
+  s_120c4dbab8c00a::t_2759d0248f2ce4 135
+supabase/migrations/20260607090006_management_rpcs.sql
+  s_120c4dbab8c00a::t_154cae95b3db7c 320
+  s_120c4dbab8c00a::t_ea4b8884198e66 341
+  s_120c4dbab8c00a::t_bcc925dc90ff4a 207
+  s_120c4dbab8c00a::t_1d30d3924a472b 97-100
+  s_120c4dbab8c00a::t_4171a7fb79b8d4 181-183
+apps/web/src/components/org/GeneralPane.tsx
+  s_120c4dbab8c00a::t_de7bef1d12e891 11-13
+  s_120c4dbab8c00a::t_c4556951396440 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "cfc5907a0d845acb825976de51ed78d9754640cb",
+  "prompts": {},
+  "sessions": {
+    "s_120c4dbab8c00a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "441587e1-4104-43c6-bff4-a80dcf49c57e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

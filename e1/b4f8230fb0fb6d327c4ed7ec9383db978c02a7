@@ -1,0 +1,53 @@
+packages/core/src/agentRuntime.ts
+  s_1e74ce65ff5b16::t_b3062e78fd990b 76-80
+packages/sandbox/scripts/smoke-vercel.ts
+  s_1e74ce65ff5b16::t_abbfeb97c00378 106-109,111-123
+packages/sandbox/src/opencodeChat.ts
+  s_1e74ce65ff5b16::t_96063078b910d5 22-26
+  s_1e74ce65ff5b16::t_f760fc743dd8a0 65-67
+apps/web/src/components/agents/AgentsApp.test.ts
+  s_1e74ce65ff5b16::t_9ef789a47c312c 115
+packages/core/test/agentsProvision.test.ts
+  s_1e74ce65ff5b16::t_e89fb17a38466e 102,193-207,263-264,267,317-332
+  s_1e74ce65ff5b16::t_191bb1cbbab774 229
+  s_1e74ce65ff5b16::t_ce12fb025db734 333-335
+apps/api/src/index.ts
+  s_1e74ce65ff5b16::t_613d46b48901ee 2531-2544,2550-2555,2562-2564
+  s_1e74ce65ff5b16::t_b595c5039ef088 2285-2286,2378-2387
+apps/web/src/components/agents/CreateView.tsx
+  s_1e74ce65ff5b16::t_e3d754e5037822 46-52,72-82,394
+packages/contracts/src/agents.ts
+  s_1e74ce65ff5b16::t_dff1ada53124a1 249-253,265-266
+packages/sandbox/scripts/probe.ts
+  s_1e74ce65ff5b16::t_9634fd82c3dacf 1-138
+packages/sandbox/src/vercel.ts
+  s_1e74ce65ff5b16::t_8f9fb35b9fd186 186-194
+packages/core/src/agents.ts
+  s_1e74ce65ff5b16::t_7c371ae5d8db19 64-69,373-375,619-625,651-653,802-805,808,1034,1270
+packages/sandbox/test/modelCatalog.test.ts
+  s_1e74ce65ff5b16::t_b595c5039ef088 38,42,44-45,47-52,55,59,69,72,78
+packages/core/test/agents.test.ts
+  s_1e74ce65ff5b16::t_191bb1cbbab774 143
+packages/sandbox/src/modelCatalog.ts
+  s_1e74ce65ff5b16::t_cdd21c377dca86 6-9,82,93,95-96,101,115,131,137
+packages/sandbox/package.json
+  s_1e74ce65ff5b16::t_abbfeb97c00378 13-14
+.env.example
+  s_1e74ce65ff5b16::t_2573577c73e30e 61-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "e1b4f8230fb0fb6d327c4ed7ec9383db978c02a7",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

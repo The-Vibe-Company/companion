@@ -1,0 +1,31 @@
+packages/core/src/services.ts
+  s_62c4add0f08387::t_e425ebafeee9ce 32,35-38
+  s_62c4add0f08387::t_08ba501d8ec7e4 1586-1591,1593,1635-1648,1650,1653-1662,1664-1681,1685-1694,1697-1715,1717-1736
+packages/core/test/skillVisibility.test.ts
+  s_62c4add0f08387::t_a41d106545d368 151-154
+  s_62c4add0f08387::t_9a7e6ff59d8365 124
+  s_62c4add0f08387::t_fd25ff56e88127 44-48
+  s_62c4add0f08387::t_2c557d2017d616 94-95,102-103
+  s_62c4add0f08387::t_1cc2f1f39bf2c3 446-511
+apps/api/src/index.ts
+  s_62c4add0f08387::t_2670541817f0f5 71
+  s_62c4add0f08387::t_bb77ed1f643dec 991-1005,1007
+packages/contracts/src/skill.ts
+  s_62c4add0f08387::t_b8b841107c3be4 26-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "cc54c764a5b8fbe705c77315bfa8a63046fdd828",
+  "prompts": {},
+  "sessions": {
+    "s_62c4add0f08387": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75263354-39d6-4796-9592-02bbaedc7800",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

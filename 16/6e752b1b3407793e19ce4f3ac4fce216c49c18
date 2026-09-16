@@ -1,0 +1,21 @@
+cli/src/commands/skills.ts
+  s_120c4dbab8c00a::t_87e3e1d83b7d3f 203
+cli/src/lib/client.ts
+  s_120c4dbab8c00a::t_0109b0af166801 38-44,46-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "166e752b1b3407793e19ce4f3ac4fce216c49c18",
+  "prompts": {},
+  "sessions": {
+    "s_120c4dbab8c00a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "441587e1-4104-43c6-bff4-a80dcf49c57e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

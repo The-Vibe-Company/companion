@@ -1,0 +1,131 @@
+packages/core/test/skillComments.test.ts
+  s_03528284c9e57b::t_f7ad43d1d2ccb8 40-45,48,54
+  s_03528284c9e57b::t_e8f5c3e426751d 98-100
+apps/web/src/components/notifications/MuteToggle.tsx
+  s_03528284c9e57b::t_0247d925e925d9 1-48,50-55
+  s_03528284c9e57b::t_33cc3e13fe606e 49
+apps/web/src/components/skills/DetailView.tsx
+  s_03528284c9e57b::t_b2e8fc5b412884 13
+  s_03528284c9e57b::t_3d7c6a9d1e72a0 438
+packages/contracts/src/index.ts
+  s_03528284c9e57b::t_cdf671c440e7a0 6
+apps/web/src/lib/types.ts
+  s_03528284c9e57b::t_f4cb8931620db1 101
+  s_03528284c9e57b::t_29f5920f674493 56
+packages/db/drizzle/0019_skill_notifications.sql
+  s_03528284c9e57b::t_277d8f97c2df9f 1-49
+apps/web/src/components/skills/DetailView.test.ts
+  s_03528284c9e57b::t_3c54c66e9b0a02 50
+apps/web/src/components/skills/filters.test.ts
+  s_03528284c9e57b::t_d6f5f8aaf8a33c 44
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_03528284c9e57b::t_a6b89364ae97b8 140
+  s_03528284c9e57b::t_97e8f2004f1828 99
+apps/web/src/components/skills/updateFlow.test.ts
+  s_03528284c9e57b::t_a9e6d3a40fce00 58
+packages/core/test/notificationEmission.test.ts
+  s_03528284c9e57b::t_87eda2a771b254 69-70,83-84
+  s_03528284c9e57b::t_58b738ccd973ba 1-14,20-23,26-68,71-82,85-103
+  s_03528284c9e57b::t_4815d9dd701b0d 15-19,24-25
+packages/contracts/src/skill.ts
+  s_03528284c9e57b::t_15f749c8102d04 229-233
+cli/src/commands/skills.test.ts
+  s_03528284c9e57b::t_b99433d0e15c70 135,187
+packages/core/test/notificationServices.test.ts
+  s_03528284c9e57b::t_d0f209b192055d 83-84
+  s_03528284c9e57b::t_9639d1dc202f40 1-52,56-82,85-117
+  s_03528284c9e57b::t_dec06850bab35f 53-55
+apps/web/src/components/notifications/NotificationBell.tsx
+  s_03528284c9e57b::t_ef8e8ffe83ea4f 1-21,29-31,35-119
+  s_03528284c9e57b::t_5245b013e038c0 22-28,32-34
+apps/api/src/index.ts
+  s_03528284c9e57b::t_26c5199e7a98c4 1150-1220
+  s_03528284c9e57b::t_1842b9da9330af 57,65
+  s_03528284c9e57b::t_e906116bf00dd5 39,44-45
+  s_03528284c9e57b::t_1f2bfd385c4a25 348,351-360
+  s_03528284c9e57b::t_c48449ebe8f988 78,84
+  s_03528284c9e57b::t_e2cd6bfd4a7eb8 289-298
+  s_03528284c9e57b::t_b8cbffd57fef35 125
+  s_03528284c9e57b::t_18dbd3c28fe487 265-288,299-303
+  s_03528284c9e57b::t_82a700fe3d2a4c 1028-1038,1040-1055
+packages/core/src/notifications.ts
+  s_03528284c9e57b::t_85152288850102 205-207,211
+  s_03528284c9e57b::t_5624c3941c1370 263-265,269,275
+  s_03528284c9e57b::t_97519132281386 327
+  s_03528284c9e57b::t_fcc175230a57a9 355
+  s_03528284c9e57b::t_5f16b0453e95b2 1-4,6-28,32-119,132-204,208-210,212-262,266-268,270-274,276-326,328-354,356-361
+  s_03528284c9e57b::t_39df972004aa31 120-131
+  s_03528284c9e57b::t_13c1f3959f5eca 5
+  s_03528284c9e57b::t_6f41b39ae6b542 29-31
+packages/email/src/index.ts
+  s_03528284c9e57b::t_c9948b440f1446 172-216
+apps/web/src/lib/queries.ts
+  s_03528284c9e57b::t_af4c2dbf5b7e86 158-198
+  s_03528284c9e57b::t_a1c05a7f5d5e78 17-18
+packages/contracts/src/notifications.ts
+  s_03528284c9e57b::t_df3c2761fecfbc 1-87
+apps/web/src/components/notifications/NotificationPanel.tsx
+  s_03528284c9e57b::t_04d33b7bfebee8 32
+  s_03528284c9e57b::t_88ba41e293f668 1-31,33-36,38-66
+  s_03528284c9e57b::t_c4cfba8c2ac922 37
+apps/web/src/components/notifications/notificationCopy.ts
+  s_03528284c9e57b::t_b9b378d9b5f96c 1-17,19-49
+  s_03528284c9e57b::t_68246efa884c9d 18
+apps/web/src/components/Icon.tsx
+  s_03528284c9e57b::t_9b43ba1b7f07ab 10-11
+  s_03528284c9e57b::t_3f783a2cb0574e 108-109
+apps/web/src/components/skills/detailParts.test.ts
+  s_03528284c9e57b::t_939aae581e66f5 55
+packages/core/test/notificationSubscription.test.ts
+  s_03528284c9e57b::t_ef3bc0341237c7 15-21,24-31
+  s_03528284c9e57b::t_771db77f1884ba 1-14,22-23,32-173
+apps/api/src/trpc.test.ts
+  s_03528284c9e57b::t_616b8033bd655e 9-10
+apps/web/src/styles/skills.css
+  s_03528284c9e57b::t_6477727b906f08 414-416
+  s_03528284c9e57b::t_3a8643dadb4890 405-413,417-435
+packages/db/src/schema.ts
+  s_03528284c9e57b::t_949b77d8c78ff1 31-52
+  s_03528284c9e57b::t_d5a9fb3cc6a293 578-663
+apps/web/src/components/skills/SkillsApp.tsx
+  s_03528284c9e57b::t_2a784775a91031 1075
+packages/core/src/services.ts
+  s_03528284c9e57b::t_2597c5620c5372 2093
+  s_03528284c9e57b::t_c33bd36ffa8f46 44
+  s_03528284c9e57b::t_d7297737ac3a87 1239
+  s_03528284c9e57b::t_cb12d7c24cc091 1549
+  s_03528284c9e57b::t_ff81ea9fe6b291 1571,1582,1597-1625,1636
+  s_03528284c9e57b::t_b3f0035c7cbcd3 71-73
+  s_03528284c9e57b::t_4a470980e59556 1958
+  s_03528284c9e57b::t_26fbbff6f57682 913
+  s_03528284c9e57b::t_b61994e3d78183 1094-1104
+  s_03528284c9e57b::t_e073f06660fdf6 2210-2228
+apps/web/src/components/skills/Sidebar.tsx
+  s_03528284c9e57b::t_1b96f9c8c052a2 5
+  s_03528284c9e57b::t_e3b9f3f997bded 111
+  s_03528284c9e57b::t_8f6ddcf739c54c 55
+  s_03528284c9e57b::t_27e802bc1850ed 26
+packages/core/test/notificationRecipients.test.ts
+  s_03528284c9e57b::t_d37adbb0add2d9 113-126
+  s_03528284c9e57b::t_708e34c9acbce1 1-19,22,31-36,39-112,127-170
+  s_03528284c9e57b::t_070d54c59817cd 20-21,23-30,37-38
+apps/api/src/trpc.ts
+  s_03528284c9e57b::t_a45ffa2c2c9725 47-76
+  s_03528284c9e57b::t_d9a8f19731a8cf 3-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "ff2cfc49cf93dfede75211ff2396ac708236707a",
+  "prompts": {},
+  "sessions": {
+    "s_03528284c9e57b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5747401-8a29-4c27-a7d7-7d3facbde8f7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+apps/web/src/components/skills/UploadDialog.tsx
+  s_c95b43f5a9dd1e::t_0a2a92e86634d7 543
+  s_c95b43f5a9dd1e::t_d230cc5807ac29 1346-1347,1349,1360-1363,1365-1367
+  s_c95b43f5a9dd1e::t_0e1cb084f76e7c 532-536
+  s_c95b43f5a9dd1e::t_ae6baa6b587c35 1476,1496
+  s_c95b43f5a9dd1e::t_90223e90cd5d91 476,484,497
+  s_c95b43f5a9dd1e::t_a99818bf9709cb 594,605
+  s_c95b43f5a9dd1e::t_f4cf386b16e11b 694-696
+  s_c95b43f5a9dd1e::t_89abf2afe50207 573
+  s_c95b43f5a9dd1e::t_3dd356946fbc16 555,559-561,565,569-571,578
+  s_c95b43f5a9dd1e::t_24ddf18a58cc97 498-503,505
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "48f2e04113c2e982470ba4c8c51ae6238e5542c6",
+  "prompts": {},
+  "sessions": {
+    "s_c95b43f5a9dd1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc16caae-9f95-4654-9d8d-e6a822fa05b4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

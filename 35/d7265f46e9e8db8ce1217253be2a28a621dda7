@@ -1,0 +1,38 @@
+apps/web/src/styles/landing.css
+  s_eaa2a240551b05::t_a0eedfdbcae50a 109-119,122
+  s_eaa2a240551b05::t_4ecd99527a0bb0 342-363
+  s_eaa2a240551b05::t_e5169bfd7ba02e 139-151,154-157,159-162,164-171,173-177,179
+  s_eaa2a240551b05::t_f5a4dc28e7cb5a 180
+  s_eaa2a240551b05::t_9e590e6a874bf1 55-58,62-65,70-72,74
+  s_eaa2a240551b05::t_59e7c39c04c046 536-537
+apps/web/src/components/landing/LandingPage.tsx
+  s_eaa2a240551b05::t_4825a3016cb097 473
+  s_eaa2a240551b05::t_d3b5069cb93fbb 423-424
+  s_eaa2a240551b05::t_a5524999b724ab 216-217,219-220
+  s_eaa2a240551b05::t_b024327b783e53 93
+  s_eaa2a240551b05::t_8d15f8d7d8414d 353-375
+  s_eaa2a240551b05::t_50438b10eb9f91 237,245-248,263-284
+  s_eaa2a240551b05::t_f874052c407e89 9
+  s_eaa2a240551b05::t_0e12a4b3f3cecc 441
+  s_eaa2a240551b05::t_8d411e7c1e79e0 522
+  s_eaa2a240551b05::t_b1b8e613bc0f86 658-659,662
+  s_eaa2a240551b05::t_62c3a74273f783 143-144,147-148,152-162
+  s_eaa2a240551b05::t_cc1fcf0bcfeaf1 20,23,27,31-34,37-38
+  s_eaa2a240551b05::t_c8ba31a016c623 48,54-55,59,63,66-85,89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "35d7265f46e9e8db8ce1217253be2a28a621dda7",
+  "prompts": {},
+  "sessions": {
+    "s_eaa2a240551b05": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dba275b5-10c9-4bc7-8b26-77de2dc960d2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

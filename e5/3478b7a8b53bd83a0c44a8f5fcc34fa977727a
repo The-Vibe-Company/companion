@@ -1,0 +1,192 @@
+docs/design.md
+  s_c95b43f5a9dd1e::t_f3f5e1954c88d1 65-81
+  s_c95b43f5a9dd1e::t_79bc32e63f91f5 123-132
+apps/web/src/components/skills/Sidebar.tsx
+  s_c95b43f5a9dd1e::t_c116bc022ac79f 9,12-13,197-282,290-291,295-296,298-299,301-302,304,327-328,331-334,336-337,339-340,342-348,359-361,364-365,373-377,379-380,385,389,392,396,402-427,458-459,462-465,467,470-477,479-483,485,489-533,535-557,559-560,562-575,580,625-629
+  s_c95b43f5a9dd1e::t_dae7437de6f3d6 561
+  s_c95b43f5a9dd1e::t_59fea20c429be7 484
+apps/web/src/components/skills/ListView.tsx
+  s_c95b43f5a9dd1e::t_b94cb5beff5460 229,232-239
+  s_c95b43f5a9dd1e::t_87bd51d5494c74 21-22,37-39,42
+packages/companion-skill/skill/reference/api.md
+  s_c95b43f5a9dd1e::t_b0a5322874fe39 79-86,88-95
+  s_c95b43f5a9dd1e::t_3f79af1f7b7301 118-122
+  s_c95b43f5a9dd1e::t_e8cf4b48f87bee 28,37-44
+apps/web/src/lib/queries.ts
+  s_c95b43f5a9dd1e::t_b6629eb574ae2e 288-338
+  s_c95b43f5a9dd1e::t_36ec316718692a 372-382,384-388,393-394,397-402
+  s_c95b43f5a9dd1e::t_2955100e13d73a 58,60-61,71
+  s_c95b43f5a9dd1e::t_687821b7b8b6fb 115-117
+apps/web/src/lib/types.ts
+  s_c95b43f5a9dd1e::t_3fad8968b13e71 65-66
+  s_c95b43f5a9dd1e::t_e6599d4ae83bea 22-29,31
+apps/web/src/components/skills/filters.test.ts
+  s_c95b43f5a9dd1e::t_f094acf83400a3 12-13
+apps/web/src/styles/skills.css
+  s_c95b43f5a9dd1e::t_1de508bea9bdf7 915-1077
+  s_c95b43f5a9dd1e::t_d32dec0c8abb4e 669-696
+packages/contracts/src/index.ts
+  s_c95b43f5a9dd1e::t_f0d21e0ac66221 6
+apps/web/src/components/skills/route.test.ts
+  s_c95b43f5a9dd1e::t_d61e122eb8fc0a 6,13-15,18-20,22,28-36,39,41,45-48,52-53,55,58-59,65-67,70-71,75-77,83,89-92,94,97-99,101-102,106-114,117-122,126-135,137,139-140,142-143,145-148
+packages/contracts/src/scope.ts
+  s_c95b43f5a9dd1e::t_2c2c217dd03ad9 11-18
+CLAUDE.md
+  s_c95b43f5a9dd1e::t_94fda9df84818e 61-62
+  s_c95b43f5a9dd1e::t_9831b1e11d7c2e 78-82,84-87
+  s_c95b43f5a9dd1e::t_9d171620db5de9 30,35-36
+packages/companion-skill/skill/SKILL.md
+  s_c95b43f5a9dd1e::t_969bfccc98572a 228-232
+  s_c95b43f5a9dd1e::t_c7a65e9d0d7d36 6
+packages/core/test/personalLabels.test.ts
+  s_c95b43f5a9dd1e::t_89a7666f8dfef7 1-509
+docs/PRD.md
+  s_c95b43f5a9dd1e::t_41f99d72083288 91-97
+  s_c95b43f5a9dd1e::t_245728d38f3787 55
+apps/web/src/components/skills/SkillsApp.tsx
+  s_c95b43f5a9dd1e::t_cad26c726aad30 45,49-59
+  s_c95b43f5a9dd1e::t_9129ffbcdefa5f 133-135
+  s_c95b43f5a9dd1e::t_706c06ac264c41 906-922,933,935
+  s_c95b43f5a9dd1e::t_3fc903f251b624 1043,1045
+  s_c95b43f5a9dd1e::t_4fd793b465e5c5 1085-1091,1093,1096
+  s_c95b43f5a9dd1e::t_3bdb03a2c78d84 1378-1385,1387-1403
+  s_c95b43f5a9dd1e::t_fff0e28e892490 822-823,825
+  s_c95b43f5a9dd1e::t_dd3467153e9dd3 869-871
+  s_c95b43f5a9dd1e::t_8d27f543be87c4 1178
+  s_c95b43f5a9dd1e::t_5337a03736bbf8 1071
+  s_c95b43f5a9dd1e::t_1262be57a7d74b 587-648,650,652,656,658-675,677,679-683,687-688,696-698,702,705-721,723-739,742,744-747,750,757,759-760,763,765,768-770,774,778-782,784-785,787,789-790,792-794,798-821,824,826-832
+  s_c95b43f5a9dd1e::t_973a2c2375a2ff 268-273,281-285,289-304,306-309
+  s_c95b43f5a9dd1e::t_d39976997bc741 401
+  s_c95b43f5a9dd1e::t_79128aa75fae6d 200-205,208,216-221,232-235
+  s_c95b43f5a9dd1e::t_4767e96b50fc79 1210-1219,1232-1233,1236-1238,1240-1241,1243-1244,1246,1281-1282,1288-1291,1308-1309,1327,1339-1340,1350-1351
+  s_c95b43f5a9dd1e::t_d7b5463b896722 240-241,244,252-253,256
+  s_c95b43f5a9dd1e::t_beeea8e0a792d9 1206
+  s_c95b43f5a9dd1e::t_ebea54dce4fb0b 982-988,990
+  s_c95b43f5a9dd1e::t_ebef8708258cb3 516-523,525-529,531-538,547-555,559-564,567-571,574-577,584-585
+packages/companion-skill/src/index.ts
+  s_c95b43f5a9dd1e::t_acd603c09e86a6 67-74
+packages/db/src/schema.ts
+  s_c95b43f5a9dd1e::t_2ee71234c8008f 378-445
+  s_c95b43f5a9dd1e::t_ecc5d7cc557c15 191-193,197-198
+  s_c95b43f5a9dd1e::t_c8ce167bee3e2c 22-25
+  s_c95b43f5a9dd1e::t_4e6597225d4e3b 214-215
+apps/web/src/components/skills/DetailView.tsx
+  s_c95b43f5a9dd1e::t_b08ab76f5cb031 500-509
+  s_c95b43f5a9dd1e::t_ebf2d70632753e 553-554,565-582,585
+  s_c95b43f5a9dd1e::t_8127ea8e7735d1 256,265-266,278-279,290-293
+  s_c95b43f5a9dd1e::t_b6f61d9faf55b3 462-471,477-478
+apps/web/src/components/skills/detailParts.test.ts
+  s_c95b43f5a9dd1e::t_1c10609e4c4953 14-15
+packages/core/test/skillLabels.test.ts
+  s_c95b43f5a9dd1e::t_911865b027c3e6 126-127
+  s_c95b43f5a9dd1e::t_899ece920eaf6d 461-471
+  s_c95b43f5a9dd1e::t_901e15fbd233ed 318-319,323,328
+cli/src/commands/skills.test.ts
+  s_c95b43f5a9dd1e::t_e02ceabfd338f1 28-29
+packages/core/src/authz.ts
+  s_c95b43f5a9dd1e::t_a7ce4cf732ae8f 60-85
+  s_c95b43f5a9dd1e::t_58490e41e68553 1,8-15
+docs/product.md
+  s_c95b43f5a9dd1e::t_972d70c3c3d316 126-132
+  s_c95b43f5a9dd1e::t_5207be42f56d25 54-66
+packages/contracts/src/skill.ts
+  s_c95b43f5a9dd1e::t_73dc3a3148b141 9-12,132-142,144
+apps/api/src/localSkills.test.ts
+  s_c95b43f5a9dd1e::t_6e392e00b58bbb 68
+apps/web/src/components/skills/DetailView.test.ts
+  s_c95b43f5a9dd1e::t_4f7eef566a452a 49,58-59
+  s_c95b43f5a9dd1e::t_9e58f797e0ce45 16-17
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_c95b43f5a9dd1e::t_7a022e8c3d457f 553-554,559
+  s_c95b43f5a9dd1e::t_a17c7e4f245505 586-587,590
+  s_c95b43f5a9dd1e::t_c5148b66c619f3 400,407,417,503,506,518,527,536,550-551,561,567,574-575,581,584,592,651,657,664,682,689,691,712
+  s_c95b43f5a9dd1e::t_fb790dac78f2df 40-49
+  s_c95b43f5a9dd1e::t_868ef2fb216f27 318-326
+  s_c95b43f5a9dd1e::t_54f8c58e6315a1 340,373,381,388,399,406,435,448,468,502,526,543,566,580,633,656,687
+  s_c95b43f5a9dd1e::t_784d1bc31eb995 81-82
+  s_c95b43f5a9dd1e::t_6117d0b13c7eaf 632,636
+  s_c95b43f5a9dd1e::t_72b60708384e70 189-191,194-195,201-202,207
+  s_c95b43f5a9dd1e::t_0d7733d2ce60ef 347-352,360-369
+  s_c95b43f5a9dd1e::t_af4b73a29ea7b2 478-479,481-484,490-492
+  s_c95b43f5a9dd1e::t_2ceaadce4899c4 122-123
+  s_c95b43f5a9dd1e::t_e41432131e9d2a 387,389
+packages/db/drizzle/0027_personal_labels.sql
+  s_c95b43f5a9dd1e::t_d0f48822926bb1 1-52
+packages/core/test/authz.test.ts
+  s_c95b43f5a9dd1e::t_8fc1b72093de29 4,6,13
+  s_c95b43f5a9dd1e::t_3cd48cd23fb187 50-81
+apps/web/src/components/skills/ShareDialog.tsx
+  s_c95b43f5a9dd1e::t_5dad4947dae7dd 1-91
+apps/web/src/components/skills/detailParts.tsx
+  s_c95b43f5a9dd1e::t_bc47da39006561 243,245-246,249-258
+apps/api/src/index.ts
+  s_c95b43f5a9dd1e::t_87cd090ea8f2fe 1511,1528,1541,1545-1547
+  s_c95b43f5a9dd1e::t_0391a6d9f7f6d0 1630-1632
+  s_c95b43f5a9dd1e::t_df010df59ee201 60,67-74
+  s_c95b43f5a9dd1e::t_47d8de728b0dc0 299-301,309-310,316
+  s_c95b43f5a9dd1e::t_3ed99b413dead9 1382-1417
+  s_c95b43f5a9dd1e::t_c401485ccdeaaf 961-1069
+  s_c95b43f5a9dd1e::t_e29e8b05ae48c2 1471-1486
+  s_c95b43f5a9dd1e::t_2778a8599d510e 1668,1672-1673,1679
+  s_c95b43f5a9dd1e::t_6f53d9fd51b67b 821-825,840
+  s_c95b43f5a9dd1e::t_57edf86c1d4a5c 108
+  s_c95b43f5a9dd1e::t_bb3b2facc1cf02 1706-1707
+  s_c95b43f5a9dd1e::t_1d12fee65a4703 272-273,283
+apps/web/src/components/skills/updateFlow.test.ts
+  s_c95b43f5a9dd1e::t_8d457602c2ef55 17-18
+  s_c95b43f5a9dd1e::t_eb6f88b027077e 77,86-87
+apps/web/src/app/(app)/skills/page.tsx
+  s_c95b43f5a9dd1e::t_70c3c4fb4db4ab 66-67,70
+  s_c95b43f5a9dd1e::t_1353ca2eecf5aa 40-55
+packages/core/src/personalLabels.ts
+  s_c95b43f5a9dd1e::t_f2dd1674ed91c5 1-339
+apps/web/src/components/skills/UploadDialog.tsx
+  s_c95b43f5a9dd1e::t_1499c1e807fe54 1078,1086-1088
+  s_c95b43f5a9dd1e::t_de2fea687cd4d1 1195
+  s_c95b43f5a9dd1e::t_7bca44e5b4635a 1267
+packages/db/drizzle/0026_personal_skills.sql
+  s_c95b43f5a9dd1e::t_866cd4d82499ae 1-13
+packages/contracts/src/personalLabels.ts
+  s_c95b43f5a9dd1e::t_03682dfd0171fe 1-38
+packages/core/test/skillScope.test.ts
+  s_c95b43f5a9dd1e::t_55d815be59b150 1-103
+apps/web/src/components/skills/route.ts
+  s_c95b43f5a9dd1e::t_39dc3f44532a72 2-6,8-9,11-16,29-33,55-58,65,67,70-72,74-85,88,90-91,95,97-104,106,111-114,119-132,136-149
+packages/core/src/services.ts
+  s_c95b43f5a9dd1e::t_1421d28f4c0478 59-72
+  s_c95b43f5a9dd1e::t_3be1e4aa18a500 708,716-724
+  s_c95b43f5a9dd1e::t_32656df867af10 2516-2521
+  s_c95b43f5a9dd1e::t_0e44d0dcfbe624 1466-1468,1475-1477,1485-1511,1513-1519
+  s_c95b43f5a9dd1e::t_04cd8c359cfb0b 561-563,565-571,573-578,580-600,603-607,609
+  s_c95b43f5a9dd1e::t_8ce594ac512e2d 1655-1657
+  s_c95b43f5a9dd1e::t_05f48cafd08061 2134,2182-2185,2193-2195
+  s_c95b43f5a9dd1e::t_551c92be9e948f 42
+  s_c95b43f5a9dd1e::t_a316e8cdb0a853 2135-2147,2153,2155-2181
+  s_c95b43f5a9dd1e::t_178e827e216b53 629-634,653-654
+  s_c95b43f5a9dd1e::t_3948799197f501 1406-1415
+  s_c95b43f5a9dd1e::t_b76355688f6adb 2148-2152,2154
+  s_c95b43f5a9dd1e::t_16ae0fda839187 950-958
+  s_c95b43f5a9dd1e::t_b619a89e1146f5 656-659,670,676
+  s_c95b43f5a9dd1e::t_9119903228e402 827-836
+packages/core/src/labels.ts
+  s_c95b43f5a9dd1e::t_477c48661697d5 152-188
+  s_c95b43f5a9dd1e::t_346a923052a09c 151,254-258,263
+  s_c95b43f5a9dd1e::t_51bc1da50bddd1 62-69,71-75,77-81
+  s_c95b43f5a9dd1e::t_f34d7229acefe1 37-38,41,43-47,55,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "e53478b7a8b53bd83a0c44a8f5fcc34fa977727a",
+  "prompts": {},
+  "sessions": {
+    "s_c95b43f5a9dd1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc16caae-9f95-4654-9d8d-e6a822fa05b4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

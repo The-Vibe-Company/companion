@@ -1,0 +1,25 @@
+apps/web/src/components/skills/Sidebar.tsx
+  s_7c8fe704a04fc2::t_7069b33d24332e 336,340,361
+  s_7c8fe704a04fc2::t_5f5b1130a0cd8c 3,15,327-335,337-339,341-360,362-370,393,404-405,411,425,432,438-441
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_7c8fe704a04fc2::t_0eea2cced313bf 309-313,412,733,739,744-745,750-751,757-813
+  s_7c8fe704a04fc2::t_35cc8f7a35dc4b 814
+apps/web/src/styles/skills.css
+  s_7c8fe704a04fc2::t_7b42eb6d3462c2 125-131,1269-1282,1287-1291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "b759696e37ff8766ef62dd39821f53f3f40bed19",
+  "prompts": {},
+  "sessions": {
+    "s_7c8fe704a04fc2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f07e7-eff2-7450-a3d1-418485e3ed73",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

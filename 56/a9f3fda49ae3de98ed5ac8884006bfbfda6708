@@ -1,0 +1,27 @@
+CLAUDE.md
+  s_42303864184dac::t_75b4ba2dad9f26 24,32,35
+README.md
+  s_42303864184dac::t_e56d71af9b3f9f 123
+  s_42303864184dac::t_c06bca9f4752db 220
+  s_42303864184dac::t_92e3a40c945bfc 262-265
+  s_42303864184dac::t_dcc005ddf4e0ce 338-365
+  s_42303864184dac::t_f10cf7498a1419 236-238
+AGENTS.md
+  s_42303864184dac::t_b83b52e6ad5562 31,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "56a9f3fda49ae3de98ed5ac8884006bfbfda6708",
+  "prompts": {},
+  "sessions": {
+    "s_42303864184dac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ef4cc79-f25d-45dd-9131-e965bd24b15f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Claude <noreply@anthropic.com>"
+    }
+  }
+}

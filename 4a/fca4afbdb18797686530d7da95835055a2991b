@@ -1,0 +1,110 @@
+packages/sandbox/src/opencodeChat.ts
+  s_88abaada121317::t_9a7220bb9fa998 346-349
+packages/sandbox/src/vercel.ts
+  s_88abaada121317::t_9a7220bb9fa998 15,192-196
+apps/web/src/lib/runQueries.ts
+  s_88abaada121317::t_3f8c84fc3276a4 13,179-180
+apps/web/src/components/runs/reactivation.ts
+  s_88abaada121317::t_2898231f7ea411 1-8,14-22
+  s_88abaada121317::t_a5b6f39dff2ebb 9-13
+apps/api/test/integration/runsDb.integration.test.ts
+  s_88abaada121317::t_8bf0bbb902ec9b 51-54,227,254-291,678-690,728-791,797,822-848
+  s_88abaada121317::t_e14dd98aeb2cfd 50,228-253,664-677,691-727,792-796
+  s_2df1f61006b570::t_d4d2604c168fe8 798,849
+apps/web/src/components/runs/reactivation.test.ts
+  s_88abaada121317::t_a5b6f39dff2ebb 3-7,50-55
+  s_88abaada121317::t_2898231f7ea411 1-2,8-49,56-57
+apps/web/src/components/runs/RunChatView.tsx
+  s_88abaada121317::t_2898231f7ea411 344,549
+  s_88abaada121317::t_9e9df7b8d04274 560,599-603,605
+  s_88abaada121317::t_b90c9aa63df8d0 86-95,110,112-114,329,455-463,550-551,571,580-598,604,606-608,775,777,781-785,959,976,985,987,1013,1015-1017
+  s_88abaada121317::t_a5b6f39dff2ebb 13-17,613-615
+  s_88abaada121317::t_6604b0dd8f0b8f 23-24
+  s_88abaada121317::t_ea499549bbb110 552-553,975
+  s_88abaada121317::t_f7d1ea1ba08cba 326,544-547,965
+  s_2df1f61006b570::t_e51c56f2ce1019 464
+packages/core/src/runJobs.ts
+  s_88abaada121317::t_620918fb3c8685 310,343
+  s_88abaada121317::t_9e9df7b8d04274 674,694-697,719-721
+  s_88abaada121317::t_0584aa58434cd7 571-572,574,604,607-621,647-673,675-693,698-718,722,751-761,1158-1162,1179,1282,1298-1301
+  s_88abaada121317::t_0e563a22724161 5,1061,1069-1070
+packages/db/drizzle/0037_reactivate_runs.sql
+  s_88abaada121317::t_9578671a607ace 1-48,50-72
+  s_88abaada121317::t_620918fb3c8685 49
+packages/core/test/runJobs.test.ts
+  s_88abaada121317::t_37ac7450753e96 106-119,220-221
+  s_88abaada121317::t_76c92ad057f26a 266-267
+apps/api/src/runRoutes.test.ts
+  s_88abaada121317::t_60bfe957bf8278 272,280-283
+packages/core/src/skillRuns.ts
+  s_88abaada121317::t_f1d220a1b033e7 946-954,1104-1106
+apps/worker/src/runSupervisor.test.ts
+  s_88abaada121317::t_c86dcb39ced136 7,33-49
+  s_88abaada121317::t_a5b6f39dff2ebb 5,50-83
+  s_2df1f61006b570::t_bd9f866bcf3793 84-85
+packages/core/src/runRuntime.ts
+  s_88abaada121317::t_9a7220bb9fa998 81,113-114
+packages/contracts/test/skillRuns.test.ts
+  s_88abaada121317::t_2e65aaacc7d7eb 13,259-261,267-272
+apps/api/src/index.ts
+  s_88abaada121317::t_3f8c84fc3276a4 3150-3163,3166
+packages/contracts/src/skillRuns.ts
+  s_88abaada121317::t_f1d220a1b033e7 26,561-564,583-590
+  s_412757bd1d2d0c::t_3efc7a2818d01b 591
+docs/design.md
+  s_88abaada121317::t_6604b0dd8f0b8f 572-575,595-597,604-609,641-642,654-659,671-673,779
+packages/core/test/runsFakeDb.ts
+  s_88abaada121317::t_a61294858a884f 124-125
+apps/worker/src/runSupervisor.ts
+  s_88abaada121317::t_c86dcb39ced136 64-76,1090-1094
+  s_88abaada121317::t_a5b6f39dff2ebb 9-10,77-95,1299-1304,1319,1321-1327,1373-1378,1382,1384-1390
+  s_88abaada121317::t_ab2173fb801a80 3,108,292,759,771-773,1267-1273,1276-1278,1316-1318,1320,1328-1329,1331,1379-1381,1383,1391-1392,1394
+  s_88abaada121317::t_140ada411527ff 976-977,997,1000-1002
+  s_88abaada121317::t_14cd43e35037af 991-996
+packages/sandbox/test/opencodeChat.test.ts
+  s_88abaada121317::t_c86dcb39ced136 164-180
+packages/core/src/runSweeper.ts
+  s_88abaada121317::t_3caebe9a2d3f63 1,36-42,53
+docs/testing.md
+  s_88abaada121317::t_6604b0dd8f0b8f 22
+packages/db/src/schema.ts
+  s_88abaada121317::t_6604b0dd8f0b8f 1035-1038
+  s_88abaada121317::t_f1d220a1b033e7 1088-1091,1140-1143,1428
+packages/core/test/runSweeper.test.ts
+  s_88abaada121317::t_3caebe9a2d3f63 44-45
+  s_88abaada121317::t_699243225da697 124-133
+packages/db/drizzle/meta/_journal.json
+  s_412757bd1d2d0c::t_78d0c00bdd4ed5 263-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4afca4afbdb18797686530d7da95835055a2991b",
+  "prompts": {},
+  "sessions": {
+    "s_2df1f61006b570": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65c6-b31f-7951-b63a-0d54c95d0e7d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_412757bd1d2d0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65c7-4d0a-7f22-b524-444dce4b8c4f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_88abaada121317": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65ca-476c-7011-a14c-5d758a92ee15",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

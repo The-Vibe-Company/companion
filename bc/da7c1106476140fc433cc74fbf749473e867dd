@@ -1,0 +1,119 @@
+apps/web/src/lib/runQueries.ts
+  s_b72b2316fa286f::t_79c1c770f14467 13,178,180-184,186
+docs/design.md
+  s_b72b2316fa286f::t_807231075af2bd 606
+  s_b72b2316fa286f::t_cdd02557548d42 595-596
+  s_b72b2316fa286f::t_ee70f49df57cc6 553-554,581-586,633,766-768,770-771
+  s_b72b2316fa286f::t_3037265d3b35a5 635-638
+apps/web/src/components/Icon.tsx
+  s_b72b2316fa286f::t_6aaff8317ec606 63,175
+packages/core/src/skillRuns.ts
+  s_b72b2316fa286f::t_ba37e69e3e96dc 1697-1722
+  s_b72b2316fa286f::t_d89d8d138060e0 2003-2018
+  s_b72b2316fa286f::t_51f925707b19f8 1446-1473,1480,1551
+  s_b72b2316fa286f::t_e83222bc308563 135,959,986
+  s_b72b2316fa286f::t_feb97a6eea5f5b 5-7,212-216,229-258,946,948-958,960,962-969,981-985,987-990,1153
+apps/web/src/components/runs/RunChatView.tsx
+  s_b72b2316fa286f::t_d57cd546cfae82 582-594
+  s_b72b2316fa286f::t_f5355e0b91fe34 562
+  s_b72b2316fa286f::t_f41381c384f0c6 5-12,58-82,340-347,441,463,563-564,570,572,575,580-581,596-602,606-607,620-649,854-859,872-874
+  s_b72b2316fa286f::t_db21366d1c4752 935-958,972-990,1006,1042
+apps/web/src/components/runs/chatStream.ts
+  s_b72b2316fa286f::t_79c1c770f14467 1-6,200-206,251,257,273-277,280-288,315-324,329
+packages/core/src/runJobs.ts
+  s_b72b2316fa286f::t_66a10dda5faad5 11,18,20,23-24,573,575-580,584-585,588-594,613-622,627-630,632-635,656-675,684-691,702-703,711-724,735-742,744-748,754
+  s_b72b2316fa286f::t_e83222bc308563 631,743
+  s_b72b2316fa286f::t_b923d705b6020c 1274-1296
+packages/db/src/schema.ts
+  s_b72b2316fa286f::t_cc286aed27da36 1399-1401,1420,1475,1482,1495-1498
+  s_b72b2316fa286f::t_37254c7fbd3038 1499
+packages/db/drizzle/0037_skill_run_prompt_attachments.sql
+  s_b72b2316fa286f::t_cf63e92e49139b 1-20
+apps/api/test/integration/runsDb.integration.test.ts
+  s_b72b2316fa286f::t_2f66c4940b930b 51
+  s_b72b2316fa286f::t_c2e704b2c8af78 278,280,283-284,288,291-292,295,297-298,624,627-628
+  s_b72b2316fa286f::t_86fc3b0d442a05 544-591
+packages/core/src/runRuntime.ts
+  s_b72b2316fa286f::t_c72000782093a8 56-57,68-69
+apps/worker/src/runSupervisor.ts
+  s_b72b2316fa286f::t_dd3d592aa4c023 26,28,1127-1158
+  s_b72b2316fa286f::t_6a151835515a75 1159
+apps/web/src/components/runs/chatStream.test.ts
+  s_b72b2316fa286f::t_18c4c40bf9fcd5 307-315,317,334-335
+apps/web/src/styles/runs.css
+  s_b72b2316fa286f::t_c2071aa1a155be 263-267
+docs/testing.md
+  s_b72b2316fa286f::t_ee70f49df57cc6 20
+packages/contracts/test/skillRuns.test.ts
+  s_b72b2316fa286f::t_0b723f3dccfdaa 74-79
+packages/core/test/runJobs.test.ts
+  s_b72b2316fa286f::t_2125da01a4b96f 47,49
+  s_b72b2316fa286f::t_e75532a077cf68 33,48,80,179-196
+  s_412757bd1d2d0c::t_f3461de2b586c6 197-198
+packages/sandbox/src/vercel.ts
+  s_b72b2316fa286f::t_c72000782093a8 172-184
+apps/web/src/components/runs/RunLauncherDialog.tsx
+  s_b72b2316fa286f::t_7c14d58291e764 215,485,585
+packages/contracts/src/skillRuns.ts
+  s_b72b2316fa286f::t_d3c10ea642d821 18,446-451,553-554,587-604,612
+  s_b72b2316fa286f::t_e83222bc308563 555
+packages/sandbox/src/opencodeChat.ts
+  s_b72b2316fa286f::t_1c3fa9e1dc82af 101-107
+apps/api/src/index.ts
+  s_b72b2316fa286f::t_9607d27701e3cb 2883-2899,3182,3193,3198,3209
+  s_b72b2316fa286f::t_3d2c4bc366473b 3189,3194
+  s_b72b2316fa286f::t_8e8c76bbcde9cc 169,3163-3181,3183-3188,3190-3192,3195-3197,3199-3208,3210-3264
+apps/api/src/runRoutes.test.ts
+  s_b72b2316fa286f::t_e541e0a6ed80ca 272-278,286-294,300-341
+  s_412757bd1d2d0c::t_48b9797ebb5240 342
+apps/web/src/styles/skills.css
+  s_b72b2316fa286f::t_c2071aa1a155be 616
+packages/core/test/skillRuns.test.ts
+  s_b72b2316fa286f::t_d90c4b2334d639 21,418-429
+  s_b72b2316fa286f::t_d39945f662fbfc 25,430,475-506
+  s_2df1f61006b570::t_ce6e0f04041a07 431
+apps/web/src/components/runs/RunLauncherDialog.test.ts
+  s_b72b2316fa286f::t_c97026d47d428d 218-240
+packages/db/drizzle/meta/_journal.json
+  s_88abaada121317::t_a813919c719af1 263-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bcda7c1106476140fc433cc74fbf749473e867dd",
+  "prompts": {},
+  "sessions": {
+    "s_2df1f61006b570": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65c6-b31f-7951-b63a-0d54c95d0e7d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_412757bd1d2d0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65c7-4d0a-7f22-b524-444dce4b8c4f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_88abaada121317": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65ca-476c-7011-a14c-5d758a92ee15",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_b72b2316fa286f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65c7-fc0c-7252-8a51-9510f76dfcc3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

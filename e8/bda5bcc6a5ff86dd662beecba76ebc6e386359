@@ -1,0 +1,23 @@
+docs/design.md
+  s_5c2a1a0a0d942b::t_f04d628288857e 421-570
+CLAUDE.md
+  s_5c2a1a0a0d942b::t_7f693437f3d067 62-63
+apps/web/src/components/org/SettingsView.tsx
+  s_5c2a1a0a0d942b::t_8e873eb028b26b 98-101,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e8bda5bcc6a5ff86dd662beecba76ebc6e386359",
+  "prompts": {},
+  "sessions": {
+    "s_5c2a1a0a0d942b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c9149cb-d9d2-47a8-933b-e769ca7e94e3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

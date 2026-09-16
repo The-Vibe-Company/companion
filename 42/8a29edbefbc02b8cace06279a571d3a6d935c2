@@ -1,0 +1,21 @@
+packages/core/test/skillVisibility.test.ts
+  s_9bf72832a91732::t_f1ee09d0a1a8e2 211-232
+packages/core/src/services.ts
+  s_9bf72832a91732::t_f1ee09d0a1a8e2 1153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "428a29edbefbc02b8cace06279a571d3a6d935c2",
+  "prompts": {},
+  "sessions": {
+    "s_9bf72832a91732": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ead8c-6dd1-7fd0-a5b0-7f058a9a7101",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

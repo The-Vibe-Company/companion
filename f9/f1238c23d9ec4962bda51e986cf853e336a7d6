@@ -1,0 +1,21 @@
+apps/api/src/companionRoutes.test.ts
+  s_542ed14fb3e982::t_f8021c92ae63be 125
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_542ed14fb3e982::t_3150b48c0c3e16 4201-4202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "f9f1238c23d9ec4962bda51e986cf853e336a7d6",
+  "prompts": {},
+  "sessions": {
+    "s_542ed14fb3e982": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a029c8-fe65-7e92-aabe-e39c075d106f",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

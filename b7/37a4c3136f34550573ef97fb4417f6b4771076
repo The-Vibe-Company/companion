@@ -1,0 +1,107 @@
+packages/contracts/src/companionBudgets.ts
+  s_6e862c14bab050::t_e598a993ce5421 198,208
+packages/contracts/package.json
+  s_6e862c14bab050::t_4f3dc8b8201ce8 9-10
+packages/core/src/companionNotifications.ts
+  s_6e862c14bab050::t_4f3dc8b8201ce8 1-155
+deploy/railway/README.md
+  s_6e862c14bab050::t_4f3dc8b8201ce8 10,31,42,242-243,254-256
+docs/companions-runtime.md
+  s_6e862c14bab050::t_4f3dc8b8201ce8 22,32-33,530-551,879-885
+  s_6e862c14bab050::t_5f70e8614518c8 886
+apps/worker/src/apnsSupervisor.ts
+  s_6e862c14bab050::t_4f3dc8b8201ce8 1-344
+apps/ios/CompanionKit/Tests/CompanionKitTests/CompanionKitTests.swift
+  s_6e862c14bab050::t_4f3dc8b8201ce8 48-68,90-158
+  s_6e862c14bab050::t_f535c115f25bcc 159
+apps/ios/Config/Companion.entitlements
+  s_6e862c14bab050::t_4f3dc8b8201ce8 5-6
+packages/db/runtime-role-grants.sql
+  s_6e862c14bab050::t_4f3dc8b8201ce8 87-89,690-712,754
+  s_6e862c14bab050::t_483ffd1829cafa 618,630
+README.md
+  s_6e862c14bab050::t_4f3dc8b8201ce8 29,101-102,121-125
+apps/ios/Config/Release.xcconfig
+  s_6e862c14bab050::t_4f3dc8b8201ce8 6
+apps/worker/src/supervisors.test.ts
+  s_6e862c14bab050::t_4f3dc8b8201ce8 15,17,28,30,42
+scripts/dev-process.sh
+  s_6e862c14bab050::t_4f3dc8b8201ce8 45
+apps/ios/CompanionKit/Sources/CompanionKit/Models.swift
+  s_6e862c14bab050::t_4f3dc8b8201ce8 66-130
+apps/api/src/companionRoutes.test.ts
+  s_6e862c14bab050::t_4f3dc8b8201ce8 23,73-74,268-275,349-429,506,511
+apps/ios/CompanionKit/Sources/CompanionKit/SessionStore.swift
+  s_6e862c14bab050::t_4f3dc8b8201ce8 77,79-83,86,148-150,155-169
+  s_6e862c14bab050::t_383b3bff0bf572 170-171
+packages/contracts/src/notifications.ts
+  s_6e862c14bab050::t_4f3dc8b8201ce8 1-38
+apps/worker/src/index.ts
+  s_6e862c14bab050::t_4f3dc8b8201ce8 7-8,11,24,34
+apps/api/src/companionRoutes.ts
+  s_6e862c14bab050::t_4f3dc8b8201ce8 102-103,140-143,227-228,510-518,587-588,641-669
+  s_6e862c14bab050::t_5c416e1e0cb8b3 670
+packages/db/drizzle/0126_companion_agent_endpoint_read.sql
+  s_6e862c14bab050::t_483ffd1829cafa 1-351
+docs/design.md
+  s_6e862c14bab050::t_4f3dc8b8201ce8 14,33,110-121
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_6e862c14bab050::t_4f3dc8b8201ce8 873-914,951-972,1006-1221
+apps/ios/Companion/Screens/CompanionListView.swift
+  s_6e862c14bab050::t_4f3dc8b8201ce8 12,53-55,123-125,270-271,282-295,304-308
+  s_6e862c14bab050::t_67af2a988cfc5e 309
+.env.example
+  s_6e862c14bab050::t_4f3dc8b8201ce8 114-120
+apps/ios/Companion/CompanionApp.swift
+  s_6e862c14bab050::t_4f3dc8b8201ce8 6-7,11
+packages/core/src/index.ts
+  s_6e862c14bab050::t_4f3dc8b8201ce8 27
+docs/testing.md
+  s_6e862c14bab050::t_4f3dc8b8201ce8 25,91-93,118-119
+apps/ios/Companion/Support/NotificationCoordinator.swift
+  s_6e862c14bab050::t_4f3dc8b8201ce8 1-106
+apps/worker/src/apnsSupervisor.test.ts
+  s_6e862c14bab050::t_4f3dc8b8201ce8 1-131
+apps/ios/CompanionKit/Sources/CompanionKit/APIClient.swift
+  s_6e862c14bab050::t_4f3dc8b8201ce8 195-213
+  s_6e862c14bab050::t_c3f05457c164bf 194
+packages/db/drizzle/0124_companion_notifications.sql
+  s_6e862c14bab050::t_4f3dc8b8201ce8 1-732
+apps/ios/README.md
+  s_6e862c14bab050::t_4f3dc8b8201ce8 28-33,66-67,81-87
+  s_6e862c14bab050::t_2d633d449dee1c 88
+apps/ios/Config/Debug.xcconfig
+  s_6e862c14bab050::t_4f3dc8b8201ce8 6
+apps/worker/src/supervisors.ts
+  s_6e862c14bab050::t_4f3dc8b8201ce8 6,26,32,34,39,41,53,55
+apps/ios/Companion/Navigation/RootView.swift
+  s_6e862c14bab050::t_4f3dc8b8201ce8 5-9,12-13,53-60,66-89
+  s_6e862c14bab050::t_b834daaae2110e 90
+packages/db/src/schema.ts
+  s_6e862c14bab050::t_483ffd1829cafa 824
+  s_6e862c14bab050::t_4f3dc8b8201ce8 54-59,1009-1094
+  s_6e862c14bab050::t_d30c733b63f74a 1095
+apps/ios/CompanionUITests/CompanionUITests.swift
+  s_6e862c14bab050::t_4f3dc8b8201ce8 232-241
+  s_6e862c14bab050::t_542f03355729b5 231
+apps/api/src/runtimeRoleGrants.test.ts
+  s_6e862c14bab050::t_4f3dc8b8201ce8 251-276
+packages/db/drizzle/meta/_journal.json
+  s_6e862c14bab050::t_cc92c7de9d9744 877,884,891-898
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b737a4c3136f34550573ef97fb4417f6b4771076",
+  "prompts": {},
+  "sessions": {
+    "s_6e862c14bab050": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03a1b-9b7d-7dd1-aa7f-31201c80d000",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

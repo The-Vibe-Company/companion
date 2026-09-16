@@ -1,0 +1,58 @@
+packages/sandbox/src/chatMapping.ts
+  s_1e74ce65ff5b16::t_fc0eebb2bb528d 1-31
+apps/web/src/components/agents/chatStream.ts
+  s_1e74ce65ff5b16::t_0d05a19c757309 152-155,161,164-169,174-175,181
+  s_1e74ce65ff5b16::t_5e47df594562d8 221-223
+  s_1e74ce65ff5b16::t_9072a2d4fa0a46 261-274,277,280,288-290,300-336,340,344-348,355,365,380,382
+apps/web/src/components/agents/derive.ts
+  s_1e74ce65ff5b16::t_aa66a491508b3e 278-317
+apps/web/src/components/agents/ChatApp.tsx
+  s_1e74ce65ff5b16::t_f4bf125e1b2107 13
+  s_1e74ce65ff5b16::t_459a2ecddd92d8 652-669,677
+  s_1e74ce65ff5b16::t_481a62e87f1664 207-208
+  s_1e74ce65ff5b16::t_37a0ec319c6285 523-529
+  s_1e74ce65ff5b16::t_ab3aa6fa290d39 358-361
+  s_1e74ce65ff5b16::t_8590ffc01d4b50 517
+  s_1e74ce65ff5b16::t_f3ec7e21bc39b0 591-593
+  s_1e74ce65ff5b16::t_6c0de51bece390 168,179,204-206,209-212,214,216,218,241-332
+  s_1e74ce65ff5b16::t_a1beaeea671739 458-461
+  s_1e74ce65ff5b16::t_8465ba33c504b2 333
+packages/sandbox/src/opencodeChat.ts
+  s_1e74ce65ff5b16::t_217c436c979e87 55-56,61-63
+  s_1e74ce65ff5b16::t_2a2f29dd8211c2 128-130,136,138-139,147,156,177-197,203
+  s_1e74ce65ff5b16::t_85ffac30d47029 107-109
+  s_1e74ce65ff5b16::t_9fb587b277b012 4
+apps/web/src/components/agents/chatStream.test.ts
+  s_1e74ce65ff5b16::t_13b10b862054f6 77-79
+  s_1e74ce65ff5b16::t_c92adb075da4b7 125
+  s_1e74ce65ff5b16::t_33aec9d44a4a1c 150-213
+apps/web/src/components/agents/derive.test.ts
+  s_1e74ce65ff5b16::t_b1f3287117ac0d 83-97
+  s_1e74ce65ff5b16::t_aeacfdf7f0c8d3 21
+packages/sandbox/test/chatMapping.test.ts
+  s_1e74ce65ff5b16::t_46aac7195e9c92 1-43
+apps/web/src/styles/agents.css
+  s_1e74ce65ff5b16::t_33816c6ae5f86d 120-146
+apps/web/src/components/agents/ChatApp.test.ts
+  s_1e74ce65ff5b16::t_afba2788d53385 264-302
+  s_1e74ce65ff5b16::t_35ad3920b17351 7
+packages/contracts/src/agents.ts
+  s_1e74ce65ff5b16::t_1619b757075efa 367
+  s_1e74ce65ff5b16::t_3eb20a70f43b68 385-387,396-397,403,409-421
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8315f44b5ed29ea3a0d7768543eb9d287b0f8ef0",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

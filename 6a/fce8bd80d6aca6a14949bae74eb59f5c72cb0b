@@ -1,0 +1,19 @@
+scripts/box-provider-e2e.mjs
+  s_de21e6620b3a0d::t_e1a394e6e2b02d 75-77,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "6afce8bd80d6aca6a14949bae74eb59f5c72cb0b",
+  "prompts": {},
+  "sessions": {
+    "s_de21e6620b3a0d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0206f-702f-7150-bb36-9635caa26a82",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

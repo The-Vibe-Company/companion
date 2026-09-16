@@ -1,0 +1,77 @@
+apps/api/src/sentry.ts
+  s_ddcdf633c08ffa::t_6eb14b6a41ec2e 2,4,6-7,13-15,19-21,23
+apps/worker/src/sentry.ts
+  s_ddcdf633c08ffa::t_863aa5504183b0 2,4,6-7,13-15
+.env.example
+  s_4628e0f6bcc7fc::t_78d0be333fe033 164-166,170-171,174
+apps/api/src/context.ts
+  s_4628e0f6bcc7fc::t_0ff1ace68f248b 17,246
+apps/api/src/index.ts
+  s_4628e0f6bcc7fc::t_38b2e7b6e2bec5 1-2,292-293,867-869
+apps/api/src/sentrySanitize.test.ts
+  s_4628e0f6bcc7fc::t_918a1cbe8efd3a 1-27
+apps/api/src/sentrySanitize.ts
+  s_4628e0f6bcc7fc::t_089c4fa15ba69d 1-58
+apps/api/tsup.config.ts
+  s_4628e0f6bcc7fc::t_e0dfbaec14a4b9 27
+apps/runtime/src/index.ts
+  s_4628e0f6bcc7fc::t_9d09a67b00ffc4 1-2,7-8,10
+apps/runtime/src/sentry.ts
+  s_4628e0f6bcc7fc::t_ff60aad45a0236 1,3,5,7-22,27-29,33-39,41
+apps/runtime/src/sentrySanitize.ts
+  s_4628e0f6bcc7fc::t_c74135102276aa 1-58
+apps/runtime/tsup.config.ts
+  s_4628e0f6bcc7fc::t_cba16e6704908c 20
+apps/web/sentry.client.config.ts
+  s_4628e0f6bcc7fc::t_f974cc8431bbd9 2,4,9-10,12-14
+apps/web/sentry.edge.config.ts
+  s_4628e0f6bcc7fc::t_8964b39191d36c 2,4,9-15
+apps/web/sentry.server.config.ts
+  s_4628e0f6bcc7fc::t_b366843d1f92f6 2,4,9-15
+apps/web/sentry.shared.ts
+  s_4628e0f6bcc7fc::t_1a5b89dd2e0c85 1-62
+apps/web/src/app/(app)/error.tsx
+  s_4628e0f6bcc7fc::t_99c6b402f3f287 3-4,7-10
+apps/web/src/app/global-error.tsx
+  s_4628e0f6bcc7fc::t_d797bc87924b63 5-8,21-24,26-56
+apps/web/test/sentry.shared.test.ts
+  s_4628e0f6bcc7fc::t_7f4d7a4928a9b0 1-39
+apps/worker/src/index.ts
+  s_4628e0f6bcc7fc::t_c7dd31544c03da 1-2,33,35-36
+apps/worker/src/sentrySanitize.ts
+  s_4628e0f6bcc7fc::t_2a58702084c8e5 1-58
+apps/worker/src/supervisors.ts
+  s_4628e0f6bcc7fc::t_55dd1c8186788f 1,12,14
+apps/worker/tsup.config.ts
+  s_4628e0f6bcc7fc::t_f5e250e7c7c051 10
+deploy/railway/Dockerfile.web
+  s_4628e0f6bcc7fc::t_4dff35e7f1170e 34-35,42-43
+scripts/railway-config.test.mjs
+  s_4628e0f6bcc7fc::t_8aab7e83744bef 39-48
+turbo.json
+  s_4628e0f6bcc7fc::t_123316ea6e3ea0 16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ddfc21b673effe03d38cf55dd78b66aa6f44bb36",
+  "prompts": {},
+  "sessions": {
+    "s_4628e0f6bcc7fc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "14f9d9c4-b28e-4b5d-9209-d072b7cd4cf3",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_ddcdf633c08ffa": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fe4cca102ffe0BI7s5uh64DAQe",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

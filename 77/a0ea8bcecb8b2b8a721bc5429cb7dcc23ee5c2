@@ -1,0 +1,154 @@
+apps/runtime/src/production.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 130,152,224
+apps/runtime/src/boxAdapters.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 11,80-81,88,98,124-131,179-183,195,239,243-258,263,267
+packages/box-runtime/src/companionRuntimeBaker.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 36-84
+packages/box-sim/src/protocol.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 182
+packages/box-runtime/src/companionPiBrokerSource.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 6
+packages/companion-runtime/src/operations.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 17-18,22-24,28-37,39-42,44,49-56,59-94,673-674,690,704-709,711-714,727-732,792-796,826,846-850,897-898,960-961
+.github/workflows/box-provider-e2e.yml
+  s_de21e6620b3a0d::t_0dbc180ee656c9 15,56,64,90-101
+packages/companion-runtime/src/store.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 7,60-67,391,393-397,400,580,697,700,711-743
+  s_de21e6620b3a0d::t_cf4062b09d4c54 744
+docs/testing.md
+  s_de21e6620b3a0d::t_0dbc180ee656c9 116-117,129-137
+  s_de21e6620b3a0d::t_630623a70a894f 138
+packages/box-runtime/src/companionPiBrokerCore.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 14,434-435,443-444,454-457,598-615,624-637,661-668,762
+scripts/summarize-box-runtime-benchmark.test.mjs
+  s_de21e6620b3a0d::t_0dbc180ee656c9 1-52
+packages/box-sim/src/commandShims.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 5-17,24,35,276-280,323-326,328-332,335-339,349-352,506-508,533-535,586,625,713-718,745-747,856-907,938-939,944-948,989-996,1000-1010
+apps/runtime/src/materialPipeline.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 124-127,147-150,185,202-261
+  s_de21e6620b3a0d::t_4498ff0200b602 262-263
+packages/box-sim/test/boxRuntimeAdapter.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 45,83,85,108,202-210
+packages/companion-runtime/src/engine.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 188-219,232-240,243,271,295-298,904,926-928,1108,1112,1120-1121
+packages/companion-runtime/src/scheduler.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 44-45,91,205-210,212-215,217-219,228-238
+packages/box-runtime/src/companionRuntimeImage.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 11,23-24,29-50
+  s_de21e6620b3a0d::t_b9b3d3130d9026 51-52
+packages/box-runtime/src/companionPiBrokerCore.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 334-339,354-357
+scripts/summarize-box-runtime-benchmark.mjs
+  s_de21e6620b3a0d::t_0dbc180ee656c9 1-74
+packages/db/drizzle/0110_companion_material_snapshot_expiry.sql
+  s_de21e6620b3a0d::t_0dbc180ee656c9 1-1036
+packages/companion-runtime/src/layoutRefresh.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 55-72
+packages/box-runtime/src/companionRuntimeBaker.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 3,52-56,64-66,105,143-145,195-204
+packages/core/src/companionPluginOAuth.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 90-92,105-107,333,389-392,438-445,459
+docs/companions-runtime.md
+  s_de21e6620b3a0d::t_0dbc180ee656c9 169-170,174-185,191-192,218-221,315-317,321-325,335-342,474-476,481-484,497,500-502,549-554,584-590
+packages/box-runtime/src/boxMaintenanceClient.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 290,436-565,637-660
+  s_de21e6620b3a0d::t_e28e53ae766ca3 661
+packages/box-runtime/src/boxMaintenanceClient.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 300-307,578-589,610,637-715,945,957,966-974
+  s_de21e6620b3a0d::t_7d0e66b14ad165 975
+packages/companion-runtime/src/operations.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 157-160,171,269-274,289,299,316-322,374-382,386-393,411,435-445,520-544,563,648,683,743,805-806,809,955-961
+packages/companion-runtime/src/types.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 7-9
+packages/db/runtime-role-grants.sql
+  s_de21e6620b3a0d::t_0dbc180ee656c9 526-543
+packages/companion-runtime/src/test/fixtures.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 20,283-284,405-409,459,463-477,671-672,688-692,718-720
+packages/companion-runtime/src/attempt.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 158-159,556-575,623-626,652-656,661-680
+packages/companion-runtime/src/settingsActivation.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 22
+packages/db/src/runtimeRole.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 39,51-52
+packages/db/src/schema.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 670-672,690-692,738-751,944-945,970-975
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 66,303-304,308,534-535,551,555-573,729,755,1908-1913,1980-2604,3633-3650,3659-3675,3679-3688,3699-3700,3704
+scripts/update-pr-box-e2e-report.mjs
+  s_de21e6620b3a0d::t_0dbc180ee656c9 12-17,21,23-24,26-31
+packages/box-sim/test/commandShims.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 1,35-38,55-64,71-120,384-386,399-421
+  s_de21e6620b3a0d::t_337aa4eb498462 422
+apps/api/test/integration/companionRoutines.integration.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 297-299,301-302
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 84,665
+docs/runbooks/companions-runtime.md
+  s_de21e6620b3a0d::t_0dbc180ee656c9 57-63,233-251
+  s_de21e6620b3a0d::t_df91bd69efc9a4 252
+packages/box-sim/src/simulator.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 801-803
+packages/core/test/companionPluginOAuth.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 102-114,125-138,249-260
+packages/companion-runtime/src/settingsActivation.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 9,22,82
+packages/box-runtime/src/companionPiBrokerSource.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 115-116
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 3-5,156-164,173-175,189,198-220,233,235-432,452-453,515,547,553,659-673,707,718-725,741-744,763-814,818-826,919-926,1416-1429
+  s_de21e6620b3a0d::t_7ef46c1f5843f3 1430-1431
+packages/companion-runtime/src/ports.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 66-71,91-95,112-113,127,185-188
+apps/runtime/src/boxAdapters.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 37-39,45-46,55,109-136,335-357,410,422-426
+packages/box-runtime/src/companionPiBrokerExecutable.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 25-26,191-192
+packages/companion-runtime/src/settings.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 72-85,113,125-130,152-156
+apps/api/src/runtimeRoleGrants.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 67-71,86-94
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 49,147-156,217-224,645-646,665-669,674,681-682,712-717,735,739-744,802,1147,1151,1208-1211,1221,1274,1654-1655,1662-1668,1691-1692,1701-1703,1727,1729-1755,1763-1765,1800-1802,1821,1831-1832,1870,1931,1997-2020,2046-2047,2061-2225,2313-2318,2464,2466,2486,2489,2492-2508,2511-2515,2523,2529,2531-2535,2537-2555,2558-2562,2564-2579,2582-2584,2587-2588,2591-2631,2636-2638,2643,2649-2652,2654-2656,2724,2749-2754,2756,2782-2786,2791-2792,2796-2801,2805-2861,2867-2881,2899-2901,2905-2906,2908-2910,2912,2931,2935-2940,2952-2954,2964,2968-2972,3234-3244,3288-3289,3292,3312-3313,3319,3345,3415,3418-3420,3440,3523,3614,3619
+apps/runtime/src/materialPipeline.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 10,18,93-97,117-120,162-186,242-249,275-277,284-286,295-297,439-442
+  s_de21e6620b3a0d::t_1580f7f18ffd7a 443-444
+scripts/box-runtime-change-e2e.ts
+  s_de21e6620b3a0d::t_d175d68b97c4cf 29-33
+  s_de21e6620b3a0d::t_0dbc180ee656c9 136-161,251-254,261-262,266,286,288-297,312-317,321,333,343-355,364-436,483-493
+packages/box-runtime/src/companionRuntimeImage.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 10-12,30-31,36,79-80,86-87,93-94,99-100
+packages/companion-runtime/src/settings.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 114-118,149-150,173,193-197,235-236
+packages/companion-runtime/src/scheduler.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 49-80,219-275
+  s_de21e6620b3a0d::t_f05fab3cc1f828 276
+docs/design.md
+  s_de21e6620b3a0d::t_0dbc180ee656c9 131-132,141-143,216-219,232-246
+deploy/railway/README.md
+  s_de21e6620b3a0d::t_0dbc180ee656c9 56-67,170-174
+  s_de21e6620b3a0d::t_3b65a182ea3005 175
+packages/companion-runtime/src/layoutRefresh.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 19-20,33
+packages/companion-runtime/src/store.test.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 298-302,308-332
+apps/runtime/src/production.ts
+  s_de21e6620b3a0d::t_0dbc180ee656c9 6,68-74,89,169,172-187,197,199
+packages/db/drizzle/meta/_journal.json
+  s_de21e6620b3a0d::t_857bd30a11ae91 774-780
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "77a0ea8bcecb8b2b8a721bc5429cb7dcc23ee5c2",
+  "prompts": {},
+  "sessions": {
+    "s_de21e6620b3a0d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0206f-702f-7150-bb36-9635caa26a82",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

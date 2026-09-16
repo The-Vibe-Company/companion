@@ -1,0 +1,112 @@
+apps/web/src/components/agents/ChatApp.test.ts
+  s_1e74ce65ff5b16::t_34837a14b74906 121
+  s_1e74ce65ff5b16::t_fbc1e945f6ab07 69,76-80
+  s_1e74ce65ff5b16::t_72a836346d506c 14
+  s_1e74ce65ff5b16::t_4278abd40b38b3 154,156-158
+  s_1e74ce65ff5b16::t_7996633a313f51 182,186
+  s_1e74ce65ff5b16::t_0d1c726dd117e6 189,192-194,204-205,216-289
+apps/web/src/components/agents/CreateView.tsx
+  s_1e74ce65ff5b16::t_77cb78cacd724c 280-286,289
+  s_1e74ce65ff5b16::t_51afe85b6f9a18 296-298
+  s_1e74ce65ff5b16::t_ac90911230a586 4,6,9-18,25-229,239-240,254-256,261-276,278-279,287-288,292,309-311,314,340,343-347,436-452,459-463,581
+  s_1e74ce65ff5b16::t_23d34ae3e7a817 291
+apps/web/src/components/agents/DetailView.tsx
+  s_1e74ce65ff5b16::t_9365b14ce9565f 114-115,117-118,120-126,130
+  s_1e74ce65ff5b16::t_1cd7a488fe2057 5-6
+  s_1e74ce65ff5b16::t_88a52859911c1d 514-521,542
+  s_1e74ce65ff5b16::t_2541e3cf26f6bf 87-113,116,119,127-129,131-291,298,302,309,313-314,320-341,346-347
+  s_1e74ce65ff5b16::t_8fa30b3d7cbd4b 470,472-486,489,491-495,498,500-504
+packages/sandbox/src/opencodeChat.ts
+  s_1e74ce65ff5b16::t_50ce9c9d693737 99-101
+  s_1e74ce65ff5b16::t_9e0e6e49d48f6b 2
+  s_1e74ce65ff5b16::t_3de6afa4cecafc 41-74
+scripts/dev-conductor.sh
+  s_1e74ce65ff5b16::t_c6479c59710081 540-542,547-548,550-551,553
+apps/web/src/components/agents/derive.test.ts
+  s_1e74ce65ff5b16::t_c5ec83e452616a 2,8,10-11,13,15,20-21
+  s_1e74ce65ff5b16::t_326d1d8adb2265 172-289
+apps/web/src/components/agents/chatStream.ts
+  s_1e74ce65ff5b16::t_5e0528feaa350f 171-172,176-182,194-215
+  s_1e74ce65ff5b16::t_6e8fd9381b666e 242
+  s_1e74ce65ff5b16::t_ae59c29d9dcf21 1
+  s_1e74ce65ff5b16::t_13d8811091e668 235-236
+  s_1e74ce65ff5b16::t_7a621f7e48b8c8 184-186
+  s_1e74ce65ff5b16::t_8fe95b5f438e56 224-230
+  s_1e74ce65ff5b16::t_574894b32ff8f1 216-217
+apps/web/src/app/(app)/agents/page.tsx
+  s_1e74ce65ff5b16::t_a2462a6e8e88b6 64-66
+packages/sandbox/src/index.ts
+  s_1e74ce65ff5b16::t_486ddd83269aef 6
+apps/web/src/components/agents/ChatApp.tsx
+  s_1e74ce65ff5b16::t_44ba28c740c582 409
+  s_1e74ce65ff5b16::t_c5897cfc085a51 7
+  s_1e74ce65ff5b16::t_be89cb8316a0e7 284
+  s_1e74ce65ff5b16::t_77203634504b36 357-359,363,372-379,381-383,385-408,410-414
+  s_1e74ce65ff5b16::t_6c9f5646f6d779 75,79,84,112-132
+  s_1e74ce65ff5b16::t_554832aa0c06f1 252-257
+  s_1e74ce65ff5b16::t_f98c0ea7dc15a5 364-368,384
+  s_1e74ce65ff5b16::t_7cebf14355cce4 235-244,250-251,272-275,280,297-317
+  s_1e74ce65ff5b16::t_4f9af252f047c6 355
+  s_1e74ce65ff5b16::t_6b4dd4aed0cd6c 434
+  s_1e74ce65ff5b16::t_3fc74abf39c8b3 325-326
+  s_1e74ce65ff5b16::t_bdf8571261425d 356
+apps/web/src/app/(app)/agents/[slug]/chat/page.tsx
+  s_1e74ce65ff5b16::t_053ed79514c777 11-17,19-20,33
+apps/web/src/components/agents/chatStream.test.ts
+  s_1e74ce65ff5b16::t_c00520facd8f3c 111-155
+apps/web/src/components/agents/CreateView.test.ts
+  s_1e74ce65ff5b16::t_06ae509e02875b 1-91,102-127,129-133,136,138-139,143-147,151,154-164
+  s_1e74ce65ff5b16::t_c5503911fe8d17 92-101
+  s_1e74ce65ff5b16::t_4a3d845df6d75b 128,134-135,137,140-142,148-150,152-153
+apps/web/src/components/agents/AgentsApp.tsx
+  s_1e74ce65ff5b16::t_2e94f74b72634a 45
+  s_1e74ce65ff5b16::t_9ef5ecf886c8dc 466-468,476
+  s_1e74ce65ff5b16::t_adf5fb1d6357e3 393-407
+  s_1e74ce65ff5b16::t_e62233ae8443a8 523-525,529
+  s_1e74ce65ff5b16::t_da5d01dfc9c756 358-360,366,374-377
+  s_1e74ce65ff5b16::t_a606f73cf14811 20
+packages/sandbox/scripts/probe.ts
+  s_1e74ce65ff5b16::t_df8ef60376fad7 15
+  s_1e74ce65ff5b16::t_6baa04240e6744 105-107,109,112-132,134
+  s_1e74ce65ff5b16::t_f427db3d7a776b 76,79,88-92
+apps/web/src/app/(app)/skills/page.tsx
+  s_1e74ce65ff5b16::t_20a2df2c01cf98 61-70
+docs/design.md
+  s_1e74ce65ff5b16::t_52afbe38dc1d82 485-506,509-513,515-516
+scripts/agent-browser-smoke.sh
+  s_1e74ce65ff5b16::t_c47b997a054b5f 432-438
+apps/web/src/components/agents/AgentsListView.tsx
+  s_1e74ce65ff5b16::t_99ad128bdc2ffb 185-197,199-209
+apps/web/src/components/agents/AgentsApp.test.ts
+  s_1e74ce65ff5b16::t_bea8caefda170c 315-385
+  s_1e74ce65ff5b16::t_b71eddba3de165 215-216
+  s_1e74ce65ff5b16::t_7aba60aef422d4 33,35
+packages/contracts/src/agents.ts
+  s_1e74ce65ff5b16::t_22c8fe4622006c 358-378
+apps/web/src/components/agents/derive.ts
+  s_1e74ce65ff5b16::t_66aee743ecb999 1-2
+  s_1e74ce65ff5b16::t_63f73a9c6a3155 174-323
+apps/web/src/lib/agentQueries.ts
+  s_1e74ce65ff5b16::t_8b6e5e71d29641 9,13-14
+  s_1e74ce65ff5b16::t_09914dd350b521 122-152
+  s_1e74ce65ff5b16::t_32b0f250494b39 49-50,54-61
+apps/api/src/index.ts
+  s_1e74ce65ff5b16::t_dbe2c9f2de52bb 176
+  s_1e74ce65ff5b16::t_b1ee3b640c3baf 2675-2685
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "393ae7fd8c34a938cf330b44346c6ca6a225ad3e",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

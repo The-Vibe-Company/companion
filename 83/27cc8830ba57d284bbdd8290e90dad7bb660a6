@@ -1,0 +1,19 @@
+scripts/rsc-smoke.mjs
+  s_276688b92fc5da::t_56e4eb76253161 47-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "8327cc8830ba57d284bbdd8290e90dad7bb660a6",
+  "prompts": {},
+  "sessions": {
+    "s_276688b92fc5da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "535a6854-5758-4d93-b15b-5d9de2a8a01b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

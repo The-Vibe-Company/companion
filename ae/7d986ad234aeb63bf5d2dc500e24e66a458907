@@ -1,0 +1,171 @@
+packages/core/src/companionTriggerWebhookRegistration.ts
+  s_de1b4e37520b4c::t_71b92672bf2465 337
+  s_de1b4e37520b4c::t_3a18cc5854df87 453-463,466-471,498-509,511-520
+  s_de1b4e37520b4c::t_638a98777a1972 53
+  s_de1b4e37520b4c::t_6e7102fb831286 355-356,360
+  s_de1b4e37520b4c::t_fe1292ad2c2f2f 178-182,321-325,334,392,406,417,427
+  s_de1b4e37520b4c::t_34b01b66dd5296 39
+  s_de1b4e37520b4c::t_d5db20c563b435 440-452,464-465,472-483
+  s_de1b4e37520b4c::t_9a8962d62debe4 1-8,14-38,40-52,54-60,62-64,66-67,70-177,326-329,331-333,335-336,338-354,357-359,361-391,393-405,407-416,418-426,428-433,435-439,484-496,510,521-533
+  s_de1b4e37520b4c::t_120c3b8603d603 330,434
+  s_de1b4e37520b4c::t_b29e532e47c186 497
+  s_de1b4e37520b4c::t_bb2338db6712b1 9-13
+  s_de1b4e37520b4c::t_df04b7b880e9a8 65
+  s_de1b4e37520b4c::t_75046bffd0c975 61,68-69
+  s_de1b4e37520b4c::t_4a78e865beac77 183-221,229-320
+  s_de1b4e37520b4c::t_41cbdd19db0aac 222-228
+apps/api/src/companionRoutes.ts
+  s_de1b4e37520b4c::t_0a28ea5d93b18c 1063
+  s_de1b4e37520b4c::t_32006005849c73 1115,1134
+  s_de1b4e37520b4c::t_2b68db6debf9b8 1104-1114,1116-1133,1135-1143
+  s_de1b4e37520b4c::t_8566c133e162b9 681-701
+  s_de1b4e37520b4c::t_caf41d66f1e1a1 1039
+  s_de1b4e37520b4c::t_7ed9d670b24e85 77-78
+  s_de1b4e37520b4c::t_ccff65208a7757 94
+packages/companion-skill/skill/companion.json
+  s_de1b4e37520b4c::t_4a360dbe2d9906 4,31-35,37-40
+  s_de1b4e37520b4c::t_329fa66855a616 36
+  s_de1b4e37520b4c::t_4a64ffb9177c73 41-47
+packages/core/src/index.ts
+  s_de1b4e37520b4c::t_7a3856a6f79650 20
+  s_de1b4e37520b4c::t_081b102cdce1f4 19
+packages/db/drizzle/0116_companion_plugin_trigger_keys.sql
+  s_de1b4e37520b4c::t_c6919869a60a5a 1-19,22-169
+  s_de1b4e37520b4c::t_491f0fb3eee131 20-21
+packages/box-runtime/src/companionPermissionBroker.test.ts
+  s_de1b4e37520b4c::t_4d8de9754a63d2 99-112
+  s_de1b4e37520b4c::t_99332dfdcdf5ac 92-96
+  s_de1b4e37520b4c::t_b14255fc30cc20 1
+  s_c380c92b54397a::t_e04af0b2a9bcac 97-98
+packages/core/src/companionPluginOAuth.ts
+  s_de1b4e37520b4c::t_6d4e67ebbaa2a8 31
+apps/api/test/integration/companionTriggers.integration.test.ts
+  s_de1b4e37520b4c::t_c7c8d3fe81b399 97
+  s_de1b4e37520b4c::t_da1d81d7f40460 846,852-853
+  s_de1b4e37520b4c::t_00fe78b25242bd 751
+  s_de1b4e37520b4c::t_d09acd8c19f96e 814-822,824-845,847-851,854-905
+  s_de1b4e37520b4c::t_e6f0de3ad745c8 20
+  s_de1b4e37520b4c::t_1e1501fd96976e 146-155,157,171-176
+  s_de1b4e37520b4c::t_7d95d5533d8bf4 429
+  s_de1b4e37520b4c::t_2befdd0ab83e05 804,810-811
+  s_de1b4e37520b4c::t_94a554f511fec2 709-715
+  s_de1b4e37520b4c::t_2b295880f8d66a 169
+  s_de1b4e37520b4c::t_743b1c1a1d361d 719,725,738,744,746,770,776,778
+  s_de1b4e37520b4c::t_4b1597b3772404 723,742,774,808
+  s_de1b4e37520b4c::t_1e1dc184085816 156
+  s_de1b4e37520b4c::t_a42bfa072d8acb 445
+  s_de1b4e37520b4c::t_c7789d9a00cda4 1037-1038
+  s_de1b4e37520b4c::t_c4a6af4c2af294 19
+  s_de1b4e37520b4c::t_a833201839f2a0 397-428,430-444,446-450
+  s_de1b4e37520b4c::t_98a6c2cf9d65c5 912
+  s_de1b4e37520b4c::t_5ca59fb94fbe2e 793,823
+  s_de1b4e37520b4c::t_09546aa6097adf 17,24
+  s_de1b4e37520b4c::t_9226217bced82d 683-684,692,694,703
+  s_de1b4e37520b4c::t_c9478557e16153 727
+  s_de1b4e37520b4c::t_af3cc26297fb71 158-168,170
+  s_de1b4e37520b4c::t_83167b7ed588f7 682,685-691,693,695-702,704-708,716-718,720-722,724,726,728-737,739-741,743,745,747-750,752-769,771-773,775,777,779-792,794-803,805-807,809,812-813
+packages/db/drizzle/0114_companion_trigger_plugin_gate.sql
+  s_de1b4e37520b4c::t_8d583369a20b5f 1-179
+packages/contracts/src/companions.ts
+  s_de1b4e37520b4c::t_0f2d4bb2b5500e 729-743
+  s_de1b4e37520b4c::t_3f64c5cd826c0a 217-222
+  s_de1b4e37520b4c::t_4c50d5af774ff1 636-673
+  s_de1b4e37520b4c::t_83d8a4d4d5c2d3 680-684
+  s_de1b4e37520b4c::t_2b790da5f88afc 685-686
+  s_de1b4e37520b4c::t_3a3b429b7dfb37 705
+  s_de1b4e37520b4c::t_a22306b57d8a4f 727
+docs/companions-runtime.md
+  s_de1b4e37520b4c::t_34801430871616 503-513
+  s_de1b4e37520b4c::t_6680bbd940b47d 410-415
+  s_de1b4e37520b4c::t_f4b7da8c83f38d 408-409
+  s_de1b4e37520b4c::t_bdd1ad9deaec12 458-460
+  s_de1b4e37520b4c::t_5bba8595bf7b1f 461-472
+  s_de1b4e37520b4c::t_78ca1809f1b7d0 473-476
+packages/companion-skill/skill/SKILL.md
+  s_de1b4e37520b4c::t_69a2054d33abb4 28
+  s_de1b4e37520b4c::t_e5d3d960b1587c 27,29
+packages/db/src/schema.ts
+  s_de1b4e37520b4c::t_0fe16122288865 568-572
+  s_de1b4e37520b4c::t_8ba3744a8daac9 542-546
+  s_de1b4e37520b4c::t_15e113046115e1 1686-1714
+packages/core/src/companionPluginTriggerKeys.ts
+  s_de1b4e37520b4c::t_932c8154432485 3
+  s_de1b4e37520b4c::t_7966ad97ffc264 5,7-9,13-15,20-27,29,31,38-39,41-70,73-82,85-86,88-101,104-118
+  s_de1b4e37520b4c::t_bcb98499a2bdd2 1-2,4,6,10-12,16-19,28,30,32-37,40,71-72,83-84,87,102-103
+packages/box-runtime/src/companionPluginSkills.test.ts
+  s_de1b4e37520b4c::t_c1aff250383024 1-31
+packages/contracts/test/companions.test.ts
+  s_de1b4e37520b4c::t_bc7d6831e9ebfd 1067,1103
+packages/box-runtime/src/companionPermissionBroker.ts
+  s_de1b4e37520b4c::t_2b905e7c54cb2e 402
+  s_de1b4e37520b4c::t_9aef2596cfb1a4 442-444,446-451
+  s_de1b4e37520b4c::t_bf1524e80fea32 13
+  s_de1b4e37520b4c::t_8a78871bc19e84 70
+  s_de1b4e37520b4c::t_fedb2600cc7e18 157,162,169-175
+  s_de1b4e37520b4c::t_a18f57663f98e8 425-427,429,445
+  s_de1b4e37520b4c::t_31ca0eedd9d3a9 407-408,416-417,428,430-441
+  s_de1b4e37520b4c::t_0764921de78cd9 462-464
+  s_de1b4e37520b4c::t_78503fc0c45d6b 176-177
+packages/core/src/companionTriggersApi.ts
+  s_de1b4e37520b4c::t_65263d324c6351 5,13
+  s_de1b4e37520b4c::t_c9263ebc1e3f6d 148,160,163,173
+  s_de1b4e37520b4c::t_7921a2161a090f 71-75
+  s_de1b4e37520b4c::t_b5f527a864f204 110,119,122,131
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_de1b4e37520b4c::t_9e8bb7f33cad02 29
+  s_de1b4e37520b4c::t_ba83f39da5f46c 2761
+  s_de1b4e37520b4c::t_f039f6f8badb22 523-524
+  s_de1b4e37520b4c::t_56132697724fad 522
+  s_de1b4e37520b4c::t_82bd3481a41cb5 2735-2760,2762-2763
+  s_de1b4e37520b4c::t_a121777e9fa958 494-495
+packages/box-runtime/src/companionPluginSkills.ts
+  s_de1b4e37520b4c::t_0a899a2b29f284 1-101
+packages/db/drizzle/0115_companion_trigger_target.sql
+  s_de1b4e37520b4c::t_bb3a62eeffc4ca 618
+  s_de1b4e37520b4c::t_70dc609f62a00a 293-294,301-316
+  s_de1b4e37520b4c::t_063bbf11e4f3e7 626
+  s_de1b4e37520b4c::t_e8bd3b199af328 694
+  s_de1b4e37520b4c::t_1df06a1eec9ad9 569-570,581,586-599
+  s_de1b4e37520b4c::t_78f6f28514cd96 471
+  s_de1b4e37520b4c::t_91be79884123d7 1-23,27-292,295-300,317-470,472-562,613-614,619-620,660-693,695-702
+  s_de1b4e37520b4c::t_f12e201e7158d4 24-26
+  s_de1b4e37520b4c::t_7ba72dbb97858a 563-568,571-580,582-585,600-603,615-617,621-625,627-659
+  s_de1b4e37520b4c::t_4abd75e35b2cf9 604-612
+packages/companion-skill/skill/companion.integrity.json
+  s_de1b4e37520b4c::t_329fa66855a616 4
+  s_de1b4e37520b4c::t_70d850cf5e736c 3,22
+packages/db/drizzle/meta/_journal.json
+  s_dc54c688235219::t_42ba7f80f656fc 802-822
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "ae7d986ad234aeb63bf5d2dc500e24e66a458907",
+  "prompts": {},
+  "sessions": {
+    "s_c380c92b54397a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdc3ddc17ffezxTu8EehJXWW97",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_dc54c688235219": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdb0c7a83ffeGhW6CDgZqlyjxb",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_de1b4e37520b4c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdb6c6a37ffeJaoR53ENjcMXar",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,61 @@
+apps/web/src/components/skills/updateFlow.test.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 42
+cli/src/commands/skills.test.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 123,170
+docs/design.md
+  s_62c4add0f08387::t_3da31c8ce2b4b7 71-78
+apps/web/src/components/skills/DetailView.tsx
+  s_62c4add0f08387::t_3da31c8ce2b4b7 23,29,344,511-514
+apps/web/src/components/skills/detailParts.test.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 5,31-39,82-100
+apps/web/src/components/skills/filters.test.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 28
+apps/api/src/index.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 83,160-166,174,1249-1252,1256,1258-1261,1267-1271
+packages/companion-skill/skill/SKILL.md
+  s_62c4add0f08387::t_3da31c8ce2b4b7 3,58,60-61,68-95,109-111,122-125,129-130,135-137,145-193,198-203,229-230,278-285,334-335
+  s_62c4add0f08387::t_cb59aef3b20952 6,464
+  s_62c4add0f08387::t_128920089cc85c 312-319,321-323
+packages/contracts/src/skill.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 3,171-172
+packages/skills/src/validateSkill.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 80
+packages/contracts/src/frontmatter.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 18,23-40,122,132-142,154,168,185-194
+apps/api/src/seed-test-user.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 1,89-90,93-95,107-115,218-231
+apps/web/src/styles/skills.css
+  s_62c4add0f08387::t_3da31c8ce2b4b7 259-272
+packages/skills/test/requirements.test.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 1-106
+apps/api/src/skillPublishGuards.test.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 14
+packages/companion-skill/skill/reference/api.md
+  s_62c4add0f08387::t_f85dbbbad826b1 190-191,195-202
+  s_62c4add0f08387::t_cb59aef3b20952 244,248
+  s_62c4add0f08387::t_3da31c8ce2b4b7 98-103,146-152
+apps/web/src/components/skills/detailParts.tsx
+  s_62c4add0f08387::t_3da31c8ce2b4b7 366-400
+apps/web/src/lib/types.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 1-9,35,76
+packages/core/src/services.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 1134
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_62c4add0f08387::t_3da31c8ce2b4b7 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "b3ac5064ba5c03ac8c707a0d4bcf5b61dcdb2eb3",
+  "prompts": {},
+  "sessions": {
+    "s_62c4add0f08387": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75263354-39d6-4796-9592-02bbaedc7800",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+supabase/migrations/20260606090006_storage.sql
+  s_4d664a5d68e055::t_746e8abd227ca3 8-10
+  s_4d664a5d68e055::t_e6bd24bb86ce06 11-14,17
+apps/web/test/teams.rls.test.ts
+  s_4d664a5d68e055::t_7663da69205fd9 102-109
+supabase/migrations/20260606090007_functions.sql
+  s_4d664a5d68e055::t_223562b0ebbf77 103
+  s_4d664a5d68e055::t_5e4b92936a2a89 4-7,10-11,13-17,19
+packages/skills/test/semver.test.ts
+  s_4d664a5d68e055::t_9dc763bd7dfc13 16,20-23
+supabase/migrations/20260607090002_stars_comments.sql
+  s_4d664a5d68e055::t_bf355696fec06f 89-91,96-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "b44a7d337407e88f17ea3a68ab109cf06fd76739",
+  "prompts": {},
+  "sessions": {
+    "s_4d664a5d68e055": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e422828b-c9a6-43c1-b825-ff755cf84cd8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

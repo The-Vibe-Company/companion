@@ -1,0 +1,317 @@
+.claude/skills/grilling/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/diagnosing-bugs/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/improve-codebase-architecture/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/diagnosing-bugs/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.agents/skills/teach/MISSION-FORMAT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-31
+.claude/skills/tdd/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-38
+.agents/skills/improve-codebase-architecture/HTML-REPORT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-123
+.claude/skills/wayfinder/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-128
+.claude/skills/wizard/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-44
+.agents/skills/setup-matt-pocock-skills/issue-tracker-local.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-30
+.agents/skills/grill-with-docs/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-7
+.agents/skills/handoff/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-16
+.agents/skills/diagnosing-bugs/scripts/hitl-loop.template.sh
+  s_adc6c6562142eb::t_3e1a214473ae06 1-44
+.agents/skills/wayfinder/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.claude/skills/to-questionnaire/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/setup-matt-pocock-skills/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-116
+.agents/skills/writing-for-agents/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/setup-matt-pocock-skills/triage-labels.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-15
+.claude/skills/teach/RESOURCES-FORMAT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-32
+.claude/skills/writing-for-agents/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-81
+.claude/skills/triage/AGENT-BRIEF.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-207
+.agents/skills/writing-for-agents/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-81
+.claude/skills/domain-modeling/CONTEXT-FORMAT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-60
+.claude/skills/improve-codebase-architecture/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-71
+.agents/skills/tdd/mocking.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-59
+.claude/skills/tdd/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.agents/skills/prototype/LOGIC.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-67
+.claude/skills/implement/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/teach/GLOSSARY-FORMAT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-35
+.agents/skills/tdd/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/grilling/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-28
+.claude/skills/triage/OUT-OF-SCOPE.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-105
+.claude/skills/domain-modeling/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-74
+.agents/skills/to-spec/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/wizard/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/teach/LEARNING-RECORD-FORMAT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-46
+.claude/skills/improve-codebase-architecture/HTML-REPORT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-123
+.agents/skills/teach/LEARNING-RECORD-FORMAT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-46
+.agents/skills/improve-codebase-architecture/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/setup-matt-pocock-skills/issue-tracker-gitlab.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-46
+.claude/skills/implement/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-15
+.claude/skills/setup-matt-pocock-skills/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-116
+.agents/skills/prototype/UI.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-112
+.claude/skills/to-spec/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/wayfinder/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-128
+.agents/skills/teach/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-140
+.claude/skills/setup-matt-pocock-skills/issue-tracker-gitlab.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-46
+.claude/skills/writing-for-agents/SKILL-MECHANICS.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-22
+.agents/skills/code-review/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.agents/skills/grilling/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.agents/skills/domain-modeling/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/teach/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-140
+.claude/skills/resolving-merge-conflicts/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/to-tickets/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.claude/skills/codebase-design/DEEPENING.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-37
+.claude/skills/triage/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.claude/skills/ask-matt/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/ask-matt/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-90
+.agents/skills/grill-me/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-7
+.claude/skills/codebase-design/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/ask-matt/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-90
+.claude/skills/handoff/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/codebase-design/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/resolving-merge-conflicts/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-14
+.claude/skills/wizard/template.sh
+  s_adc6c6562142eb::t_3e1a214473ae06 1-204
+.claude/skills/writing-for-agents/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/grill-with-docs/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-7
+.claude/skills/grill-me/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/prototype/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-26
+.agents/skills/codebase-design/DESIGN-IT-TWICE.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-44
+.agents/skills/writing-for-agents/SKILL-MECHANICS.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-22
+.claude/skills/research/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/to-questionnaire/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-54
+.claude/skills/wizard/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/research/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-12
+.agents/skills/triage/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-112
+.claude/skills/code-review/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/prototype/UI.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-112
+.claude/skills/ask-matt/PHASE-BOUNDARIES.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-55
+.claude/skills/code-review/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-87
+.agents/skills/tdd/tests.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-77
+.claude/skills/prototype/LOGIC.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-67
+.claude/skills/grill-with-docs/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.claude/skills/setup-matt-pocock-skills/issue-tracker-local.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-30
+.agents/skills/setup-matt-pocock-skills/triage-labels.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-15
+.claude/skills/tdd/tests.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-77
+.claude/skills/wait-what/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/wait-what/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-7
+.agents/skills/to-tickets/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-105
+.claude/skills/wait-what/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-7
+.agents/skills/to-questionnaire/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-54
+.claude/skills/domain-modeling/ADR-FORMAT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-47
+.agents/skills/research/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-12
+.agents/skills/domain-modeling/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-74
+.agents/skills/to-questionnaire/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/grill-me/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/implement/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-15
+.claude/skills/handoff/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-16
+.claude/skills/tdd/mocking.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-59
+.agents/skills/to-tickets/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/resolving-merge-conflicts/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-14
+.claude/skills/to-spec/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-75
+.agents/skills/to-spec/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-75
+.agents/skills/ask-matt/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.claude/skills/codebase-design/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-114
+.agents/skills/resolving-merge-conflicts/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.agents/skills/teach/RESOURCES-FORMAT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-32
+.agents/skills/wait-what/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.claude/skills/setup-matt-pocock-skills/domain.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-51
+.agents/skills/teach/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/setup-matt-pocock-skills/issue-tracker-github.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-45
+.agents/skills/domain-modeling/ADR-FORMAT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-47
+.agents/skills/handoff/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.claude/skills/codebase-design/DESIGN-IT-TWICE.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-44
+.agents/skills/research/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.agents/skills/codebase-design/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-114
+.agents/skills/grill-with-docs/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.claude/skills/grill-me/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-7
+.claude/skills/to-tickets/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-105
+.claude/skills/wayfinder/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/tdd/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-38
+.agents/skills/triage/AGENT-BRIEF.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-207
+.agents/skills/ask-matt/PHASE-BOUNDARIES.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-55
+.agents/skills/code-review/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-87
+.claude/skills/setup-matt-pocock-skills/issue-tracker-github.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-45
+.agents/skills/diagnosing-bugs/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-138
+.agents/skills/domain-modeling/CONTEXT-FORMAT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-60
+.agents/skills/improve-codebase-architecture/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-71
+.agents/skills/prototype/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.agents/skills/grilling/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-28
+.agents/skills/setup-matt-pocock-skills/domain.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-51
+.agents/skills/triage/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/triage/OUT-OF-SCOPE.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-105
+.claude/skills/prototype/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.claude/skills/prototype/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-26
+.claude/skills/diagnosing-bugs/scripts/hitl-loop.template.sh
+  s_adc6c6562142eb::t_3e1a214473ae06 1-44
+.claude/skills/domain-modeling/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-3
+.agents/skills/wizard/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-44
+.claude/skills/setup-matt-pocock-skills/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.claude/skills/teach/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.claude/skills/teach/GLOSSARY-FORMAT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-35
+.claude/skills/teach/MISSION-FORMAT.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-31
+.agents/skills/setup-matt-pocock-skills/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.claude/skills/triage/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-112
+.agents/skills/implement/agents/openai.yaml
+  s_adc6c6562142eb::t_3e1a214473ae06 1-5
+.agents/skills/wizard/template.sh
+  s_adc6c6562142eb::t_3e1a214473ae06 1-204
+.agents/skills/codebase-design/DEEPENING.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-37
+.claude/skills/diagnosing-bugs/SKILL.md
+  s_adc6c6562142eb::t_3e1a214473ae06 1-138
+.agents/skills/README.md
+  s_adc6c6562142eb::t_71d94f7d4b9863 1-19
+.claude/skills/README.md
+  s_adc6c6562142eb::t_a9e89daf46d743 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e722988536660beea9c5871a3bf648cb29bf42ce",
+  "prompts": {},
+  "sessions": {
+    "s_adc6c6562142eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f15a4a36-19ad-4e5a-a29c-f483d0d0a166",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

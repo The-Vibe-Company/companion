@@ -1,0 +1,19 @@
+docs/design.md
+  s_b72b2316fa286f::t_2caa84fd14e7af 592
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7177a907338c4ce3a025e5a6c15c57779aa05392",
+  "prompts": {},
+  "sessions": {
+    "s_b72b2316fa286f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65c7-fc0c-7252-8a51-9510f76dfcc3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

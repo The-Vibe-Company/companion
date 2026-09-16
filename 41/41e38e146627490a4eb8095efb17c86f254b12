@@ -1,0 +1,126 @@
+packages/core/test/filterPreferences.test.ts
+  s_31bf4d166d4bb0::t_f9fa2ff60a0faa 11,39,49,52-54,69,79,102,112,118,130
+packages/contracts/src/preferences.ts
+  s_31bf4d166d4bb0::t_a76f1e4b443f62 6-8
+  s_31bf4d166d4bb0::t_5f3731e51da5a3 27-29,32
+scripts/agent-browser-smoke.sh
+  s_31bf4d166d4bb0::t_3cca9531498edf 432-433,551
+packages/companion-skill/skill/reference/api.md
+  s_31bf4d166d4bb0::t_9c2fa7c20a56a8 263-264,271-276
+  s_31bf4d166d4bb0::t_3ad18b1ea85da4 277
+apps/web/src/components/skills/filters.test.ts
+  s_31bf4d166d4bb0::t_cfb0a5e772dcf6 12
+apps/api/test/integration/skillGroupPreferenceMigration.integration.test.ts
+  s_31bf4d166d4bb0::t_59fa0ac81ad14e 1-100
+apps/web/src/components/skills/listGrouping.ts
+  s_31bf4d166d4bb0::t_747cec11d62b14 1-131,133-142
+  s_31bf4d166d4bb0::t_0b7fd27096a196 132
+apps/web/src/components/skills/detailParts.test.ts
+  s_31bf4d166d4bb0::t_cfb0a5e772dcf6 15
+packages/skills/src/manifest.ts
+  s_31bf4d166d4bb0::t_f56da5e8246a96 116,164,179
+apps/web/src/components/skills/ArchivedListView.test.ts
+  s_31bf4d166d4bb0::t_cfb0a5e772dcf6 14
+packages/contracts/test/companionManifest.test.ts
+  s_31bf4d166d4bb0::t_2ddb68dd8627a6 11
+  s_31bf4d166d4bb0::t_a76f1e4b443f62 19,44,57,101-103,105-106,156,161
+  s_31bf4d166d4bb0::t_8a6cd997b0109d 9,104
+apps/api/src/skillCompanionManifest.test.ts
+  s_31bf4d166d4bb0::t_a76f1e4b443f62 42,66,91,99,109
+apps/web/src/components/skills/ListView.test.ts
+  s_31bf4d166d4bb0::t_dc0bec8964b704 339,345
+  s_31bf4d166d4bb0::t_d678e2d510bdc9 8,58-66,69,71,74-75,92-93,96,116,120,131,133-135,143,155,161-165,168,174-176,188,191,194,197,201-202,212-215,217-218
+  s_31bf4d166d4bb0::t_48480f3c0f2763 282,285
+  s_31bf4d166d4bb0::t_ec1020d46e21ae 280-281,283-284,286-338,340-344,346-352
+  s_31bf4d166d4bb0::t_cfb0a5e772dcf6 24,70
+apps/web/src/components/skills/updateFlow.test.ts
+  s_31bf4d166d4bb0::t_cfb0a5e772dcf6 25
+packages/skills/src/validateSkill.ts
+  s_31bf4d166d4bb0::t_f56da5e8246a96 109
+apps/web/src/components/skills/ListView.tsx
+  s_31bf4d166d4bb0::t_dc0bec8964b704 520,524-530,539-543
+  s_31bf4d166d4bb0::t_d678e2d510bdc9 21,212,550
+  s_31bf4d166d4bb0::t_996c38d62965d1 3-12,14,22,28,57,70,76,99,106-107,138,179-194,199-203,205,217,222-315,318-319,323-324,342-343,347-348,356,361,367,369-378,384-387,391,393-410,412-421,427-430,443,449,459,464-467,473,476,483-484,486-490,496,498-504,506,509,516-519,521-523,531-538,544-549,551-552,554-555,565-566,569
+packages/db/drizzle/0046_skill_group_preference.sql
+  s_31bf4d166d4bb0::t_5f3731e51da5a3 1-2
+packages/contracts/src/companionManifest.ts
+  s_31bf4d166d4bb0::t_5f3731e51da5a3 6-52,271,316,352,371,390
+apps/web/src/components/skills/SkillsApp.tsx
+  s_31bf4d166d4bb0::t_aa96ad174abee4 12,239,470,506,509,524,528,1281,1283,1726-1727,1731-1732
+apps/web/src/components/skills/DetailView.test.ts
+  s_31bf4d166d4bb0::t_cfb0a5e772dcf6 16
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_31bf4d166d4bb0::t_903120cab67b9b 509-537
+  s_31bf4d166d4bb0::t_cfb0a5e772dcf6 88,231
+packages/core/src/services.ts
+  s_31bf4d166d4bb0::t_f56da5e8246a96 191,1045,1237,1259,1261,1296,1302
+apps/web/src/components/skills/listGrouping.test.ts
+  s_31bf4d166d4bb0::t_a37872390bb0aa 1-51,53-89,91-101
+  s_31bf4d166d4bb0::t_48480f3c0f2763 52,90
+packages/skills/test/validateSkill.test.ts
+  s_31bf4d166d4bb0::t_fd3a1c7c336b02 373
+  s_31bf4d166d4bb0::t_a76f1e4b443f62 339
+packages/companion-skill/skill/companion.json
+  s_31bf4d166d4bb0::t_9c2fa7c20a56a8 4-5,28-36
+apps/api/src/skillCompanionManifest.ts
+  s_31bf4d166d4bb0::t_f56da5e8246a96 8,37,59
+packages/contracts/test/skillListModifiers.test.ts
+  s_31bf4d166d4bb0::t_11d521bf8aa0c3 43-49
+DESIGN.md
+  s_31bf4d166d4bb0::t_9c2fa7c20a56a8 309-319
+packages/companion-skill/skill/SKILL.md
+  s_31bf4d166d4bb0::t_9c2fa7c20a56a8 70,183,226-231
+  s_31bf4d166d4bb0::t_fc5d6cc445ff5b 1005
+  s_31bf4d166d4bb0::t_44bf688e91edb8 232
+packages/companion-skill/skill/companion.integrity.json
+  s_31bf4d166d4bb0::t_9424c5ef99ab60 3-4,19
+packages/db/src/schema.ts
+  s_31bf4d166d4bb0::t_5f3731e51da5a3 539,545
+packages/contracts/schemas/companion-manifest.v2.schema.json
+  s_31bf4d166d4bb0::t_5050fa979526e0 11-20
+apps/web/src/lib/types.ts
+  s_31bf4d166d4bb0::t_5050fa979526e0 5,31-32,95
+apps/web/src/lib/types.test.ts
+  s_31bf4d166d4bb0::t_cfb0a5e772dcf6 14
+docs/design.md
+  s_31bf4d166d4bb0::t_9c2fa7c20a56a8 125,135-136,278,280-294
+apps/web/src/styles/skills.css
+  s_31bf4d166d4bb0::t_460dc9a16a71f0 310-322,342,350,764-771,968-972
+packages/core/test/skillListModifiers.test.ts
+  s_31bf4d166d4bb0::t_903120cab67b9b 30,164
+apps/api/src/localSkills.test.ts
+  s_31bf4d166d4bb0::t_fc5d6cc445ff5b 47
+  s_31bf4d166d4bb0::t_e948cd833b9274 118-120
+packages/contracts/src/skill.ts
+  s_31bf4d166d4bb0::t_5f3731e51da5a3 4,172-173
+apps/web/src/components/skills/skillActions.test.ts
+  s_31bf4d166d4bb0::t_cfb0a5e772dcf6 18
+apps/api/src/index.ts
+  s_31bf4d166d4bb0::t_f56da5e8246a96 2362,2367,2374,2388
+packages/db/drizzle/meta/_journal.json
+  s_ce38119f457277::t_05a1b4d55fd976 326-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4141e38e146627490a4eb8095efb17c86f254b12",
+  "prompts": {},
+  "sessions": {
+    "s_31bf4d166d4bb0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83c8-4ceb-7e11-87d0-104c7e9fc3af",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_ce38119f457277": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd9-e1e6-7e03-a1c3-4141fc3eadb4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

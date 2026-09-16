@@ -1,0 +1,22 @@
+scripts/og/og-preview.html
+  s_58f5daf014aeac::t_495f39a65c0d24 1-58
+apps/web/src/app/layout.tsx
+  s_58f5daf014aeac::t_e7a923b02b57f4 14-21,24
+  s_58f5daf014aeac::t_37cf18319c37f6 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "24fcc7b07b0d635236cc45d419352bc0853218a1",
+  "prompts": {},
+  "sessions": {
+    "s_58f5daf014aeac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "05064bc8-45f4-4913-9b0e-427291d0104b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

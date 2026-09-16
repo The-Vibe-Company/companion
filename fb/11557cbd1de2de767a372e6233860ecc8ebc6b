@@ -1,0 +1,25 @@
+packages/db/drizzle/0005_api_tokens.sql
+  s_51e8bac0e69e44::t_156c73bd8ff9a9 20,24-32,36-44
+apps/web/src/components/skills/UploadDialog.tsx
+  s_51e8bac0e69e44::t_6848603953412f 855
+packages/skills/src/zip.ts
+  s_51e8bac0e69e44::t_c26bb0395ba313 77,80
+packages/skills/test/zip.test.ts
+  s_51e8bac0e69e44::t_924f3e9abf28c1 116-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "fb11557cbd1de2de767a372e6233860ecc8ebc6b",
+  "prompts": {},
+  "sessions": {
+    "s_51e8bac0e69e44": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ea7dfe5-90d5-4e37-ae2d-3ee7e3020d06",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

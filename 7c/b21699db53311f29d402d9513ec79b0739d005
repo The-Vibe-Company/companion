@@ -1,0 +1,62 @@
+packages/skills/src/validateSkill.ts
+  s_0b1d32587972ad::t_78fe2d09a8297d 57-63,116,119-133
+apps/api/src/skillCompanionManifest.test.ts
+  s_0b1d32587972ad::t_78fe2d09a8297d 53,81
+apps/api/src/skillListQuery.ts
+  s_0b1d32587972ad::t_78fe2d09a8297d 1-28
+examples/skills/incident-summary/companion.json
+  s_0b1d32587972ad::t_78fe2d09a8297d 2
+packages/companion-skill/skill/companion.json
+  s_0b1d32587972ad::t_78fe2d09a8297d 2,20-27,32,86,98-105
+  s_0b1d32587972ad::t_e3915719b1792b 4,12
+apps/api/src/localSkills.test.ts
+  s_0b1d32587972ad::t_e3915719b1792b 46
+  s_0b1d32587972ad::t_78fe2d09a8297d 110,113,115-117,148-151,163-164
+packages/companion-skill/skill/reference/api.md
+  s_0b1d32587972ad::t_e3915719b1792b 385,389
+  s_0b1d32587972ad::t_78fe2d09a8297d 38-40,99-104,330-351
+  s_0b1d32587972ad::t_5438572b2b63c8 157
+packages/companion-skill/skill/SKILL.md
+  s_0b1d32587972ad::t_e3915719b1792b 733
+  s_0b1d32587972ad::t_78fe2d09a8297d 131,164-171,187,224-225,232-257,574-576,605-618
+packages/skills/test/validateSkill.test.ts
+  s_0b1d32587972ad::t_78fe2d09a8297d 5,15,326,334,349,365,378,391-410
+packages/companion-skill/skill/scripts/check_updates.py
+  s_0b1d32587972ad::t_78fe2d09a8297d 1-277
+packages/core/src/services.ts
+  s_0b1d32587972ad::t_78fe2d09a8297d 640-641,682-695
+packages/skills/src/manifest.ts
+  s_0b1d32587972ad::t_78fe2d09a8297d 97,144
+packages/contracts/schemas/companion-manifest.v2.schema.json
+  s_0b1d32587972ad::t_78fe2d09a8297d 3,9,75-93
+apps/api/src/index.ts
+  s_0b1d32587972ad::t_78fe2d09a8297d 152,157-158,848-849,853-855,863-875,877
+apps/web/src/components/org/Onboarding.tsx
+  s_0b1d32587972ad::t_78fe2d09a8297d 162
+packages/contracts/src/companionManifest.ts
+  s_0b1d32587972ad::t_78fe2d09a8297d 4,85-113,198,246,277,292,316
+docs/design.md
+  s_0b1d32587972ad::t_78fe2d09a8297d 86-87,177-180
+apps/api/src/skillListRoute.test.ts
+  s_0b1d32587972ad::t_78fe2d09a8297d 1-159
+apps/api/src/skillListQuery.test.ts
+  s_0b1d32587972ad::t_78fe2d09a8297d 1-42
+packages/contracts/test/companionManifest.test.ts
+  s_0b1d32587972ad::t_78fe2d09a8297d 6,30,43-45,87-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "7cb21699db53311f29d402d9513ec79b0739d005",
+  "prompts": {},
+  "sessions": {
+    "s_0b1d32587972ad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efd4b-97be-7bd1-8590-3c4edfa6dace",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

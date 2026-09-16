@@ -1,0 +1,19 @@
+apps/web/src/components/org/ApiKeysPane.tsx
+  s_5dd6a894c9a7b4::t_28efd2894497d8 122-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "1f3195245c86785fa8b6ab8b4a9823c63b4d867d",
+  "prompts": {},
+  "sessions": {
+    "s_5dd6a894c9a7b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "347b69c9-bdea-4c1a-b4ff-8660482c1283",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

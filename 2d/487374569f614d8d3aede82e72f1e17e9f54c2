@@ -1,0 +1,99 @@
+apps/api/test/integration/runsDb.integration.test.ts
+  s_b72b2316fa286f::t_b8b8b925a31493 1067-1068,1073-1087
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 52-56,236-300,553-560,619,623,638,952-953,964-971,979-981,987-995,1003-1066,1069-1072,1088-1125,1149-1175
+  s_b72b2316fa286f::t_0982e0d4b92fe9 60,954-963,972-978,982-986,996-1002
+  s_b72b2316fa286f::t_a54dcb381a16b2 404
+  s_b72b2316fa286f::t_a07b71ed099606 1176
+apps/worker/src/runAttachmentCleanup.ts
+  s_b72b2316fa286f::t_b278a63eefbd47 1-2,20,27,30-31,33,36-38
+apps/api/src/trpc.test.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 4-17
+packages/contracts/test/skillRuns.test.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 13,265-267,273-276,279-280
+  s_b72b2316fa286f::t_28689b8f27797f 277-278
+packages/core/src/runRuntime.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 85,117-118
+apps/api/src/index.ts
+  s_b72b2316fa286f::t_f81914133c6c53 3200-3207
+  s_b72b2316fa286f::t_f8a0e3ab3c76c5 3241,3263,3272
+apps/api/src/runRoutes.test.ts
+  s_b72b2316fa286f::t_0376eb9037215c 241,255,258
+apps/web/src/components/runs/RunChatView.tsx
+  s_b72b2316fa286f::t_1983cfe46ba3d9 596,615,617,623,630,634-635,1118-1119
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 20-24,30-31,118-127,142,144-146,366,369,384,496-505,585-588,592-595,603,644-672,677-679,872,874,878-882,1042,1067,1077-1078,1087,1089,1115,1117
+packages/db/runtime-role-grants.sql
+  s_b72b2316fa286f::t_a54dcb381a16b2 61
+  s_b72b2316fa286f::t_b278a63eefbd47 65
+packages/contracts/src/skillRuns.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 27,570-573,606,611
+  s_b72b2316fa286f::t_6f6be6dcbf59da 610
+docs/testing.md
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 23
+packages/storage/src/index.ts
+  s_b72b2316fa286f::t_218c368702e386 1
+apps/worker/src/runSupervisor.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 3,9-10,67-105,131,315,782,794-796,875-876,881-883,914,922,924-932,935-938,1012-1013,1027-1033,1036-1038,1126-1130,1334-1340,1343-1345,1366-1373,1385-1398,1400,1442-1463,1465
+packages/core/src/runSweeper.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 1,36-42,53
+packages/core/test/runJobs.test.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 110-123,244-245,290-291,332,419-435,437
+  s_b72b2316fa286f::t_8c21f2b9b7114f 436,438
+apps/web/src/components/runs/reactivation.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 1-22
+packages/db/drizzle/0037_reactivate_runs.sql
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 1-202
+apps/web/src/components/runs/reactivation.test.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 1-57
+docs/design.md
+  s_b72b2316fa286f::t_5ac68eef8e24e4 604,625,682-683
+  s_b72b2316fa286f::t_3f93537d1da2e2 594-595
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 573-576,611-613,620-624,664-665,677-681,695-697,805
+apps/worker/src/runSupervisor.test.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 5,7,13,35-87,99-105
+  s_b72b2316fa286f::t_e2781cf6f32aef 106
+packages/db/src/schema.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 1035-1038,1088-1091,1140-1143,1438
+packages/core/test/runSweeper.test.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 44-45,124-130
+  s_b72b2316fa286f::t_354e39dfbed48d 131-133
+packages/core/src/runJobs.ts
+  s_b72b2316fa286f::t_61ffc6e5733944 761-775
+  s_b72b2316fa286f::t_1d40cc0237b802 655-656,663,941-950,955
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 5,386,419,541-545,621-624,726,729-743,805-880,1336,1344-1345,1433-1437,1454,1556,1584-1587
+  s_b72b2316fa286f::t_a54dcb381a16b2 134-142,1026-1034
+  s_b72b2316fa286f::t_f8a0e3ab3c76c5 985,1001-1014
+  s_b72b2316fa286f::t_b278a63eefbd47 266-281
+packages/core/src/skillRuns.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 1117-1125,1287-1289
+packages/core/test/runsFakeDb.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 124-125
+packages/sandbox/src/opencodeChat.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 352-355
+packages/sandbox/src/vercel.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 15,205-209
+packages/db/drizzle/0038_skill_run_prompt_attachments.sql
+  s_b72b2316fa286f::t_a54dcb381a16b2 136-149
+  s_b72b2316fa286f::t_b278a63eefbd47 1-135,150-274
+packages/sandbox/test/opencodeChat.test.ts
+  s_b72b2316fa286f::t_2078c4fb3dbbb3 164-180
+apps/worker/src/runAttachmentCleanup.test.ts
+  s_b72b2316fa286f::t_b278a63eefbd47 15
+packages/db/drizzle/meta/_journal.json
+  s_b72b2316fa286f::t_acacb7c5af991e 267-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2d487374569f614d8d3aede82e72f1e17e9f54c2",
+  "prompts": {},
+  "sessions": {
+    "s_b72b2316fa286f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f65c7-fc0c-7252-8a51-9510f76dfcc3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

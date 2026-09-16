@@ -1,0 +1,155 @@
+web/src/api/client.test.ts
+  s_aca63502688e80::t_f4d24bd1d5f49f 1-265
+web/src/app/components/Toggle.tsx
+  s_aca63502688e80::t_b33cbb590aac3c 1-73
+web/src/main.tsx
+  s_aca63502688e80::t_e4f43d576fdf10 1-15
+web/src/app/components/AgentForm.tsx
+  s_aca63502688e80::t_7a4426f4c3a70f 1-21,23-372
+  s_aca63502688e80::t_d5bbf55edb1463 22
+web/src/app/components/Button.tsx
+  s_aca63502688e80::t_781cfa89b86d48 1-65
+web/src/app/pages/AgentDetailPage.test.tsx
+  s_aca63502688e80::t_3c234fe736c3a0 105-121
+  s_aca63502688e80::t_72aa7649b96df0 26-44
+  s_aca63502688e80::t_0adbbf53f1f379 1-25,45-104,122-355
+web/src/app/components/Card.tsx
+  s_aca63502688e80::t_b682d5b4f06c63 1-53
+web/src/app/pages/AgentDetailPage.tsx
+  s_aca63502688e80::t_ded186fc05f477 281
+  s_aca63502688e80::t_601126285e77d4 1,3,20,55,82-83,95-97,109,117,141,571-572
+  s_aca63502688e80::t_19747e5bc59826 480-490
+  s_aca63502688e80::t_d0a573d4edbcc3 2,4-19,21,24-54,56-81,84-94,98-108,110-116,118-140,142-280,282-479,491-570
+  s_aca63502688e80::t_a9fe32972ac60c 22-23
+web/src/app/components/CodeBlock.tsx
+  s_aca63502688e80::t_83f2366641d8b3 1-42
+web/tsconfig.json
+  s_aca63502688e80::t_bf9050b5c1657f 1-29
+web/src/app/pages/PlanApplyPage.test.tsx
+  s_aca63502688e80::t_b2919901ccd293 1-294
+.github/workflows/ci.yml
+  s_aca63502688e80::t_23dd0e9b28b5ab 67-89
+  s_aca63502688e80::t_9e443c1a5c4ebb 47
+web/src/app/pages/SettingsPage.test.tsx
+  s_aca63502688e80::t_4bf231607cf281 1-88,93-98,100-164,166,168-172,175,177-194
+  s_aca63502688e80::t_cd0027d809d038 165,167
+  s_aca63502688e80::t_135b335d8dd5e3 89-92,99
+  s_aca63502688e80::t_7824543a391690 173-174,176
+web/src/app/pages/AgentsPage.test.tsx
+  s_aca63502688e80::t_b7bea3c54c5fad 1-229
+web/src/vite-env.d.ts
+  s_aca63502688e80::t_9ced728a92753d 1-8
+web/package-lock.json
+  ai_agent 1-3730
+web/src/app/components/OperationProgress.tsx
+  s_aca63502688e80::t_f41e0008229ace 12
+  s_aca63502688e80::t_87c6f1de08a685 1-11,13-103
+web/src/app/components/PlanDiff.test.tsx
+  s_aca63502688e80::t_408f189a9ffff7 56,60,63,66
+  s_aca63502688e80::t_85837998f543ea 1-55,57-59,61-62,64-65,67-93
+web/index.html
+  s_aca63502688e80::t_f67447d7f797cc 1-22
+web/src/api/types.ts
+  s_aca63502688e80::t_09a5a78fbe3724 1-168
+web/src/app/components/HealthBadge.test.tsx
+  s_aca63502688e80::t_cd4ec6a8b7e8a5 1-43
+web/src/app/components/PlanDiff.tsx
+  s_aca63502688e80::t_4aefd878ab7556 17
+  s_aca63502688e80::t_438d871433c5df 1-16,18-109
+web/src/app/hooks.ts
+  s_aca63502688e80::t_c8f606084b7f5d 1-179
+web/src/app/components/HealthBadge.tsx
+  s_aca63502688e80::t_610ca8aad55490 1-42
+web/src/App.tsx
+  s_aca63502688e80::t_0fe40f66f25f36 1,3,7-8,14
+  s_aca63502688e80::t_0230908b77a71b 2,4-6,9-13
+web/src/app/components/SelectField.tsx
+  s_aca63502688e80::t_89fe3a1de8ff25 1-41,46,48-50,52-82
+  s_aca63502688e80::t_f94ee074ffb7fc 42-45,47,51
+web/src/App.test.tsx
+  s_aca63502688e80::t_53f2c75702ddee 1,3-4,12,17,19,21-22,24,29-31
+  s_aca63502688e80::t_ec36cf1dd34487 2,5-11,13-16,18,20,23,25-28
+web/src/app/routes.tsx
+  s_aca63502688e80::t_0fbf1dd2eefc54 1-37
+web/src/app/components/AppLayout.tsx
+  s_aca63502688e80::t_c012bf7562b6df 1-148
+web/src/app/pages/AgentsPage.tsx
+  s_aca63502688e80::t_35ecc67fa493b5 4-18,22-24,26-34,42-44,46-60,66,72-80,82-83,85-133,135-284,286-306,308-362
+  s_aca63502688e80::t_89b9f6f57bc7d5 1-3,19-20,41,45,61-65,81,84,307,363
+  s_aca63502688e80::t_fe896331d5df31 21
+  s_aca63502688e80::t_7ddd23136fd610 25,35-40
+  s_aca63502688e80::t_19337bafa3c1f4 67-71
+  s_aca63502688e80::t_b226d7c84eeb13 134
+  s_aca63502688e80::t_b3aadf9b4ec4d7 285
+web/src/app/pages/SettingsPage.tsx
+  s_aca63502688e80::t_d362111b3bb50d 2-3,5-14,17-27,30-36,43-66,68-164
+  s_aca63502688e80::t_ce495ba054658f 1,4,15-16,28-29,37-42,67,165-166
+web/src/app/components/ErrorBanner.tsx
+  s_aca63502688e80::t_e5a54b07cfcf9e 1-59
+web/src/app/hooks.test.tsx
+  s_aca63502688e80::t_f23a8d4feca21d 1-166
+web/src/app/pages/NotFoundPage.tsx
+  s_aca63502688e80::t_259e4fa07cc074 1-28
+web/src/index.css
+  s_aca63502688e80::t_8235e5df1bf017 1-83
+web/package.json
+  s_aca63502688e80::t_fe4d903152eeb8 26
+  s_aca63502688e80::t_096ef736e2c89e 1-25,27-36
+web/src/api/client.ts
+  s_aca63502688e80::t_eac664cd26d534 1-277
+web/src/app/pages/CreateAgentPage.tsx
+  s_aca63502688e80::t_1be2f25de6dce0 25
+  s_aca63502688e80::t_f4ff8c4f50f1b4 1,3,63,70,99-100,184-187,197,254,586-587
+  s_aca63502688e80::t_440d610c8982da 2,4-24,26-62,64-69,71-98,101-183,188-196,198-253,255-585
+web/src/app/components/Spinner.tsx
+  s_aca63502688e80::t_c7f690c5ca993f 1-44
+web/src/app/pages/CreateAgentPage.test.tsx
+  s_aca63502688e80::t_61c43594e9da01 1-234,238-299
+  s_aca63502688e80::t_f9bd11229a0586 235-237
+web/.gitignore
+  s_aca63502688e80::t_a07b4cc67ae37a 1-3
+web/src/app/components/index.ts
+  s_aca63502688e80::t_003f4b499449c6 1-61
+web/src/app/components/ConfirmDialog.tsx
+  s_aca63502688e80::t_1316f7777bf737 1-99
+web/src/test-setup.ts
+  s_aca63502688e80::t_fa2575b5390b28 1-100
+web/src/app/components/AgentForm.test.tsx
+  s_aca63502688e80::t_97ad245b0c3009 1-158
+web/src/app/components/EmptyState.tsx
+  s_aca63502688e80::t_30553a071e13a8 1-44
+web/vitest.config.ts
+  s_aca63502688e80::t_f4511b3632b7e6 1-16
+web/src/app/pages/PlanApplyPage.tsx
+  s_aca63502688e80::t_e1420597b81cfb 4-21,25-45,47-86,88-157,163-171,173-194,196-301,303-368
+  s_aca63502688e80::t_6b2c34857d7f7b 1-3,22-23,46,87,158-162,172,302,369-370
+  s_aca63502688e80::t_189d23c3fb7c9b 195
+  s_aca63502688e80::t_34248b371e3b5f 24
+web/src/app/components/Badge.tsx
+  s_aca63502688e80::t_00fe1241a28cd5 1-62
+web/src/app/components/TextField.tsx
+  s_aca63502688e80::t_e4551ac750a746 1-41,46,48-50,52-77
+  s_aca63502688e80::t_04d7e7a5cafb31 42-45,47,51
+bin/build-console-ui
+  s_aca63502688e80::t_b925897cf17547 1-76
+web/vite.config.ts
+  s_aca63502688e80::t_06d1ab55591e0f 1-27
+web/src/app/components/PageHeader.tsx
+  s_aca63502688e80::t_13fe0b242f29f8 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "50d8ed9dfe84c67047592f2898aa24b1e9d11936",
+  "prompts": {},
+  "sessions": {
+    "s_aca63502688e80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9d6e67c-702e-499f-ae73-ff0b1bce8016",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Claude <noreply@anthropic.com>"
+    }
+  }
+}

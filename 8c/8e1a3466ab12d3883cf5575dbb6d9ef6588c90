@@ -1,0 +1,36 @@
+scripts/ci-scope.mjs
+  s_33d1e59913c65f::t_5263f378de0181 193
+.github/workflows/ci.yml
+  s_33d1e59913c65f::t_6fe1aed2522d83 171
+  s_33d1e59913c65f::t_14f1fe1b3e7360 191
+scripts/ios-devx.test.mjs
+  s_33d1e59913c65f::t_6fe1aed2522d83 155
+  s_33d1e59913c65f::t_14f1fe1b3e7360 6,158,167-184
+  s_33d1e59913c65f::t_4b44d241192dbf 185
+scripts/ci-scope.test.mjs
+  s_33d1e59913c65f::t_5263f378de0181 72-79
+scripts/select-ios-simulator.mjs
+  s_33d1e59913c65f::t_0114bc32e5e05d 29-30,33
+  s_33d1e59913c65f::t_14f1fe1b3e7360 1-28,31-32,34-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "8c8e1a3466ab12d3883cf5575dbb6d9ef6588c90",
+  "prompts": {},
+  "humans": {
+    "h_ecee222750141d": {
+      "author": "StanGirard <stan@quivr.app>"
+    }
+  },
+  "sessions": {
+    "s_33d1e59913c65f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03435-f03d-7790-81e8-e853f0268ae4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}

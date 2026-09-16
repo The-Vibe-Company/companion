@@ -1,0 +1,61 @@
+packages/core/src/secretbox.ts
+  s_1e74ce65ff5b16::t_220e8bf8bb2528 105-109
+packages/core/test/agentsFakeDb.ts
+  s_1e74ce65ff5b16::t_79efcc2b29c21a 176,353-361
+  s_1e74ce65ff5b16::t_21a0340d80c51a 37-38,46,58,102,166-175
+  s_1e74ce65ff5b16::t_6afc06533e817a 282-300
+packages/core/test/providerConnections.test.ts
+  s_1e74ce65ff5b16::t_654eed48efcc07 66,68,72-73
+  s_1e74ce65ff5b16::t_e481e335395034 69-71
+  s_1e74ce65ff5b16::t_3315b4d8a211c4 1-65,67,74-88
+packages/core/src/services.ts
+  s_1e74ce65ff5b16::t_dbf9027cde638b 104-106
+apps/api/src/index.ts
+  s_1e74ce65ff5b16::t_659d91e0b3c785 2346-2357,2363-2405
+  s_1e74ce65ff5b16::t_324de3b9e5616c 18-19,23-24,121
+  s_1e74ce65ff5b16::t_808d3daa9c6c4b 2274-2279
+  s_1e74ce65ff5b16::t_f930803d5b1fc1 2406
+packages/core/src/agents.ts
+  s_1e74ce65ff5b16::t_dc2bee0c49a494 36
+  s_1e74ce65ff5b16::t_01b40cbbc0c61e 459-474
+packages/sandbox/src/modelCatalog.ts
+  s_1e74ce65ff5b16::t_a708a474c6a458 122-128
+packages/core/src/providerConnections.ts
+  s_1e74ce65ff5b16::t_734e10e40db06f 1-160
+packages/core/test/agents.test.ts
+  s_1e74ce65ff5b16::t_d7dfa9e640a3ee 20-21,32-34
+  s_1e74ce65ff5b16::t_05b65b243310eb 300-321
+  s_1e74ce65ff5b16::t_d80f4dc825a65f 35
+packages/contracts/src/agents.ts
+  s_1e74ce65ff5b16::t_9f4644eeccf5f3 276-285,289-312
+  s_1e74ce65ff5b16::t_82b7409d16d4a5 203-204
+  s_1e74ce65ff5b16::t_390f46aec48136 197-199
+  s_1e74ce65ff5b16::t_07d6ca43722fb6 313
+apps/api/src/agentsRoute.test.ts
+  s_1e74ce65ff5b16::t_7e538266d5c34b 104-105
+  s_1e74ce65ff5b16::t_cf5c86ae7796d1 106-107,125-128,363-364,367-396
+apps/web/src/components/agents/AgentsApp.test.ts
+  s_1e74ce65ff5b16::t_3338175430055f 118
+packages/db/drizzle/0033_user_provider_connections.sql
+  s_1e74ce65ff5b16::t_bbb83dc57aedbd 1-20
+packages/db/src/schema.ts
+  s_1e74ce65ff5b16::t_0fea76399fbc2b 825-856
+packages/db/drizzle/meta/_journal.json
+  s_1e74ce65ff5b16::t_59ca3cf97ab3bc 235-241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "38c4c79b4c612fc6e14c49009785ddce71512665",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

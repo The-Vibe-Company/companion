@@ -1,0 +1,19 @@
+packages/box-runtime/src/piBundle.ts
+  s_6e862c14bab050::t_6d36b170b378ec 67,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "66205ea965df9bf14cd614c1ca4bd9fc1fed8744",
+  "prompts": {},
+  "sessions": {
+    "s_6e862c14bab050": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03a1b-9b7d-7dd1-aa7f-31201c80d000",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

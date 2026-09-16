@@ -1,0 +1,79 @@
+apps/runtime/src/production.ts
+  s_19291756971291::t_60b5b9b7af20b9 328
+  s_19291756971291::t_036acf83f8dc4f 77-78
+  s_19291756971291::t_89a771c884a502 166
+  s_19291756971291::t_32e82ddedb733e 207-210
+  s_19291756971291::t_8e4bc70a9da159 47
+scripts/build-pi-bundle.sh
+  s_19291756971291::t_2fe7363061ead2 86-90
+  s_19291756971291::t_2534af857577cf 28
+apps/runtime/src/piBundlePresigner.test.ts
+  s_19291756971291::t_bf0ccf4a21af4c 1-84
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_19291756971291::t_889016403bbc6d 966-968
+  s_19291756971291::t_3599bf85ff06cf 969,972
+  s_19291756971291::t_efe2007a8cb686 929
+  s_19291756971291::t_40e821ff3c7a32 1307-1314,1317,1319-1325
+  s_19291756971291::t_ffd6a7a23f3375 1417
+  s_19291756971291::t_31d2132cfb6ba2 1351,1354-1355,1363-1373,1379-1385,1387-1402
+  s_19291756971291::t_669eba4508a0dd 1449-1455
+  s_19291756971291::t_2acea356e2a898 1386
+  s_19291756971291::t_651d2f64bbb4c9 1403
+scripts/check-pi-bundle-artifact.ts
+  s_19291756971291::t_fe429a5d23de4c 5-7,11,13-14,21,32-36,38-41,46-54,56-68
+.github/workflows/ci.yml
+  s_19291756971291::t_9e4bdf509d0ada 261-263,266-271
+docs/companion-image-pipeline.md
+  s_19291756971291::t_b8f13a7f774132 170-172
+  s_19291756971291::t_81a36174de25f4 164-165
+  s_19291756971291::t_983d42eda47d33 145-152
+docs/companions-runtime.md
+  s_19291756971291::t_5b8b5a27152588 329-332,336-339
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_19291756971291::t_e502fe9867ff78 1308-1317,1323
+  s_19291756971291::t_1d577a51171d92 1329
+  s_19291756971291::t_8aa2fcc623ef5e 1342-1348,1354,1359
+  s_19291756971291::t_cabc9616d34ff4 1925-1932
+  s_19291756971291::t_1965ffbf2767ec 2654-2659,2668
+  s_19291756971291::t_a10f631055ee94 1958-1963
+  s_19291756971291::t_8e22f92701b325 1905-1906
+apps/runtime/src/piBundlePresigner.ts
+  s_19291756971291::t_e52500f3304731 1-61
+.github/workflows/pi-bundle.yml
+  s_19291756971291::t_9e4bdf509d0ada 67
+deploy/railway/README.md
+  s_19291756971291::t_a08d4f9ba0e3c8 94-104
+packages/box-sim/src/commandShims.ts
+  s_19291756971291::t_2cd9773c37cbcb 489-493
+scripts/print-pi-bundle-manifest.ts
+  s_19291756971291::t_30870ebad979ca 11
+  s_19291756971291::t_8f84b90fded35a 22
+scripts/upload-pi-bundle.mjs
+  s_19291756971291::t_2dfb4830998e13 2-3,8-11
+  s_19291756971291::t_13ead0149263df 27-29
+  s_19291756971291::t_b545998daa4e24 63
+packages/box-runtime/src/piBundle.ts
+  s_19291756971291::t_e51b7b6bc393cc 105-113,116,120-124,126-127,130-134,145-146
+  s_19291756971291::t_5f1a4784bd81b9 17,19-22
+  s_19291756971291::t_00e16d5bb8036b 26-30
+.env.example
+  s_19291756971291::t_36e05eae8cfd2d 72-79
+packages/box-sim/test/commandShims.test.ts
+  s_19291756971291::t_09a2c4558561c4 191,215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "2df1f4448b81375cd110b1ae9c68f8893b96ec70",
+  "prompts": {},
+  "sessions": {
+    "s_19291756971291": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b5a09f-280f-4836-8c4a-95f531ff8703",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

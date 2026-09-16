@@ -1,0 +1,23 @@
+apps/web/src/app/v1/auth/google/route.test.ts
+  s_58e94834a7c4a1::t_c5c8360fcbe2b6 1-48
+apps/web/src/app/v1/auth/google/route.ts
+  s_58e94834a7c4a1::t_5db0f531b6df6c 2,42-44
+docs/design.md
+  s_58e94834a7c4a1::t_03f3cd6a598bdb 170-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "743bd49270f10c95484c215412374ae096c8ebf1",
+  "prompts": {},
+  "sessions": {
+    "s_58e94834a7c4a1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed5ef-dfc9-7d11-a9c8-59df70fa2a4f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

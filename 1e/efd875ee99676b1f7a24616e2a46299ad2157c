@@ -1,0 +1,93 @@
+apps/web/src/components/skills/ListView.test.ts
+  s_4de201d84f8a91::t_e479ec585d2716 97-98
+docs/design.md
+  s_4de201d84f8a91::t_a4a6813692ec0c 78,114-115,275-276
+packages/core/test/skillListModifiers.test.ts
+  s_4de201d84f8a91::t_e479ec585d2716 162-163
+cli/src/commands/skills.ts
+  s_4de201d84f8a91::t_d3d63241b7ca06 120
+packages/contracts/src/preferences.ts
+  s_4de201d84f8a91::t_2f431824d6a3fd 7,10
+apps/web/src/styles/skills.css
+  s_4de201d84f8a91::t_3e893504935b9c 171
+  s_4de201d84f8a91::t_dd253d912eaeba 310-311,898,928,1323,1327
+apps/web/src/components/skills/Sidebar.tsx
+  s_4de201d84f8a91::t_d2af256507d03c 14
+apps/web/src/components/skills/route.ts
+  s_4de201d84f8a91::t_a693adfc9d05d1 4,99-100,117
+apps/api/src/localSkills.test.ts
+  s_4de201d84f8a91::t_0697661ea906d7 47
+  s_4de201d84f8a91::t_63db684389a5b7 118-120
+apps/web/src/components/skills/route.test.ts
+  s_4de201d84f8a91::t_fff4d4d6c5edd2 23,25,28,31-36,42
+apps/api/test/integration/removeSkillStarsMigration.integration.test.ts
+  s_4de201d84f8a91::t_6131eac5d9912d 117,122
+  s_4de201d84f8a91::t_da3f02731d0e83 1-116,118-121,123-168
+packages/companion-skill/skill/companion.integrity.json
+  s_4de201d84f8a91::t_2751cf21b77322 3-4,19
+apps/web/src/components/skills/filters.ts
+  s_4de201d84f8a91::t_d3d63241b7ca06 10-11
+apps/web/src/components/landing/LandingPage.tsx
+  s_4de201d84f8a91::t_89c1275f0cc9c0 89,142-147,152,154-160,390,430
+packages/companion-skill/skill/SKILL.md
+  s_4de201d84f8a91::t_a4a6813692ec0c 365-366,829,900-901
+  s_4de201d84f8a91::t_3987f6bb69fef2 996
+apps/web/src/components/skills/UploadDialog.tsx
+  s_4de201d84f8a91::t_d706ff682c451f 1410
+apps/web/src/styles/app.css
+  s_4de201d84f8a91::t_52402920ebf4f9 380
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_4de201d84f8a91::t_59c3c5ced88ad0 731,735,1439
+apps/web/src/styles/deps.css
+  s_4de201d84f8a91::t_dd253d912eaeba 134,136,145,153
+packages/companion-skill/skill/companion.json
+  s_4de201d84f8a91::t_a4a6813692ec0c 4,27-35
+apps/web/src/components/skills/SkillsApp.tsx
+  s_4de201d84f8a91::t_62db6b895f2663 124,145,173,985,1264
+packages/db/drizzle/0044_remove_skill_stars.sql
+  s_4de201d84f8a91::t_d10df62678228e 1-45
+apps/web/src/styles/landing.css
+  s_4de201d84f8a91::t_987c23fcafcd1e 436,461
+packages/companion-skill/skill/reference/api.md
+  s_4de201d84f8a91::t_a4a6813692ec0c 207,444
+apps/web/src/components/skills/filters.test.ts
+  s_4de201d84f8a91::t_4afa7724859fdc 49,104,108,116
+apps/web/src/components/skills/ListView.tsx
+  s_4de201d84f8a91::t_5f1da6a10e0ad7 16,126,368
+packages/core/test/filterPreferences.test.ts
+  s_4de201d84f8a91::t_6abc500b890a65 38,58,78,87-88,93-96
+apps/web/src/components/skills/ShareDialog.tsx
+  s_4de201d84f8a91::t_d706ff682c451f 88
+apps/api/src/index.ts
+  s_4de201d84f8a91::t_d10df62678228e 1695
+packages/core/src/services.ts
+  s_4de201d84f8a91::t_1f5b58c6b3ef07 950,1225-1226,1231-1237
+  s_4de201d84f8a91::t_3e893504935b9c 1312
+apps/web/src/components/skills/DetailView.tsx
+  s_4de201d84f8a91::t_4b47fe05003b0e 21
+docs/PRD.md
+  s_4de201d84f8a91::t_a4a6813692ec0c 61
+apps/api/src/skillListRoute.test.ts
+  s_4de201d84f8a91::t_d286d1006c6862 360-366
+apps/api/test/integration/preTenantRls.integration.test.ts
+  s_4de201d84f8a91::t_7c351da332623e 329,355-359
+  s_4de201d84f8a91::t_1944bce4c5189a 360-361
+packages/db/drizzle/meta/_journal.json
+  s_4de201d84f8a91::t_ec63826c58c55a 312-318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1eefd875ee99676b1f7a24616e2a46299ad2157c",
+  "prompts": {},
+  "sessions": {
+    "s_4de201d84f8a91": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7f99-1c06-7862-8a66-bfd1b50870b1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

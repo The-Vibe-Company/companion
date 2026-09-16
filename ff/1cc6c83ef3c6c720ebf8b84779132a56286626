@@ -1,0 +1,65 @@
+packages/skills/package.json
+  s_51e8bac0e69e44::t_52c1e066ce42c7 15
+packages/contracts/src/index.ts
+  s_51e8bac0e69e44::t_7853e434717449 5
+packages/contracts/src/skill.ts
+  s_51e8bac0e69e44::t_2d4eabcea2a1ed 83-96
+  s_51e8bac0e69e44::t_e1c3c9c9d78d1d 3
+packages/db/drizzle/0005_api_tokens.sql
+  s_51e8bac0e69e44::t_75279260582148 1-22
+packages/core/src/services.ts
+  s_51e8bac0e69e44::t_aaeef834c530da 977-1083
+  s_51e8bac0e69e44::t_7df6c99630c777 1,10,12
+packages/skills/src/validateSkill.ts
+  s_51e8bac0e69e44::t_74ce153faf2961 9
+  s_51e8bac0e69e44::t_32f1d50627378c 83,87-94
+packages/skills/test/zip.test.ts
+  s_51e8bac0e69e44::t_4ab5eedacf008f 1-28,30-92,123
+  s_51e8bac0e69e44::t_e4a2dab43f865d 29
+  s_51e8bac0e69e44::t_55306cce8b74a2 93-122
+packages/db/src/schema.ts
+  s_51e8bac0e69e44::t_3c2555ac454c48 289-318
+apps/api/src/context.ts
+  s_51e8bac0e69e44::t_90cfd9a6644f18 3,5-10,15-25,32-34,41-51,58-77,81-83
+apps/api/src/index.ts
+  s_51e8bac0e69e44::t_404211804e9211 88,95-145
+  s_51e8bac0e69e44::t_ea47df689e220c 7
+  s_51e8bac0e69e44::t_15bc1d138a57e4 589,605,614,623-631
+  s_51e8bac0e69e44::t_1aca9d39fc4114 568-573,575,581-588,590-595,600-604,606-613,615-616,618-621,632-639,641,643,645-659,663-664,666-681,683-685,707-723,725-727
+  s_51e8bac0e69e44::t_a17ab541777e68 574
+  s_51e8bac0e69e44::t_34bd08b06c121a 2,19,29,36-50,63-71
+  s_51e8bac0e69e44::t_1c8c9f950ba826 576,579
+  s_51e8bac0e69e44::t_786c517ec0336c 660-662
+  s_51e8bac0e69e44::t_f5869d00a24d7f 694-695
+  s_51e8bac0e69e44::t_8939670862b762 51-59
+  s_51e8bac0e69e44::t_07b9464cdab78c 724
+  s_51e8bac0e69e44::t_10f8a4c243f3d1 733-767
+  s_51e8bac0e69e44::t_58cf6041c2c139 596-599
+packages/storage/src/index.ts
+  s_51e8bac0e69e44::t_336595da80c0be 83-100
+packages/skills/src/zip.ts
+  s_51e8bac0e69e44::t_be73b131259c44 95-99
+  s_51e8bac0e69e44::t_dee73cb153015a 1-5,7-58,62-94,100-136
+  s_51e8bac0e69e44::t_b70368a0e50f1b 59-61
+  s_51e8bac0e69e44::t_b6b11263d50208 6
+packages/skills/src/index.ts
+  s_51e8bac0e69e44::t_53865899371555 8
+packages/contracts/src/token.ts
+  s_51e8bac0e69e44::t_4657df10557122 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "ff1cc6c83ef3c6c720ebf8b84779132a56286626",
+  "prompts": {},
+  "sessions": {
+    "s_51e8bac0e69e44": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ea7dfe5-90d5-4e37-ae2d-3ee7e3020d06",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

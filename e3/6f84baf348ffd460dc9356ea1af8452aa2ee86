@@ -1,0 +1,53 @@
+packages/companion-skill/skill/SKILL.md
+  s_17fa1e0625dbf4::t_af39775925ee42 74-77
+apps/web/src/styles/app.css
+  s_17fa1e0625dbf4::t_af39775925ee42 347-353
+apps/api/src/skillCompanionManifest.test.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 104,106,112,127-133,135-147,149
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 80,122
+packages/contracts/src/companionManifest.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 251
+apps/web/src/components/skills/detailParts.test.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 13
+packages/contracts/test/companionManifest.test.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 41,46,61-62
+apps/web/src/components/skills/DetailView.tsx
+  s_17fa1e0625dbf4::t_af39775925ee42 32,188-216,475-476,622-626
+packages/contracts/src/skill.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 131-132
+packages/companion-skill/skill/reference/api.md
+  s_17fa1e0625dbf4::t_af39775925ee42 91-95
+packages/core/src/services.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 146,148,846
+apps/web/src/components/skills/filters.test.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 11
+cli/src/commands/skills.test.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 26
+apps/api/src/index.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 1709,1714,1720,1730
+apps/web/src/components/skills/DetailView.test.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 15,91,99,108,119-120,124-155
+apps/web/src/components/skills/updateFlow.test.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 16
+apps/web/src/lib/types.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 21,65
+apps/api/src/skillCompanionManifest.ts
+  s_17fa1e0625dbf4::t_af39775925ee42 35,45,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "e36f84baf348ffd460dc9356ea1af8452aa2ee86",
+  "prompts": {},
+  "sessions": {
+    "s_17fa1e0625dbf4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efb7e-63f2-77e1-bc3f-0586a22c1d6a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

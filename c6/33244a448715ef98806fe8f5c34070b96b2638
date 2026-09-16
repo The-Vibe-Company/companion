@@ -1,0 +1,43 @@
+apps/web/src/components/landing/LandingPage.tsx
+  s_b33a0c9ba7487b::t_7f96e6a40686fd 226,339,711
+apps/web/src/components/org/AcceptInvite.tsx
+  s_b33a0c9ba7487b::t_7f96e6a40686fd 35
+apps/web/src/components/org/Onboarding.tsx
+  s_b33a0c9ba7487b::t_7f96e6a40686fd 32
+apps/web/src/app/layout.tsx
+  s_b33a0c9ba7487b::t_7f96e6a40686fd 7-10
+apps/web/src/styles/landing.css
+  s_b33a0c9ba7487b::t_7f96e6a40686fd 82-86
+apps/web/src/styles/org.css
+  s_b33a0c9ba7487b::t_7f96e6a40686fd 177
+examples/skills/incident-summary/SKILL.md
+  s_b33a0c9ba7487b::t_be7c176dacce61 6
+DESIGN.md
+  s_b33a0c9ba7487b::t_7f96e6a40686fd 303
+apps/web/src/components/onboarding/screens.tsx
+  s_b33a0c9ba7487b::t_7f96e6a40686fd 63
+apps/web/src/styles/onboarding.css
+  s_b33a0c9ba7487b::t_7f96e6a40686fd 34-36
+apps/web/src/styles/auth.css
+  s_b33a0c9ba7487b::t_7f96e6a40686fd 53-59,123-136
+apps/web/src/components/onboarding/OnboardingFlow.tsx
+  s_b33a0c9ba7487b::t_7f96e6a40686fd 207
+apps/web/src/app/(auth)/login/LoginForm.tsx
+  s_b33a0c9ba7487b::t_7f96e6a40686fd 91,367-369,494-495,502,519-529,556-560
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "c633244a448715ef98806fe8f5c34070b96b2638",
+  "prompts": {},
+  "sessions": {
+    "s_b33a0c9ba7487b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ecae9-7f32-77d3-8945-abe9cb9da5e6",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

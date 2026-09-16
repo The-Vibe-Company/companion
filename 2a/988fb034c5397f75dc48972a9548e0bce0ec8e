@@ -1,0 +1,103 @@
+packages/core/test/skillVersions.test.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 1-73
+apps/web/src/lib/companionSkillGate.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 1-8
+apps/web/src/components/skills/detailParts.test.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 4,6,124-182
+  s_b6153f79cc2b0c::t_73e998f384d629 183
+apps/web/src/app/(app)/skills/page.tsx
+  s_b6153f79cc2b0c::t_65ba934f557d5d 10,40-43,45
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_b6153f79cc2b0c::t_576a914b0d7159 167
+  s_b6153f79cc2b0c::t_65ba934f557d5d 3,8-9,150,155,157-158,165-166,168,172,175,181,184,193,207-233,235-236,314-321,397,402,411,471,485,532-536
+apps/web/src/components/skills/SkillsApp.tsx
+  s_b6153f79cc2b0c::t_65ba934f557d5d 12,20,796,798,801-802,804-822,1376
+packages/contracts/src/skill.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 4,336,401-424,430-431
+packages/contracts/test/onboarding.test.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 23,32
+packages/core/test/onboarding.test.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 10
+scripts/agent-browser-smoke.sh
+  s_b6153f79cc2b0c::t_65ba934f557d5d 130,144-180
+apps/web/src/components/skills/updateFlow.test.ts
+  s_b6153f79cc2b0c::t_ab7840ec3dad01 10-16
+apps/api/src/index.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 19,632,1157-1192
+apps/api/src/skillListRoute.test.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 13,57,113,163-214
+  s_b6153f79cc2b0c::t_1141eb1f3f75d4 215-216
+apps/web/src/lib/settingsData.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 6,15,60-63
+apps/web/src/styles/skills.css
+  s_b6153f79cc2b0c::t_65ba934f557d5d 419-420,1052-1083
+apps/api/src/localSkills.test.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 177-179,202-203
+apps/web/src/lib/settingsData.test.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 33-50,162,171-179
+  s_b6153f79cc2b0c::t_1c334a2ca48081 180
+apps/web/src/components/skills/LocalSkillsView.test.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 1-123
+apps/web/src/components/onboarding/OnboardingFlow.tsx
+  s_b6153f79cc2b0c::t_65ba934f557d5d 23
+scripts/rsc-smoke.mjs
+  s_b6153f79cc2b0c::t_65ba934f557d5d 4,35-42,46,110-132,154
+packages/companion-skill/skill/SKILL.md
+  s_b6153f79cc2b0c::t_65ba934f557d5d 123-128,291-294,439-441,545-554,766-775
+  s_b6153f79cc2b0c::t_0fe7cc2fc525e3 776
+apps/api/src/skillPublishRoute.test.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 17
+packages/companion-skill/skill/scripts/bootstrap_update.py
+  s_b6153f79cc2b0c::t_f3dcc6dea9d019 154-158
+packages/companion-skill/skill/scripts/test_bootstrap.py
+  s_b6153f79cc2b0c::t_2ae57adf72c841 291-292,294,321-324
+packages/core/src/onboarding.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 87-88
+packages/companion-skill/skill/companion.integrity.json
+  s_b6153f79cc2b0c::t_be36d84ac4771b 3-4,7
+apps/web/src/components/skills/ShareDialog.tsx
+  s_b6153f79cc2b0c::t_65ba934f557d5d 3-4,6,22,27-28,46-65,102-141,147
+apps/web/src/lib/queries.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 9,19-20,338-347,423-426
+  s_b6153f79cc2b0c::t_2dcd237a3b0bf1 427
+apps/web/src/components/skills/detailParts.tsx
+  s_b6153f79cc2b0c::t_65ba934f557d5d 475-503,506-507
+apps/web/src/components/org/Onboarding.tsx
+  s_b6153f79cc2b0c::t_65ba934f557d5d 37,52,84,115,119,144
+apps/web/src/components/onboarding/screens.tsx
+  s_b6153f79cc2b0c::t_65ba934f557d5d 106,330,468
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 18-19,303-304,334,380-482,888
+apps/web/src/lib/companionSkillGate.test.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 1-34
+packages/companion-skill/skill/companion.json
+  s_b6153f79cc2b0c::t_aeb4388321a659 31
+  s_b6153f79cc2b0c::t_65ba934f557d5d 32-52
+CLAUDE.md
+  s_b6153f79cc2b0c::t_65ba934f557d5d 147-149
+packages/companion-skill/skill/reference/api.md
+  s_b6153f79cc2b0c::t_65ba934f557d5d 51,90-97,112-115,160-165
+  s_b6153f79cc2b0c::t_d7960845b5659c 464-466
+apps/web/src/app/(app)/companion-setup/page.tsx
+  s_b6153f79cc2b0c::t_65ba934f557d5d 1-37
+packages/core/src/services.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 20,151-155,159-160,1118-1147,1847-1848,1880-1881,1898-1899,1998-2067,2265-2266,2361-2364,2366,2371,2378-2381,2385-2421,2423-2428,2432-2433,2437,2444-2445,2447,2449
+packages/core/test/skillScope.test.ts
+  s_b6153f79cc2b0c::t_65ba934f557d5d 3-4,15-36,39-55,57-60,62,67-97,100-105,109,114,121-122,128,132,134-135,137-161,164-242,244,246,251,258,263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "2a988fb034c5397f75dc48972a9548e0bce0ec8e",
+  "prompts": {},
+  "sessions": {
+    "s_b6153f79cc2b0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eff52-2647-7830-9bac-7eb440ccf0e2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

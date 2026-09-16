@@ -1,0 +1,68 @@
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_9ab6822f632c86::t_dfab4db6f6d8f8 1-260
+apps/api/src/index.ts
+  s_9ab6822f632c86::t_67005d95ef9625 150
+  s_9ab6822f632c86::t_3d77ab009bf45d 30
+  s_9ab6822f632c86::t_162956b103d239 1599-1613,1615-1625,1628,1634-1635
+.gitignore
+  s_9ab6822f632c86::t_d7ae67d9a7f91e 11-14
+cli/src/commands/skills.test.ts
+  s_9ab6822f632c86::t_ad755860408462 149-165
+.github/workflows/ci.yml
+  s_9ab6822f632c86::t_95446ff52da7a7 57-66
+apps/api/src/skillPublishRoute.test.ts
+  s_9ab6822f632c86::t_31b0f59615f159 1-173
+packages/companion-skill/skill/scripts/check_updates.py
+  s_9ab6822f632c86::t_bf63c4d518a3fb 9,11-18
+packages/companion-skill/skill/scripts/test_skill_guard.py
+  s_9ab6822f632c86::t_8d5629e0dd6618 1-285
+cli/src/commands/skills.ts
+  s_9ab6822f632c86::t_0848c59f31adb4 66-68,76-79
+  s_9ab6822f632c86::t_3362f1341873c8 264-266
+apps/api/src/localSkills.test.ts
+  s_9ab6822f632c86::t_b63144ac69b527 165,167-171
+  s_9ab6822f632c86::t_77cdd494ef9bae 46
+  s_9ab6822f632c86::t_433ae5abb9d109 76-77
+  s_9ab6822f632c86::t_3d6f466d34f3d4 111-112
+packages/companion-skill/skill/reference/api.md
+  s_9ab6822f632c86::t_42517ffab8a87e 411
+  s_9ab6822f632c86::t_d9801f1f43c269 360-377
+  s_9ab6822f632c86::t_7daf62595e0086 415
+  s_9ab6822f632c86::t_6b0fa62a0e8207 199-210
+packages/companion-skill/skill/scripts/skill_guard.py
+  s_9ab6822f632c86::t_a09cd436247234 388-389,392
+  s_9ab6822f632c86::t_f35a17bc14d9a6 1-387,390-391,393-671
+apps/api/src/skillPublishGuards.test.ts
+  s_9ab6822f632c86::t_5cdd9b189bfd11 3-8
+  s_9ab6822f632c86::t_39a5d9459eb01e 73-150
+packages/companion-skill/skill/companion.json
+  s_9ab6822f632c86::t_fe67545f43ca97 12-19
+  s_9ab6822f632c86::t_65fcfe9051fbef 4
+  s_9ab6822f632c86::t_bd6ee4dac189a4 103
+apps/api/src/skillPublishGuards.ts
+  s_9ab6822f632c86::t_5e5ebcd51d0398 46-98
+packages/core/src/services.ts
+  s_9ab6822f632c86::t_97fb169bd72525 982-1003
+packages/companion-skill/skill/SKILL.md
+  s_9ab6822f632c86::t_ae769f2e7487f1 487-493
+  s_9ab6822f632c86::t_fbbe54b2433506 124-155
+  s_9ab6822f632c86::t_4737b3760848eb 396-400
+  s_9ab6822f632c86::t_162f3d58875b06 259-265
+  s_9ab6822f632c86::t_96a8154cb5257c 778
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "039b1c0f6f1bf1b9a2705d9d2d5367cc56c81830",
+  "prompts": {},
+  "sessions": {
+    "s_9ab6822f632c86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e23475f7-6a75-42c8-b060-1c342827e3af",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

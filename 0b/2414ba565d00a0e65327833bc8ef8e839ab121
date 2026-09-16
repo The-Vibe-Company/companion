@@ -1,0 +1,199 @@
+.env.example
+  s_c2b62088293697::t_555165926c2371 45-53
+DESIGN.md
+  s_c2b62088293697::t_8d8099fb5ff386 426-439
+README.md
+  s_c2b62088293697::t_12fc45eb348a5d 113-114,118-124,127-130
+apps/api/package.json
+  s_c2b62088293697::t_7a43a3db142700 15,18,31
+apps/api/scripts/copy-migrations.cjs
+  s_c2b62088293697::t_8b894ca1394ddd 21-27
+apps/api/src/context.test.ts
+  s_c2b62088293697::t_99c4e8c545f0c5 25,43-65
+apps/api/src/context.ts
+  s_c2b62088293697::t_b581905ffb902b 3,163-165
+apps/api/src/index.ts
+  s_c2b62088293697::t_41ca7ddd78a413 203-207,209-212,291-292,303-304,315,321,399-440,689-725,3031,3036-3044,3046-3051,3058,3075,3557-3700
+apps/api/src/localSkills.test.ts
+  s_c2b62088293697::t_38ee665696486a 51,130,134-143
+apps/api/src/seed-demo-catalog.test.ts
+  s_c2b62088293697::t_a905dd276c591f 34-35,51,55-60,134-145
+apps/api/src/seed-demo-catalog.ts
+  s_c2b62088293697::t_167c264aa9aefc 1,19,226-276,332-361
+apps/api/src/seed-test-user.ts
+  s_c2b62088293697::t_f752ccfa9f7f79 131
+apps/api/src/skillCompanionManifest.ts
+  s_c2b62088293697::t_bb0fb513010fc0 10,41,59
+apps/api/src/skillPublishRoute.test.ts
+  s_c2b62088293697::t_534ee5495c018d 244-270
+apps/api/test/integration/rls.integration.test.ts
+  s_c2b62088293697::t_1600c2ec807633 92,130-165,362-422
+apps/api/test/integration/runtimeRoleGrants.integration.test.ts
+  s_c2b62088293697::t_bdf333da77691e 42-44,112,137-138,170-179,222-223,239-240,333-335,532,568-668
+apps/api/test/integration/seedDemoCatalog.integration.test.ts
+  s_c2b62088293697::t_9c1c8a809c74d9 34,70-71,76-77,130-153,169,222
+apps/api/test/integration/skillDatabases.integration.test.ts
+  s_c2b62088293697::t_5f8904370fa63a 1-1357
+apps/api/test/integration/testDatabase.ts
+  s_c2b62088293697::t_b147d02b206986 165-172
+apps/web/src/app/globals.css
+  s_c2b62088293697::t_c15f5fac32b96d 7
+apps/web/src/components/Icon.tsx
+  s_c2b62088293697::t_cd7152b1e51838 35,85,150,203
+apps/web/src/components/skills/DetailView.test.ts
+  s_c2b62088293697::t_c9992ffff587fb 110-130
+apps/web/src/components/skills/DetailView.tsx
+  s_c2b62088293697::t_bd1fe728ad330b 39,145,502-504,516-518,593-599,714-722
+apps/web/src/components/skills/SkillDatabaseTab.test.ts
+  s_c2b62088293697::t_7d28875f0f52c8 1-530
+apps/web/src/components/skills/SkillDatabaseTab.tsx
+  s_c2b62088293697::t_f7215e2978607d 1-996
+apps/web/src/lib/skillDatabaseQueries.test.ts
+  s_c2b62088293697::t_d2f608bb160c2c 1-20
+apps/web/src/lib/skillDatabaseQueries.ts
+  s_c2b62088293697::t_bb29170bd3609b 1-70
+apps/web/src/lib/types.test.ts
+  s_c2b62088293697::t_f85ac8121ca05d 48-49
+apps/web/src/lib/types.ts
+  s_c2b62088293697::t_ca937cef6a08ed 78-79,141-142
+apps/web/src/styles/app.css
+  s_c2b62088293697::t_640b64b1fedfa7 59
+apps/web/src/styles/skill-databases.css
+  s_c2b62088293697::t_477719d650af37 1-606
+apps/worker/src/index.ts
+  s_c2b62088293697::t_d75cf7f9394d4a 5-6,9,23
+apps/worker/src/skillDatabaseCleanup.test.ts
+  s_c2b62088293697::t_dd7446a405fe64 1-100
+apps/worker/src/skillDatabaseCleanup.ts
+  s_c2b62088293697::t_7f8fede47c47c7 1-85
+apps/worker/src/supervisors.test.ts
+  s_c2b62088293697::t_768e1b0620ba77 15,17,28,30
+apps/worker/src/supervisors.ts
+  s_c2b62088293697::t_323781581d7560 5,24,30,32,37,39,51,53
+deploy/railway/README.md
+  s_c2b62088293697::t_6c58ef289b1493 120-121,193-198,213
+docs/design.md
+  s_c2b62088293697::t_01d62a4809c87e 35-39,87-89,167-168,194-277,909-922,973,983-984,991-994
+docs/testing.md
+  s_c2b62088293697::t_62268c53380229 56
+package.json
+  s_c2b62088293697::t_95843dbff0afd2 19-20
+packages/auth/src/agent-auth.test.ts
+  s_c2b62088293697::t_398f2d935c34e1 28-31,48,104,110-111,167-186
+packages/auth/src/agent-auth.ts
+  s_c2b62088293697::t_a2a1e368a7ab05 10,20-21,105-116,138-141,195-196
+packages/companion-skill/client/index.ts
+  s_c2b62088293697::t_6856a91c82d59b 27,185,190,194,212,224,228
+packages/companion-skill/client/operations.test.ts
+  s_c2b62088293697::t_e53c7cf93731a7 4,51-57
+packages/companion-skill/client/operations.ts
+  s_c2b62088293697::t_5c78d7170cf417 3,12-32
+packages/companion-skill/skill/SKILL.md
+  s_c2b62088293697::t_7b61f6a5f1414b 3,30-33,111,267-278,304-308,624-631,810-865,1289
+packages/companion-skill/skill/companion.integrity.json
+  s_c2b62088293697::t_3347ac63172750 3-4,10-11,22
+packages/companion-skill/skill/companion.json
+  s_c2b62088293697::t_a39a117c4ee668 4,7-8,32-41,48-66,445
+packages/companion-skill/skill/reference/api.md
+  s_c2b62088293697::t_13a2e0a6aa0c73 7-10,120-124,145-182
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_c2b62088293697::t_593189fd571dd0 3-5,7-8,10-14,17-19,22,27-29,31,33-39,43-44,46,49-51,53-57,59-60,64-73,82,86,88-92,94,96,100-101,104-105,107-108,111-116,118-120,122-123,125-127,130-135,137,139,141-144
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_c2b62088293697::t_2f4f9a86cf4160 248-318
+packages/companion-skill/skill/scripts/test_bootstrap.py
+  s_c2b62088293697::t_275845ba361703 34,524-526,531-533,542-544,568,604,889
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_c2b62088293697::t_6932de750427e5 374-455
+packages/contracts/schemas/companion-manifest.v2.schema.json
+  s_c2b62088293697::t_635bddb35a1639 67-82,153-211
+packages/contracts/src/agentOperations.ts
+  s_c2b62088293697::t_7899c219e3169e 10-26,108-112
+packages/contracts/src/companionManifest.ts
+  s_c2b62088293697::t_ff72194eb864d0 3,278,327,361,379,404
+packages/contracts/src/index.ts
+  s_c2b62088293697::t_19cb2344dde300 24
+packages/contracts/src/skill.ts
+  s_c2b62088293697::t_a1c5d73038fbb0 241-244
+packages/contracts/src/skillDatabase.ts
+  s_c2b62088293697::t_8ceb0df8eadcba 1-452
+packages/contracts/src/token.ts
+  s_c2b62088293697::t_26454c39806509 7-14,17-36
+packages/contracts/test/agentOperations.test.ts
+  s_c2b62088293697::t_c9205957f8fe18 31-40
+packages/contracts/test/companionManifest.test.ts
+  s_c2b62088293697::t_c777e337fdb0a8 37-45,64,68,176-209
+packages/contracts/test/secrets.test.ts
+  s_c2b62088293697::t_6df499422476b8 8,11,13-22
+packages/contracts/test/skillDatabase.test.ts
+  s_c2b62088293697::t_94f0e5bb143c9e 1-213
+packages/core/src/authz.ts
+  s_c2b62088293697::t_ff5229c62ffa25 151-162
+packages/core/src/index.ts
+  s_c2b62088293697::t_d7634d4893dcbb 8-10
+packages/core/src/services.ts
+  s_c2b62088293697::t_3c9ef3891e1507 37,59,215,1189-1192,2961-2966,4172,4184,4187,4192,4213,4313,4340
+packages/core/src/skillDatabaseCleanup.ts
+  s_c2b62088293697::t_34be578a7f6447 1-48
+packages/core/src/skillDatabaseRuntime.ts
+  s_c2b62088293697::t_516cab339c6dfd 1-67
+packages/core/src/skillDatabases.ts
+  s_c2b62088293697::t_c628e489fe8d7b 1-1120
+packages/core/test/authz.test.ts
+  s_c2b62088293697::t_1f8ae83d0e79ce 7,167-179
+packages/core/test/settings.test.ts
+  s_c2b62088293697::t_1076701404fbbf 479-492,549-558
+packages/core/test/tokenRefresh.test.ts
+  s_c2b62088293697::t_9e93be65a5afae 85-98
+packages/db/drizzle/0060_skill_databases.sql
+  s_c2b62088293697::t_4b63638bf7d745 1-334
+packages/db/drizzle/0061_skill_database_realm_shares.sql
+  s_c2b62088293697::t_105afd32dd95f2 1-217
+packages/db/drizzle/meta/_journal.json
+  s_c2b62088293697::t_24b5fb22cf204a 424-437
+packages/db/runtime-role-grants.sql
+  s_c2b62088293697::t_c2068e023fd440 82,88-90,358,369-371
+packages/db/src/schema.ts
+  s_c2b62088293697::t_54e6f1f7fdbf1b 35,3561-3751
+packages/skilldb/package.json
+  s_c2b62088293697::t_1a1a9a754ae97d 1-24
+packages/skilldb/src/index.ts
+  s_c2b62088293697::t_afdae589095f0d 1-273
+packages/skilldb/src/worker.mjs
+  s_c2b62088293697::t_6a6af1b27b6d4d 1-292
+packages/skilldb/test/runtime.test.ts
+  s_c2b62088293697::t_4061f6ee10645d 1-424
+packages/skilldb/tsconfig.json
+  s_c2b62088293697::t_453671ef1bc184 1-7
+packages/skills/src/manifest.ts
+  s_c2b62088293697::t_4e2e93208ec635 122,171,185
+packages/skills/src/validateSkill.ts
+  s_c2b62088293697::t_890e2937288434 114
+packages/storage/src/index.ts
+  s_c2b62088293697::t_4bf4891e11786c 54-79,417-443
+packages/storage/test/storage.test.ts
+  s_c2b62088293697::t_52ba7e4c3e1740 6,14,35-72
+pnpm-lock.yaml
+  s_c2b62088293697::t_3567763130b47d 15,75-77,87-89,530-554,2067-2070,4786-4787,6269-6270,6543,7357-7358,7377,7388,7392,7399,7403,7414,9544
+scripts/dev-conductor.sh
+  s_c2b62088293697::t_f0cad257292edd 5-7,18,37,116,118-122,128-130,155-161,216,380-389,647,674-679,714,716,765-777
+scripts/dev-stack-check.sh
+  s_c2b62088293697::t_e5017137fb9ca3 50,74-85,96,118,186-232
+scripts/dev-stack.sh
+  s_c2b62088293697::t_a7a2691a13497f 129-131,207-209,557
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "0b2414ba565d00a0e65327833bc8ef8e839ab121",
+  "prompts": {},
+  "sessions": {
+    "s_c2b62088293697": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fcc64-18cf-7212-80a8-0fb7f11e5885",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

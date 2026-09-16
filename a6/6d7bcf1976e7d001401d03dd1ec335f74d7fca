@@ -1,0 +1,19 @@
+apps/web/src/styles/landing.css
+  s_4fcdf558fa41c4::t_281407cf4302ac 815-847
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "a66d7bcf1976e7d001401d03dd1ec335f74d7fca",
+  "prompts": {},
+  "sessions": {
+    "s_4fcdf558fa41c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da86a8f0-c9df-484d-8d58-41ca2bf00cdf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

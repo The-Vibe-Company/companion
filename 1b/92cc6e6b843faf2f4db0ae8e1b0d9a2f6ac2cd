@@ -1,0 +1,57 @@
+internal/console/api_test.go
+  s_aca63502688e80::t_ad4c74043dc158 672-730
+internal/console/api.go
+  s_aca63502688e80::t_fcaa7587c474f6 272-279
+  s_aca63502688e80::t_525d9e79421aa5 303,315,317,319-323
+  s_aca63502688e80::t_2aaf2237817d3c 337,347
+  s_aca63502688e80::t_6ff5a9f9b2a053 356-359
+  s_aca63502688e80::t_a07d53dcd13089 380
+  s_aca63502688e80::t_c1c0d660a257a7 461-496,498
+  s_aca63502688e80::t_785b09b16f0ddc 757-760,763-764,768-770,773
+web/src/api/client.ts
+  s_aca63502688e80::t_623777435fa838 242-251
+  s_aca63502688e80::t_f963ded318f196 27
+internal/console/console.go
+  s_aca63502688e80::t_cc4f44898377c6 90-94
+  s_aca63502688e80::t_e96c2a6f62007b 435-447
+web/src/app/pages/CreateAgentPage.test.tsx
+  s_aca63502688e80::t_c3ab507a927432 99-100
+web/src/app/pages/PlanApplyPage.test.tsx
+  s_aca63502688e80::t_4e6b3a6fd57c0f 30
+  s_aca63502688e80::t_7154af36d853c6 74-75
+  s_aca63502688e80::t_d6fdf26bf6cb08 297-335,340-367
+  s_aca63502688e80::t_eaf9df354272e0 336-339
+web/src/app/pages/AgentDetailPage.test.tsx
+  s_aca63502688e80::t_810f9ab41d93e4 100
+  s_aca63502688e80::t_102d6d6e2a22e9 269-270
+  s_aca63502688e80::t_258bc9c96a8bcc 345-346,349
+  s_aca63502688e80::t_684e882fef559e 313-319
+web/src/app/pages/PlanApplyPage.tsx
+  s_aca63502688e80::t_7b00239907bf3a 113-152
+  s_aca63502688e80::t_e7011139abaac9 255-286
+  s_aca63502688e80::t_a062d83954de98 99-104
+  s_aca63502688e80::t_598c2b57870d3b 331,333-335
+  s_aca63502688e80::t_118f062aa60555 181-192,194
+web/src/api/types.ts
+  s_aca63502688e80::t_1c9129107a4c2b 96-115
+web/src/app/pages/AgentDetailPage.tsx
+  s_aca63502688e80::t_69484845f782b0 138-140
+internal/console/types.go
+  s_aca63502688e80::t_5bf0f86ef25a6a 92-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "1b92cc6e6b843faf2f4db0ae8e1b0d9a2f6ac2cd",
+  "prompts": {},
+  "sessions": {
+    "s_aca63502688e80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9d6e67c-702e-499f-ae73-ff0b1bce8016",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Claude <noreply@anthropic.com>"
+    }
+  }
+}

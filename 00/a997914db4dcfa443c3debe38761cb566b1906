@@ -1,0 +1,47 @@
+apps/web/src/components/skills/route.test.ts
+  s_bb717887248412::t_c7f20cd15491bf 3,5,108-114
+  s_053161b23c04ef::t_f1fef18470c767 115-116
+apps/web/src/components/skills/SkillsApp.tsx
+  s_bb717887248412::t_35438c9e190cbd 837-842,847
+  s_bb717887248412::t_8022159024a7ce 1004,1006,1066-1071,1089
+  s_bb717887248412::t_cb883c2bd153f7 41,43,243-246,420-440,442-443,457,461-465,488
+  s_bb717887248412::t_40f09f01b3a7bb 1150-1152
+apps/web/src/components/skills/route.ts
+  s_bb717887248412::t_d8fc4b602556af 34-47
+apps/web/src/components/skills/DetailView.tsx
+  s_bb717887248412::t_4a24babc9d5c82 3
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_bb717887248412::t_1cbb593a8360bc 691-724
+  s_bb717887248412::t_eaddfde0a2e13a 663,677,687,732,812,829-830
+docs/design.md
+  s_bb717887248412::t_153344aabadfb4 85-92,323,359-363
+apps/web/src/components/skills/DetailView.test.ts
+  s_bb717887248412::t_98272d23cdb76c 92-93
+apps/web/src/app/s/[token]/opengraph-image.tsx
+  s_bb717887248412::t_cc5cb79c240867 86-87
+  s_bb717887248412::t_f2d11f9c55afaa 22,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "00a997914db4dcfa443c3debe38761cb566b1906",
+  "prompts": {},
+  "sessions": {
+    "s_053161b23c04ef": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f07f6-004b-7cf0-918c-05056a09de09",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_bb717887248412": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f07f9-a9f4-7972-93d2-253087b807e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

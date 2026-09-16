@@ -1,0 +1,38 @@
+apps/api/src/localSkills.test.ts
+  s_d2c9b1518da995::t_38bfb9e797e4d6 47,221
+  s_d2c9b1518da995::t_33e2f45556b12d 118-120
+  s_d2c9b1518da995::t_69778dc39f5650 196
+packages/companion-skill/skill/reference/api.md
+  s_d2c9b1518da995::t_38bfb9e797e4d6 43
+apps/api/src/skillListRoute.test.ts
+  s_d2c9b1518da995::t_5e3898c9b61419 26,41
+  s_d2c9b1518da995::t_044dfe6a31e9a6 570-636
+docs/testing.md
+  s_d2c9b1518da995::t_38bfb9e797e4d6 24
+apps/api/src/index.ts
+  s_d2c9b1518da995::t_5e3898c9b61419 1492-1493,1496-1500
+packages/companion-skill/skill/SKILL.md
+  s_d2c9b1518da995::t_38bfb9e797e4d6 315-318,859-860,996
+packages/companion-skill/skill/companion.json
+  s_d2c9b1518da995::t_38bfb9e797e4d6 4,27-35
+packages/companion-skill/skill/companion.integrity.json
+  s_d2c9b1518da995::t_ef22ef000e3fcb 3-4,19
+docs/design.md
+  s_d2c9b1518da995::t_38bfb9e797e4d6 96-97,523-524
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bbc49d3ea74834efa4101a660b5cac3709966dfa",
+  "prompts": {},
+  "sessions": {
+    "s_d2c9b1518da995": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6643-1899-7601-b685-89d8c578ef6c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

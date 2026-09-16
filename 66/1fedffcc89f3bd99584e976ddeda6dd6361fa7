@@ -1,0 +1,64 @@
+packages/sandbox/src/index.ts
+  s_1e74ce65ff5b16::t_41fedc93e207f7 2
+  s_1e74ce65ff5b16::t_9fbe1e2d7e4adf 1
+packages/core/src/index.ts
+  s_1e74ce65ff5b16::t_dc0b670ccb86f6 3
+packages/core/test/agentsFakeDb.ts
+  s_1e74ce65ff5b16::t_054e72176bd4d5 1-193,195-329
+  s_1e74ce65ff5b16::t_778993bd5333f8 194
+packages/skills/test/helpers.ts
+  s_1e74ce65ff5b16::t_8aeb309a0e0984 47-48,63
+packages/core/src/agents.ts
+  s_1e74ce65ff5b16::t_e9c6e31f781dd0 1-48,52-54,57-523,525-548,550-649,651-1015,1017-1034,1036-1205,1207-1238,1240-1296,1298-1309,1318-1331,1333,1336-1390
+  s_1e74ce65ff5b16::t_951b6762dbe4b9 49-51,55-56,524,549,650,1016,1035,1206,1239,1297,1310-1317,1332,1334-1335
+packages/sandbox/src/vercel.ts
+  s_1e74ce65ff5b16::t_cc7f9347c7a825 105-106
+  s_1e74ce65ff5b16::t_000d9a8e1c20ad 1-3,5-20,22-104,107-197
+  s_1e74ce65ff5b16::t_ff0303859e7294 21
+  s_1e74ce65ff5b16::t_91d553efbd3304 4
+packages/skills/src/archive.ts
+  s_1e74ce65ff5b16::t_90794ed10c234f 123
+  s_1e74ce65ff5b16::t_1ba14349ffd646 505-573
+  s_1e74ce65ff5b16::t_ab87dda9d97eb9 80,93-98,102
+packages/sandbox/test/modelCatalog.test.ts
+  s_1e74ce65ff5b16::t_23532da3c1fd43 1-83
+packages/core/src/services.ts
+  s_1e74ce65ff5b16::t_4f8a2839da3381 99-101,103
+  s_1e74ce65ff5b16::t_5c307eae014d9d 102
+packages/core/test/agentsProvision.test.ts
+  s_1e74ce65ff5b16::t_778993bd5333f8 19
+  s_1e74ce65ff5b16::t_68c226bc528000 1-18,20-451
+packages/core/src/agentRuntime.ts
+  s_1e74ce65ff5b16::t_0ea462c4bb213b 15-17
+  s_1e74ce65ff5b16::t_ae2adbe3f946dd 1-14,18-91
+packages/sandbox/tsconfig.json
+  s_1e74ce65ff5b16::t_9ed54c0600e11b 1-7
+packages/core/test/agents.test.ts
+  s_1e74ce65ff5b16::t_1d2ff92456304c 1-462
+packages/sandbox/src/modelCatalog.ts
+  s_1e74ce65ff5b16::t_6ec0b7e8efed5b 1-151
+packages/skills/test/extractArchiveEntryBuffers.test.ts
+  s_1e74ce65ff5b16::t_e7d39279576b11 1-47
+packages/core/package.json
+  s_1e74ce65ff5b16::t_3e705fcb1aa192 22-23
+packages/sandbox/package.json
+  s_1e74ce65ff5b16::t_9ed54c0600e11b 1-24
+pnpm-lock.yaml
+  s_1e74ce65ff5b16::t_e8cb1f23eebe71 281-286,329-353,1601-1603,2072-2078,2108-2110,2185-2187,3240-3242,3542-3545,3742-3745,3970-3972,4103-4106,4256-4263,5248-5251,5651-5669,5710-5711,5810-5813,7034-7035,7559-7560,7777-7778,8090-8098,8264-8265,8471-8478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "661fedffcc89f3bd99584e976ddeda6dd6361fa7",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

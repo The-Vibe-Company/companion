@@ -1,0 +1,24 @@
+apps/web/src/components/skills/DetailView.tsx
+  s_c95b43f5a9dd1e::t_7678c1b9ac05f3 291
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_c95b43f5a9dd1e::t_72356b721c754e 400,407,417,506,518,536,551,561,575,584,592
+apps/web/src/components/skills/SkillsApp.tsx
+  s_c95b43f5a9dd1e::t_abb9d6d1767586 567
+  s_c95b43f5a9dd1e::t_45b5ec668a2b2c 531
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "5b5bb3024b09e66b6cb3d05319611fd5948eb3ee",
+  "prompts": {},
+  "sessions": {
+    "s_c95b43f5a9dd1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc16caae-9f95-4654-9d8d-e6a822fa05b4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

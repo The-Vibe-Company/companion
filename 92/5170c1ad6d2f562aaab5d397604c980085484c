@@ -1,0 +1,21 @@
+supabase/migrations/20260607090006_management_rpcs.sql
+  s_120c4dbab8c00a::t_f2aeca28d17fae 90-93
+apps/web/src/app/api/org/route.ts
+  s_120c4dbab8c00a::t_4a85aacb301960 21,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "925170c1ad6d2f562aaab5d397604c980085484c",
+  "prompts": {},
+  "sessions": {
+    "s_120c4dbab8c00a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "441587e1-4104-43c6-bff4-a80dcf49c57e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

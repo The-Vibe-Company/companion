@@ -1,0 +1,41 @@
+apps/web/src/lib/types.ts
+  s_1e74ce65ff5b16::t_0085840ac9af63 201-204
+  s_1e74ce65ff5b16::t_2a89753ccbf370 271-277
+packages/contracts/src/agents.ts
+  s_1e74ce65ff5b16::t_4ff8cb7ff636a4 106-109
+apps/web/src/components/agents/DetailView.tsx
+  s_1e74ce65ff5b16::t_0e04128677eeef 147-156,160
+  s_1e74ce65ff5b16::t_49fd4d677cea60 194,197
+packages/core/test/agentsProvision.test.ts
+  s_1e74ce65ff5b16::t_e1c598b221350f 337-364
+  s_1e74ce65ff5b16::t_589167c1213327 14
+  s_1e74ce65ff5b16::t_bb8a8d1bc20d52 333
+packages/core/test/agents.test.ts
+  s_1e74ce65ff5b16::t_cadb747243e7b0 300,303-304,317-320
+apps/api/src/index.ts
+  s_1e74ce65ff5b16::t_1982445ebcc195 2456-2458,2460-2461
+packages/core/src/agents.ts
+  s_1e74ce65ff5b16::t_eda005d9d35522 664
+  s_1e74ce65ff5b16::t_e099e35fd4013c 252,254-261,267
+  s_1e74ce65ff5b16::t_d03efcc7489122 469-472
+  s_1e74ce65ff5b16::t_98e8fd2c8297b6 840,844-870
+  s_1e74ce65ff5b16::t_72eb9795984a37 871-872
+apps/web/src/components/agents/AgentsApp.test.ts
+  s_1e74ce65ff5b16::t_6e772a7aaca5cc 279,344
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b2f1130dfd99275a8296880bc1fcebeb00d33f23",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

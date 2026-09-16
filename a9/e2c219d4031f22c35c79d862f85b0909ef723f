@@ -1,0 +1,19 @@
+apps/web/src/components/skills/updateFlow.test.ts
+  s_bb9a090db217b2::t_1b8dfa5114fe1d 8-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "a9e2c219d4031f22c35c79d862f85b0909ef723f",
+  "prompts": {},
+  "sessions": {
+    "s_bb9a090db217b2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ecb4e-76cb-7203-a4e1-e81d80f012b0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

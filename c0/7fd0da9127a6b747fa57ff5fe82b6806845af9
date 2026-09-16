@@ -1,0 +1,24 @@
+apps/api/src/index.ts
+  s_0ace220d528fbf::t_69bb88d05bfeb5 14
+  s_0ace220d528fbf::t_1497c86904f0bc 1096-1098
+  s_0ace220d528fbf::t_e4f2e1696b6857 1022-1028
+  s_0ace220d528fbf::t_67bfe956aad227 978-987
+packages/core/src/services.ts
+  s_0ace220d528fbf::t_187fe6157130f7 1593-1600,1607-1611,1617,1644-1659
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "c07fd0da9127a6b747fa57ff5fe82b6806845af9",
+  "prompts": {},
+  "sessions": {
+    "s_0ace220d528fbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f59bd7a8-4216-4b98-af92-d2236d3613ed",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

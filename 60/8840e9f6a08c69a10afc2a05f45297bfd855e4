@@ -1,0 +1,20 @@
+apps/api/src/index.ts
+  s_456d76c750cd85::t_752bf6857bc5aa 782-788,798
+  s_456d76c750cd85::t_eaa7d5ed796775 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "608840e9f6a08c69a10afc2a05f45297bfd855e4",
+  "prompts": {},
+  "sessions": {
+    "s_456d76c750cd85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cdeeb4e-8534-49fb-a61f-8b8033e73ecd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

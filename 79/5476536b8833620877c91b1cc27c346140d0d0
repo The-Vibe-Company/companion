@@ -1,0 +1,131 @@
+.agents/skills/review-code-dev/references/reviewers/tests.md
+  s_597e0620a42fa8::t_aa648c593e45bc 1-28
+.agents/skills/design-frontend-dev/reference/layout.md
+  s_597e0620a42fa8::t_743507c5ea0f8c 1-161
+.agents/skills/design-frontend-dev/evals/evals.json
+  s_597e0620a42fa8::t_9f160718b42c6b 1-20
+.agents/skills/design-frontend-dev/reference/interaction-design.md
+  s_597e0620a42fa8::t_d66698096bbca2 1-189
+.agents/skills/design-frontend-dev/reference/shape.md
+  s_597e0620a42fa8::t_716ad44d876819 1-165
+.agents/skills/review-code-dev/evals/evals.json
+  s_597e0620a42fa8::t_1475c214a9bf3b 1-80
+.agents/skills/design-frontend-dev/reference/onboard.md
+  s_597e0620a42fa8::t_c4e4ce997ed6e2 1-234
+.agents/skills/design-frontend-dev/reference/polish.md
+  s_597e0620a42fa8::t_1e0642907d3f76 1-236
+.agents/skills/design-frontend-dev/reference/critique.md
+  s_597e0620a42fa8::t_ea785c142daf23 1-59
+.agents/skills/design-frontend-dev/reference/distill.md
+  s_597e0620a42fa8::t_dfe08ebad3cd43 1-111
+.agents/skills/ship-pr-dev/SKILL.md
+  s_597e0620a42fa8::t_f00d0c0de7ab08 1-183
+.agents/skills/design-frontend-dev/reference/audit.md
+  s_597e0620a42fa8::t_b8ff60e9860b1b 1-133
+.agents/skills/review-code-dev/references/reviewers/security.md
+  s_597e0620a42fa8::t_b79c7b99343446 1-29
+.agents/skills/review-code-dev/scripts/parse_review_findings.py
+  s_597e0620a42fa8::t_1bd4c1ffd24e79 1-81
+.agents/skills/review-code-dev/references/reviewers/frontend.md
+  s_597e0620a42fa8::t_1c55430aeee6f3 1-48
+.agents/skills/design-frontend-dev/reference/animate.md
+  s_597e0620a42fa8::t_89ff510fbf7f07 1-201
+.agents/skills/design-frontend-dev/companion.json
+  s_597e0620a42fa8::t_750559f785c8f6 1-48
+.agents/skills/ship-pr-dev/companion.json
+  s_597e0620a42fa8::t_9b9120d5f514d8 1-69
+.agents/skills/ship-pr-dev/references/review-board.md
+  s_597e0620a42fa8::t_56acddf5029aa8 1-72
+.agents/skills/ship-pr-dev/references/pr-template.md
+  s_597e0620a42fa8::t_7775c3bf3c5f0a 1-76
+.agents/skills/review-code-dev/references/subagent-briefs.md
+  s_597e0620a42fa8::t_8d9bfe8421b705 1-305
+.agents/skills/design-frontend-dev/reference/overdrive.md
+  s_597e0620a42fa8::t_4133e098f021d3 1-130
+.agents/skills/design-frontend-dev/reference/clarify.md
+  s_597e0620a42fa8::t_b013a3a2e2afa2 1-288
+.agents/skills/design-frontend-dev/SOURCE.md
+  s_597e0620a42fa8::t_04ac7aae66cf97 1-26
+.agents/skills/design-frontend-dev/reference/quieter.md
+  s_597e0620a42fa8::t_fa3561e97fc4c6 1-99
+.agents/skills/review-code-dev/references/reviewers/api-contract.md
+  s_597e0620a42fa8::t_b08d3ce7df945a 1-29
+.agents/skills/ship-pr-dev/references/workflow.md
+  s_597e0620a42fa8::t_59cc2bbd8e1da7 1-162
+.agents/skills/review-code-dev/references/reviewers/backend.md
+  s_597e0620a42fa8::t_77e5948ddc3170 1-29
+.agents/skills/review-code-dev/references/reviewers/performance.md
+  s_597e0620a42fa8::t_55b8bf729ba004 1-28
+.agents/skills/review-code-dev/companion.json
+  s_597e0620a42fa8::t_3f9acb2363a098 1-120
+.agents/skills/review-code-dev/scripts/prepare_review_run.py
+  s_597e0620a42fa8::t_d5308ef9fe60f4 1-137
+.agents/skills/design-frontend-dev/reference/adapt.md
+  s_597e0620a42fa8::t_a339830af9bc85 1-311
+.agents/skills/review-code-dev/references/reviewers/red-team.md
+  s_597e0620a42fa8::t_1e3538c9454cb6 1-30
+.agents/skills/ship-pr-dev/scripts/prepare_ship_run.py
+  s_597e0620a42fa8::t_19fa519eac66cb 1-91
+.agents/skills/review-code-dev/references/review-playbook.md
+  s_597e0620a42fa8::t_1195a381b1baa4 1-155
+.agents/skills/review-code-dev/references/reviewers/architecture.md
+  s_597e0620a42fa8::t_ade7d68184b7c2 1-29
+.agents/skills/review-code-dev/references/finding-rubric.md
+  s_597e0620a42fa8::t_dfe9f3410a4ce6 1-99
+.agents/skills/design-frontend-dev/reference/delight.md
+  s_597e0620a42fa8::t_0072bb8a485b25 1-302
+.agents/skills/design-frontend-dev/reference/harden.md
+  s_597e0620a42fa8::t_6e90ea58ba0e0c 1-347
+.agents/skills/design-frontend-dev/SKILL.md
+  s_597e0620a42fa8::t_4b06094a7f9dcf 1-143
+.agents/skills/design-frontend-dev/reference/product.md
+  s_597e0620a42fa8::t_e3b0aa8243703d 1-60
+.agents/skills/design-frontend-dev/reference/bolder.md
+  s_597e0620a42fa8::t_3bb986913a900e 1-113
+.agents/skills/review-code-dev/references/reviewers/data-migration.md
+  s_597e0620a42fa8::t_c773284825d90a 1-28
+.agents/skills/ship-pr-dev/references/readiness-gates.md
+  s_597e0620a42fa8::t_797fae5cf116c4 1-105
+.agents/skills/design-frontend-dev/reference/optimize.md
+  s_597e0620a42fa8::t_0ef30df0bf0417 1-258
+.agents/skills/design-frontend-dev/reference/colorize.md
+  s_597e0620a42fa8::t_83f8bb3003cb57 1-245
+.agents/skills/review-code-dev/references/local-review-rules.md
+  s_597e0620a42fa8::t_2a685d4de4c3e5 1-50
+.agents/skills/design-frontend-dev/LICENSE
+  s_597e0620a42fa8::t_20e8d7886c6e1b 1-191
+.agents/skills/review-code-dev/agents/openai.yaml
+  s_597e0620a42fa8::t_3685b2ae2ef720 1-4
+.agents/skills/ship-pr-dev/evals/evals.json
+  s_597e0620a42fa8::t_c59d4b6761bdf4 1-40
+.agents/skills/review-code-dev/references/output-contract.md
+  s_597e0620a42fa8::t_c0f173bea3eeff 1-373
+.agents/skills/review-code-dev/SKILL.md
+  s_597e0620a42fa8::t_8cd59383108d5d 1-223
+.agents/skills/review-code-dev/references/review-intelligence.md
+  s_597e0620a42fa8::t_010ed70d0bfaab 1-113
+.agents/skills/design-frontend-dev/reference/brand.md
+  s_597e0620a42fa8::t_7a881f7194f19b 1-108
+.agents/skills/ship-pr-dev/scripts/collect_ship_context.py
+  s_597e0620a42fa8::t_26935bc000dcd7 1-171
+.agents/skills/design-frontend-dev/reference/typeset.md
+  s_597e0620a42fa8::t_cbbe0014696852 1-279
+.agents/skills/review-code-dev/scripts/collect_review_context.py
+  s_597e0620a42fa8::t_066edfb584de87 1-418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "795476536b8833620877c91b1cc27c346140d0d0",
+  "prompts": {},
+  "sessions": {
+    "s_597e0620a42fa8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8a47-f1df-7071-8af7-e27d803960fb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

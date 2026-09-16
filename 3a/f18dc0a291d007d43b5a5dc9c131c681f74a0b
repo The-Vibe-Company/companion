@@ -1,0 +1,30 @@
+apps/web/src/lib/settingsData.ts
+  s_1e74ce65ff5b16::t_5a4a14cc7ff15e 21
+apps/web/src/components/org/model.ts
+  s_1e74ce65ff5b16::t_4df3839801803b 90
+apps/web/src/components/org/SettingsView.tsx
+  s_1e74ce65ff5b16::t_ed37c327d22545 9
+  s_1e74ce65ff5b16::t_1012dec9895023 24-25
+  s_1e74ce65ff5b16::t_dc0ad1bf300ac1 66
+apps/web/src/components/org/SettingsSidebar.tsx
+  s_1e74ce65ff5b16::t_8ae413e709f7da 130-134
+  s_1e74ce65ff5b16::t_a9b792470dd7a7 129
+apps/web/src/components/org/ProvidersPane.tsx
+  s_1e74ce65ff5b16::t_02f05056c16c37 1-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3af18dc0a291d007d43b5a5dc9c131c681f74a0b",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

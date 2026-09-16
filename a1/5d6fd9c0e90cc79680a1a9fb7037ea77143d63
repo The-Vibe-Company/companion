@@ -1,0 +1,31 @@
+packages/companion-runtime/src/leaseSession.ts
+  s_7a32b7067b94c9::t_4efc6fd972c859 312,314-318,321-323,325-342
+  s_7a32b7067b94c9::t_c752fa70273d3b 4,311,313,319-320,324
+  s_7a32b7067b94c9::t_9bc0416d22521d 343-345
+packages/companion-runtime/src/operations.ts
+  s_7a32b7067b94c9::t_f0ca0476ad9ab6 371,812
+packages/companion-runtime/src/engine.test.ts
+  s_7a32b7067b94c9::t_6391812708acc0 2084-2127
+packages/companion-runtime/src/decision.ts
+  s_7a32b7067b94c9::t_f0ca0476ad9ab6 57
+packages/companion-runtime/src/attempt.ts
+  s_7a32b7067b94c9::t_f0ca0476ad9ab6 189
+packages/companion-runtime/src/settings.ts
+  s_7a32b7067b94c9::t_f0ca0476ad9ab6 105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a15d6fd9c0e90cc79680a1a9fb7037ea77143d63",
+  "prompts": {},
+  "sessions": {
+    "s_7a32b7067b94c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba622ebc-6ca5-4ece-bb67-3b8e65150046",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

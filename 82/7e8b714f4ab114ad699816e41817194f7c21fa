@@ -1,0 +1,21 @@
+packages/billing/test/stripeGateway.test.ts
+  s_96c3bc2346aa7f::t_9395937562b34f 81-89,92,98-99
+packages/billing/src/index.ts
+  s_96c3bc2346aa7f::t_9395937562b34f 54-56,64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "827e8b714f4ab114ad699816e41817194f7c21fa",
+  "prompts": {},
+  "sessions": {
+    "s_96c3bc2346aa7f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5af6-bdea-7621-9bab-fc9122b22a95",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,80 @@
+packages/core/test/authz.test.ts
+  s_4d664a5d68e055::t_1de3477d9a6b21 1-2,4-12,16,19,21-29,31-32,34-38,40,43,47-59
+  s_4d664a5d68e055::t_783fdd27ba23da 3,13-15,17-18,20,30,33,39,41-42,44-46
+packages/contracts/tsconfig.json
+  s_4d664a5d68e055::t_444fbcb58dffe1 1-7
+packages/contracts/src/validation.ts
+  s_4d664a5d68e055::t_5ff88c9fc910c0 1-30
+packages/skills/test/semver.test.ts
+  s_4d664a5d68e055::t_1a5f5f15a3f522 1-34
+packages/skills/src/unpack.ts
+  s_4d664a5d68e055::t_01e30f6bc37925 1-84
+packages/skills/src/constants.ts
+  s_4d664a5d68e055::t_3f7acf74f526f1 1-35
+packages/skills/src/index.ts
+  s_4d664a5d68e055::t_39e35c12531ffd 1-8
+packages/core/tsconfig.json
+  s_4d664a5d68e055::t_13df8ad9e32a8d 1-7
+packages/skills/tsconfig.json
+  s_4d664a5d68e055::t_d2bfd8ec04ee7a 1-8
+packages/core/package.json
+  s_4d664a5d68e055::t_3edcbf8418a356 1-20
+packages/core/vitest.config.ts
+  s_4d664a5d68e055::t_e83de380fe59a7 1-7
+packages/core/src/authz.ts
+  s_4d664a5d68e055::t_0e23cca76db83b 1,14,39-40,47-48
+  s_4d664a5d68e055::t_98bdc65269341a 2-13,15-38,41-46,49-72
+packages/skills/vitest.config.ts
+  s_4d664a5d68e055::t_bfd000e40247f3 1-7
+packages/skills/src/archive.ts
+  s_4d664a5d68e055::t_c35463bbdcf73e 1-214
+packages/contracts/src/index.ts
+  s_4d664a5d68e055::t_e8cc63bf89c328 1-5
+packages/skills/src/checksum.ts
+  s_4d664a5d68e055::t_68c4e19a606f2c 1-14
+packages/core/src/index.ts
+  s_4d664a5d68e055::t_7cde9197f3b81a 1
+packages/skills/package.json
+  s_4d664a5d68e055::t_5836bcc9779e06 1-24
+packages/skills/test/helpers.ts
+  s_4d664a5d68e055::t_db487702c3f599 14
+  s_4d664a5d68e055::t_53a5b5f6807baa 1-13,15-78
+packages/skills/src/frontmatter.ts
+  s_4d664a5d68e055::t_b16dbc8bcac811 1-49
+packages/contracts/src/frontmatter.ts
+  s_4d664a5d68e055::t_b7ceb13736ea39 1-25
+packages/skills/src/validateSkill.ts
+  s_4d664a5d68e055::t_6eb9792cdb2d6b 1-120
+packages/contracts/src/skill.ts
+  s_4d664a5d68e055::t_e6c27efb4233dd 27-28,33-44
+  s_4d664a5d68e055::t_446d1fd75562e1 15
+  s_4d664a5d68e055::t_ad8bbe11e9de8a 1-14,16-26,29-32,45-80
+packages/skills/src/pack.ts
+  s_4d664a5d68e055::t_16622d93d8918a 1-76
+packages/skills/src/semver.ts
+  s_4d664a5d68e055::t_533607150b0f89 1-122
+packages/contracts/src/scope.ts
+  s_4d664a5d68e055::t_df2a54620905ef 23,27-28
+  s_4d664a5d68e055::t_40363d2252ed1b 1-4,7,9-22,24-26
+  s_4d664a5d68e055::t_d0501c23599568 5-6,8
+packages/contracts/package.json
+  s_4d664a5d68e055::t_385438f9c42c42 1-18
+packages/contracts/src/lockfile.ts
+  s_4d664a5d68e055::t_c6d275e66e88bf 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "c97286998595036c280ea50ad47223f941054c58",
+  "prompts": {},
+  "sessions": {
+    "s_4d664a5d68e055": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e422828b-c9a6-43c1-b825-ff755cf84cd8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

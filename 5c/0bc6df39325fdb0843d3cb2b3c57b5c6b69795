@@ -1,0 +1,25 @@
+apps/web/src/components/org/SettingsDrawer.tsx
+  s_fb639aa363e66d::t_a3d9f23ba4cb0b 11-52,111
+apps/web/src/app/(app)/@settings/(.)settings/loading.tsx
+  s_fb639aa363e66d::t_95ab88a20b0370 1-2,6
+apps/web/src/app/(app)/@settings/(.)settings/page.tsx
+  s_fb639aa363e66d::t_422d30d93cccc8 1,15
+apps/web/src/styles/org.css
+  s_fb639aa363e66d::t_ec6a9487b4881a 203-205,219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "5c0bc6df39325fdb0843d3cb2b3c57b5c6b69795",
+  "prompts": {},
+  "sessions": {
+    "s_fb639aa363e66d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea8f1-3127-74b3-ac59-c5d807685dcf",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

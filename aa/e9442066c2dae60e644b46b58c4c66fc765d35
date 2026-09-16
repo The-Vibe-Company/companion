@@ -1,0 +1,42 @@
+apps/web/src/components/skills/SkillsApp.tsx
+  s_fb639aa363e66d::t_4ca213ed299af6 7,15-16,18,29-61,79-114,116-121,123-131,134,136,138-154,156-157,160-171,465-467,563-577
+  s_fb639aa363e66d::t_268f9a59774e81 115,122
+apps/web/src/components/org/SettingsApp.test.ts
+  s_fb639aa363e66d::t_0f326cb74f2fe2 26
+apps/web/src/app/(app)/skills/page.tsx
+  s_fb639aa363e66d::t_f6d7a2d3e9e2f4 36
+apps/web/src/components/skills/Sidebar.tsx
+  s_fb639aa363e66d::t_3dc5edf8929681 16,34,55,106-107,109,131-132,137,168-174
+apps/web/src/lib/settingsData.ts
+  s_fb639aa363e66d::t_2e7c279cc20133 6-7,11,44,58
+apps/web/src/lib/settingsViewModel.ts
+  s_fb639aa363e66d::t_043ad7c08713c3 1-81
+apps/web/src/lib/settingsClient.ts
+  s_fb639aa363e66d::t_bb450b0813ff3e 1-18
+apps/web/src/components/org/SettingsDrawer.tsx
+  s_fb639aa363e66d::t_3a133242accdf4 5,58,63,123-193
+apps/web/src/lib/types.ts
+  s_fb639aa363e66d::t_aa5d41be3d7bd0 71
+apps/web/src/lib/settingsData.test.ts
+  s_fb639aa363e66d::t_07118deea61313 29
+  s_fb639aa363e66d::t_7c6e2648762ada 53-107
+apps/web/src/components/org/SettingsApp.tsx
+  s_fb639aa363e66d::t_ceff23a69cc967 44,50,54,57,61-64,76-86,89-92,104,136,183
+  s_fb639aa363e66d::t_8335c429b09ed0 87-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "aae9442066c2dae60e644b46b58c4c66fc765d35",
+  "prompts": {},
+  "sessions": {
+    "s_fb639aa363e66d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea8f1-3127-74b3-ac59-c5d807685dcf",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

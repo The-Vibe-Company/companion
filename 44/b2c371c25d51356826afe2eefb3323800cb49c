@@ -1,0 +1,38 @@
+internal/deps/openwebui.go
+  s_6165187e0b29ee::t_aaaa3f456cda97 16-19
+.dockerignore
+  s_6165187e0b29ee::t_82533fdd936b4d 4
+internal/plan/plan_test.go
+  s_6165187e0b29ee::t_b2cd67c82ce465 6,71-74,79-118
+internal/web/web.go
+  s_6165187e0b29ee::t_ee118f5aadafb0 66-70
+internal/cli/cli.go
+  s_6165187e0b29ee::t_a2cab48fac2320 9,300-302,795-797,801-915
+  s_6165187e0b29ee::t_11a47843286d3e 195-198,224-227,352
+.github/workflows/ci.yml
+  s_6165187e0b29ee::t_07ccdb7cc32999 44-48
+internal/plan/plan.go
+  s_6165187e0b29ee::t_3838a7e98721f4 36-41,44-47,53-56,69,78-80,82,89,97,114,117-120,129-133,141
+internal/execx/runner.go
+  s_6165187e0b29ee::t_206c5fb25a00aa 64,70-77
+README.md
+  s_6165187e0b29ee::t_c84f9013a8f1e5 58,259
+internal/cli/cli_test.go
+  s_6165187e0b29ee::t_d72b9f694473fb 15-16,68-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "44b2c371c25d51356826afe2eefb3323800cb49c",
+  "prompts": {},
+  "sessions": {
+    "s_6165187e0b29ee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e7405-b4c9-76e0-918c-62df53b822df",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

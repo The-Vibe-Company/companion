@@ -1,0 +1,59 @@
+apps/runtime/src/production.test.ts
+  s_f04166807452be::t_be6af48f40207a 3,91,129-134,142,144,152,200,216-229
+  s_f04166807452be::t_bb2186f99d0464 230
+packages/companion-runtime/src/engine.test.ts
+  s_f04166807452be::t_be6af48f40207a 1053,1388,1538-1612
+packages/box-runtime/src/boxMaintenanceClient.ts
+  s_f04166807452be::t_be6af48f40207a 570-582,590,592,601-614,715-716,766-767,869,884,919,927,957,969,1098-1103,1136
+apps/runtime/src/boxAdapters.ts
+  s_f04166807452be::t_be6af48f40207a 7,13,16-25,30-33,41,53-79,85,87,89,92-94,96-111,276-289
+  s_f04166807452be::t_a5b0abd0abbad4 290
+packages/box-runtime/src/companionRuntimeBaker.ts
+  s_f04166807452be::t_be6af48f40207a 18-33,39-44,55-57,64-80,86,103-105,113-114,121,139-141,149,155-156,165-171,196-201,205-210,218-220,320-321,331-340
+apps/runtime/src/boxAdapters.test.ts
+  s_f04166807452be::t_be6af48f40207a 3,5-10,15-35,124-125,145-282
+  s_f04166807452be::t_ddb360937e8b30 283
+packages/companion-runtime/src/operations.ts
+  s_f04166807452be::t_be6af48f40207a 282-297,299,309-312,325,349,362-363,380,399,885-899
+packages/companion-runtime/src/health.ts
+  s_f04166807452be::t_be6af48f40207a 103-116
+packages/companion-runtime/src/layoutRefresh.ts
+  s_f04166807452be::t_be6af48f40207a 11-12
+packages/companion-runtime/src/logging.ts
+  s_f04166807452be::t_be6af48f40207a 27,33,102,121
+apps/runtime/src/production.ts
+  s_f04166807452be::t_be6af48f40207a 5,63-66,81,151-161,182-222,260-265
+packages/companion-runtime/src/operations.test.ts
+  s_f04166807452be::t_be6af48f40207a 768-901
+apps/api/test/integration/companionRuntimeV2.integration.test.ts
+  s_f04166807452be::t_be6af48f40207a 956-959,7406-7500
+  s_f04166807452be::t_1d8707634623fd 7501
+packages/companion-runtime/src/test/fixtures.ts
+  s_f04166807452be::t_be6af48f40207a 15,368-381
+packages/box-runtime/src/companionRuntimeBaker.test.ts
+  s_f04166807452be::t_be6af48f40207a 251-424
+docs/companions-runtime.md
+  s_f04166807452be::t_be6af48f40207a 79-85,216-220
+packages/box-runtime/src/boxMaintenanceClient.test.ts
+  s_f04166807452be::t_be6af48f40207a 24,28,828-830,832-864,868-869,871,874-882,936-984
+packages/companion-runtime/src/scheduler.test.ts
+  s_f04166807452be::t_be6af48f40207a 258
+packages/db/drizzle/meta/_journal.json
+  s_f04166807452be::t_bb0d096bb62c93 760-766
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "41a0daa313eb525b75de2c8b2a181662152dcf3d",
+  "prompts": {},
+  "sessions": {
+    "s_f04166807452be": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fe570a589ffefZHWaHkq6l3j1f",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

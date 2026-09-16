@@ -1,0 +1,37 @@
+apps/web/src/lib/settingsViewModel.ts
+  s_5dd6a894c9a7b4::t_408b8fdceab4e5 27-29
+  s_5dd6a894c9a7b4::t_be6e1a68705401 68
+apps/web/src/components/org/SettingsApp.tsx
+  s_5dd6a894c9a7b4::t_060293610b3bd6 278-283
+  s_5dd6a894c9a7b4::t_754c778a6009d9 226-259
+apps/web/src/components/org/TeamGeneralPane.tsx
+  s_5dd6a894c9a7b4::t_a164a17e45c776 65,76,88,93
+apps/web/src/components/org/TeamMembersPane.tsx
+  s_5dd6a894c9a7b4::t_6116f93dda541c 10
+apps/web/src/lib/org.ts
+  s_5dd6a894c9a7b4::t_67f9a098cbbd92 97-102,108-111,115-116
+apps/web/src/components/org/model.ts
+  s_5dd6a894c9a7b4::t_3a7275013d4474 67
+apps/web/src/components/org/ApiKeysPane.tsx
+  s_5dd6a894c9a7b4::t_22253cf8cdf56c 9-10,12-13
+  s_5dd6a894c9a7b4::t_02e4184130b9f3 70
+apps/web/src/components/org/InvitationsPane.tsx
+  s_5dd6a894c9a7b4::t_78e379584deac3 5
+  s_5dd6a894c9a7b4::t_82e3f5f6fb656c 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "cf187a85eec55e1b61c91100c4be7203e713acb9",
+  "prompts": {},
+  "sessions": {
+    "s_5dd6a894c9a7b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "347b69c9-bdea-4c1a-b4ff-8660482c1283",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

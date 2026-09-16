@@ -1,0 +1,37 @@
+packages/core/src/authz.ts
+  s_120c4dbab8c00a::t_9fa0eb1c311884 44-45,50,58-88
+  s_120c4dbab8c00a::t_9de421e9d88fcd 7-12
+packages/core/test/authz.test.ts
+  s_120c4dbab8c00a::t_e8efe9d60675ad 2-14,26-29,37,40-41,47,49-50,52-53,60-103
+supabase/migrations/20260607090005_invitations.sql
+  s_120c4dbab8c00a::t_12389519a50875 1-34
+supabase/migrations/20260607090004_roles_remodel.sql
+  s_120c4dbab8c00a::t_d70cd6a97a76ea 1-229
+supabase/seed.sql
+  s_120c4dbab8c00a::t_251fbfa29eb4bb 41,44-50,55-56,60-64
+  s_120c4dbab8c00a::t_84dfafb769e900 12-16
+packages/contracts/src/scope.ts
+  s_120c4dbab8c00a::t_a319af472fd989 12,15-16,24-25,29-57
+supabase/migrations/20260607090006_management_rpcs.sql
+  s_120c4dbab8c00a::t_1ef2167e4d1a1f 1-30,32-100,103,106-334
+  s_120c4dbab8c00a::t_4b43d7c56464ba 31
+  s_120c4dbab8c00a::t_936fa5403d1367 101-102,104-105
+packages/contracts/src/skill.ts
+  s_120c4dbab8c00a::t_b7a0d0ff0c5e81 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "7f4062e7380937a27a311e1196ca3dd8cd46e24c",
+  "prompts": {},
+  "sessions": {
+    "s_120c4dbab8c00a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "441587e1-4104-43c6-bff4-a80dcf49c57e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

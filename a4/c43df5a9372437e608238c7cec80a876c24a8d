@@ -1,0 +1,70 @@
+packages/companion-skill/skill/scripts/tools.json
+  s_883baa7855feb5::t_0487daa519c87a 24-27
+  s_883baa7855feb5::t_6d3e70111bcf8c 9,16,23
+packages/companion-skill/skill/SKILL.md
+  s_883baa7855feb5::t_5366c602fa403b 426-427
+  s_883baa7855feb5::t_e996f772d9846f 311-313,320
+  s_883baa7855feb5::t_93b035b91defc6 309-310,314-315,422-423
+  s_883baa7855feb5::t_5acffd5e94a87d 321-322
+  s_883baa7855feb5::t_f72ef62e9361f3 424-425
+  s_883baa7855feb5::t_1655298db3abd0 316-319
+docs/design.md
+  s_883baa7855feb5::t_f72ef62e9361f3 226
+  s_883baa7855feb5::t_1655298db3abd0 227-230,233
+  s_883baa7855feb5::t_e996f772d9846f 222-225
+  s_883baa7855feb5::t_25f1f912f974d0 219-221
+  s_883baa7855feb5::t_5acffd5e94a87d 231-232
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_883baa7855feb5::t_8e1bec4d1c51e7 41-44,86-89,489-527,529-532
+  s_883baa7855feb5::t_6d3e70111bcf8c 26,33,40,84-85,90-102
+  s_883baa7855feb5::t_4cc2ea2a3a15a1 372-389,391-400,448-463,465-467,533,620
+  s_883baa7855feb5::t_e501f2f28cd2d5 390,464,485,528,534-566,606-619
+  s_883baa7855feb5::t_c3a3a4b3de4826 401-447
+  s_883baa7855feb5::t_cdfc040489f444 468-484,486-488
+  s_883baa7855feb5::t_1c397383fe59de 567-605
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_883baa7855feb5::t_6d3e70111bcf8c 643-684
+  s_883baa7855feb5::t_0487daa519c87a 447-475
+  s_31bf4d166d4bb0::t_cd993fb686d79e 476-477
+packages/companion-skill/skill/companion.json
+  s_883baa7855feb5::t_1655298db3abd0 32
+  s_883baa7855feb5::t_93b035b91defc6 4,27-31,34-35
+  s_883baa7855feb5::t_5acffd5e94a87d 33
+packages/companion-skill/skill/scripts/tools.schema.json
+  s_883baa7855feb5::t_0487daa519c87a 70-88
+  s_883baa7855feb5::t_6d3e70111bcf8c 31,62-69
+packages/companion-skill/skill/scripts/install_skill.py
+  s_883baa7855feb5::t_014cde9f3d0310 197-201,306-333,528,549-552,556-568,684-688,1014,1021
+  s_883baa7855feb5::t_cdfc040489f444 529,569,580-586,967,1022
+  s_883baa7855feb5::t_6d3e70111bcf8c 22,49,137-167,172,177-186,525-527,530-548,571-576,579,590-613,652-664,680-681,689-705,964-966,1018-1020,1023-1027,1035,1037-1039,1078-1082,1086,1094-1095,1108
+  s_883baa7855feb5::t_a7807d471eede1 570,587-589,682-683,1137-1139
+  s_883baa7855feb5::t_0487daa519c87a 48,187-196,202-209,221-227,256,553-555,614-651,1028-1034,1036,1096
+  s_883baa7855feb5::t_929530d3812738 577-578,665-679
+  s_31bf4d166d4bb0::t_5999184ba003fd 334-336
+packages/companion-skill/skill/companion.integrity.json
+  s_883baa7855feb5::t_c3ae026ec0b45a 3-4,10,12,16,19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "a4c43df5a9372437e608238c7cec80a876c24a8d",
+  "prompts": {},
+  "sessions": {
+    "s_31bf4d166d4bb0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83c8-4ceb-7e11-87d0-104c7e9fc3af",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_883baa7855feb5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f84b8-9ba5-7ce0-9a06-75d413e40d21",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

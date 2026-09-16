@@ -1,0 +1,85 @@
+packages/contracts/src/billing.ts
+  s_9cd8625668638c::t_c1d226f3a9821b 79-106
+apps/web/src/lib/org.test.ts
+  s_9cd8625668638c::t_f378ab7a2f2538 1-22
+apps/api/src/index.ts
+  s_9cd8625668638c::t_1ef43642a97efe 285,288,636-637,640-644,648-651
+  s_9cd8625668638c::t_37c5403b41420f 645-647
+  s_9cd8625668638c::t_542269bcbfa095 289,638-639
+  s_9cd8625668638c::t_e3a3fa3a13b6e5 652-654
+apps/web/src/components/org/BillingPane.test.ts
+  s_9cd8625668638c::t_9be3b56279ad92 142-171,173-175,196-212
+  s_9cd8625668638c::t_0f50ff502cab16 176-195
+  s_9cd8625668638c::t_29a4bd15039280 172
+packages/billing/test/stripeGateway.test.ts
+  s_9cd8625668638c::t_b96885d1ab34df 104-105,111,116,136-145,212,224-261
+  s_9cd8625668638c::t_0bd7aa6b43ecbc 106-110,112-115,117-135,146-211,213-223
+apps/api/src/billingPreviewRoute.test.ts
+  s_9cd8625668638c::t_f831fcc6ec14f0 1-115
+apps/web/src/styles/settings.css
+  s_9cd8625668638c::t_dbd6bbca0accad 141,143-153,155-166,168-203
+  s_9cd8625668638c::t_7a9e7f7f55a570 222-225,785-794
+  s_9cd8625668638c::t_29a4bd15039280 167
+  s_9cd8625668638c::t_0f50ff502cab16 154,564-577
+scripts/agent-browser-smoke.sh
+  s_9cd8625668638c::t_4db5bb4646d76d 205,209-210
+apps/web/src/components/Icon.tsx
+  s_9cd8625668638c::t_d8975a055c4927 19,34,94,134,147,211
+apps/web/src/components/org/BillingPane.client.test.ts
+  s_9cd8625668638c::t_db89a468c28312 1-8,10,21-94,96-104,106-108,110-113,115-121,123,125-133,135-141,143-146,168-169
+  s_9cd8625668638c::t_b354ad4f8b6e77 9,11-20,109,114,158,164
+  s_9cd8625668638c::t_b03149b9d239a4 95,105,122,134,142,147-157,159-163,165-167
+  s_9cd8625668638c::t_0f50ff502cab16 124
+packages/core/test/billingPreview.test.ts
+  s_9cd8625668638c::t_ae5b1ea75d8ea4 1-7,9-57,59-61,64-79,81,83-91,93-95,98-105,107-110
+  s_9cd8625668638c::t_29a4bd15039280 80
+  s_9cd8625668638c::t_0cc0333000cd23 8,58,62-63,82,92,96-97,106
+docs/design.md
+  s_9cd8625668638c::t_3a7e6d0b066074 609-617
+packages/core/src/billingService.ts
+  s_9cd8625668638c::t_32c652af9a5234 231
+  s_9cd8625668638c::t_2b16e8aa1dc26d 35-41,232-233,236-239
+  s_9cd8625668638c::t_5016ab0852d1eb 3,28-34,52,211-213,215-220,222,240-248
+  s_9cd8625668638c::t_542269bcbfa095 42-46,210,214,221,223-230,234-235,249
+  s_9cd8625668638c::t_e19ed545519704 250
+apps/web/src/lib/org.ts
+  s_9cd8625668638c::t_0f50ff502cab16 122-123
+  s_9cd8625668638c::t_3459424936af9a 3
+  s_7d0db9d16d3cf9::t_98cdac5533fb25 124-125
+apps/web/src/components/org/BillingPane.tsx
+  s_9cd8625668638c::t_336334d2967cba 3-5,10,15-16,18-21,34-124,127,129,133-136,139,141-142,144-149,161,164-178,181,184-187,197,203-207,209-225,233-238,240-253,255-261,263-267,271,273-276,278-300,303-306,308-312,315-322,324-331
+  s_9cd8625668638c::t_29a4bd15039280 268-270
+  s_9cd8625668638c::t_b03149b9d239a4 11-14,128,130-132,137,140,143,323
+  s_9cd8625668638c::t_fce4b6d6633a66 17,26
+  s_9cd8625668638c::t_0bd7aa6b43ecbc 232
+  s_9cd8625668638c::t_0f50ff502cab16 138,226-231
+  s_9cd8625668638c::t_542269bcbfa095 262
+packages/billing/src/index.ts
+  s_9cd8625668638c::t_0f50ff502cab16 103,105-130,248-250,252,257,260-281,285-298,300,312
+  s_9cd8625668638c::t_7907d67fb6d6fc 23-44,60,94-101,243-247,251,253-256,258-259,282-284,299,301-311
+  s_7d0db9d16d3cf9::t_771a4aa1f13357 102,104,313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f786e064d77fb2b3190f4cb105aacf70000e7e78",
+  "prompts": {},
+  "sessions": {
+    "s_7d0db9d16d3cf9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8612-e34d-7792-a454-0a593213dd04",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_9cd8625668638c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8613-97e1-73a0-af56-ae14fdec9572",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

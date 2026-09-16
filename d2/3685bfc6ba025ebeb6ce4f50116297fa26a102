@@ -1,0 +1,33 @@
+tsconfig.base.json
+  s_4d664a5d68e055::t_34b09dd8a0a38c 1-24
+package.json
+  s_4d664a5d68e055::t_1241cb7ea22b1b 1-24
+pnpm-lock.yaml
+  ai_agent 1-2761
+.nvmrc
+  s_4d664a5d68e055::t_ee0f9e565529c3 1
+pnpm-workspace.yaml
+  s_4d664a5d68e055::t_d06bd22d2e4fab 1-4
+.env.example
+  s_4d664a5d68e055::t_0781ca594ff07f 1-15
+.gitignore
+  s_4d664a5d68e055::t_882d2e9e76f902 1-31
+turbo.json
+  s_4d664a5d68e055::t_1a0cb6ccd780ed 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "d23685bfc6ba025ebeb6ce4f50116297fa26a102",
+  "prompts": {},
+  "sessions": {
+    "s_4d664a5d68e055": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e422828b-c9a6-43c1-b825-ff755cf84cd8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+apps/web/src/components/runs/RunSessionsTab.tsx
+  s_5c2a1a0a0d942b::t_a67b1110a9a136 5,100
+  s_5c2a1a0a0d942b::t_7cde78d04d29b3 1-4,6-99,101-108
+apps/web/src/components/skills/DetailView.test.ts
+  s_5c2a1a0a0d942b::t_b14318d7ce4385 242-302
+  s_5c2a1a0a0d942b::t_f64d1a540bd26a 72
+apps/web/src/components/runs/RunChatView.tsx
+  s_5c2a1a0a0d942b::t_7b868c9dd34dcf 324-325,327,332
+  s_5c2a1a0a0d942b::t_fb70f91c747fa0 530
+  s_5c2a1a0a0d942b::t_7a80ebf4207521 1-323,326,328-331,333-529,531-689
+apps/web/src/components/runs/chatMarkdown.tsx
+  s_5c2a1a0a0d942b::t_1deabb1d6373cc 1-101
+apps/web/src/components/skills/route.ts
+  s_5c2a1a0a0d942b::t_759eea0cbce13f 11-16,18,84-85,89,94,96,100-101,104,107,122-125,134-136,172-184
+apps/web/src/components/skills/updateFlow.test.ts
+  s_5c2a1a0a0d942b::t_f64d1a540bd26a 108
+apps/web/src/components/runs/chatStream.ts
+  s_5c2a1a0a0d942b::t_1deabb1d6373cc 1-83,85-86,90,93-100,102-103,106-108,114-390
+  s_5c2a1a0a0d942b::t_659e045b8d496f 84,87-89,91-92,101,104-105,109-113
+apps/web/src/components/runs/chatStream.test.ts
+  s_5c2a1a0a0d942b::t_94bb0b22c24bce 1-246
+apps/web/src/components/skills/DetailView.tsx
+  s_5c2a1a0a0d942b::t_8d1344cdf7a888 306-309
+  s_5c2a1a0a0d942b::t_66b9cde9e95fcf 9,35
+  s_5c2a1a0a0d942b::t_3da5e8a7f2ed3b 33-34,186,336-343,350-352,354,356-364,416-430,529,567-583,759-760,762-792
+apps/web/src/components/runs/RunLauncherDialog.tsx
+  s_5c2a1a0a0d942b::t_d84ed6be446626 1-254
+apps/web/src/lib/runQueries.ts
+  s_5c2a1a0a0d942b::t_ccb14a9b116465 7-8,65-104
+apps/web/src/components/runs/ArtifactsStrip.tsx
+  s_5c2a1a0a0d942b::t_fb1d92199823d5 1-101
+apps/web/src/lib/format.ts
+  s_5c2a1a0a0d942b::t_2c2424e62b5393 36-54
+apps/web/src/components/skills/SkillsApp.tsx
+  s_5c2a1a0a0d942b::t_ccfb5ee3ed018e 415-422,1158,1257-1259,1299-1301
+  s_5c2a1a0a0d942b::t_b01e4947756a44 39,52,1316-1346,1545-1546,1569-1572
+apps/web/src/components/runs/ModelPicker.tsx
+  s_5c2a1a0a0d942b::t_48b6a6a20301e6 1-329
+apps/web/src/app/globals.css
+  s_5c2a1a0a0d942b::t_1510ae9df5dcc4 5
+apps/web/src/styles/runs.css
+  s_5c2a1a0a0d942b::t_1510ae9df5dcc4 1-146
+apps/web/src/components/skills/route.test.ts
+  s_5c2a1a0a0d942b::t_47ad5d41db59b1 12-13,167-201
+  s_5c2a1a0a0d942b::t_95bec51a722c81 202
+apps/web/src/components/runs/chatMarkdown.test.ts
+  s_5c2a1a0a0d942b::t_94bb0b22c24bce 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "15647fa7602d15146df226429adec5761eab1b6d",
+  "prompts": {},
+  "sessions": {
+    "s_5c2a1a0a0d942b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c9149cb-d9d2-47a8-933b-e769ca7e94e3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

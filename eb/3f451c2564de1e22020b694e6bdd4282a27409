@@ -1,0 +1,88 @@
+apps/web/src/app/globals.css
+  s_c6a212f9acdec5::t_9c76d50e3d0e6e 6
+apps/api/src/index.ts
+  s_c6a212f9acdec5::t_95eaa52fa50fd5 324-355,361-390
+  s_c6a212f9acdec5::t_937ea10728a99b 81-90
+  s_c6a212f9acdec5::t_ad0bff876188a4 14,18-19,23
+  s_c6a212f9acdec5::t_6cf89f5e236541 41
+  s_c6a212f9acdec5::t_55ae4a58f12b5f 429
+packages/core/package.json
+  s_c6a212f9acdec5::t_add79b698d8f86 18-19
+apps/web/src/app/(app)/settings/page.tsx
+  s_c6a212f9acdec5::t_e30430ed0c684b 47-49,51,54
+apps/web/src/app/(app)/onboarding/page.tsx
+  s_c6a212f9acdec5::t_71a973934de416 1-39
+apps/web/src/components/Icon.tsx
+  s_c6a212f9acdec5::t_31765cc09b1501 137,141
+  s_c6a212f9acdec5::t_f0644ea0397674 65,69
+  s_c6a212f9acdec5::t_85f00f10d1e39e 33,37,39
+  s_c6a212f9acdec5::t_cb2c12edaafde2 105,109,111
+packages/core/src/email-domains.ts
+  s_c6a212f9acdec5::t_3a27db0a6293e2 1-38
+packages/contracts/src/onboarding.ts
+  s_c6a212f9acdec5::t_76aecb82cd0d5d 1-40
+packages/core/test/email-domains.test.ts
+  s_c6a212f9acdec5::t_6c1f0384b7a61a 1-43
+apps/web/src/app/v1/auth/logout/route.test.ts
+  s_c6a212f9acdec5::t_172d9b26369b24 1-50
+apps/web/src/components/onboarding/OnboardingFlow.tsx
+  s_c6a212f9acdec5::t_f17ffc53ab69e0 1-241
+packages/core/src/free-email-domains.d.ts
+  s_c6a212f9acdec5::t_e114dcd04499bf 1-5
+packages/db/drizzle/0006_onboarding.sql
+  s_c6a212f9acdec5::t_36eda95ae0f447 1-11
+packages/db/src/seed.ts
+  s_c6a212f9acdec5::t_c27c7bbb700082 16-19
+apps/api/src/seed-test-user.ts
+  s_c6a212f9acdec5::t_93c016f338111c 1
+  s_c6a212f9acdec5::t_37588cc78422af 91-99
+packages/core/src/onboarding.ts
+  s_c6a212f9acdec5::t_f2a5c6df1ab73f 230-237
+  s_c6a212f9acdec5::t_caa944dda8cfee 1-229,238-245
+apps/web/src/app/v1/auth/logout/route.ts
+  s_c6a212f9acdec5::t_2e96da255dd8bf 1-35,37,39-41,43-49
+  s_c6a212f9acdec5::t_e750bd1c94f6fb 36,38,42
+apps/web/src/app/v1/auth/login-redirect/route.test.ts
+  s_c6a212f9acdec5::t_c8bc09586c5f9b 79-103
+apps/web/src/app/v1/auth/login-redirect/route.ts
+  s_c6a212f9acdec5::t_0db3836625cd90 74-76
+apps/web/src/components/onboarding/screens.tsx
+  s_c6a212f9acdec5::t_911388a08864a6 1-804
+packages/core/src/index.ts
+  s_c6a212f9acdec5::t_68a4764b37c2b3 2
+packages/contracts/src/index.ts
+  s_c6a212f9acdec5::t_ea40cf43f9bde1 7
+packages/core/src/services.ts
+  s_c6a212f9acdec5::t_834365b2900470 72,76-80
+  s_c6a212f9acdec5::t_4abec67d5536e0 26-30
+  s_c6a212f9acdec5::t_b1d958cda07e5e 920-924
+packages/db/src/schema.ts
+  s_c6a212f9acdec5::t_383cfc186a3f62 153-156
+  s_c6a212f9acdec5::t_e0c1209c932694 92-93
+  s_c6a212f9acdec5::t_faf5f6875f4738 98-123
+apps/web/src/styles/onboarding.css
+  s_c6a212f9acdec5::t_063f312a3565fa 1-323
+apps/web/src/app/(app)/skills/page.tsx
+  s_c6a212f9acdec5::t_ecfe155482826a 11-13,15,18-19
+docs/design.md
+  s_c6a212f9acdec5::t_e78d386b2a8fff 66-91
+  s_c6a212f9acdec5::t_d6b0763ec83895 106-109
+apps/web/src/lib/onboarding.ts
+  s_c6a212f9acdec5::t_e380e80d030144 1-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "eb3f451c2564de1e22020b694e6bdd4282a27409",
+  "prompts": {},
+  "sessions": {
+    "s_c6a212f9acdec5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70cff2fe-9389-4474-a88c-3b3917e4f72f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

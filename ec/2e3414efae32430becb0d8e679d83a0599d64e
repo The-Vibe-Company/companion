@@ -1,0 +1,61 @@
+packages/companion-skill/skill/companion.integrity.json
+  s_2b2874fa5b98a3::t_fbab41328e00ce 3-4,15
+apps/web/src/components/skills/ListView.tsx
+  s_2b2874fa5b98a3::t_1a1f1c8536937d 5-7,20-41,43-45,49-97,247,254,263,267,271-274,287,301-308
+  s_2b2874fa5b98a3::t_f88b04e923412c 42,46-48
+apps/web/src/lib/types.ts
+  s_2b2874fa5b98a3::t_1d54a4691a077f 6,14-20,47-48,69-77,97
+packages/companion-skill/skill/reference/api.md
+  s_2b2874fa5b98a3::t_c43bed1df40e6d 132-136
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_2b2874fa5b98a3::t_5d871a98318715 92,125-130
+packages/core/src/services.ts
+  s_2b2874fa5b98a3::t_452345419418eb 20,920-924,1017
+  s_2b2874fa5b98a3::t_9aeea09f0bc32b 1053-1122
+apps/web/src/components/skills/filters.test.ts
+  s_2b2874fa5b98a3::t_603af3a44f32f1 21
+apps/web/src/styles/skills.css
+  s_2b2874fa5b98a3::t_7058d394e026e3 217-218,236-243,254-255
+  s_2b2874fa5b98a3::t_ca05c7e9402c64 737-749,760-762,764-774,776-786,793-828
+cli/src/commands/skills.test.ts
+  s_2b2874fa5b98a3::t_bcd9ac238e82ee 37
+packages/companion-skill/skill/companion.json
+  s_2b2874fa5b98a3::t_f90c97c3fb92ea 4,23-29
+apps/web/src/components/skills/updateFlow.test.ts
+  s_2b2874fa5b98a3::t_469c35cc64c54b 33
+apps/api/src/localSkills.test.ts
+  s_2b2874fa5b98a3::t_0a3221d713cf04 47,114-115
+apps/web/src/components/skills/ListView.test.ts
+  s_2b2874fa5b98a3::t_9b22b0f075fd37 1-85,91-105
+  s_2b2874fa5b98a3::t_11d376f18c7382 86-87
+  s_2b2874fa5b98a3::t_6ba3b74271c527 88-90
+apps/web/src/components/skills/DetailView.test.ts
+  s_2b2874fa5b98a3::t_f5b644c1fdec05 25
+packages/contracts/test/skillListModifiers.test.ts
+  s_2b2874fa5b98a3::t_0a109892c6485f 1-70
+apps/web/src/components/skills/detailParts.test.ts
+  s_2b2874fa5b98a3::t_6b90fd385f7784 24
+packages/core/test/skillListModifiers.test.ts
+  s_2b2874fa5b98a3::t_18e356b12866a9 163-164,177
+  s_2b2874fa5b98a3::t_7fc7066a9affa5 1-162,165-176,178-186
+packages/contracts/src/skill.ts
+  s_2b2874fa5b98a3::t_0dfa892d75ace1 141-149,181-186
+packages/companion-skill/skill/SKILL.md
+  s_2b2874fa5b98a3::t_1033cd5fe8b98a 76-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "ec2e3414efae32430becb0d8e679d83a0599d64e",
+  "prompts": {},
+  "sessions": {
+    "s_2b2874fa5b98a3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f07e7-1bd3-7692-96a0-a0d7ec56ebe5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

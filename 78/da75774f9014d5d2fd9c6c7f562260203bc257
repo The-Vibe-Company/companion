@@ -1,0 +1,33 @@
+packages/core/test/skillVisibility.test.ts
+  s_62c4add0f08387::t_2c557d2017d616 94-95,102-103
+  s_62c4add0f08387::t_fd25ff56e88127 44-48
+  s_62c4add0f08387::t_1cc2f1f39bf2c3 446-511
+  s_62c4add0f08387::t_a12e3e4302d307 512-577
+  s_62c4add0f08387::t_a41d106545d368 151-154
+  s_62c4add0f08387::t_9a7e6ff59d8365 124
+packages/contracts/src/skill.ts
+  s_62c4add0f08387::t_b8b841107c3be4 26-65
+apps/api/src/index.ts
+  s_62c4add0f08387::t_bb77ed1f643dec 991-1005,1007
+  s_62c4add0f08387::t_2670541817f0f5 71
+packages/core/src/services.ts
+  s_62c4add0f08387::t_e425ebafeee9ce 32,35-38
+  s_62c4add0f08387::t_ffa97ec4decba6 1639-1642,1645,1647,1655-1656,1659,1661-1671,1673,1676-1686,1690-1704,1706-1710,1728,1731,1747-1764,1768-1781
+  s_62c4add0f08387::t_08ba501d8ec7e4 1586-1591,1593,1635-1638,1643-1644,1646,1648-1650,1652,1657-1658,1705,1711,1713-1727,1730,1732-1746,1765-1767
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "78da75774f9014d5d2fd9c6c7f562260203bc257",
+  "prompts": {},
+  "sessions": {
+    "s_62c4add0f08387": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75263354-39d6-4796-9592-02bbaedc7800",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

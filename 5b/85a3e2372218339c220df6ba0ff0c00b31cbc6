@@ -1,0 +1,115 @@
+apps/web/src/components/skills/Sidebar.tsx
+  s_276688b92fc5da::t_1223e936f21c80 29,32-33
+  s_276688b92fc5da::t_2542b74c1a2905 57,60-61
+  s_276688b92fc5da::t_e0de5c5c3cf456 221-233
+apps/web/src/components/skills/route.ts
+  s_276688b92fc5da::t_c63a388f305ada 59
+  s_276688b92fc5da::t_1bbbdfa0e54b77 5-6
+  s_276688b92fc5da::t_6a3c6d97ab6532 48
+apps/web/src/components/skills/filters.ts
+  s_276688b92fc5da::t_a61d58475b9547 36-40
+  s_276688b92fc5da::t_3657fcde208485 64-69
+apps/web/src/components/skills/DependenciesTab.tsx
+  s_276688b92fc5da::t_a7fab74f2e771b 1-260
+apps/web/src/lib/queries.ts
+  s_276688b92fc5da::t_bb6b75f09ae1a0 217-245
+  s_276688b92fc5da::t_72d85158ec5b5a 4,8,12
+  s_276688b92fc5da::t_cae5329b70368a 59,72,76-80,92,99,105-109
+  s_276688b92fc5da::t_b4352e3ea21820 83-91,100-104
+  s_276688b92fc5da::t_539030b88969f8 31
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_276688b92fc5da::t_cd20a5c701f701 60-63
+apps/web/src/components/skills/ListView.tsx
+  s_276688b92fc5da::t_dd7c7a50037bb9 190
+  s_276688b92fc5da::t_f37aea725de5bb 191-204
+  s_276688b92fc5da::t_f378d2f2578b35 160,166
+apps/web/src/components/skills/filters.test.ts
+  s_276688b92fc5da::t_9e09c4128d4eee 37-40
+apps/web/src/components/skills/DependenciesTab.test.ts
+  s_276688b92fc5da::t_3d23ad40aa9130 1-61
+apps/web/src/components/skills/detailParts.tsx
+  s_276688b92fc5da::t_8f3a62ad6e416f 203-230
+  s_276688b92fc5da::t_8469f33e60af56 130-133,139-144,148-150
+apps/web/src/components/skills/updateFlow.test.ts
+  s_276688b92fc5da::t_6da185885a2959 51-54
+  s_276688b92fc5da::t_e640643e34d087 101-103,117,120,127,130
+apps/web/src/app/globals.css
+  s_276688b92fc5da::t_ca350fcdfddffc 9
+apps/web/src/components/skills/SkillsApp.tsx
+  s_276688b92fc5da::t_967f8610908078 7-9,15,18
+  s_276688b92fc5da::t_1bcb7f0599689e 695-698,700,702,706-708,710-715
+  s_276688b92fc5da::t_60e35061ba4911 452-455,461
+  s_276688b92fc5da::t_249eafbe2959db 703-705,709,719
+  s_276688b92fc5da::t_52ec027ab47e40 107-112
+  s_276688b92fc5da::t_5c4e4a3a03cda1 884,887-888
+  s_276688b92fc5da::t_6744e3591c9a32 725-726,734
+  s_276688b92fc5da::t_f07a67f395648f 644-647
+  s_276688b92fc5da::t_40e7c90b6bc60f 681-684,689,694,699,701,716-718,720
+  s_276688b92fc5da::t_adbaa4ea9db872 437-451,456-460,462-480
+  s_276688b92fc5da::t_f93fcdfdc51758 165,168
+  s_276688b92fc5da::t_facd657f64f734 909,920-921,923-929
+  s_276688b92fc5da::t_f4856700aea095 922
+apps/web/src/components/Icon.tsx
+  s_276688b92fc5da::t_9361015cc00a87 9,13,24-25,27
+  s_276688b92fc5da::t_404bfe0caaa149 105,109,115-116,124
+apps/web/src/styles/deps.css
+  s_276688b92fc5da::t_9cba149e4ea9d2 118-141
+  s_276688b92fc5da::t_d90ca8e41cd481 1-117,142-203
+apps/web/src/components/skills/detailParts.test.ts
+  s_276688b92fc5da::t_713390653a7891 40-43
+apps/web/src/lib/types.ts
+  s_276688b92fc5da::t_501008de9060a7 82
+  s_276688b92fc5da::t_0c39fbcca4dc82 38-41
+  s_276688b92fc5da::t_f3e1d9c76e4cea 42
+  s_276688b92fc5da::t_a3326e969c6f56 78-81
+apps/web/src/components/skills/ArchivedListView.tsx
+  s_276688b92fc5da::t_7215452dacddf3 1-61,70-120
+  s_276688b92fc5da::t_dbde06c390888b 62-69
+apps/web/src/components/skills/UploadDialog.tsx
+  s_276688b92fc5da::t_d32f04828a884f 1505-1549
+  s_276688b92fc5da::t_05ecad29068983 1320-1322,1324-1325,1327-1330,1337
+  s_276688b92fc5da::t_f8edad715792e2 1221-1223
+  s_276688b92fc5da::t_937cb4785fd031 1353-1375
+  s_276688b92fc5da::t_7a60a2fe97028f 14
+  s_276688b92fc5da::t_5f91c089e0e451 968-972
+  s_276688b92fc5da::t_426ad276aef3ee 1317,1319,1323,1326,1331,1346-1351
+  s_276688b92fc5da::t_e8a562c9f799b3 1425
+  s_276688b92fc5da::t_a18e9afc396d1b 1914-1946
+  s_276688b92fc5da::t_53e332f44927ec 1006-1172,1180-1192
+  s_276688b92fc5da::t_4ae203d24d26cb 1173-1179
+  s_276688b92fc5da::t_1faf5044d20698 1246,1260-1262
+  s_276688b92fc5da::t_f6d065ec75e5e9 955-956
+  s_276688b92fc5da::t_3761c07e40b272 1418-1420,1422-1423
+  s_276688b92fc5da::t_c40c1838569785 1759,1762-1774
+  s_276688b92fc5da::t_78e815969c90a9 5-10,16
+apps/web/src/components/skills/FilterMenu.tsx
+  s_276688b92fc5da::t_c28d747e70503b 77-80
+apps/web/src/components/skills/DetailView.tsx
+  s_276688b92fc5da::t_d1d227b1cdbe7f 332-340,343
+  s_276688b92fc5da::t_d17c99310c945e 395
+  s_276688b92fc5da::t_f59152686a1a83 499-509,531-534
+  s_276688b92fc5da::t_3e30f02511d90c 34,37,41,44,68-75,83,86,90,93
+  s_276688b92fc5da::t_905c0f0ee5f42a 175,192
+  s_276688b92fc5da::t_aa26ce62099355 173-174,190-191,201
+  s_276688b92fc5da::t_b53bffda927e88 150,153
+  s_276688b92fc5da::t_33c51ea8cbdd85 8,15,24,29
+  s_276688b92fc5da::t_6662a3135f8d31 371-392
+  s_276688b92fc5da::t_53ca6a29a6c476 396,399
+  s_276688b92fc5da::t_9610fef838539a 241-254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "5b85a3e2372218339c220df6ba0ff0c00b31cbc6",
+  "prompts": {},
+  "sessions": {
+    "s_276688b92fc5da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "535a6854-5758-4d93-b15b-5d9de2a8a01b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+apps/web/src/styles/projects.css
+  s_c3b16095d2b0c2::t_38dfdcda0b0f33 353-354,2627-2629,2635-2651
+  s_c3b16095d2b0c2::t_3fd62545228154 2652
+apps/web/src/components/projects/ProjectsApp.tsx
+  s_c3b16095d2b0c2::t_c6e43f1af81877 96-97,2113,2124-2128
+  s_c3b16095d2b0c2::t_023cd6fdb56844 2602,2692
+deploy/railway/README.md
+  s_c3b16095d2b0c2::t_7ed657ef36ca58 40-46
+apps/web/src/components/files/filePreview.tsx
+  s_c3b16095d2b0c2::t_7ed657ef36ca58 292-294
+apps/web/src/components/projects/ProjectSessionView.tsx
+  s_c3b16095d2b0c2::t_44c83c0e40d342 22,1348-1353,1356-1359,1361,1366-1370,1372-1383,1396-1398,1400
+apps/web/src/styles/project-session-cowork.css
+  s_c3b16095d2b0c2::t_ccb1a02a606519 1063-1067
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "682e7807cc9f1cda49f983225bb0d27af5323503",
+  "prompts": {},
+  "sessions": {
+    "s_c3b16095d2b0c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8222fbd9-2a17-428f-916b-b45c036b2a23",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

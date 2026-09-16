@@ -1,0 +1,40 @@
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_4c0b51d6e481ad::t_e547f1a748c6bb 206,211-212,220,226,237,252-254,256,261,263,273,275-278,305-307,309-318,320-333
+  s_4c0b51d6e481ad::t_b0b8addc5b604f 49-67,74-106
+  s_4c0b51d6e481ad::t_e807d6e6cda96c 377
+  s_4c0b51d6e481ad::t_6ab5ab27d27356 447,449-450,463,468,494-495,497-498,502,531,540-548,550-555,557-559,577-603,625-633
+apps/web/src/components/skills/LocalSkillsView.test.ts
+  s_4c0b51d6e481ad::t_49b8cfacba454c 17-18,20,43,51,59,68-76,81-85,96-105,115-116,118,121-122,125-130,132-134
+apps/web/src/styles/skills.css
+  s_4c0b51d6e481ad::t_ae63eb42e7261c 918-927,930-932
+  s_4c0b51d6e481ad::t_402680b21754b1 939-959,962
+  s_4c0b51d6e481ad::t_cdd83239846c47 796-810
+  s_4c0b51d6e481ad::t_5e960994de828a 969-970
+apps/web/src/lib/settingsData.test.ts
+  s_4c0b51d6e481ad::t_14a0c188d13d16 142
+apps/web/src/app/(app)/companion-setup/page.tsx
+  s_4c0b51d6e481ad::t_4a3c5b9433480b 5-10
+apps/web/src/components/Icon.tsx
+  s_4c0b51d6e481ad::t_a6e76aa0a35f46 63
+  s_4c0b51d6e481ad::t_0083612ab4a54b 169
+apps/web/src/lib/companionSkillGate.ts
+  s_4c0b51d6e481ad::t_5d69542e8b6489 1
+apps/web/src/app/(app)/skills/page.tsx
+  s_4c0b51d6e481ad::t_debef9bb09c28a 39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "4c099e09610acb86e81ab3984fd8b418075e051d",
+  "prompts": {},
+  "sessions": {
+    "s_4c0b51d6e481ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1b05922-e79a-443e-9fd6-3febd50b0f0b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

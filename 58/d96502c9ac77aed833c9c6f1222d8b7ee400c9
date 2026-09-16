@@ -1,0 +1,24 @@
+CLAUDE.md
+  s_120c4dbab8c00a::t_fdcd2b26377d4f 34-35
+docs/design.md
+  s_120c4dbab8c00a::t_9d7874fd3f3e2e 72-83,85-86
+  s_120c4dbab8c00a::t_a037e4791a1bb6 102-106
+  s_120c4dbab8c00a::t_69ab06abaf5073 123-124
+  s_120c4dbab8c00a::t_1d422c3ffc4de5 45-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "58d96502c9ac77aed833c9c6f1222d8b7ee400c9",
+  "prompts": {},
+  "sessions": {
+    "s_120c4dbab8c00a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "441587e1-4104-43c6-bff4-a80dcf49c57e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

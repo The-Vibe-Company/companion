@@ -1,0 +1,48 @@
+scripts/ios-devx.test.mjs
+  s_c60462d1de76ae::t_1ca6e9d3d73271 21,25,27-28,919-939
+  s_c60462d1de76ae::t_ac7afc57459a9b 940-941
+scripts/verify-change.test.mjs
+  s_c60462d1de76ae::t_1ca6e9d3d73271 174-175
+scripts/dev-ios-live.sh
+  s_c60462d1de76ae::t_1ca6e9d3d73271 1-103
+scripts/verify-change.mjs
+  s_c60462d1de76ae::t_1ca6e9d3d73271 23,142-143
+.conductor/settings.toml
+  s_c60462d1de76ae::t_28ef476660d7a0 8,24,26
+.env.example
+  s_c60462d1de76ae::t_08a620920e89d7 96-100
+.github/workflows/ci.yml
+  s_c60462d1de76ae::t_96c9c3a4fd16ff 97
+apps/ios/README.md
+  s_c60462d1de76ae::t_c43ac9a4353acc 143-146,149,161-204
+package.json
+  s_c60462d1de76ae::t_45b34241924a40 38-39
+scripts/dev-conductor.sh
+  s_c60462d1de76ae::t_dc80851227b42f 42-44,50,56
+scripts/dev-environment.sh
+  s_c60462d1de76ae::t_76273e11dd1704 1-41
+scripts/dev-process.sh
+  s_c60462d1de76ae::t_099f2928f4378f 11,45,66-72
+scripts/dev-stack-check.sh
+  s_c60462d1de76ae::t_75199bf8d0701d 8,253,256,289,311,331,355,376,394-403,855
+scripts/ios-local-live.mjs
+  s_c60462d1de76ae::t_7147613aebc95b 1-211
+scripts/ios-local-live.test.mjs
+  s_c60462d1de76ae::t_2f9c8fe43ea4e7 1-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bf7c2cfe580ab75a71d00e4b67b3a3f8be940da4",
+  "prompts": {},
+  "sessions": {
+    "s_c60462d1de76ae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05338-2009-7450-903d-4583ea2dd294",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

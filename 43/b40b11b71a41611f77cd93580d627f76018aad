@@ -1,0 +1,33 @@
+apps/web/src/components/skills/SkillsApp.tsx
+  s_0f5ff03e2ff1c4::t_0ebe9abe3c0597 1253
+  s_0f5ff03e2ff1c4::t_5cf0d998313c4f 1209,1227-1230,1232-1239
+  s_bb717887248412::t_2f4961a6020d77 1231
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_0f5ff03e2ff1c4::t_076e79c7171e82 725-728,747-752,761-762,780,801-802
+  s_bb717887248412::t_eac892a14faaac 783,799
+  s_bb717887248412::t_8ec461c4c7be96 729-746,753-760,763-779,781-782,784-798,800
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "43b40b11b71a41611f77cd93580d627f76018aad",
+  "prompts": {},
+  "sessions": {
+    "s_0f5ff03e2ff1c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab5c8f24-4d0b-4b32-977f-61cb09552102",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_bb717887248412": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f07f9-a9f4-7972-93d2-253087b807e1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

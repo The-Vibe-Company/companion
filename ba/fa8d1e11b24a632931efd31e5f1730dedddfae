@@ -1,0 +1,46 @@
+plans/mega-code-review/runs/20260624T213712Z-medan-v4/verification.md
+  s_17fa1e0625dbf4::t_3db64c416035c1 1-8
+plans/mega-code-review/runs/20260624T213712Z-medan-v4/coverage.md
+  s_17fa1e0625dbf4::t_3db64c416035c1 1-25
+plans/mega-code-review/runs/20260624T213712Z-medan-v4/subagents.md
+  s_17fa1e0625dbf4::t_3db64c416035c1 1-18
+plans/mega-code-review/runs/20260624T213250Z-medan-v4/review.md
+  s_17fa1e0625dbf4::t_7221165757da10 1-2
+plans/mega-code-review/runs/20260624T213712Z-medan-v4/review.json
+  s_17fa1e0625dbf4::t_511ea5896fcf96 1-3
+plans/mega-code-review/runs/20260624T213250Z-medan-v4/context.json
+  s_17fa1e0625dbf4::t_10c9c01595db6b 1-86
+plans/mega-code-review/runs/20260624T213250Z-medan-v4/coverage.md
+  s_17fa1e0625dbf4::t_7221165757da10 1-27
+plans/mega-code-review/runs/20260624T213250Z-medan-v4/rejected-findings.md
+  s_17fa1e0625dbf4::t_7221165757da10 1-10
+plans/mega-code-review/runs/20260624T213712Z-medan-v4/recon.md
+  s_17fa1e0625dbf4::t_3db64c416035c1 1-19
+plans/mega-code-review/runs/20260624T213250Z-medan-v4/subagents.md
+  s_17fa1e0625dbf4::t_7221165757da10 1-18
+plans/mega-code-review/runs/20260624T213250Z-medan-v4/recon.md
+  s_17fa1e0625dbf4::t_7221165757da10 1-19
+plans/mega-code-review/runs/20260624T213250Z-medan-v4/review.json
+  s_17fa1e0625dbf4::t_887688c8a30d69 1-11
+plans/mega-code-review/runs/20260624T213712Z-medan-v4/review.md
+  s_17fa1e0625dbf4::t_3db64c416035c1 1
+plans/mega-code-review/runs/20260624T213712Z-medan-v4/context.json
+  s_17fa1e0625dbf4::t_50fdfae9c3b2ba 11,36-37,49-50,112-117,150-151
+  s_17fa1e0625dbf4::t_c1a152fd34ca4b 1-10,12-35,38-48,51-111,118-149,152-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "bafa8d1e11b24a632931efd31e5f1730dedddfae",
+  "prompts": {},
+  "sessions": {
+    "s_17fa1e0625dbf4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efb7e-63f2-77e1-bc3f-0586a22c1d6a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

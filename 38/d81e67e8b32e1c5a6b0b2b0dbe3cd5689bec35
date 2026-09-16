@@ -1,0 +1,61 @@
+packages/core/test/skillVisibility.test.ts
+  s_62c4add0f08387::t_4149c7b3836367 42,151-153
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_62c4add0f08387::t_4149c7b3836367 59-60
+packages/contracts/src/skill.ts
+  s_62c4add0f08387::t_4149c7b3836367 3-4,146-179,210-215
+packages/core/src/services.ts
+  s_62c4add0f08387::t_4149c7b3836367 1061-1072,1121-1148,1179-1192,2256-2257,2292,2297,2311,2675,3085-3262
+apps/web/src/lib/queries.ts
+  s_62c4add0f08387::t_4149c7b3836367 7-8,156-169
+packages/db/drizzle/0016_skill_installs.sql
+  s_62c4add0f08387::t_4149c7b3836367 1-21
+apps/web/src/lib/types.ts
+  s_62c4add0f08387::t_4149c7b3836367 45-46,88-89
+packages/db/src/schema.ts
+  s_62c4add0f08387::t_4149c7b3836367 504-541
+apps/api/src/skillInstall.test.ts
+  s_62c4add0f08387::t_4149c7b3836367 1-88
+packages/contracts/test/skillVisibility.test.ts
+  s_62c4add0f08387::t_4149c7b3836367 48-51
+apps/web/src/components/skills/ListView.tsx
+  s_62c4add0f08387::t_4149c7b3836367 6,187
+apps/api/src/index.ts
+  s_62c4add0f08387::t_4149c7b3836367 57-58,72,1000-1055
+apps/web/src/components/skills/updateFlow.test.ts
+  s_62c4add0f08387::t_4149c7b3836367 50-51,101,122-123,134-135
+apps/web/src/styles/skills.css
+  s_62c4add0f08387::t_4149c7b3836367 280-287
+apps/web/src/styles/org.css
+  s_62c4add0f08387::t_4149c7b3836367 203
+apps/web/src/components/skills/blocks.tsx
+  s_62c4add0f08387::t_4149c7b3836367 89-132
+packages/db/drizzle/meta/_journal.json
+  s_62c4add0f08387::t_abc91c4baa7d76 116-122
+apps/web/src/components/skills/filters.test.ts
+  s_62c4add0f08387::t_4149c7b3836367 36-37
+apps/web/src/components/skills/detailParts.test.ts
+  s_62c4add0f08387::t_4149c7b3836367 47-48
+apps/web/src/components/skills/DetailView.tsx
+  s_62c4add0f08387::t_4149c7b3836367 22,35-36,44-45,53-58,94-95,103-104,165-166,186,204,416-417,467
+apps/web/src/components/skills/UploadDialog.tsx
+  s_62c4add0f08387::t_4149c7b3836367 1776-1777,1801-1803
+cli/src/commands/skills.test.ts
+  s_62c4add0f08387::t_4149c7b3836367 126-128,176-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "38d81e67e8b32e1c5a6b0b2b0dbe3cd5689bec35",
+  "prompts": {},
+  "sessions": {
+    "s_62c4add0f08387": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75263354-39d6-4796-9592-02bbaedc7800",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,81 @@
+docs/testing.md
+  s_f4ece8fcef8654::t_c081a6fad1f766 1-102
+apps/api/test/integration/labelLifecycle.integration.test.ts
+  s_f4ece8fcef8654::t_c081a6fad1f766 1-242
+.github/workflows/ci.yml
+  s_841f2fcefa3d14::t_bbabb46ea9633d 294-295,299-302,307,314-317
+apps/api/package.json
+  s_841f2fcefa3d14::t_75d7a5dc3d19f7 12-14
+apps/api/test/integration/rls.integration.test.ts
+  s_841f2fcefa3d14::t_17524c16578750 1-146
+apps/api/test/integration/secretLifecycle.integration.test.ts
+  s_841f2fcefa3d14::t_fb45ff36af8647 2-3,7,10-11,13-21,23,26-82,85-86,88,93-99,104,106-120,125-126,128-131,133,135,137,139,141,143-206,208-216,218-251,254-374,383-398,401,404-413,416-417,422-423
+apps/api/test/integration/skillLifecycle.integration.test.ts
+  s_841f2fcefa3d14::t_063c9dfd525a01 1-3,5-43,46-56,58-60,62-63,65-67,69-80,82-92,95-117,120-122,124-126,128-129,131-150,152-160,162,164-168,171-176,178-182,184-190,193-212,215-220,222-226,228-232,234-238,240-270,272-277,280-292,294-308,311-315
+apps/api/test/integration/testDatabase.ts
+  s_841f2fcefa3d14::t_f2ef76e2252d4c 1-4,7-9,11-13,16-22,25-33,36,38-40,44-80,82-92,97-102,104-120,122-132,134-139,141-150,152-156,158
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_48f42bfbc57a73::t_4026815c3eabe2 55-58,69-70,483
+apps/web/test/setup.ts
+  s_48f42bfbc57a73::t_dac2062c5c4bbf 1-19
+apps/web/vitest.config.ts
+  s_48f42bfbc57a73::t_510b1ab13b7ed4 12
+e2e/critical-flows.spec.ts
+  s_841f2fcefa3d14::t_2714ae9616f6f5 1-146
+packages/db/src/index.ts
+  s_841f2fcefa3d14::t_7809fc92e5f7e5 14-17
+pnpm-lock.yaml
+  s_f4ece8fcef8654::t_1c5713e56cffeb 11-13,70,137,275,1642-1646,2966-2970,3629-3638,5232-5235,5817,5838,6629-6631,7395,7415,7535-7542
+scripts/ci-rsc-smoke.sh
+  s_841f2fcefa3d14::t_f29573c25506dd 47,118-121
+.gitignore
+  s_48f42bfbc57a73::t_d72939c4b9247c 20-21
+CLAUDE.md
+  s_f4ece8fcef8654::t_ec9a64987cdb5b 124-127
+README.md
+  s_f4ece8fcef8654::t_f418d9a223a8fe 66-67
+apps/api/tsconfig.test.json
+  s_48f42bfbc57a73::t_82fa329da9635c 1-9
+apps/api/vitest.config.ts
+  s_f4ece8fcef8654::t_a2ffd760fce7c7 1-11
+apps/api/vitest.integration.config.ts
+  s_f4ece8fcef8654::t_0cea5ab861ebf0 1-14
+package.json
+  s_f4ece8fcef8654::t_d98545f3a6bcf4 25-26,34
+playwright.config.ts
+  s_48f42bfbc57a73::t_28c12f65500761 1-16
+turbo.json
+  s_f4ece8fcef8654::t_b744c6b629a83b 22-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "769071404ef89065ae2163a476eac4cf9a80982f",
+  "prompts": {},
+  "sessions": {
+    "s_48f42bfbc57a73": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c42-3570-7980-a9c7-aec5efbb6fdc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_841f2fcefa3d14": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5ca1-945d-70a3-9fec-8f1b72b9166f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_f4ece8fcef8654": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c93-3bae-7913-9f74-7e3ba152ecd6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

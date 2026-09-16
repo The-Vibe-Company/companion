@@ -1,0 +1,30 @@
+docs/product.md
+  s_0da40a12f750ef::t_55d28fa1b19df1 1-126,128-141
+  s_0da40a12f750ef::t_82fd6f433d90ab 142
+  s_0da40a12f750ef::t_2b376f0fcc1d62 127
+docs/vision.md
+  s_0da40a12f750ef::t_f1083d21878a46 85
+  s_0da40a12f750ef::t_1a113359aed9e6 1-84,86
+CLAUDE.md
+  s_0da40a12f750ef::t_36c1ebe32ef255 1-116
+README.md
+  s_0da40a12f750ef::t_579f04ea5c573e 1-99
+docs/PRD.md
+  s_0da40a12f750ef::t_24737de1044d17 1-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "5511e4a29051e8e189b87678c02c83ae115645ce",
+  "prompts": {},
+  "sessions": {
+    "s_0da40a12f750ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b951283-c8ec-4bbe-97a3-ca6163bcc2b5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

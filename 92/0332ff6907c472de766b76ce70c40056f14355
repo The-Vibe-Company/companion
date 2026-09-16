@@ -1,0 +1,49 @@
+packages/companion-skill/skill/SKILL.md
+  s_4d1ffb2a200f77::t_1aee9d1d65db9c 6,151
+  s_4d1ffb2a200f77::t_d8e7beee9c55d8 18-19,25-48
+packages/contracts/src/token.ts
+  s_4d1ffb2a200f77::t_3f624c645052ff 12
+packages/core/test/settings.test.ts
+  s_4d1ffb2a200f77::t_e5b64044dfabcd 557-604
+  s_4d1ffb2a200f77::t_51f803ecf3355e 5,7,73-74,95-96,192-206
+packages/db/src/schema.ts
+  s_4d1ffb2a200f77::t_3f624c645052ff 381-382
+packages/core/src/services.ts
+  s_4d1ffb2a200f77::t_3f624c645052ff 1893-1894
+apps/web/src/lib/queries.ts
+  s_4d1ffb2a200f77::t_3f624c645052ff 38
+docs/design.md
+  s_4d1ffb2a200f77::t_3f624c645052ff 95,97
+apps/api/src/companionSkillPackage.ts
+  s_4d1ffb2a200f77::t_3f624c645052ff 114-115
+  s_4d1ffb2a200f77::t_9e4c2f3dbfd56e 66-83,89-91,93,95,97,103-105,107,109,111,118-122
+apps/api/src/localSkills.test.ts
+  s_4d1ffb2a200f77::t_3b103cdf4c366b 60-72
+apps/web/src/components/skills/UploadDialog.tsx
+  s_4d1ffb2a200f77::t_3f624c645052ff 663,1614
+apps/api/src/index.ts
+  s_4d1ffb2a200f77::t_3f624c645052ff 1301
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_4d1ffb2a200f77::t_3f624c645052ff 352
+packages/companion-skill/src/index.ts
+  s_4d1ffb2a200f77::t_1aee9d1d65db9c 61-66
+packages/companion-skill/skill/reference/api.md
+  s_4d1ffb2a200f77::t_d8e7beee9c55d8 6-14
+  s_4d1ffb2a200f77::t_1aee9d1d65db9c 63,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "920332ff6907c472de766b76ce70c40056f14355",
+  "prompts": {},
+  "sessions": {
+    "s_4d1ffb2a200f77": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ecc6a-a8ee-7f91-ae3a-46aaabcafca0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+.env.example
+  s_aa4af758785f8a::t_f9822c3252d5f2 7-9
+apps/web/package.json
+  s_aa4af758785f8a::t_5780bc71093a9f 18,22
+apps/web/src/app/layout.tsx
+  s_aa4af758785f8a::t_f9822c3252d5f2 2,43
+apps/web/src/app/PostHogProvider.tsx
+  s_aa4af758785f8a::t_f9822c3252d5f2 1-26
+pnpm-lock.yaml
+  s_aa4af758785f8a::t_e77c8e23765e4d 117-119,129-131,1577-1592,1851-1853,2414-2416,2492-2494,2860-2862,3591-3596,3611-3613,4133-4135,5179-5191,5398-5400,5964-5965,6037-6040,6573-6574,7537-7549,7562-7563,8284-8285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "89fd7ffaf094b37765b1fa7b48b628bf2ed8111f",
+  "prompts": {},
+  "sessions": {
+    "s_aa4af758785f8a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f222f-14c6-7980-9d09-d42f376d0ee1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

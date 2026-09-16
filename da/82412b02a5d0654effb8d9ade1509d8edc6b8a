@@ -1,0 +1,50 @@
+packages/auth/src/index.ts
+  s_aef5d8456d7696::t_5dfff88f56a9fe 18-19,36
+scripts/conductor-workspace.sh
+  s_aef5d8456d7696::t_75240491590630 198-202,208-209,211-220,234
+  s_aef5d8456d7696::t_3796723402c886 103
+  s_aef5d8456d7696::t_0460afbe1bec00 248-249,256
+  s_aef5d8456d7696::t_871134a43fa884 99-100,102,114-129,156,169-183,186-197,203-207,210
+  s_aef5d8456d7696::t_8e5706addaa5ec 96-98,101,104-113,130-138,164-168,184-185,232-233,242
+  s_aef5d8456d7696::t_0a4da6419181e5 139-155,157-163
+  s_aef5d8456d7696::t_4870b46cb1bff1 250-255
+apps/web/src/app/(auth)/login/LoginForm.tsx
+  s_aef5d8456d7696::t_4405356831ec8b 3-5,7-18,23-25,34,36,41-48,71,73,80,82-86,89-92
+  s_aef5d8456d7696::t_948e5baed1ca70 19,56,59-60,74-75,81
+apps/api/package.json
+  s_aef5d8456d7696::t_0460afbe1bec00 8
+apps/api/src/seed-test-user.ts
+  s_aef5d8456d7696::t_0460afbe1bec00 1,3-6,8-20,50,52-70,73-77,79-84,86-96,98-104,107
+  s_aef5d8456d7696::t_f93c0b9cf22306 2
+  s_aef5d8456d7696::t_04195f79de825b 51
+  s_aef5d8456d7696::t_54ec39f527de99 78,85
+  s_aef5d8456d7696::t_06dd4b96cd5048 7,21-49,71-72,97
+  s_aef5d8456d7696::t_21daa154c38106 105-106
+apps/web/src/app/(auth)/login/page.tsx
+  s_aef5d8456d7696::t_452d7fc2c389f9 7-14
+  s_aef5d8456d7696::t_8c7ef853466886 27-32,41-42,45-46,48-52
+  s_aef5d8456d7696::t_c6c7962ca12e9e 15-24
+  s_aef5d8456d7696::t_9099247a1f7746 47
+apps/api/src/index.ts
+  s_aef5d8456d7696::t_2b9583c253dee6 148-175,208-211,214
+  s_aef5d8456d7696::t_ca0bd39821e14d 121
+  s_aef5d8456d7696::t_74a998814bd1de 122,141-147,176-207,212-213,215-220
+  s_aef5d8456d7696::t_0cccd036af5245 131-140
+  s_aef5d8456d7696::t_aad73ac2df4442 123-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "da82412b02a5d0654effb8d9ade1509d8edc6b8a",
+  "prompts": {},
+  "sessions": {
+    "s_aef5d8456d7696": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea30b-e4ca-7e50-82ab-1a65b48cc079",
+        "model": "gpt-5.5"
+      },
+      "human_author": null
+    }
+  }
+}

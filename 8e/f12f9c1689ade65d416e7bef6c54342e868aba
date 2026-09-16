@@ -1,0 +1,19 @@
+scripts/rsc-smoke.mjs
+  s_7da3df708e540e::t_7e92854926e03e 4,35-42,46,110-132,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "8ef12f9c1689ade65d416e7bef6c54342e868aba",
+  "prompts": {},
+  "sessions": {
+    "s_7da3df708e540e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efe2b-e73f-77d2-84cb-5389c3cd730a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

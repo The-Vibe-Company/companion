@@ -1,0 +1,144 @@
+packages/db/drizzle/0109_companion_material_snapshot_expiry.sql
+  s_dab2ed1243bc20::t_e769bacfc4bdfa 49-67,96-104
+  s_dab2ed1243bc20::t_724ef9863fcc3a 347-352
+  s_dab2ed1243bc20::t_927838132ddeb5 166-170
+  s_dab2ed1243bc20::t_c36a08822fa356 7,13-18,68-95,276,390-394,483
+  s_dab2ed1243bc20::t_10ebe327f8bcf2 1023-1025,1030-1034
+  s_dab2ed1243bc20::t_5fb13d59fcab85 596-774,877-880,884-888,921-947,950-953,955-969,973-977
+  s_dab2ed1243bc20::t_ed707c14fae4d1 363-367
+  s_dab2ed1243bc20::t_14a032523b1dbc 1-6,8-12,19-48,105-165,171-275,277-346,353-362,368-389,395-416
+  s_dab2ed1243bc20::t_0d77cb5ab02dc9 775-776,779-812,817-850,855-876,881-883,889-920,948-949,954,970-972,1026-1029
+  s_dab2ed1243bc20::t_7f47c67dc8a66f 417-478,480-482,484-490,492-595,978-1022,1035-1036
+  s_dab2ed1243bc20::t_7e8172e2626df7 777-778,813-816,851-854
+  s_dab2ed1243bc20::t_98d83a63fa807d 479,491
+packages/companion-runtime/src/settingsActivation.test.ts
+  s_dab2ed1243bc20::t_2ac2292fac8a46 22
+packages/db/src/runtimeRole.ts
+  s_dab2ed1243bc20::t_7e8172e2626df7 39
+  s_dab2ed1243bc20::t_1c937a9ea43711 51-52
+apps/runtime/src/materialPipeline.ts
+  s_dab2ed1243bc20::t_b5ffd7a12d7888 18,93-97,117-120,162-175,185-186,242-249,281-283,292,434-437
+  s_dab2ed1243bc20::t_927893ec02d0b6 10,176-184
+  s_dab2ed1243bc20::t_aaf34d095bc246 438-439
+apps/runtime/src/materialPipeline.test.ts
+  s_dab2ed1243bc20::t_bb25ef5652e1d7 202-263
+  s_dab2ed1243bc20::t_6905bd16ad146c 124-127,147-150,185
+docs/design.md
+  s_dab2ed1243bc20::t_7a0e2b8b15775c 225-227,239
+  s_dab2ed1243bc20::t_2dc1206df19784 228-232
+  s_dab2ed1243bc20::t_c0971ab5d81b6f 233-238
+packages/companion-runtime/src/settings.ts
+  s_dab2ed1243bc20::t_776bfe00eb2eec 72-85,113,125-130,152-155
+  s_dab2ed1243bc20::t_e78ec73e4b1e7b 156
+apps/api/src/runtimeRoleGrants.test.ts
+  s_dab2ed1243bc20::t_6fd7fff9f84d0d 69,91-93
+  s_dab2ed1243bc20::t_5159ef3a73ad01 67-68,70-71
+  s_dab2ed1243bc20::t_1c937a9ea43711 86-90,94
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_dab2ed1243bc20::t_1f5426bb6712b2 729,755
+  s_dab2ed1243bc20::t_db81c2f0dd914b 534-535,551,2140-2144,2148-2163,2165-2167,2176,2178-2213
+  s_dab2ed1243bc20::t_287b24d749d2f3 1908-1913,2168-2173,2177
+  s_dab2ed1243bc20::t_696e9011e6f11a 2357-2441
+  s_dab2ed1243bc20::t_4092dd3c496bc9 2465-2473,2507-2517
+  s_dab2ed1243bc20::t_7e8172e2626df7 308
+  s_dab2ed1243bc20::t_7a257ef5809568 2214-2215,2526-2604
+  s_dab2ed1243bc20::t_4a317be56e67a8 2011,2054-2057,2100-2106,2118-2121
+  s_dab2ed1243bc20::t_9e6042c0875d9b 2174-2175
+  s_dab2ed1243bc20::t_2bc3fb23ea1dcb 555-573
+  s_dab2ed1243bc20::t_8ffd57a24aa136 3649-3650,3659-3660
+  s_dab2ed1243bc20::t_27c5e8cdcf23ad 66,303-304
+  s_dab2ed1243bc20::t_44eb2835db9ec4 2217-2356
+  s_dab2ed1243bc20::t_5f3202acb901c8 3633-3648,3699-3700,3704
+  s_dab2ed1243bc20::t_53f9e2876564f4 1980-2010,2012-2053,2058-2099,2107-2117,2122-2131,2133-2139
+  s_dab2ed1243bc20::t_69c7cc4aa16480 2444,2462,2479,2491,2498,2506
+  s_dab2ed1243bc20::t_5159ef3a73ad01 3661-3675,3679-3688
+  s_dab2ed1243bc20::t_12563d89650f78 2132
+  s_dab2ed1243bc20::t_ea30b647ef79e8 2145-2147,2164
+  s_dab2ed1243bc20::t_49b6a1d38a65cf 2442-2443,2445-2461,2463-2464,2474-2478,2480-2490,2492-2497,2499-2505,2518-2525
+  s_dab2ed1243bc20::t_4ec3fb69045bb8 2216
+packages/companion-runtime/src/ports.ts
+  s_dab2ed1243bc20::t_6b4feff9b592ea 173-174
+apps/api/test/integration/companionRoutines.integration.test.ts
+  s_dab2ed1243bc20::t_436db4a7dcb168 297-299,301-302
+docs/runbooks/companions-runtime.md
+  s_dab2ed1243bc20::t_c0971ab5d81b6f 57-63
+  s_dab2ed1243bc20::t_7a0e2b8b15775c 233-234,252
+  s_dab2ed1243bc20::t_2dc1206df19784 235-251
+packages/core/src/companionPluginOAuth.ts
+  s_dab2ed1243bc20::t_927893ec02d0b6 438-445
+  s_dab2ed1243bc20::t_a8f838f10e3313 90-92,105-107,333,389-392,459
+packages/db/runtime-role-grants.sql
+  s_dab2ed1243bc20::t_1c937a9ea43711 526-530,532-534,542-543
+  s_dab2ed1243bc20::t_10ebe327f8bcf2 535-537,539-541
+  s_dab2ed1243bc20::t_7e8172e2626df7 531,538
+packages/companion-runtime/src/test/fixtures.ts
+  s_dab2ed1243bc20::t_2ac2292fac8a46 282-283,439,443-457,692-694
+  s_dab2ed1243bc20::t_e9ff783d87b906 19
+packages/core/test/companionPluginOAuth.test.ts
+  s_dab2ed1243bc20::t_bb25ef5652e1d7 138,249-260
+  s_dab2ed1243bc20::t_6905bd16ad146c 102-114,125-137
+packages/db/src/schema.ts
+  s_dab2ed1243bc20::t_927893ec02d0b6 671,739-743
+  s_dab2ed1243bc20::t_126567b14987f0 690,747,749-750
+  s_dab2ed1243bc20::t_55126953307670 670,672,691-692,738,744-746,748,751,944-945,970-975
+docs/companions-runtime.md
+  s_dab2ed1243bc20::t_7a0e2b8b15775c 166-168,438-440,516-518,551
+  s_dab2ed1243bc20::t_2dc1206df19784 169-171,519-521,552-557
+  s_dab2ed1243bc20::t_c0971ab5d81b6f 172-177
+packages/companion-runtime/src/operations.ts
+  s_dab2ed1243bc20::t_de7c09648bf04a 368
+  s_dab2ed1243bc20::t_e78ec73e4b1e7b 760
+  s_dab2ed1243bc20::t_776bfe00eb2eec 323,336-349,517,602,637,697,759,763
+packages/companion-runtime/src/store.ts
+  s_dab2ed1243bc20::t_7e8172e2626df7 580
+  s_dab2ed1243bc20::t_6b4feff9b592ea 60-63,65-66,391,393-397,400,697,700,711-713,715-724,726-730,732-740,742-743
+  s_dab2ed1243bc20::t_3e18e8a81a3bd5 7
+  s_dab2ed1243bc20::t_9db3bb1b8b6c50 64,67,714,725,731,741
+  s_dab2ed1243bc20::t_81a2c05e78026d 744
+packages/companion-runtime/src/operations.test.ts
+  s_dab2ed1243bc20::t_412c4666e57cb0 662-667,669-672,685-690
+  s_dab2ed1243bc20::t_5e0a2bc5a319f8 750-754,804-808
+  s_dab2ed1243bc20::t_de7c09648bf04a 17-19,50-51,631-632,648
+  s_dab2ed1243bc20::t_2ac2292fac8a46 784
+  s_dab2ed1243bc20::t_939321b9e42854 20-41,43,45-49
+  s_dab2ed1243bc20::t_662105e72bc70b 855-856,918-919
+packages/companion-runtime/src/types.ts
+  s_dab2ed1243bc20::t_b5ffd7a12d7888 7-9
+packages/companion-runtime/src/settingsActivation.ts
+  s_dab2ed1243bc20::t_6b4feff9b592ea 9,22,82
+deploy/railway/README.md
+  s_dab2ed1243bc20::t_2dc1206df19784 65-67
+  s_dab2ed1243bc20::t_c0971ab5d81b6f 170-175
+  s_dab2ed1243bc20::t_7a0e2b8b15775c 56-64
+packages/companion-runtime/src/settings.test.ts
+  s_dab2ed1243bc20::t_5e0a2bc5a319f8 114-118,149-150,193-197,235-236
+  s_dab2ed1243bc20::t_2ac2292fac8a46 173
+packages/companion-runtime/src/store.test.ts
+  s_dab2ed1243bc20::t_91b71c47f1da91 298-302,308-332
+packages/db/drizzle/meta/_journal.json
+  s_25cc1852fecb9a::t_efd99bc8a4a16a 767-773
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "76d1bf1beaa2e4566c9609313d6536b710472b6d",
+  "prompts": {},
+  "sessions": {
+    "s_25cc1852fecb9a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01e3c-8962-7053-902e-6578421b6ea5",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_dab2ed1243bc20": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01e26-6119-7183-9d70-2aa23182db50",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

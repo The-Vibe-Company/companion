@@ -1,0 +1,203 @@
+packages/contracts/test/vanishConnections.test.ts
+  s_48f42bfbc57a73::t_d0783f26a3aabb 1-28
+packages/core/src/runConfigurations.ts
+  s_48f42bfbc57a73::t_cd3b9837c1388b 13,695,701,722,726-728
+packages/db/src/schema.ts
+  s_48f42bfbc57a73::t_0c3861743a9220 759-760,762,777
+  s_48f42bfbc57a73::t_84d2878cbf97ae 42-45,731-733,735,739-742,744-758,763-776,778-785,788-804,809-818,824-826,830,835,840-842,844-845,852-854,858,1330-1331
+  s_48f42bfbc57a73::t_79392626c5e525 1329,1493-1496
+  s_48f42bfbc57a73::t_e2be248f2a5406 786,805-808
+  s_48f42bfbc57a73::t_cded73a4b42e43 1238,1294,1300-1319,1322-1328
+  s_48f42bfbc57a73::t_0d5d509deae828 761
+  s_48f42bfbc57a73::t_90ff009e527d4e 1320-1321
+  s_48f42bfbc57a73::t_589506da12c41b 1332
+docs/design.md
+  s_48f42bfbc57a73::t_7a0c938c237b32 574-578,621-622,677-679,681-689,693-697,700-702,712-713,744-746,749-751,756-757,775,802-804
+  s_48f42bfbc57a73::t_7af423fa41f64c 623-626,680
+  s_48f42bfbc57a73::t_e2be248f2a5406 690-692
+packages/core/src/vanishConnections.ts
+  s_48f42bfbc57a73::t_1738fc5a9a1f40 1-268
+apps/api/test/integration/rls.integration.test.ts
+  s_48f42bfbc57a73::t_5e7ad4ac2477c0 35-37,55-63,65,68-72,148-180,183-207
+  s_48f42bfbc57a73::t_e2be248f2a5406 64,66-67,181-182
+  s_48f42bfbc57a73::t_6a82311dcedcaa 208
+apps/web/src/components/runs/RunLauncherDialog.tsx
+  s_48f42bfbc57a73::t_fe055c2e7538ad 120,404-405,421-422,456,458
+  s_48f42bfbc57a73::t_4fa45932a25483 440,454-455,459-460,691,695-702
+  s_48f42bfbc57a73::t_4c805fa6320bf1 615-617
+packages/core/src/providerConnections.ts
+  s_48f42bfbc57a73::t_fc4d27cb7026c8 125-129
+  s_48f42bfbc57a73::t_62a02786e01ae2 176,178-179,181
+  s_48f42bfbc57a73::t_89fbce23903935 4,25,65,82,92,123,198,209,223
+  s_48f42bfbc57a73::t_e2be248f2a5406 347,364-369
+  s_48f42bfbc57a73::t_92b147ff0b7670 1-2,6,9-13,16-17,19-22,26-64,66-75,85-91,93-95,106-115,120-122,130-131,133-174,183-197,201,205-207,212,215,218-221,227,230-231,234-251,254,259,261-262,274,277-278,283,286-292,294,297-302,304,307,313-314,317-325,327-346,348-362,379-380,382-387,389-394
+  s_48f42bfbc57a73::t_b1bedcdaafbd89 124
+  s_48f42bfbc57a73::t_32df0257367128 175,225-226
+packages/contracts/test/skillRuns.test.ts
+  s_48f42bfbc57a73::t_dd71b2f8ecebdc 24,64-65,73,76,87-88,157,169,171-173,194,202,294-300,328
+packages/core/test/providerConnections.test.ts
+  s_48f42bfbc57a73::t_10ed476f5f92ec 252-260
+  s_48f42bfbc57a73::t_e2be248f2a5406 145,151-155,163-169,180,185
+  s_48f42bfbc57a73::t_b1bedcdaafbd89 246
+  s_48f42bfbc57a73::t_0b57795eb0a422 1,9,17-18,20-21,37-38,41,43-44,48-49,52-53,59,61-68,72-96,102-106,111,114-115,122-123,127-131,133-144,146-150,156-162,184,188-211,215,217-227,229-238,241-245,247-251,261-271
+  s_48f42bfbc57a73::t_c86b2975c255aa 170-177,179
+packages/contracts/src/index.ts
+  s_48f42bfbc57a73::t_eb25f089ed5a1b 17
+apps/web/src/components/secrets/SecretsApp.test.ts
+  s_48f42bfbc57a73::t_6f45f3099ba92f 131
+packages/contracts/test/modelProviders.test.ts
+  s_48f42bfbc57a73::t_4242a099665d9b 23
+  s_48f42bfbc57a73::t_d0783f26a3aabb 2-5,7-9,12,14-19,25,29-31,34-35,38,40-42
+  s_48f42bfbc57a73::t_b1bedcdaafbd89 20-22
+packages/contracts/src/vanishConnections.ts
+  s_48f42bfbc57a73::t_eb25f089ed5a1b 1-28
+packages/db/drizzle/0034_skill_runs.sql
+  s_48f42bfbc57a73::t_79392626c5e525 211-212
+  s_48f42bfbc57a73::t_e76b5029bbc099 3,134
+apps/web/src/components/org/ModelsPane.tsx
+  s_48f42bfbc57a73::t_56ae411c564605 240-241,271-272,362,422-423,436-437,470-476,502,519,589-590,592,597-601
+  s_48f42bfbc57a73::t_4bbde3b2e59269 176
+  s_48f42bfbc57a73::t_cd27e16f7c16d0 62,146-147,155-156,364,614
+  s_48f42bfbc57a73::t_5265a46cc9fdd0 682,684,687,689,691,696,698,740,744-749
+  s_48f42bfbc57a73::t_64b50a30087883 3-4,10,14,35-38,55-56,63,77-78,109,168,188,192,224,346,413,517-518,606-607,609-613,615-616,662-663,667,675-677,680-681,683,692,695,697,702,704,706-707,719,727-730,732-739,741-742,750-755,757-761,763-764,767
+  s_48f42bfbc57a73::t_0851cb2ce66389 160-167,169,173,180,182,243,274,363,425,439,464-469,503,520,594
+  s_48f42bfbc57a73::t_1c5420e504cb4d 242,273,424,438,463,479-482
+  s_48f42bfbc57a73::t_5def94f3255a80 504,521
+  s_48f42bfbc57a73::t_28bb88f1706e53 537
+  s_48f42bfbc57a73::t_7e8d278011226a 703,762
+  s_48f42bfbc57a73::t_f5b96f098991ba 705
+  s_48f42bfbc57a73::t_c1c5a4c0db9cf5 64-68,174-175,177-179,181,195,248,280,376-377,446,526,595
+  s_48f42bfbc57a73::t_221d703d0dcc67 483
+packages/core/test/vanishConnections.test.ts
+  s_48f42bfbc57a73::t_fca5e1845f3f1f 1-171
+apps/api/test/integration/runsDb.integration.test.ts
+  s_48f42bfbc57a73::t_e2be248f2a5406 180,182
+  s_48f42bfbc57a73::t_7055ff5a0ec305 358
+  s_48f42bfbc57a73::t_0c3861743a9220 250,346-357,359-360
+  s_48f42bfbc57a73::t_79392626c5e525 22,277-278,285,584
+  s_48f42bfbc57a73::t_16ed49f631cbed 43,67,166,169-179,181,245-249
+packages/core/test/runJobs.test.ts
+  s_48f42bfbc57a73::t_1f3ab05c163622 396-414,416-428
+packages/sandbox/test/opencodeChat.test.ts
+  s_48f42bfbc57a73::t_3b6ca8d2cfc5ff 3,10,22-38
+  s_48f42bfbc57a73::t_55a7d47ab4c227 39
+packages/core/src/runJobs.ts
+  s_48f42bfbc57a73::t_480c4fc3804805 626,636,639-640,647
+  s_48f42bfbc57a73::t_42ba202474ac12 48
+  s_48f42bfbc57a73::t_1f3ab05c163622 26-47,49-58,202
+packages/core/src/skillRuns.ts
+  s_48f42bfbc57a73::t_480c4fc3804805 336-349,351-352,1447,1455,1458-1459
+  s_48f42bfbc57a73::t_11f9bb3bf4571c 296,305-306,319-320
+  s_48f42bfbc57a73::t_8bab7249c29685 667-669,679-680,776-777,779,786,789-794,796,801-805,807-814,840-860
+  s_48f42bfbc57a73::t_0655034b5344ce 976,1017-1025,1099-1109
+  s_48f42bfbc57a73::t_26843a6cac4b19 24,35-39,41,150,160-163,174
+  s_48f42bfbc57a73::t_bfb45a020f6438 1745-1747,1765,1806-1814,1820-1822,1874-1914
+  s_48f42bfbc57a73::t_dcdbf0fe0f2b3f 350
+  s_48f42bfbc57a73::t_84f161831824d7 1216-1217,1286-1287,1317,1514-1515
+  s_48f42bfbc57a73::t_d2d173d316653e 1291-1294,1404-1412
+packages/db/drizzle/0035_runtime_credentials.sql
+  s_48f42bfbc57a73::t_96c740a72a689e 1-4,6-7,10-11,14,16-18,20-21,23,25-26,28-36,39-54,59,62-77,79-93,95-98,114,117-118,121,123,125-132,134-143,161-170,173-175,193-194,204,206-212,215-219,226-228,231,235-236,238-239,255-263,265-266,280-281,286-289
+  s_48f42bfbc57a73::t_d7cbb772ab4bff 144-154,159
+  s_48f42bfbc57a73::t_e2be248f2a5406 37-38
+  s_48f42bfbc57a73::t_0d5d509deae828 15
+  s_48f42bfbc57a73::t_48634394151d75 172,176-192,195-203,205,213-214,220-225,237,240-243,245,247,250-254
+apps/web/src/lib/runQueries.test.ts
+  s_48f42bfbc57a73::t_bae595118fe05a 2,19
+  s_48f42bfbc57a73::t_ce5869010dd4e1 1,3-18,20-68
+apps/web/src/lib/runQueries.ts
+  s_48f42bfbc57a73::t_1d6e4917a017a0 6-7,16-17,46,49,52,56-58,73,79-81,93-124,173-174,186-187
+  s_48f42bfbc57a73::t_6216f59c7d10f6 48,53,64,72,76,87
+apps/web/src/styles/runs.css
+  s_48f42bfbc57a73::t_59d656b8a8801e 245-249,251-253,311
+  s_48f42bfbc57a73::t_0267df93054291 323
+  s_48f42bfbc57a73::t_421850f2bd2f7a 312-313,322
+  s_48f42bfbc57a73::t_9ea463b149bb73 250
+apps/web/src/components/runs/launcherState.ts
+  s_48f42bfbc57a73::t_76cca1466f3318 133,137-138,143-147,162-164,176-178
+apps/api/src/runRoutes.test.ts
+  s_48f42bfbc57a73::t_161eee37b07dbe 43-48,64,294-295,297,299-306,310,314,316-344
+  s_48f42bfbc57a73::t_3134b51e5f2511 185
+  s_48f42bfbc57a73::t_ffa206629db94b 163,205,236,261
+  s_48f42bfbc57a73::t_7266e002521faf 94,162,184,204,235,260,298
+packages/sandbox/scripts/smoke-vercel.ts
+  s_48f42bfbc57a73::t_79392626c5e525 132-135,138-139
+  s_48f42bfbc57a73::t_b466eb48704b12 137
+apps/worker/src/runSupervisor.ts
+  s_48f42bfbc57a73::t_f9ef7f88ea2509 23,741,743,756,892,936
+  s_48f42bfbc57a73::t_42ba202474ac12 210-211,213-214,217-219,1139-1141,1230,1746-1754
+  s_48f42bfbc57a73::t_4f551c80ff9f89 1331-1332
+  s_48f42bfbc57a73::t_e14f753d018821 212,215-216
+packages/contracts/src/modelProviders.ts
+  s_48f42bfbc57a73::t_eb25f089ed5a1b 8-9,74-77,79,82-83,86,95,103
+  s_48f42bfbc57a73::t_b1923879176fe9 104-109
+  s_48f42bfbc57a73::t_b1bedcdaafbd89 97-100
+  s_48f42bfbc57a73::t_89fbce23903935 78,88,90-91,93,96,111
+apps/web/src/components/org/SettingsView.tsx
+  s_48f42bfbc57a73::t_ef55b669ab0786 13-14,17-18,23-24,101-102,104,114-115,117
+  s_48f42bfbc57a73::t_f4394f3fb63a76 15-16,19-20,25-26,94-95,103,108,116,126-128,137-139
+apps/web/src/components/org/ModelsPane.test.ts
+  s_48f42bfbc57a73::t_202d846279f035 61-70,72,74-101,198-204,220-223
+  s_48f42bfbc57a73::t_2148d6c2a4ef09 146
+  s_48f42bfbc57a73::t_b8319fbae6a2fa 5,7,12-14,55,102-104,160-197
+  s_48f42bfbc57a73::t_8037317626ce8e 56-60,71,73,224-229
+  s_48f42bfbc57a73::t_275fb78268590d 216-217
+  s_48f42bfbc57a73::t_0072a4054644e4 120,127,145
+  s_48f42bfbc57a73::t_f38fe770175bb7 1-4,6,8-11,15-54,105-119,121-126,128-144,147-159,230-231
+  s_48f42bfbc57a73::t_b1266d72d74213 205-215,218-219
+packages/core/test/skillRuns.test.ts
+  s_48f42bfbc57a73::t_407e7376c93d2e 276,281,287-296,332,338,340,369-370,373
+  s_48f42bfbc57a73::t_1a3a2f9411c248 611
+  s_48f42bfbc57a73::t_dcdbf0fe0f2b3f 428
+  s_48f42bfbc57a73::t_79392626c5e525 430,433-441
+  s_48f42bfbc57a73::t_1fd0563bd4ca5f 533-534,617,625
+  s_48f42bfbc57a73::t_278298977cb7bc 36,220-226,233-234,242
+  s_48f42bfbc57a73::t_480c4fc3804805 424-427,429,431-432
+packages/sandbox/src/opencodeChat.ts
+  s_48f42bfbc57a73::t_3b6ca8d2cfc5ff 5,182-184
+apps/web/src/components/runs/ModelSelect.tsx
+  s_48f42bfbc57a73::t_7690bcf468c47d 159
+apps/web/src/components/org/ArtifactsPane.tsx
+  s_48f42bfbc57a73::t_7183401f615bf4 4,19-21,42,57,59,77,92
+apps/web/src/components/runs/launcherState.test.ts
+  s_48f42bfbc57a73::t_1c1dfa0d9a25b2 16,63,65-67,112,119,125,127,129,135,138
+apps/api/src/index.ts
+  s_48f42bfbc57a73::t_b6d52170fef823 94-99,172-173
+  s_48f42bfbc57a73::t_dd26b43ceb1c31 2708,2711-2717,2724-2725,2732-2733,2764,2767-2773,2780-2781,2788-2789,2805-2875
+  s_48f42bfbc57a73::t_79f89d51ee4f57 3109-3114,3169-3170
+  s_48f42bfbc57a73::t_dbc79172e040ab 2876
+packages/core/src/services.ts
+  s_48f42bfbc57a73::t_1738fc5a9a1f40 3690
+apps/worker/src/runSupervisor.test.ts
+  s_48f42bfbc57a73::t_42ba202474ac12 5,28-38
+apps/web/src/components/secrets/SecretsApp.tsx
+  s_48f42bfbc57a73::t_db58ed82e0a6b6 395-399
+packages/contracts/src/skillRuns.ts
+  s_48f42bfbc57a73::t_e2caf2a7b2eb8d 86,182-183,186-188,191,198,385,388,400-411,427,605-606,616-617
+  s_48f42bfbc57a73::t_65697a3831f3f0 4
+packages/db/drizzle/meta/_journal.json
+  s_2fd8b42edd08a3::t_97475053081e17 254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "34b64f1d0facdf2efe764236795847000f3076bf",
+  "prompts": {},
+  "sessions": {
+    "s_2fd8b42edd08a3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5d53-6b7e-7a03-8cce-0872f84a57c8",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_48f42bfbc57a73": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c42-3570-7980-a9c7-aec5efbb6fdc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

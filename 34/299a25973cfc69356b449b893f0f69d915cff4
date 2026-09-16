@@ -1,0 +1,46 @@
+.agents/skills/ship-pr-dev/scripts/collect_ship_context.py
+  s_597e0620a42fa8::t_538cd7768aea88 117-133,175-178
+.agents/skills/review-code-dev/references/review-playbook.md
+  s_597e0620a42fa8::t_958d15ba6b3e90 6
+.agents/skills/ship-pr-dev/scripts/test_collect_ship_context.py
+  s_597e0620a42fa8::t_538cd7768aea88 14,80-89,136-147
+  s_597e0620a42fa8::t_bd99ef744cc886 101-109
+  s_597e0620a42fa8::t_aac7fd6c548cbb 148-149
+.agents/skills/ship-pr-dev/scripts/review_dependency.py
+  s_597e0620a42fa8::t_538cd7768aea88 3,5,9-33,54,57-58
+.agents/skills/ship-pr-dev/companion.json
+  s_597e0620a42fa8::t_538cd7768aea88 15-16
+  s_597e0620a42fa8::t_958d15ba6b3e90 4,11-14,17-18
+.agents/skills/review-code-dev/scripts/test_collect_review_context.py
+  s_597e0620a42fa8::t_538cd7768aea88 125,137
+  s_597e0620a42fa8::t_be9e04420a0182 123-124,135-136,138,182,188-212
+  s_597e0620a42fa8::t_c725b425312a6a 4,6,213-235
+.agents/skills/review-code-dev/scripts/collect_review_context.py
+  s_597e0620a42fa8::t_538cd7768aea88 52
+  s_597e0620a42fa8::t_be9e04420a0182 45-47,60-62,243,374,394-398,462-466,487,492-494,512-516
+.agents/skills/review-code-dev/references/output-contract.md
+  s_597e0620a42fa8::t_958d15ba6b3e90 260,285-289,305
+.agents/skills/review-code-dev/companion.json
+  s_597e0620a42fa8::t_538cd7768aea88 16
+  s_597e0620a42fa8::t_958d15ba6b3e90 4,11-15,17-18
+.agents/skills/review-code-dev/SKILL.md
+  s_597e0620a42fa8::t_958d15ba6b3e90 127-128
+.agents/skills/ship-pr-dev/SKILL.md
+  s_597e0620a42fa8::t_958d15ba6b3e90 127-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "34299a25973cfc69356b449b893f0f69d915cff4",
+  "prompts": {},
+  "sessions": {
+    "s_597e0620a42fa8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8a47-f1df-7071-8af7-e27d803960fb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

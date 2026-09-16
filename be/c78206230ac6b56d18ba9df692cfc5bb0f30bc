@@ -1,0 +1,28 @@
+.gitignore
+  s_c8a9d67ae5f103::t_48c561ec486e53 31
+.conductor/settings.toml
+  s_c8a9d67ae5f103::t_48c561ec486e53 1-5,7,9
+  s_c8a9d67ae5f103::t_68020b0bd14ceb 6,8
+scripts/conductor-spotlight.sh
+  s_c8a9d67ae5f103::t_48c561ec486e53 4-7,62-71,74-76,149,153-154,156,177,253
+  s_c8a9d67ae5f103::t_bc30e608416592 79-80,116,128-142
+  s_c8a9d67ae5f103::t_12aef2499d5e79 92-93,95-100,104,107,111-112,115,118-126,145-146,174,179,185
+  s_c8a9d67ae5f103::t_ffe5df2df68391 83-86,88-89,150-151,157-160,162-164,168-170
+  s_c8a9d67ae5f103::t_68020b0bd14ceb 8-9,87,239-244,251,262-263,274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "bec78206230ac6b56d18ba9df692cfc5bb0f30bc",
+  "prompts": {},
+  "sessions": {
+    "s_c8a9d67ae5f103": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea209-b0d7-7af2-8fbe-bfcf32867462",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/core/src/services.ts
+  s_62c4add0f08387::t_3ba9b963d822b6 1671-1681,1687-1692
+packages/core/test/skillVisibility.test.ts
+  s_62c4add0f08387::t_87c805b003a456 594-611
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "e311dc53166fe0133e05412c6f4c8284f1f7d495",
+  "prompts": {},
+  "sessions": {
+    "s_62c4add0f08387": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75263354-39d6-4796-9592-02bbaedc7800",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

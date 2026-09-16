@@ -1,0 +1,34 @@
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_de21e6620b3a0d::t_d6090d16ee1ec8 443-444,449-455,478,480-484,607-608,615-621,647,651-655
+packages/box-runtime/src/boxRuntimeChangeE2E.test.ts
+  s_de21e6620b3a0d::t_d6090d16ee1ec8 3-6,20-29,33,37,42-43,49-53,55,57,61-63,65-69,71-75,77-83,87,89-92,94-95,122-145,151,158-168
+  s_de21e6620b3a0d::t_6169421082d50b 169
+packages/box-runtime/src/companionPiBrokerSource.test.ts
+  s_de21e6620b3a0d::t_d6090d16ee1ec8 30,392-402
+  s_de21e6620b3a0d::t_b8910020767d6a 403-404
+apps/web/src/components/skills/LocalSkillsView.test.ts
+  s_de21e6620b3a0d::t_d6090d16ee1ec8 141-165,241-270
+  s_de21e6620b3a0d::t_5bc848ba6ef817 271
+scripts/box-runtime-change-e2e.ts
+  s_de21e6620b3a0d::t_e38ee3b3ea8bfe 82-86,91,203,210-211,218-233,310-311,335,342,347-348,556,560,568-569,572-573,575,579-582,605,609-610,614-615
+  s_de21e6620b3a0d::t_d6090d16ee1ec8 21-22,118,121,128-147,149-151,153-162,166-170,314,330-331,447-452,455-488,490-493,495-501,503-535,537-541
+  s_de21e6620b3a0d::t_007aade4353696 171-172
+docs/testing.md
+  s_de21e6620b3a0d::t_d6090d16ee1ec8 197-208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "8b2f5f735c8e8e5d84887c5e0f0b19fc2bd08c6d",
+  "prompts": {},
+  "sessions": {
+    "s_de21e6620b3a0d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0206f-702f-7150-bb36-9635caa26a82",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

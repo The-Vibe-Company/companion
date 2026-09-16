@@ -1,0 +1,49 @@
+CLAUDE.md
+  s_883259b66f36c0::t_cbf988d4443ac0 55
+internal/workspace/workspace_test.go
+  s_883259b66f36c0::t_6bf9bf6010a95d 214,221,224
+  s_883259b66f36c0::t_1cfc9bfbc7e8df 210-213,215-218,220,223
+  s_883259b66f36c0::t_a15401a1912bd6 181-209,219,222,225-227
+internal/render/render_test.go
+  s_883259b66f36c0::t_e0339484b2f97a 207-270,288-290
+internal/workspace/workspace.go
+  s_883259b66f36c0::t_4689f5299eeb4c 103,289-291,553
+internal/cli/cli.go
+  s_883259b66f36c0::t_b97064a285f41f 369-377,382
+  s_883259b66f36c0::t_8a445dd1a327df 801-803,805-806,1215-1227,1229-1241
+internal/config/config_test.go
+  s_883259b66f36c0::t_85fea7c6198dac 168-224
+internal/cli/cli_test.go
+  s_883259b66f36c0::t_445ca4ebd4729f 313-319,328-331,339-380
+  s_883259b66f36c0::t_51b0d9227ddd18 382-392
+internal/render/render.go
+  s_883259b66f36c0::t_20acebb53d8001 30-31,102-127
+AGENTS.md
+  s_883259b66f36c0::t_6f146e8444190a 84
+README.md
+  s_883259b66f36c0::t_ba54a77d12c860 306-319
+internal/config/types.go
+  s_883259b66f36c0::t_654b47ab3bc5ae 26-41,43-45,205-220,222-224
+  s_883259b66f36c0::t_3d27e8603b0540 491-498,641,685,709-726,1020-1021
+  s_883259b66f36c0::t_4fbd164274256d 42,73,87-92,221,252,266-269
+internal/resource/resource_test.go
+  s_883259b66f36c0::t_6e7b3f4db79a26 74-105
+internal/resource/resource.go
+  s_883259b66f36c0::t_e463b673542536 868-880,882-894
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "3fda9e795f648e05cf24981cbe9c510c53a0366e",
+  "prompts": {},
+  "sessions": {
+    "s_883259b66f36c0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e8f39-6a56-72a3-9d06-c78184f0a418",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Claude <noreply@anthropic.com>"
+    }
+  }
+}

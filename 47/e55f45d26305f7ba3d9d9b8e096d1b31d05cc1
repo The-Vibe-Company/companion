@@ -1,0 +1,19 @@
+apps/web/src/styles/org.css
+  s_bb5c19af822945::t_2292e6f1b6187b 148-149,152,157-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "47e55f45d26305f7ba3d9d9b8e096d1b31d05cc1",
+  "prompts": {},
+  "sessions": {
+    "s_bb5c19af822945": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a604424-475e-4d44-b65e-99634eb3a9ce",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

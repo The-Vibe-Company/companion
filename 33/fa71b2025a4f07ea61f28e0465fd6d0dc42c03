@@ -1,0 +1,134 @@
+packages/companion-runtime/src/types.ts
+  s_6decb4249a38b7::t_78e42e3dfdd195 248,286
+packages/box-runtime/src/companionPiBrokerSource.test.ts
+  s_6decb4249a38b7::t_ddc810290ef0ef 567-573
+apps/runtime/src/boxAdapters.test.ts
+  s_6decb4249a38b7::t_4ff941f5464830 791-796,814-819
+  s_6decb4249a38b7::t_de526813c8e477 715-716,718,736,746,768,772,775,781,802
+packages/companion-runtime/src/engine.ts
+  s_6decb4249a38b7::t_f1d7f9a962b0eb 292-294
+  s_6decb4249a38b7::t_8f90d6440d2371 318
+packages/box-runtime/src/companionPiRoutineSession.ts
+  s_6decb4249a38b7::t_5391477e5ebd91 17
+  s_6decb4249a38b7::t_8aac1de3b58bb1 18-20,44-45
+  s_6decb4249a38b7::t_a992327caeb227 21-22
+  s_6decb4249a38b7::t_ca2d88fd7b1bb2 46
+packages/companion-runtime/src/store.test.ts
+  s_6decb4249a38b7::t_56a85ab6d197e0 71,515,522
+packages/companion-runtime/src/ports.ts
+  s_6decb4249a38b7::t_6c18daca63f778 163
+  s_6decb4249a38b7::t_8f90d6440d2371 164
+  s_6decb4249a38b7::t_bd7413ed1597c1 115-116
+packages/db/drizzle/0138_companion_routine_cancel_identity.sql
+  s_6decb4249a38b7::t_83a887cd4b273e 1-34,36-40
+  s_6decb4249a38b7::t_683264c090c243 46-154
+  s_6decb4249a38b7::t_8651e125e70a49 35
+  s_6decb4249a38b7::t_c3dfdd3f2443d8 41-45
+packages/companion-runtime/src/engine.test.ts
+  s_6decb4249a38b7::t_adfc1168848157 1893,1922
+  s_6decb4249a38b7::t_e39b26122ee24a 987-995,997-1020,1022-1036
+  s_6decb4249a38b7::t_7d4bbd22666709 1062-1065,1068-1069,1100-1200,1202-1226
+  s_6decb4249a38b7::t_462bd35c44d542 924,927,934-944,979-981
+  s_6decb4249a38b7::t_97490b63715007 1229-1257,1259-1268
+  s_6decb4249a38b7::t_587c8f0cc899fa 925,996,1021,1258,1283,1331,1351,1894,1923
+  s_6decb4249a38b7::t_cc36927ae28d5a 1037-1061,1066-1067,1227-1228
+  s_6decb4249a38b7::t_74a221c496ae44 1070-1099
+  s_6decb4249a38b7::t_3000e9dce253f7 1201
+  s_6decb4249a38b7::t_8090617e324d6f 1356
+packages/companion-runtime/src/errors.ts
+  s_6decb4249a38b7::t_9a9482d512df19 1
+  s_6decb4249a38b7::t_8f3c946ee1b0be 12-18,24-26
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_6decb4249a38b7::t_c7281a64deabe3 319,2484,2515-2521
+  s_6decb4249a38b7::t_6930195ec1d5ad 3737-3738,3748,3751-3752,3763,3808-3809,3811-3813,3823,3825-3826
+packages/companion-runtime/src/test/fixtures.ts
+  s_6decb4249a38b7::t_cbe2b580bee240 363,811
+  s_6decb4249a38b7::t_59561022b0ac76 816-817,840-841,857-858
+  s_6decb4249a38b7::t_700f7213a0c49d 732,809,812-813
+  s_6decb4249a38b7::t_fe54178d565249 360-362,364-369
+  s_6decb4249a38b7::t_949edc8fade615 370-372
+packages/companion-runtime/src/attempt.ts
+  s_6decb4249a38b7::t_c54cd48a31e9da 871
+  s_6decb4249a38b7::t_8f3c946ee1b0be 18-22,846-859,861-867,869
+  s_6decb4249a38b7::t_c2e32da9b43339 326-330,335
+  s_6decb4249a38b7::t_816e61003ff6f9 575-631
+  s_6decb4249a38b7::t_ad98cb85fa49ba 705-707,709-710,721-730,739-748
+  s_6decb4249a38b7::t_1d2d9aa480de94 632,1547-1566
+  s_6decb4249a38b7::t_58d2aa3b7a4dff 712-719
+  s_6decb4249a38b7::t_e5d0750b5acb7e 430,545,689,691-692,755
+  s_6decb4249a38b7::t_3ef1a2f242aced 860,868
+  s_6decb4249a38b7::t_63a7db77a726ab 731-734,736-737
+  s_6decb4249a38b7::t_252b2b83555878 688,735
+  s_6decb4249a38b7::t_71fff86f0535eb 340-350,392,418,464,472,497,520
+  s_6decb4249a38b7::t_39fef249bd9061 749-754,756-779,795-799,801,809-817,819-820,822-826,829-833,835-839,841-845,874-876,879
+  s_6decb4249a38b7::t_27757460e30d7c 674-687,693-703
+  s_6decb4249a38b7::t_18081896dd712e 704,708,711,738
+  s_6decb4249a38b7::t_8e9a4e2cbb10d1 457
+  s_6decb4249a38b7::t_5d4b216443a5ec 351-357
+  s_6decb4249a38b7::t_f5acec73c1253a 633
+  s_6decb4249a38b7::t_18db7143d3024d 720
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_6decb4249a38b7::t_a5e319ac0ba621 5194-5195,5198,5201,5211,5220-5235,5244-5248,5318-5322
+  s_6decb4249a38b7::t_588dd0dcdf71c8 1180,1465-1467,1469
+  s_6decb4249a38b7::t_13006377bf215f 1331,1358-1361
+  s_6decb4249a38b7::t_5391477e5ebd91 1044-1045,1091-1092,1141,1143-1144,1149,1178,5190,5196-5197,5545,5549-5553
+  s_6decb4249a38b7::t_4547dee08d53a5 1160-1172,1179,1184-1192,1194-1200
+  s_6decb4249a38b7::t_351dbec1c9e0bf 1240,1335
+  s_6decb4249a38b7::t_d64720477909c7 1513-1514,1516,1523,1526-1527
+  s_6decb4249a38b7::t_76741dd423852e 1138-1140,1142,1145-1148,1150-1159,1201-1202
+  s_6decb4249a38b7::t_daa9e238e4a946 5210,5212-5219,5236
+  s_6decb4249a38b7::t_87641e867ea66d 1475-1482,1484-1486
+  s_6decb4249a38b7::t_7d2c97f42f7ae1 1214-1218,1238-1239,1241,1284-1286,1288-1296,1300
+  s_6decb4249a38b7::t_f209a6dd45c3e5 1236,1310-1311
+  s_6decb4249a38b7::t_21a3494aaaf763 1173-1177,1181-1183
+  s_6decb4249a38b7::t_4affc0f10820b9 1381-1383
+  s_6decb4249a38b7::t_41a6eac8fd13e9 1333-1334,1336,1356-1357,1362-1380
+  s_6decb4249a38b7::t_c4cf83a39484c1 1193,1287,1483
+  s_6decb4249a38b7::t_097f475e0eba6f 1515,1517,1519,1549,1554,1561,1569-1574,1578-1579,1584,1587,1592-1593
+  s_6decb4249a38b7::t_d2ef728b9f88f9 1450-1461,1524,1547-1548,1550-1553,1575-1577,1580-1583,1585-1586,1588-1591,1594-1596
+  s_6decb4249a38b7::t_91ef8eae99967f 1555-1560,1562-1568
+  s_6decb4249a38b7::t_7e56a0f5d1ccfa 5556
+docs/design.md
+  s_6decb4249a38b7::t_c01b530f2be83d 412-415
+  s_6decb4249a38b7::t_94c03cc468511a 256-260
+packages/companion-runtime/src/store.ts
+  s_6decb4249a38b7::t_56a85ab6d197e0 780
+docs/companions-runtime.md
+  s_6decb4249a38b7::t_c01b530f2be83d 204-208
+  s_6decb4249a38b7::t_94c03cc468511a 500-502,643-647
+  s_6decb4249a38b7::t_dedcbce7d51f73 648
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_6decb4249a38b7::t_612ac4abf1aa34 2131
+  s_6decb4249a38b7::t_6820f76d1b1ee0 1824,1835,1889,1911,1971,1980,2007,2070,2098,2119-2123,2130
+  s_6decb4249a38b7::t_d4c68828f9f2f6 1925
+  s_6decb4249a38b7::t_4affc0f10820b9 1912-1924,1926
+  s_6decb4249a38b7::t_9a9482d512df19 1910
+  s_6decb4249a38b7::t_3dda4e569378f4 1843-1856,2016-2043
+  s_6decb4249a38b7::t_563fe8e00e59b7 2044
+packages/db/drizzle/meta/_journal.json
+  s_702f6aa1fa165c::t_01c651456f58cb 970-976
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "33fa71b2025a4f07ea61f28e0465fd6d0dc42c03",
+  "prompts": {},
+  "sessions": {
+    "s_6decb4249a38b7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0492b-1b66-7771-b16f-18c2ccefa3c2",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_702f6aa1fa165c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0492c-4975-7220-80eb-29419c5ba3e6",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

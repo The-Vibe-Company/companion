@@ -1,0 +1,26 @@
+apps/api/src/localSkills.test.ts
+  s_0ace220d528fbf::t_310168adb6c004 68
+packages/companion-skill/skill/SKILL.md
+  s_0ace220d528fbf::t_3611f34d72e3fc 370-373
+  s_0ace220d528fbf::t_5f997e1664af47 6
+packages/companion-skill/skill/reference/api.md
+  s_0ace220d528fbf::t_8e90839d5f7fee 45,48-52
+packages/companion-skill/src/index.ts
+  s_0ace220d528fbf::t_f13fb5c4c9fd1d 67-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "ceda7aba87d10ae35f24a57f73fe396924c612eb",
+  "prompts": {},
+  "sessions": {
+    "s_0ace220d528fbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f59bd7a8-4216-4b98-af92-d2236d3613ed",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+deploy/railway/README.md
+  s_c3fc12569c395a::t_9d5312f16bf74c 13-17,30-34,90-92,96-97,143-146
+  s_c3fc12569c395a::t_0d03b4fd7ee147 147
+deploy/railway/Dockerfile.web
+  s_c3fc12569c395a::t_f9e634ec690ba7 1-61
+deploy/railway/api.railway.json
+  s_c3fc12569c395a::t_77bb5df0c81989 15-16
+  s_c3fc12569c395a::t_9d5312f16bf74c 4-5,7,10-11,20-21
+apps/web/next.config.ts
+  s_c3fc12569c395a::t_9d5312f16bf74c 2-5,8-9
+deploy/railway/web.railway.json
+  s_c3fc12569c395a::t_77bb5df0c81989 19-20
+  s_c3fc12569c395a::t_9d5312f16bf74c 4-5,7,11-12,14-15,24
+apps/worker/tsup.config.ts
+  s_c3fc12569c395a::t_27e9f20f37b5a8 5-7
+deploy/railway/worker.railway.json
+  s_c3fc12569c395a::t_77bb5df0c81989 19-20
+  s_c3fc12569c395a::t_9d5312f16bf74c 4-5,7,13-15,24
+deploy/railway/Dockerfile.backend
+  s_c3fc12569c395a::t_f9e634ec690ba7 1-56
+.dockerignore
+  s_c3fc12569c395a::t_8ff38c523811c0 4
+  s_c3fc12569c395a::t_f9e634ec690ba7 1-3,5,7-9,11-25
+  s_c3fc12569c395a::t_77bb5df0c81989 6,10
+.github/workflows/ci.yml
+  s_c3fc12569c395a::t_77bb5df0c81989 139-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "d3ce9e739c4b032534ebaad6de5488d8afaaf59d",
+  "prompts": {},
+  "sessions": {
+    "s_c3fc12569c395a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5be8-7792-79b2-b751-7abfe79e04c3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

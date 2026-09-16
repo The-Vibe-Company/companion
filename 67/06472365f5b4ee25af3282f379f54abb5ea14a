@@ -1,0 +1,47 @@
+docs/companions-runtime.md
+  s_6e862c14bab050::t_e63ed8b3c161ca 417-425
+  s_6e862c14bab050::t_04840f4e868870 470-475
+packages/db/drizzle/0128_companion_retry_absent_box.sql
+  s_6e862c14bab050::t_ecf62dd1cbc533 1-5,157-179,181-192,195-199,202-478
+  s_6e862c14bab050::t_5eb4bf362882fc 6-156
+  s_6e862c14bab050::t_d083c1f1b1f377 180,193-194,200-201
+apps/runtime/src/boxAdapters.ts
+  s_6e862c14bab050::t_0f7a9967545203 135-138
+  s_6e862c14bab050::t_fe0e7102a01133 141-146
+apps/web/src/components/companions/CompanionThread.client.test.ts
+  s_6e862c14bab050::t_0bd0bfe33e7424 304-339
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_6e862c14bab050::t_4d2cd3f41f38e6 3196-3197,3247-3259
+  s_6e862c14bab050::t_5eb4bf362882fc 3386
+  s_6e862c14bab050::t_04840f4e868870 3150,3239
+  s_6e862c14bab050::t_c9a78988d2dd9c 3439-3440,3443
+  s_6e862c14bab050::t_d083c1f1b1f377 3178-3179,3204-3213
+  s_6e862c14bab050::t_86ab131bcd1ee1 3194-3195
+  s_6e862c14bab050::t_7f30e7bc4ef9cf 3394-3395
+  s_6e862c14bab050::t_8b3649a84b86df 3320-3321
+  s_6e862c14bab050::t_0bd0bfe33e7424 3380-3385,3387-3393,3396-3438,3441-3442,3444-3450
+  s_6e862c14bab050::t_f0b9997bca9e07 3214
+apps/web/src/components/companions/CompanionThread.tsx
+  s_6e862c14bab050::t_04840f4e868870 66-71,73,108,115-117,143-145
+  s_6e862c14bab050::t_f8cb1a7e06220b 74,76-77
+apps/runtime/src/boxAdapters.test.ts
+  s_6e862c14bab050::t_0f7a9967545203 233-271
+packages/db/drizzle/meta/_journal.json
+  s_6e862c14bab050::t_62538198b6f04a 900-906
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "6706472365f5b4ee25af3282f379f54abb5ea14a",
+  "prompts": {},
+  "sessions": {
+    "s_6e862c14bab050": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03a1b-9b7d-7dd1-aa7f-31201c80d000",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

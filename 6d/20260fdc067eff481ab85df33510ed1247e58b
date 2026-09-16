@@ -1,0 +1,19 @@
+CLAUDE.md
+  s_99581221f2c25a::t_1f1a226e8c39a6 89-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "6d20260fdc067eff481ab85df33510ed1247e58b",
+  "prompts": {},
+  "sessions": {
+    "s_99581221f2c25a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9be7-5872-7343-92fa-7e3a1d509f47",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

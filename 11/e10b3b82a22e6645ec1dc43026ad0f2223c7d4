@@ -1,0 +1,30 @@
+apps/worker/src/billingSupervisor.test.ts
+  s_8ecbe99741e987::t_b5652bdbf9b9ef 1-4,18-49,52-62,66,69-70,72-88,90-91,93-95,168,174-181,193-194,225-226
+  s_8ecbe99741e987::t_ad4ad32b4a7564 140-166
+  s_8ecbe99741e987::t_637501a26bde48 96-139
+  s_8ecbe99741e987::t_e57b802aa4ab7f 50-51,63-65,67-68,71,89,92,167,169-173,182-192,195-224
+  s_8ecbe99741e987::t_e266fe370a8f9e 5-17
+docs/testing.md
+  s_8ecbe99741e987::t_e266fe370a8f9e 27
+docs/design.md
+  s_8ecbe99741e987::t_e266fe370a8f9e 466-469
+apps/worker/src/billingSupervisor.ts
+  s_8ecbe99741e987::t_b5652bdbf9b9ef 1,7,21,35-52,54-55,60-64,66-68,103-118,120-121,136-138
+  s_8ecbe99741e987::t_e57b802aa4ab7f 69-102,119,123-130,132,139-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "11e10b3b82a22e6645ec1dc43026ad0f2223c7d4",
+  "prompts": {},
+  "sessions": {
+    "s_8ecbe99741e987": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f69fd-65a8-7931-8f3b-f70cca94d198",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

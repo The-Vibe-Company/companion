@@ -1,0 +1,20 @@
+packages/sandbox/src/opencodeChat.ts
+  s_1e74ce65ff5b16::t_937db778f40eae 150-158
+  s_1e74ce65ff5b16::t_a0735459dfd839 98-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "e08c77723ef9a44f4aeaa1d07eb96cf732a0f061",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

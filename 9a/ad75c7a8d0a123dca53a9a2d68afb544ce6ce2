@@ -1,0 +1,39 @@
+packages/companion-skill/skill/companion.json
+  s_954e002b3e29d2::t_9761d2c5e195d3 4,23-31
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_954e002b3e29d2::t_00777dedb534ba 310-318,343-362,447-457,459-462,464-467,536-758
+  s_954e002b3e29d2::t_1ead6d74e3d264 309,319-342,363-446,458,463,468-535,759-760
+  s_954e002b3e29d2::t_e8a7b9c4037242 6-7,44-47
+packages/companion-skill/skill/scripts/install_skill.py
+  s_954e002b3e29d2::t_7e0a028139b277 58-61,189-200,206,253-351,353-427,430-487,489
+  s_954e002b3e29d2::t_ec2b753d9277d5 135-188,201-205,222-229
+  s_954e002b3e29d2::t_c283d1b7a669c6 534-538,553,567-585,587-611,613,616-618,624,627-628,632-635,637,639-640,649-660,667-668,673
+  s_954e002b3e29d2::t_8034db37c9af1d 352,428-429
+  s_954e002b3e29d2::t_dcf0741a6f4aff 207-208
+packages/companion-skill/skill/SKILL.md
+  s_954e002b3e29d2::t_215d6e82e74270 353-358,364,367-374
+packages/companion-skill/skill/reference/api.md
+  s_954e002b3e29d2::t_543d7ae0bc2454 416-426
+apps/api/src/localSkills.test.ts
+  s_954e002b3e29d2::t_303d8836cdcea3 114-115
+  s_954e002b3e29d2::t_82d30e95d866b3 47
+packages/companion-skill/skill/companion.integrity.json
+  s_954e002b3e29d2::t_515a4544984b5f 3-4,15
+  s_954e002b3e29d2::t_5c4bcfa5f1af47 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "9aad75c7a8d0a123dca53a9a2d68afb544ce6ce2",
+  "prompts": {},
+  "sessions": {
+    "s_954e002b3e29d2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f049f-34d8-7563-9998-ae6ee4814eee",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

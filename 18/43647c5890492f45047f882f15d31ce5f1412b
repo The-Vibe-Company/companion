@@ -1,0 +1,59 @@
+apps/web/src/components/skills/ListView.tsx
+  s_7ded80ae93740c::t_47b353ca12ab86 3,7
+  s_7ded80ae93740c::t_c15e4024380314 136-138
+  s_7ded80ae93740c::t_61842dbe724b59 115
+  s_7ded80ae93740c::t_92e37024215c55 267-274
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_7ded80ae93740c::t_b8f95050cb31e0 755,759,766,771-772,774-775,777-778,780-788,790-792,794-815,817,820,826,829-831,833-834,836,840,842-844,846,849,851,855,857-859,862,866-868,871,875-877,887,901,916,933,947,965-969,975,989-993
+  s_7ded80ae93740c::t_1cce6ccd24fd30 1066
+  s_7ded80ae93740c::t_76e4a81480b663 394-396,400-401
+  s_7ded80ae93740c::t_3f7598645f00f3 1005,1020
+  s_7ded80ae93740c::t_a7694b81b58dfb 321-341,344-349,353-355,357,362-373
+scripts/agent-browser-smoke.sh
+  s_7ded80ae93740c::t_75908dd9e70d28 343-344
+  s_7ded80ae93740c::t_c3a7342db35208 109
+  s_7ded80ae93740c::t_00273a2adb71c1 12-15
+  s_7ded80ae93740c::t_6175dc602ba6c8 95-108,110-169
+  s_7ded80ae93740c::t_e32db7c8d9323e 195
+  s_7ded80ae93740c::t_26050e3f7311af 215
+apps/web/src/components/skills/dragGeometry.test.ts
+  s_7ded80ae93740c::t_298c48f8ff09e7 3-128
+  s_7ded80ae93740c::t_4f8903b1722de7 1-2
+apps/web/src/components/skills/SkillsApp.tsx
+  s_7ded80ae93740c::t_b9d3001fb9ebfb 1419-1421,1423
+  s_7ded80ae93740c::t_aea859a4567221 1493
+  s_7ded80ae93740c::t_4b948c9fa006fe 35
+  s_7ded80ae93740c::t_5bf51f4591704b 36
+  s_7ded80ae93740c::t_bace8c79d7752c 1361-1385
+apps/web/src/components/skills/ListView.test.ts
+  s_7ded80ae93740c::t_b4094daa1b7a69 70
+apps/web/src/components/skills/Sidebar.tsx
+  s_7ded80ae93740c::t_64427cb7a972f9 495,499,501
+  s_7ded80ae93740c::t_6699b7b9bdea67 671-672,677
+  s_7ded80ae93740c::t_f3caa4bf29ece7 589
+  s_7ded80ae93740c::t_dac38e81ba132d 731-732,737
+  s_7ded80ae93740c::t_e0970a1467df87 320,335-337
+  s_7ded80ae93740c::t_5c980d28f1d0e8 466-468,470
+  s_7ded80ae93740c::t_1b90cafa77133a 279-280,285,292-294,298
+  s_7ded80ae93740c::t_b540cf80ae3943 3,10
+  s_7ded80ae93740c::t_212b8eacb85092 422-424,426
+apps/web/src/components/skills/useSkillDrag.ts
+  s_7ded80ae93740c::t_dd0b630dedd4fb 1-117,121-241
+  s_7ded80ae93740c::t_e7e433e1b4c7d4 118-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "1843647c5890492f45047f882f15d31ce5f1412b",
+  "prompts": {},
+  "sessions": {
+    "s_7ded80ae93740c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd2996fa-ba69-4108-9f19-4b06a951a3e1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+package.json
+  s_2a20c1ba95580a::t_fead60e263b8e4 14-15
+pnpm-lock.yaml
+  s_2a20c1ba95580a::t_2e7f4d8f4a71b1 9-10,49,4021-4023,4702-4703,7264,9757,9944,10004,10814,11823
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e045b2f950c258f03bef4ddb80a805b322012912",
+  "prompts": {},
+  "sessions": {
+    "s_2a20c1ba95580a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fe4940e26ffer1ZVdpZ0tcqH2a",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

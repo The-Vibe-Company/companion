@@ -1,0 +1,213 @@
+apps/web/src/app/s/[token]/PublicSkillActions.tsx
+  s_c3b16095d2b0c2::t_514a854503043a 59
+.claude/skills/review-code-dev/scripts/parse_review_findings.py
+  s_c3b16095d2b0c2::t_514a854503043a 1-81
+.agents/skills/design-frontend-dev/reference/brand.md
+  s_c3b16095d2b0c2::t_514a854503043a 79
+.agents/skills/ship-pr-dev/SKILL.md
+  s_c3b16095d2b0c2::t_514a854503043a 40
+.claude/skills/review-code-dev/references/output-contract.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-373
+.claude/skills/design-frontend-dev/reference/shape.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-165
+.claude/skills/review-code-dev/scripts/collect_review_context.py
+  s_c3b16095d2b0c2::t_514a854503043a 1-418
+.claude/skills/review-code-dev/references/reviewers/backend.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-29
+.claude/skills/review-code-dev/references/reviewers/frontend.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-48
+.claude/skills/design-frontend-dev/reference/product.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-60
+.claude/skills/review-code-dev/references/reviewers/red-team.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-30
+apps/api/src/localSkills.test.ts
+  s_c3b16095d2b0c2::t_514a854503043a 51,128-130,153,155
+.claude/skills/review-code-dev/scripts/prepare_review_run.py
+  s_c3b16095d2b0c2::t_514a854503043a 1-137
+.claude/skills/design-frontend-dev/companion.json
+  s_c3b16095d2b0c2::t_514a854503043a 1-48
+.claude/skills/design-frontend-dev/reference/delight.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-302
+.claude/skills/design-frontend-dev/reference/quieter.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-99
+.claude/skills/design-frontend-dev/reference/bolder.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-113
+.claude/skills/review-code-dev/references/review-playbook.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-155
+.claude/skills/review-code-dev/references/reviewers/tests.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-28
+packages/companion-skill/skill/scripts/tools.json
+  s_c3b16095d2b0c2::t_514a854503043a 22-27
+.claude/skills/design-frontend-dev/SOURCE.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-26
+.claude/skills/design-frontend-dev/reference/layout.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-161
+.claude/skills/design-frontend-dev/reference/clarify.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-288
+.claude/skills/design-frontend-dev/reference/critique.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-59
+apps/web/src/components/skills/LocalSkillsView.test.ts
+  s_c3b16095d2b0c2::t_514a854503043a 97,101,137-159
+  s_c3b16095d2b0c2::t_d5b72788331b01 160-161
+packages/companion-skill/skill/scripts/bootstrap.py
+  s_c3b16095d2b0c2::t_514a854503043a 114
+.agents/skills/ship-pr-dev/scripts/prepare_ship_run.py
+  s_c3b16095d2b0c2::t_514a854503043a 8,10,13-52,60-85
+.claude/skills/design-frontend-dev/reference/overdrive.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-130
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_c3b16095d2b0c2::t_514a854503043a 15,28,401-405,418-419,612,704-741,846-849,893-897
+.claude/skills/ship-pr-dev/references/review-board.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-72
+.claude/skills/review-code-dev/references/finding-rubric.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-99
+.claude/skills/review-code-dev/evals/evals.json
+  s_c3b16095d2b0c2::t_514a854503043a 1-80
+.claude/skills/design-frontend-dev/reference/interaction-design.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-189
+.claude/skills/design-frontend-dev/reference/audit.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-133
+.claude/skills/design-frontend-dev/reference/brand.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-108
+.claude/skills/ship-pr-dev/SKILL.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-183
+packages/companion-skill/skill/scripts/companion-agent-client.mjs
+  s_c3b16095d2b0c2::t_514a854503043a 3-5,7-8,10-14,26-39,46,53-54,56-57,59,64-73,82-86,90,92,94,96,100-101,104-105,107-108,110-112,114-116,118-120,134-135,137,141-144
+  s_c3b16095d2b0c2::t_f280ff1a60cacb 17-19,22,24,43-44,49-50,78,80,124-125,127,132,139
+docs/product.md
+  s_c3b16095d2b0c2::t_514a854503043a 176-180
+.agents/skills/review-code-dev/scripts/collect_review_context.py
+  s_c3b16095d2b0c2::t_514a854503043a 41-43,47,186-192,202,274,280-281,286,288,305-306,325,337-339,352,370,377
+.claude/skills/design-frontend-dev/reference/colorize.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-245
+.claude/skills/design-frontend-dev/reference/optimize.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-258
+.agents/skills/design-frontend-dev/reference/typeset.md
+  s_c3b16095d2b0c2::t_514a854503043a 114,116-124
+DESIGN.md
+  s_c3b16095d2b0c2::t_514a854503043a 267
+.agents/skills/ship-pr-dev/scripts/collect_ship_context.py
+  s_c3b16095d2b0c2::t_514a854503043a 18,62-65,67-70,73-79,86-102,104,108-109,129,132,134-135,137-138,148
+.claude/skills/design-frontend-dev/reference/animate.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-201
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_c3b16095d2b0c2::t_514a854503043a 40-45,74,79,84-86,95-99,111-114,120-126,131-134,137,139,420,448,455,464-465,467-468,471-553,590,593,667,683-710,1178
+.claude/skills/review-code-dev/agents/openai.yaml
+  s_c3b16095d2b0c2::t_514a854503043a 1-4
+.claude/skills/design-frontend-dev/evals/evals.json
+  s_c3b16095d2b0c2::t_514a854503043a 1-20
+.claude/skills/review-code-dev/references/reviewers/architecture.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-29
+.claude/skills/ship-pr-dev/references/workflow.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-162
+packages/companion-skill/skill/companion.json
+  s_c3b16095d2b0c2::t_514a854503043a 4,8,31-32,34-35,394
+.claude/skills/review-code-dev/companion.json
+  s_c3b16095d2b0c2::t_514a854503043a 1-120
+apps/web/src/components/skills/UploadDialog.tsx
+  s_c3b16095d2b0c2::t_514a854503043a 59,64,1827
+packages/companion-skill/client/safe-install.test.ts
+  s_c3b16095d2b0c2::t_514a854503043a 1,3,7-11,168-196
+.agents/skills/design-frontend-dev/reference/layout.md
+  s_c3b16095d2b0c2::t_514a854503043a 143,145-161
+.claude/skills/review-code-dev/references/reviewers/data-migration.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-28
+.agents/skills/ship-pr-dev/companion.json
+  s_c3b16095d2b0c2::t_514a854503043a 4
+.claude/skills/design-frontend-dev/reference/typeset.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-279
+docs/design.md
+  s_c3b16095d2b0c2::t_514a854503043a 258-261
+.agents/skills/design-frontend-dev/evals/evals.json
+  s_c3b16095d2b0c2::t_514a854503043a 2
+.claude/skills/design-frontend-dev/reference/distill.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-111
+.claude/skills/review-code-dev/references/subagent-briefs.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-305
+apps/web/src/app/s/[token]/PublicSkillActions.test.ts
+  s_c3b16095d2b0c2::t_514a854503043a 55-57
+.claude/skills/design-frontend-dev/reference/harden.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-347
+.claude/skills/ship-pr-dev/scripts/collect_ship_context.py
+  s_c3b16095d2b0c2::t_514a854503043a 1-171
+.claude/skills/review-code-dev/references/local-review-rules.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-50
+.claude/skills/design-frontend-dev/LICENSE
+  s_c3b16095d2b0c2::t_514a854503043a 1-191
+.claude/skills/review-code-dev/references/reviewers/security.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-29
+packages/companion-skill/skill/scripts/tools.schema.json
+  s_c3b16095d2b0c2::t_514a854503043a 5,53,58
+.agents/skills/review-code-dev/references/output-contract.md
+  s_c3b16095d2b0c2::t_514a854503043a 260,300
+.claude/skills/ship-pr-dev/companion.json
+  s_c3b16095d2b0c2::t_514a854503043a 1-69
+.claude/skills/design-frontend-dev/reference/polish.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-236
+.claude/skills/review-code-dev/references/reviewers/performance.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-28
+.claude/skills/ship-pr-dev/references/readiness-gates.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-105
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_c3b16095d2b0c2::t_514a854503043a 49,54,119-133,301,315-316,512-514,545
+.claude/skills/design-frontend-dev/reference/onboard.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-234
+packages/companion-skill/skill/companion.integrity.json
+  s_c3b16095d2b0c2::t_514a854503043a 3-4,6,10-11,13-14,18,21
+packages/companion-skill/skill/scripts/install_skill.py
+  s_c3b16095d2b0c2::t_514a854503043a 5-7,10,25,52,104-168,174-176,183-193,196,216,253-257,344,346,590-597,606,627,716,730-733,764-768,780
+packages/companion-skill/client/safe-install.ts
+  s_c3b16095d2b0c2::t_514a854503043a 36,327,330,351,367,385
+.agents/skills/design-frontend-dev/companion.json
+  s_c3b16095d2b0c2::t_514a854503043a 4
+apps/api/src/companionSkillPackage.ts
+  s_c3b16095d2b0c2::t_514a854503043a 123
+.agents/skills/review-code-dev/scripts/prepare_review_run.py
+  s_c3b16095d2b0c2::t_514a854503043a 53,56-57,63,68,72,76,99,102,106,115,123
+apps/web/src/components/skills/InstallDialog.test.ts
+  s_c3b16095d2b0c2::t_514a854503043a 1-75
+.claude/skills/ship-pr-dev/references/pr-template.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-76
+.claude/skills/ship-pr-dev/scripts/prepare_ship_run.py
+  s_c3b16095d2b0c2::t_514a854503043a 1-91
+packages/companion-skill/skill/reference/api.md
+  s_c3b16095d2b0c2::t_514a854503043a 486-491
+packages/companion-skill/skill/SKILL.md
+  s_c3b16095d2b0c2::t_514a854503043a 5,151-157,345-348,354-361,508,518-523,536-538,554-557,1125
+.claude/skills/ship-pr-dev/evals/evals.json
+  s_c3b16095d2b0c2::t_514a854503043a 1-40
+packages/companion-skill/skill/scripts/secrets_runtime.py
+  s_c3b16095d2b0c2::t_514a854503043a 19,226,248,250-251,256-267,285-293,296
+.agents/skills/review-code-dev/references/review-playbook.md
+  s_c3b16095d2b0c2::t_514a854503043a 6
+.claude/skills/review-code-dev/references/review-intelligence.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-113
+.claude/skills/review-code-dev/references/reviewers/api-contract.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-29
+.agents/skills/review-code-dev/companion.json
+  s_c3b16095d2b0c2::t_514a854503043a 4
+.claude/skills/design-frontend-dev/reference/adapt.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-311
+.claude/skills/design-frontend-dev/SKILL.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-143
+.claude/skills/review-code-dev/SKILL.md
+  s_c3b16095d2b0c2::t_514a854503043a 1-223
+.agents/skills/review-code-dev/scripts/parse_review_findings.py
+  s_c3b16095d2b0c2::t_514a854503043a 43-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5600ad90635f4d5e7d61af0229ad6d6a07d67766",
+  "prompts": {},
+  "sessions": {
+    "s_c3b16095d2b0c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8222fbd9-2a17-428f-916b-b45c036b2a23",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

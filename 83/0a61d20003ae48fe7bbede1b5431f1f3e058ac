@@ -1,0 +1,26 @@
+apps/web/src/app/v1/auth/login-redirect/route.ts
+  s_e0745febcf91fd::t_bf70e9e11ebdf4 1-25,28-37,43-70,72-73,75
+  s_e0745febcf91fd::t_d91ac76b5282dd 26-27,38-42,71,74
+scripts/conductor-workspace.sh
+  s_e0745febcf91fd::t_c70e3ad1593539 96-104,285,287-290
+  s_e0745febcf91fd::t_a29d3ada0e7790 212-217,219-224
+apps/web/src/app/v1/auth/login-redirect/route.test.ts
+  s_e0745febcf91fd::t_108e7e0216b35c 1-4,7-9,12-88
+  s_e0745febcf91fd::t_942c68e73c43b4 5-6,10-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "830a61d20003ae48fe7bbede1b5431f1f3e058ac",
+  "prompts": {},
+  "sessions": {
+    "s_e0745febcf91fd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea36c-20e7-7493-bb05-19737e529dc8",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

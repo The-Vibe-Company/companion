@@ -1,0 +1,34 @@
+docs/companions-runtime.md
+  s_2e7d06e46dfab3::t_7f76b7ed5cb6b3 232-233,704-706,726-727
+docs/runbooks/companions-runtime.md
+  s_2e7d06e46dfab3::t_27a7c8e07a279e 4,27-28,162-165,175
+docs/design.md
+  s_2e7d06e46dfab3::t_2ae8364739f71f 335-336
+README.md
+  s_2e7d06e46dfab3::t_2ae8364739f71f 136
+.github/workflows/ci.yml
+  s_2e7d06e46dfab3::t_ee27fd92188ed5 78
+deploy/railway/README.md
+  s_2e7d06e46dfab3::t_16fdc555e7066f 240-242,258
+docs/PRD.md
+  s_2e7d06e46dfab3::t_7f76b7ed5cb6b3 179-180
+docs/testing.md
+  s_2e7d06e46dfab3::t_2ae8364739f71f 138
+  s_2e7d06e46dfab3::t_74b44ac6890526 139-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "00f0c1694a1d36ae78a0e3f3d2f0c99bcb403269",
+  "prompts": {},
+  "sessions": {
+    "s_2e7d06e46dfab3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a025cc-740d-7731-8ce3-9d5c13a5072f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+scripts/dev-stack.sh
+  s_d809d3a8d59ab9::t_66e0774b7351a2 158,163,165-167,169-177
+  s_d809d3a8d59ab9::t_daac9702ee2345 151,153-154,156-157,159-162,199,211-212,227,239-240
+  s_d809d3a8d59ab9::t_457ca3790ac1e8 213,241
+  s_d809d3a8d59ab9::t_cf2677c0033e86 242-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "08056de1cff21ad8546b0dca577c46a3b03205ab",
+  "prompts": {},
+  "sessions": {
+    "s_d809d3a8d59ab9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea628-4325-77a0-a670-86399cd752c5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

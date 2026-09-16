@@ -1,0 +1,25 @@
+deploy/railway/sandbox-lifecycle-alerts.md
+  s_5097b6d34853d4::t_1ce6e2d39eec8c 1-50
+.env.example
+  s_5097b6d34853d4::t_36c7ff4abbfe94 52-54,63
+deploy/railway/README.md
+  s_5097b6d34853d4::t_36c7ff4abbfe94 185
+  s_5097b6d34853d4::t_1ce6e2d39eec8c 123-127
+  s_5097b6d34853d4::t_5711857a8b5a39 176-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "a44204fcc2ab56aaf7e83a2f8e9446b9c8eac2e2",
+  "prompts": {},
+  "sessions": {
+    "s_5097b6d34853d4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8e48-f114-7053-bd9c-66c16dd3ac93",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

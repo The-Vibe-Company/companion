@@ -1,0 +1,74 @@
+packages/sandbox/package.json
+  s_5c2a1a0a0d942b::t_ccc9bccdddfa6b 1-28
+packages/sandbox/scripts/probe.ts
+  s_5c2a1a0a0d942b::t_ccc9bccdddfa6b 1-156
+packages/core/src/secretbox.ts
+  s_5c2a1a0a0d942b::t_1d58ab45aeaec4 1-3,5-9,11-61,63-100,104-114
+  s_5c2a1a0a0d942b::t_2831bc18cef0a7 4,10
+  s_5c2a1a0a0d942b::t_9b5f7596a67afc 101-103
+  s_5c2a1a0a0d942b::t_0d51b366858bae 62
+packages/sandbox/scripts/smoke-vercel.ts
+  s_5c2a1a0a0d942b::t_28d9821323cace 148
+  s_5c2a1a0a0d942b::t_ccc9bccdddfa6b 1,3-7,11-23,26-74,76-77,88-126,138,141-147,149-156
+  s_5c2a1a0a0d942b::t_e13a818ade2355 75,78-87
+  s_5c2a1a0a0d942b::t_a285692b1bed02 2,8-10
+  s_5c2a1a0a0d942b::t_00bfbe8564785e 24-25
+  s_5c2a1a0a0d942b::t_371f2dc6e2fe54 127-137,139-140
+packages/skills/test/extractArchiveEntryBuffers.test.ts
+  s_5c2a1a0a0d942b::t_ccc9bccdddfa6b 1-47
+packages/sandbox/src/modelCatalog.ts
+  s_5c2a1a0a0d942b::t_ccc9bccdddfa6b 2-80,82-101,103-150
+  s_5c2a1a0a0d942b::t_e2b8e203302bfd 1,81,102
+packages/contracts/src/skillRuns.ts
+  s_5c2a1a0a0d942b::t_d05ea3a705960f 1-158
+packages/contracts/src/index.ts
+  s_5c2a1a0a0d942b::t_8cc292fe73bacd 16-17
+packages/contracts/src/modelProviders.ts
+  s_5c2a1a0a0d942b::t_87517ea59549b5 1-80
+packages/sandbox/test/modelCatalog.test.ts
+  s_5c2a1a0a0d942b::t_ccc9bccdddfa6b 1-85
+packages/skills/test/helpers.ts
+  s_5c2a1a0a0d942b::t_ccc9bccdddfa6b 47-48,63
+packages/sandbox/src/vercel.ts
+  s_5c2a1a0a0d942b::t_14faa3dfbbe5c5 185,187,198,202,204-210,212
+  s_5c2a1a0a0d942b::t_affe0ccce9de68 1-184,186,188-197,199-201,203,211,213-220
+packages/core/src/index.ts
+  s_5c2a1a0a0d942b::t_1c9327711b961c 3-4
+packages/sandbox/src/index.ts
+  s_5c2a1a0a0d942b::t_651c5334b5d4a0 1-10
+packages/sandbox/src/opencodeChat.ts
+  s_5c2a1a0a0d942b::t_e2b8e203302bfd 1-235
+packages/skills/src/archive.ts
+  s_5c2a1a0a0d942b::t_ccc9bccdddfa6b 80,93-98,102,123,505-572
+  s_5c2a1a0a0d942b::t_89abe6c017bb2c 573
+packages/core/test/secretbox.test.ts
+  s_5c2a1a0a0d942b::t_11659d138b22eb 1-67
+packages/sandbox/scripts/create-golden-sandbox.ts
+  s_5c2a1a0a0d942b::t_ccc9bccdddfa6b 1-83
+packages/sandbox/src/chatMapping.ts
+  s_5c2a1a0a0d942b::t_ccc9bccdddfa6b 1-31
+packages/sandbox/tsconfig.json
+  s_5c2a1a0a0d942b::t_ccc9bccdddfa6b 1-11
+packages/sandbox/test/chatMapping.test.ts
+  s_5c2a1a0a0d942b::t_ccc9bccdddfa6b 1-43
+packages/core/src/runRuntime.ts
+  s_5c2a1a0a0d942b::t_34d7f951375e55 1-101
+pnpm-lock.yaml
+  s_5c2a1a0a0d942b::t_dc965ffdc1029b 220,229,323-350,1598-1600,2069-2075,2105-2107,2182-2184,3237-3239,3539-3542,3739-3742,3967-3969,4100-4103,4253-4260,4553,5200-5203,5603-5621,5662-5663,5762-5765,5817,5834,6949-6950,7474-7475,7692-7693,8005-8013,8179-8180,8386-8393
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e64d0bbc23bb3d74e19f1d510ca06648cbc8643e",
+  "prompts": {},
+  "sessions": {
+    "s_5c2a1a0a0d942b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c9149cb-d9d2-47a8-933b-e769ca7e94e3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

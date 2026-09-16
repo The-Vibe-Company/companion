@@ -1,0 +1,67 @@
+apps/web/src/lib/queries.ts
+  s_456d76c750cd85::t_6204b634e2652b 183-187
+apps/web/src/components/skills/fileFormat.ts
+  s_456d76c750cd85::t_6204b634e2652b 8,12,16-18,28-29,38-39
+packages/companion-skill/skill/scripts/bootstrap.py
+  s_456d76c750cd85::t_6204b634e2652b 19,31,74-95,108-110,129,155
+packages/skills/test/extractArchiveFiles.test.ts
+  s_456d76c750cd85::t_6204b634e2652b 2,101-124,204-264
+  s_456d76c750cd85::t_1cad6583a59fc7 265
+packages/companion-skill/skill/scripts/tools.schema.json
+  s_456d76c750cd85::t_6204b634e2652b 1-70
+packages/contracts/src/skill.ts
+  s_456d76c750cd85::t_6204b634e2652b 341-342
+packages/companion-skill/skill/scripts/install_skill.py
+  s_456d76c750cd85::t_6204b634e2652b 1-360
+apps/api/src/skillFileContentRoute.test.ts
+  s_456d76c750cd85::t_6204b634e2652b 1-201
+apps/web/src/components/skills/DetailView.tsx
+  s_456d76c750cd85::t_6204b634e2652b 18,535,694-700
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_456d76c750cd85::t_6204b634e2652b 11,18-19,50-63,178-422,464-466,474-482,493-507
+  s_456d76c750cd85::t_9583097e56e358 508-509
+packages/companion-skill/skill/scripts/skill_guard.py
+  s_456d76c750cd85::t_6204b634e2652b 31,181-193,664-665
+packages/companion-skill/skill/reference/api.md
+  s_456d76c750cd85::t_6204b634e2652b 45,118-122,207-214
+  s_456d76c750cd85::t_4c0d2461a3868c 215
+packages/skills/src/archive.ts
+  s_456d76c750cd85::t_6204b634e2652b 2-3,67-169,190-193,195-196,198-199,202,205,214-215,226-233,266-278,293-382,391-392,421-424,444,446-447,451,460-492,495-579
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_456d76c750cd85::t_6204b634e2652b 1-305
+packages/companion-skill/skill/companion.integrity.json
+  s_456d76c750cd85::t_6204b634e2652b 3-5,9-12,15
+packages/companion-skill/skill/companion.json
+  s_456d76c750cd85::t_6204b634e2652b 4,7,18-20,23-39,186
+packages/companion-skill/skill/scripts/tools.json
+  s_456d76c750cd85::t_6204b634e2652b 1-18
+apps/web/src/components/skills/fileview.test.ts
+  s_456d76c750cd85::t_6204b634e2652b 1-87
+apps/api/src/localSkills.test.ts
+  s_456d76c750cd85::t_6204b634e2652b 47,71,73,114-115
+packages/companion-skill/skill/SKILL.md
+  s_456d76c750cd85::t_6204b634e2652b 274-289,337-373,570-572,767-769
+apps/web/src/components/skills/fileview.tsx
+  s_456d76c750cd85::t_6204b634e2652b 64-112,121-124,139,231,243,253,300-303,389,394,455
+apps/web/src/styles/app.css
+  s_456d76c750cd85::t_6204b634e2652b 165-168
+apps/api/src/index.ts
+  s_456d76c750cd85::t_6204b634e2652b 139,1929-1943,1953,1977,1986-2019
+  s_456d76c750cd85::t_992d0543425e87 2020-2024
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "0c000e7828c0da9d09966b7be7a13a159368c1d5",
+  "prompts": {},
+  "sessions": {
+    "s_456d76c750cd85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cdeeb4e-8534-49fb-a61f-8b8033e73ecd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

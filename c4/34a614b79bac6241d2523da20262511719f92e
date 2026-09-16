@@ -1,0 +1,36 @@
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_f2c62b9b642514::t_9298fe009c77bd 5044-5052,5060-5064
+.claude/skills/debug-companions-prod/scripts/db_query.py
+  s_f2c62b9b642514::t_dcbe7b72b1561f 132
+  s_f2c62b9b642514::t_900a085d7bd547 119-124,126-128
+  s_f2c62b9b642514::t_1f165d1a8677aa 287
+  s_f2c62b9b642514::t_0466a9456ff622 298-303,306
+  s_f2c62b9b642514::t_b857740d69b326 87-92,94-102,105-107,146-147
+  s_f2c62b9b642514::t_7e68ee8a0df266 304-305
+  s_f2c62b9b642514::t_fc4930db08d749 93
+  s_f2c62b9b642514::t_aac6534421fc61 103
+  s_f2c62b9b642514::t_e0f8df98acfb6f 104,114,125,142
+  s_f2c62b9b642514::t_636e41c7233a41 108-112,115-118
+  s_f2c62b9b642514::t_58e4ed8962fdee 113
+  s_f2c62b9b642514::t_e2050bec4ec608 129-131,133-141,143-145
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_f2c62b9b642514::t_1c0962c7e15bac 1913-1915
+  s_f2c62b9b642514::t_ddf6e184667de9 1906-1912,1916-1943,1946-1948
+  s_f2c62b9b642514::t_7448717446e5d6 1944-1945
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c434a614b79bac6241d2523da20262511719f92e",
+  "prompts": {},
+  "sessions": {
+    "s_f2c62b9b642514": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fb75e729cffepXC6KhG5i94Qao",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

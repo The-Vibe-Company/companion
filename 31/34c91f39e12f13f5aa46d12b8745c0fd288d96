@@ -1,0 +1,54 @@
+apps/api/src/index.ts
+  s_bb9a090db217b2::t_c5a3d5f6293865 935
+  s_bb9a090db217b2::t_014687cca52630 953,972,985,1002-1017,1019
+  s_bb9a090db217b2::t_2fae67304d677d 108,989-995,998,1018,1021
+  s_bb9a090db217b2::t_873a38f76eba53 933,1116-1117
+apps/api/src/skillPublishGuards.ts
+  s_bb9a090db217b2::t_0155dd1fa39274 3-4,8-13
+  s_bb9a090db217b2::t_6d18a0a3a014e6 1-2,5-7,14-44
+apps/web/src/components/skills/DetailView.tsx
+  s_bb9a090db217b2::t_a13ec2bee3b150 28-64,128-133
+  s_bb9a090db217b2::t_6f33af153d56d1 3,65-127,134-138,334-339
+docs/design.md
+  s_bb9a090db217b2::t_ea9ccf537e93b5 72
+  s_bb9a090db217b2::t_66fbbd04a32e99 73-75,196-199
+apps/web/src/styles/skills.css
+  s_bb9a090db217b2::t_d80497163d4223 208-209,366-367
+apps/web/src/components/skills/updateFlow.test.ts
+  s_bb9a090db217b2::t_4a5d48506733aa 107-109,114,117-132
+  s_bb9a090db217b2::t_96356d0c81128a 112-113
+  s_bb9a090db217b2::t_ad75585983d3ba 1-106,110-111,115-116,133-134
+apps/api/src/skillPublishGuards.test.ts
+  s_bb9a090db217b2::t_725fe0ce959e2b 3,64-79
+  s_bb9a090db217b2::t_30adb09a74c467 1-2,4-63,80-81
+scripts/agent-browser-smoke.sh
+  s_bb9a090db217b2::t_5738a6728a3d2f 187
+apps/web/src/lib/queries.ts
+  s_bb9a090db217b2::t_5a599116798b52 70-73,77-79
+  s_bb9a090db217b2::t_a1df567dcdbf50 29
+  s_bb9a090db217b2::t_79965b1b76d976 48-54,65
+apps/web/src/components/skills/UploadDialog.tsx
+  s_bb9a090db217b2::t_995779d45acc80 1104,1288-1297
+  s_bb9a090db217b2::t_256ca3010ab98e 1159
+  s_bb9a090db217b2::t_0377a8238034f5 1372,1374,1380,1413,1474-1480,1514,1598-1599,1628,1635,1637-1638
+  s_bb9a090db217b2::t_f43687976699d3 27,29-31,33-34,36-41,546,548,575,586-591,596-597,600,609-615,619,624,626,634-637,645-646,657-658
+  s_bb9a090db217b2::t_70fad645255558 28,32,35,594-595,598-599,601-607,616-618,620-623,625,627-629,638-644,647-649,651-652,680-681
+  s_bb9a090db217b2::t_29ff2e9bab1a3b 1039-1048,1061
+  s_bb9a090db217b2::t_c46e2b36acff98 630-633,650
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "3134c91f39e12f13f5aa46d12b8745c0fd288d96",
+  "prompts": {},
+  "sessions": {
+    "s_bb9a090db217b2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ecb4e-76cb-7203-a4e1-e81d80f012b0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

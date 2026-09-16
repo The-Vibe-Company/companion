@@ -1,0 +1,19 @@
+internal/web/assets/dashboard.js
+  s_71096c41aa28a0::t_7fd158ac6f02a5 207-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c2ded9c097bda675f03a602305c8e8276fab5223",
+  "prompts": {},
+  "sessions": {
+    "s_71096c41aa28a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "918ab14d-2bde-494b-9861-6aa58feb0562",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Claude <noreply@anthropic.com>"
+    }
+  }
+}

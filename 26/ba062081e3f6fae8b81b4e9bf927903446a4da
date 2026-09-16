@@ -1,0 +1,98 @@
+packages/contracts/src/github.ts
+  s_907d40b0c49328::t_0e1fe0064f5776 71-99
+apps/web/src/components/org/GitHubSkillsPanel.tsx
+  s_907d40b0c49328::t_22da1fbdc7ea95 255-257
+  s_907d40b0c49328::t_463f70edd52938 1-66,68-76,83-84,88-95,97-98,100-128,131-136,148-153,155-156,158-161,185-210,212-228,232-251,253-254,258-293,295-311,318-331
+  s_907d40b0c49328::t_0d14c3fb59ea4e 67,77-82,85-87,96,99,129-130,137-147,154,157,162-184,211,229-231,252,294,312-317
+apps/web/src/components/org/GitHubPane.tsx
+  s_907d40b0c49328::t_659cc2a33921f0 26,30,54,75,119,135,243-252,278,331-337,345-367,491-504
+  s_907d40b0c49328::t_0d14c3fb59ea4e 84,87
+  s_907d40b0c49328::t_22da1fbdc7ea95 338-344,368-369,433-434,436,490
+docs/design.md
+  s_907d40b0c49328::t_f290f225773e53 500-513,518,523-524
+apps/web/src/styles/settings.css
+  s_907d40b0c49328::t_cfc35a394aa709 351-358,415-479,663-664,714-720
+packages/core/test/githubSync.test.ts
+  s_907d40b0c49328::t_68f48bc743b6b5 3-10,67-103,147-154,156
+  s_907d40b0c49328::t_9295b1acf31070 112
+  s_ce38119f457277::t_9bd94ba45a65b0 155,157
+apps/web/src/lib/github.ts
+  s_907d40b0c49328::t_8ae1a5ea2ee84f 9-10,19-22,51-63
+  s_ce38119f457277::t_bd4eb6f740e280 64
+apps/api/src/index.ts
+  s_907d40b0c49328::t_d3abe04f612817 141,143-144,148,864-874,1026-1062
+  s_ce38119f457277::t_e5f9d3d4b079ce 1063
+packages/core/src/githubSync.ts
+  s_907d40b0c49328::t_20b2d7278d3381 575-592
+  s_907d40b0c49328::t_6fa8630e09e0e6 2,24-37,132-137,149-198,200-258,260-265
+  s_907d40b0c49328::t_d8f03165dc24aa 3-11,138-142,144-148,199,259
+  s_907d40b0c49328::t_dc42ab6140b2c1 267,562-574,593-654
+  s_907d40b0c49328::t_a2bffe2a062e78 143
+  s_31bf4d166d4bb0::t_9226bd7fc4b0c0 266,268
+docs/testing.md
+  s_907d40b0c49328::t_f290f225773e53 31
+apps/api/test/integration/rls.integration.test.ts
+  s_907d40b0c49328::t_efdaccab194781 11,13,20,54,83-88,250-256,258,261-263,319-322,378,380-391,405-431,433,435-437,439-444
+  s_907d40b0c49328::t_c5ab255de8d502 55,89-94,257,264-318,323-342,445-452,498-524
+  s_907d40b0c49328::t_673be570f2d908 470,473,496
+  s_907d40b0c49328::t_8a34bad19f488a 259-260,432,434
+  s_907d40b0c49328::t_02dda6dc09debf 4,453-469,471-472,474-495,497
+  s_907d40b0c49328::t_29e7b02199ca50 14,343-377,379,392-404,438
+  s_907d40b0c49328::t_c06aa6a7f67948 525
+apps/api/src/githubRoutes.test.ts
+  s_907d40b0c49328::t_2a497028bd8c76 20-21,27,36,106,113-114,130-131,147-186
+  s_ce38119f457277::t_acfd412befbb1a 187
+apps/web/src/lib/apiClient.ts
+  s_907d40b0c49328::t_8ae1a5ea2ee84f 1-10,20
+apps/web/src/components/org/GitHubPane.test.ts
+  s_907d40b0c49328::t_34d8944e85a522 247-275
+  s_907d40b0c49328::t_2caa7778ab358e 9,14,26,28,30,42-43,91-102,141,145-146,158-208,210-211,217-231,233-246
+  s_907d40b0c49328::t_06bac11f8a5d1e 212-216
+  s_907d40b0c49328::t_0b0225efc6fb03 468-470,497
+  s_907d40b0c49328::t_040d4e7f80f52c 125-132,209,232
+  s_907d40b0c49328::t_64ef4cd164de3e 276-378,466-467,471-483,487-496,501
+  s_907d40b0c49328::t_aebd23684de37d 484-486,498-500
+  s_883baa7855feb5::t_e57f78778f7d88 502
+packages/contracts/test/github.test.ts
+  s_907d40b0c49328::t_0e1fe0064f5776 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "26ba062081e3f6fae8b81b4e9bf927903446a4da",
+  "prompts": {},
+  "sessions": {
+    "s_31bf4d166d4bb0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83c8-4ceb-7e11-87d0-104c7e9fc3af",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_883baa7855feb5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f84b8-9ba5-7ce0-9a06-75d413e40d21",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_907d40b0c49328": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f84a8-2dcb-7f33-aba9-b4bcc2718f6f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_ce38119f457277": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd9-e1e6-7e03-a1c3-4141fc3eadb4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

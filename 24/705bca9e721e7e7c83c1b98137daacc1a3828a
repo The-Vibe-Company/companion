@@ -1,0 +1,21 @@
+apps/api/src/skillListRoute.test.ts
+  s_17fa1e0625dbf4::t_e4d754d0113e08 1-159
+apps/api/src/index.ts
+  s_17fa1e0625dbf4::t_fae384383acea7 157-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "24705bca9e721e7e7c83c1b98137daacc1a3828a",
+  "prompts": {},
+  "sessions": {
+    "s_17fa1e0625dbf4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efb7e-63f2-77e1-bc3f-0586a22c1d6a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

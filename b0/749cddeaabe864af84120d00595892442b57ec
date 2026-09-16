@@ -1,0 +1,19 @@
+packages/companion-skill/skill/companion.json
+  s_7a19fed05c606b::t_15d1af7ddc265f 4,11-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "b0749cddeaabe864af84120d00595892442b57ec",
+  "prompts": {},
+  "sessions": {
+    "s_7a19fed05c606b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efe29-3e42-7ba0-ae1c-2ee82f310b96",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,100 @@
+apps/web/src/components/org/SettingsView.tsx
+  s_120c4dbab8c00a::t_6524d031fe0d63 1-70
+apps/web/src/components/org/useOrgActions.ts
+  s_120c4dbab8c00a::t_376962f0f427ec 1-61
+apps/web/src/app/(app)/settings/loading.tsx
+  s_120c4dbab8c00a::t_beace6d6d5b9f5 1-39
+apps/web/src/components/org/model.ts
+  s_120c4dbab8c00a::t_617fa7dd16a96f 1-44,53,57-77
+  s_120c4dbab8c00a::t_21c646418e4006 45-52
+  s_120c4dbab8c00a::t_bd5b28bca4ec90 54-56
+apps/web/src/styles/org.css
+  s_120c4dbab8c00a::t_79301e8f381f4b 1-200
+apps/web/src/components/org/Onboarding.tsx
+  s_120c4dbab8c00a::t_0e99accc59bf10 7-8,10-23,25-26,40,48,65-75,79,90,126-136,139,150
+  s_120c4dbab8c00a::t_39e4f6ba2e5a03 1-6,9,24,27-39,41-47,49-64,76-78,80-89,91-125,137-138,140-149,151-171
+apps/web/src/components/org/TeamsSection.tsx
+  s_120c4dbab8c00a::t_3cd91a8376c568 4
+  s_120c4dbab8c00a::t_06dc4c7ac7c494 92
+  s_120c4dbab8c00a::t_8e501593df2caa 1-3,5-91,93-154
+apps/web/test/org.rls.test.ts
+  s_120c4dbab8c00a::t_213a13244feb9c 1-115
+apps/web/src/components/org/MembersSection.tsx
+  s_120c4dbab8c00a::t_c797052e92cb4b 1-138
+apps/web/src/styles/skills.css
+  s_120c4dbab8c00a::t_fa1dd713a2be74 68-72,74,76-77,81-85
+  s_120c4dbab8c00a::t_1b46cc4cabbede 59-64
+apps/web/src/app/api/skills/upload/route.ts
+  s_120c4dbab8c00a::t_48c4b585a1c208 56-59
+  s_120c4dbab8c00a::t_4ea60b75b11e5d 93
+  s_120c4dbab8c00a::t_b98f2fee46f589 10
+apps/web/src/components/org/AcceptInvite.tsx
+  s_120c4dbab8c00a::t_afaf4ca6e5b2d4 1-55
+apps/web/src/app/(app)/settings/page.tsx
+  s_120c4dbab8c00a::t_53f8d0add23e46 1-134
+apps/web/src/styles/tokens.css
+  s_120c4dbab8c00a::t_ce56d877c6b7ac 34
+apps/web/src/components/skills/Sidebar.tsx
+  s_120c4dbab8c00a::t_3bb07f9fc1569b 5-8,11-15,28-32,57,99-106,113-132,159-162
+apps/web/src/lib/currentOrg.ts
+  s_120c4dbab8c00a::t_fb7488f6f60c42 24
+  s_120c4dbab8c00a::t_4fb18daa40cdd3 1-23,25-27,29-30
+  s_120c4dbab8c00a::t_6c7cbebb03890f 28
+apps/web/src/components/org/OrgSwitcher.tsx
+  s_120c4dbab8c00a::t_3e1c82476943ef 1-4,6-8,20-37,39-41,43,46-53,56-63,65-71,73-75,77-84
+  s_120c4dbab8c00a::t_7db785af12195e 5,9-19,38,42,44-45,54-55,64,72,76
+apps/web/src/components/org/dialogs.tsx
+  s_120c4dbab8c00a::t_12b773fa5ddce6 1-6,8-53,55-57,59-103
+  s_120c4dbab8c00a::t_dd3fc226a3390c 54,58
+  s_120c4dbab8c00a::t_558d354cb2c686 7
+apps/web/src/components/org/GeneralPane.tsx
+  s_120c4dbab8c00a::t_dc31fc23deedb6 1-47
+apps/web/src/components/org/SettingsApp.tsx
+  s_120c4dbab8c00a::t_d8c7670497b06e 1-217
+apps/web/src/app/globals.css
+  s_120c4dbab8c00a::t_b509c5bc888403 4
+apps/web/src/lib/types.ts
+  s_120c4dbab8c00a::t_ccf29c882aa72c 1
+  s_120c4dbab8c00a::t_56242715e8f9b8 73-126
+apps/web/src/components/org/FirstRun.tsx
+  s_120c4dbab8c00a::t_71e2ffc45d26f9 1-27
+apps/web/src/components/org/RoleSelect.tsx
+  s_120c4dbab8c00a::t_68bbd02cd3be1f 1-65,68-80
+  s_120c4dbab8c00a::t_219887e709f108 66-67
+apps/web/src/app/join/[token]/page.tsx
+  s_120c4dbab8c00a::t_025d2cb24accc7 1-41
+apps/web/src/components/org/roles.ts
+  s_120c4dbab8c00a::t_163dc2f422e519 10-12,19
+  s_120c4dbab8c00a::t_e1041d6b6f386e 1-9,13-18,20-31
+apps/web/src/app/api/org/route.ts
+  s_120c4dbab8c00a::t_47881a5be7fb11 1-37
+apps/web/src/app/(app)/skills/page.tsx
+  s_120c4dbab8c00a::t_56a2d0efe60bf7 4,6,18-21,25,40,44-45,57
+apps/web/src/components/Icon.tsx
+  s_120c4dbab8c00a::t_abe377a29d7137 59-60,70,85-86,93-95,102-103
+  s_120c4dbab8c00a::t_6e54e5d2612fea 5-6,16,31-32,39-41,48-49
+apps/web/src/components/org/primitives.tsx
+  s_120c4dbab8c00a::t_9e941a138407e0 1-65
+apps/web/src/lib/org.ts
+  s_120c4dbab8c00a::t_9c834424dd090c 1-89
+apps/web/src/components/skills/SkillsApp.tsx
+  s_120c4dbab8c00a::t_fc928a8fffc46e 7,13-15,29-30,35-36,39-49
+  s_120c4dbab8c00a::t_abfbbc22b83b78 247-251
+  s_120c4dbab8c00a::t_0b5c4fb8d827de 318-331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "40b2801e948fbe3b790dafceb042438ba0b30bbd",
+  "prompts": {},
+  "sessions": {
+    "s_120c4dbab8c00a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "441587e1-4104-43c6-bff4-a80dcf49c57e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,57 @@
+docs/testing.md
+  s_48f42bfbc57a73::t_e035dfd270dd7c 20-22
+apps/api/test/integration/preTenantRls.integration.test.ts
+  s_48f42bfbc57a73::t_9895a78e70486d 1-15
+  s_48f42bfbc57a73::t_2a1a4ca0efc86b 165,178
+  s_48f42bfbc57a73::t_e035dfd270dd7c 16-164,166-177,179-403
+apps/api/src/index.ts
+  s_48f42bfbc57a73::t_20519d2e18f67b 1946-1954,1968-1972,1993-2001
+  s_48f42bfbc57a73::t_b4ffdd647ff965 2103-2106
+apps/api/test/integration/rls.integration.test.ts
+  s_48f42bfbc57a73::t_2a1a4ca0efc86b 53,61
+.github/workflows/ci.yml
+  s_48f42bfbc57a73::t_d58bc62473c60e 125-135
+  s_48f42bfbc57a73::t_866b84cf62d79e 18-19,183-185,202,234-236,240-242,297-308,327-329,343-344
+  s_48f42bfbc57a73::t_5157cb885eb549 233,326
+  s_48f42bfbc57a73::t_a217303ac28a51 136
+apps/api/test/integration/secretLifecycle.integration.test.ts
+  s_48f42bfbc57a73::t_2a1a4ca0efc86b 73,81
+apps/api/src/skillPublishRoute.test.ts
+  s_48f42bfbc57a73::t_04af030e8fede1 200-204
+  s_48f42bfbc57a73::t_4cf326be16106c 205,207-235
+  s_48f42bfbc57a73::t_bf1371f671109e 206
+apps/api/test/integration/runsDb.integration.test.ts
+  s_48f42bfbc57a73::t_2a1a4ca0efc86b 277,297
+  s_48f42bfbc57a73::t_e035dfd270dd7c 15-276,278-296,298-605
+  s_48f42bfbc57a73::t_9895a78e70486d 1-14
+cli/src/lib/client.test.ts
+  s_48f42bfbc57a73::t_ef4832c62e8d03 1-40
+cli/src/commands/auth.ts
+  s_ec4916f375b86c::t_90275aba6a75cd 56-61
+cli/src/lib/client.ts
+  s_ec4916f375b86c::t_f7169ba4ea77ea 19,37-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "86226bc90a3983f1c6b0bacc29e88a7e5dfa917c",
+  "prompts": {},
+  "sessions": {
+    "s_48f42bfbc57a73": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c42-3570-7980-a9c7-aec5efbb6fdc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_ec4916f375b86c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5d21-7647-7802-a312-936e73ba7096",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

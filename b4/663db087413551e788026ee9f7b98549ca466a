@@ -1,0 +1,43 @@
+apps/api/tsup.config.ts
+  s_b08cf04580ec9c::t_71cbbd84481ecb 5,7
+  s_b08cf04580ec9c::t_248f35c9a336b3 6
+  s_b08cf04580ec9c::t_7214bcc919db09 4
+  s_b08cf04580ec9c::t_883e75581da746 9
+README.md
+  s_b08cf04580ec9c::t_7214bcc919db09 83-85
+apps/api/src/migrate.ts
+  s_b08cf04580ec9c::t_ef19c2ca84c94a 16-17,19
+  s_b08cf04580ec9c::t_71cbbd84481ecb 3,5,14-15,51-58,65-66,78,102-117
+  s_b08cf04580ec9c::t_fc103c8a9e53be 4,12,31-50,59-63,67,69,82,88-89,93-97
+  s_b08cf04580ec9c::t_d62419332ad8d0 6-8,10-11,13,80-81,86-87,90-92,98-99
+  s_b08cf04580ec9c::t_dbf6140fd727ce 1-2,9,18,20-30,64,68,70-77,79,83-85,100-101
+apps/api/package.json
+  s_b08cf04580ec9c::t_d62419332ad8d0 27,29
+  s_b08cf04580ec9c::t_fc103c8a9e53be 9,11
+  s_b08cf04580ec9c::t_71cbbd84481ecb 10
+apps/api/src/migrate.test.ts
+  s_b08cf04580ec9c::t_fc103c8a9e53be 1,18,46-84
+  s_b08cf04580ec9c::t_ef19c2ca84c94a 27-28,31-32
+  s_b08cf04580ec9c::t_71cbbd84481ecb 2-17,19-26,29-30,33-45,85-100
+.github/workflows/ci.yml
+  s_b08cf04580ec9c::t_71cbbd84481ecb 60-61,77
+  s_b08cf04580ec9c::t_fc103c8a9e53be 18,20-37,48,62-76
+apps/api/scripts/copy-migrations.cjs
+  s_b08cf04580ec9c::t_fc103c8a9e53be 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "b4663db087413551e788026ee9f7b98549ca466a",
+  "prompts": {},
+  "sessions": {
+    "s_b08cf04580ec9c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea891-c90c-7961-8c84-be9c603f4405",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

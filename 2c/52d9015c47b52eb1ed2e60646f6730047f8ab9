@@ -1,0 +1,59 @@
+packages/db/drizzle/0016_skill_installs.sql
+  s_13bb7e101050ef::t_bfd5e4bf00cc73 1-21
+packages/contracts/src/skill.ts
+  s_13bb7e101050ef::t_75806a55050503 3-4
+  s_13bb7e101050ef::t_a3779a1bb57aba 107-139
+  s_13bb7e101050ef::t_97f0109cacb33b 168-173
+cli/src/commands/skills.test.ts
+  s_13bb7e101050ef::t_2e002f3cccc86d 125-127,174-176
+packages/db/src/schema.ts
+  s_13bb7e101050ef::t_c889d0f128ed49 504-541
+packages/core/test/skillVisibility.test.ts
+  s_13bb7e101050ef::t_2327c0cdcaba76 141-143
+  s_13bb7e101050ef::t_89ef032555291d 42
+packages/contracts/test/skillVisibility.test.ts
+  s_13bb7e101050ef::t_eb17cc70957658 48-51
+apps/api/src/skillInstall.test.ts
+  s_13bb7e101050ef::t_f7230e6236f558 1-2,4-29,70-88
+  s_13bb7e101050ef::t_6b43e63cd2352d 30-69
+  s_13bb7e101050ef::t_2a00901f670b15 3
+packages/core/src/services.ts
+  s_13bb7e101050ef::t_b2e3579dfcbb84 1173
+  s_13bb7e101050ef::t_8040ec28bff1df 1174
+  s_13bb7e101050ef::t_16ea9866409619 2108-2109
+  s_13bb7e101050ef::t_10b9776d559acb 2542
+  s_13bb7e101050ef::t_4bddffbfea9867 1116-1118,1120-1130,1136,1139
+  s_13bb7e101050ef::t_ba427625d06f17 3052-3056,3059,3062,3068
+  s_13bb7e101050ef::t_d7104600298963 2969-2991
+  s_13bb7e101050ef::t_ff3e0ad19f8157 1119,1131-1132
+  s_13bb7e101050ef::t_26c60274dca957 1056-1067
+  s_13bb7e101050ef::t_fb1ac9b21f8dad 2144,2149,2163
+  s_13bb7e101050ef::t_6b53726b56a53e 2952-2968,2992-3047,3096-3130
+  s_13bb7e101050ef::t_21801d7fe0230a 1175-1181,1185-1186
+  s_13bb7e101050ef::t_1e1b91c6180edd 1182-1184
+  s_13bb7e101050ef::t_7f4b10e657b0fd 3048-3051,3057-3058,3060-3061,3063-3067,3069-3095
+  s_13bb7e101050ef::t_955cbc392b6da9 1133-1135,1137-1138,1140-1143
+apps/api/src/index.ts
+  s_13bb7e101050ef::t_966395a5564f6a 994-996,1001
+  s_13bb7e101050ef::t_84f717aae45500 991-993,997-1000,1002-1003,1007-1039,1041-1051
+  s_13bb7e101050ef::t_ac7ada80ef989e 57-58
+  s_13bb7e101050ef::t_3fc2a07e43d217 1004-1006
+  s_13bb7e101050ef::t_4ae495432894f5 1040
+  s_13bb7e101050ef::t_a916145045849b 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "2c52d9015c47b52eb1ed2e60646f6730047f8ab9",
+  "prompts": {},
+  "sessions": {
+    "s_13bb7e101050ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61aedeaa-dc3f-4b95-8abe-8d63539fa598",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+cli/src/commands/skills.test.ts
+  s_d65e43c5a8f9fa::t_e5b3c91f669674 106,157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "69709747c379ad0b73c33d91adfcc2f880889001",
+  "prompts": {},
+  "sessions": {
+    "s_d65e43c5a8f9fa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed6f0-aef4-74a0-a521-8f4912bbe51f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

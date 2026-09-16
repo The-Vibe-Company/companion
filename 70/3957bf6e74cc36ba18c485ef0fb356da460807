@@ -1,0 +1,69 @@
+apps/api/test/integration/runsDb.integration.test.ts
+  s_48f42bfbc57a73::t_a255f45dff7d6a 63
+  s_48f42bfbc57a73::t_5ca1f9cc9532a2 43,166,169-174,344
+apps/web/src/styles/runs.css
+  s_48f42bfbc57a73::t_28dcf33a190993 246,252,279,284,301,320
+packages/core/src/services.ts
+  s_48f42bfbc57a73::t_1c6341e86bf946 3694-3695
+apps/worker/src/runSupervisor.ts
+  s_48f42bfbc57a73::t_64caf6c3c8ab93 1
+  s_48f42bfbc57a73::t_928f4ea2754e21 938,1208
+apps/web/src/lib/runQueries.test.ts
+  s_48f42bfbc57a73::t_137634432bfcb5 2
+docs/testing.md
+  s_48f42bfbc57a73::t_cdebcd24ba2fc3 20
+docs/design.md
+  s_48f42bfbc57a73::t_f47e9360b12f6c 587,623-624,633,646,669,769,789
+  s_48f42bfbc57a73::t_672b1488159d14 601-602
+CLAUDE.md
+  s_48f42bfbc57a73::t_672b1488159d14 63
+packages/core/src/skillRuns.ts
+  s_48f42bfbc57a73::t_e4088be751df78 927,1090,1113,1117,1548,1563,1567
+  s_48f42bfbc57a73::t_1b609a5afa1091 1452
+packages/core/test/runJobs.test.ts
+  s_48f42bfbc57a73::t_460775f45ebf09 89,180-182,189-191
+packages/core/test/providerConnections.test.ts
+  s_48f42bfbc57a73::t_460775f45ebf09 241
+packages/contracts/test/modelProviders.test.ts
+  s_48f42bfbc57a73::t_501b390b7a2774 8
+apps/web/src/components/org/model.test.ts
+  s_48f42bfbc57a73::t_0a7474186b73c0 6
+apps/web/src/lib/runQueries.ts
+  s_48f42bfbc57a73::t_137634432bfcb5 168
+apps/web/src/components/secrets/SecretsApp.tsx
+  s_48f42bfbc57a73::t_84ca25d055ada3 398
+apps/web/src/components/runs/chatStream.test.ts
+  s_48f42bfbc57a73::t_84ca25d055ada3 185,187,281,284
+packages/db/drizzle/0034_skill_runs.sql
+  s_48f42bfbc57a73::t_1e6eddb75299c3 2
+packages/contracts/src/modelProviders.ts
+  s_48f42bfbc57a73::t_7d1e7f70395d31 97
+deploy/railway/README.md
+  s_48f42bfbc57a73::t_cdebcd24ba2fc3 167
+packages/db/src/schema.ts
+  s_48f42bfbc57a73::t_19055d862f172c 742,759
+packages/contracts/test/skillRuns.test.ts
+  s_48f42bfbc57a73::t_501b390b7a2774 210,256
+packages/db/drizzle/0035_runtime_credentials.sql
+  s_48f42bfbc57a73::t_b3f098f2d0e767 15,156
+apps/web/src/components/runs/RunChatView.tsx
+  s_48f42bfbc57a73::t_84ca25d055ada3 477
+packages/sandbox/scripts/smoke-vercel.ts
+  s_48f42bfbc57a73::t_2700b5f91b8073 8-10,25-26,41,44-45,129,151,166,183-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "703957bf6e74cc36ba18c485ef0fb356da460807",
+  "prompts": {},
+  "sessions": {
+    "s_48f42bfbc57a73": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c42-3570-7980-a9c7-aec5efbb6fdc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

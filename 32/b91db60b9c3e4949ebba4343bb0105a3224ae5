@@ -1,0 +1,172 @@
+packages/core/src/skillRuns.ts
+  s_783e80fe96e95c::t_69495c38f73dae 26
+  s_783e80fe96e95c::t_ce9803f8b96bb4 759-760,763
+  s_783e80fe96e95c::t_388f07f30415ab 365
+  s_783e80fe96e95c::t_63509c872da03f 698
+  s_783e80fe96e95c::t_707f5ba85a93d5 626-627
+  s_783e80fe96e95c::t_a2c49426b5c122 441-447
+  s_783e80fe96e95c::t_7d63466de01527 875
+  s_783e80fe96e95c::t_522a7cc752679a 511-529
+  s_783e80fe96e95c::t_9800ae5fd47395 568,571
+  s_783e80fe96e95c::t_28ae68166c1cc4 93
+  s_783e80fe96e95c::t_0dcc9c33cfd364 510
+apps/web/src/components/skills/SkillsApp.tsx
+  s_783e80fe96e95c::t_e246405aae0249 1558
+  s_783e80fe96e95c::t_a59874f9705aec 72
+  s_783e80fe96e95c::t_54597220a4ee9f 98-99
+packages/db/drizzle/0035_skill_runs_sandbox_cleanup.sql
+  s_783e80fe96e95c::t_f489ced82b3fa3 1-2
+apps/web/src/components/org/ModelsPane.tsx
+  s_783e80fe96e95c::t_2dbc08a95d7ccb 24-29
+  s_783e80fe96e95c::t_2cbe5123e99d1e 143-145,157-159,161-163,165
+  s_783e80fe96e95c::t_8fcdccc6ffafcc 213-215
+  s_783e80fe96e95c::t_be6e8b4c033a73 335,337
+  s_783e80fe96e95c::t_ee2812d3541aa2 3-4,8,10-17,22,30,32-33,36-48,54-58,61,71-72,76-77,88-90,92,94,98-104,107-111,113-116,118-121,123,127,129,132-142,146-147,149-154,160,164,166-170,187,190,192-196,198,202,205-212,216-231,233-240,244-246,248-307,309,318,323-325,334,336,338-341,351-385,387-395,398-414,416-428,432,436-437,440-443,448-451,454-457,462,504-508,510,516,518-527,529-533,535,539,549-550,556,565,571-607,611-656
+  s_783e80fe96e95c::t_5dfc7714672293 386,396-397,415
+  s_783e80fe96e95c::t_bc0611f665427e 64,91,105-106,112,247,310-317,319-322,326-333,342-344,350,429-431,433-435,438-439,444-447,452-453,458-461,463-503,509,511-515,517,528,534,536-538,540-548,551-555,557-564,566-570
+  s_783e80fe96e95c::t_a78e890089879a 62-63,65-67,78,84,86
+  s_783e80fe96e95c::t_76404bfd7c0171 1-2,5-7,9,18-21,23,31,34-35,49-53,59-60,68-70,73-75,79-83,85,87,117,122,124-126,128,130-131,148,155-156,171-186,188-189,191,197,199-201,203-204,232,308,345-349,657-659
+  s_783e80fe96e95c::t_f947759cfc9000 93,95-97
+  s_783e80fe96e95c::t_1f979cfabb19e2 241-243
+  s_783e80fe96e95c::t_9bbfee2fb2d80b 608-610
+apps/web/src/components/runs/derive.ts
+  s_783e80fe96e95c::t_64d903f809de27 1
+  s_783e80fe96e95c::t_0cebe97bc9899f 71-88
+apps/web/src/components/org/SettingsSidebar.tsx
+  s_783e80fe96e95c::t_91ae023c5c0f97 130
+  s_783e80fe96e95c::t_3c8db0f4a8c63d 168-170
+  s_783e80fe96e95c::t_bcb5dde0c2edd1 167
+  s_783e80fe96e95c::t_d90511e6160ae8 131-133
+apps/web/src/components/runs/derive.test.ts
+  s_783e80fe96e95c::t_84f4fe816a147d 1-69
+apps/web/src/components/org/SettingsDrawer.tsx
+  s_783e80fe96e95c::t_4201e0c4baf42e 78-79
+apps/web/src/components/org/model.ts
+  s_783e80fe96e95c::t_89ac5f12b3998c 100-130
+  s_783e80fe96e95c::t_65fd888734ff4a 91,95
+apps/web/src/lib/runQueries.ts
+  s_783e80fe96e95c::t_c1bc8c33f1e78f 20-37
+  s_783e80fe96e95c::t_0515e88c1dc60d 4
+packages/core/test/runsFakeDb.ts
+  s_783e80fe96e95c::t_e718166d7fa388 46-47
+  s_783e80fe96e95c::t_598c54d807a5ed 14-15
+  s_783e80fe96e95c::t_2b70c0f96442cf 222-227
+  s_783e80fe96e95c::t_21cc1205cb4d75 61-62
+  s_783e80fe96e95c::t_d3db66271410e5 318-351
+  s_783e80fe96e95c::t_c23b4297462100 134
+  s_783e80fe96e95c::t_63d6f3954e528f 108-111
+apps/web/src/components/org/SettingsView.tsx
+  s_783e80fe96e95c::t_3ba0208c6d2879 37-38,44-45
+  s_783e80fe96e95c::t_48d87d8b3321d8 35
+  s_783e80fe96e95c::t_8a11c4e42c47bd 9
+  s_783e80fe96e95c::t_4267ae48f77a22 99
+  s_783e80fe96e95c::t_78b83f7f3acd9f 113-115,117-118
+  s_783e80fe96e95c::t_d571726773ab13 17-18
+  s_783e80fe96e95c::t_fcf38539f871eb 86
+  s_783e80fe96e95c::t_e8c1978d145565 81-82,84,87,89,94-95,100-101
+  s_783e80fe96e95c::t_6c0816b4e17ba4 83,88,96
+packages/core/test/skillRuns.test.ts
+  s_783e80fe96e95c::t_03e91bba13b138 405,420-422,425,433-434
+  s_783e80fe96e95c::t_b6c1b115a7c067 180-189,191-192
+  s_783e80fe96e95c::t_7d239eec45ea60 250,258-302
+  s_783e80fe96e95c::t_5c1b39dea04822 371,376-377
+  s_783e80fe96e95c::t_b0318c96f0e733 303
+apps/web/src/lib/settingsData.ts
+  s_783e80fe96e95c::t_a8f8f331e34670 12
+  s_783e80fe96e95c::t_a02d2f45a9b878 24
+apps/api/src/seed-test-user.ts
+  s_783e80fe96e95c::t_0d2bf4f66914d4 160-170
+apps/web/src/components/skills/DetailView.tsx
+  s_783e80fe96e95c::t_3ed4f8e0152c5c 772-773,775-777,780
+  s_783e80fe96e95c::t_a89f70c9db345a 307
+  s_783e80fe96e95c::t_224f4d1ba5abe0 339-340
+  s_783e80fe96e95c::t_3e91dce5086d8b 349-351
+  s_783e80fe96e95c::t_c17ffcf97175d3 774
+packages/core/src/services.ts
+  s_783e80fe96e95c::t_ccc399f5974f9e 3670-3672
+  s_783e80fe96e95c::t_97ce82f83e223a 3676
+apps/api/src/index.ts
+  s_783e80fe96e95c::t_edd66a711a03d0 149
+  s_783e80fe96e95c::t_372e8db508d5a8 2730-2754
+  s_783e80fe96e95c::t_1d7b288c4e6d6b 2283-2284,2287,2289,2291-2292,2299-2302,2309-2350
+  s_783e80fe96e95c::t_24dd01eb0db4a2 95-97
+  s_783e80fe96e95c::t_d1c9901dc40beb 107
+  s_783e80fe96e95c::t_74f21686d817d8 2351
+packages/core/test/runSweeper.test.ts
+  s_783e80fe96e95c::t_e0dd6ac9b9483f 1-151
+packages/db/src/schema.ts
+  s_783e80fe96e95c::t_5ccee8509bbd2b 829-830
+  s_783e80fe96e95c::t_8385636714dd04 754
+  s_783e80fe96e95c::t_9d2d27c7f05e51 717-753,755-762
+packages/core/test/modelPreferences.test.ts
+  s_783e80fe96e95c::t_0282bb82415628 1-81
+packages/db/src/seed.ts
+  s_783e80fe96e95c::t_3584e01e0ee090 35-43
+packages/sandbox/src/vercel.ts
+  s_783e80fe96e95c::t_8004b3a6a15931 164-168
+  s_783e80fe96e95c::t_5fc8772984b0ac 1
+docs/design.md
+  s_783e80fe96e95c::t_e527be047b7c0f 469
+  s_783e80fe96e95c::t_0407706be91a5f 558-568
+  s_783e80fe96e95c::t_bda7dfe9742c8b 448-449
+  s_783e80fe96e95c::t_5b95879a3f2a50 456-459
+  s_783e80fe96e95c::t_684413762e3601 623-624
+  s_783e80fe96e95c::t_d559f7462f1bb2 485-508
+  s_783e80fe96e95c::t_8f91003faac06f 509-512
+  s_783e80fe96e95c::t_348b74dc27215a 552-557,569-575
+  s_783e80fe96e95c::t_407077d8893de2 540-542
+  s_783e80fe96e95c::t_49758dbe6a2fac 594-596
+packages/core/src/runRuntime.ts
+  s_783e80fe96e95c::t_b07561948bdf16 68-71
+packages/db/drizzle/0036_model_preferences.sql
+  s_783e80fe96e95c::t_28380b0b873ada 1-31,33-36
+  s_783e80fe96e95c::t_b03b92509a4665 32
+apps/web/src/components/org/model.test.ts
+  s_783e80fe96e95c::t_00f161945772bf 1-22
+apps/api/src/modelPreferencesRoute.test.ts
+  s_783e80fe96e95c::t_6f65c9b9e02766 1-163
+apps/web/src/components/runs/ModelPicker.tsx
+  s_783e80fe96e95c::t_105ba927950d1e 7-13
+  s_783e80fe96e95c::t_c143430795b8c3 265-269,276-277,285-288,293-294,298-323,369-374
+packages/contracts/src/modelProviders.ts
+  s_783e80fe96e95c::t_09b751ec98d31d 42-51,64,68-72
+  s_783e80fe96e95c::t_beb1e236cc205e 73
+packages/sandbox/src/modelCatalog.ts
+  s_783e80fe96e95c::t_85ce6a472eace5 80-82,84
+apps/web/src/components/runs/RunLauncherDialog.tsx
+  s_783e80fe96e95c::t_f882f33f9d9feb 86-90,93-96,99,101,104
+  s_783e80fe96e95c::t_ae5777377b9a54 37,41,44,46-47,56-57
+  s_783e80fe96e95c::t_d465e60e9e07ea 59
+  s_783e80fe96e95c::t_371077ad84326f 102-103
+  s_783e80fe96e95c::t_b0bc33e4581fb5 267-268,270
+  s_783e80fe96e95c::t_e72463d6a42a6e 272
+  s_783e80fe96e95c::t_5b919419719fcd 4,9-16
+  s_783e80fe96e95c::t_1b6332c1a469a5 63
+  s_783e80fe96e95c::t_3cf5c0879081f4 97-98,100
+  s_783e80fe96e95c::t_b46a0ca0095903 40,50-55
+packages/core/src/runSweeper.ts
+  s_783e80fe96e95c::t_188ccaf1e4d78c 21-26
+  s_783e80fe96e95c::t_7ab84c87bafbbd 87-89
+  s_783e80fe96e95c::t_53d315d3b2274e 1-20,27-76,80-86,90-123
+  s_783e80fe96e95c::t_ab1889f3ac0c05 77-79
+packages/core/src/modelPreferences.ts
+  s_783e80fe96e95c::t_eddb33c7ce3f54 1-113
+packages/db/drizzle/meta/_journal.json
+  s_783e80fe96e95c::t_751e999472aad4 249-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "32b91db60b9c3e4949ebba4343bb0105a3224ae5",
+  "prompts": {},
+  "sessions": {
+    "s_783e80fe96e95c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "faa730b4-6ef3-4729-a45a-9aa2292e390c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

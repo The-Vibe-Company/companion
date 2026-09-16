@@ -1,0 +1,82 @@
+internal/resource/resource_test.go
+  s_bcf3b1ae1e62e0::t_7ea823dc97dfca 231-238,241,245-266,364-373
+  s_bcf3b1ae1e62e0::t_c8c99b1813e8f5 239-240,242-244
+internal/workspace/workspace.go
+  s_bcf3b1ae1e62e0::t_b531d9dceb2338 78-84,99-102,179-181,267-269,333-346,492-497
+  s_bcf3b1ae1e62e0::t_d27a1e18719db0 73-74,169
+internal/cli/cli.go
+  s_bcf3b1ae1e62e0::t_cf9c9e114529e9 1179
+  s_bcf3b1ae1e62e0::t_af6bcd8fd4c7b2 61,77
+  s_bcf3b1ae1e62e0::t_7adca2e13d8d98 1900-1904,1969-1992
+  s_bcf3b1ae1e62e0::t_e83d4483bbf819 83-93,101-123,135,248-282,297-308,310-318,322-332,334-355
+  s_bcf3b1ae1e62e0::t_4ded9e58e90917 358-475
+  s_bcf3b1ae1e62e0::t_239eae326e7704 1141-1178,1180-1207,1209,1213-1214,1219-1348
+  s_bcf3b1ae1e62e0::t_60a59f9410520e 1208,1215-1218
+  s_bcf3b1ae1e62e0::t_acf5a3cddfd152 1943-1945
+  s_bcf3b1ae1e62e0::t_39c701f50599ca 319-321,1210-1212
+  s_bcf3b1ae1e62e0::t_4f738467d8aaba 1873-1877,1885-1888,1891,1939-1942,1946-1968
+  s_bcf3b1ae1e62e0::t_45d160ebd562c4 601-608
+  s_bcf3b1ae1e62e0::t_fa02df246fe0d0 1995-2006
+  s_bcf3b1ae1e62e0::t_09dc7521019b36 652-654
+  s_bcf3b1ae1e62e0::t_f0d13cdc05b53e 8,26
+  s_bcf3b1ae1e62e0::t_13705f71d055bb 333,705,751,796
+internal/render/render.go
+  s_bcf3b1ae1e62e0::t_c8c99b1813e8f5 254-255,257-261
+  s_bcf3b1ae1e62e0::t_5ee46686a8ef1d 249-253,256,262-300,311-316
+Dockerfile.control-plane
+  s_bcf3b1ae1e62e0::t_1062ec65cf8f73 4-10,16-17
+  s_bcf3b1ae1e62e0::t_fdbde207c95284 34,37
+  s_bcf3b1ae1e62e0::t_e7b39e11067525 1-3,11-15,18-33,35-36,38-45
+internal/cli/cli_test.go
+  s_bcf3b1ae1e62e0::t_68cb5c1becdbc0 14,120-198
+.github/workflows/ci.yml
+  s_bcf3b1ae1e62e0::t_c8e7889a52780d 47
+.dockerignore
+  s_bcf3b1ae1e62e0::t_38cba7842af314 3
+  s_bcf3b1ae1e62e0::t_d4deecf13c40ef 7
+internal/provider/provider_test.go
+  s_bcf3b1ae1e62e0::t_9b7c2d25c31f6e 10,74-96
+internal/provider/types.go
+  s_bcf3b1ae1e62e0::t_3d94707e9bfa90 63-65
+  s_bcf3b1ae1e62e0::t_d1b16468a878e0 61-62,66,72
+internal/console/api.go
+  s_bcf3b1ae1e62e0::t_30507c27b71fa1 465-468,471
+README.md
+  s_bcf3b1ae1e62e0::t_324e7681f23a29 380-404
+  s_bcf3b1ae1e62e0::t_55774b56800a31 410
+internal/workspace/workspace_test.go
+  s_bcf3b1ae1e62e0::t_ae9c9fcba57558 273-298
+internal/config/types.go
+  s_bcf3b1ae1e62e0::t_b1340b0a0e2ad5 19-23,198-223,225-229,413-441,465-468,630-664,990-1020,1152-1153
+internal/registry/registry.go
+  s_bcf3b1ae1e62e0::t_3bf63ac21876fc 1-19,24-188
+  s_bcf3b1ae1e62e0::t_c8c99b1813e8f5 20-23
+bin/start-control-plane-on-fly
+  s_bcf3b1ae1e62e0::t_e00c5c27881e99 1-81
+internal/render/render_test.go
+  s_bcf3b1ae1e62e0::t_6d6d88a19622ec 116-164
+internal/resource/resource.go
+  s_bcf3b1ae1e62e0::t_c8c99b1813e8f5 34-45,47
+  s_bcf3b1ae1e62e0::t_f1e72cf450e84c 272-287
+  s_bcf3b1ae1e62e0::t_494beb7072b931 911-913,965-967,981-983,997-999,1013-1015,1026-1028,1032-1045
+  s_bcf3b1ae1e62e0::t_47117e608fc142 726-727,752-756,760-823
+  s_bcf3b1ae1e62e0::t_1513f6bb00b84e 46,152-165
+  s_bcf3b1ae1e62e0::t_f1d855839705aa 430-436,451-457,542-548,563,598-608,681-682,684
+  s_bcf3b1ae1e62e0::t_c0fb55608a9661 868-875
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "2f992d1d25c897defe606f1b3fe02628ec368943",
+  "prompts": {},
+  "sessions": {
+    "s_bcf3b1ae1e62e0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e96b8-b921-7b03-a41e-26769daf21e8",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Claude <noreply@anthropic.com>"
+    }
+  }
+}

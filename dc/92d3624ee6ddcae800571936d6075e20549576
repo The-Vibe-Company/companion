@@ -1,0 +1,19 @@
+examples/skills/incident-summary/SKILL.md
+  s_78f643a9f1a0b7::t_02d9745c34bca7 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "dc92d3624ee6ddcae800571936d6075e20549576",
+  "prompts": {},
+  "sessions": {
+    "s_78f643a9f1a0b7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ecbd8-fc7f-7bd1-9294-d38048cbf102",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

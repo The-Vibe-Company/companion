@@ -1,0 +1,25 @@
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_9425bc3bd10908::t_72a2d7927c4581 4-5,27-37,51-88,97-100,105-144,155-181,196-200,220,225-233,235,268,273-281,288-400,411-414,422-423,586
+apps/web/src/styles/skills.css
+  s_9425bc3bd10908::t_8a099c7d8a3506 851-882
+  s_9425bc3bd10908::t_1b2c4174a8df94 749-760
+  s_9425bc3bd10908::t_2d36acc4e5299a 781-782
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_9425bc3bd10908::t_13e1e2a8857d0b 679-761
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.11",
+  "base_commit_sha": "e57f06d945f202df25a4d93b1099f6dd5cff04a5",
+  "prompts": {},
+  "sessions": {
+    "s_9425bc3bd10908": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5435458f-9ce9-4412-b3c0-25cee5755ec6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

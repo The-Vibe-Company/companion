@@ -1,0 +1,19 @@
+internal/registry/registry_test.go
+  s_bcf3b1ae1e62e0::t_03a5b278f9a8c7 1-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "37152e0dacaa4f88056a5130892ac58feb6c12f0",
+  "prompts": {},
+  "sessions": {
+    "s_bcf3b1ae1e62e0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e96b8-b921-7b03-a41e-26769daf21e8",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Claude <noreply@anthropic.com>"
+    }
+  }
+}

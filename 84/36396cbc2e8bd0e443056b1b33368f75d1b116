@@ -1,0 +1,23 @@
+docs/design.md
+  s_8063c13871037a::t_b47b8126cfe6d5 78-105
+  s_8063c13871037a::t_ecb7964e29a5ec 139-140
+.env.example
+  s_8063c13871037a::t_de9d7acd354458 35-36
+  s_8063c13871037a::t_b260503f44e44a 7-8,13-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "8436396cbc2e8bd0e443056b1b33368f75d1b116",
+  "prompts": {},
+  "sessions": {
+    "s_8063c13871037a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8098edb-ec2e-42dc-bab2-73f3169e89e5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+apps/web/src/components/onboarding/screens.tsx
+  s_b28190c61c04c8::t_538a6c06c23650 63
+apps/web/src/styles/org.css
+  s_b28190c61c04c8::t_a0deb80544052f 177
+apps/web/src/components/org/AcceptInvite.tsx
+  s_b28190c61c04c8::t_538a6c06c23650 35
+apps/web/src/components/onboarding/OnboardingFlow.tsx
+  s_b28190c61c04c8::t_538a6c06c23650 207
+apps/web/src/app/(auth)/login/LoginForm.tsx
+  s_b28190c61c04c8::t_538a6c06c23650 91
+apps/web/src/components/landing/LandingPage.tsx
+  s_b28190c61c04c8::t_61d1b991cd6d93 226,339,711
+apps/web/src/styles/onboarding.css
+  s_b28190c61c04c8::t_a0deb80544052f 35
+  s_b28190c61c04c8::t_bbe6ce3ff7fd45 34
+  s_b28190c61c04c8::t_538a6c06c23650 36
+apps/web/src/styles/landing.css
+  s_b28190c61c04c8::t_61d1b991cd6d93 82,85
+  s_b28190c61c04c8::t_a0deb80544052f 83
+  s_b28190c61c04c8::t_538a6c06c23650 84
+DESIGN.md
+  s_b28190c61c04c8::t_a0deb80544052f 303
+apps/web/src/styles/auth.css
+  s_b28190c61c04c8::t_bbe6ce3ff7fd45 53,58-59
+  s_b28190c61c04c8::t_a0deb80544052f 54-56
+  s_b28190c61c04c8::t_538a6c06c23650 57
+apps/web/src/components/org/Onboarding.tsx
+  s_b28190c61c04c8::t_538a6c06c23650 32
+apps/web/src/styles/skills.css
+  s_b28190c61c04c8::t_a0deb80544052f 34
+  s_b28190c61c04c8::t_80c44eafd8bce3 33,35-36
+apps/web/src/app/layout.tsx
+  s_b28190c61c04c8::t_9fc0255759fc88 8-9
+  s_b28190c61c04c8::t_bbe6ce3ff7fd45 7,10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "c2e7375b7fa1974e0a44a86ed2b3a02ef720ead5",
+  "prompts": {},
+  "sessions": {
+    "s_b28190c61c04c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ecafb-36f8-7470-8ff8-1e726d5c2029",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

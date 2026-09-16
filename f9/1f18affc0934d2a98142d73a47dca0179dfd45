@@ -1,0 +1,63 @@
+apps/web/src/components/skills/DetailView.tsx
+  s_f4e486d7891946::t_3cf29f5e7f5881 636,638-646
+apps/web/src/components/skills/filters.test.ts
+  s_f4e486d7891946::t_802ed642b84ded 21-24
+packages/core/src/services.ts
+  s_f4e486d7891946::t_7047b952a4d3ac 845-848
+  s_f4e486d7891946::t_c4395a9856ddb7 922,925
+  s_f4e486d7891946::t_baf9e69094aadf 866-872
+  s_f4e486d7891946::t_a62dc406c575e8 1024-1041
+  s_f4e486d7891946::t_248f0792413a35 3
+docs/design.md
+  s_f4e486d7891946::t_ba00b46f18286c 74-78
+apps/web/src/lib/types.ts
+  s_f4e486d7891946::t_cf46f2e1269851 90
+  s_f4e486d7891946::t_8bc346ae66e8d3 84
+  s_f4e486d7891946::t_4f6f0152449541 39-44
+  s_f4e486d7891946::t_bd3879ecac28d2 85-89
+apps/web/src/components/skills/DetailView.test.ts
+  s_f4e486d7891946::t_12572bee115ab4 25-28
+  s_f4e486d7891946::t_5569091bec41d4 116-127,130-131,134-136,138-139
+  s_f4e486d7891946::t_cdc2f92cd8ca74 128-129,132-133,137
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_f4e486d7891946::t_1d2695f19c61f4 128-131
+  s_f4e486d7891946::t_8df61a7acb8a43 92-95
+packages/contracts/src/skill.ts
+  s_f4e486d7891946::t_641f334a50505f 172-181
+apps/web/src/components/skills/detailParts.test.ts
+  s_f4e486d7891946::t_5efb933ba83650 6
+  s_f4e486d7891946::t_40fcceef8f866c 24-27
+  s_f4e486d7891946::t_dfaccf985133e9 111-124
+apps/web/src/lib/types.test.ts
+  s_f4e486d7891946::t_6614266f0905b7 1-74,78-79,82-83
+  s_f4e486d7891946::t_235bc74c575967 75-77,80-81
+apps/web/src/components/skills/detailParts.tsx
+  s_f4e486d7891946::t_42044eac779e97 276-290
+  s_f4e486d7891946::t_704a5016a84860 275
+apps/web/src/components/skills/ListView.tsx
+  s_f4e486d7891946::t_c824ffdc4428b7 5
+  s_f4e486d7891946::t_bffc3235083748 224
+  s_f4e486d7891946::t_6c41fb10970b8f 225-233
+apps/web/src/components/skills/updateFlow.test.ts
+  s_f4e486d7891946::t_34d2d5e437be22 33-36
+apps/web/src/styles/skills.css
+  s_f4e486d7891946::t_07312b1b85fdef 240-242
+cli/src/commands/skills.test.ts
+  s_f4e486d7891946::t_d9c93c48f0f9a2 37-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "f91f18affc0934d2a98142d73a47dca0179dfd45",
+  "prompts": {},
+  "sessions": {
+    "s_f4e486d7891946": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37ecf1b6-c046-4baf-81b7-588eef94440b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

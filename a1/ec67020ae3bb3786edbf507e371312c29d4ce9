@@ -1,0 +1,23 @@
+scripts/ios-devx.test.mjs
+  s_68e46211249862::t_e50a5489f271bc 76-79
+  s_68e46211249862::t_e8f108902300d0 62-75,80-86
+docs/DEPLOYER-MOBILE-TESTFLIGHT.md
+  s_68e46211249862::t_e8f108902300d0 3-6,39-43,58-61
+  s_68e46211249862::t_8553599fc0ffb6 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "a1ec67020ae3bb3786edbf507e371312c29d4ce9",
+  "prompts": {},
+  "sessions": {
+    "s_68e46211249862": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a032bb-5679-7861-8015-911efdaf7973",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

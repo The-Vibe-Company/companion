@@ -1,0 +1,19 @@
+packages/db/runtime-role-grants.sql
+  s_de1b4e37520b4c::t_abb3d0bc1080e5 641-654
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "a5290de41d3f4a3d824bf66374ea947b636b83fa",
+  "prompts": {},
+  "sessions": {
+    "s_de1b4e37520b4c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdb6c6a37ffeJaoR53ENjcMXar",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

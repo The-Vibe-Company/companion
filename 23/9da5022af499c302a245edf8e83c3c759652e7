@@ -1,0 +1,35 @@
+packages/sandbox/test/opencodeChat.test.ts
+  s_48f42bfbc57a73::t_e2cff635370b93 3,103-153
+  s_48f42bfbc57a73::t_4b01176f5efe72 154-155
+packages/sandbox/src/index.ts
+  s_48f42bfbc57a73::t_9de572ffd42ba7 6
+packages/sandbox/src/vercel.ts
+  s_48f42bfbc57a73::t_800ee518d3e564 120
+packages/sandbox/scripts/probe.ts
+  s_48f42bfbc57a73::t_e2cff635370b93 142-144
+packages/sandbox/scripts/smoke-vercel.ts
+  s_48f42bfbc57a73::t_800ee518d3e564 19,24-36,40,42,66,77,94-108,125-126,139-140,153-154,168,182-185
+  s_48f42bfbc57a73::t_e2cff635370b93 132-134,179-181
+packages/sandbox/scripts/create-golden-sandbox.ts
+  s_48f42bfbc57a73::t_e2cff635370b93 32,54-67,69-77
+packages/sandbox/src/opencodeChat.ts
+  s_48f42bfbc57a73::t_5714c40177b9cb 3,231,241-262
+  s_48f42bfbc57a73::t_e2cff635370b93 87-92,95-96,184-186
+  s_48f42bfbc57a73::t_ca5da9ea10bbee 263-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "239da5022af499c302a245edf8e83c3c759652e7",
+  "prompts": {},
+  "sessions": {
+    "s_48f42bfbc57a73": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c42-3570-7980-a9c7-aec5efbb6fdc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

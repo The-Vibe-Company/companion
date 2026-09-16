@@ -1,0 +1,65 @@
+apps/api/vitest.config.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 1-11
+apps/api/test/integration/rls.integration.test.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 1-146
+README.md
+  s_48f42bfbc57a73::t_62e9a5e8264115 66-67
+scripts/ci-rsc-smoke.sh
+  s_48f42bfbc57a73::t_62e9a5e8264115 47,118-121
+apps/api/test/integration/skillLifecycle.integration.test.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 1-317
+apps/api/test/integration/testDatabase.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 1-158
+apps/api/tsconfig.test.json
+  s_48f42bfbc57a73::t_62e9a5e8264115 1-9
+apps/api/vitest.integration.config.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 1-14
+apps/web/vitest.config.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 12
+.gitignore
+  s_48f42bfbc57a73::t_62e9a5e8264115 20-21
+apps/api/test/integration/secretLifecycle.integration.test.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 1-428
+turbo.json
+  s_48f42bfbc57a73::t_62e9a5e8264115 22-23
+apps/api/test/integration/labelLifecycle.integration.test.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 1-242
+docs/testing.md
+  s_48f42bfbc57a73::t_62e9a5e8264115 1-102
+package.json
+  s_48f42bfbc57a73::t_62e9a5e8264115 25-26,34
+apps/web/test/setup.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 1-19
+.github/workflows/ci.yml
+  s_48f42bfbc57a73::t_62e9a5e8264115 295-296,305-308,313,320-323
+playwright.config.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 1-16
+e2e/critical-flows.spec.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 1-146
+apps/api/package.json
+  s_48f42bfbc57a73::t_62e9a5e8264115 12-14
+CLAUDE.md
+  s_48f42bfbc57a73::t_62e9a5e8264115 125-128
+packages/db/src/index.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 14-17
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_48f42bfbc57a73::t_62e9a5e8264115 55-58,69-70,483
+pnpm-lock.yaml
+  s_48f42bfbc57a73::t_8537fc0c5e8596 11-13,73,140,287,1691-1695,3028-3032,3698-3707,5324-5327,5934,5955,6746-6748,7514,7534,7656-7663
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "d244bad9ffee3b6e985156683b2ad9f5769fce14",
+  "prompts": {},
+  "sessions": {
+    "s_48f42bfbc57a73": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c42-3570-7980-a9c7-aec5efbb6fdc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

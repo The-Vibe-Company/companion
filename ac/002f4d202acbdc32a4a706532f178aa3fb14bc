@@ -1,0 +1,19 @@
+apps/web/src/styles/landing.css
+  s_3794f5baa05b6f::t_c7a85646bf579a 516-517,527
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ac002f4d202acbdc32a4a706532f178aa3fb14bc",
+  "prompts": {},
+  "sessions": {
+    "s_3794f5baa05b6f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_09146a154ffeJWrKigbL9t478W",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

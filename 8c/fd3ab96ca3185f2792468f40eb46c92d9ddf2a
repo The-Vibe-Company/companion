@@ -1,0 +1,156 @@
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_b5eb590d3edfe8::t_06c1fb2f8d0ee8 164,763
+packages/companion-skill/scripts/update-integrity.mjs
+  s_b5eb590d3edfe8::t_277774473489f9 3,16-25,35-38,42
+  s_b5eb590d3edfe8::t_cdc45f9da5e4bf 11,29-30,33-34,39,49
+  s_b5eb590d3edfe8::t_cc6ae31a130525 1-2,4-10,12-15,26-28,31-32,40-41,43-48,50-64
+packages/companion-skill/skill/scripts/bootstrap_integrity.py
+  s_b5eb590d3edfe8::t_3ec97faa1ccd64 9
+  s_b5eb590d3edfe8::t_5e4302fc328764 7,15,36,38,40-49,63-67,81-85,144-145,147-148,150,164
+  s_b5eb590d3edfe8::t_17b79592860dcc 1-6,8,10-14,16-35,50-62,68-80,86-143,146,149,151-160,162,165-169
+  s_b5eb590d3edfe8::t_70dec5eac37a1f 37,39
+  s_b5eb590d3edfe8::t_7527b44bfd3932 161
+  s_b5eb590d3edfe8::t_9e7585d843d2f5 163
+packages/contracts/test/onboarding.test.ts
+  s_b5eb590d3edfe8::t_25ff9a55f6f6de 23,44-45
+apps/web/src/lib/onboarding.ts
+  s_b5eb590d3edfe8::t_e918343cfecbd2 30
+packages/core/src/onboarding.ts
+  s_b5eb590d3edfe8::t_0e24c254800f6e 30
+scripts/agent-browser-smoke.sh
+  s_b5eb590d3edfe8::t_1286c0b18f0c76 11,130-131,133,143-171,173
+packages/companion-skill/skill/reference/api.md
+  s_b5eb590d3edfe8::t_bb05de916a1608 438-447
+  s_b5eb590d3edfe8::t_2959a7c4b9c1a9 375,384-397,426-430,458,462
+packages/companion-skill/skill/scripts/bootstrap_update.py
+  s_b5eb590d3edfe8::t_5843cf59a8945d 7,99-114,128,143,164-165
+  s_b5eb590d3edfe8::t_a02f02cf289dd4 13,90-98,134
+  s_b5eb590d3edfe8::t_17b79592860dcc 1-6,8-12,14-44,46-49,51-89,115-127,129-131,133,135-142,144-163,166-199
+  s_b5eb590d3edfe8::t_b7a8c278575b6d 45,50,132
+apps/web/src/components/onboarding/OnboardingFlow.tsx
+  s_b5eb590d3edfe8::t_d118d7a2b64d3d 20,23,40,42,166,178
+packages/companion-skill/skill/SKILL.md
+  s_b5eb590d3edfe8::t_276436f28e8883 305,691-692
+  s_b5eb590d3edfe8::t_304d4b1020ea73 757
+  s_b5eb590d3edfe8::t_64470634a771d8 86,88-91,93,95,100-110,116-121
+  s_b5eb590d3edfe8::t_9eef13c5adaf93 725-727,730,733,736,741-745
+  s_b5eb590d3edfe8::t_11d9635e57bf1a 111-115,737-740
+  s_b5eb590d3edfe8::t_95cc4a85b58dff 199
+packages/companion-skill/skill/companion.integrity.json
+  s_b5eb590d3edfe8::t_949b33b6197255 3
+  s_b5eb590d3edfe8::t_0362e8720ffa7b 4
+  s_b5eb590d3edfe8::t_dd5f23893c1b99 6
+  s_b5eb590d3edfe8::t_9cf04bdd5fadae 5
+  s_b5eb590d3edfe8::t_5848b3ed5c0893 7
+  s_b5eb590d3edfe8::t_f669e242b37601 10
+  s_b5eb590d3edfe8::t_14a3dfbc093bba 9
+  s_b5eb590d3edfe8::t_36489b7b479c7a 1-2,8,11-14
+apps/api/src/index.ts
+  s_b5eb590d3edfe8::t_5cf8f02b7eed86 1938,1942
+apps/api/src/companionSkillPackage.ts
+  s_b5eb590d3edfe8::t_bfa5bdd8b01242 12,18,52,70-71,75
+  s_b5eb590d3edfe8::t_ebbcf179465a4b 19,53
+  s_b5eb590d3edfe8::t_3a006ec9c8d5ec 13,29-31,33-34,57
+  s_b5eb590d3edfe8::t_d9728756ba7ddc 58-60
+  s_b5eb590d3edfe8::t_0c4f7e3185cd8c 17,72
+  s_b5eb590d3edfe8::t_5b81f55314e9fb 62-66
+  s_b5eb590d3edfe8::t_9c97a6f62f6ddb 1,24,61,67,74,76-77,209
+  s_b5eb590d3edfe8::t_6401fffcf61d7c 144-146,148,156-160,162,164,168,170,182-183
+  s_b5eb590d3edfe8::t_911d7de3ab5573 11,32
+packages/companion-skill/package.json
+  s_b5eb590d3edfe8::t_cc6ae31a130525 14-16
+packages/core/test/onboarding.test.ts
+  s_b5eb590d3edfe8::t_6e19d46dd6b194 85,90,109-110
+packages/contracts/test/localSkills.test.ts
+  s_b5eb590d3edfe8::t_c735c1d8497a87 1-31,58
+  s_b5eb590d3edfe8::t_edebe0bf064723 32-57
+packages/contracts/src/localSkills.ts
+  s_b5eb590d3edfe8::t_301091cd21d293 34,51-52,54,56-58,80-81
+  s_b5eb590d3edfe8::t_2e54ff25a9f04d 35-46,50,53,55
+  s_b5eb590d3edfe8::t_6037604865787a 47-49
+apps/web/src/components/onboarding/screens.tsx
+  s_b5eb590d3edfe8::t_3617d59a8a3dd4 597-598,600,603-609,611-612,615-616
+  s_b5eb590d3edfe8::t_95b5457c09942e 330
+  s_b5eb590d3edfe8::t_8baecf52e4a828 12-13
+packages/companion-skill/skill/scripts/test_bootstrap.py
+  s_b5eb590d3edfe8::t_f8d0ea6ae95d43 231-243,364-373
+  s_b5eb590d3edfe8::t_5ead187c0d8b98 172-173,252-253
+  s_b5eb590d3edfe8::t_f958e83569fb29 258,297,324
+  s_b5eb590d3edfe8::t_c011f42b8cec34 349-358,360-363,374
+  s_b5eb590d3edfe8::t_a0e9dee806043e 21,27-28,64-71,283-284,315-316,340-341
+  s_b5eb590d3edfe8::t_eaf2692fe07ba9 286,319,344,359
+  s_b5eb590d3edfe8::t_2589850607d77b 11,188,190,193-194,200,202,254-255,273,281-282,285,287-292
+  s_b5eb590d3edfe8::t_7fa1b1f0f819a9 139-151
+  s_b5eb590d3edfe8::t_22b0481270435a 256-257,270-272,280,295-296,305-307,312,317-318,320-323,325-339,346
+  s_b5eb590d3edfe8::t_df0b811a8ce46b 219-230
+  s_b5eb590d3edfe8::t_7309b1795560d9 189,248
+  s_b5eb590d3edfe8::t_5d0310a2ba564d 197-198,218
+  s_b5eb590d3edfe8::t_8ff60c42fa2258 13,73,99-104,106-110,131-132,183,191-192,196,205-217,259-269,274-279
+  s_b5eb590d3edfe8::t_e7e5209b8412b8 195,199,201,203-204
+  s_b5eb590d3edfe8::t_d3ab65bfb319da 23-26,29-32,34,96,105,293-294,298-304,308-311,313-314,342-343,345,347
+  s_b5eb590d3edfe8::t_6c7244a3ab68d2 12,14,122-123
+  s_b5eb590d3edfe8::t_b5f60afec13ad6 1-10,15-20,22,33,35-63,72,74-95,97-98,111-121,124-130,133-138,177-182,184-187,244-247,249-251,348,375-397
+  s_b5eb590d3edfe8::t_3de82d3a87e2f4 152-171,174-176
+packages/companion-skill/skill/scripts/check_updates.py
+  s_b5eb590d3edfe8::t_e00fffb54de884 2,11,15
+packages/companion-skill/skill/companion.json
+  s_b5eb590d3edfe8::t_7bd4cb448a513e 27
+  s_b5eb590d3edfe8::t_2c0aa1a70c89ff 10-13,16-19
+  s_b5eb590d3edfe8::t_9d0f8fefd3a383 26
+  s_b5eb590d3edfe8::t_81fc2e38194db0 14-15
+  s_b5eb590d3edfe8::t_9fd3b42beedbd3 4,6,22-25,28-30,125,143
+  s_c6fc24bafcf08e::t_5290b13ab94f97 21
+apps/api/src/localSkills.test.ts
+  s_b5eb590d3edfe8::t_6434a1a7ba4024 151,219
+  s_b5eb590d3edfe8::t_c8ef3c3007973b 112-113,167
+  s_b5eb590d3edfe8::t_530c052f2f7c59 67-68
+  s_b5eb590d3edfe8::t_7e460dfda791d4 52
+  s_b5eb590d3edfe8::t_c52128aae656ff 47,49-51,53-54,92-93,95-98,150,161-162,172,200-202,216-218,220
+  s_b5eb590d3edfe8::t_8ecf5daf3a4ba2 117,137-138
+  s_b5eb590d3edfe8::t_b0f282add728e2 1,55-66,69-77
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_b5eb590d3edfe8::t_8c52eef3d52f17 159
+apps/web/src/components/skills/updateFlow.test.ts
+  s_b5eb590d3edfe8::t_f0f478f1583ce7 61
+  s_b5eb590d3edfe8::t_2218887c2b78ab 7,47,67,202-218
+  s_b5eb590d3edfe8::t_cce5f2e4123ea5 219
+docs/design.md
+  s_b5eb590d3edfe8::t_6d594690c538c5 179-183,355-356
+  s_b5eb590d3edfe8::t_210867180019ed 177-178
+  s_b5eb590d3edfe8::t_228d31f8a411fc 354
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_b5eb590d3edfe8::t_8adb541265589b 4
+  s_b5eb590d3edfe8::t_bcef5c5fa70391 22
+packages/companion-skill/skill/scripts/bootstrap.py
+  s_b5eb590d3edfe8::t_729bc51db4c023 24
+  s_b5eb590d3edfe8::t_c48353679b8144 7-8
+  s_b5eb590d3edfe8::t_eeae3a0cf8df97 1-6,9-23,26-156,163,178-231
+  s_b5eb590d3edfe8::t_1b5d8db786a01e 25
+  s_b5eb590d3edfe8::t_af868b0ed169c5 160-162,164-165
+  s_b5eb590d3edfe8::t_bc43477a49d0cf 157-159
+  s_b5eb590d3edfe8::t_4c33a4736867c5 166-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "8cfd3ab96ca3185f2792468f40eb46c92d9ddf2a",
+  "prompts": {},
+  "sessions": {
+    "s_b5eb590d3edfe8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efe49-efde-7b93-8c37-4f7b1364093b",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_c6fc24bafcf08e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efeb7-f55d-7cf0-9596-78bf94e4b8c8",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

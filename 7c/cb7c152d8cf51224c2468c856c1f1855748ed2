@@ -1,0 +1,19 @@
+packages/db/drizzle/0034_skill_runs.sql
+  s_48f42bfbc57a73::t_92ee179d065343 371,379,443,446,451,456-457,462,464,473,475-477,479-480
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "7ccb7c152d8cf51224c2468c856c1f1855748ed2",
+  "prompts": {},
+  "sessions": {
+    "s_48f42bfbc57a73": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c42-3570-7980-a9c7-aec5efbb6fdc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

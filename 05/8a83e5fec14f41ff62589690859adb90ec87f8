@@ -1,0 +1,19 @@
+docs/design.md
+  s_276688b92fc5da::t_565801ad6b12b8 61-62,81-105,224-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "058a83e5fec14f41ff62589690859adb90ec87f8",
+  "prompts": {},
+  "sessions": {
+    "s_276688b92fc5da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "535a6854-5758-4d93-b15b-5d9de2a8a01b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

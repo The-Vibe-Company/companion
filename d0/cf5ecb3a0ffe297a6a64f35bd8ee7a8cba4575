@@ -1,0 +1,19 @@
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_619366f77a5469::t_d1bd3101ef7955 1208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "d0cf5ecb3a0ffe297a6a64f35bd8ee7a8cba4575",
+  "prompts": {},
+  "sessions": {
+    "s_619366f77a5469": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a025cb-9880-7a70-b5e1-2e71191aa00d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

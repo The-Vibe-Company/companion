@@ -1,0 +1,57 @@
+apps/api/src/localSkills.test.ts
+  s_17fa1e0625dbf4::t_81e0c83f9b2b80 46,76-77,110,114-116,147-150,162-163
+packages/companion-skill/skill/companion.json
+  s_17fa1e0625dbf4::t_0a0fb712e112fe 4,11-19,71,83-90
+apps/api/src/index.ts
+  s_17fa1e0625dbf4::t_1cf528c776b963 152,853,861,865-871
+  s_17fa1e0625dbf4::t_aba57e31c9597f 846-847,851-852,862-864,872-873,875
+packages/skills/src/manifest.ts
+  s_17fa1e0625dbf4::t_5e3a6cca81f759 97,144
+packages/core/src/services.ts
+  s_17fa1e0625dbf4::t_ff0fa49a283b44 639-640,681-694
+apps/api/src/skillCompanionManifest.test.ts
+  s_17fa1e0625dbf4::t_52037f1f764ee1 53,81
+packages/companion-skill/skill/reference/api.md
+  s_17fa1e0625dbf4::t_35adae9e701e89 325-346,380,384
+  s_17fa1e0625dbf4::t_cad7aa1017c155 38-40,94-99
+packages/contracts/schemas/companion-manifest.v2.schema.json
+  s_17fa1e0625dbf4::t_303706747d72d1 75-95
+packages/contracts/test/companionManifest.test.ts
+  s_17fa1e0625dbf4::t_51c0cb964384bb 6,30,42-44,83-103
+packages/skills/test/validateSkill.test.ts
+  s_17fa1e0625dbf4::t_ed868fdd9645a2 5,15
+  s_17fa1e0625dbf4::t_60646340be8c36 326,334,349,365,378,391-410
+apps/api/src/skillListQuery.test.ts
+  s_17fa1e0625dbf4::t_00e1da7a1f5c0a 1-42
+packages/contracts/src/companionManifest.ts
+  s_17fa1e0625dbf4::t_8aa48617ed0740 85-113,198,246,277,292,316
+apps/api/src/skillListQuery.ts
+  s_17fa1e0625dbf4::t_d0efaf23a5bbcf 1-28
+packages/companion-skill/skill/scripts/check_updates.py
+  s_17fa1e0625dbf4::t_6029dabffe90bc 1-74,76,80-81,85-86,131-133,135-277
+  s_17fa1e0625dbf4::t_e1331956d185f9 75,77-79,82-84,87-130,134
+docs/design.md
+  s_17fa1e0625dbf4::t_b8b8e9204a7cf5 86-87,177-180
+packages/companion-skill/skill/SKILL.md
+  s_17fa1e0625dbf4::t_a3cb4017c4b7db 160-167,183,220-221,228-252
+  s_17fa1e0625dbf4::t_063f48941b3bc1 729
+  s_17fa1e0625dbf4::t_51787b74da3aeb 570-572,601-614
+packages/skills/src/validateSkill.ts
+  s_17fa1e0625dbf4::t_ff5b2a58e78ef3 57-63,116,119-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "0f36ad1bffdd2f7c95dfb08dd0aade7dcecea1cf",
+  "prompts": {},
+  "sessions": {
+    "s_17fa1e0625dbf4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efb7e-63f2-77e1-bc3f-0586a22c1d6a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

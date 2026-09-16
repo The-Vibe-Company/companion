@@ -1,0 +1,77 @@
+packages/skills/test/extractArchiveFiles.test.ts
+  s_1077f08846a31c::t_448c3b340813f8 242-244,252
+  s_1077f08846a31c::t_69be9fe803ffd7 245
+  s_1077f08846a31c::t_1ae357212625d3 101-124
+  s_1077f08846a31c::t_bae0b72d85bd18 2,204-241,246-251,253-264
+  s_1077f08846a31c::t_519f59ee6d034f 265
+apps/web/src/lib/queries.ts
+  s_1077f08846a31c::t_8e9f8e745f4afb 183-187
+packages/companion-skill/skill/reference/api.md
+  s_1077f08846a31c::t_202d138125bcc7 45,118-121
+  s_1077f08846a31c::t_ddeccf24cb7398 122
+packages/companion-skill/skill/companion.json
+  s_1077f08846a31c::t_d8d5403c3fa8bb 4,21-27
+apps/web/src/components/skills/DetailView.tsx
+  s_1077f08846a31c::t_a5d593a98b8204 18,693-696,698-699
+  s_1077f08846a31c::t_1d251a5c5bba71 534,697
+apps/web/src/styles/app.css
+  s_1077f08846a31c::t_73a7446bd89dbd 165-168
+apps/web/src/components/skills/fileview.tsx
+  s_1077f08846a31c::t_b2fce851d8f8db 389,394,455
+  s_1077f08846a31c::t_7d080cb362d3c9 64-76,78-112,121-124,139,231,243,253,300-302
+  s_1077f08846a31c::t_773fddb82f60b3 77
+  s_1077f08846a31c::t_3ca2e257fc5518 303
+packages/companion-skill/skill/companion.integrity.json
+  s_1077f08846a31c::t_15cb83a76ac734 3-4,13
+apps/web/src/components/skills/fileFormat.ts
+  s_1077f08846a31c::t_34c0e6d78b509d 8,12,16-18,28-29,38-39
+apps/api/src/skillFileContentRoute.test.ts
+  s_1077f08846a31c::t_d9012d7c0afef1 1,6-141,154-162,164-201
+  s_1077f08846a31c::t_d0bccbf267162a 2-5,142-153,163
+apps/web/src/components/skills/fileview.test.ts
+  s_1077f08846a31c::t_c1617eb37033bf 1-7,9,11-16,18-87
+  s_1077f08846a31c::t_2045ec9f2803eb 8,10,17
+apps/api/src/index.ts
+  s_1077f08846a31c::t_2a37432cfd434e 1859-1873,1883,1907,1927
+  s_1077f08846a31c::t_7ebf9d787acde0 131,1916-1926,1928-1929,1938-1949
+  s_1077f08846a31c::t_487df8956c2f01 1930-1937
+  s_1077f08846a31c::t_62d2b8a3f65c20 1950-1952
+  s_1077f08846a31c::t_3e0fa59c35be53 1953-1954
+packages/skills/src/archive.ts
+  s_1077f08846a31c::t_0772b7b61dd7ba 424,444,446-447,451,495,524-525,533,567
+  s_1077f08846a31c::t_46dea04273da5b 498-520,526-527,530-532,537,539-559,561-566,568-569,572-575,578-579
+  s_1077f08846a31c::t_5db30f8e0a3abe 67-91,93-129,168-169,193,195-196,198-199,205,214-215
+  s_1077f08846a31c::t_a104c661751d0c 478,560
+  s_1077f08846a31c::t_e16d62da28c95b 300-301,375,377-380
+  s_1077f08846a31c::t_3a937501ae0637 190-192,202,226-233
+  s_1077f08846a31c::t_a4794f7ba8eeec 2-3,130-167
+  s_1077f08846a31c::t_fcb9405a91d067 534-536,570-571
+  s_1077f08846a31c::t_a5f549b39018bf 315-330,334-349,353-358,362-374,376,381,496
+  s_1077f08846a31c::t_b7b52dd9cf7c90 421-423,465,490-492,521-523,528-529,538,576-577
+  s_1077f08846a31c::t_7531e4ba17af5e 266-278,293-296,298-299,302-314,331-333,350-352,359-361,391-392
+  s_1077f08846a31c::t_60a2d1b9e6a953 92
+  s_1077f08846a31c::t_8b69c52367e7aa 297
+  s_1077f08846a31c::t_889371f9d4205e 460-464,466-477,479-489
+  s_1077f08846a31c::t_365232a0d6a11b 382
+  s_1077f08846a31c::t_e6857369de25b0 497
+packages/companion-skill/skill/SKILL.md
+  s_1077f08846a31c::t_3de0cc418b70df 713-715
+packages/contracts/src/skill.ts
+  s_1077f08846a31c::t_12750770c2815a 337-338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "13f454187b085f9dce051f7d4ab17e43f93de526",
+  "prompts": {},
+  "sessions": {
+    "s_1077f08846a31c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0426-779f-76e1-95c7-75f4d82fcede",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

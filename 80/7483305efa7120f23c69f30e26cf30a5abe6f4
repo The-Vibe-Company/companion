@@ -1,0 +1,21 @@
+.claude/skills/debug-companions-prod/scripts/db_query.py
+  s_7a32b7067b94c9::t_9b43300a6b95b3 327-373
+.claude/skills/debug-companions-prod/SKILL.md
+  s_7a32b7067b94c9::t_c6887203b7c040 184-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "807483305efa7120f23c69f30e26cf30a5abe6f4",
+  "prompts": {},
+  "sessions": {
+    "s_7a32b7067b94c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba622ebc-6ca5-4ece-bb67-3b8e65150046",
+        "model": "claude-opus-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

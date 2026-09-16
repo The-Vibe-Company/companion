@@ -1,0 +1,53 @@
+scripts/macos-release.test.mjs
+  s_83b6bb34089ccd::t_2038ddaa9c1f2b 1-106,108-122,132-167,169-181,183-185
+  s_83b6bb34089ccd::t_25f77973bad32b 107,123-131,168
+  s_83b6bb34089ccd::t_ffaa3bc9c95ec3 182
+apps/macos/CompanionMac/Info.plist
+  s_83b6bb34089ccd::t_41124d05eacf1a 5-10,13-14,16,18,24-25,32-50
+apps/macos/scripts/release.sh
+  s_83b6bb34089ccd::t_27ff19da8c0696 1-68,70-93
+  s_83b6bb34089ccd::t_25f77973bad32b 69
+apps/macos/Config/ExportOptions.plist
+  s_83b6bb34089ccd::t_27ff19da8c0696 1-7,9-25
+  s_83b6bb34089ccd::t_ffaa3bc9c95ec3 8
+package.json
+  s_83b6bb34089ccd::t_2038ddaa9c1f2b 49
+scripts/macos-testflight-scope.mjs
+  s_83b6bb34089ccd::t_27ff19da8c0696 1-51
+.github/workflows/macos-testflight.yml
+  s_83b6bb34089ccd::t_27ff19da8c0696 1-150
+apps/macos/CompanionMac/Assets.xcassets/AppIcon.appiconset/Contents.json
+  s_83b6bb34089ccd::t_bd4de98515e449 1-18
+scripts/macos-devx.test.mjs
+  s_83b6bb34089ccd::t_2038ddaa9c1f2b 73-74,90-91,93,96-100
+  s_83b6bb34089ccd::t_810932ecef9c90 92
+  s_83b6bb34089ccd::t_25f77973bad32b 94-95
+docs/DEPLOYER-MACOS-TESTFLIGHT.md
+  s_83b6bb34089ccd::t_a2a702bd71aa7b 1-83
+.github/workflows/ci.yml
+  s_83b6bb34089ccd::t_2038ddaa9c1f2b 85-93,106
+apps/macos/CompanionMac.xcodeproj/project.pbxproj
+  s_83b6bb34089ccd::t_810932ecef9c90 399,428
+  s_83b6bb34089ccd::t_bd4de98515e449 391,398,408-409,420,427,437-438
+  s_83b6bb34089ccd::t_25f77973bad32b 396,425
+apps/macos/README.md
+  s_83b6bb34089ccd::t_bd4de98515e449 44-56
+apps/macos/CompanionMac/Assets.xcassets/Contents.json
+  s_83b6bb34089ccd::t_bd4de98515e449 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "83bc58f906822d7b565f2e98f53fe5e8440a5641",
+  "prompts": {},
+  "sessions": {
+    "s_83b6bb34089ccd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05e77-f9f7-7e32-af0c-6879a7f3a4ed",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

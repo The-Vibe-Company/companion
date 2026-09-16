@@ -1,0 +1,24 @@
+packages/db/drizzle/0146_companion_restart_box_checkpoint.sql
+  s_c83f7f76779ae6::t_ab3c8905663ea7 1-31
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_c83f7f76779ae6::t_adcf5534c79094 787,791-794,802-806,813
+  s_c83f7f76779ae6::t_bab34678d828bb 747-786,788-790,795-801,807-812,814-821
+packages/db/drizzle/meta/_journal.json
+  s_c83f7f76779ae6::t_439cde3ff4b8f6 1026-1032
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "55d18b3a7d8f24345dacc28a8d6abb36baebd4fc",
+  "prompts": {},
+  "sessions": {
+    "s_c83f7f76779ae6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05337-3d7c-72a3-861d-289a8dcf66f3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

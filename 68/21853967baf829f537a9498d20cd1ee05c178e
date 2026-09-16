@@ -1,0 +1,60 @@
+apps/web/src/components/skills/filters.ts
+  s_2394e1d9e7355e::t_c311d518ffe7fe 5,12,15
+  s_2394e1d9e7355e::t_b2c50900e6db25 1,65-70
+apps/web/src/components/skills/SkillsApp.tsx
+  s_2394e1d9e7355e::t_0518dd0900d282 20,237-240
+  s_2394e1d9e7355e::t_1dfc54aeafeaef 75-77,88-94,105-110,112,121-123,128-131,263
+  s_2394e1d9e7355e::t_db552ae90b989e 5-6,28,35,59-62,73-74,78-83,85-87,111,113-120,124-127,132-139,249-262,264-266
+  s_2394e1d9e7355e::t_4ea4c51941956f 69,95-104,267-270,394-395
+  s_2394e1d9e7355e::t_27f942386ea686 84
+packages/core/src/services.ts
+  s_2394e1d9e7355e::t_e43f451f8ec8f4 7,13-18,576-628
+apps/web/src/styles/skills.css
+  s_2394e1d9e7355e::t_bea793c17cd7ba 348-350
+packages/db/src/schema.ts
+  s_2394e1d9e7355e::t_3b1a24c35e879a 268-286
+packages/db/drizzle/0006_first_gambit.sql
+  s_2394e1d9e7355e::t_28b8a587f65871 1-12
+  s_2394e1d9e7355e::t_ed060ead8297cc 13-22
+packages/contracts/src/preferences.ts
+  s_2394e1d9e7355e::t_6d76eee68e8fa5 1-29
+packages/contracts/src/index.ts
+  s_2394e1d9e7355e::t_0c97fc0eb9ab72 7
+apps/web/src/components/skills/ListView.tsx
+  s_2394e1d9e7355e::t_90db8f00fd1b95 23-24,42-43,109-121
+apps/web/src/components/skills/filters.test.ts
+  s_2394e1d9e7355e::t_4838119f4c505a 3,111-120
+docs/design.md
+  s_2394e1d9e7355e::t_9fd1b0adc30487 56-57,67-70,90-91
+  s_2394e1d9e7355e::t_5a9ad58a145249 89
+apps/api/src/index.ts
+  s_2394e1d9e7355e::t_0d4206df619806 17,33,43,509-511,513-515,523-529
+  s_2394e1d9e7355e::t_15f23f6d835835 512,517-522,530
+  s_2394e1d9e7355e::t_985d3b7dd9781b 508,516
+packages/core/test/filterPreferences.test.ts
+  s_2394e1d9e7355e::t_ec53730a17d757 39-55,57-58
+  s_2394e1d9e7355e::t_e54dc951d1887b 1-2,4-37,65-139
+  s_2394e1d9e7355e::t_523e205efdcf0f 3,38,56,59-64
+apps/web/src/lib/queries.ts
+  s_2394e1d9e7355e::t_823e9e431f19e3 3-10,119-122,124-125
+  s_2394e1d9e7355e::t_f610f8ce53d8d8 123
+apps/web/src/app/(app)/skills/page.tsx
+  s_2394e1d9e7355e::t_18f440b74f8417 2,21-22,36-45
+  s_2394e1d9e7355e::t_d846e28f58bd51 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "6821853967baf829f537a9498d20cd1ee05c178e",
+  "prompts": {},
+  "sessions": {
+    "s_2394e1d9e7355e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea841-84e9-76e1-b21d-cc2cc7f3e993",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

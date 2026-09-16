@@ -1,0 +1,98 @@
+packages/companion-skill/skill/scripts/bootstrap.py
+  s_bcfd19205f2470::t_e3716157f4acad 19
+  s_bcfd19205f2470::t_20a809ae8f2792 108-110
+  s_bcfd19205f2470::t_c1bd09d168db66 81-94
+  s_bcfd19205f2470::t_4e684a485cda20 129
+  s_bcfd19205f2470::t_858a1c7b6e8a9e 78-80
+  s_bcfd19205f2470::t_40517959277ad2 74-77,95
+  s_bcfd19205f2470::t_e4ea5cc7dcd104 155
+  s_bcfd19205f2470::t_72c6335c2fafb4 31
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_bcfd19205f2470::t_3a30206b7222d8 242,246,263,276,291-292
+  s_bcfd19205f2470::t_22885622f68fbe 226-228,232-233,235-236
+  s_bcfd19205f2470::t_5702300e333251 256-262,264-271
+  s_bcfd19205f2470::t_f56fe8d6fd2c6e 122-146
+  s_bcfd19205f2470::t_ab3be01d62250d 97,101
+  s_bcfd19205f2470::t_c283ea391e3d94 98-100,102
+  s_bcfd19205f2470::t_2878fc0df94bfd 192-225
+  s_bcfd19205f2470::t_a24f8b17e02115 229-231,234,237-241,243-245,247-255,272-275,277-284
+  s_bcfd19205f2470::t_574343150fb9f8 1-96,103-121,147-191,285-290,293-305
+packages/companion-skill/skill/companion.json
+  s_bcfd19205f2470::t_35debbc381b06f 7
+  s_bcfd19205f2470::t_b8f25a33094c88 4
+  s_bcfd19205f2470::t_e61a4931890bfe 179
+  s_bcfd19205f2470::t_ae13bdbc03b47e 18-20,23-32
+packages/companion-skill/skill/scripts/skill_guard.py
+  s_bcfd19205f2470::t_8c2a0b154404c9 181-182
+  s_bcfd19205f2470::t_311be2a9c82386 183-193
+  s_bcfd19205f2470::t_3ee5b505c4b7be 31
+  s_bcfd19205f2470::t_331b7b0c94f9cd 664-665
+packages/companion-skill/skill/companion.integrity.json
+  s_bcfd19205f2470::t_48676e158d81a7 5
+  s_bcfd19205f2470::t_56437489f600af 10
+  s_bcfd19205f2470::t_b28484369c3f4c 9,11
+  s_bcfd19205f2470::t_1f353218f05915 3,12
+  s_bcfd19205f2470::t_ed638e569323a7 4,15
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_bcfd19205f2470::t_ea8993f36d179d 18-19
+  s_bcfd19205f2470::t_72d06de5ef4fd0 178-296,300-304,308-312,315-319
+  s_bcfd19205f2470::t_86f3133d4d3603 297-299,314
+  s_bcfd19205f2470::t_cdccb94d889738 493-509
+  s_bcfd19205f2470::t_a79e66fda0f798 11
+  s_bcfd19205f2470::t_944e25ddf2c453 50-63
+  s_bcfd19205f2470::t_ed4cc806d1fd76 464-466
+  s_bcfd19205f2470::t_0d1c01b3e1cde5 474-482
+  s_bcfd19205f2470::t_362067ef496002 305-307,313
+  s_bcfd19205f2470::t_141a9f567fe003 320-422
+packages/companion-skill/skill/scripts/install_skill.py
+  s_bcfd19205f2470::t_96433a33b3970e 45
+  s_bcfd19205f2470::t_6378ad81a5361b 274-278,285
+  s_bcfd19205f2470::t_f1e05da0ca494f 1-44,46-48,51-58,65,70-81,84-85,87-89,92,102-113,122-123,129-150,156-159,174-176,178-181,190-196,198-266,270-273,279-284,286-289,292-295,297-299,301-310,312,314,319,322-333,335,337-345,347,356-360
+  s_bcfd19205f2470::t_c041ddf7571f38 50
+  s_bcfd19205f2470::t_ff1cbe5140cef8 125-126
+  s_bcfd19205f2470::t_f4e1b9ec4fa1bb 151,153,167-169
+  s_bcfd19205f2470::t_907b35d5beede5 311,313
+  s_bcfd19205f2470::t_393ab8116e2156 82-83,86,90-91,93-101
+  s_bcfd19205f2470::t_8a769206046a9e 346,348-351
+  s_bcfd19205f2470::t_62e4e9f234cb75 152,154-155,160-166,170-173,177,182-189,197
+  s_bcfd19205f2470::t_9eaecb77b6f086 315-318,320-321,334,336
+  s_bcfd19205f2470::t_d6a953daad6333 114-121,124,127-128
+  s_bcfd19205f2470::t_7d7329701f970c 290-291,296,300
+  s_bcfd19205f2470::t_0d1e7a5bcaef85 59-64,66-69
+  s_bcfd19205f2470::t_c0abf354264f0c 352-355
+  s_bcfd19205f2470::t_bb72d47ecaca40 267-269
+  s_bcfd19205f2470::t_2eb3ae360d5b12 49
+apps/api/src/localSkills.test.ts
+  s_bcfd19205f2470::t_a2cae94cea6de4 114-115
+  s_bcfd19205f2470::t_867be2fdaad2dd 71,73
+  s_bcfd19205f2470::t_9b7bfa8be54bc9 47
+packages/companion-skill/skill/reference/api.md
+  s_bcfd19205f2470::t_c93c586e8647d0 201-209
+packages/companion-skill/skill/scripts/tools.schema.json
+  s_bcfd19205f2470::t_c3b17b0c730c4b 1-70
+packages/companion-skill/skill/scripts/tools.json
+  s_bcfd19205f2470::t_6b0c462f3f7b10 2
+  s_bcfd19205f2470::t_dd41ae8c7b859e 1,3-18
+packages/companion-skill/skill/SKILL.md
+  s_bcfd19205f2470::t_db9f470e03a806 274-286,289
+  s_bcfd19205f2470::t_0aa22703e89441 287-288
+  s_bcfd19205f2470::t_c28ed55e9c0d1f 346-352
+  s_bcfd19205f2470::t_0a1574a97273f9 337-345,353-373
+  s_bcfd19205f2470::t_63decc0f8dfacb 570-572
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "dbb784b20398e3ba7548b7edb1fa8767ff7c3c3e",
+  "prompts": {},
+  "sessions": {
+    "s_bcfd19205f2470": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26e53870-ec42-48ad-a0c2-7786b72488dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

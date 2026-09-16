@@ -1,0 +1,76 @@
+apps/web/src/components/org/WorkspaceGeneralPane.tsx
+  s_f7e5bfb23b275f::t_1a344ae3a3eafb 133
+  s_f7e5bfb23b275f::t_866529be64b874 4,16-17,20-31,75,78-99,101-132,134-137,139-143,161,163-164
+  s_f7e5bfb23b275f::t_0b1ffab6206ffb 76
+apps/web/src/components/onboarding/OnboardingFlow.tsx
+  s_f7e5bfb23b275f::t_866529be64b874 64,86,96-100,104,155-165,173,207
+apps/web/src/lib/onboarding.ts
+  s_f7e5bfb23b275f::t_866529be64b874 6,18,27-29
+packages/core/src/domainAccess.ts
+  s_f7e5bfb23b275f::t_866529be64b874 1-193
+apps/web/src/lib/settingsViewModel.ts
+  s_f7e5bfb23b275f::t_866529be64b874 107-111
+packages/db/drizzle/0017_organization_domains.sql
+  s_f7e5bfb23b275f::t_866529be64b874 1-32
+packages/contracts/src/onboarding.ts
+  s_f7e5bfb23b275f::t_866529be64b874 4,6,19,23-26
+packages/contracts/test/onboarding.test.ts
+  s_f7e5bfb23b275f::t_866529be64b874 2,46-59
+apps/web/src/styles/onboarding.css
+  s_f7e5bfb23b275f::t_866529be64b874 225-231,243
+apps/web/src/styles/settings.css
+  s_f7e5bfb23b275f::t_866529be64b874 120-130
+apps/web/src/components/org/SettingsApp.test.ts
+  s_f7e5bfb23b275f::t_866529be64b874 47
+packages/core/src/services.ts
+  s_f7e5bfb23b275f::t_866529be64b874 37,54-61,217-218,283-294,406
+packages/db/src/seed.ts
+  s_f7e5bfb23b275f::t_866529be64b874 11-25
+apps/web/src/components/org/model.ts
+  s_f7e5bfb23b275f::t_866529be64b874 37-42,54,61,139,150-151
+packages/core/test/onboarding.test.ts
+  s_f7e5bfb23b275f::t_866529be64b874 4,77-148
+apps/web/src/lib/settingsData.test.ts
+  s_f7e5bfb23b275f::t_866529be64b874 71,140
+apps/web/src/components/org/SettingsApp.tsx
+  s_f7e5bfb23b275f::t_866529be64b874 7,15,55,62,290-319
+  s_f7e5bfb23b275f::t_5d5b1b895aad70 320-323
+apps/web/src/lib/org.ts
+  s_f7e5bfb23b275f::t_866529be64b874 123-131
+apps/web/src/components/onboarding/screens.tsx
+  s_f7e5bfb23b275f::t_866529be64b874 170,172-174,179-181,186-187,190-191,193,196-217,222,230,236,562,604,606,716
+apps/api/src/index.ts
+  s_f7e5bfb23b275f::t_866529be64b874 14,46,67,72,527-533,543-544,650-666
+packages/contracts/test/orgSettings.test.ts
+  s_f7e5bfb23b275f::t_866529be64b874 19
+packages/contracts/src/orgSettings.ts
+  s_f7e5bfb23b275f::t_866529be64b874 49-55,66,72,106,124-127
+packages/core/test/settings.test.ts
+  s_f7e5bfb23b275f::t_866529be64b874 6,10,77-78,204,247,371-377,379-438
+  s_f7e5bfb23b275f::t_932cacbee3bc28 378
+apps/web/src/app/(app)/onboarding/page.tsx
+  s_f7e5bfb23b275f::t_866529be64b874 27-33,35
+packages/core/src/onboarding.ts
+  s_f7e5bfb23b275f::t_866529be64b874 1,4-11,15,21-22,40,47,49,53-54,56,60-67,69,76,84,89,98,100,104-106,123,130-136
+packages/db/src/schema.ts
+  s_f7e5bfb23b275f::t_866529be64b874 118-131,133-134
+docs/design.md
+  s_f7e5bfb23b275f::t_866529be64b874 144-151,189-191,197-198,219-221,247-249
+  s_f7e5bfb23b275f::t_0b1ffab6206ffb 199-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "2c5ad8f78640f07cb2be6441ab279a81684cb75b",
+  "prompts": {},
+  "sessions": {
+    "s_f7e5bfb23b275f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed117-367b-7b41-b2ba-b96ad8c97ed0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

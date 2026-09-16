@@ -1,0 +1,21 @@
+packages/core/src/labels.ts
+  s_1e8d0db23d3889::t_3f4027b16602c4 362-363,365
+packages/core/test/skillLabels.test.ts
+  s_1e8d0db23d3889::t_ac9e143b104cf6 255,258-259,265,452-454,459-490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.11",
+  "base_commit_sha": "2459e94b3f7351c579fc92051342edb9cafb274c",
+  "prompts": {},
+  "sessions": {
+    "s_1e8d0db23d3889": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ef550-7ce3-71c2-8fd6-236579e6d1c3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

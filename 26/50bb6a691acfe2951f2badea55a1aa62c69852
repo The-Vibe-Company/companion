@@ -1,0 +1,82 @@
+packages/auth/src/index.ts
+  s_4fe8845f7f950a::t_8af8274695ab7c 7-9,79-85
+apps/api/src/context.ts
+  s_4fe8845f7f950a::t_8af8274695ab7c 22-30,39-43,50-57
+  s_4fe8845f7f950a::t_8ab4f6334c3f99 44-49
+  s_4fe8845f7f950a::t_ff4f8074248a39 89-91
+  s_4fe8845f7f950a::t_5d4b548e70b300 81,83-88,92
+apps/web/src/app/(app)/layout.tsx
+  s_4fe8845f7f950a::t_f191f36b4dd32a 2-4,13-15,18
+apps/web/src/middleware.ts
+  s_4fe8845f7f950a::t_d484fd9f9dddd4 1-27
+deploy/railway/README.md
+  s_4fe8845f7f950a::t_9bfc46f3a50a08 114-119
+apps/api/src/index.ts
+  s_4fe8845f7f950a::t_8ab4f6334c3f99 763-769,789-791
+apps/web/src/app/join/[token]/page.tsx
+  s_4fe8845f7f950a::t_f191f36b4dd32a 3-4,8-10
+apps/web/src/lib/apiServer.ts
+  s_4fe8845f7f950a::t_8ab4f6334c3f99 37-39
+apps/web/src/lib/settingsData.ts
+  s_4fe8845f7f950a::t_b1c781e5cd975b 16,37,43-46
+apps/web/src/components/org/WorkspaceLoadError.test.ts
+  s_4fe8845f7f950a::t_5d5358750337bf 1-2
+  s_4fe8845f7f950a::t_e19fc50bf12ac5 3-37
+apps/api/src/whoamiRoute.test.ts
+  s_4fe8845f7f950a::t_8ab4f6334c3f99 1-55
+apps/web/src/components/auth/SessionKeepAlive.tsx
+  s_4fe8845f7f950a::t_f191f36b4dd32a 1-40
+apps/web/src/lib/authRouteStates.test.ts
+  s_4fe8845f7f950a::t_1e5ebf4e5f7ab6 1-72
+apps/web/src/lib/serverAuth.ts
+  s_4fe8845f7f950a::t_f191f36b4dd32a 1-43
+apps/web/src/components/org/WorkspaceLoadError.tsx
+  s_4fe8845f7f950a::t_f191f36b4dd32a 15-21,34-35,45-51
+  s_4fe8845f7f950a::t_e19fc50bf12ac5 6,8-14,36,52-53
+apps/web/src/lib/serverAuth.test.ts
+  s_4fe8845f7f950a::t_de7fbc91d012f4 1-67
+apps/web/src/components/auth/SessionKeepAlive.test.ts
+  s_4fe8845f7f950a::t_7cb01eaef07ec1 15-16
+  s_4fe8845f7f950a::t_31a7f69415d922 1-14,17-65
+docs/design.md
+  s_4fe8845f7f950a::t_9bfc46f3a50a08 363-366,375-377,382-385,391-392
+  s_4fe8845f7f950a::t_ff3e7a0dcd999f 367-369
+apps/api/src/context.test.ts
+  s_4fe8845f7f950a::t_de7fbc91d012f4 1-58,60-65,82,115
+  s_4fe8845f7f950a::t_ff4f8074248a39 111
+  s_4fe8845f7f950a::t_b7b7e7410b3243 83-93,105-110,112-114
+  s_4fe8845f7f950a::t_e773c924462ad2 94-104
+  s_4fe8845f7f950a::t_8ab4f6334c3f99 59,66-81
+docs/testing.md
+  s_4fe8845f7f950a::t_f04d2d7582d451 31
+apps/web/src/app/(app)/onboarding/page.tsx
+  s_4fe8845f7f950a::t_b1c781e5cd975b 6-7,19-22
+apps/web/src/app/(app)/secrets/page.tsx
+  s_4fe8845f7f950a::t_b1c781e5cd975b 5,9,18,24-27
+apps/web/src/app/(app)/@settings/(.)settings/page.tsx
+  s_4fe8845f7f950a::t_e19fc50bf12ac5 2,35
+apps/web/src/middleware.test.ts
+  s_4fe8845f7f950a::t_de7fbc91d012f4 1-31
+apps/web/src/lib/apiServer.test.ts
+  s_4fe8845f7f950a::t_8ab4f6334c3f99 1-39
+apps/web/src/app/(app)/skills/page.tsx
+  s_4fe8845f7f950a::t_b1c781e5cd975b 13-14,29,35-38
+apps/web/src/app/(auth)/login/page.tsx
+  s_4fe8845f7f950a::t_f191f36b4dd32a 3-4,36,39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2650bb6a691acfe2951f2badea55a1aa62c69852",
+  "prompts": {},
+  "sessions": {
+    "s_4fe8845f7f950a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f85b1-8790-72c2-bfa5-1348511ff2b3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

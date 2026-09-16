@@ -1,0 +1,38 @@
+apps/web/src/components/libraryNames.ts
+  s_1e74ce65ff5b16::t_3b85d255c9782a 1-12
+apps/web/src/components/skills/SkillsApp.tsx
+  s_1e74ce65ff5b16::t_4c3c7f87b37245 1111
+  s_1e74ce65ff5b16::t_cfecace1e0b02b 33
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_1e74ce65ff5b16::t_9b2b5a51db58ea 314
+  s_1e74ce65ff5b16::t_ec2f3e5b02206a 705-706,712-730
+  s_1e74ce65ff5b16::t_d541fe5fb4d4a8 731
+apps/web/src/components/skills/Sidebar.tsx
+  s_1e74ce65ff5b16::t_65c327fddb3572 390-404
+  s_1e74ce65ff5b16::t_1bd504c83e0962 752,766,771,773-778,782-832,834-835
+  s_1e74ce65ff5b16::t_20f36a2d39c6bb 516-527
+  s_1e74ce65ff5b16::t_b5b6bf36df904a 296,310-311
+  s_1e74ce65ff5b16::t_8e2c1a5dcebd5d 574-681
+  s_1e74ce65ff5b16::t_21d05fd789aee5 502-507
+  s_1e74ce65ff5b16::t_4d2bb8676ddfb3 455-457
+  s_1e74ce65ff5b16::t_6abdd197610ff0 867,872,874-879,883-904
+  s_1e74ce65ff5b16::t_91991d02453867 353
+  s_1e74ce65ff5b16::t_c40b7e554af51e 8-9,18-28
+  s_1e74ce65ff5b16::t_bcd5001fba7c99 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "921f8318ec8241f9ed93ddf9ac8b91d15e0ed026",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

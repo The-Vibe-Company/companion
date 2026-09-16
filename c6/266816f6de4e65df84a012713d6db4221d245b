@@ -1,0 +1,67 @@
+packages/db/drizzle/0035_provider_secret_bindings.sql
+  s_48f42bfbc57a73::t_37616abfedf0b0 41-45,48-49,56,59,64,70-71,73
+  s_48f42bfbc57a73::t_0050384bcbd5cc 1-40,46-47,50-55,57-58,60-63,65-69,72,74-111
+packages/db/drizzle/0034_skill_runs.sql
+  s_48f42bfbc57a73::t_7b97359f059ba6 1,3-25,27-49,51-114,118-121,128-139,141-249,251-297,314-362,366,370-376,378-386,389-395,397-421,423-440,442-455,459-468
+  s_48f42bfbc57a73::t_f9826bc1fda0a1 298-313
+  s_48f42bfbc57a73::t_aba565bef92440 2
+  s_48f42bfbc57a73::t_4c3c0b465d03e5 363-365,367-369,377
+  s_48f42bfbc57a73::t_59aafab32af3a6 26,50,115-116,123,126-127,140,250
+  s_48f42bfbc57a73::t_12ba817041caa0 117,124-125
+  s_48f42bfbc57a73::t_a878525e14f440 441,456-457,469
+  s_48f42bfbc57a73::t_8052dc4f13410a 396,422
+  s_48f42bfbc57a73::t_bb63ca66a3395c 458
+  s_48f42bfbc57a73::t_464c45f9d39b3c 387-388
+  s_4d92256ec1ecab::t_4be5e1ef0bcd1a 122
+packages/db/src/schema.ts
+  s_48f42bfbc57a73::t_c550031c9f7add 1390-1393,1419,1426-1429
+  s_48f42bfbc57a73::t_10fe4aed7eb0b2 1380
+  s_48f42bfbc57a73::t_19fa83e4536f80 761
+  s_48f42bfbc57a73::t_12ba817041caa0 1163,1203-1204
+  s_48f42bfbc57a73::t_29fc2d895e2d1e 796-831,833-900
+  s_48f42bfbc57a73::t_738b1e2c2f1f70 339-340
+  s_48f42bfbc57a73::t_a22c11fd2e77a0 793-794,1111-1112,1114-1160,1164-1202,1206-1245,1247-1366
+  s_48f42bfbc57a73::t_e640a9b8ee55cd 953-970,972,974-996
+  s_48f42bfbc57a73::t_9989b4a9571b84 1034-1040,1045-1049,1059,1074-1080,1086-1091,1105-1110
+  s_48f42bfbc57a73::t_f9413aafa9da8f 752-756
+  s_48f42bfbc57a73::t_9b59ea709f6b49 1102-1104
+  s_48f42bfbc57a73::t_6e45fbdba95ddb 1099
+  s_48f42bfbc57a73::t_9397d31e43cf15 832,901,1092-1098,1100,1161-1162,1205,1246
+  s_48f42bfbc57a73::t_07227de73a4514 728-729,742,744,750,757-760,766-767,777,779-780,786,788-792
+  s_48f42bfbc57a73::t_aba565bef92440 971,973
+  s_4d92256ec1ecab::t_488f4dccfa1ef2 795,1113
+packages/db/drizzle/meta/_journal.json
+  s_13e14c1f1ee959::t_1264abb5d47835 246-247,253-254,260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "c6266816f6de4e65df84a012713d6db4221d245b",
+  "prompts": {},
+  "sessions": {
+    "s_13e14c1f1ee959": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c71-626a-7412-8727-6b8cdd4be846",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_48f42bfbc57a73": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5c42-3570-7980-a9c7-aec5efbb6fdc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_4d92256ec1ecab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a2c5fbf-4cc2-40e1-88dc-21a4576e02a7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

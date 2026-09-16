@@ -1,0 +1,21 @@
+AGENTS.md
+  s_ef6c13b41328a1::t_0d24bb383dbacf 7,9-11
+CLAUDE.md
+  s_ef6c13b41328a1::t_0d24bb383dbacf 7,9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d05860284ae9db245df8571d8547f6646617a30",
+  "prompts": {},
+  "sessions": {
+    "s_ef6c13b41328a1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e8e0d-b017-7f72-8441-1e104a187b45",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Claude <noreply@anthropic.com>"
+    }
+  }
+}

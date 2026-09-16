@@ -1,0 +1,27 @@
+apps/web/src/components/landing/LandingPage.tsx
+  s_a7363c4638ccdf::t_436212fb6171dc 3-9,25,27-28,30,33-39,42-43,47,49,58,62,66,70,73-74,77,82,94,97-108,115,129,132,136-148,152,160,176,180,185,188,192,295-303,418-446,652,654-683,685,753,755
+apps/web/src/styles/landing.css
+  s_a7363c4638ccdf::t_7c18b90b8e7b15 248
+  s_a7363c4638ccdf::t_6c0a2f86d65f58 259
+  s_a7363c4638ccdf::t_f01a99eb4e41e2 281
+  s_a7363c4638ccdf::t_f5e293393f20f6 295
+  s_a7363c4638ccdf::t_b1b3c741de8d4b 601-635,638-754
+  s_a7363c4638ccdf::t_eda8e06692d5b4 636-637
+  s_a7363c4638ccdf::t_20fb2458574a85 303
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "6d89289ee0419ca192a64ee66ffccf566d07e1d3",
+  "prompts": {},
+  "sessions": {
+    "s_a7363c4638ccdf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_114a4d285ffeJQ95Ne4jqAy4rW",
+        "model": "glm-5.2"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

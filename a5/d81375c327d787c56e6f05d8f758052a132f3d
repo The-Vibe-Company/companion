@@ -1,0 +1,31 @@
+examples/webui/dashboard.toml
+  s_bbf41f6ad901bb::t_c06b320d4094be 10
+internal/render/render.go
+  s_bbf41f6ad901bb::t_790c75b020b503 176-177
+internal/resource/resource.go
+  s_bbf41f6ad901bb::t_733d9d650eafd8 391,405,489,534,714-726
+.dockerignore
+  s_bbf41f6ad901bb::t_565ed155b21b50 3-5
+README.md
+  s_bbf41f6ad901bb::t_c06b320d4094be 362
+internal/render/render_test.go
+  s_bbf41f6ad901bb::t_790c75b020b503 85-86
+examples/minimal/dashboard.toml
+  s_bbf41f6ad901bb::t_c06b320d4094be 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a5d81375c327d787c56e6f05d8f758052a132f3d",
+  "prompts": {},
+  "sessions": {
+    "s_bbf41f6ad901bb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e8ec4-1ac4-7b32-abbb-26747fe41a55",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Claude <noreply@anthropic.com>"
+    }
+  }
+}

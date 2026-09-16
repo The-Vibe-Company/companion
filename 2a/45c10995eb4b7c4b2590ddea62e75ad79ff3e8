@@ -1,0 +1,38 @@
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_c380c92b54397a::t_227d723f0f1ac6 2721-2722,2735-2748,2750-2770
+  s_c380c92b54397a::t_9a10df5d7dea65 2632,2634,2641-2642,2645
+  s_c380c92b54397a::t_a9e55350641bb5 2637
+  s_c380c92b54397a::t_04658b00ff1267 2462
+  s_c380c92b54397a::t_41ddcb69a5a8e2 2639-2640,2643-2644,2648
+  s_c380c92b54397a::t_c910162d258fb0 2384-2388,2423-2456,2458-2461,2463-2477
+  s_c380c92b54397a::t_55b518e046eabd 247-265
+  s_c380c92b54397a::t_23891d812b6518 2650
+  s_c380c92b54397a::t_1519506bc3467e 3179-3186,3188-3194,3212
+  s_c380c92b54397a::t_144f45f40e6b9b 3187
+  s_c380c92b54397a::t_5d827e375c0bb0 2457
+  s_c380c92b54397a::t_7874d02a167346 2478
+packages/companion-runtime/src/operations.ts
+  s_c380c92b54397a::t_13817ac7db56b2 27-30
+  s_c380c92b54397a::t_3b4a22c99ef56c 339
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_c380c92b54397a::t_fa0699a50df0ae 327-335,337
+  s_c380c92b54397a::t_18ae0d982e972c 909-911
+  s_c380c92b54397a::t_08805f8e9b4cf3 945-998
+  s_c380c92b54397a::t_d6069498c4ae22 944
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "2a45c10995eb4b7c4b2590ddea62e75ad79ff3e8",
+  "prompts": {},
+  "sessions": {
+    "s_c380c92b54397a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdc3ddc17ffezxTu8EehJXWW97",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

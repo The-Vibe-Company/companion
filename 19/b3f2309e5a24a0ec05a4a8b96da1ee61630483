@@ -1,0 +1,19 @@
+apps/web/src/styles/runs.css
+  s_8106f2d8df9838::t_859bd9037880ec 321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "19b3f2309e5a24a0ec05a4a8b96da1ee61630483",
+  "prompts": {},
+  "sessions": {
+    "s_8106f2d8df9838": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6703-007f-7681-9665-999155fdb819",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

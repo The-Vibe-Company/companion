@@ -1,0 +1,157 @@
+.agents/skills/capture-learning-tools/SKILL.md
+  s_fa14e69b82c2f9::t_efed8998ab883b 1-152
+.agents/skills/capture-learning-tools/companion.json
+  s_fa14e69b82c2f9::t_b3a2f70934d25a 1-50
+.agents/skills/capture-learning-tools/evals/evals.json
+  s_fa14e69b82c2f9::t_678b9d9cf47813 1-29
+.agents/skills/capture-learning-tools/references/agent-instructions.md
+  s_fa14e69b82c2f9::t_9ede10ceb55f2c 1,3,5,7,9-14,16,18,20-23,25,27,29-35,37,39,41-44,46-48,50-54,56,58-59,62,64-66,68,70-71
+.agents/skills/capture-learning-tools/references/ci-policy.md
+  s_fa14e69b82c2f9::t_f2b67d0184de86 1-84
+.agents/skills/capture-learning-tools/references/conversation-analysis.md
+  s_fa14e69b82c2f9::t_b0e894a8dd1311 1-44
+.agents/skills/capture-learning-tools/references/cross-agent-linking.md
+  s_fa14e69b82c2f9::t_52c10643fb39e9 1-56
+.agents/skills/capture-learning-tools/references/examples.md
+  s_fa14e69b82c2f9::t_bc222cfbc90036 1,3,5,7,9,11-14,16,18-20,22,24,26,28-30,32,34,36,38-41,43,45-51,53,55,57,59-61
+.agents/skills/capture-learning-tools/references/non-technical-mode.md
+  s_fa14e69b82c2f9::t_84a4a7bcb3b5f2 1-36
+.agents/skills/capture-learning-tools/references/project-memory.md
+  s_fa14e69b82c2f9::t_3bfcf5a11fe0f0 1-46
+.agents/skills/capture-learning-tools/references/promotion-matrix.md
+  s_fa14e69b82c2f9::t_62deeeaff2fd9f 1-44
+.agents/skills/capture-learning-tools/references/testing-policy.md
+  s_fa14e69b82c2f9::t_dd02e8809dea0e 1-57
+.agents/skills/capture-learning-tools/scripts/classify_learning.py
+  s_fa14e69b82c2f9::t_bc518728dee962 1-72
+.agents/skills/capture-learning-tools/scripts/inspect_ci_surface.py
+  s_fa14e69b82c2f9::t_2b6261c9ecad6c 1-115
+.agents/skills/capture-learning-tools/scripts/inspect_project_guidance.py
+  s_fa14e69b82c2f9::t_37df76db9a5054 1-137
+.agents/skills/review-code-dev/SKILL.md
+  s_fa14e69b82c2f9::t_37eeb6391fd549 3-10,14,16,20-29,33-39,43,45-49,51,53,55,58,62,65,67,69,71,73,75-80,82,84,86,88,90,92,95,98,100,102,104-108,112-115,128-129
+.agents/skills/review-code-dev/agents/openai.yaml
+  s_fa14e69b82c2f9::t_8caad52d408ddb 2
+.agents/skills/review-code-dev/companion.json
+  s_fa14e69b82c2f9::t_51680dd0b8cdd5 4-7,12-13,15-19,23-24,26,30,33,40,55,59,63,67
+.agents/skills/review-code-dev/evals/evals.json
+  s_fa14e69b82c2f9::t_d641e33fc156e2 22,37,52,78-102
+.agents/skills/review-code-dev/references/output-contract.md
+  s_fa14e69b82c2f9::t_784a9e60b5b4f4 23-24,37,64-67,83
+.agents/skills/review-code-dev/references/review-playbook.md
+  s_fa14e69b82c2f9::t_6d91a5e0da79a5 44
+.agents/skills/review-code-dev/references/reviewers/frontend.md
+  s_fa14e69b82c2f9::t_1e08efd784996d 12-13,17
+.agents/skills/review-code-dev/references/subagent-briefs.md
+  s_fa14e69b82c2f9::t_fa72640a1b3724 8,17,34-60,74,123-126,128,146,254,257,298
+.agents/skills/review-code-dev/scripts/prepare_review_run.py
+  s_fa14e69b82c2f9::t_31579d62302480 2,17,97
+.agents/skills/review-code-dev/scripts/test_veille_pr_state.py
+  s_fa14e69b82c2f9::t_c2bdc79c96bc19 1-52
+.agents/skills/review-code-dev/scripts/veille_pr_state.py
+  s_fa14e69b82c2f9::t_369f7e69e5c5ab 1-228
+.agents/skills/ship-pr-dev/SKILL.md
+  s_fa14e69b82c2f9::t_f39bd65c0266c4 3-11,18,22-30,34,36-39,41,43,45,47,49-52,54,56,66,68,70,72-76,78,80,82,84-87,89,91,93,95,97,99,101-103,105,107,109,111,113-119,121,123,125,127,136-137,140-141
+.agents/skills/ship-pr-dev/companion.json
+  s_fa14e69b82c2f9::t_bacd45b28eadad 4,6-7,12-13,15-19,23-24,26,33,43,49,53,57
+.agents/skills/ship-pr-dev/evals/evals.json
+  s_fa14e69b82c2f9::t_f90fe583c0e4d1 7,17,32,37-62
+.agents/skills/ship-pr-dev/references/agent-routing.md
+  s_fa14e69b82c2f9::t_3740ec824642a0 1-122
+.agents/skills/ship-pr-dev/references/pr-template.md
+  s_fa14e69b82c2f9::t_9f94db398c24f5 31,36,59-61
+.agents/skills/ship-pr-dev/references/readiness-gates.md
+  s_fa14e69b82c2f9::t_35f985571675d9 10-11,14-15,37,43-46,53,74,77,90
+.agents/skills/ship-pr-dev/references/workflow.md
+  s_fa14e69b82c2f9::t_2cd0d47fe743d2 1,3,5,7-11,13,15,17,19,21,23,25,27,29,31,33-35,37,39,41,43,45,47,49,51,53-56,58,60,62,64
+.agents/skills/ship-pr-dev/scripts/collect_ship_context.py
+  s_fa14e69b82c2f9::t_16a05ae39be55b 83-105,158-161,163-169,180-182
+.agents/skills/ship-pr-dev/scripts/test_collect_ship_context.py
+  s_fa14e69b82c2f9::t_b891dd098ba0ca 1-44
+.claude/skills/capture-learning-tools/SKILL.md
+  s_fa14e69b82c2f9::t_a60131d4eaad14 1-152
+.claude/skills/capture-learning-tools/companion.json
+  s_fa14e69b82c2f9::t_bc1cb326f3a745 1-50
+.claude/skills/capture-learning-tools/evals/evals.json
+  s_fa14e69b82c2f9::t_2e49cbe3a211c2 1-29
+.claude/skills/capture-learning-tools/references/agent-instructions.md
+  s_fa14e69b82c2f9::t_5c8266fef3649c 1-71
+.claude/skills/capture-learning-tools/references/ci-policy.md
+  s_fa14e69b82c2f9::t_32e752cbb0a8f5 1-84
+.claude/skills/capture-learning-tools/references/conversation-analysis.md
+  s_fa14e69b82c2f9::t_8f6fbb588ebac1 1-44
+.claude/skills/capture-learning-tools/references/cross-agent-linking.md
+  s_fa14e69b82c2f9::t_3a076818943426 1-56
+.claude/skills/capture-learning-tools/references/examples.md
+  s_fa14e69b82c2f9::t_14ac318bcc5efa 1-61
+.claude/skills/capture-learning-tools/references/non-technical-mode.md
+  s_fa14e69b82c2f9::t_fe97fa598c025b 1-36
+.claude/skills/capture-learning-tools/references/project-memory.md
+  s_fa14e69b82c2f9::t_52a423afc05ed2 1-46
+.claude/skills/capture-learning-tools/references/promotion-matrix.md
+  s_fa14e69b82c2f9::t_5866bd010dca77 1-44
+.claude/skills/capture-learning-tools/references/testing-policy.md
+  s_fa14e69b82c2f9::t_6460a1bb18fa1d 1-57
+.claude/skills/capture-learning-tools/scripts/classify_learning.py
+  s_fa14e69b82c2f9::t_e40ca75a74f674 1-72
+.claude/skills/capture-learning-tools/scripts/inspect_ci_surface.py
+  s_fa14e69b82c2f9::t_9a6ff0b3634272 1-115
+.claude/skills/capture-learning-tools/scripts/inspect_project_guidance.py
+  s_fa14e69b82c2f9::t_47eaefbc5f81f8 1-137
+.claude/skills/review-code-dev/SKILL.md
+  s_fa14e69b82c2f9::t_59fd418543e39b 3-10,14,16,20-29,33-39,43,45-49,51,53,55,58,62,65,67,69,71,73,75-80,82,84,86,88,90,92,95,98,100,102,104-108,112-115,128-129
+.claude/skills/review-code-dev/agents/openai.yaml
+  s_fa14e69b82c2f9::t_77e082d8cbe32a 2
+.claude/skills/review-code-dev/companion.json
+  s_fa14e69b82c2f9::t_ae101728d4c0b8 4-7,12-13,15-19,23-24,26,30,33,40,55,59,63,67
+.claude/skills/review-code-dev/evals/evals.json
+  s_fa14e69b82c2f9::t_50bbe0186460b1 22,37,52,78-102
+.claude/skills/review-code-dev/references/output-contract.md
+  s_fa14e69b82c2f9::t_984a07678c4ba7 23-24,37,64-67,83
+.claude/skills/review-code-dev/references/review-playbook.md
+  s_fa14e69b82c2f9::t_916a042b188dcd 44
+.claude/skills/review-code-dev/references/reviewers/frontend.md
+  s_fa14e69b82c2f9::t_83cb9c6404bcd7 12-13,17
+.claude/skills/review-code-dev/references/subagent-briefs.md
+  s_fa14e69b82c2f9::t_fc0d063c7bc07e 8,17,34-60,74,123-126,128,146,254,257,298
+.claude/skills/review-code-dev/scripts/prepare_review_run.py
+  s_fa14e69b82c2f9::t_8ec1b24277e2ca 2,17,97
+.claude/skills/review-code-dev/scripts/test_veille_pr_state.py
+  s_fa14e69b82c2f9::t_30e37853525752 1-52
+.claude/skills/review-code-dev/scripts/veille_pr_state.py
+  s_fa14e69b82c2f9::t_d473aa1dac2a6a 1-228
+.claude/skills/ship-pr-dev/SKILL.md
+  s_fa14e69b82c2f9::t_071617a6204a68 3-11,18,22-30,34,36-39,41,43,45,47,49-52,54,56,66,68,70,72-76,78,80,82,84-87,89,91,93,95,97,99,101-103,105,107,109,111,113-119,121,123,125,127,136-137,140-141
+.claude/skills/ship-pr-dev/companion.json
+  s_fa14e69b82c2f9::t_6e619969ba91f5 4,6-7,12-13,15-19,23-24,26,33,43,49,53,57
+.claude/skills/ship-pr-dev/evals/evals.json
+  s_fa14e69b82c2f9::t_2a4e14a5058626 7,17,32,37-62
+.claude/skills/ship-pr-dev/references/agent-routing.md
+  s_fa14e69b82c2f9::t_e9580553d12b57 1-122
+.claude/skills/ship-pr-dev/references/pr-template.md
+  s_fa14e69b82c2f9::t_2a7277507e6994 31,36,59-61
+.claude/skills/ship-pr-dev/references/readiness-gates.md
+  s_fa14e69b82c2f9::t_b1bf5b3db08d16 10-11,14-15,37,43-46,53,74,77,90
+.claude/skills/ship-pr-dev/references/workflow.md
+  s_fa14e69b82c2f9::t_5e9eb82036fd37 1,3,5,7-11,13,15,17,19,21,23,25,27,29,31,33-35,37,39,41,43,45,47,49,51,53-56,58,60,62,64
+.claude/skills/ship-pr-dev/scripts/collect_ship_context.py
+  s_fa14e69b82c2f9::t_4c8410e93ce236 83-105,158-161,163-169,180-182
+.claude/skills/ship-pr-dev/scripts/test_collect_ship_context.py
+  s_fa14e69b82c2f9::t_ecbfc21cbfe7f7 1-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9c0ec1583979fd92fce77e0a326c4309188181df",
+  "prompts": {},
+  "sessions": {
+    "s_fa14e69b82c2f9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01e7d-6bd8-7c82-9995-84ad56abf572",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

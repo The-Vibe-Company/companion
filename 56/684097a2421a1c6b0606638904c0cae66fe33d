@@ -1,0 +1,65 @@
+apps/web/src/components/skills/SkillsApp.tsx
+  s_51e8bac0e69e44::t_aecf09572de521 60-61
+  s_51e8bac0e69e44::t_0c576e32b62c67 12
+  s_51e8bac0e69e44::t_f6ecbeac76fa2b 293-294
+  s_51e8bac0e69e44::t_051af615f0697c 329-330,333,336-346
+  s_51e8bac0e69e44::t_b50b92b3b1156c 259
+  s_51e8bac0e69e44::t_eb52679395e221 235-236
+apps/web/src/styles/skills.css
+  s_51e8bac0e69e44::t_630d7d79373aa8 173-177
+scripts/agent-browser-smoke.sh
+  s_51e8bac0e69e44::t_eefd647e05311f 180,183-185
+apps/web/src/app/globals.css
+  s_51e8bac0e69e44::t_f6ba44d20cb3a6 5
+apps/web/src/lib/queries.ts
+  s_51e8bac0e69e44::t_597ceb41614f35 3,6-31,33-39,42-62
+  s_51e8bac0e69e44::t_2093482a5eb7cd 32,40-41
+apps/web/src/styles/upload.css
+  s_51e8bac0e69e44::t_c72c6a0e897c21 1-185
+apps/web/src/components/skills/UploadDialog.tsx
+  s_51e8bac0e69e44::t_8570b373d60d84 1249-1252,1257-1258
+  s_51e8bac0e69e44::t_4330f0fd8975d9 1410-1415
+  s_51e8bac0e69e44::t_1e128b6f627d9d 427
+  s_51e8bac0e69e44::t_741f94a410d45c 723,727
+  s_51e8bac0e69e44::t_3cb90133cffc26 995
+  s_51e8bac0e69e44::t_2f89834260e626 1223
+  s_51e8bac0e69e44::t_93665470bdb7ca 1270
+  s_51e8bac0e69e44::t_7a28f6f5df67d8 3-13,16,18-123,125-126,129-130,132-201,220-236,280-294,296-303,305-326,328-426,430-619,621-670,672-674,676-708,710-712,714-722,724-726,728-810,814-824,826-839,841-859,861-867,869-880,882-886,889-907,909,911-921,923-930,932-939,941-945,948-953,962-973,975-986,988-991,993-994,996-1031,1033-1036,1038-1040,1042-1083,1085,1087-1103,1109-1118,1120-1189,1191-1208,1210-1221,1224-1248,1253-1256,1259-1269,1271-1275,1277-1299,1301-1409,1416-1424
+  s_51e8bac0e69e44::t_336341c3dca051 1209
+  s_51e8bac0e69e44::t_c3c8dea7e1f779 709,713
+  s_51e8bac0e69e44::t_ead38b7d9ca76c 1300
+  s_51e8bac0e69e44::t_4118511726e3a9 922,931,940
+  s_51e8bac0e69e44::t_93056799a4f8b6 825
+  s_51e8bac0e69e44::t_506a2f65bd18ab 811-813
+  s_51e8bac0e69e44::t_132a69f98e420a 1104-1108
+  s_51e8bac0e69e44::t_f746668d169b3c 202-219
+  s_51e8bac0e69e44::t_2105a545e8b3f8 671,675
+  s_51e8bac0e69e44::t_8f388f6c542638 428-429
+  s_51e8bac0e69e44::t_4d872ed955ceb5 868
+  s_51e8bac0e69e44::t_cd1f43de64801d 954-961
+  s_51e8bac0e69e44::t_cbcfc86f22b46b 840
+  s_51e8bac0e69e44::t_096bf8a89de486 237-238,240-245,247-249,252-253,257-259,261-263,272-278
+apps/web/src/components/skills/DetailView.tsx
+  s_51e8bac0e69e44::t_2d8de236b21b33 111-114,118
+  s_51e8bac0e69e44::t_70467fb4134c14 117,119-125
+  s_51e8bac0e69e44::t_0b107ad3a7f7a1 21-22,33-34
+apps/web/src/components/Icon.tsx
+  s_51e8bac0e69e44::t_4b813c25439f18 52-64
+  s_51e8bac0e69e44::t_081f908c4edf60 119-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "56684097a2421a1c6b0606638904c0cae66fe33d",
+  "prompts": {},
+  "sessions": {
+    "s_51e8bac0e69e44": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ea7dfe5-90d5-4e37-ae2d-3ee7e3020d06",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

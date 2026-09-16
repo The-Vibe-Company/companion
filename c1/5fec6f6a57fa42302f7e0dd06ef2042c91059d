@@ -1,0 +1,132 @@
+packages/box-runtime/src/companionPiBrokerSource.ts
+  s_0aabaea8453063::t_32dd3f07f2fd22 6
+packages/box-sim/test/commandShims.test.ts
+  s_0aabaea8453063::t_cabc6d00df8d25 39-42
+packages/box-runtime/src/companionPiBrokerExecutable.ts
+  s_0aabaea8453063::t_bececdf2c49d4c 266-270
+  s_0aabaea8453063::t_2f381162aec01e 354-356,359
+  s_0aabaea8453063::t_dcf4916323f14a 30,248,254-256,264-265,277
+  s_0aabaea8453063::t_7a05a1f68e24f3 212,244-247,249-253,257-263,271-276
+  s_0aabaea8453063::t_e1826da285f4fb 351-353,357-358,360-361
+  s_0aabaea8453063::t_b64ad1036d72be 29
+  s_20a2bdaefa515d::t_193e58aaaa43f1 278-279
+packages/box-runtime/tsconfig.json
+  s_0aabaea8453063::t_6f34ad868c9549 6
+packages/box-runtime/src/companionRuntimeImage.ts
+  s_0aabaea8453063::t_17550409edba9f 10
+package.json
+  s_0aabaea8453063::t_940df6261d6eac 45
+  s_0aabaea8453063::t_47808e9a1b8960 44
+docs/companions-runtime.md
+  s_0aabaea8453063::t_dcf4916323f14a 244-245
+  s_0aabaea8453063::t_0f7301888d07d7 175-180
+.github/workflows/box-provider-e2e.yml
+  s_0aabaea8453063::t_47808e9a1b8960 1-3,15-28,30-45
+  s_0aabaea8453063::t_7a05a1f68e24f3 53-56
+  s_0aabaea8453063::t_ad1dc6db0d094c 59-61,81-84,91-101
+  s_0aabaea8453063::t_940df6261d6eac 4-14,46-52,57-58,62-64,67-79,85-86,89-90
+  s_0aabaea8453063::t_c0f866fa1f946f 87-88
+  s_0aabaea8453063::t_e6e7dad7c13ef2 65-66
+  s_0aabaea8453063::t_fecaf3dab83f4d 80
+  s_0aabaea8453063::t_548c95010bac73 29
+.github/workflows/ci.yml
+  s_0aabaea8453063::t_ad1dc6db0d094c 78
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_0aabaea8453063::t_21e53cb6121d7f 547-548
+  s_0aabaea8453063::t_5ee39e474935e7 192-194,198
+  s_0aabaea8453063::t_7a05a1f68e24f3 543-544
+  s_0aabaea8453063::t_c5233ab5c7d6e3 155-191,199-200
+  s_0aabaea8453063::t_bde013ccd878f9 201-215
+  s_0aabaea8453063::t_934f3d897e60c9 195-197
+  s_0aabaea8453063::t_58a5e730924700 537-542
+.env.example
+  s_0aabaea8453063::t_41cbba4b03367b 63-64
+  s_0aabaea8453063::t_b64ad1036d72be 65
+scripts/box-provider-e2e.mjs
+  s_0aabaea8453063::t_d081792843606e 213,225,229-233,235,336
+  s_0aabaea8453063::t_a142bd385b29de 274,338-339,346
+  s_0aabaea8453063::t_5b9fc2d102b76a 186-212,309,335
+  s_0aabaea8453063::t_f97ae5974ffdcb 43
+  s_0aabaea8453063::t_47808e9a1b8960 1-42,44-185,214-224,226-228,234,236-273,275-308,310-334,337,340-345,347-388
+scripts/box-provider-e2e.test.mjs
+  s_0aabaea8453063::t_d081792843606e 104
+  s_0aabaea8453063::t_5b9fc2d102b76a 163
+  s_0aabaea8453063::t_f97ae5974ffdcb 124-127
+  s_0aabaea8453063::t_47808e9a1b8960 1-72,74-103,105-123,128-162,164-199
+  s_0aabaea8453063::t_a142bd385b29de 73
+scripts/update-pr-box-e2e-report.mjs
+  s_0aabaea8453063::t_65326575da53ec 160-165
+  s_0aabaea8453063::t_ad1dc6db0d094c 1-159,166-168,170-192,194-214,252-266
+  s_0aabaea8453063::t_25fa743cac23e0 215,218-225,242,250-251
+  s_0aabaea8453063::t_2ae48ce16061a0 169,193,216-217,226-241,243-249
+packages/box-sim/src/commandShims.ts
+  s_0aabaea8453063::t_f9e0e1ce830524 470,495
+  s_0aabaea8453063::t_d52633c1d3b526 290-294
+scripts/verify-change.mjs
+  s_0aabaea8453063::t_47808e9a1b8960 13
+  s_0aabaea8453063::t_ad1dc6db0d094c 14
+packages/box-runtime/src/companionPiBrokerSource.test.ts
+  s_0aabaea8453063::t_639b2b314f8979 189,198-200
+  s_0aabaea8453063::t_dcf4916323f14a 165-166
+  s_0aabaea8453063::t_19ec3e794a6c6e 66-68,96,177
+  s_0aabaea8453063::t_0f7b171543e80a 92-95,97-98
+  s_0aabaea8453063::t_7a05a1f68e24f3 213-246
+  s_0aabaea8453063::t_e1826da285f4fb 211
+  s_20a2bdaefa515d::t_35a9c6e1d4406f 212
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_0aabaea8453063::t_878a3a212d957b 1170-1171,1186,1198-1202,1225,1268-1271,1273-1280,1282-1285,1312-1313
+  s_0aabaea8453063::t_32cc60266ae312 2363-2367
+  s_0aabaea8453063::t_7ee69d2db3109c 1783
+  s_0aabaea8453063::t_59f7655e63e4b1 1500-1511
+  s_0aabaea8453063::t_a2f0a33a9e1725 2348-2352,2384-2409,2423
+  s_0aabaea8453063::t_b64ad1036d72be 139
+  s_0aabaea8453063::t_7a05a1f68e24f3 1272,1281,2824-2836
+  s_0aabaea8453063::t_a958052bcf6f1e 1209-1217
+  s_20a2bdaefa515d::t_82a115497b7cee 2837-2838
+docs/testing.md
+  s_0aabaea8453063::t_940df6261d6eac 145
+  s_0aabaea8453063::t_5d2884b561b5a2 149-153
+  s_0aabaea8453063::t_ad1dc6db0d094c 146-148,154
+  s_0aabaea8453063::t_5b9fc2d102b76a 129
+  s_0aabaea8453063::t_e1f5daded08309 127-128
+  s_0aabaea8453063::t_7a05a1f68e24f3 140-144
+  s_0aabaea8453063::t_d081792843606e 130-133
+  s_0aabaea8453063::t_3179fce36204d8 136-137
+  s_0aabaea8453063::t_c0f866fa1f946f 138-139
+  s_0aabaea8453063::t_47808e9a1b8960 134-135
+scripts/update-pr-box-e2e-report.test.mjs
+  s_0aabaea8453063::t_6cf96a909e8ca2 30,33,93,100,102-103,116,127,137,140,147
+  s_0aabaea8453063::t_ad1dc6db0d094c 1-29,31-32,34-92,94-99,101,104-115,117-124,150
+  s_0aabaea8453063::t_25fa743cac23e0 125-126,128-136,138-139,141-146,148-149
+scripts/box-runtime-change-e2e.ts
+  s_0aabaea8453063::t_c521dcc97d39a2 7
+  s_0aabaea8453063::t_940df6261d6eac 1-2,8-12,14-40,42-43,45-51,54,56-93,113-136,138-177,183-186,208,211,216,219-227,231-237,239-241,243-251,253-262,290-297,299-311
+  s_0aabaea8453063::t_b6bba1db0a8c3a 312-314
+  s_0aabaea8453063::t_fecaf3dab83f4d 55,181
+  s_0aabaea8453063::t_7a05a1f68e24f3 94-112,265-279,298
+  s_0aabaea8453063::t_c0f866fa1f946f 3-6,13,41,44,52-53,137,178-180,182,187-207,209-210,212-215,217-218,228-230,238,242,252,263-264,280-289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c15fec6f6a57fa42302f7e0dd06ef2042c91059d",
+  "prompts": {},
+  "sessions": {
+    "s_0aabaea8453063": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01e64-14db-7b32-a95e-af8dd75759cd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_20a2bdaefa515d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f7e-5163-7a70-b840-21edffa197d0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

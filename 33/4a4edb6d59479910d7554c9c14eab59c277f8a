@@ -1,0 +1,35 @@
+apps/web/src/components/onboarding/screens.tsx
+  s_686261f8e6a7a3::t_98c25f4502894a 12-13,330,468
+  s_686261f8e6a7a3::t_b5a840c71b3b2d 106
+  s_686261f8e6a7a3::t_13fee29bbba266 591
+apps/api/src/index.ts
+  s_686261f8e6a7a3::t_17b84c4e3b3bfe 631
+packages/core/test/onboarding.test.ts
+  s_686261f8e6a7a3::t_b016b3a0dd6965 10,84,89,108-109
+apps/web/src/components/onboarding/OnboardingFlow.tsx
+  s_686261f8e6a7a3::t_704d0784e4602d 20,23,40,42,166,178
+packages/core/src/onboarding.ts
+  s_686261f8e6a7a3::t_8eaf5c1ef9ac05 30,87-88
+packages/contracts/test/onboarding.test.ts
+  s_686261f8e6a7a3::t_e064d8c66b4f0d 23,32,45-46
+apps/web/src/components/org/Onboarding.tsx
+  s_686261f8e6a7a3::t_a102a1f2c65c45 37,52,84,115,119,144
+apps/web/src/lib/onboarding.ts
+  s_686261f8e6a7a3::t_c9255988390696 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "334a4edb6d59479910d7554c9c14eab59c277f8a",
+  "prompts": {},
+  "sessions": {
+    "s_686261f8e6a7a3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efe2b-a287-7133-9844-657ae26618f9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

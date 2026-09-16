@@ -1,0 +1,77 @@
+packages/core/src/authz.ts
+  s_1e74ce65ff5b16::t_8f39bac5480d58 89-112
+apps/web/src/components/agents/fanout.ts
+  s_1e74ce65ff5b16::t_073c8a62bd2d03 1-94
+packages/core/src/secretbox.ts
+  s_1e74ce65ff5b16::t_fb3b3e427695f5 1-26,29-31,35-104
+  s_1e74ce65ff5b16::t_a6bc2af74a3b8c 27-28,32-34
+apps/web/src/components/agents/route.ts
+  s_1e74ce65ff5b16::t_5ef434fb73ae51 1-98
+packages/core/test/secretbox.test.ts
+  s_1e74ce65ff5b16::t_f3eb4fcdbaf145 41-44
+  s_1e74ce65ff5b16::t_6a38b84226d669 1-40,45-67
+apps/web/src/components/agents/chatMarkdown.tsx
+  s_1e74ce65ff5b16::t_593b78f17d1da6 1-101
+packages/contracts/src/agents.ts
+  s_1e74ce65ff5b16::t_fcc07b9841fd68 1-341
+apps/web/src/components/agents/derive.ts
+  s_1e74ce65ff5b16::t_28de911ddab152 1-172
+packages/contracts/src/index.ts
+  s_1e74ce65ff5b16::t_63e9990e80ad26 16
+packages/core/test/authz.test.ts
+  s_1e74ce65ff5b16::t_baa66c3ac78051 85-108
+  s_1e74ce65ff5b16::t_94a126801f3bfc 4,6,14
+packages/core/src/services.ts
+  s_1e74ce65ff5b16::t_ffb0206d3a4327 95-98
+apps/web/src/app/globals.css
+  s_1e74ce65ff5b16::t_7da12a1c305ffb 5
+apps/web/src/components/agents/derive.test.ts
+  s_1e74ce65ff5b16::t_be7b6557ce65c9 86-87,89-90
+  s_1e74ce65ff5b16::t_300bb9b3786d1a 1-85,88,91-163
+packages/db/src/schema.ts
+  s_1e74ce65ff5b16::t_a624b2a0c9195b 653-824
+apps/web/src/styles/agents.css
+  s_1e74ce65ff5b16::t_8b0fa4f37ee37b 1-119
+apps/web/src/components/agents/route.test.ts
+  s_1e74ce65ff5b16::t_0a7eef138c9f74 1-92
+apps/web/src/components/Icon.tsx
+  s_1e74ce65ff5b16::t_6a0d524e40f345 118,123
+  s_1e74ce65ff5b16::t_c790ec083b0a98 155
+  s_1e74ce65ff5b16::t_6656cd7e0d71bc 27,30
+  s_1e74ce65ff5b16::t_d0db77aac10018 138,141
+  s_1e74ce65ff5b16::t_2016906e805f31 45
+  s_1e74ce65ff5b16::t_38a4a7a917aab1 9,13
+apps/web/src/components/agents/chatStream.ts
+  s_1e74ce65ff5b16::t_1f39f950ac505f 1-213
+apps/web/src/components/agents/fanout.test.ts
+  s_1e74ce65ff5b16::t_1a0b64d36261da 1-91
+apps/web/src/components/agents/chatStream.test.ts
+  s_1e74ce65ff5b16::t_91f8b04269e56f 1-111
+apps/web/src/lib/format.ts
+  s_1e74ce65ff5b16::t_8b62d1493cf379 36-54
+apps/web/src/components/agents/chatMarkdown.test.ts
+  s_1e74ce65ff5b16::t_31fff5c2f204c2 1-49
+packages/db/drizzle/0032_companion_agents.sql
+  s_1e74ce65ff5b16::t_c0b12b7f25d9c8 1-80
+apps/web/src/lib/types.ts
+  s_1e74ce65ff5b16::t_883753c62b3bff 3-8,11-12,18
+  s_1e74ce65ff5b16::t_f19be1a8103f10 185-319
+packages/db/drizzle/meta/_journal.json
+  s_1e74ce65ff5b16::t_b39685c34b5199 228-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "49d49e0bda7e0d7d8e6e71db4bdd19f94f82b25f",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

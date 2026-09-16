@@ -1,0 +1,42 @@
+apps/web/src/components/agents/ChatApp.test.ts
+  s_1e74ce65ff5b16::t_dfa83310d81bd6 140
+packages/core/src/agents.ts
+  s_1e74ce65ff5b16::t_c46fa6223e9df6 516,519,524-525
+  s_1e74ce65ff5b16::t_eed88c00b1b6f0 572,617,1613
+apps/web/src/components/agents/ChatApp.tsx
+  s_1e74ce65ff5b16::t_13d684c171619c 51-66,69,71,74
+  s_1e74ce65ff5b16::t_7c509c91681b77 482
+  s_1e74ce65ff5b16::t_defc97dd85ee9f 536-542
+  s_1e74ce65ff5b16::t_f8c39a2a988d2d 485
+apps/web/src/components/agents/DetailView.tsx
+  s_1e74ce65ff5b16::t_e74c8b299923ff 521,528,531
+scripts/agent-browser-smoke.sh
+  s_1e74ce65ff5b16::t_1abc4a8c56c344 454,457-458
+apps/web/src/components/agents/CreateView.tsx
+  s_1e74ce65ff5b16::t_d7545b6a4dbc9d 379
+  s_1e74ce65ff5b16::t_ec8f73504fc295 161
+  s_1e74ce65ff5b16::t_8db92939880beb 399,676
+  s_1e74ce65ff5b16::t_9ba4a6f316ff68 123
+apps/web/src/components/agents/ProvisioningCard.tsx
+  s_1e74ce65ff5b16::t_64e19a6ccf5a8b 123
+  s_1e74ce65ff5b16::t_c72a75ca26690e 8-9
+  s_1e74ce65ff5b16::t_dfe5a369dbc4af 86
+  s_1e74ce65ff5b16::t_01205fded22a25 134
+  s_1e74ce65ff5b16::t_914cbf1a1e44a3 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d6af39ec05c1aaa2afdfbabd89d4557b3344def4",
+  "prompts": {},
+  "sessions": {
+    "s_1e74ce65ff5b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea7b1ea0-eb5b-4412-82db-960538af67bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

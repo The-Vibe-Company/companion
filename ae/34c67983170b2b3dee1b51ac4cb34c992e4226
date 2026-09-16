@@ -1,0 +1,47 @@
+apps/web/src/lib/settingsData.test.ts
+  s_7da3df708e540e::t_d50179a8eb20eb 33-50,162,171-179
+apps/web/src/lib/companionSkillGate.ts
+  s_7da3df708e540e::t_cdbf3a574445bb 1-8
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_7da3df708e540e::t_1461fa880de36b 181
+  s_7da3df708e540e::t_cdbf3a574445bb 150,155,175,184,193,235-236,314-321,397,402,411,471,485,532-536
+  s_7da3df708e540e::t_b700eb99d48de0 9,165-167,216
+  s_7da3df708e540e::t_c9569d9e0d2fa5 3,8,157-158,168,172,207-215,217-233
+apps/web/src/lib/settingsData.ts
+  s_7da3df708e540e::t_cdbf3a574445bb 6,15,60-63
+apps/web/src/app/(app)/companion-setup/page.tsx
+  s_7da3df708e540e::t_cdbf3a574445bb 1-4,6-25,28-30,32-37
+  s_7da3df708e540e::t_b700eb99d48de0 5,26-27,31
+apps/web/src/app/(app)/skills/page.tsx
+  s_7da3df708e540e::t_cdbf3a574445bb 10,40-43,45
+CLAUDE.md
+  s_7da3df708e540e::t_39faf413100d96 147-149
+scripts/agent-browser-smoke.sh
+  s_7da3df708e540e::t_7835b06004ad39 11,130-132,134,144-185,187-209,211
+  s_7da3df708e540e::t_b97d68ac488362 186
+apps/web/src/components/skills/LocalSkillsView.test.ts
+  s_7da3df708e540e::t_6497bcf485a769 1-9,12-81,85-123
+  s_7da3df708e540e::t_d845a611857c9f 10-11,82-84
+apps/web/src/lib/queries.ts
+  s_7da3df708e540e::t_c9569d9e0d2fa5 9,413-415
+apps/web/src/lib/companionSkillGate.test.ts
+  s_7da3df708e540e::t_d50179a8eb20eb 1-34
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_7da3df708e540e::t_d50179a8eb20eb 779
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "ae34c67983170b2b3dee1b51ac4cb34c992e4226",
+  "prompts": {},
+  "sessions": {
+    "s_7da3df708e540e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efe2b-e73f-77d2-84cb-5389c3cd730a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

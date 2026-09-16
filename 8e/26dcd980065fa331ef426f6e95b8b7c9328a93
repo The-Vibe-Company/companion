@@ -1,0 +1,48 @@
+packages/box-runtime/src/companionMcpGateway.test.ts
+  s_542ed14fb3e982::t_8102ebf0809fae 5,16-20,260
+  s_542ed14fb3e982::t_d3378da332d81b 11-12,254-259,261-291,298-312,317
+docs/design.md
+  s_542ed14fb3e982::t_b3f39444c19d73 192-195
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_542ed14fb3e982::t_1180f32b318ec3 626,4120-4188,4191-4196,4198,4200-4249
+  s_542ed14fb3e982::t_352338b7654df6 4189-4190
+  s_542ed14fb3e982::t_a017e4e7b75f9d 4197,4199
+  s_542ed14fb3e982::t_1fac6bb1314534 4250-4252
+  s_542ed14fb3e982::t_580d505f767cfd 4253
+packages/db/runtime-role-grants.sql
+  s_542ed14fb3e982::t_a51fc82a438d68 591-600
+packages/db/drizzle/0121_companion_mcp_selection_lock.sql
+  s_542ed14fb3e982::t_352338b7654df6 16-17,22-26,34,43,54,57
+  s_542ed14fb3e982::t_a51fc82a438d68 1-15,18-21,27-33,35-42,44-53,55-56,58-103
+packages/core/test/companionMcpBroker.test.ts
+  s_542ed14fb3e982::t_5ee8b2d652bb75 251-253,266
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_542ed14fb3e982::t_b3f39444c19d73 1304-1315
+packages/core/src/companionMcpBroker.ts
+  s_542ed14fb3e982::t_5ee8b2d652bb75 2,35,99-107
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_542ed14fb3e982::t_b3f39444c19d73 511-515
+docs/companions-runtime.md
+  s_542ed14fb3e982::t_b3f39444c19d73 657-661
+DESIGN.md
+  s_542ed14fb3e982::t_b3f39444c19d73 387
+  s_542ed14fb3e982::t_352338b7654df6 388-389
+packages/db/drizzle/meta/_journal.json
+  s_542ed14fb3e982::t_c352c19b87bc2b 851-857
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "8e26dcd980065fa331ef426f6e95b8b7c9328a93",
+  "prompts": {},
+  "sessions": {
+    "s_542ed14fb3e982": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a029c8-fe65-7e92-aabe-e39c075d106f",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

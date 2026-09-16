@@ -1,0 +1,35 @@
+apps/web/src/components/landing/LandingPage.tsx
+  s_f71ea24a93cb44::t_ba279bcb92d46c 355,674,696
+  s_f71ea24a93cb44::t_2ef4e5e1282d97 358-359
+  s_f71ea24a93cb44::t_12c8c6176e1a81 196-198
+  s_f71ea24a93cb44::t_ca40f9a2b507fd 381-382
+  s_f71ea24a93cb44::t_65a6bc2eb3f295 1-195,199-354,356-357,360-380,383-474,476-673,675-692,695,697-751
+  s_f71ea24a93cb44::t_8dcf1ad6b81ad5 475
+  s_f71ea24a93cb44::t_be62b9fab53342 693-694
+apps/web/src/app/globals.css
+  s_f71ea24a93cb44::t_a01718b1fdc20b 10
+apps/web/src/styles/landing.css
+  s_f71ea24a93cb44::t_afca918a7df8ad 10-16,18-25
+  s_f71ea24a93cb44::t_8b368c622719ed 17
+  s_f71ea24a93cb44::t_9fdd21583aa330 26-29
+  s_f71ea24a93cb44::t_eb7b58d0831b7f 52-54
+  s_f71ea24a93cb44::t_b73260a0f3252d 1-9,30-51,55-854
+apps/web/src/app/page.tsx
+  s_f71ea24a93cb44::t_eebd03c5cb2f67 2-3,5-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "e4e4a8cac7173de09ac957ad6519973df2b43700",
+  "prompts": {},
+  "sessions": {
+    "s_f71ea24a93cb44": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1dfea610-9e4e-4621-bac5-024016058c1f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

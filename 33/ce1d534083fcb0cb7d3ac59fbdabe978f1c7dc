@@ -1,0 +1,47 @@
+apps/web/src/components/companions/CompanionThread.tsx
+  s_c9fb98741230d4::t_4441b1d8d377a0 559,561-562
+  s_c9fb98741230d4::t_70c2b0ce7b57ff 560
+DESIGN.md
+  s_c9fb98741230d4::t_d8012cd854440a 280-285
+apps/web/src/styles/companions.css
+  s_c9fb98741230d4::t_4441b1d8d377a0 2325-2347
+  s_c9fb98741230d4::t_70c2b0ce7b57ff 2513-2514
+docs/testing.md
+  s_c9fb98741230d4::t_d8012cd854440a 257
+docs/design.md
+  s_c9fb98741230d4::t_d8012cd854440a 561-564
+apps/web/src/styles/companions.mobile.test.ts
+  s_c9fb98741230d4::t_25e716e9a8c70a 173-181
+apps/web/src/components/companions/CompanionRoutineHistory.client.test.ts
+  s_c9fb98741230d4::t_11bdff714b6a16 7
+  s_c9fb98741230d4::t_d0c8cbd8a547eb 328-369,379
+  s_c9fb98741230d4::t_b38b04aca4d4d3 8
+  s_c9fb98741230d4::t_c603db80dc5609 165-172,177-179,184-185,187,189-191,193-200,228,262,289,317,374
+  s_c9fb98741230d4::t_67447a550dd169 100-116,313,371
+  s_c9fb98741230d4::t_4441b1d8d377a0 311-312,315-316,318-327,370,372-373,375-378
+  s_c9fb98741230d4::t_0140e2979678c9 35-69,186
+  s_c9fb98741230d4::t_7d502092fbd6f2 314
+apps/web/src/components/companions/CompanionRoutineHistory.tsx
+  s_c9fb98741230d4::t_70c2b0ce7b57ff 19,192,202,218,295,301,307,313,349,354-356,358,367,476,486-495,500,505-507,509
+  s_c9fb98741230d4::t_a98515aca95398 221,274-275,293,350-353,357,359-366
+  s_c9fb98741230d4::t_b38b04aca4d4d3 20,203
+  s_c9fb98741230d4::t_4441b1d8d377a0 191,193-194,201,204,217,219-220,292,294,296,300,302-306,308-312,314-331,468-475,477-485,496-499,501-504,508,510-511
+  s_c9fb98741230d4::t_1590c227ca867f 269-273,276-288
+  s_c9fb98741230d4::t_a9862f61aef3a9 512
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "33ce1d534083fcb0cb7d3ac59fbdabe978f1c7dc",
+  "prompts": {},
+  "sessions": {
+    "s_c9fb98741230d4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05120-d3a7-74b3-addb-5ed8458446e9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

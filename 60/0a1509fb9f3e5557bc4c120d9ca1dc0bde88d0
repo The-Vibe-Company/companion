@@ -1,0 +1,19 @@
+apps/worker/src/projectSupervisor.test.ts
+  s_f8eb1ed0519395::t_e6ae3350618145 2093-2095
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "600a1509fb9f3e5557bc4c120d9ca1dc0bde88d0",
+  "prompts": {},
+  "sessions": {
+    "s_f8eb1ed0519395": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9008-a5c1-7a70-93bc-0ad5f1f4136b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

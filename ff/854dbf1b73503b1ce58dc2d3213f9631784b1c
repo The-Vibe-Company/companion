@@ -1,0 +1,68 @@
+apps/web/src/components/org/model.ts
+  s_5c2a1a0a0d942b::t_469c4b3c9dd4ab 91
+  s_5c2a1a0a0d942b::t_af9e8f16f7f473 90,93
+packages/core/test/runsFakeDb.ts
+  s_5c2a1a0a0d942b::t_0ddb9025afee60 1-249
+packages/core/src/providerConnections.ts
+  s_5c2a1a0a0d942b::t_8e9494df1085fd 1-304
+apps/web/src/components/org/ProvidersPane.tsx
+  s_5c2a1a0a0d942b::t_19d27182a72a3e 1-219
+apps/web/src/components/runs/derive.ts
+  s_5c2a1a0a0d942b::t_43801266053bbd 1-146
+apps/web/src/components/org/SettingsSidebar.tsx
+  s_5c2a1a0a0d942b::t_469c4b3c9dd4ab 136,138-140,171
+  s_5c2a1a0a0d942b::t_bfffde4412536f 137
+  s_5c2a1a0a0d942b::t_af9e8f16f7f473 129-135,166-170
+apps/web/src/components/Icon.tsx
+  s_5c2a1a0a0d942b::t_0cd9cc031aef0a 9,13,27,30,45,118,123,138,141,155
+packages/core/src/services.ts
+  s_5c2a1a0a0d942b::t_297a1b2b7617cf 3662-3668
+packages/db/src/schema.ts
+  s_5c2a1a0a0d942b::t_5bc9b5787f7fcc 653-715
+apps/api/package.json
+  s_5c2a1a0a0d942b::t_c7186e4acaab50 25
+packages/db/drizzle/0034_org_provider_connections.sql
+  s_5c2a1a0a0d942b::t_94af69413af169 1-20
+packages/core/test/providerConnections.test.ts
+  s_5c2a1a0a0d942b::t_8015323453560d 1-147
+apps/web/src/lib/runQueries.ts
+  s_5c2a1a0a0d942b::t_e5c9d209b888bf 1-62
+apps/web/src/components/org/ArtifactsPane.tsx
+  s_5c2a1a0a0d942b::t_7fd2c364589b0a 1-85,87-102,104-130
+  s_5c2a1a0a0d942b::t_bfffde4412536f 86,103
+scripts/dev-conductor.sh
+  s_5c2a1a0a0d942b::t_8f5489e0800c08 31-48,539-551
+  s_5c2a1a0a0d942b::t_c48b0a5e6f71c5 538
+  s_5c2a1a0a0d942b::t_2fb5612c4bbbc0 552
+packages/db/drizzle/0033_user_provider_connections.sql
+  s_5c2a1a0a0d942b::t_94af69413af169 1-20
+apps/api/src/index.ts
+  s_5c2a1a0a0d942b::t_db6ac79ec2fb51 86-94
+  s_5c2a1a0a0d942b::t_bebfd6d61e4ffe 2236-2361
+  s_5c2a1a0a0d942b::t_780735ac0cdc6f 131,136
+apps/web/src/components/org/SettingsView.tsx
+  s_5c2a1a0a0d942b::t_19d27182a72a3e 19
+  s_5c2a1a0a0d942b::t_9b2bf7befdf582 78
+  s_5c2a1a0a0d942b::t_af9e8f16f7f473 9,12-18,33-34,39-40,76-77,79-94,98,100
+  s_5c2a1a0a0d942b::t_9860d4215b6011 10,35-36,99
+pnpm-lock.yaml
+  s_5c2a1a0a0d942b::t_34fc7107e41adf 50-52
+packages/db/drizzle/meta/_journal.json
+  s_5c2a1a0a0d942b::t_5ec34bc388d615 228-241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ff854dbf1b73503b1ce58dc2d3213f9631784b1c",
+  "prompts": {},
+  "sessions": {
+    "s_5c2a1a0a0d942b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c9149cb-d9d2-47a8-933b-e769ca7e94e3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

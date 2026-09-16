@@ -1,0 +1,159 @@
+apps/api/test/integration/companionRuntimeExecutor.integration.test.ts
+  s_92d0176968fd0a::t_affa21eb23dd90 3058-3059
+  s_92d0176968fd0a::t_f3426c8caf9e04 3095-3098,3103-3106
+  s_92d0176968fd0a::t_f7a477b76318b8 1469-1478
+  s_92d0176968fd0a::t_5af2d03ccdbd76 3076
+  s_92d0176968fd0a::t_387326afa18a68 3099-3102
+  s_92d0176968fd0a::t_13d8ed1950a2fe 3047-3057,3060-3075,3077-3094,3107-3160
+packages/companion-runtime/src/test/fixtures.ts
+  s_92d0176968fd0a::t_7be1d020046d50 286,477-481
+  s_92d0176968fd0a::t_ed62845b47b8c5 747-749
+  s_92d0176968fd0a::t_41cb7779d7f29e 34,457-461,463-476,482-484,754-757
+  s_92d0176968fd0a::t_19b89463cc4566 462
+  s_92d0176968fd0a::t_820e28d6e58104 758
+docs/design.md
+  s_92d0176968fd0a::t_9ec0470c01f37a 216-220,290-291
+docs/testing.md
+  s_92d0176968fd0a::t_9ec0470c01f37a 51-56
+apps/web/src/components/companions/CompanionSkillsSyncStatus.tsx
+  s_92d0176968fd0a::t_068cd358147f3c 34-41,46
+packages/companion-runtime/src/settingsActivation.ts
+  s_92d0176968fd0a::t_808dd522ef99e3 10
+apps/web/src/components/companions/CompanionSettings.tsx
+  s_92d0176968fd0a::t_068cd358147f3c 268-270,274-278
+packages/core/src/companionRuntimeApi.ts
+  s_92d0176968fd0a::t_01b778f10b049b 787-799
+  s_92d0176968fd0a::t_4d79179d0c5017 91-92,217,239
+  s_92d0176968fd0a::t_0a55aed68fdaf7 242-251,279-288
+  s_92d0176968fd0a::t_bd989039114739 774
+  s_92d0176968fd0a::t_98a69ae02af472 196,221,224
+  s_92d0176968fd0a::t_42c4924da68a1c 289,292-294
+apps/runtime/src/materialPipeline.ts
+  s_92d0176968fd0a::t_808dd522ef99e3 308
+  s_92d0176968fd0a::t_b2219f33349fa2 218-223,225-226,230,265-266,281,283,301-305
+  s_92d0176968fd0a::t_7dcd0a5bb2eed7 312-342
+docs/companions-runtime.md
+  s_92d0176968fd0a::t_9ec0470c01f37a 75-76,339-342,346-351,537-539,631-633
+apps/web/src/components/companions/CompanionSkillsSyncStatus.client.test.ts
+  s_92d0176968fd0a::t_068cd358147f3c 87,89,93,95,101
+packages/companion-runtime/src/operations.ts
+  s_92d0176968fd0a::t_c51035241d1fed 381-387,390
+  s_92d0176968fd0a::t_ebbeb834991ff1 337-340,376,409
+  s_92d0176968fd0a::t_7fb37a2269edd7 379,784-786,867
+  s_92d0176968fd0a::t_17cf8c3c73430f 380,388-389
+  s_92d0176968fd0a::t_5652c29299fa90 5,441-448
+  s_92d0176968fd0a::t_b929d94a0dbd51 406-407
+  s_92d0176968fd0a::t_abad25076ca4b5 403-405,408,410-440,449-459,663,723-725,781-783,850-851
+  s_92d0176968fd0a::t_9da9cacbf3e62e 726,820-823,852,872
+packages/box-runtime/src/boxCompanionRuntime.ts
+  s_92d0176968fd0a::t_2396dda2a5d9f7 2741
+  s_92d0176968fd0a::t_a110b245ea3dd6 2699-2702,2707-2710,2738
+  s_92d0176968fd0a::t_44e521003c3b2d 2576-2578,2585-2586
+  s_92d0176968fd0a::t_ca7a0e56b4bfda 2703-2706
+  s_92d0176968fd0a::t_808dd522ef99e3 745,2504,2682,3030
+  s_92d0176968fd0a::t_2b4aad59d730ef 2512,2519-2528
+  s_92d0176968fd0a::t_3b8565439de210 2537-2539,2550-2551
+  s_92d0176968fd0a::t_4c40c2c14301da 2720,2732
+  s_92d0176968fd0a::t_c1bb6aa6e3ac92 736,2501,3021,3056
+  s_92d0176968fd0a::t_97ff287ed1ed9b 747-757,2692-2698,2711-2719,2721-2731,2733-2737,2739-2740,2742-2747,3070-3088,3091
+  s_92d0176968fd0a::t_b6cb76fdb13b97 746,2748-2749,3089-3090,3092-3093
+packages/db/runtime-role-grants.sql
+  s_92d0176968fd0a::t_4f56f5e7b70c45 485-486,488-489,493-501
+  s_92d0176968fd0a::t_d3a56e50bb35f2 241
+  s_92d0176968fd0a::t_9288cc791ff855 487,490-492
+  s_92d0176968fd0a::t_c2f23669cd4d26 237
+  s_92d0176968fd0a::t_0fb5e1013da646 502-503
+apps/api/src/companionSkillSync.test.ts
+  s_92d0176968fd0a::t_0562d03b2d685b 4,44,60,79
+packages/core/test/companionRuntimeApi.test.ts
+  s_92d0176968fd0a::t_4aa9e897e7c329 62-63
+packages/db/src/schema.ts
+  s_92d0176968fd0a::t_84c6b0bf8981c5 956-957,984
+  s_92d0176968fd0a::t_30d4f6a3161cc7 443,982
+  s_92d0176968fd0a::t_233f6b795e8c84 446-450,469,674-681,750
+  s_92d0176968fd0a::t_11e7af3e0f6196 983
+apps/runtime/test/integration/runtimeFullStack.integration.test.ts
+  s_92d0176968fd0a::t_6f7a33a6a575c7 1009-1036,1051-1059,1061-1073,1087-1091,1094-1097,1101-1112,1115
+  s_92d0176968fd0a::t_0b655962264b1c 1060,1092,1098
+  s_92d0176968fd0a::t_957e7983a9b99d 1093
+  s_92d0176968fd0a::t_954122bb0271e7 1113
+  s_92d0176968fd0a::t_12777165a93911 1099-1100,1114
+packages/db/src/runtimeRole.ts
+  s_92d0176968fd0a::t_9288cc791ff855 44-46
+packages/box-runtime/src/boxCompanionRuntime.test.ts
+  s_92d0176968fd0a::t_3e5d0d1f63297d 815-869
+packages/companion-runtime/src/ports.ts
+  s_92d0176968fd0a::t_a2d28d501cd011 14,194-202
+  s_92d0176968fd0a::t_ebbeb834991ff1 181-182
+  s_92d0176968fd0a::t_808dd522ef99e3 190
+apps/runtime/src/production.ts
+  s_92d0176968fd0a::t_b3182eb300a179 417
+packages/companion-runtime/src/types.ts
+  s_92d0176968fd0a::t_85da2f3ef6d4c6 157-167
+  s_92d0176968fd0a::t_a2d28d501cd011 386-388,390-394
+  s_92d0176968fd0a::t_19b89463cc4566 389
+  s_92d0176968fd0a::t_077f2dd1bbb156 641,645,649-654,821-826
+packages/db/drizzle/0111_defer_skill_updates_to_pi_stop.sql
+  s_92d0176968fd0a::t_30d4f6a3161cc7 32,502
+  s_92d0176968fd0a::t_148ad81f3ff2c4 10
+  s_92d0176968fd0a::t_56d1624ac4724f 556-557,574,578,626-627,642,649,685-686,697,704,717,720,723,745-747
+  s_92d0176968fd0a::t_7b9adffc4a475a 447-476,482-495
+  s_92d0176968fd0a::t_19b89463cc4566 559-560,616-619
+  s_92d0176968fd0a::t_4115240ee93e02 48-53,57-59,337-353,372-373,521-531,539-540,544-546,549-550,583
+  s_92d0176968fd0a::t_1b3d23c9848435 661
+  s_92d0176968fd0a::t_92cb9aa6b51aaa 54-56
+  s_92d0176968fd0a::t_0a55aed68fdaf7 190-252
+  s_92d0176968fd0a::t_98fd3020caa153 637-640,656-657,662,666-667
+  s_92d0176968fd0a::t_1aab0232a01704 428-439
+  s_92d0176968fd0a::t_01b778f10b049b 121-149,151-158,160-189
+  s_92d0176968fd0a::t_7d382f1c7d265a 1-9,11-31,33-47,60-99,111-113,115-120,253-336,354-371,374-427,440-446,496-501,503-520,532-538,541-543,547-548,551-555,558,561-573,575-577,579-582,584-615,620-625,628-636,641,643-648,650-651,658-660,663-665,668-671,679-684,687-696,698-703,705-716,718-719,721-722,724-744,748-749
+  s_92d0176968fd0a::t_c7f72a5a7dd674 477-481
+  s_92d0176968fd0a::t_aff3ba42af9a12 652-655
+  s_92d0176968fd0a::t_01dbb690bd39db 672-678
+  s_92d0176968fd0a::t_e5c47a58d86b58 100-110,114,150,159
+apps/api/src/companionSkillSync.ts
+  s_92d0176968fd0a::t_bd989039114739 1,6-7,19
+packages/box-sim/src/commandShims.ts
+  s_92d0176968fd0a::t_f2ee4fa33e6011 1013-1018
+  s_92d0176968fd0a::t_548e268c48c72e 28,345-348,966-977,981-986,995,1005-1012,1019
+  s_92d0176968fd0a::t_283c48971b8505 357-361
+  s_92d0176968fd0a::t_6a1f19ca189a1d 29,349-353,987-994
+packages/companion-runtime/src/types.test.ts
+  s_92d0176968fd0a::t_95d4bb9b68f1ce 196
+packages/companion-runtime/src/store.ts
+  s_92d0176968fd0a::t_9288cc791ff855 728-729,744-745,770-771
+  s_92d0176968fd0a::t_067696078215d7 352-353,355-359,363-373,375-380,718-723,726-727,730-743,746-769,772-780
+  s_92d0176968fd0a::t_a2d28d501cd011 22,54-64
+  s_92d0176968fd0a::t_19b89463cc4566 354,360-362,374,724-725
+  s_92d0176968fd0a::t_8fd4be227de6fd 781
+packages/companion-runtime/src/operations.test.ts
+  s_92d0176968fd0a::t_51ec5c0d689487 736-818
+packages/box-sim/test/commandShims.test.ts
+  s_92d0176968fd0a::t_c2c2aed7541362 40-43
+packages/db/drizzle/meta/_journal.json
+  s_7891504e0dabc0::t_2f79ffed4efc75 781-787
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "c201913d3671a3936ed723a67c5edfd35f890058",
+  "prompts": {},
+  "sessions": {
+    "s_7891504e0dabc0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a020d1-eea8-75c2-b63d-cc75f1a22de8",
+        "model": "unknown"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_92d0176968fd0a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a020eb-b19e-7231-b77b-7b938419bf3a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

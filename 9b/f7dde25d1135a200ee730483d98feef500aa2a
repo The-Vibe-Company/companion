@@ -1,0 +1,97 @@
+apps/api/src/seed-test-user.ts
+  s_f8252e72aa2403::t_3d96ee38197169 1-12,14-15,17-19,67-202,259
+apps/web/src/app/layout.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 9-13,16-22
+apps/web/src/components/org/model.ts
+  s_f8252e72aa2403::t_3d96ee38197169 31,43,48-69,74-92,95,99-100,117-126
+apps/web/src/components/org/SettingsDrawer.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 7,56,61,125
+apps/web/src/components/org/TeamGeneralPane.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 1-208
+packages/core/src/services.ts
+  s_f8252e72aa2403::t_3d96ee38197169 2,4,6-7,75,89-93,112-133,192-242,262-267,272-284,309-311,319,321,339-347,352-357,380,391,418-523,1420-1471
+apps/web/src/components/org/MembersPane.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 1-113
+packages/core/test/authz.test.ts
+  s_f8252e72aa2403::t_3d96ee38197169 72-86
+apps/web/src/lib/org.ts
+  s_f8252e72aa2403::t_3d96ee38197169 3,88-142
+apps/web/src/components/org/paneKit.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 1-93
+apps/web/src/components/org/PreferencesPane.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 1-90
+apps/web/src/components/org/ApiKeysPane.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 1-222
+apps/web/src/components/org/InvitationsPane.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 1-106
+apps/web/src/styles/settings.css
+  s_f8252e72aa2403::t_3d96ee38197169 1-288
+apps/web/src/components/org/TeamMembersPane.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 1-130
+apps/web/src/components/skills/SkillsApp.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 18,33,41-55,57-58,60,67-69,72,136,143,161,166,185-188,618
+apps/web/src/lib/settingsViewModel.ts
+  s_f8252e72aa2403::t_3d96ee38197169 1-8,27-29,46-71,76,78,103-110,112,125,130-140,145-146
+packages/db/drizzle/0009_settings_team_description.sql
+  s_f8252e72aa2403::t_3d96ee38197169 1
+apps/web/src/lib/settingsData.test.ts
+  s_f8252e72aa2403::t_3d96ee38197169 62-69,86,98-108,110-123,126,134,138-142
+apps/web/src/components/org/WorkspaceGeneralPane.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 1-106
+apps/web/src/app/globals.css
+  s_f8252e72aa2403::t_3d96ee38197169 7
+apps/web/src/lib/theme.ts
+  s_f8252e72aa2403::t_3d96ee38197169 1-101
+packages/contracts/src/orgSettings.ts
+  s_f8252e72aa2403::t_3d96ee38197169 2,30,35-57,59,62,65-94
+apps/web/src/lib/settingsClient.ts
+  s_f8252e72aa2403::t_3d96ee38197169 6,12-19,22-23
+apps/web/src/components/org/RoleSelect.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 53-54,65
+apps/web/src/components/org/SettingsView.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 3,5-13,15,17-48,51,53-56,58,62,64-69,72-98,100-121,123,133,136-137
+packages/db/src/schema.ts
+  s_f8252e72aa2403::t_3d96ee38197169 154
+apps/web/src/components/org/SettingsApp.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 9,11-12,16,19-21,23-35,39-48,61-62,64-67,74,80,91-92,99-101,107,109-116,119-176,191-192,221-314,328-333,340,349-360,394,396-397,409-412,417-428,444,448,457
+apps/web/src/components/org/primitives.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 25,34,81
+packages/contracts/test/orgSettings.test.ts
+  s_f8252e72aa2403::t_3d96ee38197169 4-12,14,31,43,51-52,54,57,59,64-98,102,106
+apps/web/src/components/org/SettingsSidebar.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 1-183
+apps/web/src/components/org/ProfilePane.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 1-70
+DESIGN.md
+  s_f8252e72aa2403::t_3d96ee38197169 187-188,190-191,208-221
+apps/web/src/components/org/SettingsApp.test.ts
+  s_f8252e72aa2403::t_3d96ee38197169 16,19-24,34-35,44,52
+apps/web/src/styles/tokens.css
+  s_f8252e72aa2403::t_3d96ee38197169 111-167
+packages/core/test/settings.test.ts
+  s_f8252e72aa2403::t_3d96ee38197169 1-444
+scripts/dev-conductor.sh
+  s_f8252e72aa2403::t_3d96ee38197169 450,456-473
+apps/web/src/lib/settingsData.ts
+  s_f8252e72aa2403::t_3d96ee38197169 6-12,18-32,34,37-40,43,48,77-82,86
+apps/web/src/components/skills/Sidebar.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 106,133
+apps/web/src/components/org/dialogs.tsx
+  s_f8252e72aa2403::t_3d96ee38197169 8,10-18,21,25,31-32,37-39,50,55-57,63,76-80,85,92,97-99,110,115-117,119-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "9bf7dde25d1135a200ee730483d98feef500aa2a",
+  "prompts": {},
+  "sessions": {
+    "s_f8252e72aa2403": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f39b3c02-14fb-46fc-9a93-d14497365121",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

@@ -1,0 +1,121 @@
+apps/api/src/skillCompanionManifest.ts
+  s_c9f70e1cef35d9::t_d6e1cdd4b51f34 44-46
+  s_c9f70e1cef35d9::t_bb9ea52ea05aca 24-27,41-43
+  s_c9f70e1cef35d9::t_1799e8ad96d702 2,15
+packages/companion-skill/skill/reference/api.md
+  s_c9f70e1cef35d9::t_d0474deeefa921 74-76,108-116,168-169,185-188,295-296,308-309,318,331,334-335
+  s_c9f70e1cef35d9::t_054c3f26d879b1 48,117-130
+apps/api/src/seed-test-user.ts
+  s_c9f70e1cef35d9::t_f2a1ac743f8399 114
+  s_c9f70e1cef35d9::t_d07004c9e82c1c 13,112-113,117
+packages/contracts/test/companionManifest.test.ts
+  s_c9f70e1cef35d9::t_054c3f26d879b1 71-73
+  s_c9f70e1cef35d9::t_5f9eaf3effeb00 55-57
+  s_c9f70e1cef35d9::t_b5973de3b4beba 68
+  s_c9f70e1cef35d9::t_e7900a6f3e6c3f 2-8,11-42,53,60,76-78,81-85,87,89-98,107,109
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_c9f70e1cef35d9::t_0d07a9b068938f 4,52-97
+  s_c9f70e1cef35d9::t_ee532d9c58155b 578-579
+apps/api/src/localSkills.test.ts
+  s_c9f70e1cef35d9::t_cc147e605dc8fa 114
+  s_c9f70e1cef35d9::t_78fbc3bfa3fdf8 44,54-55,70,73-74,103-105
+  s_c9f70e1cef35d9::t_93344f65875eb1 107-108,112-113,132-133
+packages/contracts/src/skill.ts
+  s_c9f70e1cef35d9::t_20b0ff321b9fb2 17-19
+packages/skills/src/validateSkill.ts
+  s_c9f70e1cef35d9::t_c28aab86d8561f 99-102,105,107-109,260
+  s_c9f70e1cef35d9::t_1def1447766bdd 2,106
+apps/api/src/skillPublishGuards.ts
+  s_c9f70e1cef35d9::t_f1690472fa7b55 18,23,39,42
+apps/web/src/styles/skills.css
+  s_c9f70e1cef35d9::t_227bb4e73e0e39 856-858
+packages/contracts/src/localSkills.ts
+  s_c9f70e1cef35d9::t_2d4a602fb064e9 47-48
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_c9f70e1cef35d9::t_097043e9696e02 156,753
+packages/skills/test/requirements.test.ts
+  s_c9f70e1cef35d9::t_c71a0cf6d434b2 80-83,89-90
+apps/web/src/components/skills/updateFlow.test.ts
+  s_c9f70e1cef35d9::t_791124041e6cf2 55
+examples/skills/incident-summary/companion.json
+  s_c9f70e1cef35d9::t_3e1d8b2398f207 2-3,5-8,10-11,17-18,20-25
+  s_c9f70e1cef35d9::t_5efb905b1b41c8 4,9,12-16
+docs/design.md
+  s_c9f70e1cef35d9::t_3f85f58c4dc623 83-86,90-95,164-167
+  s_c9f70e1cef35d9::t_70da4ed1afc747 318-319
+examples/skills/incident-summary/SKILL.md
+  s_c9f70e1cef35d9::t_5efb905b1b41c8 4
+packages/skills/src/frontmatter.ts
+  s_c9f70e1cef35d9::t_a0d104c654b2a6 82
+apps/api/src/skillPublishGuards.test.ts
+  s_c9f70e1cef35d9::t_ccbffb9d842e58 49
+packages/contracts/schemas/companion-manifest.v2.schema.json
+  s_c9f70e1cef35d9::t_67833e47083878 11-14,32-35
+  s_c9f70e1cef35d9::t_df2c4eb6dff8c5 1-10,15-31,36-93
+apps/api/src/skillCompanionManifest.test.ts
+  s_c9f70e1cef35d9::t_8e972ee9cc7a91 50-51
+packages/skills/src/manifest.ts
+  s_c9f70e1cef35d9::t_5b2ae45614c7b0 5
+  s_c9f70e1cef35d9::t_90e040d0d10e7b 63-74,141
+  s_c9f70e1cef35d9::t_1d6d5ab61e144e 56,59,131,133,137-138,140,142-143
+  s_c9f70e1cef35d9::t_8b510e17ade4fd 93,139
+  s_c9f70e1cef35d9::t_6bf3b3b640c5dd 6,34,36,39,50,80-82,87-90,94-97,132,134-136,144
+packages/companion-skill/skill/companion.json
+  s_c9f70e1cef35d9::t_054c3f26d879b1 17-19
+  s_c9f70e1cef35d9::t_e5ea7862266491 2-16,20-31,33-38,40-44,46-60
+packages/contracts/src/companionManifestJsonSchema.ts
+  s_c9f70e1cef35d9::t_1aa9d14a882389 1-3
+cli/src/commands/skills.ts
+  s_c9f70e1cef35d9::t_b5973de3b4beba 184,194,218
+packages/skills/test/validateSkill.test.ts
+  s_c9f70e1cef35d9::t_44c177832588ba 296,304,308-315
+  s_c9f70e1cef35d9::t_36e94098b8aae9 208
+  s_c9f70e1cef35d9::t_654394c6b5af37 342
+  s_c9f70e1cef35d9::t_ef83c930a4fd77 125-126,191-192,224-225
+cli/src/commands/skills.test.ts
+  s_c9f70e1cef35d9::t_b5973de3b4beba 159,171,180-188
+packages/contracts/src/companionManifest.ts
+  s_c9f70e1cef35d9::t_abe462d671c17f 2,4,17-94,97,104,119,123-124,126-156,159-166,168-171,176,186-192,194-198,201-212,215-224,228,231-248,251-252,254-260,271-277,280,282
+  s_c9f70e1cef35d9::t_d22c02e6561eab 98-99,101,103,120,122
+  s_c9f70e1cef35d9::t_ad903d60ea0ced 100,102,108-109,121,125,167,199-200,213-214,229-230,278
+  s_c9f70e1cef35d9::t_6196c39e33e504 105-106,117-118
+  s_c9f70e1cef35d9::t_054c3f26d879b1 107,110-116
+  s_c9f70e1cef35d9::t_c111ab78d2340e 263-269,281
+  s_c9f70e1cef35d9::t_b5973de3b4beba 95-96
+apps/api/src/index.ts
+  s_c9f70e1cef35d9::t_7e302bd091d976 98-99,182,225-235
+  s_c9f70e1cef35d9::t_bb89348be36b16 211,216
+  s_c9f70e1cef35d9::t_55d1fd5ea3aa6b 236,238-253
+  s_c9f70e1cef35d9::t_51687c41a3f02c 1721,1726-1729,1753
+  s_c9f70e1cef35d9::t_e1e6f52b21966c 1603
+  s_c9f70e1cef35d9::t_e0872aa9b88f04 157-158
+  s_c9f70e1cef35d9::t_96f8dfaff61b25 1619-1623
+  s_c9f70e1cef35d9::t_87ff293ea7b454 1645-1646,1649,1653,1674
+packages/contracts/src/index.ts
+  s_c9f70e1cef35d9::t_e88a14ab861930 4
+packages/companion-skill/skill/SKILL.md
+  s_c9f70e1cef35d9::t_3cb83ae0318b56 49-50,52,54-64,66-68,87,96,110-111,115-129,131-142,144-148,152-157,163-164,176-178,192-200
+  s_c9f70e1cef35d9::t_a904e2f5ed2f02 250,262,264-267,275-280,282-286,288,293-295,370-373,545-547,554,567-568,580,589,605,655-656
+  s_c9f70e1cef35d9::t_054c3f26d879b1 65,72-82,375-385,391,403-405
+  s_c9f70e1cef35d9::t_07ef59c7901072 12-13,662
+packages/companion-skill/src/index.ts
+  s_c9f70e1cef35d9::t_8e9cbe299fcb48 1-2,8-9,21,28,30,35-63
+apps/api/src/companionSkillPackage.ts
+  s_c9f70e1cef35d9::t_f99369fe176ad0 11,19,42-44,107,144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "eaed1cc346467ceaa438c4e4145acfc9d2633073",
+  "prompts": {},
+  "sessions": {
+    "s_c9f70e1cef35d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efae8-4f40-7270-8a60-246f2e6bd35d",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

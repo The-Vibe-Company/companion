@@ -1,0 +1,19 @@
+CLAUDE.md
+  s_0ace220d528fbf::t_5e157963513533 139-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "6674139c85de7aae6d9cf2e302d5d75c5ca86f2d",
+  "prompts": {},
+  "sessions": {
+    "s_0ace220d528fbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f59bd7a8-4216-4b98-af92-d2236d3613ed",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

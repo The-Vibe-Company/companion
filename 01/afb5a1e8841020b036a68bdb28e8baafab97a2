@@ -1,0 +1,171 @@
+cli/src/agent/selfUpdate.ts
+  s_d811fd8906a04a::t_3db1c7922d9f15 1-27
+apps/api/src/context.ts
+  s_d811fd8906a04a::t_27c382b4a14ee0 9,11,21-22,26,39,61-72
+  s_fea306b61dcdf9::t_a229ae22d6a6b9 73-74
+cli/src/agent/heartbeat.ts
+  s_d811fd8906a04a::t_3db1c7922d9f15 1-38
+CLAUDE.md
+  s_d811fd8906a04a::t_eed24ea79dbe46 55
+packages/core/test/devices.test.ts
+  s_d811fd8906a04a::t_f5c4164d222d86 1-44,47-115,125,128-200,202-298,335,348-357
+  s_d811fd8906a04a::t_06c20caa0a4449 45-46,116-124,126-127,299-334,336-347
+  s_d811fd8906a04a::t_7540eba2158d43 201
+apps/web/src/components/skills/DevicesSection.tsx
+  s_d811fd8906a04a::t_979b48938948e3 30-49,128,182-185
+  s_d811fd8906a04a::t_dbe3c18ce21617 1-2,4-17,19,23-29,57-58,62-63,68-69,73-74,77,81-96,98-119,121,123-127,129-180,205-216
+  s_d811fd8906a04a::t_52ee194b382b01 186-204
+  s_d811fd8906a04a::t_453af2c7388d59 18,20-22
+  s_d811fd8906a04a::t_4e88dd5379c75d 3,50-56,59-61,64-67,70-72,75-76,78-80,97,120,122,181
+packages/contracts/src/lockfile.ts
+  s_d811fd8906a04a::t_745dd98204f8aa 38
+apps/api/src/skillListRoute.test.ts
+  s_d811fd8906a04a::t_53f1d120b9cf8f 76-80
+apps/api/src/index.ts
+  s_d811fd8906a04a::t_dc056857d91d7f 86-89,92-93,127,168,452-455,576,601-657
+  s_d811fd8906a04a::t_009ff427db945c 577-600
+  s_d811fd8906a04a::t_d878af870631c0 658
+cli/src/agent/lock.ts
+  s_d811fd8906a04a::t_846424298873a5 1,29-30,33-40,49-61,63
+  s_d811fd8906a04a::t_0d01dcaee9b89c 3-4,6-7,10-17,20,22-23,42-45,47-48
+packages/core/src/services.ts
+  s_d811fd8906a04a::t_cd32e4845c851d 82-89,91-92
+  s_d811fd8906a04a::t_27c382b4a14ee0 90
+cli/src/agent/toolRegistry.ts
+  s_d811fd8906a04a::t_d94ce528a918e3 2-3,5-9,12-31,33-34,37-38,41-42
+apps/web/src/app/(app)/skills/page.tsx
+  s_d811fd8906a04a::t_0cf0b6a8816461 49,79-80
+  s_d811fd8906a04a::t_a0509f0463f809 3
+apps/web/src/components/skills/DevicesSection.test.ts
+  s_d811fd8906a04a::t_86a6610baed00c 1-99
+cli/package.json
+  s_d811fd8906a04a::t_cd008a596669c3 20
+cli/src/commands/agent.ts
+  s_d811fd8906a04a::t_4c313a2fd60033 11,25-26
+  s_d811fd8906a04a::t_2c15f56543f6bc 1-4,6-10,13-16,19-21,24,29-35,37-49,51,53-101,103-111,115-116
+cli/src/agent/credentials.ts
+  s_d811fd8906a04a::t_fcb5021a97c6a5 1,33-36,38-44
+  s_d811fd8906a04a::t_0d01dcaee9b89c 2-32,37,45-50
+cli/src/agent/service/launchd.test.ts
+  s_d811fd8906a04a::t_c85ad2e96b80e6 1-26
+cli/src/agent/inventory.test.ts
+  s_d811fd8906a04a::t_c85ad2e96b80e6 3-5,7,9-11,14-16,19-49,51,53,55-59,62-76,78,80,82-86
+apps/web/src/lib/queries.ts
+  s_d811fd8906a04a::t_dbe3c18ce21617 4,445-454
+cli/src/agent/daemon.test.ts
+  s_d811fd8906a04a::t_94f2d602f3244b 1-11
+cli/src/agent/daemon.ts
+  s_d811fd8906a04a::t_3db1c7922d9f15 1-58,72-74,76-77,79-90,92-98
+  s_d811fd8906a04a::t_12001cc573d229 59-71,75,78,91
+cli/src/lib/session.ts
+  s_d811fd8906a04a::t_fe6a64d6fefe5c 2,19
+cli/src/agent/lock.test.ts
+  s_d811fd8906a04a::t_2d5587d3148ae1 35-43
+  s_d811fd8906a04a::t_c85ad2e96b80e6 1-34,44
+apps/api/src/agentDevices.test.ts
+  s_d811fd8906a04a::t_f8ddb9768bad2b 1-195,216-225,234-304
+  s_d811fd8906a04a::t_7b0911a41e11c2 226-233
+  s_d811fd8906a04a::t_69b4c9912c74e8 196-215
+packages/db/drizzle/0032_devices.sql
+  s_d811fd8906a04a::t_bc4c98815da27b 1-7,9-23
+  s_d811fd8906a04a::t_bdd3e951524f6d 8
+packages/core/src/devices.ts
+  s_d811fd8906a04a::t_cd32e4845c851d 1,3-67,70-74,76-99,102-105,111,113-114,116-120,122-126,129-138,140-187,189-309,311-374
+  s_d811fd8906a04a::t_989fc85cae0e30 2,68-69,75,100-101,106-110,112,115,121,127-128,139,188,310
+cli/src/agent/service/index.ts
+  s_d811fd8906a04a::t_5ca14cab624c6e 9-12
+  s_d811fd8906a04a::t_1f6ecfa94ab4be 1-8,13-31
+cli/src/commands/agent.test.ts
+  s_d811fd8906a04a::t_5b53fb978f0a54 2-30,32-35,37-43,49-73
+  s_d811fd8906a04a::t_cfcfbccfe3267b 1,44-46
+  s_d811fd8906a04a::t_bd989622f74f3d 31,36,47-48
+cli/src/lib/config.ts
+  s_d811fd8906a04a::t_fe6a64d6fefe5c 2,29
+cli/src/agent/inventory.ts
+  s_d811fd8906a04a::t_d94ce528a918e3 1-155
+apps/web/src/components/landing/LandingPage.tsx
+  s_d811fd8906a04a::t_d791750a5e5047 588
+apps/web/src/components/skills/LocalSkillsView.tsx
+  s_d811fd8906a04a::t_3b77a95b9780f4 208,214,371,387
+  s_d811fd8906a04a::t_81c61e0dd06214 5,11
+  s_d811fd8906a04a::t_9bcea10fed0ab2 378-385
+  s_d811fd8906a04a::t_565d8d896c8d57 207,213
+.github/workflows/ci.yml
+  s_d811fd8906a04a::t_2827421fc2fd8a 142
+cli/src/agent/log.ts
+  s_d811fd8906a04a::t_0d01dcaee9b89c 1-21
+apps/web/src/styles/skills.css
+  s_d811fd8906a04a::t_1b7388674eb270 1040-1045,1047-1078,1080-1084,1086-1088
+  s_d811fd8906a04a::t_de6d3949345586 1046,1079,1085
+cli/src/agent/credentials.test.ts
+  s_d811fd8906a04a::t_3b51c48c944f8e 1-40
+cli/src/agent/service/launchd.ts
+  s_d811fd8906a04a::t_1f6ecfa94ab4be 1-89
+docs/design.md
+  s_d811fd8906a04a::t_689e6ae37db2d9 429-432,449-451
+  s_d811fd8906a04a::t_554e46c0a19895 4-6,16-17,56,65-66,120
+  s_d811fd8906a04a::t_3e4024cb5977a5 211-248
+scripts/agent-browser-smoke.sh
+  s_d811fd8906a04a::t_49c699ed6c6bdd 409-415,417-428,430-434
+  s_d811fd8906a04a::t_7c6c5d10791913 436
+  s_d811fd8906a04a::t_4239f3458c7189 180-210,214,312,357-358,382-383,385-408,416,429,435,437-438
+  s_d811fd8906a04a::t_7ec49e31af35da 384
+  s_d811fd8906a04a::t_939ab6c7a3dc52 439
+README.md
+  s_d811fd8906a04a::t_8838e8586f399e 59-60,75-76
+cli/src/lib/paths.ts
+  s_d811fd8906a04a::t_57ed7d29327f3e 4-8,11,16
+apps/api/src/skillPublishRoute.test.ts
+  s_d811fd8906a04a::t_53f1d120b9cf8f 90-94
+packages/db/src/schema.ts
+  s_d811fd8906a04a::t_7b585174b4c6b6 588
+  s_d811fd8906a04a::t_76e2cf4fbcd6e6 570-587,589-599
+packages/contracts/src/index.ts
+  s_d811fd8906a04a::t_54c09d7db7a29d 16
+cli/src/agent/service/windows.ts
+  s_d811fd8906a04a::t_1f6ecfa94ab4be 1-3
+apps/api/src/skillFileContentRoute.test.ts
+  s_d811fd8906a04a::t_53f1d120b9cf8f 81-85
+apps/web/src/components/skills/SkillsApp.tsx
+  s_d811fd8906a04a::t_51233510461fa5 11,1501-1503,1505-1507
+  s_d811fd8906a04a::t_5b8920df2af884 259,273,1504
+  s_d811fd8906a04a::t_565d8d896c8d57 258,272
+cli/src/agent/statusFile.ts
+  s_d811fd8906a04a::t_0d01dcaee9b89c 1-36
+cli/README.md
+  s_d811fd8906a04a::t_8f9a2535cf6be0 3-5,27-42,47-51,55,57-59,64,68-70
+cli/src/index.ts
+  s_d811fd8906a04a::t_2c15f56543f6bc 6,35,44,69-75,78-79,82-83,86-87,90-91,94-105
+  s_fea306b61dcdf9::t_cfb1b028a547e8 106
+packages/contracts/src/agent.ts
+  s_d811fd8906a04a::t_7eb45cf20cb2b6 41-42
+  s_d811fd8906a04a::t_54c09d7db7a29d 1-40,43-121
+packages/db/drizzle/meta/_journal.json
+  s_fea306b61dcdf9::t_673d41b89e6f61 228-234
+pnpm-lock.yaml
+  s_d811fd8906a04a::t_00291bf9a6ec73 187-189,211,220,4474,5709,5726
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "01afb5a1e8841020b036a68bdb28e8baafab97a2",
+  "prompts": {},
+  "sessions": {
+    "s_d811fd8906a04a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3816-683a-75c2-8489-c30cc35c05b5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_fea306b61dcdf9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f37e5-2083-7de0-b89e-1259ac9e0f8b",
+        "model": "gpt-5.5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

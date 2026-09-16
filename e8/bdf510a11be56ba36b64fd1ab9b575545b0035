@@ -1,0 +1,42 @@
+DESIGN.md
+  s_31bf4d166d4bb0::t_243721f59adf07 314-316
+apps/web/src/components/skills/ListView.tsx
+  s_31bf4d166d4bb0::t_557c60cff824f3 23,235,247,259-260,286,336,361,409-412,435
+apps/web/src/components/skills/ListView.test.ts
+  s_31bf4d166d4bb0::t_557c60cff824f3 64,74,307-316
+  s_907d40b0c49328::t_a876070b8fc55b 317-318
+apps/web/src/components/skills/listGrouping.ts
+  s_31bf4d166d4bb0::t_557c60cff824f3 47-52,89,117-119
+apps/web/src/components/skills/SkillsApp.tsx
+  s_31bf4d166d4bb0::t_557c60cff824f3 1730
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_31bf4d166d4bb0::t_557c60cff824f3 670-696
+docs/design.md
+  s_31bf4d166d4bb0::t_243721f59adf07 301-304
+apps/web/src/components/skills/listGrouping.test.ts
+  s_31bf4d166d4bb0::t_557c60cff824f3 77-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "e8bdf510a11be56ba36b64fd1ab9b575545b0035",
+  "prompts": {},
+  "sessions": {
+    "s_31bf4d166d4bb0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83c8-4ceb-7e11-87d0-104c7e9fc3af",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_907d40b0c49328": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f84a8-2dcb-7f33-aba9-b4bcc2718f6f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

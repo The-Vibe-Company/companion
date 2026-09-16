@@ -1,0 +1,102 @@
+tools/oxlint/anti-slop/shared/lexical-type-parameters.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-61
+scripts/lint-anti-slop.integration.test.mjs
+  s_de21e6620b3a0d::t_39e0355d2a06d1 59
+  s_de21e6620b3a0d::t_5d3b55a9401357 1-25,52-58,60-87,89-93
+  s_de21e6620b3a0d::t_50e74d70477825 26-51,88
+oxlint.config.ts
+  s_de21e6620b3a0d::t_9a944810ee9d97 1-42
+scripts/lint-anti-slop.test.mjs
+  s_de21e6620b3a0d::t_5d3b55a9401357 1-75,77-109
+  s_de21e6620b3a0d::t_90baf7fb588462 76
+tools/oxlint/anti-slop/rules/no-chained-type-assertions.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-77
+tools/oxlint/anti-slop/LICENSE
+  s_de21e6620b3a0d::t_9a944810ee9d97 1-21
+scripts/verify-change.mjs
+  s_de21e6620b3a0d::t_90baf7fb588462 29,36,54-57,90
+  s_de21e6620b3a0d::t_3c2f00c6bbc630 6,21,171,181-186,363
+tools/oxlint/anti-slop/rules/no-reflect-get.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-28
+tools/oxlint/anti-slop/shared/reflect-method.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-35
+scripts/lint-anti-slop.mjs
+  s_de21e6620b3a0d::t_90baf7fb588462 36
+  s_de21e6620b3a0d::t_6cdb180d97f1c1 1-16,18-35,37-65
+  s_de21e6620b3a0d::t_5d3b55a9401357 17
+tools/oxlint/anti-slop/index.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-41
+scripts/ci-scope.test.mjs
+  s_de21e6620b3a0d::t_46a58cbd1f15ad 98-104
+scripts/verify-change.test.mjs
+  s_de21e6620b3a0d::t_235d973f464675 189-195,200-204,207-212,215
+  s_de21e6620b3a0d::t_90baf7fb588462 11,19-23
+  s_de21e6620b3a0d::t_16dbd9a7446a38 24
+docs/testing.md
+  s_de21e6620b3a0d::t_c0a7cf47097c4e 183-189
+package.json
+  s_de21e6620b3a0d::t_3c2f00c6bbc630 40-41
+  s_de21e6620b3a0d::t_504e7202a14c66 57,61
+  s_de21e6620b3a0d::t_90baf7fb588462 10
+  s_de21e6620b3a0d::t_9a944810ee9d97 37-38
+  s_de21e6620b3a0d::t_2e013a866edd5c 5
+tools/oxlint/anti-slop/rules/no-known-value-widening.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-247
+tools/oxlint/anti-slop/rules/no-runtime-typeof.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-67
+tools/oxlint/anti-slop/rules/no-unknown-type-aliases.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-70
+tools/oxlint/anti-slop/README.md
+  s_de21e6620b3a0d::t_9a944810ee9d97 1-9
+tools/oxlint/anti-slop/rules/no-module-mocking.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-91
+.github/workflows/ci.yml
+  s_de21e6620b3a0d::t_46a58cbd1f15ad 78,201-208
+  s_de21e6620b3a0d::t_c0a7cf47097c4e 633-635
+  s_de21e6620b3a0d::t_abfb0f97280308 209
+tools/oxlint/anti-slop/rules/no-object-parameters.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-126
+scripts/anti-slop-targets.mjs
+  s_de21e6620b3a0d::t_6cdb180d97f1c1 1-30
+tools/oxlint/anti-slop/rules/no-unknown-parameters.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-83
+tools/oxlint/anti-slop/rules/no-conditional-empty-object-spread.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-49
+tools/oxlint/anti-slop/shared/dictionary-types.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-502
+README.md
+  s_de21e6620b3a0d::t_c0a7cf47097c4e 150-154
+tools/oxlint/anti-slop/rules/no-widen-then-assert.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-366
+tools/oxlint/anti-slop/rules/no-unknown-returns.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-115
+tools/oxlint/anti-slop/rules/require-safety-comment-for-type-assertion.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-62
+tools/oxlint/anti-slop/rules/no-reflect-apply.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-28
+scripts/ci-scope.mjs
+  s_de21e6620b3a0d::t_a85c98af546a20 43
+  s_de21e6620b3a0d::t_46a58cbd1f15ad 60
+tools/oxlint/anti-slop/rules/no-shape-in-symbol-names.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-39
+tools/oxlint/anti-slop/rules/no-unsafe-dictionary-type.ts
+  s_de21e6620b3a0d::t_504e7202a14c66 1-134
+pnpm-lock.yaml
+  s_de21e6620b3a0d::t_64a1090c981e6e 23-25,35-37,55,2149-2266,5811-5823,7395,7409-7429,8173-8231,10161,10196-10204,12209-12230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "0be9dafc9faaba6d48c448594a6f8e37eb61a9b1",
+  "prompts": {},
+  "sessions": {
+    "s_de21e6620b3a0d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0206f-702f-7150-bb36-9635caa26a82",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

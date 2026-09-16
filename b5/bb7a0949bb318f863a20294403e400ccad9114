@@ -1,0 +1,58 @@
+internal/web/assets/dashboard.css
+  s_883259b66f36c0::t_eb5e71c5e881b6 238-270
+internal/resource/resource_test.go
+  s_883259b66f36c0::t_1cca8fe48d3262 224-261
+internal/status/status_test.go
+  s_883259b66f36c0::t_9a016da7334c91 175-177
+  s_883259b66f36c0::t_293bee96c944c3 49-50,63,74-76,145,172-173
+  s_883259b66f36c0::t_eb5e71c5e881b6 57,59-62,80-81
+  s_883259b66f36c0::t_ac5373b78b49ea 98-131
+internal/status/status.go
+  s_883259b66f36c0::t_9a016da7334c91 124
+internal/web/assets/dashboard.js
+  s_883259b66f36c0::t_eb5e71c5e881b6 21-23,240-247,268,273,275,280,293-305,310-311,318,342,500,537,550,579
+internal/web/web.go
+  s_883259b66f36c0::t_58d43cc1554558 41-63,68,73,147
+internal/deps/openwebui.go
+  s_883259b66f36c0::t_293bee96c944c3 61-75
+  s_883259b66f36c0::t_eb5e71c5e881b6 76-86
+internal/web/web_test.go
+  s_883259b66f36c0::t_9e2ef9c631e88f 4-5,8-9,12-14,68-158
+AGENTS.md
+  s_883259b66f36c0::t_5653e311382485 78-79
+  s_883259b66f36c0::t_88cb765ccd3f96 52-77
+CLAUDE.md
+  s_883259b66f36c0::t_a0816d15b42976 37-46
+  s_883259b66f36c0::t_4d77629860aff6 47-48
+internal/fly/fly_test.go
+  s_883259b66f36c0::t_c0b88f29bbb599 91-100
+internal/cli/cli_test.go
+  s_883259b66f36c0::t_6766f78839474e 119-156
+internal/deps/openwebui_test.go
+  s_883259b66f36c0::t_520cdcc04affc5 56-161
+internal/status/topology.go
+  s_883259b66f36c0::t_293bee96c944c3 30,78
+  s_883259b66f36c0::t_eb5e71c5e881b6 94
+.github/workflows/ci.yml
+  s_883259b66f36c0::t_d59d5e42044f80 29-43
+internal/state/state_test.go
+  s_883259b66f36c0::t_1c18a785e226f8 5,40-84
+internal/web/assets/index.html
+  s_883259b66f36c0::t_eb5e71c5e881b6 48-51,72-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "b5bb7a0949bb318f863a20294403e400ccad9114",
+  "prompts": {},
+  "sessions": {
+    "s_883259b66f36c0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e8f39-6a56-72a3-9d06-c78184f0a418",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Claude <noreply@anthropic.com>"
+    }
+  }
+}

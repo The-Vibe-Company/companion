@@ -1,0 +1,58 @@
+packages/db/drizzle/0009_settings_team_description.sql
+  s_5dd6a894c9a7b4::t_85854b66315185 1
+packages/core/test/authz.test.ts
+  s_5dd6a894c9a7b4::t_ef872d2b52bf98 72-86
+apps/api/src/index.ts
+  s_5dd6a894c9a7b4::t_3881baddf7802b 933-944
+  s_5dd6a894c9a7b4::t_be30ed8fb1a0a7 55-57
+  s_5dd6a894c9a7b4::t_a07228d935ab75 511-544
+  s_5dd6a894c9a7b4::t_0639faf6b7d574 480-493
+  s_5dd6a894c9a7b4::t_711d7fcf75be8f 18,26,43-45
+  s_5dd6a894c9a7b4::t_ba44383005f95b 351-370
+packages/contracts/src/orgSettings.ts
+  s_5dd6a894c9a7b4::t_6c22e1052560c6 2,30,35-57,59,62,65-94
+packages/core/test/settings.test.ts
+  s_5dd6a894c9a7b4::t_3947db7a64b669 186-188
+  s_5dd6a894c9a7b4::t_bfb1ba2be1d79a 79-82
+  s_5dd6a894c9a7b4::t_ed53a82c970bf5 400-401,410-411
+  s_5dd6a894c9a7b4::t_940576bf765c14 63-64
+  s_5dd6a894c9a7b4::t_8941d58c3e74c4 270,279-283
+  s_5dd6a894c9a7b4::t_4d37915c7324aa 40-53
+  s_5dd6a894c9a7b4::t_b180bc6d321628 1-39,54-62,65-78,83-153,174-185,189-269,271-278,284-351,353-355,360-399,402-409,412-443
+  s_5dd6a894c9a7b4::t_1150f905b7fa2a 154-173
+  s_5dd6a894c9a7b4::t_bc5636aa02d636 352,356-359
+packages/contracts/test/orgSettings.test.ts
+  s_5dd6a894c9a7b4::t_c85f2bfda7d3da 4-12,14,31,43
+  s_5dd6a894c9a7b4::t_bd9be82644e671 51-52,54,57,59,64-98,102,106
+packages/core/src/services.ts
+  s_5dd6a894c9a7b4::t_00961b18882583 72
+  s_5dd6a894c9a7b4::t_b70e502ff9552b 86-90
+  s_5dd6a894c9a7b4::t_0225324e3d9109 347-352,375,386
+  s_5dd6a894c9a7b4::t_97981786d12257 1295-1307,1310,1317-1346
+  s_5dd6a894c9a7b4::t_b462abecf11046 1308-1309,1311-1316
+  s_5dd6a894c9a7b4::t_2fa802d3901809 187-237
+  s_5dd6a894c9a7b4::t_5f41e2c0816f9c 4,6-7
+  s_5dd6a894c9a7b4::t_e60c13f0fa47ff 109-130
+  s_5dd6a894c9a7b4::t_2c971f4810e0da 304-306,314,316,334-341
+  s_5dd6a894c9a7b4::t_91f5584f208dad 413-515
+  s_5dd6a894c9a7b4::t_86b135b845e3b1 2
+  s_5dd6a894c9a7b4::t_6ae0b5d9a7d5ab 257-262,267-278
+packages/db/src/schema.ts
+  s_5dd6a894c9a7b4::t_4c4bd22bc7a804 153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "255e5d536189249854a25987e884f04fc7a3a1ea",
+  "prompts": {},
+  "sessions": {
+    "s_5dd6a894c9a7b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "347b69c9-bdea-4c1a-b4ff-8660482c1283",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

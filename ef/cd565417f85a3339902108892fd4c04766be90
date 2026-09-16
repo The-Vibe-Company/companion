@@ -1,0 +1,78 @@
+apps/api/src/seed-test-user.ts
+  s_4738a6c57649d7::t_3c47c80fe355e9 1
+  s_4738a6c57649d7::t_033678687bc92b 89-90,93-95,107-114
+  s_4738a6c57649d7::t_f5d50f2b0e2112 218-231
+packages/contracts/src/skill.ts
+  s_4738a6c57649d7::t_c93438b0ec4907 3
+  s_4738a6c57649d7::t_35d2b6060a7f75 131-132
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_4738a6c57649d7::t_e14dee1fe4cd72 49
+packages/contracts/src/frontmatter.ts
+  s_4738a6c57649d7::t_5649a87bbfb937 122,132-142,154
+  s_4738a6c57649d7::t_2adee121d2cdd5 18,23-39
+  s_4738a6c57649d7::t_a73b0b34918ccb 168
+  s_4738a6c57649d7::t_9c81284fa89ec1 185-194
+packages/companion-skill/src/index.ts
+  s_4738a6c57649d7::t_c8a97face03dc4 56
+  s_4738a6c57649d7::t_9a0f4ca38ce627 66-72
+packages/skills/src/validateSkill.ts
+  s_4738a6c57649d7::t_719e77630ee666 80
+apps/web/src/components/skills/detailParts.test.ts
+  s_4738a6c57649d7::t_1e9c36784dfca2 31-39
+  s_4738a6c57649d7::t_7a7e87a9b9ab25 82-100
+  s_4738a6c57649d7::t_e1851d8d408d99 5
+apps/api/src/skillPublishGuards.test.ts
+  s_4738a6c57649d7::t_93b1c374d08051 14
+apps/web/src/components/skills/updateFlow.test.ts
+  s_4738a6c57649d7::t_596714a7785639 42
+apps/web/src/lib/types.ts
+  s_4738a6c57649d7::t_59f5bbcf17919f 1-9
+  s_4738a6c57649d7::t_68d96842cac2d5 35
+  s_4738a6c57649d7::t_542b4dd3bae502 76
+apps/web/src/styles/skills.css
+  s_4738a6c57649d7::t_96e2a5daa32adb 259,261-267
+  s_4738a6c57649d7::t_e88dae5e5cd6aa 260,268-272
+docs/design.md
+  s_4738a6c57649d7::t_1e3e9895f0ee7b 71-78
+apps/web/src/components/skills/detailParts.tsx
+  s_4738a6c57649d7::t_186215a4d7a998 366-374,376-400
+  s_4738a6c57649d7::t_a7fa029a0b1869 375
+cli/src/commands/skills.test.ts
+  s_4738a6c57649d7::t_46beee47d17237 123,170
+apps/api/src/localSkills.test.ts
+  s_4738a6c57649d7::t_c2a205f543671c 64,67
+packages/companion-skill/skill/reference/api.md
+  s_4738a6c57649d7::t_1fec90468d6418 212,216
+packages/companion-skill/skill/SKILL.md
+  s_4738a6c57649d7::t_c78e83d9ee7309 121-166
+  s_4738a6c57649d7::t_2d0b3149d3c881 393
+  s_4738a6c57649d7::t_dca610f71ec0f5 3,6
+packages/core/src/services.ts
+  s_4738a6c57649d7::t_d1c78a490c113d 1129
+apps/web/src/components/skills/DetailView.tsx
+  s_4738a6c57649d7::t_7229b4f2304164 23
+  s_4738a6c57649d7::t_14806c73e25f87 29
+  s_4738a6c57649d7::t_79bf67c07c93c8 344
+  s_4738a6c57649d7::t_b6606010d275ce 511-516
+packages/skills/test/requirements.test.ts
+  s_4738a6c57649d7::t_0b9f6b14293d6d 1-88,99-106
+  s_4738a6c57649d7::t_fe25f237211fe0 89-98
+apps/web/src/components/skills/filters.test.ts
+  s_4738a6c57649d7::t_2be8e022ecfb77 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "efcd565417f85a3339902108892fd4c04766be90",
+  "prompts": {},
+  "sessions": {
+    "s_4738a6c57649d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5748478-1c1f-4b98-a5e4-c871cb759e9c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

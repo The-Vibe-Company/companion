@@ -1,0 +1,64 @@
+apps/web/src/components/skills/UploadDialog.tsx
+  s_13bb7e101050ef::t_fc99be30c7e41c 1801-1802
+  s_13bb7e101050ef::t_e878216af1005b 1776-1777
+  s_13bb7e101050ef::t_6598637031ae2d 1803
+apps/web/src/lib/types.ts
+  s_13bb7e101050ef::t_fb0e8b61d88f8c 78-79
+  s_13bb7e101050ef::t_805588de4f9010 36-37
+apps/web/src/components/skills/ListView.tsx
+  s_13bb7e101050ef::t_90aa16d168b2ba 6
+  s_13bb7e101050ef::t_259de76033ab8c 187
+apps/web/src/components/skills/detailParts.test.ts
+  s_13bb7e101050ef::t_ddbb14f3996c48 38-39
+apps/web/src/lib/queries.ts
+  s_13bb7e101050ef::t_1bc4409eb849dd 156-171
+  s_13bb7e101050ef::t_acdb4bb2bf36bd 7-8
+apps/web/src/components/skills/DetailView.tsx
+  s_13bb7e101050ef::t_3911e0ad1037a2 94-95,103-104
+  s_13bb7e101050ef::t_e3305def96f69f 186,204
+  s_13bb7e101050ef::t_7ab7316026cc3d 22
+  s_13bb7e101050ef::t_348617c0e838b3 165-166
+  s_13bb7e101050ef::t_0c7288b220a1ca 466
+  s_13bb7e101050ef::t_999da4c76eb526 35-36,44-45,53-58
+  s_13bb7e101050ef::t_634b9ebaa70978 415-416
+apps/web/src/styles/skills.css
+  s_13bb7e101050ef::t_03fc5b72c54544 266-270
+apps/web/src/styles/org.css
+  s_13bb7e101050ef::t_488e9b33051d24 203
+apps/web/src/components/skills/filters.test.ts
+  s_13bb7e101050ef::t_9d8a8eba86f32a 35-36
+apps/web/src/components/skills/updateFlow.test.ts
+  s_13bb7e101050ef::t_29c4a3c635f0f8 49-50
+  s_13bb7e101050ef::t_15b98af05bd5c1 100
+  s_13bb7e101050ef::t_5c0dd941752856 121-122,133-134
+apps/web/src/components/skills/SkillsApp.test.ts
+  s_13bb7e101050ef::t_9de159510207b8 58-59
+apps/web/src/components/skills/SkillsApp.tsx
+  s_13bb7e101050ef::t_7c4fd27021b803 407-412,414-420,439,446
+  s_13bb7e101050ef::t_72f7d8648f18a3 973
+  s_13bb7e101050ef::t_7b69513c89aef6 403-406,413,421,423-424,427-438,440-445,447-448
+  s_13bb7e101050ef::t_ea4429fdd69293 425-426
+  s_13bb7e101050ef::t_35d268d3ef01f5 1059-1063
+  s_13bb7e101050ef::t_133704e648aebe 271
+  s_13bb7e101050ef::t_5192a4ad4f3587 422
+  s_13bb7e101050ef::t_ea3b2543e1f7f0 9-10
+  s_13bb7e101050ef::t_5ff0b1609ff314 449-455
+apps/web/src/components/skills/blocks.tsx
+  s_13bb7e101050ef::t_4f40f182deb353 89-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "a806e415d7c838ff59a5e79604a6f1a5377d9b44",
+  "prompts": {},
+  "sessions": {
+    "s_13bb7e101050ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61aedeaa-dc3f-4b95-8abe-8d63539fa598",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

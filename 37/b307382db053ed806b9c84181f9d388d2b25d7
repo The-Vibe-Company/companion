@@ -1,0 +1,87 @@
+.agents/skills/debug-companions-prod/scripts/test_prodlib.py
+  s_19291756971291::t_e7a65905e6f423 1-224
+.agents/skills/debug-companions-prod/evals/evals.json
+  s_19291756971291::t_e7a65905e6f423 1-29
+.claude/skills/debug-companions-prod/scripts/test_railway.py
+  s_19291756971291::t_a8fe20fecf2389 1-204
+.agents/skills/debug-companions-prod/scripts/test_db_query.py
+  s_19291756971291::t_e7a65905e6f423 1-134
+.agents/skills/debug-companions-prod/scripts/railway_restart.py
+  s_19291756971291::t_e7a65905e6f423 1-127
+.agents/skills/debug-companions-prod/references/railway-api.md
+  s_19291756971291::t_e7a65905e6f423 1-124
+.agents/skills/debug-companions-prod/scripts/test_railway.py
+  s_19291756971291::t_e7a65905e6f423 1-204
+.claude/skills/debug-companions-prod/SKILL.md
+  s_19291756971291::t_12aa02c4632ec1 1-237
+.claude/skills/debug-companions-prod/references/railway-api.md
+  s_19291756971291::t_50d38df1eb1a59 1-124
+.agents/skills/debug-companions-prod/references/triage-playbook.md
+  s_19291756971291::t_e7a65905e6f423 1-117
+.claude/skills/debug-companions-prod/references/triage-playbook.md
+  s_19291756971291::t_6b983ff383f264 1-117
+.claude/skills/debug-companions-prod/references/redaction.md
+  s_19291756971291::t_ca7e3123f05595 1-62
+.agents/skills/debug-companions-prod/scripts/db_query.py
+  s_19291756971291::t_e7a65905e6f423 1-350
+.agents/skills/debug-companions-prod/scripts/railway_logs.py
+  s_19291756971291::t_e7a65905e6f423 1-254
+.claude/skills/debug-companions-prod/scripts/box_get.py
+  s_19291756971291::t_f57316d1dedb82 1-61
+.claude/skills/debug-companions-prod/evals/evals.json
+  s_19291756971291::t_9705820570827d 1-29
+.agents/skills/debug-companions-prod/scripts/railway_status.py
+  s_19291756971291::t_e7a65905e6f423 1-249
+.claude/skills/debug-companions-prod/scripts/test_db_query.py
+  s_19291756971291::t_d3960249ecaf55 1-134
+.claude/skills/debug-companions-prod/scripts/test_box.py
+  s_19291756971291::t_e4f03a639b4205 1-168
+.claude/skills/debug-companions-prod/scripts/test_prodlib.py
+  s_19291756971291::t_1a70c73144c32a 1-224
+.agents/skills/debug-companions-prod/scripts/prodlib.py
+  s_19291756971291::t_e7a65905e6f423 1-274
+.claude/skills/debug-companions-prod/scripts/prodlib.py
+  s_19291756971291::t_6d3f601019cba7 1-274
+.claude/skills/debug-companions-prod/scripts/db_query.py
+  s_19291756971291::t_e899173aab844e 1-350
+.agents/skills/debug-companions-prod/scripts/test_box.py
+  s_19291756971291::t_e7a65905e6f423 1-168
+.agents/skills/debug-companions-prod/SKILL.md
+  s_19291756971291::t_e7a65905e6f423 1-237
+.agents/skills/debug-companions-prod/scripts/box_get.py
+  s_19291756971291::t_e7a65905e6f423 1-61
+.claude/skills/debug-companions-prod/scripts/railway_restart.py
+  s_19291756971291::t_aba374ee359d8b 1-127
+.claude/skills/debug-companions-prod/scripts/railway_logs.py
+  s_19291756971291::t_5109b9148ba13b 126-136
+  s_19291756971291::t_96a0f8a1bf57a6 237
+  s_19291756971291::t_98b2c8dce2aa59 1-125,137-236,238-254
+.claude/skills/debug-companions-prod/scripts/railway_status.py
+  s_19291756971291::t_c2113eaf2c59aa 1-249
+.agents/skills/debug-companions-prod/references/redaction.md
+  s_19291756971291::t_e7a65905e6f423 1-62
+.agents/skills/debug-companions-prod/scripts/box_list.py
+  s_19291756971291::t_e7a65905e6f423 1-166
+.claude/skills/debug-companions-prod/scripts/box_list.py
+  s_19291756971291::t_ed71a7c62b2149 1-166
+.claude/skills/debug-companions-prod/companion.json
+  s_19291756971291::t_d942f674c1994b 1-57
+.agents/skills/debug-companions-prod/companion.json
+  s_19291756971291::t_e7a65905e6f423 1-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "37b307382db053ed806b9c84181f9d388d2b25d7",
+  "prompts": {},
+  "sessions": {
+    "s_19291756971291": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b5a09f-280f-4836-8c4a-95f531ff8703",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

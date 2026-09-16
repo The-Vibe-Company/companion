@@ -1,0 +1,32 @@
+packages/auth/package.json
+  s_8063c13871037a::t_ce11c0cd488b3f 16-17
+  s_8063c13871037a::t_06521a33288b69 15
+apps/api/src/seed-test-user.ts
+  s_8063c13871037a::t_8f8bd844491d85 92-97
+  s_8063c13871037a::t_b0a3fee6ef79c6 2-3
+packages/email/test/index.test.ts
+  s_8063c13871037a::t_d00972fd020bf7 2,19-41
+packages/email/src/index.ts
+  s_8063c13871037a::t_2909756604e7b2 147-171
+packages/auth/src/index.ts
+  s_8063c13871037a::t_dc91ac072e8f01 66-73,75-92
+  s_8063c13871037a::t_5e526d42b5bf6f 2,5,16-25
+packages/db/drizzle/0008_verify_existing_users.sql
+  s_8063c13871037a::t_7f29ec8e4e4f6b 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "082cc70ef5b9a4f361943ab79520c8a7ad71c811",
+  "prompts": {},
+  "sessions": {
+    "s_8063c13871037a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8098edb-ec2e-42dc-bab2-73f3169e89e5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}

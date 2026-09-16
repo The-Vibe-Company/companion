@@ -1,0 +1,67 @@
+apps/api/src/index.ts
+  s_60b3095c45b596::t_8e6c31cb9ec816 2313-2314,2358-2359,2361,2370-2372,2382-2383,2385,2405-2406,2408,2417-2419,2428-2429,2431,2440-2442,2451-2453
+docs/design.md
+  s_60b3095c45b596::t_d0ae3fdad5c36e 547-548
+  s_60b3095c45b596::t_6c0e0beabbeb16 240-244,494,501-502,527,530
+packages/companion-skill/skill/SKILL.md
+  s_60b3095c45b596::t_b2da977d865ec9 536-555,881,884-887,992
+packages/companion-skill/skill/scripts/create_secret.py
+  s_60b3095c45b596::t_8e6c31cb9ec816 11,13,24,37-51,70-83,85,87-90
+packages/companion-skill/skill/reference/api.md
+  s_60b3095c45b596::t_438024fc3c19cb 77-79,83-85,98-100,106-107,134,141-143
+  s_60b3095c45b596::t_d0ae3fdad5c36e 130-133
+  s_f2c8dbf522b750::t_92954f254d6165 144
+packages/companion-skill/skill/scripts/companion_lib.py
+  s_60b3095c45b596::t_8e6c31cb9ec816 84-103
+apps/api/src/localSkills.test.ts
+  s_60b3095c45b596::t_50c3cb206bc0c7 47
+  s_60b3095c45b596::t_d399f7b41431e8 66
+  s_60b3095c45b596::t_b63855673f5279 118-120
+apps/api/src/skillListRoute.test.ts
+  s_60b3095c45b596::t_560382e4fedead 188-190,202,209,216,219,223,229,232,236,242,248,253-254,256,259
+  s_60b3095c45b596::t_5c5ba6a4891dd0 167,185-187,191-201,203-207,211-215,217-218,220-222,224-228,230-231,234-235,237-241,243-247,249-252,255,257-258,260-261
+packages/companion-skill/skill/companion.json
+  s_60b3095c45b596::t_2ecdb3bf0cad18 23-24
+  s_60b3095c45b596::t_50c3cb206bc0c7 4,28-35,279
+  s_a48d6f7bcf9f3d::t_7db84b4ee5778a 27
+packages/companion-skill/skill/evals/evals.json
+  s_60b3095c45b596::t_2ecdb3bf0cad18 1-39
+packages/companion-skill/skill/scripts/test_multitool.py
+  s_60b3095c45b596::t_2e609b1bf587fe 234-235
+  s_60b3095c45b596::t_5c5ba6a4891dd0 152-233,236-245,247
+  s_60b3095c45b596::t_a937b0a26057d9 246
+packages/companion-skill/skill/companion.integrity.json
+  s_60b3095c45b596::t_d6b733d0048dd6 3-5,10-11,19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "ae1a63d651f510472eb045c2b751283b5fd57d68",
+  "prompts": {},
+  "sessions": {
+    "s_60b3095c45b596": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5bef-0f9a-7f12-8879-c49a5c1221bb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_a48d6f7bcf9f3d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5bdc-9eae-7071-a01b-a7131f6092f1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_f2c8dbf522b750": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5bdb-6a8e-7ec3-8484-2bdb5b9168a6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
