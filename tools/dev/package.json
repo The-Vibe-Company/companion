@@ -3,7 +3,7 @@
   "private": true,
   "description": "Pinned optional local proxy and its runtime; independent from the Bun product runtime.",
   "dependencies": {
-    "node": "24.18.0",
+    "node": "26.8.2",
     "portless": "0.15.6"
   }
 }
