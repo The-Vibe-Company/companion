@@ -1,0 +1,66 @@
+.agents/skills/review-code-dev/UPSTREAM.md
+  s_0856a84fce2da1::t_f7ef874ea69862 13-14
+  s_0856a84fce2da1::t_2179cff19f991d 10-12
+  s_0856a84fce2da1::t_65f520d616ce92 15-16
+docs/dev-workflow.md
+  s_0856a84fce2da1::t_4a40917e64e997 10-16
+  s_0856a84fce2da1::t_55ee426c925d5f 29-56
+  s_0856a84fce2da1::t_f6b13740a030f5 57
+scripts/shared_skills_test.py
+  s_24a85996ea5fdf::t_c614c65d051c11 42-47
+  s_0856a84fce2da1::t_b2ce8a665ee938 50-74
+  s_0856a84fce2da1::t_eb1967564a779a 75
+.agents/skills/review-code-dev/SKILL.md
+  s_0856a84fce2da1::t_f9a3534fb8c37b 62-88
+  s_0856a84fce2da1::t_59d6c516b67702 59-61
+.agents/skills/review-code-dev/LICENSE
+  s_0856a84fce2da1::t_b4616d2043a415 1-201
+.agents/skills/review-code-dev/companion.json
+  s_0856a84fce2da1::t_8b80d46a367ec1 2,4-7,10-27,74-75,78-83,86,89-90,93-94,98
+.agents/skills/review-code-dev/scripts/.gitignore
+  s_0856a84fce2da1::t_9a96b01dd624bf 2
+.agents/skills/review-code-dev/scripts/ocr.py
+  s_0856a84fce2da1::t_b5231188db7eb0 2,5-6,8-12,14-20,23-28,31-36,39-64,67-77,81-85
+.agents/skills/review-code-dev/scripts/test_ocr.py
+  s_0856a84fce2da1::t_437df895858573 1-2,4,6,10,13-52,54-59,61-69
+.agents/skills/ship-pr-dev/SKILL.md
+  s_0856a84fce2da1::t_19297f30deee43 3,17-18,30,33,68-70,93,95,97,99,128
+.agents/skills/ship-pr-dev/companion.json
+  s_0856a84fce2da1::t_601f99f375e9d5 2,4,6-7,11-19
+.agents/skills/ship-pr-dev/evals/evals.json
+  s_0856a84fce2da1::t_dc83f672633d8b 22,47,57,62,83-112
+.agents/skills/ship-pr-dev/references/agent-routing.md
+  s_0856a84fce2da1::t_2936c344b24a36 43-45,47,51,71,73,98,116
+.agents/skills/ship-pr-dev/references/pr-template.md
+  s_0856a84fce2da1::t_746d9ef25ad396 35-38
+.agents/skills/ship-pr-dev/references/readiness-gates.md
+  s_0856a84fce2da1::t_bdb8f97636cbba 12-14,38,45-47,61-64,87
+.agents/skills/ship-pr-dev/references/review-gate.md
+  s_0856a84fce2da1::t_f5909230beb07d 1,3,5,7-11,13,15,17,20-26,28-33,36,38,42-43,45-50,56,58,60,62
+.agents/skills/ship-pr-dev/references/workflow.md
+  s_0856a84fce2da1::t_de08cef3b6538b 31,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0ea79ab6991b59920de74cd15f7dfd218efba969",
+  "prompts": {},
+  "sessions": {
+    "s_0856a84fce2da1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f54a5e628ffeZ1rrXBY9Uj8Z8d",
+        "model": "union-alpha"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    },
+    "s_24a85996ea5fdf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f54ba94c6ffeeyzIvljyC49z7j",
+        "model": "union-alpha"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
