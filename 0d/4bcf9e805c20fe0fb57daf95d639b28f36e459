@@ -1,0 +1,20 @@
+apps/web/src/components/discussions/styles/sidebar.css
+  s_a62423150a3247::t_5356ec4b1148b6 63
+  s_a62423150a3247::t_a49948f4c11968 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0d4bcf9e805c20fe0fb57daf95d639b28f36e459",
+  "prompts": {},
+  "sessions": {
+    "s_a62423150a3247": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e3be8bc-8038-44d4-bcf5-4e51f466b281",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
