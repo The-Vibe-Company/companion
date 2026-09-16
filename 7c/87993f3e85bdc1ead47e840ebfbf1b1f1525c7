@@ -1,0 +1,933 @@
+.agents/skills/better-ui/SKILL.md
+  s_c04f56bbcc9166::t_f750772881e4d2 2-3,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56-72,74,76-97,99,101,103,105,107-108,110,112
+.agents/skills/better-ui/agents/openai.yaml
+  s_c04f56bbcc9166::t_14849d1b221684 2-3
+.agents/skills/better-ui/animations.md
+  s_c04f56bbcc9166::t_a648b1773a85e7 1-44,46-85,88-93,95,100-107,109-153,155-170,172-174,177-179,181-197,199-205
+.agents/skills/better-ui/enter-exit.md
+  s_c04f56bbcc9166::t_2d33a479bd48ff 1,3,5-36,38-56,58-60,62-67,70-72,74-78,80-81,83,85-126,128-147
+.agents/skills/better-ui/icon-transitions.md
+  s_c04f56bbcc9166::t_fc0f8813cc3796 1,3,5,7,9-14,16,18-30,33,35-42,44-53,55-56,58-64,66-67,70,73-102
+.agents/skills/better-ui/icons.md
+  s_c04f56bbcc9166::t_c102eb47fc738b 1,3,5,7,9-13,15-26,29,31-32,34,36,39-40,43-47,51-54,57,59,61,63-66,68-70,72-73,76,78,80,82-85,87,89,91-96,99-101,106-107,110
+.agents/skills/better-ui/performance.md
+  s_c04f56bbcc9166::t_058cee7db8a762 1,3,5,7,9,11-13,15,17-22,25-27,31-45,47,49,51-72,75-88
+.agents/skills/better-ui/surfaces.md
+  s_c04f56bbcc9166::t_1db9913edcbe91 1,3,5,7,9-25,27-35,37-53,55,57,59-64,67-70,73-75,77,79-84,87-90,92-94,97-99,103,105,107-109,111-114,117,119,121,123,125,127-137,140-142,144-149,151,153,156-164,168,170-176,178,180,182,184-204,207-219
+.agents/skills/design-frontend-dev/reference/harden.md
+  s_c04f56bbcc9166::t_19459a41151340 124-126,238
+.agents/skills/design-frontend-dev/reference/optimize.md
+  s_c04f56bbcc9166::t_87527b44c0a42d 37
+.agents/skills/emil-design-eng/SKILL.md
+  s_c04f56bbcc9166::t_0cae2ddf039d86 1-4,6,8,10,12,14,16,18,20-42,44-48,50,52-58,60,62,64,66,68,70-118,121-125,127-133,135,137,139,141-143,145,147,149,151,153-156,158,160,162-163,165-172,175,177,179,181-183,185,187-189,191-210,213-217,219,221-266,269-271,273-287,290,292,294,296,298-305,307-309,311-315,317-334,336,338-343,346-350,352-356,358-362,364,366,368,370,372-386,389-391,393-420,423-427,429-451,454-456,458-470,473-485,487-492,495-501,503-504,507-513,515-522,525-529,531-537,540-543,545-552,555-573,575-600,603,605-632,634-674
+.agents/skills/review-code-dev/SKILL.md
+  s_c04f56bbcc9166::t_d897f5f3acd9ad 60-62,95
+.agents/skills/review-code-dev/scripts/collect_review_context.py
+  s_c04f56bbcc9166::t_7ae98825b41b01 91,334,339-342
+.agents/skills/review-code-dev/scripts/prepare_review_run.py
+  s_c04f56bbcc9166::t_388fc0752c7263 53-54,66-69
+.agents/skills/review-code-dev/scripts/test_collect_review_context.py
+  s_c04f56bbcc9166::t_56fd7761d86d6b 2,5-7,9,13,18-28,30-32,34-51,53-72
+.agents/skills/review-code-dev/scripts/test_veille_pr_state.py
+  s_c04f56bbcc9166::t_d28221e56985bd 39-40
+.agents/skills/ship-pr-dev/SKILL.md
+  s_c04f56bbcc9166::t_9913cc6a801584 3-4,29,52-54,80,82,100,114
+.agents/skills/ship-pr-dev/companion.json
+  s_c04f56bbcc9166::t_f723d52044f13a 4,7,11-19,68-69
+.agents/skills/ship-pr-dev/evals/evals.json
+  s_c04f56bbcc9166::t_d878378c70b749 7,12,37,68-82
+.agents/skills/ship-pr-dev/references/agent-routing.md
+  s_c04f56bbcc9166::t_6d4ff2fffe5ded 61
+.agents/skills/ship-pr-dev/references/readiness-gates.md
+  s_c04f56bbcc9166::t_3456dda9dd02fe 7,68,70,72,74-76
+.agents/skills/ship-pr-dev/references/workflow.md
+  s_c04f56bbcc9166::t_30f6cb7b714cc2 21,39,58
+.agents/skills/ship-pr-dev/scripts/prepare_ship_run.py
+  s_c04f56bbcc9166::t_85c2bf039bf68c 32-41
+.claude/skills/capture-learning-tools
+  s_c04f56bbcc9166::t_9e746eaebcfea0 1
+.claude/skills/design-frontend-dev
+  s_c04f56bbcc9166::t_88f2bc8353e3a1 1
+.claude/skills/review-code-dev
+  s_c04f56bbcc9166::t_a637a93e70965a 1
+.claude/skills/ship-pr-dev
+  s_c04f56bbcc9166::t_355d2b28c70ab1 1
+.dockerignore
+  s_c04f56bbcc9166::t_1bf85dea003ab9 2-6,9-11
+.env.example
+  s_c04f56bbcc9166::t_1b7ca0aa35ad32 1-50,52-63,65-67,69-78,80-82,84-87
+.github/dependabot.yml
+  s_c04f56bbcc9166::t_3d2189fc92f102 3-6,22-33
+.github/workflows/verify.yml
+  s_c04f56bbcc9166::t_11fb2c067c96f9 1,9,12-14,16,18,28-34,40-42,44,46-48,50
+.gitignore
+  s_c04f56bbcc9166::t_6ca1eae757df69 3-8,11-12
+.gitleaksignore
+  s_c04f56bbcc9166::t_8c2e53bad3d8c1 44-46
+AGENTS.md
+  s_c04f56bbcc9166::t_178063963f149a 1-29
+Dockerfile
+  s_c04f56bbcc9166::t_646f94edf2d27c 1-5,7-10,12-19,21-25,27-49
+README.md
+  s_c04f56bbcc9166::t_46cf2ec2249923 1,3-6,8-10,12-14,16,18-20,22-24,26-65,67-72,75-213,215-221,223-225,227,229-237,239-240
+apps/server/src/activation.ts
+  s_c04f56bbcc9166::t_b4df947ccf32dc 1-13
+apps/server/src/admission.sql
+  s_c04f56bbcc9166::t_1a7396245b6bea 1-8
+apps/server/src/admission.ts
+  s_c04f56bbcc9166::t_4b6fa3197c49c6 1-23
+apps/server/src/api.ts
+  s_c04f56bbcc9166::t_9ce75e85ec5e43 1-52,54-57,59-86,88-109,111,113-131
+apps/server/src/auth-schema.sql
+  s_c04f56bbcc9166::t_65e757419c2cb2 1-49
+apps/server/src/auth.ts
+  s_c04f56bbcc9166::t_0abac280fc9bb4 1-7,9,11-30,32-80,82-85,89-99,102-106,109-112
+apps/server/src/azure-openai.ts
+  s_c04f56bbcc9166::t_c90367043d2d3f 1-10
+apps/server/src/azure-reasoning.ts
+  s_c04f56bbcc9166::t_1db1d446864852 1-9
+apps/server/src/billing.sql
+  s_c04f56bbcc9166::t_eadb44671eb883 1-65
+apps/server/src/billing.ts
+  s_c04f56bbcc9166::t_59c4a1d62f2532 1-4,6-29,31-34,37-43,46-47,50-62,65-76,78-105,107-109,111-113,116-125,128-136,139-150,152-186,188-202,204-215,217-286,288-290,292-310
+apps/server/src/box-observation.sql
+  s_c04f56bbcc9166::t_3e9d5f3f7ea47f 1-17
+apps/server/src/box-observation.ts
+  s_c04f56bbcc9166::t_054e7f835dcbaa 1-87
+apps/server/src/chat.sql
+  s_c04f56bbcc9166::t_59eaeaced968a7 1-5
+apps/server/src/chat.ts
+  s_c04f56bbcc9166::t_3758a1995c6aab 1-36,38-39,41-42,44-55,57-78,81-104,107-108,110-114,116-130
+apps/server/src/config.ts
+  s_c04f56bbcc9166::t_c523413a614303 1-3,5-82
+apps/server/src/control-help.ts
+  s_c04f56bbcc9166::t_d51528e2a76cf2 1-6
+apps/server/src/control-product.ts
+  s_c04f56bbcc9166::t_02dbdb2c38b892 1-25
+apps/server/src/control.ts
+  s_c04f56bbcc9166::t_06d8b9c734f22b 1-95
+apps/server/src/conversation.sql
+  s_c04f56bbcc9166::t_6c2181819c04b5 1-15
+apps/server/src/delegation.ts
+  s_c04f56bbcc9166::t_9c39177712b90d 1-27,29-59
+apps/server/src/delivery-skills.sql
+  s_c04f56bbcc9166::t_b8a2a0a41f0a6e 1-10
+apps/server/src/delivery-skills.ts
+  s_c04f56bbcc9166::t_13cbf5f8b25a6f 1-17,19-20,22,24-28,30-45,47-91,93-108,110-124,126-128
+apps/server/src/delivery.sql
+  s_c04f56bbcc9166::t_0bb58b4f87ea99 1-6
+apps/server/src/delivery.ts
+  s_c04f56bbcc9166::t_4a302794fc3105 1-36
+apps/server/src/desktop.sql
+  s_c04f56bbcc9166::t_c8d1dac14c65ed 1-5
+apps/server/src/discussion-executor.ts
+  s_c04f56bbcc9166::t_1f2b9950b0cb74 1-207
+apps/server/src/discussion-files.ts
+  s_c04f56bbcc9166::t_53daab99af7e3a 1-5,7-9,11-30,32-53,56-66
+apps/server/src/discussion-model.ts
+  s_c04f56bbcc9166::t_6348d298eaf602 1-48
+apps/server/src/discussions.sql
+  s_c04f56bbcc9166::t_8970d7f6a1cec7 1-75,77-91,93-96
+apps/server/src/discussions.ts
+  s_c04f56bbcc9166::t_da53a462a2fcba 1-16,18-21,23-24,26-27,29-41,43-131,133-136,138-146,148-152,154-172,174-183,185-196,199-221,223-229,231-237
+apps/server/src/events.sql
+  s_c04f56bbcc9166::t_a9a7ba54929677 1-8
+apps/server/src/events.ts
+  s_c04f56bbcc9166::t_69f2ee8de1dab9 1-2,4-5,7-10,13-19,21-68,70-86,88-92,94-121,123,125-139,141-160,163-184,186-217
+apps/server/src/executor.ts
+  s_c04f56bbcc9166::t_815f70dc629b7b 1-39,41-170,173-193,195-237,240-310,314-330,332-341,343-347,351-432
+apps/server/src/files.ts
+  s_c04f56bbcc9166::t_a31673c12efad3 1-30,33-35,38-41,44-51,54-62,65-67,70-72,76-90,92-93,95-105,108-109,112-128,130-133,136-140,143-150,152-154,157-164,166-167,169-187,189-199,202-215,217-220,222-224,226-228,232-233,236-249,252-261,264-270,272-285,288-297,300-316,319-334,336-340,342,345-407
+apps/server/src/legacy-removal.sql
+  s_c04f56bbcc9166::t_c317f6c85b12e9 1-95
+apps/server/src/lifecycle-errors.ts
+  s_c04f56bbcc9166::t_2cf0df87876884 1-4
+apps/server/src/lifecycle.sql
+  s_c04f56bbcc9166::t_4b57999ec51476 1-7
+apps/server/src/lifecycle.ts
+  s_c04f56bbcc9166::t_ec2d1d679ac4d8 1-19,21-32,34-42,44-59,61-67,69-77,79-81,83-146,148-150,152-162,164-227,229-235,237-255,257-263
+apps/server/src/machines.ts
+  s_c04f56bbcc9166::t_16f8fa95dc568f 1-3,5-11,13-33,35-60,62,64-155,157-173,175-187,189-194,197-245
+apps/server/src/mail.ts
+  s_c04f56bbcc9166::t_ed30708e9ada4a 1,3-4,6-152
+apps/server/src/maintenance.sql
+  s_c04f56bbcc9166::t_526eef7ce52212 1-6
+apps/server/src/maintenance.ts
+  s_c04f56bbcc9166::t_39ee2eb87eaf04 1-40
+apps/server/src/managed-base-image.sql
+  s_c04f56bbcc9166::t_9d88181d56446d 1-6,8-10,12-24,26-27,30,33-36
+apps/server/src/managed-base-image.ts
+  s_c04f56bbcc9166::t_e2cfa40feabbc7 1-37,39-41,43-45,47,49-53,55-62,65-70,73-77,80-103,106-114,117-120,123-156,159-161,164-187,190-198,201-214,217-346
+apps/server/src/migrate.ts
+  s_c04f56bbcc9166::t_8c7325db5aed36 1,3-7
+apps/server/src/model-gateway-token.ts
+  s_c04f56bbcc9166::t_16147e6fabd190 1-42
+apps/server/src/model-gateway.sql
+  s_c04f56bbcc9166::t_ab29da4947281f 1-20,22-27
+apps/server/src/model-gateway.ts
+  s_c04f56bbcc9166::t_e15f3cf615f9d3 1-264
+apps/server/src/model-selection.ts
+  s_c04f56bbcc9166::t_1d5cfe3742d6b3 1-4,6-19
+apps/server/src/models.ts
+  s_c04f56bbcc9166::t_b55cac0a4a30e7 1-17,19
+apps/server/src/plugins.sql
+  s_c04f56bbcc9166::t_e375b3fea8e3b8 1-24
+apps/server/src/plugins.ts
+  s_c04f56bbcc9166::t_51486515649294 1-86,88-99,101-107,109-117,120-122,124-130,132-145,147-152,154-227
+apps/server/src/preparation-trace.ts
+  s_c04f56bbcc9166::t_53abc13917ea88 1-13,15-16,18-19,21-28
+apps/server/src/private-beta.ts
+  s_c04f56bbcc9166::t_7cacca6dafdf8b 1-16
+apps/server/src/product.sql
+  s_c04f56bbcc9166::t_20fbf890d236bf 1-29
+apps/server/src/retirement.ts
+  s_c04f56bbcc9166::t_a52e1dca4b3c23 1-84
+apps/server/src/runtime-product.ts
+  s_c04f56bbcc9166::t_e4b47b32354bab 1-22,24-29,31-49,51-131,133-149,151-156,159-201,203
+apps/server/src/runtime-updates.sql
+  s_c04f56bbcc9166::t_c9e3162b82e787 1-19
+apps/server/src/runtime-updates.ts
+  s_c04f56bbcc9166::t_af6555fdff403e 1-20,22-95,97-98,100-128,130-150,152-203
+apps/server/src/schema.sql
+  s_c04f56bbcc9166::t_11b83e3d6029f1 1-40
+apps/server/src/skill-commands.ts
+  s_c04f56bbcc9166::t_284cb787ae03e0 2-4,6-9,12-24
+apps/server/src/static-web.ts
+  s_c04f56bbcc9166::t_4379d7551f613b 1-2,4-8,10-16,18-19,22-23,25-32,36-45,47-58,60-67
+apps/server/src/storage-schema.sql
+  s_c04f56bbcc9166::t_39468d9e76f032 1-28
+apps/server/src/storage.ts
+  s_c04f56bbcc9166::t_cfc5507460a8d0 1,3-9,11-15,17-33,35-57
+apps/server/src/store.ts
+  s_c04f56bbcc9166::t_26ffc480bdcc83 1-5,7-9,11-14,16-38,40-48,50,52-59,61-91,93-118,120-127,129
+apps/server/src/task-runtime.sql
+  s_c04f56bbcc9166::t_be3f073865af6b 1-15,17-20
+apps/server/src/task-runtime.ts
+  s_c04f56bbcc9166::t_3efe4f9f402879 1-2,4-5,7-9,11-29
+apps/server/src/tasks.ts
+  s_c04f56bbcc9166::t_948ec11ac29ec4 1-3,5-12,14-30,33-48,50-80
+apps/server/src/usage.ts
+  s_c04f56bbcc9166::t_06b218735529c1 1-33,35-45,47-73
+apps/server/src/worker.ts
+  s_c04f56bbcc9166::t_1e432a009b3326 1-12
+apps/server/test/async-lifecycle.test.ts
+  s_c04f56bbcc9166::t_6aa4185a998b44 1-13,15-30,32-43,45-55,57-74
+apps/server/test/azure-openai.test.ts
+  s_c04f56bbcc9166::t_b90267a293fac9 1-3,5-12,15-26
+apps/server/test/billing.test.ts
+  s_c04f56bbcc9166::t_586d096516cac5 1-11,13-18,20-28,30-32,34-38,41-125,128-252
+apps/server/test/box-observation.test.ts
+  s_c04f56bbcc9166::t_ae5772ed3aca9c 1-16,18-142
+apps/server/test/box.test.ts
+  s_c04f56bbcc9166::t_7c2f4b318682c6 1-79,81-143,145-146,150-190
+apps/server/test/chat.test.ts
+  s_c04f56bbcc9166::t_345e88811d9941 1-4,6-18,21-48,50-62,64-71,73-96,98
+apps/server/test/control.test.ts
+  s_c04f56bbcc9166::t_4950f69e7de38b 1-58,61-78,80-93,95-113,115-124
+apps/server/test/creation-preparation.test.ts
+  s_c04f56bbcc9166::t_abdf8772967a72 1-10,12-44,47-70,74-90,93-110
+apps/server/test/delivery-skills.test.ts
+  s_c04f56bbcc9166::t_df03090d79a52b 1-3,6-21,23-51,53-72,74-82
+apps/server/test/delivery.test.ts
+  s_c04f56bbcc9166::t_436d4f56e69fe8 1-17,20-44,46-55,57-70,72-89,91-110,112-128,130-147,150-166
+apps/server/test/desktop-runtime.test.ts
+  s_c04f56bbcc9166::t_976b6d2838da90 1-36,39-49,52-64,67-72,74-94,97-105
+apps/server/test/discussion-upgrade.test.ts
+  s_c04f56bbcc9166::t_b0b576aac25e48 1-52
+apps/server/test/discussions.test.ts
+  s_c04f56bbcc9166::t_3cd77b153950de 1-301
+apps/server/test/events.test.ts
+  s_c04f56bbcc9166::t_4f9b957faf6091 1-5,7-8,10-16,18-19,21-27,29-35,37-42,44-49,51-63,65-76,78-102,104-110,112-114,116-122,124-141
+apps/server/test/executor-standby.test.ts
+  s_c04f56bbcc9166::t_d4fef56675aa41 1-3,5,7-8,11-30,32-37
+apps/server/test/files.test.ts
+  s_c04f56bbcc9166::t_baf935c5cc320f 1,3-29,31,34-40,42-66,68-74,76-80,83-104,107-112,114-117,120-134,137-148,151-172,176-185
+apps/server/test/fixtures/migrate-startup-process.ts
+  s_c04f56bbcc9166::t_232cd1a37485b4 1,3-10,12-14
+apps/server/test/fixtures/pre-discussions-schema.sql
+  s_c04f56bbcc9166::t_5f04b939c384b1 1-2,4-135,137-147,149-157,159-162,164-174,176-179,182-209,212-236,239-240,242-252,254,256-284,286-287,289-292,294,296-297,299,301,303-308,310-405,408,410-413,415-416,419-422,424-444,447-451,453-482,484-486,488-490,493-494,496,498-706,708-710,712-714,716-718,720-721,723-724,726-727,730-760,762-765,767-779,781-787,789-790,792-794,796-799,801-812,814-815,817,819-821,823-825,827-829,831-832,834-837,839,841-842,844-847,849-851,853,855-857,859-861,863-1108
+apps/server/test/history-search.test.ts
+  s_c04f56bbcc9166::t_c02d2faff7aadc 1-3,5-25
+apps/server/test/legacy-removal.test.ts
+  s_c04f56bbcc9166::t_bfccafe647dc69 1-43
+apps/server/test/lifecycle.test.ts
+  s_c04f56bbcc9166::t_f1ac733d461006 1-296
+apps/server/test/local-acceptance.test.ts
+  s_c04f56bbcc9166::t_3ef877d2878fd4 1-2,4-8,10-24,26-69,71
+apps/server/test/mail.test.ts
+  s_c04f56bbcc9166::t_cfb1d584be0bf8 1-28,30-33,35-37,39-43,47-54,57-61,64-65,67-69,71-72,75-85
+apps/server/test/maintenance.test.ts
+  s_c04f56bbcc9166::t_724e304530ad8f 1-34
+apps/server/test/managed-base-image-integration.test.ts
+  s_c04f56bbcc9166::t_9e23151ad76aae 1-21,24-29,31-35,37-40,42-51,53-68,70-79
+apps/server/test/managed-base-image.test.ts
+  s_c04f56bbcc9166::t_3177501199d24d 1-232
+apps/server/test/migration-startup.test.ts
+  s_c04f56bbcc9166::t_91f4531a97b555 1-2,4-36
+apps/server/test/model-gateway-dispatch.test.ts
+  s_c04f56bbcc9166::t_a25cf57401efd5 1-47
+apps/server/test/model-gateway-native.test.ts
+  s_c04f56bbcc9166::t_2660a1b0866a76 1-7,9-12,14,16-34,36-67,70-103
+apps/server/test/model-gateway-token.test.ts
+  s_c04f56bbcc9166::t_f5c1c064572348 1-5,7-20,22-30,32-51,53-65,67-72
+apps/server/test/model-gateway.test.ts
+  s_c04f56bbcc9166::t_a45b95f2200f89 1-29,31-49,51-62,64-69,71-82,84-92,94-102,104-109,111-121,123-127,129-133,135-140,142-151,153-159,161-170,172-176,178-184,186-196,198-212,214-225,227-239,242-249,251-265,267-272,275-292,294-301
+apps/server/test/permanent-companions.test.ts
+  s_c04f56bbcc9166::t_f3bad35235f239 1-22,24-40,42-60,62-83,85-91,93-105,107-117
+apps/server/test/plugin-health-control.test.ts
+  s_c04f56bbcc9166::t_b46ec7f3089cc3 1-18
+apps/server/test/plugin-oauth.test.ts
+  s_c04f56bbcc9166::t_e344e7b0a45d65 1-14,17-19,21,24-33,36-37,39-43,46-82,86-116,118-119,122-156,159-234,237-264,266-269,272-283,285-295,298-299,301-307,309-314,316-318,320-321,323-324,326-338,340-352,355-383,385-435,439-480,483-487,489-494,497-500,503-517,519-568,571-572,574-577,579-637,639-657,659,662-683,685-691,693-694
+apps/server/test/plugins.test.ts
+  s_c04f56bbcc9166::t_0f292ccd988d0c 1-6,8-10,12-17,19-29,31-42,44-56,58-64,66-72,74-78,80-83,85-89,91-94,96-158
+apps/server/test/preparation-trace.test.ts
+  s_c04f56bbcc9166::t_cb3023a65cd08c 1-45
+apps/server/test/private-beta.test.ts
+  s_c04f56bbcc9166::t_b239246b5b7cab 1-14,16-22,24-32,34-39,41-46,48-62,64-75,77-92
+apps/server/test/run-concurrency.test.ts
+  s_c04f56bbcc9166::t_7ec89f18e0540c 1-35,37-46,48-63,65-82,84-93,95-98,100-109,111-117
+apps/server/test/runtime-installer.test.ts
+  s_c04f56bbcc9166::t_3cf5e5981bf39d 1-6,8-34,36-43
+apps/server/test/runtime-lifecycle.test.ts
+  s_c04f56bbcc9166::t_da994d1fbda90f 1-188
+apps/server/test/runtime-updates.test.ts
+  s_c04f56bbcc9166::t_a78ba2d5e97657 1-90
+apps/server/test/skill-commands.test.ts
+  s_c04f56bbcc9166::t_81a4985b5ee7c8 1-5,7-22,24-49,51-80
+apps/server/test/static-web.test.ts
+  s_c04f56bbcc9166::t_655287083c0bbd 1-2,4-5,7-15,17-28,30-34,36-39,41-46,48-72
+apps/server/test/store.test.ts
+  s_c04f56bbcc9166::t_a6d38a746f049f 1-125,128-157,160-178,181-197,200-209
+apps/server/test/tasks.test.ts
+  s_c04f56bbcc9166::t_6d0e43e56691f2 1-129
+apps/server/test/usage.test.ts
+  s_c04f56bbcc9166::t_63c4dab9de78fe 1-15,17-32
+apps/web/UI_CONTRACT.md
+  s_c04f56bbcc9166::t_d2e1cc5bd13c2a 1-15
+apps/web/bun.lock
+  s_c04f56bbcc9166::t_e5593ae10bf787 1-38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,118,120,122,124,126,128,130,132,134,136,138,140,142,144,146,148,150,152,154,156,158,160,162,164,166,168,170,172,174,176,178,180,182,184,186,188,190,192,194,196,198,200,202,204,206,208,210,212,214,216,218,220,222,224,226,228,230,232,234,236,238,240,242,244,246,248,250,252,254,256,258,260,262,264,266,268,270,272,274,276,278,280,282,284,286,288,290,292,294,296,298,300,302,304,306,308,310,312,314,316,318,320,322,324,326,328,330,332,334,336,338,340,342,344,346,348,350,352,354,356,358,360,362,364,366-558,560-785
+apps/web/components.json
+  s_c04f56bbcc9166::t_22060c8ea179c0 4,7,9,11,19-21
+apps/web/index.html
+  s_c04f56bbcc9166::t_8d241f3ad1e5fe 1-19
+apps/web/package.json
+  s_c04f56bbcc9166::t_a386d814dabf47 2,4,7-10,13-23,26-38
+apps/web/public/favicon.svg
+  s_c04f56bbcc9166::t_08603899182293 1-8
+apps/web/src/App.test.tsx
+  s_c04f56bbcc9166::t_97888ede5cc35f 1-3,5-9,11-13,15-16,19-22,25-28,30,33-71,73-87
+apps/web/src/App.tsx
+  s_c04f56bbcc9166::t_d955de3620fcf0 1-19,22-36,38,41,43-44,47-111
+apps/web/src/Pages.browser.test.tsx
+  s_c04f56bbcc9166::t_bc1606a1301f11 1-75
+apps/web/src/StandalonePages.css
+  s_c04f56bbcc9166::t_1c521309b13b77 1-9,11-14,16-62
+apps/web/src/api.test.ts
+  s_c04f56bbcc9166::t_248037b522303f 1-10
+apps/web/src/api.ts
+  s_c04f56bbcc9166::t_a71f3e61010fd6 1-103
+apps/web/src/components/ApplicationAccess.css
+  s_c04f56bbcc9166::t_5327e90410a3a1 1-31
+apps/web/src/components/ApplicationAccess.test.tsx
+  s_c04f56bbcc9166::t_f32f82b9a90b1e 1-3,5-33,36-47,50-59,62-80,83-98,101-108,111-124
+apps/web/src/components/ApplicationAccess.tsx
+  s_c04f56bbcc9166::t_4743e548e8a8d2 1-6,8-15,17,19-20,23-59,61-66,68-72,74-79,83-96,98,100-101,103,105-112,114,116,118-123,125-150,152-154,156-167
+apps/web/src/components/CompanionAccount.test.tsx
+  s_c04f56bbcc9166::t_4ffcf52eb2002a 1-2,4-131,133-134,136-147,149-169,171-179,181-184,186-188,190,192-208,210-219
+apps/web/src/components/CompanionAccount.tsx
+  s_c04f56bbcc9166::t_358f9e296d8494 1-22,24-28,31-43,45-47,49-51,53-62,64-95,97-108,110-114,116-144,146-162,164-170,172-180
+apps/web/src/components/CompanionAvatar.test.tsx
+  s_c04f56bbcc9166::t_182897a212fc95 1-4,6-45
+apps/web/src/components/CompanionAvatar.tsx
+  s_c04f56bbcc9166::t_e3d5930285d3b0 1-2,4-10,12-17,20-39,42-48,50-55,57-59,61,63-74,76-77,79-89
+apps/web/src/components/CompanionConfiguration.tsx
+  s_c04f56bbcc9166::t_2bc2cf899d0b33 1-94
+apps/web/src/components/CompanionSettingsPage.tsx
+  s_c04f56bbcc9166::t_f60e070313da6e 1-34
+apps/web/src/components/ConnectionActions.css
+  s_c04f56bbcc9166::t_0321527cf9c8f5 1-14
+apps/web/src/components/ConnectionActions.tsx
+  s_c04f56bbcc9166::t_6089eceded8eb8 1-5,7-13,15-27,29-31,33-54
+apps/web/src/components/ConnectionCards.css
+  s_c04f56bbcc9166::t_a5c61a928809f9 1-41
+apps/web/src/components/ConnectionCards.tsx
+  s_c04f56bbcc9166::t_ef0c4bc22a2c1e 1-62
+apps/web/src/components/CreateCompanion.css
+  s_c04f56bbcc9166::t_c0a563483df3b8 1-88,91-96,98,100-104
+apps/web/src/components/CreateCompanion.discussions.test.tsx
+  s_c04f56bbcc9166::t_75dd60d44ed19a 1-49
+apps/web/src/components/CreateCompanion.tsx
+  s_c04f56bbcc9166::t_8db257f1b58203 1-64
+apps/web/src/components/DiscussionsWorkspace.browser.test.tsx
+  s_c04f56bbcc9166::t_25f66922e2cda8 1-7,9-100,102-126,128-129
+apps/web/src/components/DiscussionsWorkspace.test.tsx
+  s_c04f56bbcc9166::t_0011ead0a143e4 1-2,4-26,29-31,33-205,209-226,229-237,241-255,259-279,283-291,295-307,311-322,326-345,347-357,361-377,379-459,461,463-481,484-506,508-526,529-544,546-555,557-579,581-592,594,596-598,600-605,607-618,620-632
+apps/web/src/components/DiscussionsWorkspace.tsx
+  s_c04f56bbcc9166::t_ef015069c54f23 2-59,61-70,72-81,84-104,107-122,124-125,127-136,139-141,143-150,153-158,160-220
+apps/web/src/components/LandingPage.css
+  s_c04f56bbcc9166::t_f2281d5fafeffe 1-153
+apps/web/src/components/LandingPage.test.tsx
+  s_c04f56bbcc9166::t_e1c3b968dd039b 1-28
+apps/web/src/components/LandingPage.tsx
+  s_c04f56bbcc9166::t_7ebc66563e1395 1-29,32-33,36,38-42,44-45,47-76,78,80-87,89-93,95-98,100,102-106
+apps/web/src/components/LegalPage.css
+  s_c04f56bbcc9166::t_74aa3f949f819b 1-6,8-45,48-51
+apps/web/src/components/LegalPage.test.tsx
+  s_c04f56bbcc9166::t_2f498da0ffdc28 1-3,5,7-19,21-28
+apps/web/src/components/LegalPage.tsx
+  s_c04f56bbcc9166::t_52c4c095680d8c 1-3,5,7,9-10,13-32,35-87,89-125,127-129
+apps/web/src/components/Markdown.browser.test.tsx
+  s_c04f56bbcc9166::t_68f1a18f4eedf0 1-20,22-87
+apps/web/src/components/Markdown.test.tsx
+  s_c04f56bbcc9166::t_993905e37bf37b 1,3,5-10
+apps/web/src/components/PluginAccountNameForm.css
+  s_c04f56bbcc9166::t_c19d14325df5b7 1-11
+apps/web/src/components/PluginAccountNameForm.tsx
+  s_c04f56bbcc9166::t_71a0cee129314b 1-3,5-22
+apps/web/src/components/ProviderMark.tsx
+  s_c04f56bbcc9166::t_e9a46b16c93dec 1-21
+apps/web/src/components/WorkspaceConnections.test.tsx
+  s_c04f56bbcc9166::t_67fd7e421b131c 1-29
+apps/web/src/components/WorkspaceConnections.tsx
+  s_c04f56bbcc9166::t_05fc9ba249efc5 1-5,7-23,25-35,37-43,45-70
+apps/web/src/components/ai-elements/message.tsx
+  s_c04f56bbcc9166::t_a03a5375f82480 1,3-7,9-11,13-22,24-59
+apps/web/src/components/discussions/ActivityLine.tsx
+  s_c04f56bbcc9166::t_f4d0e6521de199 1-3,5-7,10-27,30-45
+apps/web/src/components/discussions/Composer.tsx
+  s_c04f56bbcc9166::t_bc95b5592f97e7 1-138
+apps/web/src/components/discussions/DetailsPanel.tsx
+  s_c04f56bbcc9166::t_b34025de3d4bce 1-56
+apps/web/src/components/discussions/EmptyState.tsx
+  s_c04f56bbcc9166::t_0bef4eea83cf9b 1-11
+apps/web/src/components/discussions/InvitationCard.tsx
+  s_c04f56bbcc9166::t_c919edf69e4cef 1-3,5-7,9-18
+apps/web/src/components/discussions/MessageItem.tsx
+  s_c04f56bbcc9166::t_e8ca2321c4a2b3 1-9,12-14,16-38
+apps/web/src/components/discussions/QuestionCard.tsx
+  s_c04f56bbcc9166::t_9aa5b6ef16de56 2-3,5,7-37
+apps/web/src/components/discussions/RowMenu.tsx
+  s_c04f56bbcc9166::t_e197d33a2cf612 1-3,5-6,8-15,17-29,32-51,53-55,57-60,62-77,80-82,84-92
+apps/web/src/components/discussions/Sidebar.tsx
+  s_c04f56bbcc9166::t_5c2f105a33d82f 1-9,11,13-32,34-39,41-47,49-50,53-55,57,59-65,68-72,74-80,82-100,102-156,159-166,169-171,173-180,182-184,186-217,219-223,225,228-233,236-242,244-280,282-293,295-302,304-328
+apps/web/src/components/discussions/Thread.tsx
+  s_c04f56bbcc9166::t_6da7ef246a4929 1-108
+apps/web/src/components/discussions/ThreadHeader.tsx
+  s_c04f56bbcc9166::t_383253a66416e7 2-5,7-10,12-15,17-28,30-35
+apps/web/src/components/discussions/Workbench.tsx
+  s_c04f56bbcc9166::t_7e25523e7d65d6 1-86
+apps/web/src/components/discussions/shared.test.ts
+  s_c04f56bbcc9166::t_d3e1478c185ca3 2,4,6-8,10-18,21-23,25,27-33,35-38,40-48,51-59
+apps/web/src/components/discussions/shared.ts
+  s_c04f56bbcc9166::t_791b8cd56686ce 1,3-6,8-10,12-13,15-20,22-24,26-34,36-38,40-42,44-55,57,59-61,63-65,67,69,71-89
+apps/web/src/components/discussions/styles/composer.css
+  s_c04f56bbcc9166::t_16e1bd1747b38a 1-6,8-20,23-27,29-64,66-69,71-75,77-87,89-113,115-117,119-158,160-161,163-190
+apps/web/src/components/discussions/styles/index.css
+  s_c04f56bbcc9166::t_dab67fbd17d164 1-7
+apps/web/src/components/discussions/styles/panels.css
+  s_c04f56bbcc9166::t_25e6c72ae75fdc 1-103
+apps/web/src/components/discussions/styles/shell.css
+  s_c04f56bbcc9166::t_b76edba45f4581 1-17,19-20,22-32,34-51,53-64,66-74,76-88,90-119,121-132
+apps/web/src/components/discussions/styles/sidebar.css
+  s_c04f56bbcc9166::t_9706fab0f7646c 1-2,4,6-7,9-12,14,16,18-19,21-26,28-33,35,37,39,41,43-51,53,55-59,61,63-89,91-100,102,104-112,114-121,123,126-127,129-131,133,135,137-139,141-148,150,152-173,175-176,178,181-187,189-196,198-211,213,215,218-230,232-234,236,239-242,244-252,254-256,258-261,263,265-266,268-277,279-290,293-303,305-312,314-321,323-324,327-337,339-341
+apps/web/src/components/discussions/styles/thread.css
+  s_c04f56bbcc9166::t_9f020b9c0e311f 1-11,13,15-18,20-30,32-37,39-57,59-69,71-91,93-117,119-130,132-143,145-146,148,150-154,157-165,167-170,172-175,177-178,180-190,192-197,199-263,265-275,278,280-282,284-289,291-301,303-304,306-314,316,318-319,321-437
+apps/web/src/components/discussions/styles/tokens.css
+  s_c04f56bbcc9166::t_530d4d92fef223 1-39
+apps/web/src/components/discussions/styles/workbench.css
+  s_c04f56bbcc9166::t_d430d55c2d54ac 1-11,13-20,22-25,27-31,33-48,51-55,58-64,66-67,69-71,73-76,78-81,83-90,92,94-98,100-102,104-111
+apps/web/src/components/discussions/useThreadScroll.ts
+  s_c04f56bbcc9166::t_5c19c4d7ce58b4 1,3-27
+apps/web/src/components/ui/button.tsx
+  s_c04f56bbcc9166::t_fb3eaf8d55bff5 1-3,5,7-36,38-43,45-65
+apps/web/src/components/ui/textarea.tsx
+  s_c04f56bbcc9166::t_4de2fcd449e83a 1,3,5-8,10-14,17-20,22
+apps/web/src/hooks/useModalFocus.ts
+  s_c04f56bbcc9166::t_30f848b7c0043b 1,3-5,7-17,19-24,27,29-82
+apps/web/src/index.css
+  s_c04f56bbcc9166::t_bb9c2cb4490061 1-21,24-55,60,62-63,65-67,70-72,74-76,79-96,98,100,102-117,119-124,126-127,129-131,133-134,136-140,142-156,158-355,358-690
+apps/web/src/lib/utils.ts
+  s_c04f56bbcc9166::t_a599c34420d3ea 1-5
+apps/web/src/main.tsx
+  s_c04f56bbcc9166::t_34eda702bd39f7 1,3-11
+apps/web/src/maison.css
+  s_c04f56bbcc9166::t_a0d4e7fdf07745 1-327
+apps/web/src/test/browser.ts
+  s_c04f56bbcc9166::t_295ec334c2a21b 1-69
+apps/web/src/test/setup.ts
+  s_c04f56bbcc9166::t_1d25bea89a59c9 1-3,5-8,10-13
+apps/web/tsconfig.app.json
+  s_c04f56bbcc9166::t_7db48e43418ab7 3,5-12,17-21,23
+apps/web/tsconfig.json
+  s_c04f56bbcc9166::t_9eb76a84bc751b 2-5
+apps/web/tsconfig.node.json
+  s_c04f56bbcc9166::t_58dfd26cddd8fd 3-11,13,15
+apps/web/vite.config.ts
+  s_c04f56bbcc9166::t_584d8b96f8cf00 1,3-5,7-24
+bun.lock
+  s_c04f56bbcc9166::t_dcb945d862f922 1-42,44,46,48,50,52,54,56,58,60,62,64,66-667
+dev
+  s_c04f56bbcc9166::t_1e529b879294c6 1-3
+docs/UI_CONTRACT.md
+  s_c04f56bbcc9166::t_77ba6e21c069e8 1-142
+docs/adr/portable-software.md
+  s_c04f56bbcc9166::t_d383a2e2d919b4 1-42,44-193
+docs/billing-delivery.md
+  s_c04f56bbcc9166::t_c2bd5611a33a97 1,3,5-11,13-15,17,19,21,23-26,28,30,32,34,36,38,40,42,44,46-50,52,54-58,60-69,71-75,77,79-82,84-88,90-93
+docs/companion-behavior.md
+  s_c04f56bbcc9166::t_43af729bf673f9 1-82
+docs/companions-build.md
+  s_c04f56bbcc9166::t_a958e172060ec0 1-173,175-179,181-301,303-328,330-765
+docs/completion-audit.md
+  s_c04f56bbcc9166::t_b9c9d79e1600a0 1,3-5,7,9-39,41,43-115,117-120
+docs/design-system.md
+  s_c04f56bbcc9166::t_d528e5741782ad 1-110
+docs/dev-workflow.md
+  s_c04f56bbcc9166::t_7b79922a9fbc0c 1-341
+docs/development-start.md
+  s_c04f56bbcc9166::t_d4b940c60c8d3d 1,3-6,8,10-13,15,17-19,21,23-26,28,30-48,50-76
+docs/discussions-migration.md
+  s_c04f56bbcc9166::t_87ff92bae06a3c 1-35
+docs/fast-start-memory.md
+  s_c04f56bbcc9166::t_c806bb7b4b085d 1-78,81-115,118-120,122,124,126-129,131-138,140-141
+docs/files.md
+  s_c04f56bbcc9166::t_8b26ae40c32625 1-86
+docs/lifecycle.md
+  s_c04f56bbcc9166::t_65940f995633dd 1-213
+docs/measurements/automation-stability-2026-09-07.json
+  s_c04f56bbcc9166::t_412329053bd81b 2-122,126-133,135-137,139-183,185-215,217
+docs/measurements/box-gateway-v12-2026-09-07.json
+  s_c04f56bbcc9166::t_ae809445e44820 1-39,41-90
+docs/measurements/box-v12-rediscovery-experiment-2026-09-07.json
+  s_c04f56bbcc9166::t_dcb1b86ac1d66b 2-17,19-23,26-30,33-37,40-44,47-51,54-58,61-65,68-72,75-79,82-86,89-93,96-100,103-107,110-114,117-121,124-128,131-135,138-142,145-149,152-338,340-343
+docs/measurements/box-v12-wake-trace-2026-09-07.json
+  s_c04f56bbcc9166::t_1a8025ff9b2b51 2-16,18-22,25-29,32-36,39-43,46-50,53-57,60-64,67-71,74-78,81-85,88-92,95-99,102-246,248-252
+docs/measurements/box-v9-2026-09-07.json
+  s_c04f56bbcc9166::t_2e6b6222446223 2-15,17-22,24-29,31-35
+docs/measurements/companion-creation-preparation-2026-09-10.md
+  s_c04f56bbcc9166::t_27bb0da1d939a7 1-97
+docs/measurements/companion-deletion-2026-09-07.md
+  s_c04f56bbcc9166::t_243d3d2d4587e1 1-44
+docs/measurements/desktop-2026-09-07.json
+  s_c04f56bbcc9166::t_7c90b9cec6c1ff 1-15
+docs/measurements/desktop-response-boundary-2026-09-07.json
+  s_c04f56bbcc9166::t_ed9185a6cec6fc 1-18
+docs/measurements/flat-companion-navigation-2026-09-07.md
+  s_c04f56bbcc9166::t_abed7a38629825 1,3,5-8,10-15,17,19-27
+docs/measurements/glm-canary-2026-09-06.json
+  s_c04f56bbcc9166::t_d754e758dc5527 2-8,10-13,15
+docs/measurements/hosted-2026-09-07.json
+  s_c04f56bbcc9166::t_055112933b3c9a 1-32
+docs/measurements/hosted-desktop-boundary-2026-09-07.json
+  s_c04f56bbcc9166::t_ad2bd8224c19b6 1-35
+docs/measurements/hosted-gateway-2026-09-07.json
+  s_c04f56bbcc9166::t_1cb9c229f814d1 1-29
+docs/measurements/hosted-postgres18-restore-2026-09-07.json
+  s_c04f56bbcc9166::t_bc6d6ac30e09c4 1-90
+docs/measurements/local-gateway-final-2026-09-07.json
+  s_c04f56bbcc9166::t_3ddb2544a25e60 2-5,7-9,12-14,17-19,22-104,106-109
+docs/measurements/local-gateway-release-2026-09-07.json
+  s_c04f56bbcc9166::t_c4defa2a8c2462 2-5,7-9,12-14,17-19,22-104,106-109
+docs/measurements/local-postgres18-routines-2026-09-07.json
+  s_c04f56bbcc9166::t_802493027537f2 1-34
+docs/measurements/maison-ui-2026-09-07.md
+  s_c04f56bbcc9166::t_7a379bb6eb55b7 1,3-4,6-10,12-27
+docs/measurements/maison-v2-2026-09-07.md
+  s_c04f56bbcc9166::t_841d00d8ae7831 1,3-7,9-15,17,19-35,37-38,40,42-47,49,51-59,61-66
+docs/measurements/model-gateway-linux-2026-09-07.json
+  s_c04f56bbcc9166::t_35c937a3d61a0f 1-44
+docs/measurements/pi-bun-2026-09-06.json
+  s_c04f56bbcc9166::t_3e761e480adade 1-9,11-44,46-54,56-71,73-89,91-114,116-122,124-130,132-138,140-146,148-199,201-226
+docs/measurements/plugins-2026-09-07.json
+  s_c04f56bbcc9166::t_eb6b13702625de 2-73,75-85
+docs/measurements/plugins-configured-2026-09-07.json
+  s_c04f56bbcc9166::t_8ad777ac957c1a 2-8,10-13,15-18,20-65
+docs/measurements/plugins-production-2026-09-07.json
+  s_c04f56bbcc9166::t_e637b69b97c07e 2-12,14-43,45-62,64-67,70-72,75-78,81-84,86-91
+docs/measurements/portable-apt-canary-2026-09-07.json
+  s_c04f56bbcc9166::t_0cdb7f26848edf 1-44
+docs/measurements/preparation-retry-2026-09-07.md
+  s_c04f56bbcc9166::t_bef2619657bfbc 1-38
+docs/measurements/routine-admission-2026-09-07.json
+  s_c04f56bbcc9166::t_e7f4d532880a25 2-12,14-136,138-267,269-278
+docs/measurements/routine-chat-gateway-v12-2026-09-07.json
+  s_c04f56bbcc9166::t_93384ce87ca189 2-17,19-26,28-30,32-42
+docs/measurements/routine-clock-v12-2026-09-07.json
+  s_c04f56bbcc9166::t_ae944743ca875b 1-22
+docs/measurements/routine-process-recovery-2026-09-07.json
+  s_c04f56bbcc9166::t_b67c2463a37775 1-24
+docs/measurements/software-box-v10-2026-09-07.json
+  s_c04f56bbcc9166::t_486e1478f06aa3 1-41
+docs/measurements/stability-lot-2026-09-07.md
+  s_c04f56bbcc9166::t_ad4546a12d05da 1-30
+docs/measurements/test-resource-shutdown-2026-09-07.json
+  s_c04f56bbcc9166::t_acd73504cba744 1-16
+docs/measurements/v0-box-2026-09-06.json
+  s_c04f56bbcc9166::t_29213f102e5733 1-42
+docs/measurements/v0-box-2026-09-07.json
+  s_c04f56bbcc9166::t_c69635c88b76c9 1-21
+docs/measurements/v0-local-2026-09-06.json
+  s_c04f56bbcc9166::t_ae5e5ae7b7f64e 2-5,7-9,12-14,17-49,52
+docs/plugins-production.md
+  s_c04f56bbcc9166::t_e031df6e8ce2da 1-59
+docs/repository-migration.md
+  s_c04f56bbcc9166::t_393e81a7fd7ed2 1-58
+docs/research/better-auth-accounts-2026-09-06.md
+  s_c04f56bbcc9166::t_4b1ecac9a6afba 1,3,5-8,10
+docs/research/companions-build-foundations-2026-09-04.md
+  s_c04f56bbcc9166::t_727b9afee77c05 1-335
+docs/research/companions-build-harnesses-2026-09-04.md
+  s_c04f56bbcc9166::t_38c805671cd09a 1,3-4,6,8,10,12,14,16-17,19,21,23-30,32,34,36,38,40,42,44,46,48,50,52,54-74
+docs/research/companions-build-native-harness-2026-09-05.md
+  s_c04f56bbcc9166::t_0088b14b56a248 1-101
+docs/research/companions-build-own-harness-2026-09-05.md
+  s_c04f56bbcc9166::t_27fabfdfbaf449 1-293
+docs/research/companions-build-product-walkthrough.md
+  s_c04f56bbcc9166::t_840e99dcd2021b 1-106,108-242
+docs/research/companions-build-shopify-harness-2026-09-05.md
+  s_c04f56bbcc9166::t_12af1fa95a6ce3 1-56
+docs/research/discussion-agent-harness-2026-09-11.md
+  s_c04f56bbcc9166::t_cc5a97a20d4152 1-67
+docs/research/frontend-visual-direction-2026-09-07.md
+  s_c04f56bbcc9166::t_5d8d09ad67e80b 1-42
+docs/research/pi-bun-feasibility-2026-09-06.md
+  s_c04f56bbcc9166::t_63fbb3ddb4543e 1-171
+docs/research/quickjs-trigger-sandbox-2026-09-07.md
+  s_c04f56bbcc9166::t_f48755d0ebdd1f 1-39
+docs/runtime-updates.md
+  s_c04f56bbcc9166::t_d96cfbffe0552e 1-85
+docs/specs/discussions.md
+  s_c04f56bbcc9166::t_a34e0d8dc76768 1-117,120-135
+docs/specs/maison-interface-control-mcp.md
+  s_c04f56bbcc9166::t_01ee5c15612c8a 1-275
+docs/specs/maison-product-design-v2.md
+  s_c04f56bbcc9166::t_7e78cf657a7b8a 1-181
+docs/specs/specialists-configuration-and-lifecycle.md
+  s_c04f56bbcc9166::t_ca7c3940996188 1-460
+docs/specs/specialists-configuration-and-lifecycle.review.md
+  s_c04f56bbcc9166::t_9d6c7fc21d6f45 1-187
+docs/specs/specialists-implementation-review.md
+  s_c04f56bbcc9166::t_5c55300fbb2b7b 1-93
+docs/testing.md
+  s_c04f56bbcc9166::t_d5608ea955b489 1,3-5,7,9,11-38,40-43,45-47,49-72,75-248
+docs/tickets.md
+  s_c04f56bbcc9166::t_0d0a5593758453 1,3,5-22
+docs/v0.md
+  s_c04f56bbcc9166::t_de69257c7df3c9 1-317
+docs/validation-v0.md
+  s_c04f56bbcc9166::t_aca054c67a2e4c 1-165
+experiments/desktop-boundary/Dockerfile
+  s_c04f56bbcc9166::t_c3f609676efe00 1-4
+experiments/desktop-boundary/Production.Dockerfile
+  s_c04f56bbcc9166::t_3489cd7e29a853 1-4
+experiments/desktop-boundary/README.md
+  s_c04f56bbcc9166::t_1562eda21da5a1 1-117
+experiments/desktop-boundary/headless.sh
+  s_c04f56bbcc9166::t_ac241ea58a5e24 1-22
+experiments/desktop-boundary/legacy-retirement.py
+  s_c04f56bbcc9166::t_97445901437e7a 1-6,8-55
+experiments/desktop-boundary/network-restart.py
+  s_c04f56bbcc9166::t_5ec2bac3ce04af 1-33
+experiments/desktop-boundary/network-worker.py
+  s_c04f56bbcc9166::t_eaa2ec51cc15cb 1-7,9-14,16-38
+experiments/desktop-boundary/production.py
+  s_c04f56bbcc9166::t_01562cce4eee0c 1-13,15-22,24-147
+experiments/desktop-boundary/prove.py
+  s_c04f56bbcc9166::t_88b3d1d5ef8f5e 1-9,11-12,14-19,21-25,27-48,50-115
+experiments/desktop-boundary/state-migration.py
+  s_c04f56bbcc9166::t_9fbc8374080196 1-112
+experiments/desktop-boundary/template-install.py
+  s_c04f56bbcc9166::t_e3e9c3126b0c86 1-66
+experiments/desktop-boundary/worker.py
+  s_c04f56bbcc9166::t_684a6a08872f86 1-54
+experiments/pi-bun/Dockerfile
+  s_c04f56bbcc9166::t_12202f54864c68 1-6
+experiments/pi-bun/acceptance.test.ts
+  s_c04f56bbcc9166::t_bcdaeb537650ce 1-57,60-66,70-71,73-78,80-95,97-101,103-116,118-233
+experiments/pi-bun/build.ts
+  s_c04f56bbcc9166::t_f38b6c113cd950 1-17
+experiments/pi-bun/generate-image.py
+  s_c04f56bbcc9166::t_ab6f79dfb398eb 1-15
+experiments/pi-bun/main.ts
+  s_c04f56bbcc9166::t_23faa46dcbfebe 1-71
+experiments/pi-bun/mcp-fixture.ts
+  s_c04f56bbcc9166::t_5cf3b9e8e25f4d 1-3,6-11,13-16,18-29
+experiments/pi-bun/mcp-main.ts
+  s_c04f56bbcc9166::t_f1dfeb7c8b9d90 1-2
+experiments/pi-bun/mcp-tools.ts
+  s_c04f56bbcc9166::t_8fcbf489201c83 1-5,7-23,25-41
+experiments/pi-bun/scripted-model.ts
+  s_c04f56bbcc9166::t_4789c0beeb2e1a 1-2,4-72,74-75
+experiments/pi-bun/skills/probe-skill/SKILL.md
+  s_c04f56bbcc9166::t_5fdac07afc0d76 2-3,6-7
+experiments/pi-bun/skills/probe-skill/scripts/check.sh
+  s_c04f56bbcc9166::t_04951376910d5a 1-2
+experiments/pi-bun/verify.py
+  s_c04f56bbcc9166::t_b7fa1eab0174b5 1,3-6,8-12,15-58,60-61,63-151
+package.json
+  s_c04f56bbcc9166::t_f2349499f4ab9b 2,5-17,19-33,35-42,45-49
+packages/agent/README.md
+  s_c04f56bbcc9166::t_41021f7702bf69 1-63
+packages/agent/src/azure-foundry.ts
+  s_c04f56bbcc9166::t_ea1f60d0bb80a6 1-38
+packages/agent/src/companion-instructions.ts
+  s_c04f56bbcc9166::t_2152bc979ec189 1,3-16
+packages/agent/src/conversation-instructions.ts
+  s_c04f56bbcc9166::t_9310c21e386243 1-24
+packages/agent/src/daemon.ts
+  s_c04f56bbcc9166::t_8bf736ab9bbbbf 1-23,26-66,69,71-117,120-135,138-164,167-171,174-175,177-180,185-189,192-193
+packages/agent/src/environment.ts
+  s_c04f56bbcc9166::t_865b5b2125dc86 1-40,42-44,46-51,53-61,63-65,67-69
+packages/agent/src/index.ts
+  s_c04f56bbcc9166::t_8e3273cd6fd521 1-4,6-12,14-19,22-47,50-54,57-73
+packages/agent/src/journal.ts
+  s_c04f56bbcc9166::t_625d27c78133b0 1-138
+packages/agent/src/memory-protocol.ts
+  s_c04f56bbcc9166::t_6c8ca0e16b7aaa 1-35
+packages/agent/src/memory-service.ts
+  s_c04f56bbcc9166::t_91b9777df49cfd 1-18,20-32,35-52,55-61,64-89,92-101,103-127,130,132-162
+packages/agent/src/memory-store.ts
+  s_c04f56bbcc9166::t_ad63dead2672e8 1-20,23-72,74-87,90-92,94-103,105-142,144-186,188-212,214-225,227-228,231-236,239-258,260-330,332-335,337-338,340-357,359-363,365-377,379-388,390-391,393-399,401-425,427-431,434-437,440-442,445-511
+packages/agent/src/memory-worker.ts
+  s_c04f56bbcc9166::t_91b0e94fb6e79c 1-3,5-46
+packages/agent/src/memory.ts
+  s_c04f56bbcc9166::t_bfd0d8f5e9e628 1-20,23-30,32,35-38,41-60,63-79,82-83,86-87
+packages/agent/src/model-gateway.ts
+  s_c04f56bbcc9166::t_0c52d07f0e26c5 1-21,23-30,32-42,45-81
+packages/agent/src/pi-executor.ts
+  s_c04f56bbcc9166::t_5b4a34bba2496c 1-29,31-36,39-54,57-67,70-93,96-102,105-115,117-120,122-133,135-149,153-156,159-160,163-167,170-175,178-192,195-201,205-282,285,287-292,296,298-302,304-326,330-333
+packages/agent/src/runtime-version.ts
+  s_c04f56bbcc9166::t_99192c2a08aca0 1-2,4-10
+packages/agent/src/scripted-model.ts
+  s_c04f56bbcc9166::t_54cdcec88788d9 1-19,24-30,32-135,137-140,142
+packages/agent/src/skill-commands.ts
+  s_c04f56bbcc9166::t_83756a1a7562e6 1-22
+packages/agent/src/types.ts
+  s_c04f56bbcc9166::t_af687c6aefa69e 1,3-5,7-24,27-35,38-47
+packages/agent/test/daemon.test.ts
+  s_c04f56bbcc9166::t_8a6452423d9c91 1-7,9-11,13-24,26-28,31-37,39-44,46-54,56-93,95-107,109-114,116-129,131-137,140-159,161-172,174-208,210-222,225-241,244-258,261-276,279-288,290-315
+packages/agent/test/environment.test.ts
+  s_c04f56bbcc9166::t_ccfeca5781a2ba 1-2,5-6,8-11,14-19,21-25
+packages/agent/test/fixtures/memory-pi.ts
+  s_c04f56bbcc9166::t_64b2ebbbf8eec5 1-2,5-59,61
+packages/agent/test/git-credentials.test.ts
+  s_c04f56bbcc9166::t_6ad011684c4092 1-34,37-44,47-53,56-83,86-95
+packages/agent/test/linux-acceptance.test.ts
+  s_c04f56bbcc9166::t_ee2da2a90dd1be 1-4,6-7,9-42,44-59,61-111,113-123,125-126,128-130,132-155,157-189,191-199,201-208,210-211,213-215,218,220-224,226-232,234-242,244-256
+packages/agent/test/memory-service.test.ts
+  s_c04f56bbcc9166::t_7126938d8b4b67 1-2,5-14,16-17,20-34,36-52,54-59,61-66,68-74,76-80,82-90,92-97,99-100,103-120
+packages/agent/test/memory-store.test.ts
+  s_c04f56bbcc9166::t_77a1aec1b47f57 1-243
+packages/agent/test/memory.test.ts
+  s_c04f56bbcc9166::t_e6440c54a8d7f8 1-2,5,7-10,12-15,17-22,25-31,33-34
+packages/agent/test/skills.test.ts
+  s_c04f56bbcc9166::t_ac4d9b42b71364 1-3,6-11,13-24,27-43,45-57,59-78,80,82-89,91-96,99-103,105-114,117-139,142-162,165-177,179-182,184-187,190-198,200-204,206-213,216-228,231-242,245-262,265-280
+packages/box/canonical-json.ts
+  s_c04f56bbcc9166::t_60051aa065aca2 1-4,6
+packages/box/client.ts
+  s_c04f56bbcc9166::t_71fe89c85abe52 1-2,4-23,25,27-43,45-111,113,115-117,119
+packages/box/layout.ts
+  s_c04f56bbcc9166::t_3643d27e1649fb 1-10,12-15
+packages/box/linux/configure-desktop.py
+  s_c04f56bbcc9166::t_0da67c35079caf 1-8,10-23
+packages/box/linux/desktop-capture.py
+  s_c04f56bbcc9166::t_5ac65f9e40454a 1-25
+packages/box/linux/desktop-quiesce.py
+  s_c04f56bbcc9166::t_c4d629e8043828 1-23
+packages/box/linux/desktop-state.py
+  s_c04f56bbcc9166::t_2b95326e0b4e4f 1-7,9-15,17-29
+packages/box/linux/headless-mounts.sh
+  s_c04f56bbcc9166::t_cab4e3d148a465 1-39
+packages/box/linux/install-desktop.sh
+  s_c04f56bbcc9166::t_2d3b9fd69c2d93 1-71
+packages/box/linux/launch-headless.py
+  s_c04f56bbcc9166::t_54aeab1e23b3bb 1-87
+packages/box/linux/retire-legacy.py
+  s_c04f56bbcc9166::t_dfe7d7d7557203 1-60
+packages/box/linux/start-headless.sh
+  s_c04f56bbcc9166::t_24a02968303503 1-6
+packages/box/linux/state-directory.py
+  s_c04f56bbcc9166::t_dc408d39e86608 1-14,17-18,21-26,29-48,51-69,72-102,104-112,114-170
+packages/box/linux/state-preflight.py
+  s_c04f56bbcc9166::t_47353e4b653029 1-64
+packages/box/linux/update-runtime.py
+  s_c04f56bbcc9166::t_66b85b1fab1894 1-2,5-8,12-14,21,24-31,34-37,40-45,48-50,52-55,57-64,66-72,74-102,104-108,110,112-130,132-189,191-241,243-244,246-247,249-258,260-297,299-318,320-365,367-383,385-425,427-651,653-671,673-753
+packages/box/runtime-release.ts
+  s_c04f56bbcc9166::t_2c8de28c705679 1-11
+packages/box/transport.ts
+  s_c04f56bbcc9166::t_8cbd158da09e4c 1-29,31
+packages/control/agent.ts
+  s_c04f56bbcc9166::t_aab375b52fa164 1-100,102-124
+packages/control/files.ts
+  s_c04f56bbcc9166::t_a8661e99c653ff 1-26,28-29,31-34,36-48,50
+packages/control/git-credentials.ts
+  s_c04f56bbcc9166::t_d341d8def17951 1-5,7-8,10-13,15-21,23-34,36-40,42-56,58-63,65-72,75-91,94-97,100-103,106-107,110-117,120-126,128,131-133,135-136
+packages/control/skills.ts
+  s_c04f56bbcc9166::t_41303b94586350 1-3,6-23,25-27,29-31,33-45,47-65,67,69-81,83-90,92-99,101-114,116-117,119-121,123-127,129,131-149,151-169,171-192,194-196,199-210,212-216,219-233,235-239,241-244,246-255,260-268,270-285,288-292,295-316,318-320,323-325,327-343,345-349,351-355,357-384
+packages/desktop/README.md
+  s_c04f56bbcc9166::t_a4a71854108271 1-36
+packages/desktop/broker.ts
+  s_c04f56bbcc9166::t_ac001926a269c4 1-4,6,8-17,19-22,25-26,29-66,69-99,102-109,112-118,121-131,134-142
+packages/desktop/desktop.test.ts
+  s_c04f56bbcc9166::t_55430e1c4da25f 1-205
+packages/desktop/driver.ts
+  s_c04f56bbcc9166::t_d7537e401eeb0a 1-14,17-19,22-29,32-34,37-81,83-86,88-90,92-104,107-117,119-123
+packages/desktop/index.ts
+  s_c04f56bbcc9166::t_7ecf683acfe5e9 1-6
+packages/desktop/journal.ts
+  s_c04f56bbcc9166::t_b0c3ab54fca82b 1-3,5-12,14-15,17-18,20-27,29-99,101-103,105-107,109-110
+packages/desktop/run.ts
+  s_c04f56bbcc9166::t_2209a506be0c4a 2-3,5-12,15-20
+packages/desktop/tools.ts
+  s_c04f56bbcc9166::t_6d649ed7da56aa 1-4,6,8-10,13-14,17-23,26-27,30-45,48-55,58-70
+packages/desktop/types.ts
+  s_c04f56bbcc9166::t_41f4e6e132d3b0 1-19,22-24,27-29,31-37,39,41-44,46-48,51-55
+packages/plugins/bridges.ts
+  s_c04f56bbcc9166::t_7a337d70d06be3 1-2,4-10,12-16,18-23
+packages/plugins/catalog.ts
+  s_c04f56bbcc9166::t_51a124e844fb2b 1,3-30
+packages/plugins/definitions.test.ts
+  s_c04f56bbcc9166::t_8763707f83b215 1-7,9-30,33-38,40-47,49-52,54-59,61-67,70
+packages/plugins/definitions.ts
+  s_c04f56bbcc9166::t_f3eca599865f99 1-7,10-11,13-18,20-64,67-84,87,90-101,104-116,119-138,141-166,169-180,183-195,198-216,219,221-224,226-227,230-232
+packages/plugins/oauth-adapters.ts
+  s_c04f56bbcc9166::t_0f5375901c1745 1,3-12,15-41,43-44,46-51,53-57
+packages/plugins/oauth.ts
+  s_c04f56bbcc9166::t_76f14c297a9902 1-2,4-67,70-80,83-88,91-94,97-126,130-137,141-143,145-151,154-164,166-170,172-180,182-191,194-209,211,213-220,223-224,227-228,231-247,250,253-277,279-293,295-370,373-402,405-406,409-416,418-421,424-452,455-459,463-466,469-500,502-537,540-544,546-552,555-612,615,617-622,624-626,628-633,635-639,642-645,648-654,656-691
+packages/plugins/tools.test.ts
+  s_c04f56bbcc9166::t_d0d244058f48b0 1-36,39-94,96-112,114-132,134-137,141-171
+packages/plugins/tools.ts
+  s_c04f56bbcc9166::t_37e50dec3ec4c2 1-8,10-12,14-23,25-39,41-51,53-79,81-82,84
+plans/audit-2026-09-07.md
+  s_c04f56bbcc9166::t_8f70ab7d044ddb 1-104
+scripts/build-agent.ts
+  s_c04f56bbcc9166::t_894fc6623d3cd3 1-35
+scripts/bun.py
+  s_c04f56bbcc9166::t_183806eaaa1f47 1-2,4,7-10,13-15
+scripts/check.py
+  s_c04f56bbcc9166::t_381bcb98d15044 1,4-5,7,10-17,20-24,27-29,33
+scripts/check_test.py
+  s_c04f56bbcc9166::t_8220449761a3e8 4-21,23-25,27-31
+scripts/container-entrypoint.sh
+  s_c04f56bbcc9166::t_aad9b089999e33 1-2,4-12
+scripts/dev-browser-test.py
+  s_c04f56bbcc9166::t_12aafa159fb381 2,5,7-8,11-119,123-124,126-174
+scripts/dev-child.py
+  s_c04f56bbcc9166::t_219366ae1d80fd 1-3,5-11
+scripts/dev-cli.py
+  s_c04f56bbcc9166::t_49eeae4f84c57a 1-3,6,8-13,15-32,34-58,60-94,96-165,167-221,223-241,243-355
+scripts/dev-cli.test.py
+  s_c04f56bbcc9166::t_6c237584f4cdb1 1-2,4-9,11,14-63,65-270
+scripts/dev-herdr.py
+  s_c04f56bbcc9166::t_a2b37e3c39c298 2,4-6,11-46,49-50,53-55,57-88,90-103,105-235,237-256,258-295,297-340,342-348,350-351,353-354,356,358-481,485-499
+scripts/dev-herdr.test.py
+  s_c04f56bbcc9166::t_4be46c6d400001 2-3,6-7,10-11,13-45,48-60,62-170
+scripts/dev-portless.test.py
+  s_c04f56bbcc9166::t_331f1621166cef 1-131
+scripts/dev-scenario.py
+  s_c04f56bbcc9166::t_4ef5a115bd1fed 2,5,9-46,48-136,140-142,144-162,164-166,168-169
+scripts/dev-scenarios.test.py
+  s_c04f56bbcc9166::t_e475e43382f73f 1-172
+scripts/dev-session.py
+  s_c04f56bbcc9166::t_3606e89fc19b42 2,5,7,9-13,15,17-25,28-29,31,33-69,73-74,76-81,83-112
+scripts/dev.py
+  s_c04f56bbcc9166::t_f98696e579cf68 1-2,6-210,212-220,222-330,332-372,374-424,426-446
+scripts/dev_environment.py
+  s_c04f56bbcc9166::t_10ea253b105e2b 1-12,14-54
+scripts/dev_portless.py
+  s_c04f56bbcc9166::t_038ccba8948392 2,4,7-16,19-25,28-37,39-120,122-169,173-175,177-179
+scripts/dev_support.py
+  s_c04f56bbcc9166::t_9cfe411346faa8 1,3,7-10,12-37,39-53,55-65,67-82,85-90,92,94-96,98-100,102-149
+scripts/evaluate-hermes-memory.py
+  s_c04f56bbcc9166::t_01c329c9ad66a2 1-43
+scripts/herdr-copy-env.py
+  s_c04f56bbcc9166::t_a060024ce38872 1-32
+scripts/herdr-copy-env.test.py
+  s_c04f56bbcc9166::t_afb636a67bc4e6 1-7,10-36,39-40
+scripts/lib/agent-release.ts
+  s_c04f56bbcc9166::t_34db0f10b9b93b 2,4-6,8-11
+scripts/lib/distribution-verification.test.ts
+  s_c04f56bbcc9166::t_646dd357c32014 1-32,34-41,43-55,57-63,65-69,71-75,77-126
+scripts/lib/distribution-verification.ts
+  s_c04f56bbcc9166::t_088e897486fac8 1-76,78-104
+scripts/lib/pinned-bun.ts
+  s_c04f56bbcc9166::t_aa57d4143aadaf 1,3-7
+scripts/lib/template-install.ts
+  s_c04f56bbcc9166::t_3d1327a73d0762 1,3-8,10-27,29-62
+scripts/live-box-canary.ts
+  s_c04f56bbcc9166::t_b956b496622a25 1-92
+scripts/live-box-desktop-wait.test.ts
+  s_c04f56bbcc9166::t_82d5b024b7147d 1-35
+scripts/live-box-desktop-wait.ts
+  s_c04f56bbcc9166::t_d1d79c9526b1b4 1-30
+scripts/live-control-skills-canary.ts
+  s_c04f56bbcc9166::t_30d040987da897 1-171
+scripts/live-desktop-canary-wait.test.ts
+  s_c04f56bbcc9166::t_484e7c66e3a797 1-2,4-9,11-15,17-27,29-33
+scripts/live-desktop-canary-wait.ts
+  s_c04f56bbcc9166::t_65a9d3df6453e3 1,3-20
+scripts/live-desktop-canary.ts
+  s_c04f56bbcc9166::t_4298362a894ea2 1-68
+scripts/live-model-canary.ts
+  s_c04f56bbcc9166::t_cbc7d28728de02 1-2,5-20,22-36,38-40
+scripts/live-runtime-update-canary.ts
+  s_c04f56bbcc9166::t_b0a0e9b681146b 1-101
+scripts/live-skill-install-canary.ts
+  s_c04f56bbcc9166::t_1803cb05eac98c 1-87,89-90,92-132,134-150,152-166
+scripts/live-skills-canary.ts
+  s_c04f56bbcc9166::t_baeb39675e7452 1-9,11-28,30-42,44-51,53-70,72-87
+scripts/memory-latency.py
+  s_c04f56bbcc9166::t_e8ae32dc1cc5a7 2,5-13,16-17,20-25,28-64,67-78,81-103,107-142
+scripts/prepare-box-template.ts
+  s_c04f56bbcc9166::t_d782aebb0eb780 1-65
+scripts/probe-plugin-oauth.ts
+  s_c04f56bbcc9166::t_459a94957acd3a 1-3,5-54
+scripts/shared_skills_test.py
+  s_c04f56bbcc9166::t_caa50fec312ccd 1-111
+scripts/test-distribution-verification.ts
+  s_c04f56bbcc9166::t_7e16feb2c1dda6 1-35
+scripts/test-memory-pi.ts
+  s_c04f56bbcc9166::t_b422a3c9347322 1-4,6-22
+scripts/test-postgres-restore.ts
+  s_c04f56bbcc9166::t_9b8c61acac0b0a 1-2,4-7,9-12,14,16-26,28-74,76-77
+scripts/test-production-container.ts
+  s_c04f56bbcc9166::t_5c8822eeb1ad33 1-80
+scripts/test-server.ts
+  s_c04f56bbcc9166::t_0f00fd6962c3d9 1-2,4-16,18-25
+scripts/test-template-install.ts
+  s_c04f56bbcc9166::t_4151e49d141267 1-12
+scripts/update_runtime_test.py
+  s_c04f56bbcc9166::t_d596691f72936b 2-3,6-8,10,12,16-77,80,82-109,112-293
+scripts/upgrade-box-desktop-boundary.ts
+  s_c04f56bbcc9166::t_cbcbfb6ef7cb39 1-70
+scripts/validation_evidence.py
+  s_c04f56bbcc9166::t_b5e566bec97469 1-5,8-27
+scripts/verify.py
+  s_c04f56bbcc9166::t_2b64435cc1cc0e 1,3-5,9-12,15-108,110-147,149-163,165-278,280-431,435
+scripts/verify_test.py
+  s_c04f56bbcc9166::t_1c35fe769248d8 1-155
+skills-lock.json
+  s_c04f56bbcc9166::t_f895ce12374682 2-8,10-14
+tools/dev/package-lock.json
+  s_c04f56bbcc9166::t_180fc2f746d638 2-51
+tools/dev/package.json
+  s_c04f56bbcc9166::t_28220f71d79c6c 2,4,6-7
+tsconfig.json
+  s_c04f56bbcc9166::t_ef95dd9d867b06 3-6,8-9,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7c87993f3e85bdc1ead47e840ebfbf1b1f1525c7",
+  "prompts": {},
+  "sessions": {
+    "s_c04f56bbcc9166": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aaa9-3cd5-7f73-bef8-b0085c9dbc76",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
