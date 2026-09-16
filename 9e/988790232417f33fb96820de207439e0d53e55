@@ -1,0 +1,21 @@
+.github/dependabot.yml
+  s_c04f56bbcc9166::t_8cf2a05be70279 4-6
+docs/repository-migration.md
+  s_c04f56bbcc9166::t_795c9a71ee2f9b 44-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9e988790232417f33fb96820de207439e0d53e55",
+  "prompts": {},
+  "sessions": {
+    "s_c04f56bbcc9166": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aaa9-3cd5-7f73-bef8-b0085c9dbc76",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
