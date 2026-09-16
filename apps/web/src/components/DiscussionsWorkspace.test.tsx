@@ -578,6 +578,32 @@ it("opens a row menu from its button and from a right click, and moves a discuss
   cleanup(); vi.unstubAllGlobals();
 });
 
+it("creates a folder and a discussion inside it without opening a menu", async () => {
+  const bodies: Array<Record<string, unknown>> = [];
+  let folders: Array<Record<string, unknown>> = [];
+  setupFetch((path, options) => {
+    if (path === "/api/discussion-folders" && options?.method === "POST") {
+      const body = JSON.parse(String(options.body)); bodies.push(body);
+      folders = [{ id: "folder-1", name: body.name, companionIds: [], createdAt: discussion.createdAt }];
+      return response({ folder: folders[0] });
+    }
+    if (path === "/api/discussions" && options?.method === "POST") { bodies.push(JSON.parse(String(options.body))); return response({ discussion: { ...discussion, id: "in-folder", title: "New discussion", folderId: "folder-1" } }); }
+    if (path === "/api/discussions") return response({ discussions: [discussion], folders });
+    return undefined;
+  });
+  const actor = userEvent.setup(); renderWorkspace();
+
+  await actor.click(await screen.findByRole("button", { name: "New folder" }));
+  await actor.type(screen.getByRole("textbox", { name: "New folder name" }), "Launch{Enter}");
+  await waitFor(() => expect(bodies[0]).toMatchObject({ name: "Launch", companionIds: [] }));
+
+  const add = await screen.findByRole("button", { name: "New in Launch" });
+  await actor.click(add);
+  await waitFor(() => expect(bodies).toHaveLength(2));
+  expect(bodies[1]).toMatchObject({ folderId: "folder-1" });
+  cleanup(); vi.unstubAllGlobals();
+});
+
 it("leaves the recipient pill out of a direct discussion", async () => {
   const direct = { ...discussion, directCompanionId: "ada" };
   setupFetch(path => {

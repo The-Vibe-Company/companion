@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent, type MouseEvent, type RefObject } from "react";
-import { Archive, ChevronRight, Plus, Settings, X } from "lucide-react";
+import { Archive, ChevronRight, Folder, FolderPlus, Plus, Settings, X } from "lucide-react";
 import { discussionApi, type AccountUser, type Companion, type Discussion, type DiscussionFolder } from "@/api";
 import { CompanionAvatar } from "../CompanionAvatar";
 import { Button } from "../ui/button";
@@ -73,7 +73,8 @@ export function Sidebar({ panelRef, open, user, companions, discussions, folders
 
   return <aside ref={panelRef} tabIndex={-1} className={cn("discussion-sidebar", open && "discussion-sidebar--open")} aria-label="Discussions">
     <header>
-      <button className="discussion-wordmark" onClick={() => { const latest = groups[0] ?? discussions[0]; if (latest && latest.id !== selectedId) onOpen(latest.id); onClose(); }} aria-label="Back to discussions"><img src="/favicon.svg" alt="" /></button>
+      {/* The mark is a mark. Clicking it must not move you to another discussion. */}
+      <span className="discussion-wordmark"><img src="/favicon.svg" alt="companions.build" /></span>
       <button type="button" className="sidebar-create" aria-label="Create" aria-haspopup="menu" aria-expanded={menu?.id === "create"} onClick={event => requestMenu("create", "Create", createItems)(event.currentTarget)}><Plus /></button>
       <Button className="discussion-sidebar-close" variant="ghost" size="icon" onClick={onClose} aria-label="Close navigation"><X /></Button>
     </header>
@@ -138,7 +139,9 @@ export function Sidebar({ panelRef, open, user, companions, discussions, folders
         onMenu={requestMenu}
       />)}
 
-      {creatingFolder && <FolderCreator onCreated={() => { setCreatingFolder(false); void onListRefresh(); }} onCancel={() => setCreatingFolder(false)} onError={onError} />}
+      {creatingFolder
+        ? <FolderCreator onCreated={() => { setCreatingFolder(false); void onListRefresh(); }} onCancel={() => setCreatingFolder(false)} onError={onError} />
+        : <button className="folder-create-button" onClick={() => setCreatingFolder(true)}><FolderPlus />New folder</button>}
 
       <button className="archived-link" onClick={onShowArchived}><Archive />Archived discussions</button>
     </nav>
@@ -243,16 +246,18 @@ function FolderGroup({ folder, items, companions, folders, selectedId, open, onT
   const requestMenu = onMenu(`folder:${folder.id}`, `Options for ${folder.name}`, [
     { label: "Rename", onSelect: () => onRename(`folder:${folder.id}`) },
     { label: "Default companions", onSelect: onDefaults },
-    { label: `New in ${folder.name}`, onSelect: onCreate },
     { label: "Delete", danger: true, onSelect: () => void onMutate(() => discussionApi.deleteFolder(folder.id)) },
   ]);
   return <details className="discussion-folder" open={open} onToggle={event => onToggle(event.currentTarget.open)}>
-    <summary onContextMenu={event => openFromRow(event, requestMenu)}>
+    <summary data-menu-open={menuOpen || undefined} onContextMenu={event => openFromRow(event, requestMenu)}>
       <ChevronRight />
       {renaming === `folder:${folder.id}`
         ? <RenameRow inline value={folder.name} label="Folder name" onCancel={onRenamed} onSave={async name => { await onMutate(() => discussionApi.updateFolder(folder.id, { name })); onRenamed(); }} />
         : <><span>{folder.name}</span><i className="folder-companions" aria-label={`${defaults.length} default companions`}>{defaults.slice(0, 3).map(companion => <CompanionAvatar key={companion.id} name={companion.name} avatar={companion.avatar} size={18}/>)}</i>
-          <RowMenuTrigger label={`Edit ${folder.name}`} expanded={menuOpen} onOpen={requestMenu} /></>}
+          <span className="folder-actions">
+            <button type="button" className="folder-add" aria-label={`New in ${folder.name}`} title={`New in ${folder.name}`} onClick={event => { event.preventDefault(); event.stopPropagation(); onCreate(); }}><Plus /></button>
+            <RowMenuTrigger label={`Edit ${folder.name}`} expanded={menuOpen} onOpen={requestMenu} />
+          </span></>}
     </summary>
     <div className="discussion-group">
       {[...items].sort(byRecency).map(item => <DiscussionRow
@@ -274,7 +279,7 @@ function FolderGroup({ folder, items, companions, folders, selectedId, open, onT
   </details>;
 }
 
-function RenameRow({ value, label, onSave, onCancel, inline = false }: { value: string; label: string; onSave: (name: string) => Promise<void>; onCancel: () => void; inline?: boolean }) {
+function RenameRow({ value, label, onSave, onCancel, inline = false, placeholder }: { value: string; label: string; onSave: (name: string) => Promise<void>; onCancel: () => void; inline?: boolean; placeholder?: string }) {
   const [name, setName] = useState(value);
   return <form
     className={cn("rename-row", inline && "rename-row--inline")}
@@ -283,7 +288,7 @@ function RenameRow({ value, label, onSave, onCancel, inline = false }: { value: 
     // Renaming a folder happens inside its summary; typing must not fold it.
     onClick={event => event.stopPropagation()}
   >
-    <input aria-label={label} autoFocus value={name} onChange={event => setName(event.target.value)} onBlur={onCancel} />
+    <input aria-label={label} placeholder={placeholder} autoFocus value={name} onChange={event => setName(event.target.value)} onBlur={onCancel} />
   </form>;
 }
 
@@ -293,7 +298,7 @@ function FolderCreator({ onCreated, onCancel, onError }: { onCreated: () => void
     try { await discussionApi.createFolder({ clientCreationId: creationId.current, name, companionIds: [] }); creationId.current = crypto.randomUUID(); onCreated(); }
     catch (cause) { onError(cause); }
   }
-  return <RenameRow value="" label="New folder name" onSave={save} onCancel={onCancel} />;
+  return <div className="folder-creator"><Folder /><RenameRow inline value="" label="New folder name" placeholder="Folder name, then Enter" onSave={save} onCancel={onCancel} /></div>;
 }
 
 function FolderDefaultsDialog({ folder, companions, onClose, onSaved, onError }: { folder: DiscussionFolder; companions: Companion[]; onClose: () => void; onSaved: () => void; onError: (cause: unknown) => void }) {

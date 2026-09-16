@@ -24,12 +24,6 @@
   height: 38px;
   margin-right: auto;
   place-items: center;
-  border: 0;
-  border-radius: 50%;
-  padding: 0;
-  background: transparent;
-  color: var(--atelier-ink);
-  cursor: pointer;
 }
 .discussion-wordmark img { display: block; width: 34px; height: 34px; }
 .sidebar-create {
@@ -195,11 +189,49 @@
 .discussion-folder > summary::-webkit-details-marker { display: none; }
 .discussion-folder > summary > svg:first-child { width: 13px; transition: rotate var(--duration-enter) var(--ease-ui); }
 .discussion-folder[open] > summary > svg:first-child { rotate: 90deg; }
-.discussion-folder > summary > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.discussion-folder > summary > span:not(.folder-actions) { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .discussion-folder > .discussion-group { padding-left: 14px; }
 .folder-companions { display: flex; align-items: center; font-style: normal; }
 .folder-companions .character-mark { margin-left: -4px; }
 .folder-companions .character-mark:first-child { margin-left: 0; }
+
+/* Adding to a folder is one click from its header, next to its menu. */
+.folder-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; }
+.folder-add {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--atelier-muted);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease, opacity var(--duration-fast) ease;
+}
+.folder-add svg { width: 15px; height: 15px; }
+
+.folder-create-button {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  gap: 9px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: var(--radius-2);
+  padding: 6px 8px;
+  background: transparent;
+  color: var(--atelier-muted);
+  text-align: left;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+.folder-create-button svg { width: 15px; flex: 0 0 auto; }
+.folder-creator { display: flex; align-items: center; gap: 9px; margin-top: 6px; padding: 0 8px; }
+.folder-creator > svg { width: 15px; flex: 0 0 auto; color: var(--atelier-muted); }
 
 .archived-link {
   display: flex;
@@ -266,8 +298,18 @@
   .archived-link:hover { color: var(--atelier-ink); }
   .row-menu-item:hover { background: var(--atelier-rail); }
   .folder-defaults fieldset label:hover { background: var(--atelier-rail); }
-  .discussion-archive:hover, .row-menu-trigger:hover { background: var(--atelier-border); color: var(--atelier-ink); }
+  .discussion-archive:hover, .row-menu-trigger:hover, .folder-add:hover { background: var(--atelier-border); color: var(--atelier-ink); }
+  .folder-create-button:hover { background: var(--atelier-soft); color: var(--atelier-ink); }
   .discussion-sidebar > footer button:hover { background: var(--atelier-soft); color: var(--atelier-ink); }
+
+  /* The folder header reveals its actions the same way a row does. */
+  .discussion-folder > summary .folder-actions { opacity: 0; transition: opacity var(--duration-fast) ease; }
+  .discussion-folder > summary:hover .folder-actions,
+  .discussion-folder > summary:focus-within .folder-actions,
+  .discussion-folder > summary[data-menu-open] .folder-actions { opacity: 1; }
+  .discussion-folder > summary:hover .folder-companions,
+  .discussion-folder > summary:focus-within .folder-companions,
+  .discussion-folder > summary[data-menu-open] .folder-companions { display: none; }
 
   /* Actions rest over the time stamp; the row reveals them on approach. */
   .discussion-row-actions { position: absolute; right: 6px; top: 50%; translate: 0 -50%; opacity: 0; transition: opacity var(--duration-fast) ease; }
@@ -279,7 +321,7 @@
   .discussion-row[data-menu-open] .discussion-row-time { visibility: hidden; }
 }
 @media (pointer: coarse) {
-  .discussion-archive, .row-menu-trigger { width: 44px; min-width: 44px; height: 44px; }
+  .discussion-archive, .row-menu-trigger, .folder-add { width: 44px; min-width: 44px; height: 44px; }
 }
 
 @media (max-width: 1024px) {
