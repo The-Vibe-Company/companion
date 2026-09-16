@@ -39,7 +39,39 @@ class SharedSkillsTests(unittest.TestCase):
                 self.assertTrue(link.is_symlink())
                 self.assertFalse(link.readlink().is_absolute())
                 self.assertEqual(package.resolve(), link.resolve())
+        for name in ("better-ui", "emil-design-eng"):
+            with self.subTest(link=name):
+                link = ROOT / ".claude/skills" / name
+                self.assertTrue(link.is_symlink())
+                self.assertFalse(link.readlink().is_absolute())
+                self.assertEqual((SKILLS / name).resolve(), link.resolve())
         self.assertTrue((SKILLS / "design-frontend-dev/LICENSE").is_file())
+
+    def test_v2_package_contract_and_compatibility_helpers(self):
+        ship = SKILLS / "ship-pr-dev"
+        review = SKILLS / "review-code-dev"
+        self.assertEqual("1.4.0", json.loads((ship / "companion.json").read_text())["version"])
+        manifest = json.loads((review / "companion.json").read_text())
+        self.assertEqual("2.0.0", manifest["version"])
+        self.assertEqual({}, manifest["dependencies"])
+        self.assertEqual({}, manifest["environment"]["secrets"])
+        self.assertIn("Apache License", (review / "LICENSE").read_text())
+        for filename in ("ocr.py", "test_ocr.py", "prepare_review_run.py",
+                         "collect_review_context.py", "test_collect_review_context.py"):
+            self.assertTrue((review / "scripts" / filename).is_file(), filename)
+        for obsolete in ("agents", "references", "evals", "scripts/parse_review_findings.py",
+                         "scripts/veille_pr_state.py", "scripts/test_veille_pr_state.py"):
+            self.assertFalse((review / obsolete).exists(), obsolete)
+        gate = (ship / "references/review-gate.md").read_text()
+        for contract in ("2.0.0", "(scope, path, status)", "workspace", "merge base",
+                         "explicit human acceptance", "after every later commit/push"):
+            self.assertIn(contract, gate)
+        skill = (review / "SKILL.md").read_text()
+        self.assertIn("git diff <merge_base>..<to>", skill)
+        self.assertIn("(path, status)", skill)
+        for name in ("ship-pr-dev", "review-code-dev"):
+            self.assertEqual([], list((SKILLS / name).rglob("__pycache__")))
+            self.assertEqual([], list((SKILLS / name).rglob("*.pyc")))
 
     def test_bundled_python_suites(self):
         for name in PACKAGES:

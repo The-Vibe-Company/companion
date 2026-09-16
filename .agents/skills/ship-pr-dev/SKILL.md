@@ -1,6 +1,6 @@
 ---
 name: ship-pr-dev
-description: "Ship PR: credit-aware autonomous pull request readiness workflow. Use when the user asks to ship work, prepare a branch for review, create or update a PR, make CI green, clean up a branch before PR, or produce a PR a human can confidently merge. This skill may edit code, run checks, commit, push, create/update a PR, and iterate on CI, but it keeps Git ownership in the coordinator, delegates bounded work to cheaper host-native workers, uses review-code-dev as the only independent read-only review gate, waits for all visible latest-SHA CI to be green, runs capture-learning-tools report-only, and never merges."
+description: "Ship PR: credit-aware autonomous pull request readiness workflow. Use when the user asks to ship work, prepare a branch for review, create or update a PR, make CI green, clean up a branch before PR, or produce a PR a human can confidently merge. This skill may edit code, run checks, commit, push, create/update a PR, and iterate on CI, but it keeps Git ownership in the coordinator, delegates bounded work to cheaper host-native workers, uses review-code-dev v2 (Alibaba OCR delegation) as the only independent read-only review gate, waits for all visible latest-SHA CI to be green, runs capture-learning-tools report-only, and never merges."
 allowed-tools: "Bash, Read, Edit, Write, Glob, Grep, Agent"
 ---
 
@@ -14,8 +14,8 @@ Own delivery from the current branch to a PR that is ready for human review. The
 2. Stage only intentional files. Never use broad staging when unrelated changes exist.
 3. The coordinator is the only Git owner. Workers never stage, commit, push, rebase, merge, stash, create/update a PR, or alter CI settings.
 4. Allow at most one write-capable worker at a time. Reviewers and investigators are read-only.
-5. `review-code-dev` is the single independent review gate. Do not run a separate Ship PR review board or a second full frontend review; pass the required risk and frontend lenses into one review run.
-6. A PR is ready only when local verification is fresh, `review-code-dev` has no unresolved P0/P1 findings, every visible non-skipped CI item is green on the latest pushed SHA, and the report-only `capture-learning-tools` pass completed.
+5. `review-code-dev` v2 (Alibaba delegation) is the single independent review gate. Do not run a separate Ship PR review board or a second full frontend review; pass the required risk and frontend lenses into one review run.
+6. A PR is ready only when local verification is fresh, the Alibaba review is complete with no unresolved critical/high (P0/P1) findings, every visible non-skipped CI item is green on the latest pushed SHA, and the report-only `capture-learning-tools` pass completed.
 7. Never bypass checks, use `--no-verify`, weaken validation, or claim success while CI is pending, stale, partially inspected, failed, cancelled, or attached to another SHA.
 8. Never expose secrets. Stop push/PR work, redact values, and give rotation guidance if one is found.
 9. Write artifacts only under ignored `plans/ship-pr-dev/runs/<timestamp>-<repo-slug>/`.
@@ -27,9 +27,10 @@ Read only what the current phase needs:
 - `references/workflow.md` — detailed delivery loop and retry policy.
 - `references/agent-routing.md` — host-specific worker models, effort, context, budgets, telemetry, and fallbacks.
 - `references/readiness-gates.md` — read when choosing the mode, reassessing a stalled loop, and before handoff; owns completion criteria, stop decisions, and required evidence.
+- `references/review-gate.md` — read before review; owns the v2 version check, OCR setup, scope, isolated reviewer handoff, coverage and output contract.
 - `references/pr-template.md` — PR body and final handoff.
 
-Load the installed `review-code-dev` skill before the review gate and `capture-learning-tools` only for the final report-only learning pass. Resolve skills by canonical name; never guess an install path.
+Load the installed `review-code-dev` skill and verify the v2 Alibaba contract before the review gate and `capture-learning-tools` only for the final report-only learning pass. Resolve skills by canonical name; never guess an install path.
 
 ## Workflow
 
@@ -64,9 +65,9 @@ Use `impact.agent_workflow` for paths under agent skill roots. Do not infer appl
 
 | Tier | Typical change | Delegation budget | Local target / reassessment checkpoint (CI excluded) |
 | --- | --- | --- | --- |
-| trivial | docs, metadata, obvious one-file edit | no implementation worker; quick review, normally inline | 10 / 15 min |
-| standard | bounded feature/fix across a few files | at most 1 write worker, 1 primary reviewer, up to 2 focused reviewers total inside `review-code-dev` | 25 / 40 min |
-| deep | auth, billing, permissions, migration, public API, broad frontend flow, cross-module architecture | at most 1 write worker, 1 primary reviewer, up to 3 focused reviewers total inside `review-code-dev` | 50 / 90 min |
+| trivial | docs, metadata, obvious one-file edit | no implementation worker; one small isolated reviewer, no specialist board | 10 / 15 min |
+| standard | bounded feature/fix across a few files | at most 1 write worker and 1 isolated primary reviewer; no review subagents | 25 / 40 min |
+| deep | auth, billing, permissions, migration, public API, broad frontend flow, cross-module architecture | at most 1 write worker and 1 isolated primary reviewer with deeper cross-file analysis; no review subagents | 50 / 90 min |
 
 Do not spend a worker on repository discovery, deterministic checks, Git operations, CI polling, PR text, or a task the coordinator can complete in roughly one tool call. Use at most three concurrent read-only workers. Never launch two workers with the same review angle. At a checkpoint, explain what is consuming time, narrow or resume work when useful, and continue for as long as correctness requires. A time checkpoint is never a blocker and never justifies an incomplete handoff.
 
@@ -89,15 +90,13 @@ Workers may diagnose a non-obvious failure, but the coordinator runs and records
 
 ### 5. Run One Independent Review Gate
 
-Run `review-code-dev` once after the branch is coherent and local verification is green enough to review:
+Follow `references/review-gate.md` using `review-code-dev` v2 (Alibaba delegation) once the branch and local checks are coherent. The coordinator prepares OCR with the dependency's portable bootstrap; one isolated read-only host reviewer performs the upstream workflow. No additional LLM endpoint or key is required.
 
-- `quick` for trivial low-risk changes;
-- `standard` for normal changes;
-- `deep` for the deep-risk tier.
+Pass the goal, frozen branch/workspace scope, changed-file inventory, risk tier, required focus areas, prepared OCR paths and output contract. `quick`/`standard`/`deep` are caller depth hints, not OCR flags or legacy skill modes. Frontend/accessibility/responsive/state coverage belongs inside this same review. Git ownership and fixes stay with the coordinator.
 
-Pass repository path, base, user goal, changed-file summary, impacted surfaces, and required lenses. For frontend work, require the `frontend` lens inside this same run. Do not run an earlier frontend mega-pass or a separate Ship PR board.
+Treat critical/high as blockers; fix medium by default and require explicit human acceptance for any remaining medium risk. Preserve upstream severity and map to P0–P3 only for existing ship-state consumers. Complete coverage is required even when findings are empty. OCR setup failure is a review blocker, not a trigger for the removed native fallback.
 
-Fix confirmed P0/P1/P2 findings in the coordinator or with the same bounded write worker. Rerun affected verification. Rerun only the targeted failed review lens when evidence changed; repeat a full review only if the fix materially changed scope or architecture. Reassess repeated full runs under `references/readiness-gates.md`.
+After fixes, rerun affected checks and resume the same reviewer on the changed files and affected contracts. Carry forward only evidence whose reviewed content is unchanged; refresh the full scope when necessary. Record `review-gate.md` with the dependency version, OCR version, exact reviewed content, severity counts and coverage before commit/push. Hooks or later changes must not silently invalidate the review.
 
 ### 6. Commit, Push, PR, And CI
 
@@ -126,7 +125,7 @@ PR ready for human review: <url>
 
 Branch: <branch> -> <base>
 Verification: <commands passed>
-Review gate: review-code-dev <passed / findings fixed>
+Review gate: review-code-dev v2 / Alibaba delegation <passed / findings fixed / blocked>
 CI: <all visible non-skipped items green on latest SHA>
 Artifacts: <RUN_DIR>
 ```

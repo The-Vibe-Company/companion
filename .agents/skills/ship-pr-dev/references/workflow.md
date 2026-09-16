@@ -28,15 +28,9 @@ Record exact commands and skipped checks. Rerun affected checks after any source
 
 ## D. Single Review Gate
 
-Run `review-code-dev` after the branch is coherent:
+Follow `review-gate.md` for the `review-code-dev` v2 Alibaba contract: version check, portable OCR setup, frozen branch plus in-scope workspace coverage, one isolated reviewer, upstream severity and required artifacts. Use the risk tier as a depth hint and frontend/security/API concerns as focus instructions within the same review.
 
-- quick for trivial low-risk changes;
-- standard for normal changes;
-- deep for auth, billing, permissions, migrations, public APIs, broad frontend paths, cross-module architecture, or release-critical work.
-
-Pass required lenses into that run. Frontend is a lens inside the same review, not a separate full pass. Ship PR does not launch a parallel review board.
-
-Fix confirmed P0/P1/P2 findings. Prefer the same write worker for bounded follow-ups. Rerun affected verification and only the failed review lens. Repeat a full review only after material scope/architecture changes; use `readiness-gates.md` for reassessment.
+Fix critical/high/medium findings under `readiness-gates.md`. Resume the same primary for affected files/contracts after corrections; no old specialist router, parser scripts, or native fallback is assumed. Review remains read-only and the coordinator owns every fix and Git operation.
 
 ## E. Commit And PR
 

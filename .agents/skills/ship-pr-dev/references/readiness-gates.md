@@ -9,8 +9,9 @@ These conditions prevent a ready claim. Fix what is safely in scope and wait for
 - unresolved merge conflicts
 - any failed, cancelled, errored, stale, or partially inspected visible non-skipped PR check/check suite on the latest pushed commit
 - queued, pending, or in-progress CI on the latest pushed commit for a `ship` or `update-pr` run
-- unreviewed P0/P1 `review-code-dev` findings
-- confirmed P2 findings without a documented accepted-risk reason
+- unresolved critical/high (P0/P1) Alibaba review findings
+- missing/incompatible review-code-dev v2, failed OCR setup, missing independent reviewer, or incomplete review coverage
+- confirmed medium (P2) findings without explicit human acceptance recorded
 - frontend diff without the frontend lens inside `review-code-dev`
 - CI unavailable or not fully green on the latest pushed commit for a `ship` or `update-pr` run, unless the user explicitly requested local-only work
 - secrets in the diff, logs, fixtures, or config
@@ -34,15 +35,16 @@ These conditions prevent a ready claim. Fix what is safely in scope and wait for
 
 `review-gate.md` should include:
 
-- `review-code-dev` mode and required lenses
+- `review-code-dev` package version, Alibaba delegation backend, OCR version and required focus areas
 - base branch
 - artifact path
 - finding counts by severity
 - fixed findings
 - accepted-risk findings
 - requested and effective reviewer routing when observable
-- focused reviewer count versus the tier budget
-- reason if the review ran inline
+- exact reviewed branch SHAs and workspace fingerprint; evidence bound to the latest candidate/pushed source
+- reviewed, excluded and skipped counts reconciled against the full changed-file inventory
+- one isolated primary reviewer and no review subagents
 - frontend lens coverage and impacted user paths when relevant
 
 `ci.md` should include for pushed PRs:
@@ -56,10 +58,10 @@ These conditions prevent a ready claim. Fix what is safely in scope and wait for
 
 ## Severity Policy
 
-- P0: never ship.
-- P1: never present as merge-ready until fixed or conclusively false positive.
-- P2: fix by default. If not fixed, document why it is accepted risk and make the PR non-merge-ready unless the human explicitly accepts it.
-- P3: fix when cheap. Otherwise list in PR notes as follow-up or polish.
+- critical / P0: never ship.
+- high / P1: never present as merge-ready until fixed or conclusively false positive.
+- medium / P2: fix by default. If not fixed, document why it is accepted risk and make the PR non-merge-ready unless the human explicitly accepts it.
+- low / P3: fix when cheap. Otherwise list in PR notes as follow-up or polish.
 
 ## Verification After Changes
 
@@ -82,7 +84,7 @@ Ask or stop when the next step changes ownership or risk:
 - splitting mixed unrelated work
 - rewriting public history
 - dropping files
-- accepting unresolved P2 risk
+- accepting unresolved medium (P2) risk
 - shipping with unavailable checks
 - creating a draft PR despite blockers
 - changing the target base branch

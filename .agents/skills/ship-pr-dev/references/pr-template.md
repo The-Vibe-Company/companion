@@ -32,8 +32,10 @@ Examples:
 - Checks: <short summary>
 
 ## Review Gate
-- `review-code-dev`: <passed / findings fixed / blocked>
-- Required lenses: <frontend/security/API/etc. / none>
+- `review-code-dev` v2 / Alibaba delegation: <passed / findings fixed / blocked>
+- Required focus areas: <frontend/security/API/etc. / none>
+- Coverage: <reviewed/excluded/skipped counts; scope matches latest source>
+- Findings: <critical/high/medium/low counts and disposition>
 - Artifacts: `<path or PR-safe summary>`
 
 ## Risk
