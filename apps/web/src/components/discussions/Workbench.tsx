@@ -46,6 +46,7 @@ export function WorkspacePanel({ snapshot, companions, scope, tab, onScope, onTa
   const direct = snapshot.discussion.directCompanionId;
   // A scout whose companion just left the conversation falls back to the whole-conversation scope.
   const selected = scope === PANEL_SCOPE_ALL ? null : participants.find(item => item.companionId === scope) ?? null;
+  const selectedRetired = Boolean(selected?.companion.retiredAt);
   const computers = participants.filter(item => item.companion.provider === "box");
   const files = selected ? companionFiles(snapshot, selected.companionId) : conversationFiles(snapshot);
   const tasks = selected ? orderedTasks(snapshot.tasks.filter(task => task.companionId === selected.companionId)) : orderedTasks(snapshot.tasks);
@@ -112,8 +113,10 @@ export function WorkspacePanel({ snapshot, companions, scope, tab, onScope, onTa
             <CompanionAvatar name={selected.companion.name} avatar={selected.companion.avatar} size={40}/>
             <div><strong>{selected.companion.name}</strong><small>{selected.removedAt ? "Previous participant · history remains" : selected.companion.instructions}</small></div>
           </div>
-          {selected.removedAt
-            ? <p className="muted-copy">This Companion was removed from the conversation. Its accepted work and files remain above.</p>
+          {selected.removedAt || selectedRetired
+            ? <p className="muted-copy">{selected.removedAt
+              ? "This Companion was removed from the conversation. Its accepted work and files remain above."
+              : "This Companion is retired. Its conversations and files remain, but it can no longer be configured or given work."}</p>
             : <>
               <div className="panel-actions">
                 {selected.companion.provider === "box" && <Button variant="outline" size="sm" onClick={() => onTab("computer")}><Computer/>Open computer</Button>}

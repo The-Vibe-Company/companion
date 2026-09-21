@@ -43,7 +43,7 @@ export function CompanionDetailRow({ participant, tasks, discussionId, onRemove,
       {removable && !participant.removedAt && <Button variant="ghost" size="sm" onClick={() => void onRemove()}><UserMinus />Remove</Button>}
     </div>{removable && <p className="muted-copy">Removing a Companion leaves accepted work and history here.</p>}
     <section><h4>Files from this conversation</h4>{files.length ? <FileList files={files} /> : <p>No files from {participant.companion.name} yet.</p>}</section>
-    {!participant.removedAt && <p className="muted-copy">Select {participant.companion.name} above to edit its settings or retire it.</p>}
+    {!participant.removedAt && !participant.companion.retiredAt && <p className="muted-copy">Select {participant.companion.name} above to edit its settings or retire it.</p>}
     </div>}
     {showDesktop && <DesktopSheet companion={participant.companion} onClose={() => setShowDesktop(false)} onRefresh={onRefresh}/>}</section>;
 }

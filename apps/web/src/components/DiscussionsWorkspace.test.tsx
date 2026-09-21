@@ -510,6 +510,19 @@ it("keeps the archive modal isolated when navigation crosses its responsive brea
   cleanup(); vi.unstubAllGlobals();
 });
 
+it("treats a retired companion's panel details as read-only", async () => {
+  const retiredAda = { ...ada, retiredAt: "2026-09-11T10:00:00.000Z" };
+  setupFetch(path => path === "/api/discussions/discussion-1" ? response({ ...snapshot, participants: [{ companionId: "ada", removedAt: null, companion: retiredAda }] }) : undefined);
+  const actor = userEvent.setup(); renderWorkspace();
+  await actor.click(await screen.findByRole("button", { name: "Workspace" }));
+  await actor.click(screen.getByRole("tab", { name: "Ada" }));
+  await actor.click(screen.getByRole("button", { name: /^Details/ }));
+  expect(await screen.findByText(/This Companion is retired/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /^Retire/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Save configuration" })).not.toBeInTheDocument();
+  cleanup(); vi.unstubAllGlobals();
+});
+
 it("opens only supported computers, expands their controls, and preserves addressing", async () => {
   setupFetch(path => path === "/api/discussions/discussion-1" ? response({
     ...snapshot, participants: [snapshot.participants[0], { companionId: june.id, companion: { ...june, provider: "local" }, removedAt: null }],
