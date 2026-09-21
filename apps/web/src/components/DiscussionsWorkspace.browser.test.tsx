@@ -34,7 +34,16 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
         tasks:[{...task,id:'research',companionId:'ada',status:'running',content:'Compare positioning across three competing products',previewText:'Reviewing the pricing and onboarding flows.'},
           {...task,id:'draft',companionId:'june',status:'needs_input',content:'Draft the launch announcement',questions:[{id:'q',question:'Who is the announcement for?',options:['Existing customers','New customers'],answer:null}]}],
         centralRuns:[],proposals:[],beforeCursor:null };
-      window.fetch = async input => new Response(JSON.stringify(String(input)==='/api/discussions' ? {discussions:[discussion],folders:[]} : snapshot), {headers:{'content-type':'application/json'}});
+      window.fetch = async input => {
+        const url = String(input);
+        const body = url === '/api/discussions' ? {discussions:[discussion],folders:[]}
+          : url === '/api/config' ? {model:'test',localAvailable:true,boxAvailable:true,models:[{id:'great',name:'Great'}]}
+          : url === '/api/plugins' ? {catalog:[],accounts:[]}
+          : url === '/api/deliveries' ? {sent:[],received:[]}
+          : url.startsWith('/api/companions/') && url.endsWith('/plugins') ? {accounts:[]}
+          : snapshot;
+        return new Response(JSON.stringify(body), {headers:{'content-type':'application/json'}});
+      };
       createRoot(document.getElementById('root')).render(<DiscussionsWorkspace user={{id:'user',name:'Sam',email:'sam@example.invalid'}} companions={[ada,june,long]} initialDiscussionId='chat' legacyCompanionId={null} onUnauthorized={()=>{}} onCreateCompanion={()=>{}} onApplications={()=>{}} onAccount={()=>{}} onCompanionSettings={()=>{}}/>);
       const wait = () => new Promise(resolve=>setTimeout(resolve,40));
       async function check() {
@@ -46,7 +55,7 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
         let rail = document.querySelector('.discussion-workbench');
         const field = composer.querySelector('textarea');
         const mobile = innerWidth <= 1024;
-        const result = { viewport:innerWidth, mobile, initialThread:visible(timeline), initialComposer:visible(composer), initialActivity:visible(rail), overflow:document.documentElement.scrollWidth>innerWidth, stopWidth:document.querySelector('.quiet-stop').getBoundingClientRect().width };
+        const result = { viewport:innerWidth, mobile, missing:[], initialThread:visible(timeline), initialComposer:visible(composer), initialActivity:visible(rail), overflow:document.documentElement.scrollWidth>innerWidth, stopWidth:document.querySelector('.quiet-stop').getBoundingClientRect().width };
         const row = [...document.querySelectorAll('.discussion-row')].find(node => node.textContent.includes('Preparing'));
         result.rosterTime = mobile || visible(row.querySelector('time'));
         row.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true})); await wait();
@@ -68,19 +77,21 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
         const sixLines = field.getBoundingClientRect().height;
         result.textareaGrows = sixLines > oneLine * 2 && visible(composer) && composer.getBoundingClientRect().bottom <= innerHeight;
         setter.call(field,'Keep my draft'); field.dispatchEvent(new Event('input',{bubbles:true})); await wait();
-        document.querySelector(mobile ? '[aria-label="Show files"]' : '[aria-label="Workspace"]').click(); await wait();
+        const click = (node, label) => { if (node) node.click(); else result.missing.push(label); };
+        click(document.querySelector(mobile ? '[aria-label="Show files"]' : '[aria-label="Workspace"]'), 'open-workspace'); await wait();
         rail = document.querySelector('.discussion-workbench');
-        result.activityVisible = visible(rail) && visible(rail.querySelector('.discussion-resources'));
-        result.agentTask = rail.textContent.includes('Companion workspaces');
-        rail.querySelector('[aria-label="Ada"]').click(); await wait();
-        result.workbenchVisible = visible(document.querySelector('[aria-label="Ada workbench"]'));
+        result.activityVisible = visible(rail) && visible(rail.querySelector('.workbench-body'));
+        result.scopeChips = !!rail.querySelector('[role="tab"][aria-label="Ada"]');
+        result.panelTabs = ['Files','Computer','Details'].every(label => rail.textContent.includes(label));
+        click(rail.querySelector('[role="tab"][aria-label="Ada"]'), 'ada-chip'); await wait();
+        result.workbenchVisible = visible(document.querySelector('[aria-label="Ada workspace"]'));
         result.taskDetails = rail.textContent.includes('No files yet');
         if (!mobile) {
           const before = rail.getBoundingClientRect().width;
-          document.querySelector('[aria-label="Expand workspace"]').click(); await wait();
+          click(document.querySelector('[aria-label="Expand workspace"]'), 'expand'); await wait();
           result.expands = rail.getBoundingClientRect().width > before && visible(composer) && document.documentElement.scrollWidth <= innerWidth;
         } else result.expands = true;
-        document.querySelector('[aria-label="Close workbench"]').click(); await wait();
+        click(document.querySelector('[aria-label="Close workbench"]'), 'close-companion'); await wait();
         result.returnedToThread = visible(timeline) && visible(composer);
         result.draftPreserved = field.value === 'Keep my draft';
         const recipient = document.querySelector('[aria-label="Message recipient"]');
@@ -97,12 +108,17 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
         const answerButton = document.querySelector('.discussion-question button[type="submit"]').getBoundingClientRect();
         result.answerFits = answerInput.left >= 0 && answerButton.right <= innerWidth;
         const workspaceButton = document.querySelector('[aria-label="Workspace"]');
-        workspaceButton.focus(); workspaceButton.click(); await wait();
-        const detailsTab = [...document.querySelectorAll('.workbench-tabs button')].find(node => node.textContent.includes('Details'));
-        detailsTab.click(); await wait();
+        if (workspaceButton) workspaceButton.focus();
+        click(workspaceButton, 'reopen-workspace'); await wait();
+        rail = document.querySelector('.discussion-workbench');
+        click(rail && rail.querySelector('[role="tab"][aria-label="Ada"]'), 'ada-chip-2'); await wait();
+        click([...document.querySelectorAll('.workbench-tabs button')].find(node => node.textContent.includes('Details')), 'companion-details'); await wait();
+        result.companionRetirement = !!document.querySelector('.companion-retirement');
+        click(rail && rail.querySelector('[role="tab"]'), 'all-chip'); await wait();
+        click([...document.querySelectorAll('.workbench-tabs button')].find(node => node.textContent.includes('Details')), 'conversation-details'); await wait();
         result.detailsVisible = visible(document.querySelector('.discussion-details-body'));
         result.detailsArchive = !!document.querySelector('.archive-discussion');
-        document.querySelector('[aria-label="Close workbench"]').click(); await wait();
+        click(document.querySelector('[aria-label="Close workbench"]'), 'close-conversation'); await wait();
         result.returnedToThread = visible(timeline) && visible(composer);
         const report = document.createElement('pre'); report.id='browser-result'; report.hidden=true; report.textContent=JSON.stringify(result); document.body.append(report);
       }
@@ -126,9 +142,9 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
       const result = JSON.parse(match![1]);
       expect(result, `${width}px`).toMatchObject({
         pressScale: reducedMotion ? "1" : "0.96", answerFits: true, viewport: width, mobile: width <= 1024, initialThread: true, initialComposer: true, initialActivity: false, expands: true,
-        rosterTime: true, rowMenu: true, rowMenuClosed: true, createMenuOnScreen: true, createMenuNeedsClamp: true, textareaGrows: true,
-        overflow: false, activityVisible: true, agentTask: true, workbenchVisible: true, taskDetails: true,
-        detailsVisible: true, detailsArchive: true, returnedToThread: true, draftPreserved: true, recipientUnchanged: true, composerOnScreen: true, noHorizontalOverflow: true,
+        rosterTime: true, rowMenu: true, rowMenuClosed: true, createMenuOnScreen: true, createMenuNeedsClamp: true, textareaGrows: true, missing: [],
+        overflow: false, activityVisible: true, scopeChips: true, panelTabs: true, workbenchVisible: true, taskDetails: true,
+        companionRetirement: true, detailsVisible: true, detailsArchive: true, returnedToThread: true, draftPreserved: true, recipientUnchanged: true, composerOnScreen: true, noHorizontalOverflow: true,
       });
       expect(result.stopWidth).toBeLessThanOrEqual(44);
     }

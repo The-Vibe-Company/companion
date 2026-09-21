@@ -67,8 +67,8 @@ describe("discussions workspace", () => {
     expect(screen.getByRole("textbox", { name: "Message Ada" })).toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([, options]) => options?.method === "POST")).toBe(false);
     await actor.click(screen.getByRole("button", { name: "Workspace" }));
-    await actor.click(screen.getByRole("button", { name: "Ada" }));
-    expect(await screen.findByRole("heading", { name: "Ada" })).toBeInTheDocument();
+    await actor.click(screen.getByRole("tab", { name: "Ada" }));
+    expect(await screen.findByRole("complementary", { name: "Ada workspace" })).toBeInTheDocument();
     expect(screen.getByText("Existing context")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Message Ada" })).toBeInTheDocument();
   });
@@ -102,7 +102,7 @@ describe("discussions workspace", () => {
     const composer = await screen.findByRole("textbox", { name: "Message Companion" });
     await actor.type(composer, "Keep this draft");
     await actor.click(screen.getByRole("button", { name: "Workspace" }));
-    await actor.click(screen.getByRole("button", { name: "Ada" }));
+    await actor.click(screen.getByRole("tab", { name: "Ada" }));
     await actor.click(screen.getByRole("button", { name: /Files.*1/ }));
     const links = screen.getAllByRole("link", { name: "design.png" });
     expect(links.at(-1)).toHaveAttribute("href", "/files/design.png");
@@ -118,13 +118,13 @@ describe("discussions workspace", () => {
     const actor = userEvent.setup(); renderWorkspace();
     const composer = await screen.findByRole("textbox", { name: "Message Companion" });
     await actor.type(composer, "A draft for Central");
-    await actor.click(screen.getByLabelText("Choose discussion companion"));
+    await actor.click(screen.getByLabelText("Choose conversation companion"));
     await actor.click(screen.getByRole("button", { name: "View Third workspace" }));
-    expect(screen.getByRole("heading", { name: "Third" })).toBeInTheDocument();
+    expect(await screen.findByRole("complementary", { name: "Third workspace" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Message recipient" })).toHaveValue("");
-    await actor.click(screen.getByLabelText("Choose discussion companion"));
+    await actor.click(screen.getByLabelText("Choose conversation companion"));
     await actor.click(screen.getByRole("button", { name: "View Previous workspace" }));
-    expect(screen.getByRole("heading", { name: "Previous" })).toBeInTheDocument();
+    expect(await screen.findByRole("complementary", { name: "Previous workspace" })).toBeInTheDocument();
     expect(composer).toHaveValue("A draft for Central");
   });
 
@@ -231,8 +231,8 @@ it('shows a failed central turn and keeps companion work available in its own ta
  const actor=userEvent.setup();renderWorkspace();
  expect(await screen.findByText('Send a new message to continue.')).toBeInTheDocument();
  await actor.click(screen.getByRole('button',{name:'Workspace'}));
- await actor.click(screen.getByRole('button',{name:'Ada'}));
- expect(await screen.findByRole('heading',{name:'Ada'})).toBeInTheDocument();
+ await actor.click(screen.getByRole('tab',{name:'Ada'}));
+ expect(await screen.findByRole('complementary',{name:'Ada workspace'})).toBeInTheDocument();
  expect(screen.getByRole('textbox',{name:'Message Companion'})).toBeInTheDocument();
  cleanup();vi.unstubAllGlobals();
 });
@@ -250,7 +250,7 @@ it('keeps only current failures in the thread and leaves earlier ones to the wor
  expect(screen.queryByText(/Earlier activity/)).not.toBeInTheDocument();
  expect(screen.getByRole('button',{name:'Stop Ada'})).toBeInTheDocument();
  await actor.click(screen.getAllByRole('button',{name:'Open Ada workspace'})[0]);
- const workbench=await screen.findByRole('complementary',{name:'Ada workbench'});
+ const workbench=await screen.findByRole('complementary',{name:'Ada workspace'});
  expect(within(workbench).getByText('Error old-failure')).toBeInTheDocument();
  cleanup();vi.unstubAllGlobals();
 });
@@ -275,7 +275,7 @@ it('archives a conversation from its row menu, restores it, and archives the ope
  await actor.click(await screen.findByRole('button',{name:/Second conversation Archived.*Restore/}));
  expect(await screen.findByRole('heading',{name:'Second conversation'})).toBeInTheDocument();
  await actor.click(screen.getByRole('button',{name:'Workspace'}));
- await actor.click(screen.getByRole('button',{name:'Details'}));
+ await actor.click(screen.getByRole('button',{name:/^Details/}));
  await actor.click(await screen.findByRole('button',{name:/Archive conversation/}));
  expect(await screen.findByRole('heading',{name:'Launch'})).toBeInTheDocument();
  expect(updates).toEqual([{archived:true},{archived:false},{archived:true}]);
@@ -305,9 +305,9 @@ it('lets Central present delegated results once while direct replies stay in the
  expect(within(timeline).getByText('Direct answer')).toBeInTheDocument();
  expect(within(timeline).queryByText('Delegated detail')).not.toBeInTheDocument();
  await actor.click(screen.getByRole('button',{name:'Workspace'}));
- await actor.click(screen.getByRole('button',{name:'Ada'}));
- await actor.click(screen.getByRole('button',{name:'Results'}));
- expect(await within(screen.getByRole('complementary',{name:'Ada workbench'})).findByText('Delegated detail')).toBeInTheDocument();
+ await actor.click(screen.getByRole('tab',{name:'Ada'}));
+ await actor.click(screen.getByRole('button',{name:/^Results/}));
+ expect(await within(screen.getByRole('complementary',{name:'Ada workspace'})).findByText('Delegated detail')).toBeInTheDocument();
  cleanup();vi.unstubAllGlobals();
 });
 
@@ -318,9 +318,9 @@ it('keeps older delegated responses inspectable when their tasks are outside the
  const timeline=await screen.findByRole('log');
  expect(within(timeline).queryByText('Older delegated result')).not.toBeInTheDocument();
  await actor.click(screen.getByRole('button',{name:'Workspace'}));
- await actor.click(screen.getByRole('button',{name:'Ada'}));
- await actor.click(screen.getByRole('button',{name:'Results'}));
- const workbench=screen.getByRole('complementary',{name:'Ada workbench'});
+ await actor.click(screen.getByRole('tab',{name:'Ada'}));
+ await actor.click(screen.getByRole('button',{name:/^Results/}));
+ const workbench=screen.getByRole('complementary',{name:'Ada workspace'});
  expect(within(workbench).getByText('Earlier delegated response')).toBeInTheDocument();
  expect(within(workbench).getByText('Older delegated result')).toBeInTheDocument();
  cleanup();vi.unstubAllGlobals();
@@ -351,10 +351,10 @@ it('returns from a companion to the discussion agent using only keyboard mention
 it('uses the last complete mention without changing the work being inspected',async()=>{
  setupFetch();const actor=userEvent.setup();renderWorkspace();
  await actor.click(await screen.findByRole('button',{name:'Workspace'}));
- await actor.click(screen.getByRole('button',{name:'Ada'}));
+ await actor.click(screen.getByRole('tab',{name:'Ada'}));
  const composer=screen.getByRole('textbox',{name:'Message Companion'});
  fireEvent.change(composer,{target:{value:'@Ada continue puis @Companion, résume'}});
- expect(screen.getByRole('complementary',{name:'Ada workbench'})).toBeInTheDocument();
+ expect(screen.getByRole('complementary',{name:'Ada workspace'})).toBeInTheDocument();
  expect(screen.getByRole('combobox',{name:'Message recipient'})).toHaveValue('');
  fireEvent.change(composer,{target:{value:'@Companion merci. @Ada continue'}});
  expect(screen.getByRole('combobox',{name:'Message recipient'})).toHaveValue('ada');
@@ -415,14 +415,14 @@ describe("clear addressing and persisted activity", () => {
     renderWorkspace();
     await screen.findByRole("textbox", { name: "Message Companion" });
     const activity = screen.getByRole("log");
-    expect(screen.queryByRole("complementary", { name: "Discussion files" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Conversation files" })).not.toBeInTheDocument();
     expect(within(activity).getByText("Ada · Task received")).toBeInTheDocument();
     expect(within(activity).queryByText("Reading supplier documentation")).not.toBeInTheDocument();
     status = "running"; poll?.();
     expect(await within(activity).findByText("Ada · Working")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Message Companion" })).toBeInTheDocument();
     await actor.click(within(activity).getByRole("button", { name: "Open Ada workspace" }));
-    const workbench = await screen.findByRole("complementary", { name: "Ada workbench" });
+    const workbench = await screen.findByRole("complementary", { name: "Ada workspace" });
     expect(within(workbench).getByText("Reading supplier documentation")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Message Companion" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Message recipient" })).toHaveValue("");
@@ -442,7 +442,7 @@ describe("clear addressing and persisted activity", () => {
     renderWorkspace();
     await screen.findByRole("textbox", { name: "Message Companion" });
     const activity = screen.getByRole("log");
-    expect(screen.queryByRole("complementary", { name: "Discussion files" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Conversation files" })).not.toBeInTheDocument();
     expect(within(activity).getByText("Ada · Needs your answer")).toBeInTheDocument();
     expect(within(activity).getByText("Which market should I cover?")).toBeInTheDocument();
     expect(within(activity).getByText("Ada is waiting for your answer")).toBeInTheDocument();
@@ -518,8 +518,8 @@ it("opens only supported computers, expands their controls, and preserves addres
   const composer = await screen.findByRole("textbox", { name: "Message Companion" });
   await actor.type(composer, "Keep this draft");
   await actor.click(screen.getByRole("button", { name: "Workspace" }));
-  await actor.click(within(screen.getByRole("complementary", { name: "Discussion files" })).getByRole("button", { name: "Computers" }));
-  const computers = await screen.findByRole("complementary", { name: "Discussion computers" });
+  await actor.click(within(screen.getByRole("complementary", { name: "Conversation files" })).getByRole("button", { name: /^Computer/ }));
+  const computers = await screen.findByRole("complementary", { name: "Conversation computers" });
   expect(within(computers).queryByRole("button", { name: "June" })).not.toBeInTheDocument();
   await actor.click(within(computers).getByRole("button", { name: "Ada" }));
   expect(screen.getByRole("region", { name: "Computer controls" })).toBeInTheDocument();
@@ -626,7 +626,7 @@ it("returns to the first-run prompt when the last conversation is archived witho
   render(<DiscussionsWorkspace user={user} companions={[]} initialDiscussionId="discussion-1" legacyCompanionId={null} onUnauthorized={vi.fn()} onCreateCompanion={vi.fn()} onApplications={vi.fn()} onAccount={vi.fn()}/>);
   await screen.findByRole("heading", { name: "Launch" });
   await actor.click(screen.getByRole("button", { name: "Workspace" }));
-  await actor.click(screen.getByRole("button", { name: "Details" }));
+  await actor.click(screen.getByRole("button", { name: /^Details/ }));
   await actor.click(await screen.findByRole("button", { name: /Archive conversation/ }));
   expect(await screen.findByRole("heading", { name: "Create your first Companion" })).toBeInTheDocument();
   expect(window.location.pathname).toBe("/");
@@ -655,7 +655,7 @@ it("collects message attachments and task files once in the discussion files vie
   }) : undefined);
   const actor = userEvent.setup(); renderWorkspace();
   await actor.click(await screen.findByRole("button", { name: "Workspace" }));
-  const panel = screen.getByRole("complementary", { name: "Discussion files" });
+  const panel = screen.getByRole("complementary", { name: "Conversation files" });
   expect(within(panel).getAllByRole("link", { name: "notes.txt" })).toHaveLength(1);
   expect(within(panel).queryByText("Done")).not.toBeInTheDocument();
   cleanup(); vi.unstubAllGlobals();

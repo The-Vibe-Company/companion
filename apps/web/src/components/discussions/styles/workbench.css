@@ -1,4 +1,4 @@
-/* Resources and companion workbench, opened beside the conversation. */
+/* The conversation workspace: one scope row, stable tabs, one scrolling body. */
 .discussion-workbench {
   position: relative;
   grid-column: 2;
@@ -10,78 +10,77 @@
 }
 .workbench-controls { position: absolute; z-index: 3; top: 12px; right: 12px; display: flex; gap: 2px; }
 
-.work-panel, .discussion-resources {
-  display: grid;
-  height: 100%;
-  align-content: start;
-  gap: 12px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 20px;
-}
-.discussion-resources { gap: 16px; padding: 12px 20px 24px; }
-.discussion-resources > header { margin-bottom: 24px; padding-right: 76px; }
-.discussion-resources h2 { margin: 0; font-size: 17px; font-weight: 600; }
-.discussion-resources header p { margin: 6px 0 0; color: var(--atelier-muted); font-size: 13px; }
-
-.discussion-details-body { display: grid; align-content: start; gap: 2px; }
-.discussion-details-body > h3 { margin: 20px 4px 8px; color: var(--atelier-muted); font-size: 12px; font-weight: 600; }
-.discussion-details-body > h3:first-child { margin-top: 0; }
-.discussion-details-body .archive-discussion { margin-top: 20px; }
-
-.work-panel .discussion-task { margin: 0; }
-.work-panel .discussion-task:first-of-type { border-top: 0; }
-
-.companion-workbench-header {
+.work-panel {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  border-bottom: 1px solid var(--atelier-border);
-  padding: 0 80px 16px 0;
-}
-.companion-workbench-header > div { min-width: 0; flex: 1; }
-.companion-workbench-header h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
-.companion-workbench-header p {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  height: 100%;
+  min-width: 0;
+  flex-direction: column;
   overflow: hidden;
-  margin: 2px 0 0;
+}
+
+/* Scope chips: the whole conversation, or one companion. One click, always visible. */
+.workbench-context { flex: 0 0 auto; padding: 14px 60px 0 16px; }
+.workbench-scope { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+.workbench-scope::-webkit-scrollbar { display: none; }
+.scope-chip {
+  display: inline-flex;
+  min-height: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  padding: 4px 10px 4px 6px;
+  background: transparent;
   color: var(--atelier-muted);
   font-size: 12.5px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
 }
+.scope-chip--active { background: var(--bg-layer-2); color: var(--atelier-ink); font-weight: 600; }
+.scope-chip-all { display: grid; width: 20px; height: 20px; flex: 0 0 20px; place-items: center; border-radius: 50%; background: var(--atelier-ink); color: var(--atelier-surface); font-size: 10px; font-weight: 600; }
 
-.workbench-tabs { display: flex; min-height: 46px; gap: 14px; overflow-x: auto; border-bottom: 1px solid var(--atelier-border); font-size: 12px; }
+.workbench-tabs { display: flex; min-height: 44px; flex: 0 0 auto; gap: 14px; overflow-x: auto; border-bottom: 1px solid var(--atelier-border); padding: 0 16px; font-size: 12.5px; }
 .workbench-tabs button {
   display: flex;
-  min-height: 44px;
+  min-height: 42px;
   flex-shrink: 0;
   align-items: center;
   gap: 6px;
   border: 0;
   border-bottom: 2px solid transparent;
-  padding: 6px 0 10px;
+  padding: 6px 0 8px;
   background: transparent;
   color: var(--atelier-muted);
   cursor: pointer;
   transition: border-color var(--duration-fast) ease, color var(--duration-fast) ease;
 }
+.workbench-tabs button svg { width: 14px; height: 14px; }
 .workbench-tabs button[aria-current="page"] { border-bottom-color: var(--atelier-ink); color: var(--atelier-ink); font-weight: 600; }
-.workbench-tabs button span { border-radius: var(--radius-pill); padding: 1px 6px; background: var(--atelier-rail); font-size: 11px; }
+.workbench-tabs button span { border-radius: var(--radius-pill); padding: 1px 6px; background: var(--bg-layer-2); font-size: 11px; }
 
-.workbench-empty { display: grid; justify-items: center; gap: 12px; padding: 64px 20px; color: var(--atelier-muted); text-align: center; }
-.workbench-empty h3 { margin: 0; color: var(--atelier-ink); font-size: 18px; font-weight: 600; }
-.workbench-empty p { max-width: 34ch; margin: 0; }
+.workbench-body { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 16px; }
+.workbench-section { display: grid; align-content: start; gap: 12px; }
 
-.work-empty { display: flex; min-height: 100%; align-items: center; justify-content: center; flex-direction: column; padding: 40px; text-align: center; }
-.work-empty > svg { width: 30px; height: 30px; color: var(--atelier-muted); }
-.work-empty h2 { margin: 16px 0 0; font-size: 18px; font-weight: 600; }
-.work-empty p { max-width: 44ch; color: var(--atelier-muted); line-height: 1.55; }
+.panel-identity { display: flex; align-items: center; gap: 10px; }
+.panel-identity > div { min-width: 0; }
+.panel-identity strong { display: block; font-size: 14px; font-weight: 600; }
+.panel-identity small { display: block; margin-top: 2px; color: var(--atelier-muted); font-size: 12px; line-height: 1.45; }
+.panel-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
-.workspace-companions { margin-top: 28px; }
-.workspace-companions h3 { font-size: 12px; font-weight: 500; color: var(--atelier-muted); }
+.companion-retirement { display: grid; gap: 8px; border-top: 1px solid var(--atelier-border); padding-top: 16px; }
+.companion-retirement h2 { margin: 0; font-size: 14px; font-weight: 600; }
+
+.work-panel .discussion-task { margin: 0; }
+.work-panel .discussion-task:first-of-type { border-top: 0; }
+
+.workbench-empty { display: grid; justify-items: center; gap: 10px; padding: 48px 20px; color: var(--atelier-muted); text-align: center; }
+.workbench-empty > svg { width: 26px; height: 26px; }
+.workbench-empty h3 { margin: 0; color: var(--atelier-ink); font-size: 16px; font-weight: 600; }
+.workbench-empty p { max-width: 34ch; margin: 0; font-size: 13px; line-height: 1.5; }
+
+.workspace-companions h3 { margin: 0 0 4px; color: var(--atelier-muted); font-size: 12px; font-weight: 500; }
 .workspace-companions button {
   display: flex;
   width: 100%;
@@ -89,7 +88,7 @@
   gap: 10px;
   border: 0;
   border-radius: var(--radius-3);
-  padding: 12px 8px;
+  padding: 10px 8px;
   background: transparent;
   color: var(--atelier-ink);
   text-align: left;
@@ -100,18 +99,21 @@
 .workspace-companions strong, .workspace-companions small { display: block; overflow-wrap: anywhere; }
 .workspace-companions strong { font-size: 13px; font-weight: 600; }
 .workspace-companions small { margin-top: 3px; color: var(--atelier-muted); font-size: 12px; }
-.workspace-companions button > svg { width: 16px; }
+.workspace-companions button > svg { width: 16px; color: var(--atelier-muted); }
 
-.workbench-settings > h3 { margin: 0 0 8px; color: var(--atelier-muted); font-size: 12px; font-weight: 650; }
-.workbench-settings .participant-row { border: 1px solid var(--atelier-border); border-radius: var(--radius-3); }
-.workbench-settings .participant-capabilities { padding-right: 12px; }
+.discussion-details-body { display: grid; align-content: start; gap: 2px; }
+.discussion-details-body > h3 { margin: 20px 4px 8px; color: var(--atelier-muted); font-size: 12px; font-weight: 600; }
+.discussion-details-body > h3:first-child { margin-top: 0; }
+.discussion-details-body .archive-discussion { margin-top: 20px; }
 
 @media (hover: hover) and (pointer: fine) {
+  .scope-chip:hover { background: color-mix(in srgb, var(--label-primary) 6%, transparent); color: var(--atelier-ink); }
   .workspace-companions button:hover { background: var(--atelier-rail); }
 }
 @media (max-width: 1024px) {
   .discussion-workbench { grid-column: 1; grid-row: 1; border-left: 0; }
   .workbench-expand { display: none; }
-  .work-panel { padding: 16px 16px 24px; }
-  .discussion-resources { padding: 22px 16px; }
+  .workbench-body { padding: 14px 12px 24px; }
+  .workbench-context { padding: 12px 56px 0 12px; }
+  .workbench-tabs { padding: 0 12px; }
 }

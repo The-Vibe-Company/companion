@@ -7,11 +7,12 @@ import { DeliverySettings } from "./CompanionAccount";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 
-export function CompanionConfiguration({ companion, onRefresh, onRetired, onApplications }: {
+export function CompanionConfiguration({ companion, onRefresh, onRetired, onApplications, showRetirement = true }: {
   companion: Companion;
   onRefresh: () => Promise<void>;
   onRetired?: () => void;
   onApplications?: () => void;
+  showRetirement?: boolean;
 }) {
   const [name, setName] = useState(companion.name);
   const [instructions, setInstructions] = useState(companion.instructions);
@@ -21,8 +22,6 @@ export function CompanionConfiguration({ companion, onRefresh, onRetired, onAppl
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  const [retirementError, setRetirementError] = useState("");
-  const [confirmRetire, setConfirmRetire] = useState(false);
   const changed = name !== companion.name || instructions !== companion.instructions ||
     modelId !== (companion.modelId ?? "") || JSON.stringify(avatar) !== JSON.stringify(companion.avatar ?? DEFAULT_AVATAR);
   const onError = (cause: unknown) => setError(cause instanceof Error ? cause.message : "Could not save changes.");
@@ -43,15 +42,6 @@ export function CompanionConfiguration({ companion, onRefresh, onRetired, onAppl
       setSaved(true);
       await onRefresh();
     } catch (cause) { onError(cause); } finally { setSaving(false); }
-  }
-  async function retire() {
-    if (saving) return;
-    setSaving(true); setRetirementError("");
-    try {
-      await api.deleteCompanion(companion.id);
-      setConfirmRetire(false);
-      if (onRetired) onRetired(); else await onRefresh();
-    } catch (cause) { setRetirementError(cause instanceof Error ? cause.message : "Could not retire this Companion."); } finally { setSaving(false); }
   }
 
   return <div className="companion-configuration">
@@ -81,14 +71,31 @@ export function CompanionConfiguration({ companion, onRefresh, onRetired, onAppl
       <ApplicationAccess companionId={companion.id} onConnect={onApplications} compact/>
     </section>
     <details className="settings-advanced"><summary>Share with a client</summary><DeliverySettings companionId={companion.id}/></details>
-    <section>
-      <h2>Retire companion</h2>
-      {retirementError && <p className="field-error" role="alert">{retirementError}</p>}
-      {confirmRetire ? <div className="retirement-confirmation">
-        <p>Retiring {companion.name} stops its work in every discussion and archives its machine.</p>
-        <Button variant="destructive" disabled={saving} onClick={() => void retire()}>Confirm retirement</Button>
-        <Button variant="ghost" disabled={saving} onClick={() => setConfirmRetire(false)}>Keep companion</Button>
-      </div> : <Button variant="ghost" onClick={() => setConfirmRetire(true)}>Retire {companion.name}</Button>}
-    </section>
+    {showRetirement && <CompanionRetirement companion={companion} onRetired={onRetired}/>}
   </div>;
+}
+
+/** Destructive companion removal, kept in one place so every surface behaves the same. */
+export function CompanionRetirement({ companion, onRetired }: { companion: Companion; onRetired?: () => void | Promise<void> }) {
+  const [saving, setSaving] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [error, setError] = useState("");
+  async function retire() {
+    if (saving) return;
+    setSaving(true); setError("");
+    try { await api.deleteCompanion(companion.id); setConfirm(false); await onRetired?.(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not retire this Companion."); }
+    finally { setSaving(false); }
+  }
+  return <section className="companion-retirement" aria-label={`Retire ${companion.name}`}>
+    <h2>Retire companion</h2>
+    {error && <p className="field-error" role="alert">{error}</p>}
+    {confirm
+      ? <div className="retirement-confirmation">
+        <p>Retiring {companion.name} stops its work in every discussion and archives its machine. Your conversations stay.</p>
+        <Button variant="destructive" disabled={saving} onClick={() => void retire()}>{saving ? "Retiring…" : "Confirm retirement"}</Button>
+        <Button variant="ghost" disabled={saving} onClick={() => setConfirm(false)}>Keep companion</Button>
+      </div>
+      : <><p className="muted-copy">It stops working everywhere and its computer is archived. Conversation history remains.</p><Button variant="ghost" onClick={() => setConfirm(true)}>Retire {companion.name}</Button></>}
+  </section>;
 }
