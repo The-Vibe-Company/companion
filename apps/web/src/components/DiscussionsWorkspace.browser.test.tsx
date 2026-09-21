@@ -21,6 +21,8 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
       const now = '2026-09-14T10:00:00Z';
       const ada = { id:'ada', name:'Ada', instructions:'Research and strategy', provider:'local', status:'ready', error:null, createdAt:now, avatar:{shape:1,color:2,face:0} };
       const june = { ...ada, id:'june', name:'June', instructions:'Writing and editing', avatar:{shape:3,color:5,face:2} };
+      // A long name widens the create menu enough to test that it stays on screen.
+      const long = { ...ada, id:'long', name:'Validation runtime wake (temporary)', instructions:'Temporary validation', avatar:{shape:2,color:4,face:1} };
       const lastMessage = { role:'assistant', companionId:'ada', createdAt:now, preview:'Reviewing the pricing and onboarding flows.' };
       const discussion = { id:'chat', title:'Preparing the autumn launch', folderId:null, directCompanionId:null, archivedAt:null, createdAt:now, updatedAt:now, participantIds:['ada','june'], lastMessage };
       const messages = [
@@ -33,7 +35,7 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
           {...task,id:'draft',companionId:'june',status:'needs_input',content:'Draft the launch announcement',questions:[{id:'q',question:'Who is the announcement for?',options:['Existing customers','New customers'],answer:null}]}],
         centralRuns:[],proposals:[],beforeCursor:null };
       window.fetch = async input => new Response(JSON.stringify(String(input)==='/api/discussions' ? {discussions:[discussion],folders:[]} : snapshot), {headers:{'content-type':'application/json'}});
-      createRoot(document.getElementById('root')).render(<DiscussionsWorkspace user={{id:'user',name:'Sam',email:'sam@example.invalid'}} companions={[ada,june]} initialDiscussionId='chat' legacyCompanionId={null} onUnauthorized={()=>{}} onCreateCompanion={()=>{}} onApplications={()=>{}} onAccount={()=>{}} onCompanionSettings={()=>{}}/>);
+      createRoot(document.getElementById('root')).render(<DiscussionsWorkspace user={{id:'user',name:'Sam',email:'sam@example.invalid'}} companions={[ada,june,long]} initialDiscussionId='chat' legacyCompanionId={null} onUnauthorized={()=>{}} onCreateCompanion={()=>{}} onApplications={()=>{}} onAccount={()=>{}} onCompanionSettings={()=>{}}/>);
       const wait = () => new Promise(resolve=>setTimeout(resolve,40));
       async function check() {
         for (let i=0;i<40&&!document.querySelector('.discussion-composer');i++) await wait();
@@ -51,6 +53,14 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
         result.rowMenu = !!document.querySelector('[role="menu"] [role="menuitem"]');
         document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})); await wait();
         result.rowMenuClosed = !document.querySelector('[role="menu"]');
+        const createTrigger = document.querySelector('[aria-label="Create"]').getBoundingClientRect();
+        document.querySelector('[aria-label="Create"]').click(); await wait();
+        const createBox = document.querySelector('[role="menu"]')?.getBoundingClientRect();
+        result.createMenuOnScreen = !!createBox && createBox.left >= 0 && createBox.right <= innerWidth && createBox.top >= 0;
+        // Without the clamp this menu would start left of the viewport; prove the fixture is wide enough.
+        result.createMenuNeedsClamp = !!createBox && createTrigger.right - createBox.width < 0;
+        result.createMenuWidth = createBox ? Math.round(createBox.width) : 0;
+        document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})); await wait();
         const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set;
         setter.call(field,'one'); field.dispatchEvent(new Event('input',{bubbles:true})); await wait();
         const oneLine = field.getBoundingClientRect().height;
@@ -116,7 +126,7 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
       const result = JSON.parse(match![1]);
       expect(result, `${width}px`).toMatchObject({
         pressScale: reducedMotion ? "1" : "0.96", answerFits: true, viewport: width, mobile: width <= 1024, initialThread: true, initialComposer: true, initialActivity: false, expands: true,
-        rosterTime: true, rowMenu: true, rowMenuClosed: true, textareaGrows: true,
+        rosterTime: true, rowMenu: true, rowMenuClosed: true, createMenuOnScreen: true, createMenuNeedsClamp: true, textareaGrows: true,
         overflow: false, activityVisible: true, agentTask: true, workbenchVisible: true, taskDetails: true,
         detailsVisible: true, detailsArchive: true, returnedToThread: true, draftPreserved: true, recipientUnchanged: true, composerOnScreen: true, noHorizontalOverflow: true,
       });

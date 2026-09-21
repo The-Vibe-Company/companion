@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "vite";
 import { expect, it } from "vitest";
+import { chromeBinary } from "../test/browser";
 import { Message, MessageContent, MessageResponse } from "./ai-elements/message";
 
 it("shows Markdown list markers after Tailwind preflight without changing UI lists", async () => {
@@ -60,7 +61,7 @@ it("shows Markdown list markers after Tailwind preflight without changing UI lis
         });
         document.body.append(result);
       </script>`);
-    const output = execFileSync(process.env.CHROME_BIN || "google-chrome", [
+    const output = execFileSync(chromeBinary(), [
       "--headless", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
       "--no-first-run", "--no-default-browser-check", "--disable-background-networking",
       "--disable-component-update", "--disable-extensions", "--disable-sync",

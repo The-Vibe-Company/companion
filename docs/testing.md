@@ -73,8 +73,9 @@ python3 scripts/bun.py run --cwd apps/web build
 ```
 
 The web suite includes a headless Chrome regression for Markdown list markers using
-the compiled Tailwind styles and the real `MessageResponse` renderer. It requires
-`google-chrome` on `PATH`, or `CHROME_BIN` pointing to a Chrome/Chromium executable.
+the compiled Tailwind styles and the real `MessageResponse` renderer. Set `CHROME_BIN`
+to a Chrome/Chromium executable, or let it fall back to the usual names on `PATH`
+(`google-chrome`, `google-chrome-stable`, `chromium`, `chromium-browser`, `chrome`).
 Each run uses a temporary browser profile and removes it on completion or failure.
 
 The root verifier remains authoritative because several server behaviors require its fresh

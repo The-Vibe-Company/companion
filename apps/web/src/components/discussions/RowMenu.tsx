@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -11,22 +11,33 @@ export type RowMenuRequest = { id: string; label: string; items: RowMenuItem[]; 
  */
 export function RowMenu({ request, onClose }: { request: RowMenuRequest; onClose: () => void }) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const [placement, setPlacement] = useState<{ top: number; right: number; origin: string } | null>(null);
+  const [placement, setPlacement] = useState<{ top: number; left: number; origin: string } | null>(null);
   const { anchor, items, label } = request;
 
-  useLayoutEffect(() => {
+  // The placement reads viewport pixels, so it is recomputed on resize as well as on open.
+  const place = useCallback(() => {
     const menu = menuRef.current;
     const host = menu?.offsetParent as HTMLElement | null;
     if (!menu || !host) return;
     const trigger = anchor.getBoundingClientRect();
     const frame = host.getBoundingClientRect();
     const below = trigger.bottom + menu.offsetHeight + 8 <= window.innerHeight;
+    // Align the right edge with the trigger, as rows expect, but keep the whole
+    // menu on screen: near the rail's header a wide menu would slide off the left.
+    const margin = 8;
+    const width = menu.offsetWidth;
+    const preferred = trigger.right - width;
+    const left = Math.max(margin, Math.min(preferred, window.innerWidth - width - margin));
+    const centre = trigger.left + trigger.width / 2;
+    const originX = centre - left <= left + width - centre ? "left" : "right";
     setPlacement({
       top: (below ? trigger.bottom + 4 : trigger.top - menu.offsetHeight - 4) - frame.top,
-      right: frame.right - trigger.right,
-      origin: below ? "top right" : "bottom right",
+      left: left - frame.left,
+      origin: `${below ? "top" : "bottom"} ${originX}`,
     });
   }, [anchor]);
+
+  useLayoutEffect(place, [place]);
 
   useEffect(() => {
     const entries = () => [...(menuRef.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
@@ -56,15 +67,20 @@ export function RowMenu({ request, onClose }: { request: RowMenuRequest; onClose
     };
     document.addEventListener("keydown", keydown, true);
     document.addEventListener("pointerdown", pointerdown);
-    return () => { document.removeEventListener("keydown", keydown, true); document.removeEventListener("pointerdown", pointerdown); };
-  }, [anchor, onClose]);
+    window.addEventListener("resize", place);
+    return () => {
+      document.removeEventListener("keydown", keydown, true);
+      document.removeEventListener("pointerdown", pointerdown);
+      window.removeEventListener("resize", place);
+    };
+  }, [anchor, onClose, place]);
 
   return <div
     ref={menuRef}
     className="row-menu"
     role="menu"
     aria-label={label}
-    style={placement ? { top: placement.top, right: placement.right, transformOrigin: placement.origin } : { opacity: 0 }}
+    style={placement ? { top: placement.top, left: placement.left, transformOrigin: placement.origin } : { opacity: 0 }}
   >
     {items.map(item => <button
       key={item.label}

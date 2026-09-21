@@ -19,6 +19,8 @@ This is a new product, independent of the old Companion Skills Hub. Product deci
 - For local development, Herdr controls, service restart, scenarios or browser validation, follow
   `docs/dev-workflow.md`. Use `./dev status --json` for endpoints and current evidence, focused
   `./dev check` profiles while iterating, and full verification before integration.
+- Drive browser validation with `agent-browser` (`./dev browser-test`), unless the agent is Codex,
+  which uses its own browser tooling.
 - Commit and PR titles use Commitizen style, e.g. `feat(chat): persist accepted messages`.
 - For PR delivery, use the repository's [ship-pr-dev](.agents/skills/ship-pr-dev/SKILL.md)
   and its bundled dependencies in `.agents/skills/`, preferring these over global copies.

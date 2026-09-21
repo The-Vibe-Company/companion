@@ -1,11 +1,33 @@
 import { spawn } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { accessSync, constants, statSync, writeFileSync } from "node:fs";
+import path from "node:path";
+
+const chromeNames = ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome"];
+
+/**
+ * Pick a Chrome/Chromium executable: CHROME_BIN wins, then the usual binary names on
+ * PATH, so a machine with only `chromium` installed needs no environment override.
+ */
+export function chromeBinary(): string {
+  if (process.env.CHROME_BIN) return process.env.CHROME_BIN;
+  for (const name of chromeNames) {
+    for (const directory of (process.env.PATH ?? "").split(path.delimiter).filter(Boolean)) {
+      const candidate = path.join(directory, name);
+      try {
+        if (!statSync(candidate).isFile()) continue;
+        accessSync(candidate, constants.X_OK);
+        return candidate;
+      } catch { continue; }
+    }
+  }
+  return chromeNames[0];
+}
 
 /** Drive the installed Chrome through CDP so mobile widths aren't clamped to 500px. */
 export async function renderInBrowser({ url, profile, width, height, screenshot, reducedMotion = false }: {
   url: string; profile: string; width: number; height: number; screenshot?: string; reducedMotion?: boolean;
 }) {
-  const browser = spawn(process.env.CHROME_BIN || "google-chrome", [
+  const browser = spawn(chromeBinary(), [
     "--headless", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--no-first-run",
     "--no-default-browser-check", "--disable-background-networking", "--disable-extensions", "--disable-sync",
     "--remote-debugging-port=0", `--user-data-dir=${profile}`, "about:blank",
