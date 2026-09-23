@@ -7,13 +7,14 @@ does not replace the machine's Node or the product's pinned Bun.
 
 ## Shared agent skills
 
-The repository includes `ship-pr-dev` 1.4.0 for PR delivery, `review-code-dev` 2.0.0
+The repository includes `ship-pr-dev` 1.6.0 for PR delivery, `review-code-dev` 2.1.0
 for independent Alibaba OCR delegation review, `capture-learning-tools` for the final
 report-only learning pass, and `design-frontend-dev` for optional frontend guidance.
 Ship PR depends on Review Code v2 and Capture Learning; Review Code v2 has no skill
 dependencies. Frontend coverage belongs inside the same review, not a second gate.
-The two updated packages come from the matching directories under
-`/Users/stan/Vibe/skills/`; these are import sources, not runtime dependencies.
+The complete `plan-pr` workflow and its nine-package dependency closure are bundled;
+see [the shared workflow guide](../.agents/skills/plan-pr-bundle.md).
+Use `plan-pr` for an approved implementation plan, followed by Ship PR for delivery.
 
 The versioned packages in `.agents/skills/` are the shared source for this project.
 Codex uses that directory; Claude Code uses the relative links in `.claude/skills/`.

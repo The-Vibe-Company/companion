@@ -110,6 +110,21 @@
       "id": 22,
       "prompt": "The review passed, but a pre-commit formatter changed a source file.",
       "expected_output": "Mark affected review/verification stale and refresh evidence for changed content before push or readiness; only metadata-only commits may carry forward identical source evidence."
+    },
+    {
+      "id": 23,
+      "prompt": "The same agent has implemented an approved plan-pr plan. Finish the PR. The original Linear ticket's newest comment narrows one criterion, the plan records approval, and tests plus one UI screenshot already exist.",
+      "expected_output": "Read the original ticket and relevant comments alongside the approved plan, reconcile the newer comment with the approval record, inspect completed work and evidence without restarting implementation, refresh only stale checks and UI proof, pass an explicit criterion-to-implementation-to-evidence map to the single review-code-dev gate, then ship through normal PR and latest-SHA CI gates. Ask for a human decision only if the comment materially conflicts with the approved scope."
+    },
+    {
+      "id": 24,
+      "prompt": "Ship this ordinary branch as a PR. There is no plan-pr document or approval artifact.",
+      "expected_output": "Run the existing standalone Ship PR workflow using the user's request and repository context as the goal, without demanding or inventing an approved plan. Preserve normal verification, single independent review, commit, PR and latest-SHA CI gates."
+    },
+    {
+      "id": 25,
+      "prompt": "Ship a UI change from an approved plan. Repo instructions say not to launch the app locally, no PR screenshot attachment mechanism is available, and no existing CI or critical-path gate requires a rendered check.",
+      "expected_output": "Respect the repo's launch instruction, use available nonvisual checks, record visual verification and shareable screenshots as unavailable, state the limitation in the PR and handoff without machine-local links, and do not create a new universal screenshot blocker. Continue to enforce any actual repository, CI or frontend critical-path gate that applies."
     }
   ]
 }

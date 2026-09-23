@@ -17,7 +17,7 @@ These conditions prevent a ready claim. Fix what is safely in scope and wait for
 - secrets in the diff, logs, fixtures, or config
 - destructive migration without rollback/deploy-order notes
 - auth, billing, permissions, export, or privacy behavior changed without tests or clear verification
-- frontend critical path changed without at least one rendered or interaction-level check when tooling is available
+- frontend critical path changed without at least one rendered or interaction-level check when an authorized runnable app or accessible preview and suitable tooling are available; a disabled launch policy with no accessible preview is an explicit visual-verification limitation, not a requirement to start the app. Repository-required checks remain required.
 - PR branch includes unrelated user work that cannot be safely separated
 - push/PR credentials are missing
 - use of `--no-verify`, skipped tests, disabled checks, weakened lint rules, or equivalent bypasses

@@ -11,7 +11,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / ".agents/skills"
-PACKAGES = ("ship-pr-dev", "review-code-dev", "capture-learning-tools", "design-frontend-dev")
+PACKAGES = ('better-ui', 'capture-learning-tools', 'design-frontend-dev', 'emil-design-eng', 'grilling', 'plan-pr', 'review-code-dev', 'ship-pr-dev', 'tdd')
 PREPARERS = {
     "ship-pr-dev": "prepare_ship_run.py",
     "review-code-dev": "prepare_review_run.py",
@@ -50,9 +50,9 @@ class SharedSkillsTests(unittest.TestCase):
     def test_v2_package_contract_and_compatibility_helpers(self):
         ship = SKILLS / "ship-pr-dev"
         review = SKILLS / "review-code-dev"
-        self.assertEqual("1.4.0", json.loads((ship / "companion.json").read_text())["version"])
+        self.assertEqual("1.6.0", json.loads((ship / "companion.json").read_text())["version"])
         manifest = json.loads((review / "companion.json").read_text())
-        self.assertEqual("2.0.0", manifest["version"])
+        self.assertEqual("2.1.0", manifest["version"])
         self.assertEqual({}, manifest["dependencies"])
         self.assertEqual({}, manifest["environment"]["secrets"])
         self.assertIn("Apache License", (review / "LICENSE").read_text())
