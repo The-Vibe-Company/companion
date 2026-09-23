@@ -12,8 +12,7 @@ for independent Alibaba OCR delegation review, `capture-learning-tools` for the 
 report-only learning pass, and `design-frontend-dev` for optional frontend guidance.
 Ship PR depends on Review Code v2 and Capture Learning; Review Code v2 has no skill
 dependencies. Frontend coverage belongs inside the same review, not a second gate.
-The complete `plan-pr` workflow and its nine-package dependency closure are bundled;
-see [the shared workflow guide](../.agents/skills/plan-pr-bundle.md).
+The complete `plan-pr` workflow and its nine-package dependency closure are bundled.
 Use `plan-pr` for an approved implementation plan, followed by Ship PR for delivery.
 
 The versioned packages in `.agents/skills/` are the shared source for this project.

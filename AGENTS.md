@@ -29,11 +29,3 @@ This is a new product, independent of the old Companion Skills Hub. Product deci
 
 When parallel work helps, use independent worktrees with bounded ownership. The repository owner
 requests Codex gpt-5.6-sol at medium effort for ordinary implementation tasks.
-
-## Plan PR workflow
-
-Use the repository's [plan-pr](.agents/skills/plan-pr/SKILL.md) to prepare an implementation
-plan for approval, then [ship-pr-dev](.agents/skills/ship-pr-dev/SKILL.md) for delivery.
-All dependencies are bundled in `.agents/skills/`; Claude Code uses relative links in
-`.claude/skills/`. Prefer these copies over global skills. See the
-[shared workflow guide](.agents/skills/plan-pr-bundle.md) for usage and prerequisites.
