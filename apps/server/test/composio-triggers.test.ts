@@ -3,7 +3,7 @@ import {createHmac} from 'node:crypto';
 import {db,migrate,createCompanion} from '../src/store';
 import {handlePlugins,listPluginAccounts,disconnectPlugin,startPluginConnection} from '../src/plugins';
 import {setComposioGateway,composioUserId} from '../src/composio';
-import {createTrigger,updateTrigger,deleteTrigger,listTriggers,handleComposioWebhook,handleComposioTriggers,deleteCompanionTriggers,triggerEventFile} from '../src/composio-triggers';
+import {createTrigger,updateTrigger,deleteTrigger,listTriggers,handleComposioWebhook,handleComposioTriggers,deleteCompanionTriggers,triggerEventFile,purgeTriggerEvents} from '../src/composio-triggers';
 import {productHooks} from '../src/runtime-product';
 import {fakeComposio} from './fixtures/composio-fake';
 
@@ -195,4 +195,32 @@ test('an expired lease left by a crashed holder does not block later subscriptio
  await deleteTrigger(m.ownerId,m.companionId,trigger!.id);
  expect(fake.triggers.size).toBe(0);
  expect((await db`SELECT key FROM composio_subscription_leases WHERE key=${`${m.accountId}:GITHUB_NEW_EVENT`}`).length).toBe(0);
+});
+
+test('a pause that waited behind a resume does not disable the resumed subscription remotely',async()=>{
+ const m=await member();const trigger=await createTrigger(m.ownerId,m.companionId,input(m.accountId));
+ const key=`${m.accountId}:GITHUB_NEW_EVENT`,holder=crypto.randomUUID();
+ // A resume holds the lease while the pause commits its local state and queues behind it.
+ await db`INSERT INTO composio_subscription_leases(key,holder,expires_at) VALUES(${key},${holder},now()+interval '1 minute')`;
+ const pause=updateTrigger(m.ownerId,m.companionId,trigger!.id,{enabled:false});
+ await Bun.sleep(150);
+ await db`UPDATE composio_triggers SET status='active' WHERE id=${trigger!.id}`;
+ await db`DELETE FROM composio_subscription_leases WHERE key=${key} AND holder=${holder}`;
+ await pause;
+ expect(fake.log.filter(entry=>entry[0]==='setTriggerEnabled')).toEqual([]);
+});
+
+test('provider payloads are cleared once their task can no longer stage them, keeping deduplication',async()=>{
+ const m=await member();const trigger=await createTrigger(m.ownerId,m.companionId,input(m.accountId));
+ const [{composio_trigger_id:remoteId}]=await db`SELECT composio_trigger_id FROM composio_triggers WHERE id=${trigger!.id}`;
+ const id=crypto.randomUUID();
+ await handleComposioWebhook(signed(event(m,remoteId),{id}));
+ const [run]=await eventRuns(m.companionId);
+ await purgeTriggerEvents();
+ expect(await triggerEventFile(run.id)).not.toBeNull();
+ await db`UPDATE runs SET status='succeeded',finished_at=now() WHERE id=${run.id}`;
+ await purgeTriggerEvents();
+ expect(await triggerEventFile(run.id)).toBeNull();
+ await handleComposioWebhook(signed(event(m,remoteId),{id}));
+ expect(await eventRuns(m.companionId)).toHaveLength(1);
 });

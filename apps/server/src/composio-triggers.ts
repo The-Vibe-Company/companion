@@ -87,8 +87,9 @@ export async function createTrigger(ownerId:string,companionId:string,raw:unknow
  return trigger(ownerId,id);
 }
 /** Remote state follows the union of local rows that share one Composio subscription. */
-async function othersActive(sql:any,remoteId:string,exceptId:string){
- const [row]=await sql`SELECT count(*)::int AS count FROM composio_triggers WHERE composio_trigger_id=${remoteId} AND id<>${exceptId} AND status='active'`;
+/** Read under the lease: a resume that overlapped this pause has already made a row active again. */
+async function anyActive(sql:any,remoteId:string){
+ const [row]=await sql`SELECT count(*)::int AS count FROM composio_triggers WHERE composio_trigger_id=${remoteId} AND status='active'`;
  return row.count>0;
 }
 export async function updateTrigger(ownerId:string,companionId:string,id:string,raw:unknown){
@@ -110,7 +111,7 @@ export async function updateTrigger(ownerId:string,companionId:string,id:string,
   // Local state commits first: the webhook rechecks it under a row lock before admitting work.
   await db`UPDATE composio_triggers SET status='disabled' WHERE id=${id}`;
   if(row.composio_trigger_id)await withSubscription(row.account_id,row.trigger_slug,async sql=>{
-   if(!await othersActive(sql,row.composio_trigger_id,id))
+   if(!await anyActive(sql,row.composio_trigger_id))
     await composio().setTriggerEnabled(row.composio_trigger_id,false).catch(error=>{if(!(error instanceof ComposioError))throw error;});
   });
  }
@@ -199,8 +200,17 @@ export async function handleComposioWebhook(request:Request,env:NodeJS.ProcessEn
 
 /** Executor preparation: stage the verified event as a workspace file instead of prompt text. */
 export async function triggerEventFile(runId:string){
- const [row]=await db`SELECT payload_secret FROM composio_trigger_events WHERE run_id=${runId} LIMIT 1`;
+ const [row]=await db`SELECT payload_secret FROM composio_trigger_events WHERE run_id=${runId} AND payload_secret IS NOT NULL LIMIT 1`;
  return row?Buffer.from(decrypt(row.payload_secret)):null;
+}
+/**
+ * Provider payloads are kept only while a task may still stage them. The small row outlives its
+ * payload so late Composio retries stay deduplicated, and is dropped after the retry horizon.
+ */
+export async function purgeTriggerEvents(sql:any=db){
+ await sql`UPDATE composio_trigger_events e SET payload_secret=NULL WHERE payload_secret IS NOT NULL
+  AND (run_id IS NULL OR EXISTS(SELECT 1 FROM runs r WHERE r.id=e.run_id AND r.status IN ('succeeded','failed','interrupted','cancelled')))`;
+ await sql`DELETE FROM composio_trigger_events WHERE payload_secret IS NULL AND received_at<now()-interval '30 days'`;
 }
 
 export async function handleComposioTriggers(request:Request,ownerId:string):Promise<Response|null>{
