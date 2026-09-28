@@ -1,0 +1,24 @@
+scripts/composio-setup.ts
+  s_c47618252b7e2c::t_efbe1a98754f6c 2
+  s_c47618252b7e2c::t_e91809ba16fde0 1,19-24
+.env.example
+  s_c47618252b7e2c::t_e91809ba16fde0 54
+docs/plugins-production.md
+  s_c47618252b7e2c::t_e91809ba16fde0 46-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e433bece0ffa9b31973b201c9ac2a78a251a4e46",
+  "prompts": {},
+  "sessions": {
+    "s_c47618252b7e2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed619812-a2ee-4526-89ad-d8476bcc344a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
