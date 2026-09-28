@@ -36,6 +36,13 @@ PRIVATE_ENV_NAMES = {
 }
 
 
+# MinIO withdrew its quay.io and Docker Hub images; these are the same releases, pinned by digest.
+# Bitnami's entrypoint and non-root default user are bypassed to keep the upstream invocation.
+MINIO_IMAGE = "docker.io/bitnamilegacy/minio:2025.4.22@sha256:50cec18ac4184af4671a78aedd5554942c8ae105d51a465fa82037949046da01"
+MINIO_CLIENT_IMAGE = "docker.io/bitnamilegacy/minio-client:2025.4.16@sha256:8a86e441decf053093c5977d49290298295f850c7843652f93e970ab15871dd1"
+MINIO_RUN = ["--user", "0:0", "--entrypoint", "minio"]
+MINIO_CLIENT_RUN = ["--entrypoint", "mc"]
+
 def private_environment(name):
     return name in PRIVATE_ENV_NAMES or name.endswith(("_API_KEY", "_PASSWORD", "_SECRET", "_TOKEN"))
 
@@ -205,7 +212,7 @@ class Verifier:
         self.run("storage", ["docker", "run", "--detach", "--name", self.storage_name,
             "--label", self.verification_label, "--publish", "127.0.0.1::9000",
             "--env", f"MINIO_ROOT_USER={storage_access_key}", "--env", f"MINIO_ROOT_PASSWORD={storage_secret_key}",
-            "quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e", "server", "/data"])
+            *MINIO_RUN, MINIO_IMAGE, "server", "/data"])
         storage_mapping = subprocess.check_output(["docker", "port", self.storage_name, "9000/tcp"], text=True).strip()
         storage_endpoint = f"http://127.0.0.1:{storage_mapping.rsplit(':', 1)[-1]}"
         for _ in range(60):
@@ -221,7 +228,7 @@ class Verifier:
         self.run("storage-bucket", ["docker", "run", "--rm", "--label", self.verification_label,
             "--network", f"container:{self.storage_name}",
             "--env", f"MC_HOST_verify=http://{storage_access_key}:{storage_secret_key}@127.0.0.1:9000",
-            "quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z@sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3",
+            *MINIO_CLIENT_RUN, MINIO_CLIENT_IMAGE,
             "mb", "--ignore-existing", "verify/companions-files"])
         self.env.update({"S3_ENDPOINT": storage_endpoint, "S3_ACCESS_KEY_ID": storage_access_key,
             "S3_SECRET_ACCESS_KEY": storage_secret_key, "S3_BUCKET_FILES": "companions-files", "S3_REGION": "us-east-1"})
