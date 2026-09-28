@@ -81,7 +81,7 @@ registerControl({
   models:async()=>({models:await availableModels()}),
   identity:async context=>{
     const [companion]=await db`SELECT id,name,instructions,avatar,model_id AS "modelId",desktop_taken AS "desktopTaken",desktop_paused_at AS "desktopPausedAt",status FROM companions WHERE id=${context.companionId} AND owner_id=${context.ownerId}`;
-    return {companion,isChild:false,operations:Object.keys(controlHandlers),examples:controlHelp,instructions:'Read current state before changing it. Omit example placeholder IDs. OAuth returns a consent link for the human; never claim connection before consent succeeds. Use plugin_check with an accountId to verify catalog discovery. Local Pi skills belong under the agent skills directory. Human desktop control persists until the human explicitly releases it.'};
+    return {companion,isChild:false,operations:Object.keys(controlHandlers).filter(operation=>!operation.startsWith('composio_')),examples:controlHelp,instructions:'Read current state before changing it. Omit example placeholder IDs. OAuth returns a consent link for the human; never claim connection before consent succeeds. Use plugin_check with an accountId to verify catalog discovery. Local Pi skills belong under the agent skills directory. Human desktop control persists until the human explicitly releases it.'};
   },
   configure:(context,input)=>configureCompanion(context.ownerId,context.companionId,input),
   companions:async context=>db`SELECT id,name,instructions,avatar,status FROM companions WHERE owner_id=${context.ownerId} AND retired_at IS NULL ORDER BY created_at`,

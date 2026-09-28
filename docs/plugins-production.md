@@ -1,59 +1,75 @@
-# Production plugins
+# Production apps and triggers
 
-The production OAuth clients are dedicated to this product. Gmail uses Google Cloud project
-`companions-build-prod`; its Gmail and Gmail MCP APIs are enabled. Configure Google consent
-branding with `/about`, `/privacy` and `/terms`, which must remain public without signing in.
-Publishing the application and Google verification are separate provider-controlled steps.
+Third-party apps and triggers come from [Composio](https://docs.composio.dev). Members connect any
+Composio toolkit (Gmail, Linear, Notion, Slack, GitHub, Sentry, …) through Composio-hosted consent,
+choose which connections each Companion may use, and subscribe a Companion to Composio triggers.
+Custom HTTP and stdio MCP servers remain available and run only on the agent computer. A native
+GitHub OAuth connection remains solely to give `git` credentials on the agent computer.
 
-All curated connections return to `https://companions.build/api/plugins/callback`.
-For another deployment, use its public `APP_URL` with the same path. Keep `APP_URL`
-and `BETTER_AUTH_URL` consistent. Register the exact callback with each static
-OAuth client; a callback belonging to the old Companion product does not configure this product.
+## Security model
 
-## Provider setup
+- The Composio project key (`COMPOSIO_API_KEY`) lives only on the **api** and **executor** services.
+  Composio's hosted MCP requires that key, so agents never receive a Composio MCP URL.
+- The agent sees a Composio connection as `transport: "composio"` with no credential. Its
+  `plugin_tools` and `plugin_call` requests travel through the durable control channel; the
+  executor checks that the connection is selected for the Companion, that the tool belongs to the
+  connection's toolkit, pins the connected account, and executes it with the tool's current
+  version. A control command is claimed before execution, so a redelivered or interrupted call
+  reports its recorded or unknown outcome instead of running twice.
+- Each owner maps to one Composio user, `companions:<ownerId>`. A consent callback is accepted only
+  when Composio reports the pending account `ACTIVE` for that user, toolkit and auth config.
+- Trigger webhooks are accepted only with a valid Standard Webhooks signature
+  (`webhook-id`, `webhook-timestamp`, `webhook-signature`, 5-minute tolerance). The payload is
+  stored encrypted, staged to the task workspace as `trigger-event.json`, and never interpolated
+  into the prompt or written to logs.
 
-| Provider | API and executor configuration | Provider console configuration |
-| --- | --- | --- |
-| Linear, Notion, Conductor, Sentry, Railway | No static client secrets | Dynamic registration runs when a user starts connecting; each user still grants consent. |
-| Skillpack | No static client secrets | Dynamic registration against `https://skillpack.app`. The consent screen carries a workspace picker: one connection acts in exactly one Skillpack workspace, with the connecting member's own rights. To reach a second workspace, connect Skillpack again and choose it. Revoke from Skillpack's own settings or by disconnecting here. |
-| GitHub | `COMPANION_MCP_GITHUB_CLIENT_ID`, `COMPANION_MCP_GITHUB_CLIENT_SECRET` | Dedicated OAuth App, homepage `https://companions.build`, exact callback above. The broker requests `repo`, `read:org`, `read:user`, `user:email`, `admin:repo_hook`. |
-| Slack | `COMPANION_MCP_SLACK_CLIENT_ID`, `COMPANION_MCP_SLACK_CLIENT_SECRET` | Dedicated Slack app with a bot, callback above, bot scope `chat:write`. Configure distribution for the intended workspaces. This plugin exposes message posting only. |
-| Gmail | `COMPANION_MCP_GMAIL_CLIENT_ID`, `COMPANION_MCP_GMAIL_CLIENT_SECRET` | Web application OAuth client, callback above, consent screen with `gmail.readonly` and `gmail.compose`. Enable `gmail.googleapis.com` and `gmailmcp.googleapis.com` in the same project. |
+## Configuration
 
-Gmail MCP is in Google's Workspace Developer Preview. Confirm the project is eligible;
-successful OAuth discovery does not prove access to the service. Configure the consent
-audience and authorized test users for beta, or complete the applicable Google verification
-for public access. Runtime limits Gmail to the read/draft tools declared in
-`packages/plugins/oauth.ts`.
+| Service | Variables |
+| --- | --- |
+| api, executor | `COMPOSIO_API_KEY`; optional `COMPOSIO_AUTH_CONFIGS` (JSON `{"toolkit":"ac_…"}`) |
+| api | `COMPOSIO_WEBHOOK_SECRET` |
+| api, executor | `COMPANION_MCP_GITHUB_CLIENT_ID`, `COMPANION_MCP_GITHUB_CLIENT_SECRET` for git access |
 
-Put matching static client credentials on the Railway **api** and **executor** services.
-Static client secrets are deliberately removed from stored account grants; refresh reloads
-them from the service environment and checks that the client ID still matches.
-Do not put static credentials in frontend configuration, Box or repository files.
-Redeploy both services after changing their configuration.
-Do not reuse or modify another product's clients without checking its existing callbacks and users.
+Without `COMPOSIO_AUTH_CONFIGS`, the server finds or creates a Composio-managed auth config per
+toolkit. Toolkits without Composio-managed auth show as unavailable until an administrator creates
+an auth config in the Composio dashboard and adds it to `COMPOSIO_AUTH_CONFIGS`; use the same map
+to substitute your own OAuth apps for Composio's.
 
-Provider references:
+Register the trigger webhook once per Composio project and deployment:
 
-- [GitHub OAuth app creation](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
-- [Slack installation with OAuth](https://docs.slack.dev/authentication/installing-with-oauth/)
-- [Slack app distribution](https://docs.slack.dev/app-management/distribution/)
-- [Gmail MCP configuration](https://developers.google.com/workspace/gmail/api/guides/configure-mcp-server)
-- [Google restricted-scope verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification)
+```sh
+COMPOSIO_API_KEY=… APP_URL=https://companions.build bun scripts/composio-setup.ts
+```
+
+It subscribes `https://<APP_URL>/api/composio/webhook` to `composio.trigger.message` and
+`composio.connected_account.expired` (V3 payloads) and prints the signing secret for
+`COMPOSIO_WEBHOOK_SECRET`. Redeploy the API after setting it.
+
+The GitHub git-access OAuth App returns to `https://companions.build/api/plugins/callback`
+(or the deployment's `APP_URL` with the same path) and requests `repo`, `read:org`,
+`read:user` and `user:email`. Static client secrets are removed from stored grants and reloaded
+from the service environment on refresh. Composio consent returns to the same callback path.
+
+## Triggers
+
+A trigger belongs to one Companion and one Composio connection. Each delivery admits one
+background task (`runs.source = 'event'`) with the trigger's instructions; a Composio retry of the
+same delivery never admits a second task. Identical subscriptions (same connection, trigger type
+and configuration) share one Composio trigger instance: disabling one keeps the shared instance
+enabled while another Companion still uses it, and deletion removes the instance with its last
+local subscription. Disconnecting a connection or retiring a Companion deletes its subscriptions.
 
 ## Acceptance
 
-1. Verify the six static variables are nonempty and match on the running API and executor
-   without printing values.
-2. Run `python3 scripts/bun.py scripts/probe-plugin-oauth.ts` for public discovery.
-3. In the deployed application's Connections page, start each provider's flow and verify
-   the consent screen. Complete consent with an authorized account; a consent URL alone
-   is not successful integration.
-4. Check each persisted account's health. Enable it on a test-owned Companion and discover
-   its tools. Exercise a read-only operation where available; Slack health uses `auth.test`
-   and does not require sending a message.
-5. Verify a refresh preserves the connection and independently selected accounts stay isolated.
-6. Archive test-owned Boxes, verify provider state is archived, and stop owned local stacks.
+1. Verify the variables are nonempty and match on the running services without printing values.
+2. From the Connections page, connect a Composio toolkit and complete consent with an authorized
+   account; a consent URL alone is not a successful connection. Check its health.
+3. Enable it on a test-owned Companion and ask for a read-only operation. The Companion must call
+   `plugin_tools` then `plugin_call`; verify the result independently.
+4. Add a trigger on that Companion, cause the provider event, and verify a background task starts
+   with `trigger-event.json` in its inbox. Resending the same delivery must not start another task.
+5. Connect GitHub git access and verify `git clone`/`git push` on the agent computer.
+6. Disconnect the test connection and verify the Composio account and trigger instances are gone.
 
-Report discovery, consent, health and runtime tool access separately. Never mark all nine
-providers working based only on metadata discovery or presence of environment variables.
+Report consent, health, tool access and trigger delivery separately.

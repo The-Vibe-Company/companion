@@ -3,22 +3,12 @@ import type { PluginAccount, PluginServer } from "@/api";
 import { CompanionAvatar } from "./CompanionAvatar";
 import { ConnectionActions } from "./ConnectionActions";
 import { PluginAccountNameForm } from "./PluginAccountNameForm";
-import { ProviderMark } from "./ProviderMark";
+import { markKey, ProviderMark } from "./ProviderMark";
 import { Button } from "./ui/button";
 import "./ConnectionCards.css";
 
-const descriptions: Record<string, string> = {
-  linear: "Issues, projects, cycles",
-  github: "Repositories, pull requests",
-  notion: "Pages and databases",
-  conductor: "Tasks and workflows",
-  slack: "Channels and messages",
-  gmail: "Email and drafts",
-  sentry: "Errors and performance",
-  skillpack: "Skills, labels, secrets",
-};
-
-export function ConnectionCards({ catalog, accounts, busy, namingServer, healthText, onConnect, onRequestConnection, onCancelNaming, onRename, onCheck, onDisconnect }: {
+export function ConnectionCards({ label, catalog, accounts, busy, namingServer, healthText, onConnect, onRequestConnection, onCancelNaming, onRename, onCheck, onDisconnect }: {
+  label: string;
   catalog: PluginServer[];
   accounts: PluginAccount[];
   busy: string;
@@ -31,17 +21,20 @@ export function ConnectionCards({ catalog, accounts, busy, namingServer, healthT
   onCheck: (account: PluginAccount) => void;
   onDisconnect: (account: PluginAccount) => void;
 }) {
-  const groups: Array<{ key: string; name: string; provider?: string; server?: PluginServer; accounts: PluginAccount[] }> = catalog.map(server => ({ key: server.id, name: server.name, provider: server.provider, server, accounts: accounts.filter(account => account.serverId === server.id) }));
+  const groups: Array<{ key: string; name: string; mark?: string; logo?: string | null; server?: PluginServer; accounts: PluginAccount[] }> = catalog.map(server => ({ key: server.id, name: server.name, mark: markKey(server), logo: server.logo, server, accounts: accounts.filter(account => account.serverId === server.id) }));
   for (const account of accounts) {
     if (catalog.some(server => server.id === account.serverId)) continue;
     const key = account.serverId ?? "custom";
     const group = groups.find(item => item.key === key);
+    const name = account.appName ?? (account.provider === "custom" ? "Custom MCP" : account.provider);
+    // Accounts for toolkits outside the featured list keep Reconnect and Add account.
+    const server: PluginServer | undefined = account.provider === "composio" && account.serverId ? { id: account.serverId, provider: "composio", kind: "composio", name, toolkit: markKey(account), logo: account.appLogo ?? undefined, available: true } : undefined;
     if (group) group.accounts.push(account);
-    else groups.push({ key, name: account.provider === "custom" ? "Custom MCP" : account.provider ?? "Connection", provider: account.provider ?? "custom", server: undefined, accounts: [account] });
+    else groups.push({ key, name, mark: markKey(account), logo: account.appLogo, server, accounts: [account] });
   }
-  return <section className="connection-cards" aria-label="Apps">
+  return <section className="connection-cards" aria-label={label}>
     {groups.map(group => <article key={group.key} className={`connection-card${group.accounts.length ? " connection-card--connected" : ""}`} aria-label={group.name}>
-      <header><ProviderMark provider={group.provider} name={group.name} /><div><h2>{group.name}</h2><p>{group.server?.description ?? descriptions[group.provider ?? ""] ?? (group.provider === "custom" ? "Your own tools and servers" : "Tools and events")}</p></div></header>
+      <header><ProviderMark provider={group.mark} name={group.name} logo={group.logo} /><div><h2>{group.name}</h2><p>{group.server?.description ?? (group.mark === "custom" ? "Your own tools and servers" : "Tools and events")}</p></div></header>
       <div className="connection-card-accounts">{group.accounts.map(account => <div key={account.id} className={`connection-chip connection-chip--${account.healthStatus}`}>
         <span className="connection-chip-dot" aria-hidden="true" />
         <div className="connection-chip-copy"><strong title={account.label}>{account.label}</strong><small role="status" title={healthText(account)}>{healthText(account)}</small></div>

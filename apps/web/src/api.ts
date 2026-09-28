@@ -59,9 +59,13 @@ export const discussionApi = {
   answerProposal: (id: string, proposalId: string, accept: boolean) => request<{ ok: true }>(`/api/discussions/${id}/proposals/${proposalId}`, { method: "POST", body: JSON.stringify({ accept }) }),
 };
 
-export interface PluginServer { id: string; name: string; description?: string; provider?: string; kind?: "oauth" | "remote" | "custom"; available: boolean }
+export interface PluginServer { id: string; provider: string; name: string; kind: "composio" | "native"; toolkit?: string; description?: string; logo?: string; available: boolean }
 export type PluginHealthCode = "authorization_required" | "connection_failed" | "configuration_invalid" | "agent_check_required";
-export interface PluginAccount { usedBy?: Array<Pick<Companion, "id" | "name" | "avatar">>; id: string; serverId: string | null; label: string; provider?: string; healthStatus: "unchecked" | "ok" | "error" | "requires_agent"; healthCode: PluginHealthCode | null; checkedAt: string | null }
+export interface PluginAccount { usedBy?: Array<Pick<Companion, "id" | "name" | "avatar">>; id: string; serverId: string | null; label: string; provider: string; appName: string | null; appLogo: string | null; healthStatus: "unchecked" | "ok" | "error" | "requires_agent"; healthCode: PluginHealthCode | null; checkedAt: string | null; createdAt?: string }
+export interface JsonSchema { type?: string | string[]; title?: string; description?: string; enum?: unknown[]; default?: unknown; properties?: Record<string, JsonSchema>; required?: string[]; items?: JsonSchema }
+export interface TriggerType { slug: string; name: string; description: string; instructions: string; type: "webhook" | "poll"; config: JsonSchema }
+export interface CompanionTrigger { id: string; accountId: string; accountLabel: string; appName: string | null; appLogo: string | null; triggerSlug: string; triggerName: string; config: Record<string, unknown>; instructions: string; status: "registering" | "active" | "disabled" | "error"; createdAt: string }
+export type TriggerInput = Pick<CompanionTrigger, "accountId" | "triggerSlug" | "triggerName" | "config" | "instructions">;
 export type PluginHealthResult = Pick<PluginAccount, "id" | "healthStatus" | "healthCode" | "checkedAt">;
 export interface PluginsResponse { catalog: PluginServer[]; accounts: PluginAccount[] }
 export type CustomPluginInput = { label: string; transport: "http"; url: string; headers: Record<string, string> } | { label: string; transport: "stdio"; command: string; args: string[]; env: Record<string, string> };
@@ -83,6 +87,7 @@ export const workspaceApi = {
   createMaintenanceTask: (id: string, clientMessageId: string, prompt: string) => request<{ runId?: string }>(`/api/maintenance/companions/${id}/tasks`, { method: "POST", body: JSON.stringify({ clientMessageId, prompt }) }),
   maintenanceActions: (id: string) => request<{ actions: MaintenanceAction[] }>(`/api/maintenance/companions/${id}/actions`),
   plugins: () => request<PluginsResponse>("/api/plugins"),
+  searchToolkits: (search: string, cursor?: string | null, signal?: AbortSignal) => request<{ items: PluginServer[]; nextCursor: string | null }>(`/api/plugins/toolkits?${new URLSearchParams({ search, ...(cursor ? { cursor } : {}) })}`, { signal }),
   checkPlugin: (id: string) => request<{ account: PluginHealthResult }>(`/api/plugins/accounts/${id}/check`, { method: "POST" }),
   connectPlugin: (serverId: string, label: string) => request<{ url?: string; account?: PluginAccount }>("/api/plugins/connect", { method: "POST", body: JSON.stringify({ serverId, label }) }),
   renamePlugin: (id: string, label: string) => request<{ account: PluginAccount }>(`/api/plugins/${id}`, { method: "PATCH", body: JSON.stringify({ label }) }),
@@ -91,6 +96,11 @@ export const workspaceApi = {
   companionPlugins: (id: string) => request<{ accounts: PluginAccount[] }>(`/api/companions/${id}/plugins`),
   selectPlugin: (id: string, accountId: string) => request<{ ok: true }>(`/api/companions/${id}/plugins/${accountId}`, { method: "PUT" }),
   unselectPlugin: (id: string, accountId: string) => request<{ ok: true }>(`/api/companions/${id}/plugins/${accountId}`, { method: "DELETE" }),
+  triggerTypes: (accountId: string) => request<{ items: TriggerType[] }>(`/api/plugins/${accountId}/trigger-types`),
+  companionTriggers: (id: string) => request<{ triggers: CompanionTrigger[] }>(`/api/companions/${id}/triggers`),
+  createTrigger: (id: string, input: TriggerInput) => request<{ trigger: CompanionTrigger }>(`/api/companions/${id}/triggers`, { method: "POST", body: JSON.stringify(input) }),
+  updateTrigger: (id: string, triggerId: string, input: { enabled?: boolean; instructions?: string }) => request<{ trigger: CompanionTrigger }>(`/api/companions/${id}/triggers/${triggerId}`, { method: "PATCH", body: JSON.stringify(input) }),
+  deleteTrigger: (id: string, triggerId: string) => request<{ ok: true }>(`/api/companions/${id}/triggers/${triggerId}`, { method: "DELETE" }),
 };
 
 export interface BillingOverview { configured: boolean; mode: "unconfigured" | "test" | "stripe" | "beta"; plan: "inactive" | "subscription" | "beta"; active: boolean; status: string | null; currentPeriodEnd: string | null; cancelAtPeriodEnd: boolean; portalAvailable: boolean; usage: Array<{ category: string; unit: string; quantity: string }> }

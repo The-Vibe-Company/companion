@@ -5,12 +5,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { workspaceApi, type PluginAccount } from "@/api";
 import { ApplicationAccess } from "./ApplicationAccess";
 
-const linearWork:PluginAccount={id:"linear-work",serverId:"linear-server",label:"Work workspace",provider:"linear",healthStatus:"ok",healthCode:null,checkedAt:null};
+const linearWork:PluginAccount={id:"linear-work",serverId:"composio:linear",label:"Work workspace",provider:"composio",appName:"Linear",appLogo:"https://logos.example/linear.svg",healthStatus:"ok",healthCode:null,checkedAt:null};
 const linearPersonal:PluginAccount={...linearWork,id:"linear-personal",label:"Personal workspace"};
-const github:PluginAccount={...linearWork,id:"github-work",serverId:"github-server",label:"the-vibe-company",provider:"github"};
+const github:PluginAccount={...linearWork,id:"github-work",serverId:"composio:github",label:"the-vibe-company",appName:"GitHub",appLogo:null};
 const plugins={accounts:[linearWork,linearPersonal,github],catalog:[
-  {id:"linear-server",name:"Linear",provider:"linear",available:true},
-  {id:"github-server",name:"GitHub",provider:"github",available:true},
+  {id:"composio:linear",name:"Linear",provider:"composio",kind:"composio" as const,toolkit:"linear",logo:"https://logos.example/linear.svg",available:true},
+  {id:"composio:github",name:"GitHub",provider:"composio",kind:"composio" as const,toolkit:"github",available:true},
 ]};
 
 afterEach(()=>vi.restoreAllMocks());
@@ -48,8 +48,8 @@ describe("ApplicationAccess",()=>{
   });
 
   it("keeps distinct custom MCP servers separate", async () => {
-    const first={...linearWork,id:"internal",serverId:null,provider:"custom",label:"Internal tools"};
-    const second={...linearWork,id:"reports",serverId:null,provider:"custom",label:"Reports"};
+    const first={...linearWork,id:"internal",serverId:null,provider:"custom",appName:null,appLogo:null,label:"Internal tools"};
+    const second={...linearWork,id:"reports",serverId:null,provider:"custom",appName:null,appLogo:null,label:"Reports"};
     vi.spyOn(workspaceApi,"plugins").mockResolvedValue({catalog:[],accounts:[first,second]});
     vi.spyOn(workspaceApi,"companionPlugins").mockResolvedValue({accounts:[first]});
     render(<ApplicationAccess companionId="ada"/>);
@@ -57,6 +57,20 @@ describe("ApplicationAccess",()=>{
     expect(screen.getByRole("heading",{name:"Reports"})).toBeInTheDocument();
     expect(screen.getByRole("checkbox",{name:"Internal tools"})).toBeChecked();
     expect(screen.getByRole("checkbox",{name:"Reports"})).not.toBeChecked();
+  });
+
+  it("names and marks Composio accounts outside the featured catalog from the account", async () => {
+    const notion:PluginAccount={...linearWork,id:"notion-docs",serverId:"composio:notion",label:"Docs",appName:"Notion",appLogo:"https://logos.example/notion.png"};
+    const hubspot:PluginAccount={...linearWork,id:"crm",serverId:"composio:hubspot",label:"Sales",appName:"HubSpot",appLogo:null};
+    vi.spyOn(workspaceApi,"plugins").mockResolvedValue({catalog:plugins.catalog,accounts:[linearWork,notion,hubspot]});
+    vi.spyOn(workspaceApi,"companionPlugins").mockResolvedValue({accounts:[notion]});
+    const view=render(<ApplicationAccess companionId="ada"/>);
+    expect(await screen.findByRole("heading",{name:"Notion"})).toBeInTheDocument();
+    expect(screen.getByRole("heading",{name:"HubSpot"})).toBeInTheDocument();
+    expect(screen.getByRole("heading",{name:"Linear"})).toBeInTheDocument();
+    expect(screen.getByRole("checkbox",{name:"Docs"})).toBeChecked();
+    expect(view.container.querySelector('img[src="https://logos.example/notion.png"]')).toHaveAttribute("alt","Notion");
+    expect(view.container.querySelector('img[src="https://logos.example/linear.svg"]')).toHaveAttribute("alt","Linear");
   });
 
   it("groups several accounts per provider and grants each account separately",async()=>{

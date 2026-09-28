@@ -1,6 +1,6 @@
-/** Live public discovery; --authorize also starts the application's consent flow, never grants it. */
+/** Live public GitHub discovery; --authorize also starts the application's consent flow, never grants it. */
 import {chmodSync,mkdirSync,writeFileSync} from 'node:fs';
-import {COMPANION_PLUGIN_OAUTH_SERVERS as servers} from '../packages/plugins/oauth';
+import {appDefinitions} from '../packages/plugins/definitions';
 
 const authorize=process.argv.includes('--authorize');
 const apiBase=`http://127.0.0.1:${process.env.API_PORT??Number(process.env.WEB_PORT??4310)+1}/api`;
@@ -12,37 +12,27 @@ async function publicJson(url:string){
 }
 const report:Array<Record<string,unknown>>=[];
 const privateLinks:Array<{id:string;url:string}>=[];
-for(const [id,server] of Object.entries(servers)){
- const result:Record<string,unknown>={id,provider:server.provider};
+for(const definition of appDefinitions){
+ const {id,provider,oauth}=definition;
+ const result:Record<string,unknown>={id,provider};
  try{
-  if(server.resourceMetadataUrl){
-   const metadata=await publicJson(server.resourceMetadataUrl);
-   if(metadata.resource!==server.remoteUrl||!Array.isArray(metadata.authorization_servers)||!metadata.authorization_servers.includes(server.authorizationServer))throw Error('resource_metadata_changed');
-   result.resourceMetadata='verified';
-   if(server.provider!=='github'){
-    const metadataUrl='authorizationMetadataUrl' in server?server.authorizationMetadataUrl:`${server.authorizationServer}/.well-known/oauth-authorization-server`;
-    const authorization=await publicJson(metadataUrl);
-    for(const key of ['authorization_endpoint','token_endpoint',...(server.dynamicRegistration?['registration_endpoint']:[])]){
-     const value=authorization[key];
-     if(typeof value!=='string'||!(server.allowedOrigins as readonly string[]).includes(new URL(value).origin))throw Error('authorization_metadata_changed');
-    }
-    result.authorizationMetadata='verified';
-   }
-  }else result.resourceMetadata='not_applicable';
+  const metadata=await publicJson(oauth.resourceMetadataUrl);
+  if(metadata.resource!==definition.mcp.url||!Array.isArray(metadata.authorization_servers)||!metadata.authorization_servers.includes(oauth.authorizationServer))throw Error('resource_metadata_changed');
+  result.resourceMetadata='verified';
   if(authorize){
-   const response=await fetch(`${apiBase}/plugins/connect`,{method:'POST',headers:{cookie:cookie!,'content-type':'application/json'},body:JSON.stringify({serverId:id,label:`${server.provider} verification`}),signal:AbortSignal.timeout(30_000)});
+   const response=await fetch(`${apiBase}/plugins/connect`,{method:'POST',headers:{cookie:cookie!,'content-type':'application/json'},body:JSON.stringify({serverId:id,label:`${provider} verification`}),signal:AbortSignal.timeout(30_000)});
    const body=await response.json() as {url?:unknown};
    if(!response.ok){result.authorizationStart=`http_${response.status}`;}
    else{
     if(typeof body.url!=='string')throw Error('authorization_url_missing');
     const url=new URL(body.url);
-    if(!(server.allowedOrigins as readonly string[]).includes(url.origin)||!url.searchParams.get('state')||(server.provider!=='slack'&&url.searchParams.get('code_challenge_method')!=='S256'))throw Error('authorization_parameters_invalid');
+    if(!oauth.allowedOrigins.includes(url.origin)||!url.searchParams.get('state')||url.searchParams.get('code_challenge_method')!=='S256')throw Error('authorization_parameters_invalid');
     privateLinks.push({id,url:body.url});result.authorizationStart='consent_required';
    }
   }
  }catch(error){
   const code=error instanceof Error?error.message:'';
-  result.error=/^(http_[0-9]{3}|resource_metadata_changed|authorization_metadata_changed|authorization_url_missing|authorization_parameters_invalid)$/.test(code)?code:'probe_failed';
+  result.error=/^(http_[0-9]{3}|resource_metadata_changed|authorization_url_missing|authorization_parameters_invalid)$/.test(code)?code:'probe_failed';
  }
  report.push(result);
 }

@@ -1,12 +1,12 @@
 import { appDefinitions } from "./definitions";
 
-/** Compatibility catalog derived from the declarative App definitions. */
+/** Native entries only; Composio toolkits are listed by the server from Composio. */
 export const pluginCatalog = appDefinitions.map((definition) => ({
   id: definition.id,
   provider: definition.provider,
   name: definition.name,
-  transport: definition.mcp.transport,
-  url: definition.mcp.url,
+  description: definition.description,
+  kind: "native" as const,
   capabilities: definition.capabilities,
 }));
 
@@ -15,7 +15,9 @@ export type MachinePlugin = {
   serverId?: string;
   name: string;
   provider: string;
-  transport: "http" | "stdio" | "slack";
+  /** `composio` connections carry no credential; the server executes their tools. */
+  transport: "http" | "stdio" | "composio";
+  toolkit?: string;
   url?: string;
   command?: string;
   args?: string[];
@@ -25,6 +27,5 @@ export type MachinePlugin = {
   credentialExpiresAt?: number;
   capabilities?: {
     gitCredentials?: true;
-    bridge?: "slack";
   };
 };

@@ -14,7 +14,7 @@ import {GitCredentialBroker} from './git-credentials';
 import {AgentSkills,type SkillMutationCheckpoint} from './skills';
 
 const localSkillOperations=['skills','skill_install','skill_update','skill_remove'] as const;
-const operations=['discussion_history','request_help','history_search','identity','companion_create','models','configure','companions','plugins','plugin_select','plugin_catalog','plugin_connect','plugin_custom','plugin_check','plugin_disconnect','delegate','task_status','task_answer','task_cancel','deliveries','delivery_prepare','maintenance','maintenance_inspect','maintenance_configure','maintenance_prepare','maintenance_task','maintenance_history','ask_user','app_refresh','prepare','desktop_takeover','desktop_release',...localSkillOperations] as const;
+const operations=['discussion_history','request_help','history_search','identity','companion_create','models','configure','companions','plugins','plugin_select','plugin_catalog','plugin_connect','plugin_custom','plugin_check','plugin_disconnect','delegate','task_status','task_answer','task_cancel','deliveries','delivery_prepare','maintenance','maintenance_inspect','maintenance_configure','maintenance_prepare','maintenance_task','maintenance_history','ask_user','app_refresh','composio_tools','composio_call','triggers','trigger_types','trigger_save','trigger_delete','prepare','desktop_takeover','desktop_release',...localSkillOperations] as const;
 export type ControlOperation=typeof operations[number];
 /** Durable local MCP outbox. The executor visits Box; Box need not reach a local web server. */
 export class AgentControl {
@@ -98,6 +98,10 @@ export class AgentControl {
     const [a,b]=InMemoryTransport.createLinkedPair();await server.connect(a);await client.connect(b);
     const plugins=pluginTools(()=>this.plugins,{
       refresh:async(connectionId,signal)=>{const result=await this.call(runId,'app_refresh',{connectionId},signal);if(result?.refreshed!==true)throw Error('PLUGIN_REFRESH_FAILED');},
+      composio:{
+        tools:async(connectionId,search,signal)=>{const result=await this.call(runId,'composio_tools',{connectionId,...(search?{search}:{})},signal);if(!Array.isArray(result?.tools))throw Error(result?.error??'PLUGIN_CONNECTION_FAILED');return result.tools;},
+        call:async(connectionId,tool,args,signal)=>{const result=await this.call(runId,'composio_call',{connectionId,tool,arguments:args},signal);if(!Array.isArray(result?.content))throw Error(result?.error??'PLUGIN_CALL_FAILED');return result;},
+      },
     });
     const tool:ToolDefinition={name:'companion_control',label:'Companion control',description:'Use the companion-control MCP to configure this product: identity, skills, instructions, plugins, delegation and delivery. Call identity with empty input to discover schemas. Never claim a configuration changed before this tool confirms it.',parameters:Type.Object({operation:Type.Union(operations.map(x=>Type.Literal(x))),input:Type.Record(Type.String(),Type.Unknown())}),async execute(_id,params,signal){
       const result=await client.callTool({name:'companion_control',arguments:params as Record<string,unknown>},undefined,{signal,timeout:(params as any).operation==='ask_user'?2*3600_000+5000:125_000});

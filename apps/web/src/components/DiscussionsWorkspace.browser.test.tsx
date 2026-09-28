@@ -41,6 +41,7 @@ it("keeps the conversation usable beside resources on desktop and across mobile 
           : url === '/api/plugins' ? {catalog:[],accounts:[]}
           : url === '/api/deliveries' ? {sent:[],received:[]}
           : url.startsWith('/api/companions/') && url.endsWith('/plugins') ? {accounts:[]}
+          : url.startsWith('/api/companions/') && url.endsWith('/triggers') ? {triggers:[]}
           : snapshot;
         return new Response(JSON.stringify(body), {headers:{'content-type':'application/json'}});
       };

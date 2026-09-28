@@ -92,7 +92,7 @@ button,a,input,textarea,select{transition:background-color 120ms ease,color 120m
 .sheet-actions [role=status]{color:var(--muted-foreground);font-size:.8rem;}
 .maison-settings .field label{font-size:.82rem;}
 .maison-settings .field input,.maison-settings .field textarea,.maison-settings .field select{font-size:.9rem;}
-.settings-surface .automation-detail,.secret-callout,.consent-note{background:var(--secondary);}
+.secret-callout,.consent-note{background:var(--secondary);}
 .access-page{background:var(--background);}
 .access-form{box-shadow:none;border:0;background:transparent;}
 .access-form h1{letter-spacing:-.045em;}
@@ -134,9 +134,6 @@ button,a,input,textarea,select{transition:background-color 120ms ease,color 120m
 .section-intro { margin-bottom:32px; }
 .section-intro h2 { font-size:1.75rem; line-height:1.2; letter-spacing:-.035em; font-weight:570; }
 .section-intro p { color:var(--muted-foreground); margin-top:10px; font-size:.94rem; line-height:1.6; }
-.automation-sections { display:flex; gap:6px; width:fit-content; padding:4px; background:var(--secondary); border-radius:10px; margin-bottom:32px; }
-.automation-sections button { padding:10px 18px; min-height:44px; border-radius:7px; font-size:.84rem; color:var(--muted-foreground); }
-.automation-sections button[aria-current=page] { background:var(--card); color:var(--foreground); box-shadow:0 1px 3px #0000000a; }
 .create-menu { position:relative; }
 .create-menu summary { display:grid; place-items:center; width:36px; height:36px; list-style:none; cursor:pointer; border-radius:8px; }
 .create-menu summary::-webkit-details-marker { display:none; }
@@ -148,7 +145,6 @@ button,a,input,textarea,select{transition:background-color 120ms ease,color 120m
 .team-onboarding { flex:1; min-width:0; overflow:auto; }
 .composer textarea { min-height:62px; }
 .home-heading h1 { font-size:2rem; letter-spacing:-.035em; }
-.companion-page .automation-heading h3 { font-size:1.05rem; }
 .companion-page .inline-create { max-width:560px; }
 @media(max-width:760px) {
  .companion-sections { width:100%; padding:2px 0 4px; gap:7px; overflow-x:auto; }
@@ -177,9 +173,6 @@ button,a,input,textarea,select{transition:background-color 120ms ease,color 120m
  .home-heading .home-create-actions button { width:auto; overflow:visible; color:var(--foreground); padding-inline:14px; gap:8px; min-height:44px; }
  .home-heading .home-create-actions button:last-child { color:var(--primary-foreground); }
 }
-
-
-.automation-group+.automation-group { margin-top:40px; padding-top:32px; border-top:1px solid var(--border); }
 
 /* Transcript rows follow the reference: avatar, author/time, then content. */
 .conversation-content { max-width:852px; gap:30px; padding:36px; justify-content:flex-end; }

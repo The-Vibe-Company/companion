@@ -1,0 +1,48 @@
+.companion-triggers { display: grid; gap: 14px; min-width: 0; }
+.trigger-empty { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; padding: 14px; border: 1px dashed var(--input); border-radius: 14px; color: var(--muted-foreground); font-size: .8125rem; line-height: 1.5; }
+.trigger-empty > svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+.trigger-empty > p { flex: 1; min-width: 0; margin: 0 !important; }
+.trigger-empty > div { display: flex; flex-basis: 100%; flex-wrap: wrap; gap: 6px; }
+.trigger-list { display: grid; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border); }
+.trigger-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto auto; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.trigger-row > .provider-dot { width: 34px; height: 34px; border: 1px solid var(--border); background: var(--card); }
+.trigger-row--paused > .provider-dot, .trigger-row--paused .trigger-copy { opacity: .6; }
+.trigger-copy { min-width: 0; }
+.trigger-copy strong, .trigger-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trigger-copy strong { font-size: .875rem; font-weight: 600; }
+.trigger-copy small { margin-top: 1px; color: var(--muted-foreground); font-size: .75rem; }
+.companion-configuration .trigger-copy p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 5px 0 0; color: var(--foreground); font-size: .8125rem; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.trigger-status { padding: 3px 8px; border-radius: 999px; background: var(--secondary); color: var(--muted-foreground); font-size: .7rem; font-weight: 600; white-space: nowrap; }
+.trigger-status--active { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--status-done); }
+.trigger-status--registering { color: var(--status-wait); }
+.trigger-status--error { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+.trigger-switch { position: relative; display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
+.trigger-switch input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: inherit; }
+.trigger-switch span { position: relative; width: 32px; height: 18px; border-radius: 999px; background: var(--input); transition: background-color 120ms ease; }
+.trigger-switch span::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--card); box-shadow: 0 1px 2px #00000026; transition: transform 120ms ease; }
+.trigger-switch input:checked + span { background: var(--foreground); }
+.trigger-switch input:checked + span::after { transform: translateX(14px); }
+.trigger-switch input:focus-visible + span { outline: 2px solid var(--ring); outline-offset: 2px; }
+.trigger-switch:has(input:disabled) { cursor: wait; opacity: .6; }
+.trigger-confirm { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--secondary); }
+.companion-configuration .trigger-confirm p { flex-basis: 100%; margin: 0 0 4px; font-size: .8125rem; }
+.trigger-add { justify-self: start; min-height: 44px; }
+.companion-configuration .trigger-form { padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
+.companion-configuration .trigger-form fieldset { gap: 16px; }
+.trigger-field { display: grid; gap: 6px; min-width: 0; }
+.trigger-field small { color: var(--muted-foreground); font-size: .75rem; line-height: 1.45; overflow-wrap: anywhere; }
+.trigger-required { margin-left: 3px; color: var(--danger); }
+.trigger-type-help { display: grid; gap: 6px; }
+.companion-configuration .trigger-type-help p { margin: 0; color: var(--muted-foreground); font-size: .8125rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.trigger-form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.trigger-form-actions .ui-button { min-height: 44px; }
+@media (max-width: 480px) {
+  .trigger-row { grid-template-columns: 34px minmax(0, 1fr) auto auto; row-gap: 6px; gap: 6px; }
+  .trigger-row > * { align-self: start; }
+  .trigger-row > .provider-dot { grid-area: 1 / 1; }
+  .trigger-copy { grid-area: 1 / 2; }
+  .trigger-status { grid-area: 2 / 2; justify-self: start; }
+  .trigger-switch { grid-area: 1 / 3; margin-top: -6px; }
+  .trigger-row > .ui-button { grid-area: 1 / 4; }
+  .trigger-confirm { grid-column: 1 / -1; }
+}

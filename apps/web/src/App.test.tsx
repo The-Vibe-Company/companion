@@ -47,6 +47,7 @@ describe("settings and return navigation", () => {
       }
       if (path === "/api/plugins") return response({ accounts: [], catalog: [] });
       if (path === "/api/companions/ada/plugins") return response({ accounts: [] });
+      if (path === "/api/companions/ada/triggers") return response({ triggers: [] });
       if (path === "/api/discussions") return response({ discussions: [discussion, direct], folders: [] });
       if (path === "/api/discussions/discussion-1") return response({ discussion, participants: [{ companionId: "ada", removedAt: null, companion: current }], messages: [], tasks: [], centralRuns: [], proposals: [], beforeCursor: null });
       throw Error(`Unexpected ${path}`);

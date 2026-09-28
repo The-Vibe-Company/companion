@@ -158,14 +158,25 @@ test('expired App credentials refresh only when the selected account is used',as
   await execute(connection,1,{connectionId:plugin.id,tool:'whoami',arguments:{}});expect(refreshed).toEqual([plugin.id]);expect(fixture.calls).toHaveLength(1);
 });
 
-test('Slack bridge pins its endpoint and forwards only its supported message fields',async()=>{
- const originalFetch=globalThis.fetch;const requests:Array<{url:string;body:unknown}>=[];
- globalThis.fetch=(async(input:any,init:any)=>{requests.push({url:String(input),body:JSON.parse(init.body)});return Response.json({ok:true,channel:'C1',ts:'1'});}) as typeof fetch;
- const plugin:MachinePlugin={id:'slack-account',provider:'slack',name:'Slack work',transport:'slack',url:'https://untrusted.example/mcp',headers:{Authorization:'Bearer fixture'}};
- const connection=pluginTools(()=>[plugin]);
- try {
-  await expect(execute(connection,1,{connectionId:plugin.id,tool:'delete_message',arguments:{channel:'C1',text:'Hello'}})).rejects.toThrow('PLUGIN_TOOL_NOT_ALLOWED');
-  await execute(connection,1,{connectionId:plugin.id,tool:'chat_post_message',arguments:{channel:'C1',text:'Hello',unfurl_links:true,url:'https://untrusted.example'}});
-  expect(requests).toEqual([{url:'https://slack.com/api/chat.postMessage',body:{channel:'C1',text:'Hello'}}]);
- }finally{globalThis.fetch=originalFetch;await connection.close();}
+test('Composio connections discover and call through the server, never an MCP endpoint',async()=>{
+  const listed:Array<[string,string|undefined]>=[],called:unknown[]=[];
+  const plugin:MachinePlugin={id:'composio-account',provider:'composio',name:'Work Gmail',transport:'composio',toolkit:'gmail'};
+  const connection=pluginTools(()=>[plugin],{composio:{
+    async tools(id,search){listed.push([id,search]);return [{name:'GMAIL_FETCH_EMAILS',description:'Fetch',inputSchema:{type:'object'}}];},
+    async call(id,tool,args){called.push({id,tool,args});return {content:[{type:'text',text:'{"messages":[]}'}],isError:false};},
+  }});cleanup.push(()=>connection.close());
+  expect(JSON.parse(((await execute(connection,0,{})).content[0] as any).text)).toEqual([{id:'composio-account',name:'Work Gmail',provider:'composio',toolkit:'gmail'}]);
+  expect(JSON.parse(((await execute(connection,0,{connectionId:plugin.id,search:'send email'})).content[0] as any).text)).toEqual([{name:'GMAIL_FETCH_EMAILS',description:'Fetch',inputSchema:{type:'object'}}]);
+  expect(listed).toEqual([['composio-account','send email']]);
+  const result=await execute(connection,1,{connectionId:plugin.id,tool:'GMAIL_FETCH_EMAILS',arguments:{max_results:3}});
+  expect(result.content).toEqual([{type:'text',text:'{"messages":[]}'}]);
+  expect(called).toEqual([{id:'composio-account',tool:'GMAIL_FETCH_EMAILS',args:{max_results:3}}]);
+  await expect(execute(pluginTools(()=>[plugin]),1,{connectionId:plugin.id,tool:'GMAIL_FETCH_EMAILS',arguments:{}})).rejects.toThrow('PLUGIN_CONNECTION_FAILED');
+});
+
+test('git-only connections serve credentials but are never listed or callable as tools',async()=>{
+  const git:MachinePlugin={id:'git-account',provider:'github',name:'GitHub (git access)',transport:'http',url:'https://api.githubcopilot.com/mcp/',headers:{Authorization:'Bearer private'},capabilities:{gitCredentials:true}};
+  const connection=pluginTools(()=>[git]);cleanup.push(()=>connection.close());
+  expect(JSON.parse(((await execute(connection,0,{})).content[0] as any).text)).toEqual([]);
+  await expect(execute(connection,1,{connectionId:git.id,tool:'get_me',arguments:{}})).rejects.toThrow('PLUGIN_NOT_SELECTED');
 });

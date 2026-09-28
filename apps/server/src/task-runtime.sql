@@ -9,7 +9,7 @@ ALTER TABLE runs ADD CONSTRAINT runs_status_check CHECK(status IN ('queued','pre
 ALTER TABLE runs DROP CONSTRAINT IF EXISTS runs_lane_check;
 ALTER TABLE runs ADD CONSTRAINT runs_lane_check CHECK(lane IN ('main','background'));
 ALTER TABLE runs DROP CONSTRAINT IF EXISTS runs_source_check;
-ALTER TABLE runs ADD CONSTRAINT runs_source_check CHECK(source IN ('chat','background','delegation')) NOT VALID;
+ALTER TABLE runs ADD CONSTRAINT runs_source_check CHECK(source IN ('chat','background','delegation','event')) NOT VALID;
 CREATE UNIQUE INDEX IF NOT EXISTS one_active_background_run ON runs(companion_id) WHERE lane='background' AND status IN ('preparing','running','needs_input');
 CREATE INDEX IF NOT EXISTS runs_lane_queue ON runs(lane,status,created_at,id);
 CREATE INDEX IF NOT EXISTS runs_search ON runs(companion_id,created_at,id);
