@@ -9,23 +9,25 @@ const owner='00000000-0000-4000-8000-000000000001';
 beforeAll(async()=>{await migrate();});
 const digest=(value:string)=>createHash('sha256').update(value).digest('hex');
 
-test('catalog availability is truthful for deployment-configured and dynamic OAuth',async()=>{
- expect(pluginConnectionAvailable('app.linear/linear',{})).toBe(true);
+test('catalog availability is truthful for Composio and deployment-configured git OAuth',async()=>{
+ expect(pluginConnectionAvailable('composio:linear',{})).toBe(false);
+ expect(pluginConnectionAvailable('composio:linear',{COMPOSIO_API_KEY:'key'})).toBe(true);
+ await expect(startPluginConnection(owner,'composio:linear','Linear',{})).rejects.toThrow('unavailable in this deployment');
  expect(pluginConnectionAvailable('io.github.github/github-mcp-server',{})).toBe(false);
  expect(pluginConnectionAvailable('io.github.github/github-mcp-server',{COMPANION_MCP_GITHUB_CLIENT_ID:'id',COMPANION_MCP_GITHUB_CLIENT_SECRET:'secret'})).toBe(true);
  await expect(startPluginConnection(owner,'io.github.github/github-mcp-server','GitHub',{})).rejects.toThrow('unavailable in this deployment');
 });
 
 test('the first provider account is Default and later accounts require a chosen name',async()=>{
- const ownerId=crypto.randomUUID(),serverId='app.linear/linear';
+ const ownerId=crypto.randomUUID(),serverId='composio:linear';
  expect(await newPluginAccountLabel(ownerId,serverId,'Ignored first name')).toBe('Default');
  const account=await addCustomPlugin(ownerId,{label:'unrelated custom account',transport:'http',url:'https://example.com/mcp'});
- await db`UPDATE plugin_accounts SET provider='linear',server_id=${serverId} WHERE id=${account.id}`;
+ await db`UPDATE plugin_accounts SET provider='composio',server_id=${serverId} WHERE id=${account.id}`;
  await expect(newPluginAccountLabel(ownerId,serverId,'')).rejects.toThrow('Name this account');
  await expect(newPluginAccountLabel(ownerId,serverId,' '.repeat(2))).rejects.toThrow('Name this account');
  await expect(newPluginAccountLabel(ownerId,serverId,'x'.repeat(81))).rejects.toThrow('Name this account');
  expect(await newPluginAccountLabel(ownerId,serverId,'  Client workspace  ')).toBe('Client workspace');
- expect(await newPluginAccountLabel(ownerId,'io.sentry/mcp','')).toBe('Default');
+ expect(await newPluginAccountLabel(ownerId,'composio:sentry','')).toBe('Default');
 });
 
 test('account rename is owner-scoped and updates the public label only',async()=>{
@@ -44,7 +46,7 @@ test('account rename is owner-scoped and updates the public label only',async()=
 test('OAuth cancellation consumes only its owner state and stale callbacks return a safe connection route',async()=>{
  const state=crypto.randomUUID()+crypto.randomUUID(),other=crypto.randomUUID();
  await db`INSERT INTO "user"(id,name,email,"emailVerified") VALUES(${other},'Other',${other+'@example.test'},true)`;
- await db`INSERT INTO plugin_oauth_flows(state_hash,owner_id,label,flow_secret,expires_at) VALUES(${digest(state)},${owner},'Linear','unused',now()+interval '10 minutes')`;
+ await db`INSERT INTO plugin_oauth_flows(state_hash,owner_id,label,flow_secret,expires_at) VALUES(${digest(state)},${owner},'GitHub','unused',now()+interval '10 minutes')`;
  const crossOwner=await handlePlugins(new Request(`http://local/api/plugins/callback?state=${state}&error=access_denied`),other);
  expect(crossOwner?.status).toBe(303);expect(crossOwner?.headers.get('location')).toBe(pluginCallbackLocation('error'));
  expect((await db`SELECT consumed_at FROM plugin_oauth_flows WHERE state_hash=${digest(state)}`)[0].consumed_at).toBeNull();
@@ -56,16 +58,16 @@ test('OAuth cancellation consumes only its owner state and stale callbacks retur
 });
 
 function oauthCredential(expiresAt:string|null=new Date(Date.now()+3600_000).toISOString()):CompanionPluginStoredOAuthCredential{return{
- kind:'oauth',version:1,serverName:'app.linear/linear',accessToken:'private-access',refreshToken:'private-refresh',accessExpiresAt:expiresAt,scope:'read write',tokenType:'Bearer',
- tokenEndpoint:'https://mcp.linear.app/token',resource:'https://mcp.linear.app/mcp',client:{clientId:'client',clientSecret:null,tokenEndpointAuthMethod:'none'},
+ kind:'oauth',version:1,serverName:'io.github.github/github-mcp-server',accessToken:'private-access',refreshToken:'private-refresh',accessExpiresAt:expiresAt,scope:'repo',tokenType:'Bearer',
+ tokenEndpoint:'https://github.com/login/oauth/access_token',resource:'https://api.githubcopilot.com/mcp/',client:{clientId:'client',clientSecret:null,tokenEndpointAuthMethod:'client_secret_post'},
 };}
 async function oauthAccount(ownerId=owner,credential=oauthCredential()){
- const id=crypto.randomUUID();await db`INSERT INTO plugin_accounts(id,owner_id,provider,label,server_id,credential_secret) VALUES(${id},${ownerId},'linear','Linear','app.linear/linear',${encrypt(JSON.stringify(credential))})`;return id;
+ const id=crypto.randomUUID();await db`INSERT INTO plugin_accounts(id,owner_id,provider,label,server_id,credential_secret) VALUES(${id},${ownerId},'github','GitHub','io.github.github/github-mcp-server',${encrypt(JSON.stringify(credential))})`;return id;
 }
 
 test('owned OAuth health performs discovery only and persists a secret-free projection',async()=>{
  const id=await oauthAccount();const checkedAt=new Date('2026-09-07T12:00:00.000Z');let calls=0;
- const result=await checkPluginAccount(owner,id,{now:()=>checkedAt,async check(plugin){calls++;expect(plugin).toMatchObject({id,provider:'linear',transport:'http',url:'https://mcp.linear.app/mcp'});expect(plugin.headers?.Authorization).toBe('Bearer private-access');}});
+ const result=await checkPluginAccount(owner,id,{now:()=>checkedAt,async check(plugin){calls++;expect(plugin).toMatchObject({id,provider:'github',transport:'http',url:'https://api.githubcopilot.com/mcp/'});expect(plugin.headers?.Authorization).toBe('Bearer private-access');}});
  expect(calls).toBe(1);expect(result).toEqual({id,healthStatus:'ok',healthCode:null,checkedAt});
  const listed=(await listPluginAccounts(owner)).find((account:any)=>account.id===id);
  expect(listed).toMatchObject({healthStatus:'ok',healthCode:null});expect(new Date(listed.checkedAt).toISOString()).toBe(checkedAt.toISOString());expect(JSON.stringify(listed)).not.toContain('private-access');
@@ -138,20 +140,17 @@ test('account cards list only owned active companion grants and follow revocatio
  expect((await listPluginAccounts(ownerId))[0].usedBy).toEqual([]);
 });
 
-test('labelled Railway accounts attach independently and unused OAuth accounts do not refresh',async()=>{
- const first=await createCompanion(owner,{name:'Railway first',instructions:'',provider:'local'}),second=await createCompanion(owner,{name:'Railway second',instructions:'',provider:'local'});
+test('labelled git accounts attach independently and refresh during projection because git cannot ask later',async()=>{
+ const first=await createCompanion(owner,{name:'Git first',instructions:'',provider:'local'}),second=await createCompanion(owner,{name:'Git second',instructions:'',provider:'local'});
  const ids:string[]=[];
  for(const label of ['Production','Sandbox']){
   const id=crypto.randomUUID();ids.push(id);
-  const credential={...oauthCredential(new Date(0).toISOString()),serverName:'com.railway/mcp',resource:'https://mcp.railway.com',tokenEndpoint:'https://backboard.railway.com/token'};
-  await db`INSERT INTO plugin_accounts(id,owner_id,provider,label,server_id,credential_secret) VALUES(${id},${owner},'railway',${label},'com.railway/mcp',${encrypt(JSON.stringify(credential))})`;
+  await db`INSERT INTO plugin_accounts(id,owner_id,provider,label,server_id,credential_secret) VALUES(${id},${owner},'github',${label},'io.github.github/github-mcp-server',${encrypt(JSON.stringify(oauthCredential(new Date(0).toISOString())))})`;
  }
  await attachPlugin(owner,first.id,ids[0]!,true);await attachPlugin(owner,first.id,ids[1]!,true);await attachPlugin(owner,second.id,ids[1]!,true);
  let refreshes=0;const refresh=async({credential}:{credential:CompanionPluginStoredOAuthCredential})=>{refreshes++;return {...credential,accessToken:'rotated',accessExpiresAt:new Date(Date.now()+3600_000).toISOString()};};
- const lazy=await machinePlugins(first.id,{refreshCredentials:false,refresh});expect(refreshes).toBe(0);
- expect(lazy.map(p=>p.name).sort()).toEqual(['Production','Sandbox']);expect(lazy.every(p=>p.url==='https://mcp.railway.com'&&!p.allowedTools)).toBe(true);
- await machinePlugins(first.id,{accountId:ids[0],refresh});expect(refreshes).toBe(1);
- const [unrefreshed]=await db`SELECT credential_secret FROM plugin_accounts WHERE id=${ids[1]!}`;expect(JSON.parse(decrypt(unrefreshed.credential_secret)).accessToken).toBe('private-access');
+ const projected=await machinePlugins(first.id,{refreshCredentials:false,refresh});expect(refreshes).toBe(2);
+ expect(projected.map(p=>p.name).sort()).toEqual(['Production','Sandbox']);expect(projected.every(p=>p.capabilities?.gitCredentials===true&&p.headers?.Authorization==='Bearer rotated')).toBe(true);
  await attachPlugin(owner,first.id,ids[1]!,false);
  expect((await machinePlugins(first.id,{refreshCredentials:false})).map(p=>p.id)).toEqual([ids[0]!]);
  expect((await machinePlugins(second.id,{refreshCredentials:false})).map(p=>p.id)).toEqual([ids[1]!]);

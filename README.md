@@ -76,10 +76,10 @@ The ignored `.env.production` file holds shared configuration and must provide `
 a 64-character hexadecimal `COMPANIONS_ENCRYPTION_KEY`. Configure SMTP or Resend (`EMAIL_PROVIDER=resend`, `EMAIL_FROM`, `RESEND_API_KEY`) for magic-link login and S3
 for chat files. Box, model-provider, OAuth, and Stripe credentials are required only for the product
 surfaces enabled in that deployment; absence remains visible as unavailable and is not simulated.
-See [production plugin setup](docs/plugins-production.md) for OAuth variables, callbacks,
-provider prerequisites and acceptance checks.
-Only the API role needs an exposed port. Trigger filters run inside the image's bounded QuickJS
-WebAssembly runtime, so API, executor, and worker services do not need a Docker socket.
+See [production apps and triggers](docs/plugins-production.md) for Composio, the trigger webhook,
+GitHub git access and acceptance checks.
+Only the API role needs an exposed port; it also receives signed Composio trigger webhooks.
+API, executor, and worker services do not need a Docker socket.
 `LOCAL_RUNTIME=0` is the image default; a hosted executor uses Box rather than attempting to launch
 local agent containers.
 

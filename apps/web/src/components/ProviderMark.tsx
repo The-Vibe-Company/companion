@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 // Vendor marks reused from the original Companion catalog. Kept local: no external image requests.
 const paths: Record<string, string> = {
   // Official Railway symbol: https://railway.com (wordmark omitted).
@@ -13,9 +15,17 @@ const paths: Record<string, string> = {
 
 const viewBoxes: Record<string, string> = { railway: "67 15 144 144" };
 
-export function ProviderMark({ provider, name }: { provider?: string | null; name: string }) {
+/** Composio server ids are `composio:<toolkit>`; the toolkit slug picks a local mark when no logo loads. */
+export function markKey(item: { provider?: string | null; serverId?: string | null; toolkit?: string }) {
+  return item.toolkit ?? (item.serverId?.startsWith("composio:") ? item.serverId.slice(9) : item.provider ?? undefined);
+}
+
+export function ProviderMark({ provider, name, logo }: { provider?: string | null; name: string; logo?: string | null }) {
+  const [failed, setFailed] = useState<string | null>(null);
   const path = provider ? paths[provider] : undefined;
-  return <span className="provider-dot" aria-hidden="true">{path
+  return <span className="provider-dot" aria-hidden="true">{logo && failed !== logo
+    ? <img src={logo} alt={name} width="20" height="20" loading="lazy" onError={() => setFailed(logo)}/>
+    : path
     ? <svg viewBox={viewBoxes[provider ?? ""] ?? "0 0 24 24"} width="20" height="20" fill="currentColor"><path d={path}/></svg>
     : name.slice(0, 1).toUpperCase()}</span>;
 }

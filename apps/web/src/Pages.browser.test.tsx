@@ -24,11 +24,11 @@ it("keeps every standalone page readable at desktop and narrow mobile widths", a
       import '../../src/maison.css';
       const companion = {id:'ada',name:'Ada',instructions:'Research and strategy',provider:'box',status:'ready',error:null,createdAt:'2026-09-14T10:00:00Z',avatar:{shape:1,color:2,face:0}};
       const config = {models:[{id:'great',name:'Great'}],localAvailable:true,boxAvailable:true};
-      const account = {id:'github',serverId:'github',label:'Research team',provider:'github',status:'connected',healthStatus:'ok',usedBy:[]};
+      const account = {id:'github',serverId:'composio:github',label:'Research team',provider:'composio',appName:'GitHub',appLogo:null,healthStatus:'ok',usedBy:[]};
       window.fetch = async input => {
         const url = String(input);
         const body = url === '/api/config' ? config : url === '/api/companions/ada' ? {companion} :
-          url === '/api/plugins' ? {catalog:[{id:'github',name:'GitHub',provider:'github',available:true},{id:'linear',name:'Linear',provider:'linear',available:true}],accounts:[account]} : url === '/api/companions/ada/plugins' ? {accounts:[]} :
+          url === '/api/plugins' ? {catalog:[{id:'composio:github',name:'GitHub',provider:'composio',kind:'composio',toolkit:'github',description:'Repositories and pull requests',available:true},{id:'composio:linear',name:'Linear',provider:'composio',kind:'composio',toolkit:'linear',available:true},{id:'io.github.github/github-mcp-server',name:'GitHub (git access)',provider:'github',kind:'native',description:'Lets git clone and push from the Companion computer.',available:true}],accounts:[account]} : url === '/api/companions/ada/plugins' ? {accounts:[]} : url === '/api/companions/ada/triggers' ? {triggers:[]} :
           url === '/api/billing' ? {configured:true,mode:'beta',active:true,usage:[],plan:null} :
           url === '/api/deliveries' ? {sent:[],received:[]} : {companions:[]};
         return new Response(JSON.stringify(body),{headers:{'content-type':'application/json'}});

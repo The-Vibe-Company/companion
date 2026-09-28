@@ -4,6 +4,7 @@ import { api, type Companion } from "@/api";
 import { AvatarPicker, DEFAULT_AVATAR } from "./CompanionAvatar";
 import { ApplicationAccess } from "./ApplicationAccess";
 import { DeliverySettings } from "./CompanionAccount";
+import { CompanionTriggers } from "./CompanionTriggers";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 
@@ -69,6 +70,11 @@ export function CompanionConfiguration({ companion, onRefresh, onRetired, onAppl
       <h2>Applications {companion.name} can use</h2>
       <p className="muted-copy">Removing access here keeps the account connected for your other Companions.</p>
       <ApplicationAccess companionId={companion.id} onConnect={onApplications} compact/>
+    </section>
+    <section>
+      <h2>Triggers</h2>
+      <p className="muted-copy">Start work on {companion.name} automatically when something happens in a connected app.</p>
+      <CompanionTriggers key={companion.id} companionId={companion.id} companionName={companion.name} onApplications={onApplications}/>
     </section>
     <details className="settings-advanced"><summary>Share with a client</summary><DeliverySettings companionId={companion.id}/></details>
     {showRetirement && <CompanionRetirement companion={companion} onRetired={onRetired}/>}

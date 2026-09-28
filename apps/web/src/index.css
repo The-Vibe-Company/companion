@@ -436,6 +436,7 @@ svg { width: 1rem; height: 1rem; stroke-width: 1.8; }
 .connection-choice strong, .connection-choice small { display: block; }
 .connection-choice small { margin-top: 2px; color: var(--muted-foreground); font-size: .68rem; }
 .provider-dot { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; background: var(--secondary); color: var(--foreground); font-size: .75rem; font-weight: 700; }
+.provider-dot img { width: 20px; height: 20px; object-fit: contain; }
 
 .activity-layer { position: fixed; z-index: 65; inset: 0; }
 .activity-layer .activity-panel { position: absolute; top: 0; right: 0; display: block; width: min(100%, 360px); height: 100%; padding: 18px 22px; background: var(--card); box-shadow: -22px 0 60px oklch(.2 .02 255 / .1); }
@@ -605,17 +606,6 @@ svg { width: 1rem; height: 1rem; stroke-width: 1.8; }
   .desktop-actions { grid-template-columns: 1fr; }
 }
 
-/* Compact automation inspection keeps setup short until a row is opened. */
-.automation-card { border-bottom: 1px solid var(--border); }
-.automation-row { display: flex; min-height: 58px; align-items: center; gap: 6px; }
-.automation-summary { display: flex; min-width: 0; flex: 1; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 2px; text-align: left; }
-.automation-summary span, .automation-summary strong, .automation-summary small { display: block; min-width: 0; }
-.automation-summary strong { font-size: .84rem; }
-.automation-summary small { overflow: hidden; margin-top: 3px; color: var(--muted-foreground); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
-.automation-summary > svg { width: 15px; flex: 0 0 15px; transition: transform 160ms ease; }
-.automation-summary > svg.chevron-open { transform: rotate(180deg); }
-.automation-detail { display: grid; gap: 10px; margin: 0 0 14px; padding: 14px; border-radius: 14px; background: color-mix(in oklab, var(--muted) 62%, white); }
-.automation-detail > .field { margin: 0; }
 .detail-label { display: flex; align-items: center; gap: 7px; color: var(--muted-foreground); font-size: .72rem; font-weight: 650; }
 .detail-label svg { width: 14px; height: 14px; }
 .detail-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -628,7 +618,6 @@ svg { width: 1rem; height: 1rem; stroke-width: 1.8; }
 .history-dot--running, .history-dot--evaluating { background: #1971c2; }
 .history-dot--failed, .history-dot--error, .history-dot--interrupted { background: #e03131; }
 .missed-copy { margin: 0; color: var(--muted-foreground); font-size: .72rem; }
-.webhook-link { width: fit-content; color: var(--primary); font-size: .76rem; text-decoration: underline; text-underline-offset: 3px; }
 .test-result { color: var(--muted-foreground); font-size: .74rem; }
 .test-result--good { color: #2b8a3e; }
 .field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -649,8 +638,8 @@ svg { width: 1rem; height: 1rem; stroke-width: 1.8; }
 .maintenance-history { display: grid; gap: 10px; }
 
 @media (max-width: 640px) {
-  .automation-summary strong, .history-row strong { font-size: .9rem; }
-  .automation-summary small, .history-row small, .history-row p, .detail-label, .test-result, .missed-copy, .webhook-link { font-size: .8rem; }
+  .history-row strong { font-size: .9rem; }
+  .history-row small, .history-row p, .detail-label, .test-result, .missed-copy { font-size: .8rem; }
   .field-pair { grid-template-columns: 1fr; gap: 0; }
   .filter-read { grid-template-columns: 1fr 1fr 36px; padding: 10px 0; border-top: 1px solid var(--border); }
   .filter-read select[aria-label$="account"], .filter-read input[aria-label$="path"] { grid-column: span 2; }

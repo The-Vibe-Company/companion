@@ -19,7 +19,7 @@ export function CompanionSettingsPage({ id, onBack, onUnauthorized, onApplicatio
   }, [id, onUnauthorized]);
   useEffect(() => { void refresh(); }, [refresh]);
   return <main className="account-page companion-settings-page">
-    <header className="standalone-header"><Button variant="ghost" size="icon" onClick={onBack} aria-label="Back to discussions"><ArrowLeft/></Button><div><h1>{companion ? `${companion.name} settings` : "Companion settings"}</h1><p>Identity, application access and computer controls.</p></div></header>
+    <header className="standalone-header"><Button variant="ghost" size="icon" onClick={onBack} aria-label="Back to discussions"><ArrowLeft/></Button><div><h1>{companion ? `${companion.name} settings` : "Companion settings"}</h1><p>Identity, application access, triggers and computer controls.</p></div></header>
     <div className="account-inner">
       {error && <div className="application-access-error" role="alert"><CircleAlert/><span>{error}</span><Button variant="outline" onClick={() => void refresh()}>Try again</Button></div>}
       {loading ? <p className="detail-loading" role="status"><LoaderCircle className="spin"/>Loading settings…</p> : companion && <>

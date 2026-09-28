@@ -12,4 +12,4 @@ The web app implements the approved contract in `docs/specs/discussions.md`.
 - Central cancellation and per-companion cancellation are separate controls. Removing a participant and archiving a discussion never imply cancellation.
 - The browser only renders persisted message, task, question, proposal, file, and run states returned by the discussion snapshot.
 
-Global application accounts and permanent companion configuration remain available. Specialist, template, team, routine, and trigger interfaces are retired.
+Global application accounts and permanent companion configuration remain available. Applications come from Composio toolkits (plus custom MCP servers and a native GitHub connection for git access). Triggers are back as Composio triggers configured in Companion settings: each event starts a background task on that Companion with the owner's instructions. Specialist, template, team, and routine interfaces are retired.

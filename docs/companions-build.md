@@ -150,6 +150,11 @@ environnements préparés pour leurs templates, sans catalogue Skills Hub suppl�
 
 ### Intégrations au lancement
 
+> **Mise à jour (septembre 2026) :** le catalogue MCP curé et ses OAuth dédiés sont remplacés par
+> Composio (applications et triggers), voir [plugins-production.md](plugins-production.md). Les MCP
+> personnalisés restent ; GitHub natif ne sert plus qu'aux credentials `git`. Les limites Gmail/Slack
+> ci-dessous ne s'appliquent plus.
+
 **Décision de Stan : reprendre les plugins existants et le même comportement.** GitHub, Sentry,
 Linear, Notion et Conductor ont été explicitement cités pour le lancement. Le catalogue actuel
 fait référence pour le périmètre existant ; il comprend aussi Slack et Gmail. L'ajout de MCP

@@ -15,7 +15,7 @@ registerControl({
  maintenance_configure:async(context,raw)=>{const {companionId,configuration}=z.object({companionId:uuid,configuration:z.record(z.string(),z.unknown())}).parse(raw);return maintenanceRequest(context.ownerId,companionId,'','PATCH',configuration);},
  maintenance_task:async(context,raw)=>{const {companionId,prompt}=z.object({companionId:uuid,prompt:z.string().min(1).max(50_000)}).parse(raw);return maintenanceRequest(context.ownerId,companionId,'/tasks','POST',{clientMessageId:context.commandId,prompt});},
  companion_create:async(context,raw)=>{const input=z.object({name:z.string().trim().min(1).max(80),instructions:z.string().max(20_000).optional()}).parse(raw);return createCompanion(context.ownerId,{...input,clientCreationId:context.commandId,prepare:true,provider:config.defaultProvider});},
- plugin_catalog:async()=>({plugins:listPluginCatalog()}),
+ plugin_catalog:async()=>({plugins:await listPluginCatalog()}),
  plugin_connect:async(context,raw)=>{const input=z.object({serverId:z.string(),label:z.string().max(80).default('')}).parse(raw);return startPluginConnection(context.ownerId,input.serverId,input.label);},
  plugin_custom:async(context,raw)=>addCustomPlugin(context.ownerId,raw),
  plugin_check:async(context,raw)=>({account:await checkPluginAccount(context.ownerId,z.object({accountId:uuid}).parse(raw).accountId)}),

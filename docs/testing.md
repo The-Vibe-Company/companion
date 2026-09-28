@@ -221,7 +221,9 @@ report under `.artifacts/plugin-oauth/`. The optional second command uses `.loca
 may register OAuth clients, and stores consent links only in the private
 `.local/plugin-oauth-consent.json`. Those links expire and must never be committed. A successful
 start is not a successful connection: human consent and an authenticated provider tool call are
-separate acceptance steps. GitHub, Slack and Gmail also require deployment OAuth-client settings.
+separate acceptance steps. GitHub git access requires deployment OAuth-client settings; Composio
+apps and triggers are covered by `composio.test.ts` and `composio-triggers.test.ts` with an in-memory
+Composio project, and by the acceptance steps in `docs/plugins-production.md`.
 
 ## Activity and Team acceptance
 

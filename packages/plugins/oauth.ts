@@ -1,11 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import {
-  appDefinitions,
-  COMPANION_GMAIL_MCP_ALLOWED_TOOLS,
   getAppDefinition,
   type AppDefinitionId,
-  type AppDefinitions,
   type CuratedAppDefinition,
 } from "./definitions";
 import { getAppOAuthAdapter } from "./oauth-adapters";
@@ -27,42 +24,9 @@ export type CompanionPluginOAuthJsonValue =
 const jsonStringSchema = z.string();
 const jsonObjectSchema = z.record(z.string(), z.unknown());
 
-export { COMPANION_GMAIL_MCP_ALLOWED_TOOLS };
-
-/** Legacy OAuth server projection; new consumers should read appDefinitions directly. */
-type LegacyOAuthServer<D extends AppDefinitions[number]> = {
-  provider: D["provider"];
-  remoteUrl: D["mcp"]["url"];
-  resourceMetadataUrl: D["oauth"]["resourceMetadataUrl"];
-  authorizationServer: D["oauth"]["authorizationServer"];
-  scopes: D["oauth"]["scopes"];
-  allowedOrigins: D["oauth"]["allowedOrigins"];
-  dynamicRegistration: D["oauth"]["client"]["kind"] extends "dynamic" ? true : false;
-} & (D["oauth"] extends { authorizationMetadataUrl: infer U extends string }
-  ? { authorizationMetadataUrl: U }
-  : {});
-
-type LegacyOAuthServers = {
-  [D in AppDefinitions[number] as D["id"]]: LegacyOAuthServer<D>;
-};
-
-export const COMPANION_PLUGIN_OAUTH_SERVERS = Object.fromEntries(
-  appDefinitions.map((definition) => [definition.id, {
-    provider: definition.provider,
-    remoteUrl: definition.mcp.url,
-    resourceMetadataUrl: definition.oauth.resourceMetadataUrl,
-    authorizationServer: definition.oauth.authorizationServer,
-    ...(definition.oauth.authorizationMetadataUrl
-      ? { authorizationMetadataUrl: definition.oauth.authorizationMetadataUrl }
-      : {}),
-    scopes: definition.oauth.scopes,
-    allowedOrigins: definition.oauth.allowedOrigins,
-    dynamicRegistration: definition.oauth.client.kind === "dynamic",
-  }]),
-) as unknown as LegacyOAuthServers;
-
 export interface CompanionPluginOAuthClient {
   clientId: string;
+  /** Always null once persisted: the deployment secret is read from the environment per request. */
   clientSecret: string | null;
   tokenEndpointAuthMethod: "none" | "client_secret_post" | "client_secret_basic";
 }
@@ -75,7 +39,7 @@ export interface CompanionPluginOAuthFlow {
   tokenEndpoint: string;
   resource: string;
   scope: string;
-  /** Null for Slack Bot User OAuth, which is a confidential OAuth flow without PKCE. */
+  /** Null only for an adapter without PKCE; GitHub always uses PKCE. */
   codeVerifier: string | null;
   client: CompanionPluginOAuthClient;
 }
@@ -115,7 +79,6 @@ export class CompanionPluginOAuthError extends Error {
       | "oauth_not_supported"
       | "oauth_not_configured"
       | "oauth_discovery_failed"
-      | "oauth_registration_failed"
       | "oauth_exchange_failed"
       | "oauth_refresh_failed",
   ) {
@@ -127,7 +90,7 @@ export class CompanionPluginOAuthError extends Error {
   }
 }
 
-/** The authorization server has positively confirmed that the stored refresh grant is invalid. */
+/** The stored refresh grant is known to be invalid; the member must reconnect. */
 export class CompanionPluginOAuthRevokedError extends CompanionPluginOAuthError {
   constructor() {
     super(
@@ -175,7 +138,6 @@ async function oauthJson(
   fetchImpl: OAuthFetch,
   failure: CompanionPluginOAuthError,
   signal?: AbortSignal,
-  confirmedRevocationFailure?: CompanionPluginOAuthRevokedError,
 ): Promise<Record<string, CompanionPluginOAuthJsonValue>> {
   let response: Response;
   try {
@@ -194,22 +156,7 @@ async function oauthJson(
     if (signal?.aborted) throw signal.reason ?? error;
     throw failure;
   }
-  if (!response.ok) {
-    if (confirmedRevocationFailure) {
-      // Google documents `invalid_grant` as the positive signal that a refresh grant is invalid,
-      // expired, or revoked. Inspect only that stable field and discard every provider detail.
-      // SAFETY: Response.json returns a JSON-compatible value; `isRecord` validates it before use.
-      const providerError = await response.json().catch((cause: unknown) => {
-        if (signal?.aborted) throw signal.reason ?? cause;
-        return null;
-      }) as CompanionPluginOAuthJsonValue;
-      if (signal?.aborted) throw signal.reason ?? failure;
-      if (isRecord(providerError) && providerError.error === "invalid_grant") {
-        throw confirmedRevocationFailure;
-      }
-    }
-    throw failure;
-  }
+  if (!response.ok) throw failure;
   // SAFETY: a parsed JSON body is always a JSON value; null is the transport-failure fallback.
   const value = await response.json().catch((cause: unknown) => {
     if (signal?.aborted) throw signal.reason ?? cause;
@@ -233,12 +180,6 @@ function environmentClient(
   env: NodeJS.ProcessEnv,
 ): CompanionPluginOAuthClient {
   const configured = definition.oauth.client;
-  if (configured.kind !== "environment") {
-    throw new CompanionPluginOAuthError(
-      `${definition.name} OAuth uses dynamic client registration.`,
-      "oauth_not_configured",
-    );
-  }
   const clientId = env[configured.clientIdEnv]?.trim();
   const clientSecret = env[configured.clientSecretEnv]?.trim();
   if (!clientId || !clientSecret) {
@@ -251,8 +192,8 @@ function environmentClient(
 }
 
 /**
- * Discover and register an OAuth client for one curated OAuth-first MCP remote. Every URL is
- * constrained to that pin's known origins, so malformed discovery metadata cannot become SSRF.
+ * Start OAuth for one native App. Protected-resource metadata is verified against the pinned remote
+ * and authorization server; the authorization and token endpoints come only from the definition.
  */
 export async function beginCompanionPluginOAuth(input: {
   serverName: string;
@@ -276,99 +217,27 @@ export async function beginCompanionPluginOAuth(input: {
     "The MCP server's OAuth metadata could not be verified.",
     "oauth_discovery_failed",
   );
-  let authorizationEndpoint: string;
-  let tokenEndpoint: string;
-  let client: CompanionPluginOAuthClient;
-  let resource: string = definition.mcp.url;
-  if (adapter.discovery === "fixed") {
-    if (!server.authorizationEndpoint || !server.tokenEndpoint) throw discoveryFailure;
-    authorizationEndpoint = server.authorizationEndpoint;
-    tokenEndpoint = server.tokenEndpoint;
-    client = environmentClient(definition, input.env ?? process.env);
-  } else {
-    const resourceMetadata = await oauthJson(
-      server.resourceMetadataUrl,
-      { method: "GET" },
-      fetchImpl,
-      discoveryFailure,
-    );
-    const validatedResource = allowedUrl(resourceMetadata.resource, server.allowedOrigins, discoveryFailure);
-    if (validatedResource !== new URL(definition.mcp.url).toString()) throw discoveryFailure;
-    // OAuth resource identifiers are exact strings; URL validation must not add a slash.
-    resource = resourceMetadata.resource as string;
-    const authorizationServers = resourceMetadata.authorization_servers;
-    if (
-      !Array.isArray(authorizationServers)
-      || !authorizationServers.some((value) => value === server.authorizationServer)
-    ) {
-      throw discoveryFailure;
-    }
-
-    if (adapter.discovery === "resource-only") {
-      if (!server.authorizationEndpoint || !server.tokenEndpoint) throw discoveryFailure;
-      authorizationEndpoint = server.authorizationEndpoint;
-      tokenEndpoint = server.tokenEndpoint;
-      client = environmentClient(definition, input.env ?? process.env);
-    } else {
-      const authorizationMetadata = await oauthJson(
-        server.authorizationMetadataUrl
-          ?? `${server.authorizationServer}/.well-known/oauth-authorization-server`,
-        { method: "GET" },
-        fetchImpl,
-        discoveryFailure,
-      );
-      authorizationEndpoint = allowedUrl(
-        authorizationMetadata.authorization_endpoint,
-        server.allowedOrigins,
-        discoveryFailure,
-      );
-      tokenEndpoint = allowedUrl(
-        authorizationMetadata.token_endpoint,
-        server.allowedOrigins,
-        discoveryFailure,
-      );
-      if (server.client.kind === "dynamic") {
-        const registrationEndpoint = allowedUrl(
-          authorizationMetadata.registration_endpoint,
-          server.allowedOrigins,
-          discoveryFailure,
-        );
-        const registrationFailure = new CompanionPluginOAuthError(
-          "The MCP server could not register this Companion deployment.",
-          "oauth_registration_failed",
-        );
-        const registered = await oauthJson(
-          registrationEndpoint,
-          {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              client_name: "Companion",
-              redirect_uris: [input.redirectUri],
-              grant_types: ["authorization_code", "refresh_token"],
-              response_types: ["code"],
-              token_endpoint_auth_method: "none",
-            }),
-          },
-          fetchImpl,
-          registrationFailure,
-        );
-        const clientId = requiredString(registered.client_id, registrationFailure);
-        const clientSecretParsed = jsonStringSchema.safeParse(registered.client_secret);
-        const clientSecret = clientSecretParsed.success && clientSecretParsed.data
-          ? clientSecretParsed.data
-          : null;
-        const reportedMethod = registered.token_endpoint_auth_method;
-        const tokenEndpointAuthMethod =
-          reportedMethod === "client_secret_basic" || reportedMethod === "client_secret_post"
-            ? reportedMethod
-            : clientSecret ? "client_secret_post" : "none";
-        client = { clientId, clientSecret, tokenEndpointAuthMethod };
-      } else {
-        client = environmentClient(definition, input.env ?? process.env);
-      }
-    }
+  const resourceMetadata = await oauthJson(
+    server.resourceMetadataUrl,
+    { method: "GET" },
+    fetchImpl,
+    discoveryFailure,
+  );
+  const validatedResource = allowedUrl(resourceMetadata.resource, server.allowedOrigins, discoveryFailure);
+  if (validatedResource !== new URL(definition.mcp.url).toString()) throw discoveryFailure;
+  // OAuth resource identifiers are exact strings; URL validation must not add a slash.
+  const resource = resourceMetadata.resource as string;
+  const authorizationServers = resourceMetadata.authorization_servers;
+  if (
+    !Array.isArray(authorizationServers)
+    || !authorizationServers.some((value) => value === server.authorizationServer)
+  ) {
+    throw discoveryFailure;
   }
+  if (!server.authorizationEndpoint || !server.tokenEndpoint) throw discoveryFailure;
+  const authorizationEndpoint = server.authorizationEndpoint;
+  const tokenEndpoint = server.tokenEndpoint;
+  const client = environmentClient(definition, input.env ?? process.env);
 
   const verifier = adapter.pkce ? codeVerifier() : null;
   const scope = server.scopes.join(adapter.scopeSeparator);
@@ -395,9 +264,6 @@ export async function beginCompanionPluginOAuth(input: {
   authorizationUrl.searchParams.set("scope", scope);
   if (adapter.resourceIndicator) {
     authorizationUrl.searchParams.set("resource", resource);
-  }
-  for (const [key, value] of Object.entries({...adapter.authorizationParams,...definition.oauth.authorizationParams})) {
-    authorizationUrl.searchParams.set(key, value);
   }
   return { authorizationUrl: authorizationUrl.toString(), flow };
 }
@@ -452,14 +318,6 @@ function parseTokens(
   };
 }
 
-function hasRequiredScopes(definition: CuratedAppDefinition, scope: string | null): boolean {
-  if (!scope) return false;
-  const scopes = new Set(scope.split(/\s+/).filter(Boolean));
-  return definition.oauth.scopes.every(
-    (required) => scopes.has(required),
-  );
-}
-
 function requiredAppDefinition(serverName: CompanionPluginOAuthServerName): CuratedAppDefinition {
   const definition = getAppDefinition(serverName);
   if (!definition) throw new Error("invalid curated App definition");
@@ -509,12 +367,6 @@ export async function completeCompanionPluginOAuth(input: {
     null,
     adapter.acceptedTokenTypes,
   );
-  if (adapter.validateGrantedScopes && !hasRequiredScopes(definition, tokens.scope)) {
-    throw new CompanionPluginOAuthError(
-      `${definition.name} did not grant all required access.`,
-      "oauth_exchange_failed",
-    );
-  }
   const githubIdentity = adapter.enrichCredential === "github-identity"
     ? await githubUserIdentity({
       accessToken: tokens.accessToken,
@@ -529,9 +381,7 @@ export async function completeCompanionPluginOAuth(input: {
     tokenEndpoint: input.flow.tokenEndpoint,
     resource: input.flow.resource,
     // Deployment OAuth client secrets never belong in each member account envelope.
-    client: definition.oauth.client.kind === "environment"
-      ? { ...input.flow.client, clientSecret: null }
-      : input.flow.client,
+    client: { ...input.flow.client, clientSecret: null },
   };
   if (githubIdentity) credential.githubIdentity = githubIdentity;
   return credential;
@@ -563,13 +413,11 @@ export async function refreshCompanionPluginOAuth(input: {
   if (adapter.resourceIndicator) {
     body.set("resource", input.credential.resource);
   }
-  let client = input.credential.client;
-  if (definition.oauth.client.kind === "environment") {
-    try {
-      client = environmentClient(definition, input.env ?? process.env);
-    } catch {
-      throw failure;
-    }
+  let client: CompanionPluginOAuthClient;
+  try {
+    client = environmentClient(definition, input.env ?? process.env);
+  } catch {
+    throw failure;
   }
   if (client.clientId !== input.credential.client.clientId) throw failure;
   const authentication = clientAuthentication(client, body);
@@ -583,9 +431,6 @@ export async function refreshCompanionPluginOAuth(input: {
     input.fetchImpl ?? fetch,
     failure,
     input.signal,
-    adapter.revokedErrorCode === "invalid_grant"
-      ? new CompanionPluginOAuthRevokedError()
-      : undefined,
   );
   const tokens = parseTokens(
     raw,
@@ -594,9 +439,6 @@ export async function refreshCompanionPluginOAuth(input: {
     input.credential.scope,
     adapter.acceptedTokenTypes,
   );
-  if (adapter.validateGrantedScopes && !hasRequiredScopes(definition, tokens.scope)) {
-    throw failure;
-  }
   const githubIdentity = adapter.enrichCredential === "github-identity"
     ? await githubUserIdentity({
       accessToken: tokens.accessToken,

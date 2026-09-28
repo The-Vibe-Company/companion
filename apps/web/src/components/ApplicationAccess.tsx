@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Check, ExternalLink, LoaderCircle, Plus } from "lucide-react";
 import { workspaceApi, type PluginAccount, type PluginServer } from "@/api";
-import { ProviderMark } from "@/components/ProviderMark";
+import { markKey, ProviderMark } from "@/components/ProviderMark";
 import { Button } from "@/components/ui/button";
 import "./ApplicationAccess.css";
 
@@ -14,7 +14,7 @@ type AccountTilesProps = {
   onToggle: (accountId: string) => void;
 };
 
-type ProviderGroup = { key: string; name: string; provider?: string; accounts: PluginAccount[] };
+type ProviderGroup = { key: string; name: string; mark?: string; logo?: string | null; accounts: PluginAccount[] };
 
 function titleCase(value: string) {
   return value.replace(/[._/-]+/g, " ").replace(/\b\w/g, letter => letter.toUpperCase());
@@ -25,9 +25,8 @@ function groupAccounts(accounts: PluginAccount[], catalog: PluginServer[] = []):
   const groups = new Map<string, ProviderGroup>();
   for (const account of accounts) {
     const server = account.serverId ? servers.get(account.serverId) : undefined;
-    const provider = account.provider ?? server?.provider ?? undefined;
-    const key = provider === "custom" ? account.serverId ?? account.id : provider ?? account.serverId ?? account.id;
-    const group = groups.get(key) ?? { key, provider, name: server?.name ?? (provider === "custom" ? account.label : titleCase(provider ?? account.serverId ?? account.label)), accounts: [] };
+    const key = account.serverId ?? account.id;
+    const group = groups.get(key) ?? { key, mark: server ? markKey(server) : markKey(account), logo: server?.logo ?? account.appLogo, name: server?.name ?? account.appName ?? (account.provider === "custom" ? account.label : titleCase(account.provider)), accounts: [] };
     group.accounts.push(account);
     groups.set(key, group);
   }
@@ -40,7 +39,7 @@ export function AccountTiles({ accounts, catalog = [], selectedIds, disabled = f
     const selectedCount = group.accounts.filter(account => selectedIds.has(account.id)).length;
     const labelId=`${labelPrefix}-${group.key.replace(/[^a-z0-9_-]/gi,"-")}`;
     return <section className={`account-tile${selectedCount ? " account-tile--granted" : ""}`} key={group.key} aria-labelledby={labelId}>
-      <header><ProviderMark provider={group.provider} name={group.name}/><h3 id={labelId}>{group.name}</h3><span>{selectedCount} of {group.accounts.length}</span></header>
+      <header><ProviderMark provider={group.mark} name={group.name} logo={group.logo}/><h3 id={labelId}>{group.name}</h3><span>{selectedCount} of {group.accounts.length}</span></header>
       <div className="account-tile-accounts">{group.accounts.map(account => {
         const checked = selectedIds.has(account.id);
         return <label key={account.id} className={checked ? "account-grant account-grant--selected" : "account-grant"}>
@@ -153,14 +152,14 @@ export function ApplicationAccess({ companionId, onConnect, inlineConnections = 
   if (!accounts.length && error) return <div className="application-access-state" role="alert"><p>{error}</p><Button variant="outline" onClick={() => void reload()}>Try again</Button></div>;
   if (!accounts.length && !inlineConnections) return <div className="application-access-state"><p>Connect an account to choose what this companion can use.</p>{onConnect && <Button variant="outline" onClick={onConnect}><Plus/>Connect an account</Button>}</div>;
 
-  const visibleCatalog = catalog.filter(server => !providers?.length || providers.includes(server.id) || Boolean(server.provider && providers.includes(server.provider)));
-  const visibleAccounts = accounts.filter(account => !providers?.length || Boolean(account.provider && providers.includes(account.provider)) || visibleCatalog.some(server => server.id === account.serverId));
+  const visibleCatalog = catalog.filter(server => !providers?.length || [server.id, server.provider, server.toolkit].some(value => value && providers.includes(value)));
+  const visibleAccounts = accounts.filter(account => !providers?.length || [account.provider, markKey(account)].some(value => value && providers.includes(value)) || visibleCatalog.some(server => server.id === account.serverId));
   const visibleGranted = providers?.length ? visibleAccounts.filter(account => selectedIds.has(account.id)).length : grantedCount;
   return <div className={`application-access${compact ? " application-access--compact" : ""}`}>
     <div className="application-access-meta"><span>{visibleGranted} of {visibleAccounts.length} accounts granted</span>{onConnect && <button type="button" onClick={onConnect}>Manage connections</button>}</div>
     {visibleAccounts.length > 0 && <AccountTiles accounts={visibleAccounts} catalog={catalog} selectedIds={selectedIds} disabled={pendingId !== null} pendingId={pendingId} onToggle={accountId => void toggle(accountId)}/>}
     {inlineConnections && <div className="application-connectors" aria-label="Add a connection">{visibleCatalog.map(server => <article key={server.id} title={server.available ? server.description ?? `Connect ${server.name}` : `${server.name} is unavailable in this deployment`}>
-      <ProviderMark provider={server.provider} name={server.name}/><span><strong>{server.name}</strong><small>{server.available ? server.description ?? "Connect another account" : "Unavailable in this deployment"}</small></span>
+      <ProviderMark provider={markKey(server)} name={server.name} logo={server.logo}/><span><strong>{server.name}</strong><small>{server.available ? server.description ?? "Connect another account" : "Unavailable in this deployment"}</small></span>
       <Button type="button" size="sm" variant="outline" disabled={!server.available || pendingId !== null} aria-label={`Connect ${server.name}`} onClick={() => void connect(server)}>{pendingId === server.id ? <LoaderCircle className="spin"/> : "Connect"}{server.available && <ExternalLink/>}</Button>
     </article>)}</div>}
     {error && <div className="application-access-error" role="alert"><span>{error}</span><Button size="sm" variant="outline" onClick={() => void reload()}>Reload</Button></div>}

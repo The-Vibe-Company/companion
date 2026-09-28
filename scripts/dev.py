@@ -66,8 +66,12 @@ managed_containers = []
 public_services = {}
 
 POSTGRES_IMAGE = "postgres:17.6-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94"
-MINIO_IMAGE = "quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e"
-MINIO_CLIENT_IMAGE = "quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z@sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3"
+# MinIO withdrew its quay.io and Docker Hub images; these are the same releases, pinned by digest.
+# Bitnami's entrypoint and non-root default user are bypassed to keep the upstream invocation.
+MINIO_IMAGE = "docker.io/bitnamilegacy/minio:2025.4.22@sha256:50cec18ac4184af4671a78aedd5554942c8ae105d51a465fa82037949046da01"
+MINIO_RUN = ["--user", "0:0", "--entrypoint", "minio"]
+MINIO_CLIENT_IMAGE = "docker.io/bitnamilegacy/minio-client:2025.4.16@sha256:8a86e441decf053093c5977d49290298295f850c7843652f93e970ab15871dd1"
+MINIO_CLIENT_RUN = ["--entrypoint", "mc"]
 MAILPIT_IMAGE = "axllent/mailpit:v1.27.8@sha256:6abc8e633df15eaf785cfcf38bae48e66f64beecdc03121e249d0f9ec15f0707"
 
 def bun_command(args):
@@ -173,7 +177,7 @@ try:
             "--publish", f"127.0.0.1:{base+3}:9000", "--publish", f"127.0.0.1:{base+4}:9001",
             "--env", f"MINIO_ROOT_USER={credentials['minioUser']}",
             "--env", f"MINIO_ROOT_PASSWORD={credentials['minioPassword']}",
-            "--volume", f"{minio_name}:/data", MINIO_IMAGE,
+            "--volume", f"{minio_name}:/data", *MINIO_RUN, MINIO_IMAGE,
             "server", "/data", "--console-address", ":9001",
         ])
         env.update({
@@ -185,7 +189,7 @@ try:
         wait_http(f"{env['S3_ENDPOINT']}/minio/health/live", "MinIO")
         run(["docker", "run", "--rm", "--network", f"container:{minio_name}",
              "--env", f"MC_HOST_local=http://{credentials['minioUser']}:{credentials['minioPassword']}@127.0.0.1:9000",
-             MINIO_CLIENT_IMAGE, "mb", "--ignore-existing", f"local/{env['S3_BUCKET_FILES']}"],
+             *MINIO_CLIENT_RUN, MINIO_CLIENT_IMAGE, "mb", "--ignore-existing", f"local/{env['S3_BUCKET_FILES']}"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     mailpit_name = f"companions-mailpit-{workspace}"

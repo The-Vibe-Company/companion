@@ -19,6 +19,8 @@ import { BoxClient, BoxError } from "../../../packages/box/client";
 import { auth, AuthenticationRequired, requireUser, sessionUser } from "./auth";
 
 import { handlePlugins, PluginError } from "./plugins";
+import {handleComposioWebhook,handleComposioTriggers,deleteCompanionTriggers} from "./composio-triggers";
+import {ComposioUnavailable} from "./composio";
 import { handleFiles, FILE_REQUEST_MAX_BYTES, FileRequestError } from "./files";
 import { handleTasks } from "./tasks";
 import { avatarSchema, configureCompanion } from "./control";
@@ -42,6 +44,7 @@ export async function handler(request: Request): Promise<Response> {
   if(url.pathname==='/api/model-gateway'||url.pathname.startsWith('/api/model-gateway/'))
     return await handleModelGateway(request)??json({error:'Not found.'},404);
   if(url.pathname === "/api/stripe/webhook") return handleStripeWebhook(request);
+  if(url.pathname === "/api/composio/webhook") return handleComposioWebhook(request).catch(()=>{console.error("composio_webhook_failed");return json({error:"Webhook failed."},500);});
   if (url.pathname === "/health") return json({ ok: true });
   // Public assets must load through TLS-terminating proxies and domain changes.
   const apiPath = url.pathname === "/api" || url.pathname.startsWith("/api/");
@@ -74,6 +77,8 @@ export async function handler(request: Request): Promise<Response> {
     if(taskResponse) return taskResponse;
     const pluginResponse = await handlePlugins(request,ownerId);
     if(pluginResponse) return pluginResponse;
+    const triggerResponse = await handleComposioTriggers(request,ownerId);
+    if(triggerResponse) return triggerResponse;
     if (request.method === "GET" && url.pathname === "/api/config") return json({ models:await availableModels(),localAvailable: config.localAvailable, defaultProvider: config.defaultProvider, boxAvailable: !!(config.boxKey && (config.managedBoxTemplate || config.boxTemplate)), model: config.testMode ? "Local test model" : `${config.modelProvider}/${config.modelId}` });
     if (url.pathname === "/api/companions") {
       if (request.method === "GET") return json({ companions: await listCompanions(ownerId) });
@@ -90,7 +95,10 @@ export async function handler(request: Request): Promise<Response> {
       const id = idSchema.parse(match[1]);
       if (match[2] === "skills" && request.method === "GET") return await companionSkillCommands(ownerId, id);
       if (match[2] === "chat" && request.method === "GET") { const result=await chatPage(ownerId,id,parseChatQuery(url,id));return result?json(result):json({error:"Companion not found."},404); }
-      if (!match[2] && request.method === "DELETE") { const result=await retireCompanion(ownerId,id); return result ? json(result,202) : json({error:"Companion not found."},404); }
+      if (!match[2] && request.method === "DELETE") { const result=await retireCompanion(ownerId,id);
+        // Retirement is committed first; webhooks already ignore retired Companions if cleanup fails.
+        if(result)await deleteCompanionTriggers(ownerId,id).catch(()=>console.error("composio_trigger_cleanup_failed"));
+        return result ? json(result,202) : json({error:"Companion not found."},404); }
       if (!match[2] && request.method === "PATCH") { const companion=await configureCompanion(ownerId,id,await request.json()); return companion ? json({companion}) : json({error:"Companion not found."},404); }
       if (!match[2] && request.method === "GET") { const result = await companionHttpDetail(ownerId,id,parseChatQuery(url,id));
         return result?json(result):json({error:"Companion not found."},404); }
@@ -116,6 +124,7 @@ export async function handler(request: Request): Promise<Response> {
     if (error instanceof AuthenticationRequired) return json({ error: "Authentication required." }, 401);
     if (error instanceof z.ZodError || error instanceof SyntaxError) return json({ error: "Invalid request." }, 400);
     if (error instanceof PluginError) return json({error:error.message},400);
+    if (error instanceof ComposioUnavailable) return json({error:error.message},409);
     if (error instanceof ProductActivationRequired) return json({error:error.message},402);
     if (error instanceof LifecycleConflict) return json({error:error.message},409);
     if (error instanceof ChatPaginationError) return json({error:error.message},400);

@@ -2,7 +2,7 @@ import type {SQL} from 'bun';
 import {db} from './store';
 
 export class TaskConflict extends Error {}
-export type BackgroundInput={companionId:string;clientMessageId:string;content:string;source:'background'|'delegation'};
+export type BackgroundInput={companionId:string;clientMessageId:string;content:string;source:'background'|'delegation'|'event'};
 
 export async function enqueueBackground(input:BackgroundInput,sql:SQL=db):Promise<string|null>{
  return sql.begin(tx=>enqueueBackgroundInTransaction(input,tx));
