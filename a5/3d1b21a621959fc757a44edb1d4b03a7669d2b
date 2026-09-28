@@ -1,0 +1,26 @@
+apps/server/src/composio-triggers.ts
+  s_c47618252b7e2c::t_3b0a40dc014028 210-217
+apps/server/src/worker.ts
+  s_c47618252b7e2c::t_3b0a40dc014028 10,13
+apps/server/src/composio.sql
+  s_c47618252b7e2c::t_3b0a40dc014028 26-27
+apps/server/test/composio-triggers.test.ts
+  s_c47618252b7e2c::t_3b0a40dc014028 227-235
+  s_c47618252b7e2c::t_559b29351660cc 236-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a53d1b21a621959fc757a44edb1d4b03a7669d2b",
+  "prompts": {},
+  "sessions": {
+    "s_c47618252b7e2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed619812-a2ee-4526-89ad-d8476bcc344a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
