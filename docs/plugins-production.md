@@ -43,8 +43,9 @@ COMPOSIO_API_KEY=… APP_URL=https://companions.build bun scripts/composio-setup
 ```
 
 It subscribes `https://<APP_URL>/api/composio/webhook` to `composio.trigger.message` and
-`composio.connected_account.expired` (V3 payloads) and prints the signing secret for
-`COMPOSIO_WEBHOOK_SECRET`. Redeploy the API after setting it.
+`composio.connected_account.expired` (V3 payloads) and writes the signing secret to the owner-only,
+ignored file `.local/composio-webhook-secret` instead of printing it. Set it as
+`COMPOSIO_WEBHOOK_SECRET`, redeploy the API, then delete the file.
 
 The GitHub git-access OAuth App returns to `https://companions.build/api/plugins/callback`
 (or the deployment's `APP_URL` with the same path) and requests `repo`, `read:org`,
