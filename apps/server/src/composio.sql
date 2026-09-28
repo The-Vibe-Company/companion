@@ -15,8 +15,12 @@ CREATE TABLE IF NOT EXISTS composio_triggers (
 CREATE INDEX IF NOT EXISTS composio_triggers_remote ON composio_triggers(composio_trigger_id);
 CREATE INDEX IF NOT EXISTS composio_triggers_companion ON composio_triggers(companion_id,created_at);
 CREATE TABLE IF NOT EXISTS composio_trigger_events (
- webhook_id text NOT NULL, trigger_id uuid NOT NULL REFERENCES composio_triggers(id) ON DELETE CASCADE,
+ -- No foreign key: a queued task keeps its payload after its trigger is deleted.
+ webhook_id text NOT NULL, trigger_id uuid NOT NULL,
  run_id uuid, payload_secret text NOT NULL, received_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY (webhook_id,trigger_id)
 );
+ALTER TABLE composio_trigger_events DROP CONSTRAINT IF EXISTS composio_trigger_events_trigger_id_fkey;
 CREATE INDEX IF NOT EXISTS composio_trigger_events_run ON composio_trigger_events(run_id);
+-- Serializes remote changes to one shared Composio subscription without holding a transaction open.
+CREATE TABLE IF NOT EXISTS composio_subscription_leases (key text PRIMARY KEY, holder uuid NOT NULL, expires_at timestamptz NOT NULL);

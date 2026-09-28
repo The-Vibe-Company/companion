@@ -12,6 +12,7 @@
 .trigger-copy strong { font-size: .875rem; font-weight: 600; }
 .trigger-copy small { margin-top: 1px; color: var(--muted-foreground); font-size: .75rem; }
 .companion-configuration .trigger-copy p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 5px 0 0; color: var(--foreground); font-size: .8125rem; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.trigger-state { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .trigger-status { padding: 3px 8px; border-radius: 999px; background: var(--secondary); color: var(--muted-foreground); font-size: .7rem; font-weight: 600; white-space: nowrap; }
 .trigger-status--active { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--status-done); }
 .trigger-status--registering { color: var(--status-wait); }
@@ -41,7 +42,7 @@
   .trigger-row > * { align-self: start; }
   .trigger-row > .provider-dot { grid-area: 1 / 1; }
   .trigger-copy { grid-area: 1 / 2; }
-  .trigger-status { grid-area: 2 / 2; justify-self: start; }
+  .trigger-state { grid-area: 2 / 2; justify-self: start; }
   .trigger-switch { grid-area: 1 / 3; margin-top: -6px; }
   .trigger-row > .ui-button { grid-area: 1 / 4; }
   .trigger-confirm { grid-column: 1 / -1; }

@@ -149,9 +149,9 @@ export function CompanionTriggers({ companionId, companionName, onApplications }
     return () => { active = false; window.clearTimeout(timer); };
   }, [companionId, registering, busy, triggers]);
 
-  async function toggle(trigger: CompanionTrigger) {
+  async function setEnabled(trigger: CompanionTrigger, enabled: boolean) {
     setBusy(trigger.id); setError("");
-    try { const result = await workspaceApi.updateTrigger(companionId, trigger.id, { enabled: trigger.status === "disabled" }); setTriggers(current => current.map(item => item.id === trigger.id ? result.trigger : item)); }
+    try { const result = await workspaceApi.updateTrigger(companionId, trigger.id, { enabled }); setTriggers(current => current.map(item => item.id === trigger.id ? result.trigger : item)); }
     catch (cause) { setError(failure(cause, "Could not update this trigger.")); }
     finally { setBusy(""); }
   }
@@ -172,8 +172,10 @@ export function CompanionTriggers({ companionId, companionName, onApplications }
       return <li key={trigger.id} className={`trigger-row${enabled ? "" : " trigger-row--paused"}`}>
         <ProviderMark provider={account ? markKey(account) : trigger.appName?.toLowerCase()} name={app} logo={trigger.appLogo}/>
         <div className="trigger-copy"><strong>{trigger.triggerName}</strong><small>{trigger.appName ? `${trigger.appName} · ${trigger.accountLabel}` : trigger.accountLabel}</small><p title={trigger.instructions}>{trigger.instructions}</p></div>
-        <span className={`trigger-status trigger-status--${trigger.status}`}>{statusText[trigger.status]}</span>
-        <label className="trigger-switch"><input type="checkbox" role="switch" checked={enabled} disabled={!!busy} aria-label={`Enable ${trigger.triggerName}`} onChange={() => void toggle(trigger)}/><span aria-hidden="true"/></label>
+        <span className="trigger-state"><span className={`trigger-status trigger-status--${trigger.status}`}>{statusText[trigger.status]}</span>
+          {/* Enabling again re-runs registration, which reuses an existing Composio subscription. */}
+          {trigger.status === "error" && <Button type="button" variant="outline" size="sm" disabled={!!busy} aria-label={`Retry ${trigger.triggerName}`} onClick={() => void setEnabled(trigger, true)}>{busy === trigger.id && confirming !== trigger.id && <LoaderCircle className="spin"/>}Retry</Button>}</span>
+        <label className="trigger-switch"><input type="checkbox" role="switch" checked={enabled} disabled={!!busy} aria-label={`Enable ${trigger.triggerName}`} onChange={() => void setEnabled(trigger, !enabled)}/><span aria-hidden="true"/></label>
         <Button type="button" variant="ghost" size="icon-sm" disabled={!!busy} aria-label={`Delete ${trigger.triggerName}`} onClick={() => setConfirming(trigger.id)}>{busy === trigger.id && confirming === trigger.id ? <LoaderCircle className="spin"/> : <Trash2/>}</Button>
         {confirming === trigger.id && <div className="trigger-confirm" role="group" aria-label={`Delete ${trigger.triggerName}?`}>
           <p>{companionName} will stop reacting to this {app} event.</p>

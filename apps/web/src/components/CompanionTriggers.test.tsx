@@ -106,3 +106,12 @@ it("pauses, resumes and deletes a trigger after confirmation", async () => {
   expect(calls.filter(call => call.method === "DELETE").map(call => call.path)).toEqual(["/api/companions/ada/triggers/t1"]);
   expect(screen.getByText(/No triggers yet/)).toBeInTheDocument();
 });
+
+it("retries a failed registration instead of pausing it", async () => {
+  const calls = installApi([{ ...trigger, status: "error" }]);
+  const user = userEvent.setup(); render(<CompanionTriggers companionId="ada" companionName="Ada"/>);
+  await user.click(await screen.findByRole("button", { name: "Retry New Gmail message" }));
+  await waitFor(() => expect(screen.getByText("Active")).toBeInTheDocument());
+  expect(screen.queryByRole("button", { name: "Retry New Gmail message" })).not.toBeInTheDocument();
+  expect(calls.filter(call => call.method === "PATCH").map(call => call.body)).toEqual([{ enabled: true }]);
+});

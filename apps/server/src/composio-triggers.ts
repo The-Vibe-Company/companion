@@ -33,17 +33,37 @@ export async function listTriggerTypes(ownerId:string,accountId:string){
 }
 const sameConfig=(a:Record<string,unknown>,b:Record<string,unknown>)=>JSON.stringify(Object.entries(a).sort())===JSON.stringify(Object.entries(b).sort());
 
+const LEASE_MS=5*60_000,LEASE_WAIT_MS=20_000;
+/**
+ * Identical subscriptions share one Composio instance, so every decision about it is serialized per
+ * (account, trigger type). A persisted lease, not an open transaction, spans the Composio calls: no
+ * pooled connection is held during network I/O, and a crashed holder's lease expires on its own.
+ */
+async function withSubscription<T>(accountId:string,slug:string,body:(sql:any)=>Promise<T>){
+ const key=`${accountId}:${slug}`,holder=crypto.randomUUID(),deadline=Date.now()+LEASE_WAIT_MS;
+ for(;;){
+  const [lease]=await db`INSERT INTO composio_subscription_leases(key,holder,expires_at) VALUES(${key},${holder},now()+${LEASE_MS}*interval '1 millisecond')
+   ON CONFLICT(key) DO UPDATE SET holder=EXCLUDED.holder,expires_at=EXCLUDED.expires_at WHERE composio_subscription_leases.expires_at<now() RETURNING holder`;
+  if(lease)break;
+  if(Date.now()>deadline)throw new PluginError('This trigger is being updated. Try again in a moment.');
+  await Bun.sleep(100);
+ }
+ try{return await body(db);}
+ finally{await db`DELETE FROM composio_subscription_leases WHERE key=${key} AND holder=${holder}`;}
+}
 /** Idempotent: an existing remote subscription with this exact configuration is reused, never duplicated. */
 async function register(ownerId:string,id:string){
  const [row]=await db`SELECT t.*,p.credential_secret FROM composio_triggers t JOIN plugin_accounts p ON p.id=t.account_id WHERE t.id=${id} AND t.owner_id=${ownerId}`;
  if(!row)return;
  const connectedAccountId=JSON.parse(decrypt(row.credential_secret)).connectedAccountId as string;
  try{
-  const existing=(await composio().listActiveTriggers({connectedAccountIds:[connectedAccountId],triggerNames:[row.trigger_slug]}))
-   .find(instance=>instance.connectedAccountId===connectedAccountId&&sameConfig(instance.triggerConfig,row.trigger_config));
-  const remoteId=existing?.id??(await composio().createTrigger(composioUserId(ownerId),row.trigger_slug,{connectedAccountId,triggerConfig:row.trigger_config})).triggerId;
-  if(existing?.disabledAt)await composio().setTriggerEnabled(remoteId,true);
-  await db`UPDATE composio_triggers SET composio_trigger_id=${remoteId},status='active' WHERE id=${id} AND status IN ('registering','error')`;
+  await withSubscription(row.account_id,row.trigger_slug,async sql=>{
+   const existing=(await composio().listActiveTriggers({connectedAccountIds:[connectedAccountId],triggerNames:[row.trigger_slug]}))
+    .find(instance=>instance.connectedAccountId===connectedAccountId&&sameConfig(instance.triggerConfig,row.trigger_config));
+   const remoteId=existing?.id??(await composio().createTrigger(composioUserId(ownerId),row.trigger_slug,{connectedAccountId,triggerConfig:row.trigger_config})).triggerId;
+   if(existing?.disabledAt)await composio().setTriggerEnabled(remoteId,true);
+   await sql`UPDATE composio_triggers SET composio_trigger_id=${remoteId},status='active' WHERE id=${id} AND status IN ('registering','error')`;
+  });
  }catch(error){
   await db`UPDATE composio_triggers SET status='error' WHERE id=${id} AND status='registering'`;
   if(!(error instanceof ComposioError))throw error;
@@ -67,12 +87,8 @@ export async function createTrigger(ownerId:string,companionId:string,raw:unknow
  return trigger(ownerId,id);
 }
 /** Remote state follows the union of local rows that share one Composio subscription. */
-async function othersActive(remoteId:string,exceptId:string){
- const [row]=await db`SELECT count(*)::int AS count FROM composio_triggers WHERE composio_trigger_id=${remoteId} AND id<>${exceptId} AND status='active'`;
- return row.count>0;
-}
-async function othersReference(remoteId:string,exceptIds:string[]){
- const [row]=await db`SELECT count(*)::int AS count FROM composio_triggers WHERE composio_trigger_id=${remoteId} AND id NOT IN ${db(exceptIds)}`;
+async function othersActive(sql:any,remoteId:string,exceptId:string){
+ const [row]=await sql`SELECT count(*)::int AS count FROM composio_triggers WHERE composio_trigger_id=${remoteId} AND id<>${exceptId} AND status='active'`;
  return row.count>0;
 }
 export async function updateTrigger(ownerId:string,companionId:string,id:string,raw:unknown){
@@ -83,41 +99,50 @@ export async function updateTrigger(ownerId:string,companionId:string,id:string,
  if(input.enabled===true&&row.status!=='active'){
   if(!row.composio_trigger_id){await db`UPDATE composio_triggers SET status='registering' WHERE id=${id}`;await register(ownerId,id);}
   else{
-   await db`UPDATE composio_triggers SET status='active' WHERE id=${id}`;
-   try{await composio().setTriggerEnabled(row.composio_trigger_id,true);}
-   catch(error){await db`UPDATE composio_triggers SET status='error' WHERE id=${id}`;if(!(error instanceof ComposioError))throw error;}
+   const enabled=await withSubscription(row.account_id,row.trigger_slug,async sql=>{
+    await sql`UPDATE composio_triggers SET status='active' WHERE id=${id}`;
+    return composio().setTriggerEnabled(row.composio_trigger_id,true).then(()=>true,error=>{if(!(error instanceof ComposioError))throw error;return false;});
+   });
+   if(!enabled)await db`UPDATE composio_triggers SET status='error' WHERE id=${id}`;
   }
  }
  if(input.enabled===false&&row.status!=='disabled'){
-  // Local state first: the webhook ignores inactive rows even before Composio stops sending.
+  // Local state commits first: the webhook rechecks it under a row lock before admitting work.
   await db`UPDATE composio_triggers SET status='disabled' WHERE id=${id}`;
-  if(row.composio_trigger_id&&!await othersActive(row.composio_trigger_id,id))
-   await composio().setTriggerEnabled(row.composio_trigger_id,false).catch(error=>{if(!(error instanceof ComposioError))throw error;});
+  if(row.composio_trigger_id)await withSubscription(row.account_id,row.trigger_slug,async sql=>{
+   if(!await othersActive(sql,row.composio_trigger_id,id))
+    await composio().setTriggerEnabled(row.composio_trigger_id,false).catch(error=>{if(!(error instanceof ComposioError))throw error;});
+  });
  }
  return trigger(ownerId,id);
 }
-async function removeRemote(rows:Array<{id:string;composio_trigger_id:string|null}>){
- const ids=rows.map(row=>row.id);
- for(const remoteId of new Set(rows.map(row=>row.composio_trigger_id).filter((value):value is string=>!!value)))
-  if(!await othersReference(remoteId,ids))await composio().deleteTrigger(remoteId);
+/**
+ * Composio first, then the local rows, under the subscription lease: concurrent deletions of the
+ * last rows sharing an instance cannot both skip the remote deletion. A failure keeps the rows.
+ */
+async function removeRows(rows:Array<{id:string;account_id:string;trigger_slug:string;composio_trigger_id:string|null}>){
+ for(const row of rows)await withSubscription(row.account_id,row.trigger_slug,async sql=>{
+  const [current]=await sql`SELECT composio_trigger_id FROM composio_triggers WHERE id=${row.id}`;
+  if(!current)return;
+  if(current.composio_trigger_id){
+   const [others]=await sql`SELECT count(*)::int AS count FROM composio_triggers WHERE composio_trigger_id=${current.composio_trigger_id} AND id<>${row.id}`;
+   if(others.count===0)await composio().deleteTrigger(current.composio_trigger_id);
+  }
+  await sql`DELETE FROM composio_triggers WHERE id=${row.id}`;
+ });
 }
-/** Composio first: a failure keeps the local row so deletion can be retried without leaking a subscription. */
+const removable=db`id,account_id,trigger_slug,composio_trigger_id`;
 export async function deleteTrigger(ownerId:string,companionId:string,id:string){
- const rows=await db`SELECT id,composio_trigger_id FROM composio_triggers WHERE id=${uuid.parse(id)} AND companion_id=${uuid.parse(companionId)} AND owner_id=${ownerId}`;
+ const rows=await db`SELECT ${removable} FROM composio_triggers WHERE id=${uuid.parse(id)} AND companion_id=${uuid.parse(companionId)} AND owner_id=${ownerId}`;
  if(!rows.length)return false;
- try{await removeRemote(rows);}catch(error){if(error instanceof ComposioError)throw new PluginError('The trigger could not be removed. Try again.');throw error;}
- await db`DELETE FROM composio_triggers WHERE id=${id}`;
+ try{await removeRows(rows);}catch(error){if(error instanceof ComposioError)throw new PluginError('The trigger could not be removed. Try again.');throw error;}
  return true;
 }
 export async function deleteAccountTriggers(ownerId:string,accountId:string){
- const rows=await db`SELECT id,composio_trigger_id FROM composio_triggers WHERE account_id=${accountId} AND owner_id=${ownerId}`;
- await removeRemote(rows);
- await db`DELETE FROM composio_triggers WHERE account_id=${accountId} AND owner_id=${ownerId}`;
+ await removeRows(await db`SELECT ${removable} FROM composio_triggers WHERE account_id=${accountId} AND owner_id=${ownerId}`);
 }
 export async function deleteCompanionTriggers(ownerId:string,companionId:string){
- const rows=await db`SELECT id,composio_trigger_id FROM composio_triggers WHERE companion_id=${companionId} AND owner_id=${ownerId}`;
- await removeRemote(rows);
- await db`DELETE FROM composio_triggers WHERE companion_id=${companionId} AND owner_id=${ownerId}`;
+ await removeRows(await db`SELECT ${removable} FROM composio_triggers WHERE companion_id=${companionId} AND owner_id=${ownerId}`);
 }
 
 const triggerMessage=z.object({id:z.string(),type:z.literal('composio.trigger.message'),timestamp:z.string(),
@@ -160,6 +185,9 @@ export async function handleComposioWebhook(request:Request,env:NodeJS.ProcessEn
   // The signed user must own the subscription; a shared instance id alone is not authority.
   if(composioUserId(row.owner_id)!==metadata.user_id)continue;
   await db.begin(async tx=>{
+   // Row lock: a concurrent pause either commits first (and admits nothing) or waits for this admission.
+   const [current]=await tx`SELECT id FROM composio_triggers WHERE id=${row.id} AND status='active' FOR SHARE`;
+   if(!current)return;
    const [inserted]=await tx`INSERT INTO composio_trigger_events(webhook_id,trigger_id,payload_secret) VALUES(${webhookId},${row.id},${secret}) ON CONFLICT DO NOTHING RETURNING trigger_id`;
    if(!inserted)return;
    const runId=await enqueueBackgroundInTransaction({companionId:row.companion_id,clientMessageId:eventRunId(webhookId!,row.id),content:eventTask(row,metadata.trigger_slug,event.data.timestamp),source:'event'},tx);
