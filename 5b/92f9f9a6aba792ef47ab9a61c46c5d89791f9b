@@ -1,0 +1,19 @@
+apps/server/test/composio-triggers.test.ts
+  s_c47618252b7e2c::t_36a43af980b768 197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5b92f9f9a6aba792ef47ab9a61c46c5d89791f9b",
+  "prompts": {},
+  "sessions": {
+    "s_c47618252b7e2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed619812-a2ee-4526-89ad-d8476bcc344a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
