@@ -224,3 +224,14 @@ test('provider payloads are cleared once their task can no longer stage them, ke
  await handleComposioWebhook(signed(event(m,remoteId),{id}));
  expect(await eventRuns(m.companionId)).toHaveLength(1);
 });
+
+test('payload purging is bounded per sweep and drains a backlog over several passes',async()=>{
+ // The purge is table-wide: drain earlier tests' candidates so this sweep only sees its own rows.
+ for(let i=0;i<20;i++)await purgeTriggerEvents();
+ const triggerId=crypto.randomUUID();
+ for(let i=0;i<5;i++)await db`INSERT INTO composio_trigger_events(webhook_id,trigger_id,payload_secret) VALUES(${crypto.randomUUID()},${triggerId},'x')`;
+ const remaining=async()=>(await db`SELECT count(*)::int AS count FROM composio_trigger_events WHERE trigger_id=${triggerId} AND payload_secret IS NOT NULL`)[0].count;
+ await purgeTriggerEvents(db,2);expect(await remaining()).toBe(3);
+ for(let i=0;i<5;i++)await purgeTriggerEvents(db,2);
+ expect(await remaining()).toBe(0);
+});

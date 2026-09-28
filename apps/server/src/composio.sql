@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS composio_trigger_events (
 ALTER TABLE composio_trigger_events DROP CONSTRAINT IF EXISTS composio_trigger_events_trigger_id_fkey;
 -- Cleared once the task can no longer stage it; see purgeTriggerEvents.
 ALTER TABLE composio_trigger_events ALTER COLUMN payload_secret DROP NOT NULL;
+CREATE INDEX IF NOT EXISTS composio_trigger_events_payload ON composio_trigger_events(run_id) WHERE payload_secret IS NOT NULL;
+CREATE INDEX IF NOT EXISTS composio_trigger_events_expired ON composio_trigger_events(received_at) WHERE payload_secret IS NULL;
 CREATE INDEX IF NOT EXISTS composio_trigger_events_run ON composio_trigger_events(run_id);
 -- Serializes remote changes to one shared Composio subscription without holding a transaction open.
 CREATE TABLE IF NOT EXISTS composio_subscription_leases (key text PRIMARY KEY, holder uuid NOT NULL, expires_at timestamptz NOT NULL);

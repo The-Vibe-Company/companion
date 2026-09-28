@@ -207,10 +207,14 @@ export async function triggerEventFile(runId:string){
  * Provider payloads are kept only while a task may still stage them. The small row outlives its
  * payload so late Composio retries stay deduplicated, and is dropped after the retry horizon.
  */
-export async function purgeTriggerEvents(sql:any=db){
- await sql`UPDATE composio_trigger_events e SET payload_secret=NULL WHERE payload_secret IS NOT NULL
-  AND (run_id IS NULL OR EXISTS(SELECT 1 FROM runs r WHERE r.id=e.run_id AND r.status IN ('succeeded','failed','interrupted','cancelled')))`;
- await sql`DELETE FROM composio_trigger_events WHERE payload_secret IS NULL AND received_at<now()-interval '30 days'`;
+export async function purgeTriggerEvents(sql:any=db,limit=500){
+ // Both sweeps use partial indexes and are bounded, so a backlog drains over several passes.
+ await sql`UPDATE composio_trigger_events e SET payload_secret=NULL FROM (
+  SELECT webhook_id,trigger_id FROM composio_trigger_events e WHERE payload_secret IS NOT NULL
+   AND (run_id IS NULL OR EXISTS(SELECT 1 FROM runs r WHERE r.id=e.run_id AND r.status IN ('succeeded','failed','interrupted','cancelled')))
+  LIMIT ${limit}) done WHERE e.webhook_id=done.webhook_id AND e.trigger_id=done.trigger_id`;
+ await sql`DELETE FROM composio_trigger_events WHERE (webhook_id,trigger_id) IN (
+  SELECT webhook_id,trigger_id FROM composio_trigger_events WHERE payload_secret IS NULL AND received_at<now()-interval '30 days' LIMIT ${limit})`;
 }
 
 export async function handleComposioTriggers(request:Request,ownerId:string):Promise<Response|null>{
