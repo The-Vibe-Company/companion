@@ -194,5 +194,5 @@ test('an expired lease left by a crashed holder does not block later subscriptio
  await db`INSERT INTO composio_subscription_leases(key,holder,expires_at) VALUES(${`${m.accountId}:GITHUB_NEW_EVENT`},${crypto.randomUUID()},now()-interval '1 second')`;
  await deleteTrigger(m.ownerId,m.companionId,trigger!.id);
  expect(fake.triggers.size).toBe(0);
- expect(await db`SELECT key FROM composio_subscription_leases WHERE key=${`${m.accountId}:GITHUB_NEW_EVENT`}`).toEqual([]);
+ expect((await db`SELECT key FROM composio_subscription_leases WHERE key=${`${m.accountId}:GITHUB_NEW_EVENT`}`).length).toBe(0);
 });
