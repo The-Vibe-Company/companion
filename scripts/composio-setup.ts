@@ -1,4 +1,4 @@
-import {chmodSync,mkdirSync,writeFileSync} from 'node:fs';
+import {mkdirSync,renameSync,writeFileSync} from 'node:fs';
 /** One-time project setup: point Composio trigger deliveries at this deployment and store the signing secret without printing it. */
 const key=process.env.COMPOSIO_API_KEY?.trim();
 const appUrl=process.env.APP_URL?.trim();
@@ -19,7 +19,9 @@ console.log(`Composio deliveries now go to ${webhookUrl}.`);
 if(subscription.secret){
  // Never print the signing secret: terminal and CI output is often retained.
  const file='.local/composio-webhook-secret';
- mkdirSync('.local',{recursive:true,mode:0o700});writeFileSync(file,`${subscription.secret}\n`,{mode:0o600});chmodSync(file,0o600);
+ mkdirSync('.local',{recursive:true,mode:0o700});
+ // A fresh owner-only file replaces the destination atomically, so no looser existing file ever holds the secret.
+ const temporary=`${file}.${process.pid}.tmp`;writeFileSync(temporary,`${subscription.secret}\n`,{mode:0o600,flag:'wx'});renameSync(temporary,file);
  console.log(`Wrote the signing secret to ${file} (owner-only). Set it as COMPOSIO_WEBHOOK_SECRET on the API service, redeploy, then delete the file.`);
 }
 else console.log('Composio did not return the signing secret; copy it from the Composio dashboard into COMPOSIO_WEBHOOK_SECRET.');
