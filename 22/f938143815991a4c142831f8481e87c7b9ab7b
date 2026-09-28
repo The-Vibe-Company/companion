@@ -1,0 +1,151 @@
+apps/web/src/maison.css
+  s_c47618252b7e2c::t_75e27be17b5b24 95
+apps/web/src/components/ConnectionCards.tsx
+  s_c47618252b7e2c::t_92d08784aab73f 6,10-11,24,29-31,33,35,37
+apps/server/src/control.ts
+  s_c47618252b7e2c::t_8af167ce595927 84
+packages/plugins/definitions.test.ts
+  s_c47618252b7e2c::t_e60972ff932dd3 4,9-10,21-30,34-40,43-46,56-63
+apps/web/src/App.test.tsx
+  s_c47618252b7e2c::t_35da193614c793 50
+README.md
+  s_c47618252b7e2c::t_a232f2998a8a7a 79-80
+  s_c47618252b7e2c::t_44d73f1025490d 81-82
+apps/web/src/components/CompanionTriggers.test.tsx
+  s_c47618252b7e2c::t_9b7db92e533311 1-28,31-73,75-108
+  s_c47618252b7e2c::t_021d96d6c7666d 29-30
+  s_c47618252b7e2c::t_4a5e32f09e8593 74
+apps/web/src/components/WorkspaceConnections.tsx
+  s_c47618252b7e2c::t_abf58cd0b6950f 101-102
+  s_c47618252b7e2c::t_6c92daad98f337 2,15-18,21,29-46,93-100,103-104,106
+  s_c47618252b7e2c::t_074b6f8b34b3ea 105
+apps/web/UI_CONTRACT.md
+  s_c47618252b7e2c::t_8444fe03eb045a 15
+apps/web/src/api.ts
+  s_c47618252b7e2c::t_b338e122858996 62,64-68,90,99-103
+apps/server/src/plugins.ts
+  s_c47618252b7e2c::t_d497b9a33b6b5e 1,10-11,16-18,20,22-32,39-46,50,67,77-92,98-107,109-115,152-162,222-226,245-258,272,293-294,305-308
+  s_c47618252b7e2c::t_208f31c5b778d0 108
+  s_c47618252b7e2c::t_0ae8285acd7882 33-38
+  s_c47618252b7e2c::t_8a10993fac2d93 209,218,221
+apps/server/src/runtime-product.ts
+  s_c47618252b7e2c::t_b3d18084ed16c5 43,106-108,110-118,120-150
+apps/web/src/components/ApplicationAccess.css
+  s_c47618252b7e2c::t_5750f5ae3f153f 2
+packages/plugins/tools.test.ts
+  s_c47618252b7e2c::t_9172ceb65374c3 161-167,170-179,181
+  s_c47618252b7e2c::t_8981a598570b44 168,180
+  s_c47618252b7e2c::t_6e0999c1007ef7 169
+apps/web/src/components/DiscussionsWorkspace.browser.test.tsx
+  s_c47618252b7e2c::t_35da193614c793 44
+.env.example
+  s_c47618252b7e2c::t_3cb1ad1d69754f 52-60,63
+apps/server/src/composio.ts
+  s_c47618252b7e2c::t_9627a0361a61ad 1-146
+apps/server/src/control-product.ts
+  s_c47618252b7e2c::t_8af167ce595927 18
+apps/server/test/plugins.test.ts
+  s_c47618252b7e2c::t_116d588cedaedb 143,148,152-153
+  s_c47618252b7e2c::t_dcf90573caa59b 12-15,22,25,30,49,61-62,65,70,144
+packages/plugins/oauth.ts
+  s_c47618252b7e2c::t_07a872857555e2 29,42,93,159,195-196,220-235,237-240,384,416-420
+apps/server/src/control-help.ts
+  s_c47618252b7e2c::t_8af167ce595927 4
+apps/server/test/fixtures/composio-fake.ts
+  s_c47618252b7e2c::t_40841a16d57773 1-7,10-19,21-40,42-54
+  s_c47618252b7e2c::t_64727f1be83946 8-9,20,41
+apps/web/src/components/CompanionTriggers.css
+  s_c47618252b7e2c::t_773ca984ad36e6 40-46
+  s_c47618252b7e2c::t_e8eaa85fde2fc6 1-39,47-48
+apps/web/src/components/CompanionConfiguration.tsx
+  s_c47618252b7e2c::t_8444fe03eb045a 7,74-77
+  s_c47618252b7e2c::t_dfebd56d26d0dd 78
+scripts/composio-setup.ts
+  s_c47618252b7e2c::t_3cb1ad1d69754f 1-19
+  s_c47618252b7e2c::t_8981a598570b44 20
+packages/agent/src/companion-instructions.ts
+  s_c47618252b7e2c::t_44d73f1025490d 10
+docs/v0.md
+  s_c47618252b7e2c::t_a232f2998a8a7a 105-111
+apps/web/src/Pages.browser.test.tsx
+  s_c47618252b7e2c::t_449aeff1fa799a 27,31
+apps/web/src/components/ProviderMark.tsx
+  s_c47618252b7e2c::t_032dbb4af96c2d 1-2,18-24,26-28
+apps/web/src/components/ConnectionCards.css
+  s_c47618252b7e2c::t_be0cd6a90da1f5 34-42
+apps/web/src/components/CompanionSettingsPage.tsx
+  s_c47618252b7e2c::t_8444fe03eb045a 22
+packages/plugins/tools.ts
+  s_c47618252b7e2c::t_305475d58a60d5 10,13-14,16-17,22-24,49-50,52,70,81-86
+  s_c47618252b7e2c::t_8af167ce595927 15,48,51,66-67,69,71
+apps/web/src/components/ApplicationAccess.test.tsx
+  s_c47618252b7e2c::t_b615950fff38fb 52
+  s_c47618252b7e2c::t_4b44be81f648bf 8,10,12-13,51,62-73
+  s_c47618252b7e2c::t_dc804780329612 74-75
+apps/web/src/components/WorkspaceConnections.test.tsx
+  s_c47618252b7e2c::t_5fbf0b39f3a315 1,4,9-12,15,23,25,33-80
+apps/server/test/composio-triggers.test.ts
+  s_c47618252b7e2c::t_2459d57d7a80f6 1-158
+docs/plugins-production.md
+  s_c47618252b7e2c::t_ad40c6726f4c75 1-61,65-75
+docs/testing.md
+  s_c47618252b7e2c::t_a232f2998a8a7a 224-226
+apps/server/src/composio.sql
+  s_c47618252b7e2c::t_208f31c5b778d0 1-22
+apps/web/src/components/ApplicationAccess.tsx
+  s_c47618252b7e2c::t_d7cf0007172796 4,17,28-29,42,155-156,162
+apps/server/src/task-runtime.sql
+  s_c47618252b7e2c::t_208f31c5b778d0 12
+apps/server/src/store.ts
+  s_c47618252b7e2c::t_208f31c5b778d0 5
+packages/plugins/definitions.ts
+  s_c47618252b7e2c::t_5a564aaacc16e4 1-2,15,28,30-32,36-37,41-42,50,63,65,75-79
+packages/control/agent.ts
+  s_c47618252b7e2c::t_1e536f4e39e9c5 17,101,103-104
+  s_c47618252b7e2c::t_8af167ce595927 102
+scripts/probe-plugin-oauth.ts
+  s_c47618252b7e2c::t_6cd4f414fe336d 1,3,15-17,19-21,23,29,35
+apps/web/src/index.css
+  s_c47618252b7e2c::t_75e27be17b5b24 641-642
+  s_c47618252b7e2c::t_5750f5ae3f153f 439
+apps/web/src/components/CompanionTriggers.tsx
+  s_c47618252b7e2c::t_2cbe674f851c89 1-13,15-19,21-164,166-172,174-192
+  s_c47618252b7e2c::t_773ca984ad36e6 20
+  s_c47618252b7e2c::t_333a6a8734825f 173
+  s_c47618252b7e2c::t_e8eaa85fde2fc6 14,165
+apps/server/src/api.ts
+  s_c47618252b7e2c::t_a43fd2c8a063f3 22-23,47,80-81,98-101,127
+apps/server/src/composio-triggers.ts
+  s_c47618252b7e2c::t_6b588d3db28b36 1-74,76-191
+  s_c47618252b7e2c::t_6da6d530fea922 75
+apps/server/test/composio.test.ts
+  s_c47618252b7e2c::t_4be45149186693 121-142
+  s_c47618252b7e2c::t_b96a521e576e5b 1-85,87-120
+  s_c47618252b7e2c::t_7daa6abaeec117 86
+apps/server/src/task-runtime.ts
+  s_c47618252b7e2c::t_208f31c5b778d0 5
+packages/plugins/oauth-adapters.ts
+  s_c47618252b7e2c::t_8e8c3025daf762 4-5
+docs/companions-build.md
+  s_c47618252b7e2c::t_a232f2998a8a7a 153-157
+apps/server/test/plugin-oauth.test.ts
+  s_c47618252b7e2c::t_f3a27c73eff51b 8,13-18,30-33,35,37-39,41,44,47-50,52-53,55-57,59-61,63-66,69-90,93,95,97-99,102,105,114,125-126,133,140-142,145,155-156,160,162-164,167-173,181,190-191,193,195,197-200
+packages/plugins/catalog.ts
+  s_c47618252b7e2c::t_125f28780cceed 3,8-9,18-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "22f938143815991a4c142831f8481e87c7b9ab7b",
+  "prompts": {},
+  "sessions": {
+    "s_c47618252b7e2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed619812-a2ee-4526-89ad-d8476bcc344a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "StanGirard <stan@quivr.app>"
+    }
+  }
+}
