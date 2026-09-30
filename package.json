@@ -27,7 +27,7 @@
     "@modelcontextprotocol/sdk": "1.27.1",
     "ai": "7.0.93",
     "better-auth": "1.7.3",
-    "nodemailer": "7.0.6",
+    "nodemailer": "10.0.9",
     "pg": "8.16.3",
     "semver": "7.8.5",
     "zod": "4.5.4"
