@@ -223,6 +223,25 @@ export type AppDefinitions = typeof curatedAppDefinitions;
 export type CuratedAppDefinition = AppDefinition & { id: AppDefinitionId };
 export const appDefinitions: readonly AppDefinition[] = curatedAppDefinitions;
 
+export const anonymousApps = [{
+  id: "ai.parallel/mcp",
+  provider: "parallel",
+  name: "Parallel Search",
+  kind: "remote",
+  description: "Search and fetch public web pages. Parallel receives search queries, page URLs, and any context your Companion includes.",
+  mcp: {
+    transport: "http",
+    url: "https://mcp.parallel.ai/mcp",
+    headers: { "User-Agent": "companions.build" },
+    redirect: "error",
+  },
+  capabilities: { allowedTools: ["web_search", "web_fetch"] },
+}] as const;
+
+export function getAnonymousAppDefinition(id: string) {
+  return anonymousApps.find((definition) => definition.id === id);
+}
+
 export function getAppDefinition(id: string): CuratedAppDefinition | undefined {
   return appDefinitions.find((definition) => definition.id === id) as CuratedAppDefinition | undefined;
 }

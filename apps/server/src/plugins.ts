@@ -1,4 +1,4 @@
-import {getAppDefinition} from '../../../packages/plugins/definitions';
+import {getAnonymousAppDefinition,getAppDefinition} from '../../../packages/plugins/definitions';
 import {appBridge} from '../../../packages/plugins/bridges';
 import { createHash, randomBytes } from 'node:crypto';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -21,6 +21,7 @@ export async function migratePlugins(sql:any) { await sql.unsafe(await Bun.file(
 export class PluginError extends Error {}
 const publicColumns = db`id,provider,label,server_id AS "serverId",health_status AS "healthStatus",health_code AS "healthCode",health_checked_at AS "checkedAt",created_at AS "createdAt"`;
 const accountLabel = z.string().trim().min(1).max(80);
+const anonymousCredential = {kind:'anonymous'} as const;
 export async function listPluginAccounts(ownerId:string) {
   return db`SELECT ${publicColumns}, COALESCE((
     SELECT jsonb_agg(jsonb_build_object('id',c.id,'name',c.name,'avatar',c.avatar) ORDER BY c.created_at,c.id)
@@ -36,7 +37,9 @@ export async function newPluginAccountLabel(ownerId:string,serverId:string,label
   return parsed.data;
 }
 export async function startPluginConnection(ownerId:string, serverId:string, label:string,env:NodeJS.ProcessEnv=process.env) {
-  const provider = pluginCatalog.find(p => p.id === serverId);
+  const anonymous = getAnonymousAppDefinition(serverId);
+  if(anonymous) throw new PluginError(`Connect ${anonymous.name} in Applications.`);
+  const provider = getAppDefinition(serverId);
   if(!provider) throw new PluginError('Choose an available App.');
   if(!pluginConnectionAvailable(serverId,env))throw new PluginError(`${provider.name} connection is unavailable in this deployment.`);
   const accountName=await newPluginAccountLabel(ownerId,serverId,label);
@@ -44,6 +47,17 @@ export async function startPluginConnection(ownerId:string, serverId:string, lab
   const {authorizationUrl,flow}=await beginCompanionPluginOAuth({serverName:serverId,state,redirectUri:callback(),env});
   await db`INSERT INTO plugin_oauth_flows (state_hash,owner_id,label,flow_secret,expires_at) VALUES (${hash(state)},${ownerId},${accountName},${encrypt(JSON.stringify(flow))},now()+interval '10 minutes')`;
   return {url:authorizationUrl};
+}
+async function connectAnonymousApp(ownerId:string,definition:NonNullable<ReturnType<typeof getAnonymousAppDefinition>>) {
+  return db.begin(async tx=>{
+    await tx`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify(['anonymous-app',ownerId,definition.id])},0))`;
+    const [existing]=await tx`SELECT ${publicColumns} FROM plugin_accounts WHERE owner_id=${ownerId} AND server_id=${definition.id}`;
+    if(existing)return {account:existing,created:false};
+    const [account]=await tx`INSERT INTO plugin_accounts (id,owner_id,provider,label,server_id,credential_secret)
+      VALUES (${crypto.randomUUID()},${ownerId},${definition.provider},'Default',${definition.id},${encrypt(JSON.stringify(anonymousCredential))})
+      RETURNING ${publicColumns}`;
+    return {account,created:true};
+  });
 }
 async function consumePluginFlow(ownerId:string,state:string) {
   const [row]=await db`UPDATE plugin_oauth_flows SET consumed_at=now() WHERE state_hash=${hash(state)} AND owner_id=${ownerId} AND consumed_at IS NULL AND expires_at>now() RETURNING *`;
@@ -77,13 +91,15 @@ export async function addCustomPlugin(ownerId:string,input:unknown) {
   await db`INSERT INTO plugin_accounts (id,owner_id,provider,label,credential_secret) VALUES (${id},${ownerId},'custom',${value.label},${encrypt(JSON.stringify({kind:'custom',...value}))})`;
   return {id};
 }
-export async function attachPlugin(ownerId:string,companionId:string,accountId:string,enabled:boolean) {
+export async function attachPlugin(ownerId:string,companionId:string,accountId:string,enabled:boolean,source:'member'|'agent'='member') {
   uuid.parse(companionId);uuid.parse(accountId);
   return db.begin(async(tx:any)=>{
-    const [owned]=await tx`SELECT c.id FROM companions c JOIN plugin_accounts p ON p.owner_id=c.owner_id WHERE c.id=${companionId} AND p.id=${accountId} AND c.owner_id=${ownerId}`;
+    const [owned]=await tx`SELECT p.server_id FROM companions c JOIN plugin_accounts p ON p.owner_id=c.owner_id WHERE c.id=${companionId} AND p.id=${accountId} AND c.owner_id=${ownerId}`;
     if(!owned) throw new PluginError('Companion or connection not found.');
+    if(enabled&&source==='agent'&&getAnonymousAppDefinition(owned.server_id))return false;
     if(enabled) await tx`INSERT INTO companion_plugins VALUES (${companionId},${accountId}) ON CONFLICT DO NOTHING`;
     else await tx`DELETE FROM companion_plugins WHERE companion_id=${companionId} AND account_id=${accountId}`;
+    return true;
   });
 }
 export async function disconnectPlugin(ownerId:string,id:string) { uuid.parse(id); await db`DELETE FROM plugin_accounts WHERE id=${id} AND owner_id=${ownerId}`; }
@@ -110,7 +126,7 @@ async function discoverPlugin(plugin:MachinePlugin,signal:AbortSignal) {
   const bridge=appBridge(plugin);if(bridge)return bridge.check(plugin,signal);
   if(plugin.transport!=='http'||!plugin.url)throw Error('PLUGIN_CONFIGURATION_INVALID');
   const client=new Client({name:'companions.build-health',version:'0.2.0'});
-  const transport=new StreamableHTTPClientTransport(new URL(plugin.url),{requestInit:{headers:plugin.headers}});
+  const transport=new StreamableHTTPClientTransport(new URL(plugin.url),{requestInit:{headers:plugin.headers,redirect:plugin.redirect}});
   try {
     await client.connect(transport,{timeout:10_000,signal});
     await client.listTools(undefined,{timeout:10_000,signal});
@@ -134,14 +150,13 @@ export async function checkPluginAccount(ownerId:string,accountId:string,deps:Pl
       if(!row)return null;
       const rawCredential=JSON.parse(decrypt(row.credential_secret));
       if(rawCredential.kind==='custom'){customSchema.parse(rawCredential);return{custom:true as const};}
+      if(rawCredential.kind==='anonymous')return{custom:false as const,plugin:projectAnonymousAccount(row)};
       let credential=storedOAuthSchema.parse(rawCredential) as CompanionPluginStoredOAuthCredential;
       if(credential.serverName!==row.server_id)throw Error('PLUGIN_CONFIGURATION_INVALID');
       if(credential.accessExpiresAt&&Date.parse(credential.accessExpiresAt)<Date.now()+60_000){
         credential=await (deps.refresh??refreshCompanionPluginOAuth)({credential,signal:AbortSignal.timeout(10_000)});
         await tx`UPDATE plugin_accounts SET credential_secret=${encrypt(JSON.stringify(credential))} WHERE id=${accountId} AND owner_id=${ownerId}`;
       }
-      const provider=pluginCatalog.find(item=>item.id===row.server_id);
-      if(!provider)throw Error('PLUGIN_CONFIGURATION_INVALID');
       return{custom:false as const,plugin:projectAccount(row,credential) satisfies MachinePlugin};
     });
     if(!prepared)return null;
@@ -158,6 +173,14 @@ export async function checkPluginAccount(ownerId:string,accountId:string,deps:Pl
   const healthStatus=early??'ok',healthCode=earlyCode;
   const [saved]=await db`UPDATE plugin_accounts SET health_status=${healthStatus},health_code=${healthCode},health_checked_at=${now} WHERE id=${accountId} AND owner_id=${ownerId} RETURNING id,health_status,health_code,health_checked_at`;
   return saved?healthProjection(saved):null;
+}
+function projectAnonymousAccount(row:{id:string;label:string;server_id:string;provider:string}):MachinePlugin {
+  const definition=getAnonymousAppDefinition(row.server_id);
+  if(!definition||row.provider!==definition.provider)throw new PluginError('Connection requires an update.');
+  return {
+    id:row.id,name:row.label,provider:definition.provider,serverId:definition.id,
+    ...definition.mcp,headers:{...definition.mcp.headers},allowedTools:[...definition.capabilities.allowedTools],
+  };
 }
 function projectAccount(row:any,credential:CompanionPluginStoredOAuthCredential):MachinePlugin {
   const definition=getAppDefinition(row.server_id);
@@ -180,9 +203,10 @@ export async function machinePlugins(companionId:string,deps:Pick<PluginHealthDe
       if(!row)return null;
       let credential=JSON.parse(decrypt(row.credential_secret));
       if(credential.kind==='custom')return {id:row.id,name:row.label,provider:'custom',...credential} as MachinePlugin;
-      const provider=pluginCatalog.find(p=>p.id===row.server_id);
+      if(credential.kind==='anonymous')return projectAnonymousAccount(row);
+      const provider=getAppDefinition(row.server_id);
       if(!provider) throw new PluginError('Connection requires an update.');
-      const shouldRefresh=deps.accountId?row.id===deps.accountId:deps.refreshCredentials!==false||!!getAppDefinition(row.server_id)?.capabilities?.gitCredentials;
+      const shouldRefresh=deps.accountId?row.id===deps.accountId:deps.refreshCredentials!==false||!!provider.capabilities?.gitCredentials;
       if(shouldRefresh && credential.accessExpiresAt && Date.parse(credential.accessExpiresAt)<Date.now()+60_000) {
         credential=await (deps.refresh??refreshCompanionPluginOAuth)({credential:credential as CompanionPluginStoredOAuthCredential,signal:AbortSignal.timeout(10_000)});
         await tx`UPDATE plugin_accounts SET credential_secret=${encrypt(JSON.stringify(credential))} WHERE id=${row.id}`;
@@ -201,7 +225,16 @@ export function pluginCallbackLocation(status:PluginCallbackStatus) {
 export async function handlePlugins(request:Request,ownerId:string):Promise<Response|null> {
   const url=new URL(request.url);const path=url.pathname;
   if(path==='/api/plugins' && request.method==='GET') return response({catalog:listPluginCatalog(),accounts:await listPluginAccounts(ownerId)});
-  if(path==='/api/plugins/connect' && request.method==='POST') {const v=z.object({serverId:z.string(),label:z.string().max(80).default('')}).parse(await request.json());return response(await startPluginConnection(ownerId,v.serverId,v.label));}
+  if(path==='/api/plugins/connect' && request.method==='POST') {
+    const {serverId,label}=z.object({serverId:z.string(),label:z.string().max(80).default('')}).parse(await request.json());
+    const anonymous=getAnonymousAppDefinition(serverId);
+    // The browser's signed-in member is the only actor who can add an anonymous App.
+    if(anonymous){
+      const {account,created}=await connectAnonymousApp(ownerId,anonymous);
+      return response({account},created?201:200);
+    }
+    return response(await startPluginConnection(ownerId,serverId,label));
+  }
   if(path==='/api/plugins/custom' && request.method==='POST') return response(await addCustomPlugin(ownerId,await request.json()),201);
   const check=path.match(/^\/api\/plugins\/accounts\/([a-f0-9-]+)\/check$/);
   if(check&&request.method==='POST') {const result=await checkPluginAccount(ownerId,check[1]);return result?response({account:result}):response({error:'Connection not found.'},404);}

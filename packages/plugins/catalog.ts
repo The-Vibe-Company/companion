@@ -1,13 +1,14 @@
-import { appDefinitions } from "./definitions";
+import { anonymousApps, appDefinitions } from "./definitions";
 
 /** Compatibility catalog derived from the declarative App definitions. */
-export const pluginCatalog = appDefinitions.map((definition) => ({
+export const pluginCatalog = [...appDefinitions, ...anonymousApps].map((definition) => ({
   id: definition.id,
   provider: definition.provider,
   name: definition.name,
   transport: definition.mcp.transport,
   url: definition.mcp.url,
   capabilities: definition.capabilities,
+  ...("kind" in definition ? { kind: definition.kind, description: definition.description } : {}),
 }));
 
 export type MachinePlugin = {
@@ -21,6 +22,7 @@ export type MachinePlugin = {
   args?: string[];
   env?: Record<string, string>;
   headers?: Record<string, string>;
+  redirect?: "error";
   allowedTools?: string[];
   credentialExpiresAt?: number;
   capabilities?: {

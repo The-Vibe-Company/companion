@@ -1,6 +1,9 @@
 import {beforeAll,expect,test} from 'bun:test';
 import {createHash} from 'node:crypto';
-import {db,migrate,createCompanion} from '../src/store';
+import {db,migrate,createCompanion,acceptMessage} from '../src/store';
+import {handler} from '../src/api';
+import {applyControl} from '../src/control';
+import '../src/runtime-product';
 import {attachPlugin,machinePlugins,addCustomPlugin,checkPluginAccount,handlePlugins,listPluginAccounts,newPluginAccountLabel,pluginCallbackLocation,pluginConnectionAvailable,renamePluginAccount,startPluginConnection} from '../src/plugins';
 import {decrypt,encrypt} from '../src/config';
 import {CompanionPluginOAuthRevokedError,type CompanionPluginStoredOAuthCredential} from '../../../packages/plugins/oauth';
@@ -14,6 +17,47 @@ test('catalog availability is truthful for deployment-configured and dynamic OAu
  expect(pluginConnectionAvailable('io.github.github/github-mcp-server',{})).toBe(false);
  expect(pluginConnectionAvailable('io.github.github/github-mcp-server',{COMPANION_MCP_GITHUB_CLIENT_ID:'id',COMPANION_MCP_GITHUB_CLIENT_SECRET:'secret'})).toBe(true);
  await expect(startPluginConnection(owner,'io.github.github/github-mcp-server','GitHub',{})).rejects.toThrow('unavailable in this deployment');
+});
+
+test('Parallel requires an explicit owner connection and a per-Companion grant',async()=>{
+ const serverId='ai.parallel/mcp';
+ const request=()=>new Request('http://local/api/plugins/connect',{method:'POST',body:JSON.stringify({serverId})});
+ const catalog=await handlePlugins(new Request('http://local/api/plugins'),owner);
+ const {catalog:apps}=await catalog!.json();
+ expect(apps.find((app:{id:string})=>app.id===serverId)).toMatchObject({kind:'remote',available:true,provider:'parallel'});
+ expect((await handler(request())).status).toBe(401);
+ await expect(startPluginConnection(owner,serverId,'',{})).rejects.toThrow('Connect Parallel Search in Applications.');
+
+ const connections=await Promise.all(Array.from({length:4},()=>handlePlugins(request(),owner)));
+ expect(connections.map(response=>response!.status).sort()).toEqual([200,200,200,201]);
+ const [{account},...retries]=await Promise.all(connections.map(response=>response!.json()));
+ expect(retries.map(retry=>retry.account.id)).toEqual(Array(3).fill(account.id));
+ expect(account).toMatchObject({serverId,provider:'parallel',label:'Default',healthStatus:'unchecked'});
+ const [stored]=await db`SELECT credential_secret FROM plugin_accounts WHERE id=${account.id}`;
+ expect(JSON.parse(decrypt(stored.credential_secret))).toEqual({kind:'anonymous'});
+
+ const companion=await createCompanion(owner,{name:'Parallel research',provider:'local'});
+ const runId=await acceptMessage(owner,companion.id,crypto.randomUUID(),'Search public documentation');
+ await db`UPDATE runs SET status='running',dispatched=true WHERE id=${runId}`;
+ const selectFromAgent=(accountId:string)=>applyControl(companion.id,{
+  id:crypto.randomUUID(),runId,operation:'plugin_select',input:{accountId,enabled:true},
+ });
+ expect(await selectFromAgent(account.id)).toMatchObject({error:expect.stringContaining('grant this connection')});
+ expect(await machinePlugins(companion.id)).toEqual([]);
+ await expect(attachPlugin(crypto.randomUUID(),companion.id,account.id,true)).rejects.toThrow('not found');
+ await attachPlugin(owner,companion.id,account.id,true);
+ const [plugin]=await machinePlugins(companion.id,{async refresh(){throw Error('Unexpected OAuth refresh');}});
+ expect(plugin).toEqual({
+  id:account.id,name:'Default',provider:'parallel',serverId,transport:'http',url:'https://mcp.parallel.ai/mcp',
+  headers:{'User-Agent':'companions.build'},redirect:'error',allowedTools:['web_search','web_fetch'],
+ });
+ expect(await checkPluginAccount(owner,account.id,{async check(projected){expect(projected).toEqual(plugin);}})).toMatchObject({healthStatus:'ok'});
+ expect(await checkPluginAccount(owner,account.id,{async check(){throw Error('provider failure');}})).toMatchObject({healthStatus:'error',healthCode:'connection_failed'});
+ await attachPlugin(owner,companion.id,account.id,false);
+ expect(await machinePlugins(companion.id)).toEqual([]);
+ const custom=await addCustomPlugin(owner,{label:'Existing custom route',url:'https://example.com/mcp'});
+ expect(await selectFromAgent(custom.id)).toEqual({ok:true});
+ expect((await machinePlugins(companion.id)).map(item=>item.id)).toEqual([custom.id]);
 });
 
 test('the first provider account is Default and later accounts require a chosen name',async()=>{

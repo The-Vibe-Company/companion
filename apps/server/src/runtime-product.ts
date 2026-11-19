@@ -113,7 +113,11 @@ registerControl({
   return {refreshed:true};
  },
  plugins:async context=>({accounts:await listPluginAccounts(context.ownerId),selected:await selectedPlugins(context.ownerId,context.companionId)}),
- plugin_select:async(context,input)=>{const value=z.object({accountId:z.string().uuid(),enabled:z.boolean()}).parse(input);await attachPlugin(context.ownerId,context.companionId,value.accountId,value.enabled);return{ok:true};},
+ plugin_select:async(context,input)=>{
+  const value=z.object({accountId:z.string().uuid(),enabled:z.boolean()}).parse(input);
+  const attached=await attachPlugin(context.ownerId,context.companionId,value.accountId,value.enabled,'agent');
+  return attached?{ok:true}:{error:'Ask the member to grant this connection in the Companion’s settings.'};
+ },
  task_status:async(context,input)=>{
   const {runId}=z.object({runId:z.string().uuid()}).parse(input);
   const delegated=await delegationStatus(context.ownerId,runId,db,context.companionId,context.runId);

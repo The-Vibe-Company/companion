@@ -36,7 +36,8 @@ visible rather than being converted into success states.
 ## Connections
 
 - `GET /api/plugins` returns `{ catalog, accounts }`.
-- `POST /api/plugins/connect` accepts `{ serverId, label }` and returns an OAuth URL.
+- `POST /api/plugins/connect` accepts `{ serverId, label }` and returns `{ url }` for OAuth.
+  An anonymous App returns `{ account }` with status `201` on creation or `200` for the existing connection.
 - `GET /api/plugins/callback` completes a session-bound OAuth flow.
 - `POST /api/plugins/custom` accepts an HTTPS MCP definition; the server also supports bounded
   stdio definitions for control/API callers.
