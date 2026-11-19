@@ -42,10 +42,27 @@ test('Parallel requires an explicit owner connection and a per-Companion grant',
  const selectFromAgent=(accountId:string)=>applyControl(companion.id,{
   id:crypto.randomUUID(),runId,operation:'plugin_select',input:{accountId,enabled:true},
  });
+ const checkFromAgent=()=>applyControl(companion.id,{
+  id:crypto.randomUUID(),runId,operation:'plugin_check',input:{accountId:account.id},
+ });
  expect(await selectFromAgent(account.id)).toMatchObject({error:expect.stringContaining('grant this connection')});
  expect(await machinePlugins(companion.id)).toEqual([]);
  await expect(attachPlugin(crypto.randomUUID(),companion.id,account.id,true)).rejects.toThrow('not found');
- await attachPlugin(owner,companion.id,account.id,true);
+ let healthRequests=0;
+ const originalFetch=globalThis.fetch;
+ globalThis.fetch=(async(input:RequestInfo|URL,init?:RequestInit)=>{
+  expect(String(input)).toBe('https://mcp.parallel.ai/mcp');
+  expect(new Headers(init?.headers).get('user-agent')).toBe('companions.build');
+  healthRequests++;
+  return new Response(null,{status:503});
+ }) as typeof fetch;
+ try{
+  expect(await checkFromAgent()).toEqual({account:null});
+  expect(healthRequests).toBe(0);
+  await attachPlugin(owner,companion.id,account.id,true);
+  expect(await checkFromAgent()).toMatchObject({account:{healthStatus:'error',healthCode:'connection_failed'}});
+  expect(healthRequests).toBe(1);
+ }finally{globalThis.fetch=originalFetch;}
  const [plugin]=await machinePlugins(companion.id,{async refresh(){throw Error('Unexpected OAuth refresh');}});
  expect(plugin).toEqual({
   id:account.id,name:'Default',provider:'parallel',serverId,transport:'http',url:'https://mcp.parallel.ai/mcp',

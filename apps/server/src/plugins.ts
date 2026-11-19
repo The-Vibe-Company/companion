@@ -2,11 +2,11 @@ import {getAnonymousAppDefinition,getAppDefinition} from '../../../packages/plug
 import {appBridge} from '../../../packages/plugins/bridges';
 import { createHash, randomBytes } from 'node:crypto';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { z } from 'zod';
 import { db } from './store';
 import { encrypt, decrypt } from './config';
 import { pluginCatalog, type MachinePlugin } from '../../../packages/plugins/catalog';
+import { httpPluginTransport } from '../../../packages/plugins/transport';
 import { beginCompanionPluginOAuth, completeCompanionPluginOAuth, refreshCompanionPluginOAuth, CompanionPluginOAuthError, CompanionPluginOAuthRevokedError, type CompanionPluginStoredOAuthCredential } from '../../../packages/plugins/oauth';
 
 const uuid = z.string().uuid();
@@ -117,6 +117,7 @@ export async function selectedPlugins(ownerId:string,companionId:string) {
 export type PluginHealthCode='authorization_required'|'connection_failed'|'configuration_invalid'|'agent_check_required';
 export type PluginHealthResult={id:string;healthStatus:'ok'|'error'|'requires_agent';healthCode:PluginHealthCode|null;checkedAt:Date};
 export interface PluginHealthDependencies {
+  companionId?:string;
   check?:(plugin:MachinePlugin,signal:AbortSignal)=>Promise<void>;
   refresh?:(input:{credential:CompanionPluginStoredOAuthCredential;signal?:AbortSignal})=>Promise<CompanionPluginStoredOAuthCredential>;
   now?:()=>Date;
@@ -126,7 +127,7 @@ async function discoverPlugin(plugin:MachinePlugin,signal:AbortSignal) {
   const bridge=appBridge(plugin);if(bridge)return bridge.check(plugin,signal);
   if(plugin.transport!=='http'||!plugin.url)throw Error('PLUGIN_CONFIGURATION_INVALID');
   const client=new Client({name:'companions.build-health',version:'0.2.0'});
-  const transport=new StreamableHTTPClientTransport(new URL(plugin.url),{requestInit:{headers:plugin.headers,redirect:plugin.redirect}});
+  const transport=httpPluginTransport(plugin);
   try {
     await client.connect(transport,{timeout:10_000,signal});
     await client.listTools(undefined,{timeout:10_000,signal});
@@ -150,7 +151,14 @@ export async function checkPluginAccount(ownerId:string,accountId:string,deps:Pl
       if(!row)return null;
       const rawCredential=JSON.parse(decrypt(row.credential_secret));
       if(rawCredential.kind==='custom'){customSchema.parse(rawCredential);return{custom:true as const};}
-      if(rawCredential.kind==='anonymous')return{custom:false as const,plugin:projectAnonymousAccount(row)};
+      if(rawCredential.kind==='anonymous'){
+        if(deps.companionId){
+          const [grant]=await tx`SELECT 1 FROM companion_plugins cp JOIN companions c ON c.id=cp.companion_id
+            WHERE cp.companion_id=${deps.companionId} AND cp.account_id=${accountId} AND c.owner_id=${ownerId} AND c.retired_at IS NULL`;
+          if(!grant)return null;
+        }
+        return{custom:false as const,plugin:projectAnonymousAccount(row)};
+      }
       let credential=storedOAuthSchema.parse(rawCredential) as CompanionPluginStoredOAuthCredential;
       if(credential.serverName!==row.server_id)throw Error('PLUGIN_CONFIGURATION_INVALID');
       if(credential.accessExpiresAt&&Date.parse(credential.accessExpiresAt)<Date.now()+60_000){

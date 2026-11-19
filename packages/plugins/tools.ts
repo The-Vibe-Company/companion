@@ -1,13 +1,22 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { z } from 'zod';
 import { Type } from '@earendil-works/pi-ai';
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type { MachinePlugin } from './catalog';
 import { appBridge } from './bridges';
+import { getAnonymousAppDefinition } from './definitions';
+import { httpPluginTransport } from './transport';
 
 type RemoteTool=Awaited<ReturnType<Client['listTools']>>['tools'][number];
+const isAnonymousApp=(plugin:MachinePlugin)=>Boolean(plugin.serverId&&getAnonymousAppDefinition(plugin.serverId));
+
+async function remoteResult<T>(request:Promise<T>,sanitizeError:boolean,signal?:AbortSignal) {
+  if(!sanitizeError)return request;
+  try{return await request;}
+  catch{signal?.throwIfAborted();throw Error('PLUGIN_REQUEST_FAILED');}
+}
+
 export interface AppToolOptions {
   refresh?:(connectionId:string,signal?:AbortSignal)=>Promise<void>;
 }
@@ -32,7 +41,7 @@ export function pluginTools(getPlugins:()=>MachinePlugin[],options:AppToolOption
         const c=new Client({name:'companions.build',version:'0.2.0'});
         const transport=plugin.transport==='stdio'
           ? new StdioClientTransport({command:plugin.command!,args:plugin.args??[],env:{PATH:'/usr/local/bin:/usr/bin:/bin',HOME:process.env.HOME??'/home/user',...plugin.env},stderr:'ignore'})
-          : new StreamableHTTPClientTransport(new URL(plugin.url!),{requestInit:{headers:plugin.headers,redirect:plugin.redirect}});
+          : httpPluginTransport(plugin);
         try {await c.connect(transport,{timeout:15_000});return c;}catch{await c.close();throw new Error('PLUGIN_CONNECTION_FAILED');}
       })();clients.set(key,pending);pending.catch(()=>clients.delete(key));
     }
@@ -42,9 +51,10 @@ export function pluginTools(getPlugins:()=>MachinePlugin[],options:AppToolOption
     const bridge=appBridge(plugin);if(bridge)return bridge.tools;
     const bounded=AbortSignal.any([signal??new AbortController().signal,AbortSignal.timeout(30_000)]);
     const c=await client(plugin),discovered=new Map<string,RemoteTool>(),cursors=new Set<string>();
+    const anonymous=isAnonymousApp(plugin);
     let cursor:string|undefined;
     for(let page=0;page<100;page++) {
-      const catalog=await c.listTools(cursor===undefined?undefined:{cursor},{signal:bounded,timeout:15_000});
+      const catalog=await remoteResult(c.listTools(cursor===undefined?undefined:{cursor},{signal:bounded,timeout:15_000}),anonymous,bounded);
       for(const tool of catalog.tools)if(!plugin.allowedTools||plugin.allowedTools.includes(tool.name))discovered.set(tool.name,tool);
       if(catalog.nextCursor===undefined)return [...discovered.values()];
       if(cursors.has(catalog.nextCursor))throw Error('PLUGIN_CATALOG_PAGINATION_FAILED');
@@ -74,7 +84,11 @@ export function pluginTools(getPlugins:()=>MachinePlugin[],options:AppToolOption
       if(JSON.stringify(selected(plugin.id))!==snapshot)throw Error('PLUGIN_CONFIGURATION_CHANGED');
       const bridge=appBridge(plugin);
       if(bridge)return text(await bridge.call(plugin,input.tool,input.arguments,signal));
-      const result=await (await client(plugin)).callTool({name:input.tool,arguments:input.arguments},undefined,{signal,timeout:60_000});
+      const anonymous=isAnonymousApp(plugin);
+      const request=(await client(plugin)).callTool({name:input.tool,arguments:input.arguments},undefined,{signal,timeout:60_000});
+      const result=await remoteResult(request,anonymous,signal);
+      // Pi treats a resolved tool invocation as successful, regardless of details.isError.
+      if(anonymous&&result.isError)throw Error('PLUGIN_TOOL_FAILED');
       const content=(result.content as any[]).filter(c=>c.type==='text'||c.type==='image');
       return {content:content.length?content:[{type:'text' as const,text:JSON.stringify(result.structuredContent??{})}],details:{isError:!!result.isError}};
     },

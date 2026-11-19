@@ -14,11 +14,19 @@ export function ConnectionsPage({ onBack }: { onBack: () => void }) {
   const [naming, setNaming] = useState<PluginServer | null>(null);
   const oauthPopup = useRef<Window | null>(null);
   const oauthWatch = useRef<number | null>(null);
+  const catalogRequest = useRef(0);
   const reload = useCallback(async () => {
+    const current = ++catalogRequest.current;
     setError("");
-    try { const result = await workspaceApi.plugins(); setCatalog(result.catalog); setAccounts(result.accounts); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load applications."); }
-    finally { setLoading(false); }
+    try {
+      const result = await workspaceApi.plugins();
+      if (current !== catalogRequest.current) return;
+      setCatalog(result.catalog); setAccounts(result.accounts);
+    } catch (cause) {
+      if (current === catalogRequest.current) setError(cause instanceof Error ? cause.message : "Could not load applications.");
+    } finally {
+      if (current === catalogRequest.current) setLoading(false);
+    }
   }, []);
   useEffect(() => { void reload(); }, [reload]);
   useEffect(() => {

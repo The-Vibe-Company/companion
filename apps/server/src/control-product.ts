@@ -18,7 +18,7 @@ registerControl({
  plugin_catalog:async()=>({plugins:listPluginCatalog()}),
  plugin_connect:async(context,raw)=>{const input=z.object({serverId:z.string(),label:z.string().max(80).default('')}).parse(raw);return startPluginConnection(context.ownerId,input.serverId,input.label);},
  plugin_custom:async(context,raw)=>addCustomPlugin(context.ownerId,raw),
- plugin_check:async(context,raw)=>({account:await checkPluginAccount(context.ownerId,z.object({accountId:uuid}).parse(raw).accountId)}),
+ plugin_check:async(context,raw)=>({account:await checkPluginAccount(context.ownerId,z.object({accountId:uuid}).parse(raw).accountId,{companionId:context.companionId})}),
  plugin_disconnect:async(context,raw)=>{await disconnectPlugin(context.ownerId,z.object({accountId:uuid}).parse(raw).accountId);return {ok:true};},
  task_cancel:async(context,raw)=>{const {runId}=z.object({runId:uuid}).parse(raw);const [run]=await db`UPDATE runs r SET cancel_requested=true,status=CASE WHEN r.dispatched THEN r.status ELSE 'cancelled' END,finished_at=CASE WHEN r.dispatched THEN r.finished_at ELSE now() END FROM companions c,runs current WHERE r.id=${runId} AND r.companion_id=c.id AND c.owner_id=${context.ownerId} AND current.id=${context.runId} AND current.companion_id=${context.companionId} AND r.discussion_id IS NOT DISTINCT FROM current.discussion_id AND (current.discussion_id IS NOT NULL OR r.companion_id=${context.companionId}) AND r.status IN ('queued','preparing','running','needs_input') RETURNING r.id`;return run?{ok:true}:{error:'Task not found or already finished.'};},
  deliveries:async context=>(await handleDelivery(new Request('http://control/api/deliveries'),context.ownerId))!.json(),

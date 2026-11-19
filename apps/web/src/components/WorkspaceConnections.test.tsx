@@ -1,10 +1,39 @@
-import {render,screen,waitFor,within} from "@testing-library/react";
+import {act,render,screen,waitFor,within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {afterEach,expect,it,vi} from "vitest";
 import {workspaceApi} from "@/api";
 import {ConnectionsPage} from "./WorkspaceConnections";
 
 afterEach(()=>vi.restoreAllMocks());
+
+it("keeps the latest connections when an older OAuth reload finishes last",async()=>{
+ const linear={id:"linear",name:"Linear",provider:"linear",available:true};
+ const parallel={id:"ai.parallel/mcp",name:"Parallel Search",provider:"parallel",kind:"remote" as const,available:true};
+ const catalog=[linear,parallel];
+ const work={id:"work",serverId:linear.id,label:"Work",provider:"linear",healthStatus:"ok" as const,healthCode:null,checkedAt:null};
+ const search={id:"parallel",serverId:parallel.id,label:"Default",provider:"parallel",healthStatus:"unchecked" as const,healthCode:null,checkedAt:null};
+ let finishOAuthReload!:(value:Awaited<ReturnType<typeof workspaceApi.plugins>>)=>void;
+ vi.spyOn(workspaceApi,"plugins").mockResolvedValueOnce({catalog,accounts:[]})
+  .mockImplementationOnce(()=>new Promise(resolve=>{finishOAuthReload=resolve;}))
+  .mockResolvedValueOnce({catalog,accounts:[work,search]});
+ vi.spyOn(workspaceApi,"connectPlugin").mockResolvedValueOnce({url:"https://oauth.example/linear"}).mockResolvedValueOnce({account:search});
+ const popup={closed:false,location:{href:""},close:vi.fn()};
+ vi.spyOn(window,"open").mockReturnValue(popup as unknown as Window);
+ const actor=userEvent.setup();
+ render(<ConnectionsPage onBack={vi.fn()}/>);
+ await actor.click(within(await screen.findByRole("article",{name:"Linear"})).getByRole("button",{name:"Connect"}));
+ await actor.type(screen.getByLabelText("Account name"),"Work");
+ await actor.click(screen.getByRole("button",{name:"Connect account"}));
+ await waitFor(()=>expect(popup.location.href).toBe("https://oauth.example/linear"));
+ await act(async()=>window.dispatchEvent(new MessageEvent("message",{
+  origin:window.location.origin,source:popup as unknown as Window,data:{type:"companions:plugin-oauth",status:"connected"},
+ })));
+ const card=within(screen.getByRole("article",{name:"Parallel Search"}));
+ await actor.click(card.getByRole("button",{name:"Connect"}));
+ expect(await card.findByText("Default")).toBeInTheDocument();
+ await act(async()=>finishOAuthReload({catalog,accounts:[work]}));
+ expect(card.getByText("Default")).toBeInTheDocument();
+});
 
 it("adds an anonymous connection without opening an OAuth window",async()=>{
  const server={id:"ai.parallel/mcp",name:"Parallel Search",provider:"parallel",kind:"remote" as const,available:true,description:"Search queries and page URLs go to Parallel."};
