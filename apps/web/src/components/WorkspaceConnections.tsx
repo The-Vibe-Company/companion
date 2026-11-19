@@ -14,11 +14,19 @@ export function ConnectionsPage({ onBack }: { onBack: () => void }) {
   const [naming, setNaming] = useState<PluginServer | null>(null);
   const oauthPopup = useRef<Window | null>(null);
   const oauthWatch = useRef<number | null>(null);
+  const catalogRequest = useRef(0);
   const reload = useCallback(async () => {
+    const current = ++catalogRequest.current;
     setError("");
-    try { const result = await workspaceApi.plugins(); setCatalog(result.catalog); setAccounts(result.accounts); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load applications."); }
-    finally { setLoading(false); }
+    try {
+      const result = await workspaceApi.plugins();
+      if (current !== catalogRequest.current) return;
+      setCatalog(result.catalog); setAccounts(result.accounts);
+    } catch (cause) {
+      if (current === catalogRequest.current) setError(cause instanceof Error ? cause.message : "Could not load applications.");
+    } finally {
+      if (current === catalogRequest.current) setLoading(false);
+    }
   }, []);
   useEffect(() => { void reload(); }, [reload]);
   useEffect(() => {
@@ -47,8 +55,9 @@ export function ConnectionsPage({ onBack }: { onBack: () => void }) {
   }, [reload]);
   function healthText(account: PluginAccount) { return account.healthStatus === "ok" ? "Connected" : account.healthStatus === "unchecked" ? "Not checked" : account.healthCode === "authorization_required" ? "Reconnect required" : account.healthStatus === "requires_agent" ? "Companion check required" : "Connection issue"; }
   async function connect(server: PluginServer, label: string) {
+    if (busy) return;
     setBusy(server.id); setError(""); setNotice("");
-    const popup = window.open("about:blank", "companions-plugin-oauth", "popup,width=620,height=760");
+    const popup = server.kind === "remote" ? null : window.open("about:blank", "companions-plugin-oauth", "popup,width=620,height=760");
     oauthPopup.current = popup;
     if (popup) oauthWatch.current = window.setInterval(() => {
       if (!popup.closed) return;
@@ -58,14 +67,20 @@ export function ConnectionsPage({ onBack }: { onBack: () => void }) {
     try {
       const result = await workspaceApi.connectPlugin(server.id, label); setNaming(null);
       if (result.url) { if (popup && !popup.closed) popup.location.href = result.url; else window.location.assign(result.url); }
-      else { if (oauthWatch.current !== null) window.clearInterval(oauthWatch.current); oauthWatch.current = null; popup?.close(); oauthPopup.current = null; setBusy(""); await reload(); }
+      else { if (oauthWatch.current !== null) window.clearInterval(oauthWatch.current); oauthWatch.current = null; popup?.close(); oauthPopup.current = null; await reload(); setBusy(""); if (result.account) setNotice("Connection added."); }
     } catch (cause) {
       if (oauthWatch.current !== null) window.clearInterval(oauthWatch.current);
       oauthWatch.current = null; popup?.close(); oauthPopup.current = null; setBusy(""); setError(cause instanceof Error ? cause.message : "Could not connect.");
     }
   }
+  function requestConnection(server: PluginServer) {
+    if (server.kind === "remote") {
+      setNaming(null);
+      void connect(server, "");
+    } else setNaming(server);
+  }
   async function rename(account: PluginAccount, label: string) { setBusy(account.id); try { await workspaceApi.renamePlugin(account.id, label); await reload(); return true; } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not rename account."); return false; } finally { setBusy(""); } }
   async function check(account: PluginAccount) { setBusy(account.id); try { const result = await workspaceApi.checkPlugin(account.id); setAccounts(current => current.map(item => item.id === account.id ? { ...item, ...result.account } : item)); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not check account."); } finally { setBusy(""); } }
   async function disconnect(account: PluginAccount) { setBusy(account.id); try { await workspaceApi.deletePlugin(account.id); await reload(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not disconnect account."); } finally { setBusy(""); } }
-  return <main className="connections-page"><header className="standalone-header"><Button variant="ghost" size="icon" onClick={onBack} aria-label="Back to discussions"><ArrowLeft/></Button><div><h1>Applications</h1><p>Connect your accounts here, then choose who can use them in each Companion’s settings.</p></div></header><div className="connections-inner">{loading ? <div className="detail-loading" role="status"><LoaderCircle className="spin"/>Loading applications…</div> : !catalog.length && !accounts.length && !error ? <div className="application-access-state"><h2>No applications available</h2><p>Applications are not available in this workspace yet.</p><Button variant="outline" onClick={() => void reload()}>Check again</Button></div> : <ConnectionCards catalog={catalog} accounts={accounts} busy={busy} namingServer={naming} healthText={healthText} onConnect={connect} onRequestConnection={setNaming} onCancelNaming={() => setNaming(null)} onRename={rename} onCheck={check} onDisconnect={disconnect}/>} {notice && <p className="connection-notice" role="status">{notice}</p>}{error && <div className="application-access-error" role="alert"><CircleAlert/>{error}<Button variant="outline" size="sm" onClick={() => void reload()}>Retry</Button></div>}</div></main>;
+  return <main className="connections-page"><header className="standalone-header"><Button variant="ghost" size="icon" onClick={onBack} aria-label="Back to discussions"><ArrowLeft/></Button><div><h1>Applications</h1><p>Connect your accounts here, then choose who can use them in each Companion’s settings.</p></div></header><div className="connections-inner">{loading ? <div className="detail-loading" role="status"><LoaderCircle className="spin"/>Loading applications…</div> : !catalog.length && !accounts.length && !error ? <div className="application-access-state"><h2>No applications available</h2><p>Applications are not available in this workspace yet.</p><Button variant="outline" onClick={() => void reload()}>Check again</Button></div> : <ConnectionCards catalog={catalog} accounts={accounts} busy={busy} namingServer={naming} healthText={healthText} onConnect={connect} onRequestConnection={requestConnection} onCancelNaming={() => setNaming(null)} onRename={rename} onCheck={check} onDisconnect={disconnect}/>} {notice && <p className="connection-notice" role="status">{notice}</p>}{error && <div className="application-access-error" role="alert"><CircleAlert/>{error}<Button variant="outline" size="sm" onClick={() => void reload()}>Retry</Button></div>}</div></main>;
 }

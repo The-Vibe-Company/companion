@@ -1,8 +1,12 @@
 import {beforeAll,expect,test} from 'bun:test';
 import {createHash} from 'node:crypto';
-import {db,migrate,createCompanion} from '../src/store';
+import {db,migrate,createCompanion,acceptMessage} from '../src/store';
+import {handler} from '../src/api';
+import {applyControl} from '../src/control';
+import {productHooks} from '../src/runtime-product';
 import {attachPlugin,machinePlugins,addCustomPlugin,checkPluginAccount,handlePlugins,listPluginAccounts,newPluginAccountLabel,pluginCallbackLocation,pluginConnectionAvailable,renamePluginAccount,startPluginConnection} from '../src/plugins';
 import {decrypt,encrypt} from '../src/config';
+import type {MachinePlugin} from '../../../packages/plugins/catalog';
 import {CompanionPluginOAuthRevokedError,type CompanionPluginStoredOAuthCredential} from '../../../packages/plugins/oauth';
 
 const owner='00000000-0000-4000-8000-000000000001';
@@ -14,6 +18,64 @@ test('catalog availability is truthful for deployment-configured and dynamic OAu
  expect(pluginConnectionAvailable('io.github.github/github-mcp-server',{})).toBe(false);
  expect(pluginConnectionAvailable('io.github.github/github-mcp-server',{COMPANION_MCP_GITHUB_CLIENT_ID:'id',COMPANION_MCP_GITHUB_CLIENT_SECRET:'secret'})).toBe(true);
  await expect(startPluginConnection(owner,'io.github.github/github-mcp-server','GitHub',{})).rejects.toThrow('unavailable in this deployment');
+});
+
+test('Parallel requires an explicit owner connection and a per-Companion grant',async()=>{
+ const serverId='ai.parallel/mcp';
+ const request=()=>new Request('http://local/api/plugins/connect',{method:'POST',body:JSON.stringify({serverId})});
+ const catalog=await handlePlugins(new Request('http://local/api/plugins'),owner);
+ const {catalog:apps}=await catalog!.json();
+ expect(apps.find((app:{id:string})=>app.id===serverId)).toMatchObject({kind:'remote',available:true,provider:'parallel'});
+ expect((await handler(request())).status).toBe(401);
+ await expect(startPluginConnection(owner,serverId,'',{})).rejects.toThrow('Connect Parallel Search in Applications.');
+
+ const connections=await Promise.all(Array.from({length:4},()=>handlePlugins(request(),owner)));
+ expect(connections.map(response=>response!.status).sort()).toEqual([200,200,200,201]);
+ const [{account},...retries]=await Promise.all(connections.map(response=>response!.json()));
+ expect(retries.map(retry=>retry.account.id)).toEqual(Array(3).fill(account.id));
+ expect(account).toMatchObject({serverId,provider:'parallel',label:'Default',healthStatus:'unchecked'});
+ const [stored]=await db`SELECT credential_secret FROM plugin_accounts WHERE id=${account.id}`;
+ expect(JSON.parse(decrypt(stored.credential_secret))).toEqual({kind:'anonymous'});
+
+ const companion=await createCompanion(owner,{name:'Parallel research',provider:'local'});
+ const runId=await acceptMessage(owner,companion.id,crypto.randomUUID(),'Search public documentation');
+ await db`UPDATE runs SET status='running',dispatched=true WHERE id=${runId}`;
+ const selectFromAgent=(accountId:string)=>applyControl(companion.id,{
+  id:crypto.randomUUID(),runId,operation:'plugin_select',input:{accountId,enabled:true},
+ });
+ const checkFromAgent=()=>applyControl(companion.id,{
+  id:crypto.randomUUID(),runId,operation:'plugin_check',input:{accountId:account.id},
+ });
+ expect(await selectFromAgent(account.id)).toMatchObject({error:expect.stringContaining('grant this connection')});
+ expect(await machinePlugins(companion.id)).toEqual([]);
+ await expect(attachPlugin(crypto.randomUUID(),companion.id,account.id,true)).rejects.toThrow('not found');
+ let healthRequests=0;
+ const originalFetch=globalThis.fetch;
+ globalThis.fetch=(async(input:RequestInfo|URL,init?:RequestInit)=>{
+  expect(String(input)).toBe('https://mcp.parallel.ai/mcp');
+  expect(new Headers(init?.headers).get('user-agent')).toBe('companions.build');
+  healthRequests++;
+  return new Response(null,{status:503});
+ }) as typeof fetch;
+ try{
+  expect(await checkFromAgent()).toEqual({account:null});
+  expect(healthRequests).toBe(0);
+  await attachPlugin(owner,companion.id,account.id,true);
+  expect(await checkFromAgent()).toMatchObject({account:{healthStatus:'error',healthCode:'connection_failed'}});
+  expect(healthRequests).toBe(1);
+ }finally{globalThis.fetch=originalFetch;}
+ const [plugin]=await machinePlugins(companion.id,{async refresh(){throw Error('Unexpected OAuth refresh');}});
+ expect(plugin).toEqual({
+  id:account.id,name:'Default',provider:'parallel',serverId,transport:'http',url:'https://mcp.parallel.ai/mcp',
+  headers:{'User-Agent':'companions.build'},redirect:'error',allowedTools:['web_search','web_fetch'],
+ });
+ expect(await checkPluginAccount(owner,account.id,{async check(projected){expect(projected).toEqual(plugin);}})).toMatchObject({healthStatus:'ok'});
+ expect(await checkPluginAccount(owner,account.id,{async check(){throw Error('provider failure');}})).toMatchObject({healthStatus:'error',healthCode:'connection_failed'});
+ await attachPlugin(owner,companion.id,account.id,false);
+ expect(await machinePlugins(companion.id)).toEqual([]);
+ const custom=await addCustomPlugin(owner,{label:'Existing custom route',url:'https://example.com/mcp'});
+ expect(await selectFromAgent(custom.id)).toEqual({ok:true});
+ expect((await machinePlugins(companion.id)).map(item=>item.id)).toEqual([custom.id]);
 });
 
 test('the first provider account is Default and later accounts require a chosen name',async()=>{
@@ -116,6 +178,47 @@ test('a later provider refresh failure preserves an earlier rotated grant and st
  }});
  expect(retried).toBe(1);
  expect(projected.map(plugin=>plugin.headers?.Authorization)).toEqual(['Bearer rotated-access','Bearer recovered-access']);
+});
+
+test('active configuration publishes current grants even when an OAuth refresh fails',async()=>{
+ const companion=await createCompanion(owner,{name:'Current app grants',provider:'local'});
+ const connected=await handlePlugins(new Request('http://local/api/plugins/connect',{
+  method:'POST',body:JSON.stringify({serverId:'ai.parallel/mcp'}),
+ }),owner);
+ const {account:parallel}=await connected!.json();
+ const custom=await addCustomPlugin(owner,{label:'Still selected',url:'https://example.com/mcp'});
+ const expiredGithub=crypto.randomUUID(),healthyGithub=crypto.randomUUID(),serverId='io.github.github/github-mcp-server';
+ const expired={...oauthCredential(new Date(0).toISOString()),serverName:serverId,refreshToken:null};
+ const healthy={...oauthCredential(),serverName:serverId};
+ await db`INSERT INTO plugin_accounts(id,owner_id,provider,label,server_id,credential_secret)
+  VALUES(${expiredGithub},${owner},'github','Expired',${serverId},${encrypt(JSON.stringify(expired))}),
+        (${healthyGithub},${owner},'github','Healthy',${serverId},${encrypt(JSON.stringify(healthy))})`;
+ for(const id of [parallel.id,custom.id,expiredGithub,healthyGithub])await attachPlugin(owner,companion.id,id,true);
+ await attachPlugin(owner,companion.id,parallel.id,false);
+
+ const updates:MachinePlugin[][]=[],paths:string[]=[];
+ const runId=crypto.randomUUID(),outbox=`/files/outbox?runId=${runId}`;
+ await productHooks.observeRun!({companion_id:companion.id,id:runId},companion.id,'test',{
+  async assertActive(){},
+  async checkpoint(body){return body(db);},
+  async requestAgent(_endpoint,_token,path,method,body){
+   paths.push(path);
+   if(path==='/control')return {generation:'previous',requests:[]};
+   if(path===outbox)return {files:[]};
+   expect([path,method]).toEqual(['/configuration','PUT']);
+   updates.push((body as {plugins:MachinePlugin[]}).plugins);
+   return {};
+  },
+ });
+ expect(updates).toHaveLength(1);
+ const [plugins]=updates;
+ expect(plugins.map(plugin=>plugin.id).sort()).toEqual([custom.id,expiredGithub,healthyGithub].sort());
+ // Keep both selected identities visible to the Git broker without forwarding a failed credential.
+ const unavailable=plugins.find(plugin=>plugin.id===expiredGithub);
+ expect(unavailable).toMatchObject({provider:'github',credentialExpiresAt:0});
+ expect(unavailable?.headers).toBeUndefined();
+ expect(plugins.find(plugin=>plugin.id===healthyGithub)?.headers).toEqual({Authorization:'Bearer private-access'});
+ expect(paths).toEqual(['/control','/configuration',outbox]);
 });
 
 

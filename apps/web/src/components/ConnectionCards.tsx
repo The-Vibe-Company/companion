@@ -53,11 +53,11 @@ export function ConnectionCards({ catalog, accounts, busy, namingServer, healthT
         <ConnectionActions label={account.label} providerName={group.name} busy={!!busy} onRename={value => onRename(account, value)} onCheck={account.provider === "custom" ? undefined : () => onCheck(account)} onDisconnect={() => onDisconnect(account)} />
         {account.healthCode === "authorization_required" && group.server?.available && <Button className="connection-chip-reconnect" variant="ghost" size="sm" disabled={!!busy} onClick={() => void onConnect(group.server!, account.label)}>Reconnect</Button>}
       </div>)}</div>
-      {group.server && <Button className="connection-card-connect" variant="ghost" size="sm" disabled={!group.server.available || !!busy} onClick={() => onRequestConnection(group.server!)}>
+      {group.server && (group.server.kind !== "remote" || !group.accounts.length) && <Button className="connection-card-connect" variant="ghost" size="sm" disabled={!group.server.available || !!busy} onClick={() => onRequestConnection(group.server!)}>
         {busy === group.key ? <LoaderCircle className="spin" /> : group.accounts.length > 0 && group.server.available ? <Plus /> : null}
-        {!group.server.available ? "Unavailable" : group.accounts.length ? "Add account" : "Connect"}{group.server.available && !group.accounts.length && <ExternalLink />}
+        {!group.server.available ? "Unavailable" : group.accounts.length ? "Add account" : "Connect"}{group.server.available && group.server.kind !== "remote" && !group.accounts.length && <ExternalLink />}
       </Button>}
-      {group.server && namingServer?.id === group.key && <PluginAccountNameForm providerName={group.name} busy={busy === group.key} submitLabel="Connect account" onCancel={onCancelNaming} onSubmit={value => onConnect(group.server!, value)} />}
+      {group.server && namingServer?.id === group.key && <PluginAccountNameForm providerName={group.name} busy={!!busy} submitLabel="Connect account" onCancel={onCancelNaming} onSubmit={value => onConnect(group.server!, value)} />}
     </article>)}
   </section>;
 }

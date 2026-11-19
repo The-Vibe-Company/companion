@@ -39,7 +39,7 @@ describe("declarative App definitions", () => {
   });
 
   it("derives compatibility catalog rows and centralized provider fallbacks", () => {
-    expect(pluginCatalog).toHaveLength(appDefinitions.length);
+    expect(pluginCatalog.filter((entry) => entry.kind !== "remote")).toHaveLength(appDefinitions.length);
     expect(pluginCatalog.find((entry) => entry.id === "com.railway/mcp")).toMatchObject({
       provider: "railway",
       name: "Railway",

@@ -125,7 +125,7 @@ export function ApplicationAccess({ companionId, onConnect, inlineConnections = 
   async function connect(server: PluginServer) {
     if (!server.available || mutationPending.current) return;
     mutationPending.current = true; setPendingId(server.id); setError("");
-    const popup = window.open("about:blank", "companions-plugin-oauth", "popup,width=620,height=760");
+    const popup = server.kind === "remote" ? null : window.open("about:blank", "companions-plugin-oauth", "popup,width=620,height=760");
     oauthPopup.current = popup;
     if (popup) oauthWatch.current = window.setInterval(() => {
       if (!popup.closed) return;
@@ -139,8 +139,9 @@ export function ApplicationAccess({ companionId, onConnect, inlineConnections = 
         else window.location.assign(result.url);
       } else {
         if (oauthWatch.current !== null) window.clearInterval(oauthWatch.current);
-        oauthWatch.current = null; popup?.close(); oauthPopup.current = null; mutationPending.current = false; setPendingId(null);
+        oauthWatch.current = null; popup?.close(); oauthPopup.current = null;
         await reload();
+        mutationPending.current = false; setPendingId(null);
       }
     } catch (cause) {
       if (oauthWatch.current !== null) window.clearInterval(oauthWatch.current);
@@ -154,14 +155,15 @@ export function ApplicationAccess({ companionId, onConnect, inlineConnections = 
   if (!accounts.length && !inlineConnections) return <div className="application-access-state"><p>Connect an account to choose what this companion can use.</p>{onConnect && <Button variant="outline" onClick={onConnect}><Plus/>Connect an account</Button>}</div>;
 
   const visibleCatalog = catalog.filter(server => !providers?.length || providers.includes(server.id) || Boolean(server.provider && providers.includes(server.provider)));
+  const connectableCatalog = visibleCatalog.filter(server => server.kind !== "remote" || !accounts.some(account => account.serverId === server.id));
   const visibleAccounts = accounts.filter(account => !providers?.length || Boolean(account.provider && providers.includes(account.provider)) || visibleCatalog.some(server => server.id === account.serverId));
   const visibleGranted = providers?.length ? visibleAccounts.filter(account => selectedIds.has(account.id)).length : grantedCount;
   return <div className={`application-access${compact ? " application-access--compact" : ""}`}>
     <div className="application-access-meta"><span>{visibleGranted} of {visibleAccounts.length} accounts granted</span>{onConnect && <button type="button" onClick={onConnect}>Manage connections</button>}</div>
     {visibleAccounts.length > 0 && <AccountTiles accounts={visibleAccounts} catalog={catalog} selectedIds={selectedIds} disabled={pendingId !== null} pendingId={pendingId} onToggle={accountId => void toggle(accountId)}/>}
-    {inlineConnections && <div className="application-connectors" aria-label="Add a connection">{visibleCatalog.map(server => <article key={server.id} title={server.available ? server.description ?? `Connect ${server.name}` : `${server.name} is unavailable in this deployment`}>
+    {inlineConnections && connectableCatalog.length > 0 && <div className="application-connectors" aria-label="Add a connection">{connectableCatalog.map(server => <article key={server.id} title={server.available ? server.description ?? `Connect ${server.name}` : `${server.name} is unavailable in this deployment`}>
       <ProviderMark provider={server.provider} name={server.name}/><span><strong>{server.name}</strong><small>{server.available ? server.description ?? "Connect another account" : "Unavailable in this deployment"}</small></span>
-      <Button type="button" size="sm" variant="outline" disabled={!server.available || pendingId !== null} aria-label={`Connect ${server.name}`} onClick={() => void connect(server)}>{pendingId === server.id ? <LoaderCircle className="spin"/> : "Connect"}{server.available && <ExternalLink/>}</Button>
+      <Button type="button" size="sm" variant="outline" disabled={!server.available || pendingId !== null} aria-label={`Connect ${server.name}`} onClick={() => void connect(server)}>{pendingId === server.id ? <LoaderCircle className="spin"/> : "Connect"}{server.available && server.kind !== "remote" && <ExternalLink/>}</Button>
     </article>)}</div>}
     {error && <div className="application-access-error" role="alert"><span>{error}</span><Button size="sm" variant="outline" onClick={() => void reload()}>Reload</Button></div>}
   </div>;
