@@ -6,6 +6,7 @@ import {applyControl} from '../src/control';
 import {productHooks} from '../src/runtime-product';
 import {attachPlugin,machinePlugins,addCustomPlugin,checkPluginAccount,handlePlugins,listPluginAccounts,newPluginAccountLabel,pluginCallbackLocation,pluginConnectionAvailable,renamePluginAccount,startPluginConnection} from '../src/plugins';
 import {decrypt,encrypt} from '../src/config';
+import type {MachinePlugin} from '../../../packages/plugins/catalog';
 import {CompanionPluginOAuthRevokedError,type CompanionPluginStoredOAuthCredential} from '../../../packages/plugins/oauth';
 
 const owner='00000000-0000-4000-8000-000000000001';
@@ -186,14 +187,16 @@ test('active configuration publishes current grants even when an OAuth refresh f
  }),owner);
  const {account:parallel}=await connected!.json();
  const custom=await addCustomPlugin(owner,{label:'Still selected',url:'https://example.com/mcp'});
- const githubId=crypto.randomUUID(),serverId='io.github.github/github-mcp-server';
+ const expiredGithub=crypto.randomUUID(),healthyGithub=crypto.randomUUID(),serverId='io.github.github/github-mcp-server';
  const expired={...oauthCredential(new Date(0).toISOString()),serverName:serverId,refreshToken:null};
+ const healthy={...oauthCredential(),serverName:serverId};
  await db`INSERT INTO plugin_accounts(id,owner_id,provider,label,server_id,credential_secret)
-  VALUES(${githubId},${owner},'github','GitHub',${serverId},${encrypt(JSON.stringify(expired))})`;
- for(const id of [parallel.id,custom.id,githubId])await attachPlugin(owner,companion.id,id,true);
+  VALUES(${expiredGithub},${owner},'github','Expired',${serverId},${encrypt(JSON.stringify(expired))}),
+        (${healthyGithub},${owner},'github','Healthy',${serverId},${encrypt(JSON.stringify(healthy))})`;
+ for(const id of [parallel.id,custom.id,expiredGithub,healthyGithub])await attachPlugin(owner,companion.id,id,true);
  await attachPlugin(owner,companion.id,parallel.id,false);
 
- const updates:Array<{plugins:Array<{id:string}>}>=[],paths:string[]=[];
+ const updates:MachinePlugin[][]=[],paths:string[]=[];
  const runId=crypto.randomUUID(),outbox=`/files/outbox?runId=${runId}`;
  await productHooks.observeRun!({companion_id:companion.id,id:runId},companion.id,'test',{
   async assertActive(){},
@@ -203,11 +206,18 @@ test('active configuration publishes current grants even when an OAuth refresh f
    if(path==='/control')return {generation:'previous',requests:[]};
    if(path===outbox)return {files:[]};
    expect([path,method]).toEqual(['/configuration','PUT']);
-   updates.push(body as (typeof updates)[number]);
+   updates.push((body as {plugins:MachinePlugin[]}).plugins);
    return {};
   },
  });
- expect(updates.map(update=>update.plugins.map(plugin=>plugin.id))).toEqual([[custom.id]]);
+ expect(updates).toHaveLength(1);
+ const [plugins]=updates;
+ expect(plugins.map(plugin=>plugin.id).sort()).toEqual([custom.id,expiredGithub,healthyGithub].sort());
+ // Keep both selected identities visible to the Git broker without forwarding a failed credential.
+ const unavailable=plugins.find(plugin=>plugin.id===expiredGithub);
+ expect(unavailable).toMatchObject({provider:'github',credentialExpiresAt:0});
+ expect(unavailable?.headers).toBeUndefined();
+ expect(plugins.find(plugin=>plugin.id===healthyGithub)?.headers).toEqual({Authorization:'Bearer private-access'});
  expect(paths).toEqual(['/control','/configuration',outbox]);
 });
 

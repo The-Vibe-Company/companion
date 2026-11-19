@@ -26,7 +26,7 @@ async function syncConfiguration(run:any,endpoint:string,token:string,observedGe
  const plugins=await machinePlugins(run.companion_id,{
   refreshCredentials:false,
   // An active agent must receive updated grants even when a selected OAuth account fails to refresh.
-  omitFailedRefreshes:observedGeneration!==undefined,
+  retainUnavailableAccounts:observedGeneration!==undefined,
  });
  const generation=hash(JSON.stringify(plugins));
  if(configured.get(endpoint)!==generation||observedGeneration!==undefined&&observedGeneration!==generation){

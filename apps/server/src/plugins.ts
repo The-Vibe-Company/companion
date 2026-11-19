@@ -190,18 +190,18 @@ function projectAnonymousAccount(row:{id:string;label:string;server_id:string;pr
     ...definition.mcp,headers:{...definition.mcp.headers},allowedTools:[...definition.capabilities.allowedTools],
   };
 }
-function projectAccount(row:any,credential:CompanionPluginStoredOAuthCredential):MachinePlugin {
+function projectAccount(row:any,credential:CompanionPluginStoredOAuthCredential,includeAccessToken=true):MachinePlugin {
   const definition=getAppDefinition(row.server_id);
   if(!definition)throw new PluginError('Connection requires an update.');
   return {id:row.id,name:row.label,provider:definition.provider,serverId:definition.id,transport:definition.mcp.transport,url:definition.mcp.url,
-    headers:{Authorization:`Bearer ${credential.accessToken}`},
+    ...(includeAccessToken?{headers:{Authorization:`Bearer ${credential.accessToken}`}}:{}),
     ...(credential.accessExpiresAt?{credentialExpiresAt:Date.parse(credential.accessExpiresAt)}:{}),
     ...(definition.capabilities?.allowedTools?{allowedTools:[...definition.capabilities.allowedTools]}:{}),
     capabilities:{gitCredentials:definition.capabilities?.gitCredentials,bridge:definition.capabilities?.bridge}};
 }
 /** Executor-only projection. Commit each refresh before another provider can fail. */
 export async function machinePlugins(companionId:string,deps:Pick<PluginHealthDependencies,'refresh'>&{
-  refreshCredentials?:boolean;accountId?:string;omitFailedRefreshes?:boolean;
+  refreshCredentials?:boolean;accountId?:string;retainUnavailableAccounts?:boolean;
 }={}):Promise<MachinePlugin[]> {
   const accounts=await db`SELECT p.id FROM companion_plugins cp JOIN plugin_accounts p ON p.id=cp.account_id JOIN companions c ON c.id=cp.companion_id WHERE c.id=${companionId} AND c.owner_id=p.owner_id ORDER BY p.id`;
   const result:MachinePlugin[]=[];
@@ -221,7 +221,8 @@ export async function machinePlugins(companionId:string,deps:Pick<PluginHealthDe
         try {
           credential=await (deps.refresh??refreshCompanionPluginOAuth)({credential:credential as CompanionPluginStoredOAuthCredential,signal:AbortSignal.timeout(10_000)});
         } catch(error) {
-          if(deps.omitFailedRefreshes)return null;
+          // The Git credential broker counts selected accounts even when a token is unavailable.
+          if(deps.retainUnavailableAccounts)return projectAccount(row,credential,false);
           throw error;
         }
         await tx`UPDATE plugin_accounts SET credential_secret=${encrypt(JSON.stringify(credential))} WHERE id=${row.id}`;
