@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import {db,migrate,createCompanion,acceptMessage} from '../src/store';
 import {handler} from '../src/api';
 import {applyControl} from '../src/control';
-import '../src/runtime-product';
+import {productHooks} from '../src/runtime-product';
 import {attachPlugin,machinePlugins,addCustomPlugin,checkPluginAccount,handlePlugins,listPluginAccounts,newPluginAccountLabel,pluginCallbackLocation,pluginConnectionAvailable,renamePluginAccount,startPluginConnection} from '../src/plugins';
 import {decrypt,encrypt} from '../src/config';
 import {CompanionPluginOAuthRevokedError,type CompanionPluginStoredOAuthCredential} from '../../../packages/plugins/oauth';
@@ -177,6 +177,38 @@ test('a later provider refresh failure preserves an earlier rotated grant and st
  }});
  expect(retried).toBe(1);
  expect(projected.map(plugin=>plugin.headers?.Authorization)).toEqual(['Bearer rotated-access','Bearer recovered-access']);
+});
+
+test('active configuration publishes current grants even when an OAuth refresh fails',async()=>{
+ const companion=await createCompanion(owner,{name:'Current app grants',provider:'local'});
+ const connected=await handlePlugins(new Request('http://local/api/plugins/connect',{
+  method:'POST',body:JSON.stringify({serverId:'ai.parallel/mcp'}),
+ }),owner);
+ const {account:parallel}=await connected!.json();
+ const custom=await addCustomPlugin(owner,{label:'Still selected',url:'https://example.com/mcp'});
+ const githubId=crypto.randomUUID(),serverId='io.github.github/github-mcp-server';
+ const expired={...oauthCredential(new Date(0).toISOString()),serverName:serverId,refreshToken:null};
+ await db`INSERT INTO plugin_accounts(id,owner_id,provider,label,server_id,credential_secret)
+  VALUES(${githubId},${owner},'github','GitHub',${serverId},${encrypt(JSON.stringify(expired))})`;
+ for(const id of [parallel.id,custom.id,githubId])await attachPlugin(owner,companion.id,id,true);
+ await attachPlugin(owner,companion.id,parallel.id,false);
+
+ const updates:Array<{plugins:Array<{id:string}>}>=[],paths:string[]=[];
+ const runId=crypto.randomUUID(),outbox=`/files/outbox?runId=${runId}`;
+ await productHooks.observeRun!({companion_id:companion.id,id:runId},companion.id,'test',{
+  async assertActive(){},
+  async checkpoint(body){return body(db);},
+  async requestAgent(_endpoint,_token,path,method,body){
+   paths.push(path);
+   if(path==='/control')return {generation:'previous',requests:[]};
+   if(path===outbox)return {files:[]};
+   expect([path,method]).toEqual(['/configuration','PUT']);
+   updates.push(body as (typeof updates)[number]);
+   return {};
+  },
+ });
+ expect(updates.map(update=>update.plugins.map(plugin=>plugin.id))).toEqual([[custom.id]]);
+ expect(paths).toEqual(['/control','/configuration',outbox]);
 });
 
 

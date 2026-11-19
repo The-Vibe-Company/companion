@@ -200,7 +200,9 @@ function projectAccount(row:any,credential:CompanionPluginStoredOAuthCredential)
     capabilities:{gitCredentials:definition.capabilities?.gitCredentials,bridge:definition.capabilities?.bridge}};
 }
 /** Executor-only projection. Commit each refresh before another provider can fail. */
-export async function machinePlugins(companionId:string,deps:Pick<PluginHealthDependencies,'refresh'>&{refreshCredentials?:boolean;accountId?:string}={}):Promise<MachinePlugin[]> {
+export async function machinePlugins(companionId:string,deps:Pick<PluginHealthDependencies,'refresh'>&{
+  refreshCredentials?:boolean;accountId?:string;omitFailedRefreshes?:boolean;
+}={}):Promise<MachinePlugin[]> {
   const accounts=await db`SELECT p.id FROM companion_plugins cp JOIN plugin_accounts p ON p.id=cp.account_id JOIN companions c ON c.id=cp.companion_id WHERE c.id=${companionId} AND c.owner_id=p.owner_id ORDER BY p.id`;
   const result:MachinePlugin[]=[];
   for(const account of accounts) {
@@ -216,7 +218,12 @@ export async function machinePlugins(companionId:string,deps:Pick<PluginHealthDe
       if(!provider) throw new PluginError('Connection requires an update.');
       const shouldRefresh=deps.accountId?row.id===deps.accountId:deps.refreshCredentials!==false||!!provider.capabilities?.gitCredentials;
       if(shouldRefresh && credential.accessExpiresAt && Date.parse(credential.accessExpiresAt)<Date.now()+60_000) {
-        credential=await (deps.refresh??refreshCompanionPluginOAuth)({credential:credential as CompanionPluginStoredOAuthCredential,signal:AbortSignal.timeout(10_000)});
+        try {
+          credential=await (deps.refresh??refreshCompanionPluginOAuth)({credential:credential as CompanionPluginStoredOAuthCredential,signal:AbortSignal.timeout(10_000)});
+        } catch(error) {
+          if(deps.omitFailedRefreshes)return null;
+          throw error;
+        }
         await tx`UPDATE plugin_accounts SET credential_secret=${encrypt(JSON.stringify(credential))} WHERE id=${row.id}`;
       }
       return projectAccount(row,credential) satisfies MachinePlugin;

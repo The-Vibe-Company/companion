@@ -23,7 +23,12 @@ async function owner(run:any){
 }
 async function syncConfiguration(run:any,endpoint:string,token:string,observedGeneration?:string,execution?:RunExecution){
  const request=execution?.requestAgent??agentRequest;
- const plugins=await machinePlugins(run.companion_id,{refreshCredentials:false});const generation=hash(JSON.stringify(plugins));
+ const plugins=await machinePlugins(run.companion_id,{
+  refreshCredentials:false,
+  // An active agent must receive updated grants even when a selected OAuth account fails to refresh.
+  omitFailedRefreshes:observedGeneration!==undefined,
+ });
+ const generation=hash(JSON.stringify(plugins));
  if(configured.get(endpoint)!==generation||observedGeneration!==undefined&&observedGeneration!==generation){
   await request(endpoint,token,'/configuration','PUT',{generation,plugins});configured.set(endpoint,generation);
  }
@@ -62,7 +67,7 @@ export const productHooks:ExecutorHooks={
    await syncConfiguration(run,endpoint,token,control.generation,execution);
    for(const command of control.requests??[]){
     const result=await applyControl(run.companion_id,command,execution) as any;
-    if(command.operation==='app_refresh'&&result.refreshed===true)await syncConfiguration(run,endpoint,token,undefined,execution);
+    if(command.operation==='app_refresh'&&result.refreshed===true)await syncConfiguration(run,endpoint,token,configured.get(endpoint),execution);
     if(result.pendingQuestionId){
      const [question]=await db`SELECT answer FROM task_questions WHERE id=${result.pendingQuestionId} AND run_id=${command.runId}`;
      if(!question?.answer){
